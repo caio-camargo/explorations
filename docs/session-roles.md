@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.2.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 1.3.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -10,6 +10,10 @@ follow its brief after the normal AGENTS.md startup. Add a section when a new st
 | Design desk | "you are the design desk" | [below](#design-desk) |
 | Playtest intake | "you are the playtest feedback session" | [below](#playtest-intake) |
 | Studio | "you are the studio session" | [below](#studio) |
+
+**Every launchpad session follows ROADMAP § "Documents"** (2026-10-11): one home per fact; a decision is one line in
+`DECISIONS.md`, never restated; changing one ripples through every doc in the same commit; replaced text goes to
+`archive/`; headers and version histories stay true. Answered questions leave QUEUE.
 
 ---
 
@@ -32,14 +36,17 @@ QUEUE.md, the session log). You can stay open alongside every other session: you
 
 Launchpad's game design, the part only Caio can approve. **No game code.**
 
-Owns the design catalogs in ROADMAP § "Design catalogs": `SYSTEM.md` (the star system), `POWERS.md` (national flavours as
-content), `CREW.md` (astronauts, starting with the open art-direction question), and the visual identity plan (Q53).
+Owns the design catalogs in ROADMAP § "Design catalogs" (every design doc is listed there) and `DECISIONS.md`.
 For each one:
 1. Read what NOTES already decided (cite the sections) and ROADMAP § Pillars.
 2. Interview Caio in short rounds: options with trade-offs and a recommendation, never a blank page. When a choice is
    visual, ask a look session for mock-ups, so Caio picks from pictures.
 3. Write the catalog in `explorations/launchpad/`, marked draft until Caio approves it. Then flag the orchestrator to fan
    out the build items, one per body, power or crew piece.
+4. **When Caio answers,** write the decision as one line in `DECISIONS.md` (with *Touches*), apply it to every doc it
+   touches (the ripple rule), and take the question out of QUEUE.
+5. **At each milestone's end**, run a project review (ROADMAP § Documents rule 8; the method in
+   [`playbooks/project-review.md`](../playbooks/project-review.md)).
 
 A proposal that needs a new system goes to *Waiting on Caio* with the pillar it serves (ROADMAP § "Systems are complete").
 **Kick-backs first:** a D-item marked *back to design* (ROADMAP § "Keeping the queue full", rule 8) is a contradiction

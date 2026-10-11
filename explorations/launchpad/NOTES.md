@@ -2149,7 +2149,7 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
-## v1.118 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
+## v1.122 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
 
 Caio's W26.1: rivals are programs from the start, not seeded schedules. The plan is in § "Plan: rivals as programs…" →
 "Q188 amendment". This is its first slice (`sim/contracts.js`, after `RACE`).
@@ -2184,8 +2184,36 @@ Caio's W26.1: rivals are programs from the start, not seeded schedules. The plan
   was invisible from inside one game, and plain the moment you print it per home.
 
 Tests: `econ-21` (5 checks: forecast and worlds differ; an attempt fails then succeeds and the race is lost; the spur;
-commodity money; old save and defection). `econ-13` and `econ-15` pass unchanged. **Waiting on Caio:** W37 (spur,
+commodity money; old save and defection). `econ-13` and `econ-15` pass unchanged. **Waiting on Caio:** W38 (spur,
 panel by openness, second-place news; defaults built).
+## v1.121 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
+
+The first slice of "Plan: record and replay a whole session": the recorder. With `?tester`, **Record this session** in
+the tester menu records keyframes, not keystrokes: the starting save, a diff of the save at each save, the screen, the
+design on the Assembly, the camera, and each flight's tape between a start and an end that carry a hash of the vessel.
+**Download recording** (in the tester menu while it records) saves gzipped JSON. The viewer is R2.
+- **`sim/record.js` (SIM, pure):** `REC`, `recStart(store, game)`, `recEv(kind, data)`, `recProg()` (the save since the
+  last keyframe, as `jdiff` ops), `recFlightStart(s, tape)` / `recFlightEnd(s, tape)`, `recStop()`, `recFile()` (a
+  flight still flying is closed in the copy, marked `open`), `recProgAt(file, t)` (the save at any time: R3's scrub),
+  `recLoad(start)`, `stateHash(s)`, `jdiff`/`jpatch`.
+- **`app/record.js`:** starts and stops with the flag, gives `REC` the clock, taps `HOOK.save`, samples at 10 Hz the
+  screen, the camera and the flight's pace (tape seconds flown), at 1 Hz the path and the design; logs keys and clicks as
+  `ui` events (display only, never replayed as input). The start's `store` is the page's other `launchpad-*` settings.
+- **Hooks in other files, one line each:** `resetShip` ends the flight in progress and opens the next; the two flights
+  from orbit in `app/program-ui.js` do the same; `recTapeNow()` (`app/state.js`) is the autopilot's played tape while it
+  flies, else the pilot's. A detached part's tumble (`sim/vessel.js`) is seeded from the time, not `Math.random`.
+- **What it found:** a replay can't start from a bare `Object.assign(PROG, save)`. The page's load also sets `HOME`
+  from the save, rebuilds the rivals' schedule and fills the offer board; without that, the fresh SIM's `missionTick`
+  crashed in `relOf`. `recLoad` does what `app/state.js` does after `migrateSave`, and the start records `HOME`.
+  **Platform:** `app/state.js` could call `recLoad` itself, so there's one load path (not done: it's the page's boot).
+- **Checked:** test `platform-5` records a Sounding flight in one SIM instance and replays it in a **fresh instance**
+  from the file: the vessel's hash at both ends and the save after it settles match exactly, the start plus every diff
+  rebuilds the final save, and `jdiff`/`jpatch` round-trip. In Chrome (`?tester`): the menu's checkbox starts it; a pad
+  flight through `resetShip` and the tape calls records flight start/end, 19 pace, 5 path and 5 save events; the
+  download is **3.2 KB gzipped** (9.9 KB JSON, the sandbox's save is 2.1 KB of it); decompressed and re-flown in a fresh
+  SIM the page built from `sim/*.js`, both hashes match. Robot `m1` passes (no overlapping boxes).
+- **Not yet:** the viewer (R2), scrubbing and the camera path (R3), robot rows from a recording (R4). A flight that was
+  already flying when recording started isn't recorded as a flight (its tape began before the recording); its path is.
 
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
@@ -2743,7 +2771,7 @@ of gravity there. So:
 
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
-From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
+From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
 at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
 on the map from the start).
 
@@ -3014,7 +3042,7 @@ the beeper, first on the hop and the orbit), `212` / `L1L` in frugal and resourc
 - **An attempt** when `p` reaches `w`: it succeeds with `0.55 + 0.35 × tech` (capped 0.95). A failure sets `p` back by
   a third of `w`: the open superpower's failures are news, a closed one's only a rumour, and only sometimes.
 - **What we do moves it (the lever this slice has):** a first **we** win spurs every rival racing for it. Their budgets get
-  `× (1 + ½ × prestige appetite)` for a year (halved after measuring, v1.118), the Sputnik shock run backwards. Winning early makes the next firsts harder.
+  `× (1 + ½ × prestige appetite)` for a year (halved after measuring, v1.122), the Sputnik shock run backwards. Winning early makes the next firsts harder.
   Sanctions, sales and the late levers stay in Q138's slices.
 - **Personalities as before:** a frugal power doesn't race (its rate is 0, and it partners), and a rising power works
   through the beeper quietly (it copies; its beeper never counts) and then runs at 1.5×.
@@ -3026,7 +3054,7 @@ the beeper, first on the hop and the orbit), `212` / `L1L` in frugal and resourc
   rates with no rolls. A defection hands the old home's progress to the new rivals, as the schedule did.
 
 **Tuning target:** `career.mjs`'s race column stays mostly `211`, and over 20 worlds the mean day of each rival
-first is within ±15 % of the old formula's expectation, with spread between worlds (the old schedule had none). Met: v1.118.
+first is within ±15 % of the old formula's expectation, with spread between worlds (the old schedule had none). Met: v1.122.
 
 **Questions for Caio** (numbered, with defaults; silence keeps them): (1) **the spur:** a first we win speeds rivals up
 for a year (default) or no reaction; (2) **what the race panel shows:** the forecast day for an open rival, "soon" or
@@ -3069,6 +3097,8 @@ is capped, not priced.
 sites → the runner's capacity report; revenue items with their systems (Q110 goods, depots).
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
+
+> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182.
 
 CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
 (`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
@@ -10276,6 +10306,8 @@ day"; the smoke shard after merging main.
 
 ## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
 
+> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this.
+
 **The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
 modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole
 generations: `avOf(s) = AV[min(s.av, avCap(s))]`, and `sasModeOK(s, m)` asks that generation's list. Rank 2 (target
@@ -10560,3 +10592,54 @@ bay, the arm, the station modules and the crew capsule were all buyable on the f
   for "A crew aboard".
 
 Test `vehicle-10` (1 check; fails with the bay's gate removed). Full suite: 634 checks, all pass.
+
+## v1.118 — the Assembly keeps the design still; Clear and the radial-mount count in plain sight (2026-10-11, vehicle session, QUEUE Q247, Q235, Q236; PLAYTEST #44, #42, #39)
+
+- **The design stays pinned (Q247, #44).** The editor camera looks at the CoM and the desk's base plate (and, on the pad,
+  the `LIFT`) sat under the design's lowest part, so deleting the bottom moved both and the rocket seemed to fall.
+  `BLD` now keeps a pin on the root part (`st.pin`: its id, its bottom above the design's bottom and above the CoM): after
+  an edit, `cam.edY` follows the CoM shift so the root stays still on screen, and `st.gap` keeps the plate where it was,
+  so the rest hangs above it. Building below the plate pushes the plate down (the gap never goes negative), never the
+  rocket up. A new design starts on the plate: a preset, the first part, Clear, a new root (make root). A preset's first
+  edit (array → tree, `design()`) keeps its pin. `BLD.foot()` is the plate's height in the ship's frame; `app/model-desk.js`
+  stands the desk on it (`deskFoot`) and sizes its scale on rocket + gap, so the scale doesn't jump as parts go.
+  On the pad (desk off), `S.pf` adds the gap. Undo of a delete brings the gap back to 0.
+- **Clear (Q235, #42)** had been there since v1.17: a small "clear" by undo. Caio didn't find it. Now **✕ Empty** is the
+  first button over the presets and the toolbar's reads "✕ clear design" (both `clearDesign`: one undo step, a note saying so).
+- **Radial mounts (Q236, #39):** `mountsHTML()` puts ×1 … ×8 chips (and `[X]`) under the parts list's status line while a
+  part is held; the cursor line says "radial mounts ×n · X changes" when the held part is off any node and "radial mounts ×n [X]"
+  on a surface. The toolbar group and the key help say *radial mounts* instead of *symmetry*.
+- **Flow (Q272):** new player strings here say "the design", none says "Assembly"; the rename has nothing new to catch.
+
+Robot row 200 (pin, Clear + undo, the ×4 chip; three checks). `--smoke` 567 checks pass; sections 16, 17, 32, flow-11 pass.
+
+## v1.119 — every part says what it does (2026-10-11, vehicle session, QUEUE Q248; PLAYTEST #46)
+
+- **A card beside the palette** (`cardAt`, `#partcard` in `builder.js`) on hover: the name, one sentence (`PART_INFO`,
+  keyed by part, falling back to a 2.5 m part's base and then to its kind, so a new part from another lane gets its
+  kind's sentence until it has its own), and a sheet from the part's own numbers (`partSpecs`): mass (full and empty for
+  tanks), propellant, thrust and Isp, an escape tower's burn, seats and berths, turning torque, power made, stored or
+  drawn, size, heat limit (`Tmax`), price (`partPrice` plus a tank's propellant at `FUEL_PRICE`). A part not open yet says
+  why there (the old `title` tooltip is gone). The tooltip on the design (`#bldtip`) adds the sentence.
+- **Not done:** the school (no part differs by school yet), and the picture: Q238's thumbnails go at the top of this card.
+- **Words:** the sentences are written for a newcomer (what it's for, one catch) and avoid "Assembly" (Flow's Q272).
+
+Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Isp). Sections 16, 17, 32 pass.
+
+## v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
+
+- **Click in the air to park.** Holding a part (or a group: a part with what hangs from it), a click where no node or
+  surface takes it parks it there (`parkHeld`), unless it would overlap the rocket. The design keeps them in
+  **`design.park = [{n, p}]`**: `n` the group's node tree (as `root` is), `p` its bottom centre from the root part's bottom
+  centre, so parked parts keep still with the pin (v1.118). `parkedInst()` lays them out; they are drawn solid with a
+  faint blue glow and a *parked* label, hover and highlight as parts do, and are picked up (click), copied (Ctrl-click) or
+  deleted (Del) through the same `pickUp` / `detachNode` as the rocket's parts. They are never attach targets in this
+  slice: pick a parked group up and put it on the rocket.
+- **Inserting a part** between two others, KSP's way: pick up the lower part (it brings what hangs below it), park it, place
+  the new part, then put the parked group back under it. The first part placed stays the root.
+- **Not the rocket:** `assemble`, `stageStats`, costs and launch only read `root`, so parked parts never fly. `launchWarnings`
+  (`sim/vessel.js`) adds "N parked groups not attached to the rocket: they stay behind" to Rollout's checks; the status line
+  under PARTS says the same while any are parked. Undo and Clear cover them; deleting the root drops them.
+- **Saved designs** carry `park` as they carry the tree; a dispatch or procedure that flies a saved design ignores it.
+
+Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8 parts again).

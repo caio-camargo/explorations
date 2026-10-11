@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-11
 **Status**: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -151,7 +151,7 @@ Each stage is one prompt-sized job, judged on the lab's roster sheet before the 
 **Rule for every stage:** test the extremes. Push each new gene to 0 and 1 on three different faces; if a corner
 breaks the style, narrow the range rather than adding a fix.
 
-## 5. Open questions (D12)
+## 5. Decided (D12: the defaults, provisionally, 2026-10-10)
 
 1. **Engine shape.** (a) **Blend archetypes + bounded genes + part libraries** (the hybrid above; recommended); (b)
    Mii-style parts only (fastest, most toy-like); (c) free sliders only (most range, least on-style).
