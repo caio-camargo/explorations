@@ -54,6 +54,13 @@ the folders and branches keep their old names.
 | *orchestrator* (QUEUE.md upkeep, docs only) | `C:/Users/caioa/dev/launchpad-orchestrator` | `orchestrator` | — |
 | *retired:* plumes (now look & sound) | `C:/Users/caioa/dev/launchpad-plumes` | `plumes` | 8791 |
 
+> **For every launchpad session, 2026-10-11 (wildcard, platform lane, QUEUE Q68): `test.mjs` IS SPLIT. Merge `main` before
+> adding a test.** The 171 sections moved unchanged into `explorations/launchpad/tests/<lane>.mjs` (`core` = the numbered
+> suite; then `flow`, `economy`, `vehicle`, `space`, `world`, `look`, `qa`, `platform`). New sections go at the end of
+> your lane's file. `node test.mjs` and every option work as before (the full run now goes through `shards.mjs` too).
+> A branch with a section added to the old `test.mjs`: keep `main`'s `test.mjs` in the conflict, move your section to
+> your lane's file. NOTES § "Test shards".
+
 > **For every launchpad session, 2026-10-08 (control session, at Caio's request): `explorations/launchpad/TESTING.md`.** Caio
 > can't playtest for now, so this lists what nobody has played yet: 107 rows by area (try this / how to get there / looks right
 > if / owner). **When you ship something a person should try, add a row** (next free number, your session as owner) in the
@@ -135,8 +142,9 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Claude (world session) | 2026-10-11 | Launchpad **Q274** (PLAYTEST #74): the sea as a fluid: buoyancy, waterline, tipping, sinking, drift for a splashdown. Plan in NOTES first, then build. New worktree `C:/Users/caioa/dev/launchpad-sea`, branch `sea` from main (`terrain` keeps the parked Q19). ⚙ first | `sim/flight.js` (the splashdown snap ~79–85, `groundContact`'s sea line), `sim/world.js` (sea helpers), recovery in `sim/debrief.js` if it reads `s.water`; NOTES (new § v1.N) |
+| Caio + Claude (space session) | 2026-10-11 | Launchpad **space lane**: Q257 (a revert discards the flight), then Q214, Q198, Q213, Q200. Worktree `launchpad-sats`, branch `sats`. ⚙ only | `app/state.js` (`resetShip`), revert callers, `sim/registry*`, tests for space; NOTES space sections |
 | Caio + Claude (vehicle session) | 2026-10-11 | Launchpad **the builder playtest items**, in order Q247 (design stays pinned), Q235 (Clear), Q236 (radial mounts in sight), Q248 (part hover cards), Q246 (park parts in the air), Q249 (staging drag and drop), then Q237/Q238 (sketch/plan first), Q202. Worktree `launchpad-builder`, new branch `vehicle` from main (`builder` keeps the parked Q152, untouched). **Flow:** Q272 renames Assembly strings; I touch `app/builder.js` / `app/editor.js` UI, so whoever merges second re-applies the rename to new strings | `app/builder.js`, `app/editor.js`, `index.html` (Assembly panel, `#stats`), `sim/vessel.js` (`layoutDesign`), builder sections of the tests |
-| Claude (wildcard, platform overflow) | 2026-10-11 | Launchpad **Q68** `test.mjs` into per-area files (`tests/*.mjs`, same runner, shards, labels). Worktree `launchpad-platform`, branch `platform`. ⚙ only | **`explorations/launchpad/test.mjs` (whole file)**, `shards.mjs`, `tests/` (new), NOTES § Test shards / file split. **Hold new test sections until this lands** (or add them and re-apply after) |
 > Cleared 2026-10-11: wildcard session, **v1.117 the tester's verbose log (Q265)** on `main` (pushed). **Everyone:** `logEv('kind', text)` (`sim/program.js`) is a no-op unless the tester has *Verbose log* on; call it where something happens that no message says. Player messages, news, saves, money, contracts and missions are logged already (`app/testlog.js`). Also: `check_numbers.mjs` now counts played TESTING rows (`✓ 12`, `~ 35 (robot)`), which it missed before.
 > Cleared 2026-10-11: wildcard session, **Q160 `check_numbers.mjs`** on `main` (pushed). **Everyone:** after `git fetch`, `node check_numbers.mjs` in `explorations/launchpad/` prints the next free version / TESTING / PLAYTEST / Q/W/D and fails on a number `origin/main` also took; it's now in the merge recipe above, and test `platform-3` fails on any repeat.
 > Cleared 2026-10-10: QA session, **Q224 `playtest.mjs --watch`** on `main` (pushed). **Everyone writing robot rows:** `PT.fly` and `PT.ascent` now run through `PT.loop`; headless they return as before, but under `--watch` they return a promise, so a step using their value should `await` them inside an async IIFE (m1 and 147 do). `{say: '…'}` is a new step type (a caption when watching, ignored otherwise). Also Q221 (`PT_URL` query joins with `&`) and Q208 (row 147 passes both ascents). Q225, record/replay, filed for platform as a plan item.
