@@ -1,6 +1,6 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
+**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
+**Status**: **Plan, partly built** (G1, G2, G3.0 and G7 on the CPU by 0.1.10; see the version history). Originally: QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
 which, how Selene gets craters, maria, slopes, shadows and horizons, and the slices to build it in.
@@ -323,6 +323,7 @@ orbit.
 ---
 
 ## Version history
+- **0.1.11 (2026-10-11):** status header brought up to date (docs sweep).
 - **0.1.10 (2026-10-09):** G3.0 built (v1.78): `ptan` turned out good to 1.9e-13, so heights moved by 2.7e-8 m.
 - **0.1.9 (2026-10-09):** the seeded small bodies' ground, a recipe factory (v1.75). G7 is complete on the CPU; nothing is live until the space lane's bodies (Q87) and the shader (G3).
 - **0.1.8 (2026-10-09):** Erebus's ground built on the CPU (v1.72, not live; stub body): every hand-made body now has ground on the CPU.

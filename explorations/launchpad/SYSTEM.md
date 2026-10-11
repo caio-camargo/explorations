@@ -1,5 +1,5 @@
 # SYSTEM — the star system catalog
-**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
+**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
 **Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
 revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
@@ -256,6 +256,7 @@ adds them to QUEUE.md. Look and ground may start before M5.
 ---
 
 ## Version history
+- **1.1.1 (2026-10-11):** KSP's names ("Kerbol", "Jool") dropped; the star's mass kept, for play length (D15.6).
 - **1.1.0 (2026-10-09):** W20 round 2, approved by Caio: look twists for Hesper (night glow), Enyo (redder, the volcano),
   Astraea (lopsided, a polar basin), Hyperion (seasonal colour, hexagon, ring structure), Eos (cycloids, tiger stripes),
   Tethys (thinner haze, lake glint), Erebus (blue haze); a new companion, **Aether**.

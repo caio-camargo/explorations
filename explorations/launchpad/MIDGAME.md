@@ -1,5 +1,5 @@
 # MIDGAME — from single flights to a network
-**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-09 · **Updated**: 2026-10-10
+**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-09 · **Updated**: 2026-10-11
 **Status**: **Approved by Caio 2026-10-09.** Numbers are placeholders for the lanes to measure and tune.
 **Purpose**: How the program turns from one-off flights into routines (epochs 3–6, M2–M4): what's automated first, how
 automation grows with the eras, what a routine's window is, and what satellites ask of the player. The bridge to
@@ -29,7 +29,7 @@ Each era moves the edge of automation outward; the player flies what's beyond it
 
 | Era (NOTES § Compute) | What can run as a routine | What you still fly |
 |---|---|---|
-| **Before computers: the launch rail** (year 0 on; § The launch rail) | **an aimed launch**: set the rail's angle and heading, and a small solid rocket flies itself to its orbit, no steering | anything crewed, liquid or heavy |
+| **Before computers: the launch rail** (year 0 on; § The launch rail) | **an aimed launch** you never flew by hand: set the rail's angle and heading, and a small solid rocket flies itself to its orbit, no steering (dispatch, the next row, *repeats* an ascent you flew; D17.3) | anything crewed, liquid or heavy |
 | **Human computers** (year 0–3) | repeating an ascent you've flown (dispatch: exists, Q11) | everything else |
 | **Mainframes** (~year 3) | deploying satellites to orbits you've flown; ground-commanded | rendezvous, docking, anything beyond Tellus orbit |
 | **Onboard computers** (~year 7) | **uncrewed rendezvous and docking: cargo resupply** (Progress-like); Selene runs | the new: other bodies, first landings, the planets |
@@ -40,8 +40,8 @@ resupply is crewed**: crew rotation carrying cargo, Soyuz-like. Uncrewed cargo r
 computers.
 
 **The order of first routines**, typically: a repeat satellite launch → crew rotation with cargo → uncrewed resupply →
-Selene runs. **The network screen earns its place around the third routine** (a station, its resupply, a
-constellation); before that the pad calendar is enough.
+Selene runs. **The network view earns its place around the third routine** (a station, its resupply, a
+constellation); before that the pad calendar is enough. It lives **inside mission control** (D17.7), not as a screen of its own.
 
 ## Windows (decision 3)
 
@@ -72,6 +72,8 @@ Station-keeping (v1.60) and decay (v1.64) are real physics and stay. What change
   a reboost or refuel can become a routine you never think about.
 - **Running dry pauses; only a satellite parked too low to hold its orbit comes down, warned ahead** (W2, pillar 5;
   amended 2026-10-09, D6: the builder's lifetime readout makes a too-low orbit a visible design choice).
+- **Aging shows quietly** (D17.5): an older satellite's lower earnings show in the Fleet tab and as replacement
+  offers, never as a news line each era.
 
 ---
 
@@ -111,4 +113,7 @@ solved **before** lift-off: choose the angle and the heading, then watch. Once i
 ## Version history
 - **1.0.0 (2026-10-09):** written and approved in one round: flying stays central, the automation ladder, windows,
   satellites replaced for upgrades.
+- **1.0.1 (2026-10-09):** D6: running dry pauses; a satellite parked too low still comes down, warned ahead.
 - **1.1.0 (2026-10-10):** the launch rail as the ladder's bottom rung (Caio, from D14 2).
+- **1.1.1 (2026-10-11):** the docs sweep: rail vs dispatch (D17.3), the network view in mission control (D17.7), aging
+  without a news nag (D17.5).

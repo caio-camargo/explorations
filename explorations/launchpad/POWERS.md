@@ -1,5 +1,5 @@
 # POWERS — national flavours as content
-**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
+**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
 **Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it. § "School briefs" for Arsenal, Coastal, Mountain and Isle approved 2026-10-10 (D14: defaults on 1 and 3; 2: tilted launches are a rail for every school, MIDGAME 1.1.0; 4, the mock-ups, Caio runs in his design session).
 **Purpose**: Give every generated power a recognisable identity: how its names sound, its flag, how its hardware and
 pads look, how its mission control and newspapers talk, and how it behaves as a rival. Content on top of systems that
@@ -279,6 +279,9 @@ part *performance*; diplomacy actions.
 ---
 
 ## Version history
+- **1.2.0 (2026-10-10):** D14 approved: school briefs for Arsenal, Coastal, Mountain and Isle (paint, interstage, bells,
+  signature designs, pads); Coastal's pad a vertical rollout to lightning masts; tilted launches a rail for every school.
+- **1.1.1 (2026-10-10):** D14 drafted.
 - **1.1.0 (2026-10-09):** D10, approved by Caio: a seventh school, **Foundry** (commercial, late; Starship-like), and
   the **commercial giant**, a company rival in the commercial era that can sell you its parts.
 - **1.0.0 (2026-10-08):** approved by Caio; round-2 decisions; what a school may change on a part (outline fixed),

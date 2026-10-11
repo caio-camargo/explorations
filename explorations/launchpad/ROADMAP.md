@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.8.2 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 1.9.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -63,8 +63,8 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | | Milestone | Finish line | State |
 |---|---|---|---|
 | M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | ✓ **done 2026-10-09** (Q29 clean; last bugs Q74, Q77, Q112 in v1.73–v1.74; #9, #11 left to M1/M5 by W13's default) |
-| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **Caio plays the first hour as a new player would** (a fresh career, no tester flags; 2026-10-11: there's no outside player, and the game's measure is that Caio enjoys playing it), and where he got stuck or bored is written in PLAYTEST | **current** (since 2026-10-09); **robot run ✓ 2026-10-09** (QA: `playtest.mjs m1` passes on the Beeper preset: Esc pauses, a Debrief after each flight, no box overlaps); still open: the career.mjs pacing check and Caio's first hour |
-| M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, with one routine resupply, using "advance to next event" only | **next** (code open since 2026-10-09) |
+| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **Caio plays the first hour as a new player would** (a fresh career, no tester flags; 2026-10-11: there's no outside player, and the game's measure is that Caio enjoys playing it), and where he got stuck or bored is written in PLAYTEST | **current** (since 2026-10-09); **robot run ✓ 2026-10-09** (QA: `playtest.mjs m1` passes on the Beeper preset: Esc pauses, a Debrief after each flight, no box overlaps); pacing ✓ (Q118, Q93, Q144; re-run after Q188 and Q279); still open: Caio's first hour |
+| M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, **kept up by a routine repeat satellite launch** (a dispatch; resupply moves to M3 with crew, DECISIONS D17.1), using "advance to next event" only | **next** (code open since 2026-10-09) |
 | M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | design only |
 | M4 | **Big projects** (epoch 5) | A depot and a datacenter built over several flights, sized by waste heat, earning | design only |
 | M5 | **Sun and planets** (epoch 6) | A probe to another planet planned on a porkchop, coasting in the background while the program carries on | design only |
@@ -142,22 +142,24 @@ wait for M5.
 
 Design that only Caio can approve, written as catalogs so lanes can fan out from them. The **design desk** session
 (`docs/session-roles.md`) drafts them by interviewing Caio; the orchestrator fans out the build items once he approves.
+**Every design doc is listed here** (a new one adds its row); each holds the current design only, and its decisions are
+lines in [`DECISIONS.md`](DECISIONS.md).
 
-| Catalog | What it settles | Unblocks |
-|---|---|---|
-| `SYSTEM.md` | The star system (above) | per-body look, ground, orbits, missions |
-| `POWERS.md` | **National flavours as content.** The axes and archetypes exist (v1.24, NOTES § "Power flavours"); this gives each archetype a name style, a flag, a hardware look (rocket shapes, paint, pads), its mission-control and news tone, its rival program's personality, and what it changes in play | the parts & pad beat per power, rival programs, site looks, economy contracts per power |
-| `CREW.md` | **Astronauts.** First the art direction, an **open question** (Caio, 2026-10-08): cartoony like Kerbals, realistic humans, or stylised humans between the two. Then whether crew are named people with careers, which would be a new system needing a pillar | crew visuals, EVA, crew-loss tone, any roster |
-| visual identity (Q53) | One look for the screens, matching the early-era hardware | flow's screen work, PLAYTEST #13 |
-
-**How to settle the astronaut question cheaply:** the design desk writes the trade-offs (below), a look session renders
-two or three mock-ups in the same scene (the capsule hatch, the pad walkway), and Caio picks from pictures, not words.
-- **Cartoony:** charm and comedy, no uncanny valley, cheap to animate, losing one stings less. Clashes with the realistic
-  early-era hardware unless the identity bends too.
-- **Realistic:** matches the hardware, and crew loss weighs what it did in 1967. Expensive to make convincing, and up
-  close it risks the uncanny valley.
-- **Stylised human** (1960s illustration, Thunderbirds, Tintin): human proportions with simple forms. Fits the era's look
-  and the lighter tone; the likely middle.
+| Doc | What it settles |
+|---|---|
+| [`SYSTEM.md`](SYSTEM.md) | the star system: bodies, orbits, looks, roles |
+| [`POWERS.md`](POWERS.md) | national flavours: schools (hardware, pads), archetypes, rivals, the commercial giant |
+| [`CREW.md`](CREW.md) | astronauts: who they are, skill and qualifications, the office, how they look, suits |
+| [`FACES.md`](FACES.md) | the face engine behind the crew's heads |
+| [`MIDGAME.md`](MIDGAME.md) | from single flights to routines: the automation ladder, the launch rail, windows, satellites |
+| [`LATE_GAME.md`](LATE_GAME.md) | the network, outposts, the tech ceiling, capstones, debris |
+| [`GROUND.md`](GROUND.md) | every body's ground: generators, recipes, slices |
+| [`UI.md`](UI.md) | UI hierarchy: rules and each screen's reads |
+| [`KSPISMS.md`](KSPISMS.md) | what came from KSP: kept, changed |
+| [`TECH_SCOUTING.md`](TECH_SCOUTING.md) | real space tech mined for ideas |
+| [`mockups/README.md`](mockups/README.md) | the mock-up pages and Caio's picks |
+| [`DECISIONS.md`](DECISIONS.md) | every decision, one line each |
+| Reviews: [`REVIEW-2026-10-11.md`](REVIEW-2026-10-11.md) | a whole-project review (one per milestone) |
 
 ### M3–M5 — design only for now (📝 items, any lane)
 
@@ -265,6 +267,27 @@ perf readout (NOTES § v1.1); `views.js` reference scenes for before/after.
 
 ---
 
+## Documents: one home per fact (Caio, 2026-10-11; DECISIONS "DOC")
+
+Docs drifted because one decision was written in up to four places, replaced text stayed printed, status lines were
+kept by hand, and NOTES grew without order. The rules:
+1. **Each kind of doc has one job.** Design catalogs (above): the design *as it is now*, edited in place. **DECISIONS.md:**
+   every decision, one line, append-only. **QUEUE.md:** live work and open questions only. **NOTES.md:** how things were
+   built. **ROADMAP.md:** pillars, milestones, lanes, rules. **INDEX.md:** where each doc is and what it's for (no
+   versions or statuses: those live in the doc's own header).
+2. **One home per fact.** Elsewhere, a one-line summary and a link, never a restatement.
+3. **The ripple rule.** Changing a decision: add its DECISIONS row with *Touches*, then search the docs for the old
+   wording and fix or mark every hit, in the same commit.
+4. **Replaced text moves to `archive/`** (archive over delete), with a one-line pointer where it was. Nothing stays
+   printed next to the text that replaced it.
+5. **Headers stay true:** a doc's version, date and status change with every edit; its version history gets a line.
+6. **Size budgets:** a design doc under ~400 lines, QUEUE under ~300; over budget, split it. (NOTES is the exception
+   until its split: phase 2, a freeze Caio picks.)
+7. **A machine checks it** (`check_docs.mjs`, platform; QUEUE): headers vs histories, INDEX coverage, broken links,
+   "waits for Qn" when Qn is done, QUEUE rows naming answered questions, sizes. It runs with `--smoke`.
+8. **A review per milestone** (the 2026-10-11 review's method: milestones and blockers, pillars against the build,
+   design debt and doc health), saved as `REVIEW-<date>.md` and linked above.
+
 ## Keeping the queue full (rules for the orchestrator)
 
 1. **Refill:** when a lane has fewer than 3 `ready` items in QUEUE, move the next ones for that lane from the current
@@ -291,15 +314,6 @@ perf readout (NOTES § v1.1); `views.js` reference scenes for before/after.
 
 ---
 
-## Defaults for the open questions (2026-10-08; Caio may override any)
+## Defaults for the open questions
 
-| # | Question | Default (work proceeds on this) | Why |
-|---|---|---|---|
-| W1 | nyxfind free on a Selene flight? | **Overridden by Caio 2026-10-08: not free** (only a flight launched while it is open tracks Nyx; NOTES v1.53). Was: keep it free, but raise selimp and nyxfind pay above the cheapest proven Probe | Your own missions revealing things is the design's lens; it's a one-time first, so nothing to farm. The pay gap is the real bug. |
-| W2 | Satellite lifetimes and station-keeping? | **Yes, as a fuel lifetime.** Station-keeping spends onboard propellant; at zero the satellite drifts off its slot and its service **pauses** (never dies). Reboost and servicing contracts restore it. | The tidal drift (10,750 km a month) is real physics already in the sim, and "pauses, never decays" is the rule already agreed for projects. |
-| W3 | Flights from orbit: fee and contracts? | **Pay a reduced operations fee; may complete orbit contracts accepted before that flight started** | Rewards infrastructure without letting old satellites complete new contracts retroactively. |
-| W4 | Selene firsts in the race? | **Yes**, with rival schedules for Selene firsts starting no earlier than epoch 4; re-run the v1.28 balance | The race is what gives Selene its urgency. |
-| W5 | Does the Esc menu pause? | **Yes**, in flight and on every screen | Matches KSP; nothing should happen while a menu is open. |
-| W6 | A sea-specific launch complex? | **Later** (look & sound evergreen); until then the land complex is reused on the platform | Not needed for M1. |
-| W7 | Development: variants or upgrades in place? | **Variants.** A developed part is a new palette entry (Mk2); the original stays | Tapes, routines and logbook records are tied to exact designs; upgrading in place would silently invalidate them. |
-| W8 | Hands-on rows | **No default:** needs a human. QA narrows it to the rows only feel can judge | — |
+Moved to [`DECISIONS.md`](DECISIONS.md) (2026-10-11); the original table with its reasons is in [`archive/decisions-2026-10.md`](archive/decisions-2026-10.md).

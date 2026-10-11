@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.51 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2149,7 +2149,7 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
-## v1.124 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
+## v1.126 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
 
 Fragments (v1.83) were a density per band that hit registered entries between flights; a flight flew through them untouched.
 - **`fragPass(s, dt)`** (`sim/space.js`, from `missionTick` each step, physics or rails): in orbit of Tellus, inside a
@@ -2167,7 +2167,7 @@ Fragments (v1.83) were a density per band that hit registered entries between fl
   hits a year**, about one in 70,000 flight-hours. Strikes come with a cascade or an anti-satellite test, as they should.
 - **Not yet:** a hit that punctures a tank (a leak) or damages instead of breaking; the fragment drawn (HOOK.fragIn).
 
-## v1.123 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
+## v1.125 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
 
 - **Landed entries** (`landPowInit`, `sim/space.js`, called by `landRegister`): a lander or base keeps `q.pw` and `q.Ewh`
   as a satellite does, with its site's night for the eclipse. One of its body's days is sampled at its spot (48 points):
@@ -2187,7 +2187,7 @@ Fragments (v1.83) were a density per band that hit registered entries between fl
   host's own parts count for its power (the v1.108 limit).
 - **Tests:** `space-23` (new); `space-18`, `space-19`, 42, docking and stations unchanged.
 
-## v1.122 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
+## v1.124 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
 
 v1.100 made satellite data a volume; rover readings still went home whole the moment there was contact.
 - **Readings are bits** (`sim/rovers.js`, `RV_BITS`): a spectrum 20 kbit (~1,000 channels), a panorama one survey frame
@@ -2205,7 +2205,7 @@ v1.100 made satellite data a volume; rover readings still went home whole the mo
   about 16 s of a 300 km pass at ~95 kbit/s: imagery sales barely move (test `space-15` unchanged).
 - **Tests:** `space-22` (new); section 42 gives its send a minute of contact.
 
-## v1.121 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
+## v1.123 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
 
 A crew brought home from a station read "home safe after 2.1 days": the Debrief knew only the flight that brought them
 down. Now each crewed capsule carries **the day its crew went up**:
@@ -2220,7 +2220,7 @@ down. Now each crewed capsule carries **the day its crew went up**:
   "people live in space" milestone) is unchanged.
 - **Test:** `space-21`: a capsule registered on day 10, flown home from day 40 for 2.5 days.
 
-## v1.120 — a revert discards the flight (2026-10-11, space session, QUEUE Q257; PLAYTEST #56)
+## v1.122 — a revert discards the flight (2026-10-11, space session, QUEUE Q257; PLAYTEST #56)
 
 Caio reverted a flight and found its rocket in the registry as "Object 1". `resetShip` began with `missionEnd(S)`, so a
 revert *settled* the flight like *End flight*: the coasting vessel joined the registry, the pay and the logbook were
@@ -2239,6 +2239,34 @@ written, the flight was counted. A revert now goes back to launch, as KSP's does
 - **Test:** `space-20` (`tests/space.mjs`): an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
   liftoff state and `missionEnd` returns null after.
 - **Next:** D15 (5) replaces revert with a simulator for real flights; this is the revert that simulator will wrap.
+## v1.121 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
+
+The first slice of "Plan: record and replay a whole session": the recorder. With `?tester`, **Record this session** in
+the tester menu records keyframes, not keystrokes: the starting save, a diff of the save at each save, the screen, the
+design on the Assembly, the camera, and each flight's tape between a start and an end that carry a hash of the vessel.
+**Download recording** (in the tester menu while it records) saves gzipped JSON. The viewer is R2.
+- **`sim/record.js` (SIM, pure):** `REC`, `recStart(store, game)`, `recEv(kind, data)`, `recProg()` (the save since the
+  last keyframe, as `jdiff` ops), `recFlightStart(s, tape)` / `recFlightEnd(s, tape)`, `recStop()`, `recFile()` (a
+  flight still flying is closed in the copy, marked `open`), `recProgAt(file, t)` (the save at any time: R3's scrub),
+  `recLoad(start)`, `stateHash(s)`, `jdiff`/`jpatch`.
+- **`app/record.js`:** starts and stops with the flag, gives `REC` the clock, taps `HOOK.save`, samples at 10 Hz the
+  screen, the camera and the flight's pace (tape seconds flown), at 1 Hz the path and the design; logs keys and clicks as
+  `ui` events (display only, never replayed as input). The start's `store` is the page's other `launchpad-*` settings.
+- **Hooks in other files, one line each:** `resetShip` ends the flight in progress and opens the next; the two flights
+  from orbit in `app/program-ui.js` do the same; `recTapeNow()` (`app/state.js`) is the autopilot's played tape while it
+  flies, else the pilot's. A detached part's tumble (`sim/vessel.js`) is seeded from the time, not `Math.random`.
+- **What it found:** a replay can't start from a bare `Object.assign(PROG, save)`. The page's load also sets `HOME`
+  from the save, rebuilds the rivals' schedule and fills the offer board; without that, the fresh SIM's `missionTick`
+  crashed in `relOf`. `recLoad` does what `app/state.js` does after `migrateSave`, and the start records `HOME`.
+  **Platform:** `app/state.js` could call `recLoad` itself, so there's one load path (not done: it's the page's boot).
+- **Checked:** test `platform-5` records a Sounding flight in one SIM instance and replays it in a **fresh instance**
+  from the file: the vessel's hash at both ends and the save after it settles match exactly, the start plus every diff
+  rebuilds the final save, and `jdiff`/`jpatch` round-trip. In Chrome (`?tester`): the menu's checkbox starts it; a pad
+  flight through `resetShip` and the tape calls records flight start/end, 19 pace, 5 path and 5 save events; the
+  download is **3.2 KB gzipped** (9.9 KB JSON, the sandbox's save is 2.1 KB of it); decompressed and re-flown in a fresh
+  SIM the page built from `sim/*.js`, both hashes match. Robot `m1` passes (no overlapping boxes).
+- **Not yet:** the viewer (R2), scrubbing and the camera path (R3), robot rows from a recording (R4). A flight that was
+  already flying when recording started isn't recorded as a flight (its tape began before the recording); its path is.
 
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
@@ -2415,7 +2443,7 @@ and **Download** saves them as text with the page, the world and terrain seeds, 
   reason for a loss (`R.crewWhy`). The record has `D.crew = {n, ok, home, days, line}` (`sim/debrief.js`).
 - Test `flow-6` (1 check: home after 2.5 days, lost, aboard, dummies with no line). Robot row 65 (the crew rotation)
   shows "Crew of 2 home safe". One run of row 65 lost the capsule 12 s in; the next passed, so it looks like a flake.
-- **Not yet (space):** (done in v1.121, Q214) for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
+- **Not yet (space):** (done in v1.123, Q214) for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
   time; the station's `crewDays` is per station, not per person.
 
 ## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
@@ -2796,7 +2824,7 @@ of gravity there. So:
 
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
-From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
+From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
 at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
 on the map from the start).
 
@@ -3081,6 +3109,8 @@ is capped, not priced.
 sites → the runner's capacity report; revenue items with their systems (Q110 goods, depots).
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
+
+> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182.
 
 CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
 (`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
@@ -10288,6 +10318,8 @@ day"; the smoke shard after merging main.
 
 ## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
 
+> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this.
+
 **The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
 modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole
 generations: `avOf(s) = AV[min(s.av, avCap(s))]`, and `sasModeOK(s, m)` asks that generation's list. Rank 2 (target
@@ -10605,3 +10637,21 @@ Robot row 200 (pin, Clear + undo, the ×4 chip; three checks). `--smoke` 567 che
 - **Words:** the sentences are written for a newcomer (what it's for, one catch) and avoid "Assembly" (Flow's Q272).
 
 Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Isp). Sections 16, 17, 32 pass.
+
+## v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
+
+- **Click in the air to park.** Holding a part (or a group: a part with what hangs from it), a click where no node or
+  surface takes it parks it there (`parkHeld`), unless it would overlap the rocket. The design keeps them in
+  **`design.park = [{n, p}]`**: `n` the group's node tree (as `root` is), `p` its bottom centre from the root part's bottom
+  centre, so parked parts keep still with the pin (v1.118). `parkedInst()` lays them out; they are drawn solid with a
+  faint blue glow and a *parked* label, hover and highlight as parts do, and are picked up (click), copied (Ctrl-click) or
+  deleted (Del) through the same `pickUp` / `detachNode` as the rocket's parts. They are never attach targets in this
+  slice: pick a parked group up and put it on the rocket.
+- **Inserting a part** between two others, KSP's way: pick up the lower part (it brings what hangs below it), park it, place
+  the new part, then put the parked group back under it. The first part placed stays the root.
+- **Not the rocket:** `assemble`, `stageStats`, costs and launch only read `root`, so parked parts never fly. `launchWarnings`
+  (`sim/vessel.js`) adds "N parked groups not attached to the rocket: they stay behind" to Rollout's checks; the status line
+  under PARTS says the same while any are parked. Undo and Clear cover them; deleting the root drops them.
+- **Saved designs** carry `park` as they carry the tree; a dispatch or procedure that flies a saved design ignores it.
+
+Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8 parts again).

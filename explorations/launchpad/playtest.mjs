@@ -750,6 +750,18 @@ ROWS[200] = {title: 'the Assembly: pinned design, Clear, radial mounts', steps: 
     clear: `window.CLR200 === true && window.UNDO200 === 7`, sym: `BLD.st.sym`},
   expect: {pin: v => v === true, clear: v => v === true, sym: v => v === 4}};
 
+// 202: parts parked in the air (Q246): the Orbiter's lower stage picked up, parked beside the rocket (Rollout warns it stays
+// behind), picked up again by a click on it, and put back under the upper stage: the same eight parts as before
+const CLK202 = `window.CLK = (x, y) => { const g = document.getElementById('gl'), k = g.width / g.clientWidth, o = {bubbles: true, button: 0, clientX: x / k, clientY: y / k};
+  g.dispatchEvent(new MouseEvent('mousemove', o)); g.dispatchEvent(new MouseEvent('mousedown', o)); g.dispatchEvent(new MouseEvent('mouseup', o)); render() }; 'ok'`;
+ROWS[202] = {title: 'the Assembly: park parts in the air', steps: [`go('assembly'); PT.preset('Orbiter'); HOOK.edStill = true; cam.dist = 30; render(); window.N202 = S.parts.length`, CLK202,
+  `(()=>{ const t = S.parts.find(p => p.d.key === 't8'), q = BLD.proj([t.pos[0], t.y0 + t.h / 2, t.pos[2]]); CLK(q[0], q[1]); return {held: BLD.st.held && BLD.st.held.k, parts: S.parts.length} })()`,
+  `(()=>{ const v = HOOK.view; CLK(v.W * 0.66, v.H * 0.62); return {park: (stackDef.park || []).length, parts: S.parts.length, warn: launchWarnings(stackDef).map(w => w[1]).filter(w => /parked/.test(w))} })()`, {shot: 'parked'},
+  `(()=>{ const P = BLD.parkedInst(), t = P.find(p => p.d.key === 't8'), q = BLD.proj([t.pos[0], t.y0 + t.h / 2, t.pos[2]]); CLK(q[0], q[1]); return {held: BLD.st.held && BLD.st.held.k, park: (stackDef.park || []).length} })()`,
+  `(()=>{ const low = S.parts.filter(p => p.core).sort((a, b) => a.y0 - b.y0)[0], q = BLD.proj([low.pos[0], low.y0, low.pos[2]]); CLK(q[0], q[1]); return {held: !!BLD.st.held, parts: S.parts.length, park: (stackDef.park || []).length} })()`, {shot: 'back'}],
+  checks: {back: `S.parts.length === window.N202 && !(stackDef.park || []).length && !BLD.st.held`},
+  expect: {back: v => v === true}};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
