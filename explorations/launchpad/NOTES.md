@@ -10514,3 +10514,21 @@ Robot row 200 (pin, Clear + undo, the ×4 chip; three checks). `--smoke` 567 che
 - **Words:** the sentences are written for a newcomer (what it's for, one catch) and avoid "Assembly" (Flow's Q272).
 
 Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Isp). Sections 16, 17, 32 pass.
+
+## v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
+
+- **Click in the air to park.** Holding a part (or a group: a part with what hangs from it), a click where no node or
+  surface takes it parks it there (`parkHeld`), unless it would overlap the rocket. The design keeps them in
+  **`design.park = [{n, p}]`**: `n` the group's node tree (as `root` is), `p` its bottom centre from the root part's bottom
+  centre, so parked parts keep still with the pin (v1.118). `parkedInst()` lays them out; they are drawn solid with a
+  faint blue glow and a *parked* label, hover and highlight as parts do, and are picked up (click), copied (Ctrl-click) or
+  deleted (Del) through the same `pickUp` / `detachNode` as the rocket's parts. They are never attach targets in this
+  slice: pick a parked group up and put it on the rocket.
+- **Inserting a part** between two others, KSP's way: pick up the lower part (it brings what hangs below it), park it, place
+  the new part, then put the parked group back under it. The first part placed stays the root.
+- **Not the rocket:** `assemble`, `stageStats`, costs and launch only read `root`, so parked parts never fly. `launchWarnings`
+  (`sim/vessel.js`) adds "N parked groups not attached to the rocket: they stay behind" to Rollout's checks; the status line
+  under PARTS says the same while any are parked. Undo and Clear cover them; deleting the root drops them.
+- **Saved designs** carry `park` as they carry the tree; a dispatch or procedure that flies a saved design ignores it.
+
+Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8 parts again).
