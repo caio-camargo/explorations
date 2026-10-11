@@ -642,3 +642,29 @@
     `high-gain from the near side ${c.rate.toFixed(0)} bit/s: panorama ${(tPano / 60).toFixed(1)} min, spectrum ${(D.RV_BITS.spec / c.rate).toFixed(0)} s; `
     + `a whip through a relay 1,000 km up: ${whip.toFixed(0)} bit/s, panorama ${(D.RV_BITS.pano / whip / 3600).toFixed(1)} h, spectrum ${(D.RV_BITS.spec / whip / 60).toFixed(1)} min`);
 }
+
+// space-23. Landed entries' power and recharging by servicing (space session, QUEUE Q213): a lander on Selene keeps a
+// battery through its site's day and night (landPowInit); flat, it works only by day, and a relay it carries with it;
+// flying an entry gives it the charge it has now; docking tops up the emptier battery from the fuller one. Own instance.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,landPowInit,landLit,satOn,satDuty,satPowTick,dockCharge,powCap,powPeak,vesselOf,SELENE,TELLUS,PROG,HOOK,DAY_S};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; const B = D.SELENE, P = D.PROG; P.sats = [];
+  const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { body: B, landed: true, alive: true });
+  const q = { landed: true, bodyName: B.name, pf: [-B.R, 0, 0] }; D.landPowInit(s, q, 0); P.sats.push(q);
+  const w = q.pw, Pd = 2 * Math.PI / B.n, mean = w ? (w.avg - w.rtg) / w.peak : 0;
+  // when is it day there? sample the next lunar day for a noon and a midnight
+  let noon = 0, mid = 0, cn = -2, cm = 2; for (let i = 0; i < 96; i++) { const T = i * Pd / 96, c = D.landLit(q, T); if (c > cn) { cn = c; noon = T; } if (c < cm) { cm = c; mid = T; } }
+  const full = D.satDuty(q); let days = 0; while (q.Ewh > 0 && days < 60) { D.satPowTick(1); days++; }
+  const flat = D.satDuty(q), onNoon = D.satOn(q, noon), onMid = D.satOn(q, mid);
+  // flying it: the charge it has now (flat), not what it was registered with
+  const a = 6.9e6, o = { stack: s.stack, shape: [], vst: { E: D.powCap(s) }, pw: { avg: 1, use: 2, ecl: .3, cap: 1, need: 1, peak: 1, rtg: 0 }, Ewh: 0, epoch: 0, r: [a, 0, 0], v: [0, 7.6e3, 0], qo: [0, 0, 0, 1] };
+  o.shape = s.parts.filter(p => p.on).map(p => ({ k: p.d.key, pos: p.pos.slice(), y0: p.y0, h: p.h, i: p.i, oi: p.i }));
+  const v = D.vesselOf(o, 0), flown = v.E;
+  // servicing: a full visitor docks with the flat satellite
+  const vis = D.newShip(D.PRESETS.Probe); vis.E = D.powCap(vis); v.E = 0; const moved = D.dockCharge(vis, v);
+  check('space Q213: a Selene lander runs on its site\'s day and night, flat it works by day only; a flown entry keeps its charge; docking recharges it',
+    w && Math.abs(w.ecl - 0.5) < 0.06 && Math.abs(mean - 1 / Math.PI) < 0.03 && full === 1 && days < 60 && flat > 0 && flat < 1 && onNoon && !onMid
+      && flown === 0 && moved > 0 && v.E === moved && vis.E >= D.powCap(vis) / 2 - 1,
+    `Selene day ${(Pd / 3600).toFixed(0)} h: night ${(w.ecl * 100).toFixed(0)} %, cells give ${(mean * 100).toFixed(0)} % of peak on average; load ${w.use} W vs ${w.avg.toFixed(1)} W; `
+    + `flat after ${days} days, then ${(flat * 100).toFixed(0)} % (noon ${onNoon}, midnight ${onMid}); flown with ${flown} J; docking moved ${(moved / 3600).toFixed(0)} Wh`);
+}

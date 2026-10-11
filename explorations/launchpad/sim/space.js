@@ -59,8 +59,18 @@ function entryRelay(q,T,r){const rs=relayEntries().filter(p=>p!==q&&p.id!==q.id)
     const rate=Math.min(up,H.rate);if(!best||rate>best.rate)best={ok:true,st:H.st,via:p.name,viaId:p.id,rate,d}}}
   finally{ORB_T0=o;simT=t}return best}
 function satOn(q,T,r){const w=q.pw;if(!w)return true;const k=satDuty(q);if(k>=1)return true;if(!(k>0))return false;
-  const B=orbBody(q),lit=!inShadow(B,r||satAt(q,T)[0]),share=w.avg>=w.use&&w.cap<w.need?(lit?1:w.cap/w.need):lit?Math.min(1,(w.peak+w.rtg)/w.use):Math.min(1,w.rtg/w.use);
+  const lit=q.landed?landLit(q,T)>0:!inShadow(orbBody(q),r||satAt(q,T)[0]),share=w.avg>=w.use&&w.cap<w.need?(lit?1:w.cap/w.need):lit?Math.min(1,(w.peak+w.rtg)/w.use):Math.min(1,w.rtg/w.use);
   return share>=1||(T/600*0.6180339887)%1<share}   // a duty cycle spread over the hours
+// landed entries' power (space, Q213; v1.108's "not in this slice"): a lander or base keeps q.pw like a satellite, with its
+// site's night in place of the eclipse. landPowInit samples one of its body's days at its spot (Selene's is a month long:
+// locked, a night of ~2 weeks of our time scale): the cells' mean output follows the sun's height, the night is the share
+// below the horizon. satPowTick, satDuty and satOn then work unchanged. A body that doesn't turn on our rails (only
+// Tellus and the locked moons do) keeps the light it was registered in.
+function landLit(q,T){const b=landedBody(q);return b?dot(norm(q.pf),rvSunPF(b,thAbs(b,T))):1}
+function landPowInit(s,q,T){const b=s.body,P=b.lock&&b.n?2*Math.PI/b.n:DAY_S,N=48,use=powLoad(s);if(!(use>0))return;let sun=0,dark=0;
+  for(let i=0;i<N;i++){const c=landLit(q,T+i*P/N);sun+=Math.max(0,c);if(c<=0)dark++}
+  const peak=powPeak(s),rtg=powRTG(s),ecl=dark/N,cap=powCap(s)/3600;
+  q.pw={avg:peak*sun/N+rtg,use,ecl,cap,need:Math.max(0,use-rtg)*ecl*P/3600,peak,rtg,land:1};q.Ewh=Math.min(cap,(s.E??powCap(s))/3600)}
 // coverage (Q173): the share of the time a body has a path home. Tellus: a satellite in low orbit (300 km, sampled over
 // a planet-fixed grid) has a station in view; a moon: a lander or rover with a high-gain antenna on its ground (a grid,
 // over the next day) reaches home directly or through a relay, its near and far sides apart. Memoised per day.
@@ -475,7 +485,10 @@ function dockOK(s,B,P){if(!P||P.dl>PORT_GAP+PORT_LAT)return false;
   const va=add(s.v,cross(s.w,sub(P.Pa,s.r))),vb=add(B.v,cross(B.w,sub(P.Pb,B.r)));return len(sub(vb,va))<=PORT_V}
 // two vessels of this flight: b joins a (S, or the earlier one) as a passenger; its vessel is kept, so undocking gives it back
 function dockTryV(a,b){if(b.undockT!=null&&progT(a)-b.undockT<PORT_COOL)return false;const B=shipBody(b),P=dockPair(a,b,B);if(!dockOK(a,B,P))return false;
-  dock(a,entryOf(b),B,P);FLEET.splice(FLEET.indexOf(b),1);return true}
+  dockCharge(a,b);dock(a,entryOf(b),B,P);FLEET.splice(FLEET.indexOf(b),1);return true}
+// servicing (Q213): docked, the fuller battery tops up the emptier one, as far as it can spare (it keeps a half charge)
+function dockCharge(a,b){const ca=powCap(a),cb=powCap(b);if(!ca||!cb)return 0;const Ea=a.E??ca,Eb=b.E??cb,[from,to,Ef,Et,ct,cf]=Ea/ca>=Eb/cb?[a,b,Ea,Eb,cb,ca]:[b,a,Eb,Ea,ca,cb];
+  const x=Math.min(ct-Et,Ef-cf/2);if(!(x>1))return 0;from.E=Ef-x;to.E=Et+x;HOOK.msg(`${to.name||'the vessel'}: batteries charged to ${Math.round(100*to.E/ct)} % from ${from.name||'the vessel'}`);return x}
 // a vessel becoming a passenger: a registry-style entry (shape, own mass and centre of mass, kit, what it already carries);
 // the vessel itself rides along out of sight of the save (not enumerable), so undocking gives back a flyable vessel
 function entryOf(v){PROG.satN=(PROG.satN||0)+1;const on=v.parts.filter(p=>p.on);
@@ -677,7 +690,7 @@ const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
   for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}   // legs and wings as they were left (vehicle, Q121)
-  if(st.E!=null)s.E=st.E;   // the battery as it was left (Q131; powerStep caps it at what's still aboard)
+  if(q.pw&&q.Ewh!=null)s.E=q.Ewh*3600;else if(st.E!=null)s.E=st.E;   // the battery as it is now (Q213: between flights' drain), or as it was left (Q131); powerStep caps it
   if(q.nodes&&q.nodes.length){const N=q.nodes.filter(n=>n.T>T).map(n=>({t:n.T-T,dv:n.dv.slice(),b:n.b}));s.node=N.shift()||null;s.nodeQ=N}   // its planned burns, in this flight's time (Q49 slice 3)
   s.segs.forEach((g,k)=>{g.ignited=ign.has(k)});
   // the next staging event: the first that hasn't happened (something still there to drop, a segment not yet lit, a chute)
@@ -901,7 +914,7 @@ function landRegister(s,R){const on=s.parts.filter(p=>p.on),b=s.body,beacon=on.s
   q.shape=shapeOf(on,R.crewed&&R.crewOK);q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,labDays:o.labDays})}
-  kitSet(q);PROG.sats.push(q);R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
+  kitSet(q);landPowInit(s,q,ORB_T0+simT);PROG.sats.push(q);R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
   const base=!beacon&&baseOfMember(q);HOOK.news(beacon?`${q.name} is set up on ${b.name}`:base?`${q.name} sets down at ${base.name}`:`${q.name} stays on ${b.name}`,'ok')}
 // the base a landed object belongs to (a beacon on the same body within BASE_R), and a base's members and state
 function baseOfMember(q){const b=landedBody(q);return b?landedUp().find(x=>x.beacon&&x.bodyName===q.bodyName&&pfDist(b,x.pf,q.pf)<=BASE_R)||null:null}

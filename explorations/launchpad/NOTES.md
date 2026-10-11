@@ -2149,6 +2149,26 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.121 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
+
+- **Landed entries** (`landPowInit`, `sim/space.js`, called by `landRegister`): a lander or base keeps `q.pw` and `q.Ewh`
+  as a satellite does, with its site's night for the eclipse. One of its body's days is sampled at its spot (48 points):
+  the cells' mean is the sun's height averaged (`landLit`), the night the share below the horizon, the battery's `need`
+  that night's load. `satPowTick`, `satDuty` and `satOn` then work unchanged (`satOn` asks `landLit` instead of the
+  orbit's shadow). Only Tellus and the locked moons turn on our rails; a lander elsewhere keeps the light it landed in.
+- **Measured** (`space-23`, the Probe set down on Selene's near-side equator): a 104 h day, night 50 %, cells 32 % of
+  peak on average (1/π, as a flat panel should); load 15 W against 12.1 W: flat after 22 days, then it works by day
+  only (50 %).
+- **What it gates:** a lander's antenna as a rover relay (`rvRelays`: skipped when silent, otherwise only while powered,
+  `on`, as orbiting relays since v1.109). Bases' crews and supplies are unchanged (LATE_GAME's dormant node is later).
+- **Flying an entry** (`vesselOf`): the battery as it is now (`q.Ewh`), not as it was registered. Before, a satellite
+  that had run flat between flights came back full when flown.
+- **Servicing** (`dockCharge`, in `dockTryV`): two vessels docking share charge: the fuller tops up the emptier, keeping
+  half its own. Undocked or flown home, the serviced one is registered with that charge (`satPowInit` reads `s.E`).
+  A message says so ("batteries charged to 100 % from …"). Docking a composite that stays together: still only the
+  host's own parts count for its power (the v1.108 limit).
+- **Tests:** `space-23` (new); `space-18`, `space-19`, 42, docking and stations unchanged.
+
 ## v1.120 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
 
 v1.100 made satellite data a volume; rover readings still went home whole the moment there was contact.
