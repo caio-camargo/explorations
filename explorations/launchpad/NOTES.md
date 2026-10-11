@@ -2149,6 +2149,21 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.119 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
+
+A crew brought home from a station read "home safe after 2.1 days": the Debrief knew only the flight that brought them
+down. Now each crewed capsule carries **the day its crew went up**:
+- **`shapeOf`** writes `o.up` beside `o.crew`: the part's `crewUp` if it has one, otherwise `PROG.day`, which during a
+  flight is that flight's liftoff day (days pass only when it settles). **`vesselOf`** reads it back as `p.crewUp`. Those
+  two are the only ways a crew goes into and comes out of the registry (flying an entry, loading one, undocking), so the
+  day survives any number of round trips.
+- **The Debrief** (`sim/debrief.js`): the earliest `crewUp` aboard (never later than this flight's `day0`) gives
+  `D.crew.before`, the days in space before this flight; the line becomes **"Crew of 2 home safe after 33 days in
+  space"**. A crew launched this flight reads as before ("…after 2.5 days"). Older saves have no `up`: as before.
+- Per capsule, not per person: crews don't move between capsules and habitats yet. The station's own `crewDays` (the
+  "people live in space" milestone) is unchanged.
+- **Test:** `space-21`: a capsule registered on day 10, flown home from day 40 for 2.5 days.
+
 ## v1.118 — a revert discards the flight (2026-10-11, space session, QUEUE Q257; PLAYTEST #56)
 
 Caio reverted a flight and found its rocket in the registry as "Object 1". `resetShip` began with `missionEnd(S)`, so a
@@ -2344,7 +2359,7 @@ and **Download** saves them as text with the page, the world and terrain seeds, 
   reason for a loss (`R.crewWhy`). The record has `D.crew = {n, ok, home, days, line}` (`sim/debrief.js`).
 - Test `flow-6` (1 check: home after 2.5 days, lost, aboard, dummies with no line). Robot row 65 (the crew rotation)
   shows "Crew of 2 home safe". One run of row 65 lost the capsule 12 s in; the next passed, so it looks like a flake.
-- **Not yet (space):** for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
+- **Not yet (space):** (done in v1.119, Q214) for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
   time; the station's `crewDays` is per station, not per person.
 
 ## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)

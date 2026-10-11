@@ -603,3 +603,23 @@
     `launched ${s.rec.launched}, changed in flight ${spent}, discarded ${gone}, settled after ${later !== null}, program restored ${JSON.stringify(P) === pre}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// space-21. A rotation's days in space in the Debrief (space session, QUEUE Q214; PLAYTEST #34's follow-up): a crew
+// registered aboard keeps the day it went up (shapeOf's `up`), through the registry and back (vesselOf's `crewUp`), so a
+// crew brought home from a station counts its days since then, not only this flight's.
+{
+  const P = api.PROG, saved = JSON.stringify(P); api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const stack = ['chute', 'crew', 't2'], s0 = api.newShip(stack); P.day = 10;
+  const a = api.TELLUS.R + 300e3, q = { stack, shape: api.shapeOf(s0.parts.filter(p => p.on), true), epoch: 0, r: [a, 0, 0], v: [0, Math.sqrt(api.TELLUS.mu / a), 0], qo: [0, 0, 0, 1] }, cap = q.shape.find(o => o.crew);
+  P.day = 40; const v = api.vesselOf(q, 40 * api.DAY_S), carried = v.parts.find(p => p.crewAboard);
+  const again = api.shapeOf(v.parts.filter(p => p.on), true).find(o => o.crew);   // registered again: still the day they went up
+  Object.assign(v.rec, { launched: true, day0: 40, crewed: true, crewOK: true, crewN: 2 }); api.S = v; v.landed = true; v.alive = true; api.t = 2.5 * api.DAY_S;
+  const D = api.debriefOf(v, v.rec, []);
+  const f = api.newShip(stack); Object.assign(f.rec, { launched: true, day0: 40, crewed: true, crewOK: true, crewN: 2 }); f.landed = true; f.alive = true;
+  const Df = api.debriefOf(f, f.rec, []);   // a fresh crew: this flight's days only, as flow-6
+  api.t = 0; for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+  check('space Q214: a crew brought home from a station counts its days since it went up; a fresh crew only this flight',
+    cap && cap.up === 10 && carried && carried.crewUp === 10 && again && again.up === 10 && D.crew && D.crew.before === 30
+      && /^Crew of 2 home safe after 33 days in space$/.test(D.crew.line) && Df.crew && /^Crew of 2 home safe after 2\.5 days$/.test(Df.crew.line),
+    `went up day ${cap && cap.up}, carried ${carried && carried.crewUp}, re-registered ${again && again.up}; "${D.crew && D.crew.line}" · fresh "${Df.crew && Df.crew.line}"`);
+}
