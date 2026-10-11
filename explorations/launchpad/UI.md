@@ -1,6 +1,6 @@
 # UI — hierarchy and restraint
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
-**Status**: draft; the open calls are **D16** in [`QUEUE.md`](QUEUE.md).
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
+**Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
 screen follows, and a per-screen spec. **Not** navigation (which screens exist and how you move between them: NOTES §
