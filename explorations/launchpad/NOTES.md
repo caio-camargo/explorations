@@ -10729,3 +10729,26 @@ Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Is
 - **Saved designs** carry `park` as they carry the tree; a dispatch or procedure that flies a saved design ignores it.
 
 Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8 parts again).
+
+## v1.128 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
+
+- **Caio's call (2026-10-11):** a design is saved by default whenever it's launched, and can be saved by hand under a name.
+- **Data** (`sim/vessel.js`): `PROG.designs = {saved: [{name, stack, day}], launched: [{stack, day, n, name}]}`, per program,
+  in its save. `designLaunched(stack, s)` is called once at liftoff (`missionTick`, right after the revert snapshot
+  `REVERT0`, so a reverted flight doesn't count twice): one entry per distinct design (`designKey`: the v2 tree without
+  node ids or parked parts), moved to the top with its count, at most `DESIGN_LAUNCHED` (24). `designSave(name, stack)`
+  keeps a design under a name; the same name replaces it; no name → `designLabel` (a preset's name, else its top part ·
+  parts · tonnes). Parked parts (v1.120) stay in a saved design and never in a launched one.
+- **UI** (`builder.js` `library()`): under the presets, *Your designs* (a name box and Save, each design with load and ✕)
+  and *Launched* (the last 8, day and ×count). Loading is one undo step. The toolbar's *save design…* scrolls there and
+  focuses the name, since the palette is long until Q238 folds it.
+- **Shift+wheel** (#76): the step was 6 % of the camera distance per wheel event whatever its size, so a touchpad's many
+  small events ran away. Now it follows `deltaY` (one mouse notch ≈ 1.5 % of the distance, a touchpad proportionally).
+- **A near miss, for the next session:** `sim/logbook.js` already has `designName` (the Debrief's "design: Orbiter"); a
+  second global function of the same name silently replaces the first across the classic scripts. And a `//` comment
+  inside one of `program.js`'s one-line statements comments out the rest of the line: section 16's launch-window check
+  caught it (liftoff stopped charging). Use `/* */` inside those lines.
+- **Not done:** loading a design from the Debrief or a flight's history entry; designs shared across careers (a question
+  for Caio: per program now).
+
+Test `vehicle-12`. `--smoke` all pass.

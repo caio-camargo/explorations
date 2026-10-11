@@ -78,6 +78,8 @@ docking, rescues, landings, stations) stays flown and messy. That's the difficul
 | 73 | P2 | **The Map and End flight buttons aren't readable against a near-white sky**, at least in the first epoch (Caio, 2026-10-11). | Light text on an 8 % tint (the base `button` style). QUEUE Q273 | flow |
 | 74 | P2 | **A craft landing in water stays there as if on land**; more fundamental than the missing splash (#67) (Caio, 2026-10-11). | Confirmed: a splashdown is snapped upright with its bottom at sea level and frozen as landed (`sim/flight.js` ~79–85). Needs buoyancy, floating attitude, sinking, drift. QUEUE Q274 | world (+ vehicle: part volumes) |
 | 75 | P2 | **When a part breaks from stress there's no visual effect**; the parts just come apart (Caio, 2026-10-11). | Confirmed: a structural failure only posts a message and detaches the parts (`sim/vessel.js` ~757). QUEUE Q294 | look & sound (effects; sound) |
+| 76 | P2 | ~~**Shift+scroll moves the Assembly view too far per step**: hard to frame the part you want (Caio, 2026-10-11).~~ | Done 2026-10-11 (vehicle, v1.128, QUEUE Q305): the step follows how far the wheel moved (a touchpad's small steps move a little), about 4× finer for a mouse notch. NOTES § v1.128 | vehicle |
+| 77 | P1 | ~~**Player designs can't be saved** (Caio, 2026-10-11): save by default whenever a design is launched, retrievable from the flight history; also save by hand under a name the player picks.~~ | Done 2026-10-11 (vehicle, v1.128, QUEUE Q306): *Your designs* under the presets (a name and Save; load, forget) and *Launched* (every launch files its design, newest first, ×count); a *save design…* button in the toolbar jumps there. Per program, in its save. NOTES § v1.128; TESTING 210 | vehicle |
 
 ## Done
 
