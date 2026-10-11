@@ -10510,3 +10510,36 @@ bay, the arm, the station modules and the crew capsule were all buyable on the f
   for "A crew aboard".
 
 Test `vehicle-10` (1 check; fails with the bay's gate removed). Full suite: 634 checks, all pass.
+
+## v1.118 — the Assembly keeps the design still; Clear and the radial-mount count in plain sight (2026-10-11, vehicle session, QUEUE Q247, Q235, Q236; PLAYTEST #44, #42, #39)
+
+- **The design stays pinned (Q247, #44).** The editor camera looks at the CoM and the desk's base plate (and, on the pad,
+  the `LIFT`) sat under the design's lowest part, so deleting the bottom moved both and the rocket seemed to fall.
+  `BLD` now keeps a pin on the root part (`st.pin`: its id, its bottom above the design's bottom and above the CoM): after
+  an edit, `cam.edY` follows the CoM shift so the root stays still on screen, and `st.gap` keeps the plate where it was,
+  so the rest hangs above it. Building below the plate pushes the plate down (the gap never goes negative), never the
+  rocket up. A new design starts on the plate: a preset, the first part, Clear, a new root (make root). A preset's first
+  edit (array → tree, `design()`) keeps its pin. `BLD.foot()` is the plate's height in the ship's frame; `app/model-desk.js`
+  stands the desk on it (`deskFoot`) and sizes its scale on rocket + gap, so the scale doesn't jump as parts go.
+  On the pad (desk off), `S.pf` adds the gap. Undo of a delete brings the gap back to 0.
+- **Clear (Q235, #42)** had been there since v1.17: a small "clear" by undo. Caio didn't find it. Now **✕ Empty** is the
+  first button over the presets and the toolbar's reads "✕ clear design" (both `clearDesign`: one undo step, a note saying so).
+- **Radial mounts (Q236, #39):** `mountsHTML()` puts ×1 … ×8 chips (and `[X]`) under the parts list's status line while a
+  part is held; the cursor line says "radial mounts ×n · X changes" when the held part is off any node and "radial mounts ×n [X]"
+  on a surface. The toolbar group and the key help say *radial mounts* instead of *symmetry*.
+- **Flow (Q272):** new player strings here say "the design", none says "Assembly"; the rename has nothing new to catch.
+
+Robot row 200 (pin, Clear + undo, the ×4 chip; three checks). `--smoke` 567 checks pass; sections 16, 17, 32, flow-11 pass.
+
+## v1.119 — every part says what it does (2026-10-11, vehicle session, QUEUE Q248; PLAYTEST #46)
+
+- **A card beside the palette** (`cardAt`, `#partcard` in `builder.js`) on hover: the name, one sentence (`PART_INFO`,
+  keyed by part, falling back to a 2.5 m part's base and then to its kind, so a new part from another lane gets its
+  kind's sentence until it has its own), and a sheet from the part's own numbers (`partSpecs`): mass (full and empty for
+  tanks), propellant, thrust and Isp, an escape tower's burn, seats and berths, turning torque, power made, stored or
+  drawn, size, heat limit (`Tmax`), price (`partPrice` plus a tank's propellant at `FUEL_PRICE`). A part not open yet says
+  why there (the old `title` tooltip is gone). The tooltip on the design (`#bldtip`) adds the sentence.
+- **Not done:** the school (no part differs by school yet), and the picture: Q238's thumbnails go at the top of this card.
+- **Words:** the sentences are written for a newcomer (what it's for, one catch) and avoid "Assembly" (Flow's Q272).
+
+Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Isp). Sections 16, 17, 32 pass.
