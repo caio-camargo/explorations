@@ -5327,3 +5327,16 @@ NOTES, TESTING 205–209, PLAYTEST #56, QUEUE.
 **Next steps:** three Proposed lines (draw the fragment, tank punctures, a composite's power). Space has no `ready` items
 left besides the M5-gated ones. Caio's playtest notes for these: TESTING 205–209.
 
+## 2026-10-11 — Caio + Claude (launchpad flow session): small playtest fixes (v1.128)
+- **Done** (`2591740`, on `main`): Q273 (an opaque plate for the flight toolbar on a bright sky), Q263 (*Recover vessel* once
+  landed at home), Q255 (the node panel's Delete never reached the delete: `del` matched the Δv nudges; it now deletes
+  the selected node), Q260 + Q266 (one arc and one impact: the leg stops where it enters the air; a slow decay that
+  outlasts the fall's steps is no impact; only the last revolution is drawn), Q256 (the planets' ring outside the moons,
+  *not to scale*), Q272 (*Design table* everywhere a player reads it), Q269 (ticked first-run choices and a summary),
+  Q254 (the navball on the map, degree marks, N in red), Q258 (the overlay drawn at device pixels).
+- **Checks:** full suite passed after each of three merges of main (the fourth was docs only: QA checks); new test
+  `flow-12` in `tests/flow.mjs`, `flow-7` updated for the navball on the map; robot `m1`, 127 and `desk` pass with no
+  overlapping boxes. Renumbered at each merge (other lanes took v1.118–v1.127): now v1.128, TESTING 210. One conflict in
+  `app/input.js` with space's `revertFlight()` (Q257), both kept.
+- **Next for flow:** Q261 (map layers), Q262 (map focus), Q271 (heat and load needles: plan first), Q241 R3/R4.
+

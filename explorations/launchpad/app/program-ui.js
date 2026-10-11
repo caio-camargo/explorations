@@ -6,7 +6,9 @@ function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
   if(!o.chosen&&!PROG.flights)return `<div class="ep">Whose program? <span class="dim">(your power)</span></div><div class="sub gq">The country behind the launch site: how the money arrives, what the public wants from you, and what a failure costs.</div>`+   // (flow, Q41) each choice explained in one sentence, on screen
     [['', `Random world`, `Whatever the launch site's power was generated as: a ${ARCH[POWERS[0].arch].name.toLowerCase()} this time.`],...Object.entries(ARCH).map(([k,v])=>[k,v.name,v.blurb])].map(([k,n,b])=>{const on=(PROG.homeArch||'')===k;
       return `<div class="ms gc${on?' on':''}"><button data-arch="${k}" class="${on?'on':''}">${n}</button><div class="sub">${b}</div></div>`}).join('')+
-    `<div class="ep">How does the program start?</div><div class="sub gq">Who owns it: where the money comes from, and who you answer to.</div>`+Object.entries(START).map(([k,v])=>
+    `<div class="ep">How does the program start?</div><div class="sub gq">Who owns it: where the money comes from, and who you answer to.</div>`+
+    `<div class="gsum">Chosen: <b>${PROG.homeArch?ARCH[PROG.homeArch].name:`Random world (${ARCH[POWERS[0].arch].name.toLowerCase()})`}</b>. Picking how it starts begins the career.</div>`+   // (flow, Q269; PLAYTEST #69)
+    Object.entries(START).map(([k,v])=>
     `<div class="ms gc"><button data-start="${k}">${v.name} · ${fmtM(v.funds)}</button><div class="sub">${v.blurb}</div></div>`).join('');
   const shares=[...Object.entries(o.st).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<span style="color:${pc(+k)}">${POWERS[+k].root}</span> ${(x*100).toFixed(0)}%`),...(o.pv>0?[`private ${(o.pv*100).toFixed(0)}%`]:[])].join(' · ');
   return `<div class="ep">${progName()} <span class="dim">· ${ownKind()}</span></div><div class="sub">${shares}${o.debt>0?` · <span class="bad">debt ${fmtM(o.debt)}</span>`:''}</div>`+
@@ -200,7 +202,7 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
   // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
   for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
     const rp=(H/2)*Math.tan(Math.asin(b.R/d))/tanY;if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
-    o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k}
+    o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k*OV_K}   // shadowBlur ignores the transform (Q258)
     o.beginPath();for(let i=0;i<=72;i++){const t=i/72*6.2832,[x,y]=era===1?wob(c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t),i):[c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t)];i?o.lineTo(x,y):o.moveTo(x,y)}o.stroke();
     const th=bodyTheta(b,simT),vis=p=>dot(sub(p,cen),sub(camW,p))>0,P=(lat,lon)=>add(cen,rotY([b.R*Math.cos(lat)*Math.cos(lon),b.R*Math.sin(lat),b.R*Math.cos(lat)*Math.sin(lon)],th));
     const line=(fn,n)=>{let pv=null;for(let i=0;i<=n;i++){const w=fn(i/n);if(!vis(w)){pv=null;continue}const q=project(w);if(q&&pv){o.moveTo(pv[0],pv[1]);o.lineTo(q[0],q[1])}pv=q}};
@@ -221,7 +223,7 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
   for(let i=0;i<segs.length;i+=14){const a=project(add([segs[i],segs[i+1],segs[i+2]],camW)),bb=project(add([segs[i+7],segs[i+8],segs[i+9]],camW));if(!a||!bb)continue;
     const r=segs[i+3],g=segs[i+4],bl=segs[i+5],al=segs[i+6];((r>g+.15&&r>bl+.15)?warm:cool).push(a,bb,al)}
   for(const[L,col]of[[cool,era===1?[29,42,82]:[57,255,110]],[warm,era===1?[176,54,42]:[214,255,120]]]){if(!L.length)continue;
-    o.lineWidth=(era===1?1.3:1.1)*k;if(era===2){o.shadowColor=`rgba(${col},.9)`;o.shadowBlur=5*k}
+    o.lineWidth=(era===1?1.3:1.1)*k;if(era===2){o.shadowColor=`rgba(${col},.9)`;o.shadowBlur=5*k*OV_K}
     for(const pass of[.35,.7,1]){o.strokeStyle=`rgba(${col},${era===1?pass*.9:pass})`;o.beginPath();   // three alpha bands keep faint lines faint
       for(let i=0;i<L.length;i+=3){const al=L[i+2];if(al>pass||al<=pass-.35&&pass>.35)continue;let[x0,y0]=L[i],[x1,y1]=L[i+1];if(era===1){[x0,y0]=wob(x0,y0,i);[x1,y1]=wob(x1,y1,i+1)}o.moveTo(x0,y0);o.lineTo(x1,y1)}o.stroke()}
     o.shadowBlur=0}}
@@ -354,14 +356,20 @@ function nodeAtApoapsis(){if(!S.alive||S.landed)return;if(!toolOK('nodes')){HOOK
 let ndSel=0;const ndNodes=()=>[S.node,...(S.nodeQ||[])].filter(Boolean);
 $('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S.node)return;if(player)takeOver();
   const L=ndNodes();if(a==='n-'||a==='n+'){ndSel=(ndSel+(a==='n+'?1:L.length-1))%L.length;return}ndSel=Math.min(ndSel,L.length-1);const n=L[ndSel];
-  if(a[0]==='d'){if(n.burning)return;n.dv[+a[1]]+=(a[2]==='+'?1:-1)*ndStep}
+  if(/^d[012][+-]$/.test(a)){if(n.burning)return;n.dv[+a[1]]+=(a[2]==='+'?1:-1)*ndStep}   // (Q255) not 'del': it matched here, so Delete did nothing
   else if(a[0]==='s'&&a!=='sas'){ndStep=+a.slice(1)}
   else if(a[0]==='t'&&!n.burning){const el=elements(S.r,S.v,S.body.mu),P=el.e<1?el.period:0,d=a==='t-o'?-P:a==='t+o'?P:+a.slice(1);
     const lo=ndSel?L[ndSel-1].t+1:simT+1,hi=L[ndSel+1]?L[ndSel+1].t-1:ndSel?Infinity:(predCache&&predCache.p[0]&&predCache.p[0].endT)||Infinity;n.t=clamp(n.t+d,lo,hi)}   // a chain stays in time order
   else if(a==='warp'){const dv=len(nodeInfo(S).rem),est=nodeBurnTime(S,dv);warpTo=S.node.t-(isFinite(est)?nodeLead(S,dv):0)-15;if(warpTo<=simT+1)warpTo=null}
   else if(a==='sas'){if(!sasModeOK(S,'node')){HOOK.msg(`${avOf(S).name}: it can't point at a maneuver; hold the burn attitude by hand (Stability)`);return}S.sas=true;S.sasMode='node';S.hold=null;renderSAS()}
-  else if(a==='del'){S.node=null;nodeNext(S);HOOK.msg(S.node?'Node deleted; the next is up':'Node deleted')}
+  else if(a==='del')nodeDelSel();
   updateNodePanel()});
+// delete the node the panel shows (flow, Q255; PLAYTEST #54): it used to drop the active one whichever was selected, so the
+// node you were looking at stayed and nothing seemed to happen. The message says which went and what's left.
+function nodeDelSel(){const L=ndNodes();if(!L.length)return;const k=Math.min(ndSel,L.length-1);
+  if(k===0){S.node=null;nodeNext(S)}else S.nodeQ.splice(k-1,1);
+  const left=ndNodes().length;ndSel=Math.max(0,Math.min(k,left-1));
+  HOOK.msg(`Node ${L.length>1?k+1+' ':''}deleted${left?` · ${left} left${k===0?': the next is up':''}`:''}`);updateNodePanel()}
 function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.classList.add('hidden');return}el.classList.remove('hidden');
   const L=ndNodes();ndSel=Math.min(ndSel,L.length-1);const I=nodeInfo(S);if(!I)return;S.node.est=nodeBurnTime(S,len(I.rem));
   const n=L[ndSel],dv=ndSel?len(n.dv):len(I.rem),est=ndSel?nodeBurnTime(S,dv):S.node.est,pick=L.length>1?`<button data-a="n-">◀</button> node ${ndSel+1} of ${L.length}${n.b&&n.b!==S.body.name?` (at ${n.b})`:''} <button data-a="n+">▶</button><br>`:'';
