@@ -28,6 +28,17 @@ function footPoints(s){const key=s.parts.map(p=>p.on?(p.dep?2:1):0).join('');if(
     if(p.y0>yb+0.5)continue;const r=Math.max(p.d.r*0.95,0.05);
     for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;pts.push({p,pt:[p.pos[0]+r*Math.cos(a),p.y0,p.pos[2]+r*Math.sin(a)]})}}
   s.foot={key,pts:pts.slice(0,32)};return s.foot.pts}
+// how fast it may drift sideways at touchdown and still stand (vehicle, Q264 / PLAYTEST #64): the feet stop, it pivots on
+// the edge of its stance, and the swing (angular momentum m·v·h about that edge) must lift the centre of mass over it.
+// h: centre of mass above the feet; b: the stance's half-width in its narrowest direction. The Hopper (5.8 m on its bell,
+// h 2.7 m, b 0.42 m) tips past ~0.9 m/s, which the contact model reproduces (stands at 0.7, topples at 1.0)
+function tipSpeed(s,g){const pts=footPoints(s);if(!pts.length)return Infinity;let yb=Infinity;for(const f of pts)yb=Math.min(yb,f.pt[1]);const h=s.cm[1]-yb;if(h<=0)return Infinity;
+  let b=Infinity;for(let k=0;k<16;k++){const dx=Math.cos(k*Math.PI/8),dz=Math.sin(k*Math.PI/8);let m=-Infinity;for(const f of pts)m=Math.max(m,(f.pt[0]-s.cm[0])*dx+(f.pt[2]-s.cm[2])*dz);b=Math.min(b,m)}
+  if(b<=0)return 0;const Ip=Math.min(s.I[0],s.I[2])+s.mass*(h*h+b*b);return Math.sqrt(2*g*(Math.hypot(b,h)-h)*Ip/s.mass)/h}
+// the same with any legs down: what the construction screen quotes for the stack as built (Q264)
+function standSpeed(s,g){const L=s.parts.filter(p=>p.on&&p.d.kind==='leg'&&!p.dep);for(const p of L)p.dep=true;s.foot=null;const v=tipSpeed(s,g);for(const p of L)p.dep=false;s.foot=null;return v}
+// a lost vessel keeps its cause (Q264): s.lossWhy, a clause for the Debrief's outcome and the message that stays on screen
+function lose(s,why,boom){s.alive=false;s.lossWhy=why;if(boom)HOOK.boom(s.body,s.r,simT,boom);logEv('loss',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
 // legs down (op 'down') or up ('up'): instant for now (the look beat can animate the swing); returns how many moved
 function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;n++}
   if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
@@ -41,11 +52,12 @@ function groundNormal(b,pf){if(!b.ground)return norm(fromPF(b,pf,simT));const u=
   return norm(fromPF(b,norm(sub(u,add(mul(f.e,(he-h0)/b.R/d),mul(f.n,(hn-h0)/b.R/d)))),simT))}
 // the touchdown verdict at first contact, judged under the vessel's centre (the base spans more than one boulder cell):
 // the ground forgives TOUCH_MAX + its softness; boulders or trees add to the speed
-function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),sp=len(sub(s.v,surfVel(b,s.r))),su=surfaceAt(b,pfC),hit=surfaceHit(su,pfC,b),vE=sp+hit,lim=TOUCH_MAX+su.soft;
+function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),vS=sub(s.v,surfVel(b,s.r)),sp=len(vS),up=norm(s.r),su=surfaceAt(b,pfC),hit=surfaceHit(su,pfC,b),vE=sp+hit,lim=TOUCH_MAX+su.soft;
   s.landSurface={name:su.name,id:su.id??null,hit};s.touchV=sp;s.touchHit=hit;s.restT=0;
+  s.touchDrift=len(sub(vS,mul(up,dot(vS,up))));s.touchTilt=Math.acos(clamp(dot(qrot(s.q,[0,1,0]),up),-1,1));   // for a topple's cause
   logEv('contact',`touchdown on ${b.name} (${su.name}) at ${sp.toFixed(1)} m/s, limit ${lim.toFixed(1)}${hit?` (−${hit.toFixed(1)} for ${su.id===8||su.id===5||su.id===3?'trees':'boulders'})`:''}`);
   const among=hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'}`:'';
-  if(vE>=lim){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${among}`);return false}
+  if(vE>=lim){s.crashSpeed=sp;lose(s,`destroyed: hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${among}, over the ${lim.toFixed(0)} m/s it can take`,3);return false}
   return true}
 function groundContact(s,dt){const b=s.body;
   if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;return}
@@ -76,14 +88,19 @@ function groundCheck(s){
   const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len)return;   // well above the highest ground: nothing to hit
   const pT=madd(s.r,Y,s.yTop),hT=len(pT)-groundR(b,toPF(b,pT,simT)),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),pf0=toPF(b,s.r,simT);
   if(seaAt(b,pf0)){seaCheck(s);return}   // the sea: a fluid since Q274 (seaForces pushes; seaCheck judges the splash, the rest and a sinking)
-  if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — the nose hit ${b.name} at ${sp.toFixed(0)} m/s`);return}
+  if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.crashSpeed=sp;lose(s,`destroyed: the nose hit ${b.name} at ${sp.toFixed(0)} m/s`,3);return}
   if(!s.inContact)return;
-  if(tilt>C_TOPPLE){const su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0);s.alive=false;s.crashSpeed=len(sub(s.v,surfVel(b,s.r)));HOOK.boom(b,s.r,simT,2);
-    HOOK.msg(`Toppled over on ${sl>0.03?`a ${(sl*57.3).toFixed(0)}° slope of `:''}${su.name}`);return}
+  if(tilt>C_TOPPLE){s.crashSpeed=len(sub(s.v,surfVel(b,s.r)));lose(s,toppleWhy(s,pf0),2);return}
   const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
   if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
   if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
     const ls=s.landSurface||{name:'?',hit:0};HOOK.msg(`Landed on ${b.name} (${ls.name}) at ${s.touchV.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(s.touchV+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`)}}
+// why it fell over (Q264): the drift or the lean it came down with, against what this stack can stand; legs if it has none
+function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0),vt=tipSpeed(s,b.mu/(b.R*b.R)),dr=s.touchDrift||0,ti=(s.touchTilt||0)*57.3;
+  const how=dr>0.6*vt?`it touched down drifting ${dr.toFixed(1)} m/s sideways, and it tips over past ${vt.toFixed(1)} m/s`
+    :ti>3?`it touched down leaning ${ti.toFixed(0)}° at ${(s.touchV||0).toFixed(1)} m/s`:sl>0.03?'':`it came down at ${(s.touchV||0).toFixed(1)} m/s, drifting ${dr.toFixed(1)} sideways`;
+  const legs=!s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep)&&vt<2?'; landing legs widen its stance':'';
+  return`toppled over on ${sl>0.03?`a ${(sl*57.3).toFixed(0)}° slope of `:''}${su.name}${how?`: ${how}`:''}${legs}`}
 // ---- the sea (world session, Q274; NOTES § v1.122). Water is a fluid. Every stack line's outer profile (s.lines, the
 // aero's) is cut into slices up to SEA_DY tall; each slice is a disc sampled at SEA_N points on the ring of radius r/√2,
 // which keeps the disc's waterplane moment, so the righting moment comes out right. A point under the water pushes up
@@ -129,7 +146,7 @@ function seaCheck(s){const b=s.body;
   const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
   if(vr<0.3&&wr<0.05&&!(s.thrust>0))s.restT=(s.restT||0)+DT;else s.restT=0;
   if(s.restT>=SEA_REST)afloat(s)}
-function seaSink(s,how){s.alive=false;s.sunk=true;s.crashSpeed=0;s.float=null;logEv('contact',`sank: ${how}`);HOOK.msg(`Sank — ${how}`)}
+function seaSink(s,how){s.alive=false;s.sunk=true;s.crashSpeed=0;s.float=null;s.lossWhy=`sank: ${how}`;logEv('contact',`sank: ${how}`);HOOK.msg(`Sank — ${how}`)}
 // how long after coming to rest the parts that stay dry longest can no longer hold the vessel up (s), or Infinity
 function sinkTime(s){const P=seaPts(s),ps=[...P.byPart.entries()].map(([p,v])=>({v,h:seaFloodH(p)})).sort((a,b)=>a.h-b.h);let V=P.V;
   for(const x of ps){V-=x.v;if(seaRho(s.body)*V<s.mass)return x.h*3600}return Infinity}

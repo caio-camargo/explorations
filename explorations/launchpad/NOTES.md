@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-11
+**Version**: v2.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -74,6 +74,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.119 — every part says what it does (2026-10-11, vehicle session, QUEUE Q248; PLAYTEST #46)
 - v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
 - v1.129 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
+- v1.131 — why a landed rocket blew up: toppling explained, a loss keeps its cause (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

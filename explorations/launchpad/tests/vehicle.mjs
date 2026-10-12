@@ -438,3 +438,18 @@
     ok, `launched ${L.launched.map(e => `${e.name}×${e.n}`).join(', ')}; saved ${L.saved.map(e => e.name).join(', ')}`);
   P.designs = keep;
 }
+
+// vehicle-13. Why a landed rocket blew up (vehicle session, QUEUE Q264; PLAYTEST #64): a tall stack on its engine bell tips over if it
+// touches down drifting sideways faster than tipSpeed (the swing about its stance's edge lifts the centre of mass over it), and past
+// 60° it is destroyed a few seconds after touchdown. The model and the formula agree; the loss keeps its cause for the Debrief.
+{
+  const msg0 = api.HOOK.msg, st = api.PRESETS.Hopper, vt = api.standSpeed(api.newShip(st), TELLUS.mu / TELLUS.R ** 2);
+  const drop = vx => { api.t = 0; const s = api.newShip(st); api.S = s; api.HOOK.msg = () => {}; s.landed = false; s.sas = false; s.throttle = 0;
+    const f = api.localFrame(s.r); s.r = add(s.r, mul(f.up, 0.1)); s.v = add(api.surfVel(TELLUS, s.r), add(mul(f.up, -1), mul(f.e, vx)));
+    for (let i = 0; i < 20 / api.DT && s.alive && !s.landed; i++) api.physStep(s, api.DT); return s; };
+  const slow = drop(0.75 * vt), fast = drop(1.15 * vt), out = api.debOutcome(fast, fast.rec);
+  check('topple (Q264): the Hopper stands drifting ~0.9 m/s; below it lands, above it topples, and the Debrief says why',
+    vt > 0.8 && vt < 1 && slow.landed && !fast.alive && /drifting .* tips over past/.test(fast.lossWhy || '') && out.d.startsWith(fast.lossWhy),
+    `tips past ${vt.toFixed(2)} m/s; at ${(0.75 * vt).toFixed(2)} ${slow.landed ? 'landed' : 'not landed'}; at ${(1.15 * vt).toFixed(2)}: ${out.d}`);
+  api.HOOK.msg = msg0;
+}

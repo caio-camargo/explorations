@@ -43,6 +43,9 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
     Object.assign(PROG,{gseed:null,done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},dispatch:[],fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+// how much sideways drift it stands at touchdown, as built and legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s)
+function standHTML(s){const v=standSpeed(s,TELLUS.mu/TELLUS.R**2),legs=s.parts.some(p=>p.on&&p.d.kind==='leg'),ft=footPoints(s)[0],on=legs?'its legs':ft?`its ${ft.p.d.name}`:'its base',cl=legs&&v<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
+  return`<div style="margin-top:4px">Touchdown <b class="${cl}">stands drifting up to ${v>9.95?'10+':v.toFixed(1)} m/s</b> <span class="dim">sideways, as built, on ${on}; faster, it tips over${legs?'':'. Legs widen the stance'}</span></div>`}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
 function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
@@ -97,6 +100,7 @@ function editorChanged(){
     <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.cert.frac)}">${(a.lift.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.cert)}</span></div>
     <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.cert)}</span>
 </div>
+    ${standHTML(S)}
     ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
     <div class="sub">${Math.min(cal(a.ful),cal(a.emp),cal(a.sup))<0?`Negative stability: it flips unless something steers it: the engines
     while they burn, steerable fins while there's air (the Control block says which hold). `:''}Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's

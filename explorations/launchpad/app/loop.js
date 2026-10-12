@@ -41,5 +41,6 @@ function frame(now){
   fpsN++;fpsT+=dtR;if(fpsT>0.5){fpsShow=fpsN/fpsT;fpsN=0;fpsT=0;$('perf').textContent=`${fpsShow.toFixed(0)} fps · gpu ${gpuMs==null?'?':gpuMs.toFixed(1)} ms · cpu ${frameMs.toFixed(1)} ms · res ${Math.round(RS*100)}% · ${GPU_NAME}`}
   hudT-=dtR;if(hudT<=0&&mode==='flight'){hudT=0.1;updateHUD()}
   if(msgTimer>0){msgTimer-=dtR;if(msgTimer<=0)$('msg').style.opacity=0}
+  if(mode==='flight'&&S&&!S.alive&&S.lossWhy&&msgTimer<=0){const m=$('msg'),t=S.lossWhy[0].toUpperCase()+S.lossWhy.slice(1);if(m.textContent!==t){m.textContent=t;msgLayout()}m.style.opacity=1}   // a loss's cause stays on screen (Q264)
   requestAnimationFrame(frame)}
 

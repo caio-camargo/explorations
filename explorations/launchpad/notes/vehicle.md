@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1306,3 +1306,27 @@ Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8
   for Caio: per program now).
 
 Test `vehicle-12`. `--smoke` all pass.
+
+## v1.131 — why a landed rocket blew up (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
+
+- **The cause:** toppling, and the physics is right. A stack on its engine bell pivots on its stance's edge once the feet
+  stop; the swing (angular momentum m·v·h about that edge) has to lift the centre of mass over it. The Hopper (5.8 m,
+  centre of mass 2.7 m up, stance half-width 0.42 m in its narrowest direction) tips past **0.91 m/s** of sideways drift
+  by that formula; the contact model agrees (sweep, SAS off, 1 m/s down: 0.3–0.7 m/s rock for 3–9 s and settle, 1.0 m/s
+  topples 2.4 s after touchdown). A 5° lean at 7.8 m/s topples too (4.2 s); 5° at ≤ 6 m/s, or any straight drop, stands.
+  Past 60° (`C_TOPPLE`) it is destroyed, seconds after it looked landed, and the message flashed for 3 s: Caio's report.
+  Every preset tips between 0.54 (Passenger Orbiter) and 1.07 m/s (Sounding), as real tall rockets do. SAS with a pod's
+  reaction wheel holds a 1.2 m/s drift upright in the browser; with SAS off it topples. **Not changed:** the contact
+  model, and toppling stays fatal (a 5.8 m rocket falling over hits at ~13 m/s at the nose).
+- **`tipSpeed(s, g)`** (`sim/flight.js`): that threshold from the live foot points and `s.I`; **`standSpeed(s, g)`**: the
+  same with any legs down. `touchdown` records `s.touchDrift` and `s.touchTilt`; **`toppleWhy`** names the drift (if
+  over 0.6 × the threshold) or the lean, and suggests legs when it has none and tips under 2 m/s.
+- **A loss keeps its cause:** `lose(s, why, boom)` in `flight.js` (touchdown, the nose, toppling) and `s.lossWhy` at the
+  other losses (sinking, collisions in `space.js`, the root burning up in `vessel.js`). `debOutcome`'s *Lost* line is
+  the cause now (the Debrief's lead); `app/loop.js` keeps it on screen while the wreck is in view. **Q293** (losses
+  explained) can read `s.lossWhy` / the outcome's `d`; a loss also logs `logEv('loss', …)`.
+- **The builder** (`app/editor.js` `standHTML`, under Max-q): *Touchdown stands drifting up to X m/s sideways, as built*,
+  on its bottom part or its legs. Neutral for a rocket (all of them tip near 1 m/s); amber for a design with legs that
+  still tips under 1.5 m/s.
+- **Not yet:** the quote is for the stack as built, not for what's left after the drops (the Orbiter's upper stage, a
+  lander stage); on Selene the threshold is √(g) lower (×0.41). Test `vehicle-13`; TESTING 213.
