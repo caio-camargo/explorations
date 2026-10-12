@@ -19,8 +19,6 @@ uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uV
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
-// filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
-vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
  return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
@@ -312,8 +310,7 @@ void main(){
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
    col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));if(cov*shW>.5)tD=min(tD,tC);}}
  if(atl.a>0.)col=mix(col,pow(atl.rgb,vec3(2.2))*1.7*atlL,atl.a*uAtl);   // over the clouds: it's a map
- col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
- o.rgb+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))-.5)/255.;   // dither: dark gradients (the galaxy, night skies) band in 8 bits
+ o=vec4(col,1.);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers)
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
 const MESH_VS=`#version 300 es
@@ -372,10 +369,11 @@ float band(float x,float a,float b,float fw){fw=fw*.75+1e-5;return smoothstep(a-
 float dots(float s,float v,float v0,float per,float rad,float fw){vec2 q=vec2((fract(s/per+.5)-.5)*per,v-v0);return(1.-smoothstep(rad,rad+fw,length(q)))*smoothstep(rad*2.5,rad*.6,fw);}
 // Same light as the planet: sun irradiance already reddened by the air (uSunCol, CPU-integrated), sky above and ground
 // bounce below as hemispheric ambient, Blinn–Phong specular normalised by roughness, metals and glass reflecting a sky/ground
-// gradient, then the sky shader's tone curve and gamma — so a white tank and the ground under it finally agree.
+// gradient, in the same linear light as the sky (Q314: the composite tone-maps both), so a white tank and the ground
+// under it agree.
 void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  if(uShadow>0.){o=vec4(0.,0.,0.,uShadow);return;}
- if(uGlow>0.){o=vec4(vC*uGlow,1.);return;}
+ if(uGlow>0.){o=vec4(pow(vC*uGlow,vec3(2.2)),1.);return;}   // additive light (lamps, lit windows); uGlow > 1 is brighter than paint
  vec3 V=normalize(-vP);bool inside=dot(vN,vP)>0.;
  int m=int(vM+.5);float metal=m==1||m==5?1.:0.,rough=m==1?.32:m==2?.9:m==4?.06:m==5?.24:.42;
  vec3 alb=pow(vC,vec3(2.2)),nO=vNo,emis=vec3(0.);
@@ -558,12 +556,12 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   c+=dif*vec3(1.,.88,.7)*(fl+.05*smoothstep(160.,40.,length(vP-uFlC)))*uFlI;}   // + faint spill bounced off the apron
  // the engine plumes' light (plumeLight, aerofx): one soft point light in the flame, uPl = (position, core radius)
  if(uPlC.r+uPlC.g>0.){vec3 L=uPl.xyz-vP;float d2=dot(L,L);c+=dif*uPlC*(max(dot(n,L*inversesqrt(d2)),0.)*.85+.15)/(d2+uPl.w*uPl.w);}
- c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),1.);}`;
+ o=vec4(max(c,vec3(0.)),1.);}`;
 const LINE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=2) in vec4 aC;uniform mat4 uVP;uniform float uFc;out vec4 vC;out float vW;
 void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vC=aC;}`;
 const LINE_FS=`#version 300 es
-precision highp float;in vec4 vC;in float vW;out vec4 o;uniform float uFc;void main(){o=vC;gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+precision highp float;in vec4 vC;in float vW;out vec4 o;uniform float uFc,uLk;void main(){o=vec4(pow(vC.rgb,vec3(2.2))*uLk,vC.a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 function mkProg(vs,fs){const p=gl.createProgram();
   for(const[t,s]of[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);
     if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}
@@ -585,6 +583,9 @@ const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
   const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t})();
+// (Q314) the emission volumes' radiance in the scene's linear units (plume, plasma, impingement): what was compressed
+// in display space (1 − e^−C) is now passed as is, so a core is many times brighter than sunlit paint and blooms
+const FXK=.8;
 // engine plume: a raymarched volume, axisymmetric about the nozzle axis, inside a bounding cylinder (unit lathe scaled by
 // uB = [R, L, exit radius]; local frame in metres, y 0 at the nozzle exit → −L downstream, s = −y). Shape follows the
 // pressure ratio n = pe/pa (exit over ambient): over-expanded jets pinch in, matched ones run straight with shock
@@ -602,7 +603,7 @@ ${PLUME_RB}
 void main(){float s=-aP.y*uB.y,k=min(uB.x,1.9*rb(s,uB.z)+.15*uB.z)*1.0086;vL=vec3(aP.x*k,-s,aP.z*k);
  vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLUME_FS=`#version 300 es
-precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+precision highp float;const float FXK=${FXK.toFixed(3)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
 uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS,uGp,uIg;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
 ${PLUME_RB}
 void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
@@ -628,8 +629,8 @@ void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
    +uIg.rgb*(core*2.+prof*(.6+nn))*d*smoothstep(6.*re,0.,s);   // the igniter's flash (TEA-TEB green on kerolox)
   float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8)+uK.w*rich*prof*smoothstep(1.5*re,5.*re,s)*smoothstep(14.*re,6.*re,s)*1.5;   // start/stop soot stays near the nozzle
   C+=Tr*e*st;Tr*=exp(-(uSo*soot+uOp*uI*(core*d*.4+mantle*.25))*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
- vec3 c=pow(1.-exp(-C),vec3(1./1.5));float a=1.-dot(Tr,vec3(.333));
- o=vec4(c,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ float a=1.-dot(Tr,vec3(.333));
+ o=vec4(C*FXK,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;   // (Q314) radiance as it is: the core outshines the day and blooms
 // 32³ tiling value noise for the plume's turbulence: one trilinear fetch per octave instead of eight hashes
 const PNOISE=(()=>{const n=32,d=new Uint8Array(n*n*n);let x=12345;for(let i=0;i<d.length;i++){x=(x*1103515245+12345)>>>0;d[i]=x>>>24}
   const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_3D,t);gl.texImage3D(gl.TEXTURE_3D,0,gl.R8,n,n,n,0,gl.RED,gl.UNSIGNED_BYTE,d);
@@ -648,7 +649,7 @@ void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(v
  // each puff shaded as a lumpy sphere: sun side bright, the far side in its own shadow (uSq = sun in the quad's frame)
  vec3 sn=normalize(vec3(vQ.xy,sqrt(max(0.,1.-r*r))+.3)+.35*vec3(n-.5,nz(q*1.7+5.)-.5,0.));float ls=.18+.82*smoothstep(-.3,.8,dot(sn,uSq));
  vec3 c=vec3(.84,.83,.81)*(.8+.35*n)*(uLight*ls*1.25+uAmb*.55*(.6+.4*sn.y))+vec3(1.,.5,.15)*vQ.w*.8+vPl*(.7+.5*n);
- c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ o=vec4(c,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // terrain depth pre-pass: the sky shader's functions with a main that only marches and writes the hit distance
 const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
   'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh;o=vec4(march(d,hh,0.),0.,0.,1.);}'):null;
@@ -747,7 +748,7 @@ const PLASMA_VS=`#version 300 es
 layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform float uFc;out vec3 vL;out float vW;
 void main(){vL=aP*vec3(uB.x*1.0086,uB.y,uB.x*1.0086);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLASMA_FS=`#version 300 es
-precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+precision highp float;const float FXK=${FXK.toFixed(3)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
 uniform vec3 uB,uCam,uA,uM0,uC;uniform float uFc,uT,uIn,uK,uRb,uHl,uD,uLw,uEf,uEp,uPr[32];uniform sampler3D uN;
 vec3 heat(float k){return k<.5?mix(vec3(1.,.28,.06),vec3(1.,.55,.22),k*2.):mix(vec3(1.,.55,.22),vec3(1.,.7,.95),min(1.,(k-.5)*2.));}
 void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;float t1;
@@ -776,7 +777,7 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
    float ring=exp(-pow((rho/W-.75)/.3,2.)),strk=smoothstep(.4,.8,n2*.6+n3*.4);
    wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3));}
   C+=(cs*sh*3.+cw*wk*.35)*uK*h/max(uEp,.3);t+=h;}
- vec3 c=pow(1.-exp(-C),vec3(1./1.5));o=vec4(c,0.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ o=vec4(C*FXK,0.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // transonic vapor cones: a lit cloud raymarched in the ship's frame (y = ship axis, origin above the top, the plume's proxy
 // lathe). Flow speeds up round each hull shoulder (the end of a nose cone, a step down in diameter), the air expands and
 // cools, and humid air condenses until the shock behind it recompresses it: a collar with a soft front at the shoulder
@@ -804,8 +805,8 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
   vec3 nr=vec3(p.x,0.,p.z)/max(rr,1e-3);float l=.5+.5*max(dot(nr,uSunL),0.)+.6*pow(max(dot(rd,uSunL),0.),6.);
   ls+=Tr*a*l;acc+=Tr*a;Tr*=1.-a;if(Tr<.02)break;}
  if(acc<1e-4)discard;
- vec3 c=vec3(.95,.96,.98)*(uLight*(ls/acc)*1.25+uAmb*.6);c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
- float al=1.-Tr;o=vec4(pow(c,vec3(1./2.2))*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ vec3 c=vec3(.95,.96,.98)*(uLight*(ls/acc)*1.25+uAmb*.6);
+ float al=1.-Tr;o=vec4(c*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // the plume meeting the ground: a volume in a ground frame (y up; on the pad, the pad's frame, x east, z south down the
 // flame channel) inside a box uLo..uHi. Around the impact point uIP a hot splash spreads over the deck; on the pad most of
 // the flow (uCh = 1) is driven down the channel between its walls (|x| < 3.4 m, from z ≈ 0), rising and cooling as it
@@ -814,7 +815,7 @@ const IMP_VS=`#version 300 es
 layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uLo,uHi;uniform float uFc;out vec3 vL;out float vW;
 void main(){vL=mix(uLo,uHi,aP*.5+.5);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const IMP_FS=`#version 300 es
-precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+precision highp float;const float FXK=${FXK.toFixed(3)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
 uniform vec3 uLo,uHi,uCam,uCo,uMa,uVa,uSo;uniform vec4 uK,uIg,uIP[4];uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform int uNH;uniform sampler3D uN;
 void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*iv,tn3=min(ta,tb),tf3=max(ta,tb);
  float tN=max(max(tn3.x,tn3.y),max(tn3.z,0.)),tF=min(min(tf3.x,tf3.y),tf3.z);
@@ -834,7 +835,7 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
   float d=(sp+uW*ch)*(.15+1.5*n1*n2),tau=mix(exp(-rho/(re*3.)),exp(-max(a,0.)/12.),ch/(sp+ch+1e-4));
   vec3 e=uI*(uCo*uK.x*.15*tau*tau*tau+uMa*2.2*tau*(1.+uIg.w)+uVa*.4*tau)*d*(1.-.85*min(1.,uIg.r+uIg.g+uIg.b))+uIg.rgb*1.5*tau*d;   // + the igniter's flash, fuel-rich start
   C+=Tr*e*st;Tr*=exp(-(uSo*uK.w*1.4*(1.-tau)+uOp*.3*tau+.08)*d*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
- vec3 c=pow(1.-exp(-C),vec3(1./1.5));float al=1.-dot(Tr,vec3(.333));o=vec4(c,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ float al=1.-dot(Tr,vec3(.333));o=vec4(C*FXK,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // the plume's light on the ground (the ground is the sky shader's): an additive disc just above it, like the floodlight
 // pools. Local frame: x/z on the ground, the light uLh above the disc's centre.
 const POOL_VS=`#version 300 es
@@ -843,7 +844,7 @@ void main(){vG=aP.xz*uR;vec4 w=uM*vec4(vG.x,.06,vG.y,1.);gl_Position=uVP*w;vW=gl
 const POOL_FS=`#version 300 es
 precision highp float;in vec2 vG;in float vW;out vec4 o;uniform vec3 uPlC;uniform float uLh,uR0,uFc,uR,uDk;
 void main(){float d2=dot(vG,vG)+uLh*uLh,E=uLh*inversesqrt(d2)/(d2+uR0*uR0);vec3 c=uPlC*E*.3*uDk*smoothstep(uR,uR*.6,length(vG));
- o=vec4(1.-exp(-c*1.6),1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ o=vec4(c*1.6,1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // the coverage bake for the near cloud volume: cloudCovF over a gnomonic patch round the point under the camera, sliced
 // out of SKY_FS so the noise and the coverage are the very same code
 const COV_FS=(()=>{const a=SKY_FS.indexOf('float h3('),b=SKY_FS.indexOf('float hp('),c=SKY_FS.indexOf('float fbm('),e=SKY_FS.indexOf('\n',c),
@@ -874,8 +875,8 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
   float a=1.-exp(-d*2.4*ds);L+=T*a;T*=1.-a;if(T<.03)break;}
  if(T>.997)discard;
  float ph=.55+.45*smoothstep(-.2,1.,dot(-rd,uSunL));   // dust scatters forward: brighter looking toward the sun
- vec3 c=uAlb*(uLit*ph+.02)*(L/max(1.-T,1e-4));c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
- float al=1.-T;o=vec4(pow(c,vec3(1./2.2))*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ vec3 c=uAlb*(uLit*ph+.02)*(L/max(1.-T,1e-4));
+ float al=1.-T;o=vec4(c*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // explosions: a raymarched fireball that turns into a rising, lit smoke cloud (in air) or flashes and thins out (vacuum).
 // Local frame: y up (radial), origin at the blast; the box proxy (IMP_VS) follows the cloud. uA: age (s), uR: radius (m),
 // uRise: the cloud's centre height (m), uAir: 1 in thick air → 0 in vacuum.
@@ -901,26 +902,39 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
   C+=T*em*st;L+=T*a*lt;A+=T*a;T*=1.-a;if(T<.02)break;}
  vec3 sc=mix(vec3(.07,.065,.06),vec3(.3,.29,.28),smoothstep(1.,6.,uA));   // black soot first, greying as it cools and spreads
  vec3 smk=sc*(uLight*(L/max(A,1e-4))+uAmb*.2)*A;   // sunlit side brighter
- vec3 c=smk+C;c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
- float al=1.-T;if(al<.003&&max(c.r,max(c.g,c.b))<.003)discard;o=vec4(pow(c,vec3(1./2.2)),al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-// ---- bloom (aerofx): the frame is drawn into a multisampled offscreen target, resolved, and its near-white parts are
-// shrunk through ½, ¼, ⅛ and 1/16 resolution (a box filter each step, so the chain blurs them) and added back as a soft
-// glow while the frame is copied to the screen. The scene is already tone-mapped, so the threshold works on display
-// values: only near-white pixels feed it (the sun, explosions, plume cores, lamps), and it is added mostly where the
-// frame is dark, since a bright daytime sky is as near-white as the sun once tone-mapped.
+ vec3 c=smk+C;
+ float al=1.-T;if(al<.003&&max(c.r,max(c.g,c.b))<.003)discard;o=vec4(c,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// ---- bloom and the composite (aerofx; HDR since Q314, BEAUTY B0.2–0.4): the frame is drawn in linear light into a
+// multisampled RGBA16F target, resolved, and shrunk through ½, ¼, ⅛ and 1/16 resolution (a tent each step, so the chain
+// blurs). No threshold: a small share of every pixel's light spreads (uK), so only what is far brighter than sunlit
+// paint (the sun, plume cores, fireballs, lamps at night) shows a glow. The first step weights its taps by 1/(1 + exposed
+// luminance) (Karis), so a lone bright pixel doesn't flicker. The 1/16 level also gives the exposure (expoTick).
 const BLOOM_FS=`#version 300 es
 precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uT;uniform vec2 uPx;uniform float uTh;
-void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);
- for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++){float w=(i==0?2.:1.)*(j==0?2.:1.);c+=texture(uT,uv+vec2(i,j)*uPx*2.).rgb*w;}c/=16.;   // a 3×3 tent: no blocks
- if(uTh>0.){float m=max(c.r,max(c.g,c.b));c*=smoothstep(uTh,1.,m)*m;}
- o=vec4(c,1.);}`;
+vec3 fin(vec3 c){bvec3 b=equal(floatBitsToUint(c)&uvec3(0x7f800000u),uvec3(0x7f800000u));return vec3(b.x?0.:c.x,b.y?0.:c.y,b.z?0.:c.z);}   // NaN and ∞ to 0 by their bits (D3D compiles isnan away)
+void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);float ws=0.;
+ for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++){vec3 t=fin(texture(uT,uv+vec2(i,j)*uPx*2.).rgb);float w=(i==0?2.:1.)*(j==0?2.:1.);
+  if(uTh>0.)w/=1.+dot(t,vec3(.2126,.7152,.0722))*uTh;c+=t*w;ws+=w;}   // a 3×3 tent: no blocks
+ o=vec4(c/ws,1.);}`;
+// the composite: bloom added in linear light, the exposure (uE, one number for the frame: expoTick), a vignette, AgX
+// (Sobotka's curve, the Blender 4 default; Wrensch's fit: fire keeps its colour into white instead of ACES's flat
+// orange), then the grade (a 32³ LUT on the display values: GRADE_LUT) and grain, which also dithers the 8-bit output
 const COMP_FS=`#version 300 es
-precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,uB4;uniform vec2 uP4;uniform float uK;
+precision highp float;precision highp sampler3D;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,uB4;uniform sampler3D uLut;uniform vec2 uP4,uAs;uniform float uK,uE,uT,uVg,uGr;
+vec3 fin(vec3 c){bvec3 b=equal(floatBitsToUint(c)&uvec3(0x7f800000u),uvec3(0x7f800000u));return vec3(b.x?0.:c.x,b.y?0.:c.y,b.z?0.:c.z);}   // NaN and ∞ to 0 by their bits (D3D compiles isnan away)
 vec3 tent(sampler2D t,vec2 uv,vec2 px){vec3 c=texture(t,uv).rgb*4.;c+=texture(t,uv+vec2(px.x,0.)).rgb*2.+texture(t,uv-vec2(px.x,0.)).rgb*2.+texture(t,uv+vec2(0.,px.y)).rgb*2.+texture(t,uv-vec2(0.,px.y)).rgb*2.;
  c+=texture(t,uv+px).rgb+texture(t,uv-px).rgb+texture(t,uv+vec2(px.x,-px.y)).rgb+texture(t,uv+vec2(-px.x,px.y)).rgb;return c/16.;}
-void main(){vec2 uv=vNdc*.5+.5;vec3 c=texture(uS,uv).rgb;
- vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*.25).rgb*.35+tent(uB3,uv,uP4*.5).rgb*.4+tent(uB4,uv,uP4).rgb*.45;   // each level tent-filtered at its own texel size (uP4 is the 1/16 level's)   // tight glow; the wide levels faint (sunlit white paint is as bright as the sun here, and the wide levels smeared it)
- float L=dot(c,vec3(.3,.5,.2));o=vec4(c+uK*b*pow(1.-L,1.6),1.);}`;   // glow shows over darker surroundings, not on bright sky
+vec3 agx(vec3 c){const mat3 I=mat3(.842479062253094,.0423282422610123,.0423756549057051,.0784335999999992,.878468636469772,.0784336,.0792237451477643,.0791661274605434,.879142973793104);
+ const mat3 O=mat3(1.19687900512017,-.0528968517574562,-.0529716355144438,-.0980208811401368,1.15190312990417,-.0980434501171241,-.0990297440797205,-.0989611768448433,1.15107367264116);
+ vec3 x=clamp((log2(max(I*c,vec3(1e-10)))+12.47393)/16.5,0.,1.),x2=x*x,x4=x2*x2;
+ x=15.5*x4*x2-40.14*x4*x+31.96*x4-6.868*x2*x+.4298*x2+.1191*x-.00232;return clamp(O*x,0.,1.);}
+void main(){vec2 uv=vNdc*.5+.5;vec3 c=fin(texture(uS,uv).rgb);   // a stray NaN pixel (a degenerate normal) stays one black pixel
+ if(uK>0.)c+=uK*(texture(uB1,uv).rgb*.3+tent(uB2,uv,uP4*.25)*.3+tent(uB3,uv,uP4*.5)*.25+tent(uB4,uv,uP4)*.15);   // each level tent-filtered at its own texel size (uP4 is the 1/16 level's)
+ vec2 q=vNdc*uAs;c*=uE*(1.-uVg*pow(dot(q,q),1.25));   // the lens falls off toward the corners (uAs: aspect, the corner at 1)
+ vec3 d=texture(uLut,agx(c)*(31./32.)+.5/32.).rgb;
+ vec2 g=gl_FragCoord.xy+uT;float n=fract(sin(dot(g,vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(g,vec2(39.3468,11.135)))*24634.6345)-1.;   // triangular noise
+ float Y=dot(d,vec3(.2126,.7152,.0722));d+=n*uGr*(.35+2.6*Y*(1.-Y));   // film grain: most in the mid-tones
+ o=vec4(d,1.);}`;
 // fin-tip vapor (aerofx): ribbons of condensed vortex core trailing from loaded fin tips. Vertices: camera-relative
 // position, the side across the ribbon (−1..1), opacity. Lit like the smoke (sun and sky), white, soft-edged.
 const VTR_VS=`#version 300 es
@@ -929,7 +943,7 @@ void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max
 const VTR_FS=`#version 300 es
 precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb;uniform float uFc;
 void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
- c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2))*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+ o=vec4(c*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
@@ -948,8 +962,7 @@ void main(){
  float base=.75+.5*fbm(n*2.5)-.3*smoothstep(.45,.7,fbm(n*1.2+7.));
  vec3 alb=uNalb*(base+.12*cr+.25*fade*(det-.5));
  float ndl=max(dot(n,uSun),0.);vec3 col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
- col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
- o.rgb+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))-.5)/255.;   // dither: dark gradients (the galaxy, night skies) band in 8 bits
+ o=vec4(col,1.);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers)
  gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);
 }`;
 const PMOON=mkProg(QUAD_VS,MOON_FS);
@@ -1292,9 +1305,11 @@ function covBake(camW){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin
   const u2=PCOV.u;gl.useProgram(PCOV.p);gl.bindFramebuffer(gl.FRAMEBUFFER,COV.fb);gl.viewport(0,0,COV.n0,COV.n0);gl.disable(gl.DEPTH_TEST);
   gl.uniform1f(u2.uCT,ct);gl.uniform1f(u2.uPR,TELLUS.R);gl.uniform1f(u2.uCvX,COV.ext);gl.uniform3fv(u2.uCv0,c0);gl.uniform3fv(u2.uCvE,e);gl.uniform3fv(u2.uCvN,n);
   gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.enable(gl.DEPTH_TEST)}
-let BLOOM=true;   // false draws straight to the screen (A/B)
+let BLOOM=true;   // false: no glow (Low; A/B). The frame still goes through the HDR target and the composite (Q314)
+const HDR_RT=!!gl.getExtension('EXT_color_buffer_float');   // RGBA16F targets; without it, RGBA8 (light above 1 clips)
 const SCN={w:0,h:0,on:false};
-function texRT(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+function texRT(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,HDR_RT?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,fb,w,h}}
@@ -1302,7 +1317,7 @@ function texRT(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);g
 function sceneTarget(w,h){if(SCN.w===w&&SCN.h===h)return SCN;
   if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
   const ns=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)),rc=gl.createRenderbuffer(),rd=gl.createRenderbuffer(),ms=gl.createFramebuffer();
-  gl.bindRenderbuffer(gl.RENDERBUFFER,rc);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.RGBA8,w,h);
+  gl.bindRenderbuffer(gl.RENDERBUFFER,rc);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h);
   gl.bindRenderbuffer(gl.RENDERBUFFER,rd);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.DEPTH24_STENCIL8,w,h);
   gl.bindFramebuffer(gl.FRAMEBUFFER,ms);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rc);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rd);
   const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
@@ -1310,18 +1325,55 @@ function sceneTarget(w,h){if(SCN.w===w&&SCN.h===h)return SCN;
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,chain,ok});return SCN}
 // the framebuffer the 3D frame is being drawn into (passes that render elsewhere mid-frame come back to it)
 const sceneFB=()=>SCN.on?SCN.ms:null;
-function bloomBegin(w,h){SCN.on=false;if(!BLOOM)return;const T=sceneTarget(w,h);if(!T.ok)return;SCN.on=true;gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms)}
+function bloomBegin(w,h){SCN.on=false;const T=sceneTarget(w,h);if(!T.ok)return;SCN.on=true;gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms)}
+// (Q314) the grade: a 32³ LUT on AgX's display values. D18.1, 1960s press photography: contrast back into AgX's soft
+// curve (a logit S, per channel, and a little saturation back, since AgX desaturates), blacks a little crushed toward blue-black, warm
+// highlights. One LUT for now; a LUT per era later (BEAUTY B0.4)
+const GRADE={c:1.4,b:-.06,sat:1.12,warm:[.035,.008,-.045],cool:[-.012,-.004,.018],K:.22,vg:.2,gr:.035};
+function gradeFn(r,g,b){const lg=x=>{x=Math.min(Math.max(x,1e-4),1-1e-4);return Math.log(x/(1-x))},sg=x=>1/(1+Math.exp(-x));
+  let o=[r,g,b].map(x=>x<=0?0:sg(GRADE.c*lg(x)+GRADE.b));{const y=.2126*o[0]+.7152*o[1]+.0722*o[2];o=o.map(x=>y+(x-y)*GRADE.sat)}const Y=.2126*o[0]+.7152*o[1]+.0722*o[2],hi=Y*Y,lo=4*Y*(1-Y)*(1-Y);
+  return o.map((x,i)=>Math.min(1,Math.max(0,x+GRADE.warm[i]*hi+GRADE.cool[i]*lo)))}
+const GRADE_LUT=(()=>{const n=32,d=new Uint8Array(n*n*n*4);for(let b=0;b<n;b++)for(let g=0;g<n;g++)for(let r=0;r<n;r++){const o=gradeFn(r/(n-1),g/(n-1),b/(n-1)),k=((b*n+g)*n+r)*4;
+    d[k]=Math.round(o[0]*255);d[k+1]=Math.round(o[1]*255);d[k+2]=Math.round(o[2]*255);d[k+3]=255}
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_3D,t);gl.texImage3D(gl.TEXTURE_3D,0,gl.RGBA8,n,n,n,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
+  for(const w of[gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T,gl.TEXTURE_WRAP_R])gl.texParameteri(gl.TEXTURE_3D,w,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.bindTexture(gl.TEXTURE_3D,null);return t})();
+// (Q314, BEAUTY B0.3) auto-exposure: the log-mean luminance of the 1/16 level (centre-weighted), read back a frame or
+// two late without stalling (a pixel-pack buffer and a fence), turned into one exposure E for the frame, eased in log
+// over ~1 s. Partial adaptation (E ∝ L^−a, a < 1): night stays darker than day, the plume's glare still darkens the
+// sky. Highlight priority: the brightest 2 % of the frame (H) may not pass hi/E, so a sunlit planet in black space or
+// the paper under the desk lamp isn't blown. L and H are the scene's own light (before E), so there is no feedback loop. E.auto false holds E (A/B, refset).
+const EXPO={E:1,t:1,L:null,auto:true,cal:1,Lref:.35,a:.55,floor:.03,hi:2.4,H:null,min:.25,max:4,tau:.35,pbo:null,fence:null,buf:null,w:0,h:0,last:0};
+function expoTarget(L,Hi){return Math.min(EXPO.max,EXPO.hi/Math.max(Hi??0,1e-6),Math.max(EXPO.min,EXPO.cal*Math.pow(EXPO.Lref/Math.max(L,1e-6),EXPO.a)))}
+function expoMean(a,w,h){let s=0,ws=0;const Ls=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=(y*w+x)*4,L=.2126*a[k]+.7152*a[k+1]+.0722*a[k+2],
+    u=(x+.5)/w*2-1,v=(y+.5)/h*2-1,wt=1-.6*Math.min(1,(u*u+v*v)/2);Ls[y*w+x]=L>=0&&L<1e30?L:0;if(!(L>=0&&L<1e30))continue;s+=wt*Math.log2(Math.min(Math.max(L,EXPO.floor),1e4));ws+=wt}Ls.sort();EXPO.H=Ls[Math.floor(Ls.length*.98)];return ws>0?Math.pow(2,s/ws):null}
+function expoTick(T){const c=T.chain[3],now=performance.now(),dt=Math.min(.25,(now-EXPO.last)/1000);EXPO.last=now;
+  if(EXPO.fence&&gl.getSyncParameter(EXPO.fence,gl.SYNC_STATUS)===gl.SIGNALED){gl.deleteSync(EXPO.fence);EXPO.fence=null;
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER,EXPO.pbo);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,EXPO.buf);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+    EXPO.L=expoMean(EXPO.buf,EXPO.w,EXPO.h)??EXPO.L;if(EXPO.L)EXPO.t=expoTarget(EXPO.L,EXPO.H)}
+  if(!EXPO.fence&&HDR_RT){if(!EXPO.pbo)EXPO.pbo=gl.createBuffer();const n=c.w*c.h*4;
+    if(!EXPO.buf||EXPO.buf.length!==n){EXPO.buf=new Float32Array(n);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,EXPO.pbo);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*4,gl.STREAM_READ)}
+    EXPO.w=c.w;EXPO.h=c.h;gl.bindBuffer(gl.PIXEL_PACK_BUFFER,EXPO.pbo);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,c.fb);gl.readPixels(0,0,c.w,c.h,gl.RGBA,gl.FLOAT,0);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);EXPO.fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0)}
+  if(EXPO.auto)EXPO.E=Math.exp(Math.log(EXPO.E)+(Math.log(EXPO.t)-Math.log(EXPO.E))*(1-Math.exp(-dt/EXPO.tau)))}
+// the exposure settled at once, for the reference views and stills (a blocking read; never in play)
+function expoNow(){const T=SCN;if(!T.chain||!HDR_RT)return;const c=T.chain[3],a=new Float32Array(c.w*c.h*4);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,c.fb);gl.readPixels(0,0,c.w,c.h,gl.RGBA,gl.FLOAT,a);EXPO.L=expoMean(a,c.w,c.h)??EXPO.L;if(EXPO.L)EXPO.t=expoTarget(EXPO.L,EXPO.H);if(EXPO.auto)EXPO.E=EXPO.t}
 function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,T.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.res.fb);gl.blitFramebuffer(0,0,w,h,0,0,w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
-  const u=PBLM.u;gl.useProgram(PBLM.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);let src=T.res;
-  T.chain.forEach((dst,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,src.t);
-    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?.965:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst});
+  const u=PBLM.u;gl.useProgram(PBLM.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
+  if(BLOOM){let src=T.res;T.chain.forEach((dst,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,src.t);
+    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?EXPO.E:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst})}
+  else{const dst=T.chain[3];gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,T.res.t);   // Low: the 1/16 level in one pass (sparser taps; only the exposure reads it)
+    gl.uniform2f(u.uPx,4/w,4/h);gl.uniform1f(u.uTh,0);gl.drawArrays(gl.TRIANGLES,0,3)}
+  expoTick(T);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
-  [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});
-  gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);
-  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,.9);gl.drawArrays(gl.TRIANGLES,0,3);
-  gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
+  [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
+  gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
+  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,(HOOK.fxT??performance.now())%997);
+  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
 // ---- fin-tip vapor: each fin tip's recent path, planet-fixed, with how much vapor it shed there. A fin sheds a tip
 // vortex in proportion to its load: the cross-flow component along its normal (so in a turn two fins of a ring trail
 // and two don't), dynamic pressure and angle of attack; condensation needs humid low air and subsonic-to-low-supersonic

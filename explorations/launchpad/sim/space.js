@@ -342,6 +342,22 @@ function handOffWhy(q){const a=autoAllowed('burn');if(!a.ok)return a.why;const n
 function nodeHandOff(id,on=true){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q||!q.nodes||!q.nodes[0])return null;   // mission control: from mainframes (Q127)
   if(on){const why=handOffWhy(q);if(why){HOOK.msg(`Mission control ${why}`);return{refused:why}}}
   q.nodes[0].mc=!!on;return q}
+// a planned burn moved to a pass mission control can reach (flow, QUEUE Q196). On its rails a craft is back at the same
+// place in its orbit every period, so the burn moved by whole orbits does the same thing there (its node frame is the
+// orbit's); the first such time after the planned one with a link is the next contact. Later burns move with it, so a
+// chain (raise, then circularize) keeps its spacing. {T, k, st} (the new time, orbits later, the station) or {why}.
+const PASS_DAYS=30;   // how far ahead it looks
+function nodeNextPass(q){const n=q.nodes&&q.nodes[0];if(!n)return{why:'no burn planned'};if(q.cruise)return{why:'on its way, not in orbit'};
+  const B=orbBody(q),el=elements(q.r,q.v,B.mu);if(!(el.e<1&&el.a>0))return{why:'not in orbit'};
+  const P=2*Math.PI*Math.sqrt(el.a**3/B.mu),K=Math.floor(PASS_DAYS*DAY_S/P);
+  for(let k=1;k<=K;k++){const L=entryLink(q,n.T+k*P);if(L.ok)return{T:n.T+k*P,k,st:L.st}}
+  return{why:`no contact at that point of its orbit in the next ${PASS_DAYS} days`}}
+// move q's planned burns to the next contact and hand the first to mission control ({refused} as nodeHandOff)
+function nodeToPass(id){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q||!q.nodes||!q.nodes[0])return null;
+  const a=autoAllowed('burn');if(!a.ok){HOOK.msg(`Mission control ${a.why}`);return{refused:a.why}}
+  const p=nodeNextPass(q);if(p.why){HOOK.msg(`Can't move ${q.name}'s burn: ${p.why}`);return{refused:p.why}}
+  const dt=p.T-q.nodes[0].T;for(const n of q.nodes)n.T+=dt;q.nodes[0].mc=true;
+  HOOK.news(`${q.name}'s burn moved ${p.k} orbit${p.k>1?'s':''} later (${(dt/3600).toFixed(1)} h)${p.st?`, over ${p.st.name}`:''}: mission control flies it`,'ok');return q}
 // what a cruise entry is doing next, for lists: {text, days} (program time T)
 function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
   try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;

@@ -5479,3 +5479,28 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `ACTIVE_WORK.md`, this log. Created worktree `C:/Users/caioa/dev/launchpad-playtest` (branch `playtest`) on this machine.
 - **Next:** **W16, Caio plays sitting 1** (M1's finish line); feed what Caio says to playtest intake (Q60). QA's next
   ready: Q215 (row 65's capsule flake), Q232, Q233.
+
+## 2026-10-12 — Caio + Claude (launchpad flow session): Q196, a planned burn moved to the next contact (v1.138)
+- **Built:** mission control's Trajectory console offers *Fly at the next contact* where a burn was refused for contact
+  (mainframe era): the same burn whole orbits later (same place in the orbit, so the same effect), the first time a
+  station sees it within 30 days; later burns move with it; the first is handed over. `nodeNextPass`/`nodeToPass` in
+  `sim/space.js` (added beside `handOffWhy`, for space: nothing of theirs changed); button and handler in `app/mission.js`.
+- **Files:** `sim/space.js`, `app/mission.js`, `tests/flow.mjs` (flow-14), `notes/flow.md` § v1.138, NOTES index,
+  TESTING 220, QUEUE (Q196 ✓), ACTIVE_WORK.
+- **Checks:** full suite passed except the TESTING counter (fixed); after merging main: smoke passes, numbers check OK.
+  Browser (lock taken after QA released it): the button, its "next contact: 6 orbits later (+16 h), over Dunnzar Cape",
+  and the handed-off state after the click. Measured: +19.6 km raise against 19.8 planned; worst case ~3 ms per render.
+  Renumbered once (vehicle took v1.136/218, look v1.137/219 while this was merging).
+- **Next for flow:** Q43 (watch mode, Flight console), Q167, Q170 (N2 on the wall), Q309/Q310, then Q241 R3, R5.
+
+## 2026-10-12 — Caio + Claude (launchpad design desk): the beauty pass, D18
+- **Done:** wrote `BEAUTY.md` (audit of the most-seen moments, 78 before stills plus GPU ms, web research, plan B0–B6:
+  HDR + AgX, half-res FX, auto-exposure, era LUTs first; then the craft, flames, air, re-entry, a baked galaxy cube map,
+  Tellus and Selene). D18 answered: defaults confirmed, order agreed, and **B1.5 greebles in real geometry** added
+  (shadow map needs something to cast; flat detail stays in shaders). Earlier in the session: the NOTES split (W37).
+- **Files:** `explorations/launchpad/BEAUTY.md` (0.2.0), `DECISIONS.md` (D18), `archive/decisions-2026-10.md`,
+  `QUEUE.md` (*Proposed* rows), `ROADMAP.md` (catalog), `INDEX.md`, `ACTIVE_WORK.md`, this log. Stills (gitignored):
+  `output/launchpad/beauty/before/`.
+- **Next:** the orchestrator ranks B0 (since landed as Q314, v1.137); Q318/Q319 next; mock-ups for the galaxy and the
+  planet from orbit (Q253). Open with Caio: W29 (bodies round 2), W33 (face lab). Known gap: `check_numbers` suggests
+  D1 for the next D; the real next is D19 (for `check_docs.mjs`).

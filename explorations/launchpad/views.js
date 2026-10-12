@@ -29,7 +29,8 @@ window.refView = async (n) => {
   // that cover the window and stop the 3D draw (Q239; Q312: views 1, 4–9 used to shoot the Program's desk)
   const toBuilder = () => { if (mode !== 'editor') document.getElementById('bEditor').click(); if (typeof screenNow === 'function' && screenNow() !== 'assembly') go('assembly') };
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb,#ov').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null;
-    if (pinWx && typeof CLOUD_DT !== 'undefined') CLOUD_DT = REF_WX - tNow(); render(); };
+    if (pinWx && typeof CLOUD_DT !== 'undefined') CLOUD_DT = REF_WX - tNow(); render();
+    if (typeof expoNow === 'function') { expoNow(); render() } };   // (Q314) the exposure settled on this frame, not eased toward it
   if (n === 1) { // the Orbiter on the pad, morning light
     toBuilder();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); cam.edY = 0;

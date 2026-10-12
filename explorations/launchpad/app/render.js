@@ -46,7 +46,7 @@ function render(){
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   const desk=deskScene();   // (Q242) the Assembly: the design as a scale model on a drafting table, not on the pad
-  if(desk)gl.clearColor(...DESK_BG,1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
+  if(desk)gl.clearColor(...DESK_BG.map(x=>x**2.2),1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
   if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
@@ -370,7 +370,7 @@ function drawMap(VP,camW,labels){
       labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}
     labels.push({p:add(c0,mul(E.Y,-rr)),mark:'txt',t:'the planets: direction only, not to scale',c:'rgba(214,206,170,.75)'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
-  if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
+  if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.uniform1f(PLINE.u.uLk,1/EXPO.E);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
   if(impact&&toolOK('impact')){const b=impact.b,bp=bodyPos(b,simT),top=b.R+(b.atm||0),P=2*Math.PI*Math.sqrt(top**3/b.mu),T=impact.pathT,t0=impact.t-1.05*P;let pv=null;

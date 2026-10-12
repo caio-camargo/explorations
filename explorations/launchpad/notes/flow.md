@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -862,3 +862,24 @@ one is open):
   is still to come; today it opens from the Program. The calendar's labels overlap when a booking and its window are
   both short.
 
+## v1.138 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
+Since v1.102, before onboard computers a planned burn that no station sees is refused at hand-off, so it could only be
+flown by hand. Mission control's **Trajectory** console now offers **Fly at the next contact** in its place, with where
+and when: "No station sees it at the burn. Next contact: 7 orbits later (+6 h), over Dunnzar Cape."
+- **Why whole orbits:** on its rails a craft is back at the same place in its orbit every period, and a burn's Δv is in
+  the orbit's own frame, so the same burn k orbits later does the same thing (a raise is the same raise; Tellus has
+  turned under it, which is the point). `nodeNextPass(q)` (`sim/space.js`, next to `handOffWhy`) tries k = 1, 2, … up to
+  30 days ahead and takes the first time `entryLink` is good; it never moves a burn earlier. In orbit only: a cruise
+  entry's burns are checked when they come (v1.102), so it has nothing to offer there.
+- `nodeToPass(id)` moves **all** the entry's burns by the same time, so a chain (raise, then circularize half an orbit
+  on) keeps its spacing, and hands the first to mission control; news says how far it moved and over which station.
+  Refused with the reason (the era, or no contact in 30 days) as `nodeHandOff` is.
+- **For space:** two functions added beside `handOffWhy`, nothing of yours changed. A burn timed for a moon's phase
+  (a Selene transfer from low orbit) drifts by the moon's motion over the orbits it waits: ~0.8° per 90-minute orbit,
+  well inside a mainframe's 2 % execution error for a few orbits, but a long wait wants a correction.
+- **Measured** (test): a Probe at 300 km with a 20 m/s prograde burn out of view moves 7 orbits (6.0 h) to Dunnzar
+  Cape, and mission control's burn there raises *a* by 19.6 km (planned 19.8). Worst case for the console: 480 link
+  checks (30 days of 90-minute orbits) take ~3 ms, only for burns that were refused for contact.
+
+Test `flow-14` (refused, found a whole number of orbits later with a station in view, later burns keep their spacing,
+handed over, same raise; the button and its handler). TESTING row 220.
