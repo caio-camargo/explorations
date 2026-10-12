@@ -5449,3 +5449,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   topple's cause still on screen 12 s later. Renumbered twice (flow took v1.131/213, look v1.132/214). One run was
   killed by low memory (a hung sweep of mine had been left running; stopped).
 - **Next for vehicle:** the Proposed follow-up (quote the landing stage, per body), then Q249, Q237/Q238, Q202.
+
+## 2026-10-12 — Caio + Claude (launchpad QA session): Q292, Caio's first hour is ready
+- **Done:** PLAYROUTE sitting 1 refreshed for the rooms (0.2.1): the director's desk (in-tray, folder, wall), TO THE
+  DESIGN TABLE ▶ [B] and the scale model, BUILD AND LAUNCH ▶ [L], the Hopper's *Touchdown* line and a topple's cause,
+  mission control [C] once the beeper is up, Recover vessel, the flight report, a Revert, graphics Low/High. Rows
+  added to its steps: 196, 197, 198, 205, 210, 213, 215, 216. `node playtest.mjs m1` re-run on `main` at v1.135:
+  **passes** (51 s; no tester, weather + beeper missions, two flight reports, no overlapping boxes); shots in
+  `C:/Users/caioa/dev/playtest-out/rm1_*.png` checked by eye (desk, Design table model, the beeper's report).
+- **Seen, not filed** (probably robot artefacts): the beeper's report says "no photo" (the robot warps, so the 2.5 s
+  liftoff grab may miss; row `desk` flies real frames for it); "Mission complete" still on screen as the robot reached
+  the Design table seconds after landing (the message's 3 s). Worth a glance in Caio's sitting; known: the report's
+  know-how list scrolls inside the paper.
+- **Files:** `explorations/launchpad/PLAYROUTE.md`, `QUEUE.md` (Q292 ✓, unblocker row 1 → W16 for Caio),
+  `ACTIVE_WORK.md`, this log. Created worktree `C:/Users/caioa/dev/launchpad-playtest` (branch `playtest`) on this machine.
+- **Next:** **W16, Caio plays sitting 1** (M1's finish line); feed what Caio says to playtest intake (Q60). QA's next
+  ready: Q215 (row 65's capsule flake), Q232, Q233.
