@@ -692,10 +692,12 @@ const devWaiting=()=>(PROG.dispatch||[]).filter(x=>x.status==='deviated');
 const NET_BAND=h=>h<2e6?'low':h<2e7?'high':'stationary';
 function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*DAY_S;
   for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus',life=q.landed?Infinity:skLife(q);
-    fleet.push({name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
-      next:q.landed?'on the surface':q.adrift!=null?'adrift: out of propellant':isFinite(life)?`holds its orbit ${Math.floor(life)} more days`:'holds its orbit',t:isFinite(life)?life:null})}
-  for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
-    else if(x.status==='deviated')fleet.push({name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
+    const fall=q.landed?Infinity:decayLife(q),then=isFinite(fall)?`, then re-enters`:'';   // (flow, Q203) what Fleet says: decay, not "0 more days"
+    fleet.push({id:q.id,name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
+      next:q.landed?'on the surface':q.adrift!=null?(isFinite(fall)?`adrift: re-enters in about ${daysS(fall)}`:'adrift: out of propellant'):life>=1&&isFinite(life)?`holds its orbit ${daysS(life)} more${then}`:isFinite(fall)?`re-enters in about ${daysS(fall)}`:'holds its orbit',
+      t:isFinite(life)&&life>=1?life:isFinite(fall)?fall:null})}
+  for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({dev:x.id,name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
+    else if(x.status==='deviated')fleet.push({dev:x.id,name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
   for(let p=0;p<padsN();p++)pads.push({pad:p,bars:(PROG.dispatch||[]).filter(x=>x.status==='queued'&&x.pad===p)
     .flatMap(x=>{const r=Math.min(x.launch,x.ready??x.launch),t=`${x.title} · ${designName(x.stack)||'our design'}`;return[{from:Math.max(D,x.ordered??D),to:r,kind:'dispatch',title:t},...(x.launch-r>=0.05?[{from:Math.max(D,r),to:x.launch,kind:'window',title:`${t}: waiting for its window`}]:[])]})});
   for(const t of homeSites())nodes.push({id:`site:${t.id}`,kind:'site',body:'Tellus',slot:'surface',name:t.name,stock:{},need:{}});

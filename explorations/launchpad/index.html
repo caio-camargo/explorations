@@ -75,7 +75,6 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
 #testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvFHud{right:12px;top:52px;width:250px}#rvFHud td:first-child{padding-right:10px}#rvHud td:first-child{padding-right:10px}
-#net{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
 .hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
 .hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
 #progTabs{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0 0;border-bottom:1px solid var(--line)}#progTabs button{border-radius:4px 4px 0 0;border-bottom:0;padding:4px 12px}#progTabs .n{color:var(--warn);margin-left:4px}
@@ -137,11 +136,41 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #prog #progBody.gate{columns:1}
 #rollPanel{display:flex;flex-direction:column;width:340px}#rollChecks .ri{font-style:normal;color:var(--dim);cursor:help}#rollBody{overflow:auto;flex:1}#rollChecks .rc{margin:2px 0;padding-left:20px;text-indent:-20px}#rollChecks .rc span{display:inline-block;width:20px;text-indent:0}#rollChecks .ok span{color:var(--ok)}#rollChecks .warn{color:var(--warn)}#rollChecks .bad{color:var(--bad)}#rollBooks table{width:100%}#rollBooks td:last-child{text-align:right}#rollPlay b{color:var(--acc);font-weight:normal}
 #rollFoot{display:flex;gap:8px;align-items:center;margin-top:8px}#rollFoot .big{flex:1;margin:0}
-#netHead{flex:1}#netHead .dt{color:var(--acc);font-size:12px}#netBody{overflow:auto;padding:4px 2px}#netBody .none{color:var(--dim);padding:6px 0}.netf{width:100%;border-collapse:collapse}.netf td{padding:2px 8px 2px 0;vertical-align:top}
+.netf{width:100%;border-collapse:collapse}.netf td{padding:2px 8px 2px 0;vertical-align:top}
 .cal{margin-top:4px}.crow{display:flex;align-items:center;margin:3px 0}.cl{width:64px;color:var(--dim);font-size:11px}.ctr{position:relative;flex:1;height:22px;background:rgba(127,209,255,.05);border:1px solid var(--line);border-radius:3px}
 .tk{position:absolute;top:0;bottom:0;border-left:1px dashed var(--line)}.tk b{position:absolute;top:-1px;left:3px;white-space:nowrap;font:normal 9.5px ui-monospace,monospace;color:var(--dim)}.cfree{position:absolute;left:8px;top:3px;color:var(--dim);font-size:11px}
 .cbar{position:absolute;top:2px;bottom:2px;min-width:4px;background:rgba(127,209,255,.35);border:1px solid var(--acc);border-radius:2px;font-size:10.5px;line-height:16px;padding:0 4px;overflow:hidden;white-space:nowrap}.cev{position:absolute;top:4px;width:2px;height:12px;background:var(--warn)}
-.dh{color:var(--acc);font-size:11.5px;margin-top:10px}   /* the Network screen's headings */
+.dh{color:var(--acc);font-size:11.5px;margin-top:10px}   /* the Debrief's headings */
+/* ---- mission control (flow session, Q241 R4; NOTES § v1.N): a control room, instrument panels (W14). A room: no 3D behind it.
+   A wall (clocks, the big screen, the pads) over four consoles; CRT text in VT323 (OFL, bundled). */
+@font-face{font-family:'VT323';src:url(fonts/vt323.woff2) format('woff2');font-display:swap}
+#mc{position:fixed;inset:0;z-index:2;display:grid;grid-template-rows:auto minmax(200px,44vh) minmax(220px,1fr);gap:14px;padding:10px 18px 14px;overflow:auto;
+  --crt:#ffb547;--dim:#b08a4a;--ok:#7dff9c;--warn:#ffd36a;--bad:#ff6a5a;--line:#6b5326;--acc:#ffb547;
+  font:18px/1.1 VT323,ui-monospace,monospace;color:var(--crt);background:linear-gradient(180deg,#0d1218 0,#121820 52%,#0a0d11 53%,#151a20 100%)}
+#mcTop{display:flex;align-items:center;gap:16px;font:bold 12px 'Courier Prime',monospace;letter-spacing:3px;color:#8c96a3;text-transform:uppercase}
+#mcTop h1{margin:0;font:24px/1 'Bebas Neue',Impact,sans-serif;letter-spacing:6px;color:#c9d0d8}#mcTop .sp,#mcWallTabs .sp{flex:1}
+#mc button{width:auto;margin:0;font:bold 11px 'Courier Prime',monospace;letter-spacing:1.5px;padding:4px 9px;background:#1a1d22;border:2px solid #444c56;color:#c9d0d8;border-radius:2px;text-transform:uppercase;text-shadow:none;cursor:pointer}
+#mc button:hover{border-color:#9aa4b1;color:#fff}#mc button.on{background:#ffe9a8;color:#3a2a00;border-color:#0d0f12}
+#mcWall{display:grid;grid-template-columns:minmax(140px,200px) minmax(0,1fr) minmax(150px,220px);gap:16px;min-height:0}
+#mc .wl{position:relative;border:8px solid #2a2f36;border-radius:3px;background:#120c02;box-shadow:0 0 0 2px #000,inset 0 0 40px rgba(255,170,60,.07);padding:6px 10px;overflow:hidden;text-transform:uppercase;text-shadow:0 0 6px rgba(255,170,60,.5)}
+#mc .wl.big{background:#04130a;color:var(--ok);text-shadow:0 0 6px rgba(80,255,140,.5);box-shadow:0 0 0 2px #000,inset 0 0 40px rgba(60,255,120,.08);padding:0;display:flex;flex-direction:column}
+#mc .k{color:#8c96a3;font:bold 10px 'Courier Prime',monospace;letter-spacing:3px;margin-top:8px;text-shadow:none}#mc .k:first-child{margin-top:0}#mc .wl .v{font-size:22px}#mc .wl .s{color:var(--dim);font-size:16px}
+#mc .scan{position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px);pointer-events:none}
+#mcWallTabs{display:flex;gap:6px;align-items:center;padding:5px 8px 0;position:relative;z-index:1}#mcWallTabs .dim{color:#3f8f5a}
+#mcTrack{flex:1;width:100%;min-height:0;display:block}#mcTrack.hidden{display:none}
+#mcCal{flex:1;overflow:auto;padding:14px 12px 8px;font-size:16px;--line:#1f6b39;--acc:#7dff9c;--dim:#3f8f5a}#mcCal .cl{font-size:16px;width:70px}#mcCal .cbar{font-size:15px;line-height:16px;background:rgba(125,255,156,.18)}#mcCal .cev{background:#ffb547}#mcCal .tk b{font:14px VT323,monospace}
+#mcCons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;min-height:0}
+@media (max-width:1000px){#mcCons{grid-template-columns:repeat(2,minmax(0,1fr))}#mc{grid-template-rows:auto minmax(200px,40vh) auto}#mc .con{min-height:260px}}
+#mc .con{display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#3a4049 0,#2b3038 8%,#22262c 100%);border-top:4px solid #555d68;border-radius:6px 6px 0 0;padding:12px 10px 10px}
+#mc .scr2{position:relative;flex:1;min-height:0;background:#120c02;border:6px solid #15181c;border-radius:10px/14px;box-shadow:0 0 0 2px #444 inset;overflow:hidden;text-shadow:0 0 6px rgba(255,170,60,.5)}
+#mc .scr2 .in{position:absolute;inset:0;overflow:auto;padding:6px 10px;text-transform:uppercase}
+#mc .scr2 button{font-size:10px;padding:1px 6px;margin:2px 0;border-width:1px}
+#mc .mrow{margin-bottom:7px}#mc .mrow .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}#mc b{font-weight:normal;color:#ffd58a}
+#mc .nm{text-align:center;font:bold 12px 'Courier Prime',monospace;letter-spacing:5px;color:#c9d0d8;margin:8px 0 6px;text-transform:uppercase}
+#mc .legends{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#mc .lg{font:bold 10px/1.1 'Courier Prime',monospace;padding:5px 8px;background:#1a1d22;color:#56606c;border:2px solid #0d0f12;border-radius:2px;letter-spacing:1px;text-transform:uppercase;text-shadow:none}
+#mc .lg.on{background:#ffe9a8;color:#3a2a00;box-shadow:0 0 12px rgba(255,220,120,.7)}#mc .lg.red{background:#ff6a5a;color:#300;box-shadow:0 0 12px rgba(255,90,70,.7)}#mc .lg.grn{background:#9dffb8;color:#032;box-shadow:0 0 12px rgba(120,255,160,.6)}
+#mc .dim{color:var(--dim)}#mc .ok{color:var(--ok)}#mc .warn{color:var(--warn)}#mc .bad{color:var(--bad)}
 /* ---- the Debrief as the flight report on the desk (flow session, Q241 R2; NOTES § v1.116). A room, like the Program. */
 #deb{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(200px,260px) minmax(0,720px);justify-content:center;column-gap:34px;padding:26px 24px 18px}
 #debWall{display:flex;flex-direction:column;gap:26px;padding-top:30px;min-width:0}
@@ -240,7 +269,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div id="deskTray"><button id="deskTrayN" data-ptab="inbox" title="the Inbox: what needs an answer">IN</button><div id="deskTrayBox"></div></div>
   <div id="progNext" class="hidden"></div>
   <div id="deskFolder"><div id="progTabs"></div><div id="progBody"></div></div>
-  <div id="deskSide"><div id="deskWall"></div><div id="deskExits"><button id="bLog3">Logbook [F]</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bNet" data-go="network" class="hidden" title="the fleet and the pads">Network [N]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">TO THE DESIGN TABLE ▶ [B]</button></div></div>
+  <div id="deskSide"><div id="deskWall"></div><div id="deskExits"><button id="bLog3">Logbook [F]</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bMC" data-go="mission" class="hidden" title="the fleet, the network, planned burns, dispatches">Mission control [C]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">TO THE DESIGN TABLE ▶ [B]</button></div></div>
   <div id="program" class="hidden"></div>
 </div>
 <div id="roll" class="ui hidden"><div class="panel right" id="rollPanel">
@@ -248,10 +277,13 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div id="rollBody"><h2>Launch site</h2><div id="sitePick"></div><h2>Checks</h2><div id="rollChecks"></div><h2>The flight</h2><div id="rollBooks"></div><h2>In play</h2><div id="rollPlay"></div></div>
   <div id="rollFoot"><button data-go="assembly">← Design table [B]</button><button id="launch" class="big">LAUNCH [L]</button></div>
 </div></div>
-<div id="net" class="hidden"><div class="hq">
-  <div class="hqHead"><h1>NETWORK</h1><div id="netHead"></div><button data-go="program">← Program [P]</button></div>
-  <div id="netBody"></div>
-</div></div>
+<div id="mc" class="hidden">
+  <div id="mcTop"><button data-go="program">◀ Office [P]</button><h1>Mission control</h1><span id="mcDate"></span><span class="sp"></span><span id="mcNext"></span></div>
+  <div id="mcWall"><div class="wl" id="mcClock"></div>
+    <div class="wl big"><div id="mcWallTabs"></div><canvas id="mcTrack"></canvas><div id="mcCal" class="hidden"></div><div class="scan"></div></div>
+    <div class="wl" id="mcPads"></div></div>
+  <div id="mcCons"></div>
+</div>
 <div id="deb" class="hidden">
   <div id="debWall"></div>
   <div id="debReport"><i class="clip" style="left:60px"></i><i class="clip" style="right:60px"></i>
@@ -324,6 +356,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <script src="app/editor.js"></script>
 <script src="app/rollout.js"></script>
 <script src="app/network.js"></script>
+<script src="app/mission.js"></script>
 <script src="app/input.js"></script>
 <script src="app/screens.js"></script>
 <script src="app/desk.js"></script>

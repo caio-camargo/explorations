@@ -731,8 +731,8 @@ ROWS[160] = {title: 'dock two Docking presets', steps: [...DOCKSTART,
 ROWS[165] = {title: "the Beeper's lifetime line", steps: [`go('assembly'); PT.preset('Beeper'); (document.querySelector('#editor .right').innerText.match(/Lifetime.*/) || ['no Lifetime line'])[0]`, {shot: 'beeper'},
   `go('program'); PT.click('[data-ptab="contracts"]'); const b = [...document.querySelectorAll('button')].find(x => /^Take$/.test(x.textContent) && /Satellite to|satellite/i.test(x.closest('div') ? x.closest('div').innerText : '')); if (b) b.click(); ({took: !!b})`,
   `go('assembly'); PT.preset('Beeper'); (document.querySelector('#editor .right').innerText.match(/Lifetime.*/) || ['no Lifetime line'])[0]`, {shot: 'beeper_contract'}]};
-ROWS[164] = {title: 'the network screen', steps: [DOCK_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); go('program'); if (screenNow() === 'debrief') go('program'); const n = document.getElementById('bNet'); ({shown: n && !n.classList.contains('hidden')})`, {key: 'n'},
-  `({screen: screenNow(), text: (document.querySelector('#net, #network, [id*=net]') || document.body).innerText.slice(0, 500)})`, {shot: 'network'}]};
+ROWS[164] = {title: 'mission control (was: the network screen)', steps: [DOCK_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); go('program'); if (screenNow() === 'debrief') go('program'); const n = document.getElementById('bMC'); ({shown: n && !n.classList.contains('hidden')})`, {key: 'c'},
+  `({screen: screenNow(), text: (document.querySelector('#mc') || document.body).innerText.slice(0, 500)})`, {shot: 'network'}]};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-start="agency"]'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
