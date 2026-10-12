@@ -225,7 +225,9 @@ function assemble(stack){
   let ymin=Infinity,ymax=-Infinity;for(const q of L.inst){ymin=Math.min(ymin,q.y0);ymax=Math.max(ymax,q.y0+q.d.h)}if(!L.inst.length)ymin=ymax=0;
   for(const q of L.inst){const p={i:parts.length,d:q.d,pos:[q.x,0,q.z],y0:q.y0-ymin,h:q.d.h,parent:null,children:[],on:true,
     res:{...(q.d.res0||{})},cap:{...(q.d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],dn:q.nd,inst:q};
-    if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;q.p=p;parts.push(p)}
+    if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;
+    if(q.nd.dep&&!q.rdec){if(q.d.kind==='leg'||q.d.wing)p.dep=true;else if(q.d.kind==='bay')p.open=true}   // deployed in the Assembly: it rolls out that way (Q328)
+    q.p=p;parts.push(p)}
   // root: a pod, else a biocapsule, else instruments (on the root line first, then the highest), else the design's root
   let root=null;for(const k of['pod','core','bio','sci']){const c=parts.filter(p=>p.d.kind===k);if(c.length){root=c.sort((a,b)=>(b.core?1:0)-(a.core?1:0)||b.y0-a.y0)[0];break}}
   if(!root)root=parts.find(p=>p.dn===des.root&&p.core)||parts[0];
@@ -393,6 +395,10 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
+  // left deployed in the Assembly (Q328): it rolls out that way
+  const wg=s.parts.filter(p=>p.on&&p.d.wing&&p.dep);if(wg.length)out.push(['warn',`Solar wing${wg.length>1?'s':''} deployed at launch: thick air tears ${wg.length>1?'them':'it'} off past ${(Math.min(...wg.map(p=>p.d.qMax))/1000).toFixed(1)} kPa (retract in the Assembly; P deploys in flight)`]);
+  if(s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep))out.push(['warn','Landing legs down at launch: they ride up extended (retract in the Assembly; Y raises and lowers them in flight)']);
+  if(s.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open))out.push(['warn','Cargo bay open at launch: the payload meets the air and its heat (close it in the Assembly; B in flight)']);
   return out}
 // ---- the player's designs (vehicle session, Caio 2026-10-11): PROG.designs = {saved: [{name, stack, day}], launched:
 // [{stack, day, n, name}]}. Every launch files its design in `launched` (newest first, one entry per distinct design, its

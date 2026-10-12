@@ -78,6 +78,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.136 — the Touchdown quote for what lands: after its drops, on the body it lands on (2026-10-12, vehicle session, QUEUE Q325)
 - v1.139 — the craft stays where it was put: the first part and the whole rocket hang where they are put down (2026-10-12, vehicle session, QUEUE Q327; PLAYTEST #78)
 - v1.141 — staging by drag and drop: merge, split and move stages; a stage fires all its actions (2026-10-12, vehicle session, QUEUE Q249; PLAYTEST #47)
+- v1.144 — deploy in the Assembly: legs, solar wings and bay doors roll out as left (2026-10-12, vehicle session, QUEUE Q328; PLAYTEST #79)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -491,3 +491,24 @@
     !bad.length && L.length === 3 && A1.custom && A1.events.length === A0.events.length - 1 && e0.ignite.length === A0.events[0].ignite.length + A0.events[1].ignite.length && e0.decouple.length === A0.events[1].decouple.length,
     `${bad.length ? 'wrong: ' + bad.join(' ') + ' · ' : ''}Heavy ${A0.stages.length} stages → ${A1.stages.length}; stage 1 now: ${A1.stages[0].map(a => a.label).join(' + ')}`);
 }
+
+// vehicle-16. Deploy in the Assembly (vehicle session, QUEUE Q328; PLAYTEST #79): a leg, a solar wing or a cargo bay set out on
+// the design (n.dep, every symmetric copy) rolls out that way: legs down, wings out, doors open. The Rollout warns of each; the
+// design keeps its procedures (procKey ignores dep). Flown up deployed, the wings tear off in thick air and the rocket flies on.
+{
+  const fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean), mk = dep => {
+    const d = api.toV2(['core', 't1', 'bay', 'pod', 't2', 'kestrel']), t = fd(d.root, 't2');
+    t.c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] }, { k: 'wpanel', at: { y: 1, a: 0, n: 2 }, c: [] });
+    if (dep) for (const k of ['leg', 'wpanel', 'bay']) fd(d.root, k).dep = true; return d; };
+  const d0 = mk(false), d1 = mk(true), s0 = api.newShip(d0), s1 = api.newShip(d1), of = (s, f) => s.parts.filter(p => f(p.d));
+  const L = of(s1, d => d.kind === 'leg'), Wg = of(s1, d => d.wing), B = of(s1, d => d.kind === 'bay')[0];
+  const wn = d => api.launchWarnings(d).filter(([k, x]) => /at launch/.test(x)).length;
+  const stowed = !s0.parts.some(p => p.dep || p.open) && wn(d0) === 0;
+  const out = L.length === 4 && L.every(p => p.dep) && Wg.length === 2 && Wg.every(p => p.dep) && B.open && !s1.parts.some(p => p.inBay && p.inBay.open === false);
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; api.t = 0; api.S = s1; api.stage(s1); s1.throttle = 1;
+  let qx = 0; for (let i = 0; i < 60 / api.DT && s1.alive && Wg.some(p => p.on); i++) { api.advPhys(s1); qx = Math.max(qx, s1.qdyn); }
+  api.HOOK.msg = msg0;
+  check('deploy in the Assembly (Q328): legs, wings and doors roll out as left, the Rollout warns, procedures kept; wings torn off on the way up',
+    stowed && out && wn(d1) === 3 && api.procKey(d0) === api.procKey(d1) && api.procKey(d1) !== JSON.stringify(d1) && s1.alive && !Wg.some(p => p.on),
+    `stowed ${stowed}; deployed: ${L.filter(p => p.dep).length}/4 legs, ${Wg.filter(p => p.dep).length}/2 wings, bay ${B.open ? 'open' : 'shut'}; ${wn(d1)} warnings; flown: ${s1.alive ? 'alive' : 'lost'}, wings ${Wg.filter(p => p.on).length} left at ${(qx / 1000).toFixed(2)} kPa`);
+}

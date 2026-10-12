@@ -23,6 +23,9 @@ const isEmpty=d=>Array.isArray(d)?!d.length:!d||!d.root;
 const parentOf=(n,t)=>{for(const c of kids(n)){if(c===t)return n;const r=parentOf(c,t);if(r)return r}return null};
 const name=k=>PARTS[k].name;
 const DPR=()=>Math.min(devicePixelRatio||1,1.5);
+// deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
+const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':d.wing?'wing':d.kind==='bay'?'bay':null};
+const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&depOf(p.dn.k)).map(p=>p.dn))];
 
 // ---- design access. A preset stays in the old array format (so its saved autopilot tape still matches) until the
 // first edit; then the tree that the current ship was assembled from becomes the design, so S.parts[].dn are its nodes.
@@ -314,6 +317,10 @@ function panel(){
   btn(t3,'↷ redo',false,()=>restore(st.redo,st.undo),'Ctrl+Y').disabled=!st.redo.length;
   btn(t3,'save design…',false,()=>{const i=el('blName');if(!i)return;i.scrollIntoView({block:'center'});i.focus()},'name it and keep it under Your designs (every launch also keeps its design under Launched)').disabled=isEmpty(stackDef);
   btn(t3,'✕ clear design',false,clearDesign,'remove every part and start from scratch (Ctrl+Z brings them back)').disabled=isEmpty(stackDef);
+  const dn=depNodes();if(dn.length){const t4=document.createElement('div');t4.className='bgrp';t4.innerHTML='<span class="dim">deploy</span>';bar.appendChild(t4);
+    const all=on=>edit(()=>{design();for(const n of dn)if(on)n.dep=true;else delete n.dep});
+    btn(t4,'extend all',dn.every(n=>n.dep),()=>all(true),'legs down, solar wings out, bay doors open, as they will roll out');
+    btn(t4,'retract all',!dn.some(n=>n.dep),()=>all(false),'everything stowed for launch')}
   if(!isEmpty(stackDef))staging(box);
   const n=st.sel;const sel=document.createElement('div');sel.className='bsel';box.appendChild(sel);
   if(!n||isEmpty(stackDef)||!nodes(design().root).includes(n)){st.sel=null;sel.innerHTML='<div class="sub">Right-click a part for its options.</div>';return}
@@ -326,6 +333,7 @@ function panel(){
     if(w){const s=document.createElement('span');s.className=w.f>1?'bad':w.f>.7?'warn':'ok';s.textContent=` ${(w.f*100).toFixed(0)}% ${w.p.anaKind||''} `;r.appendChild(s)}
     btn(r,JR[n.j||0].name,!!n.j,()=>edit(()=>{n.j=((n.j||0)+1)%3;if(!n.j)delete n.j}),'cycle: standard → reinforced (2× strength) → heavy (4×), each adds mass')}
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
+  {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it')}}
   if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
     if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');

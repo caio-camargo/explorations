@@ -1388,3 +1388,26 @@ Test `vehicle-12`. `--smoke` all pass.
   into stages through this panel. There is no fairing part yet. Test `vehicle-15` (the moves, and the Heavy with stage 2
   merged into 1 firing as one event); checked in the browser with real drag events (merge, a chip past the end, undo).
   TESTING 223 (renumbered from v1.140/222: flow's Q43 took them).
+
+## v1.144 — deploy in the Assembly: legs, solar wings and bay doors roll out as left (2026-10-12, vehicle session, QUEUE Q328; PLAYTEST #79)
+
+- **What was there:** deployment was already one flag on a flying part (`p.dep` for legs and solar wings, `p.open` for a
+  cargo bay's doors), set only in flight (Y, P, B; tape ops `G`, `W`, `B`). The Assembly always showed and rolled out
+  everything stowed, so the deployed shape could not be seen or checked before flight.
+- **Now:** a design node carries **`dep`** (every symmetric copy shares the node). `assemble` (`sim/vessel.js`) turns
+  it into `p.dep` (legs, wings) or `p.open` (a bay: `doorT` unset, so `doorF` is 1 at once and the payload isn't
+  shielded). The Assembly redraws from that, and the craft rolls out and lifts off as it was left, as in KSP.
+- **The builder** (`builder.js`): a *deploy* group in the toolbar, **extend all / retract all**, shown when the design
+  has a deployable part; and a *deployed* row in a part's options (right-click): legs down/up, wings out/in, doors
+  open/shut. Both go through `edit()`, so Ctrl+Z undoes them.
+- **The Rollout warns** (`launchWarnings`): a solar wing deployed (thick air tears it off past its `qMax`, 1.0 kPa,
+  `powerStep`), legs down, a bay open (the payload meets the air and its heat). Warnings, not blocks.
+- **Procedures:** `procKey` (`sim/procedures.js`, space lane, one line) leaves `dep` out of the key, so setting a
+  design's parts out or away keeps its recorded procedures. They adapt as they always did (an op on a part already
+  deployed does nothing).
+- **Not here:** a rover's fold (its unfolding is a timed deploy on the ground, `rvRun`, not a state to set before
+  flight); deployments as stage actions or groups (Q329). Legs down on the pad stand in the pad's plate; nothing
+  pushes on them before liftoff. Test `vehicle-16` (stowed by default; set out, all six copies and the bay roll out
+  so, three warnings, the same `procKey`; flown up deployed, the wings tear off at 1.0 kPa and the rocket flies on).
+  Checked in the browser: the toolbar and the part row, the drawing in the Assembly and on the pad, undo, the Rollout's
+  checks. TESTING 226.

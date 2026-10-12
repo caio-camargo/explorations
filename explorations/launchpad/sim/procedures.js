@@ -35,7 +35,7 @@ function setControls(s,c){s.throttle=c.th;INP.pitch=c.p;INP.yaw=c.y;INP.roll=c.r
 // and the orbit it ends in. Once it's in a stable orbit with the engines off, that becomes a procedure for the design, kept
 // only if it beats the stored one (less Δv spent to orbit), so a better hand-flown ascent improves every automated one after.
 // procStep flies it through SAS 'stab' holds (real torque, real staging), cutting off on goals (apoapsis, periapsis), not times.
-const PROC_V=1,procKey=stack=>JSON.stringify(stack);
+const PROC_V=1,procKey=stack=>JSON.stringify(stack,(k,v)=>k==='dep'?undefined:v);   // what's deployed in the Assembly (Q328) keeps the design's procedures
 const tabAt=(tab,h)=>{if(!tab.length)return 0;if(h<=tab[0][0])return tab[0][1];for(let i=1;i<tab.length;i++)if(h<=tab[i][0]){const[a,x]=tab[i-1],[b,y]=tab[i];return x+(y-x)*(h-a)/(b-a)}return tab[tab.length-1][1]};
 function procSample(s){if(s.noRec)return;if(s.procRec&&s.procRec.done){procMission(s,s.procRec);return}if(s.body!==TELLUS||s.proc&&s.proc.noRec)return;
   if(!s.procRec){if(s.rec&&simT<1&&len(s.r)-TELLUS.R<2000&&(s.landed||s.rec.launched))s.procRec={pts:[],early:[],az:null};return}   // a flight off the ground, from its first second
