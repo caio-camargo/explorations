@@ -245,14 +245,14 @@ function render(){
         if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
     if(atlasMode)atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
   const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll&&!atMC;   // (flow) the builder's markers stay off behind the Program and Debrief panels
-  if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
+  if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx,true3)=>{const s=project(add(pw,qrot(S.q,true3?[0,y-S.cm[1],0]:[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;   // true3: at the real centre of mass, off the axis if it is (vehicle, Q337)
       const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
       octx.fillStyle='#000';octx.beginPath();octx.arc(s[0],s[1],8*k,0,7);octx.fill();octx.strokeStyle=c;octx.lineWidth=3*k;octx.beginPath();octx.arc(s[0],s[1],6*k,0,7);octx.stroke();
       octx.fillStyle=c;octx.beginPath();octx.arc(s[0],s[1],2.2*k,0,7);octx.fill();
       octx.font=`bold ${13*k}px ui-monospace,Consolas,monospace`;octx.textAlign=dx>0?'left':'right';octx.lineWidth=4*k;octx.strokeStyle='rgba(0,0,0,.8)';
       octx.strokeText(t,x+dx*k*.3,s[1]+4*k);octx.fillText(t,x+dx*k*.3,s[1]+4*k)};
-    mk(S.ana.ful.ycm,'#ffd84a','CoM',12);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
+    mk(S.ana.ful.ycm,'#ffd84a','CoM',12,true);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
   if(building&&HOOK.edOverlay)HOOK.edOverlay(octx);
   if(mode==='flight'&&view!=='map'&&S.alive&&impact&&toolOK('impact')){const ip=add(bodyPos(impact.b,simT),fromPF(impact.b,impact.pf,simT)),q=project(ip);
     if(q){const k=Math.min(devicePixelRatio||1,1.5),d=len(sub(ip,shipWorld()));octx.strokeStyle='#ff6b5a';octx.fillStyle='#ff6b5a';octx.lineWidth=2.5*k;

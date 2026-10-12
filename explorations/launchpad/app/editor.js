@@ -46,6 +46,9 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
 // how much sideways drift it stands at touchdown, legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s). Q325:
 // for what lands (after its drops) on the body it lands on: a landing procedure's body and staging, else Tellus, and Selene
 // too for a design with legs (the moon's weaker pull stands it ~0.4× the drift)
+// trim (vehicle, Q337; PROBES § 4): the steering spent holding course against an off-centre thrust, the worst stage
+function trimHTML(s){const T=trimOf(s);if(!T)return'';const p=Math.round(T.f*100),cl=T.f<0.2?'ok':T.f<0.6?'warn':'bad';
+  return`<div style="margin-top:4px">Trim <b class="${cl}">${isFinite(T.f)?p+'%':'no steering'}</b> <span class="dim">${T.miss<0.005?'the thrust runs through the centre of mass':`stage ${T.k}: the thrust misses the centre of mass by ${(T.miss*100).toFixed(T.miss<0.1?1:0)} cm`}; the share of gimbal and wheels spent holding course</span></div>`}
 function standHTML(s){const g=b=>b.mu/b.R**2,f=v=>v>9.95?'10+':v.toFixed(1),
   to=p=>((p.phases||[]).find(x=>x.k==='transfer')||{}).to,pr=(typeof procsOf==='function'?procsOf(stackDef):[]).find(p=>procLandsOn(p,to(p))),ph=pr&&pr.phases.find(x=>x.k==='land'),B=pr&&BODIES.find(b=>b.name===to(pr))||TELLUS,
   L=landStance(s,g(B),ph?ph.ev:undefined),moon=!pr&&L.legs?landStance(s,g(SELENE)):null,on=L.legs?'its legs':L.on?`its ${L.on}`:'its base',
@@ -105,6 +108,7 @@ function editorChanged(){
     <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.cert.frac)}">${(a.lift.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.cert)}</span></div>
     <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.cert)}</span>
 </div>
+    ${trimHTML(S)}
     ${standHTML(S)}
     ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
     <div class="sub">${Math.min(cal(a.ful),cal(a.emp),cal(a.sup))<0?`Negative stability: it flips unless something steers it: the engines

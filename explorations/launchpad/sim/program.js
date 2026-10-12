@@ -16,7 +16,7 @@
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -32,7 +32,7 @@ function rvLocked(d){const L=[];for(const[kind,k,name]of rvParts(d)){const o=rvP
 // vehicle parts (Q190, Caio 2026-10-10): a late part opens with the mission that first needs it, or with its computing era
 // (d.era: the onboard computer, the RTG). Like rover parts it is listed and designable before that, but a launch carrying
 // one is refused (partLaunchWhy). No gates before a program starts (khOn) or with the tester's tools.
-const PART_GATE={port:'beeper',rport:'beeper',claw:'beeper',hab:'beeper',wpanel:'beeper',leg:'beeper',crew:'orbiter',les:'orbiter',
+const PART_GATE={port:'beeper',rport:'beeper',claw:'beeper',hab:'beeper',wpanel:'beeper',bant:'beeper',leg:'beeper',crew:'orbiter',les:'orbiter',
   bay:'station1',arm:'station1',lab:'stationcrew',beacon:'selland'};
 function partOpen(k){const d=PARTS[k];if(!d||!khOn()||TEST.tools)return{ok:true,why:''};
   if(d.era!=null&&compEra()<d.era)return{ok:false,why:`opens with the ${COMP_ERAS[d.era].name.toLowerCase()} era`,short:COMP_ERAS[d.era].name,era:d.era};
@@ -100,7 +100,8 @@ function testClutter(n,km){const h=+km*1e3;n=Math.round(+n);if(!(h>TELLUS.atm)||
   return junkAdd(L,PROG.day*DAY_S)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
-const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[k]??cert0(k));   // (tester: fully certified)
+const kinOf=k=>(PARTS[k]&&PARTS[k].kin)||k;   // a side form shares its inline part's record (vehicle, Q337)
+const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[kinOf(k)]??cert0(kinOf(k)));   // (tester: fully certified)
 const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
 const NYX_TRACK_H=12,TV_RATE=0.4,NAV_MIN=0.95,NAV_WAIT=1800;
@@ -464,17 +465,17 @@ const TIER_NAME=['structure and tanks','small engines','big engines and avionics
 const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.05,IGN_FAIL=0.08;
 const khOn=()=>PROG.flights>0||!!(PROG.own&&PROG.own.chosen);
 function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t],x=sourceOf(k);return x.how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):x.how==='line'?Math.min(0.95,b+0.2+0.2*x.line.m):b}
-const khUse=k=>TEST.kh?1:((PROG.kh||{})[k]?.use)??use0(k);   // (tester: full know-how)
+const khUse=k=>TEST.kh?1:((PROG.kh||{})[kinOf(k)]?.use)??use0(kinOf(k));   // (tester: full know-how)
 const khBar=k=>clamp(0.6*khUse(k)+0.4*(certOf(k)-0.5)/0.5,0,1);
 const khYield=()=>0.5+0.5*khUse('sci');
 // price-weighted familiarity of a vessel (for stacking time)
 function khVessel(s){let w=0,u=0;for(const p of s.parts){const q=PRICE[p.d.key]??3;w+=q;u+=q*khUse(p.d.key)}return w?u/w:1}
 // regimes each part goes through this flight (called every physics step once launched)
 function khMark(s,R){const b=s.body,h=len(s.r)-b.R,vac=h>(b.atm||0),hot=[],orbit=R.orbit;
-  for(const p of s.parts){if(!p.on)continue;const k=p.d.key,set=R.khSeen[k]||(R.khSeen[k]={});set.fly=1;
+  for(const p of s.parts){if(!p.on)continue;const k=kinOf(p.d.key),set=R.khSeen[k]||(R.khSeen[k]={});set.fly=1;
     if(s.qdyn>15e3)set.maxq=1;if(vac)set.vac=1;if(orbit)set.orbit=1;if(p.T/p.d.Tmax>0.5)set.heat=1;
     if(p.d.kind==='engine'&&s.thrust>0&&s.segs[p.seg]&&s.segs[p.seg].ignited){set.burn=1;if(vac)set.vburn=1}}
-  if(s.landed)for(const p of s.parts)if(p.on&&R.khSeen[p.d.key])R.khSeen[p.d.key].land=1}
+  if(s.landed)for(const p of s.parts)if(p.on&&R.khSeen[kinOf(p.d.key)])R.khSeen[kinOf(p.d.key)].land=1}
 // at flight end: each regime seen teaches, by novelty
 function khLearn(R,w=1){if(!khOn())return;PROG.kh=PROG.kh||{};
   for(const k in R.khSeen){const e=PROG.kh[k]||(PROG.kh[k]={use:use0(k),reg:{}});
@@ -822,7 +823,7 @@ function standTick(){const S2=PROG.stand2;if(!S2||!S2.job||PROG.day<S2.job.end)r
 // know-how and certification. Lines belong to the country: they ignore sanctions (a license keeps running) and stay
 // behind on a defection.
 const LINE_ROYALTY=0.1;
-function prodLine(k){const L=(PROG.lines||{})[k];return L&&L.power===HOME&&PROG.day>=L.ready?L:null}
+function prodLine(k){const L=(PROG.lines||{})[kinOf(k)];return L&&L.power===HOME&&PROG.day>=L.ready?L:null}
 const prodLineK=L=>(1.25-0.5*L.m)+(L.lic!=null?LINE_ROYALTY:0);
 function prodQuote(k){const t=tierOf(k),base=(PRICE[k]??3)*4*(1+t),days=40+30*t,x=sourceOf(k),lic=x.how==='import'?x.from:null;
   const can=khUse(k)>=0.4,licOK=lic!=null&&relOf(HOME,lic)>0.2&&!sanctioned(lic);

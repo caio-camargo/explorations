@@ -534,3 +534,44 @@
     names === 'ant,cam,core,sci,sci' && shield0 && Math.abs(F.fl - 3) < 1e-9 && fi === sep + 1 && warn0 === 0 && dropped && innS < inn.length && warnS === 1 && Fb && Math.abs(Fb.fl - 6) < 1e-9 && big.parts.filter(p => p.inFair === Fb).length === 2,
     `inside: ${names} (shielded ${shield0}); fairing event ${fi} after separation ${sep}; dropped ${dropped} (debris ${deb}); a 2 m shell holds ${innS}, ${warnS} warning; 2.5 m: ${Fb ? Fb.fl : '-'} m, ${big.parts.filter(p => p.inFair === Fb).length} inside`);
 }
+
+// vehicle-18. Side antennas and side boxes (vehicle session, QUEUE Q337; PROBES § 3.1–3.2): a boom antenna rides folded (it fits in
+// a fairing, the radio is at whip gain), P unfolds it with the wings (gain ×5; out at launch, the Rollout warns and it no longer
+// fits), and thick air tears it off while out. The whip is a side antenna at whip gain; the side camera and instrument package
+// count as a camera and instruments, off the axis (the centre of mass moves).
+{
+  const D = new Function(src + 'return {toV2,newShip,antOf,wingOp,launchWarnings,HOOK,advPhys,stage,khUse,PROG,TEST,S:null};')();
+  const fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  const mk = (dep, side) => { const d = D.toV2(['core', 'sci', 'fair', 't2', 'petrel', 'dec', 't8', 'kestrel']), c = fd(d.root, 'sci');
+    c.c.push({ k: 'bant', at: { y: 0.35, a: 0, n: 1 }, c: [] }); if (dep) fd(d.root, 'bant').dep = true;
+    if (side) { const t = fd(d.root, 't2'); t.c.push({ k: 'scam', at: { y: 1, a: Math.PI / 2, n: 1 }, c: [] }, { k: 'whip', at: { y: 1.5, a: Math.PI, n: 1 }, c: [] }); }
+    return d; };
+  const msg0 = D.HOOK.msg; let msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.rebuild = D.HOOK.rebuild || (() => {}); D.HOOK.debris = D.HOOK.debris || (() => {});
+  const s = D.newShip(mk()), b = s.parts.find(p => p.d.key === 'bant'), g0 = D.antOf(s.parts).G, fits = !!b.inFair;
+  D.wingOp(s, 'out'); const g1 = D.antOf(s.parts).G, said = msgs.includes('Antennas out');
+  const sd = D.newShip(mk(true)), bd = sd.parts.find(p => p.d.key === 'bant'), w = D.launchWarnings(mk(true)).some(([k, x]) => /^Boom antenna deployed at launch/.test(x));
+  const reg = D.antOf([{ k: 'bant' }, { k: 'whip' }]).G;   // a registry entry's shape: unfolded in orbit
+  // flown up unfolded and without a fairing in the way, it tears off
+  const f = mk(true); fd(f.root, 'fair').k = 'dec'; const sf = D.newShip(f), bf = sf.parts.find(p => p.d.key === 'bant'); D.S = sf; D.stage(sf); sf.throttle = 1;
+  for (let i = 0; i < 4000 && sf.alive && bf.on; i++) D.advPhys(sf);
+  const sc = D.newShip(mk(false, true)), s0 = D.newShip(mk(false, false)), cams = sc.parts.filter(p => p.on && p.d.kind === 'cam').length, ants = sc.parts.filter(p => p.d.kind === 'ant').length, off = Math.hypot(sc.cm[0], sc.cm[2]);
+  const kh0 = D.PROG.kh; D.PROG.kh = { cam: { use: 0.87, reg: {} } }; const kin = !D.TEST.kh ? D.khUse('scam') === 0.87 && D.khUse('cam') === 0.87 : true; D.PROG.kh = kh0;
+  D.HOOK.msg = msg0;
+  check('side antennas and boxes (Q337): a boom antenna folded fits the fairing at whip gain, unfolds to ×5, warns and tears off out in air; side camera counts, CoM moves',
+    fits && g0 === 1 && g1 === 5 && said && !bd.inFair && w && reg === 5 && !bf.on && sf.alive && cams === 1 && ants === 2 && off > 1e-3 && Math.hypot(s0.cm[0], s0.cm[2]) < off && kin,
+    `folded: in fairing ${fits}, gain ${g0}; unfolded ${g1} (${said ? 'said' : 'silent'}); out at launch: fits ${!!bd.inFair}, warned ${w}; registry gain ${reg}; flown out: ${bf.on ? 'still on' : 'torn off'}; side camera ${cams}, antennas ${ants}, CoM off axis ${(off * 100).toFixed(1)} cm; side camera shares the camera's know-how ${kin}`);
+}
+
+// vehicle-19. Trim (vehicle session, QUEUE Q337; PROBES § 4): the steering a stage spends holding course against thrust that
+// misses its centre of mass. A symmetric rocket spends nothing; a camera on one side a little; a tank on one side much more; a
+// single booster on one side more than it has, and the Rollout warns.
+{
+  const fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  const mk = add => { const d = api.toV2(['core', 't2', 'petrel', 'dec', 't8', 'kestrel']); if (add) fd(d.root, 't8').c.push(add); return d; };
+  const T = d => api.trimOf(api.newShip(d)), W = d => api.launchWarnings(d).some(([k, x]) => /can't hold its course/.test(x));
+  const sym = T(mk()), cam = T(mk({ k: 'scam', at: { y: 6, a: 0, n: 1 }, c: [] })), tank = T(mk({ k: 't2', at: { y: 4, a: 0, n: 1 }, c: [] }));
+  const bst = mk({ k: 't4', at: { y: 4, a: 0, n: 1, dec: true }, c: [{ k: 'kestrel', at: 'd', c: [] }] }), B = T(bst);
+  check('trim (Q337): symmetric ~0, a side camera a little, a side tank more, one side booster past what it can steer (warned)',
+    sym.f < 0.01 && cam.f > sym.f && tank.f > cam.f && B.f > 0.6 && W(bst) && !W(mk()),
+    `symmetric ${(sym.f * 100).toFixed(1)}%, side camera ${(cam.f * 100).toFixed(1)}% (${(cam.miss * 100).toFixed(1)} cm), side tank ${(tank.f * 100).toFixed(0)}%, one booster ${(B.f * 100).toFixed(0)}% (stage ${B.k}, ${(B.miss * 100).toFixed(0)} cm)`);
+}

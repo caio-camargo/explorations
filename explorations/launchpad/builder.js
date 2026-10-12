@@ -24,7 +24,7 @@ const parentOf=(n,t)=>{for(const c of kids(n)){if(c===t)return n;const r=parentO
 const name=k=>PARTS[k].name;
 const DPR=()=>Math.min(devicePixelRatio||1,1.5);
 // deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
-const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':d.wing?'wing':d.kind==='bay'?'bay':null};
+const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':null};
 const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&depOf(p.dn.k)).map(p=>p.dn))];
 
 // ---- design access. A preset stays in the old array format (so its saved autopilot tape still matches) until the
@@ -201,8 +201,15 @@ function draw(drawMesh,m,Mship,pw){
     gl.uniform1f(m.uGlow,g.float?.35:g.bad?.55:.18+.12*pulse);drawMesh(g.glow,M,pw)}
   gl.uniform1f(m.uGlow,0);gl.depthFunc(gl.LESS);gl.depthMask(true);gl.disable(gl.BLEND)}
 // called from render() on the 2D overlay
+// the thrust line (Q337; PROBES § 4): stage 1's push, from the engines' thrust centre along its direction, drawn when it misses
+// the centre of mass by a centimetre or more, so the miss the Trim line counts can be seen
+function thrustLine(o){if(isEmpty(stackDef)||!S.events.length)return;const ig=new Set((S.events.find(e=>e.ignite.length)||{ignite:[]}).ignite),E=S.parts.filter(p=>p.on&&p.d.kind==='engine'&&ig.has(p.seg));if(!E.length)return;
+  let F=[0,0,0],P=[0,0,0],f=0;for(const p of E){const d=tdirOf(p),t=p.d.thrust;F=madd(F,d,t);P=madd(P,thrustPt(p),t);f+=t}P=mul(P,1/f);const u=norm(F);
+  const T=trimOf(S);if(!T||T.k!==1||T.miss<0.01)return;const a=proj(P),b=proj(madd(P,u,S.len*1.1));if(!a||!b)return;const k=DPR();
+  o.save();o.setLineDash([7*k,5*k]);o.lineWidth=2*k;o.strokeStyle=T.f>.6?'#ff6b6b':T.f>.2?'#ffb454':'#ff9a3c';o.beginPath();o.moveTo(a[0],a[1]);o.lineTo(b[0],b[1]);o.stroke();o.restore();
+  o.font=`bold ${12*k}px ui-monospace,Consolas,monospace`;o.fillStyle=o.strokeStyle;o.textAlign='left';o.fillText(`thrust · misses CoM ${(T.miss*100).toFixed(T.miss<.1?1:0)} cm`,b[0]+6*k,b[1])}
 function overlay(o){
-  if(mode!=='editor'||typeof atHQ!=='undefined'&&atHQ||isEmpty(stackDef))return;const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
+  if(mode!=='editor'||typeof atHQ!=='undefined'&&atHQ||isEmpty(stackDef))return;thrustLine(o);const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
   if(st.loads&&!st.held){const seen=[];
     for(const p of S.parts){if(!p.on||!p.parent)continue;const f=certFrac(p);if(f==null||!isFinite(f))continue;const q=proj(p.jP);if(!q)continue;
       const c=f>1?'#ff6b6b':f>.7?'#ffb454':'#7dffa8';o.fillStyle=c;o.beginPath();o.arc(q[0],q[1],(f>.7?3.5:2.5)*k,0,7);o.fill();
@@ -236,6 +243,12 @@ const PART_INFO={
   dec:'Splits the rocket in two when its stage fires: everything below it falls away.',
   istage:'A decoupler with a skirt that wraps the engine above it, keeping that engine out of the airflow until it is dropped.',
   fair:'A payload fairing: its shell keeps what stands on it out of the air and its heat on the way up, then drops in two halves at its stage. Set its length to fit.',
+  scam:'The imaging camera as a box on the side: same camera, no stack height; it moves the balance off the axis.',
+  ssci:'The instrument package as a box on the side: same instruments, no stack height.',
+  sbatt:'A 1 kWh battery as a box on the side.',
+  scomp:'The onboard computer as a box on the side.',
+  whip:'A whip antenna on the side: the plain radio, tough enough for the climb.',
+  bant:'A boom antenna, folded for launch: P swings it out once the air is thin, and it hears home about five times better than a whip. Out in thick air it tears off.',
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
   rdec:'Holds a side part on and lets it go when its stage fires.',
   fins:'A ring of fixed fins at the tail: it keeps the rocket pointing into the airflow, like an arrow\'s feathers.',
@@ -282,6 +295,7 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.thrust&&d.kind!=='engine')L.push(['thrust',`${d.thrust} kN for ${d.burn} s`]);
   if(d.crew)L.push(['seats',d.crew]);if(d.berths)L.push(['berths',d.berths]);
   if(d.torque)L.push(['turning',`${d.torque/1000} kN·m`]);if(d.Wp)L.push(['power',`${d.Wp} W in full sun`]);if(d.Wg)L.push(['power',`${d.Wg} W always`]);
+  if(d.kind==='ant')L.push(['radio',`${d.gain||1}× a whip's gain${d.fold?' once unfolded':''}`]);if(d.qMax)L.push(['out in air',`torn off past ${(d.qMax/1000).toFixed(1)} kPa`]);
   if(d.kWh)L.push(['stores',`${d.kWh} kWh`]);if(d.W)L.push(['draws',`${d.W} W`]);
   if(d.fm)L.push(['shell',`${d.fls[0]}–${d.fls[d.fls.length-1]} m long, ${n(d.fm,'t',3)} a metre, dropped at its stage`]);
   L.push(['size',`${+(2*d.r).toFixed(2)} m wide · ${+d.h.toFixed(2)} m tall`],['heat limit',`${d.Tmax} K`]);

@@ -1167,6 +1167,19 @@ function partBody(out,p){
       else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover
     // solar cells on the body: tiles that follow a 0.625 m hull's curve (4 columns × 4 rows), on a thin steel backing
     // RTG (vehicle session, Q131; placeholder): a dark finned drum standing off the skin on a short strut
+    // side antennas (vehicle, Q337; placeholders for look & sound): a whip on a small foot; a boom antenna as a folded
+    // canister on the skin, or out: a thin boom from the side, a little rising, with its element at the tip
+    // the side boxes (Q337; placeholders): a box standing off the skin on two struts, each with its tell (a lens, louvers, cells' cover, a vent grille)
+    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],t=[-n[2],0,n[0]],w=d.r,P=(r,yy,s=0)=>[x+n[0]*r+t[0]*s,y+yy,z+n[2]*r+t[2]*s];
+      const col=d.key==='scam'?C.W:d.key==='ssci'?C.AU:d.key==='sbatt'?C.D:C.G;for(const yy of[.08,h-.08])tube(out,P(0,yy),P(.06,yy),.015,C.ST,5);
+      rbox(out,P(.06+w*.7,h/2),w*.7,h/2,w*.8,col,a);
+      if(d.key==='scam'){lathe(out,[[.06,0,C.D],[.06,.08,C.D],[.045,.08,C.GL]],P(.06+w*.7,h-.02),12)}
+      else if(d.key==='ssci')for(let k=0;k<4;k++)rbox(out,P(.06+w*1.41,.08+k*(h-.16)/3),.006,.02,w*.6,C.ST,a);
+      else if(d.key==='scomp')for(let k=0;k<3;k++)rbox(out,P(.06+w*1.41,h*.3+k*.06),.006,.012,w*.5,C.BK,a)}break;
+    case'whip':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.04,y,z+n[2]*.04];rbox(out,[c[0],y+.04,c[2]],.03,.04,.03,C.D,a);tube(out,[c[0],y+.08,c[2]],[c[0]+n[0]*.02,y+h+.5,c[2]+n[2]*.02],.008,C.ST,6)}break;
+    case'bant':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];rbox(out,P(.06,h/2),.05,h/2,.06,C.D,a);
+      if(p.dep){const L=d.span,t=P(.1+L,h*.6+L*.18);tube(out,P(.1,h*.6),t,.012,C.ST,6);tube(out,P(.1+L*.5,h*.6+L*.09),P(.1+L*.5,h*.6+L*.09+.01),.02,C.ST,6);rbox(out,t,.04,.04,.12,C.W,a)}
+      else rbox(out,P(.13,h/2),.02,h/2-.03,.04,C.ST,a)}break;
     case'rtg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.3,y,z+n[2]*.3];tube(out,[x,y+h/2,z],[c[0],y+h/2,c[2]],.03,C.ST,6);
       lathe(out,[[0,.05,C.D],[.12,.05,C.D],[.12,h-.05,C.D],[0,h-.05,C.D]],c,12,[false,false]);for(let k=0;k<4;k++)fin(out,c,k*Math.PI/2,.12,.08,h-.1,.01,C.D)}break;
     case'bpanel':{const a=p.phi||0,R=.625,cx=x-Math.cos(a)*R,cz=z-Math.sin(a)*R,CELL=[.08,.11,.28,4];

@@ -96,7 +96,17 @@ const PARTS={
   ballast:{name:'Mass simulator 0.5 t',kind:'ballast',m:0.5,h:0.5,C:2500,T:1200,B:450},
   // satellite kit: a camera (≈10 µrad, so ~2 m from 200 km) and an antenna to send pictures down. Left in orbit, they keep working.
   cam:{name:'Imaging camera',kind:'cam',m:0.12,h:0.5,C:900,T:600,B:200},
-  ant:{name:'Antenna',kind:'ant',m:0.04,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.12],[.3,.3]]},
+  ant:{name:'Cone antenna (early whip)',kind:'ant',m:0.04,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.12],[.3,.3]]},
+  // antennas on the side (vehicle, Q337; PROBES § 3.2): the whip survives the air at whip gain; the boom antenna rides
+  // folded (fold: P unfolds it with the solar wings), gives `gain` × the whip once out, and tears off above qMax while out
+  // side forms of the small boxes (vehicle, Q337; PROBES § 3.1): the same numbers as the stack slices, on the skin: they
+  // save stack height and move the centre of mass. kin: the part whose know-how, certification and production line they share
+  scam:{kin:'cam',name:'Imaging camera (side)',kind:'cam',surf:true,noAero:true,m:0.12,h:0.45,r:0.14,off:0.14,C:900,T:600,B:200},
+  ssci:{kin:'sci',name:'Instrument package (side)',kind:'sci',surf:true,noAero:true,m:0.08,h:0.4,r:0.15,off:0.15,C:900,T:600,B:200},
+  sbatt:{kin:'batt',name:'Battery 1 kWh (side)',kind:'batt',surf:true,noAero:true,m:0.02,h:0.3,r:0.1,off:0.1,kWh:1,C:900,T:600,B:200},
+  scomp:{kin:'ocomp',name:'Onboard computer (side)',kind:'comp',surf:true,noAero:true,m:0.03,h:0.3,r:0.12,off:0.12,W:50,era:2,C:900,T:600,B:200},
+  whip:{kin:'ant',name:'Whip antenna',kind:'ant',surf:true,noAero:true,m:0.01,h:0.5,r:0.03,off:0.03,C:900,T:600,B:200},
+  bant:{name:'Boom antenna',kind:'ant',fold:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.07,off:0.07,gain:5,span:3,qMax:1500,C:900,T:600,S:150,B:60},
   condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,gim:4,gimR:8,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
 };
 for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
@@ -233,7 +243,7 @@ function assemble(stack){
     res:{...(q.d.res0||{})},cap:{...(q.d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],dn:q.nd,inst:q};
     if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;
     if(q.d.kind==='fair'&&!q.rdec){p.fl=fairLen(q.nd,q.d);p.fll=p.fl/(q.d.sc||1);p.xm=q.d.fm*p.fl;p.profF=fairProf(q.d,p.fl)}   // the shell on (Q337)
-    if(q.nd.dep&&!q.rdec){if(q.d.kind==='leg'||q.d.wing)p.dep=true;else if(q.d.kind==='bay')p.open=true}   // deployed in the Assembly: it rolls out that way (Q328)
+    if(q.nd.dep&&!q.rdec){if(q.d.kind==='leg'||unfolds(q.d))p.dep=true;else if(q.d.kind==='bay')p.open=true}   // deployed in the Assembly: it rolls out that way (Q328)
     q.p=p;parts.push(p)}
   // root: a pod, else a biocapsule, else instruments (on the root line first, then the highest), else the design's root
   let root=null;for(const k of['pod','core','bio','sci']){const c=parts.filter(p=>p.d.kind===k);if(c.length){root=c.sort((a,b)=>(b.core?1:0)-(a.core?1:0)||b.y0-a.y0)[0];break}}
@@ -412,6 +422,18 @@ function dvToAlt(b,alt){const r0=b.R+(b.atm||0)+10000,r1=Math.max(r0,b.R+alt*100
 // what the next flight is aimed at: accepted orbit contracts, and the suggested mission if it's an orbit one
 function flightAims(){const A=[];for(const c of PROG.active||[]){if(c.type==='sat')A.push({name:cTitle(c),alt:c.p.alt});else if(c.type==='image')A.push({name:cTitle(c),alt:0})}
   const n=typeof nextStep==='function'?nextStep():null;if(n&&n.kind==='mission'&&ORBIT_MISSIONS.includes(n.id))A.push({name:n.title,alt:0});return A}
+// Trim (vehicle, Q337; PROBES § 4): for each stage as it lights (full tanks, what is still attached), how far the thrust
+// line misses the centre of mass, and the share of the steering it has (the gimbals' sideways push at full deflection about
+// the CoM, plus the reaction wheels) spent just holding course against that. Worst stage first: {k, f, miss (m), F (N)};
+// null if nothing burns. Under 0.2 easy, under 0.6 workable, beyond it can't hold a heading under full thrust.
+function trimOf(s){const on=s.parts.map(p=>p.on),ign=new Set();let worst=null,k=0;
+  for(const e of s.events){for(const g of e.decouple)s.parts.forEach((q,i)=>{if(q.seg===g)on[i]=false});if(!e.ignite.length)continue;k++;e.ignite.forEach(g=>ign.add(g));
+    let m=0,C=[0,0,0];s.parts.forEach((q,i)=>{if(!on[i])return;const w=partMass(q),c=partC(q);m+=w;C=madd(C,c,w)});if(!m)continue;C=mul(C,1/m);
+    const E=s.parts.filter((q,i)=>on[i]&&q.d.kind==='engine'&&ign.has(q.seg));if(!E.length)continue;
+    let L=[0,0,0],F=0,A=s.parts.reduce((a,q,i)=>a+(on[i]&&q.d.torque?q.d.torque:0),0);
+    for(const q of E){const d=tdirOf(q),f=q.d.thrust*1000,r=sub(thrustPt(q),C);L=add(L,cross(r,mul(d,f)));F+=f;A+=f*Math.sin((q.d.gim||0)*Math.PI/180)*Math.abs(r[1])}
+    const t=Math.hypot(L[0],L[2]),x={k,f:A>0?t/A:t>1?Infinity:0,miss:F?t/F:0,F};if(!worst||x.f>worst.f)worst=x}
+  return worst}
 function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
     air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
     src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
@@ -423,11 +445,12 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
+  {const T=trimOf(s);if(T&&T.f>0.6)out.push(['warn',`Stage ${T.k} can't hold its course at full thrust: the thrust misses the centre of mass by ${(T.miss*100).toFixed(0)} cm (balance the other side, a counterweight, or deploy after the burn)`])}   // trim (Q337)
   // a payload fairing (Q337): what stands above its ring but isn't inside its outline meets the air
   for(const f of s.parts.filter(p=>p.profF)){const o=s.parts.filter(q=>q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<f.d.r+.5);
     if(o.length)out.push(['warn',`${o[0].d.name}${o.length>1?` and ${o.length-1} more part${o.length>2?'s':''}`:''} stick${o.length>1?'':'s'} out of the fairing: a longer shell, or a 2.5 m fairing (the part's options)`])}
   // left deployed in the Assembly (Q328): it rolls out that way
-  const wg=s.parts.filter(p=>p.on&&p.d.wing&&p.dep);if(wg.length)out.push(['warn',`Solar wing${wg.length>1?'s':''} deployed at launch: thick air tears ${wg.length>1?'them':'it'} off past ${(Math.min(...wg.map(p=>p.d.qMax))/1000).toFixed(1)} kPa (retract in the Assembly; P deploys in flight)`]);
+  const wg=s.parts.filter(p=>p.on&&unfolds(p.d)&&p.dep);if(wg.length){const nm=[...new Set(wg.map(p=>p.d.wing?'solar wing':'boom antenna'))].join(' and ');out.push(['warn',`${nm[0].toUpperCase()+nm.slice(1)}${wg.length>1?'s':''} deployed at launch: thick air tears ${wg.length>1?'them':'it'} off past ${(Math.min(...wg.map(p=>p.d.qMax))/1000).toFixed(1)} kPa (retract in the Assembly; P deploys in flight)`])}
   if(s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep))out.push(['warn','Landing legs down at launch: they ride up extended (retract in the Assembly; Y raises and lowers them in flight)']);
   if(s.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open))out.push(['warn','Cargo bay open at launch: the payload meets the air and its heat (close it in the Assembly; B in flight)']);
   return out}

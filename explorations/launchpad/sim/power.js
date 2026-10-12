@@ -48,9 +48,11 @@ function powerBudget(s,o={}){const b=o.body||TELLUS,r=o.r||b.R+(b.atm||0)+10000,
   const peak=powPeak(s),rtg=powRTG(s),use=powLoad(s),avg=peak*(1-ecl)+rtg,tE=ecl*T,needWh=Math.max(0,use-rtg)*tE/3600,battWh=powCap(s)/3600;
   return{peak,rtg,use,avg,ecl,T,tE,needWh,battWh,alt:(r-b.R)/1000,ok:avg>=use&&battWh>=needWh}}
 // solar wings out ('out') or folded ('in'): instant for now (the look beat can animate them)
-function wingOp(s,op){const o=op==='out';let n=0;for(const p of s.parts)if(p.on&&p.d.wing&&!!p.dep!==o){p.dep=o;n++}
-  if(n){HOOK.rebuild();HOOK.msg(o?'Solar wings out':'Solar wings folded')}return n}
-const wingsOut=s=>s.parts.some(p=>p.on&&p.d.wing&&p.dep);
+// a boom antenna (fold, Q337) unfolds and folds with them
+const unfolds=d=>!!(d.wing||d.fold);
+function wingOp(s,op){const o=op==='out';let n=0,w=0;for(const p of s.parts)if(p.on&&unfolds(p.d)&&!!p.dep!==o){p.dep=o;n++;if(p.d.wing)w++}
+  if(n){HOOK.rebuild();const nm=w===n?'Solar wings':w?'Solar wings and antennas':'Antennas';HOOK.msg(`${nm} ${o?'out':'folded'}`)}return n}
+const wingsOut=s=>s.parts.some(p=>p.on&&unfolds(p.d)&&p.dep);
 // ---- a registered satellite's power between flights (space session, QUEUE Q27; NOTES § v1.68's "what a flat battery does
 // to their service is the space lane's"). At registration the entry keeps its steady state for its own orbit (q.pw, from
 // powerBudget) and its charge (q.Ewh). A power-negative design drains its battery between flights; once flat it works

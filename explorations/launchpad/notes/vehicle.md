@@ -1442,3 +1442,32 @@ Test `vehicle-12`. `--smoke` all pass.
   shielded, the event after separation, the mass and two halves at the drop, a short shell's warning, the 2.5 m
   fairing's default length); checked in the browser (the cutaway, the length row, the staging chip, the whole shell on
   the pad, a jettison in flight). TESTING 228.
+
+## v1.147 — side antennas, side boxes, trim (2026-10-12, vehicle session, QUEUE Q337 part 2; PROBES § 3.1, 3.2, 4)
+
+- **Antennas on the side** (`sim/vessel.js` `PARTS`, kind `ant`, so contracts, the registry and `KIT` count them as
+  before): the **whip** (`whip`, survives the air, whip gain) and the **boom antenna** (`bant`, `fold`: it rides folded,
+  **P** unfolds it with the solar wings, `gain` 5 once out, torn off above `qMax` 1.5 kPa while out, by `powerStep` like
+  a wing; it opens with *The beeper*, as the wing does). The inline cone `ant` is now *Cone antenna (early whip)*;
+  presets and old saves keep it.
+- **Gain** (`antOf`, `sim/space.js`, space lane): the best antenna aboard sets G (a boom antenna's gain only once
+  unfolded; a registry entry's shape counts it out); P still adds per antenna. **`unfolds(d)`** (`sim/power.js`) = a
+  wing or a `fold` part: `wingOp`, `wingsOut`, the P key, the Assembly's *deploy* (Q328) and the Rollout warning use it.
+- **Side boxes** (PROBES § 3.1): `scam`, `ssci`, `sbatt`, `scomp`, the camera, instrument package, battery and computer
+  as boxes on the skin, the same numbers and kinds. **`kin`** names the inline part whose know-how, certification and
+  production line they share (`kinOf` in `sim/program.js`, economy's file: `certOf`, `khUse`, `khMark`, `prodLine`), so
+  a side camera isn't "new to us" when the camera has flown.
+- **Trim** (PROBES § 4): **`trimOf(s)`** (`sim/vessel.js`) walks the stages as they light (full tanks, what is still
+  attached): the thrust's moment about the centre of mass, over the steering it has (each lit engine's sideways push at
+  full gimbal about the CoM, plus the reaction wheels); the worst stage, with the miss in metres. The Assembly's
+  *Aerodynamics & structure* block has a **Trim** line (green under 20%, amber under 60%, red beyond); the Rollout warns
+  past 60%. A **dashed thrust line** from stage 1's thrust centre is drawn when it misses the CoM by 1 cm or more, and
+  the **CoM marker** now sits at the real centre of mass, off the axis when it is (`app/render.js`).
+- **The folding boom moved out** to **Q341**: a part whose tip mount (and whatever rides it) changes place when it
+  deploys needs parts that move in flight (layout, joints, mass, inertia, drawing), more than a part. Everything else
+  in Q337 is done.
+- Placeholder looks (look & sound to restyle): the whip a rod on a foot, the boom antenna a canister that swings out a
+  thin boom with an element, the boxes on struts with a lens, louvers or a grille. Tests `vehicle-18` (folded fits a
+  fairing at whip gain, unfolds to ×5 and says so, warns and doesn't fit when out at launch, tears off out in air, a
+  registry shape's gain, the side camera counts and moves the CoM, shares the camera's know-how) and `vehicle-19`
+  (symmetric 0%, a side camera 1.5%, a side tank 52%, one side booster 96% and the warning). TESTING 229.

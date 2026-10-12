@@ -28,7 +28,9 @@ const linkRate=(P,Gt,Gr,d)=>LINK_K*P*Gt*Gr/(d*d);
 // slow-scan; a telemetry reading, TLM_BITS.
 const CAM_BPS=1e5,REC_CAP=3.6e8,IMG_FRAME=1.5e6,FAR_BITS=2e4,TLM_BITS=1e3;
 // a vessel's (or a registry entry's) radio: its antennas' power at whip gain; none aboard: a 1 W beacon
-const antOf=parts=>{const n=(parts||[]).filter(p=>(p.on!==false)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant').length;return n?{P:P_RADIO*n,G:G_WHIP}:{P:1,G:G_WHIP}};
+// (vehicle, Q337) the best antenna sets the gain: a boom antenna's `gain` once unfolded (a registry entry's always is), else the whip's
+const antOf=parts=>{const A=(parts||[]).filter(p=>(p.on!==false)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant'),n=A.length;
+  const g=A.reduce((m,p)=>{const d=p.d||PARTS[p.k];return Math.max(m,d.gain&&(!p.d||!d.fold||p.dep)?d.gain:1)},1);return n?{P:P_RADIO*n,G:G_WHIP*g}:{P:1,G:G_WHIP}};
 const satRadio=q=>q.ant?{P:P_RADIO*q.ant,G:G_WHIP}:antOf(q.shape);   // a registry entry's radio, from its antenna count
 // a registry entry's link home at program time T (space Q186): r is its position in its body's frame then (default: on
 // its rails). Around Tellus: a ground station in view; elsewhere: Tellus not hidden behind the body, and the rate (by
