@@ -5560,3 +5560,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Branch housekeeping:** `terrain` was 3 commits of Q19 WIP behind a pre-HDR `main`; saved as branch **`q19`**
   (pushed), and `terrain` reset to `main`.
 - **Next for world:** Q19, re-port `q19` onto Q314's HDR passes (headless first), then its timing A/B on a quiet machine.
+- **Then Q19, re-ported** (same session): branch `q19-hdr` (`04bc59b`) = `main` + the terrain G-buffer pass, conflicts
+  resolved around Q313's half-res cloud slab and the desk guard (PTERR runs after the slab, reads the pre-pass depth on
+  unit 5, the sky reads it on unit 9; the HDR composite binds 0–5). Smoke passes headless. **Not run in a browser:** the
+  machine had 35.2 of 38.2 GB committed (22 Chrome, 3 Node processes from other sessions), the conditions that stopped
+  Q19 twice before. Next: on a quiet machine, check it pixel-identical to `main` on Low and High, then the timing A/B
+  (sky ms at the grazing-hills view; first-load link time), then merge. Claim cleared.
