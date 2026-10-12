@@ -461,12 +461,11 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
-Open design questions get a D row here (**next: D18**); answered ones go to [`DECISIONS.md`](DECISIONS.md) as one line, and the row leaves.
+Open design questions get a D row here (**next: D19**); answered ones go to [`DECISIONS.md`](DECISIONS.md) as one line, and the row leaves.
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready on **W14's default** (paperwork office, instrument-panel cockpit, poster headings; Caio may override): plan first, with flow |
-| D18 | **The beauty pass** ([`BEAUTY.md`](BEAUTY.md) § 7, Caio 2026-10-11): (1) the register: 1960s press photography with a LUT per era / painterly / neutral; (2) stars set by exposure with a floor; (3) HDR and exposure before any effect; (4) a subtle galaxy; (5) game stills for most items, mock-ups only for the sky and the planet | — | — | 📝 | **waiting on Caio; defaults stand if silent** |
 
 ---
 
@@ -484,7 +483,7 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - look & sound (effects, pipeline) — **BEAUTY B0, foundations** ([`BEAUTY.md`](BEAUTY.md) § 4): half-res buffers for smoke, near clouds, vapor and impingement (the pad, clouds and vapor views draw at 45–55 % resolution today); an HDR scene tone-mapped once (AgX); auto-exposure; bloom on HDR; a 32³ grade LUT with vignette and grain; settings folded to Low/High; reference views refreshed (1, 4–9, 114–126 now on the desk; the "impact" label in 60–72; 90–93 miss the fireball) plus liftoff, max-q, staging, orbit sunrise, Tellus at 4,000 km, Selene at 100 km. First of the pass; on D18.3's default
-- look & sound (parts & pad) — **BEAUTY B1, the craft**: contoured bells and ogive noses with smooth profile normals; a planet-disc fill and reflection (no more brown "ground" in orbit); ship shadow map (High); surface pass (stringers, roughness breakup, joint AO, soot by burn time, roll-pattern paint per school; absorbs Q259 if sampling); cryogenic frost, vent wisp and the ice fall at ignition
+- look & sound (parts & pad) — **BEAUTY B1, the craft**: contoured bells and ogive noses with smooth profile normals; a planet-disc fill and reflection (no more brown "ground" in orbit); ship shadow map (High); **greebles in real geometry** (raceways, feed lines, ullage motors, turbopumps and ducts, handrails, antennas; per school and era, a few hundred vertices a part, dropped with distance; B1.5); surface pass (stringers, roughness breakup, joint AO, soot by burn time, roll-pattern paint per school; absorbs Q259 if sampling); cryogenic frost, vent wisp and the ice fall at ignition
 - look & sound (effects) — **BEAUTY B2 + B3 + B4**: sunlit plume scattering (the twilight plume), vacuum plumes faint and propellant-coloured (not brown fog), structured sea-level cores, Mach disk, palettes against photos, a long contrail, heat haze (High); stacked flickering vapor rings, max-q buffet; the re-entry hull glowing by temperature, plasma in HDR, a ragged wake with ablator sparks
 - look & sound (sky & bodies) — **BEAUTY B5 + B6** (with Q253's mock-ups first; absorbs Q268 and Q250): the galaxy baked to a cube map per program (out of `SKY_FS`), stars kept sharp, set by exposure, a real sun; Tellus's continents legible from mid orbit, a thin limb, coloured terminator, airglow, a transmittance table replacing `scatter`'s inner loop; sea Fresnel and sunglint; city lights with mips; Selene in its own pass with filtered, non-repeating craters and the opposition surge. Every item shrinks `SKY_FS` or pays for what it adds (Q19)
 - world — **BEAUTY B6.6**: Selene's ground at the lander (views 112–113) is a flat plane: GROUND's relief should show there; find why

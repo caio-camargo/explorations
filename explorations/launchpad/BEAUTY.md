@@ -1,6 +1,6 @@
 # BEAUTY — the beauty pass
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
-**Status**: draft, **D18 open** (§ 7). Defaults stand if Caio is silent.
+**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
+**Status**: **D18 answered 2026-10-12 (Caio): the defaults and the order** (§ 7). Lanes build from § 4–6.
 **Purpose**: Caio (2026-10-11): "beautify the game some more", on what the player sees most and the biggest moments:
 launch to space, the planet and other bodies seen from above, the craft, the flames, the air effects, re-entry, the
 sky. Detail without weight. This doc is what's wrong today (stills and frame times), what to change, in what order, at
@@ -85,7 +85,21 @@ plumes 4–13 · pad plume 11–23 · ignition 11–13 · vapor 9–15 (side boo
 4. **Surface pass** on the existing procedural detail: stringers and ribbing on interstages and skirts, a roughness
    breakup so paint reads as metal, darker ends at joints, soot that climbs with burn time, a **roll pattern** paint
    option per school (POWERS). Fixes Q259's soft paint if it's sampling, not mesh.
-5. **Cryogenic frost and the ice fall:** frost on LOX/LH₂ tanks on the pad (marks have frost already), a vent wisp,
+5. **Greebles: small details in real geometry** (Caio, 2026-10-12: self-shadowing "would suggest some appropriate
+   greebling"). Shader detail stays for what is flat (seams, rivets, paint); a short kit of real meshes for what stands
+   proud of the skin, because only geometry casts shadows and breaks the silhouette:
+   - **along tanks:** cable raceways (the long tunnels down a Saturn's side), exposed feed lines between stages,
+     umbilical plates and their doors;
+   - **at interstages and skirts:** ullage and retro motors, separation springs, stringer ribs on open trusses;
+   - **on engines:** the turbopump, the gas-generator exhaust duct (the F-1's), feed lines into the bell, gimbal
+     actuators (Q23 draws the gimbal);
+   - **on capsules and probes:** handrails, antennas, thruster quads with their nozzles, hatch hinges, vents.
+
+   Rules: chosen per part from the part's data (no random scatter), styled **per school and era** (POWERS: Steppe's
+   exposed plumbing, Cape's clean raceways, Isle's commercial fairings); a few hundred vertices per part, dropped
+   beyond a distance (they read only up close); ambient occlusion baked under each (free), and the High shadow map
+   (B1.3) gives the raceway its shadow line down the tank. Placed on the part, so the builder's attach rules ignore them.
+6. **Cryogenic frost and the ice fall:** frost on LOX/LH₂ tanks on the pad (marks have frost already), a vent wisp,
    ice sheets falling at ignition (the Apollo slow-motion look). The single most "1960s launch" detail.
 
 ### B2 — the flames
@@ -152,7 +166,8 @@ plumes 4–13 · pad plume 11–23 · ignition 11–13 · vapor 9–15 (side boo
 | B1.1 bells, noses, normals | ~0 | same | — | parts & pad |
 | B1.2 planet-disc light | ~0.05 ms | same | — | parts & pad |
 | B1.3 ship shadow map | 0.3–0.6 ms | off | — | parts & pad |
-| B1.4–5 surface pass, frost, ice | ~0.1 ms + particles | fewer particles | — | parts & pad |
+| B1.4, 1.6 surface pass, frost, ice | ~0.1 ms + particles | fewer particles | — | parts & pad |
+| B1.5 greebles (geometry) | ~0.1–0.3 ms (vertices, shadow pass) | dropped sooner | — | parts & pad |
 | B2 plume scatter, palettes, diamonds | +0.1–0.3 ms | fewer steps | — | effects |
 | B2.6 contrail, heat haze | 0.2–0.4 ms | haze off | — | effects |
 | B3 vapor rings, buffet | ~0.1 ms | off (as today) | Q250 fix touches it | effects |
@@ -167,11 +182,13 @@ plumes 4–13 · pad plume 11–23 · ignition 11–13 · vapor 9–15 (side boo
 1. **B0** (frame time, HDR, exposure, views). Without it every later item is paid in resolution.
 2. **B1.1–1.2 and B4.1–2** (silhouettes, planet light, hull glow, plasma in HDR): small, seen in every flight.
 3. **B5 and B6.2/6.5** (the sky and the bodies, shrinking `SKY_FS` as they go), mock-ups first.
-4. **B2** (flames), **B1.3–1.5** (shadows, surface, frost), **B3**, **B6.1/6.3/6.4**.
+4. **B2** (flames), **B1.3–1.6** (shadows, surface, greebles, frost), **B3**, **B6.1/6.3/6.4**.
 
 Each item ships with before/after stills for Caio, its GPU ms on both GPUs, and a TESTING row.
 
 ## 7. The calls (D18), defaults if silent
+
+*Answered 2026-10-12, Caio: "yes, agreed with your priorities": the defaults below, and the order in § 6.*
 
 1. **The register.** (a) **1960s press photography** (grounded, warm, a light film grade; McCall framing in big
    moments); (b) painterly (Bonestell/McCall posters: saturated, dramatic, less real); (c) neutral modern render.
@@ -187,6 +204,7 @@ Each item ships with before/after stills for Caio, its GPU ms on both GPUs, and 
 
 ## Version history
 - 0.1.0 (2026-10-12): first draft: audit, before stills, research, plan B0–B6, D18.
+- 0.2.0 (2026-10-12): D18 answered (defaults, the order); B1.5 greebles in real geometry (Caio).
 
 ## Sources
 Research and audit 2026-10-12 (design desk). Photography: NASA Earth Observatory "Where are the stars?"
