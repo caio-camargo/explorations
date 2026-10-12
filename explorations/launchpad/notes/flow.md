@@ -920,7 +920,7 @@ between flights paid nothing on arrival. Now it does:
   (in `sim/program.js` beside `stagedTick`) pays both shares still owed: news "Arrived at Selene: … pays its second
   share". The completion share is unchanged: a mission still completes in a flight.
 - **Only for what it was launched for (W11).** `satRegister` keeps the flight's open missions on every registry entry
-  (`q.open0`, `q.crewed`), and `stagedMission` reads them as it reads `R.open0`. Entries registered before v1.142 have
+  (`q.open0`, `q.crewed`), and `stagedMission` reads them as it reads `R.open0`. Entries registered before v1.143 have
   none and count for any open mission.
 - **Shown before it happens.** `cruisePayNote(q, B)` gives "The far side pays 96M on arrival". Mission control's Flight
   row shows it in green under the vessel's next event (`cruiseNext` now returns the moon it's heading into as `to`),
