@@ -442,3 +442,38 @@
   let maxP = 0, offP = 0; for (let T = 0; T < 2; T += 0.1) { const w = D.nextWindow(pr, T); maxP = Math.max(maxP, w.wait); offP = Math.max(offP, Math.abs(D.dot(D.norm(D.fromPF(D.TELLUS, D.SITES[0].u, w.day * D.DAY_S)), n))); }
   check('windows: a 30° plane passes over the equatorial pad twice a rotation (never over half a day’s wait), the pad in the plane at the window', maxP <= 0.5 + 1e-6 && offP < 1e-6, `longest wait ${maxP.toFixed(3)} d; off the plane ${offP.toExponential(1)}`);
 }
+
+// econ-21. Rivals as programs from epoch 1 (economy session, QUEUE Q188, W26.1; NOTES § "Q188 amendment"): each rival
+// works through the race's firsts with progress, a treasury and attempts that can fail; RIVALS is the forecast; worlds
+// differ; a first we win spurs the rivals; old saves and defections rebuild the state.
+{
+  const D = new Function(src + 'return {raceSchedule,rivTick,rivRate,rivSpur,raceTick,missionComplete,careerMove,RACE,POWERS,MISSIONS,PROG,HOOK,flav,archOf,chooseStart,setHome:h=>{HOME=h;PROG.home=h},get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v}};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const fresh = (seed, day = 0) => { Object.assign(P, { homeArch: null, wseed: seed, day, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 1, done: {}, raceLost: {}, raceAnn: {}, staged: {}, riv: null, comm: 0 }); D.setHome(0); D.RIVALS = D.raceSchedule(); D.chooseStart('agency'); };
+  const W = D.POWERS, racer = W.find(p => p.i !== 0 && D.archOf(p.i) === 'openSuper'), res = W.find(p => p.i !== 0 && D.archOf(p.i) === 'resource');
+  fresh(1000);
+  const S0 = D.RIVALS, ws = [1000, 1077, 1154].map(s => { fresh(s, 300); return D.RACE.map(id => (D.RIVALS[id] || {}).day).join('/'); });
+  check('rivals: at day 0 every first has a forecast rival in the future; worlds differ (a seeded program, not one schedule)',
+    D.RACE.every(id => S0[id] && S0[id].day > 0 && D.archOf(S0[id].i) !== 'frugal') && new Set(ws).size > 1, `day 0: ${D.RACE.map(id => `${id} ${W[S0[id].i].root}@${S0[id].day}`).join(', ')}; at day 300 in three worlds: ${ws.join(' · ')}`);
+  fresh(1000); const r = P.riv[racer.i]; r.k = 0; r.p = r.w - 1e-3; news.length = 0;
+  D.rivTick(1, () => 0.999);
+  const failed = Math.abs(r.p - r.w * 2 / 3) < 1e-9 && r.k === 0 && news.some(t => /attempt at The beeper fails/.test(t));
+  r.p = r.w - 1e-3; D.rivTick(1, () => 0); D.raceTick();
+  check('rivals: reaching the work is an attempt: a failure sets progress back a third (the open superpower\'s is news); a success is a real day in RIVALS, and the race is lost',
+    failed && r.k === 1 && r.got.beeper != null && D.RIVALS.beeper.i === racer.i && D.RIVALS.beeper.day <= P.day && P.raceLost.beeper === racer.i, `${news.join(' | ')}; got ${JSON.stringify(r.got)}`);
+  fresh(1000); const before = D.RIVALS.hop.day, rate0 = D.rivRate(racer.i, P.riv[racer.i], 1);
+  D.missionComplete(D.MISSIONS.find(m => m.id === 'beeper'), null); const rate1 = D.rivRate(racer.i, P.riv[racer.i], 1);
+  D.rivTick(1, () => 0.5);
+  check('rivals: a first we win spurs every rival still racing for it (× 1 + ½ prestige appetite, a year), and their forecasts come closer',
+    Math.abs(rate1 / rate0 - (1 + 0.5 * D.flav(racer.i).pri.prestige)) < 1e-9 && P.riv[racer.i].spur === P.day + 365 && D.RIVALS.hop.day <= before, `rate ×${(rate1 / rate0).toFixed(3)}; hop forecast day ${before} → ${D.RIVALS.hop.day}`);
+  fresh(1000); const rr = P.riv[res.i]; P.comm = -1; const bust = D.rivRate(res.i, rr, 1); P.comm = 1; const boom = D.rivRate(res.i, rr, 1); P.comm = 0;
+  check('rivals: a resource state races on its commodity money (a bust halves its pace, a boom adds half)', Math.abs(bust / boom - 1 / 3) < 1e-9, `bust ${bust.toFixed(5)}/d, boom ${boom.toFixed(5)}/d`);
+  fresh(1000, 400); const ff = D.RACE.filter(id => D.RIVALS[id] && D.RIVALS[id].day <= 400);
+  Object.assign(P, { done: { beeper: { day: 50, flight: 2 }, hop: { day: 120, flight: 3 } } }); P.riv.day = 400;
+  const keepRacer = JSON.stringify(P.riv[racer.i]);
+  D.careerMove({ kind: 'defect', power: racer.i, amt: 50 });
+  const oldHome = P.riv[0];
+  check('rivals: an old save (no state) fast-forwards to today; a defection keeps the other rivals\' programs, and the old home races on from the firsts we flew for it',
+    ff.length >= 2 && P.riv.home === racer.i && !P.riv[racer.i] && oldHome && oldHome.k === 2 && oldHome.got.beeper === 50 && oldHome.got.hop === 120 && P.riv[res.i] != null && keepRacer.length > 0,
+    `by day 400 rivals had ${ff.join(', ')}; old home ${JSON.stringify(oldHome)}`);
+}

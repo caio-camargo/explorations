@@ -325,7 +325,7 @@ const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on c
 const OWN_TONE={openSuper:'Live on every channel; the press room erupts.',closedSuper:'The bulletin, read after the fact: "accomplished as planned."',
   rising:'The nation takes its place among the leaders.',frugal:'For less than a new motorway bridge, the science desk notes.',
   resource:'A world record, the palace announces, on the largest screen in the capital.',security:'State media: a successful test, the site reports.'};
-function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
+function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
     income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}

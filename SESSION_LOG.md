@@ -5370,3 +5370,21 @@ left besides the M5-gated ones. Caio's playtest notes for these: TESTING 205–2
   `app/input.js` with space's `revertFlight()` (Q257), both kept.
 - **Next for flow:** Q261 (map layers), Q262 (map focus), Q271 (heat and load needles: plan first), Q241 R3/R4.
 
+## 2026-10-11 — Claude (launchpad economy session): Q188, rivals as programs from epoch 1 (v1.130)
+
+**Summary:** Caio's W26.1, built. Measured first: the seeded `raceSchedule` gave every world and every save the same race
+(Mirtov on days 83 / 176 / 245 from 4 of 5 homes). Now each rival is a coarse program (`PROG.riv`, `rivTick`):
+progress through the race's firsts, its own treasury (commodity cycle, military tension), attempts that can fail (news
+by openness), and a spur when we win a first (× 1 + ½ prestige appetite for a year, halved after measuring). `RIVALS`
+became the forecast, so the panel, the news and `raceTick` are unchanged. The pacing held: the mean rival days are
+within ~4 % of the old formula's expectation over 20 worlds per home, with spread between worlds. `career.mjs 4 8`: the
+runner wasn't first to orbit in 27 of 144 runs (19 under the old schedule, 17 with no spur).
+**Files changed:** `explorations/launchpad/sim/contracts.js`, `sim/program.js` (one call in `missionComplete`),
+`tests/economy.mjs` (econ-21, 5 checks), `notes/economy.md` (v1.130; the Q188 amendment in § "Plan: rivals as programs"),
+`QUEUE.md` (Q188 ✓, W38, a Proposed line), `TESTING.md` (row 212), `ACTIVE_WORK.md`.
+**Tests:** `node test.mjs` all passed, after bumping TESTING's next-free counter; again after merging main (13 min).
+**Merge (2026-10-11, after the NOTES split):** renumbered v1.128 → v1.130, TESTING 210 → 212 (flow and vehicle took them); v1.130 and the Q188 amendment moved into `notes/economy.md`, NOTES.md kept as main's index plus one line. `check_numbers.mjs` missed the version collision on the pre-split branch (QUEUE *Proposed*, platform).
+**Next steps:** Caio answers W38 (defaults built). Q188 slice 2, the race panel by openness (with flow). Q206, the
+commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; re-plan for W23's amendment), Q184
+(routines; W27's amendment), Q187 (plan).
+

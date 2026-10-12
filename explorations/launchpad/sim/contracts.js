@@ -135,17 +135,48 @@ function offerRisk(c){const out={now:[],leak:[]};
   else if(c.src==='com'&&c.client!==HOME&&relOf(HOME,c.client)<-0.75)out.now.push(HOME);
   return out}
 const LEAK_P=c=>0.25+(c.client!==HOME?0.15:0);
-// ---- the race for firsts: rival programs reach the headline firsts on their own schedules (seeded, faster with tech and
+// ---- the race for firsts: rival programs reach the headline firsts (since Q188 as programs, below; faster with tech and
 // economy). First in the world pays 1.5× and a big boost at home; second pays half.
 const RACE=['beeper','hop','orbiter'];
-// rival personalities in the schedule (QUEUE Q165, POWERS.md): a frugal power doesn't race (it partners); a rising power
-// copies, then catches up: it doesn't go for the first of the race's firsts, and runs the later ones half again as fast.
-// The draws are made for every power as before, so the others' schedules don't move.
-function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=null;
-  for(const p of POWERS){if(p.i===HOME)continue;const a=flav(p.i),arch=archOf(p.i),speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*a.pri.prestige);let t=0;
-    RACE.forEach((id,k)=>{const dt=(100+120*R())/speed;t+=arch==='rising'&&k>0?dt/1.5:dt;
-      if(arch==='frugal'||arch==='rising'&&k<1)return;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}})}
+// rivals as programs (QUEUE Q188, W26.1; NOTES § "Q188 amendment"): each rival works through the race's firsts in order,
+// progress p toward the work w its next first takes, at a rate from its speed (tech, economy, prestige appetite), its own
+// treasury (commodity cycle, military tension) and a spur (a first we won, for a year). Reaching w is an attempt that can
+// fail. RIVALS stays what the panel, the news and raceTick read: per first, the real day a rival got there, or the
+// forecast of the soonest. Personalities as before (QUEUE Q165, POWERS.md): a frugal power doesn't race (it partners);
+// a rising power copies, then catches up: its beeper never counts, the later firsts run half again as fast.
+const RIV_K=150,RIV_SPUR_D=365;
+const rivSpeed=i=>{const p=POWERS[i];return p.tech*Math.sqrt(p.econ)*(0.6+1.6*flav(i).pri.prestige)};
+function rivMoney(i){const F=flav(i);return F.money==='commodity'?Math.max(0.2,1+0.5*(PROG.comm||0)):F.money==='military'?0.8+0.4*tensionOf(i):1}
+function rivRate(i,r,k=r.k,mean){if(archOf(i)==='frugal'||k>=RACE.length)return 0;
+  return rivSpeed(i)/RIV_K*(archOf(i)==='rising'&&k>0?1.5:1)*(mean?1:rivMoney(i)*(r.spur>PROG.day?r.spurK:1))}
+const rivCounts=(i,k)=>!(archOf(i)==='rising'&&k<1);
+// a new game rebuilds every rival, fast-forwarded to today at mean rates (no rolls); a new home keeps the rivals' programs,
+// drops its own, and the old home joins the race with the firsts we flew for it
+function rivInit(){const R=rng((PROG.wseed^0x41c3)>>>0),old=PROG.riv,keep=old&&old.day<=PROG.day,riv={home:HOME,day:PROG.day};
+  for(const p of POWERS){if(p.i===HOME)continue;if(keep&&old[p.i]){riv[p.i]=old[p.i];continue}
+    const r=riv[p.i]={k:0,p:0,w:0.75+0.5*R(),got:{},spur:0,spurK:1};
+    if(keep&&p.i===old.home){while(r.k<RACE.length&&PROG.done[RACE[r.k]]){r.got[RACE[r.k]]=PROG.done[RACE[r.k]].day;r.k++}continue}
+    let left=PROG.day;while(left>0&&r.k<RACE.length){const rt=rivRate(p.i,r,r.k,true);if(!(rt>0))break;const need=(r.w-r.p)/rt;
+      if(need>left){r.p+=rt*left;break}left-=need;if(rivCounts(p.i,r.k))r.got[RACE[r.k]]=Math.round(PROG.day-left);r.k++;r.p=0;r.w=0.75+0.5*R()}}
+  return riv}
+function rivForecast(){const out={};for(const id of RACE)out[id]=null;if(!PROG.riv)return out;
+  for(const p of POWERS){const r=PROG.riv[p.i];if(!r)continue;for(const id in r.got)if(!out[id]||r.got[id]<out[id].day)out[id]={i:p.i,day:r.got[id]};
+    let t=PROG.day,pp=r.p,w=r.w;for(let k=r.k;k<RACE.length;k++){const rt=rivRate(p.i,r,k);if(!(rt>0))break;t+=Math.max(0,w-pp)/rt;pp=0;w=1;
+      // a forecast is never today: raceTick takes a first as lost only once an attempt has really succeeded
+      const day=Math.max(Math.floor(PROG.day)+1,Math.ceil(t)),id=RACE[k];if(rivCounts(p.i,k)&&(!out[id]||day<out[id].day))out[id]={i:p.i,day}}}
   return out}
+function raceSchedule(){if(!PROG.riv||PROG.riv.home!==HOME||PROG.riv.day>PROG.day)PROG.riv=rivInit();return rivForecast()}
+function rivTick(d,R){if(!PROG.riv||PROG.riv.home!==HOME||PROG.riv.day>PROG.day)PROG.riv=rivInit();
+  for(const p of POWERS){const r=PROG.riv[p.i];if(!r)continue;const rt=rivRate(p.i,r);if(!(rt>0))continue;r.p+=rt*d;
+    while(r.k<RACE.length&&r.p>=r.w){const id=RACE[r.k],M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,''),F=flav(p.i);
+      if(R()<Math.min(0.95,0.55+0.35*p.tech)){const day=Math.max(0,Math.round(PROG.day-(r.p-r.w)/Math.max(rt,1e-9)));r.p-=r.w;r.w=0.75+0.5*R();
+        if(rivCounts(p.i,r.k)){r.got[id]=Math.min(day,Math.round(PROG.day));if(PROG.done[id])HOOK.news(`${POWERS[p.i].name} gets there too: ${nm}`,'dim')}r.k++}
+      else{r.p=r.w*2/3;if(F.open>=0.6)HOOK.news(`${POWERS[p.i].name}'s attempt at ${nm} fails`,'ok');
+        else if(R()<0.4)HOOK.news(`Rumours from ${POWERS[p.i].root}: a launch failed, some say at ${nm}`,'ok');break}}}
+  PROG.riv.day=PROG.day;RIVALS=rivForecast()}
+// a first we win spurs every rival still racing for it: its budget × (1 + prestige appetite) for a year
+function rivSpur(id){if(!PROG.riv)return;for(const p of POWERS){const r=PROG.riv[p.i];if(!r||r.got[id]||!(rivRate(p.i,r,r.k,true)>0))continue;
+  r.spur=PROG.day+RIV_SPUR_D;r.spurK=1+0.5*flav(p.i).pri.prestige}}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
 // rivals' news by archetype (QUEUE Q103, POWERS.md § archetypes): the open superpower announces its attempts in advance,
@@ -156,7 +187,7 @@ const RIVAL_ANN={openSuper:30,closedSuper:-10},RIVAL_WIN={openSuper:(n,m)=>`Live
   security:(n,m)=>`${n} reports a successful "satellite test". Observers say: ${m}, a first`};
 function raceNews(id,r){const a=POWERS[r.i].arch,d=RIVAL_ANN[a];if(d==null||PROG.done[id]||(PROG.raceAnn||{})[id])return;if(PROG.day<r.day-Math.abs(d))return;
   (PROG.raceAnn=PROG.raceAnn||{})[id]=1;const M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,'');
-  HOOK.news(d>0?`${POWERS[r.i].name} announces an attempt at ${nm}, in about ${Math.max(1,Math.round(r.day-PROG.day))} days`:`Rumours from ${POWERS[r.i].root}: a probable attempt at ${nm} soon`,'warn')}
+  HOOK.news(d>0?`${POWERS[r.i].name} announces an attempt at ${nm}, in about ${Math.max(1,Math.round(r.day-PROG.day))} day${Math.round(r.day-PROG.day)>1?'s':''}`:`Rumours from ${POWERS[r.i].root}: a probable attempt at ${nm} soon`,'warn')}
 function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(r&&PROG.raceLost[id]==null)raceNews(id,r);if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
   PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news((RIVAL_WIN[POWERS[r.i].arch]||((n,m)=>`${n} gets there first: ${m}!`))(POWERS[r.i].name,M.name.replace(/^Passenger: /,'')),relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
@@ -254,7 +285,7 @@ function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();c
     HOOK.news(`Missed deadline: ${cTitle(c)} for ${POWERS[c.client].name}`,'bad')}
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
-  flavTick(d,R);decisionTick(d,R);cancelTick();raceTick()}
+  flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);raceTick()}
 // ---- ownership: what the program is. Shares that sum to 1: state stakes by power (st) and private capital (pv).
 // Everything scales with the shares, so a part-privatized agency sits between the archetypes:
 //  · budget day comes from each state shareholder, by its stake and its opinion of us; private capital pays nothing
