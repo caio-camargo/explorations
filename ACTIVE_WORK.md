@@ -61,6 +61,15 @@ the folders and branches keep their old names.
 > A branch with a section added to the old `test.mjs`: keep `main`'s `test.mjs` in the conflict, move your section to
 > your lane's file. NOTES § "Test shards".
 
+> **For every launchpad session, 2026-10-11 (design desk, in the window Caio called, W37): `NOTES.md` IS SPLIT.** The
+> build log is now `explorations/launchpad/notes/<area>.md` (foundations, vehicle, space, economy, world, flow, look,
+> platform), oldest first; `NOTES.md` is the index of every section. **Add your section at the bottom of your lane's
+> file** and its heading as one line in the index. Versions are still one series: `node check_numbers.mjs` reads all
+> the files. A branch from before the split: in the conflict keep `main`'s `NOTES.md`, then move your new sections
+> (and any lines you added inside an old section) into the area file that holds it. **Economy:** your Q188 branch has
+> `## v1.128 — rivals as programs` and a `### Q188 amendment` inside "Plan: rivals as programs": both go to
+> `notes/economy.md` (and v1.128 is taken: renumber).
+
 > **For every launchpad session, 2026-10-08 (control session, at Caio's request): `explorations/launchpad/TESTING.md`.** Caio
 > can't playtest for now, so this lists what nobody has played yet: 107 rows by area (try this / how to get there / looks right
 > if / owner). **When you ship something a person should try, add a row** (next free number, your session as owner) in the

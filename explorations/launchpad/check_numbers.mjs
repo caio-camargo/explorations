@@ -6,7 +6,9 @@
 // A collision is a number both sides added since their merge base with different text: run it after merging origin/main
 // into your branch (it then sees the repeat) or before (it sees the collision). Exit 1 on either. test.mjs `platform-3`
 // runs the in-tree half. The merge recipe: ACTIVE_WORK.md § Launchpad worktrees, NOTES § "Numbering".
-import { readFileSync } from 'node:fs';
+// NOTES is split by area since 2026-10-11 (W37): versions are read from every notes/*.md, or from NOTES.md at a ref older
+// than the split, as one series.
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +16,7 @@ const DIR = new URL('./', import.meta.url);
 const cells = l => l.split('|').map(c => c.trim());
 // series: which file, how a numbered line looks, the key, the text that names it (so the same entry on both sides isn't a collision)
 export const SERIES = [
-  { name: 'NOTES versions', file: 'NOTES.md', re: /^#{2,6} (v1\.\d+(?:\.\d+)?)(?=[\s—]|$)(.*)$/, text: m => m[2].replace(/^\s*—\s*/, '') },
+  { name: 'NOTES versions', file: 'NOTES.md', dir: 'notes/', re: /^#{2,6} (v1\.\d+(?:\.\d+)?)(?=[\s—]|$)(.*)$/, text: m => m[2].replace(/^\s*—\s*/, '') },
   { name: 'TESTING rows', file: 'TESTING.md', re: /^\| [✓~✗ ]*(\d+)(?: \(robot\))?(?: → P#\d+)? \|/,   // a played row: `✓ 12`, `~ 35 (robot)`, `✗ 12 → P#15` (qa-3's pattern)
     text: (m, l) => cells(l)[2] },
   { name: 'PLAYTEST rows', file: 'PLAYTEST.md', re: /^\| (\d+) \|/, text: (m, l) => cells(l)[3] },
@@ -33,10 +35,27 @@ export function scan(text, s) {
   return out;
 }
 
-// the in-tree half: [{series, key, lines}] for every number used twice. `read(file)` → text (defaults to this folder)
-export function repeats(read = f => readFileSync(new URL(f, DIR), 'utf8')) {
+// a split series (`dir`) scanned file by file into one map; `at.line` then reads "notes/space.md:120"
+export function scanAll(parts, s) {
+  const out = new Map();
+  for (const [f, text] of parts) for (const [key, at] of scan(text, s)) {
+    if (!out.has(key)) out.set(key, []);
+    out.get(key).push(...at.map(a => ({ ...a, line: s.dir ? `${f}:${a.line}` : a.line })));
+  }
+  return out;
+}
+// [[file, text]] of a series in this tree
+const localParts = s => {
+  if (s.dir && existsSync(new URL(s.dir, DIR))) return readdirSync(new URL(s.dir, DIR)).filter(f => f.endsWith('.md')).sort()
+    .map(f => [s.dir + f, readFileSync(new URL(s.dir + f, DIR), 'utf8')]);
+  return [[s.file, readFileSync(new URL(s.file, DIR), 'utf8')]];
+};
+
+// the in-tree half: [{series, key, lines}] for every number used twice. `read(file)` → text (defaults to this folder;
+// a split series reads its folder)
+export function repeats(read) {
   const bad = [];
-  for (const s of SERIES) for (const [key, at] of scan(read(s.file), s)) if (at.length > 1) bad.push({ series: s.name, file: s.file, key, lines: at.map(a => a.line) });
+  for (const s of SERIES) for (const [key, at] of scanAll(read ? [[s.file, read(s.file)]] : localParts(s), s)) if (at.length > 1) bad.push({ series: s.name, file: s.dir || s.file, key, lines: at.map(a => a.line) });
   return bad;
 }
 
@@ -55,10 +74,16 @@ export function nextFree(maps) {
 
 const git = (...a) => execFileSync('git', a, { cwd: fileURLToPath(DIR), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 });
 const atRef = (ref, f) => { try { return git('show', `${ref}:./${f}`); } catch { return ''; } };
+// [[file, text]] of a series at a ref: the split files if the ref has them, else the one file
+const refParts = (ref, s) => {
+  let names = [];
+  if (s.dir) try { names = git('ls-tree', '--name-only', ref, '--', s.dir).split(/\r?\n/).filter(f => f.endsWith('.md')); } catch {}
+  return names.length ? names.map(f => { const rel = f.slice(f.lastIndexOf(s.dir)); return [rel, atRef(ref, rel)]; }) : [[s.file, atRef(ref, s.file)]];
+};
 
 export function main(argv) {
   const i = argv.indexOf('--against'), ref = i >= 0 ? argv[i + 1] : 'origin/main';
-  const here = SERIES.map(s => scan(readFileSync(new URL(s.file, DIR), 'utf8'), s)), maps = [here];
+  const here = SERIES.map(s => scanAll(localParts(s), s)), maps = [here];
   let fails = 0;
   for (const r of repeats()) { fails++; console.log(`REPEAT  ${r.file}: ${r.key} on lines ${r.lines.join(', ')}`); }
   let against = 'no ref';
@@ -67,7 +92,7 @@ export function main(argv) {
     try { git('rev-parse', '--verify', '--quiet', ref); base = git('merge-base', 'HEAD', ref).trim(); } catch {}
     if (!base) against = `${ref} not found (fetch it, or --against none)`;
     else {
-      const theirs = SERIES.map(s => scan(atRef(ref, s.file), s)), was = SERIES.map(s => scan(atRef(base, s.file), s));
+      const theirs = SERIES.map(s => scanAll(refParts(ref, s), s)), was = SERIES.map(s => scanAll(refParts(base, s), s));
       maps.push(theirs); against = `${ref} (merge base ${base.slice(0, 7)})`;
       SERIES.forEach((s, j) => {
         for (const [key, mine] of here[j]) {
