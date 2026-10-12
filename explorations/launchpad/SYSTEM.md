@@ -1,5 +1,5 @@
 # SYSTEM — the star system catalog
-**Version**: 1.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-12
+**Version**: 1.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-12
 **Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
 revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
@@ -236,7 +236,7 @@ Adding bodies later is cheap, as long as a few things are fixed now.
 
 Names and looks stay cheap to change.
 
-### Proposed: the slow world (Caio's idea, 2026-10-12; not approved; D19)
+### The slow world (Caio's idea; approved 2026-10-12 with all four defaults, DECISIONS D19)
 
 Caio's idea: **a planet that turns very slowly, with a very long day and a very long night.** Hesper already turns
 slowly (243 program days), but its surface is hidden under 90 bar of hot cloud, so the day and night barely matter
@@ -263,7 +263,7 @@ reserved innermost slot with an airless world where the day and night drive play
 - **Free flavour:** with an e of 0.2, at some longitudes the sun rises, stops, sets again and rises once more near
   perihelion, as it does on Mercury.
 
-**Questions for Caio (D19; defaults hold if silent):**
+**Decided (D19, all four defaults):**
 1. **Which body?** *Default: the reserved innermost slot*, a Mercury analogue at 0.39 TU. Alternatives: give the long
    day to a new moon, or slow down an existing body.
 2. **How long a day?** *Default: the real 3:2 resonance, ~97 program days of sun and 97 of night.* Shorter (~20 days
@@ -293,6 +293,7 @@ adds them to QUEUE.md. Look and ground may start before M5.
 ---
 
 ## Version history
+- **1.1.3 (2026-10-12):** the slow world approved with all four defaults (D19).
 - **1.1.2 (2026-10-12):** proposed, not approved: the slow world in the innermost slot (Caio's idea; D19).
 - **1.1.1 (2026-10-11):** KSP's names ("Kerbol", "Jool") dropped; the star's mass kept, for play length (D15.6).
 - **1.1.0 (2026-10-09):** W20 round 2, approved by Caio: look twists for Hesper (night glow), Enyo (redder, the volcano),
