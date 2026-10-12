@@ -5463,5 +5463,5 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   know-how list scrolls inside the paper.
 - **Files:** `explorations/launchpad/PLAYROUTE.md`, `QUEUE.md` (Q292 ✓, unblocker row 1 → W16 for Caio),
   `ACTIVE_WORK.md`, this log. Created worktree `C:/Users/caioa/dev/launchpad-playtest` (branch `playtest`) on this machine.
-- **Next:** **W16, Caio plays sitting 1** (M1's finish line); feed what he says to playtest intake (Q60). QA's next
+- **Next:** **W16, Caio plays sitting 1** (M1's finish line); feed what Caio says to playtest intake (Q60). QA's next
   ready: Q215 (row 65's capsule flake), Q232, Q233.
