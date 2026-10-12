@@ -5595,3 +5595,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   QUEUE (Q270 ✓, one Proposed line), ACTIVE_WORK. Not seen in a browser (TESTING 226). Claim cleared.
 - **Next for world:** Q19's browser check and A/B on a quiet machine (`q19-hdr`); then Q324 / Q251 / Q268 (all 🖥), or
   Q105 / Q52.
+
+## 2026-10-12 — vehicle session: Q328 deploy in the Assembly (v1.145)
+
+- **Done:** legs, solar wings and bay doors can be set out in the Assembly (*extend all / retract all* in the toolbar, a *deployed* row in a part's right-click options); the craft rolls out and flies as left; the Rollout warns of each; `procKey` ignores `dep`. Test `vehicle-16`; TESTING 227; PLAYTEST #79 struck. Renumbered from v1.144/226 (world's Q270).
+- **Files:** `explorations/launchpad/builder.js`, `sim/vessel.js` (`assemble`, `launchWarnings`), `sim/procedures.js` (`procKey`), `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `PLAYTEST.md`.
+- **Tests:** full suite passed before merging main; after the merge, sections 1–147 passed and 148–196 were stopped by low memory. Caio pushed anyway and will playtest.
+- **Next for vehicle:** Q329 (action groups, builds on Q328 and the staging panel), then Q237/Q238, Q202.
