@@ -1307,7 +1307,7 @@ Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8
 
 Test `vehicle-12`. `--smoke` all pass.
 
-## v1.131 — why a landed rocket blew up (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
+## v1.133 — why a landed rocket blew up (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
 
 - **The cause:** toppling, and the physics is right. A stack on its engine bell pivots on its stance's edge once the feet
   stop; the swing (angular momentum m·v·h about that edge) has to lift the centre of mass over it. The Hopper (5.8 m,
@@ -1329,4 +1329,4 @@ Test `vehicle-12`. `--smoke` all pass.
   on its bottom part or its legs. Neutral for a rocket (all of them tip near 1 m/s); amber for a design with legs that
   still tips under 1.5 m/s.
 - **Not yet:** the quote is for the stack as built, not for what's left after the drops (the Orbiter's upper stage, a
-  lander stage); on Selene the threshold is √(g) lower (×0.41). Test `vehicle-13`; TESTING 213.
+  lander stage); on Selene the threshold is √(g) lower (×0.41). Test `vehicle-13`; TESTING 215.

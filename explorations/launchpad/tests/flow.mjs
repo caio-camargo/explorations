@@ -176,7 +176,7 @@
 // in-tray, not a folder tab, and its button (the tray's label) still answers data-ptab="inbox".
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const rooms = /const ROOMS=new Set\(\['program','debrief'\]\)/.test(page), gate = /if\(!inRoom\(\)\)\{adaptRes\(dtR\);render\(\);deskPhotoTick\(\)\}/.test(page);
+  const rooms = /const ROOMS=new Set\(\['program','debrief','mission'\]\)/.test(page), gate = /if\(!inRoom\(\)\)\{adaptRes\(dtR\);render\(\);deskPhotoTick\(\)\}/.test(page);
   const bare = (page.match(/(^|[^.\w])render\(\);/gm) || []).length;   // the one draw call is the gated one
   const body = /toggle\('room',inRoom\(\)\)/.test(page), tabs = /filter\(\(\[k\]\)=>k!=='inbox'&&/.test(page);
   const tray = /<button id="deskTrayN" data-ptab="inbox"/.test(H) && /<div id="deskTrayBox">/.test(H) && /deskLayout\(box,progGate\)/.test(page);
@@ -222,4 +222,26 @@
   const nav = /body\.mapv #nav\{width:130px/.test(H) && /\['N',f\.n,'#ff4a3a'\]/.test(page);
   check('flow-12: small fixes: node Delete, Recover vessel, one arc and one impact, no decay round the planet, the planets ring, Design table, crisp overlay, toolbar plate, navball on the map',
     del && rec && arcs && ring && named && crisp && plate && nav, `delete ${del} · recover ${rec} · arcs ${arcs} · ring ${ring} · named ${named} · crisp ${crisp} · plate ${plate} · navball ${nav}`);
+}
+
+// flow-13. Mission control (flow session, QUEUE Q241 R4; NOTES § UI "Plan: real screens"): a room (no 3D behind it) that
+// took the Network screen's place: C from the Program (N still works), the same opening rule (netOpen). A wall (clocks,
+// the ground track or the pads' calendar, the pads) over four consoles whose buttons are the Program's own. netModel's
+// fleet rows carry the registry id (or the dispatch's), and a decaying craft says when it re-enters, not "0 more days" (Q203).
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const room = /atMC\?'mission'/.test(page) && /\$\('mc'\)\.classList\.toggle\('hidden',!atMC\)/.test(page) && !/atNet|renderNetwork|id="net"/.test(H)
+    && /if\(s==='mission'&&!netOpen\(\)\)/.test(page) && /k:\['c','n'\],l:'C',d:'mission control/.test(page) && /<button id="bMC" data-go="mission"/.test(H);
+  const parts = ['mcClock', 'mcTrack', 'mcCal', 'mcPads', 'mcCons'].every(id => H.includes(`id="${id}"`)) && ['Flight', 'Network', 'Trajectory', 'Dispatch'].every(n => page.includes(`mcCon('${n}'`))
+    && ['data-fly', 'data-mc', 'data-devtake', 'data-devlose', 'data-adv'].every(d => new RegExp(`<button ${d}=`).test(page.slice(page.indexOf('function renderMission'))));
+  const font = H.includes('url(fonts/vt323.woff2)');
+  const X = new Function(src + 'return {netModel,newShip,PRESETS,satRegister,TELLUS,PROG,HOOK};')();
+  const P = X.PROG, T = X.TELLUS; X.HOOK.news = () => {}; X.HOOK.msg = () => {}; X.HOOK.save = () => {}; P.sats = []; P.day = 0;
+  const s = X.newShip(X.PRESETS.Probe), a = T.R + 200e3;   // a Probe at 200 km with its tanks emptied (as space's decay check)
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -Math.sqrt(T.mu / a)] }); X.satRegister(s, { day0: 0 });
+  const q = P.sats.at(-1); for (const o of q.shape) if (o.res) for (const k of ['fuel', 'gas']) if (o.res[k] > 0) { q.mass -= o.res[k] * 1000; o.res[k] = 0; }
+  const f = X.netModel().fleet.find(x => x.id === q.id);
+  const q203 = f && /re-enters in about/.test(f.next) && !/0 more days/.test(f.next) && f.t > 0;
+  check('flow-13: mission control is a room in the Network screen\'s place (C), a wall over four consoles using the Program\'s buttons; fleet rows carry ids; a decaying craft says when it re-enters (Q203)',
+    room && parts && font && q203, `room ${room} · parts ${parts} · font ${font} · fleet ${f ? f.next : 'no row'}`);
 }

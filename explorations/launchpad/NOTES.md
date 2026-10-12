@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
+**Version**: v2.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -19,7 +19,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 64 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 20 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 14 |
-| [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 30 |
+| [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 31 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
 
 ---
@@ -74,7 +74,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.119 — every part says what it does (2026-10-11, vehicle session, QUEUE Q248; PLAYTEST #46)
 - v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
 - v1.129 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
-- v1.131 — why a landed rocket blew up: toppling explained, a loss keeps its cause (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
+- v1.133 — why a landed rocket blew up: toppling explained, a loss keeps its cause (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -228,6 +228,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.115 — the Assembly as a scale model on a drafting table (2026-10-10, flow session at Caio's ask, QUEUE Q242; PLAYTEST #45)
 - v1.116 — the Debrief as the flight report on the desk (2026-10-10, flow session, QUEUE Q241 R2; PLAYTEST #6)
 - v1.128 — small playtest fixes: the toolbar, Recover vessel, node delete, the map's arcs, the Design table (2026-10-11, flow session; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254, Q258)
+- v1.131 — mission control, a room (2026-10-12, flow session, QUEUE Q241 R4; § "Plan: real screens"; Q203)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -261,6 +262,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Spent stages re-entering (2026-10-09, aerofx session)
 - Design pass: station modules, the arm, the rover (2026-10-09, aerofx session; visuals' and sats' code, Caio's call)
 - The crew's look, slice 1 (2026-10-09, effects beat, QUEUE Q195)
+- v1.132 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

@@ -360,3 +360,20 @@
   check('school pads: the four complexes build and stay on the sea platform\'s deck; buildPad and drawPadRig dispatch them; views 145–151',
     !out.length && /else if\(sch>=2\)\[arsenalPad,coastalPad,mountainPad,islePad\]\[sch-2\]\(a,TH,CO,STL,DK\)/.test(page) && /if\(RIG\.sch>=2\)return drawSchoolRig/.test(page) && /n >= 145 && n <= 151/.test(vj), out.join(' | '));
 }
+
+// aerofx-7. The desk's polish (look & sound parts & pad beat, QUEUE Q276, from Q242; v1.132). The drafting board's title
+// block is lettered with the design's name (the player's own if saved, v1.129) and its kit scale in a 5×7 font that
+// covers every letter, digit and the scale's punctuation, each glyph distinct; the mesh is keyed on what it shows; the
+// figure on the base plate is one of our crew in the program's suit.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const F = new Function(cut('const DESK_FONT=', '\n// what the desk shows') + ';return DESK_FONT')(), need = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-./';
+  const miss = [...need].filter(c => !F[c] || F[c].length !== 7 || F[c].some(r => !(r >= 0 && r < 32)) || !F[c].some(r => r));
+  const rows = [...need].map(c => F[c] && F[c].join()), dup = need[rows.findIndex((r, i) => rows.indexOf(r) !== i)];
+  const name = /sv=k&&SV\.find\(d=>K\(d\.stack\)===k\)/.test(page) && /String\(sv&&sv\.name\|\|typeof designName==='function'&&designName\(st\)/.test(page);
+  const keyed = /function deskMesh\(N\)\{const key=deskKey\(N\);if\(deskMeshes\.has\(key\)\)/.test(page) && /sc=`SCALE 1:\$\{N\}`/.test(page);
+  const crew = /crewFigure\(suitOf\(schoolOf\(0\),crewGen\(\)\),'stand',0\)/.test(page);
+  check('desk polish: the title block\'s font covers A–Z, 0–9 and ":-./" with distinct glyphs; the player\'s saved name, else the design\'s; the mesh keyed on name and scale; a suited crew figure',
+    !miss.length && !dup && name && keyed && crew, `missing ${miss.join('') || 'none'} · duplicate ${dup || 'none'} · name ${name} · keyed ${keyed} · crew ${crew}`);
+}

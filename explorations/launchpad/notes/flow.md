@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -538,7 +538,7 @@ for any craft other than the one you're flying.
    the pad could come later.
 3. **Mission control is its own screen**, opened after the first orbit, and the Network screen folds into it.
 4. **The Assembly moves into a hall** (a new 3D scene) with blueprint panels, rather than staying on the pad.
-5. **Order:** R0 → R1 (**built: § v1.114**, Q240) → R2 (**built: § v1.116**, Q241) → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
+5. **Order:** R0 → R1 (**built: § v1.114**, Q240) → R2 (**built: § v1.116**, Q241) → R3 → R4 (**built: § v1.131**, Q241), then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
    or M2 (R4).
 
 **Caio, 2026-10-10 (playtest, PLAYTEST #45): W35 closed; (4) overridden, the Assembly is a model on a desk, not a hall.**
@@ -819,3 +819,46 @@ one is open):
   pixels through a transform (`OV_K`). The glow's `shadowBlur` is scaled by hand, since it ignores the transform.
 - **Checks:** test `flow-12` (`tests/flow.mjs`). Probes: the delete, Recover vessel, the arcs at 61 km and 137 km
   periapsis, the terminal map, an ascent on the map. Robot `m1`, 127, `desk`.
+
+## v1.131 — mission control, a room (2026-10-12, flow session, QUEUE Q241 R4; § "Plan: real screens"; Q203)
+- **Mission control is a room** (`ROOMS` has `mission`; `go('mission')`, `atMC`) and takes the Network screen's place:
+  the old `#net` panel and `renderNetwork` are gone. **C** opens it from the Program (N still does), and the Program's
+  exit reads *Mission control [C]* (`bMC`). Same opening rule as before (`netOpen()`: something of ours out there, or a
+  dispatch queued); before that, C says so. In the room: **P** back to the office, **N** waits until the next event,
+  **W** flips the wall. `app/mission.js`; the CSS sits above the Debrief's in `index.html`.
+- **The look** follows the mock-up (`mockups/screens/`, `mission`) and W14: a dark control room, a wall of three CRT
+  screens over four consoles, amber text and a green ground track in VT323 (OFL, bundled in `fonts/` with its licence),
+  scan lines, lamps under each console (green nominal, amber worth a look, red needs you). The consoles go two by two
+  under 1000 px.
+- **The wall.** Left, clocks: the date as Y/D and a 24-hour clock of the day, the next event and when, the next planned
+  burn. Right, the pads: booked or free, the booking's launch (and whether it waits for its window), the launch site.
+  The middle screen has two pages:
+  - **Ground track · Tellus**: Tellus as a map (east to the right, the launch site in the middle) from the world's own
+    elevation grid (`WORLD.E`, 360×180, coasts lit). Each station's circle is where a satellite at 300 km is in view,
+    found along 36 bearings with `gsSees`, so a mountain's mask shows in the outline. Every craft of ours in Tellus orbit
+    gets half an orbit behind it (dashed) and one and a half ahead (solid), drawn red when its next burn falls out of
+    contact (`netLinks`' flag), and NO CONTACT by its name when it has none now.
+  - **Pads · next 180 days**: N1's calendar (`netCalHTML`, the old screen's drawing kept in `app/network.js`).
+- **The consoles** draw from `netModel()` and the registry and change nothing themselves: their buttons are the
+  Program's (`data-fly`, `data-mc`, `data-devtake`, `data-devlose`, `data-adv`), so they act as they did there, and the
+  room redraws after any click in it.
+  - **Flight**: the fleet, soonest event first; *Fly* where it can be flown, *Take it / Let go* on a dispatch that
+    needs you; a cruise entry says what it does next (`cruiseNext`).
+  - **Network**: the stations, each craft's link home over the next day (in contact now, share, longest gap, relays,
+    the out-of-contact burn flag), each body's coverage.
+  - **Trajectory**: planned burns (Δv, when, how many more), who flies each, *Hand to mission control / Take it back* or
+    why not (`handOffWhy`: the era, contact).
+  - **Dispatch**: deviated dispatches first, the queue (pad, launch, waiting for a window), the last four results.
+- **netModel (economy's, additive):** fleet rows carry `id` (a registry entry) or `dev` (a dispatch), so a console row
+  can act on its craft. **Q203:** a craft without station-keeping that decays now says "re-enters in about N days" (as
+  Fleet does), and one that keeps its orbit says "holds its orbit N more, then re-enters"; never "0 more days".
+- **Checks:** test `flow-13` (the room, its parts and buttons, the font, ids, Q203 on a real Probe at 200 km with its
+  tanks emptied); `flow-10` lists `mission` among the rooms; core §32's go-only check reads `atMC`. Robot row 164 now
+  opens mission control with C. Seen in headless Chrome with two satellites, two stations, a planned burn and a
+  dispatch: wall, ground track, calendar, consoles, Wait, W, Help.
+- **Not yet** (each is a queue item that now has its home here): watch mode (Q43, a *Watch* key on Flight), moving a
+  burn to the next pass (Q196, Trajectory), N2's node schematic (Q170, a third page on the wall), cruise entries'
+  payments along the way (Q167), a recovery line (ships at sea). Mission control during a flight, for the other craft,
+  is still to come; today it opens from the Program. The calendar's labels overlap when a booking and its window are
+  both short.
+

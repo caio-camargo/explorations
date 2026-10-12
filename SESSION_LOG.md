@@ -5388,3 +5388,49 @@ runner wasn't first to orbit in 27 of 144 runs (19 under the old schedule, 17 wi
 commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; re-plan for W23's amendment), Q184
 (routines; W27's amendment), Q187 (plan).
 
+
+## 2026-10-12 — Caio + Claude (launchpad flow session): Q241 R4, mission control (v1.131)
+- **Done** (`b47afb9`, docs `dcff57d`, on `main`, pushed): mission control as a room that takes the Network screen's
+  place. A wall (clocks, the ground track of Tellus with the stations' circles and every craft's orbit, or the pads'
+  calendar; the pads) over four consoles (Flight, Network, Trajectory, Dispatch) that reuse the Program's buttons.
+  **C** from the Program; P, N (wait), W (the wall) inside. VT323 bundled. netModel's fleet rows carry ids; Q203 fixed
+  (a decaying craft says when it re-enters).
+- **Checks:** full suite 641/641 before merging main; after: serial smoke and the touched sections pass (one `--jobs 4`
+  smoke run failed "presets" once and passes alone: filed under QUEUE *Proposed* for platform). New test `flow-13`;
+  `flow-10` and core §32 updated (`atMC`); robot row 164 now opens mission control. Seen in headless Chrome: wall,
+  track, calendar, consoles, Wait, W, Help.
+- **Files:** launchpad `app/mission.js` (new), `app/network.js`, `app/screens.js`, `app/render.js`, `builder.js`,
+  `sim/program.js` (netModel, additive), `index.html`, `fonts/vt323.woff2` + licence, `tests/flow.mjs`,
+  `tests/core.mjs`, `playtest.mjs`, notes/flow.md (§ v1.131), NOTES index, TESTING 213; QUEUE (Q241 R4 ✓, Q203 ✓,
+  Q43/Q167/Q170/Q196 ready, three *Proposed*), ACTIVE_WORK.
+- **Next for flow:** Q241 R3 (title and first run as the charter); Q43 and Q196 now build into mission control.
+
+## 2026-10-12 — Caio + Claude (launchpad look & sound session, parts & pad): Q276, the desk's polish (v1.132)
+- **Done** (`15d2c91`, merged and pushed; renumbered from v1.131/TESTING 213 when flow's mission control took them):
+  the Assembly's drafting table now has a drafting board tilted 20° behind the model. On it is the design's drawing:
+  an elevation drawn from the built parts, and a title block lettered with the design's name and kit scale in a 5×7
+  geometry font. If the player saved the design under a name (v1.129), that name is used. Also a T-square on the
+  board's edge, an eraser by the pencil, and the scale figure is now one of our crew in the program's school suit
+  and generation.
+- **Checks:** full suite 647/647 after merging main. New test `aerofx-7`; `flow-11` still passes. Headless stills in
+  `output/launchpad/q276/` (gitignored, local): before/after, Crewed Lunar at 1:96, a saved "Kestrel One", the figure
+  close up.
+- **Files:** launchpad `app/model-desk.js`, `tests/look.mjs`, notes/look.md (§ v1.132), NOTES index, TESTING 214,
+  QUEUE (Q276 ✓, its row moved from the sound table to parts & pad), ACTIVE_WORK.
+- **Next for look & sound (parts & pad):** Q245 (lettering on the pads; the desk's `DESK_FONT` approach could serve it
+  as geometry), Q259 (Steppe paint resolution, measure first), Q205 (Foundry, plan first). Not taken: `intake/` holds
+  about 16 face and lip reference pictures, likely for the face lab (heads → faces beat, whose claim is stale).
+
+## 2026-10-12 — Claude (launchpad orchestrator, new session): the beauty pass queued (Q312–Q324)
+- **Done:** ranked the design desk's BEAUTY.md (D18 answered, 0.2.0) *Proposed* lines into the lanes. Effects: Q312
+  reference views + Low/High (first), Q313 half-res buffers, Q314 HDR/AgX/exposure/LUT, then Q318 re-entry glow and
+  HDR plasma, Q319 flames, Q320 vapor rings and the wake. Parts & pad: Q315 bells, noses, planet-disc light (ready),
+  Q316 shadows, surface, greebles in geometry, Q317 frost and ice fall. Sky & bodies: Q321 baked galaxy and stars
+  (after Q253's mock-ups), Q322 transmittance table + Selene's own pass (ready; coordinate with Q19's `terrain`
+  branch), Q323 Tellus's continents, sea, lights. World: Q324 Selene's flat ground at the lander. Q253, Q259, Q250
+  amended (absorbed parts). A flag for every beat (Q314 changes every shader's output) and unblocker row 6.
+- **Files:** `explorations/launchpad/QUEUE.md` (0.1.62), `ACTIVE_WORK.md` (orchestrator row), this log.
+- **Not done:** `intake/` holds ~16 face/lip/art-deco reference pictures, likely for the face lab (heads → faces; its
+  claim is stale). Left for that session or the design desk.
+- **Next:** kickoff the three look & sound beats (effects on Q312, parts & pad on Q315, sky & bodies on Q253/Q322);
+  they're all 🖥, so stagger them (`.game-busy`).

@@ -90,3 +90,7 @@ reasons; the decision itself is in DECISIONS.
 ## QUEUE: W37, answered 2026-10-11 (Caio: "no sessions active, ok to split"; done the same day, DECISIONS W37)
 
 | W37 | **Pick a freeze window to split NOTES.md** (ROADMAP § Documents, phase 2): 10,500 lines in no fixed order → `notes/<area>.md` by lane, section names kept so every "NOTES § X" pointer still resolves, NOTES.md becoming their index. Needs every session merged first, like the file split (W10). Platform does it with a script | the size budget; sessions that can read their notes |
+
+## QUEUE: D18, answered 2026-10-12 (Caio: "yes, agreed with your priorities here"; DECISIONS D18)
+
+| D18 | **The beauty pass** ([`BEAUTY.md`](BEAUTY.md) § 7, Caio 2026-10-11): (1) the register: 1960s press photography with a LUT per era / painterly / neutral; (2) stars set by exposure with a floor; (3) HDR and exposure before any effect; (4) a subtle galaxy; (5) game stills for most items, mock-ups only for the sky and the planet | — | — | 📝 | **waiting on Caio; defaults stand if silent** |

@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1190,3 +1190,30 @@ generations of a school sharing a dominant colour; the figure's height and face 
 - The spacewalk suits and Foundry's: nothing draws them yet (EVA; the commercial giant's crews).
 - The role stripes: crew have no roles in the SIM yet.
 - The mock-ups' lettering and fleet numbers.
+
+## v1.132 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276; from Q242, v1.115)
+Everything is in `deskMesh` (`app/model-desk.js`). The builder, the camera and the lamp are unchanged.
+- **The drafting board** stands behind the model, tilted 20° toward the default view on two steel legs. It has a pale green
+  drafting cover and a pencil ledge. The table is now deeper to hold it (z −0.78…0.55 model metres) and its back legs
+  moved with it. The lamp's base sits to the left of the board.
+- **The drawing on it** is the design's general arrangement, taped at the corners. Its elevation is drawn from the
+  built parts: each part's outline (`p.pos[0] ± p.d.r`, `p.y0 … +p.h`) at the drawing's own scale, nose up, with a
+  dashed centre line. It's a block diagram, so nose cones come out as rectangles.
+- **The title block** (lower right) is lettered with the design's name and `SCALE 1:N`. The name is the player's own if
+  this design is saved under one (`PROG.designs.saved`, matched by `designKey`, v1.129); otherwise it's `designName`
+  (a preset's name, or "Design XXXX"), in capitals, cut to 24 characters. The font is a 5×7 bitmap (`DESK_FONT`: A–Z,
+  0–9, `: - . /`). Each row's run of pixels is one thin ink box, and a long name shrinks to fit. Characters outside
+  the font leave a blank space. `deskName` caches its answer per built ship, because it runs every frame.
+- **The T-square** has its dark head hooked over the board's left edge and its blade across the foot of the drawing.
+  **The eraser** (pink) lies by the pencil.
+- **The scale figure** on the base plate is one of our crew now, not a man in a white coat: `crewFigure` in the
+  program's school (`schoolOf(0)`) and suit generation (`crewGen()`), a real 1.8 m like before. With crew-look.js
+  missing, the old figure comes back.
+- **The cache key** (`deskKey`) is scale | name | school | generation | part count | length. Editing the design or
+  saving it under a name rebuilds the desk once; the last four builds stay cached as before.
+- **Checks:** test `aerofx-7` (the font covers what a name and scale need, with distinct glyphs; the saved name comes
+  first; the key; the crew figure). `flow-11` still passes. Stills are in `output/launchpad/q276/`: `before_*`, then
+  `after2_*` (Orbiter 1:48, Crewed Lunar 1:96), `named_1` (a saved "Kestrel One"), `fig_*` (the figure).
+- **Not done:** a set square and lettering on the plan sheet under the model. The panels as paperwork are flow's R5
+  (Q241) and vehicle's Q237/Q238. The strip's "model 1:48" is flow's Q277. From behind (yaw ≈ 2.4) the camera looks
+  down onto the board's face, so the lettering reads upside down there. That's fine: it's a real board.

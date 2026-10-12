@@ -104,4 +104,5 @@ The full text of every question as it was asked (options, reasons) is in
 | ~~W18~~ | 2026-10-09 | ~~The network screen its own screen, key N~~ (superseded by D17.7) | Q111 |
 | D15.6 | 2026-10-11 | KSP's names out: *Asparagus* → *Crossfeed*, no "Kerbol"; "on rails" out of player text | vehicle, SYSTEM |
 | D16 | 2026-10-11 | UI hierarchy: three reads per screen, dark cockpit, reserved colours, master caution, GO/NO-GO boards, one kit; the board answers for the picked mission; the caution buzzes; pinnable readout lines | UI.md, Q53, Q239 |
+| D18 | 2026-10-12 | The beauty pass: 1960s press photography with a grade per era; stars set by exposure with a floor; HDR and exposure first; a subtle galaxy (mock-ups of both); game stills, mock-ups only for the sky and the planet; order B0 → quick wins → sky and bodies → the rest; **greebles in real geometry** for the shadows (Caio) | BEAUTY.md, QUEUE Proposed (B0–B6), Q253, Q268, Q250, Q259 |
 | W36 | 2026-10-11 | Heat and stress: needles that wake at 50 % and redline at 90 %, with the master caution; glowing parts later | Q271 |
