@@ -235,6 +235,7 @@ const PART_INFO={
   shield:'An ablative heat shield: it burns away slowly so the part above survives coming home fast.',
   dec:'Splits the rocket in two when its stage fires: everything below it falls away.',
   istage:'A decoupler with a skirt that wraps the engine above it, keeping that engine out of the airflow until it is dropped.',
+  fair:'A payload fairing: its shell keeps what stands on it out of the air and its heat on the way up, then drops in two halves at its stage. Set its length to fit.',
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
   rdec:'Holds a side part on and lets it go when its stage fires.',
   fins:'A ring of fixed fins at the tail: it keeps the rocket pointing into the airflow, like an arrow\'s feathers.',
@@ -282,6 +283,7 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.crew)L.push(['seats',d.crew]);if(d.berths)L.push(['berths',d.berths]);
   if(d.torque)L.push(['turning',`${d.torque/1000} kN·m`]);if(d.Wp)L.push(['power',`${d.Wp} W in full sun`]);if(d.Wg)L.push(['power',`${d.Wg} W always`]);
   if(d.kWh)L.push(['stores',`${d.kWh} kWh`]);if(d.W)L.push(['draws',`${d.W} W`]);
+  if(d.fm)L.push(['shell',`${d.fls[0]}–${d.fls[d.fls.length-1]} m long, ${n(d.fm,'t',3)} a metre, dropped at its stage`]);
   L.push(['size',`${+(2*d.r).toFixed(2)} m wide · ${+d.h.toFixed(2)} m tall`],['heat limit',`${d.Tmax} K`]);
   try{const pr=partPrice({d,jr:0})+((d.res0&&d.res0.fuel)||0)*FUEL_PRICE;if(isFinite(pr))L.push(['price',fmtM(pr)+(d.kind==='tank'?' with its propellant':'')])}catch(e){}
   return L}
@@ -332,6 +334,9 @@ function panel(){
   if(par){const w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null),r=row('joint');
     if(w){const s=document.createElement('span');s.className=w.f>1?'bad':w.f>.7?'warn':'ok';s.textContent=` ${(w.f*100).toFixed(0)}% ${w.p.anaKind||''} `;r.appendChild(s)}
     btn(r,JR[n.j||0].name,!!n.j,()=>edit(()=>{n.j=((n.j||0)+1)%3;if(!n.j)delete n.j}),'cycle: standard → reinforced (2× strength) → heavy (4×), each adds mass')}
+  if(PARTS[n.k].kind==='fair'){const d=PARTS[n.k],L=n.fl&&d.fls.includes(n.fl)?n.fl:d.fl0,f=ps.find(p=>p.profF),inn=f?S.parts.filter(q=>q.on&&q.inFair===f).length:0,r=row('length');
+    for(const v of d.fls)btn(r,v+' m',v===L,()=>edit(()=>{if(v===d.fl0)delete n.fl;else n.fl=v}),`a ${v} m shell (${(d.fm*v).toFixed(2)} t)`);
+    const i=document.createElement('span');i.className='dim';i.textContent=` encloses ${inn} part${inn===1?'':'s'}`;r.appendChild(i)}
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
   {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it')}}
   if(radAt(n.at)){const a=n.at;
@@ -396,7 +401,7 @@ function staging(box){
     if(i<S0.length-1){const m=btn(r,'⇣',false,()=>go({stage:i+1},{row:i}),`fire stage ${i+2} with this one, in one press`);m.className='smerge'}});
   if(S0.length)gap(S0.length)}
 function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
-  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','fair','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
@@ -464,7 +469,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .bstg{border-top:1px solid var(--line);padding:6px 0 4px;margin-bottom:4px}.bhd2{display:flex;gap:6px;align-items:center;color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}.bhd2 button{margin-left:auto;text-transform:none;letter-spacing:0;padding:0 6px;font-size:10.5px}
 .shint{font-size:10.5px;margin-bottom:3px}.snum{cursor:grab}.schip{cursor:grab}.srow.over{background:rgba(127,209,255,.14)}.sgap{height:3px;border-radius:3px}.bstg.dragging .sgap{height:8px}.sgap.over{height:16px;border:1px dashed var(--acc);background:rgba(127,209,255,.1)}.smerge{margin-left:auto;padding:0 5px;font-size:10.5px}
 .srow{display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}.srow>b{color:var(--warn);min-width:16px}
-.schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
+.schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip.f{border-color:rgba(230,230,230,.55)}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
 #partcard{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-size:11.5px;display:none;z-index:6;width:260px}
 #partcard table{border-collapse:collapse;margin-top:4px;width:100%}#partcard td{padding:1px 0;vertical-align:top;text-align:left}#partcard td:first-child{color:var(--dim);padding-right:8px;white-space:nowrap}
 .pcs{color:var(--fg);margin:2px 0;line-height:1.35}#bldtip .pcs{max-width:260px;white-space:normal}

@@ -1053,6 +1053,14 @@ function bayDoor(out,o,R,top,H,sd,th,col){const c=Math.cos(th),sn=Math.sin(th),n
   for(let i=0;i<nu;i++)for(let j=0;j<na;j++){const u0=i/nu,u1=(i+1)/nu,a0=-Math.PI/2+j/na*Math.PI,a1=-Math.PI/2+(j+1)/na*Math.PI,A=P(u0,a0),B=P(u1,a0),Cc=P(u1,a1),D=P(u0,a1);
     let n=norm(cross(sub(B,A),sub(D,A)));if(sd<0)n=mul(n,-1);for(const[x,y,z]of[[A,B,Cc],[A,Cc,D]]){pv(out,x,n,col);pv(out,y,n,col);pv(out,z,n,col);pv(out,z,mul(n,-1),cin);pv(out,y,mul(n,-1),cin);pv(out,x,mul(n,-1),cin)}}
   for(const zz of[-.55,0,.55])rbox(out,[o[0]+sd*(R+.02),o[1]+top+.02,o[2]+zz*R],.04,.05,.07,C.D,0)}
+// a lathe over part of the turn (a0..a1), both faces: a payload fairing's shell cut away in the Assembly, or one of its
+// halves falling away (vehicle, Q337); the inside is grey insulation
+function latheArc(out,prof,o,a0,a1,cOut,cIn,seg=20){const own=o[0]===PK.o[0]&&o[2]===PK.o[2];
+  const V=(r,y,a,nr,ny,c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
+  for(let i=0;i<prof.length-1;i++){const[r0,y0]=prof[i],[r1,y1]=prof[i+1];let nr=y1-y0,ny=-(r1-r0);const l=Math.hypot(nr,ny);if(l<1e-9)continue;nr/=l;ny/=l;
+    for(let j=0;j<seg;j++){const b0=a0+(a1-a0)*j/seg,b1=a0+(a1-a0)*(j+1)/seg,q0=Math.max(r0-.02,0),q1=Math.max(r1-.02,0);
+      V(r0,y0,b0,nr,ny,cOut);V(r1,y1,b0,nr,ny,cOut);V(r1,y1,b1,nr,ny,cOut);V(r0,y0,b0,nr,ny,cOut);V(r1,y1,b1,nr,ny,cOut);V(r0,y0,b1,nr,ny,cOut);
+      V(q0,y0,b0,-nr,-ny,cIn);V(q1,y1,b1,-nr,-ny,cIn);V(q1,y1,b0,-nr,-ny,cIn);V(q0,y0,b0,-nr,-ny,cIn);V(q0,y0,b1,-nr,-ny,cIn);V(q1,y1,b1,-nr,-ny,cIn)}}}
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
@@ -1138,6 +1146,10 @@ function partBody(out,p){
     case'shield':lathe(out,[[.66,0,C.SH],[.66,.1,C.SH],[.625,.2,C.D]],o);break;
     case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
+    // payload fairing (Q337): the ring, and its shell while on; cut away on one side at the design table so the payload shows
+    case'fair':{if(p.half){const pr=fairProf(d,p.fll??d.fl0).slice(1);latheArc(out,pr,o,p.half>0?0:Math.PI,p.half>0?Math.PI:2*Math.PI,C.W,C.G,14);break}
+      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1);
+      if(typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll))latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false])}break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
     case'wren':engine(out,p,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o);break;
     case'sparrow':engine(out,p,[[.3,0,C.K],[.12,.45,C.D],[.3,.55,C.G],[.625,.72,C.G],[.625,.8,C.G]],o);break;

@@ -1411,3 +1411,34 @@ Test `vehicle-12`. `--smoke` all pass.
   so, three warnings, the same `procKey`; flown up deployed, the wings tear off at 1.0 kPa and the rocket flies on).
   Checked in the browser: the toolbar and the part row, the drawing in the Assembly and on the pad, undo, the Rollout's
   checks. TESTING 227 (renumbered from v1.144/226: world's Q270 took them).
+
+## v1.146 — the payload fairing (2026-10-12, vehicle session, QUEUE Q337 part 1; PROBES § 3.5, D20)
+
+- **What was there:** nothing shielded a payload on the way up except the cargo bay (an orbital part) and the
+  interstage's skirt around one engine. Every satellite part met the air, and the parts planned in PROBES S1 (a folded
+  boom antenna, a folded dish) would have nowhere to ride.
+- **The parts** (`sim/vessel.js` `PARTS`): **`fair`** (for a 1.25 m stack) and **`fair25`** (2.5 m, from `big()`): a
+  base ring whose shell bulges wider than the stack (r 0.8 m over a 0.625 m foot, `rb`; ×2 for the big one), so parts
+  as wide as the stack fit. Its length is a step on the design node, **`nd.fl`** (2–6 m, 3 by default; 4–12 m, 6), and
+  the shell weighs `fm` a metre (0.035 t, 0.11 t), carried as `p.xm`; `partC` puts that mass at the shell's middle.
+- **What it encloses** (`assemble`): every part above the ring that is wholly under the outline (`fairProf`: straight
+  for 60% of the length, then an ogive to a point; `fairFits` checks a part's bottom and top against the radius there,
+  less the wall; a deployed leg or wing never fits) gets **`p.inFair`**. `shielded()` (`sim/space.js`) counts it as
+  inside while the shell is on, so it has no outline, no drag and no heating (the cargo bay's rule), and `profOf` gives
+  the fairing the shell's outline instead.
+- **Staging:** an atom of its own, **`f:<node id>`** (label *fairing*), placed one press after the first stage
+  separation (out of the thick air by then), or last before the chute if the rocket has one stage. It drags and drops
+  in the staging panel like any action (Q249). `stage()` calls **`fairJettison`**: the shell's mass goes, the outline
+  is rebuilt, and **two halves** leave as debris, pushed apart.
+- **Kept across splits and flights:** `vesselFrom` maps `inFair` and the fairing event's part indices onto the new
+  vessel; `vstOf` saves which fairings are gone (`fj`), and `vesselOf` restores it (space lane, additive lines).
+- **The builder:** under *Structure*; a part's options have a **length** row (one button per step) and say how many
+  parts it encloses. The shell is drawn **cut away** on one side at the design table so the payload shows, whole on the
+  pad (`render.js` rebuilds the ship's mesh when that changes) and in flight; the halves are drawn as half shells.
+- **The Rollout warns** (`launchWarnings`) when parts stand above the ring but stick out of the outline: a longer
+  shell, or the 2.5 m fairing. Price 2 M and 6 M (`PRICE`, economy's table, one line).
+- **Not here yet (rest of Q337):** the boom antenna, the folding boom, side forms of the small boxes, the whip, the
+  trim readout. Look & sound may restyle the shell (seams, era finishes). Test `vehicle-17` (what's inside and
+  shielded, the event after separation, the mass and two halves at the drop, a short shell's warning, the 2.5 m
+  fairing's default length); checked in the browser (the cutaway, the length row, the staging chip, the whole shell on
+  the pad, a jettison in flight). TESTING 228.

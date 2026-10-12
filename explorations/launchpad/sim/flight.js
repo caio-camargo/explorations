@@ -221,6 +221,7 @@ function stage(s){
   if(ev.ignite.length&&!ev.decouple.length)HOOK.msg('Ignition');
   logEv('stage',`event ${s.evIdx}: ${ev.decouple.length} group(s) dropped, ${ev.ignite.filter(k=>s.segs[k].ignited).length} of ${ev.ignite.length} lit; ${(len(s.r)-s.body.R)/1000|0} km, ${len(sub(s.v,surfVel(s.body,s.r))).toFixed(0)} m/s`);
   spinFire(s,ev);
+  if(ev.fair)fairJettison(s,ev.fair);   // the payload fairing's shell (Q337)
   if(ev.chute){s.chute=true;s.chuteA=0;HOOK.msg(s.body.atm?'Chute armed — drogue below 20 km and 400 m/s, main below 3 km':'Chute deployed (no air here)')}
   HOOK.rebuild()}
 // spin-up motors fire with the event that lights their stage, or that releases it when it has no engines: whichever leaves

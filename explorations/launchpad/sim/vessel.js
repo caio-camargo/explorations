@@ -24,6 +24,11 @@ const PARTS={
   dec:{name:'Decoupler',kind:'dec',m:0.05,h:0.25,C:1200,T:500,B:220},
   // interstage: a decoupler whose shell encloses the engine above it — smooth aero, and the load path skips the engine
   istage:{name:'Interstage decoupler',kind:'dec',istage:true,m:0.08,h:0.25,C:2500,T:1200,B:450},
+  // payload fairing (vehicle, Q337; PROBES § 3.5): a base ring whose shell, nd.fl metres long (steps fls, fl0 by default),
+  // encloses whatever stands on it within its outline: no air and no heating inside until a stage drops the shell, in two
+  // halves. The shell weighs fm tonnes a metre and goes with it. It bulges wider than the stack it sits on (r against the
+  // ring's foot rb), so parts as wide as the stack fit inside.
+  fair:{name:'Payload fairing',kind:'fair',m:0.04,h:0.2,r:0.8,rb:0.625,fm:0.035,fls:[2,3,4,5,6],fl0:3,C:2500,T:1200,B:450,prof:[[.625,0],[.8,.2]]},
   adapt:{name:'Adapter 2.5 → 1.25 m',kind:'adapt',m:0.4,h:1.5,r:1.25,C:2500,T:1200,B:450,prof:[[1.25,0],[1.25,.15],[.625,1.35],[.625,1.5]]},
   // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
   rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
@@ -108,6 +113,7 @@ big('dec25','dec',{name:'Decoupler 2.5 m',m:0.2});
 big('fins25','fins',{name:'Fin ring 2.5 m',m:1.0,span:1.8,chord:1.8});
 big('cfins25','cfins',{name:'Steerable fin ring 2.5 m',m:1.4,span:1.8,chord:1.8});
 big('cone25','cone',{name:'Nose cone 2.5 m',m:0.45});
+big('fair25','fair',{name:'Payload fairing 2.5 m',m:0.12,rb:1.25,fm:0.11,fls:[4,6,8,10,12],fl0:6});
 big('albatross','kestrel',{name:'Albatross (2.5 m)',m:6,thrust:1100,gim:4,gimR:8,ispA:285,ispV:310,exit:1.1});
 // joint reinforcement: strength multiplier and added mass (t) at a 1.25 m joint, scaled by (joint radius / 0.625)²
 const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy',k:4,m:0.18}];
@@ -226,6 +232,7 @@ function assemble(stack){
   for(const q of L.inst){const p={i:parts.length,d:q.d,pos:[q.x,0,q.z],y0:q.y0-ymin,h:q.d.h,parent:null,children:[],on:true,
     res:{...(q.d.res0||{})},cap:{...(q.d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],dn:q.nd,inst:q};
     if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;
+    if(q.d.kind==='fair'&&!q.rdec){p.fl=fairLen(q.nd,q.d);p.fll=p.fl/(q.d.sc||1);p.xm=q.d.fm*p.fl;p.profF=fairProf(q.d,p.fl)}   // the shell on (Q337)
     if(q.nd.dep&&!q.rdec){if(q.d.kind==='leg'||q.d.wing)p.dep=true;else if(q.d.kind==='bay')p.open=true}   // deployed in the Assembly: it rolls out that way (Q328)
     q.p=p;parts.push(p)}
   // root: a pod, else a biocapsule, else instruments (on the root line first, then the highest), else the design's root
@@ -244,6 +251,8 @@ function assemble(stack){
   // a cargo bay encloses whatever sits on its floor within its walls and under its roof (shielded while its doors are shut)
   for(const b of parts)if(b.d.kind==='bay'){const fl=b.y0+b.h,top=fl+b.d.bayL;
     for(const q of parts)if(q!==b&&q.y0>=fl-1e-6&&q.y0+q.h<=top+1e-6&&Math.hypot(q.pos[0]-b.pos[0],q.pos[2]-b.pos[2])+(q.d.off||0)+q.d.r<=b.d.bayIn+1e-6)q.inBay=b}
+  // a payload fairing encloses what stands within its outline, above its ring and under its nose (Q337): out of the air until it drops
+  for(const f of parts)if(f.d.kind==='fair'&&f.profF)for(const q of parts)if(q!==f&&!q.inFair&&fairFits(f,q))q.inFair=f;
   // radial groups: one per radial placement (all its symmetric copies)
   const groups=[],gOf=new Map();
   for(const q of L.inst){if(!radAt(q.nd.at)||q.rdec||q.line<0)continue;const nd=q.nd;if(gOf.has(nd))continue;
@@ -276,6 +285,8 @@ function assemble(stack){
     for(const G of [...by.values()].sort((a,b)=>b.d-a.d||b.y-a.y||a.o-b.o))events.push(G.rad?{decouple:G.segs,ignite:[],radial:true}:{decouple:G.segs,ignite:[]});
     for(const k of att(X))if(!segs[k].label)segs[k].label='jettison';
     if(j>0)events.push({decouple:[X],ignite:burn(chain[j-1])})}
+  // the fairing drops with the first stage separation's next press (out of the thick air by then), or last, before the chute
+  {const F=parts.filter(p=>p.profF).map(p=>p.i);if(F.length){const i=events.findIndex(e=>e.decouple.length&&!e.radial);events.splice(i<0?events.length:i+1,0,{decouple:[],ignite:[],fair:F})}}
   if(parts.some(p=>p.d.kind==='chute'))events.push({decouple:[],ignite:[],chute:true});
   const st=stageAtoms(events,keys,sPar,segs,parts,des.stg);
   return{parts,segs,events:st.events,root,height:ymax-ymin,groups,layout:L,shift:-ymin,stages:st.stages,custom:st.custom}}
@@ -287,14 +298,15 @@ function assemble(stack){
 function stageAtoms(auto,keys,sPar,segs,parts,stg){
   // a design that was never edited has no node ids yet: name its atoms by segment so they stay distinct (display only —
   // a custom order needs real ids, and the builder assigns them on the first edit)
-  const tmp=new Map(),nid=k=>{if(!keys[k])return'root';const n=keys[k].dn;if(n.id!=null)return n.id;if(!tmp.has(n))tmp.set(n,'#'+tmp.size);return tmp.get(n)};
+  const tmp=new Map(),nn=n=>{if(n.id!=null)return n.id;if(!tmp.has(n))tmp.set(n,'#'+tmp.size);return tmp.get(n)},nid=k=>keys[k]?nn(keys[k].dn):'root';
   const atoms=[],byId=new Map();
   const add=(id,i,f)=>{let a=byId.get(id);if(!a){a={id,i,d:[],g:[],c:false,radial:false};byId.set(id,a);atoms.push(a)}f(a)};
   auto.forEach((e,i)=>{if(e.decouple.length)add('d:'+nid(e.decouple[0]),i,a=>{a.d.push(...e.decouple);a.radial=!!e.radial});
-    for(const k of e.ignite)add('i:'+nid(k),i,a=>a.g.push(k));if(e.chute)add('c',i,a=>{a.c=true})});
+    for(const k of e.ignite)add('i:'+nid(k),i,a=>a.g.push(k));if(e.chute)add('c',i,a=>{a.c=true});
+    for(const pi of e.fair||[])add('f:'+nn(parts[pi].dn),i,a=>{(a.f=a.f||[]).push(pi)})});
   const eng=ks=>{const nm={};for(const p of parts)if(ks.includes(p.seg)&&p.d.kind==='engine'){const n=p.d.name.split(' ')[0];nm[n]=(nm[n]||0)+1}
     return Object.entries(nm).map(([n,c])=>c>1?`${n}×${c}`:n).join(' + ')};
-  for(const a of atoms){a.label=a.c?'chute':a.d.length?'drop '+segs[a.d[0]].label.split(' (')[0]:'ignite '+(eng(a.g)||'—');a.kind=a.c?'c':a.d.length?'d':'i'}
+  for(const a of atoms){a.label=a.c?'chute':a.f?'fairing':a.d.length?'drop '+segs[a.d[0]].label.split(' (')[0]:'ignite '+(eng(a.g)||'—');a.kind=a.c?'c':a.f?'f':a.d.length?'d':'i'}
   const ok=Array.isArray(stg)&&atoms.every(a=>!a.id.includes('#'));
   let out;
   if(!ok)out=auto.map((e,i)=>atoms.filter(a=>a.i===i));
@@ -307,13 +319,28 @@ function stageAtoms(auto,keys,sPar,segs,parts,stg){
   const events=!ok?auto:out.map(g=>{const dd=[...new Set(g.flatMap(a=>a.d.flatMap(desc)))].filter(k=>!gone.has(k));dd.forEach(k=>gone.add(k));
     const e={decouple:dd,ignite:g.flatMap(a=>a.g)};
     // "Booster separation" only when every drop in the stage is radial; core + boosters together is a stage separation
-    const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;return e});
-  return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.g})))}}
+    const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;const f=g.flatMap(a=>a.f||[]);if(f.length)e.fair=f;return e});
+  return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.kind==='f'?[]:a.g})))}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
 // ---- resources: each part holds res {name: amount} up to cap; mass = dry + Σ amount × density. Only propellant exists
 // today (tonnes, so density 1); power or life support would be new entries here plus producers/consumers with rates.
 const RES={fuel:{density:1,unit:'t'},ablator:{density:1,unit:'t'},gas:{density:1,unit:'t'},sup:{density:1,unit:'t'}};
 function dryMass(p){return(p.d.kind==='tank'?p.d.dry:p.d.m)+(p.jm||0)+(p.xm||0)}
+// ---- the payload fairing (Q337). Its outline in the part's frame: the ring, a straight shell for most of its length, then
+// an ogive to a point. A part is inside if all of it is under that outline (its corners against the radius there, less
+// the wall); a deployed leg or wing never is.
+const fairLen=(nd,d)=>{const L=nd&&nd.fl;return d.fls.includes(L)?L:d.fl0};
+function fairProf(d,L){const r=d.r,h=d.h;return[[d.rb||r,0],[r,h],[r,h+.6*L],[.86*r,h+.78*L],[.56*r,h+.9*L],[.2*r,h+.98*L],[0,h+L]]}
+function fairFits(f,q){if(q.dep||q.open)return false;const pr=f.profF,y0=q.y0-f.y0,y1=y0+q.h,
+    rq=Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])+(q.d.off||0)+q.d.r,
+    at=y=>{for(let i=0;i<pr.length-1;i++){const[r0,a]=pr[i],[r1,b]=pr[i+1];if(y<=b)return b-a<1e-9?Math.min(r0,r1):r0+(r1-r0)*(y-a)/(b-a)}return 0};
+  return y0>=f.h-1e-6&&y1<=pr[pr.length-1][1]+1e-6&&rq<=Math.min(at(y0),at(y1))-.03*f.d.r+1e-6}
+// the shell drops in two halves, pushed apart; what it enclosed meets the air from now on
+function fairJettison(s,idx){const F=idx.map(i=>s.parts[i]).filter(p=>p&&p.on&&p.profF&&!p.fj);if(!F.length)return;geom(s);const c0=s.cm.slice();
+  for(const f of F){const m=f.xm,yc=f.y0+f.h+f.fl/2;f.fj=true;f.xm=0;
+    for(const sd of[1,-1]){const half={...f,half:sd,on:true,i:-1,profF:null},off=qrot(s.q,sub([f.pos[0],yc,f.pos[2]],c0));
+      HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,[sd*3,0.5,0])),q:s.q.slice(),w:add(s.w,qrot(s.q,[0,0,-sd*0.8])),parts:[half],cm:[f.pos[0],yc,f.pos[2]],mass:m*500,t:0})}}
+  geom(s);rebuildShape(s);HOOK.msg(F.length>1?'Fairings jettisoned':'Fairing jettisoned');HOOK.rebuild()}
 function partMass(p){let m=dryMass(p);for(const k in p.res)m+=p.res[k]*RES[k].density;return m}
 // Fuel flow follows the part tree: it crosses every joint except a decoupler's own (decoupler ↔ the part it holds on to),
 // unless that decoupler is set to crossfeed. Engines draw on every tank in their flow group, the tanks whose segment will
@@ -334,7 +361,8 @@ function drawFuel(s,on,fuel,grp,rank,gid,amt){let got=0;
 const fuelArr=s=>s.parts.map(p=>p.res.fuel||0),onArr=s=>s.parts.map(p=>p.on);
 function groupFuel(s,gid){let f=0;for(const p of s.parts)if(p.on&&s.grp[p.i]===gid)f+=p.res.fuel||0;return f}
 function segFuel(s,k){let f=0;for(const p of s.parts)if(p.on&&p.seg===k)f+=p.res.fuel||0;return f}
-function partC(p){return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
+function partC(p){if(p.profF&&!p.fj&&p.xm){const m0=p.d.m,y=(m0*(p.y0+p.h*p.d.cm)+p.xm*(p.y0+p.h+p.fl/2))/(m0+p.xm);return[p.pos[0],y,p.pos[2]]}   // a fairing with its shell on (Q337)
+  return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
 function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on their mount
 // Canted engines (v1.22): an engine on a radial line may tilt its nozzle outward by cant degrees, in its own radial plane, so
 // its thrust leans in toward the axis: d = cosθ·ŷ − sinθ·n̂ (n̂ outward at the line's angle φ). Uncanted engines have no tdir
@@ -395,6 +423,9 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
+  // a payload fairing (Q337): what stands above its ring but isn't inside its outline meets the air
+  for(const f of s.parts.filter(p=>p.profF)){const o=s.parts.filter(q=>q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<f.d.r+.5);
+    if(o.length)out.push(['warn',`${o[0].d.name}${o.length>1?` and ${o.length-1} more part${o.length>2?'s':''}`:''} stick${o.length>1?'':'s'} out of the fairing: a longer shell, or a 2.5 m fairing (the part's options)`])}
   // left deployed in the Assembly (Q328): it rolls out that way
   const wg=s.parts.filter(p=>p.on&&p.d.wing&&p.dep);if(wg.length)out.push(['warn',`Solar wing${wg.length>1?'s':''} deployed at launch: thick air tears ${wg.length>1?'them':'it'} off past ${(Math.min(...wg.map(p=>p.d.qMax))/1000).toFixed(1)} kPa (retract in the Assembly; P deploys in flight)`]);
   if(s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep))out.push(['warn','Landing legs down at launch: they ride up extended (retract in the Assembly; Y raises and lowers them in flight)']);

@@ -612,11 +612,12 @@ let vesselN=0;
 // a vessel built from parts leaving s: clones (the originals stay off in s), re-indexed, their tree, segments and the
 // staging events that concern only them; same vessel frame, so it starts exactly where those parts were
 function vesselFrom(s,list,r,v,w){const map=new Map(),parts=list.map((p,i)=>{const c={...p,i,oi:p.oi??p.i,oseg:p.oseg??p.seg,on:true,children:[],F:[0,0,0],L:[0,0,0],res:{...p.res},cap:{...p.cap}};map.set(p,c);return c});
-  for(const p of list){const c=map.get(p);c.parent=map.get(p.parent)||null;if(c.parent)c.parent.children.push(c);if(c.inBay)c.inBay=map.get(c.inBay)||null}
+  for(const p of list){const c=map.get(p);c.parent=map.get(p.parent)||null;if(c.parent)c.parent.children.push(c);if(c.inBay)c.inBay=map.get(c.inBay)||null;if(c.inFair)c.inFair=map.get(c.inFair)||null}
   const oldSegs=[...new Set(parts.map(c=>c.seg))],segN=new Map(oldSegs.map((k,i)=>[k,i]));for(const c of parts)c.seg=segN.get(c.seg);
   const segs=oldSegs.map(k=>({...s.segs[k]})),inSet=k=>segN.has(k),hasChute=parts.some(c=>c.d.kind==='chute');
-  const events=s.events.slice(s.evIdx).filter(e=>[...e.decouple,...e.ignite].every(inSet)&&(e.decouple.length||e.ignite.length||(e.chute&&hasChute)))
-    .map(e=>({...e,decouple:e.decouple.map(k=>segN.get(k)),ignite:e.ignite.map(k=>segN.get(k))}));
+  const fr=e=>(e.fair||[]).map(pi=>map.get(s.parts[pi])).filter(Boolean).map(c=>c.i);   // a payload fairing's parts, re-indexed (vehicle, Q337)
+  const events=s.events.slice(s.evIdx).filter(e=>[...e.decouple,...e.ignite].every(inSet)&&(e.decouple.length||e.ignite.length||(e.chute&&hasChute)||fr(e).length))
+    .map(e=>({...e,decouple:e.decouple.map(k=>segN.get(k)),ignite:e.ignite.map(k=>segN.get(k)),...(e.fair?{fair:fr(e)}:{})}));
   const nm=x=>x.some(p=>p.on&&p.d.kind==='pod')?'Capsule':'Probe';if(!s.name)s.name=`${nm(s.parts)} ${++vesselN}`;   // the vessel left behind gets a name too, now there are two
   const n=++vesselN,cmd=parts.find(isCommand);
   const ns={stack:s.stack,parts,segs,events,root:parts.find(c=>!c.parent),groups:[],evIdx:0,body:s.body,alive:true,landed:false,
@@ -657,8 +658,8 @@ function fleetEnd(R){for(const v of FLEET){if(!v.alive)continue;satRegister(v,{d
 // the bay's axis at BAY_PUSH, a vessel of its own whether or not it has a command part.
 const DOOR_S=2,BAY_PUSH=0.3;
 const doorF=p=>{if(p.doorT==null)return p.open?1:0;const f=clamp((simT-p.doorT)/DOOR_S,0,1);return p.open?f:1-f};   // 0 shut … 1 open
-const shielded=p=>!!(p.inBay&&p.inBay.on&&!p.inBay.open&&doorF(p.inBay)===0);   // exposed from the moment the doors are told to open until they're shut again
-const profOf=p=>p.d.kind==='bay'&&(p.open||doorF(p)>0)?p.d.profOpen:p.d.prof;   // an open bay's outline has no roof
+const shielded=p=>!!(p.inBay&&p.inBay.on&&!p.inBay.open&&doorF(p.inBay)===0)||!!(p.inFair&&p.inFair.on&&!p.inFair.fj);   // or inside a payload fairing with its shell on (vehicle, Q337)   // exposed from the moment the doors are told to open until they're shut again
+const profOf=p=>p.d.kind==='bay'&&(p.open||doorF(p)>0)?p.d.profOpen:p.profF&&!p.fj?p.profF:p.d.prof;   // a fairing's shell (vehicle, Q337)   // an open bay's outline has no roof
 function bayDoors(s,open){let n=0;for(const p of s.parts){if(!p.on||p.d.kind!=='bay'||!!p.open===open)continue;const f=doorF(p);
     p.open=open;p.doorT=simT-(open?f:1-f)*DOOR_S;n++;if(!open)s.bayShut=Math.max(s.bayShut||0,simT+f*DOOR_S)}   // mid-swing reversals keep their place
   if(!n)return false;if(open)rebuildShape(s);HOOK.msg(open?'Bay doors opening':'Bay doors closing');return true}
@@ -726,11 +727,12 @@ function stationTick(d){for(const q of[...satsUp(),...moonSats()]){const st=stat
 // whatever is docked. Vessels split off another keep their parts' design indices (p.oi, p.oseg), so any descendant of a
 // design rebuilds the same way. Entries registered before this have no design and stay passive.
 const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loaded into the flight)
-const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),E:s.E});   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
+const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),fj:s.parts.filter(p=>p.on&&p.fj).map(p=>p.i),E:s.E});   // fj: fairings jettisoned (vehicle, Q337)   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
   for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}}
-  for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}   // legs and wings as they were left (vehicle, Q121)
+  for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}
+  for(const i of st.fj||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on){p.fj=true;p.xm=0}}   // a fairing already dropped (Q337)   // legs and wings as they were left (vehicle, Q121)
   if(q.pw&&q.Ewh!=null)s.E=q.Ewh*3600;else if(st.E!=null)s.E=st.E;   // the battery as it is now (Q213: between flights' drain), or as it was left (Q131); powerStep caps it
   if(q.nodes&&q.nodes.length){const N=q.nodes.filter(n=>n.T>T).map(n=>({t:n.T-T,dv:n.dv.slice(),b:n.b}));s.node=N.shift()||null;s.nodeQ=N}   // its planned burns, in this flight's time (Q49 slice 3)
   s.segs.forEach((g,k)=>{g.ignited=ign.has(k)});

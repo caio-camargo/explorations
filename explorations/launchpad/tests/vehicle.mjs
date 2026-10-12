@@ -512,3 +512,25 @@
     stowed && out && wn(d1) === 3 && api.procKey(d0) === api.procKey(d1) && api.procKey(d1) !== JSON.stringify(d1) && s1.alive && !Wg.some(p => p.on),
     `stowed ${stowed}; deployed: ${L.filter(p => p.dep).length}/4 legs, ${Wg.filter(p => p.dep).length}/2 wings, bay ${B.open ? 'open' : 'shut'}; ${wn(d1)} warnings; flown: ${s1.alive ? 'alive' : 'lost'}, wings ${Wg.filter(p => p.on).length} left at ${(qx / 1000).toFixed(2)} kPa`);
 }
+
+// vehicle-17. The payload fairing (vehicle session, QUEUE Q337; PROBES § 3.5): its shell encloses what stands on its ring within its
+// outline, so those parts are out of the air (no outline, no heating) and its shell's mass rides along; a staging press after the
+// first stage drops the shell in two halves (the mass goes, the payload meets the air). Too short a shell: the top pokes out, and
+// the Rollout says so. The 2.5 m fairing, its length from the design node, and the halves as debris.
+{
+  const D = new Function(src + 'return {toV2,newShip,stage,shielded,launchWarnings,HOOK,debris,PARTS,geom,simT};')();
+  const pay = ['ant', 'cam', 'sci', 'sci', 'core', 'fair', 't2', 'petrel', 'dec', 't8', 'kestrel'], fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean), mk = fl => { const d = D.toV2(pay.slice()); if (fl) fd(d.root, 'fair').fl = fl; return d; };
+  const msg0 = D.HOOK.msg, deb0 = D.HOOK.debris; let deb = 0; D.HOOK.msg = () => {}; D.HOOK.debris = () => { deb++; }; D.HOOK.rebuild = D.HOOK.rebuild || (() => {});
+  const s = D.newShip(mk()), F = s.parts.find(p => p.d.kind === 'fair'), inn = s.parts.filter(p => p.inFair === F), names = inn.map(p => p.d.key).sort().join(',');
+  const shield0 = inn.length && inn.every(p => D.shielded(p)), m0 = s.mass, fi = s.events.findIndex(e => e.fair), sep = s.events.findIndex(e => e.decouple.length);
+  const warn0 = D.launchWarnings(mk()).filter(([k, x]) => /out of the fairing/.test(x)).length;
+  for (let i = 0; i < fi; i++) D.stage(s);
+  const m1 = s.mass; D.stage(s);
+  const dropped = F.fj && F.xm === 0 && Math.abs(m1 - s.mass - F.d.fm * F.fl * 1000) < 1 && inn.every(p => !D.shielded(p)) && deb === 3;
+  const short = D.newShip(mk(2)), Fs = short.parts.find(p => p.d.kind === 'fair'), innS = short.parts.filter(p => p.inFair === Fs).length, warnS = D.launchWarnings(mk(2)).filter(([k, x]) => /out of the fairing/.test(x)).length;
+  const big = D.newShip(D.toV2(['cam', 'core', 'fair25', 'T16', 'albatross'])), Fb = big.parts.find(p => p.d.kind === 'fair');
+  D.HOOK.msg = msg0; D.HOOK.debris = deb0;
+  check('payload fairing (Q337): the payload inside is out of the air, the shell drops after stage 1 in two halves, a short shell warns',
+    names === 'ant,cam,core,sci,sci' && shield0 && Math.abs(F.fl - 3) < 1e-9 && fi === sep + 1 && warn0 === 0 && dropped && innS < inn.length && warnS === 1 && Fb && Math.abs(Fb.fl - 6) < 1e-9 && big.parts.filter(p => p.inFair === Fb).length === 2,
+    `inside: ${names} (shielded ${shield0}); fairing event ${fi} after separation ${sep}; dropped ${dropped} (debris ${deb}); a 2 m shell holds ${innS}, ${warnS} warning; 2.5 m: ${Fb ? Fb.fl : '-'} m, ${big.parts.filter(p => p.inFair === Fb).length} inside`);
+}
