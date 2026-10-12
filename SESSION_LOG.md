@@ -5434,3 +5434,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   claim is stale). Left for that session or the design desk.
 - **Next:** kickoff the three look & sound beats (effects on Q312, parts & pad on Q315, sky & bodies on Q253/Q322);
   they're all 🖥, so stagger them (`.game-busy`).
+
+## 2026-10-12 — Caio + Claude (launchpad vehicle session): Q264, why a landed rocket blew up (v1.133)
+- **Cause (PLAYTEST #64):** toppling, and the physics is right. A stack on its engine bell tips over past ~0.9 m/s of
+  sideways drift at touchdown (Hopper: formula 0.91, contact model stands at 0.7 and topples at 1.0; every preset
+  0.5–1.1), then is destroyed past 60°, seconds after it looked landed; the message flashed for 3 s. SAS with a pod's
+  wheel can hold it. Contact model and fatal toppling unchanged.
+- **Built:** `tipSpeed`/`standSpeed`, touchdown drift and lean recorded, `toppleWhy` explains it; `lose()` / `s.lossWhy`
+  at every loss, kept on screen (`app/loop.js`) and as the Debrief's *Lost* line (`debOutcome`); the Assembly's
+  *Touchdown* line (`app/editor.js` `standHTML`). Test `vehicle-13`; TESTING 215; notes/vehicle.md § v1.133.
+- **Files:** `sim/flight.js`, `sim/vessel.js`, `sim/space.js`, `sim/debrief.js`, `app/loop.js`, `app/editor.js`,
+  `test.mjs` (api names), `tests/vehicle.mjs`, NOTES/QUEUE/PLAYTEST/TESTING, ACTIVE_WORK.
+- **Checks:** full suite passed before the merges and on the final merged state; browser: the builder line and a
+  topple's cause still on screen 12 s later. Renumbered twice (flow took v1.131/213, look v1.132/214). One run was
+  killed by low memory (a hung sweep of mine had been left running; stopped).
+- **Next for vehicle:** the Proposed follow-up (quote the landing stage, per body), then Q249, Q237/Q238, Q202.
