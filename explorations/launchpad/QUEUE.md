@@ -482,10 +482,11 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
-Open design questions get a D row here (**next: D19**); answered ones go to [`DECISIONS.md`](DECISIONS.md) as one line, and the row leaves.
+Open design questions get a D row here (**next: D20**); answered ones go to [`DECISIONS.md`](DECISIONS.md) as one line, and the row leaves.
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
+| D19 | 📝 **The slow world** (Caio's idea, 2026-10-12): a planet with a very long day and night, proposed for the reserved innermost slot (Mercury, 3:2: ~97 program days of sun, 97 of night); the walking terminator, the long night as logistics, polar ice beside sunlit ridges, launch windows every ~32 days — [`SYSTEM.md`](SYSTEM.md) § "Proposed: the slow world", four questions with defaults | M5 | M | 📝 | waiting on Caio (defaults hold if silent) |
 | Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready on **W14's default** (paperwork office, instrument-panel cockpit, poster headings; Caio may override): plan first, with flow |
 
 ---

@@ -1,5 +1,5 @@
 # SYSTEM — the star system catalog
-**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
+**Version**: 1.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-12
 **Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
 revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
@@ -236,6 +236,43 @@ Adding bodies later is cheap, as long as a few things are fixed now.
 
 Names and looks stay cheap to change.
 
+### Proposed: the slow world (Caio's idea, 2026-10-12; not approved; D19)
+
+Caio's idea: **a planet that turns very slowly, with a very long day and a very long night.** Hesper already turns
+slowly (243 program days), but its surface is hidden under 90 bar of hot cloud, so the day and night barely matter
+there. Selene shows a small version of it: a 52 h night already freezes a rover that has no RTG. The proposal fills the
+reserved innermost slot with an airless world where the day and night drive play:
+
+- **Physical (Mercury, by the scaling rules):** 0.39 TU, e 0.2; R 488 km, g 3.70 m/s²; a year of 97 program days.
+  It turns **3 times every 2 years** (64.9 program days), so **a solar day lasts 194 program days: about 97 of sun,
+  then 97 of night**. Each half is a quarter of Tellus's year. Its ground hardly moves (1.6 m/s at the equator).
+- **The terminator walks.** At the equator, the line between day and night moves at about **2 km/h (0.55 m/s)**,
+  slower than a rover. A rover or a crawling base can **follow the twilight band**, where it is neither 430 °C nor
+  −180 °C. Or it can sit still, and the program must carry it through the dark.
+- **The night is a logistics problem** (management, not reflexes). The Selene freeze rule scales up: no battery lasts
+  97 days, so a base needs an RTG, a reactor or a stockpile. Otherwise it goes to sleep and the program schedules
+  around its dark months.
+- **The poles never turn.** Crater floors near the poles stay dark forever and hold **ice**, a propellant source.
+  Ridges beside them stay **sunlit almost all the time**, a site for solar farms. Power at the rim and water in the
+  pit are a Factorio pair.
+- **Launches from the ground come in rare windows.** A site passes under an orbit's plane only twice per turn,
+  **every ~32 program days**. A base meeting an orbital station waits for that alignment or pays for a plane change.
+  Without the mechanic being added, that is simply the existing orbital physics, at a slower clock.
+- **Heat at dawn.** Hardware that slept through the night has to survive the sunrise, too. The terminator becomes a
+  mission deadline from either side.
+- **Free flavour:** with an e of 0.2, at some longitudes the sun rises, stops, sets again and rises once more near
+  perihelion, as it does on Mercury.
+
+**Questions for Caio (D19; defaults hold if silent):**
+1. **Which body?** *Default: the reserved innermost slot*, a Mercury analogue at 0.39 TU. Alternatives: give the long
+   day to a new moon, or slow down an existing body.
+2. **How long a day?** *Default: the real 3:2 resonance, ~97 program days of sun and 97 of night.* Shorter (~20 days
+   each) would swing more often but lose the resonance.
+3. **Air?** *Default: airless* (clear sky, the biggest heat swing). A thin atmosphere would add a constant wind from
+   the day side to the night side.
+4. **When?** *Default: built with the planets (M5).* Its rules can be prototyped on Selene now: the long night, the
+   twilight band (Selene's terminator moves at 21 km/h at the equator) and polar ice.
+
 ---
 
 ## Decisions (round 2, Caio, 2026-10-08)
@@ -256,6 +293,7 @@ adds them to QUEUE.md. Look and ground may start before M5.
 ---
 
 ## Version history
+- **1.1.2 (2026-10-12):** proposed, not approved: the slow world in the innermost slot (Caio's idea; D19).
 - **1.1.1 (2026-10-11):** KSP's names ("Kerbol", "Jool") dropped; the star's mass kept, for play length (D15.6).
 - **1.1.0 (2026-10-09):** W20 round 2, approved by Caio: look twists for Hesper (night glow), Enyo (redder, the volcano),
   Astraea (lopsided, a polar basin), Hyperion (seasonal colour, hexagon, ring structure), Eos (cycloids, tiger stripes),
