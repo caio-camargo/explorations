@@ -5582,3 +5582,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for flow:** Q170 (N2 on the wall), Q309, Q310, then Q241 R3, R5. Noticed: the Flight row's "where" says
   "Selene orbit" for a vessel only passing through (`netModel`, economy's wording).
 
+
+## 2026-10-12 — Caio + Claude (launchpad world session, "planet"): Q270, a support town by every pad (v1.144)
+- **Built:** `supportTowns()` (`sim/world.js`, end of `extendSites`): per pad, a town 15–60 km away on land, ≥ 90° off
+  the downrange and polar corridors, low and gentle ground, nearest 25 km, up-range first; 12–35 k people; appended to
+  `CITIES` (random cities keep their indices). 15 pads → 15 towns at 15–35 km, 90–160° off; home's is Kaos Beach, 15 km
+  NNW on the coast. The city texture, night lights, buildings, `dropVerdict` and the map get them with no other change.
+- **Tests:** `town-1` (new); core 13 checks the random cities only; core 24's disaster watch had a latent bug the town
+  exposed (it reset `disDone` before reading a delivery made during its extra day): fixed. Full suite 660 PASS;
+  `career.mjs 3 3` identical to `main`. Renumbered once (flow took v1.143 / TESTING 225 meanwhile).
+- **Files:** `sim/world.js`, `tests/world.mjs`, `tests/core.mjs`, `notes/world.md` § v1.144, NOTES index, TESTING 226,
+  QUEUE (Q270 ✓, one Proposed line), ACTIVE_WORK. Not seen in a browser (TESTING 226). Claim cleared.
+- **Next for world:** Q19's browser check and A/B on a quiet machine (`q19-hdr`); then Q324 / Q251 / Q268 (all 🖥), or
+  Q105 / Q52.
