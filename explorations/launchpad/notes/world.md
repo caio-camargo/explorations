@@ -1,5 +1,5 @@
 # Launchpad notes — World
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1441,3 +1441,71 @@ wet (`point` set the attitude and zeroed the spin every step, so it could never 
 - Shallow water: the seabed doesn't hold anything up; a craft in 2 m of water floats as in deep water.
 - Flooding is by part kind, not by damage: a hard splash doesn't hole the hull.
 - Other landed vessels in the registry (not the one you fly) don't drift or sink.
+
+## v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
+
+v1.122's "not yet" list, three of its lines: debris ended at the sea with a boom; a craft in 2 m of water floated as in
+deep water; flooding was by part kind only.
+
+**The numbers first** (`node study_sea.mjs debris`: every preset's dropped stages, empty, from 3 km at 120 m/s). Every
+spent stage would float (they're 690–890 kg/m³ empty), but a bare stage comes down tumbling at **45–227 m/s**, three to
+fifteen times the sea's 14 m/s limit. Real ones broke up (Saturn's S-IC, every expended Falcon 9). So an honest sea
+breaks a bare stage, and **what brings one down slowly enough to float is a parachute**: the Shuttle's boosters (23 m/s
+on three chutes) and Electron's first stage (~10 m/s). One 600 m² canopy brings most stages down at 6–9 m/s:
+
+| Stage (empty) | Bare | 1 chute | 2 chutes |
+|---|---|---|---|
+| Orbiter's core, 2.5 t | 132 m/s, breaks up | 8 m/s, afloat on its side (84°), 77 % dry | 6 m/s |
+| Heavy's side booster, 2.2 t | 124 | 8, side 65°, 70 % | 5 |
+| Asparagus booster, 1.95 t | 116 | 7, side 42°, 68 % | 5 |
+| Lunar's core, 12.9 t | 227 | 19: **breaks up** | 13, side 86°, 83 % (holed) |
+| Big Lunar's small stage, 0.31 t | 45 | 3, upright, 83 % | 2 |
+
+They all sink 24 h after they come down (the engine floods at once, the tanks at 24 h).
+
+**How it works** (`sim/flight.js` § "spent stages at sea"; `shapeLines` lifted out of `rebuildShape` in `sim/vessel.js`,
+behaviour unchanged):
+- **Chutes on a stage.** A stage with chute parts among its parts opens them by itself, on the vessel's rules (drogue
+  under 400 m/s, main below 3 km and under 250 m/s, reefed to `CHUTE_G`), one 600 m² canopy per chute part. It stops
+  tumbling under a canopy. A chuted stage isn't dropped at 240 s (an hour instead) so it can reach the water; the 40 km
+  limit from your craft still culls it.
+- **The splash** (`debAfloat`): at or past the sea's limit it breaks up (the boom, as before). Slower, its hull is the
+  vessel's (`shapeLines` + `seaPts` on its parts), and it lies the way Archimedes puts it (`debRest`): over the hull's
+  tilt in the plane it came down in, the pose of least potential energy m·g·z_G − ρ·g·∫z dV, with the waterline where
+  buoyancy equals weight. Checked against v1.122's full dynamics on every preset's returning piece: the same tilt within
+  3° and dry share within 1 % for every stage. It differs where a hull has a second stable pose (the Hopper upright,
+  Big Lunar's capsule at 24°, the biocapsule apex-down, the crew capsule on its bags), where the dynamics stop in the
+  nearer one; for a stage, the deepest one is fine.
+- **Afloat**, it rides the same swell and drift as a vessel (`seaBob`, lifted out of `seaPose`), until `sinkTime`.
+  Too dense: it sinks at once, without a boom.
+
+**Holed hulls** (Q301): a splash past `SEA_HOLE` (3/4) of the sea's limit holes the parts that hit the water first
+(`seaForces` notes them before the splash is judged): they flood in `SEA_HOLE_H` (1 h) at 10.5 m/s, falling linearly
+to 3 minutes at the limit. Only parts it speeds up count, so an engine bell taking the hit (it floods at once anyway)
+holes nothing. A crew capsule's heat shield at 13.5 m/s: floods in 6 min; at 12 m/s in 39 min, and with the pod holed
+too it sinks within the hour (before any ship arrives: `recoveryOf` says *sank*). The splash message says what's holed.
+
+**The seabed** (Q301): `groundContact` now treats the seabed as ground under the sea (`bodyH`, not the sea level), so in
+water shallower than the draft the craft stands on it; while wet, the hull's outline (`seaPts(s).hull`, 4 points per
+slice) joins the foot points, so a hull on its side rests on the bottom too. A splash already judged isn't judged again
+on the seabed. At rest touching it, the craft is **aground** (`aground`): landed in the sea, no swell, no drift, no
+sinking; under the water entirely, it has sunk where it lies. An afloat craft that **drifts** into water shallower than
+its draft (`F.draft`, its lowest wet point at rest) runs aground there: the pose latches and `sinkAt` becomes Infinity.
+Measured: a crew capsule and the Hopper dropped at 9 m/s into 0.4–0.6 m of water rest aground (the Hopper leaning 83°);
+the Orbiter's returning piece, on its side, draws less than 0.4 m and floats there.
+
+**Checked:** test `sea-2` (`tests/world.mjs`): a capsule aground in 0.6 m of water; holed at 13.5 m/s and not at 9; the
+drift latch; a bare stage breaks up at 132 m/s, a chuted one comes down at 8 m/s, floats at 84°, 77 % dry, moves on the
+swell and is gone at `sinkAt`. `sea-1` unchanged.
+
+**Not yet:**
+- **The drop prediction** (`debrisImpact`, the drop-zone verdict) still falls with 2.5 m² of drag and no chute: a chuted
+  stage lands near the predicted point but later, drifting with no wind. Every bare stage also falls with the same 2.5 m²
+  whatever its size; from its outline (tumbling, mean projected area = surface/4) a big stage would drag more. Nothing
+  judged here turns on it (all far over 14 m/s), but the drop zones would shift: a vehicle/world item if wanted.
+- **Recovering a stage** is a sight only: no ship goes out, no refund (economy: a recovered stage could refund part of
+  its price, as `recoveryOf` does for a returning vessel). And a floating stage is forgotten once you're 40 km away.
+- **The canopy isn't drawn** on a falling stage (look & sound).
+- **Can a stage carry a chute?** The Assembly may only allow one at the top of the stack; check whether a side
+  booster's nose can take one (vehicle).
+- The drift latch samples the pose: at high warp a craft can drift a little past where it would have grounded.

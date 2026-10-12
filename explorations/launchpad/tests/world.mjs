@@ -354,3 +354,43 @@
     hi - lo > 0.8 && hi - lo < 2 && drift > 0.2 && drift < 0.3 && !s.alive && s.sunk && sailNear.kind === 'sea' && sailNear.factor === 1 && sailLate.kind === 'sank' && sailLate.factor === 0,
     `heave ${(hi - lo).toFixed(2)} m peak to peak, drift ${drift.toFixed(2)} m/s, sinks ${((F.sinkAt - F.t) / 3600).toFixed(0)} h in; ${sailNear.why}; a leaky one ${sailLate.why}`);
 }
+// sea-2. Spent stages at sea, the seabed and holed hulls (world session, QUEUE Q300 + Q301; NOTES § v1.142). A bare
+// stage hits the water far over the sea's limit and breaks up; with a parachute among its parts it comes down slowly
+// and floats on its side, rides the swell and sinks when flooded. In shallow water the seabed holds a craft up: at rest
+// there it's aground (no swell, no sinking), and an afloat craft that drifts into water shallower than its draft runs
+// aground. A splash past 3/4 of the sea's limit holes the parts that hit first: they flood in minutes. Own SIM copy.
+{
+  const G = new Function(src + 'return {PRESETS,TELLUS,newShip,detach,geom,stage,physStep,seaAt,bodyH,siteFrame,surfVel,fromPF,qFromBasis,HOOK,syncLanded,stepDebris,debris,seaBob,setT:t=>{simT=t},getT:()=>simT,DT};')();
+  const T = G.TELLUS, msgs = [], got = []; let booms = 0; G.HOOK.msg = m => msgs.push(m); G.HOOK.boom = () => booms++; G.HOOK.rebuild = () => {}; G.HOOK.debris = d => got.push(d);
+  const depth = c => T.ground.sea - G.bodyH(T, mul(c, T.R)), at = a => norm([Math.cos(a), 0.05, Math.sin(a)]);
+  // open sea, and 0.3–0.7 m of water: bisect between open sea and the first land after it (planet-fixed)
+  let a0 = 0; while (depth(at(a0)) < 200) a0 += 0.002; let a1 = a0; while (depth(at(a1)) > 0) a1 += 0.002;
+  const open = at(a0); let lo = a1 - 0.002, hi = a1; for (let i = 0; i < 60 && Math.abs(depth(at((lo + hi) / 2)) - 0.5) > 0.2; i++) { const m = (lo + hi) / 2; if (depth(at(m)) > 0.5) lo = m; else hi = m; }
+  const shallow = at((lo + hi) / 2);
+  const drop = (u, v, st) => { G.setT(0); msgs.length = 0; const s = G.newShip(st);
+    for (const p of s.parts) if (p.on && p.res.fuel != null) p.res.fuel = 0; G.geom(s);
+    const f = G.siteFrame(u); s.landed = false; s.chute = false; s.sas = false; s.q = G.qFromBasis(norm(cross(f.up, f.n)), f.up, f.n);
+    s.r = G.fromPF(T, mul(u, T.R + T.ground.sea - s.yBot + 0.3), 0); s.v = add(G.surfVel(T, s.r), mul(G.fromPF(T, f.up, 0), -v)); s.w = [0, T.rot, 0];
+    let t = 0; for (; t < 120 && s.alive && !s.landed; t += G.DT) G.physStep(s, G.DT); return { s, t, msgs: msgs.slice() }; };
+  const cap = ['chute', 'crew', 'shield'], ag = drop(shallow, 9, cap), soft = drop(open, 9, cap), hard = drop(open, 13.5, cap);
+  const hardH = hard.s.holed ? Math.max(...hard.s.holed.values()) : NaN;
+  check('sea-2: in half a metre of water a capsule rests aground on the seabed; a splash at 13.5 m/s holes the heat shield (floods in minutes), one at ~9 m/s does not',
+    ag.s.alive && ag.s.landed && ag.s.water && !ag.s.float && /Aground/.test(ag.msgs.join()) && soft.s.float && !soft.s.holed && hard.s.holed && hardH < 0.5 && /holed/.test(hard.msgs.join()),
+    `shallow (${depth(shallow).toFixed(2)} m): ${ag.msgs.at(-1)}; soft: ${soft.msgs[0]}; hard: ${hard.msgs[0]}`);
+  // drifting into water shallower than its draft: the pose stops there and it no longer sinks
+  const F = { ...soft.s.float, pf: mul(shallow, T.R), t: G.getT() - 2, draft: depth(shallow) + 1, sinkAt: G.getT() + 3600 }; delete F.ag;
+  const o = G.seaBob(F, T, 3), o2 = G.seaBob(F, T, 3);
+  check('sea-2: an afloat craft that drifts into water shallower than its draft runs aground: the pose holds and it no longer sinks',
+    F.ag && o === o2 && F.sinkAt === Infinity, `aground at ${depth(norm(o.pf)).toFixed(2)} m of water, draft ${F.draft.toFixed(2)} m`);
+  // a spent stage: the Orbiter's first stage, empty, from 3 km at 120 m/s; bare, then with one parachute
+  G.setT(0); const s = G.newShip(G.PRESETS.Orbiter); for (const p of s.parts) if (p.on && p.res.fuel != null) p.res.fuel = 0; G.geom(s); G.stage(s); G.stage(s);
+  const d0 = got.find(d => d.parts.some(p => p.d.kind === 'tank')), fall = n => { G.setT(0); msgs.length = 0; booms = 0; G.debris.length = 0;
+    const r0 = G.fromPF(T, mul(open, T.R + 3000), 0), d = { ...d0, r: r0, v: add(G.surfVel(T, r0), mul(norm(r0), -120)), w: [0.3, 0.1, 0.2], t: 0, chutes: n, chA: 0, float: null, dead: false, mesh: null };
+    G.debris.push(d); let vHit = 0; for (let t = 0; t < 1500 && G.debris.length && !d.float; t += G.DT) { vHit = len(sub(d.v, G.surfVel(T, d.r))); G.stepDebris(G.DT); G.setT(G.getT() + G.DT) }
+    return { d, vHit, booms }; };
+  const bare = fall(0), chuted = fall(1), DF = chuted.d.float, p0 = chuted.d.r.slice();
+  G.setT(DF.t + 30); G.stepDebris(G.DT); const moved = len(sub(chuted.d.r, p0)); G.setT(DF.sinkAt + 1); G.stepDebris(G.DT);
+  check('sea-2: a bare spent stage breaks up on the sea at ~130 m/s; with a parachute it comes down under 14 m/s and floats on its side, rides the swell, and sinks when flooded',
+    bare.booms === 1 && bare.vHit > 50 && !bare.d.float && DF && chuted.vHit < 14 && DF.tilt > 1.2 && DF.dry > 0.5 && moved > 0.05 && isFinite(DF.sinkAt) && !G.debris.includes(chuted.d),
+    `bare: ${bare.vHit.toFixed(0)} m/s, broke up; one chute: ${chuted.vHit.toFixed(1)} m/s, afloat at ${(DF.tilt * 57.3).toFixed(0)}°, ${(DF.dry * 100).toFixed(0)} % dry, sinks ${((DF.sinkAt - DF.t) / 3600).toFixed(0)} h in`);
+}

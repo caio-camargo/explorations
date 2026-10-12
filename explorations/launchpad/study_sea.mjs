@@ -3,9 +3,11 @@
 // where it comes to rest (upright, on its side, upside down), how much of the hull stays dry, when it would sink, how
 // long it took to settle; and a too-dense test piece, which must go down.
 //   node study_sea.mjs [tilt°=0] [v=7] [preset name …]
+//   node study_sea.mjs debris   — spent stages (Q300): every preset's dropped stages, empty, falling from 3 km with 0–3
+//   parachutes among their parts: the speed they reach the water at, and whether they break up, float (how) or sink
 import { pageSource } from './page.mjs';
 const html = pageSource(), src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-const G = new Function(src + 'return {PRESETS,TELLUS,newShip,detach,geom,physStep,seaAt,seaPts,toPF,fromPF,surfVel,qFromBasis,qBody,siteFrame,HOOK,RHO_SEA,setT:t=>{simT=t},getT:()=>simT,norm,qrot,qaxis,qmul,dot,mul,add,sub,len,clamp,DT}')();
+const G = new Function(src + 'return {debris,stepDebris,stage,debRest,PRESETS,TELLUS,newShip,detach,geom,physStep,seaAt,seaPts,toPF,fromPF,surfVel,qFromBasis,qBody,siteFrame,HOOK,RHO_SEA,setT:t=>{simT=t},getT:()=>simT,norm,qrot,qaxis,qmul,dot,mul,add,sub,len,clamp,DT}')();
 const { TELLUS: T, norm, qrot, qmul, qaxis, dot, mul, add, len, clamp } = G, args = process.argv.slice(2), num = args.filter(a => /^[\d.]+$/.test(a)).map(Number);
 const tiltDeg = num[0] ?? 0, v0 = num[1] ?? 7, names = args.filter(a => !/^[\d.]+$/.test(a));
 const msgs = []; G.HOOK.msg = m => msgs.push(m); G.HOOK.boom = () => {}; G.HOOK.rebuild = () => {}; G.HOOK.debris = () => {};
@@ -25,6 +27,7 @@ function drop(st, opt = {}) {
 }
 function sub3(a, b) { return a.map((x, i) => x - b[i] * dot(a, b)) }   // a minus its component along unit b
 function crossN(a, b) { return norm([a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]) }
+if (names[0] === 'debris') { debrisStudy(); process.exit(0) }
 const list = names.length ? names : Object.keys(G.PRESETS).filter(k => G.PRESETS[k]);
 console.log(`open sea at ${u.map(x => x.toFixed(3))}; drop at ${v0} m/s, tilted ${tiltDeg}°\n`);
 for (const k of list) { const st = G.PRESETS[k], r = drop(st.parts || st), F = r.F;
@@ -34,3 +37,22 @@ for (const k of list) { const st = G.PRESETS[k], r = drop(st.parts || st), F = r
 // a piece too dense to float: the Hopper with its tank full of something heavy
 for (const mode of ["stab", "retro"]) { const r = drop(G.PRESETS["Crewed Lunar"], { sas: true, mode, tilt: 0 }); console.log(`Crewed Lunar, SAS ${mode}: ${r.out} after ${r.t.toFixed(1)} s`); }
 const h = drop(G.PRESETS.Hopper, { heavy: true, tilt: 0 }); console.log(`\nHopper, tank 50 t: ${(h.m / 1000).toFixed(1)} t in ${h.V.toFixed(2)} m³ → ${h.out} after ${h.t.toFixed(1)} s`);
+
+// ---- spent stages (Q300)
+function debrisStudy() {
+  const seen = new Map(), got = []; G.HOOK.debris = d => got.push(d);
+  for (const k of Object.keys(G.PRESETS)) { const st = G.PRESETS[k]; if (!st) continue; G.setT(0); got.length = 0; const s = G.newShip(st.parts || st);
+    for (let i = 0; i < 12 && s.alive; i++) { for (const p of s.parts) if (p.on && p.res.fuel != null) p.res.fuel = 0; G.geom(s); G.stage(s) }
+    for (const d of got) { const key = d.parts.map(p => p.d.kind).join('+'); if (!seen.has(key)) seen.set(key, { d, from: k }) } }
+  console.log(`open sea at ${u.map(x => x.toFixed(3))}; each stage dropped empty from 3 km at 120 m/s down, tumbling
+`);
+  for (const [key, { d: d0, from }] of seen) { const row = [];
+    for (const n of [0, 1, 2, 3]) { G.setT(0); msgs.length = 0; G.debris.length = 0;
+      const d = { ...d0, r: mul(u, T.R + 3000), v: add(G.surfVel(T, mul(u, T.R + 3000)), mul(u, -120)), w: [0.3, 0.1, 0.2], t: 0, chutes: n, chA: 0, float: null, dead: false, mesh: null };
+      for (const p of d.parts) if (p.res && p.res.fuel != null) p.res.fuel = 0;
+      G.debris.push(d); let vHit = 0, t = 0;
+      for (; t < 4000 && G.debris.length && !d.float && !d.dead; t += G.DT) { vHit = len(G.sub(d.v, G.surfVel(T, d.r))); G.stepDebris(G.DT); G.setT(G.getT() + G.DT) }
+      const F = d.float, att = F ? (F.tilt < 0.35 ? 'upright' : F.tilt > 2.8 ? 'upside down' : `side ${(F.tilt * 57.3).toFixed(0)}°`) : '';
+      row.push(`${n} chute${n === 1 ? '' : 's'}: ${vHit.toFixed(0)} m/s → ${F ? `afloat ${att}, ${(F.dry * 100).toFixed(0)} % dry, sinks ${((F.sinkAt - F.t) / 3600).toFixed(1)} h${msgs.some(m => /holed/.test(m)) ? " (holed)" : ""}` : d.dead && !msgs.length ? 'broke up' : 'sank'}`) }
+    console.log(`${key} (${(d0.mass / 1000).toFixed(2)} t, from ${from})` + String.fromCharCode(10) + '   ' + row.join(String.fromCharCode(10) + '   ')) }
+}
