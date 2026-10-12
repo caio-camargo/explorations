@@ -468,3 +468,26 @@
     drops && L.legs && L.n === L.of && ps.mass === m0 && ps.cm.every((x, i) => x === cm0[i]),
     `Passenger: ${P.n} of ${P.of} parts land on ${P.on}, ${P.v.toFixed(2)} m/s (built ${built.toFixed(2)}), Selene ×${(Pm.v / P.v).toFixed(3)}; lander ${L.n} of ${L.of} on Selene ${L.v.toFixed(2)} m/s`);
 }
+
+// vehicle-15. Staging by drag and drop (vehicle session, QUEUE Q249; PLAYTEST #47): stgEdit moves an action into another stage,
+// gives it a stage of its own between two, merges a stage into another and moves a stage; the merged stage fires all of its
+// actions in one press (one event that drops and lights together).
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {toV2,assemble,PRESETS,BLD};')();
+  const E = D.BLD.stgEdit, L = [['a', 'b'], ['c'], ['d', 'e']], J = x => JSON.stringify(x);
+  const cases = [
+    [E(L, { atom: [0, 1] }, { row: 2 }), [['a'], ['c'], ['d', 'e', 'b']]],    // an action dragged onto stage 3
+    [E(L, { atom: [2, 0] }, { gap: 1 }), [['a', 'b'], ['d'], ['c'], ['e']]],  // between stages 1 and 2: a stage of its own
+    [E(L, { atom: [1, 0] }, { gap: 3 }), [['a', 'b'], ['d', 'e'], ['c']]],    // past the end; its old stage, now empty, goes
+    [E(L, { stage: 1 }, { row: 0 }), [['a', 'b', 'c'], ['d', 'e']]],           // stage 2 merged into stage 1
+    [E(L, { stage: 0 }, { gap: 3 }), [['c'], ['d', 'e'], ['a', 'b']]],         // stage 1 moved to the end
+    [E(L, { stage: 2 }, { row: 2 }), L]];                                       // onto itself: nothing
+  const bad = cases.filter(([g, w]) => J(g) !== J(w)).map(([g]) => J(g));
+  const cp = x => JSON.parse(JSON.stringify(x)), heavy = () => { const d = D.toV2(cp(D.PRESETS.Heavy)); D.BLD.ensureIds(d); return d; };
+  const A0 = D.assemble(heavy()), ids = A0.stages.map(s => s.map(a => a.id)), h = heavy(); h.stg = E(ids, { stage: 1 }, { row: 0 });
+  const A1 = D.assemble(h), e0 = A1.events[0];
+  check('staging by drag and drop (Q249): actions and stages move, merge and split; a merged stage fires all its actions at once',
+    !bad.length && L.length === 3 && A1.custom && A1.events.length === A0.events.length - 1 && e0.ignite.length === A0.events[0].ignite.length + A0.events[1].ignite.length && e0.decouple.length === A0.events[1].decouple.length,
+    `${bad.length ? 'wrong: ' + bad.join(' ') + ' · ' : ''}Heavy ${A0.stages.length} stages → ${A1.stages.length}; stage 1 now: ${A1.stages[0].map(a => a.label).join(' + ')}`);
+}

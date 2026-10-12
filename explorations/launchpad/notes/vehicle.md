@@ -1371,3 +1371,20 @@ Test `vehicle-12`. `--smoke` all pass.
   the camera still; a first tank after a new start hanging 7 m over the plate. No headless test: the builder's pin needs
   the view (as Q247's). TESTING 221. **For look:** a hanging model has nothing under it on the desk; a display rod from
   the base plate to its bottom (`deskMesh`, from `BLD.foot()` to `S.yBot`) would explain it (QUEUE *Proposed*).
+
+## v1.140 — staging by drag and drop (2026-10-12, vehicle session, QUEUE Q249; PLAYTEST #47)
+
+- **What was there:** since the staging editor (v1.20) a stage could already hold several actions (drops, ignitions, the
+  chute, each an *atom* of `stageAtoms`, `sim/vessel.js`; a design's own order is `stg`, lists of atom ids), but the
+  only way to move one was the ◀ ▶ buttons on each chip, one stage at a time, and nothing said a stage fires them all.
+- **Now** (`builder.js` `staging`): drag a chip onto a stage to fire it there, or into the gap between two stages (or
+  past either end) for a stage of its own; drag a stage by its number onto another to **merge** them, or between two to
+  move it. Gaps widen while dragging and the target lights. ⤵ still splits a chip off; **⇣** merges a stage with the
+  next; ◀ ▶ are gone. A hint line under the header says it, and that a stage fires all of its actions in one press.
+  The first edit freezes the order into `stg` as before; *automatic* forgets it; undo works per move.
+- **`stgEdit(L, from, to)`** (exposed on `BLD`): the pure move on the list of stages; the panel calls it inside
+  `edit()`. No change to the sim: `stageAtoms` already makes one event per stage from whatever it holds.
+- **Not here:** deployments as stage actions (legs, solar wings, bay doors) come with Q329's action groups, which drop
+  into stages through this panel. There is no fairing part yet. Test `vehicle-15` (the moves, and the Heavy with stage 2
+  merged into 1 firing as one event); checked in the browser with real drag events (merge, a chip past the end, undo).
+  TESTING 222.
