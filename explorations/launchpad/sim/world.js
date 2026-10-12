@@ -187,7 +187,31 @@ function extendSites(){const D=Math.PI/180,R=TELLUS.R,cands=[],gap=Math.cos(SITE
       if(terrainH(u)>-500)continue;let ok=true;for(let a=0;a<12&&ok;a++)for(const km of[100,200,300])if(isLand(alongAz(u,a*Math.PI/6,km*1e3/R))){ok=false;break}
       if(!ok)continue;const d=dot(u,home);if(!best||d>best.d)best={d,u}}
     if(best){const t=mkSite(best.u,'sea','s'+SITES.length);t.kind='sea';t.h=SEA_DECK;SITES.push(t)}}
-  for(const t of SITES)finishSite(t)}
+  for(const t of SITES)finishSite(t);
+  supportTowns()}
+// ---- support towns (world session, QUEUE Q270; PLAYTEST #70; NOTES § v1.144). Every launch site has a town 15–60 km
+// away where its people live, seen from the air on the way up: Titusville and Cocoa Beach are 15–20 km from LC-39,
+// Leninsk ~35 km from Baikonur's pads. Never under the corridor: its bearing is at least 90° off the site's downrange
+// heading and its polar ones (60° if nothing fits). Low, gentle land, nearest 25 km and up-range first. Appended to
+// CITIES after the random cities (their indices don't move), so the city texture, night lights, dropVerdict and the
+// map's city layer all have it. A sea platform has none.
+const TOWN_KM=[15,60],TOWN_POP=[12e3,35e3];
+function supportTowns(){const D=Math.PI/180,R=TELLUS.R;
+  for(const t of SITES){if(t.kind!=='pad'||CITIES.some(c=>c.town===t.id))continue;const Rn=rng(4099+SITES.indexOf(t)*131),cor=[t.downrange?t.downrange.az:90];
+    if(t.polar&&t.polar.includes('S'))cor.push(180);if(t.polar&&t.polar.includes('N'))cor.push(0);
+    const off=az=>Math.min(...cor.map(c=>{const d=Math.abs(((az-c)%360+540)%360-180);return d}));let best=null;
+    for(const minOff of[90,60]){
+      for(let az=0;az<360;az+=10){const o=off(az);if(o<minOff)continue;
+        for(let km=TOWN_KM[0];km<=TOWN_KM[1];km+=5){const u=alongAz(t.u,az*D,km*1e3/R),h=terrainH(u);if(landValue(u)<0.545||h>1200)continue;
+          if([0,90,180,270].some(a=>!isLand(alongAz(u,a*D,3e3/R))))continue;   // the town's own ground is land
+          if(CITIES.some(c=>Math.acos(clamp(dot(u,c.u),-1,1))*R<c.rad+15e3))continue;
+          if(SITES.some(x=>x!==t&&x.kind==='pad'&&Math.acos(clamp(dot(u,x.u),-1,1))*R<15e3))continue;
+          const sc=-Math.abs(km-25)/20-h/400-terrainSlope(TELLUS,u)*4+(o-90)/180+0.05*Rn();if(!best||sc>best.sc)best={sc,u,km,az}}}
+      if(best)break}
+    if(!best)continue;
+    const pop=Math.round((TOWN_POP[0]+(TOWN_POP[1]-TOWN_POP[0])*Rn())/1000)*1000,coast=[0,90,180,270].some(a=>!isLand(alongAz(best.u,a*D,8e3/R)));
+    const nm=SYL[Rn()*SYL.length|0]+SYL[Rn()*SYL.length|0]+(coast?' Beach':['ville','sk',' Springs',''][Rn()*4|0]);
+    CITIES.push({name:nm[0].toUpperCase()+nm.slice(1),u:best.u,pop,rad:2500+5200*Math.sqrt(pop/1e6),seed:Rn()*1e9|0,town:t.id,km:best.km,az:best.az,power:powerAt(best.u)})}}
 // terrain height (m above sea level; negative is sea floor) at a planet-fixed direction. Every pad is levelled: flat to
 // PAD_FLAT, blended back to the land by PAD_BLEND (sites are ≥ SITE_GAP apart, so at most one is ever near).
 function terrainH(pf,oct=HOCT){const c=norm(pf);let near=null,dmin=Infinity;

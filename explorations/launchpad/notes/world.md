@@ -1509,3 +1509,40 @@ swell and is gone at `sinkAt`. `sea-1` unchanged.
 - **Can a stage carry a chute?** The Assembly may only allow one at the top of the stack; check whether a side
   booster's nose can take one (vehicle).
 - The drift latch samples the pose: at high warp a craft can drift a little past where it would have grounded.
+
+## v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
+
+Caio wanted a city in sight of the pad, seen from the air on the way up. `makeCities` placed 32 random cities, each at
+least 160 km from the first site (and `extendSites` keeps later sites 40 km from them), so none was ever near. Real pads
+have their towns close: Titusville and Cocoa Beach 15–20 km from LC-39, Leninsk ~35 km from Baikonur's pads.
+
+**How** (`supportTowns`, `sim/world.js`, called at the end of `extendSites` once every site and its corridors exist):
+for each pad (not the sea platform), a search over bearings every 10° and distances 15–60 km every 5 km:
+- **Never under the corridor:** the bearing is at least 90° off the downrange heading and any polar one (`t.polar`'s S
+  or N); 60° if nothing fits (no pad needed it).
+- **Its ground:** land with a margin (`landValue` ≥ 0.545, and land 3 km out each way), under 1,200 m, clear of every
+  city by its radius + 15 km and of every other pad by 15 km.
+- **Score:** nearest 25 km, low, gentle, up-range over beside, a little seeded jitter.
+- **Size and name:** 12–35 k people (rad 3.1–4.0 km, the cities' formula), a seeded name from the same syllables
+  (" Beach" on a coast).
+- **Appended** to `CITIES` after the random ones, which keep their order and indices (stations and contracts store
+  indices); the town carries `town` (its site's id), `km` and `az`. So the city texture, night lights, the near-city
+  buildings, `dropVerdict` and the map's city layer all have it with no change there.
+
+**Result:** 15 pads, 15 towns, 15–35 km (twelve at 15–25), 90–160° off their corridors, all in their pad's country.
+Home's Dunnzar Cape gets **Kaos Beach**, 15 km north-northwest on the coast (110° off the eastward corridor).
+
+**Checked:** test `town-1` (`tests/world.mjs`); core test 13's "cities clear of the pad" now looks at the random cities
+only. **Not seen in a browser** (TESTING 226).
+
+**Side effect:** `CITIES` is 47 long instead of 32, so anything that picks a random city (image contracts, disasters)
+picks differently for the same seed. It found a latent bug in core test 24's disaster watch: "the city nearest the pad"
+is now Kaos Beach, whose pictures came in during the test's extra day (still within 12 h), and the next try cleared
+`disDone` before reading it (and `!got` would also have looped on a 0 h delivery). The test now reads the qualifying
+delivery whenever the goal is met: 5.3 h. `node career.mjs 3 3` prints the same table on `main` and with the towns.
+
+**Not yet:**
+- Towns don't grow with the era (Leninsk was a camp before it was a city); fixed 12–35 k.
+- A town isn't drawn differently from a city (no launch-viewing crowds, no causeway).
+- A rollout warning when a stage's drop zone nears a town: `dropVerdict` already knows, and towns are never downrange,
+  so only an abort or a dogleg would find one.

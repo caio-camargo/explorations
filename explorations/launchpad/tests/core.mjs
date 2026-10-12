@@ -187,7 +187,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 13. The world (v1.9): cities on land and clear of the pad; dropped stages land where predicted; verdicts.
 {
-  const C = api.CITIES, R = TELLUS.R, gc = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(norm(a), norm(b))))) * R;
+  // the random cities; support towns (Q270) are tests/world.mjs town-1
+  const C = api.CITIES.filter(c => !c.town), R = TELLUS.R, gc = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(norm(a), norm(b))))) * R;
   check('cities: ~30, all inland (land mask with margin), none within 150 km of the pad, ≥250 km apart',
     C.length >= 20 && C.every(c => api.landValue(c.u) >= 0.58) && C.every(c => gc(c.u, [1, 0, 0]) > 150e3) && C.every((c, i) => C.every((d, j) => i === j || gc(c.u, d.u) > 250e3)),
     `${C.length} cities, nearest to the pad ${(Math.min(...C.map(c => gc(c.u, [1, 0, 0]))) / 1e3).toFixed(0)} km, populations ${(Math.min(...C.map(c => c.pop)) / 1e3).toFixed(0)}k–${(Math.max(...C.map(c => c.pop)) / 1e6).toFixed(1)}M`);
@@ -1051,8 +1052,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   reset(['beeper', 'wxsat']); [r, v] = orbit(300e3, 90); s = craft(powered(['ant', 'cam', 'core', 't2', 'petrel']), r, v); api.satRegister(s, s.rec);
   const ci = api.CITIES.map((c, i) => ({ i, d: Math.acos(Math.min(1, dot(c.u, [1, 0, 0]))) })).sort((a, b) => a.d - b.d)[0].i;   // a city near the pad (a station in reach)
   let got = null;
-  for (let k = 0; k < 8 && !got; k++) { P.active = [{ id: 900 + k, type: 'image', src: 'gov', client: 0, p: { ci, res: 8, dis: 'Floods', pay: 30, dur: 5 }, posted: P.day, deadline: P.day + 5 }]; P.disDone = [];
-    for (let h = 0; h < 4 && !P.done.diswatch; h++) api.advanceDays(0.125); if (P.done.diswatch) got = (P.disDone[0].t - P.disDone[0].posted * api.DAY_S) / 3600; else api.advanceDays(1); }
+  for (let k = 0; k < 8 && got === null; k++) { P.active = [{ id: 900 + k, type: 'image', src: 'gov', client: 0, p: { ci, res: 8, dis: 'Floods', pay: 30, dur: 5 }, posted: P.day, deadline: P.day + 5 }]; P.disDone = [];
+    for (let h = 0; h < 4 && !P.done.diswatch; h++) api.advanceDays(0.125); if (!P.done.diswatch) api.advanceDays(1);   // a delivery during that day can still be within 12 h of the call
+    if (P.done.diswatch) { const x = P.disDone.find(x => x.t - x.posted * api.DAY_S <= 12 * 3600); got = (x.t - x.posted * api.DAY_S) / 3600; } }
   check('epoch 3: disaster watch: pictures of a disaster delivered within 12 h of the call', got !== null && got <= 12, got !== null ? `delivered ${got.toFixed(1)} h after the call` : 'never within 12 h');
   // navigation: two satellites aren't enough; four in two polar planes, two per plane phased half an orbit apart, are
   const reg = (alt, node, ph) => { const R1 = TELLUS.R + alt, vv = Math.sqrt(TELLUS.mu / R1), ry = a => [a[0] * Math.cos(node) + a[2] * Math.sin(node), a[1], -a[0] * Math.sin(node) + a[2] * Math.cos(node)];
