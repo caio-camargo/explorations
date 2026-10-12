@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.60 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 0.1.61 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -13,7 +13,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 | # | Item | Who | What it frees |
 |---|---|---|---|
 | 1 | **Q292 → W16: your first hour.** You are the player (M1's last finish line). Done for it: Q257 (v1.123), flow's first-hour fixes (v1.128: Recover vessel, toolbar plate, first-run choices, Design table), the builder fixes (v1.118). Left: **vehicle's Q264** (explodes after touchdown), then QA's Q292 (PLAYROUTE for the rooms, `m1` re-run) says it's ready | vehicle (**running Q264**); QA (**not open yet**: Q292's PLAYROUTE half can start now); then **you** | **M1 done**; M2 becomes current |
-| 2 | **Q241: the other rooms**: R4 **mission control** first (it frees five items), then R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**running R4**) | mission control's consoles (Q43, Q167, Q196, Q203, Q170) |
+| 2 | **Mission control's consoles** (Q241 R4 ✓ v1.131, Q203 ✓ with it): Q196 planned burns, Q43 watch mode, Q167 cruise entries, Q170 network N2; then Q241 R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**idle**: all ready) | M2's flight-from-the-ground loop; the rooms done |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world (**no session**) | every player's first visit |
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
 | 5 | **Q264** a landed rocket explodes after touchdown (first-hour P2, PLAYTEST #64): one look now with the tester log (Q265 ✓). Q257 ✓ v1.123 | vehicle (**running**) | Q292, your first hour |
@@ -158,6 +158,8 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q286 | **UI declutter pass** (D16, UI.md § 3–4) on today's layout, before the rooms: the Program's NEXT card as read 1 and offers one line each; the Assembly's GO/NO-GO board; the flight's dark cockpit (see the Proposed line for the full list) | M1 | M | 🖥 | ready |
 | Q287 | **Hover-term glossary** (D16, UI.md rule 9): Δv, TWR, max-q, apoapsis, know-how and the rest as hover terms, one level deep, shared by every screen; the explanatory sub-lines go | M1 | S | 🖥 | ready |
 | Q293 | **Losses explained** (REVIEW § 3 gap 1): the Debrief stores a loss's cause (from the crash message; with vehicle's Q264) and shows it; every line of money named (the "days passing" lump split: budget, debt, refunds); with economy | M1 | S | 🖥 | ready |
+| Q309 | **Mission control during a flight**: open it for the other craft, one key away (the Q239 plan); today it opens from the Program only (Q241 R4, v1.131) | M2 | S | 🖥 | ready |
+| Q310 | Mission control's Dispatch console: a **RECOVERY line** (ships at sea, Q274's recovery); and the pad calendar's labels overlap when a booking and its window are both short (Q241 R4, v1.131) | M2 | S | 🖥 | ready |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 Worktree `launchpad-economy` (branch `economy`, port 8774).
@@ -455,6 +457,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q298 | **`check_docs.mjs`** (ROADMAP § Documents rule 7): a header version that differs from the doc's history, a doc missing from INDEX or ROADMAP's catalog, broken relative links, stale "after Qn" (see the Proposed line) | — | S | ⚙ | ready |
 | Q299 | **One load path**: `app/state.js`'s boot calls `recLoad` (it repeats the load's derived state: HOME, rivals, board, tables), so a replay and a reload can't drift apart (Q275) | M2 | S | ⚙ | ready |
 | Q308 | `check_numbers.mjs` on a branch cut **before the NOTES split** missed a version collision (economy's v1.128 vs flow's, and offered v1.129 that `notes/vehicle.md` had): read versions from `origin/main`'s `notes/*.md` whatever the branch's own layout (Q188 merge, v1.130) | — | S | ⚙ | ready |
+| Q311 | **A parallel-shard flake**: `node test.mjs --smoke --jobs 4` failed "presets" once (Passenger Orbiter: 0 m/s spare, 0.00 orbits, 2026-10-12, flow); passes alone and in a serial smoke run on the same tree. Find the shared state | — | S | ⚙ | ready |
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
@@ -479,9 +482,9 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 | W38 | **Rivals as programs (Q188, v1.130)**, three questions with defaults, built on the defaults: (1) **the spur**: a first we win speeds the rivals still racing for it, × (1 + ½ prestige appetite) for a year (built; it raises the runner's lost orbits from 19 to 27 of 144) or no reaction; (2) **the race panel by openness**: a forecast day for an open rival, "soon" or nothing for a closed one (default) or exact days for all (today); (3) **second place**: a rival that gets there after us makes a small "gets there too" line (built) or stays silent. Silence keeps the defaults | Q188 slice 2 (the panel) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- flow — mission control during a flight: open it for the other craft (one key away), as the Q239 plan says; today it opens from the Program only — Q241 R4 (v1.131)
-- flow — mission control: a RECOVERY line (ships at sea, Q274's recovery) on the Dispatch console; the pad calendar's labels overlap when a booking and its window are both short — Q241 R4 (v1.131)
-- platform — `node test.mjs --smoke --jobs 4` failed "presets" (Passenger Orbiter: 0 m/s spare, 0.00 orbits) once on 2026-10-12; it passes alone and in a serial smoke run on the same tree: a parallel-shard flake to look at — flow session
+- ✓ ranked as Q309 (orchestrator 2026-10-12): flow — mission control during a flight: open it for the other craft (one key away), as the Q239 plan says; today it opens from the Program only — Q241 R4 (v1.131)
+- ✓ ranked as Q310 (orchestrator 2026-10-12): flow — mission control: a RECOVERY line (ships at sea, Q274's recovery) on the Dispatch console; the pad calendar's labels overlap when a booking and its window are both short — Q241 R4 (v1.131)
+- ✓ ranked as Q311 (orchestrator 2026-10-12): platform — `node test.mjs --smoke --jobs 4` failed "presets" (Passenger Orbiter: 0 m/s spare, 0.00 orbits) once on 2026-10-12; it passes alone and in a serial smoke run on the same tree: a parallel-shard flake to look at — flow session
 - ✓ ranked as Q276 (orchestrator 2026-10-11): look & sound (parts & pad) — the desk's polish: a tilting drafting board, T-square, eraser, title-block lettering (design name, scale); a suited scale figure; the pad crew now only show in the Rollout — Q242, NOTES § v1.115
 - ✓ ranked as Q277 (orchestrator 2026-10-11): flow — the Assembly strip shows the model's scale ("model 1:48"); the Assembly panels as paperwork on the desk come with R5 (Q241) and vehicle's Q237/Q238 — Q242
 - ✓ ranked as Q240 (orchestrator 2026-10-10): flow — **Q239 R0+R1**: the room layer (`ROOMS` in `go()`, `#room`, no 3D draw behind it) and the Program as the director's desk, the last flight's photo captured at liftoff (NOTES § UI "Plan: real screens"; W35 defaults) — Q239
