@@ -156,7 +156,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`GROUND.md`](GROUND.md) | every body's ground: generators, recipes, slices |
 | [`UI.md`](UI.md) | UI hierarchy: rules and each screen's reads |
 | [`BEAUTY.md`](BEAUTY.md) | the beauty pass: what's weak today, the plan B0–B6, costs |
-| [`PROBES.md`](PROBES.md) | payload parts: side forms, antennas, cameras and radar, booms, the fairing, the CoM as a mechanic, pointing |
+| [`PROBES.md`](PROBES.md) | payload parts: side forms, antennas, cameras and radar, booms, the fairing, the CoM as a mechanic, pointing, the era ladder, beauty rules, builder explainers |
 | [`KSPISMS.md`](KSPISMS.md) | what came from KSP: kept, changed |
 | [`TECH_SCOUTING.md`](TECH_SCOUTING.md) | real space tech mined for ideas |
 | [`mockups/README.md`](mockups/README.md) | the mock-up pages and Caio's picks |

@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -71,7 +71,8 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
 8. **Layers, not clutter.** The map and the Assembly get overlays (coverage, targets, windows; mass, heat, cost),
    one at a time, off by default.
 9. **Words for terms, not for every line.** Jargon (Δv, TWR, max-q, apoapsis, know-how) becomes a hover term with
-   its explanation (Crusader Kings' nested tooltips, one level); the sub-lines go.
+   its explanation (Crusader Kings' nested tooltips, one level); the sub-lines go. The same tooltip system carries
+   **part cards** and **warnings that explain themselves** (why, and the fixes) in the builder (D21, PROBES § 8).
 10. **The theme dresses the information; it never hides it.** Paper, panels and posters are frames, type and
     colour; numbers stay plain, controls stay standard (click, hover, undo). No dial to turn to read a value
     (HighFleet's lesson), no stylised type that's harder to read (KSP2's).
