@@ -361,7 +361,7 @@
     !out.length && /else if\(sch>=2\)\[arsenalPad,coastalPad,mountainPad,islePad\]\[sch-2\]\(a,TH,CO,STL,DK\)/.test(page) && /if\(RIG\.sch>=2\)return drawSchoolRig/.test(page) && /n >= 145 && n <= 151/.test(vj), out.join(' | '));
 }
 
-// aerofx-7. The desk's polish (look & sound parts & pad beat, QUEUE Q276, from Q242; v1.131). The drafting board's title
+// aerofx-7. The desk's polish (look & sound parts & pad beat, QUEUE Q276, from Q242; v1.132). The drafting board's title
 // block is lettered with the design's name (the player's own if saved, v1.129) and its kit scale in a 5×7 font that
 // covers every letter, digit and the scale's punctuation, each glyph distinct; the mesh is keyed on what it shows; the
 // figure on the base plate is one of our crew in the program's suit.

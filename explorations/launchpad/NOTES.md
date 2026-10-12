@@ -227,6 +227,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.115 — the Assembly as a scale model on a drafting table (2026-10-10, flow session at Caio's ask, QUEUE Q242; PLAYTEST #45)
 - v1.116 — the Debrief as the flight report on the desk (2026-10-10, flow session, QUEUE Q241 R2; PLAYTEST #6)
 - v1.128 — small playtest fixes: the toolbar, Recover vessel, node delete, the map's arcs, the Design table (2026-10-11, flow session; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254, Q258)
+- v1.131 — mission control, a room (2026-10-12, flow session, QUEUE Q241 R4; § "Plan: real screens"; Q203)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -260,7 +261,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Spent stages re-entering (2026-10-09, aerofx session)
 - Design pass: station modules, the arm, the rover (2026-10-09, aerofx session; visuals' and sats' code, Caio's call)
 - The crew's look, slice 1 (2026-10-09, effects beat, QUEUE Q195)
-- v1.131 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276)
+- v1.132 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

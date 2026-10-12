@@ -1191,7 +1191,7 @@ generations of a school sharing a dominant colour; the figure's height and face 
 - The role stripes: crew have no roles in the SIM yet.
 - The mock-ups' lettering and fleet numbers.
 
-## v1.131 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276; from Q242, v1.115)
+## v1.132 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276; from Q242, v1.115)
 Everything is in `deskMesh` (`app/model-desk.js`). The builder, the camera and the lamp are unchanged.
 - **The drafting board** stands behind the model, tilted 20° toward the default view on two steel legs. It has a pale green
   drafting cover and a pencil ledge. The table is now deeper to hold it (z −0.78…0.55 model metres) and its back legs

@@ -1,4 +1,5 @@
-// app/network.js — the network screen, slice N1 (flow session, QUEUE Q155; NOTES § UI "Network screen plan"). Part of
+// app/network.js — the network's data, slice N1 (flow session, QUEUE Q155; NOTES § UI "Network screen plan"); its screen is
+// mission control since Q241 R4 (app/mission.js). Part of
 // index.html's script: a classic script sharing one global scope with the others; index.html loads them in order. 'use strict';
 'use strict';
 // N1: the fleet strip (everything of ours out there, and what it does next) and the pad calendar (each pad's bookings over
@@ -16,20 +17,18 @@ function netFallback(){const D=PROG.day||0,fleet=[],pads=[];
     .map(x=>({from:Math.max(D,x.ordered??D),to:x.launch,kind:'dispatch',title:`${x.title} · ${designName(x.stack)||'our design'}`}))});
   return{fleet,pads}}
 const netData=()=>typeof netModel==='function'?netModel():netFallback();
-function renderNetwork(){const el=$('netBody');if(!el)return;const N=netData(),D=PROG.day||0,x=d=>`${(100*Math.max(0,Math.min(NET_DAYS,d-D))/NET_DAYS).toFixed(2)}%`;
-  $('netHead').innerHTML=`<div class="dt">${fmtDate(D)}</div><div class="sub">${(N.fleet||[]).length} in the fleet · ${(N.pads||[]).length} pad${(N.pads||[]).length>1?'s':''}</div>`;
-  const F=(N.fleet||[]).slice().sort((a,b)=>(a.t??1e9)-(b.t??1e9));
-  let h=`<div class="dh">The fleet</div>`+(F.length?`<table class="netf">${F.map(f=>`<tr><td>${f.name}</td><td class="dim">${f.kind}</td><td>${f.where}</td><td class="${/adrift/.test(f.next)?'warn':''}">${f.next||''}</td></tr>`).join('')}</table>`:'<div class="none">Nothing of ours is out there yet.</div>');
-  h+=netLinksHTML(N);   // space Q173: links home and coverage (one call; restyle freely)
+// the pads' calendar: each pad's bookings over the next NET_DAYS, and the program's dated events. Mission control's wall
+// shows it as its second page (Q241 R4); the screen it was drawn on folded into mission control (app/mission.js).
+function netCalHTML(N){const D=PROG.day||0,x=d=>`${(100*Math.max(0,Math.min(NET_DAYS,d-D))/NET_DAYS).toFixed(2)}%`;
   const ticks=[];for(let d=30;d<NET_DAYS;d+=30)ticks.push(`<i class="tk" style="left:${x(D+d)}"><b>${d} d</b></i>`);
   const ev=(typeof upcoming==='function'?upcoming():[]).filter(e=>e.day<=D+NET_DAYS);
-  h+=`<div class="dh">The pads <span class="dim">· next ${NET_DAYS} days</span></div><div class="cal">`+
+  return`<div class="cal">`+
     (N.pads||[]).map(p=>`<div class="crow"><span class="cl">Pad ${p.pad+1}</span><div class="ctr">${ticks.join('')}${p.bars.map(b=>`<div class="cbar ${b.kind}" style="left:${x(b.from)};width:calc(${x(b.to)} - ${x(b.from)})" title="${b.title}">${b.title}</div>`).join('')}${p.bars.length?'':'<span class="cfree">free</span>'}</div></div>`).join('')+
     `<div class="crow"><span class="cl">Events</span><div class="ctr">${ticks.join('')}${ev.map(e=>`<i class="cev" style="left:${x(e.day)}" title="${e.text} · in ${Math.ceil(e.day-D)} d"></i>`).join('')}</div></div></div>`+
-    (ev.length?`<div class="sub" style="margin-top:4px">${ev.slice(0,4).map(e=>`in ${Math.ceil(e.day-D)} d: ${e.text}`).join(' · ')}</div>`:'');
-  el.innerHTML=h}
+    (ev.length?`<div class="sub" style="margin-top:4px">${ev.slice(0,4).map(e=>`in ${Math.ceil(e.day-D)} d: ${e.text}`).join(' · ')}</div>`:'')}
 // links home and coverage (space session, QUEUE Q173): each orbiting entry's share of the next day with a path home, its
-// longest gap, the relays it goes through, and a burn mission control can't reach flagged; then each body's coverage
+// longest gap, the relays it goes through, and a burn mission control can't reach flagged; then each body's coverage.
+// (Mission control's NETWORK console draws the same rows its own way; this stays for anyone who wants them as a table.)
 function netLinksHTML(N){const L=N.links||[],C=N.cover||[],pc=x=>`${Math.round(100*x)} %`;if(!L.length&&!C.length)return'';
   let h=`<div class="dh">Links home <span class="dim">· next day</span></div>`;
   if(L.length)h+=`<table class="netf">${L.map(l=>`<tr><td>${l.name}</td><td class="dim">${l.body}</td><td>${l.now?'in contact':'<span class="dim">out of contact</span>'} · ${pc(l.share)} of the day${l.share<1?`, gaps up to ${l.gapH.toFixed(1)} h`:''}</td><td class="${l.flag?'warn':'dim'}">${l.flag||(l.via.length?`through ${l.via.join(', ')}`:'')}</td></tr>`).join('')}</table>`;
