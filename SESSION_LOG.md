@@ -5420,3 +5420,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for look & sound (parts & pad):** Q245 (lettering on the pads; the desk's `DESK_FONT` approach could serve it
   as geometry), Q259 (Steppe paint resolution, measure first), Q205 (Foundry, plan first). Not taken: `intake/` holds
   about 16 face and lip reference pictures, likely for the face lab (heads → faces beat, whose claim is stale).
+
+## 2026-10-12 — Claude (launchpad orchestrator, new session): the beauty pass queued (Q312–Q324)
+- **Done:** ranked the design desk's BEAUTY.md (D18 answered, 0.2.0) *Proposed* lines into the lanes. Effects: Q312
+  reference views + Low/High (first), Q313 half-res buffers, Q314 HDR/AgX/exposure/LUT, then Q318 re-entry glow and
+  HDR plasma, Q319 flames, Q320 vapor rings and the wake. Parts & pad: Q315 bells, noses, planet-disc light (ready),
+  Q316 shadows, surface, greebles in geometry, Q317 frost and ice fall. Sky & bodies: Q321 baked galaxy and stars
+  (after Q253's mock-ups), Q322 transmittance table + Selene's own pass (ready; coordinate with Q19's `terrain`
+  branch), Q323 Tellus's continents, sea, lights. World: Q324 Selene's flat ground at the lander. Q253, Q259, Q250
+  amended (absorbed parts). A flag for every beat (Q314 changes every shader's output) and unblocker row 6.
+- **Files:** `explorations/launchpad/QUEUE.md` (0.1.62), `ACTIVE_WORK.md` (orchestrator row), this log.
+- **Not done:** `intake/` holds ~16 face/lip/art-deco reference pictures, likely for the face lab (heads → faces; its
+  claim is stale). Left for that session or the design desk.
+- **Next:** kickoff the three look & sound beats (effects on Q312, parts & pad on Q315, sky & bodies on Q253/Q322);
+  they're all 🖥, so stagger them (`.game-busy`).
