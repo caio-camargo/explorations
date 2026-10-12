@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
 **Status**: **D20 answered 2026-10-12 (Caio): approved, the defaults, and pointing added.** Lanes build from § 3–5.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -96,11 +96,14 @@ target, and optionally a second part for the roll.**
 - **By era:** gyro: none (spin or nothing). Analog: **nadir and sun only, nose or one chosen part** (as radial in/out
   are today). Guidance computer: any part, any target, both axes. A passive **gravity-gradient boom** (era 1, no power,
   no computer: nadir within ~5°, slow to settle) is the cheap way to look down, as the 1960s did.
-- **Costs:** the reaction wheels saturate (`hmax` is already there) under steady torques (gravity gradient, drag, an
-  off-centre burn), and **dumping them spends RCS gas**. A satellite's pointing life is its gas, which W2 already makes
-  its service life. Power: the computer and the wheels draw (`sim/power.js` loads).
+- **The cost is power, not momentum (D20, Caio: saturation "may be annoying, or too punishing").** The law draws the
+  computer's and the wheels' power (`sim/power.js` loads), more for tracking a moving target than for holding nadir or
+  the sun. In shadow on a flat battery, pointing lapses and the strict parts stop: that's the tension, and it pulls in
+  bigger batteries, wings that track, or an RTG. **No momentum bookkeeping for pointing:** in flight the wheels keep
+  saturating as now under big torques (an off-centre burn), with today's automatic dump through the gimbal or RCS, but
+  holding a law costs no gas, in flight or between flights.
 - **Between flights:** a registered satellite keeps its law (it's stored with it), so its camera stays on the ground
-  and its dish on home, and the gas drain counts in its service life. A craft without the avionics for its law keeps
+  and its dish on home, while its power budget (Q27) covers the law's draw; short of power, it points only in sun. A craft without the avionics for its law keeps
   only what it had (or spins).
 - **Strict pointing (D20):** the narrow camera, the dish and radar do nothing unless their boresight is inside their
   cone. A spun craft gets the whip, the boom antenna and the wide camera only, until it can despin.
@@ -113,7 +116,7 @@ target, and optionally a second part for the roll.**
 1. **S1, fit and shield:** the payload fairing; the boom antenna; side forms of camera, battery, instrument package
    and computer; the inline antenna becomes the whip (side); the CoM, thrust-line and trim readout in the builder.
 2. **S2, point:** the attitude law (§ 5) with nadir, home, sun and target; the dish; the two cameras with strict
-   cones; radar; the gravity-gradient boom; satellites keep their law between flights; wheel saturation and the gas.
+   cones; radar; the gravity-gradient boom; satellites keep their law between flights; its cost in power.
 3. **S3, Voyager:** the scan platform; the magnetometer and RTG booms; boom deployment changes the inertia; a
    grand-tour contract that needs dish, platform and booms at once.
 
@@ -123,4 +126,5 @@ economy (contracts that want radar or the magnetometer), look & sound (parts & p
 ## 7. Decisions
 
 D20 (2026-10-12, [`DECISIONS.md`](DECISIONS.md)): the direction approved; slices S1 → S3; strict pointing; Caio added
-the attitude law ("cameras that always point at the planet, or even at another satellite, or later a space station").
+the attitude law ("cameras that always point at the planet, or even at another satellite, or later a space station");
+then pointing costs power only, no wheel-momentum or gas drain ("maybe power is enough tradeoff here").
