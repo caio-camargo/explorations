@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
 **Status**: **D20 answered 2026-10-12 (Caio): approved, the defaults, and pointing added.** Lanes build from § 3–5.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -63,6 +63,10 @@ The inline cone `ant` stays for old saves and presets, labelled as the whip's ea
 - **Magnetometer:** the field reading is good only beyond a distance from the craft's electronics; the boom length
   is the trade (mass and its swing against data quality). Feeds field contracts in space.
 - **RTG boom:** the RTG at a distance; too close and the instruments' data degrades.
+- **Control moment gyroscope** (station era): a fast wheel on a gimbal; tilting it gives far more torque per kilogram
+  than a reaction wheel (Skylab, the ISS). Heavy and power-hungry; what turns a station the small wheels can't.
+  Naming: the *gyro* in today's "Gyro autopilot" is the era's **sensor** (it feels rotation), not an actuator; Q280
+  renames the eras *rate damping*, *attitude hold*, *autopilot*, so "gyro" names only this part.
 - **Deploying a boom moves the CoM and the inertia.** A spun craft that unfolds booms starts to wobble and ends up
   tumbling about its widest axis (Explorer 1's lesson, real physics we already simulate).
 
@@ -117,7 +121,7 @@ target, and optionally a second part for the roll.**
    and computer; the inline antenna becomes the whip (side); the CoM, thrust-line and trim readout in the builder.
 2. **S2, point:** the attitude law (§ 5) with nadir, home, sun and target; the dish; the two cameras with strict
    cones; radar; the gravity-gradient boom; satellites keep their law between flights; its cost in power.
-3. **S3, Voyager:** the scan platform; the magnetometer and RTG booms; boom deployment changes the inertia; a
+3. **S3, Voyager:** the scan platform; the magnetometer and RTG booms; the control moment gyroscope; boom deployment changes the inertia; a
    grand-tour contract that needs dish, platform and booms at once.
 
 Lanes: vehicle (parts, builder readout, attitude law), space (link gains, satellites between flights, contracts' cones),
