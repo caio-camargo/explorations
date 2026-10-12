@@ -1,5 +1,5 @@
 # Launchpad — the presets-only playtest route
-**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: draft, ready to play
+**Version**: 0.2.1 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: draft, ready to play
 **Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the presets** (fourteen since the Beeper, Passenger Orbiter and Docking were added), so Caio can play before
 the construction screen is easy for a newcomer (QUEUE Q54; it covers W8, the human playtest for M1). Each step names its
 TESTING rows. The rows hold the full "looks right if" text. This file is only the order and the setup.
@@ -10,8 +10,8 @@ TESTING rows. The rows hold the full "looks right if" text. This file is only th
   has already measured a row (`(robot)` in TESTING), that row is listed only when it says *needs a human*.
 - **Marking:** put the result in the row's `#` cell in TESTING.md: `✓ n`, `~ n` plus a word, or `✗ n → P#…`. Or just
   tell the playtest intake session what you noticed ("you are the playtest feedback session"), and it files the items.
-- Sitting 1 is the one M1 is about. **The robot's half of M1 passes** (2026-10-09: `playtest.mjs m1`, a new career to
-  the beeper on presets with Esc pause, Debriefs and no overlapping boxes), so a person's first hour is what's left. Do
+- Sitting 1 is the one M1 is about. **The robot's half of M1 passes** (re-run 2026-10-12 on v1.135, through the rooms: `playtest.mjs m1`,
+  a new career to the beeper on presets, the flight reports and no overlapping boxes), so a person's first hour is what's left. Do
   it first. The other sittings can go in any order. Each one says how long it takes.
 
 **Where to play:** <https://caio-camargo.github.io/explorations/explorations/launchpad/index.html> (what's on `main`), or
@@ -32,14 +32,14 @@ Plain URL, no `?tester`. If you have a career save, play it in a private window 
 
 | Step | Do | Rows |
 |---|---|---|
-| 1 | Start a career: read "Whose program?" / "How does it start?" as if you'd never seen them; meet the world's powers | 75 (robot ✓: here it's about whether you *understand* the choices), **137**, 173 |
-| 2 | Look round the Program tabs and the contract board; take one or two contracts | 79 (*needs a human: rewarding*), 99 |
-| 3 | BUILD → preset **Sounding** → read the cost line and the Δv table, ROLL OUT (read its checks), LAUNCH. Watch the know-how and the logbook after you land | 23, 22, 84, **157**, 152 |
-| 4 | **Passenger**, then **Hopper** hops. Fly with ignition failures on (that's the career default) | 15, 9 |
+| 1 | Start a career: read "Whose program?" / "How does it start?" as if you'd never seen them (the chosen one is ticked; picking a start begins the career); meet the world's powers | 75 (robot ✓: here it's about whether you *understand* the choices), **137**, 173, 210 |
+| 2 | You're at **the director's desk** (the Program): the letterhead, the in-tray on the left (**IN · n**: decisions, offers, the news), the folder's tabs in the middle, the wall on the right. Take one or two contracts from the board | **196**, 79 (*needs a human: rewarding*), 99 |
+| 3 | **TO THE DESIGN TABLE ▶ [B]**: the design is a scale model on a drafting table. Preset **Sounding** → read the cost line and the Δv table, **BUILD AND LAUNCH ▶ [L]** (the Rollout on the real pad: read its checks), LAUNCH. Watch the know-how and the logbook after you land; back at the desk, the wall has your liftoff photo | **197**, 23, 22, 84, **157**, 152 |
+| 4 | **Passenger**, then **Hopper** hops. Fly with ignition failures on (that's the career default). Read the Hopper's *Touchdown* line on the Design table first; if one topples after landing, does the message tell you why? | 15, 9, **215** |
 | 5 | **Beeper** to orbit for *The beeper*, then **Passenger Orbiter**: once round and home for *Passenger: one orbit* (both v1.73 presets, the Orbiter's launcher with the payload in the pod's place). Gyro-era SAS (Stability + pitch keys only). Count the tries | **1**, **101**, 147 |
-| 6 | Between launches: the stacking days, "Coming up", Wait; follow the NEXT line; read the Inbox's news | 78, 91, **156**, 141 |
-| 7 | End flights three ways (land, crash, end in orbit; ☰ → End flight in orbit). Read the Debrief each time: can you tell what you earned or lost? Esc mid-flight on one of them; reload the page once and open *Last flight* | **97**, **127**, 136, 172 |
-| 7b | ☰ → Settings: sound, quality, readouts; reload | 155 |
+| 6 | Between launches: the stacking days, "Coming up", Wait; follow the NEXT line (the sticky note); read the news in the in-tray. Once the beeper is up, press **C** at the desk: **mission control**. Can you find it on the ground track? | 78, 91, **156**, 141, **213** |
+| 7 | End flights three ways: land at home (the button reads **Recover vessel**), crash, end in orbit (☰ → End flight). Each ends at **the flight report** on the desk: can you tell what you earned or lost from its ledger? Esc mid-flight on one of them; Revert one once; reload the page once and open *Last flight* | **97**, **127**, **198**, 205, 136, 172 |
+| 7b | ☰ → Settings: sound, graphics (Low/High), readouts; reload | 155, 216 |
 | 8 | Overall: where were you stuck, where were you bored, did the money feel tight but fair? | 76 |
 
 **The first-orbit missions can be flown on presets** since v1.73 (PLAYTEST #24): the Beeper reaches orbit with ~1.5 km/s
