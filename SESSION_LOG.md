@@ -5479,3 +5479,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `ACTIVE_WORK.md`, this log. Created worktree `C:/Users/caioa/dev/launchpad-playtest` (branch `playtest`) on this machine.
 - **Next:** **W16, Caio plays sitting 1** (M1's finish line); feed what Caio says to playtest intake (Q60). QA's next
   ready: Q215 (row 65's capsule flake), Q232, Q233.
+
+## 2026-10-12 — Caio + Claude (launchpad flow session): Q196, a planned burn moved to the next contact (v1.138)
+- **Built:** mission control's Trajectory console offers *Fly at the next contact* where a burn was refused for contact
+  (mainframe era): the same burn whole orbits later (same place in the orbit, so the same effect), the first time a
+  station sees it within 30 days; later burns move with it; the first is handed over. `nodeNextPass`/`nodeToPass` in
+  `sim/space.js` (added beside `handOffWhy`, for space: nothing of theirs changed); button and handler in `app/mission.js`.
+- **Files:** `sim/space.js`, `app/mission.js`, `tests/flow.mjs` (flow-14), `notes/flow.md` § v1.138, NOTES index,
+  TESTING 220, QUEUE (Q196 ✓), ACTIVE_WORK.
+- **Checks:** full suite passed except the TESTING counter (fixed); after merging main: smoke passes, numbers check OK.
+  Browser (lock taken after QA released it): the button, its "next contact: 6 orbits later (+16 h), over Dunnzar Cape",
+  and the handed-off state after the click. Measured: +19.6 km raise against 19.8 planned; worst case ~3 ms per render.
+  Renumbered once (vehicle took v1.136/218, look v1.137/219 while this was merging).
+- **Next for flow:** Q43 (watch mode, Flight console), Q167, Q170 (N2 on the wall), Q309/Q310, then Q241 R3, R5.
