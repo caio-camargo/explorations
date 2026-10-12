@@ -50,8 +50,8 @@ function render(){
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
   if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
-  // ---- sky / planets: one full-screen ray-cast (not in the desk room)
-  if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
+  // ---- sky / planets: one full-screen ray-cast (not in the desk room); PTERR, the terrain G-buffer (Q19), shares its uniforms
+  if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),...(PTERR?[PTERR]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
@@ -78,7 +78,11 @@ function render(){
       gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSLAB.u.uDepth,5);gl.drawArrays(gl.TRIANGLES,0,3);
       gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE10);gl.bindTexture(gl.TEXTURE_2D,Sb.a);gl.uniform1i(PSKY.u.uSlabA,10);gl.activeTexture(gl.TEXTURE11);gl.bindTexture(gl.TEXTURE_2D,Sb.b);gl.uniform1i(PSKY.u.uSlabB,11);gl.activeTexture(gl.TEXTURE0)}
     gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
-    gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
+    gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)
+    // (Q19) the terrain G-buffer at full resolution, marched from the pre-pass's start; the sky shader reads it on unit 9 (the composite binds 0–5)
+    if(PTERR){profMark('terrain');const G=terrTarget(W,H);gl.useProgram(PTERR.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PTERR.u.uDepth,5);gl.uniform1f(PTERR.u.uUseDepth,1);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,G.fb);gl.viewport(0,0,W,H);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,G.tex);gl.uniform1i(PSKY.u.uTerr,9);gl.activeTexture(gl.TEXTURE0)}}
   profMark('sky');gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
   gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
   profMark('moons');drawMoons(camW,R,U,Fw,tanX,tanY)}
