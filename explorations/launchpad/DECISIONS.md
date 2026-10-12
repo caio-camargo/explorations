@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -77,6 +77,7 @@ The full text of every question as it was asked (options, reasons) is in
 | D6 | 2026-10-09 | A dry satellite parked too low still re-enters, warned ahead (closes W17) | MIDGAME 1.0.1, Q125 |
 | W20 | 2026-10-09 | The bodies' round-2 twists and Erebus's companion Aether | SYSTEM 1.1.0, Q207 |
 | D19 | 2026-10-12 | **The slow world** (Caio's idea): the reserved innermost slot, Mercury's 3:2 (~97 program days of sun, 97 of night), airless, built with the planets at M5; its rules may be tried on Selene first | SYSTEM 1.1.3 |
+| D20 | 2026-10-12 | **Payload parts, asymmetry, pointing** (Caio): side forms of the small boxes; antennas whip / boom / dish; narrow and wide cameras, radar, a scan platform; magnetometer and RTG booms; a payload fairing; the CoM and trim readout in the builder; **an attitude law that points any part at any target** (nadir, home, sun, a vessel or station, a site) with a second part for roll; **strict pointing**; slices S1 fit and shield → S2 point → S3 Voyager | PROBES.md, QUEUE Proposed (S1–S3), ROADMAP catalog |
 | Q200 | 2026-10-09 | Debris: big pieces on rails; fragments as density per band, spawned as objects only near a monitored flight | LATE_GAME § Debris |
 
 ## Crew

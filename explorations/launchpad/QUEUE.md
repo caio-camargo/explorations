@@ -488,7 +488,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
-Open design questions get a D row here (**next: D20**); answered ones go to [`DECISIONS.md`](DECISIONS.md) as one line, and the row leaves.
+Open design questions get a D row here (**next: D21**); answered ones go to [`DECISIONS.md`](DECISIONS.md) as one line, and the row leaves.
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
@@ -574,3 +574,6 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - ✓ ranked as Q307 (orchestrator 2026-10-12): economy + flow — **Q188 slice 2**: the race panel shows each rival's progress by openness (W38.2's default: an open rival's forecast day, a closed one's "soon" or nothing); Q206 (the commercial giant) is now unblocked — NOTES v1.130
 - ✓ ranked as Q308 (orchestrator 2026-10-12): platform — `check_numbers.mjs` on a branch from before the NOTES split missed the version collision: economy's v1.128 vs flow's v1.128 on `origin/main` went unreported, and it said "next free: v1.129" with vehicle's v1.129 already in `notes/vehicle.md` (TESTING 210 was caught). After merging main it reads right — Q188 merge, v1.130
 - ✓ ranked as Q325 (orchestrator 2026-10-12): vehicle — the builder's *Touchdown* quote for what lands (the stack after its drops, legs down) and on the body it's aimed at (Selene ×0.41), not the stack as built — Q264 v1.133
+- vehicle (+ look & sound parts & pad) — **PROBES S1, fit and shield** (D20, [`PROBES.md`](PROBES.md) § 3.1, 3.2, 3.5, 4): the payload fairing (1.25/2.5 m, length steps; encloses like the interstage; two halves fall away); the boom antenna (folded, P to deploy, tears off above `qMax`); side forms of camera, battery, instrument package and computer; the inline `ant` becomes the side whip (old saves keep the cone); the builder shows the CoM, the thrust line and a **trim** readout (share of gimbal spent holding course). M
+- vehicle + space — **PROBES S2, point** (D20, [`PROBES.md`](PROBES.md) § 3.2–3.3, 5): the attitude law: any part's boresight at a target (nadir, home, sun, vessel/satellite/station, ground site) with a second part for roll, by era (analog: nadir and sun; guidance computer: all; a passive gravity-gradient boom in era 1); the high-gain dish; narrow and wide cameras with **strict** cones; radar (night and cloud, heavy power); wheel saturation dumped with RCS gas; registry satellites keep their law between flights (gas counts in W2's service life); failure reasons in contracts and the Debrief. L, after S1
+- vehicle + space + economy — **PROBES S3, Voyager** (D20, [`PROBES.md`](PROBES.md) § 3.3–3.4): the scan platform (a two-axis turret on a boom carrying a camera); magnetometer and RTG booms (distance against data quality); deploying booms changes the inertia (a spun craft tips to its widest axis); a grand-tour contract needing dish, platform and booms. M, after S2
