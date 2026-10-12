@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
+**Version**: v2.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -19,7 +19,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 64 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 20 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 14 |
-| [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 31 |
+| [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 32 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
 
 ---
@@ -263,6 +263,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Design pass: station modules, the arm, the rover (2026-10-09, aerofx session; visuals' and sats' code, Caio's call)
 - The crew's look, slice 1 (2026-10-09, effects beat, QUEUE Q195)
 - v1.132 — the desk's polish (2026-10-12, parts & pad beat, QUEUE Q276)
+- v1.134 — the reference views, `refset.mjs`, graphics Low/High (2026-10-12, effects beat, QUEUE Q312)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

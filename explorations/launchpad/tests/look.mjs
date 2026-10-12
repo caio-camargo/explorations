@@ -377,3 +377,22 @@
   check('desk polish: the title block\'s font covers A–Z, 0–9 and ":-./" with distinct glyphs; the player\'s saved name, else the design\'s; the mesh keyed on name and scale; a suited crew figure',
     !miss.length && !dup && name && keyed && crew, `missing ${miss.join('') || 'none'} · duplicate ${dup || 'none'} · name ${name} · keyed ${keyed} · crew ${crew}`);
 }
+
+// aerofx-8. The reference views and two settings (look & sound effects beat, BEAUTY Q312). The views stand on the pad
+// (the Assembly's model desk only in 152), enter the builder through the Assembly screen (the Program is a room that
+// stops the 3D draw), hide the overlay's labels, and pin the effects clock so 90–93 catch the fireball; 152–158 are the
+// beauty pass's moments. Graphics are Low and High: Low keeps the 30 fps iGPU floor, a saved 'medium' becomes Low.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const pad = /DESK_FX = n === 152;/.test(vj) && /HOOK\.fxT = null; ov\.style\.visibility = '';/.test(vj) && /'\.ui,#perf,#news,#msg,#deb,#ov'/.test(vj);
+  const asm = /screenNow\(\) !== 'assembly'\) go\('assembly'\)/.test(vj) && !/if \(mode !== 'editor'\) document\.getElementById\('bEditor'\)\.click\(\);\n/.test(vj.replace(/const toBuilder[^\n]*\n/, ''));
+  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=HOOK\.fxT\?\?performance\.now\(\)/.test(page) && /function boomLight\(camW\)\{const now=HOOK\.fxT\?\?performance\.now\(\)/.test(page);
+  const moments = [152, 154].every(n => vj.includes(`n === ${n}`)) && /n >= 156 && n <= 158/.test(vj) && /153: \['Orbiter'/.test(vj) && /155: \['Lunar', 60000, 'stage'/.test(vj);
+  const Q = new Function(page.slice(page.indexOf('const QUAL={'), page.indexOf('const setGet=')) + ';return {QUAL,QUAL_OLD}')();
+  const pick = q => Q.QUAL[q] ? q : Q.QUAL_OLD[q] || 'high';   // as settings.js reads a saved setting
+  const two = Object.keys(Q.QUAL).join() === 'high,low' && pick('medium') === 'low' && pick('low') === 'low' && pick('nonsense') === 'high'
+    && /let quality=\(q=>QUAL\[q\]\?q:QUAL_OLD\[q\]\|\|'high'\)\(setGet\('launchpad-quality','high'\)\);/.test(page) && Object.values(Q.QUAL.low.fx).every(v => v === 0);
+  check('reference views on the pad (the desk only in 152), through the Assembly screen, overlay hidden, the boom clock pinned; 152–158 the beauty moments; graphics Low/High (medium → Low)',
+    pad && asm && clock && moments && two, `pad ${pad} · assembly ${asm} · clock ${clock} · moments ${moments} · low/high ${two}`);
+}

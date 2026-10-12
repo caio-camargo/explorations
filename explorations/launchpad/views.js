@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -8,6 +8,10 @@ window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
   if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = 0;
   HOOK.noRig = false;   // (close-ups hide the pad's moving parts; every other view shows them)
+  // (Q312) reference views stand on the pad, as they were tuned: the Assembly's model desk (v1.115) only in view 152;
+  // the effects clock runs (90–93 pin it), and the overlay (labels such as "impact · 9 m") shows again until bare()
+  if (typeof DESK_FX !== 'undefined') DESK_FX = n === 152;
+  HOOK.fxT = null; ov.style.visibility = '';
   const settle = () => new Promise(r => setTimeout(r, 150));
   // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
@@ -17,9 +21,12 @@ window.refView = async (n) => {
   if (typeof SCHOOL_FORCE !== 'undefined') SCHOOL_FORCE = 0;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
   // (#deb: leaving a flight for the editor now passes through the Debrief screen, whose panel covered the close-ups)
-  const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
+  // the builder's 3D: out of a flight (bEditor), then onto the Assembly screen, since the Program and the Debrief are rooms
+  // that cover the window and stop the 3D draw (Q239; Q312: views 1, 4–9 used to shoot the Program's desk)
+  const toBuilder = () => { if (mode !== 'editor') document.getElementById('bEditor').click(); if (typeof screenNow === 'function' && screenNow() !== 'assembly') go('assembly') };
+  const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb,#ov').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); cam.edY = 0;
     cam.yaw = 0.35; cam.pitch = 0.02; cam.dist = 40; render(); await settle(); bare(); return 'pad';
   }
@@ -37,7 +44,7 @@ window.refView = async (n) => {
     7: ['Sounding', 'sci', 0.25, 0.08, 4.5], 8: ['Lunar', 'T16', -0.4, 0.02, 16], 9: ['Big Lunar', 'shield', -1.2, 0.15, 7] };
   if (close[n]) {
     const [design, key, yaw, pitch, dist] = close[n];
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
     const p = S.parts.find(q => q.d.key === key);
     if (!p) throw new Error(`refView(${n}): ${design} has no ${key}`);
@@ -79,7 +86,7 @@ window.refView = async (n) => {
   // 15–17: the launch complex with the Orbiter on the pad: the pad area from the south-west, the tower and table, and the
   // whole site from high up (blockhouse 230 m west, gantry 80 m south)
   if (n === 15 || n === 16 || n === 17) {
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; cam.edY = 0;
     const v = { 15: [-0.9, 0.28, 85], 16: [0.25, 0.12, 26], 17: [1.24, 0.75, 420] }[n]; [cam.yaw, cam.pitch, cam.dist] = v;
     render(); await settle(); bare(); return { 15: 'complex', 16: 'tower', 17: 'site' }[n];
@@ -87,7 +94,7 @@ window.refView = async (n) => {
   // 18–19: a flight starting on the pad: the gantry in service position around the rocket at t = 0, and the same at
   // night (the first time after now when the sun is well below the pad's horizon), floodlights on
   if (n === 18 || n === 19) {
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click(); markT = null;
     if (n === 19) { const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
       if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); markT = null; padShip = null }
@@ -148,7 +155,8 @@ window.refView = async (n) => {
   const pad = { 60: ['Orbiter', 0, 0.9, 0.12, 40], 61: ['Orbiter', 12, 0.9, 0.12, 40], 62: ['Orbiter', 35, 0.9, 0.1, 55],
     63: ['Lunar', 3, 0.9, 0.12, 60], 64: ['Orbiter', 6, 0.4, 0.75, 60],
     // 65–67 at night (the plume lighting the pad): just after ignition, 12 m up, and a close look at the rocket's base
-    65: ['Orbiter', 0, 0.9, 0.12, 40, 1], 66: ['Orbiter', 12, 0.9, 0.12, 45, 1], 67: ['Orbiter', 0, 2.2, 0.05, 16, 1] };
+    65: ['Orbiter', 0, 0.9, 0.12, 40, 1], 66: ['Orbiter', 12, 0.9, 0.12, 45, 1], 67: ['Orbiter', 0, 2.2, 0.05, 16, 1],
+    153: ['Orbiter', 15, 0.55, 0.0, 80] };   // (Q312) liftoff, ~T+2 s, wide and low
   if (pad[n]) {
     const [design, alt, yaw, pitch, dist, night] = pad[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
@@ -178,7 +186,8 @@ window.refView = async (n) => {
   // for age s, freezing the sim for the capture: [design, alt, action ('cut' = throttle to zero, 'stage'), age, yaw, pitch, dist]
   const cut = { 73: ['Orbiter', 3000, 'cut', 0.15, 1.75, 0.0, 30], 74: ['Orbiter', 3000, 'cut', 0.6, 1.75, 0.0, 30],
     75: ['Orbiter', 3000, 'stage', 0.12, 1.75, 0.05, 26], 76: ['Orbiter', 30000, 'stage', 0.3, 1.75, 0.05, 26],
-    77: ['Heavy', 2500, 'stage', 0.15, 1.75, 0.05, 34] };
+    77: ['Heavy', 2500, 'stage', 0.15, 1.75, 0.05, 34],
+    155: ['Lunar', 60000, 'stage', 0.4, 1.75, 0.05, 60] };   // (Q312) staging at 60 km
   if (cut[n]) {
     const [design, alt, act, age, yaw, pitch, dist] = cut[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
@@ -245,9 +254,11 @@ window.refView = async (n) => {
     if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0 }
     else { const tw = simT; while (simT - tw < 15) advPhys(S) }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render();
-    booms.length = 0; HOOK.boom(S.body, S.r, simT, sz); booms[booms.length - 1].t0 = performance.now() - age * 1000; S.alive = false; S.throttle = 0;
-    window.simulate = () => {}; const b = booms[booms.length - 1]; const keepT = performance.now() - b.t0;
-    render(); await settle(); b.t0 = performance.now() - keepT; bare();
+    booms.length = 0; HOOK.boom(S.body, S.r, simT, sz); S.alive = false; S.throttle = 0;
+    // (Q312) the boom's clock is pinned at age s: render.js and boomLight read HOOK.fxT, so the fireball is still there
+    // however long the capture takes (before, a 0.1 s fireball had burned out by the screenshot)
+    window.simulate = () => {}; const b = booms[booms.length - 1]; HOOK.fxT = b.t0 + age * 1000;
+    render(); await settle(); bare();
     return 'boom at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(2) + ' km, age ' + age + ' s, air ' + b.air.toFixed(2);
   }
   // 94–96: the HUD gauges, with the HUD shown (not bare): the Lunar's climb at max-q (~10 km), at 40 km, and a capsule's
@@ -297,7 +308,7 @@ window.refView = async (n) => {
     107: [['pod', 'rwheel', 't2', 'cfins', 'petrel'], 'rwheel', 0.4, 0.2, 3.5, () => {}] };
   if (mov[n]) {
     const [design, key, yaw, pitch, dist, set] = mov[n];
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = JSON.parse(JSON.stringify(typeof design === 'string' ? PRESETS[design] : design)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
     const p = S.parts.find(q => q.d.key === key);
     if (!p) throw new Error(`refView(${n}): no ${key}`);
@@ -313,7 +324,7 @@ window.refView = async (n) => {
     const des = toV2(kind === 'lander' ? ['pod', 't1', 'wren'] : ['core', 'ocomp', 'batt', 'ant', 't1', 'petrel']);
     if (kind === 'lander') find(des.root, 't1').c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] });
     else { find(des.root, 't1').c.push({ k: 'wpanel', at: { y: 0.55, a: 0, n: 2, cy: 0.3 }, c: [] }, { k: 'bpanel', at: { y: 0.5, a: Math.PI / 2, n: 2, cy: 0.4 }, c: [] }) }
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = des; editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
     for (const p of S.parts) if (p.d.kind === 'leg' || p.d.wing) p.dep = dep;
     HOOK.rebuild(); const p = S.parts.find(q => q.d.key === key);
@@ -335,7 +346,7 @@ window.refView = async (n) => {
   // 114–115 (Q102): the Orbiter on the pad in the builder as Cape (114, today's look) and as Steppe (115): same parts
   // and outline, a different paint and finish; 123–126 (Q228) the same as Arsenal, Coastal, Mountain, Isle
   if (n === 114 || n === 115 || n >= 123 && n <= 126) {
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     SCHOOL_FORCE = n <= 115 ? n - 114 : n - 121; stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true; HOOK.rebuild();
     cam.edY = 7 - S.cm[1]; cam.yaw = 0.2; cam.pitch = 0.05; cam.dist = 17; render(); await settle(); bare();
     return ['Cape', 'Steppe', 'Arsenal', 'Coastal', 'Mountain', 'Isle'][SCHOOL_FORCE];
@@ -344,7 +355,7 @@ window.refView = async (n) => {
   // up beside the rocket, the service halves down); 117 a flight's start (the halves closed round it); 118 the same 1 s
   // after lift-off, the halves already down (the support arms and cable masts falling back); 119 the table over the pit
   if (n >= 116 && n <= 119) {
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     SCHOOL_FORCE = 1; stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; HOOK.rebuild(); cam.edY = 0; padKey = '';
     if (n === 117 || n === 118) {
       document.getElementById('launch').click(); markT = null; render();
@@ -357,7 +368,7 @@ window.refView = async (n) => {
   // rail launcher (the Orbiter: small and uncrewed), 148 Mountain's shelter, open, round a small crewed rocket (its crew
   // arm), 149 Isle; 150 Mountain's shelter closed at a flight's start; 151 Arsenal 1 s after lift-off (the mast falling back)
   if (n >= 145 && n <= 151) {
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     SCHOOL_FORCE = { 145: 2, 146: 3, 147: 4, 148: 4, 149: 5, 150: 4, 151: 2 }[n];
     stackDef = n === 148 || n === 150 ? ['les', 'chute', 'crew', 'shield', 'dec', 't4', 'kestrel'] : JSON.parse(JSON.stringify(PRESETS.Orbiter));
     editorChanged(); HOOK.edStill = true; HOOK.rebuild(); cam.edY = 0; padKey = '';
@@ -382,7 +393,7 @@ window.refView = async (n) => {
   const cv = crewV[n] || (n >= 127 && n <= 144 ? crewV[121] : null);
   if (cv) {
     const [design, dy, yaw, pitch, dist] = cv;
-    if (mode !== 'editor') document.getElementById('bEditor').click();
+    toBuilder();
     stackDef = JSON.parse(JSON.stringify(typeof design === 'string' ? PRESETS[design] : design)); editorChanged(); HOOK.edStill = true; padKey = ''; render();
     if (!RIG.crew) return 'no crew arm';
     cam.edY = RIG.crew.h - (typeof LIFT === 'number' ? LIFT : 3) + dy - S.cm[1]; [cam.yaw, cam.pitch, cam.dist] = [yaw, pitch, dist];   // (the ship's own point already stands LIFT up)
@@ -404,6 +415,39 @@ window.refView = async (n) => {
     cam.dist = dist; render(); window.simulate = () => {}; await settle(); bare();
     const d = debris[debris.length - 1], g = d && DEBH.get(d);
     return 'stage re-entry: capsule ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km q ' + (S.qHeat / 1e3).toFixed(0) + ' kW/m2; stage ' + (d ? ((len(d.r) - TELLUS.R) / 1000).toFixed(1) + ' km, ' + len(sub(d.r, S.r)).toFixed(0) + ' m away, q ' + (g ? g.q / 1e3 : 0).toFixed(0) + ' kW/m2' : 'none');
+  }
+  // 152–158 (BEAUTY Q312): the moments the beauty pass targets, beside the older views that already cover them
+  if (n === 152) { // the Assembly: the Orbiter as a model on the drafting table (v1.115, v1.132)
+    toBuilder();
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); cam.edY = 0;
+    cam.yaw = 0.25; cam.pitch = 0.28; cam.dist = 34; render(); await settle(); bare(); return 'desk';
+  }
+  if (n === 154) { // max-q: the Lunar climbing through its peak dynamic pressure, from the side
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Lunar)); editorChanged(); document.getElementById('launch').click();
+    S.throttle = 1; stage(S); let qm = 0;
+    while (S.alive && simT < 300) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT);
+      qm = Math.max(qm, S.qdyn); if (len(S.r) - TELLUS.R > 4000 && S.qdyn < qm * 0.995) break }
+    INP.pitch = 0; for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } }
+    cam.yaw = 1.75; cam.pitch = 0.05; cam.dist = 60; window.simulate = () => {}; render(); await settle(); bare();
+    return 'max-q ' + (qm / 1e3).toFixed(1) + ' kPa at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km, Mach ' + S.mach.toFixed(2);
+  }
+  // 156–158: in orbit. The Orbiter's upper stage in a circular orbit of alt km about a body, at a place chosen against
+  // the sun; the camera set in the ship's local frame by a direction D (from the ship to the camera)
+  if (n >= 156 && n <= 158) {
+    const body = n === 158 ? SELENE : TELLUS, alt = { 156: 200, 157: 4000, 158: 100 }[n] * 1000;
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    S.landed = false; stage(S); stage(S); S.throttle = 0; S.mkLift = true;
+    const sn = norm(SUN), w = norm(cross(sn, [0, 0, 1]));
+    // 156: just inside the night side, the sun about to rise over the limb ahead; 157 and 158: over the day side, a little off the sub-solar point
+    const dir = n === 156 ? norm(add(mul(sn, -0.08), w)) : norm(add(mul(sn, 0.8), mul(w, 0.6)));
+    if (body !== TELLUS) S.body = body;
+    const r = body.R + alt; S.r = mul(dir, r); const vdir = n === 156 ? sn : norm(cross([0, 0, 1], dir)); S.v = mul(norm(sub(vdir, mul(dir, dot(vdir, dir)))), Math.sqrt(body.mu / r));
+    const Y = norm(S.v), X = norm(cross(Y, dir)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; window.simulate = () => {};
+    const f = localFrame(S.r), D = n === 156 ? norm(add(mul(norm(sub(sn, mul(dir, dot(sn, dir)))), -1), mul(f.up, 0.12)))   // behind the ship, looking along the horizon at the sunrise
+      : norm(add(f.up, mul(f.n, 0.35)));   // above and behind, looking down past the ship at the body
+    cam.pitch = Math.asin(clamp(dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)); cam.dist = n === 156 ? 22 : n === 157 ? 40 : 30;
+    render(); await settle(); bare();
+    return { 156: 'orbit sunrise', 157: 'Tellus from 4,000 km', 158: 'Selene from 100 km' }[n] + ', sun ' + (Math.asin(clamp(dot(dir, sn), -1, 1)) * 57.3).toFixed(0) + '° from the horizon below';
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

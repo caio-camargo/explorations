@@ -179,7 +179,7 @@ function render(){
   if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));
       gl.uniformMatrix4fv(m.uM,false,modelQ(q,sub(add(p,qrot(S.q,sub(z.at,S.cm))),camW),0,[.14,.4,.14]));gl.uniform1f(m.uGlow,.6*(1-age/.08));gl.bindVertexArray(PUFF.vao);gl.drawArrays(gl.TRIANGLES,0,PUFF.n)}}
-  const nowMs=performance.now();
+  const nowMs=HOOK.fxT??performance.now();   // the effects clock; reference views pin it (HOOK.fxT, Q312)
   if(booms.length){const u=PBOOM.u,E=lightEnv(camW);gl.useProgram(PBOOM.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,nowMs/1000%1000);
     gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);

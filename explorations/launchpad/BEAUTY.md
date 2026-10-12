@@ -1,5 +1,5 @@
 # BEAUTY — the beauty pass
-**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
+**Version**: 0.2.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
 **Status**: **D18 answered 2026-10-12 (Caio): the defaults and the order** (§ 7). Lanes build from § 4–6.
 **Purpose**: Caio (2026-10-11): "beautify the game some more", on what the player sees most and the biggest moments:
 launch to space, the planet and other bodies seen from above, the craft, the flames, the air effects, re-entry, the
@@ -52,7 +52,7 @@ plumes 4–13 · pad plume 11–23 · ignition 11–13 · vapor 9–15 (side boo
 ## 3. Rules for every item
 
 1. **Measured, both settings.** Before/after stills and GPU ms on the reference views, High and Low, the 3050 and
-   the iGPU (`SHOT_IGPU=1`). An item that lowers the adaptive resolution in its moment needs a reason in its NOTES.
+   the iGPU, with `node refset.mjs <dir> [views]` (`REF_Q=low|high`, `SHOT_IGPU=1`; NOTES look § v1.134). An item that lowers the adaptive resolution in its moment needs a reason in its NOTES.
 2. **Never grow `SKY_FS`'s `main`** without a matching cut (Q19). Prefer passes of their own; items that *shrink*
    `SKY_FS` are welcome.
 3. **Low keeps the floor:** each costly effect has a Low path (fewer steps, half-res, off).
@@ -205,6 +205,7 @@ Each item ships with before/after stills for Caio, its GPU ms on both GPUs, and 
 ## Version history
 - 0.1.0 (2026-10-12): first draft: audit, before stills, research, plan B0–B6, D18.
 - 0.2.0 (2026-10-12): D18 answered (defaults, the order); B1.5 greebles in real geometry (Caio).
+- 0.2.1 (2026-10-12): § 3 names `refset.mjs`, the measuring tool (Q312).
 
 ## Sources
 Research and audit 2026-10-12 (design desk). Photography: NASA Earth Observatory "Where are the stars?"

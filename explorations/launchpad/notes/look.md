@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1217,3 +1217,46 @@ Everything is in `deskMesh` (`app/model-desk.js`). The builder, the camera and t
 - **Not done:** a set square and lettering on the plan sheet under the model. The panels as paperwork are flow's R5
   (Q241) and vehicle's Q237/Q238. The strip's "model 1:48" is flow's Q277. From behind (yaw ≈ 2.4) the camera looks
   down onto the board's face, so the lettering reads upside down there. That's fine: it's a real board.
+
+## v1.134 — the reference views, `refset.mjs`, graphics Low/High (2026-10-12, effects beat, QUEUE Q312; BEAUTY B0.5–0.6)
+The first item of the beauty pass (BEAUTY.md § 4, D18). It makes the before/after honest and measured before anything
+changes the look.
+- **The views were shooting the wrong scene.** Every view that enters the builder only clicked *Editor* when it wasn't
+  already in editor mode. The Program desk is editor mode too, and a room covers the window and stops the 3D draw
+  (Q239), so views 1, 4–9 and 114–126 shot the Program's paperwork. That's also why their GPU time read `null` in the
+  design desk's log. A `toBuilder()` helper now goes to the Assembly screen (11 call sites). The Assembly's model desk
+  (v1.115) is off for every view except **152**: `DESK_FX = n === 152` at the top of `refView`.
+- **The "impact · 9 m" label** is drawn on the overlay canvas, which `bare()` never hid. `bare()` now hides `#ov`, and
+  each view shows it again at the start (94–96 keep their HUD).
+- **The explosions (90–93) missed the fireball.** A boom ages on the wall clock, and the view backdated it before a
+  capture that takes ~0.3 s or more, so a 0.1 s fireball had burned out. There's now an effects clock,
+  `HOOK.fxT ?? performance.now()`, read by render.js's effects block and `boomLight`. Views 90–93 pin it at the
+  boom's age and `refView` releases it. Play is unchanged (`HOOK.fxT` is null).
+- **New views 152–158**, the moments the pass targets: 152 the Assembly's desk, 153 liftoff at ~T+2 s (wide and low),
+  154 the Lunar at max-q (flown until q turns down: 31.4 kPa at 10.4 km, Mach 1.52), 155 the Lunar's staging at 60 km,
+  156 an orbit sunrise (200 km, the sun rising over the limb behind the ship), 157 Tellus from 4,000 km, 158 Selene from
+  100 km.
+- **`refset.mjs`** shoots the reference set (default: 1–10, 30–36, 40–47, 50–56, 60–77, 80–83, 90–93, 97–104, 112–115,
+  123–126, 152–158) into one folder. Each view is shot at full resolution, and its GPU time is measured twice: at the
+  scale the game's own scaler settles on from the setting's cap (~2.4 s), then at full scale. Rows go to
+  `timings.log` as `[n, label, 'adaptive', ms, scale, 'full', ms]`. `REF_Q=low|high` picks the setting and
+  `SHOT_IGPU=1` the Intel GPU. Every BEAUTY item measures its before and after with it.
+- **The iGPU wasn't being measured.** Windows pins `chrome.exe` to the RTX on this machine (`UserGpuPreferences`,
+  `GpuPreference=2`), so Chrome's GPU flags never reached the Intel UHD, and `shot.mjs`'s `SHOT_IGPU` shot on the
+  RTX. Both tools now run **Edge** with `--force_low_power_gpu` for the iGPU (checked: the renderer reads Intel UHD).
+- **Graphics: Low and High** (ROADMAP § "Graphics budget"). Medium is gone, for these reasons. On the iGPU every heavy
+  view sits at the 35 % resolution floor whatever the setting (full resolution there is 43–159 ms). At that floor,
+  Medium's Heavy vapor view (54) took 37.7 ms against Low's 21.5. So Medium missed the 30 fps floor, and Low is the
+  setting that holds it (pad 16.7, ascent 13.0, clouds 13.4, orbit 7.3 ms). Low keeps today's Low effects (flat clouds;
+  no bloom, plume light, ground glow or vapor) and its 60 % cap. A saved `medium` reads as Low (`QUAL_OLD`), because
+  the player picked it to go faster.
+- **Baseline for B0** (RTX 3050, High, the whole set): `output/launchpad/beauty/b0-base-rtx-high/`. 81 views, no nulls. **37 of 81 sit below the 75 % scale target.** The heaviest at full resolution: the
+  Heavy's staging 77 (23.1 ms) and 74 (22.8), clouds on the pad 80 (21.7, at 45 %), explosion 92 (18.6), the engine from below 10
+  (17.6), the Lunar on the pad 63 (16.1).
+- **What it says for the next items:** **the plain pad is already over budget.** The close-ups 4–9 and the school views 114–126 have no smoke,
+  plume or vapor, yet they take 10–12.6 ms at full resolution and settle at 67 %. So half-res effect buffers alone
+  won't bring the pad views back above 75 %: the pad scene itself (the sky, the ground, the complex) needs measuring
+  by pass. That belongs in Q313's plan. On the iGPU (Low) every view sits at the 35 % floor (pad 16.7 ms there); half-res effect buffers (Q313) are what
+  could lift that floor.
+- **Checks:** test `aerofx-8` (views on the pad with the desk only in 152; the Assembly route; overlay; the pinned clock;
+  152–158; Low/High with medium → Low). TESTING 216.

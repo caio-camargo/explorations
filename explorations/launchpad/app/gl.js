@@ -1391,7 +1391,7 @@ function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=M
   gl.uniform3fv(u.uPlC,PLT.c);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 // an explosion's flash, as the scene's point light (PLT) while it outshines the plumes: decays over ~0.3 s, then the
 // fireball's glow lingers dimmer for ~1 s
-function boomLight(camW){const now=performance.now();let best=null,bk=0;
+function boomLight(camW){const now=HOOK.fxT??performance.now();let best=null,bk=0;
   for(const bm of booms){const a=(now-bm.t0)/1000;if(a<0||a>2)continue;const k=bm.sz*(900*Math.exp(-a/.12)+120*Math.exp(-a/.8));if(k>bk){bk=k;best=[bm,a]}}
   if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2])return;const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);

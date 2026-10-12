@@ -6,10 +6,12 @@
 // preset sets aerofx's effect flags (gl.js) and the resolution cap adaptRes keeps to (render.js).
 const QUAL={
   high:{l:'High',rs:1,d:'everything on',fx:{CLOUD_VOL:1,BLOOM:1,PLUME_LIGHT:1,IMPACT_FX:1,VAPOR_FX:1}},
-  medium:{l:'Medium',rs:.8,d:'flat clouds, no plume glow on the ground, resolution up to 80 %',fx:{CLOUD_VOL:0,BLOOM:1,PLUME_LIGHT:1,IMPACT_FX:0,VAPOR_FX:1}},
-  low:{l:'Low',rs:.6,d:'also no bloom, plume light or vapor cones, resolution up to 60 %',fx:{CLOUD_VOL:0,BLOOM:0,PLUME_LIGHT:0,IMPACT_FX:0,VAPOR_FX:0}}};
+  low:{l:'Low',rs:.6,d:'for integrated graphics: flat clouds; no bloom, plume light, ground glow or vapor cones; resolution up to 60 %',fx:{CLOUD_VOL:0,BLOOM:0,PLUME_LIGHT:0,IMPACT_FX:0,VAPOR_FX:0}}};
+// Two settings (ROADMAP § "Graphics budget"; BEAUTY Q312). Medium is gone: on the Intel iGPU it missed the 30 fps floor
+// even at the 35 % resolution floor (the Heavy's vapor, view 54: 37.7 ms; Low 21.5 ms), so a saved 'medium' becomes Low
+const QUAL_OLD={medium:'low'};
 const setGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:v}catch(e){return d}},setPut=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
-let quality=QUAL[setGet('launchpad-quality','high')]?setGet('launchpad-quality','high'):'high';
+let quality=(q=>QUAL[q]?q:QUAL_OLD[q]||'high')(setGet('launchpad-quality','high'));
 function applyQuality(q){const Q=QUAL[q]||QUAL.high,f=Q.fx;quality=QUAL[q]?q:'high';
   CLOUD_VOL=!!f.CLOUD_VOL;BLOOM=!!f.BLOOM;PLUME_LIGHT=!!f.PLUME_LIGHT;IMPACT_FX=!!f.IMPACT_FX;VAPOR_FX=!!f.VAPOR_FX;   // (the re-entry plasma stays: it tells you something)
   RS_MAX=Q.rs;RS=Math.min(RS,RS_MAX)}
