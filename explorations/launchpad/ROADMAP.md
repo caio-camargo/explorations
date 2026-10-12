@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.1 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 1.9.2 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -155,6 +155,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`LATE_GAME.md`](LATE_GAME.md) | the network, outposts, the tech ceiling, capstones, debris |
 | [`GROUND.md`](GROUND.md) | every body's ground: generators, recipes, slices |
 | [`UI.md`](UI.md) | UI hierarchy: rules and each screen's reads |
+| [`BEAUTY.md`](BEAUTY.md) | the beauty pass: what's weak today, the plan B0–B6, costs |
 | [`KSPISMS.md`](KSPISMS.md) | what came from KSP: kept, changed |
 | [`TECH_SCOUTING.md`](TECH_SCOUTING.md) | real space tech mined for ideas |
 | [`mockups/README.md`](mockups/README.md) | the mock-up pages and Caio's picks |
