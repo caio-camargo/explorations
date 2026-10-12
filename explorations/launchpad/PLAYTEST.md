@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.40 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: running list
+**Version**: 0.1.41 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -82,6 +82,7 @@ docking, rescues, landings, stations) stays flown and messy. That's the difficul
 | 77 | P1 | ~~**Player designs can't be saved** (Caio, 2026-10-11): save by default whenever a design is launched, retrievable from the flight history; also save by hand under a name the player picks.~~ | Done 2026-10-11 (vehicle, v1.129, QUEUE Q306): *Your designs* under the presets (a name and Save; load, forget) and *Launched* (every launch files its design, newest first, ×count); a *save design…* button in the toolbar jumps there. Per program, in its save. NOTES § v1.129; TESTING 211 | vehicle |
 | 78 | P2 | **The craft being built sinks to the bottom of the hall** (Caio, 2026-10-12): it should stay suspended where it was placed, as in KSP's VAB. Parking idle parts in the air works (v1.120). Lead: Q247 (v1.118) pins the root on screen when parts below are removed, but `layoutDesign` (`sim/vessel.js`) still seems to stand the stack on the plate otherwise; keep the root's placed height in the design and let only the rollout stand it on the pad | vehicle |
 | 79 | P3 | **Deploy deployable parts in the builder**, as in KSP (Caio, 2026-10-12): solar panels, landing legs, and likely the bay doors and a rover's fold, to see and check the deployed shape. Lead: deployment is already one flag, `p.dep` (legs: `legOp`, `footPoints` in `sim/flight.js`; wings: `sim/power.js`); the builder needs a per-part or all-at-once toggle that sets it on the design and redraws | vehicle |
+| 80 | P3 | **Action groups**, as in KSP (Caio, 2026-10-12): gather deployments into a group (e.g. every solar panel), fire it from its own button, and put it into a stage. Lead: deployment is `p.dep` (#79); stages hold events (Q249 makes them several per stage); flight controls go through `controls`/`setControls` and the tape, so a group needs a tape op to replay | vehicle |
 
 ## Done
 
