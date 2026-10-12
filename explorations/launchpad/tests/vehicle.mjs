@@ -453,3 +453,18 @@
     `tips past ${vt.toFixed(2)} m/s; at ${(0.75 * vt).toFixed(2)} ${slow.landed ? 'landed' : 'not landed'}; at ${(1.15 * vt).toFixed(2)}: ${out.d}`);
   api.HOOK.msg = msg0;
 }
+
+// vehicle-14. The Touchdown quote for what lands (vehicle session, QUEUE Q325): the stack after its drops (a capsule under its chute),
+// or, with legs, before the drop that leaves them behind (a descent stage stays on the moon); on Selene the same stack stands ~0.41×
+// the drift (tipSpeed goes as √g). Quoting leaves the ship as it was.
+{
+  const gT = TELLUS.mu / TELLUS.R ** 2, gS = SELENE.mu / SELENE.R ** 2, ps = api.newShip(api.PRESETS.Passenger), cm0 = ps.cm.slice(), m0 = ps.mass;
+  const P = api.landStance(ps, gT), Pm = api.landStance(ps, gS), P0 = api.landStance(ps, gT, 0), built = api.standSpeed(ps, gT);
+  const fd = (n, k) => n.k === k ? n : n.c.map(c => fd(c, k)).find(Boolean), d = api.toV2(['pod', 't1', 'wren', 'dec', 't2', 'wren']);
+  fd(fd(d.root, 'dec'), 't2').c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] });
+  const ls = api.newShip(d), L = api.landStance(ls, gS), drops = ls.events.some(e => e.decouple.length);
+  check('touchdown quote (Q325): what lands after its drops, legs keep their stage, Selene ×0.41, the ship untouched',
+    P.n < P.of && P.v > 1.5 * built && P0.n === P0.of && Math.abs(Pm.v / P.v - Math.sqrt(gS / gT)) < 0.01 &&
+    drops && L.legs && L.n === L.of && ps.mass === m0 && ps.cm.every((x, i) => x === cm0[i]),
+    `Passenger: ${P.n} of ${P.of} parts land on ${P.on}, ${P.v.toFixed(2)} m/s (built ${built.toFixed(2)}), Selene ×${(Pm.v / P.v).toFixed(3)}; lander ${L.n} of ${L.of} on Selene ${L.v.toFixed(2)} m/s`);
+}

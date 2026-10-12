@@ -3,7 +3,7 @@
 // vNNN-<label>.png and timings.log (one JSON row per view: [label, 'adaptive', gpu ms, scale, 'full', gpu ms]).
 // usage: node refset.mjs <outDir> [n n-m ...]   (default: the BEAUTY set below)
 // Env: REF_URL (default http://localhost:8790/launchpad/index.html: serve the folder above launchpad/ there),
-// REF_PROF=1 adds each view's GPU ms per pass at full resolution (render.js's profMark marks) as an 8th field;
+// a last field {E, L}: the exposure and the scene's log-mean luminance (Q314); REF_PROF=1 adds each view's GPU ms per pass at full resolution (render.js's profMark marks) as an 8th field;
 // REF_EVAL='js' runs in the page after load, for A/B runs (e.g. REF_EVAL='CLOUD_VOL=false');
 // REF_Q=low|high (a graphics setting, app/settings.js; default: the page's), SHOT_IGPU=1 for the Intel iGPU (runs Edge with --force_low_power_gpu: Windows pins chrome.exe to the RTX on this
 // machine, GpuPreference=2, so Chrome's flags can't reach the iGPU; shot.mjs's SHOT_IGPU lands on the RTX too), REF_BROWSER: another browser, SHOT_FLAGS to override the GPU flags (as shot.mjs). Headless Chrome over CDP on the
@@ -35,7 +35,7 @@ console.log(await ev(`(async () => { try { localStorage.clear() } catch (e) {} d
   const s = document.createElement('script'); s.src = 'views.js?' + Date.now(); document.head.appendChild(s); await new Promise(r => s.onload = r);
   window.adaptRes0 = adaptRes; ${process.env.REF_Q ? `applyQuality(${JSON.stringify(process.env.REF_Q)});` : ''} ${process.env.REF_EVAL || ''}; return 'ready in ' + ((performance.now() / 1000) | 0) + ' s; GPU ' + (gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info')?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER) || '?').replace(/ANGLE \\(|\\)$/g, '') + '; timer ' + !!TQ + '; home ' + curSite().name + '; quality ' + quality + ' (scale cap ' + RS_MAX + ')' })()`));
 fs.mkdirSync(out, {recursive: true}); const log = fs.createWriteStream(`${out}/timings.log`, {flags: 'a'});
-const meas = ms => `new Promise(r => { gpuMs = null; setTimeout(() => r([gpuMs == null ? null : +gpuMs.toFixed(2), +RS.toFixed(2)]), ${ms}) })`;
+const meas = ms => `new Promise(r => { gpuMs = null; setTimeout(() => r([gpuMs == null ? null : +gpuMs.toFixed(2), +RS.toFixed(2), typeof EXPO == 'object' ? [+EXPO.E.toPrecision(3), EXPO.L && +EXPO.L.toPrecision(3), EXPO.H && +EXPO.H.toPrecision(3)] : null]), ${ms}) })`;
 for (const n of views) {
   const label = await ev(`refView(${n}).then(x => typeof x === 'string' ? x : JSON.stringify(x))`);
   // adaptive: the game's own scaler from the setting's cap for ~2.4 s (it steps every 0.6 s), then the GPU time at the scale it settled on
@@ -47,7 +47,7 @@ for (const n of views) {
   const s = await cmd('Page.captureScreenshot', {format: 'png'});
   const slug = String(label ?? 'view').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
   fs.writeFileSync(`${out}/v${String(n).padStart(3, '0')}-${slug}.png`, Buffer.from(s.result.data, 'base64'));
-  const row = [n, label, 'adaptive', a?.[0], a?.[1], 'full', f?.[0], ...(p ? [p] : [])]; log.write(JSON.stringify(row) + '\n'); console.log(JSON.stringify(row));
+  const row = [n, label, 'adaptive', a?.[0], a?.[1], 'full', f?.[0], ...(p ? [p] : []), ...(f?.[2] ? [{E: f[2][0], L: f[2][1], H: f[2][2]}] : [])]; log.write(JSON.stringify(row) + '\n'); console.log(JSON.stringify(row));   // E, L: the exposure and the scene's log-mean light (Q314)
   await ev(`adaptRes = adaptRes0`);
 }
 if (errs.length) console.log('console errors:', [...new Set(errs)].slice(0, 10));

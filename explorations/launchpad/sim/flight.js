@@ -37,6 +37,15 @@ function tipSpeed(s,g){const pts=footPoints(s);if(!pts.length)return Infinity;le
   if(b<=0)return 0;const Ip=Math.min(s.I[0],s.I[2])+s.mass*(h*h+b*b);return Math.sqrt(2*g*(Math.hypot(b,h)-h)*Ip/s.mass)/h}
 // the same with any legs down: what the construction screen quotes for the stack as built (Q264)
 function standSpeed(s,g){const L=s.parts.filter(p=>p.on&&p.d.kind==='leg'&&!p.dep);for(const p of L)p.dep=true;s.foot=null;const v=tipSpeed(s,g);for(const p of L)p.dep=false;s.foot=null;return v}
+// the same for what lands (Q325): the stack after its drops, or with legs, after the drops before the one that leaves the
+// legs behind (a lander's descent stage stays on the surface when its ascent stage lifts off). Tanks full or dry, whichever
+// tips sooner; nev: how many staging events fire before touchdown, when a landing procedure recorded it. Leaves s as it
+// was. {v, n parts that land of `of`, legs, on: the part it stands on}
+function landStance(s,g,nev){const on0=s.parts.map(p=>p.on),fu0=s.parts.map(p=>p.res.fuel),L=new Set(s.parts.filter(p=>p.on&&p.d.kind==='leg').map(p=>p.seg));
+  for(const e of s.events.slice(0,nev??Infinity)){if(nev==null&&e.decouple.some(k=>L.has(k)))break;for(const k of e.decouple)for(const p of s.parts)if(p.seg===k)p.on=false}
+  geom(s);const full=standSpeed(s,g);for(const p of s.parts)if(p.res.fuel)p.res.fuel=0;geom(s);const dry=standSpeed(s,g);
+  const ft=footPoints(s)[0],out={v:Math.min(full,dry),n:s.parts.filter(p=>p.on).length,of:on0.filter(Boolean).length,legs:s.parts.some(p=>p.on&&p.d.kind==='leg'),on:ft&&ft.p.d.name};
+  s.parts.forEach((p,i)=>{p.on=on0[i];if(fu0[i]!==undefined)p.res.fuel=fu0[i]});geom(s);s.foot=null;return out}
 // a lost vessel keeps its cause (Q264): s.lossWhy, a clause for the Debrief's outcome and the message that stays on screen
 function lose(s,why,boom){s.alive=false;s.lossWhy=why;if(boom)HOOK.boom(s.body,s.r,simT,boom);logEv('loss',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
 // legs down (op 'down') or up ('up'): instant for now (the look beat can animate the swing); returns how many moved

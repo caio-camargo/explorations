@@ -43,9 +43,14 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
     Object.assign(PROG,{gseed:null,done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},dispatch:[],fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
-// how much sideways drift it stands at touchdown, as built and legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s)
-function standHTML(s){const v=standSpeed(s,TELLUS.mu/TELLUS.R**2),legs=s.parts.some(p=>p.on&&p.d.kind==='leg'),ft=footPoints(s)[0],on=legs?'its legs':ft?`its ${ft.p.d.name}`:'its base',cl=legs&&v<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
-  return`<div style="margin-top:4px">Touchdown <b class="${cl}">stands drifting up to ${v>9.95?'10+':v.toFixed(1)} m/s</b> <span class="dim">sideways, as built, on ${on}; faster, it tips over${legs?'':'. Legs widen the stance'}</span></div>`}
+// how much sideways drift it stands at touchdown, legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s). Q325:
+// for what lands (after its drops) on the body it lands on: a landing procedure's body and staging, else Tellus, and Selene
+// too for a design with legs (the moon's weaker pull stands it ~0.4× the drift)
+function standHTML(s){const g=b=>b.mu/b.R**2,f=v=>v>9.95?'10+':v.toFixed(1),
+  to=p=>((p.phases||[]).find(x=>x.k==='transfer')||{}).to,pr=(typeof procsOf==='function'?procsOf(stackDef):[]).find(p=>procLandsOn(p,to(p))),ph=pr&&pr.phases.find(x=>x.k==='land'),B=pr&&BODIES.find(b=>b.name===to(pr))||TELLUS,
+  L=landStance(s,g(B),ph?ph.ev:undefined),moon=!pr&&L.legs?landStance(s,g(SELENE)):null,on=L.legs?'its legs':L.on?`its ${L.on}`:'its base',
+  what=L.n===L.of?'as built':`what's left after its drops (${L.n} of ${L.of} parts)`,cl=L.legs&&Math.min(L.v,moon?moon.v:9)<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
+  return`<div style="margin-top:4px">Touchdown <b class="${cl}">stands drifting up to ${f(L.v)} m/s</b> <span class="dim">sideways on ${B.name}${moon?`, ${f(moon.v)} on ${SELENE.name}`:''}: ${what}, on ${on}${pr?', as its landing procedure flies it':''}; faster, it tips over${L.legs?'':'. Legs widen the stance'}</span></div>`}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
 function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',

@@ -413,3 +413,20 @@
   check('cloud deck: marched at half resolution in its own pass (depth pre-pass → slab → sky), upsampled by depth, out of SKY_FS main; volume needs the pass; pass profiler off by default',
     out && pass && order && prof, `out of sky main ${out} · pass ${pass} · order ${order} · profiler ${prof}`);
 }
+
+// aerofx-10. The HDR scene (look & sound effects beat, BEAUTY Q314). No shader tone-maps itself any more: the frame is
+// drawn in linear light into an RGBA16F target on both settings, and the composite does bloom (no threshold), the
+// exposure, a vignette, AgX, the grade LUT and grain, once. The exposure is read back without stalling (a pixel-pack
+// buffer and a fence) and eased; the reference views settle it at once; map lines divide by it.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const shaders = [...page.matchAll(/const ([A-Z_]+_FS)=`([\s\S]*?)`;/g)].filter(m => m[1] !== 'COMP_FS' && m[1] !== 'BV_FS');
+  const selfTm = shaders.filter(m => /aces\(|2\.51\*c|pow\(c(ol)?,vec3\(1\.\/2\.2\)\)|1\.-exp\(-C\)/.test(m[2])).map(m => m[1]);
+  const comp = page.slice(page.indexOf('const COMP_FS=`'), page.indexOf('`;', page.indexOf('const COMP_FS=`')));
+  const once = /vec3 agx\(vec3 c\)/.test(comp) && /texture\(uLut,agx\(c\)/.test(comp) && /c\*=uE\*/.test(comp) && /uGr/.test(comp);
+  const target = /renderbufferStorageMultisample\(gl\.RENDERBUFFER,ns,HDR_RT\?gl\.RGBA16F:gl\.RGBA8,w,h\)/.test(page) && /function bloomBegin\(w,h\)\{SCN\.on=false;const T=sceneTarget/.test(page);
+  const expo = /gl\.fenceSync\(gl\.SYNC_GPU_COMMANDS_COMPLETE,0\)/.test(page) && /gl\.readPixels\(0,0,c\.w,c\.h,gl\.RGBA,gl\.FLOAT,0\)/.test(page) && /function expoNow\(\)/.test(page)
+    && /uniform1f\(PLINE\.u\.uLk,1\/EXPO\.E\)/.test(page) && /expoNow\(\); render\(\)/.test(vj);
+  check('HDR scene: no shader tone-maps itself; linear RGBA16F target on both settings; one composite (bloom, exposure, AgX, LUT, grain); exposure read back without a stall',
+    selfTm.length === 0 && once && target && expo, `self-tone-mapping ${selfTm.join(', ') || 'none'} · composite ${once} · target ${target} · exposure ${expo}`);
+}

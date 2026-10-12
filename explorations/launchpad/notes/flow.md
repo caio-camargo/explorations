@@ -862,7 +862,7 @@ one is open):
   is still to come; today it opens from the Program. The calendar's labels overlap when a booking and its window are
   both short.
 
-## v1.136 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
+## v1.138 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
 Since v1.102, before onboard computers a planned burn that no station sees is refused at hand-off, so it could only be
 flown by hand. Mission control's **Trajectory** console now offers **Fly at the next contact** in its place, with where
 and when: "No station sees it at the burn. Next contact: 7 orbits later (+6 h), over Dunnzar Cape."
@@ -882,4 +882,4 @@ and when: "No station sees it at the burn. Next contact: 7 orbits later (+6 h), 
   checks (30 days of 90-minute orbits) take ~3 ms, only for burns that were refused for contact.
 
 Test `flow-14` (refused, found a whole number of orbits later with a station in view, later burns keep their spacing,
-handed over, same raise; the button and its handler). TESTING row 218.
+handed over, same raise; the button and its handler). TESTING row 220.
