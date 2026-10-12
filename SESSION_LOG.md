@@ -38,6 +38,36 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-10-11 — Launchpad design desk: faces, school briefs, KSP audit, UI rules, project review, the documentation system
+**Source**: Claude Code
+**User**: Caio Camargo
+**AI Model**: claude-opus-5-5
+**Status**: Complete
+
+### Summary
+Design-desk run (docs only, main clone; claim from 2026-10-09). Wrote FACES.md (face engine, D12), suit and rocket briefs
+for the remaining schools (D13, D14), the KSP audit (KSPISMS.md, D15), UI hierarchy rules (UI.md, D16), heat/stress
+display (W36), the graphics budget and the "good mess or bad jank" playtest lens, and a whole-project review
+(REVIEW-2026-10-11.md, D17, all defaults). Then the documentation system: DECISIONS.md as the one home for answers,
+ROADMAP § Documents (eight rules), a doc sweep, the project-review playbook, and the NOTES split into `notes/<area>.md`.
+
+### Decisions Made
+- D12–D17, W16, W36, W37 and the graphics budget: one line each in `explorations/launchpad/DECISIONS.md`.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/launchpad/FACES.md`, `KSPISMS.md`, `UI.md`, `REVIEW-2026-10-11.md`, `DECISIONS.md` | design docs, the review, the decisions log |
+| 2 | created | `playbooks/project-review.md`; `explorations/launchpad/archive/decisions-2026-10.md`, `archive/crew-suits-table-2026-10-09.md` | playbook; answered questions and replaced text |
+| 3 | edited | `CREW.md`, `POWERS.md`, `MIDGAME.md`, `ROADMAP.md` (1.9.1), `QUEUE.md`, `PLAYTEST.md`, `GROUND.md`, `LATE_GAME.md`, `SYSTEM.md`, `docs/session-roles.md` (1.3.0), `INDEX.md` | briefs, D17 ripple, headers, Documents rules |
+| 4 | split | `explorations/launchpad/NOTES.md` → `notes/*.md` (8 files) + index; `check_numbers.mjs` reads them all | W37, `a3b62c5` |
+
+### Next Steps
+- [ ] Economy: merging the Q188 branch, move its NOTES section and amendment into `notes/economy.md`, renumber v1.128 (ACTIVE_WORK notice).
+- [ ] Platform: `check_docs.mjs` (QUEUE Proposed); include the D-number gap (`check_numbers` sees answered D rows only in DECISIONS, so it offers D1; the next is D18).
+- [ ] Caio: W29 (bodies round 2), W33 (face lab, own session).
+- [ ] Build follow-ups from the review: Caio's first hour (PLAYROUTE refresh, Q257, first-hour P2s, `playtest.mjs m1`), a QA session, Q47.
+
 ## Session 2026-10-01 — Pulse Loop v1.0: DJ-style hypnotic loops
 **Source**: Claude Code · **Operator**: Caio · **Status**: Complete
 
