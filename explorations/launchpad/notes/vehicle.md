@@ -1389,7 +1389,7 @@ Test `vehicle-12`. `--smoke` all pass.
   merged into 1 firing as one event); checked in the browser with real drag events (merge, a chip past the end, undo).
   TESTING 223 (renumbered from v1.140/222: flow's Q43 took them).
 
-## v1.144 — deploy in the Assembly: legs, solar wings and bay doors roll out as left (2026-10-12, vehicle session, QUEUE Q328; PLAYTEST #79)
+## v1.145 — deploy in the Assembly: legs, solar wings and bay doors roll out as left (2026-10-12, vehicle session, QUEUE Q328; PLAYTEST #79)
 
 - **What was there:** deployment was already one flag on a flying part (`p.dep` for legs and solar wings, `p.open` for a
   cargo bay's doors), set only in flight (Y, P, B; tape ops `G`, `W`, `B`). The Assembly always showed and rolled out
@@ -1410,4 +1410,4 @@ Test `vehicle-12`. `--smoke` all pass.
   pushes on them before liftoff. Test `vehicle-16` (stowed by default; set out, all six copies and the bay roll out
   so, three warnings, the same `procKey`; flown up deployed, the wings tear off at 1.0 kPa and the rocket flies on).
   Checked in the browser: the toolbar and the part row, the drawing in the Assembly and on the pad, undo, the Rollout's
-  checks. TESTING 226.
+  checks. TESTING 227 (renumbered from v1.144/226: world's Q270 took them).

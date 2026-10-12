@@ -394,3 +394,19 @@
     bare.booms === 1 && bare.vHit > 50 && !bare.d.float && DF && chuted.vHit < 14 && DF.tilt > 1.2 && DF.dry > 0.5 && moved > 0.05 && isFinite(DF.sinkAt) && !G.debris.includes(chuted.d),
     `bare: ${bare.vHit.toFixed(0)} m/s, broke up; one chute: ${chuted.vHit.toFixed(1)} m/s, afloat at ${(DF.tilt * 57.3).toFixed(0)}°, ${(DF.dry * 100).toFixed(0)} % dry, sinks ${((DF.sinkAt - DF.t) / 3600).toFixed(0)} h in`);
 }
+// town-1. Support towns (world session, QUEUE Q270, PLAYTEST #70; NOTES § v1.144): every launch pad has a town 15–60 km
+// away, on land, in its own country, never under the corridor (≥ 60° off downrange and the polar headings); the random
+// cities keep their indices (towns are appended), and a stage dropped on a town is a city hit. Own SIM copy.
+{
+  const G = new Function(src + 'return {CITIES,SITES,TELLUS,isLand,dropVerdict,makeCities};')();
+  const T = G.TELLUS, gc = (a, b) => Math.acos(Math.min(1, Math.max(-1, dot(a, b)))) * T.R, pads = G.SITES.filter(s => s.kind === 'pad');
+  const towns = G.CITIES.filter(c => c.town), first = G.makeCities(), D = Math.PI / 180;
+  const bear = (t, u) => { const e = norm(cross([0, 1, 0], t.u)), n = cross(t.u, e), v = sub(u, mul(t.u, dot(u, t.u))); return ((Math.atan2(dot(v, e), dot(v, n)) / D) + 360) % 360; };
+  const off = (t, c) => { const cor = [t.downrange.az, ...(t.polar || '').split('').map(k => k === 'S' ? 180 : 0)], b = bear(t, c.u); return Math.min(...cor.map(a => Math.abs(((b - a) % 360 + 540) % 360 - 180))); };
+  const rows = pads.map(t => { const c = towns.find(x => x.town === t.id); return { t, c, km: c && gc(t.u, c.u) / 1e3, off: c && off(t, c) }; });
+  const hit = G.dropVerdict(T, mul(towns[0].u, T.R));
+  check('town-1: every pad has a support town 15–60 km away, on land, its own power, ≥ 60° off every corridor; the random cities keep their order; a stage on a town is a city hit',
+    rows.every(r => r.c && r.km > 14 && r.km < 61 && G.isLand(r.c.u) && r.c.power && r.c.power.i === r.t.power && r.off >= 60) &&
+      first.every((c, i) => G.CITIES[i].name === c.name) && G.SITES.filter(s => s.kind === 'sea').every(s => !towns.some(c => c.town === s.id)) && hit.kind === 'city' && hit.city === towns[0],
+    rows.map(r => r.c ? `${r.t.name}: ${r.c.name} ${r.km.toFixed(0)} km, ${r.off.toFixed(0)}° off` : `${r.t.name}: none`).join('; '));
+}
