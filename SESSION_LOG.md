@@ -5389,6 +5389,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 (routines; W27's amendment), Q187 (plan).
 
 
+## 2026-10-12 — Caio + Claude (launchpad vehicle session): Q327, the craft stays where it was put (v1.139)
+- **Done** (on `main`, pushed; PLAYTEST #78): in the Assembly, with nothing built, a held part now floats with the cursor
+  and hangs where it is clicked (`placeRoot`), instead of dropping onto the base plate. Clicking the root picks up the
+  whole rocket (it used to refuse) to hang it elsewhere; making another part the root keeps the height; undo brings the
+  height back. Presets and saved designs still start on the plate; the rollout stands it on the pad.
+- **Checked:** in the browser (Hopper moved up 4.85 m with the camera still; a first tank hanging 7 m up); full suite on
+  the merged code, run in four chunks (a single run ran out of memory with ~1 GB free). No headless test: the pin needs
+  the view, as Q247's did. `check_numbers` ok (v1.139, TESTING 221).
+- **Files:** `builder.js`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Proposed** for look: a display rod under a hanging model on the desk.
+- **Next for vehicle:** Q249 (staging by drag and drop), Q237/Q238, Q202.
+
 ## 2026-10-12 — Caio + Claude (launchpad vehicle session): Q325, the Touchdown quote for what lands (v1.136)
 - **Done** (on `main`, pushed): the Assembly's *Touchdown* line (Q264's) now quotes what lands, not the stack as built:
   the stack after its staging drops, or with legs, before the drop that leaves them behind; tanks full or dry,
