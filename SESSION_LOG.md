@@ -5388,3 +5388,20 @@ runner wasn't first to orbit in 27 of 144 runs (19 under the old schedule, 17 wi
 commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; re-plan for W23's amendment), Q184
 (routines; W27's amendment), Q187 (plan).
 
+
+## 2026-10-12 — Caio + Claude (launchpad flow session): Q241 R4, mission control (v1.131)
+- **Done** (`b47afb9`, docs `dcff57d`, on `main`, pushed): mission control as a room that takes the Network screen's
+  place. A wall (clocks, the ground track of Tellus with the stations' circles and every craft's orbit, or the pads'
+  calendar; the pads) over four consoles (Flight, Network, Trajectory, Dispatch) that reuse the Program's buttons.
+  **C** from the Program; P, N (wait), W (the wall) inside. VT323 bundled. netModel's fleet rows carry ids; Q203 fixed
+  (a decaying craft says when it re-enters).
+- **Checks:** full suite 641/641 before merging main; after: serial smoke and the touched sections pass (one `--jobs 4`
+  smoke run failed "presets" once and passes alone: filed under QUEUE *Proposed* for platform). New test `flow-13`;
+  `flow-10` and core §32 updated (`atMC`); robot row 164 now opens mission control. Seen in headless Chrome: wall,
+  track, calendar, consoles, Wait, W, Help.
+- **Files:** launchpad `app/mission.js` (new), `app/network.js`, `app/screens.js`, `app/render.js`, `builder.js`,
+  `sim/program.js` (netModel, additive), `index.html`, `fonts/vt323.woff2` + licence, `tests/flow.mjs`,
+  `tests/core.mjs`, `playtest.mjs`, notes/flow.md (§ v1.131), NOTES index, TESTING 213; QUEUE (Q241 R4 ✓, Q203 ✓,
+  Q43/Q167/Q170/Q196 ready, three *Proposed*), ACTIVE_WORK.
+- **Next for flow:** Q241 R3 (title and first run as the charter); Q43 and Q196 now build into mission control.
+
