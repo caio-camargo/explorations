@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: running list
+**Version**: 0.1.39 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -80,6 +80,7 @@ docking, rescues, landings, stations) stays flown and messy. That's the difficul
 | 75 | P2 | **When a part breaks from stress there's no visual effect**; the parts just come apart (Caio, 2026-10-11). | Confirmed: a structural failure only posts a message and detaches the parts (`sim/vessel.js` ~757). QUEUE Q294 | look & sound (effects; sound) |
 | 76 | P2 | ~~**Shift+scroll moves the Assembly view too far per step**: hard to frame the part you want (Caio, 2026-10-11).~~ | Done 2026-10-11 (vehicle, v1.129, QUEUE Q305): the step follows how far the wheel moved (a touchpad's small steps move a little), about 4× finer for a mouse notch. NOTES § v1.129 | vehicle |
 | 77 | P1 | ~~**Player designs can't be saved** (Caio, 2026-10-11): save by default whenever a design is launched, retrievable from the flight history; also save by hand under a name the player picks.~~ | Done 2026-10-11 (vehicle, v1.129, QUEUE Q306): *Your designs* under the presets (a name and Save; load, forget) and *Launched* (every launch files its design, newest first, ×count); a *save design…* button in the toolbar jumps there. Per program, in its save. NOTES § v1.129; TESTING 211 | vehicle |
+| 78 | P2 | **The craft being built sinks to the bottom of the hall** (Caio, 2026-10-12): it should stay suspended where it was placed, as in KSP's VAB. Parking idle parts in the air works (v1.120). Lead: Q247 (v1.118) pins the root on screen when parts below are removed, but `layoutDesign` (`sim/vessel.js`) still seems to stand the stack on the plate otherwise; keep the root's placed height in the design and let only the rollout stand it on the pad | vehicle |
 
 ## Done
 
