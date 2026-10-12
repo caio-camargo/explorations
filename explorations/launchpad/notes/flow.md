@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -883,3 +883,31 @@ and when: "No station sees it at the burn. Next contact: 7 orbits later (+6 h), 
 
 Test `flow-14` (refused, found a whole number of orbits later with a station in view, later burns keep their spacing,
 handed over, same raise; the button and its handler). TESTING row 220.
+
+## v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43; economy § "Dispatch — the economy's answers" 5)
+The dispatch brief's second mode, next to auto-resolve: **watch** the same flight on screen, and jump in if you want.
+- **In mission control** (Flight and Dispatch consoles), a queued contract dispatch has **Watch**. Watching stops the
+  clock at its launch (`upcoming` gives the event `stop`), and there the row turns red: **Watch now** or **Let it fly**.
+  It waits half a day (`WATCH_WAIT`, in `dispatchTick`, after its scrub, money and site checks, so a weather scrub still
+  slips it a day and it waits again); past that, nobody watched and it flies itself as before.
+- **Watch now** (`watchStart`, `app/mission.js`) puts the dispatch's design on its procedure's pad (as `resetShip`, with
+  the dispatch's stack) and starts its procedure, as the ▶ Procedure button does, then goes to the flight.
+  - **The same outcome as auto-resolve, left alone.** `watchPlan(D, c)` (`sim/procedures.js`, beside `dispatchRun`)
+    draws from the dispatch's seed in `dispatchRun`'s order: a break-up or a dead engine (rolled, not flown) ends the
+    flight in the climb with the headless reason, at a time from a draw of its own; a failed relight stops it at the
+    circularisation (`procStep` now checks `X.noRelight`, as `procFly` checks its `opt.noRelight`). The physics is the
+    same executor.
+  - **Its liftoff charges what a dispatch charges** (the design, operations, the site's fee: the same sums) but adds no
+    stacking, pad or study wait (`R.watch` in `missionTick`'s launch line): it was stacked in the queue.
+  - **Any control key takes over** (the procedure goes off, as for any procedure): the dispatch is broken, the rest of
+    the flight is yours, with no revert (`rec.noRevert`). A deviation hands it to you the same way.
+- **What happens to the dispatch** (`watchTick`, every frame from `loop.js`): flown (the procedure finished; the contract
+  settles as any flight's, when you leave it), lost (with the reason), or *handed to you*. A watched flight that's no
+  longer on screen goes back on the pad if it never lifted off (you left the pad, or reloaded), else it was yours.
+- **Not yet:** watching a supply run (days of flight: `watchPlan` refuses it); a watched flight shown on the Program's
+  timeline beyond the stop's text; a "watch every dispatch" setting.
+
+Test `flow-15` (the stop and the wait; on screen 156.8×159.1 km against the headless 157.3×159.8: the test flies every
+step on physics where the page coasts on rails like `procFly`; a failed relight stops at the circularisation; on 200
+seeds with poor part data, all 36 rolled break-ups and dead engines give the headless reason; the buttons, the frame
+hook and the liftoff's skipped waits). TESTING row 222.

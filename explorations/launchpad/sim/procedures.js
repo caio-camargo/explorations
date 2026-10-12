@@ -99,7 +99,8 @@ function procCorridor(s,X,p,h,up){if(simT<10)return;const off=Math.acos(clamp(do
   X.offT=off>20?(X.offT||0)+DT:0;if(X.offT>=5)return procDev(s,'control',`lost control of the climb: the nose ${off.toFixed(0)}° off for 5 s`);
   const vv=dot(s.v,up);if(vv<-20&&h<TELLUS.atm)return procDev(s,'falling',`falling back at ${kmS(h)} km before the engines could cut off`);
   if(p.vel&&p.vel.length>3&&h>10e3&&h<=p.vel[p.vel.length-1][0]){const v0=tabAt(p.vel,h);if(len(s.v)<0.7*v0)return procDev(s,'slow',`far behind the recorded climb: ${Math.round(len(s.v))} m/s at ${kmS(h)} km where it flew ${Math.round(v0)}`)}}
-function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T=X.T,up=norm(s.r),h=len(s.r)-TELLUS.R,el=elements(s.r,s.v,TELLUS.mu),f=localFrame(s.r);
+function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;if(X.noRelight&&X.phase==='circ'){procDev(s,'relight','the upper stage failed to relight for the circularisation');return}   // a watched dispatch's rolled relight (flow, Q43; procFly checks its opt.noRelight itself)
+  const p=X.p,T=X.T,up=norm(s.r),h=len(s.r)-TELLUS.R,el=elements(s.r,s.v,TELLUS.mu),f=localFrame(s.r);
   const dirAt=d=>{const hz=add(mul(f.n,Math.cos(X.az)),mul(f.e,Math.sin(X.az))),r=d*Math.PI/180;return norm(add(mul(hz,Math.cos(r)),mul(up,Math.sin(r))))};
   const dry=()=>s.throttle>0&&dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length;
   s.sas=true;
@@ -353,6 +354,15 @@ function dispatchRun(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if
   if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
   if(!f.ok)return{ok:false,why:f.why};
   return{ok:true,orb:{...f.orb,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:f.dv}}
+// watch mode (flow, QUEUE Q43): a dispatch flown on screen. What the physics can't fly is rolled from the same seed in the
+// same order as dispatchRun, so a flight left alone ends as the headless one would: a break-up or an engine that won't light
+// ends it in the climb (when: its own draw, so the dispatch's rolls are untouched), a failed relight stops it at the
+// circularisation (procStep's X.noRelight). {ok, proc, target, site, noRelight, doom: {t, why} or null} or {ok: false, why}.
+function watchPlan(D,c){if(D.base!=null)return{ok:false,why:'a supply run flies for days: watching one comes later'};if(!c)return{ok:false,why:'its contract is no longer on our books'};
+  const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok)return{ok:false,why:e.why};if(!e.proc.pitch)return{ok:false,why:'its procedure has no guidance to fly on screen'};
+  const W=rng((D.seed^0x5a7c4)>>>0),brk=R()>=e.pS,eng=!brk&&R()>=e.pLow,noRelight=!brk&&!eng&&R()>=e.pRelight;
+  const doom=brk?{t:35+40*W(),why:'it broke up in the climb'}:eng?{t:60+90*W(),why:'an engine failed to light in the ascent; range safety ended the flight'}:null;
+  return{ok:true,proc:e.proc,target:dispatchTarget(c),site:procSiteOf(D.stack),noRelight,doom}}
 function tapeNew(stack,site){return{v:TAPE_V,stack:JSON.parse(JSON.stringify(stack)),ops:[],lastK:null,site:site?site.id:null}}   // a tape flies from the site it was recorded at
 function tapeCtl(T,s){const c=controls(s),k=JSON.stringify(c);if(k!==T.lastK){T.ops.push(['C',c]);T.lastK=k}}
 function tapePhys(T,s){tapeCtl(T,s);const o=T.ops[T.ops.length-1];if(o&&o[0]==='P')o[1]++;else T.ops.push(['P',1]);advPhys(s)}

@@ -114,7 +114,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b ✓ `c19a965`** (v1.106: the gauges as the instrument panel, PLAYTEST #9 closed); **4c ✓ `e211647`** (v1.110: on the map the navball is a heading line). ✓ |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ✓ `415cef1` |
-| Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | **→ flow** (2026-10-12; in mission control, Flight: a Watch key) |
+| Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | ✓ v1.140 `b535fa1` (flow: mission control's *Watch*: the clock stops at launch, *Watch now / Let it fly*; same procedure and seeded rolls on screen; a control key takes over, no revert; NOTES § v1.140; test flow-15; TESTING 222) |
 | Q99 | Flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (NOTES § UI "What each screen shows") | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q115 | PLAYTEST #31 (P2): map labels pile up in the top-left corner (holds M0) | M1 | S | 🖥 | ✓ `46ac525` |
 | Q145 | After a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) | M1 | S | 🖥 | ✓ `827eed7` |

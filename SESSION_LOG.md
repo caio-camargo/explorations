@@ -5516,3 +5516,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** the orchestrator ranks B0 (since landed as Q314, v1.137); Q318/Q319 next; mock-ups for the galaxy and the
   planet from orbit (Q253). Open with Caio: W29 (bodies round 2), W33 (face lab). Known gap: `check_numbers` suggests
   D1 for the next D; the real next is D19 (for `check_docs.mjs`).
+
+## 2026-10-12 — Caio + Claude (launchpad flow session): Q43, watch mode for a dispatched flight (v1.140)
+- **Built:** in mission control a queued contract dispatch has *Watch*; the clock stops at its launch with *Watch now /
+  Let it fly* (half a day, then it flies itself). Watch now flies the same procedure on screen with the dispatch's seeded
+  rolls (`watchPlan`: break-up / dead engine end it in the climb, a failed relight stops it at circularisation); its
+  liftoff charges as a dispatch and adds no stacking or pad wait; a control key takes over (dispatch handed to you, no
+  revert). `watchTick` (per frame) records flown / lost / handed.
+- **For economy (additive, flagged in ACTIVE_WORK):** `upcoming` stop for a watched dispatch; `dispatchTick`'s
+  `WATCH_WAIT`; `R.watch` skips prep/pad/study waits in the liftoff line. **Bodies/space:** `procStep` checks `X.noRelight`.
+- **Files:** `sim/procedures.js`, `sim/program.js`, `app/mission.js`, `app/loop.js`, `test.mjs` (api: watchPlan, recNew),
+  `tests/flow.mjs` (flow-15), `notes/flow.md` § v1.140, NOTES index, TESTING 222, QUEUE, ACTIVE_WORK.
+- **Checks:** full suite 654/654 before the last merge; smoke after it. Browser: Watching ✓, the stop at launch (red
+  Watch now / Let it fly, lamps), the flight on its procedure (52.3M charged, no stacking days), a W key takes over and
+  Revert is refused. Caught by the page-parse check, not by flow-15: a quote my Python edit unescaped (fixed). Memory
+  was near the commit limit (~36 of 37 GB, mostly other sessions); the browser run waited until it eased.
+  Renumbered once (vehicle took v1.139/221).
+- **Next for flow:** Q167 (cruise entries, with economy), Q170 (N2 on the wall), Q309/Q310, then Q241 R3, R5.
+  Not in this slice: watching a supply run; an on-screen tag in flight that this is a watched dispatch.
