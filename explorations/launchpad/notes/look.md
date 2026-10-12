@@ -1300,3 +1300,43 @@ then built only the part that pays.
   (`scatter`'s inner loop) and world's Q19 (the terrain pass); filed under QUEUE *Proposed* as a measured split.
 - **Checks:** test `aerofx-9` (the march out of the sky's main; the pass and its two outputs; depth → slab → sky;
   volume needs the pass; the profiler off by default). TESTING 217.
+
+## v1.137 — the HDR scene: AgX, auto-exposure, bloom on real light, a grade (2026-10-12, effects beat, QUEUE Q314; BEAUTY B0.2–0.4)
+Every shader used to tone-map itself (×0.85, the ACES fit, gamma), so blending happened on display values and bloom
+could only catch near-white. Now the frame is light, and the camera is one place.
+- **Linear light everywhere.** The sky, the moons, the meshes, smoke, vapor, dust, the fireball and the fin trails write
+  scene-referred linear colour. The emission volumes (plume, plasma, impingement) pass their radiance as it is, scaled by
+  `FXK` (0.8), instead of `1 − e^−C` in display space: a plume core is now many times brighter than sunlit paint.
+  The additive glows (lamps, windows, RCS puffs, the desk bulb) are `pow(vC·uGlow, 2.2)`, so uGlow > 1 reads as a
+  light. The desk's clear colour is linearised. Map lines are UI: `pow(vC, 2.2) / E` (`uLk`), seen as drawn.
+- **The target.** RGBA16F, multisampled, on **both** settings (Low used to draw straight to the canvas): `HDR_RT`
+  (EXT_color_buffer_float; without it RGBA8, light above 1 clips). The resolve, the ½…1/16 chain and the composite are
+  half-float too.
+- **Bloom without a threshold.** A share of every pixel's light spreads (`GRADE.K`·¼ over the four levels), so only what
+  is far brighter than paint (the sun, plume cores, fireballs, lamps at night) shows a glow. The first downsample weights
+  its taps by 1/(1 + exposed luminance) (Karis), so a lone hot pixel doesn't flicker. Low: no glow; the 1/16 level is
+  made in one sparse pass, for the exposure only.
+- **Auto-exposure** (`EXPO`). The 1/16 level is read back through a pixel-pack buffer and a fence (a frame or two late,
+  never a stall). It gives the centre-weighted log-mean luminance L (each pixel floored at 0.03, so black space or a dark
+  room counts as dim, not as nothing) and the 98th percentile H. E = (0.35 / L)^0.55, at most 2.4 / H (highlight
+  priority: a sunlit planet in black space, the paper under the desk lamp), within 0.25–4, eased in log over ~1 s.
+  Partial adaptation (the 0.55): night stays darker than day, and the plume's glare still darkens the sky. L and H are
+  read before E, so there is no feedback loop. `expoNow()` settles E at once (a blocking read), for `bare()` in the
+  reference views; never in play. `refset.mjs` logs `{E, L, H}` per view.
+- **The composite** (`COMP_FS`): bloom added in linear light, ×E, a vignette (−20 % in the corners), **AgX** (Sobotka's
+  curve, Wrensch's fit; fire keeps its colour on its way to white, where ACES went flat orange), then the **grade**, a
+  32³ LUT built from `gradeFn` (D18.1, 1960s press photography: a per-channel logit S of 1.4 puts the contrast back into
+  AgX's soft curve, saturation ×1.12, highlights warm, shadows toward blue-black), then **grain** (triangular, mostly in
+  the mid-tones, 3.5 %), which also dithers the 8-bit output (the sky's own dither is gone). One LUT for now; a LUT per
+  era later (`GRADE`).
+- **A NaN guard.** A couple of mesh pixels come out NaN (a degenerate normal somewhere); the old clamp hid them, the HDR
+  chain spread them into 1/16-size black squares. `fin()` zeroes NaN and ∞ by their bits (D3D compiles `isnan` away) in
+  the bloom taps and the composite, and the mesh output is `max(c, 0)`. The source isn't found; it's one black pixel now.
+- **Stills** (RTX 3050, High): before `output/launchpad/beauty/q314-before/` (31 views on the previous main); trials
+  `q314-try3/` and the sheets `q314-ab-try3-*.png` (before left, after right). Daylight reads as before, a touch softer and
+  grainier; the night pad shows its floodlit apron (E = 4); the fireball keeps its colour instead of a white disc; the desk
+  and the orbit views hold their highlights; Selene's ground is a lighter grey. **The final tuning (98th-percentile H,
+  FXK 0.8, saturation) was not shot**: the full after set was stopped for low memory at 4 of 31 views. Still to measure:
+  Low on the iGPU (Low now pays a float target and the composite) and the map view's lines.
+- **Checks:** test `aerofx-10` (no shader tone-maps itself; the RGBA16F target on both settings; one composite with
+  AgX, the LUT, exposure and grain; the exposure read back without a stall; map lines and `bare()`). TESTING 219.
