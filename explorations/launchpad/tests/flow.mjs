@@ -268,3 +268,41 @@
   check('flow-14: a burn out of contact moves to the next contact (whole orbits later, a station in view), later burns with it, handed over, and flies the same raise',
     refused && found && moved && flown && ui, `refused ${refused} · next pass ${p.k} orbits later (${((p.T - T0) / 3600).toFixed(1)} h) over ${p.st && p.st.name} · moved ${moved} · a +${(da / 1e3).toFixed(1)} km (planned +${(want / 1e3).toFixed(1)}) · ui ${ui}`);
 }
+
+// flow-15. Watch mode (flow session, QUEUE Q43; NOTES economy § "Dispatch — the economy's answers" 5): a dispatch you
+// watch stops the clock at its launch and waits there (half a day, then it flies itself); on screen it's the same
+// procedure with the same seeded rolls (watchPlan), so left alone it reaches the orbit the headless flight reaches; a
+// rolled break-up or dead engine ends it in the climb with the headless reason; a failed relight stops it at the
+// circularisation. Its liftoff adds no stacking or pad wait (it was stacked in the queue).
+{
+  const P = api.PROG, saved = JSON.stringify(P), news = [], hk = { ...api.HOOK }; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  const sst = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];   // bodies-2's satellite, its ascent flown by hand once
+  P.procs = {}; handAscent(api, sst); const sproc = P.procs[api.procKey(sst)];
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: { [api.procKey(sst)]: sproc }, staged: {} });
+  api.chooseStart('agency'); P.funds = 2000; P.day = 10; for (const p of api.newShip(sst).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
+  const c = { id: 931, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
+  api.orderDispatch(c, sst); const D = P.dispatch[0], L = D.launch; D.watch = true;
+  const ev = api.upcoming().find(e => e.kind === 'dispatch'); let st = null, n = 0; while (P.day < L - 1e-9 && n++ < 20) { P.decisions = []; st = api.advanceTo(L + 5); }
+  const stops = ev && ev.stop && st && st.kind === 'dispatch' && Math.abs(P.day - L) < 1e-3 && D.status === 'queued';
+  api.advanceDays(0.2); const waits = D.status === 'queued';
+  // on screen: the plan, flown as the page flies it (procStart + procStep's relight check), against the headless flight
+  const w = api.watchPlan(D, c), fly = (noRelight) => { api.t = 0; const s = api.newShip(sst, w.site); api.S = s; s.noRec = true; s.rec = api.recNew(); Object.assign(s.rec, { launched: true, ended: true, day0: Math.ceil(P.day) });
+    api.procStart(s, w.proc, w.target); s.proc.noRelight = noRelight; let k = 0; while (s.alive && s.proc && !s.proc.done && k++ < 3e6) api.advPhys(s); return s; };
+  const s1 = fly(w.noRelight), e1 = elements(s1.r, s1.v, TELLUS.mu), o1 = { pe: e1.pe - TELLUS.R, ap: e1.ap - TELLUS.R };
+  const s2 = fly(true), relight = s2.alive && s2.procDev && s2.procDev.kind === 'relight';
+  n = 0; while (D.status === 'queued' && n++ < 6) api.advanceDays(D.launch + 0.6 - P.day);   // past its wait (a weather scrub slips it a day: it waits again)
+  const self = D.status === 'done' && D.orb && !D.watch;
+  const same = self && !w.doom && !w.noRelight && Math.abs(D.orb.pe - o1.pe) < 2e3 && Math.abs(D.orb.ap - o1.ap) < 2e3;
+  // the rolls: wherever the plan ends a flight in the climb, the headless run gives the same reason (it returns before flying)
+  for (const p of api.newShip(sst).parts) { P.kh[p.d.key] = { use: 0.3, reg: {} }; P.cert[p.d.key] = 0.2; }
+  let doomed = 0, agree = 0; for (let sd = 1; sd <= 200; sd++) { const X = { ...D, seed: sd * 7919, status: 'queued' }, pl = api.watchPlan(X, c); if (!pl.doom) continue; doomed++;
+    const r = api.dispatchRun(X, api.newShip(sst), c); if (r.ok === false && r.why === pl.doom.why && pl.doom.t > 30 && pl.doom.t < 150) agree++; }
+  // the page: Watch / Watch now / Let it fly in mission control, followed each frame; a watched liftoff skips prep and pad waits
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const ui = ['data-dwatch', 'data-dwgo', 'data-dwfly'].every(d => page.includes(d)) && /simulate\(dtR\);watchTick\(\);/.test(page) && /S\.proc\.noRelight=w\.noRelight/.test(page)
+    && /R\.prep=TEST\.fast\|\|R\.watch\?0/.test(src) && /R\.padWait=R\.watch\?0:padWait\(\)/.test(src);
+  check('flow-15: watch mode: a watched dispatch stops the clock at its launch and waits; on screen it flies to the headless orbit; the same rolls end it in the climb; a failed relight stops it at the circularisation',
+    stops && waits && relight && same && doomed > 5 && agree === doomed && ui,
+    `stops ${stops} · waits ${waits} · on screen ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km, headless ${D.orb ? (D.orb.pe / 1e3).toFixed(1) + '×' + (D.orb.ap / 1e3).toFixed(1) : D.status} · relight ${relight} · rolls ${agree}/${doomed} · ui ${ui}`);
+  Object.assign(api.HOOK, hk); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
