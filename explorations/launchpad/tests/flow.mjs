@@ -245,3 +245,26 @@
   check('flow-13: mission control is a room in the Network screen\'s place (C), a wall over four consoles using the Program\'s buttons; fleet rows carry ids; a decaying craft says when it re-enters (Q203)',
     room && parts && font && q203, `room ${room} · parts ${parts} · font ${font} · fleet ${f ? f.next : 'no row'}`);
 }
+
+// flow-14. A planned burn moved to the next contact (flow session, QUEUE Q196): in the mainframe era a burn no station sees
+// can't be handed over (v1.102); mission control's Trajectory console offers "Fly at the next contact": the same burn whole
+// orbits later, where the craft is at the same place in its orbit and a station sees it. Later burns move with it, the
+// first is handed over, and it does what the planned one would have (here: the same raise, within the era's error).
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,nodeHandOff,nodeNextPass,nodeToPass,entryLink,elements,TELLUS,PROG,HOOK};')();
+  const news = [], msgs = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = m => msgs.push(m); D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, a0 = T.R + 300e3, vc = Math.sqrt(T.mu / a0);
+  const reg = day => { P.sats = []; P.day = day; P.stations = []; P.decisions = []; P.active = []; P.dispatch = []; news.length = 0; msgs.length = 0;
+    const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: [a0, 0, 0], v: [0, 0, -vc], node: { t: 30000, dv: [20, 0, 0], b: 'Tellus' } });
+    D.satRegister(s, { day0: day }); const q = P.sats.at(-1); while (D.entryLink(q, q.nodes[0].T).ok) q.nodes[0].T += 30; return q; };   // a burn out of every station's view
+  let q = reg(2000); const T0 = q.nodes[0].T; q.nodes.push({ ...q.nodes[0], T: T0 + 2700 });   // a second burn, half an orbit on
+  const refused = !!(D.nodeHandOff(q.id) || {}).refused, p = D.nodeNextPass(q), period = 2 * Math.PI * Math.sqrt(a0 ** 3 / T.mu);
+  const found = p.k >= 1 && D.entryLink(q, p.T).ok && Math.abs((p.T - T0) - p.k * period) < 60;
+  const moved = D.nodeToPass(q.id) === q && q.nodes[0].T === p.T && q.nodes[0].mc && q.nodes[1].T - q.nodes[0].T === 2700 && news.some(m => /burn moved \d+ orbits? later/.test(m));
+  q.nodes.length = 1; const a1 = D.elements(q.r, q.v, T.mu).a; D.advanceDays(2);   // (as space-16: the burn falls inside the step)
+  const da = D.elements(q.r, q.v, T.mu).a - a1, want = 2 * a0 * 20 / vc;   // a small prograde burn raises a by 2a·dv/v
+  const flown = news.some(m => /Mission control flew/.test(m)) && Math.abs(da - want) < 0.1 * want;
+  const H = html.replace(/\r\n/g, '\n'), ui = /data-mcpass="\$\{q\.id\}"/.test(H) && /Fly at the next contact/.test(H) && /nodeToPass\(\+pa\)/.test(H);
+  check('flow-14: a burn out of contact moves to the next contact (whole orbits later, a station in view), later burns with it, handed over, and flies the same raise',
+    refused && found && moved && flown && ui, `refused ${refused} · next pass ${p.k} orbits later (${((p.T - T0) / 3600).toFixed(1)} h) over ${p.st && p.st.name} · moved ${moved} · a +${(da / 1e3).toFixed(1)} km (planned +${(want / 1e3).toFixed(1)}) · ui ${ui}`);
+}

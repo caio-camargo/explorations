@@ -40,10 +40,13 @@ function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*
     +(C.length?`<div class="dim" style="margin-top:4px">${C.map(c=>c.low!=null?`Tellus: a low orbit is in view ${pc(c.low)} of the time`:`${c.body}: near side ${pc(c.near)}, far side ${pc(c.far)}`).join('<br>')}</div>`:'');
   const gap=L.reduce((m,l)=>Math.max(m,l.share<1?l.gapH:0),0),netFlag=L.some(l=>l.flag);
   // TRAJECTORY: planned burns, who flies them
-  const traj=burns.length?burns.map(({q,n,d})=>{const why=n.mc?'':handOffWhy(q),more=q.nodes.length-1;
+  // a burn out of contact can move to the next pass that is in contact (Q196): whole orbits later, the same place in the orbit
+  const traj=burns.length?burns.map(({q,n,d})=>{const why=n.mc?'':handOffWhy(q),more=q.nodes.length-1,p=why&&autoAllowed('burn').ok?nodeNextPass(q):null;
       return`<div class="mrow"><b>${q.name}</b> · ${len(n.dv).toFixed(0)} m/s in ${mcIn(d)}${more>0?` <span class="dim">(+${more} more)</span>`:''}<br>`
         +(n.mc?'<span class="ok">mission control flies it</span>':'<span class="warn">yours to fly</span>')
-        +(why?`<div class="dim">mission control ${why}</div>`:` <button data-mc="${q.id}">${n.mc?'Take it back':'Hand to mission control'}</button>`)+`</div>`}).join('')
+        +(p&&!p.why?` <button data-mcpass="${q.id}" title="The same burn ${p.k} orbit${p.k>1?'s':''} later, at the same place in its orbit${more>0?'; the later burns move with it':''}">Fly at the next contact</button>`
+          +`<div class="dim">No station sees it at the burn. Next contact: ${p.k} orbit${p.k>1?'s':''} later (+${mcIn((p.T-n.T)/DAY_S)})${p.st?`, over ${p.st.name}`:''}.</div>`
+          :why?`<div class="dim">mission control ${why}</div>`:` <button data-mc="${q.id}">${n.mc?'Take it back':'Hand to mission control'}</button>`)+`</div>`}).join('')
     :'<div class="dim">No burns planned. Plan one in flight, on the map: click the orbit, drag the handles.</div>';
   // DISPATCH: queued launches, ones that need you, the last results
   const DQ=PROG.dispatch||[],q0=DQ.filter(x=>x.status==='queued').sort((a,b)=>a.launch-b.launch),dv=DQ.filter(x=>x.status==='deviated'),
@@ -100,5 +103,6 @@ function mcTrackDraw(){const cv=$('mcTrack');if(!cv||cv.classList.contains('hidd
   g.fillText((n?`${n} in Tellus orbit · dashed: behind · solid: ahead · rings: stations`:'nothing of ours in Tellus orbit · rings: stations').toUpperCase(),ox+4,oy+H+22)}
 document.addEventListener('click',e=>{if(screenNow()!=='mission'||!e.target.closest||!e.target.closest('#mc'))return;const w=e.target.dataset&&e.target.dataset.mcwall;
   if(w){mcPage=w;renderMission();return}
+  const pa=e.target.dataset&&e.target.dataset.mcpass;if(pa!=null){nodeToPass(+pa);HOOK.save();renderMission();return}
   if(e.target.tagName==='BUTTON')setTimeout(()=>{if(screenNow()==='mission')renderMission()},0)});   // the Program's handlers act first; then redraw what changed
 addEventListener('resize',()=>{if(screenNow()==='mission')mcTrackDraw()});
