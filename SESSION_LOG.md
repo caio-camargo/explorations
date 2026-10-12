@@ -5405,3 +5405,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   Q43/Q167/Q170/Q196 ready, three *Proposed*), ACTIVE_WORK.
 - **Next for flow:** Q241 R3 (title and first run as the charter); Q43 and Q196 now build into mission control.
 
+## 2026-10-12 — Caio + Claude (launchpad look & sound session, parts & pad): Q276, the desk's polish (v1.132)
+- **Done** (`15d2c91`, merged and pushed; renumbered from v1.131/TESTING 213 when flow's mission control took them):
+  the Assembly's drafting table now has a drafting board tilted 20° behind the model. On it is the design's drawing:
+  an elevation drawn from the built parts, and a title block lettered with the design's name and kit scale in a 5×7
+  geometry font. If the player saved the design under a name (v1.129), that name is used. Also a T-square on the
+  board's edge, an eraser by the pencil, and the scale figure is now one of our crew in the program's school suit
+  and generation.
+- **Checks:** full suite 647/647 after merging main. New test `aerofx-7`; `flow-11` still passes. Headless stills in
+  `output/launchpad/q276/` (gitignored, local): before/after, Crewed Lunar at 1:96, a saved "Kestrel One", the figure
+  close up.
+- **Files:** launchpad `app/model-desk.js`, `tests/look.mjs`, notes/look.md (§ v1.132), NOTES index, TESTING 214,
+  QUEUE (Q276 ✓, its row moved from the sound table to parts & pad), ACTIVE_WORK.
+- **Next for look & sound (parts & pad):** Q245 (lettering on the pads; the desk's `DESK_FONT` approach could serve it
+  as geometry), Q259 (Steppe paint resolution, measure first), Q205 (Foundry, plan first). Not taken: `intake/` holds
+  about 16 face and lip reference pictures, likely for the face lab (heads → faces beat, whose claim is stale).
