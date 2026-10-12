@@ -1330,3 +1330,24 @@ Test `vehicle-12`. `--smoke` all pass.
   still tips under 1.5 m/s.
 - **Not yet:** the quote is for the stack as built, not for what's left after the drops (the Orbiter's upper stage, a
   lander stage); on Selene the threshold is √(g) lower (×0.41). Test `vehicle-13`; TESTING 215.
+
+## v1.136 — the Touchdown quote for what lands (2026-10-12, vehicle session, QUEUE Q325; from Q264, v1.133)
+
+- **What lands:** `landStance(s, g, nev)` (`sim/flight.js`) quotes `standSpeed` for the stack after its drops: every
+  staging event's decouples, or, for a design with legs, the events before the one that drops the legs' segment (a
+  lander's descent stage stays on the surface when its ascent stage lifts off). Tanks full or dry, whichever tips sooner.
+  It switches parts off, re-runs `geom`, and puts everything back. Presets on Tellus: the capsules stand far better than
+  the stacks as built (Passenger 2.63 m/s against 0.76; Big Lunar 2.91 on its heat shield), the upper stages ~1 m/s;
+  the Probe's final stage tips sooner than the whole stack (0.68 against 0.90).
+- **Where it lands:** a design with a landing procedure (`procLandsOn`) is quoted on that body, with that procedure's
+  staging: the procedure now records **`ev`**, the staging events fired by touchdown, in its land phase
+  (`sim/procedures.js`: the land event keeps `s.evIdx`). Older procedures lack it and fall back to the rule above. With no
+  landing procedure it is Tellus, plus Selene for a design with legs. Selene's weaker pull stands the same stack at
+  √(1.62/9.81) = **×0.41** the drift: the Hopper 0.37 m/s, a two-stage legged lander 1.1.
+- **The builder** (`app/editor.js` `standHTML`): *Touchdown stands drifting up to X m/s sideways on Tellus[, Y on
+  Selene]: what's left after its drops (n of m parts), on its Biocapsule*, or *as built* when nothing drops, and *as its
+  landing procedure flies it* when one set the body. Amber still only for legs under 1.5 m/s (now on either body).
+  `procsOf` lives in `app/program-ui.js`, loaded after the editor, so it is guarded with `typeof`.
+- **Not yet:** a legless lander (Lunar, Sample Return, Crewed Lunar) with no landing procedure is quoted for its last
+  stage (the return capsule), not the stage that sets down on Selene: only a recorded procedure knows that. Q152 (a
+  legged lander preset, parked) would make the presets' case right. Test `vehicle-14`; TESTING 218.

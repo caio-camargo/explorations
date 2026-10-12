@@ -5389,6 +5389,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 (routines; W27's amendment), Q187 (plan).
 
 
+## 2026-10-12 — Caio + Claude (launchpad vehicle session): Q325, the Touchdown quote for what lands (v1.136)
+- **Done** (on `main`, pushed): the Assembly's *Touchdown* line (Q264's) now quotes what lands, not the stack as built:
+  the stack after its staging drops, or with legs, before the drop that leaves them behind; tanks full or dry,
+  whichever tips sooner (`landStance`, `sim/flight.js`). A design with a landing procedure is quoted on that body with
+  that procedure's staging: procedures now record `ev`, the staging events fired by touchdown. Otherwise Tellus, plus
+  Selene (×0.41) for a legged design. The Passenger's capsule stands 2.6 m/s against 0.76 for the whole stack.
+- **Checked:** test `vehicle-14`; full suite passed; the line read from the live page (Passenger, Hopper), no console
+  errors. `check_numbers` ok (v1.136, TESTING 218).
+- **Files:** `sim/flight.js`, `sim/procedures.js`, `app/editor.js`, `test.mjs`, `tests/vehicle.mjs`, `notes/vehicle.md`,
+  `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Not yet:** a legless lander (Lunar, Sample Return) with no landing procedure is quoted for its last stage; Q152 (a
+  legged lander preset, still parked) fixes the presets' case. A correction from my last reply: Q152 was never merged.
+- **Next for vehicle:** Q327 (PLAYTEST #78, the craft stays suspended where placed), then Q249, Q237/Q238, Q202.
+
 ## 2026-10-12 — Caio + Claude (launchpad flow session): Q241 R4, mission control (v1.131)
 - **Done** (`b47afb9`, docs `dcff57d`, on `main`, pushed): mission control as a room that takes the Network screen's
   place. A wall (clocks, the ground track of Tellus with the stations' circles and every craft's orbit, or the pads'
