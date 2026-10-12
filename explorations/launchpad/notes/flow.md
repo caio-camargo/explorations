@@ -884,7 +884,7 @@ and when: "No station sees it at the burn. Next contact: 7 orbits later (+6 h), 
 Test `flow-14` (refused, found a whole number of orbits later with a station in view, later burns keep their spacing,
 handed over, same raise; the button and its handler). TESTING row 220.
 
-## v1.139 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43; economy § "Dispatch — the economy's answers" 5)
+## v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43; economy § "Dispatch — the economy's answers" 5)
 The dispatch brief's second mode, next to auto-resolve: **watch** the same flight on screen, and jump in if you want.
 - **In mission control** (Flight and Dispatch consoles), a queued contract dispatch has **Watch**. Watching stops the
   clock at its launch (`upcoming` gives the event `stop`), and there the row turns red: **Watch now** or **Let it fly**.
@@ -910,4 +910,4 @@ The dispatch brief's second mode, next to auto-resolve: **watch** the same fligh
 Test `flow-15` (the stop and the wait; on screen 156.8×159.1 km against the headless 157.3×159.8: the test flies every
 step on physics where the page coasts on rails like `procFly`; a failed relight stops at the circularisation; on 200
 seeds with poor part data, all 36 rolled break-ups and dead engines give the headless reason; the buttons, the frame
-hook and the liftoff's skipped waits). TESTING row 221.
+hook and the liftoff's skipped waits). TESTING row 222.

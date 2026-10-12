@@ -76,6 +76,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.129 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
 - v1.133 — why a landed rocket blew up: toppling explained, a loss keeps its cause (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
 - v1.136 — the Touchdown quote for what lands: after its drops, on the body it lands on (2026-10-12, vehicle session, QUEUE Q325)
+- v1.139 — the craft stays where it was put: the first part and the whole rocket hang where they are put down (2026-10-12, vehicle session, QUEUE Q327; PLAYTEST #78)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -231,7 +232,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.128 — small playtest fixes: the toolbar, Recover vessel, node delete, the map's arcs, the Design table (2026-10-11, flow session; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254, Q258)
 - v1.131 — mission control, a room (2026-10-12, flow session, QUEUE Q241 R4; § "Plan: real screens"; Q203)
 - v1.138 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
-- v1.139 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
+- v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
