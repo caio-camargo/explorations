@@ -133,7 +133,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q218 | **Coverage drawn as an area**: a shaded footprint of where a relay reaches (`coverOf` has the numbers); today each link is a line | M2 | S | 🖥 | ready |
 | Q203 | PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "re-enters in …" | M2 | S | 🖥 | ✓ v1.131 `b47afb9` (flow, with Q241 R4: netModel says when it re-enters; test flow-13) |
 | Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ✓ v1.111 `e4ed8c2` (rolls from the hall, raised, arms close; a sound for it proposed to look & sound) |
-| Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (Q241 R4 ✓ v1.131: build it in mission control, Flight: cruise rows already say what they do next) |
+| Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | **claimed: flow 2026-10-12** (in mission control, Flight) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ✓ v1.112 `08173cf` (`app/flags.js`: the world, the race, news; restyle with Q53 later) |
