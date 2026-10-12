@@ -5544,3 +5544,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   Renumbered once (vehicle took v1.139/221).
 - **Next for flow:** Q167 (cruise entries, with economy), Q170 (N2 on the wall), Q309/Q310, then Q241 R3, R5.
   Not in this slice: watching a supply run; an on-screen tag in flight that this is a watched dispatch.
+
+## 2026-10-12 — Caio + Claude (launchpad world session, "planet"): Q300 + Q301, spent stages at sea, the seabed, holed hulls (v1.142)
+- **Measured first** (`node study_sea.mjs debris`): every spent stage would float empty (690–890 kg/m³), but a bare one
+  hits the sea at 45–227 m/s, far over the 14 m/s limit. Default taken (Caio approved the plan): an honest sea breaks a
+  bare stage, and a stage with **chute parts** opens them by itself (one 600 m² canopy each) and comes down at 3–13 m/s.
+- **Built:** floating debris (`debAfloat`, a static Archimedes rest pose `debRest`, matching v1.122's dynamics within 3°
+  on every stage), the shared swell `seaBob`; holed hulls past 3/4 of the sea's limit (only parts it speeds up); the
+  seabed as ground under the sea with hull contact points while wet; `aground` at rest on it; drifting into the shallows
+  grounds an afloat craft. `shapeLines` lifted out of `rebuildShape` (vehicle's file, behaviour unchanged).
+- **Files:** `sim/flight.js`, `sim/vessel.js`, `study_sea.mjs`, `tests/world.mjs` (sea-2), `notes/world.md` § v1.142,
+  NOTES index, TESTING 224, QUEUE (Q300/Q301 ✓, four Proposed lines), ACTIVE_WORK.
+- **Checks:** full suite 657 PASS + the TESTING counter (fixed, qa-3 passes) = all green; pushed `3eac3f9` to `main`
+  (fast-forward). Not seen in a browser (TESTING 224).
+- **Branch housekeeping:** `terrain` was 3 commits of Q19 WIP behind a pre-HDR `main`; saved as branch **`q19`**
+  (pushed), and `terrain` reset to `main`.
+- **Next for world:** Q19, re-port `q19` onto Q314's HDR passes (headless first), then its timing A/B on a quiet machine.
