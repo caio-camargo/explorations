@@ -396,3 +396,20 @@
   check('reference views on the pad (the desk only in 152), through the Assembly screen, overlay hidden, the boom clock pinned; 152–158 the beauty moments; graphics Low/High (medium → Low)',
     pad && asm && clock && moments && two, `pad ${pad} · assembly ${asm} · clock ${clock} · moments ${moments} · low/high ${two}`);
 }
+
+// aerofx-9. The cloud deck at half resolution (look & sound effects beat, BEAUTY Q313). The 72-step slab march left the
+// sky shader's main for its own pass (the sky's functions + SLAB_MAIN, two outputs) run after the depth pre-pass and
+// before the sky, which upsamples it by depth and applies the air between; no pass, no volume (the flat shell). The
+// pass profiler (profMark) is off by default and the frame timer stands aside while it runs.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sky = page.slice(page.indexOf('const SKY_FS=`'), page.indexOf('`;', page.indexOf('const SKY_FS=`'))), main = sky.slice(sky.indexOf('void main(){'));
+  const out = !/const int N=72/.test(main) && /texelFetch\(uSlabA,c,0\)/.test(main) && /exp\(-abs\(log\(1\.\+min\(bb\.z,1e9\)\)-lh\)\*6\.\)/.test(main) && /layout\(location=0\) out vec4 o;/.test(sky);
+  const pass = /const SLAB_MAIN=`layout\(location=1\) out vec4 o2;/.test(page) && /const PSLAB=PDEPTH\?mkProg\(QUAD_VS,SKY_FS\.slice\(0,SKY_FS\.indexOf\('void main\(\)\{'\)\)\+SLAB_MAIN\):null;/.test(page)
+    && /SLAB_MAIN=[\s\S]*?const int N=72;/.test(page) && /gl\.drawBuffers\(\[gl\.COLOR_ATTACHMENT0,gl\.COLOR_ATTACHMENT1\]\)/.test(page);
+  const r = page.slice(page.indexOf('function render(){')), iD = r.indexOf("profMark('sky depth')"), iS = r.indexOf("profMark('cloud slab')"), iK = r.indexOf("profMark('sky');");
+  const order = iD > 0 && iS > iD && iK > iS && /VK=CLOUD_VOL&&PSLAB&&mode!=='editor'/.test(r);
+  const prof = /const PROF=\{on:false,/.test(page) && /function gpuTimerBegin\(\)\{if\(!TQ\|\|PROF\.on\)return;/.test(page) && (r.match(/profMark\(/g) || []).length >= 18;
+  check('cloud deck: marched at half resolution in its own pass (depth pre-pass → slab → sky), upsampled by depth, out of SKY_FS main; volume needs the pass; pass profiler off by default',
+    out && pass && order && prof, `out of sky main ${out} · pass ${pass} · order ${order} · profiler ${prof}`);
+}

@@ -10,12 +10,12 @@ const QUAD_VS=`#version 300 es
 layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4(aV,0.,1.);}`;
 const SKY_FS=`#version 300 es
 precision highp float;
-in vec2 vNdc;out vec4 o;
+in vec2 vNdc;layout(location=0) out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
-uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;
+uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
@@ -290,20 +290,17 @@ void main(){
  // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
  float tC=-1.,tD=tH;
- if(uVk>0.&&uCR>0.){float r0=length(uPc),RB=uPR+2000.,RT=uPR+5500.;vec2 hb=sph(uPc,r0*r0-RB*RB,d),ht=sph(uPc,r0*r0-RT*RT,d);float tA=-1.,tB=-1.;
-  if(r0<RB){tA=hb.y;tB=ht.y;}else if(r0<RT){tA=0.;tB=hb.x>0.?hb.x:ht.y;}else if(ht.x>0.){tA=ht.x;tB=hb.x>0.?hb.x:ht.y;}
-  tB=min(min(tB,tH),uVD);
-  if(tA>=0.&&tB>tA){const int N=72;float L=tB-tA,j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),T=1.;vec3 C=vec3(0.);
-   vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tB+1.);
-   vec3 sT=sunTrans(d*(.5*(tA+tB))-uPc)*5.,amb=vec3(.42,.5,.62)*(.12+.88*clamp(dot(normalize(-uPc),uSun)*3.+.3,0.,1.));
-   for(int i=0;i<N;i++){float x=(float(i)+j)/float(N),t=tA+L*x*x,ds=L*2.*x/float(N)+L/float(N*N);   // steps grow with distance
-    vec3 q=d*t-uPc;float dn=cloudDens(q)*(1.-smoothstep(.5*uVD,uVD,t));if(dn<.003)continue;
-    float a=1.-exp(-dn*ds/180.),hf=(length(q)-uPR-2000.)/3500.,dl=cloudDens(q+uSun*250.)+cloudDens(q+uSun*800.),lt=max(exp(-dl*2.2),mix(.4,.28,uVv)*exp(-dl*.35));   // two steps toward the sun; the second term stands in for multiple scattering (deep cloud is grey-white, not black)
-    vec3 cs=vec3(.9)*(sT*(.08+.92*lt)*(.5+.5*smoothstep(0.,.8,hf))*.8+amb*(.35+.4*hf)*.6);
-    if(uVv>0.)cs*=mix(1.,.82+.32*vn(uProt*normalize(q)*uPR/7000.+1.3),uVv);   // Q65: ±15 % over ~7 km, thicker and thinner stretches of deck
-    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(t/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-    C+=T*a*(cs*tr+ic);T*=1.-a;if(T<.5&&tD>=tH)tD=t;if(T<.02)break;}
-   col=col*(1.-uVk*(1.-T))+uVk*C;}}
+ // (Q313) marched at half resolution by its own pass (SLAB_MAIN, before this one) and brought up here: of the four nearest
+ // half-res texels, those whose ground hit matches this pixel's count (a depth-aware upsample, so the deck doesn't bleed
+ // over a ridge or the rocket); the air between is applied here at the deck's mean depth (tm), with this pixel's own
+ // transmittance and in-scatter
+ if(uVk>0.&&uCR>0.){vec2 hp=gl_FragCoord.xy*.5-.5,f=fract(hp);ivec2 b=ivec2(floor(hp)),sz=textureSize(uSlabA,0);vec4 A=vec4(0.);float tm=0.,tO=0.,ws=0.,wb=-1.,lh=log(1.+min(tP,1e9));
+  for(int k=0;k<4;k++){ivec2 o2=ivec2(k&1,k>>1),c=clamp(b+o2,ivec2(0),sz-1);vec4 bb=texelFetch(uSlabB,c,0);
+   float w=(o2.x==1?f.x:1.-f.x)*(o2.y==1?f.y:1.-f.y)*exp(-abs(log(1.+min(bb.z,1e9))-lh)*6.)+1e-6;A+=w*texelFetch(uSlabA,c,0);tm+=w*bb.x;ws+=w;if(w>wb){wb=w;tO=bb.y;}}
+  A/=ws;tm/=ws;float T=A.a;
+  if(T<.999){vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tm+1.);
+   vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tm/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
+   col=col*(1.-uVk*(1.-T))+uVk*(A.rgb*tr+(1.-T)*ic);if(tO>0.&&tO<tD)tD=tO;}}
  if(uCR>0.){vec2 hc=sph(uPc,uCcc,d);tC=uCcc>0.?(hc.x>0.&&hc.x<=hc.y?hc.x:-1.):hc.y;}
  float shW=1.-uVk*(1.-smoothstep(.5*uVD,uVD,tC));   // inside uVD the volume stands in for the shell
  if(tC>0.&&tC<tH&&shW>.001){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
@@ -656,6 +653,32 @@ void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(v
 const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
   'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh;o=vec4(march(d,hh,0.),0.,0.,1.);}'):null;
 const DEPTH_RT={tex:null,fb:null,w:0,h:0};
+// (Q313, BEAUTY B0.1) the cloud deck with depth at half resolution, after the depth pre-pass and before the sky: the sky's
+// functions with a main that marches only the slab (its 72 steps × 3 density lookups were most of the sky's cost under
+// clouds: views 80–81 spent 5.6–9.7 ms of 10.8–14.5 on it). Out: A = (light, transmittance), B = (mean depth, depth where
+// it turns opaque, the ground hit it marched to). The sky upsamples it by depth and adds the air between
+const SLAB_MAIN=`layout(location=1) out vec4 o2;
+void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
+ float tH=texelFetch(uDepth,ivec2(gl_FragCoord.xy),0).x;vec3 C=vec3(0.);float T=1.,tm=0.,tO=0.;
+ float r0=length(uPc),RB=uPR+2000.,RT=uPR+5500.;vec2 hb=sph(uPc,r0*r0-RB*RB,d),ht=sph(uPc,r0*r0-RT*RT,d);float tA=-1.,tB=-1.;
+ if(r0<RB){tA=hb.y;tB=ht.y;}else if(r0<RT){tA=0.;tB=hb.x>0.?hb.x:ht.y;}else if(ht.x>0.){tA=ht.x;tB=hb.x>0.?hb.x:ht.y;}
+ tB=min(min(tB,tH),uVD);
+ if(tA>=0.&&tB>tA){const int N=72;float L=tB-tA,j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
+  vec3 sT=sunTrans(d*(.5*(tA+tB))-uPc)*5.,amb=vec3(.42,.5,.62)*(.12+.88*clamp(dot(normalize(-uPc),uSun)*3.+.3,0.,1.));
+  for(int i=0;i<N;i++){float x=(float(i)+j)/float(N),t=tA+L*x*x,ds=L*2.*x/float(N)+L/float(N*N);
+   vec3 q=d*t-uPc;float dn=cloudDens(q)*(1.-smoothstep(.5*uVD,uVD,t));if(dn<.003)continue;
+   float a=1.-exp(-dn*ds/180.),hf=(length(q)-uPR-2000.)/3500.,dl=cloudDens(q+uSun*250.)+cloudDens(q+uSun*800.),lt=max(exp(-dl*2.2),mix(.4,.28,uVv)*exp(-dl*.35));
+   vec3 cs=vec3(.9)*(sT*(.08+.92*lt)*(.5+.5*smoothstep(0.,.8,hf))*.8+amb*(.35+.4*hf)*.6);
+   if(uVv>0.)cs*=mix(1.,.82+.32*vn(uProt*normalize(q)*uPR/7000.+1.3),uVv);
+   C+=T*a*cs;tm+=T*a*t;T*=1.-a;if(T<.5&&tO==0.)tO=t;if(T<.02)break;}}
+ o=vec4(C,T);o2=vec4(T<.999?tm/(1.-T):0.,tO,tH,0.);}`;
+const PSLAB=PDEPTH?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+SLAB_MAIN):null;
+const SLAB_RT={a:null,b:null,fb:null,w:0,h:0};
+function slabTarget(w,h){const T=SLAB_RT;if(T.w===w&&T.h===h)return T;if(!T.fb){T.a=gl.createTexture();T.b=gl.createTexture();T.fb=gl.createFramebuffer()}
+  gl.activeTexture(gl.TEXTURE10);for(const[t,f,ty]of[[T.a,gl.RGBA16F,gl.HALF_FLOAT],[T.b,gl.RGBA32F,gl.FLOAT]]){gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,f,w,h,0,gl.RGBA,ty,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST)}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,T.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,T.a,0);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,T.b,0);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);T.w=w;T.h=h;return T}
 function depthTarget(w,h){const D=DEPTH_RT;if(D.w===w&&D.h===h)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
   // on its own unit (5, where the sky reads it): binding it on the active unit replaced whatever texture the sky had just
   // been given there (unit 0: the city lights) for that one frame, so every resize lit the night side (PLAYTEST #7)

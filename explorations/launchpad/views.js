@@ -7,6 +7,10 @@ window.refView = async (n) => {
   if (n >= 200 && typeof BODY_CAT !== 'undefined' && n < 200 + 3 * BODY_CAT.length) { const b = BODY_CAT[(n - 200) / 3 | 0]; bodyViewOpen(b.name, (n - 200) % 3); render(); return b.name + ' ' + BV_DNAME[(n - 200) % 3] }
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
   if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = 0;
+  // (Q313) the drawn weather is pinned to one moment (program time REF_WX) at capture: the sky pass is most of the frame
+  // and its cost follows the cloud cover, which otherwise moved with each view's sim time and each run's day (the same
+  // view measured 6 and 17 ms). 80–83 pick their own moment (wx below) and keep it
+  let pinWx = true; const REF_WX = 3 * 86400 + 36000;
   HOOK.noRig = false;   // (close-ups hide the pad's moving parts; every other view shows them)
   // (Q312) reference views stand on the pad, as they were tuned: the Assembly's model desk (v1.115) only in view 152;
   // the effects clock runs (90–93 pin it), and the overlay (labels such as "impact · 9 m") shows again until bare()
@@ -24,7 +28,8 @@ window.refView = async (n) => {
   // the builder's 3D: out of a flight (bEditor), then onto the Assembly screen, since the Program and the Debrief are rooms
   // that cover the window and stop the 3D draw (Q239; Q312: views 1, 4–9 used to shoot the Program's desk)
   const toBuilder = () => { if (mode !== 'editor') document.getElementById('bEditor').click(); if (typeof screenNow === 'function' && screenNow() !== 'assembly') go('assembly') };
-  const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb,#ov').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
+  const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb,#ov').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null;
+    if (pinWx && typeof CLOUD_DT !== 'undefined') CLOUD_DT = REF_WX - tNow(); render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
     toBuilder();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); cam.edY = 0;
@@ -208,7 +213,7 @@ window.refView = async (n) => {
     const [alt, yaw, pitch, dist] = cl[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
     // weather on demand: the first time offset (5-minute steps) at which the sky under the rocket is about 60 % covered
-    const wx = u => { CLOUD_DT = 0; for (let k = 0; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300); if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; break } } };
+    const wx = u => { pinWx = false; CLOUD_DT = 0; for (let k = 0; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300); if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; break } } };
     if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 600) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0 }
     wx(norm(toPF(TELLUS, S.r, simT)));   // weather on demand: ~60 % cover under the rocket
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); window.simulate = () => {};

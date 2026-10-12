@@ -3,6 +3,8 @@
 // vNNN-<label>.png and timings.log (one JSON row per view: [label, 'adaptive', gpu ms, scale, 'full', gpu ms]).
 // usage: node refset.mjs <outDir> [n n-m ...]   (default: the BEAUTY set below)
 // Env: REF_URL (default http://localhost:8790/launchpad/index.html: serve the folder above launchpad/ there),
+// REF_PROF=1 adds each view's GPU ms per pass at full resolution (render.js's profMark marks) as an 8th field;
+// REF_EVAL='js' runs in the page after load, for A/B runs (e.g. REF_EVAL='CLOUD_VOL=false');
 // REF_Q=low|high (a graphics setting, app/settings.js; default: the page's), SHOT_IGPU=1 for the Intel iGPU (runs Edge with --force_low_power_gpu: Windows pins chrome.exe to the RTX on this
 // machine, GpuPreference=2, so Chrome's flags can't reach the iGPU; shot.mjs's SHOT_IGPU lands on the RTX too), REF_BROWSER: another browser, SHOT_FLAGS to override the GPU flags (as shot.mjs). Headless Chrome over CDP on the
 // real GPU (--use-angle=d3d11; --force_high_performance_gpu picks the RTX).
@@ -31,7 +33,7 @@ const t0 = Date.now(); while (!(await ev(`typeof refView === 'function' || (type
 // a fresh career past the first-run gate, then views.js; the GPU timer's readout and the scaler are the page's own (render.js)
 console.log(await ev(`(async () => { try { localStorage.clear() } catch (e) {} document.querySelector('[data-start="agency"]')?.click();
   const s = document.createElement('script'); s.src = 'views.js?' + Date.now(); document.head.appendChild(s); await new Promise(r => s.onload = r);
-  window.adaptRes0 = adaptRes; ${process.env.REF_Q ? `applyQuality(${JSON.stringify(process.env.REF_Q)});` : ''} return 'ready in ' + ((performance.now() / 1000) | 0) + ' s; GPU ' + (gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info')?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER) || '?').replace(/ANGLE \\(|\\)$/g, '') + '; timer ' + !!TQ + '; quality ' + quality + ' (scale cap ' + RS_MAX + ')' })()`));
+  window.adaptRes0 = adaptRes; ${process.env.REF_Q ? `applyQuality(${JSON.stringify(process.env.REF_Q)});` : ''} ${process.env.REF_EVAL || ''}; return 'ready in ' + ((performance.now() / 1000) | 0) + ' s; GPU ' + (gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info')?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER) || '?').replace(/ANGLE \\(|\\)$/g, '') + '; timer ' + !!TQ + '; home ' + curSite().name + '; quality ' + quality + ' (scale cap ' + RS_MAX + ')' })()`));
 fs.mkdirSync(out, {recursive: true}); const log = fs.createWriteStream(`${out}/timings.log`, {flags: 'a'});
 const meas = ms => `new Promise(r => { gpuMs = null; setTimeout(() => r([gpuMs == null ? null : +gpuMs.toFixed(2), +RS.toFixed(2)]), ${ms}) })`;
 for (const n of views) {
@@ -40,10 +42,12 @@ for (const n of views) {
   const a = await ev(`(async () => { adaptRes = adaptRes0; RS = RS_MAX; await new Promise(r => setTimeout(r, 2400)); return ${meas(900)} })()`);
   // full resolution: the scaler held at 1
   const f = await ev(`(async () => { adaptRes = () => {}; RS = 1; await new Promise(r => setTimeout(r, 400)); return ${meas(900)} })()`);
+  const p = process.env.REF_PROF ? await ev(`(async () => { Object.assign(PROF, {on: true, ms: {}, n: {}}); await new Promise(r => setTimeout(r, 1200)); PROF.on = false;
+    if (PROF.cur) { gl.endQuery(TQ.TIME_ELAPSED_EXT); PROF.cur = null } return Object.fromEntries(Object.entries(PROF.ms).map(([k, v]) => [k, +(v / PROF.n[k]).toFixed(2)])) })()`) : undefined;
   const s = await cmd('Page.captureScreenshot', {format: 'png'});
   const slug = String(label ?? 'view').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
   fs.writeFileSync(`${out}/v${String(n).padStart(3, '0')}-${slug}.png`, Buffer.from(s.result.data, 'base64'));
-  const row = [n, label, 'adaptive', a?.[0], a?.[1], 'full', f?.[0]]; log.write(JSON.stringify(row) + '\n'); console.log(JSON.stringify(row));
+  const row = [n, label, 'adaptive', a?.[0], a?.[1], 'full', f?.[0], ...(p ? [p] : [])]; log.write(JSON.stringify(row) + '\n'); console.log(JSON.stringify(row));
   await ev(`adaptRes = adaptRes0`);
 }
 if (errs.length) console.log('console errors:', [...new Set(errs)].slice(0, 10));

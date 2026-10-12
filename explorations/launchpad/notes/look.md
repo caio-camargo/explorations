@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1260,3 +1260,43 @@ changes the look.
   could lift that floor.
 - **Checks:** test `aerofx-8` (views on the pad with the desk only in 152; the Assembly route; overlay; the pinned clock;
   152–158; Low/High with medium → Low). TESTING 216.
+
+## v1.135 — the cloud deck at half resolution; a pass profiler (2026-10-12, effects beat, QUEUE Q313; BEAUTY B0.1)
+BEAUTY's plan was half-resolution buffers for the smoke, the near-cloud slab, vapor and impingement. Measured first,
+then built only the part that pays.
+- **A pass profiler.** `profMark(name)` in `render()` (19 marks: setup, cloud bake, sky depth, cloud slab, sky, moons,
+  pads, rig, cities, ship, others, smoke, vapor, glow, plume pool, plumes, fins/plasma, booms, bloom) chains GPU timer
+  queries. It's off unless `PROF.on`, and the frame's own timer stands aside while it runs (queries can't nest).
+  `REF_PROF=1 node refset.mjs …` adds each view's per-pass ms at full resolution.
+- **What it found (RTX 3050, full resolution):** the **sky pass is 70–75 % of every frame**: 5–7 ms on the pad,
+  4.5 on the climb, 2.8 in orbit, 10–14.5 under clouds. Smoke, plumes, vapor, impingement and the pad's meshes are
+  each under 0.3 ms. So **half-res buffers for smoke, vapor and impingement would buy nothing; not built** (a negative
+  result). An A/B with `CLOUD_VOL` off split the sky: the **cloud slab** cost 5.6–9.7 ms whenever the camera is in or
+  near the deck (views 80–81), and the base sky (terrain, sea, air) the rest.
+- **The views' weather was unpinned.** The sky's cost follows the cloud cover, which moved with each view's sim time
+  and each run's day: the same view measured 6 and 17 ms. `bare()` now pins the drawn weather to one program time
+  (`REF_WX`: `CLOUD_DT = REF_WX − tNow()`). Views 80–83 keep the moment they search for. Run to run the sky now agrees
+  within ~10 %. `refset.mjs` prints the home site; it's the same each fresh career (Dunnzar Cape).
+- **The deck in its own pass** (`PSLAB`: the sky shader's functions + `SLAB_MAIN`). It runs after the depth pre-pass
+  (half resolution, which already holds the ground hit) and before the sky. It marches the same 72 steps × 3 density
+  lookups as before into two targets: A = (light, transmittance) RGBA16F, B = (mean depth, depth where it turns
+  opaque, the ground hit it marched to) RGBA32F. The sky upsamples it from the four nearest texels, weighted
+  bilinearly and by how well each texel's ground hit matches this pixel's (log distance, so no bleeding over a ridge
+  or past the rocket). It then applies the air between at the deck's mean depth, with the pixel's own transmittance
+  and in-scatter. Before, the air was applied per step; at the mean depth the difference doesn't show in the stills.
+  The opaque depth still sets the pixel's depth, so meshes behind thick cloud stay hidden. No pass (no
+  `EXT_color_buffer_float`) means no volume (the flat shell), which already applied to the depth pre-pass.
+- **`SKY_FS`'s main is smaller** (the march left it), as BEAUTY's Q19 rule asks. The head's output now has an
+  explicit location (`layout(location=0)`), since the slab pass adds a second.
+- **Measured, the same moments back to back** (the previous commit served from a scratch worktree): views 80–83 at
+  full resolution 12.8 → 7.9, 17.7 → 8.1, 15.8 → 7.9, 13.4 → 4.8 ms. Stills
+  `output/launchpad/beauty/q313-before/` and `q313-after/`, and `q313-ab-08x.png` stacked. They look the same. If
+  anything the deck's edges are cleaner, since the old full-res march left a speckle of its jitter, which the 4-tap
+  upsample smooths. Full set after: `q313-after-rtx-high/`: **7 of 81 views below 75 % scale (37 in the baseline).**
+  That comparison also includes the weather pin, so it's not all the slab: the editor close-ups have no volume and
+  still moved ~2.5 ms. Low has no volume, so the iGPU is unchanged.
+- **Still below 75 %:** the pad close-ups 4–7, the Lunar on the pad 63, clouds on the pad 80, fin vapor 101. What's
+  left there is the **base sky at the pad (~5–6 ms: terrain, sea and air ray-cast)**. That's Q322's transmittance table
+  (`scatter`'s inner loop) and world's Q19 (the terrain pass); filed under QUEUE *Proposed* as a measured split.
+- **Checks:** test `aerofx-9` (the march out of the sky's main; the pass and its two outputs; depth → slab → sky;
+  volume needs the pass; the profiler off by default). TESTING 217.

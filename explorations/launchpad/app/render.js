@@ -7,7 +7,15 @@ let W=1,H=1;
 const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0,RS_MAX=1;   // RS_MAX: the graphics quality's resolution cap (Settings, flow)
 const GPU_NAME=(()=>{const e=gl.getExtension('WEBGL_debug_renderer_info');const r=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
   const m=/ANGLE \([^,]*, ([^(,]*?)\s*(\(|,|Direct|$)/.exec(r);return (m?m[1]:r).replace(/(NVIDIA|AMD|Intel\(R\)) /,'$1 ').trim()})();
-function gpuTimerBegin(){if(!TQ)return;if(tqPending.length<4){tqCur=gl.createQuery();gl.beginQuery(TQ.TIME_ELAPSED_EXT,tqCur)}else tqCur=null}
+// (Q313) a pass profiler for refset.mjs (REF_PROF=1): GPU time per stretch of render(), one timer query per stretch,
+// chained by profMark(name) (profMark(null) closes the last and collects). The frame's own timer is off meanwhile, since
+// timer queries can't nest. Off (PROF.on false), each mark costs one test.
+const PROF={on:false,cur:null,name:'',pend:[],ms:{},n:{}};
+function profMark(name){if(!PROF.on||!TQ)return;if(PROF.cur){gl.endQuery(TQ.TIME_ELAPSED_EXT);PROF.pend.push([PROF.name,PROF.cur]);PROF.cur=null}
+  if(name){PROF.cur=gl.createQuery();PROF.name=name;gl.beginQuery(TQ.TIME_ELAPSED_EXT,PROF.cur);return}
+  const dis=gl.getParameter(TQ.GPU_DISJOINT_EXT);PROF.pend=PROF.pend.filter(([k,q])=>{if(!gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE))return true;
+    if(!dis){PROF.ms[k]=(PROF.ms[k]||0)+gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;PROF.n[k]=(PROF.n[k]||0)+1}gl.deleteQuery(q);return false})}
+function gpuTimerBegin(){if(!TQ||PROF.on)return;if(tqPending.length<4){tqCur=gl.createQuery();gl.beginQuery(TQ.TIME_ELAPSED_EXT,tqCur)}else tqCur=null}
 function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);tqPending.push(tqCur);tqCur=null}
   while(tqPending.length&&gl.getQueryParameter(tqPending[0],gl.QUERY_RESULT_AVAILABLE)){const q=tqPending.shift();
     if(!gl.getParameter(TQ.GPU_DISJOINT_EXT)){const ms=gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;gpuMs=gpuMs==null?ms:gpuMs*.85+ms*.15}gl.deleteQuery(q)}}
@@ -16,7 +24,7 @@ function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames unde
   if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<RS_MAX)RS=Math.min(RS_MAX,RS*1.12)}
 function render(){
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
-  gpuTimerBegin();
+  gpuTimerBegin();profMark('setup');
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
   if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}W=w;H=h;
   // (flow, Q258; PLAYTEST #58) the overlay (labels, the era maps, the gauges) is drawn at device pixels, not at the 3D view's
@@ -40,10 +48,10 @@ function render(){
   const desk=deskScene();   // (Q242) the Assembly: the design as a scale model on a drafting table, not on the pad
   if(desk)gl.clearColor(...DESK_BG,1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
-  const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
+  profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
   if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
-  if(!desk){for(const prog of PDEPTH?[PDEPTH,PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
+  if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
@@ -64,12 +72,16 @@ function render(){
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
-  if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
-    gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
+  profMark('sky depth');if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
+    gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);
+    if(VK>0){profMark('cloud slab');const Sb=slabTarget(D.w,D.h);gl.useProgram(PSLAB.p);gl.bindFramebuffer(gl.FRAMEBUFFER,Sb.fb);   // (Q313) the deck, at half resolution
+      gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSLAB.u.uDepth,5);gl.drawArrays(gl.TRIANGLES,0,3);
+      gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE10);gl.bindTexture(gl.TEXTURE_2D,Sb.a);gl.uniform1i(PSKY.u.uSlabA,10);gl.activeTexture(gl.TEXTURE11);gl.bindTexture(gl.TEXTURE_2D,Sb.b);gl.uniform1i(PSKY.u.uSlabB,11);gl.activeTexture(gl.TEXTURE0)}
+    gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
     gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
-  gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
+  profMark('sky');gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
   gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
-  drawMoons(camW,R,U,Fw,tanX,tanY)}
+  profMark('moons');drawMoons(camW,R,U,Fw,tanX,tanY)}
   const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0],VP=mmul(P,V);
   const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
   // ---- meshes
@@ -80,16 +92,16 @@ function render(){
   marksTick();padSync();padLights(m,camW);if(DF)gl.uniform1f(m.uFlI,0);plumeLight(camW);plasmaLight(camW);boomLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform3fv(m.uPlC,PLT.c);
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
-  if(DF)deskDraw(drawMesh,m,DF);
+  profMark('pads');if(DF)deskDraw(drawMesh,m,DF);
   if(!DF){const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
    const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);gl.uniform1f(m.uPadM,1);drawMesh(padFor(t),M,site);gl.uniform1f(m.uPadM,0)}}   // (each site in its owner's school, Q159)
-  if(!DF){gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);drawPadCrew(drawMesh,camW);}   // (Q242) not on the desk: the crew wait at the arm in the Rollout   // the pad's moving parts, at the current site (visuals session)
-  const nightCities=[];
+  profMark('rig');if(!DF){gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);drawPadCrew(drawMesh,camW);}   // (Q242) not on the desk: the crew wait at the arm in the Rollout   // the pad's moving parts, at the current site (visuals session)
+  profMark('cities');const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
   if(!DF&&len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
-  {const k=bayKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
+  profMark('ship');{const k=bayKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
   if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=groundAlt(S.body,toPF(S.body,sub(p,bc),simT)),hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=rollTilt(camW,modelQ(S.q,sub(p,camW),mul(S.cm,-1)));   /* (rollTilt: lying on the erector in a Steppe rollout, Q193) */
     if(DF){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);   // (Q242) the model's shadow on the drawing, along the lamp
       gl.uniform1f(m.uShadow,.5);gl.uniformMatrix4fv(m.uM,false,deskShadowM(DF,camW,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
@@ -104,6 +116,7 @@ function render(){
     for(const a of S.att||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(S.q,a.q),sub(add(p,qrot(S.q,sub(a.p,S.cm))),camW),mul(a.e.cm,-1)),p)}   // docked bodies
     gl.uniform1f(m.uSeam,0);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
+  profMark('others');
   // the other vessels in this flight (and whatever they have docked)
   if(near&&mode==='flight')for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r);if(len(sub(p,camW))>1e5)continue;
     setMarks(m,v.parts);gl.uniform1f(m.uSeam,1);drawMesh(fleetMesh(v),modelQ(v.q,sub(p,camW),mul(v.cm,-1)),p);
@@ -133,20 +146,21 @@ function render(){
     const sq=satSpin(q,tNow(),r0,v).q,cc=satCM(q),sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(sq,sub(r,camW),mul(cc,-1)),r);
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(sq,a.q),sub(add(r,qrot(sq,sub(a.p,cc))),camW),mul(a.e.cm,-1)),r)}
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}
-  if(near)drawSmoke(VP,camW,R,U);
+  profMark('smoke');if(near)drawSmoke(VP,camW,R,U);
   finTipTick();debrisHeat();
   if(near&&(mode==='drive'||mode==='flight'))drawRoverScene(drawMesh,camW);
-  if(near&&mode==='flight')drawVapor(VP,camW);
+  profMark('vapor');if(near&&mode==='flight')drawVapor(VP,camW);
   // ---- map: orbit lines + labels
   const labels=[];
   if(view==='map'&&mode==='flight')drawMap(VP,camW,labels);
+  profMark('glow');
   // ---- additive glow: plumes, fireballs
   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false);gl.useProgram(PMESH.p);
   gl.depthFunc(gl.LEQUAL);   // same geometry again at the same depth
   for(const[mesh,M,k]of nightCities){gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uGlow,.22*k);gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)}   // lit windows, roughly
   if(!DF)drawPadGlow(m,camW);   // the pad's floodlights
   gl.depthFunc(gl.LESS);
-  if(near)drawPlumePool(VP);
+  profMark('plume pool');if(near)drawPlumePool(VP);profMark('plumes');
   const PE=near&&S.alive&&mode==='flight'?plumeEngines():[];
   if(PE.length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
@@ -169,7 +183,7 @@ function render(){
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   // fin-tip vapor after the plumes: the trails don't write depth, so drawn before they'd vanish behind the exhaust even
   // where they're in front of it (they run beside it, a fin span out)
-  if(near){drawFinTips(VP,camW,R,U);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false)}
+  profMark('fins, plasma');if(near){drawFinTips(VP,camW,R,U);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false)}
   // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux faded in
   // by airspeed (plasmaHeat, PLAYTEST #17); on
   // the ship and on spent stages falling back (debrisHeat)
@@ -180,7 +194,7 @@ function render(){
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));
       gl.uniformMatrix4fv(m.uM,false,modelQ(q,sub(add(p,qrot(S.q,sub(z.at,S.cm))),camW),0,[.14,.4,.14]));gl.uniform1f(m.uGlow,.6*(1-age/.08));gl.bindVertexArray(PUFF.vao);gl.drawArrays(gl.TRIANGLES,0,PUFF.n)}}
   const nowMs=HOOK.fxT??performance.now();   // the effects clock; reference views pin it (HOOK.fxT, Q312)
-  if(booms.length){const u=PBOOM.u,E=lightEnv(camW);gl.useProgram(PBOOM.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,nowMs/1000%1000);
+  profMark('booms');if(booms.length){const u=PBOOM.u,E=lightEnv(camW);gl.useProgram(PBOOM.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,nowMs/1000%1000);
     gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(VBOX.vao);
@@ -194,7 +208,7 @@ function render(){
       gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,VBOX.n)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   gl.disable(gl.BLEND);gl.depthMask(true);
-  bloomEnd();
+  profMark('bloom');bloomEnd();profMark(null);
   // ---- 2D overlay
   OV_K=ov.width/W;octx.setTransform(OV_K,0,0,ov.height/H,0,0);octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];mapUI.qnodes=[];
   if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
