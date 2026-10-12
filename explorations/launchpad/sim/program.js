@@ -320,6 +320,14 @@ function stagedTick(s,R){if(!s.alive||s.landed)return;PROG.staged=PROG.staged||{
     if(st.bound||s.body!==TELLUS||simT-(R.boundT??-1e9)<30)continue;R.boundT=simT;   // (checked every 30 s of flight)
     const el=elements(s.r,s.v,TELLUS.mu);if(el.e<1&&el.ap<0.3*B.orb.a*(1-B.orb.e))continue;
     const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound',R)}}
+// flow, QUEUE Q167 (Q49 slice 4): a vessel still in flight between flights pays the same shares when it reaches the body
+// (cruiseStep calls this as it enters a moon's sphere), for the missions open when its flight launched (q.open0, q.crewed:
+// W11's rule, as stagedTick); entries registered before Q167 have no open0 and count for any open mission
+function stagedCruise(q,B){PROG.staged=PROG.staged||{};const M=stagedMission(B,{open0:q.open0,crewed:q.crewed});if(!M)return;const st=PROG.staged[M.id]||(PROG.staged[M.id]={});
+  if(!st.bound)stagePay(M,'bound',null);if(!st.arrive)stagePay(M,'arrive',null)}
+// what arriving at B will pay a vessel in flight, for mission control and the timeline ('' if nothing)
+function cruisePayNote(q,B){const M=B&&stagedMission(B,{open0:q.open0,crewed:q.crewed});if(!M)return'';const st=(PROG.staged||{})[M.id]||{},x=M.pay*((st.bound?0:STAGE_PAY.bound)+(st.arrive?0:STAGE_PAY.arrive));
+  return x>0?`${M.name} pays ${fmtM(x)} on arrival`:''}
 const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on course, ${STAGE_PAY.arrive*100}% on arrival${stagePaid(M)?` (${fmtM(stagePaid(M))} paid)`:''}</span>`:'';
 // the program's own triumphs in its archetype's voice (QUEUE Q165, POWERS.md § archetypes: mission control and news)
 const OWN_TONE={openSuper:'Live on every channel; the press room erupts.',closedSuper:'The bulletin, read after the fact: "accomplished as planned."',
@@ -587,7 +595,7 @@ function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(da
   const nx=COMP_ERAS[compEra()+1];if(nx)add(D+(nx.yr-compYear())*YEAR_D,'era',`${nx.name} reach the program`);
   for(const c of PROG.active||[])if(c.deadline!=null)add(c.deadline-1,'deadline',`One day left: ${cTitle(c)}`,true);
   for(const d of PROG.decisions||[])if(d.expires!=null)add(d.expires-1,'decision',`One day left to decide: ${d.title||d.kind}`,true);
-  for(const c of cruiseEvents(D*DAY_S))if(c.day>D+1e-6)E.push({day:c.day,kind:'cruise',text:c.text,stop:!!c.stop,cruise:c});   // space Q49: missions in flight
+  for(const c of cruiseEvents(D*DAY_S))if(c.day>D+1e-6)E.push({day:c.day,kind:'cruise',text:c.text+(c.to?(n=>n?`: ${n}`:'')(cruisePayNote((PROG.sats||[]).find(x=>x.id===c.id)||{},c.to)):''),stop:!!c.stop,cruise:c});   // space Q49: missions in flight
   for(const c of nodesEvents(D*DAY_S))if(c.day>D+1e-6)E.push({day:c.day,kind:'burn',text:c.text,stop:!!c.stop});   // space Q49 slice 3: planned burns
   return E.sort((a,b)=>a.day-b.day)}
 const nextEvent=()=>upcoming()[0]||null;

@@ -306,3 +306,26 @@
     `stops ${stops} · waits ${waits} · on screen ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km, headless ${D.orb ? (D.orb.pe / 1e3).toFixed(1) + '×' + (D.orb.ap / 1e3).toFixed(1) : D.status} · relight ${relight} · rolls ${agree}/${doomed} · ui ${ui}`);
   Object.assign(api.HOOK, hk); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// flow-16. Paying along the way in flight (flow session, QUEUE Q167; Q49 slice 4; economy v1.44's staged pay): a vessel
+// left on its way to Selene pays its mission's two shares when it enters Selene's sphere between flights, as it would
+// have in the flight; only for missions open when its flight launched (W11). Mission control's Flight row and the
+// timeline's arrival say what it will pay.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceTo,upcoming,predictFrom,cruiseNext,cruisePayNote,MISSIONS,missionOpen,TELLUS,SELENE,PROG,HOOK,DAY_S,set ORB_T0(v){ORB_T0=v}};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, Sl = D.SELENE, R = T.R; D.ORB_T0 = 0;
+  const r0 = R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002; let tr = null;
+  for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
+    if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, L }; }
+  const run = open0 => { Object.assign(P, { sats: [], day: 0, decisions: [], active: [], dispatch: [], offers: [], staged: {}, funds: 500, done: { weather: { flight: 1, day: 0 }, beeper: { flight: 1, day: 0 } } }); news.length = 0;
+    const M = D.MISSIONS.find(x => x.to === 'Selene' && D.missionOpen(x) && !x.crew), s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: tr.r, v: tr.v });
+    D.satRegister(s, { day0: 0, open0: open0(M) }); const q = P.sats.at(-1), cr = D.cruiseNext(q, 0), note = cr.to ? D.cruisePayNote(q, cr.to) : '', ev = D.upcoming().find(x => x.kind === 'cruise'), f0 = P.funds;
+    D.advanceTo(tr.L[0].endT / D.DAY_S + 1); return { M, q, cr, note, ev, paid: P.funds - f0, st: P.staged[M.id] || {} }; };
+  const a = run(M => [M.id]), b = run(() => []);
+  const want = a.M.pay * 0.4, ui = html.includes("cruisePayNote(q,cr.to)");
+  check('flow-16: a vessel left on its way to Selene pays its mission\'s two shares on arrival between flights; one whose flight wasn\'t launched for it pays nothing; mission control and the timeline say so',
+    a.cr.to === Sl && /pays/.test(a.note) && a.ev && /pays/.test(a.ev.text) && a.q.bodyName === 'Selene' && Math.abs(a.paid - want) < 1e-6 && a.st.bound && a.st.arrive
+      && b.paid === 0 && !b.st.arrive && !b.note && ui,
+    `${a.M.name}: "${a.note}" · timeline "${a.ev && a.ev.text}" · paid ${a.paid.toFixed(1)}M of ${want.toFixed(1)}M · not launched for it: ${b.paid.toFixed(1)}M · ui ${ui}`);
+}

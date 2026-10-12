@@ -142,6 +142,7 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);   // A2: what it takes to fly it again
   {const N=[s.node,...(s.nodeQ||[])].filter(n=>n&&n.t>simT&&!n.burning);if(N.length)q.nodes=N.map(n=>({T:R.day0*DAY_S+n.t,dv:n.dv.slice(),b:n.b||B.name}))}   // planned burns go with it (Q49 slice 3)
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,imgs:o.imgs||0,pending:o.pending||[],labDays:o.labDays,contact:o.contact})}   // the same object, back on the register
+  q.open0=R.open0;q.crewed=!!R.crewed;   // the missions its flight was launched for (staged pay in flight, Q167)
   if(cruise){q.cruise=1;return HOOK.news(`${q.name} is on its way, in flight around ${B.name}: it carries on between flights (Program → In flight)`,'ok')}
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}${satPowNote(q)}`,satPowNote(q)?'warn':'ok');
@@ -289,7 +290,7 @@ function cruiseStep(q,T1){const o=ORB_T0;ORB_T0=0;let guard=0;
         else{PROG.sats=PROG.sats.filter(x=>x!==q);HOOK.news(`${q.name} struck ${B.name}`,'bad')}return}}
     if(L.endKind==='impact'&&L.endT<=T1){PROG.sats=PROG.sats.filter(x=>x!==q);HOOK.news(`${q.name} struck ${B.name}`,'bad');return}
     if(tEnd<T1&&legs[1]){const n=legs[1];q.r=n.r.slice();q.v=n.v.slice();q.epoch=n.t;if(n.b===TELLUS)delete q.bodyName;else q.bodyName=n.b.name;
-      HOOK.news(L.endKind==='enc'?`${q.name} has entered ${n.b.name}'s sphere of influence`:`${q.name} has left ${B.name}'s pull: now around ${n.b.name}`,'ok')}
+      HOOK.news(L.endKind==='enc'?`${q.name} has entered ${n.b.name}'s sphere of influence`:`${q.name} has left ${B.name}'s pull: now around ${n.b.name}`,'ok');if(L.endKind==='enc')stagedCruise(q,n.b)}   // arriving pays (Q167)
     else{if(pertNear(B,el)){let r=q.r,v=q.v,t=q.epoch;const h=Math.min(600,el.e<1?el.period/120:600);while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}q.r=r;q.v=v}
       else[q.r,q.v]=kepler(q.r,q.v,T1-q.epoch,B.mu);q.epoch=T1}
     const B2=orbBody(q),e2=elements(q.r,q.v,B2.mu);
@@ -304,7 +305,7 @@ function cruiseEvents(T){const out=[],o=ORB_T0;ORB_T0=0;
   try{for(const q of PROG.sats||[]){if(!q.cruise||q.halt||q.docked)continue;const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,fl=B.R+(B.atm||0),seen=q.seen||{};let ev=null;
       if(el.pe<fl&&!(el.hl<1e-3)){const nuF=-Math.acos(clamp((el.p/fl-1)/el.e,-1,1)),dt=dot(r,v)<0||el.e>=1?tPe(el,nuF)-tPe(el,el.nu):timeToNu(el,nuF);
         if(dt>=0&&!(L.endKind&&L.endT<T+dt))ev=B.atm?{t:T+dt,text:`${q.name} reaches ${B.name}'s air`,stop:true}:{t:Math.max(T,T+dt-CRUISE_LEAD*DAY_S),text:`${q.name} will strike ${B.name} unless it's flown`,stop:true}}
-      if(!ev&&L.endKind==='enc'){const c=B.children.find(c=>len(sub(L.end,bodyRel(c,L.endT)[0]))<c.soi*1.01);if(c)ev={t:L.endT,text:`${q.name} enters ${c.name}'s sphere of influence`,key:'enc:'+c.name}}
+      if(!ev&&L.endKind==='enc'){const c=B.children.find(c=>len(sub(L.end,bodyRel(c,L.endT)[0]))<c.soi*1.01);if(c)ev={t:L.endT,text:`${q.name} enters ${c.name}'s sphere of influence`,key:'enc:'+c.name,to:c}}
       if(!ev&&B.parent&&(el.e<1||dot(r,v)<0)){const dt=el.e<1?timeToNu(el,0):tPe(el,0)-tPe(el,el.nu);
         if(dt>0&&!(L.endKind&&L.endT<T+dt))ev={t:Math.max(T,T+dt-CRUISE_LEAD*DAY_S),text:`${q.name} passes ${kmS(el.pe-B.R)} km above ${B.name}: the moment for a capture burn`,key:'pe:'+B.name}}
       if(ev){if(ev.key)ev.stop=!seen[ev.key];out.push({...ev,id:q.id,day:ev.t/DAY_S})}}}
@@ -362,7 +363,8 @@ function nodeToPass(id){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q||!q.nod
 function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
   try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;
     if(el.pe<B.R+(B.atm||0))return{text:B.atm?`falling into ${B.name}'s air`:`on course to strike ${B.name}`,days:null};
-    return L.endKind==='enc'?{text:`heading into ${B.children.find(c=>len(sub(L.end,bodyRel(c,L.endT)[0]))<c.soi*1.01)?.name||'a moon'}'s pull`,days:d}:L.endKind==='esc'?{text:`leaving ${B.name}'s pull`,days:d}:{text:`coasting around ${B.name}`,days:null}}
+    if(L.endKind==='enc'){const c=B.children.find(c=>len(sub(L.end,bodyRel(c,L.endT)[0]))<c.soi*1.01);return{text:`heading into ${c?.name||'a moon'}'s pull`,days:d,to:c}}
+    return L.endKind==='esc'?{text:`leaving ${B.name}'s pull`,days:d}:{text:`coasting around ${B.name}`,days:null}}
   finally{ORB_T0=o}}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;

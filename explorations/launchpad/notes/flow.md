@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -911,3 +911,25 @@ Test `flow-15` (the stop and the wait; on screen 156.8×159.1 km against the hea
 step on physics where the page coasts on rails like `procFly`; a failed relight stops at the circularisation; on 200
 seeds with poor part data, all 36 rolled break-ups and dead engines give the headless reason; the buttons, the frame
 hook and the liftoff's skipped waits). TESTING row 222.
+
+## v1.142 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167; Q49 slice 4 with economy)
+Since v1.44 a mission to another body pays 20 % when the flight is on course and 20 % on arrival, but only during the
+flight. Since v1.90 a vessel still coasting at flight end carries on between flights. Until now, one that reached Selene
+between flights paid nothing on arrival. Now it does:
+- **Arriving pays.** When a vessel in flight enters a moon's sphere between flights (`cruiseStep`), `stagedCruise(q, B)`
+  (in `sim/program.js` beside `stagedTick`) pays both shares still owed: news "Arrived at Selene: … pays its second
+  share". The completion share is unchanged: a mission still completes in a flight.
+- **Only for what it was launched for (W11).** `satRegister` keeps the flight's open missions on every registry entry
+  (`q.open0`, `q.crewed`), and `stagedMission` reads them as it reads `R.open0`. Entries registered before v1.142 have
+  none and count for any open mission.
+- **Shown before it happens.** `cruisePayNote(q, B)` gives "The far side pays 96M on arrival". Mission control's Flight
+  row shows it in green under the vessel's next event (`cruiseNext` now returns the moon it's heading into as `to`),
+  and the timeline's arrival event carries it ("Lookout 1 enters Selene's sphere of influence: The far side pays 96M on
+  arrival"; `cruiseEvents`' arrival has `to`).
+- **Checks:** test `flow-16`: a Probe left on a Selene transfer is listed with the note, pays 96 M (0.4 × 240 M) on
+  entering Selene's sphere at the stop, and a vessel whose flight wasn't launched for the mission pays nothing. Full
+  suite passes. Seen in headless Chrome: the green line on the Flight row and the timeline; Wait to the arrival paid 96 M
+  and the line went away.
+- **Not yet:** public interest and cruise science per day during a cruise (economy's design, "Paying along the way");
+  a flyby completing in the background (passive flybys); the Flight row's "where" still says "Selene orbit" for a vessel
+  only passing through (`netModel`'s wording, economy).

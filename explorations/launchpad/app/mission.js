@@ -58,8 +58,9 @@ function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*
   const F=(N.fleet||[]).slice().sort((a,b)=>(a.t??1e9)-(b.t??1e9)),dOf=id=>(PROG.dispatch||[]).find(x=>x.id===id);
   const fRow=f=>{const q=f.id!=null?sat(f.id):null,cr=q&&q.cruise?cruiseNext(q,T):null,x=f.dev!=null?dOf(f.dev):null,due=x&&mcDue(x);
     const next=due?'on the pad, launching: needs you to watch it':cr?cr.text+(cr.days!=null?`, in ${mcIn(cr.days)}`:''):f.next||'';
+    const pay=cr&&cr.to?cruisePayNote(q,cr.to):'';   // Q167: what arriving pays
     const act=f.dev!=null&&/^needs you/.test(f.next)?`<button data-devtake="${f.dev}">Take it</button> <button data-devlose="${f.dev}">Let go</button>`:x&&x.status==='queued'?mcWatchBtns(x):q&&flyable(q)?`<button data-fly="${q.id}">Fly</button>`:'';
-    return`<div class="mrow"><div class="hd"><b>${f.name}</b><span>${act}</span></div><div class="dim">${f.kind} · ${f.where}</div><div class="${/needs you/.test(next)?'bad':/adrift|re-enters in|falling|strike/.test(next)?'warn':''}">${next}</div></div>`};
+    return`<div class="mrow"><div class="hd"><b>${f.name}</b><span>${act}</span></div><div class="dim">${f.kind} · ${f.where}</div><div class="${/needs you/.test(next)?'bad':/adrift|re-enters in|falling|strike/.test(next)?'warn':''}">${next}</div>${pay?`<div class="ok">${pay}</div>`:''}</div>`};
   const devN=devWaiting().length+(PROG.dispatch||[]).filter(mcDue).length,drift=F.some(f=>/adrift|re-enters in/.test(f.next||''));   // (a re-entry after the propellant runs out isn't news)
   const flight=F.length?F.map(fRow).join(''):'<div class="dim">Nothing of ours is out there yet.</div>';
   // NETWORK: stations, links home, coverage
