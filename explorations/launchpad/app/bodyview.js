@@ -52,7 +52,7 @@ void main(){vec3 d=normalize(uF+vNdc.x*uTan.x*uR+vNdc.y*uTan.y*uU),ro=tob(uO),rd
 let PBV=null;
 function bodyViewDraw(){if(!BV.on)return false;if(!PBV)PBV=mkProg(QUAD_VS,BV_FS);const b=BODY_CAT[BV.i],u=PBV.u;
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
-  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;ov.width=w;ov.height=h}W=w;H=h;octx.clearRect(0,0,w,h);
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;ov.width=w;ov.height=h}W=w;H=h;OV_K=ov.width/w;octx.setTransform(OV_K,0,0,ov.height/h,0,0);octx.clearRect(0,0,w,h);   // (Q258) whatever size the overlay has
   const D=BV_DIST[BV.k],ce=Math.cos(BV.el),O=[D*ce*Math.sin(BV.az),D*Math.sin(BV.el),D*ce*Math.cos(BV.az)],F=norm(mul(O,-1)),Rr=norm(cross(F,[0,1,0])),Uu=cross(Rr,F);
   const sun=norm([Math.sin(BV.az+1.25),.18,Math.cos(BV.az+1.25)]),ty=Math.tan(25*Math.PI/180);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.useProgram(PBV.p);

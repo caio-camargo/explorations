@@ -86,3 +86,7 @@ reasons; the decision itself is in DECISIONS.
 | W6 | A sea-specific launch complex? | **Later** (look & sound evergreen); until then the land complex is reused on the platform | Not needed for M1. |
 | W7 | Development: variants or upgrades in place? | **Variants.** A developed part is a new palette entry (Mk2); the original stays | Tapes, routines and logbook records are tied to exact designs; upgrading in place would silently invalidate them. |
 | W8 | Hands-on rows | **No default:** needs a human. QA narrows it to the rows only feel can judge | — |
+
+## QUEUE: W37, answered 2026-10-11 (Caio: "no sessions active, ok to split"; done the same day, DECISIONS W37)
+
+| W37 | **Pick a freeze window to split NOTES.md** (ROADMAP § Documents, phase 2): 10,500 lines in no fixed order → `notes/<area>.md` by lane, section names kept so every "NOTES § X" pointer still resolves, NOTES.md becoming their index. Needs every session merged first, like the file split (W10). Platform does it with a script | the size budget; sessions that can read their notes |

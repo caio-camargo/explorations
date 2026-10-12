@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 1.9.1 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -272,8 +272,8 @@ perf readout (NOTES § v1.1); `views.js` reference scenes for before/after.
 Docs drifted because one decision was written in up to four places, replaced text stayed printed, status lines were
 kept by hand, and NOTES grew without order. The rules:
 1. **Each kind of doc has one job.** Design catalogs (above): the design *as it is now*, edited in place. **DECISIONS.md:**
-   every decision, one line, append-only. **QUEUE.md:** live work and open questions only. **NOTES.md:** how things were
-   built. **ROADMAP.md:** pillars, milestones, lanes, rules. **INDEX.md:** where each doc is and what it's for (no
+   every decision, one line, append-only. **QUEUE.md:** live work and open questions only. **NOTES:** how things were
+   built, one file per area in `notes/` (NOTES.md is their index). **ROADMAP.md:** pillars, milestones, lanes, rules. **INDEX.md:** where each doc is and what it's for (no
    versions or statuses: those live in the doc's own header).
 2. **One home per fact.** Elsewhere, a one-line summary and a link, never a restatement.
 3. **The ripple rule.** Changing a decision: add its DECISIONS row with *Touches*, then search the docs for the old
@@ -281,8 +281,8 @@ kept by hand, and NOTES grew without order. The rules:
 4. **Replaced text moves to `archive/`** (archive over delete), with a one-line pointer where it was. Nothing stays
    printed next to the text that replaced it.
 5. **Headers stay true:** a doc's version, date and status change with every edit; its version history gets a line.
-6. **Size budgets:** a design doc under ~400 lines, QUEUE under ~300; over budget, split it. (NOTES is the exception
-   until its split: phase 2, a freeze Caio picks.)
+6. **Size budgets:** a design doc under ~400 lines, QUEUE under ~300; over budget, split it. NOTES is a log, split by
+   area (W37, 2026-10-11) rather than budgeted.
 7. **A machine checks it** (`check_docs.mjs`, platform; QUEUE): headers vs histories, INDEX coverage, broken links,
    "waits for Qn" when Qn is done, QUEUE rows naming answered questions, sizes. It runs with `--smoke`.
 8. **A review per milestone** (the 2026-10-11 review's method: milestones and blockers, pillars against the build,

@@ -25,6 +25,7 @@ The full text of every question as it was asked (options, reasons) is in
 | W16 | 2026-10-11 | Caio plays the first hour himself; the measure is that he enjoys playing it. Supersedes W8's outside player | ROADMAP M1, PLAYROUTE |
 | D17.1 | 2026-10-11 | M2's finish line: a routine repeat satellite launch keeps a network up; resupply moves to M3 with crew | ROADMAP M2, Q233, MIDGAME |
 | DOC | 2026-10-11 | The documentation system: one home per fact, this log, the ripple rule, `check_docs.mjs`, size budgets, a review per milestone | ROADMAP § Documents, session-roles, QUEUE |
+| W37 | 2026-10-11 | NOTES split into `notes/<area>.md` (eight areas, oldest first); NOTES.md the index of every section; versions one series (`check_numbers.mjs` reads them all) | NOTES, ROADMAP § Documents, `check_numbers.mjs`, ACTIVE_WORK merge recipe |
 | GFX | 2026-10-11 | Graphics budget: 60 fps on Caio's mid-range machine, 30 fps on integrated graphics; Low/High settings; no high-end requirement | ROADMAP § Graphics budget |
 
 ## Flight and physics

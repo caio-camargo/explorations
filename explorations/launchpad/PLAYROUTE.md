@@ -121,7 +121,7 @@ contracts complete during the flight, so a low reconnaissance orbit still pays; 
 | 5 | Orbit near a saved satellite (diamond marker; one parked above ~250 km in an earlier flight, so it's still up) and fly past it; G to target, close the distance | 49, 56 |
 | 6 | Epoch 4: the far-side flight shouldn't find Nyx; a **Probe** to ~25,000 km should weigh it in 12 h. Is the reveal a payoff? | **72**, **121** |
 | 7 | Epoch 5: look at Nyx from the ground and from space; a prograde and a retrograde orbit round it; land under 3 m/s | 49, **55**, **73** |
-| 8 | **Beeper** in the Assembly: its Lifetime line, before and after accepting a satellite contract | 165 |
+| 8 | **Beeper** in the Design table: its Lifetime line, before and after accepting a satellite contract | 165 |
 | 9 | Program → Network [N] with satellites up and a dispatch booked; skip to the next computing era and service a TV satellite that falls behind | 164, 163 |
 | 10 | A **Beeper** flown by hand from a leased site abroad, then a satellite contract dispatched on it | 154 |
 

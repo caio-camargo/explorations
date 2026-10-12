@@ -39,5 +39,9 @@ function renderDebrief(){const D=debShown,el=$('debBody');
 function debAgain(){const D=debShown;if(!D||D.fromOrbit)return;go('assembly');if(screenNow()==='assembly')$('launch').click()}
 $('bDebAgain').onclick=()=>debAgain();
 // the HUD offers the way out once the flight is over: landed or lost
-function debEndBtn(){const b=$('bEnd');if(!b)return;const R=S&&S.rec,over=mode==='flight'&&R&&R.launched&&!R.ended&&(!S.alive||S.landed&&simT>5);b.classList.toggle('hidden',!over)}
+// (Q263; PLAYTEST #63) landed or splashed at home and still, it reads Recover vessel, as in KSP: the Debrief counts the recovery
+const debRecover=()=>!!(S&&S.alive&&S.landed&&S.body===TELLUS);
+function debEndBtn(){const b=$('bEnd');if(!b)return;const R=S&&S.rec,over=mode==='flight'&&R&&R.launched&&!R.ended&&(!S.alive||S.landed&&simT>5);b.classList.toggle('hidden',!over);
+  const rec=over&&debRecover(),t=rec?'Recover vessel ▸ [Enter]':'End flight ▸ [Enter]';if(b.textContent!==t){b.textContent=t;b.classList.toggle('rec',rec);
+    b.title=rec?`recover it and end the flight: the debrief${S.water?' (from the sea)':''}`:'the flight is over: see how it went'}}
 $('bEnd').onclick=()=>go('debrief');

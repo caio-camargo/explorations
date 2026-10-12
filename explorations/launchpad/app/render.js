@@ -18,7 +18,10 @@ function render(){
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
-  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;ov.width=w;ov.height=h}W=w;H=h;
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}W=w;H=h;
+  // (flow, Q258; PLAYTEST #58) the overlay (labels, the era maps, the gauges) is drawn at device pixels, not at the 3D view's
+  // adaptive resolution: it's cheap 2D, and upscaled it read as low-res. Drawing stays in the 3D view's pixels (OV_K scales).
+  {const od=Math.min(devicePixelRatio||1,2),ow=Math.round(innerWidth*od),oh=Math.round(innerHeight*od);if(ov.width!==ow||ov.height!==oh){ov.width=ow;ov.height=oh}}
   // ---- camera, in float64 world coordinates
   let camW,R,U,Fw,fov;
   if(view==='map'&&mode==='flight'){
@@ -193,7 +196,7 @@ function render(){
   gl.disable(gl.BLEND);gl.depthMask(true);
   bloomEnd();
   // ---- 2D overlay
-  octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];mapUI.qnodes=[];
+  OV_K=ov.width/W;octx.setTransform(OV_K,0,0,ov.height/H,0,0);octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];mapUI.qnodes=[];
   if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
@@ -218,6 +221,7 @@ function render(){
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
       else if(L.mark==='planet'){const k=Math.min(devicePixelRatio||1,1.5),r=L.px*k;octx.beginPath();octx.arc(s[0],s[1],r,0,7);octx.fill();
         if(L.sun){octx.strokeStyle=L.c;octx.lineWidth=1.5*k;octx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4;octx.moveTo(s[0]+Math.cos(a)*r*1.5,s[1]+Math.sin(a)*r*1.5);octx.lineTo(s[0]+Math.cos(a)*r*2.2,s[1]+Math.sin(a)*r*2.2)}octx.stroke()}}
+      else if(L.mark==='txt'){}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
       if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})}
@@ -260,11 +264,16 @@ function patchRange(pt){const el=pt.el;
   if(el.e<1)return[0,6.2832];
   const rc=pt.b.parent?pt.b.soi:Math.max(...pt.b.children.map(c=>c.rMax))*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;return[el.nu,Math.max(el.nu,nm)]}
 // a perturbed (numeric) leg: its integrated path from now on, the closest pass to the body, and how it ends
-function drawPath(pt,k,off,col,dash,tag,seg,labels,list){const P=pt.path,bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;let pv=null,lo=null;
-  for(let i=0;i<P.length;i++){const[r,t]=P[i];if(t<simT&&i<P.length-1&&P[i+1][1]<=simT)continue;const p=add(off,r);if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p;
-    const rl=len(r);if(t>=simT&&(!lo||rl<lo.rl))lo={rl,p}}
-  if(lo&&pt.endKind!=='impact')labels.push({p:lo.p,t:'Pe '+fmtD(lo.rl-bR)+tag,c:hc});
-  if(pt.endKind==='impact')labels.push({p:add(off,pt.end),t:`Impact in ${fmtT(pt.endT-simT)}${pt.b.pert?' (perturbed)':''}`+tag,c:'#ff6b5a'});
+function drawPath(pt,k,off,col,dash,tag,seg,labels,list){const P=pt.path,bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;let pv=null,lo=null,cut=false;
+  // (flow, Q260; PLAYTEST #60) with the impact predictor drawing the fall, the leg stops where it enters the air: one arc, one X
+  // (climbing through the air, the arc is drawn; falling inside it, only the predictor's path is)
+  const top=bR+(pt.b.atm||0),fallIn=k===0&&!dash&&pt.b.atm&&impact&&toolOK('impact')&&impact.b===pt.b;if(fallIn&&len(S.r)<top&&dot(S.r,S.v)<0)return;let up=false;
+  for(let i=0;i<P.length;i++){const[r,t]=P[i];if(t<simT&&i<P.length-1&&P[i+1][1]<=simT)continue;const p=add(off,r),rl=len(r);
+    if(fallIn&&t>=simT&&rl<top&&up){cut=true;if(pv)seg(pv,p,col);break}if(rl>=top)up=true;
+    if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p;
+    if(t>=simT&&(!lo||rl<lo.rl))lo={rl,p}}
+  if(lo&&pt.endKind!=='impact'&&!cut)labels.push({p:lo.p,t:'Pe '+fmtD(lo.rl-bR)+tag,c:hc});
+  if(pt.endKind==='impact'&&!fallIn)labels.push({p:add(off,pt.end),t:`Impact in ${fmtT(pt.endT-simT)}${pt.b.pert?' (perturbed)':''}`+tag,c:'#ff6b5a'});   // (Q260) the predictor's X says it
   if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`${nx.b.name} encounter in ${fmtT(pt.endT-simT)}${tag}`,c:'#ffb454'});
     labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[soiAt(nx.b,pt.endT),0,0]),c:'rgba(255,180,84,.6)'})}
   if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:`${pt.b.name} escape in ${fmtT(pt.endT-simT)}`+tag,c:'#cc8cff'})}
@@ -273,12 +282,17 @@ function drawPatches(list,camW,out,labels,cols,dash,tag){
   list.forEach((pt,k)=>{
     const el=pt.el,off=pt.b.parent?(pt.off||bodyPos(pt.b,simT)):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
     if(pt.path){drawPath(pt,k,off,col,dash,tag,seg,labels,list);return}
-    const[n0,n1]=patchRange(pt),N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
+    // (flow, Q260; PLAYTEST #60) falling into the air with the impact predictor on: the predictor draws the fall (drag and all),
+    // so the conic stops at the top of the air and has no Impact label of its own: one arc, one X
+    const top=pt.b.R+(pt.b.atm||0),fallIn=k===0&&!dash&&impact&&toolOK('impact')&&impact.b===pt.b&&el.pe<top&&!pt.end;
+    if(fallIn&&len(S.r)<=top+1&&dot(S.r,S.v)<0)return;
+    let[n0,n1]=patchRange(pt);if(fallIn){const c=(el.p/top-1)/el.e;if(c>=-1&&c<=1){n0=el.nu;n1=-Math.acos(c);while(n1<=n0)n1+=6.2832}}
+    const N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
     for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
       const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p}
-    const inArc=nu=>{if(!pt.end&&el.e<1)return true;let a=nu;while(a<n0)a+=6.2832;return a<=n1};
+    const inArc=nu=>{if(!pt.end&&el.e<1&&!fallIn)return true;let a=nu;while(a<n0)a+=6.2832;return a<=n1};
     const bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;
-    if(inArc(0)&&el.e>1e-4)labels.push({p:add(off,mul(el.P,el.pe)),t:(el.pe<bR?'Impact':'Pe '+fmtD(el.pe-bR))+tag,c:hc});
+    if(inArc(0)&&el.e>1e-4&&!fallIn)labels.push({p:add(off,mul(el.P,el.pe)),t:(el.pe<bR?'Impact':'Pe '+fmtD(el.pe-bR))+tag,c:hc});
     if(el.e<1&&el.e>1e-4&&inArc(Math.PI))labels.push({p:add(off,mul(el.P,-el.ap)),t:'Ap '+fmtD(el.ap-bR)+tag,c:hc});
     if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`${nx.b.name} encounter in ${fmtT(pt.endT-simT)} · Pe ${nx.el.pe<nx.b.R?'impact':fmtD(nx.el.pe-nx.b.R)}${tag}`,c:'#ffb454'});
       labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[soiAt(nx.b,pt.endT),0,0]),c:'rgba(255,180,84,.6)'})}
@@ -335,24 +349,28 @@ function drawMap(VP,camW,labels){
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
   // (flow, Q175) Helios and the planets, from epoch 1: on a ring in the ecliptic around the map's centre, at their ecliptic
   // longitude today (at their real places they'd be at infinity, mostly behind this camera); hidden behind Tellus
-  {const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),rr=cam.mDist*.3;let pv=null;
+  {const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),moons=1.25*Math.max(...TELLUS.children.map(c=>c.rMax)),rr=moons<2.5*cam.mDist?Math.max(cam.mDist*.3,moons):cam.mDist*.3;let pv=null;   // (flow, Q256; PLAYTEST #55) outside the moons' orbits whenever they're in view: a compass, not a distance
     for(let i=0;i<=144;i++){const a=i/144*6.2832,p=add(c0,add(mul(E.X,rr*Math.cos(a)),mul(E.Y,rr*Math.sin(a))));if(pv&&i%2)seg(pv,p,[.62,.6,.5,.3]);pv=p}
     for(const m of planetMarks(tNow())){const p=madd(c0,m.u,rr),q=sub(p,camW),dq=len(q),tc=-dot(camW,q)/dq;
       if(tc>0&&tc<dq&&dot(camW,camW)-tc*tc<TELLUS.R*TELLUS.R)continue;
-      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}}
+      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}
+    labels.push({p:add(c0,mul(E.Y,-rr)),mark:'txt',t:'the planets: direction only, not to scale',c:'rgba(214,206,170,.75)'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
-  if(impact&&toolOK('impact')){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
-    const ip=add(bp,fromPF(b,impact.pf,simT));if(pv)seg(pv,ip,[1,.35,.25,.9]);labels.push({p:ip,mark:'impact',t:`impact ${fmtT(impact.t-simT)}`,c:'#ff6b5a'})}
+  if(impact&&toolOK('impact')){const b=impact.b,bp=bodyPos(b,simT),top=b.R+(b.atm||0),P=2*Math.PI*Math.sqrt(top**3/b.mu),T=impact.pathT,t0=impact.t-1.05*P;let pv=null;
+    // (flow, Q266; PLAYTEST #66) a slow decay goes round many times inside the air: draw only the last revolution, and say how many
+    for(let i=0;i<impact.path.length;i++){if(T&&T[i]<t0)continue;const q=add(bp,fromPF(b,impact.path[i],simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
+    const ip=add(bp,fromPF(b,impact.pf,simT)),revs=(impact.t-simT)/P;if(pv)seg(pv,ip,[1,.35,.25,.9]);
+    labels.push({p:ip,mark:'impact',t:`impact in ${fmtT(impact.t-simT)}${revs>1.5?` · after ~${Math.round(revs)} orbits`:''}`,c:'#ff6b5a'})}
   for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
     labels.push({p:cp,mark:'city',t:len(camW)<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
   for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
   for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||len(sub(camW,bodyPos(orbBody(q),simT)))<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
-  if(impSpread&&impact&&toolOK('impact'))for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
-  for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
+  if(impSpread&&impact&&toolOK('impact'))for(const[i,x]of[impSpread.lo,impSpread.hi].entries())labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'ca',t:i?'':`spread ±${impSpread.km.toFixed(0)} km`,c:'rgba(255,107,90,.55)'});   // (Q260) circles, not more X's
+  for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:`${d.name} falls`,c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   for(const q of landedUp()){const b=landedBody(q);if(!b)continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.beacon||q.id===S.target?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
   if(landPick){const b=BODIES.find(x=>x.name===landPick.body),u=b&&fromPF(b,landPick.pf,simT);if(u&&dot(sub(camW,add(bodyPos(b,simT),u)),u)>0)labels.push({p:add(bodyPos(b,simT),u),mark:'impact',t:'landing site',c:'#ffb347'})}   // (Q62)
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
@@ -363,15 +381,17 @@ const NBc=$('nav'),nctx=NBc.getContext('2d'),NS=180,nimg=nctx.createImageData(NS
 function drawNavball(){
   const f=localFrame(S.r),X=qrot(S.q,[1,0,0]),Y=qrot(S.q,[0,1,0]),Z=qrot(S.q,[0,0,1]);
   const au=[dot(X,f.up),dot(Y,f.up),dot(Z,f.up)],an=[dot(X,f.n),dot(Y,f.n),dot(Z,f.n)],ae=[dot(X,f.e),dot(Y,f.e),dot(Z,f.e)];
-  // no trig per pixel: elevation lines are |sin el| = const, heading lines are 4 great circles through the poles
-  const D=nimg.data,Rr=NS/2-1,w=0.014;
+  // (flow, Q254; PLAYTEST #57) degree marks: pitch every 10° (30° and 60° stronger), heading every 30° (the four
+  // quarters stronger), fading out near the poles where the meridians crowd; one asin and one atan2 per pixel (~0.5 ms)
+  const D=nimg.data,Rr=NS/2-1,w=0.012,R2D=57.2958;
   for(let py=0;py<NS;py++)for(let px=0;px<NS;px++){const i=(py*NS+px)*4,u=(px-NS/2+.5)/Rr,v=-(py-NS/2+.5)/Rr,rr=u*u+v*v;
     if(rr>1){D32[i>>2]=0;continue}const y=Math.sqrt(1-rr);
     const el=au[2]*u+au[1]*y-au[0]*v,dn=an[2]*u+an[1]*y-an[0]*v,de=ae[2]*u+ae[1]*y-ae[0]*v,ab=el<0?-el:el;
     let r,g,b,k=1;if(el>0){r=46;g=110;b=190}else{r=140;g=88;b=48}
     if(ab<0.012){r=g=b=235}
-    else if(Math.abs(ab-.5)<.009||Math.abs(ab-.866)<.008)k=1.35;
-    else if(ab<.985){const hl=w*Math.sqrt(dn*dn+de*de);if(Math.abs(de)<hl||Math.abs(dn)<hl||Math.abs(de-dn)<hl*1.414||Math.abs(de+dn)<hl*1.414)k=1.3}
+    else{const ed=Math.asin(ab>1?1:ab)*R2D,pm=ed%10,pd=pm<5?pm:10-pm,ce=Math.sqrt(dn*dn+de*de);
+      if(pd<.7)k=(Math.round(ed)%30===0)?1.4:1.2;
+      else if(ab<.97){const hd=(Math.atan2(de,dn)*R2D+360)%30,hm=hd<15?hd:30-hd;if(hm/R2D*ce<w){const q=Math.round((Math.atan2(de,dn)*R2D+360)/30)%3===0;k=q?1.4:1.22}}}
     const sh=k*(.45+.55*Math.sqrt(y));D32[i>>2]=(255<<24)|(Math.min(255,b*sh)<<16)|(Math.min(255,g*sh)<<8)|Math.min(255,r*sh)}
   nctx.putImageData(nimg,0,0);
   const mark=(dir,c,kind)=>{const sy=dot(dir,Y);if(sy<0)return;const sx=NS/2+dot(dir,Z)*Rr,syy=NS/2+dot(dir,X)*Rr;
@@ -383,6 +403,10 @@ function drawNavball(){
     if(len(T.dv)>0.05){const w=norm(T.dv);mark(w,'#ff7ad9','pro');mark(mul(w,-1),'#ff7ad9','retro')}}}
   if(S.node){const I=nodeInfo(S);if(len(I.rem)>1e-3){const d=norm(I.rem);if(dot(d,Y)>0){const sx=NS/2+dot(d,Z)*Rr,sy=NS/2+dot(d,X)*Rr;
     nctx.strokeStyle='#5f9dff';nctx.lineWidth=3;nctx.beginPath();nctx.arc(sx,sy,8,0,7);nctx.stroke();nctx.beginPath();nctx.moveTo(sx-13,sy);nctx.lineTo(sx+13,sy);nctx.moveTo(sx,sy-13);nctx.lineTo(sx,sy+13);nctx.stroke()}}}
+  // the compass points on the horizon: N marked in red (Q254)
+  nctx.font='bold 13px ui-monospace,Consolas,monospace';nctx.textAlign='center';nctx.textBaseline='middle';
+  for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const sy=dot(d,Y);if(sy<-0.02)continue;
+    const x=NS/2+dot(d,Z)*Rr,y=NS/2+dot(d,X)*Rr;nctx.lineWidth=3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
   $('navtxt').textContent=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${pit.toFixed(0)}°  ${sr.srf?'SURFACE':'ORBIT'}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`;

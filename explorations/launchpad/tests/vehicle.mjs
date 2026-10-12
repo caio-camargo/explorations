@@ -421,3 +421,20 @@
   check('part cards: every listed part has a sentence and a spec sheet (engines with Isp)', !mute.length && !thin.length && listed.length > 40,
     `${listed.length} parts; no sentence: ${mute.join(', ') || 'none'}; thin sheet: ${thin.join(', ') || 'none'}`);
 }
+
+// vehicle-12. The player's designs (vehicle session, Caio 2026-10-11): every launch files its design under PROG.designs.launched
+// (one entry per distinct design, newest first, its launch count); a design saved under a name is kept, the same name
+// replaces it; parked parts never count as a different launched design.
+{
+  const P = api.PROG, keep = P.designs; P.designs = {};
+  const cp = x => JSON.parse(JSON.stringify(x)), orb = api.toV2(cp(api.PRESETS.Orbiter)), parked = cp(orb);
+  parked.park = [{ n: { k: 't1', c: [] }, p: [3, 0, 0] }];
+  api.designLaunched(api.PRESETS.Orbiter); api.designLaunched(api.PRESETS.Beeper); api.designLaunched(orb); api.designLaunched(parked);
+  const L = api.designLib(), first = L.launched[0];
+  api.designSave('Mine', orb); api.designSave('Mine', api.PRESETS.Beeper); api.designSave('', api.PRESETS.Hopper);
+  const ok = L.launched.length === 2 && first.name === 'Orbiter' && first.n === 3 && !first.stack.park && L.launched[1].name === 'Beeper'
+    && L.saved.length === 2 && L.saved.find(e => e.name === 'Mine').stack[0] === 'cone' && L.saved.some(e => e.name === 'Hopper');
+  check('design library: launches file their designs (one per design, newest first, counted; parked parts ignored); saving a name keeps it, the same name replaces it',
+    ok, `launched ${L.launched.map(e => `${e.name}×${e.n}`).join(', ')}; saved ${L.saved.map(e => e.name).join(', ')}`);
+  P.designs = keep;
+}

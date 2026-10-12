@@ -38,6 +38,36 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-10-11 — Launchpad design desk: faces, school briefs, KSP audit, UI rules, project review, the documentation system
+**Source**: Claude Code
+**User**: Caio Camargo
+**AI Model**: claude-opus-5-5
+**Status**: Complete
+
+### Summary
+Design-desk run (docs only, main clone; claim from 2026-10-09). Wrote FACES.md (face engine, D12), suit and rocket briefs
+for the remaining schools (D13, D14), the KSP audit (KSPISMS.md, D15), UI hierarchy rules (UI.md, D16), heat/stress
+display (W36), the graphics budget and the "good mess or bad jank" playtest lens, and a whole-project review
+(REVIEW-2026-10-11.md, D17, all defaults). Then the documentation system: DECISIONS.md as the one home for answers,
+ROADMAP § Documents (eight rules), a doc sweep, the project-review playbook, and the NOTES split into `notes/<area>.md`.
+
+### Decisions Made
+- D12–D17, W16, W36, W37 and the graphics budget: one line each in `explorations/launchpad/DECISIONS.md`.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/launchpad/FACES.md`, `KSPISMS.md`, `UI.md`, `REVIEW-2026-10-11.md`, `DECISIONS.md` | design docs, the review, the decisions log |
+| 2 | created | `playbooks/project-review.md`; `explorations/launchpad/archive/decisions-2026-10.md`, `archive/crew-suits-table-2026-10-09.md` | playbook; answered questions and replaced text |
+| 3 | edited | `CREW.md`, `POWERS.md`, `MIDGAME.md`, `ROADMAP.md` (1.9.1), `QUEUE.md`, `PLAYTEST.md`, `GROUND.md`, `LATE_GAME.md`, `SYSTEM.md`, `docs/session-roles.md` (1.3.0), `INDEX.md` | briefs, D17 ripple, headers, Documents rules |
+| 4 | split | `explorations/launchpad/NOTES.md` → `notes/*.md` (8 files) + index; `check_numbers.mjs` reads them all | W37, `a3b62c5` |
+
+### Next Steps
+- [ ] Economy: merging the Q188 branch, move its NOTES section and amendment into `notes/economy.md`, renumber v1.128 (ACTIVE_WORK notice).
+- [ ] Platform: `check_docs.mjs` (QUEUE Proposed); include the D-number gap (`check_numbers` sees answered D rows only in DECISIONS, so it offers D1; the next is D18).
+- [ ] Caio: W29 (bodies round 2), W33 (face lab, own session).
+- [ ] Build follow-ups from the review: Caio's first hour (PLAYROUTE refresh, Q257, first-hour P2s, `playtest.mjs m1`), a QA session, Q47.
+
 ## Session 2026-10-01 — Pulse Loop v1.0: DJ-style hypnotic loops
 **Source**: Claude Code · **Operator**: Caio · **Status**: Complete
 
@@ -5327,7 +5357,20 @@ NOTES, TESTING 205–209, PLAYTEST #56, QUEUE.
 **Next steps:** three Proposed lines (draw the fragment, tank punctures, a composite's power). Space has no `ready` items
 left besides the M5-gated ones. Caio's playtest notes for these: TESTING 205–209.
 
-## 2026-10-11 — Claude (launchpad economy session): Q188, rivals as programs from epoch 1 (v1.128)
+## 2026-10-11 — Caio + Claude (launchpad flow session): small playtest fixes (v1.128)
+- **Done** (`2591740`, on `main`): Q273 (an opaque plate for the flight toolbar on a bright sky), Q263 (*Recover vessel* once
+  landed at home), Q255 (the node panel's Delete never reached the delete: `del` matched the Δv nudges; it now deletes
+  the selected node), Q260 + Q266 (one arc and one impact: the leg stops where it enters the air; a slow decay that
+  outlasts the fall's steps is no impact; only the last revolution is drawn), Q256 (the planets' ring outside the moons,
+  *not to scale*), Q272 (*Design table* everywhere a player reads it), Q269 (ticked first-run choices and a summary),
+  Q254 (the navball on the map, degree marks, N in red), Q258 (the overlay drawn at device pixels).
+- **Checks:** full suite passed after each of three merges of main (the fourth was docs only: QA checks); new test
+  `flow-12` in `tests/flow.mjs`, `flow-7` updated for the navball on the map; robot `m1`, 127 and `desk` pass with no
+  overlapping boxes. Renumbered at each merge (other lanes took v1.118–v1.127): now v1.128, TESTING 210. One conflict in
+  `app/input.js` with space's `revertFlight()` (Q257), both kept.
+- **Next for flow:** Q261 (map layers), Q262 (map focus), Q271 (heat and load needles: plan first), Q241 R3/R4.
+
+## 2026-10-11 — Claude (launchpad economy session): Q188, rivals as programs from epoch 1 (v1.130)
 
 **Summary:** Caio's W26.1, built. Measured first: the seeded `raceSchedule` gave every world and every save the same race
 (Mirtov on days 83 / 176 / 245 from 4 of 5 homes). Now each rival is a coarse program (`PROG.riv`, `rivTick`):
@@ -5337,9 +5380,10 @@ became the forecast, so the panel, the news and `raceTick` are unchanged. The pa
 within ~4 % of the old formula's expectation over 20 worlds per home, with spread between worlds. `career.mjs 4 8`: the
 runner wasn't first to orbit in 27 of 144 runs (19 under the old schedule, 17 with no spur).
 **Files changed:** `explorations/launchpad/sim/contracts.js`, `sim/program.js` (one call in `missionComplete`),
-`tests/economy.mjs` (econ-21, 5 checks), `NOTES.md` (v1.128; the Q188 amendment in § "Plan: rivals as programs"),
-`QUEUE.md` (Q188 ✓, W38, a Proposed line), `TESTING.md` (row 210), `ACTIVE_WORK.md`.
-**Tests:** `node test.mjs` all passed, after bumping TESTING's next-free counter.
+`tests/economy.mjs` (econ-21, 5 checks), `notes/economy.md` (v1.130; the Q188 amendment in § "Plan: rivals as programs"),
+`QUEUE.md` (Q188 ✓, W38, a Proposed line), `TESTING.md` (row 212), `ACTIVE_WORK.md`.
+**Tests:** `node test.mjs` all passed, after bumping TESTING's next-free counter; again after merging main (13 min).
+**Merge (2026-10-11, after the NOTES split):** renumbered v1.128 → v1.130, TESTING 210 → 212 (flow and vehicle took them); v1.130 and the Q188 amendment moved into `notes/economy.md`, NOTES.md kept as main's index plus one line. `check_numbers.mjs` missed the version collision on the pre-split branch (QUEUE *Proposed*, platform).
 **Next steps:** Caio answers W38 (defaults built). Q188 slice 2, the race panel by openness (with flow). Q206, the
 commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; re-plan for W23's amendment), Q184
 (routines; W27's amendment), Q187 (plan).

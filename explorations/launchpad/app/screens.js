@@ -45,15 +45,15 @@ const KEYS={
     {k:['v'],l:'V',d:'RCS on/off'},{k:['i','k','j','l','u','o'],l:'I K · J L · U O',d:'RCS translate: along the nose · sideways · sideways'},
     {k:[',','.','/'],l:', . /',d:'warp down / up / 1×'},{k:['m'],l:'M',d:'map'},{k:['g'],l:'G',d:'cycle the target'},
     {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['p'],l:'P',d:'solar wings out/folded'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
-    {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['enter'],l:'Enter',d:'end the flight once it is over (landed or lost): the debrief',act:()=>{const b=$('bEnd');if(b&&!b.classList.contains('hidden'))go('debrief')}},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
+    {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['enter'],l:'Enter',d:'recover the vessel or end the flight once it is over (landed or lost): the debrief',act:()=>{const b=$('bEnd');if(b&&!b.classList.contains('hidden'))go('debrief')}},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
   map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
     {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
   network:[{k:['p'],l:'P',d:'Program',go:'program'},{l:'hover',d:'a booking or an event: what it is'}],
-  rollout:[{k:['l'],l:'L',d:'launch (the checks above decide)',act:()=>$('launch').click()},{k:['b'],l:'B',d:'back to Assembly',go:'assembly'}],
-  debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Assembly: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
-  program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{k:['n'],l:'N',d:'the network: the fleet and the pads (once something of ours is out there)',go:'network'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
+  rollout:[{k:['l'],l:'L',d:'launch (the checks above decide)',act:()=>$('launch').click()},{k:['b'],l:'B',d:'back to the design table',go:'assembly'}],
+  debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Design table: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
+  program:[{k:['b'],l:'B',d:'build: go to the design table',go:'assembly'},{k:['n'],l:'N',d:'the network: the fleet and the pads (once something of ours is out there)',go:'network'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
   assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['l'],l:'L',d:'roll out: the site, the checks, then launch',go:'rollout'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
     {k:['r'],l:'R',d:'radial decoupler'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
@@ -61,7 +61,7 @@ const KEYS={
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}],
   rover:[{k:['w','s'],l:'W / S',d:'drive forward / back'},{k:['a','d'],l:'A / D',d:'steer (front and rear wheels, opposite ways)'},{k:[' '],l:'Space',d:'brake (stopped, it holds itself)'},
     {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom (it swings back behind the rover as it drives)'}]};
-const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout',network:'Network'};
+const SCREEN_NAME={program:'Program',assembly:'Design table',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout',network:'Network'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.filter(r=>!r.tester||TEST.on).map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
@@ -83,7 +83,7 @@ let perfOn=false;try{perfOn=localStorage.getItem('launchpad-perf')==='1'}catch(e
 document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}${['flight','map','rover'].includes(screenNow())?' · paused':''}</h2>`+b('close','Resume  [Esc]')
-    +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
+    +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here').replace('End flight',debRecover()?'Recover vessel':'End flight')+b('assembly','Back to the design table','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
     +(['assembly','rover','debrief','rollout','network'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.ov){ovClose(d.ov);return}
