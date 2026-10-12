@@ -5389,6 +5389,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 (routines; W27's amendment), Q187 (plan).
 
 
+## 2026-10-12 — Caio + Claude (launchpad vehicle session): Q249, staging by drag and drop (v1.141)
+- **Done** (on `main`, pushed; PLAYTEST #47): the Assembly's *Staging* panel: drag an action onto a stage to fire it
+  there, or between stages for a stage of its own; drag a stage by its number onto another to merge them, or between two
+  to move it; ⇣ merges with the next stage, ⤵ splits an action off (◀ ▶ gone). A stage already fired several actions in
+  one press; now the panel says so. `stgEdit` is the pure move (on `BLD`); the sim is unchanged.
+- **Checked:** test `vehicle-15`; full suite in four chunks (low memory) before the merge, vehicle + flow after it;
+  the browser with real drag events (merge, a chip past the end, undo). Renumbered v1.140 → v1.141, TESTING 222 → 223.
+- **Files:** `builder.js`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`.
+- **Next for vehicle:** the orchestrator's Q328, then Q237/Q238, Q202; Q329 (action groups) builds on this panel.
+
 ## 2026-10-12 — Caio + Claude (launchpad vehicle session): Q327, the craft stays where it was put (v1.139)
 - **Done** (on `main`, pushed; PLAYTEST #78): in the Assembly, with nothing built, a held part now floats with the cursor
   and hangs where it is clicked (`placeRoot`), instead of dropping onto the base plate. Clicking the root picks up the
