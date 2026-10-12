@@ -912,7 +912,7 @@ step on physics where the page coasts on rails like `procFly`; a failed relight 
 seeds with poor part data, all 36 rolled break-ups and dead engines give the headless reason; the buttons, the frame
 hook and the liftoff's skipped waits). TESTING row 222.
 
-## v1.142 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167; Q49 slice 4 with economy)
+## v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167; Q49 slice 4 with economy)
 Since v1.44 a mission to another body pays 20 % when the flight is on course and 20 % on arrival, but only during the
 flight. Since v1.90 a vessel still coasting at flight end carries on between flights. Until now, one that reached Selene
 between flights paid nothing on arrival. Now it does:

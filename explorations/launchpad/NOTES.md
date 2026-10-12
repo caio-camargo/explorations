@@ -214,6 +214,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.75 — the seeded small bodies' ground, a recipe factory (2026-10-09, world session, GROUND.md G7)
 - v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
 - v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
+- v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 
@@ -234,7 +235,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.131 — mission control, a room (2026-10-12, flow session, QUEUE Q241 R4; § "Plan: real screens"; Q203)
 - v1.138 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
 - v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
-- v1.142 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
+- v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

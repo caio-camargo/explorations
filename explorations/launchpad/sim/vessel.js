@@ -448,10 +448,9 @@ function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;s.hmax=0;
   s.mass=m*1000;s.cm=c;s.com=c[1];s.yBot=yb-c[1];s.yTop=yt-c[1];s.len=yt-yb;s.I=[Ix,Iy,Iz]}
 // Shape-derived data, rebuilt whenever parts come off: one merged outer profile per stack line (core and each side
 // stack, so joints between equal radii are not surfaces), fins, the parachute, and a children-first joint order.
-function rebuildShape(s){
-  const ps=s.parts.filter(p=>p.on),lines=new Map();
+// the stack lines' outer profiles for a set of parts (also a spent stage's hull at sea, Q300)
+function shapeLines(ps){const lines=new Map(),out=[];
   for(const p of ps){if(p.d.noAero||shielded(p))continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
-  s.lines=[];
   for(const lp of lines.values()){lp.sort((a,b)=>a.y0-b.y0);const pts=[];for(const p of lp)for(const[r,y]of profOf(p))pts.push([r,p.y0+y,p]);
     // an interstage shell fills out everything it encloses to its own radius, and owns that surface
     for(const q of lp)if(q.shell){const y0=q.y0+q.h-1e-6,y1=y0+q.shell+2e-6;for(const pt of pts)if(pt[1]>=y0&&pt[1]<=y1&&pt[0]<q.d.r){pt[0]=q.d.r;pt[2]=q}}
@@ -463,7 +462,10 @@ function rebuildShape(s){
     for(let i=0;i<E.length;i++){let a=0,b=0;for(let j=0;j<i;j++)a=Math.max(a,E[j].r0,E[j].r1);for(let j=i+1;j<E.length;j++)b=Math.max(b,E[j].r0,E[j].r1);
       E[i].cav=Math.max(E[i].r0,E[i].r1)<Math.min(a,b)-1e-3}
     const rad=Math.max(...E.map(e=>Math.max(e.r0,e.r1))),len_=lp[lp.length-1].y0+lp[lp.length-1].h-lp[0].y0;
-    s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],yLo:lp[0].y0,yHi:lp[lp.length-1].y0+lp[lp.length-1].h,radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
+    out.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],yLo:lp[0].y0,yHi:lp[lp.length-1].y0+lp[lp.length-1].h,radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
+  return out}
+function rebuildShape(s){
+  const ps=s.parts.filter(p=>p.on);s.lines=shapeLines(ps);
   const cl=s.lines.find(l=>l.core)||s.lines[0];s.radius=cl?cl.radius:R0;
   s.grp=flowGroups(s,onArr(s));
   for(const p of ps){p.area=0}for(const ln of s.lines)for(const e of ln.E)e.p.area+=6.2832*e.rm*e.L;
