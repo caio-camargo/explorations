@@ -5602,3 +5602,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `explorations/launchpad/builder.js`, `sim/vessel.js` (`assemble`, `launchWarnings`), `sim/procedures.js` (`procKey`), `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `PLAYTEST.md`.
 - **Tests:** full suite passed before merging main; after the merge, sections 1–147 passed and 148–196 were stopped by low memory. Caio pushed anyway and will playtest.
 - **Next for vehicle:** Q329 (action groups, builds on Q328 and the staging panel), then Q237/Q238, Q202.
+
+## 2026-10-12 — vehicle session: Q337 (PROBES S1) v1.146 + v1.147
+
+- **Done:** v1.146 the payload fairing (`fair`, `fair25`: a shell whose length is set on the node encloses the payload, shielded from air and heat; a staging atom drops it in two halves after the first separation; a length row and a cutaway on the desk; the Rollout warns what sticks out). v1.147 the whip and boom antenna (P unfolds, gain ×5, tears off out in air), side forms of camera, instruments, battery and computer (sharing their inline part's know-how via `kin`), the Trim line, a Rollout warning past 60%, the thrust line and the CoM marker at the real CoM. Caio put Q337 before Q329.
+- **Split out:** the folding boom is **Q341** (parts that move when they deploy).
+- **Slip:** a merge-resolution script crashed before writing and the `;`-chained commands pushed QUEUE.md's conflict markers to `main`; fixed in `d496b56` a minute later. LESSONS #42 amended.
+- **Files:** `sim/vessel.js`, `sim/flight.js`, `sim/space.js` (`shielded`, `profOf`, `antOf`, `vstOf`/`vesselOf`, `vesselFrom`), `sim/power.js`, `sim/program.js` (`PRICE`, `PART_GATE`, `kinOf`), `app/gl.js`, `app/render.js`, `app/editor.js`, `app/input.js`, `builder.js`, `test.mjs` (exposes `trimOf`), `tests/vehicle.mjs` (vehicle-17..19), notes/vehicle.md, NOTES.md, TESTING 228–229, QUEUE.
+- **Tests:** full suite passed before each push (678 checks, run in four chunks for memory).
+- **Next for vehicle:** Q329 (action groups), then Q341 (folding boom), Q338 (pointing).
