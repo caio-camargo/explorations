@@ -5566,3 +5566,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   machine had 35.2 of 38.2 GB committed (22 Chrome, 3 Node processes from other sessions), the conditions that stopped
   Q19 twice before. Next: on a quiet machine, check it pixel-identical to `main` on Low and High, then the timing A/B
   (sky ms at the grazing-hills view; first-load link time), then merge. Claim cleared.
+
+## 2026-10-12 — Caio + Claude (launchpad flow session): the slow world (D19) and Q167, missions in flight pay along the way (v1.143)
+- **The slow world (Caio's idea, an aside):** a planet with a very long day and night, written into `SYSTEM.md` § "The
+  slow world" for the reserved innermost slot (Mercury's 3:2: ~97 program days of sun, 97 of night; the terminator
+  walks at ~2 km/h; polar ice beside sunlit ridges; surface launch windows every ~32 days). Caio approved all four
+  defaults: DECISIONS D19; SYSTEM 1.1.3; a Proposed line, ranked by the orchestrator as Q331.
+- **Q167 built:** a vessel left in flight pays its mission's on-course and arrival shares when it enters the moon's
+  sphere between flights (`stagedCruise`), only for missions open at its launch (`q.open0`, W11). Mission control's
+  Flight row and the timeline's arrival say "The far side pays 96M on arrival".
+- **Files:** `sim/program.js`, `sim/space.js` (three small additions), `app/mission.js`, `tests/flow.mjs` (flow-16),
+  `notes/flow.md` § v1.143, NOTES index, TESTING 225, QUEUE, ACTIVE_WORK.
+- **Checks:** full suite all passed before the merges, smoke after; browser: the green line on the row, and Wait to the
+  arrival paid 96M. Renumbered once (world took v1.142 and TESTING 224).
+- **Next for flow:** Q170 (N2 on the wall), Q309, Q310, then Q241 R3, R5. Noticed: the Flight row's "where" says
+  "Selene orbit" for a vessel only passing through (`netModel`, economy's wording).
+
