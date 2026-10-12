@@ -60,7 +60,7 @@ function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<
 // procedure for the design and the mission ('Selene:land', 'Selene:orbit'), kept only if it spent less Δv in all.
 function procMission(s,P){const M=P.m||(P.m={ev:[],last:s.body,landed:false,surfStage:0}),b=s.body,t=simT;if(M.kept||!s.alive)return;
   if(b!==M.last){M.ev.push({k:b.parent===M.last?'enc':'esc',body:(b.parent===M.last?b:M.last).name,t});M.last=b;M.fresh=true}if(s.throttle>0)M.fresh=true;
-  if(s.landed&&!M.landed){M.landed=true;M.ev.push({k:'land',body:b.name,t,v:s.touchV||0,orb:M.orb,pass:M.pass,pf:toPF(b,s.r,simT).map(x=>+x.toFixed(1))})}
+  if(s.landed&&!M.landed){M.landed=true;M.ev.push({k:'land',body:b.name,t,ev:s.evIdx,v:s.touchV||0,orb:M.orb,pass:M.pass,pf:toPF(b,s.r,simT).map(x=>+x.toFixed(1))})}
   else if(!s.landed&&M.landed){M.landed=false;M.ev.push({k:'takeoff',body:b.name,t,staged:M.surfStage});M.surfStage=0;M.orb=null}
   if(!s.landed&&!(s.throttle>0)&&b!==TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e>=1||el.ap>soiAt(b,t)){if(!M.orb&&M.fresh){M.pass=el.pe-b.R;M.fresh=false}}else if(el.pe>b.R)M.orb={pe:el.pe-b.R,ap:el.ap-b.R}}   // the pass as the executor's trim sees it: osculating, right after SOI entry or a burn
@@ -75,7 +75,7 @@ function procMissionKeep(s,P,M){const E=M.ev,enc=E.find(e=>e.k==='enc');if(!enc|
   const B=enc.body,land=E.find(e=>e.k==='land'&&e.body===B),off=E.find(e=>e.k==='takeoff'&&e.body===B),esc=E.find(e=>e.k==='esc'&&e.body===B);
   const capOrb=land?land.orb:M.orbBeforeEsc||null,phases=[{k:'transfer',to:B,pass:Math.max(10e3,(land?land.pass:M.pass)??40e3)}];
   if(capOrb)phases.push({k:'capture',ap:capOrb.ap+20e3,pe:Math.max(10e3,capOrb.pe)});
-  if(land){if(land.pf)phases[0].site=land.pf;phases.push(land.pf?{k:'land',site:land.pf}:{k:'land'},{k:'surface',t:off?off.t-land.t:600});   // back to the same spot (a base, say)
+  if(land){if(land.pf)phases[0].site=land.pf;phases.push({k:'land',...land.pf?{site:land.pf}:{},...land.ev!=null?{ev:land.ev}:{}},{k:'surface',t:off?off.t-land.t:600});   // back to the same spot (a base, say); ev: staging events fired by touchdown, what the builder's Touchdown line drops (Q325)
     const asc=M.orbAfterOff||{pe:15e3,ap:20e3};phases.push({k:'ascend',stage:off?off.staged:0,pitchH:3000,ap:Math.max(asc.pe,asc.ap-2e3),pe:asc.pe})}
   if(!capOrb&&!land)phases.push({k:'home',perigee:M.entryPe??45e3});   // a free return: past the moon and home
   else phases.push({k:'return',perigee:M.entryPe??45e3});

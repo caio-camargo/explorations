@@ -75,6 +75,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
 - v1.129 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
 - v1.133 — why a landed rocket blew up: toppling explained, a loss keeps its cause (2026-10-12, vehicle session, QUEUE Q264; PLAYTEST #64)
+- v1.136 — the Touchdown quote for what lands: after its drops, on the body it lands on (2026-10-12, vehicle session, QUEUE Q325)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
