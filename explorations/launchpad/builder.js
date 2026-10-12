@@ -33,8 +33,9 @@ function design(){
 function ensureIds(D){const all=nodes(D.root);let m=0;const seen=new Set();for(const n of all)if(n.id!=null){if(seen.has(n.id))delete n.id;else{seen.add(n.id);m=Math.max(m,n.id)}}
   for(const n of all)if(n.id==null)n.id=++m}
 const noIds=n=>{delete n.id;kids(n).forEach(noIds);return n};
-function snapshot(){st.undo.push(JSON.stringify(design()));if(st.undo.length>80)st.undo.shift();st.redo.length=0}
-function restore(from,to){if(!from.length)return;to.push(JSON.stringify(stackDef));stackDef=JSON.parse(from.pop());st.held=null;st.sel=null;st.hover=null;editorChanged()}
+// an undo step keeps the design's height over the plate too (Q327): {u, d, gap}; not in the design, whose JSON keys its procedures
+function snapshot(){st.undo.push(JSON.stringify({u:1,d:design(),gap:st.gap||0}));if(st.undo.length>80)st.undo.shift();st.redo.length=0}
+function restore(from,to){if(!from.length)return;to.push(JSON.stringify({u:1,d:stackDef,gap:st.gap||0}));const e=JSON.parse(from.pop());stackDef=e&&e.u?e.d:e;st.hang=e&&e.u?e.gap:null;st.held=null;st.sel=null;st.hover=null;editorChanged()}
 function loadDesign(d){st.held=null;st.sel=null;st.hover=null;stackDef=cl(d);st.reframe=true;editorChanged()}
 // The cant (degrees, −30…30) that balances the thrust: the engines burning when this one fires — this node's copies at
 // cant θ, the rest as they are — push with zero net torque about the centre of mass of what is still attached then (full
@@ -71,7 +72,16 @@ function parkedInst(){const D=stackDef;if(!isV2(D)||!D.park||!D.park.length||isE
 function floatAt(){const r=mouseRay(),w=V();if(!r||!w||!st.held)return null;const G=trial({root:true}),c=G.reduce((a,g)=>a+g.y0+g.h/2,0)/G.length,
   T=add(r.o,mul(r.d,len(sub(w.camW,shipWorld())))),sh=isEmpty(stackDef)?0:S.parts[0].y0-S.parts[0].inst.y0;
   return{v:[T[0],sh+T[1]-c,T[2]],G:G.map(g=>({...g,pos:[g.pos[0]+T[0],0,g.pos[2]+T[2]],y0:g.y0+T[1]-c}))}}
-function parkHeld(){const f=floatAt(),r=rootPart();if(!f||!r)return;if(collides(f.G)){note('Blocked: it would overlap a part');return}
+// (Q327, PLAYTEST #78) with nothing built, a held part (or the whole rocket, picked up by its root) is put down where it
+// floats, its bottom that high over the plate, as in KSP's VAB; the camera stays where it was unless a new start reframes
+const HANG_MAX=20;   // m over the plate
+const plateY=()=>S&&S.cm&&isFinite(S.cm[1])?S.cm[1]+S.yBot-(st.gap||0):0;   // the plate, in the last ship's vessel coordinates
+function placeRoot(keep){const f=floatAt(),h=st.held;if(!f||!h)return;
+  if(PARTS[h.k].surf){note(`${name(h.k)} goes on the side of a part: start with something else`);return}
+  const pl=plateY(),t=S&&S.cm?S.cm[1]+(cam.edY||0)-pl:null,fresh=st.reframe;
+  st.hang=clamp(Math.min(...f.G.map(g=>g.y0))-pl,0,HANG_MAX);place({root:true},keep);
+  if(!fresh&&t!=null&&isFinite(t))cam.edY=t+S.yBot-st.gap}   // the camera's target keeps its height over the plate
+function parkHeld(keep){if(isEmpty(stackDef))return placeRoot(keep);const f=floatAt(),r=rootPart();if(!f||!r)return;if(collides(f.G)){note('Blocked: it would overlap a part');return}
   snapshot();const D=design(),h=st.held;delete h.at;(D.park||(D.park=[])).push({n:h,p:[+(f.v[0]-r.pos[0]).toFixed(3),+(f.v[1]-r.y0).toFixed(3),+(f.v[2]-r.pos[2]).toFixed(3)]});
   st.held=null;st.ghostKey='';st.parkKey='';editorChanged();note(`${name(h.k)} parked in the air: not part of the rocket until you attach it again`)}
 
@@ -104,7 +114,7 @@ function stackSlots(){const out=[];if(isEmpty(stackDef))return out;
   return out}
 function findSlot(){const h=st.held;if(!h||!st.mouse)return null;
   const surf=!!PARTS[h.k].surf;
-  if(isEmpty(stackDef))return surf?null:{root:true};
+  if(isEmpty(stackDef))return null;   // nothing built: the part floats with the cursor and is put down where clicked (placeRoot)
   const need=heldNeeds(h),m=st.mouse;let best=null,bd=NODE_PX*DPR();
   if(!surf)for(const s of stackSlots()){if(s.side==='u'&&!need.bot||s.side==='d'&&!need.top)continue;const q=proj(s.v);if(!q)continue;
     const dd=Math.hypot(q[0]-m[0],q[1]-m[1]);if(dd<bd){bd=dd;best=s}}
@@ -132,14 +142,15 @@ function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.in
   for(let i=0;i<all.length;i++){for(const e of ex)if(hit(all[i],e))return true;for(let j=i+1;j<all.length;j++)if(hit(all[i],all[j]))return true}
   return false}
 function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?noIds(cl(h)):h;
-  if(slot.root){delete put.at;D.root=put;st.reframe=true}else{put.at=cl(slot.at);kids(slot.p.dn).push(put)}
+  if(slot.root){delete put.at;D.root=put;if(st.hang==null)st.reframe=true}else{put.at=cl(slot.at);kids(slot.p.dn).push(put)}
   ensureIds(D);if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
 function pickUp(p,copy){const n=p.dn,D=design();
-  if(!copy&&n===D.root&&kids(n).length){note('That is the root part: everything hangs from it. Pick up the parts around it instead.');return}
+  if(!copy&&n===D.root&&kids(n).length){snapshot();const pk=D.park;D.root=null;if(pk)D.park=pk;st.held=n;st.sel=null;st.ghostKey='';editorChanged();   // the whole rocket (Q327); parked parts wait, placed relative to the root
+    note('The whole rocket: click where it should hang · right-click drops it (Ctrl+Z brings it back)');return}
   if(copy){st.held=noIds(cl(n));delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
   snapshot();detachNode(n);st.held=n;st.sel=null;st.ghostKey='';editorChanged()}
 function grab(k){st.held={k,c:[]};if(PARTS[k].kind==='rover'&&typeof rvPack==='function')st.held.rvd=rvPack();st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
-function drop(){if(!st.held)return;st.held=null;st.ghostKey='';refresh()}
+function drop(){if(!st.held)return;st.held=null;if(isEmpty(stackDef)&&stackDef&&stackDef.park)delete stackDef.park;st.ghostKey='';refresh()}
 function del(n){if(!n)return;snapshot();detachNode(n);if(st.sel&&nodes(n).includes(st.sel))st.sel=null;editorChanged()}
 let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target');if(e)e.innerHTML=statusHTML()}
 // (Q236, PLAYTEST #39) how many copies a radial placement makes, in plain sight while a part is held: on the side of a
@@ -147,7 +158,7 @@ let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target
 function mountsHTML(){return`<div class="bmounts"><span>radial mounts</span>${SYM.map(n=>`<button data-sym="${n}" class="${st.sym===n?'on':''}">×${n}</button>`).join('')}<span class="dim">[X]</span></div>`}
 function statusHTML(){
   if(st.msg&&performance.now()-noteT<6000)return`<span class="acc">${st.msg}</span>`+(st.held?mountsHTML():'');
-  if(st.held)return`holding <b>${name(st.held.k)}</b>${nodes(st.held).length>1?` +${nodes(st.held).length-1}`:''} · click a glowing node or a surface, or in the air to park it · right-click drops it`+mountsHTML();
+  if(st.held)return`holding <b>${name(st.held.k)}</b>${nodes(st.held).length>1?` +${nodes(st.held).length-1}`:''} · ${isEmpty(stackDef)?'click where it should hang':'click a glowing node or a surface, or in the air to park it'} · right-click drops it`+mountsHTML();
   const pk=parkedInst().length;if(pk&&!isEmpty(stackDef))return`<span class="warn">${pk} part${pk>1?'s':''} parked in the air</span>, not attached: click to pick ${pk>1?'them':'it'} up and attach, or Del · a launch leaves ${pk>1?'them':'it'} here`;
   return isEmpty(stackDef)?'pick a part to start: the first one placed is the root (a command pod, usually)':'pick a part below, or click one on the rocket to move it · right-click a part for its options'}
 
@@ -395,17 +406,20 @@ function refresh(){panel();palette();const t=el('target');if(t)t.innerHTML=statu
 const LIFT=3;   // in the editor the ship hangs this far above the pad (as in a VAB), so parts can go under its bottom
 // (Q247, PLAYTEST #44) The design stays where it was while it is edited: the root part keeps its place on screen and
 // above the pad (or the desk's base plate). Removing parts underneath leaves the rest hanging, `gap` above the plate;
-// building below the plate pushes the plate down, never the rocket up. A new design (a preset, the first part, Clear,
-// another root) starts on the plate again. pin = {id, y: the root's bottom above the design's bottom, c: … above the CoM}
+// building below the plate pushes the plate down, never the rocket up. A preset or a saved design starts on the plate;
+// since Q327 (PLAYTEST #78) the first part, or the whole rocket moved by its root, hangs where it is put down (placeRoot),
+// another root keeps the height, and undo brings the height back with the design. pin = {id, y: the root's bottom above the design's bottom, c: … above the CoM}
 const rootPart=()=>S.parts.find(p=>p.core&&p.dn&&!p.dn.at);
 function pinTo(){const r=!isEmpty(stackDef)&&rootPart(),old=st.pin;
   if(!r){st.pin=null;st.gap=0;return}
   const p={id:isV2(stackDef)?r.dn.id:'preset',y:r.y0,c:r.y0-S.cm[1]};st.pin=p;   // a preset's first edit keeps its root (design())
-  if(st.reframe||!old||old.id!==p.id&&old.id!=='preset'){st.gap=0;return}
+  if(st.hang!=null){st.gap=st.hang;st.hang=null;return}   // put down at a height (placeRoot) or undone to one (Q327)
+  if(st.reframe||!old){st.gap=0;return}
+  if(old.id!==p.id&&old.id!=='preset')return;   // another part made the root: the design itself didn't move (Q327)
   st.gap=Math.max(0,old.y+(st.gap||0)-p.y);   // the plate stays put unless the design now reaches below it
   cam.edY=(cam.edY||0)+p.c-old.c}             // the camera looks at the CoM: follow the shift so the root stays still
 function changed(){
-  if(isEmpty(stackDef)){shipMesh&&shipMesh.free();shipMesh=null;if(S)S.ana=null;st.pin=null;st.gap=0}
+  if(isEmpty(stackDef)){shipMesh&&shipMesh.free();shipMesh=null;if(S)S.ana=null;st.pin=null}   // the plate stays put while it's empty (Q327)
   else{pinTo();S.pf=mul(S.site.u,TELLUS.R+S.site.h-S.yBot+LIFT+st.gap);syncLanded(S)}   // above the chosen launch site's levelled pad
   st.hover=null;st.ghostKey='';st.hiKey='';refresh()}
 // the plate the design stands on, in the ship's frame (y from the CoM): its bottom, or lower while parts below were removed
@@ -445,7 +459,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     st.mouse=e.target===cvs?cpos(e):null;if(st.press&&Math.hypot(e.clientX-st.press.x,e.clientY-st.press.y)>5)st.press.drag=true;update()});
   addEventListener('mouseup',e=>{if(mode!=='editor')return;const p=st.press;st.press=null;if(st.pan){st.pan=false;return}
     if(!p||p.drag||e.target!==cvs)return;
-    if(p.b===0){if(st.held){const s=st.slot;if(s&&!s.bad)place(s,p.mod.shift);else if(s&&s.bad)note('Blocked: it would overlap a part');else if(!s)parkHeld()}
+    if(p.b===0){if(st.held){const s=st.slot;if(s&&!s.bad)place(s,p.mod.shift);else if(s&&s.bad)note('Blocked: it would overlap a part');else if(!s)parkHeld(p.mod.shift)}
       else if(st.hover){const pp=S.parts.find(q=>q.on&&q.dn===st.hover&&!q.inst.rdec)||S.parts.find(q=>q.dn===st.hover)||parkedInst().find(q=>q.dn===st.hover);if(pp)pickUp(pp,p.mod.ctrl)}
       else if(st.sel){st.sel=null;refresh()}}
     else if(p.b===2){if(st.held)drop();else if(st.hover){st.sel=st.hover;refresh()}else if(st.sel){st.sel=null;refresh()}}

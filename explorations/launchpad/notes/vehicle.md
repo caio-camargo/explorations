@@ -1351,3 +1351,23 @@ Test `vehicle-12`. `--smoke` all pass.
 - **Not yet:** a legless lander (Lunar, Sample Return, Crewed Lunar) with no landing procedure is quoted for its last
   stage (the return capsule), not the stage that sets down on Selene: only a recorded procedure knows that. Q152 (a
   legged lander preset, parked) would make the presets' case right. Test `vehicle-14`; TESTING 218.
+
+## v1.139 — the craft stays where it was put (2026-10-12, vehicle session, QUEUE Q327; PLAYTEST #78; finishes Q247, v1.118)
+
+- **What sank:** with nothing built, any click put the first part on the base plate (`findSlot` returned the root slot
+  wherever the cursor was), and a new root, a reroot or the first part after Clear set `st.gap` back to 0. Q247 only
+  kept the height while parts below were removed.
+- **Now** (`builder.js`): with nothing built, a held part floats with the cursor (the parking ghost) and **`placeRoot`**
+  puts it down there, its bottom that high over the plate (`st.hang`, clamped 0–20 m, read by `pinTo`). **Picking up
+  the root takes the whole rocket** (it used to refuse): the design is empty while it's held, parked parts wait (they are
+  placed relative to the root), and a click hangs it where it floats; right-click drops it (Ctrl+Z brings it back). The
+  camera keeps its target's height over the plate, unless a new start (Clear, a fresh page) reframes it. Another part
+  made the root keeps the height (the design didn't move). The plate stays put while the design is empty.
+- **Undo** carries the height: an undo step is `{u: 1, d: design, gap}` (old plain entries still restore). It is not in
+  the design, because `procKey` is the stack's JSON and a height would split a design's procedures.
+- **Unchanged:** a preset or a saved design starts on the plate; the rollout and the launch stand it on the pad
+  (`resetShip`). Removing or adding parts below works as Q247 made it.
+- **Checked** in the browser (`shot.mjs`, events on the canvas): the Hopper picked up by its pod and put down 4.85 m up,
+  the camera still; a first tank after a new start hanging 7 m over the plate. No headless test: the builder's pin needs
+  the view (as Q247's). TESTING 221. **For look:** a hanging model has nothing under it on the desk; a display rod from
+  the base plate to its bottom (`deskMesh`, from `BLD.foot()` to `S.yBot`) would explain it (QUEUE *Proposed*).
