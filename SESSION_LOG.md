@@ -6078,4 +6078,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `netstat` before picking a port. Renumbered v1.192 → v1.194 and TESTING 273 → 275 after flow and world pushed.
 - **Next for sky & bodies:** Q374 (Selene and planets from space under Q321's exposure), Q395/Q407; *Proposed*:
   earthshine in `airlessFill`, a view with cloud in front of Selene.
-
+- **Addendum (effects, sound overflow):** v1.195 Q222: the Steppe rollout's sound (`sndRoll`: the car's rumble with its speed, a double clack per 12.5 m rail joint, the boom's pump climbing 120 → 230 Hz, the arms' rams, a clunk per phase; the master opens on the Rollout screen). Test sound-3; TESTING 276 (not ear-checked). Claim idle.

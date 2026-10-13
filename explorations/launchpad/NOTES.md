@@ -100,6 +100,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies, QUEUE Q399, PLAYTEST #96)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
+- v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
 - v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 
 ## Space: [`notes/space.md`](notes/space.md)

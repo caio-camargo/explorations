@@ -1892,3 +1892,21 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
 - **Views:** 164 from 1,000 km over the terminator, 165 from low Tellus orbit (12 px), 166 the night side by
   Tellus-light, 167 setting through the limb's air, 168 full from under the deck at night. Stills
   `output/launchpad/beauty/q322s2-before/`, `q322s2-after/`, regression `q322s2-reg-*`. Test `aerofx-30`. TESTING 275.
+
+## v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects beat as sound overflow, QUEUE Q222)
+
+`app/sound.js` (`sndRoll` in the mix block, `sndRollEvents`, `AUD.RR`/`AUD.RH`, `SHOT.clack`/`clunk`, `sndTick`).
+
+- **On the Rollout screen at a Steppe pad** (where `rollPhase()` runs; the master gain now opens there too), on the
+  same clock the drawing uses (7 s on the rails, 5 s for the boom, 1.5 s for the arms):
+  - **the car's rumble**, a brown-noise lowpass at 45–140 Hz, loudest mid-way, as the car is fastest (the drawing's
+    smoothstep: still at both ends);
+  - **rail joints**: a wheel crosses one every 12.5 m (9 over the ~118 m), a double clack each (a bogie's two axles);
+  - **the boom's pump**: a sawtooth through a bandpass with a little hiss, climbing 120 → 230 Hz as the boom raises
+    the rocket; the arms' rams after it, quieter at 260 Hz;
+  - **clunks**: as the car reaches the buffers, the boom locks upright (the heaviest) and the arms close.
+- Leaving the screen or restarting the rollout (another site) resets quietly. The levels sit under the engines'
+  (rumble 0.5, pump 0.07 of the master) but **are not ear-checked**: headless Chrome runs no audio. TESTING 276.
+- **Not touched:** whether the rocket reads right lying ~10 m up on the boom's cradle arms (Q222's other half, a look
+  at the Q159 boom's geometry): it read fine in the earlier rollout stills; reopen if it looks off in play.
+- **Check:** test `sound-3`.
