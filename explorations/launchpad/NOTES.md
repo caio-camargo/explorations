@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -183,6 +183,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: money buys capacity (2026-10-09, economy session, QUEUE Q123; nothing built)
 - Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
 - Plan: overflight politics (2026-10-09, economy session, QUEUE Q96; nothing built)
+- Plan: rivals' satellites as targets (2026-10-13, economy session, QUEUE Q187; W22.3; nothing built)
 - Plan: station, base, relay and rendezvous contracts (2026-10-09, economy session, QUEUE Q9; nothing built)
 - v1.66 — rover prices and gates; Selene science contracts (2026-10-09, economy session, QUEUE Q10)
 - v1.69 — dispatch to a base: supply runs (2026-10-09, economy session, QUEUE Q61)

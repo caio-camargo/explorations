@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2878,3 +2878,74 @@ bailouts don't move; with 8 seeds that's not separable from noise, so I'm noting
 Tests: `econ-23` (2 checks: no loss, the same job comes back with its reason; a full board waits, a sanctioning client or
 a vanished target drops it); `econ-9`'s withdraw check and core's missed-deadline check rewritten to the new rule. Test
 fixtures that reset `offers`/`active` reset `back` too.
+
+## Plan: rivals' satellites as targets (2026-10-13, economy session, QUEUE Q187; W22.3, with space; nothing built)
+
+**Today:** rivals are progress counters (`PROG.riv`, v1.130); no rival satellite exists as an object. Rendezvous and
+retrieval contracts (v1.98) target our own quiet satellites and spent hardware (`rdvTick`, the bay retrieval). The pieces
+a stealth model needs exist: `inShadow(b, r)` (`sim/power.js`), per-power computing lag (`compLag(i)`), sanctions
+(`sanction(i, days, why)`), opinion and relations (`opAdd`, `relOf`), the Debrief's incidents, the military offers' leak
+rule (`offerRisk`, `LEAK_P`). The design is vehicle notes § "Satellite hacking" (Caio) and W22.3 (retrieval on hacking's
+stealth rules).
+
+**1. Rival satellites as objects** (space + economy). A rival that has reached orbit (`PROG.riv[i].got.orbiter`)
+launches satellites by its budget and priorities: security → spy and early warning, commerce → comms, science →
+weather and science; a handful each (cap ~6), replaced as they age. They live in their own list, `PROG.rsats` (not
+`PROG.sats`, so our earnings, power, aging and servicing never touch them), on rails, with `owner`, `kind`, `era`,
+`value` (refurbishment worth), a generic shape by the owner's school, and the owner's colour on the map. `satAt` places
+them; `tgtOf` and `loadEntry` accept them as targets so a flight can approach and dock with one like any registry
+object. Coarse: they don't manoeuvre or decay.
+
+**2. One stealth model: exposure.** During a flight, `stealthTick(s, R)` (beside `rdvTick`) accumulates **exposure**
+to each owner whose satellite is within `STEALTH_D` = 5 km:
+- **Sunlight:** the craft sunlit adds exposure each second (`SUN_K`); in Tellus's shadow nothing (optical trackers
+  see a sunlit craft against a dark sky: the dawn and dusk rule, simplified to "sunlit is seen").
+- **Plume:** every burn inside `STEALTH_D` adds exposure by its Δv (`PLUME_K` per m/s), shadow or not: a big burn
+  close in gives you away.
+- **Radar:** once the owner tracks small objects by radar, exposure grows inside `STEALTH_D` at a steady rate whatever
+  the light: the window closes. The owner's radar era = its own computing era (world year − `compLag(i)`) reaching
+  *Onboard computers* (year 7 for a superpower, later for others): a tech-era window, as Caio's note asks.
+- **Time:** the work itself (holding for an inspection, the hack's minutes) multiplies what accumulates, so long jobs
+  must be done in shadow.
+
+Spotted with p = 1 − e^(−exposure) (a security state ×1.5), rolled once at the flight's end (seeded, like other
+flight rolls). An unspotted operation can still **leak** later at `LEAK_P`/2 within a year (the military offers' rule).
+The player sees exposure live, honestly: a HUD line *"Seen by Mirtov: low · sunlit · burn 3 m/s"* (flow's, one call)
+and the Debrief says whether anyone noticed.
+
+**3. Three operations, one model, rising stakes (k):**
+- **Inspection** (k = 1): within 100 m under 1 m/s for 60 s (the rendezvous rule with a hold). From a government or
+  military client whose relation with the owner is below −0.3; pays like rendezvous ×1.5. Opens once rivals have
+  satellites.
+- **Hacking** (k = 2, Caio's): hold within 20 m for minutes set by our computing era (hand 20, mainframe 10, onboard
+  3), carrying an antenna and a computer part. Payoff: the satellite's service is ours for ~30 days (a comms satellite's
+  pay, a spy satellite's imagery for our image contracts), or a client's job delivered. Opens with the first docking
+  (`stationcrew`), as retrieval does.
+- **Retrieval** (k = 3, W22): the existing bay retrieval on a rival satellite: home with it in a shut bay; its
+  hardware's value back as refurbishment (W22.4), and it leaves `PROG.rsats`. The owner always knows it is gone: if
+  unspotted, "lost, cause unknown", and suspicion falls on the powers able to dock (a small relation dip, shared).
+
+**4. Consequences when spotted** (× k): an **incident** (headline, Debrief line); the owner's opinion −8k and relation
+−0.1k; at k ≥ 2 with relation under −0.3, a **sanction** of 120k days (which cancels its contracts and its budget share,
+as today); its close friends (relation > 0.5) −2k opinion; tension rises with it. **At home:** a job for home's own
+military is quietly approved (+2 home opinion); our own initiative embarrasses an open home (−3k) and pleases a
+security state's (+2). Not spotted: the client pays a secrecy premium and nothing else happens. **No combat:** nothing
+here destroys anything. The anti-satellite test and its debris stay Q148's.
+
+**Questions for Caio** (numbered, with defaults; silence keeps them):
+1. **Rival satellites as real objects** on rails, a few per rival, drawn and flyable (default), or abstract targets in a
+   contract only?
+2. **Radar closes the window** at the owner's *Onboard computers* era (default), at *Mainframes* (a short window), or
+   never (stealth always possible)?
+3. **An unspotted retrieval:** the owner knows it's gone, cause unknown, suspicion shared among docking powers (default),
+   or no reaction at all?
+4. **Hacking's payoff:** its service is ours for ~30 days, or the client's job (default), or the contract pay only?
+
+**Slices** (⚙ unless marked; M2–M3):
+1. `PROG.rsats` from rival programs, on rails, on the map in their colours, approachable as targets (space + economy).
+2. `stealthTick`, the roll at the end, consequences and the Debrief incident; the HUD exposure line (🖥, with flow).
+3. Inspection contracts on rival satellites (rendezvous with a hold, from hostile-leaning clients).
+4. Retrieval of rival satellites (the bay rule; the owner's loss; suspicion).
+5. Hacking: the hold, the era's minutes, the payoff.
+Measure before tuning: fly the stock Docking preset to a rival satellite in shadow and in sunlight, with and without a
+final burn, and set `SUN_K`/`PLUME_K` so a careful night approach is ~10 % spotted and a sunlit one ~70 %.

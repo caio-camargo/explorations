@@ -5826,3 +5826,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/map-layers.js` (new), `app/render.js` (`drawMap`), `index.html`, `tests/flow.mjs`, `playtest.mjs`,
   `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
 - **Next for flow:** Q262 (centre the map on something else).
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): Q187 plan, rivals' satellites as targets
+- **Planned** (docs only): rival satellites as real objects from rival programs; one exposure model (sunlit, plume Δv, the owner's radar era, time on the job) rolled at the flight's end with a later leak chance; inspection, hacking and retrieval at stakes 1–3; spotted → incident, opinion, relation, sanctions at k ≥ 2; no combat.
+- **Files:** `explorations/launchpad/notes/economy.md` (new plan section), `NOTES.md`, `QUEUE.md` (Q187 ✓ plan, W41, two Proposed slices), `ACTIVE_WORK.md`.
+- **Next:** W41 (four defaults). Economy's ready list: Q181, Q184, Q296, Q332.
+
