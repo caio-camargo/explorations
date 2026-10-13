@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -80,6 +80,7 @@ The full text of every question as it was asked (options, reasons) is in
 | D20 | 2026-10-12 | **Payload parts, asymmetry, pointing** (Caio): side forms of the small boxes; antennas whip / boom / dish; narrow and wide cameras, radar, a scan platform; magnetometer and RTG booms; a payload fairing; the CoM and trim readout in the builder; **an attitude law that points any part at any target** (nadir, home, sun, a vessel or station, a site) with a second part for roll; **strict pointing**; slices S1 fit and shield → S2 point → S3 Voyager | PROBES.md, QUEUE Proposed (S1–S3), ROADMAP catalog |
 | D20 (amended) | 2026-10-12 | Pointing costs **power only**: no wheel-momentum or gas bookkeeping for holding a law, in flight or between flights; in-flight saturation under big torques stays as built, with its automatic dump (Caio: "maybe power is enough tradeoff here") | PROBES 0.1.1 § 5–6, QUEUE Proposed S2 |
 | D21 | 2026-10-12 | Probes, round 2 (Caio): **booms as a building part, folding and telescoping** (Voyager's two), tip mount, length set, fold to fit the fairing, load limit, tilt to 90° or 45° only (folding boom in S1); the era ladder per function (draft); attitude sensors (sun, horizon, star tracker) gate pointing (S2); beauty rules for probes; **a tooltip system**: terms, part cards, warnings that explain themselves | PROBES 0.1.3 § 3.4, 3.6, 5–9, UI.md rule 9, Q287, QUEUE Proposed |
+| D22 | 2026-10-12 | **The builder's right panel** (Caio: "much too long... very confusing, and this is a matter for better design, not more explanation"): build tools become a toolbar on the 3D view; the panel becomes **three tabs**: **Checks** (default: a GO/NO-GO board for the mission, each row a plain verdict and its fix, its numbers on click), **Stages** (the staging list, Δv/TWR/burn per stage; hovering a stage dims the rest, #81), **Part** (opens on selecting a part: what it's for, options, loads, pairs; replaces right-click). Writing rules: a verdict in plain words then the fix; no jargon as a label; show it on the rocket. The desk draws a clickable mock-up first | UI.md 0.1.4 (Assembly row, rule 14), Q237, Q286, Q340, `mockups/builder/` |
 | Q200 | 2026-10-09 | Debris: big pieces on rails; fragments as density per band, spawned as objects only near a monitored flight | LATE_GAME § Debris |
 
 ## Crew

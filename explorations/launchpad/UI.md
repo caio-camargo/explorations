@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -82,13 +82,14 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
 12. **What's clickable looks clickable**, one way, everywhere; stamps and labels never look like buttons.
 13. **One language per place:** the office (Program, Debrief, logbook) is paperwork; the cockpit (flight, rollout)
     is the instrument panel; the map is the pencil chart. No dark generic panels anywhere (W14's mix).
+14. **A verdict, then the fix (D22).** Every check reads as a plain verdict and what to do about it: "tumbles if it coasts in thick air: fins low, or keep burning to 40 km", never "coasting flips". Where it can, the 3D view shows it too: the joint that breaks ringed in red, an arrow from the centre of pressure to the centre of mass when unstable, the hovered stage lit.
 
 ## 3. Each screen's reads (the spec)
 
 | Screen | Read 1 (biggest) | Read 2 (while working) | Read 3 (on click or hover) | Cut or hide |
 |---|---|---|---|---|
 | **Program** | **what to do next** (one card: the next mission or decision, with its deadline) · funds · date | the open contracts and offers as **one line each** (name, pay, days left); the time strip (launch windows, deadlines, budget day) | an offer's full text; tabs for Fleet, World, Industry, Company | the agency name shrinks to a letterhead; "Why: …" lines; locked missions beyond the next epoch (a count instead); the empty photo frame until there's a photo |
-| **Assembly** | **a GO/NO-GO board** for the chosen mission: *Reaches target · Budget · Stack time · Recovery · Escape (crewed)*; each GO, or NO-GO with one reason | the parts list; the stage list with Δv per stage | each board row opens its numbers (Δv by stage, TWR, mass, cost breakdown, imports, know-how, study) | the key-help bar (a `?` button and H); the red on a normal upper-stage TWR; locked parts collapsed into one line per family |
+| **Assembly** | **D22: three tabs, never a scroll.** **Checks** (default): a GO/NO-GO board for the chosen mission: *Reaches its target · Gets off the pad · Holds together · Flies straight · The payload works · Budget and time* (+ *Escape* when crewed, *Recovery* when it comes home); each a plain verdict and its fix | **Stages** (the staging list with Δv, TWR, burn time; hover a stage to light its parts and dim the rest) · **Part** (on selecting one: what it's for, its options, its loads, what it pairs with) · the build tools as a **toolbar on the 3D view** | each board row opens its numbers (Δv by stage, TWR, mass, joint loads, stability in calibers, cost breakdown, imports, know-how, study) | right-click options; the key-help bar; jargon as labels ("coasting flips", "calibers", "weathervanes"); the red on a normal upper-stage TWR; locked parts collapsed into one line per family |
 | **Flight** (ascent, burns, landing) | the navball with the burn or hold marker · altitude and speed (one line) · the **master caution** | the current stage and its fuel; a **phase card** (ascent: q and heat; landing: height and descent rate; burn: Δv to go) | everything else on hover or the readout's `+` | the news during ascent, burns and landing (it queues for the next quiet moment); hold modes the vessel can't fly; Ap/Pe while landed; the help bar |
 | **Map** | the orbit and the **result** of the planned burn (encounter or not, periapsis), big | Ap/Pe on the orbit, the next node, time to it | overlays (coverage, targets, windows), one at a time | labels that collide (declutter by importance, hide the rest at that zoom); the flight's dark panels; units nobody knows ("TU" → days) |
 | **Debrief** | the verdict stamp (PAID / FAILED / FIRST) and the money | the flight as a time strip with what mattered (staging, anomalies, objectives) | the logbook entry, the telemetry details | — |
