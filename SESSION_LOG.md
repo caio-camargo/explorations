@@ -6272,5 +6272,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   - `missionEnd` routes a run to `simEnd`, which discards the flight, advances max(½, hours) days and adds the hours to `PROG.simH[design]`.
 - **Test econ-29:** the program after a run equals a control advanced the same days; a joint at 84 % of its true rating breaks at the certified edge.
 - **No TESTING row:** nothing is on screen until Q450.
+- **Test change:** flow-15 scans the liftoff line for `R.watch?0`; it now also accepts `R.watch||R.sim?0`. Smoke otherwise fails only on the 3 failures already on `main` (Help key `t`, qa-2 go to body, 37e atlas wiring).
 - **Files:** `sim/core.js`, `sim/program.js`, `sim/vessel.js`, `tests/economy.mjs`, `notes/economy.md` § v1.220, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`, `DECISIONS.md`.
 - **Next:** Q450 (flow, the simulator screen) is ready. Economy's ready item is Q283 (crew-skill plan revision).

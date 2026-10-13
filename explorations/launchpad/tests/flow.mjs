@@ -300,7 +300,7 @@
   // the page: Watch / Watch now / Let it fly in mission control, followed each frame; a watched liftoff skips prep and pad waits
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const ui = ['data-dwatch', 'data-dwgo', 'data-dwfly'].every(d => page.includes(d)) && /simulate\(dtR\);watchTick\(\);/.test(page) && /S\.proc\.noRelight=w\.noRelight/.test(page)
-    && /R\.prep=TEST\.fast\|\|R\.watch\?0/.test(src) && /R\.padWait=R\.watch\?0:padWait\(\)/.test(src);
+    && /R\.prep=TEST\.fast\|\|R\.watch(\|\|R\.sim)?\?0/.test(src) && /R\.padWait=R\.watch(\|\|R\.sim)?\?0:padWait\(\)/.test(src);
   check('flow-15: watch mode: a watched dispatch stops the clock at its launch and waits; on screen it flies to the headless orbit; the same rolls end it in the climb; a failed relight stops it at the circularisation',
     stops && waits && relight && same && doomed > 5 && agree === doomed && ui,
     `stops ${stops} · waits ${waits} · on screen ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km, headless ${D.orb ? (D.orb.pe / 1e3).toFixed(1) + '×' + (D.orb.ap / 1e3).toFixed(1) : D.status} · relight ${relight} · rolls ${agree}/${doomed} · ui ${ui}`);
