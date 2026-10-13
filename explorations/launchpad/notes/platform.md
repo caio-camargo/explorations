@@ -658,12 +658,12 @@ first due-north try also ran dry: going north cancels the pad's 278 m/s of spin 
 **First result on `main` (v1.184), 52 s:** `m1` ✓, weather satellite ✓ (293 × 301 km, 82.3°, flown dry), routine made
 ("Lookouts at 297 km, 82°"); fails on:
 - **TV**: the Satellite runs dry raising its apoapsis at 1,323 km (the stationary orbit is 5,668 km up: ~1,640 m/s past
-  a low orbit; the Satellite has ~490) → PLAYTEST #101;
+  a low orbit; the Satellite has ~490) → PLAYTEST #102;
 - **three clean runs**: ordering one is refused, "153 m/s short for this orbit" (the design's procedure to 300 km
-  polar). A route made from a raised orbit (716 km) instead flew one run, which "broke up in the climb" → PLAYTEST #102;
+  polar). A route made from a raised orbit (716 km) instead flew one run, which "broke up in the climb" → PLAYTEST #103;
 - **kept up**: the route counts its satellite 0 of 1 up from the moment it's made: `routeSats` needs 30 days of
-  station-keeping (`skLife`), and a satellite with no fuel "holds 0 d" though it stays up 1,034 d → PLAYTEST #103;
+  station-keeping (`skLife`), and a satellite with no fuel "holds 0 d" though it stays up 1,034 d → PLAYTEST #104;
 - **repeating, a run by itself, earning**: these follow from the three above. 41 waits took the calendar from day 178
   to 4,000 (~90 days a wait).
 
-Also seen: once a route's satellites have all come down, its Fleet line is gone, and with it *Order a run* → PLAYTEST #104.
+Also seen: once a route's satellites have all come down, its Fleet line is gone, and with it *Order a run* → PLAYTEST #105.
