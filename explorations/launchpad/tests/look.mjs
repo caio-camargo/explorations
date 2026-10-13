@@ -625,3 +625,15 @@
   check('incoming fragment: drawn on its path as a sunlit streak, a flash and sparks at the strike; no NaN plasma light when the heat flux is unset',
     draw && noNaN && sim, `draw ${draw} · no NaN ${noNaN} · sim hands it over ${sim}`);
 }
+
+// aerofx-21. A spent stage under its chutes, and anything afloat (look & sound effects beat, QUEUE Q335): one canopy per
+// chute part trailing up the airflow while the sim's d.chA is open; a stage that comes down in the sea splashes once
+// (Q267's splash, at the speed it had) and, like the ship afloat, laps the sea along its waterline.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const can = /function debrisCanopies\(d,camW,drawMesh\)/.test(page) && /for\(const d of debris\)if\(d\.chA>0&&!d\.float\)debrisCanopies\(d,camW,drawMesh\);/.test(page) && /drawMesh\(CANOPY,modelQ\(q,sub\(P,camW\),0,\[k,k\*\.6,k\]\),P\)/.test(page);
+  const sea = /if\(!d\.mkSplash\)\{d\.mkSplash=true;splashFx\(\{body:d\.body,r:d\.r,touchV:d\.mkV\|\|10,mass:d\.mass,radius:d\.mkR\}\)\}surfFx\(d,/.test(page)
+    && /if\(S\.landed&&S\.water\)surfFx\(S,b,S\.r,S\.q,/.test(page) && /function surfFx\(o,b,r,q,L0,rad,dt\)/.test(page);
+  const sim = /d\.chA=/.test(src) && /d\.float=\{pf:pfc/.test(src);
+  check('falling stage: a canopy per chute while d.chA is open; at sea a splash once, then the waterline laps (stage and ship)', can && sea && sim, `canopies ${can} · sea ${sea} · sim ${sim}`);
+}

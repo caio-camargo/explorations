@@ -1678,3 +1678,17 @@ one log each). Noise between runs ≈ ±0.2 ms.
 - **Stills:** `output/launchpad/beauty/q302/k_row.png` (the streak side-on from 5 km at 0.5 s and 0.2 s out; the flash on
   the struck face); `alt_ab.png` (the black puffs at 200 km against bright ones at 50 km, before the fix).
 - **Checks:** test `aerofx-20`. TESTING 252.
+
+## v1.172 — a falling stage under its chutes, its splash, and the waterline (2026-10-13, effects beat, QUEUE Q335)
+- **Canopies over a falling stage** (`debrisCanopies`, from the debris draw in `render()`): while the sim's `d.chA` is open
+  (Q300, v1.142: chute parts among a spent stage's parts open by themselves), one canopy per chute part. Each is sized
+  from its share of `d.chA` (a 600 m² main is ~28 m across) and trails up the airflow from its chute on risers ~1.3
+  diameters long, spread a little apart when there are several. The ship's own canopy is unchanged.
+- **A stage that comes down in the sea splashes** (Q267's `splashFx`) once, at the speed it had the step before it
+  floated (`d.mkV`).
+- **The waterline:** anything afloat (a spent stage, `d.float`; the ship, `S.water`) laps the sea round its hull with small
+  white puffs half sunk at the surface, ~12 a second, living ~2 s, round an ellipse the hull's length long when it
+  lies on its side (`surfFx`).
+- **Stills:** `output/launchpad/beauty/q335/c_ab.png` (a 1 t stage under its 600 m² main at 2.2 km; the same stage
+  afloat with its surf).
+- **Checks:** test `aerofx-21`. TESTING 254.

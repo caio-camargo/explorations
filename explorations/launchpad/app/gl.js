@@ -1370,10 +1370,14 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
       fxPuff(madd(S.r,u,S.radius*.8),add(madd(S.v,va,-(.02+.05*R())),mul(u,6*R())),{s0:.025+.035*R(),grow:0,a0:.9,life:.3+.7*R(),hot:abl?2.2:1.4})}SPK.n=Math.min(SPK.n,1);SPK.k=0}
   ventTick(dt);   // (Q294) broken tanks venting
   if(S.wet&&!S.mkSplash){S.mkSplash=true;splashFx(S)}   // (Q267) the moment it hits the sea
+  if(S.landed&&S.water)surfFx(S,b,S.r,S.q,S.yTop-S.yBot,S.radius||1,dt);   // (Q335) afloat: the waterline laps
   for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
     for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
       const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
-  for(const d of debris){const kH=d.body.atm?DEBH.get(d)?.k||0:0;for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12);hotTo(m,kH,dt)}}}
+  for(const d of debris){const kH=d.body.atm?DEBH.get(d)?.k||0:0;
+    if(!d.float)d.mkV=len(sub(d.v,surfVel(d.body,d.r)));else{if(d.mkR==null)d.mkR=debrisGeo(d).radius;   // (Q335) a stage that comes down in the sea: the splash, then the waterline
+      if(!d.mkSplash){d.mkSplash=true;splashFx({body:d.body,r:d.r,touchV:d.mkV||10,mass:d.mass,radius:d.mkR})}surfFx(d,d.body,d.r,d.q,d.len||4,d.mkR,dt)}
+    for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12);hotTo(m,kH,dt)}}}
 // the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
 function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
