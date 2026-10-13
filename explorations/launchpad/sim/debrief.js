@@ -47,6 +47,7 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
     if(v.kind==='city')D.incidents.push(`A stage fell on ${town}${abroad?` (${pw.name})`:''}`);
     else if(v.kind==='near')D.incidents.push(`A stage fell near ${town}${abroad?` (${pw.name})`:''}`);
     else if(abroad)D.incidents.push(`A stage came down in ${pw.name}`)}
+  for(const k in R.overK||{}){const c=R.overK[k];D.incidents.push(`Flew low over ${POWERS[k].name}${c>0?`: it protests (opinion −${(OVER_OP*c).toFixed(1)})`:', a friend: no objection'}`)}   // Q181
   if(R.bio&&!R.bioOK)D.incidents.push(`${R.pet} ${R.bioWhy}`);
   if(b)for(const k in PROG.kh||{}){const a=b.kh[k]??use0(k),v=PROG.kh[k].use;if(v>a+0.005)D.kh.push({l:PARTS[k]?PARTS[k].name:k,a,b:v})}
   D.kh.sort((x,y)=>(y.b-y.a)-(x.b-x.a));

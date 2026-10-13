@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2859,3 +2859,150 @@ our depots and relays (LATE_GAME rule 5); launch rides sold to us.
 
 Tests: `econ-22` (3 checks: arrival, prototypes, orbit, sales cheaper than an import; share, pay and floor, news, price
 to ×1.0; sanctions from its power stop its sales). **Waiting on Caio:** W40 (three defaults, built).
+
+## v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; DECISIONS D17.4)
+
+**Before:** a missed deadline (and a withdrawal, priced the same since Q93) cost −10 standing with the source and −3 of
+the client's opinion. **Now** (`contractLost`, `backTick` in `sim/contracts.js`): the job is lost and nothing else; the
+client asks again **60–120 days later** (seeded per contract) as a fresh offer for the same job and pay, with "Asked
+again: *client* still needs it" as its reason and a *Back on offer* news line. It drops instead if its type's mission is
+no longer done, the client sanctions us, or the job's reason is gone (types with `open()`: a satellite to service, a
+station's need; those regenerate their target and keep the pay). A full board makes it wait for a free line. Harm to
+people keeps its own costs (losses and crew rules don't go through here). The withdraw button's tooltip says so.
+
+**Measured** (`career.mjs 4 8`, 144 runs, before → after): flights 37.8 → 40.1, contracts done 29.9 → 33.2, final
+opinion 49.5 → 53.8, final funds 903 → 872M (−3 %, inside the runner's seed noise), lowest funds 61 → 60M, bailouts 1.3
+→ 1.1. The poor-world companies end lower (frugal 203 → 129M, resource 516 → 269M) though their lowest funds and
+bailouts don't move; with 8 seeds that's not separable from noise, so I'm noting it, not tuning for it.
+
+Tests: `econ-23` (2 checks: no loss, the same job comes back with its reason; a full board waits, a sanctioning client or
+a vanished target drops it); `econ-9`'s withdraw check and core's missed-deadline check rewritten to the new rule. Test
+fixtures that reset `offers`/`active` reset `back` too.
+
+## Plan: rivals' satellites as targets (2026-10-13, economy session, QUEUE Q187; W22.3, with space; nothing built)
+
+**Today:** rivals are progress counters (`PROG.riv`, v1.130); no rival satellite exists as an object. Rendezvous and
+retrieval contracts (v1.98) target our own quiet satellites and spent hardware (`rdvTick`, the bay retrieval). The pieces
+a stealth model needs exist: `inShadow(b, r)` (`sim/power.js`), per-power computing lag (`compLag(i)`), sanctions
+(`sanction(i, days, why)`), opinion and relations (`opAdd`, `relOf`), the Debrief's incidents, the military offers' leak
+rule (`offerRisk`, `LEAK_P`). The design is vehicle notes § "Satellite hacking" (Caio) and W22.3 (retrieval on hacking's
+stealth rules).
+
+**1. Rival satellites as objects** (space + economy). A rival that has reached orbit (`PROG.riv[i].got.orbiter`)
+launches satellites by its budget and priorities: security → spy and early warning, commerce → comms, science →
+weather and science; a handful each (cap ~6), replaced as they age. They live in their own list, `PROG.rsats` (not
+`PROG.sats`, so our earnings, power, aging and servicing never touch them), on rails, with `owner`, `kind`, `era`,
+`value` (refurbishment worth), a generic shape by the owner's school, and the owner's colour on the map. `satAt` places
+them; `tgtOf` and `loadEntry` accept them as targets so a flight can approach and dock with one like any registry
+object. Coarse: they don't manoeuvre or decay.
+
+**2. One stealth model: exposure.** During a flight, `stealthTick(s, R)` (beside `rdvTick`) accumulates **exposure**
+to each owner whose satellite is within `STEALTH_D` = 5 km:
+- **Sunlight:** the craft sunlit adds exposure each second (`SUN_K`); in Tellus's shadow nothing (optical trackers
+  see a sunlit craft against a dark sky: the dawn and dusk rule, simplified to "sunlit is seen").
+- **Plume:** every burn inside `STEALTH_D` adds exposure by its Δv (`PLUME_K` per m/s), shadow or not: a big burn
+  close in gives you away.
+- **Radar:** once the owner tracks small objects by radar, exposure grows inside `STEALTH_D` at a steady rate whatever
+  the light: the window closes. The owner's radar era = its own computing era (world year − `compLag(i)`) reaching
+  *Onboard computers* (year 7 for a superpower, later for others): a tech-era window, as Caio's note asks.
+- **Time:** the work itself (holding for an inspection, the hack's minutes) multiplies what accumulates, so long jobs
+  must be done in shadow.
+
+Spotted with p = 1 − e^(−exposure) (a security state ×1.5), rolled once at the flight's end (seeded, like other
+flight rolls). An unspotted operation can still **leak** later at `LEAK_P`/2 within a year (the military offers' rule).
+The player sees exposure live, honestly: a HUD line *"Seen by Mirtov: low · sunlit · burn 3 m/s"* (flow's, one call)
+and the Debrief says whether anyone noticed.
+
+**3. Three operations, one model, rising stakes (k):**
+- **Inspection** (k = 1): within 100 m under 1 m/s for 60 s (the rendezvous rule with a hold). From a government or
+  military client whose relation with the owner is below −0.3; pays like rendezvous ×1.5. Opens once rivals have
+  satellites.
+- **Hacking** (k = 2, Caio's): hold within 20 m for minutes set by our computing era (hand 20, mainframe 10, onboard
+  3), carrying an antenna and a computer part. Payoff: the satellite's service is ours for ~30 days (a comms satellite's
+  pay, a spy satellite's imagery for our image contracts), or a client's job delivered. Opens with the first docking
+  (`stationcrew`), as retrieval does.
+- **Retrieval** (k = 3, W22): the existing bay retrieval on a rival satellite: home with it in a shut bay; its
+  hardware's value back as refurbishment (W22.4), and it leaves `PROG.rsats`. The owner always knows it is gone: if
+  unspotted, "lost, cause unknown", and suspicion falls on the powers able to dock (a small relation dip, shared).
+
+**4. Consequences when spotted** (× k): an **incident** (headline, Debrief line); the owner's opinion −8k and relation
+−0.1k; at k ≥ 2 with relation under −0.3, a **sanction** of 120k days (which cancels its contracts and its budget share,
+as today); its close friends (relation > 0.5) −2k opinion; tension rises with it. **At home:** a job for home's own
+military is quietly approved (+2 home opinion); our own initiative embarrasses an open home (−3k) and pleases a
+security state's (+2). Not spotted: the client pays a secrecy premium and nothing else happens. **No combat:** nothing
+here destroys anything. The anti-satellite test and its debris stay Q148's.
+
+**Questions for Caio** (numbered, with defaults; silence keeps them):
+1. **Rival satellites as real objects** on rails, a few per rival, drawn and flyable (default), or abstract targets in a
+   contract only?
+2. **Radar closes the window** at the owner's *Onboard computers* era (default), at *Mainframes* (a short window), or
+   never (stealth always possible)?
+3. **An unspotted retrieval:** the owner knows it's gone, cause unknown, suspicion shared among docking powers (default),
+   or no reaction at all?
+4. **Hacking's payoff:** its service is ours for ~30 days, or the client's job (default), or the contract pay only?
+
+**Slices** (⚙ unless marked; M2–M3):
+1. `PROG.rsats` from rival programs, on rails, on the map in their colours, approachable as targets (space + economy).
+2. `stealthTick`, the roll at the end, consequences and the Debrief incident; the HUD exposure line (🖥, with flow).
+3. Inspection contracts on rival satellites (rendezvous with a hold, from hostile-leaning clients).
+4. Retrieval of rival satellites (the bay rule; the owner's loss; suspicion).
+5. Hacking: the hold, the era's minutes, the payoff.
+Measure before tuning: fly the stock Docking preset to a rival satellite in shadow and in sunlight, with and without a
+final burn, and set `SUN_K`/`PLUME_K` so a careful night approach is ~10 % spotted and a sunlit one ~70 %.
+
+### Q187 amendment: Caio's answers (W41, 2026-10-13)
+
+1. **Real satellites** (as planned, slice 1).
+2. **Radar, proposed as layers** (Caio: "suggestions?"; this is the default unless he picks otherwise). Each layer of the
+   owner's tracking has its own counter, so the window narrows by era instead of slamming shut:
+   - **Optical** (from the start): sees a sunlit craft. Counter: work in Tellus's shadow.
+   - **Ground radar** (the owner's *Mainframes* era): sees anything inside `STEALTH_D`, lit or not, but **only while the
+     work is above the horizon of the owner's sites** (its pads, cities and ground stations; radar is on the ground).
+     Counter: do the job on the far side of the world from the owner. `stealthTick` tests the owner's sites against the
+     craft's position, as `entryLink` does for ground stations.
+   - **Space surveillance** (once the owner flies an early-warning satellite of its own, a `PROG.rsats` kind, normally
+     its *Onboard computers* era): sees you anywhere. Counter: none by hiding; only a short job and a small burn.
+     Tapping that satellite first (below) is how you'd know where it is looking: a nice reason to hack in order.
+3. **An unspotted retrieval raises suspicion:** the owner knows the satellite is gone; suspicion lands on every power
+   able to dock (a relation dip, shared), and grows with each further unexplained loss (`PROG.susp[i]`, decaying over a
+   year). Enough suspicion makes the next spotting count double.
+4. **Hacking's payoff:** **contract pay if it's a contract; the satellite's service if it's our own initiative.** Caio
+   adds two kinds of hack, and both fit mechanics we already have:
+   - **A tap (indefinite):** it keeps working for its owner and also sends to us. It joins our network as if it were
+     ours, through the existing code: a camera satellite's take fills its recorder and our ground stations drain it into
+     **imagery sales** (`satTick`, `IMG_RATE`, v1.100) and can deliver **image contracts**; a comms satellite becomes a
+     **relay** in `netLinks` and counts for TV and navigation coverage. A flag on the `PROG.rsats` entry (`tap: 'us'`)
+     is the whole change in those functions. It lasts until the owner notices: each month a small chance, higher with
+     its computing era and with our use (bits taken), and then the spotted consequences apply as for a hack (k = 2),
+     with the tap cut.
+   - **A data theft (one-off):** download what its recorder holds. A science or weather satellite's data pays as
+     **science data received** (the same per-bit pay); a **spy or military satellite's** data reveals its owner's
+     program: its race progress and next first become exact on the race panel for a year (Q307's panel shows a closed
+     rival as "soon" or nothing; stolen data shows the forecast day), and the next military offer against that owner
+     pays more. Quicker than a tap (the download time at the link's rate, in the hold), so less exposure.
+   Choosing among inspect / steal data / tap / take its service for a client happens at the hold (a HUD choice, flow).
+
+## v1.171 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
+
+**Low flight only** (Caio, 2026-10-13: "flying over, we mean low, right? not orbiting?"). `overTick` (from `missionTick`,
+beside `rdvTick`) samples about once a second, while the vessel is **below 150 km**, **not in orbit** (its periapsis
+inside the atmosphere: an ascent, a hop, a descent) and **within 1,000 km of its launch point**, whose land is under it
+(`powerAt`): `R.over`. Home and the site's host don't count. Orbit is free at any height: the stock Orbiter circles at
+100–120 km, so a height rule alone would have charged it on later passes near the pad, hence the periapsis test.
+
+**The cost** (`overEnd`, in `missionEnd` before the drops), W23's rule, any foreign land scaled by the relationship:
+k = (0.5 − relation)/1.5, clamped 0–1 (an ally at ≥ 0.5 pays nothing, relation 0 a third, −1 all), × 2 for a security
+state; opinion −3k, relation −0.03k. One protest headline per power per program year. A stage that **falls** on its land
+still costs more (−5, −0.06, damages). The Debrief lists each: "Flew low over *X*: it protests (opinion −2.0)" or "…, a
+friend: no objection".
+
+**Measured:** on the default map, 1 of 16 launch sites has foreign land within 1,000 km due east (s5 over Natovtov,
+relation 0.25, k 0.17): the rule bites by choice of site and heading (polar and retrograde launches cross more), as the
+plan wanted, and is never a nag from friends.
+
+**Not yet:** overflight rights (W23: a decision from the start, rivals may refuse; QUEUE *Proposed*); dispatched flights
+(they repeat an ascent without `missionTick`'s samples) don't record overflight; the site picker's warning
+(`downrangeWarning`) doesn't yet colour by relation.
+
+Tests: `econ-24` (2 checks: recorded low and climbing, not in orbit at 120 km, not above 150 km, not over home; an ally
+shrugs, a rival protests once a year, a security state double).

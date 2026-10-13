@@ -35,7 +35,7 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='mission'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop()}
   else if(s==='title'){mode='editor';view='flight';atHQ=false;ttlArm=false;if(BLD.st&&BLD.st.held)BLD.drop();renderTitle()}
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}
-  else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
+  else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;mapFoc=null;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
   $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll||atMC||atTitle);$('ttl').classList.toggle('hidden',!atTitle);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('mc').classList.toggle('hidden',!atMC);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');document.body.classList.toggle('room',inRoom());
   if(atMC)renderMission();   // (after the room shows: the ground track sizes its canvas to the wall)
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
@@ -53,7 +53,7 @@ const KEYS={
     {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['enter'],l:'Enter',d:'recover the vessel or end the flight once it is over (landed or lost): the debrief',act:()=>{const b=$('bEnd');if(b&&!b.classList.contains('hidden'))go('debrief')}},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
-  map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
+  map:[{k:['tab'],l:'Tab',d:'centre on the next thing: the ship, the bodies, our satellites, other vessels in this flight (or the Focus list)'},{k:['home'],l:'Home',d:'centre on the ship again'},{l:'double-click',d:'centre on a body or a craft'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
     {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
   title:[{k:['enter'],l:'Enter',d:'continue the program · found it (the charter, signed)',act:()=>{if(needCharter())ttlFound();else go('program')}},{l:'click',d:'tick a line of the charter'}],
   mission:[{k:['p'],l:'P',d:'Program: back to the office',go:'program'},{k:['n'],l:'N',d:'wait until the next event',act:()=>{const b=document.querySelector('#mcNext [data-adv]');if(b)b.click()}},

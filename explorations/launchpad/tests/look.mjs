@@ -135,7 +135,7 @@
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
   const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')(), P = {};
-  const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
+  const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + body('galSights') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
     SIMF.rng, SIMF.norm, SIMF.add, SIMF.sub, SIMF.mul, SIMF.dot, SIMF.WSEED, P);
   const a = G.galaxy(), s1 = P.gseed, b = G.galaxy(), w = G.makeGal(SIMF.WSEED), o = G.makeGal(s1 + 1);
   P.gseed = null; const c = G.galaxy(), s2 = P.gseed;
@@ -508,7 +508,9 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const vfs = page.slice(page.indexOf('const VAPOR_FS=`'), page.indexOf('`;', page.indexOf('const VAPOR_FS=`')));
-  const rings = /fr=fract\(rn\),ring=/.test(vfs) && /\*ring;\}/.test(vfs);
+  // (PLAYTEST #88) the rings read as separate bands: now one streaked sheet hugging the hull, flickering as a whole, a thin
+  // mist, from the strongest shoulder only
+  const rings = !/fract\(rn\)/.test(vfs) && /\(\.75\+\.5\*st\)\*fl;\}/.test(vfs) && /dens\*uV\*1\.\/max/.test(vfs) && /x\[2\]>=\.9\*a\[0\]\[2\]/.test(page);
   const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 12.3,
     sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
   const shake = cs && (S => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values(env), S));
@@ -516,7 +518,7 @@
   const calm = shake && shake(ship(.3, 2e3)), maxq = shake && shake(ship(1, 32e3)), sup = shake && shake(ship(2, 32e3)), again = shake && shake(ship(1, 32e3));
   const wired = /const sh=camShake\(\);if\(sh\)\{Fw=norm\(add\(Fw/.test(page) && /SPK\.n\+=dt\*kH\*\(abl\?45:12\)/.test(page) && /fxPuff\(madd\(S\.r,u,S\.radius\*\.8\)/.test(page)
     && /PLT\.c\.set\(c\.map\(x=>x\*K\*fl\)\)/.test(page) && /xe\/\(uEp\*3\.\)-uT\*11\./.test(page);
-  check('the air and the wake: stacked flickering vapor rings; a max-q buffet worst near Mach 1, none in calm air, repeatable; ship sparks, a ragged wake and a flickering plasma light',
+  check('the air and the wake: one thin flickering vapor collar per stack (PLAYTEST #88); a max-q buffet worst near Mach 1, none in calm air, repeatable; ship sparks, a ragged wake and a flickering plasma light',
     rings && wired && calm === null && amp(maxq) > 0 && amp(maxq) < 0.01 && Math.abs(amp(maxq) - amp(again)) < 1e-12 && amp(maxq) > amp(sup),
     `rings ${rings} · wired ${wired} · shake: calm ${calm} · max-q at M 1 ${amp(maxq).toFixed(4)} rad · at M 2 ${amp(sup).toFixed(4)} rad`);
 }
@@ -587,4 +589,51 @@
     && /gl\.uniform3f\(u\.uPlC,PLT\.c\[0\]\+PLT\.c2\[0\]/.test(page) && (page.match(/PLT\.c2\[2\]\)return;PLT\.c2\.fill\(0\);/g) || []).length === 2 && /PLT\.c\.fill\(0\);PLT\.c2\.fill\(0\);PLT\.g=null;/.test(page);
   check('plume light per side: a wide rocket gets two lights (the core feeding both), shaders take both, the pool the total, a flash or the plasma clears the second',
     shaders && split && wired, `shaders ${shaders} · split ${split} · wired ${wired}`);
+}
+
+// aerofx-20. The space sky (look & sound sky & bodies beat, BEAUTY Q321 B5, W39; mockups/sky/). The band, a nebula and a
+// spiral are baked once per program into a cube map (GAL_FS, galBake on unit 12) and SKY_FS's main only samples it; the
+// stars are three power-law layers with a floor and a twinkle; the sun has no spikes; SKY_B5 keeps the old code for an
+// A/B. Each program's nebula sits 22° off the band's midline and its spiral 40° off, for any seed.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const SM = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')();
+  const mk = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', body('makeGal') + body('galSights') + ';return makeGal')(SM.rng, SM.norm, SM.add, SM.sub, SM.mul, SM.dot);
+  const offs = [1, 2, 7, 12345, SM.WSEED].map(seed => { const g = mk(seed), a = v => Math.asin(Math.abs(SM.dot(v, g.gx))) * 180 / Math.PI; return [a(g.nd), a(g.sd)] });
+  const placed = offs.every(([n, s]) => Math.abs(n - 22) < .01 && Math.abs(s - 40) < .01);
+  const sky = /const SKY_B5=true;/.test(pg) && /vec3 galaxy\(vec3 d,out float band\)\{vec4 g=texture\(uGalC,d\);/.test(pg) && /uniform samplerCube uGalC;/.test(pg)
+    && /\$\{SKY_B5\?`/.test(pg) && /pow\(abs\(cos\(a\*2\.\)\),600\.\)/.test(pg);   // the new code, and the old one kept behind SKY_B5
+  const bake = /const GAL_FS=`/.test(pg) && /function galBake\(\)/.test(pg) && /gl\.TEXTURE_CUBE_MAP_POSITIVE_X\+f/.test(pg) && /gl\.generateMipmap\(gl\.TEXTURE_CUBE_MAP\)/.test(pg)
+    && /if\(!desk&&SKY_B5\)galBake\(\);/.test(pg) && /gl\.uniform1i\(u\.uGalC,12\)/.test(pg) && /Math\.max\(1,1\.2\/EXPO\.E\)/.test(pg);
+  const newSun = (() => { const i = pg.indexOf('${SKY_B5?`'), j = pg.indexOf('`:`', i); const n = pg.slice(i, j); return /float th=\(k==0\?\.9967/.test(n) && /tw=max\(1\.\+\.35\*/.test(n) && !/cos\(a\*2\.\)/.test(n) })();
+  check('space sky: band, nebula and spiral baked to a cube once per program (unit 12), SKY_FS samples it; sharp stars with a floor and a twinkle; no sun spikes; nebula 22° and spiral 40° off the band for any seed; the old code kept behind SKY_B5',
+    placed && sky && bake && newSun, `offsets (nebula, spiral °) ${offs.map(o => o.map(x => x.toFixed(1)).join('/')).join(', ')} · shader ${sky} · bake ${bake} · new stars/sun ${newSun}`);
+}
+
+// aerofx-20. An incoming fragment and its strike (look & sound effects beat, QUEUE Q302): HOOK.fragIn's fragment is drawn
+// as a sunlit streak on its path, at the strike a flash and sparks; and the plasma light can't go NaN when the heat flux
+// is unset (a NaN light turned every smoke puff in vacuum black).
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const draw = /HOOK\.fragIn=\(s,x\)=>\{FRAGS\.push\(\{s,x\}\)\}/.test(page) && /function fragDraw\(VP,camW,lit\)/.test(page) && /fragDraw\(VP,camW,lit\);/.test(page)
+    && /Pf=madd\(s\.r,x\.dir,-x\.vr\*left\),Pt=madd\(Pf,x\.dir,-x\.vr\*\.06\)/.test(page) && /if\(left<-\.5\)\{FRAGS\.splice\(i,1\);continue\}/.test(page);
+  const ph = page.match(/function plasmaHeat\(b,r,v,q\)\{[^\n]*\}/), env = { len: a => Math.hypot(...a), sub: (a, b) => a.map((x, i) => x - b[i]), surfVel: () => [0, 0, 0], clamp: (x, a, b) => Math.min(b, Math.max(a, x)), PLASMA_V: 1000 };
+  const heat = ph && new Function(...Object.keys(env), ph[0] + ';return plasmaHeat')(...Object.values(env));
+  const noNaN = heat && heat({}, [0, 0, 0], [3000, 0, 0], undefined) === 0 && /const qE=plasmaHeat\(S\.body,S\.r,S\.v,S\.qHeat\);if\(!\(qE>1\.5e4\)\)return;/.test(page);
+  const sim = /HOOK\.fragIn&&HOOK\.fragIn\(s,s\.fragIn\)/.test(src);
+  check('incoming fragment: drawn on its path as a sunlit streak, a flash and sparks at the strike; no NaN plasma light when the heat flux is unset',
+    draw && noNaN && sim, `draw ${draw} · no NaN ${noNaN} · sim hands it over ${sim}`);
+}
+
+// aerofx-21. A spent stage under its chutes, and anything afloat (look & sound effects beat, QUEUE Q335): one canopy per
+// chute part trailing up the airflow while the sim's d.chA is open; a stage that comes down in the sea splashes once
+// (Q267's splash, at the speed it had) and, like the ship afloat, laps the sea along its waterline.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const can = /function debrisCanopies\(d,camW,drawMesh\)/.test(page) && /for\(const d of debris\)if\(d\.chA>0&&!d\.float\)debrisCanopies\(d,camW,drawMesh\);/.test(page) && /drawMesh\(CANOPY,modelQ\(q,sub\(P,camW\),0,\[k,k\*\.6,k\]\),P\)/.test(page);
+  const sea = /if\(!d\.mkSplash\)\{d\.mkSplash=true;splashFx\(\{body:d\.body,r:d\.r,touchV:d\.mkV\|\|10,mass:d\.mass,radius:d\.mkR\}\)\}surfFx\(d,/.test(page)
+    && /if\(S\.landed&&S\.water\)surfFx\(S,b,S\.r,S\.q,/.test(page) && /function surfFx\(o,b,r,q,L0,rad,dt\)/.test(page);
+  const sim = /d\.chA=/.test(src) && /d\.float=\{pf:pfc/.test(src);
+  check('falling stage: a canopy per chute while d.chA is open; at sea a splash once, then the waterline laps (stage and ship)', can && sea && sim, `canopies ${can} · sea ${sea} · sim ${sim}`);
 }

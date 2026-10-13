@@ -5792,3 +5792,85 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `builder.js`, `test.mjs`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (242, 246), `PLAYTEST.md`
   (#84, #85 done), `QUEUE.md` (Q347 ✓, Q348 ✓, Q371), `ACTIVE_WORK.md`.
 - **Next for vehicle:** Q371 if Caio wants it retuned; Q329 (action groups), Q341 (folding boom), Q338 (pointing).
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): W40 on the defaults; Q295 a missed deadline costs a wait (v1.165)
+- **W40:** Caio took the commercial giant's defaults; recorded in DECISIONS, row left QUEUE.
+- **Built (Q295, D17.4):** a missed deadline or a withdrawal loses the job and nothing else; the client posts it again 60–120 days later (same job and pay, "Asked again"), unless its reason is gone or the client sanctions us; a full board makes it wait.
+- **Measured:** `career.mjs 4 8` before → after: contracts 29.9 → 33.2, opinion 49.5 → 53.8, final funds −3 % (noise band); poor-world companies end lower, not separable from noise at 8 seeds.
+- **Files:** `sim/contracts.js`, `app/program-ui.js` (tooltip), `tests/economy.mjs` (econ-23, econ-9), `tests/core.mjs` (the missed-deadline check), fixtures in `tests/*.mjs` reset `back`, `notes/economy.md` § v1.165, `NOTES.md`, `QUEUE.md`, `DECISIONS.md` (W40), `TESTING.md` 247, `ACTIVE_WORK.md`.
+- **Next:** economy's ready list: Q187 (plan), Q181, Q184, Q296, Q332.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q321 the space sky (v1.166)
+
+- **Done:** the galaxy band, the Hubble-palette nebula and the spiral baked once per program into a cube map (unit 12)
+  at Caio's W39 levels and placements, so `SKY_FS` only samples it; power-law sharp stars with an exposure floor and a
+  deliberate twinkle; the sun a small disc with no spikes (toned down from the mock-up for the game's bloom); views
+  159–160 for the sights. `SKY_B5 = false` restores the old sky.
+- **Measured:** RTX High and Low, before/after within noise; iGPU and first-load time not measured (Proposed line).
+- **Tests:** `aerofx-20` (new) and the look file pass; smoke passes except two checks that also fail on `main`
+  (FLAG in QUEUE *Proposed*: *node chain flown*, *later stages in the air*).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `TESTING.md` (247), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for sky & bodies:** Q326 then Q322 (shrink `SKY_FS`, Selene out of it); Q323 Tellus from above.
+
+
+## 2026-10-13 — flow session: Q261, the map's layers (v1.167)
+- **Q261 ✓ v1.167** (PLAYTEST #61, merged and pushed, `deda4d8`): *Layers* beside Map [M] opens a panel (cities, ground
+  stations, contract targets, our satellites and landers, debris, links home, moons' orbits and SOI rings, planets and
+  Helios, names). Every `drawMap` pass asks `mapShow(k)` (`app/map-layers.js`); the ship, its orbit, plan, nodes,
+  impacts and the target always show. Untouched layers follow the era (cities before the first orbit; satellites,
+  debris, planets after); a layer you set is kept per browser.
+- **Checks:** test `flow-19`; `--smoke` passes on the merge; robot rows `layers` and `m1` pass.
+- **Seen on main, not mine:** QUEUE's FLAG (two full-suite checks failing at `e42f84b`: node chain flown, Q342), for
+  vehicle/space.
+- **Files:** `app/map-layers.js` (new), `app/render.js` (`drawMap`), `index.html`, `tests/flow.mjs`, `playtest.mjs`,
+  `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** Q262 (centre the map on something else).
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): Q187 plan, rivals' satellites as targets
+- **Planned** (docs only): rival satellites as real objects from rival programs; one exposure model (sunlit, plume Δv, the owner's radar era, time on the job) rolled at the flight's end with a later leak chance; inspection, hacking and retrieval at stakes 1–3; spotted → incident, opinion, relation, sanctions at k ≥ 2; no combat.
+- **Files:** `explorations/launchpad/notes/economy.md` (new plan section), `NOTES.md`, `QUEUE.md` (Q187 ✓ plan, W41, two Proposed slices), `ACTIVE_WORK.md`.
+- **Next:** W41 (four defaults). Economy's ready list: Q181, Q184, Q296, Q332.
+
+
+## 2026-10-13 — flow session: Q262, what the map is centred on (v1.169)
+- **Q262 ✓ v1.169** (PLAYTEST #62, merged and pushed, `7ed2a0c`): a **Focus** list beside Layers (the ship, the known
+  bodies, our satellites and landers, this flight's other vessels); a double-click on a body or craft centres on it;
+  Tab cycles the same list; **Home** returns to the ship. Not Backspace as the item said: in flight it aborts.
+  `mapFocusPos()` (`app/map-layers.js`) is the map camera's centre; a craft that's gone hands focus back to the ship.
+- **Checks:** test `flow-20`; `--smoke` passes on the merge; robot row `focus` (the satellite centred, a double-click
+  on Selene centred with its message, Home back). A satellite's framing was widened after the shots (the ship's rule).
+- **Files:** `app/map-layers.js`, `app/render.js`, `app/input.js`, `app/screens.js`, `index.html`, `tests/flow.mjs`,
+  `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** the rest of the ready list (Q287 hover glossary, Q293 losses explained, Q286 declutter, …).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q326 where the sky's time goes at the pad
+
+- **Done (measurement only):** each part of `SKY_FS`'s main stubbed in turn in the running page, the sky pass timed on
+  the pad views. Of 7.4 ms: the ground 4.7 (its march ~1.9, the volume cloud shadow 1.4, the albedo 1.0, the normal
+  0.4), `scatter` 0.4, the deck 0.3. So Q322's table won't buy back the pad's time; Q19's march and a baked cloud
+  shadow will. Two Proposed lines. The run waited ~3 min for the effects session's lock and for memory.
+- **Files:** `notes/look.md` (§ Q326), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q326/`.
+- **Next for sky & bodies:** Q322 (for the look: the limb, Selene out of `SKY_FS`), Q323.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): W41 answered; Q181 overflight (v1.171)
+- **W41** (Caio): real rival satellites; suspicion grows with unexplained losses; hacking pays the contract or the service, plus a tap (indefinite) and data theft; radar as layers proposed as the default. Plan amended (NOTES § Q187 amendment), DECISIONS W41.
+- **Built (Q181):** overflight counts only low flight (Caio's point): below 150 km, not in orbit (periapsis in the atmosphere), within 1,000 km of the pad. Any foreign land, scaled by relation (an ally nothing, a rival −3 opinion, a security state ×2), one headline a year, a Debrief line.
+- **Measured:** 1 of 16 default sites has foreign land due east within 1,000 km (a friend, k 0.17).
+- **Files:** `sim/program.js` (`overTick`, `overEnd`), `sim/debrief.js`, `tests/economy.mjs` (econ-24), `notes/economy.md` § v1.171, `NOTES.md`, `QUEUE.md` (Q181 ✓, two Proposed: overflight rights, the picker's warning), `TESTING.md` 253, `ACTIVE_WORK.md`.
+- **Fixed:** v1.165's missed-deadline check in `tests/core.mjs` failed in a full run when the client's opinion drifted −2 on its own; it now compares with the same 40 days without the contract.
+- **Next:** economy's ready list: Q184 (routines), Q296, Q332.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, second session, later): PLAYTEST #88, Q302, Q335
+
+- **Done, on `main`:** v1.168 PLAYTEST #88 (the vapor collar as one thin streaked sheet from the strongest shoulder, a third
+  as dense and greyer; Caio saw stacked white bands, which were my Q320 rings plus collars stacked from close shoulders);
+  v1.170 Q302 (an incoming debris fragment as a sunlit streak on its path, a flash and sparks at the strike); v1.172 Q335
+  (a canopy per chute over a falling stage, its splash at sea, a waterline lapping round anything afloat).
+- **Found and fixed on the way:** every smoke puff in vacuum rendered black. `S.qHeat` unset made `plasmaHeat` NaN, which
+  `plasmaLight` let through into the shared light; the smoke vertex shader had no guard.
+- **Tests:** `aerofx-14` updated; `aerofx-20` and `aerofx-21` new; all look sections pass on each merged tree. No full suite.
+- **Files:** `app/gl.js`, `app/render.js`, `app/state.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`
+  (250, 252, 254), `PLAYTEST.md` (#88), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** the effects lane has nothing ready; the sound beat (Q362, Q363) would make today's effects audible.
+

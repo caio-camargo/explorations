@@ -281,15 +281,18 @@ window.refView = async (n) => {
     return kind + ' h ' + ((len(S.r) - S.body.R) / 1000).toFixed(1) + ' km q ' + (S.qdyn / 1000).toFixed(1) + ' kPa, max ' + (GQ.peak / 1000).toFixed(1) + ' M ' + S.mach.toFixed(2);
   }
   // 97–100: the sky from space. The ship in orbit, the camera aimed along a direction D: 97 the galactic centre, 98 along
-  // the band, 99 the sun, 100 the band over the planet's limb (D horizontal, the camera tipped down a little)
-  if (n >= 97 && n <= 100) {
+  // the band, 99 the sun, 100 the band over the planet's limb (D horizontal, the camera tipped down a little); (Q321) 159 the
+  // program's nebula and 160 its spiral, each over the limb from the night side
+  if (n >= 97 && n <= 100 || n === 159 || n === 160) {
     stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
-    galaxy(); const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : along;
+    galaxy(); const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : n === 159 ? GAL.nd : n === 160 ? GAL.sd : along;
     let up = D; if (n === 100) { up = norm(cross(D, GAL.gx)); if (dot(up, SUN) < 0) up = mul(up, -1) }   // a sunlit limb
+    if (n >= 159) { const ns = mul(SUN, -1); up = norm(sub(ns, mul(D, dot(ns, D)))) }   // the night side, D on the horizon
     const r = TELLUS.R + 300e3; S.r = mul(up, r); S.v = mul(norm(cross(GAL.gx, up)), Math.sqrt(TELLUS.mu / r)); S.throttle = 0; S.w = [0, 0, 0];
-    const f = localFrame(S.r), Dv = n === 100 ? norm(add(D, mul(up, -0.25))) : D;
+    const f = localFrame(S.r), Dv = n === 100 || n >= 159 ? norm(add(D, mul(up, n >= 159 ? -0.12 : -0.25))) : D;
     cam.pitch = Math.asin(clamp(-dot(Dv, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(Dv, f.e), dot(Dv, f.n)); cam.dist = 30;
-    window.simulate = () => {}; render(); await settle(); bare(); return 'sky ' + n;
+    if (n >= 159) cam.dist = 60;
+    window.simulate = () => {}; render(); await settle(); bare(); return n === 159 ? 'the nebula' : n === 160 ? 'the spiral' : 'sky ' + n;
   }
   // 101–102: fin-tip vapor. The Orbiter climbing to alt m, then pitched aoa degrees off its flight path and flown (rendered
   // every step so the trails record) for 0.8 s; frozen: [alt, aoa, yaw, pitch, dist]

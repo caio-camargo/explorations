@@ -981,3 +981,36 @@ R3 of the real-screens plan (§ "Plan: real screens"; mock-up `mockups/screens/?
 - **Not yet:** the director's own name on the signature (a typed name, saved); the program's real seal (`powerMark`)
   instead of the red wax; the era's look on the title.
 
+## v1.167 — the map's layers (2026-10-13, flow session, QUEUE Q261; PLAYTEST #61)
+Caio, 2026-10-10: the map gets too busy; toggles for what it shows.
+- **Layers** beside *Map [M]* (map view only, `#bLay`) opens a panel (`#mapLay`, `app/map-layers.js`): cities, ground
+  stations, contract targets, our satellites and landers, debris and spent stages, links home, the moons' orbits and
+  spheres of influence, the planets and Helios, names. Then *Defaults*.
+- **Every `drawMap` pass asks `mapShow(k)`** (`app/render.js`); *names* blanks the text of cities, satellites, bases,
+  bodies and planets but keeps their marks. Always drawn, whatever the layers: your ship, its orbit, the plan, nodes,
+  impacts, the closest approach, and **the target** (a satellite or lander you target shows even with its layer off).
+- **Defaults by era, remembered per browser:** a layer you set is kept (`localStorage['launchpad-map-layers']`, only
+  what you changed); one you never touched reads *auto* and follows `mapLayDefault`: before the first orbit (the
+  beeper) cities on, planets and debris off; after it, cities off, satellites, debris and planets on. *Defaults* forgets
+  your settings. **Defaults are mine, for Caio to override.**
+- **Checks:** test `flow-19` (every pass gated; the era's defaults; a set layer wins). Robot row `layers` (the panel
+  over the map; all on, then only our satellites and links; it hides when you leave the map) and `m1` pass. TESTING row 249.
+- **Not yet:** ground tracks on the map (the plan named them; today they're mission control's wall, not the map);
+  Q192's merged planet labels; a key for the panel.
+
+## v1.169 — what the map is centred on (2026-10-13, flow session, QUEUE Q262; PLAYTEST #62)
+Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as Tab, unlabelled, over the bodies.
+- **A Focus list** beside *Layers* (map view only, `#mapFocus`): the ship, each known body, our satellites and landers
+  (registry, not debris or docked), and this flight's other vessels (`FLEET`), each in words. Picking one centres the
+  map on it at a distance that frames its orbit.
+- **Double-click** a body (its disc, at least 14 px) or a craft (within 12 px) on the map centres on it, with a message
+  naming it and how to come back. **Tab** cycles the same list. **Home** returns to the ship.
+- **Not Backspace**, which the item named (KSP's key): in flight Backspace is *abort*, and a slip would end the flight.
+- **How:** `cam.focus` stays the ship (0) or a body (index + 1); `mapFoc` names a craft (`{sat: id}` or `{ves}`);
+  `mapFocusPos()` (`app/map-layers.js`) is the map camera's centre in `render.js`. A craft that's gone (re-entered,
+  docked, junk, lost) hands the focus back to the ship. Entering the map resets to the ship, as before.
+- **Checks:** test `flow-20` (the list; centred on a satellite; Tab; gone → ship); robot row `focus` (the list to the
+  satellite, a double-click on Selene, Home back). TESTING row 251.
+- **Not yet:** focus on a rival's satellite (economy's Q187 makes them targets); remembering the focus when the map is
+  left and reopened.
+

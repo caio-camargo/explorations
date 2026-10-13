@@ -1575,3 +1575,120 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
 - **Not built: the ascent's leading-edge warmth** (BEAUTY B3.2, Q320's leftover). The skin stays near 400–600 K on a
   climb, and a blackbody there is invisible even at night (1,000 K is 3e-4 of sunlit paint, `aerofx-11`). Only a stylised
   tint would show it, against the doc's rule that every effect teaches something true. Left out on purpose.
+
+## v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
+
+BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (Caio, 2026-10-12–13). `app/gl.js`,
+`app/render.js`, `views.js`, `refset.mjs`.
+
+- **The galaxy, a nebula and a spiral, baked once per program** (`GAL_FS`, `galBake`). A cube map (512² a face on
+  High, 256² on Low; RGBA16F, or RGBA8 holding sqrt(20c) without float targets), mipmapped, on texture unit 12, drawn
+  when the program's seed or the setting changes (~10 ms once). `SKY_FS`'s `galaxy()` is now one `texture()` call: the
+  noise that was in its main per pixel is gone (Q19's rule: the sky shader shrinks). The bake is the mock-up's code at
+  Caio's levels: the band 100 % (star clouds, dust lanes, a warm bulge, a few pink nebulae and blue clusters), the
+  **nebula** at 7.5 % in the Hubble palette, the **spiral** at 4.5 %, both galaxies in one palette. Alpha holds the
+  band's density, which the stars read.
+- **Where the sights sit** (`galSights`, appended to `makeGal`, so every old seed keeps its band): the nebula 22° off
+  the band's midline at a seeded point along it (nebulae lie along the band; Orion is ~20° off), the spiral 40° off
+  (the zone of avoidance), a seeded noise offset and the spiral's roll. Each program has its own.
+- **Stars** (`starsAt`): three layers on hashed cells, ~40 bright, ~300 medium, ~1,500 faint in a 60° frame, more
+  along the band; brightness by a power law, colour by temperature, each a small sharp disc at least a pixel wide, a
+  soft halo on the brightest. **The floor** (D18.2): `uStK = max(1, 1.2 / E)` lifts them when the exposure is low, so in
+  daylight only the brightest stay. **The twinkle, on purpose** (Caio: "the stars currently twinkle, maybe we can
+  preserve that"; the old twinkle was one-pixel stars shimmering, which sharp stars would lose): each star's brightness
+  drifts on its own seed, ±35 %, a couple of times a second (`uStT`, `HOOK.fxT` in reference views).
+- **The sun** (`sunAt`): a limb-darkened 0.27° disc, a tight glare and a faint veil; the four screen-fixed spikes are
+  gone. The mock-up's 900× disc bloomed into a soft ball in the game (the composite's bloom has no threshold), so the
+  disc is 250× and the glare smaller.
+- **A/B:** `SKY_B5 = false` compiles the old galaxy, stars and sun back in (the shader recompiles; no bake).
+- **Views:** 159 the program's nebula, 160 its spiral, each over the limb from the night side; `refset.mjs`'s set now
+  ends at 160.
+- **Seen** (RTX, High; `output/launchpad/beauty/q321-before/`, `q321-after/`, Low `q321-after-low/`): views 97–100 show
+  the band with lanes and a bulge instead of a smooth smear, a field of coloured stars where there were almost none, the
+  sun small; 156 the same over the limb; 159 the nebula a faint copper veil beside the band, 160 a small spiral alone.
+- **Measured** (full resolution, before → after, ms): 3 5.1 → 3.8, 97 3.2 → 2.3, 98 2.8 → 2.8, 99 3.7 → 3.8, 100
+  3.5 → 3.5, 156 3.3 → 4.6, 157 3.4 → 4.2, 158 6.6 → 7.4, pad 12.4 → 11.8: noise on a busy machine, no clear cost or
+  gain. **Not measured:** the iGPU; the first-load time (`SKY_FS` lost its galaxy noise but gained three star layers).
+- **Checks:** test `aerofx-20` (the nebula 22° and the spiral 40° off the band for five seeds; the bake, its unit and
+  wiring; the new stars and sun; the old code behind `SKY_B5`); the galaxy-per-program test builds `galSights` too.
+  TESTING 248.
+
+## v1.168 — the vapor collar, calmer: one thin sheet, not bands (2026-10-13, effects beat; PLAYTEST #88)
+- **Caio:** the air effects on ascent "look like several separate bands that show up for a short while", and are
+  probably too white.
+- **Why:** two things stacked. v1.154's rings (Q320) cut each collar into thin bands with gaps; and `hullShoulders`
+  finds up to three shoulders per stack (the Orbiter: stations 27, 21 and 23, two of them nearly on top of each other),
+  so the collars stacked down the body. Each collar was also near-opaque white and puffy: up to 2.1 hull radii wide with
+  a lumpy rim.
+- **Now:** one shoulder per stack, the strongest, plus others only if as strong (≥ 90 %) and over 4 stations apart.
+  The collar is one sheet, 1.06–1.66 hull radii (rim noise ±8 %, was ±30 %), streaked round its circumference along the
+  flow and flickering as a whole. It is a thin mist: density ×1 (was ×3), colour 0.86–0.92 at 0.95 of the sun (was
+  0.95–0.98 at 1.25). The Mach window is unchanged (0.84–1.28 below 15 km): it is a few seconds of the climb, as in
+  life.
+- **Stills:** `output/launchpad/beauty/pt88/` (`z53b.png` close: before | after; `ab_50_54.png` wide; `after/` is the
+  first try, one collar per shoulder with streaks, still two bands).
+- **Checks:** test `aerofx-14` now checks the single streaked sheet, the thinner mist and the shoulder filter. TESTING 250.
+
+## Q326 — where the sky's time goes at the pad (2026-10-13, sky & bodies beat; measurement, no game change)
+
+The question (Q313's profiler): the base sky is ~5–6 ms of a 7–12 ms frame at the pad; which part, so Q322's table and
+Q19's terrain pass aim at the bigger one. **Method:** one part of `SKY_FS`'s main stubbed at a time, the sky program
+rebuilt in the running page (`REF_EVAL`), the sky pass timed by `REF_PROF=1 node refset.mjs` on views 4–7, 63, 80, 101
+(RTX 3050, High, full resolution). The driver and its eleven variants: `output/launchpad/beauty/q326/` (`variants.txt`,
+one log each). Noise between runs ≈ ±0.2 ms.
+
+| Stubbed | Sky pass, mean ms | Saved |
+|---|---|---|
+| nothing (base) | 7.37 | — |
+| **the ground: march + all its shading** (`tP = 1e30`) | 2.70 | **4.68** |
+| the volume cloud shadow on the ground (`cloudShadowV`) | 6.02 | **1.36** |
+| the ground's albedo (`tellus()`) | 6.33 | 1.04 |
+| the terrain normal (two extra `terr` samples) | 6.95 | 0.42 |
+| `scatter` (the air's in-scatter loop) | 7.01 | 0.36 |
+| the cloud deck's shell | 7.09 | 0.29 |
+| scrub and pad, detail, cities, sun transmittance | 7.3–7.6 | ~0 (noise) |
+
+- **The ground is 4.7 of 7.4 ms.** Its shading parts add to ~2.8, so **the march itself is ~1.9 ms**.
+- **`cloudShadowV` is the second biggest single part (1.4 ms):** five steps toward the sun through the cloud volume
+  for every ground pixel (Q65). It changes slowly; baking it into a 2D texture with the coverage (`covBake`) once a
+  frame, or every few, would make it a lookup.
+- **`scatter` is small at the pad (0.4 ms).** Q322's transmittance table is still worth it for the limb, the night side
+  and moving Selene out of `SKY_FS`, but it won't buy the pad's frame time back.
+- The rest of the pass without the ground (~2.7 ms: the air along the whole ray, the sky, the stars, the deck) is the
+  floor a terrain pass can't touch.
+- **Aim:** Q19's terrain pass at the march (it moves the march into its own full-resolution pass; that pays for the
+  link time, not by itself for the frame: the march needs to get cheaper there, e.g. coarser steps far away or half
+  resolution with a depth-aware upsample like the cloud slab's); a new item for the volume shadow's bake; Q322 keeps its
+  place for the look, not the pad's time.
+- Not measured: Low, the iGPU (the shares should hold, the totals won't).
+
+## v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
+- **The fragment** (`HOOK.fragIn`, `FRAGS`, `fragDraw`): the sim rolls a hit 3 s ahead and hands over its size, crossing
+  speed and direction (space's Q200). A centimetre fragment kilometres off is invisible, so it's drawn as what an eye
+  might catch: a sunlit glint streaking in on its path, a line 0.06 s of its travel long (≈ 500 m at 9 km/s), brighter
+  for a bigger piece (×0.25–2 by size against 4 cm) and as it closes (×0.3 → 3), dark in a planet's shadow, drawn with
+  the line shader in the additive pass after the plasma. At the strike: a flash (a hot puff 0.5–1.1 m, 0.12 s) and
+  20–44 sparks off the face it hit. A strike while nobody's looking (the map) is dropped, not flashed late.
+- **Found on the way: every smoke puff in vacuum rendered black.** Reference views (and any frame before the first physics
+  step, e.g. after a load) have `S.qHeat` unset, so `plasmaHeat` returned NaN, and `plasmaLight`'s `qE <= 1.5e4` let
+  NaN through. That made the shared plume/plasma light (`PLT.c`) NaN. The mesh shader skips it by accident (NaN > 0 is
+  false); the smoke vertex shader doesn't, and the composite's NaN guard painted each puff black (staging sparks, a
+  venting tank, a strike flash in orbit). `plasmaHeat` now treats an unset flux as 0, and `plasmaLight` tests
+  `!(qE > 1.5e4)`.
+- **Stills:** `output/launchpad/beauty/q302/k_row.png` (the streak side-on from 5 km at 0.5 s and 0.2 s out; the flash on
+  the struck face); `alt_ab.png` (the black puffs at 200 km against bright ones at 50 km, before the fix).
+- **Checks:** test `aerofx-20`. TESTING 252.
+
+## v1.172 — a falling stage under its chutes, its splash, and the waterline (2026-10-13, effects beat, QUEUE Q335)
+- **Canopies over a falling stage** (`debrisCanopies`, from the debris draw in `render()`): while the sim's `d.chA` is open
+  (Q300, v1.142: chute parts among a spent stage's parts open by themselves), one canopy per chute part. Each is sized
+  from its share of `d.chA` (a 600 m² main is ~28 m across) and trails up the airflow from its chute on risers ~1.3
+  diameters long, spread a little apart when there are several. The ship's own canopy is unchanged.
+- **A stage that comes down in the sea splashes** (Q267's `splashFx`) once, at the speed it had the step before it
+  floated (`d.mkV`).
+- **The waterline:** anything afloat (a spent stage, `d.float`; the ship, `S.water`) laps the sea round its hull with small
+  white puffs half sunk at the surface, ~12 a second, living ~2 s, round an ellipse the hull's length long when it
+  lies on its side (`surfFx`).
+- **Stills:** `output/launchpad/beauty/q335/c_ab.png` (a 1 t stage under its 600 m² main at 2.2 km; the same stage
+  afloat with its surf).
+- **Checks:** test `aerofx-21`. TESTING 254.

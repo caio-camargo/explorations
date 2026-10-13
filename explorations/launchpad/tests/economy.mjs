@@ -135,7 +135,7 @@
 {
   const D = new Function(src + 'return {rvPrice,rvLocked,rvLaunchWhy,rvPartOpen,rvDefault,partPrice,PARTS,CT,selN,selSci,selTick,sciGot,genOffer,acceptOffer,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, done: {}, own: null, decisions: [], offers: [], active: [], cdone: 0, flights: 3, kh: {}, sel: null }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, done: {}, own: null, decisions: [], offers: [], active: [], back: [], cdone: 0, flights: 3, kh: {}, sel: null }); D.chooseStart('agency');
   const apollo = D.rvDefault(), basic = { name: 'Yard cart', ch: 's', wh: 's', n: 4, slots: ['bat', 'cam', null] };
   const part = d => ({ d: D.PARTS.rvdeck, dn: { rvd: d } }), bare = D.partPrice({ d: D.PARTS.rvdeck, dn: {} });
   check('rovers: a packed rover costs its parts (the default two-seater 24M), on top of the deck', D.rvPrice(apollo) === 24 && Math.abs(D.partPrice(part(apollo)) - bare - 24) < 1e-9 && D.rvPrice(basic) === 9,
@@ -187,7 +187,7 @@
 {
   const D = new Function(src + 'return {stagedTick,MISSIONS,NYX,PROG,HOOK,recNew,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, staged: {},
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, staged: {},
     done: Object.fromEntries(['weather', 'beeper', 'farside', 'nyxfind'].map(k => [k, { flight: 1, day: 1 }])) }); D.chooseStart('agency');
   const R = D.recNew(); R.paid = []; R.open0 = D.MISSIONS.filter(M => !P.done[M.id] && (M.req || []).every(r => P.done[r])).map(M => M.id);
   const s = { alive: true, landed: false, body: D.NYX }, f0 = P.funds;
@@ -206,13 +206,13 @@
   const D = new Function(src + 'return {genOffer,payFloor,withdrawContract,standOf,opOf,CT,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   D.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 50, rel: {}, op: {}, sanc: {}, stand: { sci: 10, com: 10 }, cycle: -0.9, done: { weather: { day: 1 }, loads: { day: 1 }, hop: { day: 1 }, beeper: { day: 1 } },
-    own: null, decisions: [], offers: [], active: [], flights: 3 }); D.chooseStart('company');
+    own: null, decisions: [], offers: [], active: [], back: [], flights: 3 }); D.chooseStart('company');
   const R = D.rng(11); let n = 0, low = []; for (let k = 0; k < 400; k++) for (const src of ['sci', 'com', 'gov', 'tour', 'mil']) { const o = D.genOffer(src, R); if (!o) continue; n++; const f = D.payFloor(o.type); if (o.p.pay < f - 1e-9) low.push(`${o.type} ${o.p.pay} < ${f}`); }
   check('pay floor: in a frugal world, low standing and a deep recession, no offer pays under its floor', n > 500 && !low.length && D.payFloor('apex') > 10 && D.payFloor('sat') > D.payFloor('apex'),
     `${n} offers; floors: sounding ${D.payFloor('apex')}M, test ${D.payFloor('test')}M, hop ${D.payFloor('bioHop')}M, satellite ${D.payFloor('sat')}M${low.length ? '; under: ' + low.slice(0, 3).join(', ') : ''}`);
   const c = { id: 501, type: 'apex', src: 'sci', client: 1, p: { lo: 20, hi: 30, pay: 15, dur: 100 }, deadline: P.day + 100 }; P.active = [c];
   const s0 = D.standOf('sci'), o0 = D.opOf(1), ok = D.withdrawContract(501), again = D.withdrawContract(501);
-  check('withdraw: frees the slot at once, at a missed deadline\'s cost in standing and the client\'s opinion', ok && !again && P.active.length === 0 && D.standOf('sci') === Math.max(0, s0 - 10) && D.opOf(1) < o0,
+  check("withdraw: frees the slot at once, at a missed deadline's cost: a wait, no standing or opinion lost (Q295)", ok && !again && P.active.length === 0 && D.standOf('sci') === s0 && D.opOf(1) === o0 && (P.back || []).some(b => b.c.id === 501),
     `standing ${s0} → ${D.standOf('sci')}, opinion ${o0.toFixed(1)} → ${D.opOf(1).toFixed(1)}`);
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('withdraw: taken contracts show the button', pg.includes('data-wd="${c.id}"') && pg.includes('withdrawContract(+ds.wd)'));
@@ -240,7 +240,7 @@
 {
   const D = new Function(src + 'return {satQual,satEra,obsTick,serviceTarget,genOffer,contractEval,compEra,CT,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, stand: {}, done: { beeper: { day: 1 } }, own: null, decisions: [], offers: [], active: [], flights: 3, cdone: 0 }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, stand: {}, done: { beeper: { day: 1 } }, own: null, decisions: [], offers: [], active: [], back: [], flights: 3, cdone: 0 }); D.chooseStart('agency');
   const tv = { id: 31, name: 'TV 1', ant: 1, r: [7e6, 0, 0], v: [0, 7e3, 0], epoch: 0, tvOn: true, pending: [], imgs: 0 }, cam = { id: 32, name: 'Eye 1', cam: 1, ant: 1, contact: 0.1, r: [7e6, 0, 0], v: [0, 7e3, 0], epoch: 0, pending: [], imgs: 0 };
   P.sats = [tv, cam]; const e0 = D.compEra(); D.obsTick(); const q0 = D.satQual(tv);
   while (D.compEra() < e0 + 1 && P.day < 20000) P.day += 50; news.length = 0; D.obsTick(); D.obsTick(); const q1 = D.satQual(tv), n1 = news.filter(t => /generation/.test(t)).length;
@@ -261,7 +261,7 @@
 {
   const D = new Function(src + 'return {missionEval,recNew,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 4, cdone: 0, staged: {},
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 4, cdone: 0, staged: {},
     done: { weather: { flight: 1, day: 1 }, beeper: { flight: 2, day: 2 } } }); D.chooseStart('agency');
   const open = () => D.MISSIONS.filter(M => !P.done[M.id] && (M.req || []).every(r => P.done[r])).map(M => M.id);
   const R = D.recNew(); R.open0 = open(); Object.assign(R, { orbit: true, lift: 2, orb: { pe: 150e3, ap: 160e3, inc: 0 }, paid: [] });
@@ -302,7 +302,7 @@
 {
   const D = new Function(src + 'return {netModel,padsN,TELLUS,SELENE,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, fac: {}, stations: [] }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, fac: {}, stations: [] }); D.chooseStart('agency');
   const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0), u = [-1, 0, 0].map(x => x * D.SELENE.R);
   const sat = { id: 41, name: 'Lookout 1', cam: 1, ant: 1, r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [] };
   const base = { id: 42, name: 'Selene Base 1', landed: true, beacon: true, bodyName: 'Selene', pf: u, ql: [0, 0, 0, 1], shape: [{ k: 'hab', crew: 2, res: { sup: 0.1 } }], pending: [], imgs: 0 };
@@ -326,7 +326,7 @@
 {
   const D = new Function(src + 'return {raceSchedule,RACE,POWERS,missionComplete,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0},chooseStart};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 10, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 1, done: {}, raceLost: {}, staged: {} }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 10, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: {}, raceLost: {}, staged: {} }); D.chooseStart('agency');
   const W = D.POWERS, x = W.find(p => p.i !== 0 && !/Super$/.test(p.arch)), keep = { arch: x.arch, tech: x.tech, econ: x.econ };
   Object.assign(x, { arch: 'frugal', tech: 5, econ: 5 }); const Sf = D.raceSchedule();
   Object.assign(x, { arch: 'rising' }); const Sr = D.raceSchedule(); Object.assign(x, keep);
@@ -342,7 +342,7 @@
 {
   const D = new Function(src + 'return {CT,genOffer,acceptOffer,selTick,stState,stPick,TELLUS,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
   const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0);
   const st = { id: 51, name: 'Station 1', r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [{ k: 'hab', crew: 2, res: { sup: 0.35 } }, { k: 'lab' }], attached: [], labDays: 7 };
   P.sats = [st];
@@ -364,7 +364,7 @@
 {
   const D = new Function(src + 'return {utilTick,stationOf,TELLUS,PROG,HOOK,MISSIONS,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, staged: {},
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, cdone: 0, staged: {},
     done: { weather: { day: 1, flight: 1 }, beeper: { day: 2, flight: 2 } } }); D.chooseStart('agency');
   const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0);
   const hab = { k: 'hab', i: 0, pos: [0, 0, 0], y0: 0, h: 3.2 }, top = { k: 'port', i: 1, pos: [0, 0, 0], y0: 3.2, h: 0.3 }, side = { k: 'rport', i: 2, pos: [0, 0, 0], y0: 1, h: 0.6, phi: 0 };
@@ -382,7 +382,7 @@
 {
   const D = new Function(src + 'return {CT,genOffer,acceptOffer,selTick,stState,SELENE,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
   const at = (dx) => { const u = [-1, dx / D.SELENE.R, 0], l = Math.hypot(...u); return u.map(x => x / l * D.SELENE.R); };
   const beacon = { id: 71, name: 'Selene Base 1', landed: true, beacon: true, bodyName: 'Selene', pf: at(0), ql: [0, 0, 0, 1], shape: [], pending: [], imgs: 0 };
   const hab = { id: 72, name: 'Selene lander 1', landed: true, bodyName: 'Selene', pf: at(100), ql: [0, 0, 0, 1], shape: [{ k: 'hab', crew: 2, res: { sup: 0.1 } }], pending: [], imgs: 0 };
@@ -403,7 +403,7 @@
 {
   const D = new Function(src + 'return {CT,genOffer,contractEval,rdvTick,rdvTarget,retrieveTarget,satAt,progT,compEra,TELLUS,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, T = D.TELLUS; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
   const r0 = T.R + 400e3, v0 = Math.sqrt(T.mu / r0);
   const stage = { id: 81, name: 'Spent stage 1', junk: true, r: [r0, 0, 0], v: [0, v0, 0], epoch: 0, pending: [], imgs: 0 };
   const dead = { id: 82, name: 'Beeper 2', sci: 1, r: [0, r0, 0], v: [-v0, 0, 0], epoch: 0, era: 0, pending: [], imgs: 0, shape: [{ k: 'core' }, { k: 'bat' }, { k: 'ant' }, { k: 'tank' }] };
@@ -449,7 +449,7 @@
 {
   const D = new Function(src + 'return {raceSchedule,rivTick,rivRate,rivSpur,raceTick,missionComplete,careerMove,RACE,POWERS,MISSIONS,PROG,HOOK,flav,archOf,chooseStart,setHome:h=>{HOME=h;PROG.home=h},get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v}};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  const fresh = (seed, day = 0) => { Object.assign(P, { homeArch: null, wseed: seed, day, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 1, done: {}, raceLost: {}, raceAnn: {}, staged: {}, riv: null, comm: 0 }); D.setHome(0); D.RIVALS = D.raceSchedule(); D.chooseStart('agency'); };
+  const fresh = (seed, day = 0) => { Object.assign(P, { homeArch: null, wseed: seed, day, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: {}, raceLost: {}, raceAnn: {}, staged: {}, riv: null, comm: 0 }); D.setHome(0); D.RIVALS = D.raceSchedule(); D.chooseStart('agency'); };
   const W = D.POWERS, racer = W.find(p => p.i !== 0 && D.archOf(p.i) === 'openSuper'), res = W.find(p => p.i !== 0 && D.archOf(p.i) === 'resource');
   fresh(1000);
   const S0 = D.RIVALS, ws = [1000, 1077, 1154].map(s => { fresh(s, 300); return D.RACE.map(id => (D.RIVALS[id] || {}).day).join('/'); });
@@ -485,7 +485,7 @@
 {
   const D = new Function(src + 'return {giantTick,giantShare,giantSells,giantYear,sourceOf,relOf,genOffer,payFloor,PROG,HOOK,POWERS,YEAR_D,IMPORT_K,rng,chooseStart,setHome:h=>{HOME=h;PROG.home=h}};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
-  Object.assign(P, { homeArch: 'resource', wseed: 1000, day: 0, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 1, done: { beeper: { day: 1 } }, giant: null, cycle: 0 });
+  Object.assign(P, { homeArch: 'resource', wseed: 1000, day: 0, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: { beeper: { day: 1 } }, giant: null, cycle: 0 });
   D.setHome(0); D.chooseStart('company');
   const k = 'pod', before = D.sourceOf(k), R = D.rng(7);
   const y0 = D.giantYear(); P.day = Math.floor((y0 - 0.01) * D.YEAR_D); D.giantTick(1, R); const early = P.giant;
@@ -508,4 +508,53 @@
   P.sanc[G.i] = P.day + 100; const sancd = ok1 && D.giantSells() === null && D.sourceOf(k).how !== 'giant';
   check("giant: it answers to its power's law: sanctions from that power stop its sales to us", sancd, `based in ${other.root}: before ${ok1 ? 'giant' : '?'}, sanctioned ${D.sourceOf(k).how}`);
   G.i = i0;
+}
+
+// econ-23. A missed deadline costs a wait (economy session, QUEUE Q295, DECISIONS D17.4): the job is lost with no
+// standing or opinion lost, and the client posts it again 60–120 days later, same job and pay; not while it sanctions
+// us; a job whose reason is gone drops; a full board makes it wait.
+{
+  const D = new Function(src + 'return {econTick,backTick,contractLost,standOf,opOf,CT,PROG,HOOK,BOARD_MAX,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { wseed: 77, day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: {}, cycle: 0, funds: 500 });
+  D.chooseStart('agency');
+  const job = { id: 901, type: 'apex', src: 'sci', client: 1, p: { lo: 50, hi: 65, pay: 17, dur: 100 }, deadline: 105 };
+  P.active = [job]; const s0 = D.standOf('sci'), o0 = D.opOf(1);
+  P.day = 110; D.econTick(10, D.rng(3)); const b = P.back[0];
+  const lost = P.active.length === 0 && D.standOf('sci') === s0 && Math.abs(D.opOf(1) - o0) < 1 && b && b.day >= 170 && b.day <= 230 && news.some(t => /Missed deadline.*ask again/.test(t));
+  P.offers = []; P.day = b.day - 1; D.backTick(); const early = P.offers.length;
+  P.day = b.day; D.backTick(); const o = P.offers.find(x => x.back);
+  check('missed deadline: no standing or opinion lost; the same job and pay come back as an offer 60–120 days later, saying why',
+    lost && early === 0 && o && o.type === 'apex' && o.p.pay === 17 && o.client === 1 && /Asked again/.test(o.why) && !P.back.length && news.some(t => /Back on offer/.test(t)),
+    `back on day ${b && b.day}; offer ${o && `${o.type} ${o.p.pay}M, "${o.why}"`}`);
+  P.back = [{ c: job, day: P.day }]; P.offers = Array.from({ length: D.BOARD_MAX }, (_, k) => ({ id: 1000 + k, type: 'apex', src: 'sci', client: 1, p: job.p, expires: P.day + 50 }));
+  D.backTick(); const waits = P.back.length === 1; P.offers = []; P.sanc = { 1: P.day + 50 }; D.backTick(); const dropped = !P.back.length && !P.offers.length;
+  P.sanc = {}; P.back = [{ c: { id: 902, type: 'service', src: 'gov', client: 0, p: { sat: 'gone', pay: 60, dur: 300 } }, day: P.day }]; D.backTick();
+  check('missed deadline: a full board makes the job wait; a client sanctioning us, or a job whose reason is gone (no satellite to service), drops it',
+    waits && dropped && !P.back.length && !P.offers.length, `waits ${waits}, sanctioned dropped ${dropped}`);
+}
+
+// econ-24. Overflight (economy session, QUEUE Q181, W23; NOTES § "Plan: overflight politics"): low flight only. Below
+// 150 km and within 1,000 km of the launch point, the powers whose land passes under the vessel are recorded; orbit
+// heights and far-off points don't count; home and the site's host don't. At the end each costs opinion and relation
+// scaled by the relationship (an ally nothing, a rival the most, a security state double), one headline a year.
+{
+  const D = new Function(src + 'return {overTick,overEnd,overK,debriefOf,norm,cross,len,SITES,POWERS,PROG,HOOK,TELLUS,powerAt,alongAz,rotY,bodyTheta,pairKey,relOf,opOf,archOf,OVER_OP,YEAR_D,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart,set t(v){simT=v}};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { wseed: 5, day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: {}, overNews: {} });
+  D.chooseStart('agency'); D.t = 0;
+  const site = D.SITES.find(t => t.power === 0) || D.SITES[0], u0 = site.u, Rt = D.TELLUS.R;
+  let far = null; for (let km = 100; km <= 900 && !far; km += 50) for (let a = 0; a < 36 && !far; a++) { const u = D.alongAz(u0, a * Math.PI / 18, km * 1e3 / Rt), p = D.powerAt(u); if (p && p.i !== 0 && p.i !== site.power) far = { u, p, km }; }
+  const at = (u, h) => D.rotY(u.map(x => x * (Rt + h)), D.bodyTheta(D.TELLUS, 0));
+  const fly = (u, h, orb) => { const R = { launchPf: u0.map(x => x * Rt), site: site.id }, r = at(u, h), up = D.norm(r), side = D.norm(D.cross(up, [0, 1, 0])), vc = Math.sqrt(D.TELLUS.mu / D.len(r));
+    D.overTick({ r, v: orb ? side.map(x => x * vc) : [0, 0, 0] }, R, 1.5); return R; };
+  const low = fly(far.u, 60e3), high = fly(far.u, 300e3), homeLand = fly(u0, 20e3), orbit = fly(far.u, 120e3, true), climb = fly(far.u, 120e3);
+  check('overflight: low over a foreign power within 1,000 km is recorded (climbing at 120 km too); in orbit at 120 km, above 150 km, or over home, it is not',
+    low.over && low.over[far.p.i] === 1 && climb.over && !orbit.over && !high.over && !homeLand.over, `${far.p.name} ${far.km} km out: low ${JSON.stringify(low.over)}, at 300 km ${JSON.stringify(high.over)}`);
+  const i = far.p.i, key = D.pairKey(0, i);
+  P.rel[key] = 0.6; const o0 = D.opOf(i); D.overEnd(low); const ally = D.opOf(i) === o0 && low.overK[i] === 0 && !news.length;
+  P.rel[key] = -1; const o1 = D.opOf(i), k1 = D.overK(i); D.overEnd(low); const hit = D.opOf(i) < o1 - 2.9 && D.relOf(0, i) <= -1 + 1e-9 && news.length === 1;
+  D.overEnd(low); const once = news.length === 1;
+  check('overflight: an ally doesn\'t mind; a rival protests (opinion −3, × 2 for a security state), one headline a program year',
+    ally && hit && once && Math.abs(k1 - (D.archOf(i) === 'security' ? 2 : 1)) < 1e-9, `${far.p.name} (${D.archOf(i)}): opinion ${o1.toFixed(1)} → ${D.opOf(i).toFixed(1)}; ${news.join(' | ')}`);
 }

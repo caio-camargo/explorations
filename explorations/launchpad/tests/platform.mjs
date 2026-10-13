@@ -55,7 +55,7 @@
   const T = api.TEST, keep = { on: T.on, log: T.log }, P = api.PROG; api.LOG.length = 0;
   Object.assign(T, { on: true, log: false }); api.logEv('tester', 'off'); const offQuiet = api.LOG.length === 0;
   T.log = true; api.HOOK.news = () => {};
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {} });
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {} });
   api.t = 0; const s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
   api.flightLeave(s);
@@ -75,7 +75,7 @@
   const cases = [[{ a: 1, b: [1, 2], c: { d: 1 } }, { a: 2, b: [1, 3], e: null }], [[1, 2], [1, 2, 3]], [{ x: { y: [{ z: 1 }] } }, { x: { y: [{ z: 2, w: 'q' }] } }], [{ a: 1 }, 5]];
   const round = cases.every(([a, b]) => JSON.stringify(A.jpatch(J(a), A.jdiff(a, b))) === JSON.stringify(b));
   // the page loads a save, then recording starts: the same here, through recLoad
-  A.recLoad({ prog: { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {}, day: 3, wseed: 4242 } });
+  A.recLoad({ prog: { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {}, day: 3, wseed: 4242 } });
   A.HOOK.news = () => {}; A.t = 0; A.REC.clock = () => A.t * 1000;
   A.recStart({ 'launchpad-volume': '0.5' }, { built: 'test' }); A.recEv('screen', { s: 'flight' });
   const s = A.newShip(A.PRESETS.Sounding), T = A.tapeNew(A.PRESETS.Sounding, null); A.S = s; s.throttle = 1;

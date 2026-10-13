@@ -8,7 +8,7 @@
 // on the way out to the Debrief screen.
 {
   const P = api.PROG; api.HOOK.news = () => {};
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {} });
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {} });
   api.t = 0; let s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
   const b = s.rec.deb0, out = api.flightLeave(s), D = out && out.debrief, M = D ? D.money : [];
@@ -373,4 +373,51 @@
   const signed = !X.needCharter() && !h2.includes('<button') && /In force/.test(h2) && /class="opt on"><span class="bx"><\/span><span><b>[^<]*· /.test(h2);
   check('flow-18: the page opens on the title screen; the charter asks whose program and how it starts, then signs it; no desk before; a founded career shows it signed',
     wired && open && picked && signed, `wired ${wired} · open ${open} · picked ${picked} · signed ${signed}`);
+}
+
+// flow-19. Map layers (flow session, QUEUE Q261, PLAYTEST #61): each of drawMap's passes belongs to a layer that mapShow
+// gates; a layer never touched follows the era (cities before the first orbit, then satellites, debris and the planets);
+// one the player set stays set. The target is drawn whatever its layer.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END')), dm = page.slice(page.indexOf('function drawMap('), page.indexOf('// ---- navball'));
+  const wired = ['moons', 'links', 'planets', 'cities', 'targets', 'stations', 'names'].every(k => dm.includes(`mapShow('${k}')`)) && dm.includes(`mapShow(q.junk?'debris':'sats')`)
+    && /if\(q\.id!==S\.target&&!mapShow\(q\.junk\?'debris':'sats'\)\)continue/.test(dm) && H.includes('id="bLay"') && H.includes('id="mapLay"');
+  const L = page.slice(page.indexOf('const MAP_LAYERS'), page.indexOf('function renderMapLay'));
+  const X = new Function(src + L + 'return {mapShow,MAP_LAYERS,PROG,set:o=>{mapLaySet=o}};')();
+  X.PROG.done = {}; const e1 = X.MAP_LAYERS.map(([k]) => X.mapShow(k));
+  const early = X.mapShow('cities') && !X.mapShow('planets') && X.mapShow('sats') && X.mapShow('moons');
+  X.PROG.done.beeper = true; const later = !X.mapShow('cities') && X.mapShow('planets') && X.mapShow('debris');
+  X.set({ cities: true, sats: false }); const mine = X.mapShow('cities') && !X.mapShow('sats') && X.mapShow('planets');
+  check('flow-19: map layers: every drawMap pass is gated; the era picks the defaults (cities before the first orbit, then satellites, debris and planets); a layer you set stays set; the target always shows',
+    wired && early && later && mine, `wired ${wired} · early ${early} (${e1.map(Number).join('')}) · after the beeper ${later} · set by you ${mine}`);
+}
+
+// flow-20. What the map is centred on (flow session, QUEUE Q262, PLAYTEST #62): the Focus list names the ship, the known
+// bodies, our satellites and landers and this flight's other vessels; centring on a satellite puts the camera's centre on
+// it; Tab cycles the list; a craft that's gone hands the focus back to the ship. Home (not Backspace: it aborts) returns.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const wired = /const foc=mapFocusPos\(\);/.test(page) && /k==='tab'&&view==='map'\)mapFocusCycle\(1\)/.test(page) && /k==='home'&&view==='map'\)setMapFocus\('ship'\)/.test(page)
+    && /\{k:\['home'\],l:'Home'/.test(page) && H.includes('id="mapFocus"') && /cv\.addEventListener\('dblclick'/.test(page);
+  const F = page.slice(page.indexOf('let mapFoc=null;'), page.indexOf('function renderMapFocus'));
+  let X, err = '';
+  try {
+    X = new Function(src + 'var cam={focus:0,mDist:1};const knownBody=b=>true,renderMapFocus=()=>{},shipWorld=()=>add(bodyPos(S.body,simT),S.r),tNow=()=>(PROG.day||0)*DAY_S+simT;' + F
+      + 'return {mapFocusList,mapFocusKey,mapFocusPos,setMapFocus,mapFocusCycle,newShip,PRESETS,satRegister,TELLUS,BODIES,PROG,HOOK,cam,setS:s=>{S=s},bodyPos,satAt,tNow,add,len,sub};')();
+  } catch (e) { err = e.message; }
+  let ok = false, info = err;
+  if (X) {
+    X.HOOK.news = () => {}; X.HOOK.msg = () => {}; X.HOOK.save = () => {}; const P = X.PROG, T = X.TELLUS; P.sats = []; P.day = 0;
+    const s = X.newShip(X.PRESETS.Probe), a = T.R + 400e3; Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -Math.sqrt(T.mu / a)], name: 'Probe' });
+    X.satRegister(s, { day0: 0 }); const q = P.sats.at(-1);
+    const me = X.newShip(X.PRESETS.Probe); Object.assign(me, { alive: true, landed: false, body: T, r: [0, 0, a], v: [Math.sqrt(T.mu / a), 0, 0] }); X.setS(me);
+    const L = X.mapFocusList(), keys = L.map(f => f.key);
+    const listed = keys[0] === 'ship' && X.BODIES.every((b, i) => keys.includes(`b:${i}`)) && keys.includes(`s:${q.id}`);
+    X.setMapFocus(`s:${q.id}`); const qp = X.add(X.bodyPos(T, X.tNow()), X.satAt(q, X.tNow())[0]), on = X.len(X.sub(X.mapFocusPos(), qp)) < 1 && X.mapFocusKey() === `s:${q.id}`;
+    X.setMapFocus('ship'); X.mapFocusCycle(1); const cyc = X.mapFocusKey() === keys[1] && X.cam.focus === 1;
+    X.setMapFocus(`s:${q.id}`); q.junk = true; X.mapFocusPos(); const back = X.mapFocusKey() === 'ship';
+    ok = listed && on && cyc && back; info = `listed ${listed} (${keys.join(' ')}) · centred on it ${on} · Tab ${cyc} · gone → ship ${back}`;
+  }
+  check('flow-20: the map centres on the ship, a body or one of our craft (the Focus list, Tab, double-click, Home); a craft that\'s gone hands it back to the ship',
+    wired && ok, `wired ${wired} · ${info}`);
 }

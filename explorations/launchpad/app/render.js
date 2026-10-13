@@ -33,7 +33,7 @@ function render(){
   // ---- camera, in float64 world coordinates
   let camW,R,U,Fw,fov;
   if(view==='map'&&mode==='flight'){
-    const foc=cam.focus===0?shipWorld():bodyPos(BODIES[cam.focus-1],simT);
+    const foc=mapFocusPos();   // (Q262) the ship, a body or one of our craft: app/map-layers.js
     const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
     camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
   else{
@@ -50,6 +50,7 @@ function render(){
   if(desk)gl.clearColor(...DESK_BG.map(x=>x**2.2),1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
+  if(!desk&&SKY_B5)galBake();   // (Q321) once per program seed and setting
   if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
   if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
@@ -68,6 +69,8 @@ function render(){
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
    {const th=bodyTheta(SELENE,simT);gl.uniform3fv(u.uMdet,rotY(sub(camW,mp),-th).map(x=>x-Math.round(x/1000)*1000));if(u.uMrot)gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th))}
    galaxy();gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
+   if(u.uGalC){gl.activeTexture(gl.TEXTURE12);gl.bindTexture(gl.TEXTURE_CUBE_MAP,GALC.tex);gl.uniform1i(u.uGalC,12);gl.activeTexture(gl.TEXTURE0);gl.uniform1f(u.uGalE,GALC.enc);   // (Q321) the baked sky on unit 12
+    gl.uniform1f(u.uStT,((HOOK.fxT??performance.now())/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
    {const on=view==='map'&&mode==='flight'&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);
     if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
@@ -138,7 +141,8 @@ function render(){
       {const cp=madd(madd(end,u,.18),norm(cross(u,[0,1,0])),.13);tube(buf,cp,madd(cp,u,.1),.035,C.D,8,true)}
       const mm=makeMesh(buf);drawMesh(mm,mat4([1,0,0],[0,1,0],[0,0,1],[0,0,0]),vp);mm.free()}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
-  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
+  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}
+  for(const d of debris)if(d.chA>0&&!d.float)debrisCanopies(d,camW,drawMesh);   // (Q335) a falling stage under its chutesgl.uniform1f(m.uSeam,0);setMarks(m,[]);
   // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
   if(mode==='flight'||mode==='drive')for(const q of landedUp()){const b=landedBody(q);if(!b||!q.shape||S.rec&&S.rec.satId===q.id)continue;const lp=add(bodyPos(b,simT),fromPF(b,q.pf,simT));if(len(sub(lp,camW))>1e5)continue;
     const lq=qmul(qBody(b,simT),q.ql),lc=satCM(q),lm=satMesh(q);setMarks(m,lm.parts);gl.uniform1f(m.uSeam,1);drawMesh(lm.mesh,modelQ(lq,sub(lp,camW),mul(lc,-1)),lp);
@@ -193,6 +197,7 @@ function render(){
   // the ship and on spent stages falling back (debrisHeat)
   if(PLASMA_FX&&near){const qS=S.alive?plasmaHeat(S.body,S.r,S.v,S.qHeat):0;if(qS>1.5e4)drawPlasma(VP,camW,S,shipWorld(),qS,false);
     for(const d of debris){const g=DEBH.get(d),qd=g?plasmaHeat(d.body,d.r,d.v,g.q):0;if(qd>1.5e4){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<2e4)drawPlasma(VP,camW,g.geo,p,qd,true)}}}
+  if(near&&mode==='flight')fragDraw(VP,camW,lit);   // (Q302) an incoming fragment's glint, and its strike
   // RCS: a puff at each nozzle that fired in the last 80 ms (so a single 20 ms pulse is still seen)
   if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));
@@ -273,7 +278,7 @@ function render(){
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
   if(view!=='map'&&document.body.classList.contains('paper'))document.body.classList.remove('paper');
-  {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
+  {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);if(mv)renderMapFocus();hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
@@ -332,17 +337,17 @@ function mapLinks(seg){const T=tNow(),n=(PROG.sats||[]).length;if(!(Math.abs(T-m
       v.push([P,L.st?add(bodyPos(TELLUS,simT),rotY(mul(L.st.u,TELLUS.R),absTh(T))):add(bodyPos(TELLUS,simT),mul(norm(sub(P,bodyPos(TELLUS,simT))),TELLUS.R)),[.45,1,.55,.45]])}
     mapLinkMemo={t:T,n,v}}
   for(const[a,b,c]of mapLinkMemo.v)seg(a,b,c)}
-function drawMap(VP,camW,labels){
+function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pass below belongs to a layer: mapShow, app/map-layers.js
   if(!predCache||predCache.t!==simT&&!predStill())predCache={t:simT,p:predict(S),wall:performance.now(),body:S.body};
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   // the moons' orbits + SOI rings
-  for(const b of BODIES){if(!b.parent||!knownBody(b))continue;const pp=bodyPos(b.parent,simT),T=2*Math.PI/b.n;let prev=null;
+  if(mapShow('moons'))for(const b of BODIES){if(!b.parent||!knownBody(b))continue;const pp=bodyPos(b.parent,simT),T=2*Math.PI/b.n;let prev=null;
     for(let i=0;i<=256;i++){const p=add(pp,bodyRel(b,simT+T*i/256)[0]);if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
     const bp=bodyPos(b,simT),so=soiAt(b,simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(bp,[so*Math.cos(f),0,so*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}}
   for(const fv of FLEET){if(!fv.alive||fv.body!==TELLUS||fv.landed)continue;const el=elements(fv.r,fv.v,TELLUS.mu);if(!(el.e<1))continue;let pv=null;   // the other vessels' orbits
     for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,[.79,.91,.42,.5]);pv=p}}
-  for(const q of[...satsUp(),...moonSats()]){const B=orbBody(q),o=bodyPos(B,simT),[r,v]=satAt(q,tNow()),el=elements(r,v,B.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(o,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
-  mapLinks(seg);   // space Q173: each satellite's link home right now
+  for(const q of[...satsUp(),...moonSats()]){if(q.id!==S.target&&!mapShow(q.junk?'debris':'sats'))continue;const B=orbBody(q),o=bodyPos(B,simT),[r,v]=satAt(q,tNow()),el=elements(r,v,B.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(o,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
+  if(mapShow('links'))mapLinks(seg);   // space Q173: each satellite's link home right now
   drawPatches(gateLegs(predCache.p,labels),camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
   mapUI.pickW=[];const p0=predCache.p[0];
@@ -367,11 +372,11 @@ function drawMap(VP,camW,labels){
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
   // (flow, Q175) Helios and the planets, from epoch 1: on a ring in the ecliptic around the map's centre, at their ecliptic
   // longitude today (at their real places they'd be at infinity, mostly behind this camera); hidden behind Tellus
-  {const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),moons=1.25*Math.max(...TELLUS.children.map(c=>c.rMax)),rr=moons<2.5*cam.mDist?Math.max(cam.mDist*.3,moons):cam.mDist*.3;let pv=null;   // (flow, Q256; PLAYTEST #55) outside the moons' orbits whenever they're in view: a compass, not a distance
+  if(mapShow('planets')){const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),moons=1.25*Math.max(...TELLUS.children.map(c=>c.rMax)),rr=moons<2.5*cam.mDist?Math.max(cam.mDist*.3,moons):cam.mDist*.3;let pv=null;   // (flow, Q256; PLAYTEST #55) outside the moons' orbits whenever they're in view: a compass, not a distance
     for(let i=0;i<=144;i++){const a=i/144*6.2832,p=add(c0,add(mul(E.X,rr*Math.cos(a)),mul(E.Y,rr*Math.sin(a))));if(pv&&i%2)seg(pv,p,[.62,.6,.5,.3]);pv=p}
     for(const m of planetMarks(tNow())){const p=madd(c0,m.u,rr),q=sub(p,camW),dq=len(q),tc=-dot(camW,q)/dq;
       if(tc>0&&tc<dq&&dot(camW,camW)-tc*tc<TELLUS.R*TELLUS.R)continue;
-      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}
+      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:!nm?'':m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}
     labels.push({p:add(c0,mul(E.Y,-rr)),mark:'txt',t:'the planets: direction only, not to scale',c:'rgba(214,206,170,.75)'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.uniform1f(PLINE.u.uLk,1/EXPO.E);
@@ -382,17 +387,17 @@ function drawMap(VP,camW,labels){
     for(let i=0;i<impact.path.length;i++){if(T&&T[i]<t0)continue;const q=add(bp,fromPF(b,impact.path[i],simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
     const ip=add(bp,fromPF(b,impact.pf,simT)),revs=(impact.t-simT)/P;if(pv)seg(pv,ip,[1,.35,.25,.9]);
     labels.push({p:ip,mark:'impact',t:`impact in ${fmtT(impact.t-simT)}${revs>1.5?` · after ~${Math.round(revs)} orbits`:''}`,c:'#ff6b5a'})}
-  for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
-    labels.push({p:cp,mark:'city',t:len(camW)<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
-  for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
-  for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
-  for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||len(sub(camW,bodyPos(orbBody(q),simT)))<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
+  if(mapShow('cities'))for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
+    labels.push({p:cp,mark:'city',t:nm&&len(camW)<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
+  if(mapShow('targets'))for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
+  if(mapShow('stations'))for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
+  for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;if(!tg&&!mapShow(q.junk?'debris':'sats'))continue;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||nm&&len(sub(camW,bodyPos(orbBody(q),simT)))<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
   if(impSpread&&impact&&toolOK('impact'))for(const[i,x]of[impSpread.lo,impSpread.hi].entries())labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'ca',t:i?'':`spread ±${impSpread.km.toFixed(0)} km`,c:'rgba(255,107,90,.55)'});   // (Q260) circles, not more X's
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:`${d.name} falls`,c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
-  for(const q of landedUp()){const b=landedBody(q);if(!b)continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.beacon||q.id===S.target?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
+  for(const q of landedUp()){const b=landedBody(q);if(!b||q.id!==S.target&&!mapShow('sats'))continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.id===S.target||nm&&q.beacon?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
   if(landPick){const b=BODIES.find(x=>x.name===landPick.body),u=b&&fromPF(b,landPick.pf,simT);if(u&&dot(sub(camW,add(bodyPos(b,simT),u)),u)>0)labels.push({p:add(bodyPos(b,simT),u),mark:'impact',t:'landing site',c:'#ffb347'})}   // (Q62)
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
-  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:knownBody(b)?b.name:'?',c:'#9ab'})))}
+  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:!nm?'':knownBody(b)?b.name:'?',c:'#9ab'})))}
 
 // ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
 const NBc=$('nav'),nctx=NBc.getContext('2d'),NS=180,nimg=nctx.createImageData(NS,NS),D32=new Uint32Array(nimg.data.buffer);

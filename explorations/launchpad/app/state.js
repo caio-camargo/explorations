@@ -144,6 +144,18 @@ function splashFx(s){const b=s.body;if(b!==TELLUS)return;const R=Math.random,up=
     fxPuff(madd(P,h,r0*R()),add(v0,add(mul(up,(3+9*R())*k),mul(h,(2+6*R())*k))),{s0:.06+.1*R()*k,grow:.5+.5*R(),a0:.8,life:.6+.9*R()})}   // spray
   for(let i=0;i<64;i++){const a=i/64*6.2832+R()*.1,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
     fxPuff(madd(madd(P,h,r0),up,.2),add(v0,mul(h,(5+3*R())*Math.sqrt(k))),{s0:.15*k+.12,grow:.8,a0:.6,life:1.8+R()})}}   // the ring
+// (Q335, from Q300 v1.142) a spent stage under its chutes: one canopy per chute part (the sim's d.chA is their total
+// area), trailing up the airflow from the chute on risers ~1.3 canopy diameters long, spread a little apart when there are several
+function debrisCanopies(d,camW,drawMesh){const b=d.body,va=sub(d.v,surfVel(b,d.r)),sp=len(va);if(sp<.5)return;const up=mul(va,-1/sp),q=qFromTo([0,1,0],up),
+    ch=d.parts.filter(p=>p.d.kind==='chute');if(!ch.length)return;const k=Math.sqrt(d.chA/ch.length/Math.PI),side=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),B=bodyPos(b,simT);
+  ch.forEach((p,i)=>{const a=i/ch.length*6.2832,off=ch.length>1?add(mul(side,Math.cos(a)*k*.9),mul(cross(up,side),Math.sin(a)*k*.9)):[0,0,0],
+    P=add(add(add(B,d.r),qrot(d.q,sub(partC(p),d.cm))),add(mul(up,k*2.6+2),off));drawMesh(CANOPY,modelQ(q,sub(P,camW),0,[k,k*.6,k]),P)})}
+// (Q335) anything afloat (the ship, or a spent stage) laps the sea along its waterline: small white puffs half sunk round
+// the hull, ~12 a second, living ~2 s, as the splash's ring does. On its side, the hull's length lies along the sea.
+function surfFx(o,b,r,q,L0,rad,dt){if(b!==TELLUS||!dt)return;o.mkSurf=(o.mkSurf||0)+dt*12;const R=Math.random,up=norm(r),ax=qrot(q,[0,1,0]),ah=sub(ax,mul(up,dot(ax,up))),hl=len(ah)*L0/2,
+    a=hl>.3?norm(ah):norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),c=cross(up,a),sea=b.R+((b.ground&&b.ground.sea)||0);
+  for(;o.mkSurf>1;o.mkSurf--){const t=R()*2-1,s=R()<.5?-1:1,e=Math.sqrt(Math.max(0,1-t*t)),P=add(add(mul(up,sea+.1),mul(a,t*(hl+rad*.6))),mul(c,s*rad*(.35+.65*e)*(1.05+.15*R())));
+    fxPuff(P,surfVel(b,P),{s0:.1+.12*R()*Math.min(rad,2),grow:.5,a0:.45,life:1.5+R()})}}
 // staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
 // The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
 function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;

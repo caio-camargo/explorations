@@ -365,7 +365,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 14. The program (v1.12): missions read a flight record; knowledge (certified ratings, the atmosphere) is earned by flying.
 {
-  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
+  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
   const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   const launch = st => { api.t = 0; const s = api.newShip(st); api.S = s; s.throttle = 1; api.stage(s); return s; };
   // a sounding flight: straight up on the Sounding preset, chute armed once falling, down to the ground
@@ -482,9 +482,11 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `paid ${(P.funds - f1).toFixed(1)}M for a 50M contract`);
   orbAt(['sci'], 150, 30);
   check('…and an orbit in the 30° plane completes the other', P.active.length === 0, `${P.cdone} contracts done`);
-  // deadlines: a missed one is removed and costs standing with that source and the client's opinion
-  fresh(); P.day = 0; P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
-  check('a missed deadline drops the contract, our standing with the source and the client\'s opinion', P.active.length === 0 && api.standOf('sci') < st0 && api.opOf(1) < op1 + 1, `standing ${st0} → ${api.standOf('sci')}`);
+  // deadlines: a missed one is removed and costs a wait (Q295, D17.4): no standing or opinion lost; the client asks again later
+  fresh(); P.day = 0; P.back = []; const snap = JSON.stringify(P), restore = () => { for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(snap)); };
+  api.advanceDays(40); const opCtl = api.opOf(1), stCtl = api.standOf('sci'); restore();   // the same 40 days with no contract: opinion and standing drift on their own
+  P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
+  check('a missed deadline drops the contract and costs a wait: standing and the client\'s opinion as without it, the job queued to come back', P.active.length === 0 && Math.abs(api.standOf('sci') - stCtl) < 0.5 && Math.abs(api.opOf(1) - opCtl) < 0.5 && (P.back || []).length === 1 && P.back[0].day >= 90 && P.back[0].day <= 160, `standing ${st0} → ${api.standOf('sci')} (without it ${stCtl}); opinion ${op1.toFixed(1)} → ${api.opOf(1).toFixed(1)} (without it ${opCtl.toFixed(1)}); active ${P.active.length}; back ${JSON.stringify((P.back || []).map(b => [b.c.type, b.day]))}`);
   // budget days every 100 days, scaled by home opinion and the cycle
   // (platform) the world's dice and the cycle's phase pinned: they were whatever earlier sections left, so run alone this failed
   fresh(); P.homeArch = 'frugal'; P.day = 0; P.wseed = 4242; P.cyc = Math.PI / 2; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5); P.homeArch = null;   // a tax-funded home
@@ -557,7 +559,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // image targets in reach, sharp enough, sunlit and clear, and downlink over a ground station.
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
-  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
   const rotY = (v, th) => { const c = Math.cos(th), sn = Math.sin(th); return [c * v[0] + sn * v[2], v[1], -sn * v[0] + c * v[2]]; };
   // a flight that ends in orbit leaves its vessel registered, in the same place over the same ground
   fresh(); api.t = 0; let s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
@@ -628,7 +630,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // when relations sour; a better-spread network brings pictures down sooner.
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
-  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
+  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
   const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3 && api.relBase(H, c.power.i) > 0), fp = C[far].power.i;   // a friendly power: relations drift toward the alignments over the 100 days
   fresh(); const f0 = P.funds, a = api.buildStation(home);
   P.rel[api.pairKey(H, fp)] = -0.1; const b = api.gsCheck(far);
@@ -737,7 +739,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   // (platform) every PROG key cleared first: fields earlier sections left (the cycle's phase, recent bailouts…) changed the outcome
-  const fresh = () => { api.resetHome(); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [] }); };
+  const fresh = () => { api.resetHome(); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [] }); };
   const careerOffers = setup => { fresh(); setup(); P.wseed = 31; for (let d = 0; d < 400 && !P.decisions.some(x => x.kind === 'defect' || x.kind === 'hire'); d += 10) api.advanceDays(10);
     return P.decisions.filter(x => x.kind === 'defect' || x.kind === 'hire').map(x => x.kind); };
   const whenBad = careerOffers(() => { P.bailouts = 2; P.op[0] = 20; }), whenFine = careerOffers(() => { P.op[0] = 50; }), whenGreat = careerOffers(() => { P.op[0] = 80; for (const k of ['weather', 'air', 'loads', 'range', 'beeper']) P.done[k] = {}; });
@@ -813,7 +815,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 19. Power flavours (economy): archetypes as presets on axes (openness, money, priorities, nationalism).
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
-  const fresh = (arch = null) => { api.resetHome(); Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [],
+  const fresh = (arch = null) => { api.resetHome(); Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [],
     homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false, nextElection: null, comm: 0, commPh: null, wseed: 5 }); api.chooseStart('agency'); P.funds = 60; };
   const PW = api.POWERS, arch = PW.map(p => p.arch);
   fresh('security');
@@ -1200,7 +1202,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
-  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
   // a real flight to space (the Passenger preset, booster dropped at burnout) records the Δv it spent and the design
   fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
   while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
@@ -1225,7 +1227,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 20. Satellites in 3D (sats session): registration keeps the vessel's shape and its attitude in the orbital frame.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
   const qm = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
   const orb = (r, v) => { const pro = norm(v), nrm = norm(api.cross(r, v)); return api.qFromBasis(pro, nrm, api.cross(pro, nrm)); };
   api.t = 0; const s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
@@ -1293,7 +1295,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 19. More logbook facts: what a hop measures on the way up and back; Selene's orbit and gravity; satellite contact.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = () => {};
-  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
   fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
   while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
     if (stg === 0 && s.rec.launched && s.thrust === 0) { api.stage(s); stg = 1; }
@@ -2660,7 +2662,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('fixes-1 #19: from liftoff on, the home station sees the climbing vessel (never "no station in view")',
     air > 100 && seen.length === 1 && seen[0].w === api.curSite().name, seen.map(x => `T+${x.t} ${x.h} m: ${x.w}`).join(' → '));
   // #21: a Sounding flight up and back under its chute, then left for the Program
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
   api.t = 0; s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
   const f0 = P.funds, fl0 = P.flights, kh0 = api.khUse('sparrow'), out = api.flightLeave ? api.flightLeave(s) : null;

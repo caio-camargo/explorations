@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-13
+**Version**: 1.0.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-13
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -113,3 +113,4 @@ The full text of every question as it was asked (options, reasons) is in
 | D18 | 2026-10-12 | The beauty pass: 1960s press photography with a grade per era; stars set by exposure with a floor; HDR and exposure first; a subtle galaxy (mock-ups of both); game stills, mock-ups only for the sky and the planet; order B0 → quick wins → sky and bodies → the rest; **greebles in real geometry** for the shadows (Caio) | BEAUTY.md, QUEUE Proposed (B0–B6), Q253, Q268, Q250, Q259 |
 | W36 | 2026-10-11 | Heat and stress: needles that wake at 50 % and redline at 90 %, with the master caution; glowing parts later | Q271 |
 | W40 | 2026-10-13 | The commercial giant on the defaults: arrives world year 18–21; takes 40 % of the commercial market over four years; sells us only parts we can't make, automatically, cheaper than imports | Q206 (v1.161) |
+| W41 | 2026-10-13 | Rivals' satellites as targets: real objects; an unspotted retrieval raises suspicion; hacking pays the contract if a contract, the service if our own; hacks include a **tap** (indefinite, until the owner notices: our imagery, relay, TV and nav count it) and a **data theft** (science pays per bit; a spy satellite's data reveals its owner's program). Radar as layers (optical → ground radar → space surveillance) is the default, Caio unsure | Q187, NOTES § Q187 amendment |
