@@ -522,6 +522,11 @@ program could draw its own from its seed, as the galaxy is since Q21.
 the first round's brightness; the bar's **galaxy** and **sights** buttons step them ×0.8 / ×1.25 (or `?gb=` and `?nb=`),
 so the level can be set by eye and carried into Q321.
 
+**Caio's levels, 2026-10-13:** the galaxy band at 100 % of the dimmed level; the **nebula at 5–10 %** of it (the page
+draws 7.5 %), the **spiral at 3–6 %** (4.5 %); the bar's 1.00× is now these picks, with separate **nebula** and **spiral**
+buttons (, ). The spiral's arms moved from a strong blue to the band's palette with a slight blue lean
+(its gold core kept), so the two galaxies read as one sky (Caio noticed the hue difference).
+
 Not drawn yet: dark pillars proper (the dust is lanes, not columns), a supernova remnant's shell (the Veil), a
 planetary nebula, a globular cluster; any of them is the same recipe if wanted.
 
