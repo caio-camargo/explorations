@@ -113,40 +113,59 @@ function build(){
         if(eraK<2&&R()<.15){const[x,z]=toW(bx0+bw*.85,bz0+bd*.15);add(x,z,5,5,55+R()*25,ga,'#8a7c70')}}
     }
     W();
-    // highways: a ring and six spokes out into the country
-    g.strokeStyle='#5f5f5a';g.lineWidth=36;n.strokeStyle='rgba(255,190,110,.75)';n.lineWidth=22;
-    g.beginPath();g.arc(0,0,Ru*.55,0,6.2832);g.stroke();n.beginPath();n.arc(0,0,Ru*.55,0,6.2832);n.stroke();
-    for(let k=0;k<6;k++){const a=k*1.047+.3;g.beginPath();n.beginPath();for(let r=Ru*.1;r<E*.5;r+=300){const aa=a+.12*Math.sin(r/2500+k),x=r*Math.cos(aa),z=r*Math.sin(aa);r===Ru*.1?(g.moveTo(x,z),n.moveTo(x,z)):(g.lineTo(x,z),n.lineTo(x,z))}g.stroke();n.stroke()}
+    // highways: a ring road that follows the land (not a circle), six wandering roads out, and country roads between
+    const rr=a=>Ru*.55*(1+.13*Math.sin(2*a+1.3)+.07*Math.sin(5*a+2.2)+.05*Math.sin(9*a));
+    const line=(pts,c,w)=>{c.lineWidth=w;c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke()};
+    const ring=[];for(let i=0;i<=120;i++){const a=i/120*6.2832;ring.push([rr(a)*Math.cos(a),rr(a)*Math.sin(a)])}
+    g.strokeStyle='#5f5f5a';n.strokeStyle='rgba(255,190,110,.75)';line(ring,g,34);line(ring,n,20);
+    for(let k=0;k<6;k++){const a=k*1.047+.3+(R()-.5)*.5,pts=[];let ang=a;for(let r=Ru*.1;r<E*.5;r+=250){ang+=(fbm(r/1500,k*7.3)-.5)*.09;pts.push([r*Math.cos(ang),r*Math.sin(ang)])}
+      g.strokeStyle='#5f5f5a';n.strokeStyle='rgba(255,190,110,.75)';line(pts,g,k%2?24:34);line(pts,n,k%2?12:20)}
+    for(let k=0;k<22;k++){let a=R()*6.2832,r=Ru*(.85+.3*R()),x=r*Math.cos(a),z=r*Math.sin(a),h=a+(R()-.5)*1.4;const pts=[[x,z]];
+      for(let s2=0;s2<40;s2++){h+=(R()-.5)*.35;x+=180*Math.cos(h);z+=180*Math.sin(h);pts.push([x,z]);if(Math.abs(x)>E*.5||Math.abs(z)>E*.5)break}
+      g.strokeStyle='#77725f';line(pts,g,9);n.strokeStyle='rgba(255,190,110,.18)';line(pts,n,4);
+      if(R()<.5){const[vx,vz]=pts[pts.length*.6|0];for(let i=0;i<14;i++){g.fillStyle=pick(R,['#bcae9c','#a06f5c','#8e8d87']);g.fillRect(vx+(R()-.5)*300,vz+(R()-.5)*300,10,12)}
+        n.fillStyle='rgba(255,200,130,.35)';n.fillRect(vx-60,vz-60,120,120)}}   // a village on it
   }
   if(S.lay==='radial'){
-    const sp=150,K=Math.ceil(Ru*1.3/sp),spokes=[...Array(8)].map((_,i)=>i*Math.PI/4+.2),bd=[{r:.13*Ru,w:40},{r:.45*Ru,w:45}];
-    const bizA=.9,bizR=.33*Ru,bx=bizR*Math.cos(bizA),bz=bizR*Math.sin(bizA),bizRad=.075*Ru*(big?1:1.3),biz=S.era>=1975;
-    const onRoad=(x,z,m)=>{const r=Math.hypot(x,z),a=Math.atan2(z,x);for(const p of spokes){let da=Math.abs(((a-p)%6.2832+9.4248)%6.2832-3.1416);if(da*r<18+m&&r>60)return true}for(const b of bd)if(Math.abs(r-b.r)<b.w/2+m)return true;return false};
-    for(let k=1;k<K;k++){const r0=k*sp+6,r1=(k+1)*sp-6,rm=(r0+r1)/2,ns=Math.max(6,Math.round(6.2832*rm/130)),da=6.2832/ns;
-      for(let q=0;q<ns;q++){const a0=q*da+3.5/rm,a1=(q+1)*da-3.5/rm,am=(a0+a1)/2,x=rm*Math.cos(am),z=rm*Math.sin(am);
+    // an old city grows from its core outward along old roads, not with compasses: the whole plan is laid out on even rings
+    // and then bent by a smooth warp (±~400 m), the rings' spacing and the sectors' widths jittered, the boulevards irregular
+    const wp=(x,z)=>{const a=1/2200;return[x+900*(fbm(x*a+3.1,z*a)-.5),z+900*(fbm(x*a,z*a+7.7)-.5)]};
+    const wang=(x,z,a)=>{const p=wp(x,z),q=wp(x+8*Math.cos(a),z+8*Math.sin(a));return Math.atan2(q[1]-p[1],q[0]-p[0])};
+    const poly=(c,pts)=>{c.beginPath();pts.forEach((p,i)=>{const w=wp(p[0],p[1]);i?c.lineTo(w[0],w[1]):c.moveTo(w[0],w[1])})};
+    const arcPts=(r,a0,a1,n)=>{const o=[];for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;o.push([r*Math.cos(a),r*Math.sin(a)])}return o};
+    const sp0=150,K=Math.ceil(Ru*1.3/sp0);const ringR=[0];for(let k=1;k<=K+1;k++)ringR.push(ringR[k-1]+sp0*(.8+.45*R()));
+    const spokes=[{a:.2,r1:E*.5},{a:1.05,r1:E*.5},{a:1.7,r1:.55*Ru},{a:2.75,r1:E*.5},{a:3.5,r1:.7*Ru},{a:4.45,r1:E*.5},{a:5.35,r1:.5*Ru}],bd=[{r:.13*Ru,w:40},{r:.45*Ru,w:45}];
+    const bizA=.9,bizR=.33*Ru,[bx,bz]=wp(bizR*Math.cos(bizA),bizR*Math.sin(bizA)),bizRad=.075*Ru*(big?1:1.3),biz=S.era>=1975;
+    const onRoad=(x,z,m)=>{const r=Math.hypot(x,z),a=Math.atan2(z,x);for(const p of spokes){if(r>p.r1)continue;let da=Math.abs(((a-p.a)%6.2832+9.4248)%6.2832-3.1416);if(da*r<18+m&&r>60)return true}for(const b of bd)if(Math.abs(r-b.r)<b.w/2+m)return true;return false};
+    for(let k=1;k<K;k++){const r0=ringR[k]+6,r1=ringR[k+1]-6,rm=(r0+r1)/2,ns=Math.max(5,Math.round(6.2832*rm/(rm<.15*Ru?70:130)));
+      const cuts=[0];for(let q=1;q<ns;q++)cuts.push((q+(R()-.5)*.7)/ns*6.2832);cuts.push(6.2832);const off=R()*6.2832;
+      for(let q=0;q<ns;q++){const a0=cuts[q]+off+3.5/rm,a1=cuts[q+1]+off-3.5/rm,am=(a0+a1)/2,[x,z]=wp(rm*Math.cos(am),rm*Math.sin(am));
         let [kk,t]=lu(x,z,.12);if(kk==='out'||kk==='water')continue;
         const inBiz=biz&&Math.hypot(x-bx,z-bz)<bizRad;if(inBiz)kk='cbd';else if(kk==='cbd')kk='old';
-        g.fillStyle='#4f4f4c';g.beginPath();g.arc(0,0,r1+6,a0-3.5/rm,a1+3.5/rm);g.arc(0,0,r0-6,a1+3.5/rm,a0-3.5/rm,true);g.fill();
-        g.fillStyle=kk==='old'?'#857b6b':COL[kk];g.beginPath();g.arc(0,0,r1,a0,a1);g.arc(0,0,r0,a1,a0,true);g.closePath();g.fill();
-        const lt=Math.max(0,1-t*1.3);n.strokeStyle=glow(lt);n.lineWidth=5;n.beginPath();n.arc(0,0,r1+6,a0,a1);n.stroke();
-        const fn=(u,v)=>{const rr=r0+u*(r1-r0),aa=a0+v*(a1-a0);return[rr*Math.cos(aa),rr*Math.sin(aa)]},area=(r1-r0)*(a1-a0)*rm,ang=am+Math.PI/2;
-        const put=(rr,aa,w,d,h,c,j=0)=>{const X=rr*Math.cos(aa),Z=rr*Math.sin(aa);if(!onRoad(X,Z,Math.max(w,d)/2))add(X,Z,w,d,h,aa+Math.PI/2+j,c)};
+        const nP=Math.max(2,Math.ceil((a1-a0)*rm/60));
+        g.fillStyle='#4f4f4c';poly(g,[...arcPts(r1+6,a0-3.5/rm,a1+3.5/rm,nP),...arcPts(r0-6,a1+3.5/rm,a0-3.5/rm,nP)]);g.fill();
+        g.fillStyle=kk==='old'?'#857b6b':COL[kk];poly(g,[...arcPts(r1,a0,a1,nP),...arcPts(r0,a1,a0,nP)]);g.fill();
+        const lt=Math.max(0,1-t*1.3);n.strokeStyle=glow(lt);n.lineWidth=5;poly(n,arcPts(r1+6,a0,a1,nP));n.stroke();
+        const fn=(u,v)=>{const rr=r0+u*(r1-r0),aa=a0+v*(a1-a0);return wp(rr*Math.cos(aa),rr*Math.sin(aa))},area=(r1-r0)*(a1-a0)*rm;
+        const put=(rr,aa,w,d,h,c,j=0)=>{const X=rr*Math.cos(aa),Z=rr*Math.sin(aa);if(onRoad(X,Z,Math.max(w,d)/2))return;const[wx,wz]=wp(X,Z);add(wx,wz,w,d,h,wang(X,Z,aa+Math.PI/2)+j,c)};
         const arc=(a1-a0)*rm;
-        if(kk==='old'){if(rm<70)continue;const m=Math.max(2,Math.round(arc/30));for(let i=0;i<m;i++)for(let b=0;b<2;b++)put(r0+(b+.5)*(r1-r0)/2,a0+(i+.5)*(a1-a0)/m,arc/m*.85,(r1-r0)/2*.8,10+R()*12,pick(R,['#b8a88c','#c4b394','#a99a80','#b59f86']),(R()-.5)*.35)}
-        else if(kk==='inner'){const m=Math.max(1,Math.round(arc/90));for(let i=0;i<m;i++){const aa=a0+(i+.5)*(a1-a0)/m,w=arc/m*.92;const c=pick(R,['#d3c7ae','#cbbd9f','#c6b89c']),h=19+R()*4;put(r1-14,aa,w,24,h,c);put(r0+14,aa,w,24,h,c)}}   // perimeter blocks round a courtyard
-        else if(kk==='cbd'){for(let i=0;i<2;i++){const aa=a0+(i+.5)*(a1-a0)/2,rr=rm,d2=Math.hypot(rr*Math.cos(aa)-bx,rr*Math.sin(aa)-bz);if(R()<towerK*.75){put(rr,aa,26+R()*18,26+R()*16,Math.max(50,60+(cap-60)*Math.pow(R(),1.6)*(.4+.6*Math.exp(-((d2/(bizRad*.6))**2)))),glassC())}else put(rr,aa,arc/2*.8,(r1-r0)*.7,14+R()*20,'#b0aba1')}}
+        if(kk==='old'){if(rm<70)continue;const m=Math.max(2,Math.round(arc/26));for(let i=0;i<m;i++)for(let b=0;b<2;b++){if(R()<.12)continue;put(r0+(b+.5)*(r1-r0)/2+(R()-.5)*10,a0+(i+.5)*(a1-a0)/m,arc/m*(.6+.35*R()),(r1-r0)/2*(.55+.35*R()),8+R()*14,pick(R,['#b8a88c','#c4b394','#a99a80','#b59f86','#9e8f78']),(R()-.5)*.5)}}
+        else if(kk==='inner'){const m=Math.max(1,Math.round(arc/(70+60*R())));for(let i=0;i<m;i++){const aa=a0+(i+.5)*(a1-a0)/m,w=arc/m*.92;const c=pick(R,['#d3c7ae','#cbbd9f','#c6b89c','#bfae94']),h=15+R()*11;
+            if(R()<.1){put(rm,aa,w*.9,(r1-r0)*.8,h,c)}else{put(r1-14,aa,w,24,h,c);put(r0+14,aa,w,24,h+(R()-.5)*6,c)}}}   // perimeter blocks round a courtyard, now and then one solid block
+        else if(kk==='cbd'){for(let i=0;i<2;i++){const aa=a0+(i+.5)*(a1-a0)/2,rr=rm,[X,Z]=wp(rr*Math.cos(aa),rr*Math.sin(aa)),d2=Math.hypot(X-bx,Z-bz);if(R()<towerK*.75){put(rr,aa,26+R()*18,26+R()*16,Math.max(50,60+(cap-60)*Math.pow(R(),1.6)*(.4+.6*Math.exp(-((d2/(bizRad*.6))**2)))),glassC())}else put(rr,aa,arc/2*.8,(r1-r0)*.7,14+R()*20,'#b0aba1')}}
         else if(kk==='sub'){houses(fn,area);n.fillStyle='rgba(255,200,130,.18)';for(let q2=0;q2<5;q2++){const p=fn(R(),R());n.fillRect(p[0],p[1],6,6)}if(R()<.03)put(rm,am,40+R()*30,30+R()*20,6+R()*6,'#c9c4b8')}
         else if(kk==='park')trees(fn,area,.8);
         else if(kk==='ind'){put(rm,am,Math.min(arc*.8,90),(r1-r0)*.7,8+R()*7,pick(R,['#a9adb0','#b7b2a6']));if(eraK<2&&R()<.12)put(r0+20,a0+.2*(a1-a0),5,5,55+R()*25,'#8a7c70')}
       }}
-    // boulevards (drawn over the blocks) and the slab estates (1960 on)
+    // boulevards (bent like everything else), some only as far as the old walls; then the slab estates (1960 on)
     g.strokeStyle='#55554f';n.strokeStyle='rgba(255,190,110,.8)';
-    for(const p of spokes){g.lineWidth=n.lineWidth=36;g.beginPath();n.beginPath();g.moveTo(60*Math.cos(p),60*Math.sin(p));n.moveTo(60*Math.cos(p),60*Math.sin(p));g.lineTo(E*.5*Math.cos(p),E*.5*Math.sin(p));n.lineTo(E*.5*Math.cos(p),E*.5*Math.sin(p));g.stroke();n.stroke()}
-    for(const b of bd){g.lineWidth=b.w;n.lineWidth=b.w*.6;g.beginPath();g.arc(0,0,b.r,0,6.2832);g.stroke();n.beginPath();n.arc(0,0,b.r,0,6.2832);n.stroke()}
+    for(const p of spokes){const pts=[];for(let r=60;r<p.r1;r+=120){const a=p.a+.06*Math.sin(r/900+p.a*3);pts.push([r*Math.cos(a),r*Math.sin(a)])}
+      g.lineWidth=p.r1>Ru?36:26;n.lineWidth=p.r1>Ru?22:14;poly(g,pts);g.stroke();poly(n,pts);n.stroke()}
+    for(const b of bd){g.lineWidth=b.w;n.lineWidth=b.w*.6;const pts=arcPts(b.r,0,6.2832,90);poly(g,pts);g.stroke();poly(n,pts);n.stroke()}
     for(let e=0;e<(big?4:2);e++){const a=2.1+e*1.37,r=Ru*(.56+.12*R()),cx=r*Math.cos(a),cz=r*Math.sin(a);if(nearRiver(cx,cz,400))continue;const o=R()*3;
       g.fillStyle='#8f9184';g.save();g.translate(cx,cz);g.rotate(o);g.fillRect(-330,-260,660,520);g.restore();
       for(let i=0;i<8;i++){const lx=(i%4-1.5)*150,lz=(i<4?-1:1)*120,x=cx+lx*Math.cos(o)-lz*Math.sin(o),z=cz+lx*Math.sin(o)+lz*Math.cos(o);add(x,z,110,14,eraK?30+R()*20:24+R()*12,o,'#cfcac0')}}
-    add(0,0,62,22,28,.2,'#a39a88');add(22,8,10,10,95,.2,'#a39a88');   // the cathedral and its spire
+    {const[cx,cz]=wp(0,0);add(cx,cz,62,22,28,.2,'#a39a88');add(cx+22,cz+8,10,10,95,.2,'#a39a88')}   // the cathedral and its spire
   }
   // the river last (bridges: the highways and boulevards are redrawn over it)
   if(!now){W();g.strokeStyle='#5f7a4a';g.lineWidth=rivW+50;const riv=(c)=>{c.beginPath();for(let z=-E/2;z<=E/2;z+=150)z===-E/2?c.moveTo(rivX(z),z):c.lineTo(rivX(z),z);c.stroke()};riv(g);g.strokeStyle='#2f4b5c';g.lineWidth=rivW;riv(g);
@@ -192,7 +211,7 @@ const ground=new THREE.Mesh(new THREE.PlaneGeometry(1,1),gMat);ground.rotation.x
 const box=new THREE.BoxGeometry(1,1,1);box.translate(0,.5,0);
 let city=null,mesh=null;
 const LIGHT={day:{el:40,sun:'#fff4e6',k:1.,amb:'#8d9db3',ak:.5,fog:'#a9bbd0',night:0,bg:'#9fb4cc'},
-  dusk:{el:6,sun:'#ffad6b',k:.95,amb:'#7d7590',ak:.45,fog:'#b9a3a0',night:.18,bg:'#d4a98f'},
+  dusk:{el:9,sun:'#ffb070',k:1.,amb:'#8a84a0',ak:.6,fog:'#c4aeb0',night:.15,bg:'#d9b39b',fk:.45},
   night:{el:-20,sun:'#000000',k:0,amb:'#1b2233',ak:.15,fog:'#0a0d16',night:1,bg:'#05070d'}};
 const VIEW={low:{d:7000,h:1800,k:1/45000},climb:{d:17000,h:12000,k:1/120000},high:{d:22000,h:40000,k:1/260000}};
 function rebuild(){
@@ -208,14 +227,14 @@ function rebuild(){
 function draw(){
   const L=LIGHT[S.light],V=VIEW[S.view],sc=city.rad/8196*1.15+.0,el=L.el*Math.PI/180,sa=2.4;
   U.sunD.value.set(Math.cos(el)*Math.cos(sa),Math.sin(el),Math.cos(el)*Math.sin(sa)).normalize();
-  const sv=lin(L.sun).multiplyScalar(L.k);U.sunC.value.copy(sv);U.ambC.value.copy(lin(L.amb).multiplyScalar(L.ak));U.fogC.value.copy(lin(L.fog));U.night.value=L.night;U.fogK.value=V.k;
+  const sv=lin(L.sun).multiplyScalar(L.k);U.sunC.value.copy(sv);U.ambC.value.copy(lin(L.amb).multiplyScalar(L.ak));U.fogC.value.copy(lin(L.fog));U.night.value=L.night;U.fogK.value=V.k*(L.fk||1);
   scene.background=new THREE.Color(L.bg);
   // the far version (40 km): only the landmark towers; the ground carries the rest
   const far=S.view==='high'&&S.lay!=='now';const nT=far?city.B.filter(b=>b.h>=70).length:city.B.length;mesh.count=nT;
   const a=S.az*Math.PI/180,z=S.zoom,d=V.d*sc*z,h=V.h*(S.view==='low'?sc:1)*z;cam.position.set(d*Math.cos(a),h,d*Math.sin(a));cam.lookAt(0,0,0);U.camP.value.copy(cam.position);
   ren.render(scene,cam);
-  const D={grid:'<b>A · New-World grid.</b> A downtown of towers on a street grid, mid-rise blocks round it, houses out to a ragged edge, a ring road and highways into the country, industry along the river, parks. Height falls off fast from the centre: the skyline reads from 40 km.',
-    radial:'<b>B · Old-World core.</b> A low, dense old town round a cathedral; even six-storey blocks with courtyards on rings and boulevards; a business district of towers <i>outside</i> the centre (from 1975); slab estates in the suburbs.',
+  const D={grid:'<b>A · New-World grid.</b> A downtown of towers on a street grid, mid-rise blocks round it, houses out to a ragged edge, a ring road that follows the land, wandering highways and country roads to villages, industry along the river, parks. Height falls off fast from the centre: the skyline reads from 40 km.',
+    radial:'<b>B · Old-World core.</b> Grown, not drawn: the rings and sectors bent and uneven, boulevards that stop at the old walls. A low, dense old town round a cathedral; even six-storey blocks with courtyards on rings and boulevards; a business district of towers <i>outside</i> the centre (from 1975); slab estates in the suburbs.',
     now:'<b>Today</b> (<code>cityMesh</code>): boxes scattered evenly over the disc, a little taller toward the middle, standing on grass, with no streets or ground of their own.'};
   $('#desc').innerHTML=D[S.lay]+(S.lay!=='now'?' <br><br>Cities <b>grow with the date</b>: towers to '+(S.size==='big'?'110 m in 1960, 240 m in 1985, 420 m in 2010':'50, 110 and 190 m')+', more of them, in glass from the 1980s; the sprawl wider each era.':'');
   const tris=nT*10,gl=S.lay==='now'?'none':'2 × 4096² here; <b>in the game: a 512² land-use map (1 MB) + streets and houses drawn by the ground shader</b>';

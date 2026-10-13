@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.13 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -72,6 +72,8 @@ here (streets, blocks, houses, parks, river, ring road and highways; street ligh
 - **Budget** (for the build): one draw, ≤ ~10k boxes (~100k triangles); in the game the ground would be a 512² land-use
   map (~1 MB) with streets and houses drawn by the ground shader, not a 4096² painting. Measure on the iGPU first.
 URL: `?lay=grid|radial|now`, `&size=big|town`, `&era=1960|1985|2010`, `&view=low|climb|high`, `&light=day|dusk|night`, `&az=`, `&still=1`.
+
+**Caio, 2026-10-13:** "city looks much better... big improvement, right direction"; roads "too smooth-even, the ring road apparently a perfect circle", dusk "very foggy", the old core "too even, looks like a wheel with spokes". **Round 2** (same page): a ring road that follows the land, wandering highways, country roads to villages; the old core warped (rings and sectors uneven, boulevards that stop at the old walls); dusk's haze halved. Farmland → PLAYTEST #95.
 
 **Pick:** _(Caio; if silent: **both, by region**: each city takes A or B from the country it's in (the school's region),
 so the world isn't one kind of city; era growth on)_

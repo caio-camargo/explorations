@@ -5988,3 +5988,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q322-before/`, `q322-after/`.
 - **Next for sky & bodies:** Q322 slice 2 (Selene out of `SKY_FS`, Q250's aliasing).
 
+- **Addendum 2 (design desk, 2026-10-13):** the city mock-up's round 2 (uneven roads, a grown old core, thinner dusk
+  haze) after Caio's "big improvement, right direction"; PLAYTEST #94 (no visible way to deploy folded parts, P1) and #95
+  (farmland on Tellus, the pad's surroundings); Q252 (solid motors) raised to M1 at Caio's word.
