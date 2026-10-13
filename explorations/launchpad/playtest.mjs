@@ -992,6 +992,23 @@ ROWS[287] = {title: 'effects stop with the pause', steps: [`{go('assembly'); PT.
   `({fxRan: +(fxNow() - F0).toFixed(1), simRan: +(simT - T0).toFixed(2)})`, `{document.querySelectorAll('#escm').forEach(e => e.style.visibility = ''); true}`, {key: 'Escape'}, {wait: 1000},
   `({fxAfter: +(fxNow() - F0).toFixed(0), simAfter: +(simT - T0).toFixed(2)})`
   ]};
+// 247: a missed deadline costs a wait (Q295): take the first offer, let its deadline pass with the Program's Wait buttons,
+// then wait on: the news, the client's opinion and the same job back on the board 60–120 days later
+ROWS[247] = {title: 'a missed deadline costs a wait', steps: [`{go('program'); const b = document.querySelector('[data-acc]'); b.click(); const c = PROG.active.at(-1); window.C247 = {id: c.id, title: cTitle(c), client: c.client, op0: opOf(c.client), dl: c.deadline}; C247}`,
+  `{const n0 = PT.log.length; let k = 0; while (PROG.day <= C247.dl + 1 && k++ < 60) advanceTo(Math.min(C247.dl + 2, PROG.day + 30)); ({day: +PROG.day.toFixed(1), active: PROG.active.some(c => c.id === C247.id), op: opOf(C247.client), news: PT.logSince(n0).filter(l => /Missed|ask again/.test(l))})}`,
+  `{let k = 0; const d0 = PROG.day; while (PROG.day < d0 + 130 && k++ < 80 && !(PROG.offers || []).some(o => cTitle(o) === C247.title)) advanceTo(PROG.day + 10); renderProgram(); ({waited: +(PROG.day - d0).toFixed(0), back: (PROG.offers || []).some(o => cTitle(o) === C247.title), op: opOf(C247.client)})}`, {shot: 'board'}],
+  checks: {back: `(PROG.offers || []).some(o => cTitle(o) === C247.title)`, opinion: `opOf(C247.client) >= C247.op0 - 1e-9`}, expect: {back: v => v === true, opinion: v => v === true}};
+// 243: the commercial giant (Q206), by the row's own console steps: the AI-boom era, a few days, the news; then the
+// giant's orbit + 1,700 days, a day, the contract board
+ROWS['247c'] = {title: 'control for 247: the same waits with no contract', steps: [`{window.O0 = opOf(0); let k = 0; while (PROG.day <= 80.8 && k++ < 60) advanceTo(Math.min(82, PROG.day + 30)); window.O1 = opOf(0); k = 0; while (PROG.day < 201 && k++ < 80) advanceTo(PROG.day + 10); ({op0: O0, at81: O1, at200: opOf(0), day: +PROG.day.toFixed(0)})}`]};
+ROWS[243] = {title: 'the commercial giant', steps: [`{const n0 = PT.log.length; PROG.day = 8400; advanceDays(5); ({giant: PROG.giant ? Object.keys(PROG.giant) : null, news: PT.logSince(n0).filter(l => /giant|commercial|company|AI/i.test(l)).slice(0, 6)})}`,
+  `(()=>{ if (!PROG.giant || PROG.giant.orbit == null) return 'no giant.orbit'; const n0 = PT.log.length; PROG.day = PROG.giant.orbit + 1700; advanceDays(1); go('program'); renderProgram(); return ({giant: PROG.giant, news: PT.logSince(n0).slice(-6), offers: (PROG.offers || []).map(o => cTitle(o)).slice(0, 8)}) })()`, {shot: 'board'}]};
+// 250: the vapor collar at Mach 1 (refViews 50–56: the Orbiter, the Heavy's boosters); 244: a plume light per side, the
+// Heavy launched at night seen from either flank
+ROWS[250] = {title: 'the vapor collar (refViews)', steps: views(50, 51, 54, 55)};
+ROWS[244] = {title: 'a plume light per side', steps: [`{go('assembly'); PT.preset('Heavy'); PT.launch(); const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
+  if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); S.throttle = 1; stage(S); const t1 = simT; while (simT - t1 < 1.5) advPhys(S); window.simulate0 = window.simulate0 || window.simulate; window.simulate = () => {}; true}`,
+  `{PT.look(0.6, 0.05, 40); render(); true}`, {wait: 400}, {shot: 'side_a'}, `{PT.look(0.6 + Math.PI, 0.05, 40); render(); true}`, {wait: 400}, {shot: 'side_b'}]};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
