@@ -1996,3 +1996,16 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
   (`launchpad-shake`). **Flow:** one row added to your `renderSettings` and its change handler, nothing else.
 - Not seen moving in a browser here (the GPU was another session's); the numbers are the test's. **Check:** test
   `aerofx-35` (and `aerofx-14`). TESTING 284.
+
+## v1.205 — the camera shake as PLAYTEST #98 asked: only round transonic and peak q, short jolts, Off / Gentle / Full (2026-10-13, effects beat, QUEUE Q402)
+
+`app/gl.js` (`camShake`, `SHK`, `SHAKE_LV`), `app/settings.js`.
+
+- **Builds on v1.203** (the slow 1.5–4 Hz sway at about a quarter the strength). Now also:
+  - **a narrower envelope:** the buffet starts at 15 kPa (was 8), so it is the transonic stretch and peak q only;
+  - **jolts:** a damped knock (~4 Hz, gone in ~0.4 s) as the ship goes through Mach 1 (in air over 5 kPa) and at each
+    staging (fewer parts on the same ship): ~0.06° on Gentle;
+  - **Off / Gentle / Full** in Settings › Screens (replacing v1.203's checkbox; Full doubles it), default Gentle, kept
+    per browser (`launchpad-shake`: a saved '1' from v1.203 reads as Gentle, '0' as Off).
+- **Flow:** the shake row in `renderSettings` is now three buttons, handled in the click listener beside the quality's.
+- Not seen moving in a browser (numbers from the test). **Check:** tests `aerofx-35` (rewritten), `aerofx-14`. TESTING 286.
