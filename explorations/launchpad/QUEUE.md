@@ -781,3 +781,7 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - ✓ ranked as Q440 (orchestrator 2026-10-13): vehicle + space — a damaged part does something (v1.210 `p.dmg`): a hit engine loses thrust or its gimbal, a damaged wheel less torque, a damaged pod a slow air leak — Q303
 - ✓ ranked as Q441 (orchestrator 2026-10-13): look & sound (effects) — a holed tank's jet drawn (a fuel spray or a gas plume from the hole; `s.leaks[i]`: part, resource, body-frame normal) — Q303
 - ✓ ranked as Q442 (orchestrator 2026-10-13): QA — the tester menu has no way to seed debris (a debris setting and an anti-satellite test at the craft's height) to try strikes — Q303
+- flow — PLAYTEST **#115** (P3): the map's Layers panel stays open after leaving the map; robot row `layers` fails (TESTING 249) — test bench
+- flow (with economy) — PLAYTEST **#116** (P2): RANGE SAFETY "impact point over Kaos Beach" in the first seconds of every launch from Dunnzar Cape — test bench
+- sky & bodies — PLAYTEST **#117** (P2): blocky, stepped cloud edges along the horizon at night from the pad (views 19, 65) — test bench
+- economy — TESTING 247: after a missed deadline the client's opinion ends ~4 points under a no-contract control by day ~200 (not at the miss itself): check what else moves it — test bench
