@@ -59,8 +59,12 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  // (Q352, PLAYTEST #87) each pixel's 12 steps start at its own offset (interleaved gradient noise): with the same offset
  // everywhere, the count of steps in the planet's shadow changed one at a time across the terminator and drew bands.
  // (Q250) Only from high up: from low in the air the first step (tens of km) spans most of the air's density, so the
- // offset drew a fixed diagonal hatch over the whole day sky; under 15 km every pixel starts mid-step as before
- float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=mix(.5,fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),smoothstep(15e3,50e3,length(uPc)-uPR));vec3 sR=vec3(0.),sM=vec3(0.);
+ // offset drew a fixed diagonal hatch over the whole day sky; under 15 km every pixel starts mid-step as before.
+ // (Q392, PLAYTEST #89) And only on rays that cross the planet's shadow (its start, middle and end not all lit or all
+ // dark): elsewhere the offset only added noise to the haze (the limb from orbit: std 3.9 → 1.4 grey levels)
+ vec3 q0=d*t0-uPc,q1=d*(.5*(t0+t1))-uPc,q2=d*t1-uPc;float b0=dot(q0,uSun),b1=dot(q1,uSun),b2=dot(q2,uSun);
+ float s0=b0<0.&&dot(q0,q0)-b0*b0<uPR*uPR?1.:0.,s1=b1<0.&&dot(q1,q1)-b1*b1<uPR*uPR?1.:0.,s2=b2<0.&&dot(q2,q2)-b2*b2<uPR*uPR?1.:0.;
+ float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=mix(.5,fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),smoothstep(15e3,50e3,length(uPc)-uPR)*step(.5,abs(s0-s1)+abs(s1-s2)));vec3 sR=vec3(0.),sM=vec3(0.);
  for(int i=0;i<12;i++){float t=t0+(float(i)+jt)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
   float dR=exp(-h/HR)*ds,dM=exp(-h/HM)*ds;odR+=dR;odM+=dM;
   float b=dot(p,uSun);if(b<0.&&r*r-b*b<uPR*uPR)continue;
@@ -1642,7 +1646,7 @@ function bloomBegin(w,h){SCN.on=false;const T=sceneTarget(w,h);if(!T.ok)return;S
 // (Q314) the grade: a 32³ LUT on AgX's display values. D18.1, 1960s press photography: contrast back into AgX's soft
 // curve (a logit S, per channel, and a little saturation back, since AgX desaturates), blacks a little crushed toward blue-black, warm
 // highlights. One LUT for now; a LUT per era later (BEAUTY B0.4)
-const GRADE={c:1.4,b:-.06,sat:1.12,warm:[.035,.008,-.045],cool:[-.012,-.004,.018],K:.22,vg:.2,gr:.035};
+const GRADE={c:1.4,b:-.06,sat:1.12,warm:[.035,.008,-.045],cool:[-.012,-.004,.018],K:.22,vg:.2,gr:.012};   // (Q392, PLAYTEST #89) grain .035 → .012: ~3.7 grey levels of noise in a smooth hazy sky read as dither; .012 still dithers the 8-bit output
 function gradeFn(r,g,b){const lg=x=>{x=Math.min(Math.max(x,1e-4),1-1e-4);return Math.log(x/(1-x))},sg=x=>1/(1+Math.exp(-x));
   let o=[r,g,b].map(x=>x<=0?0:sg(GRADE.c*lg(x)+GRADE.b));{const y=.2126*o[0]+.7152*o[1]+.0722*o[2];o=o.map(x=>y+(x-y)*GRADE.sat)}const Y=.2126*o[0]+.7152*o[1]+.0722*o[2],hi=Y*Y,lo=4*Y*(1-Y)*(1-Y);
   return o.map((x,i)=>Math.min(1,Math.max(0,x+GRADE.warm[i]*hi+GRADE.cool[i]*lo)))}
