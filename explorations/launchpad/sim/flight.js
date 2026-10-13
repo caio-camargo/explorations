@@ -420,7 +420,7 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
 // mass flown on the standard ascent (vertical to 200 m, flat by 38 km, the procedures' and the hand-flown profile) with
 // dvPlan's stages and the ship's drag; then that stage, as it flies (what's dropped gone, a fairing jettisoned before it
 // gone), is probed holding 5° off the airflow at that q, burning. Two ways to lose it, measured by flying (notes/vehicle.md
-// § v1.151): steering short of that 5° (wheels, gimbals, steerable fins at that q), or a divergence rate √(dM/dα / I) past
+// § v1.152): steering short of that 5° (wheels, gimbals, steerable fins at that q), or a divergence rate √(dM/dα / I) past
 // LAM_MAX, a light stage going over faster than the autopilot catches it (a reaction wheel doesn't help there). Only a fresh
 // stage: boosters dropping off a core that's already lit and steering don't count. [{k, h, q, M, holds, why: 'auth'|'fast',
 // tau, auth, cal, lam, load, lp}] for each stage that lights above 1 kPa.

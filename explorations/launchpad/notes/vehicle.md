@@ -1490,7 +1490,7 @@ Test `vehicle-12`. `--smoke` all pass.
 - Test `vehicle-20` (all four side boxes on a 1.25 m stack and on the frame inside a fairing; the frame's radius; the camera's
   height). TESTING 230.
 
-## v1.151 — later stages in the air: why the fairing satellite tumbles, and the builder saying so (2026-10-12, vehicle session, QUEUE Q342; PLAYTEST #82)
+## v1.152 — later stages in the air: why the fairing satellite tumbles, and the builder saying so (2026-10-12, vehicle session, QUEUE Q342; PLAYTEST #82)
 
 - **What breaks:** nothing, at first. Measured (a satellite, core + battery + instruments + camera under a 3 m fairing, on the
   Orbiter's launcher): the fairing's own joints carry 9% of their certified rating at 5° and max-q, 27% at 15°; flown, no joint
@@ -1503,7 +1503,7 @@ Test `vehicle-12`. `--smoke` all pass.
   attitude it separates 6–11° off its path, where the shell's load beats one Petrel's 3° gimbal. A reaction wheel doesn't help
   (its torque goes unused at that speed); three don't either. Clearing the SAS integral at staging doesn't help. The stock
   **Beeper and Passenger Orbiter flip the same way** when flown through staging in attitude hold on the standard profile;
-  holding **prograde** from 20 km they don't (Q349).
+  holding **prograde** from 20 km they don't (Q353).
 - **`airSep(stack)`** (`sim/flight.js`, in `analyze` as `ana.air`): where each fresh stage lights on a standard ascent (a point
   mass on the procedures' pitch profile, with `dvPlan`'s steps, thrust from each step's vacuum and sea-level exhaust speeds by
   pressure, and the ship's drag table: 34 km / 12.7 kPa against 33.9 / 12.6 flown), then that stage as it flies (dropped
@@ -1517,4 +1517,4 @@ Test `vehicle-12`. `--smoke` all pass.
   helps: fins or steerable fins on it, a bigger first stage (or coast up before staging), separating pointing prograde. An
   unstable stage that holds gets the prograde advice. **Rollout:** the same as a warning. Every preset holds.
 - Test `vehicle-21` (the satellite flips, short of steering; with a wheel, too fast; steerable fins hold; no preset flagged;
-  Heavy's checked stage is its upper one; flown, the satellite tumbles 179° and with steerable fins stays within 2°). TESTING 233.
+  Heavy's checked stage is its upper one; flown, the satellite tumbles 179° and with steerable fins stays within 2°). TESTING 234.
