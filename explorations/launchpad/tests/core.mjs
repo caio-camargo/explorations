@@ -483,8 +483,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   orbAt(['sci'], 150, 30);
   check('…and an orbit in the 30° plane completes the other', P.active.length === 0, `${P.cdone} contracts done`);
   // deadlines: a missed one is removed and costs a wait (Q295, D17.4): no standing or opinion lost; the client asks again later
-  fresh(); P.day = 0; P.back = []; P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
-  check('a missed deadline drops the contract and costs a wait: standing and the client\'s opinion kept, the job queued to come back', P.active.length === 0 && api.standOf('sci') >= st0 - 0.5 && api.opOf(1) > op1 - 1 && (P.back || []).length === 1 && P.back[0].day >= 90 && P.back[0].day <= 160, `standing ${st0} → ${api.standOf('sci')}; back on day ${(P.back || [])[0]?.day}`);
+  fresh(); P.day = 0; P.back = []; const snap = JSON.stringify(P), restore = () => { for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(snap)); };
+  api.advanceDays(40); const opCtl = api.opOf(1), stCtl = api.standOf('sci'); restore();   // the same 40 days with no contract: opinion and standing drift on their own
+  P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
+  check('a missed deadline drops the contract and costs a wait: standing and the client\'s opinion as without it, the job queued to come back', P.active.length === 0 && Math.abs(api.standOf('sci') - stCtl) < 0.5 && Math.abs(api.opOf(1) - opCtl) < 0.5 && (P.back || []).length === 1 && P.back[0].day >= 90 && P.back[0].day <= 160, `standing ${st0} → ${api.standOf('sci')} (without it ${stCtl}); opinion ${op1.toFixed(1)} → ${api.opOf(1).toFixed(1)} (without it ${opCtl.toFixed(1)}); active ${P.active.length}; back ${JSON.stringify((P.back || []).map(b => [b.c.type, b.day]))}`);
   // budget days every 100 days, scaled by home opinion and the cycle
   // (platform) the world's dice and the cycle's phase pinned: they were whatever earlier sections left, so run alone this failed
   fresh(); P.homeArch = 'frugal'; P.day = 0; P.wseed = 4242; P.cyc = Math.PI / 2; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5); P.homeArch = null;   // a tax-funded home

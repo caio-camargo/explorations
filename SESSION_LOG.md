@@ -5832,3 +5832,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `explorations/launchpad/notes/economy.md` (new plan section), `NOTES.md`, `QUEUE.md` (Q187 ✓ plan, W41, two Proposed slices), `ACTIVE_WORK.md`.
 - **Next:** W41 (four defaults). Economy's ready list: Q181, Q184, Q296, Q332.
 
+## 2026-10-13 — Caio + Claude (launchpad economy session): W41 answered; Q181 overflight (v1.169)
+- **W41** (Caio): real rival satellites; suspicion grows with unexplained losses; hacking pays the contract or the service, plus a tap (indefinite) and data theft; radar as layers proposed as the default. Plan amended (NOTES § Q187 amendment), DECISIONS W41.
+- **Built (Q181):** overflight counts only low flight (Caio's point): below 150 km, not in orbit (periapsis in the atmosphere), within 1,000 km of the pad. Any foreign land, scaled by relation (an ally nothing, a rival −3 opinion, a security state ×2), one headline a year, a Debrief line.
+- **Measured:** 1 of 16 default sites has foreign land due east within 1,000 km (a friend, k 0.17).
+- **Files:** `sim/program.js` (`overTick`, `overEnd`), `sim/debrief.js`, `tests/economy.mjs` (econ-24), `notes/economy.md` § v1.169, `NOTES.md`, `QUEUE.md` (Q181 ✓, two Proposed: overflight rights, the picker's warning), `TESTING.md` 251, `ACTIVE_WORK.md`.
+- **Fixed:** v1.165's missed-deadline check in `tests/core.mjs` failed in a full run when the client's opinion drifted −2 on its own; it now compares with the same 40 days without the contract.
+- **Next:** economy's ready list: Q184 (routines), Q296, Q332.
+

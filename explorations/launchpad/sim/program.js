@@ -252,6 +252,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   return{ok:worst<=1,worst,p:wp}}
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
+  if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
@@ -338,6 +339,22 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
     income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
+// ---- overflight (QUEUE Q181, W23; NOTES § "Plan: overflight politics"): **low flight only.** While the vessel is below
+// OVER_H, not yet in orbit (its periapsis inside the atmosphere: an ascent, a hop, a descent) and within OVER_D of its
+// launch point, whose land is under it is sampled about once a second (R.over). Orbit is free to pass over, whatever its
+// height (the world has accepted that since the first satellite; the stock Orbiter circles at 100–120 km), and so is
+// anything higher or farther out;
+// home and the site's host don't count. W23: any foreign land, scaled by the relationship: an ally (relation ≥ 0.5)
+// doesn't mind; at relation 0 a third of the cost; at −1 the whole of it (opinion −3, relation −0.03); a security state ×2.
+// One protest headline per power per program year. Far smaller than a stage falling on its land (−5, −0.06).
+const OVER_H=150e3,OVER_D=1000e3,OVER_OP=3,OVER_REL=0.03;
+function overTick(s,R,dt){R.overT=(R.overT||0)+(dt||0);if(R.overT<1)return;R.overT=0;if(!R.launchPf||len(s.r)-TELLUS.R>OVER_H||elements(s.r,s.v,TELLUS.mu).pe-TELLUS.R>TELLUS.atm)return;
+  const pf=toPF(TELLUS,s.r,simT);if(Math.acos(clamp(dot(norm(pf),norm(R.launchPf)),-1,1))*TELLUS.R>OVER_D)return;
+  const p=powerAt(pf),host=(SITES.find(t=>t.id===R.site)||{}).power;if(!p||p.i===HOME||p.i===host)return;(R.over||(R.over={}))[p.i]=1}
+const overK=i=>clamp((0.5-relOf(HOME,i))/1.5,0,1)*(archOf(i)==='security'?2:1);
+function overEnd(R){R.overK={};for(const k in R.over||{}){const i=+k,c=R.overK[i]=overK(i);if(!(c>0))continue;opAdd(i,-OVER_OP*c);
+  const key=pairKey(HOME,i);PROG.rel[key]=clamp(relOf(HOME,i)-OVER_REL*c,-1,1);PROG.overNews=PROG.overNews||{};
+  if(!(PROG.day-(PROG.overNews[i]??-1e9)<YEAR_D)){PROG.overNews[i]=PROG.day;HOOK.news(`${POWERS[i].name} protests a rocket flying low over its territory`,'warn')}}}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
 // The player leaving a flight for another screen (Program, Assembly, Rover yard) ends it there: settled now, not at the
@@ -383,6 +400,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
   fleetSalvage(R);
   // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
+  overEnd(R);
   for(const v of R.drops){const pw=v.power;if(!pw)continue;
     if(pw.i===HOME){if(v.kind==='city')opAdd(HOME,-6);else if(v.kind==='near')opAdd(HOME,-2);continue}
     const hit=v.kind==='city'?3:v.kind==='near'?1.5:1;opAdd(pw.i,-5*hit);const key=pairKey(HOME,pw.i);PROG.rel[key]=clamp(relOf(HOME,pw.i)-0.06*hit,-1,1);

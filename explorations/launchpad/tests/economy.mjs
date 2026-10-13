@@ -533,3 +533,28 @@
   check('missed deadline: a full board makes the job wait; a client sanctioning us, or a job whose reason is gone (no satellite to service), drops it',
     waits && dropped && !P.back.length && !P.offers.length, `waits ${waits}, sanctioned dropped ${dropped}`);
 }
+
+// econ-24. Overflight (economy session, QUEUE Q181, W23; NOTES § "Plan: overflight politics"): low flight only. Below
+// 150 km and within 1,000 km of the launch point, the powers whose land passes under the vessel are recorded; orbit
+// heights and far-off points don't count; home and the site's host don't. At the end each costs opinion and relation
+// scaled by the relationship (an ally nothing, a rival the most, a security state double), one headline a year.
+{
+  const D = new Function(src + 'return {overTick,overEnd,overK,debriefOf,norm,cross,len,SITES,POWERS,PROG,HOOK,TELLUS,powerAt,alongAz,rotY,bodyTheta,pairKey,relOf,opOf,archOf,OVER_OP,YEAR_D,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart,set t(v){simT=v}};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { wseed: 5, day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: {}, overNews: {} });
+  D.chooseStart('agency'); D.t = 0;
+  const site = D.SITES.find(t => t.power === 0) || D.SITES[0], u0 = site.u, Rt = D.TELLUS.R;
+  let far = null; for (let km = 100; km <= 900 && !far; km += 50) for (let a = 0; a < 36 && !far; a++) { const u = D.alongAz(u0, a * Math.PI / 18, km * 1e3 / Rt), p = D.powerAt(u); if (p && p.i !== 0 && p.i !== site.power) far = { u, p, km }; }
+  const at = (u, h) => D.rotY(u.map(x => x * (Rt + h)), D.bodyTheta(D.TELLUS, 0));
+  const fly = (u, h, orb) => { const R = { launchPf: u0.map(x => x * Rt), site: site.id }, r = at(u, h), up = D.norm(r), side = D.norm(D.cross(up, [0, 1, 0])), vc = Math.sqrt(D.TELLUS.mu / D.len(r));
+    D.overTick({ r, v: orb ? side.map(x => x * vc) : [0, 0, 0] }, R, 1.5); return R; };
+  const low = fly(far.u, 60e3), high = fly(far.u, 300e3), homeLand = fly(u0, 20e3), orbit = fly(far.u, 120e3, true), climb = fly(far.u, 120e3);
+  check('overflight: low over a foreign power within 1,000 km is recorded (climbing at 120 km too); in orbit at 120 km, above 150 km, or over home, it is not',
+    low.over && low.over[far.p.i] === 1 && climb.over && !orbit.over && !high.over && !homeLand.over, `${far.p.name} ${far.km} km out: low ${JSON.stringify(low.over)}, at 300 km ${JSON.stringify(high.over)}`);
+  const i = far.p.i, key = D.pairKey(0, i);
+  P.rel[key] = 0.6; const o0 = D.opOf(i); D.overEnd(low); const ally = D.opOf(i) === o0 && low.overK[i] === 0 && !news.length;
+  P.rel[key] = -1; const o1 = D.opOf(i), k1 = D.overK(i); D.overEnd(low); const hit = D.opOf(i) < o1 - 2.9 && D.relOf(0, i) <= -1 + 1e-9 && news.length === 1;
+  D.overEnd(low); const once = news.length === 1;
+  check('overflight: an ally doesn\'t mind; a rival protests (opinion −3, × 2 for a security state), one headline a program year',
+    ally && hit && once && Math.abs(k1 - (D.archOf(i) === 'security' ? 2 : 1)) < 1e-9, `${far.p.name} (${D.archOf(i)}): opinion ${o1.toFixed(1)} → ${D.opOf(i).toFixed(1)}; ${news.join(' | ')}`);
+}

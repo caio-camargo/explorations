@@ -151,7 +151,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
-| Caio + Claude (economy session) | 2026-10-13 | Launchpad **Q181**: overflight by the track flown (low flight only: the ascent below 150 km near the site; orbit is free), W23's rule, the Debrief line, a test. Worktree `launchpad-economy`. | `sim/` `missionTick`/`missionEnd` (an `R.over` record), `sim/debrief.js`, `tests/economy.mjs` |
+> Cleared 2026-10-13: economy session, **v1.169 overflight (Q181)** on `main`. **Everyone:** `missionTick` calls `overTick(s, R, dt)` (records `R.over`, low flight only: below 150 km, periapsis in the atmosphere, within 1,000 km of the pad); `missionEnd` calls `overEnd(R)`; the Debrief's incidents gain a "Flew low over" line.
 > Cleared 2026-10-13: economy session, **Q187 plan** (rivals' satellites as targets; docs on `main`). **Space:** slice 1 (`PROG.rsats`, rival satellites on rails, approachable as targets) is yours with economy; see NOTES § "Plan: rivals' satellites as targets".
 | Caio + Claude (look & sound, sky & bodies) | 2026-10-13 | Launchpad **Q326**: time the base sky's parts at the pad (terrain march, `scatter`, sea, cities) by swapping stubbed `SKY_FS` variants in at run time; measurement only, no game change expected. Worktree `launchpad-sky`. | none (a NOTES section; maybe a `refset.mjs` option) |
 | Caio + Claude (vehicle session) | 2026-10-13 | Launchpad **QUEUE Q371** (retune the Hopper preset; Caio: ok). Worktree `launchpad-builder`. | `sim/vessel.js` `PRESETS` |

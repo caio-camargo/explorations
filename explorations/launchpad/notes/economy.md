@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2981,3 +2981,28 @@ final burn, and set `SUN_K`/`PLUME_K` so a careful night approach is ~10 % spott
      rival as "soon" or nothing; stolen data shows the forecast day), and the next military offer against that owner
      pays more. Quicker than a tap (the download time at the link's rate, in the hold), so less exposure.
    Choosing among inspect / steal data / tap / take its service for a client happens at the hold (a HUD choice, flow).
+
+## v1.169 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
+
+**Low flight only** (Caio, 2026-10-13: "flying over, we mean low, right? not orbiting?"). `overTick` (from `missionTick`,
+beside `rdvTick`) samples about once a second, while the vessel is **below 150 km**, **not in orbit** (its periapsis
+inside the atmosphere: an ascent, a hop, a descent) and **within 1,000 km of its launch point**, whose land is under it
+(`powerAt`): `R.over`. Home and the site's host don't count. Orbit is free at any height: the stock Orbiter circles at
+100–120 km, so a height rule alone would have charged it on later passes near the pad, hence the periapsis test.
+
+**The cost** (`overEnd`, in `missionEnd` before the drops), W23's rule, any foreign land scaled by the relationship:
+k = (0.5 − relation)/1.5, clamped 0–1 (an ally at ≥ 0.5 pays nothing, relation 0 a third, −1 all), × 2 for a security
+state; opinion −3k, relation −0.03k. One protest headline per power per program year. A stage that **falls** on its land
+still costs more (−5, −0.06, damages). The Debrief lists each: "Flew low over *X*: it protests (opinion −2.0)" or "…, a
+friend: no objection".
+
+**Measured:** on the default map, 1 of 16 launch sites has foreign land within 1,000 km due east (s5 over Natovtov,
+relation 0.25, k 0.17): the rule bites by choice of site and heading (polar and retrograde launches cross more), as the
+plan wanted, and is never a nag from friends.
+
+**Not yet:** overflight rights (W23: a decision from the start, rivals may refuse; QUEUE *Proposed*); dispatched flights
+(they repeat an ascent without `missionTick`'s samples) don't record overflight; the site picker's warning
+(`downrangeWarning`) doesn't yet colour by relation.
+
+Tests: `econ-24` (2 checks: recorded low and climbing, not in orbit at 120 km, not above 150 km, not over home; an ally
+shrugs, a rival protests once a year, a security state double).
