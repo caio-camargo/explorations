@@ -35,7 +35,7 @@ function deskLayout(box,gate){
   $('deskTray').classList.toggle('hidden',gate);
   $('deskWall').innerHTML=gate?'':deskWall()}
 function deskWall(){let h='';const ph=deskPhoto();
-  h+=deskPhotoCard(ph,'no flights yet',"the first flight's photo goes here");
+  if(ph)h+=deskPhotoCard(ph);   // (Q286, UI.md § 3) no empty frame until there's a photo
   const nw=deskNews(NEWS);
   if(nw)h+=deskClipping(nw);
   const firsts=RACE.filter(id=>PROG.done[id]&&raceLost(id)==null).map(id=>({M:MISSIONS.find(m=>m.id===id),at:PROG.done[id]})).filter(x=>x.M)

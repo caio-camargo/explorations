@@ -1100,3 +1100,41 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
   help bar was already behind the menu. **Slice 2:** the Program (NEXT card, offers one line each, the letterhead, locked
   missions as a count) and the map (labels by importance, days instead of TU). The Assembly's GO/NO-GO board is D22's
   Checks tab, built with Q237 (vehicle).
+
+## v1.189 — the Program and the map decluttered (2026-10-13, flow session, QUEUE Q286 slice 2; UI.md § 3 Program and Map rows)
+- **Offers, one line each:** name, pay, days left, Take and Pass, and ⚠ when taking it risks sanctions. A click on the
+  line opens the rest (client, *Why*, the brief, the risk); a `<details>` row in `contractsHTML` (`app/program-ui.js`).
+  Taken contracts keep their full rows (their Withdraw and dispatch lines are things you act on).
+- **Missions:** an epoch past the next one, with nothing open or done in it, is one line: "🔒 8 missions, once first
+  orbit is under way" (`renderProgram`, `app/editor.js`). The current and next epochs list everything as before.
+- **The wall:** no empty photo frame ("no flights yet") until the first flight's photo exists (`deskWall`); the Debrief
+  still pins its own.
+- **The letterhead:** the program's name 22 px instead of 30: a letterhead, so the NEXT card and the funds lead.
+- **The map:** a planet's label gives the trip, half a transfer orbit from Tellus's, in days ("Enyo · ~280 days there"),
+  not its distance in TU, a unit nobody knows (`xferDays`, `app/render.js`). The label declutter by importance was
+  already there (PLAYTEST #31).
+- **Checks:** test `flow-25`; robot row `desk` (four one-line offers, one opened; the far epochs counted; no empty
+  frame); `m1` passes (its orbit map shows the planets in days; its SAS shows only the modes the probe can fly, slice 1).
+  Every flow and economy section passes. The full smoke run was stopped by Claude Code for low memory and not re-run.
+  TESTING row 271.
+- **Q286 is done** except the Assembly's GO/NO-GO board, which is D22's Checks tab: Q237 (vehicle, with flow). Not done
+  from UI.md's rows: a phase card that changes by phase (landing: height and descent rate; burn: Δv to go).
+
+## v1.192 — one tooltip (2026-10-13, flow session, QUEUE Q391; UI.md rule 9, after Q340)
+- **One element:** the builder's part card (beside the parts list) and the hover over a part on the craft (at the
+  pointer) now show in `#termTip`, like the terms and the self-explaining warnings; `#partcard` and `#bldtip` are gone.
+- **How:** `tipShow(own, html, at)` / `tipHide(own)` in `app/terms.js`. `own` names the use ('term', 'card', 'craft'), so
+  moving off one never closes another's; `at` is `{r: rect}` (under it, above when there's no room), `{r, side: true}`
+  (beside it) or `{x, y}` (at the pointer); it always stays inside the window. A part card gets the `card` class (270 px,
+  the spec table). **For everyone:** a new tooltip goes through `tipShow`, not a new floating element.
+- **The Rollout explains itself:** each warning and stop can carry `W` (`warn(t, W)`, `bad(t, W)`; rendered with
+  `whyMark`): over budget, the account below zero, a part not open yet, a site that won't take it, stages over towns, the
+  weather, the liftoff TWR, instability, a joint past its rating,
+  decisions waiting. `launchWarnings` (vehicle) keeps its own wording, which already says the fix.
+- **The joint chip** in the part panel (right-click a part) explains itself past 70 %: what, why, `jointFix`.
+- **A catch on the way:** flow-8 cuts `app/rollout.js` up to `
+function rollChecks`; a comment line above it broke the
+  cut, so the comment sits on the function's line. The Rollout's icon rule (`.rc span`) now targets the icon only.
+- **Checks:** test `flow-26` (placement beside, at the pointer and under, clamped; the owners; no old elements; ten
+  explained Rollout checks); robot row `explain` (the stage-2 TWR mark, the camera's card in `#termTip`, the Rollout's
+  over-budget check hovered); `m1` passes; every flow section and the builder's core sections pass. TESTING row 273.

@@ -383,18 +383,19 @@ function partCardHTML(k){const d=PARTS[k],lk=typeof partOpen==='function'?partOp
   return`<b>${d.name}</b><div class="pcs">${partInfo(d)}</div>`+(lk.ok?'':`<div class="warn">Not open yet: it ${lk.why}. You can design with it; a launch with it is refused.</div>`)+
     `<table>${partSpecs(d).map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}${d.era!=null&&typeof COMP_ERAS!=='undefined'&&COMP_ERAS[d.era]?`<tr><td>era</td><td>${COMP_ERAS[d.era].name}</td></tr>`:''}</table>`+
     (partPairs(d)?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(d)}</div>`:'')}
-function cardAt(b,k){let c=el('partcard');if(!c){c=document.createElement('div');c.id='partcard';document.body.appendChild(c)}
-  if(!b){c.style.display='none';return}c.innerHTML=partCardHTML(k);c.style.display='block';const r=b.getBoundingClientRect(),h=c.offsetHeight;
-  c.style.left=(r.right+10)+'px';c.style.top=Math.max(8,Math.min(innerHeight-h-8,r.top-8))+'px'}
+// the part's card beside the parts list, and the hover over a part on the craft: both in the one tooltip (#termTip,
+// tipShow in app/terms.js; flow, QUEUE Q391)
+const tipOK=()=>typeof tipShow==='function';
+function cardAt(b,k){if(!tipOK())return;if(!b){tipHide('card');return}tipShow('card',partCardHTML(k),{r:b.getBoundingClientRect(),side:true})}
 
 // ---- tooltip and panels
-function tooltip(){let t=el('bldtip');if(!t){t=document.createElement('div');t.id='bldtip';document.body.appendChild(t)}
-  const n=st.hover;if(!n||mode!=='editor'||st.held||!st.mouse){t.style.display='none';return}
+function tooltip(){if(!tipOK())return;
+  const n=st.hover;if(!n||mode!=='editor'||st.held||!st.mouse){tipHide('craft');return}
   const ps=S.parts.filter(p=>p.on&&dnOf(p)===n),w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null);
-  t.innerHTML=`<b>${isPay(n)?`Payload: ${String(n.name||'').replace(/</g,'&lt;')}`:name(n.k)}</b>${ps.filter(p=>!p.inst.rdec).length>1?` <span class="dim">×${ps.filter(p=>!p.inst.rdec).length}</span>`:''}`+
-    (partInfo(pdef(n.k))?`<div class="pcs">${partInfo(pdef(n.k))}</div>`:'')+(partPairs(pdef(n.k))?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(pdef(n.k))}</div>`:'')+(w?`<br>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span>`:'')+
-    (ps.length?'':`<br><span class="warn">parked: not attached</span>`)+`<br><span class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</span>`;
-  const k=V()?V().W/innerWidth:1;t.style.display='block';t.style.left=(st.mouse[0]/k+14)+'px';t.style.top=(st.mouse[1]/k+14)+'px'}
+  const cp=ps.filter(p=>!p.inst.rdec).length,html=`<b>${isPay(n)?`Payload: ${String(n.name||'').replace(/</g,'&lt;')}`:name(n.k)}${cp>1?` <span class="dim">×${cp}</span>`:''}</b>`+
+    (partInfo(pdef(n.k))?`<div class="pcs">${partInfo(pdef(n.k))}</div>`:'')+(partPairs(pdef(n.k))?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(pdef(n.k))}</div>`:'')+(w?`<div>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span></div>`:'')+
+    (ps.length?'':`<div class="warn">parked: not attached</div>`)+`<div class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</div>`;
+  const k=V()?V().W/innerWidth:1;tipShow('craft',html,{x:st.mouse[0]/k,y:st.mouse[1]/k})}
 // (Q235, PLAYTEST #42) start from scratch: one undo step; the palette, presets and saved designs are untouched
 function clearDesign(){if(isEmpty(stackDef))return;snapshot();stackDef={v:2,root:null};st.held=null;st.sel=null;st.reframe=true;editorChanged();note('Cleared: pick a part to start (Ctrl+Z brings the design back)')}
 function btn(parent,label,on,fn,tip){const b=document.createElement('button');b.textContent=label;if(on)b.className='on';if(tip)b.title=tip;b.onclick=e=>{e.stopPropagation();fn()};parent.appendChild(b);return b}
@@ -439,7 +440,9 @@ function panel(){
   if(PARTS[n.k].kind==='fair'&&!st.bench){const top=kids(n).find(c=>c.at==='u'),pr=parentOf(D.root,n);if(top&&!isPay(top)||!top&&pr&&n.at==='d'&&!isPay(pr)){const r=row('payload');
     btn(r,'make the parts inside a payload',false,()=>makePay(n),'lift what this fairing encloses onto the payload bench: the rocket carries it as one block, and the same payload can fly on any rocket')}}
   if(par){const w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null),r=row('joint');
-    if(w){const s=document.createElement('span');s.className=w.f>1?'bad':w.f>.7?'warn':'ok';s.textContent=` ${(w.f*100).toFixed(0)}% ${w.p.anaKind||''} `;r.appendChild(s)}
+    if(w){const s=document.createElement('span');s.className=w.f>1?'bad':w.f>.7?'warn':'ok';s.textContent=` ${(w.f*100).toFixed(0)}% ${w.p.anaKind||''} `;r.appendChild(s)
+      if(w.f>.7&&w.p.parent&&typeof fixText==='function'){s.classList.add('term');Object.assign(s.dataset,{wt:`The joint ${w.p.d.name} / ${w.p.parent.d.name} at ${(w.f*100).toFixed(0)}% of its rating`,   // (Q391) the chip explains itself
+        wd:w.f>1?'Past its certified rating on the standard ascent: ratings start at 70% of what the part really takes, so it may hold, but the further past, the likelier it breaks.':'Near its certified rating: a turn or a gust on the way up adds to it.',wf:fixText(jointFix({p:w.p},false))})}}
     btn(r,JR[n.j||0].name,!!n.j,()=>edit(()=>{n.j=((n.j||0)+1)%3;if(!n.j)delete n.j}),'cycle: standard → reinforced (2× strength) → heavy (4×), each adds mass')}
   if(PARTS[n.k].kind==='fair'){const d=PARTS[n.k],L=n.fl&&d.fls.includes(n.fl)?n.fl:d.fl0,f=ps.find(p=>p.profF),inn=f?S.parts.filter(q=>q.on&&q.inFair===f).length:0,r=row('length');
     for(const v of d.fls)btn(r,v+' m',v===L,()=>edit(()=>{if(v===d.fl0)delete n.fl;else n.fl=v}),`a ${v} m shell (${(d.fm*v).toFixed(2)} t)`);
@@ -588,11 +591,10 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .shint{font-size:10.5px;margin-bottom:3px}.snum{cursor:grab}.schip{cursor:grab}.srow.over{background:rgba(127,209,255,.14)}.sgap{height:3px;border-radius:3px}.bstg.dragging .sgap{height:8px}.sgap.over{height:16px;border:1px dashed var(--acc);background:rgba(127,209,255,.1)}.smerge{margin-left:auto;padding:0 5px;font-size:10.5px}
 .srow{display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}.srow>b{color:var(--warn);min-width:16px}
 .schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip.f{border-color:rgba(230,230,230,.55)}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
-#partcard{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-size:11.5px;display:none;z-index:6;width:260px}
-#partcard table{border-collapse:collapse;margin-top:4px;width:100%}#partcard td{padding:1px 0;vertical-align:top;text-align:left}#partcard td:first-child{color:var(--dim);padding-right:8px;white-space:nowrap}
-.pcs{color:var(--fg);margin:2px 0;line-height:1.35}#bldtip .pcs{max-width:260px;white-space:normal}
-.pcp{margin-top:5px;line-height:1.35}#bldtip .pcp{max-width:260px;white-space:normal}   /* (flow, Q340) what a part pairs with */
-#bldtip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:11.5px;display:none;z-index:5}
+#termTip.card{width:270px}#termTip.card b{color:var(--fg)}   /* (flow, Q391) the part cards and the craft hover in the one tooltip */
+#termTip table{border-collapse:collapse;margin-top:4px;width:100%}#termTip td{padding:1px 0;vertical-align:top;text-align:left}#termTip td:first-child{color:var(--dim);padding-right:8px;white-space:nowrap}
+.pcs{color:var(--fg);margin:2px 0;line-height:1.35}
+.pcp{margin-top:5px;line-height:1.35}   /* (flow, Q340) what a part pairs with */
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);
   const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';

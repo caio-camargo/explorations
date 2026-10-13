@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
+**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -183,6 +183,8 @@ the gravity boom): each is a part a contract or a law asks for, so a player who 
 
 ### 6.1 The payload bench (D24)
 
+Mock-up: [`mockups/bench/`](mockups/bench/index.html).
+
 Caio: "they're kind of like the rover in that they probably need to be designed separately from the rocket and then
 tucked in somewhere. what's good is this will definitely help stability, since the satellites will end up much smaller."
 - **Its own place, like the Rover yard** (`app/rover-yard.js`: designs in `PROG.rovers`, mounted by the `rvfold` and
@@ -195,10 +197,73 @@ tucked in somewhere. what's good is this will definitely help stability, since t
 - **Folded for launch, as designed**: the bench shows the stowed and the deployed shape; the fairing check uses the
   stowed one; deploying in orbit animates (QUEUE Proposed, 2026-10-13).
 - **Stability**: payloads shrink (a 0.6 m bus, not a 1.25 m stack of round parts), so rockets get less top-heavy.
+- **Caio's notes on the mock-up (2026-10-13):** trusses in other shapes, not only a box: **triangle, square, hexagon,
+  octagon, straight or tapered**. Wings **unfold on hinges like an accordion** (the arm swings out from a pivot past
+  the bus's edge, then every hinge opens at once), never slide, and nothing passes through the body. **Balance on the
+  adapter:** an off-axis payload gets a balance weight on its adapter ring, opposite the heavy side, sized by the bench
+  in one click; it costs mass (a 111 kg craft 3.8 cm off needs 14 kg), so moving heavy parts opposite each other is
+  the better fix. The rocket's Assembly reads the payload's balance and warns as its own check does.
 - **Customers' payloads** (default, Caio to confirm): a commercial launch contract brings its satellite ready (you
   only fly it: mass, size, orbit, a deadline); your own program's satellites you design.
 - **Today's rocket-builder probe parts** (Q337's side parts, the octagonal frame) move to the bench; saved designs that
   carry them on the rocket keep working (a design with probe parts stacked is read as an implicit payload).
+
+### 6.2 Bench parts: a brainstorm (2026-10-13, for Caio to pick)
+
+**Caio's picks (2026-10-13):** the tape recorder, louvres and radiators, the film-return capsule, the entry probe and the
+dispenser are in; **instruments that make shapes and the kinds of antennas: "very good"**; **ends of life: "an
+interesting mechanic"**, in; thrusters in, by efficiency and power (below). **Tracking wings dropped:** wings already
+turn about their arm to face the sun (`powSun`, `sim/power.js`); a cheaper fixed paddle for era 1 can come later as a
+sidegrade. **Spin, then despin: left out for now** (Caio).
+
+Caio: "since this now gets its own screen, and it exists in a different scale than the rockets, sort of, we can
+brainstorm more parts, if it makes sense to." A part earns a place if it brings a **decision** (a trade, a timing, a
+risk), not only a look. Starred: the recommended first set.
+- **Spin, then despin** ★: spin the craft on a spin table before the kick motor fires (a steady burn with no
+  guidance), then **yo-yo weights** on cables unwind and stop the spin. Cheap stability with a timed, one-shot act.
+- **Tape recorder** ★: data stored between stations, a capacity in pictures; full means pictures lost. Makes the
+  network and the camera's appetite meet.
+- **Louvres and radiators** ★: shutters that open when warm (Voyager, Mariner): temperatures held over a wider range,
+  for mass; radiator fins for the hungry parts (radar, the late electronics).
+- **Film-return capsule** ★ (era 1): the pictures come home in a bucket caught by a plane or picked from the sea; sharp,
+  counts only if recovered. The early answer to "a narrow camera with no fast link".
+- **Entry probe** ★: a small sealed probe with a heat shield and a parachute, released from the bus before arrival
+  (Pioneer Venus, Galileo): a payload inside the payload, designed on the bench as its own block.
+- **Dispenser** ★: an adapter that carries 2 to 8 small satellites and releases them in turn (constellations, shared
+  launches); pairs with smaller stacks and routes.
+- **Instruments that make shapes**: a magnetometer on a long mast, particle detectors, a plasma-wave pair of wires,
+  micrometeoroid panels as big wings (Pegasus), an infrared radiometer (weather), a seismometer and a sample scoop for
+  landers, a laser retroreflector (cheap, passive: rangers on the ground pay for it).
+- **Talking**: a turnstile antenna (four short rods), a horn, a steerable dish on a gimbal, an unfurling mesh dish,
+  later a phased array.
+- **Power**: tracking wings (a drive that turns them to the sun: more power, a moving part that can stick), fixed
+  panels, fuel cells for short missions.
+- **Moving**, by efficiency (Isp), thrust and power: cold gas (70 s, the weakest, no power, era 1); **hydrazine**
+  (~220 s: three times cold gas, no real power draw, the workhorse from the late 1960s); a bipropellant apogee engine
+  (~310 s, strong: the big push into a high orbit); **ion** (~3,000 s: ten times hydrazine, but a whisper of thrust and
+  kilowatts of power: months of burning, the wings sized for the engine; late).
+- **Ends of life**: a drag sail or a deorbit motor (debris, D-rules), a crash camera that takes pictures until impact
+  (Ranger), an impactor.
+
+### 6.3 Propulsion on the bench (Caio, 2026-10-13)
+
+Caio: "do we have satellite-specific thrusters and fuel tanks? i imagine they would need to be considerable smaller.
+but i like the idea of those for very light satellites, to get them into high orbit (and the correct orbit)."
+**Today there are none:** the smallest engine is the Wren lander (150 kg, 18 kN) and the smallest tank holds a tonne;
+a satellite has only the cold-gas quads (70 s) and a 15 kg bottle. The bench gets its own, at satellite scale:
+- **Kick motors (solid)** in three sizes (~30, 80, 200 kg): one shot, burns to the end, ~280 s. The early way into the
+  final orbit: the rocket leaves it in a transfer orbit, the kick motor circularises at the top (as Star motors did
+  for comsats). Once lit, no stopping (Q252).
+- **Hydrazine**: thrusters of 1–20 N in clusters, ~220 s, no real power; **tanks as small spheres** (0.25–0.7 m,
+  10–150 kg of propellant), in the bus, the truss bays or outside. Trimming the orbit, holding a station, a modest
+  raise. Restartable; a tank empty means the end of station-keeping (the satellite's life, Q296).
+- **A bipropellant apogee engine** (~400 N, ~310 s) with **a pair of tanks** (fuel and oxidiser): the comsat's own
+  push from a transfer orbit into a stationary one; restartable, so the circularisation can be split and corrected.
+- **Ion** (late): ~3,000 s, millinewtons, kilowatts; a xenon tank; months of thrust, wings sized for the engine.
+- **The bench shows its Δv against the job's last legs** (D23): "the rocket leaves it in a transfer orbit; the payload
+  must add 1,480 m/s (the program's guess) to reach a stationary orbit; it carries 1,620". The Assembly's Reaches check
+  counts the rocket and the payload together, so a light rocket and a satellite with its own engine reach high orbits.
+- **Shapes for free**: spherical tanks, a nozzle under the bus, thruster clusters on the corners all read at a glance.
 
 ## 7. Keeping them beautiful (D21)
 

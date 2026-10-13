@@ -6019,3 +6019,73 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 4 (design desk, 2026-10-13):** **D24**: satellites are parts, not products (the bus one adjustable frame),
   built on a **payload bench** apart from the rocket like the Rover yard, then one block in the fairing (PROBES 0.1.4
   § 6.1). Next for the desk: a mock-up of the bench.
+- **Addendum 5 (design desk, 2026-10-13):** `mockups/bench/`, the payload bench (D24): palette by job, the bus as one frame with a skin per face, Checks against the job, stowed / deployed (animated) / in the fairing, Designs. Stills in `output/launchpad/mockups/bench/`.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the Program and the map decluttered (Q286 slice 2, v1.189); Q286 done
+- **Done:** offers one line each (pay, days, Take, Pass, ⚠ for sanctions; a click opens the rest); epochs past the next, all locked, as a count; no empty photo frame before the first flight; a smaller letterhead; planets on the map labelled with the trip in days instead of TU. On `main` as `b7b053c`. With slice 1 (v1.186, the dark cockpit), Q286 is done; the Assembly's GO/NO-GO board stays with Q237 (D22's Checks tab).
+- **Checks:** flow-25 (new) and every flow and economy section pass; robot rows `desk` and `m1` pass. The full smoke run was stopped by Claude Code for low memory and not re-run.
+- **Next:** Q391 (the parts-list card and the craft hover into the one tooltip).
+- **Addendum 6 (design desk, 2026-10-13):** the bench round 2 (truss shapes, accordion wings, the balance weight); PROBES 0.1.6 § 6.1 notes and § 6.2 a brainstorm of bench parts for Caio to pick.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, 2nd session, continued): clouds at liftoff (Q250, v1.190) and the igniter's timing in views (Q368, v1.191)
+- **Done:** v1.190 Q250 (clouds half): measured a liftoff under cloud in frame pairs; the day sky's fixed diagonal hatch (my v1.159 per-pixel step offset in `scatter`, which postdates PLAYTEST #48) now only applies from 15–50 km up; the deck's billow detail fades by pixel footprint, the volume's 230 m noise by march step (`cdLod`). #48 left open for a re-look in play (TESTING 272). v1.191 Q368: the plume spool skips the igniter flash after an undrawn gap or a clock reset (`spoolFrame`), so reference views' plume colours are steady; ignition views 68–72 still flash.
+- **Files:** `app/gl.js`, `app/render.js`, `tests/look.mjs` (aerofx-18 amended, aerofx-28, aerofx-29), `notes/look.md` § v1.190, § v1.191, NOTES, QUEUE (Q250 ◐, Q368 ✓, three Proposed: far terrain slivers for world, the in-deck horizon band, views that pick weather before flying), PLAYTEST #48, TESTING 272.
+- **Checks:** every look and sound section passes (58). The full suite not run (memory). Stills: `output/launchpad/beauty/Q250/`.
+- **Next:** idle; overflow candidates Q222 (Steppe rollout sound), Q245/Q330 (pad), Q360 (shake switch, with flow).
+
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): one tooltip (Q391, v1.192)
+- **Done:** the builder's part card and the craft hover show in the one tooltip (`#termTip`, `tipShow`/`tipHide` with an owner per use, clamped to the window); `#partcard` and `#bldtip` are gone; the Rollout's warnings and stops explain themselves (ten of them, `whyMark`); the part panel's joint chip too. On `main` as `60498a9`.
+- **Checks:** flow-26 (new), every flow section and the builder's core sections pass; robot rows `explain` and `m1` pass. The robot caught the Rollout's icon CSS squeezing the wrapped text to one word a line (fixed), and flow-8 caught a comment that broke its source cut (moved).
+- **Next:** the queue's next flow item.
+
+## 2026-10-13 — Caio + Claude (launchpad world session): Q105 each school's pad site has its own ground (v1.193)
+
+- **Done:** `siteShape` (`sim/world.js`) is a height offset from the pad, per school, inside 1.7 km. Arsenal: a hill
+  behind the retaining wall, rising to 42 m north; its mesh hill is gone. Coastal: a cut-grass clearing in dark jungle
+  (colour only). Mountain: a ridge climbing north past the terraces, the ground falling 45 m south and east. Isle: a
+  headland falling away east, south and west. The fall reaches the sea only at a coastal site under 60 m (default
+  taken: pads stand at 66–1,332 m, so a real sea beside them is rare). `terrainH` and the sky shader (`siteShapeG`,
+  uniform `uPadK`) agree. The march's air bound and step length are raised near the shaped pad. The pad's painted apron
+  fades on shaped ground, and relief shading there is halved (the sky's ambient is ~1 %, so the cut bank was black).
+- **Checks:** test `site-1` (new); core 23's "pads levelled" now samples 10 m and 1.8 km; `--smoke` passed except
+  TESTING's next-free counter, then fixed (platform-3, 23 and site-1 rerun). Stills of views 145–151, before and after,
+  in `output/launchpad/q105/` (local); the merged code re-shot for 145–146.
+- **Lesson:** a `//` comment pasted mid-line in a test silently swallowed the rest of the statement. `--only <list index>`
+  didn't run the section (use its id, here 23), so it showed only in smoke.
+- **Courtesy-lock slip:** my wait loop saw `.game-busy` free at 13:04; flow's Q391 robot took it at 13:04:10, and my next
+  command overwrote and then deleted it. Two Chrome runs may have overlapped for ~2 minutes. The lock was restored at
+  13:06. Next time, check and write the lock in the same command as the run, never after a separate wait.
+- **Files:** `sim/world.js`, `app/gl.js`, `app/render.js`, `tests/world.mjs`, `tests/core.mjs`, `test.mjs` (api `SITE_K`),
+  `notes/world.md`, `notes/look.md`, `NOTES.md`, `TESTING.md` (274), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for world:** Q251 / Q365 (mountains from orbit), Q379, Q336, Q324. Three Proposed lines from this one: `padGround`
+  per school, a view of the wet sites, and `q19-hdr` taking these shader changes.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, 2nd session): Q322 slice 2, Selene in its own pass (v1.194)
+
+- **Done:** Selene left `SKY_FS`'s main; the moon pass shades it on top (the sky's alpha carries the clouds' cover).
+  Craters and fbm filtered by footprint, so the 12 px Selene seen from Tellus no longer shimmers (PLAYTEST #49, Q250's
+  half), and the craters go on down close up. Found and fixed: every crater rim on the night side was lit (relief term
+  with `ndl` clamped to 0). Lunar-Lambert light, an opposition surge, earthshine ×100 with relief. One-pass crater
+  gradient over 8 cells: sky + moon 0.5–1.5 ms cheaper where Selene fills the view (a first form cost 2–3 ms more).
+- **Views:** 164–168 (Selene from 1,000 km, from low orbit, its night side, through the limb, under clouds).
+- **Tests:** `aerofx-30` (new); all 59 look sections pass after merging main; post-merge browser check of 158, 165, 1.
+  Smoke not run (machine at 1–3 GB free).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (275),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q322s2-before/`, `q322s2-after/`, `q322s2-reg-*`, `q322s2-merged/`.
+- **Process slips:** I overwrote another session's `.game-busy` note while checking it (restored as "held"); my first
+  "after" run went to another session's server on port 8803 (two servers can bind one port on Windows): check
+  `netstat` before picking a port. Renumbered v1.192 → v1.194 and TESTING 273 → 275 after flow and world pushed.
+- **Next for sky & bodies:** Q374 (Selene and planets from space under Q321's exposure), Q395/Q407; *Proposed*:
+  earthshine in `airlessFill`, a view with cloud in front of Selene.
+- **Addendum (effects, sound overflow):** v1.195 Q222: the Steppe rollout's sound (`sndRoll`: the car's rumble with its speed, a double clack per 12.5 m rail joint, the boom's pump climbing 120 → 230 Hz, the arms' rams, a clunk per phase; the master opens on the Rollout screen). Test sound-3; TESTING 276 (not ear-checked). Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q322 slice 2 duplicated, withdrawn
+
+- **What happened:** I claimed Q322 slice 2 at 12:42 and built it (Selene in her own blended pass, craters by footprint,
+  Lunar-Lambert, surge, earthshine; views 164–165), but the 2nd sky & bodies session had claimed the same slice at 12:28
+  and merged it as v1.194 first. At claim time I checked ACTIVE_WORK only for Q19/terrain lines, not for another
+  sky & bodies row. My version is not merged; it's on local branch `archive/sky-q322s2-duplicate` (`9e075f6`).
+- **Lesson:** before claiming, grep ACTIVE_WORK and QUEUE for the item number itself (`Q322`), not just the lanes I expect
+  to collide with; with two sessions on one beat, the item row's state is the only reliable signal.
+- **Next for sky & bodies (this session):** nothing claimed; take the next item only after checking the other sky session's row.

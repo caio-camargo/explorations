@@ -518,3 +518,44 @@
   check('flow-24: the dark cockpit: the phase (climb, burn, landing, quiet) holds the news and the off-phase cards; a master caution names what is red; unflyable hold modes hidden; Ap · Pe not landed, no underground number',
     phases && caut && wired && modes && apPe, `phases ${JSON.stringify(ph)} · cautions ${[...hot, ...load, ...range].join(' | ')} · wired ${wired} · modes ${modes} · Ap/Pe ${apPe}`);
 }
+
+// flow-25. The declutter, the Program and the map (flow session, QUEUE Q286 slice 2; UI.md § 3 Program and Map rows):
+// an offer is one line (name, pay, days left, Take and Pass, ⚠ for a sanction risk) and opens to its full text; an epoch
+// beyond the next, all locked, is one line with a count; no empty photo frame on the wall; the name is a letterhead; a
+// planet's map label gives the trip in days (half a transfer orbit), not its distance in TU.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const ct = page.slice(page.indexOf('function contractsHTML'), page.indexOf('function contractsHTML') + 4000);
+  const offers = ct.includes('<details class="ms of"><summary><b>${cTitle(c)}</b>') && ct.includes('Why: ${c.why}') && ct.includes('data-acc="${c.id}"') && ct.includes('data-dec="${c.id}"');
+  const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('ep>epNow+1&&Ms.every(') && rp.includes('mission${Ms.length>1?');
+  const wall = page.slice(page.indexOf('function deskWall'), page.indexOf('function deskWall') + 400), frame = wall.includes('if(ph)h+=deskPhotoCard(ph)') && !wall.includes('no flights yet');
+  const lh = H.includes("#deskLH .org .n{font:22px/1");
+  const line = page.slice(page.indexOf('const xferDays='), page.indexOf('\n', page.indexOf('const xferDays=')));
+  const xd = new Function('SYSTEM_BODIES', 'YEAR_D', line + 'return xferDays;')(api.SYSTEM_BODIES || [{ name: 'Enyo', a: 1.52 }, { name: 'Hyperion', a: 5.2 }], 365.25);
+  const days = xd('Enyo') === '~260 days there' && xd('Hyperion') === '~1000 days there' && !page.includes('.toFixed(2)} TU`');
+  check('flow-25: the Program and the map decluttered: offers one line each (the rest on a click), far epochs a count, no empty photo frame, a letterhead; planets labelled with the trip in days',
+    offers && epochs && frame && lh && days, `offers ${offers} · epochs ${epochs} · frame ${frame} · letterhead ${lh} · days ${xd('Enyo')}, ${xd('Hyperion')}, no TU ${!page.includes('.toFixed(2)} TU`')}`);
+}
+
+// flow-26. One tooltip (flow session, QUEUE Q391; UI.md rule 9): the builder's part card (beside the parts list) and the
+// hover over a part on the craft (at the pointer) show in #termTip, like the terms and the self-explaining warnings; each
+// use names itself, so moving off one never closes another's; it stays inside the window. The Rollout's warnings and
+// stops explain themselves (whyMark), and so does the part panel's joint chip.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function tipShow'), page.indexOf("document.addEventListener('mouseover'", page.indexOf('function tipShow')));
+  const el = { dataset: {}, style: {}, innerHTML: '', offsetWidth: 270, offsetHeight: 300, cls: new Set(['hidden']) };
+  el.classList = { toggle: (c, on) => on ? el.cls.add(c) : el.cls.delete(c), remove: c => el.cls.delete(c), add: c => el.cls.add(c), contains: c => el.cls.has(c) };
+  const T = new Function('$', 'innerWidth', 'innerHeight', src + 'return {tipShow, tipHide};')(() => el, 1280, 800);
+  T.tipShow('card', '<b>Card</b>', { r: { left: 10, right: 200, top: 700, bottom: 720 }, side: true });
+  const side = el.style.left === '210px' && el.style.top === '494px' && el.dataset.own === 'card' && el.cls.has('card') && !el.cls.has('hidden');
+  T.tipHide('term'); const kept = !el.cls.has('hidden'); T.tipHide('card'); const gone = el.cls.has('hidden');
+  T.tipShow('craft', 'x', { x: 1200, y: 100 }); const ptr = el.style.left === '916px' && el.style.top === '114px';
+  T.tipShow('term', 't', { r: { left: 1250, right: 1270, top: 780, bottom: 795 } }); const term = el.style.left === '1004px' && el.style.top === '474px' && !el.cls.has('card');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const one = !bsrc.includes("'partcard'") && !bsrc.includes("'bldtip'") && bsrc.includes("tipShow('card',partCardHTML(k)") && bsrc.includes("tipShow('craft',html,") && bsrc.includes("wt:`The joint ${w.p.d.name}");
+  const ro = page.slice(page.indexOf('function rollChecks'), page.indexOf('function renderRollout')), nW = ro.split(',{t:').length - 1 + ro.split('{...tw,t:').length - 1;
+  const roll = nW >= 10 && page.includes("whyMark(k,fold(x),W,'span')");
+  check('flow-26: one tooltip: part cards and the craft hover in #termTip, each use keeps its own, inside the window; the Rollout\'s checks and the joint chip explain themselves',
+    side && kept && gone && ptr && term && one && roll, `beside ${side} (${el.style.left},${el.style.top}) · owners ${kept}/${gone} · pointer ${ptr} · term ${term} · builder ${one} · rollout ${nW} explained, ${roll}`);
+}

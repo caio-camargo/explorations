@@ -212,11 +212,35 @@ function supportTowns(){const D=Math.PI/180,R=TELLUS.R;
     const pop=Math.round((TOWN_POP[0]+(TOWN_POP[1]-TOWN_POP[0])*Rn())/1000)*1000,coast=[0,90,180,270].some(a=>!isLand(alongAz(best.u,a*D,8e3/R)));
     const nm=SYL[Rn()*SYL.length|0]+SYL[Rn()*SYL.length|0]+(coast?' Beach':['ville','sk',' Springs',''][Rn()*4|0]);
     CITIES.push({name:nm[0].toUpperCase()+nm.slice(1),u:best.u,pop,rad:2500+5200*Math.sqrt(pop/1e6),seed:Rn()*1e9|0,town:t.id,km:best.km,az:best.az,power:powerAt(best.u)})}}
+// ---- the pad site's own ground, per school (QUEUE Q105; POWERS.md § "School briefs"; the complexes: notes/look.md § "The
+// four schools' pads"). Inside the levelled zone, in the pad's own frame (x east, z south, metres, as the pad meshes), an
+// offset from the pad's height: Arsenal's terrace is cut into a hill rising to the north; Mountain's terraces climb a
+// ridge to the north and the ground falls away south and east; Isle stands on a headland, falling away east, south and
+// west; Coastal is a clearing (its jungle is colour only, in the sky shader). Where the site is coastal and low (under
+// SITE_WET), what falls away goes under the sea: Mountain's ridge above the sea, Isle's peninsula, Coastal's sea behind
+// the pad. Elsewhere it falls SHAPE_DROP (less on a low pad). Zero under every complex, so the meshes stand on flat
+// ground, and gone by SHAPE_R: the 2–4.5 km blend and the ground stations' horizons (first sample 1.8 km) don't change.
+// app/gl.js siteShapeG mirrors siteShape term for term: change both.
+const SHAPE_R=1700,SHAPE_DROP=45,SITE_WET=60,SCHOOL_K={cape:0,steppe:1,arsenal:2,coastal:3,mountain:4,isle:5};
+// the school a site's pad is built in: its owner's (the home power's for no owner). app/gl.js sets it to padSchoolOf,
+// which also follows the program's own archetype and the tester's SCHOOL_FORCE, so the ground is the drawn pad's
+let SITE_SCHOOL=t=>{const p=typeof POWERS!=='undefined'?POWERS[t.power!=null?t.power:0]:null;return p&&p.school?SCHOOL_K[p.school]??0:0};
+const siteWet=t=>t.coastal&&t.h<SITE_WET,shapeLo=t=>siteWet(t)?-(t.h+8):-Math.min(SHAPE_DROP,t.h-3);
+function siteShape(k,x,z,lo,wet){const ax=Math.abs(x),r=Math.hypot(x,z);if(r>=SHAPE_R||k<2)return 0;let H=0;
+  if(k===2){const we=x<0,A=Math.max((1-sstep(17,we?44:110,ax))*Math.max(1-sstep(15,we?32:80,ax),sstep(-11.2,-45,z)),sstep(-45,-140,z))*sstep(-10.5,-11.2-24*sstep(16,30,ax),z);   // the hill behind the retaining wall (z −11), its flanks easing out past the wall's ends (narrow west, where the hall stands), then the whole slope
+    H=(4.6+8*sstep(-11,-34,z)+30*sstep(-40,-260,z))*A*(1-sstep(-700,-1400,z))}
+  else if(k===4)H=(9*sstep(-12,-64,z)+28*sstep(-64,-280,z))*(1-sstep(-700,-1400,z))+lo*sstep(0,160,Math.max(z-45,x-70));
+  else if(k===5){const w=10*Math.sin(z*.021)+7*Math.sin(x*.033+z*.017);H=lo*sstep(0,70,Math.hypot(Math.max(ax-110+w,0),Math.max(z-110+w,0))-40)}   // land within ~150 m east, west and south; the neck runs north
+  else if(k===3&&wet)H=lo*sstep(0,90,z-380+10*Math.sin(x*.019));
+  return H*(1-sstep(1100,SHAPE_R,r))}
+const siteFr=new WeakMap();
+function siteShapeAt(t,c){let f=siteFr.get(t);if(!f){f=siteFrame(t.u);siteFr.set(t,f)}const d=[c[0]-t.u[0],c[1]-t.u[1],c[2]-t.u[2]],R=TELLUS.R;
+  return siteShape(SITE_SCHOOL(t),dot(d,f.e)*R,dot(d,f.s)*R,shapeLo(t),siteWet(t))}
 // terrain height (m above sea level; negative is sea floor) at a planet-fixed direction. Every pad is levelled: flat to
 // PAD_FLAT, blended back to the land by PAD_BLEND (sites are ≥ SITE_GAP apart, so at most one is ever near).
 function terrainH(pf,oct=HOCT){const c=norm(pf);let near=null,dmin=Infinity;
   for(const t of SITES){if(t.kind!=='pad')continue;const dx=c[0]-t.u[0],dy=c[1]-t.u[1],dz=c[2]-t.u[2],d=Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R;if(d<dmin){dmin=d;near=t}}   // a sea platform floats: nothing to level
-  if(dmin<PAD_FLAT)return near.h;const h=hgtGen(toGen(pf),oct);return dmin>PAD_BLEND?h:h+(near.h-h)*(1-sstep(PAD_FLAT,PAD_BLEND,dmin))}
+  if(dmin<PAD_FLAT)return dmin<SHAPE_R?near.h+siteShapeAt(near,c):near.h;const h=hgtGen(toGen(pf),oct);return dmin>PAD_BLEND?h:h+(near.h-h)*(1-sstep(PAD_FLAT,PAD_BLEND,dmin))}
 // ---- the ground of every body (GROUND.md, slice G1). A body's `ground` is its recipe: `gen` names a height function in
 // GROUND_GEN (metres above b.R at a planet-fixed point, any length: it normalises), `top` bounds it from above, and `sea`
 // (when set) is a liquid level: what comes down on it floats. No recipe: a smooth sphere at b.R. Only Tellus has one so
@@ -298,7 +322,7 @@ const SURF_PAD={name:'launch pad',mu:.8,soft:0,rough:0},SURF_MOON={name:'regolit
 // the ground under a planet-fixed point, as a landing surface: a levelled pad, the sea, or the biome's
 function surfaceAt(b,pf){if(b!==TELLUS)return b.ground&&b.ground.surf?b.ground.surf(pf):SURF_MOON;   // a recipe may have its own surfaces (GROUND.md)
  const u=norm(pf);
-  if(SITES.some(t=>{if(t.kind!=='pad')return false;const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT}))return SURF_PAD;
+  if(SITES.some(t=>{if(t.kind!=='pad')return false;const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT})&&terrainH(u)>=0)return SURF_PAD;   // (Q105: not Isle's sea)
   const bi=biomeAt(u),su={name:bi.name,id:bi.id,...SURF[bi.id]};
   // snow lies where the shader paints it: colder than ~−3 °C at that height, on slopes under ~38° (ice is its own biome)
   if(bi.id!==1&&bi.h>=0&&bi.T<-2.75&&terrainSlope(b,u)<0.66)return{name:'snow',id:bi.id,mu:.3,soft:3,rough:su.rough*.3};

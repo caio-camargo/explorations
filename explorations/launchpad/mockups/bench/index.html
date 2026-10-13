@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payload bench</title>
+<!-- Launchpad mock-up (design desk, 2026-10-13, D24 → PROBES § 6.1): the payload bench. Satellites are designed apart from the
+     rocket, like the Rover yard, from parts, never ready-made: the bus is one adjustable frame (shape, size, a skin per
+     face) and everything else mounts on it. Its own Checks tab (D22's form) against the job (D23's aim); stowed, deployed
+     (the deploy animates) and in the fairing. Never loaded by the game; numbers are illustrative.
+     ?view=deployed|stowed|fairing  &tab=checks|part|designs  &sel=bus|<part>  &shape=sphere|faceted|drum|faces|box|truss
+     &n=<faces>  &d=<m>  &off=<part,part>  &on=<part,part>  &open=<check>  &still=1 -->
+<style>
+:root{--bg:#0b1118;--pane:#0f1822f2;--line:#26384a;--ink:#d6e2ee;--dim:#7f93a8;--acc:#7fd0ff;--ok:#6fdc8c;--warn:#ffb84a;--bad:#ff6b5b;--chip:#16273a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.45 ui-monospace,Consolas,"Cascadia Mono",monospace}
+.app{position:relative;width:1280px;height:800px;margin:0 auto;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#18222d 0,#0c1219 60%,#070a0e 100%)}
+#cv{position:absolute;left:0;top:0;width:1280px;height:800px}
+.top{position:absolute;left:12px;right:12px;top:10px;height:40px;background:var(--pane);border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;gap:14px;padding:0 12px}
+.top .ttl{color:var(--acc);letter-spacing:2px;font-weight:bold}
+.top .nm{color:var(--ink)}.top .k{color:var(--dim)}.top b{color:var(--ink);font-weight:normal}
+.seg{display:flex;border:1px solid #2c4560;border-radius:5px;overflow:hidden}
+.seg button{background:#13202d;border:0;color:var(--dim);font:inherit;font-size:12px;padding:3px 9px;cursor:pointer}
+.seg button.on{background:#16314a;color:var(--acc)}
+.tb{background:#16273a;border:1px solid #2c4560;color:var(--ink);border-radius:5px;padding:3px 9px;font:inherit;font-size:12px;cursor:pointer}
+.tb.on{border-color:var(--acc);color:var(--acc)}
+.pane{position:absolute;top:58px;bottom:12px;background:var(--pane);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column}
+.left{left:12px;width:236px;padding:10px;overflow:hidden}
+.right{right:12px;width:340px}
+.cat{color:var(--dim);font-size:11px;letter-spacing:1.5px;margin:8px 0 4px}
+.cat:first-child{margin-top:0}
+.pi{display:flex;justify-content:space-between;align-items:center;padding:3px 7px;border:1px solid var(--line);border-radius:4px;margin-bottom:3px;cursor:pointer;font-size:12px}
+.pi:hover{border-color:var(--acc)}
+.pi.on{background:#13283b;border-color:#3d6a8f}
+.pi.on::after{content:'on';color:var(--acc);font-size:10px}
+.pi.lock{opacity:.4;cursor:default}
+.pi.lock::after{content:attr(data-era);font-size:10px;color:var(--dim)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs div{flex:1;text-align:center;padding:8px 0;cursor:pointer;color:var(--dim);letter-spacing:1px;font-size:12px}
+.tabs div.on{color:var(--acc);border-bottom:2px solid var(--acc)}
+.body{padding:10px 12px;overflow:hidden;flex:1}
+.job{border:1px dashed #3d5a78;border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:12px}
+.job b{color:var(--acc)}
+.verdict{padding:6px 8px;border-radius:5px;margin-bottom:8px;display:flex;justify-content:space-between;font-weight:bold}
+.verdict.ok{background:#12301f;color:var(--ok)}.verdict.bad{background:#341613;color:var(--bad)}.verdict.warn{background:#33270f;color:var(--warn)}
+.row{border-bottom:1px solid #1b2a39;padding:6px 0;cursor:pointer}
+.rh{display:flex;gap:8px;align-items:flex-start}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.rt{flex:1}.rt .t{font-weight:bold}.rt .v{font-size:12px;color:#c3d0dc}.fix{color:var(--acc)}
+.nums{display:none;margin:6px 0 2px 17px;font-size:11.5px;color:var(--dim)}
+.row.open .nums{display:block}
+.nums td{padding:1px 8px 1px 0}.nums td:last-child{color:var(--ink);text-align:right}
+.small{font-size:11px;color:var(--dim)}
+.opt{margin:8px 0}
+.opt .l{color:var(--dim);font-size:11px;letter-spacing:1px;margin-bottom:3px}
+.opt button{background:#16273a;border:1px solid #2c4560;color:var(--ink);border-radius:4px;padding:2px 7px;font:inherit;font-size:12px;cursor:pointer;margin:0 3px 3px 0}
+.opt button.on{border-color:var(--acc);color:var(--acc);background:#13283b}
+.sw{display:inline-block;width:26px;height:20px;border-radius:3px;border:2px solid transparent;margin:0 4px 4px 0;cursor:pointer;vertical-align:middle}
+.sw.on{border-color:var(--acc)}
+input[type=range]{width:180px;vertical-align:middle}
+.hint{position:absolute;left:260px;bottom:12px;background:var(--pane);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--dim)}
+.tip{position:absolute;left:256px;width:260px;background:#0c1520f7;border:1px solid var(--acc);border-radius:6px;padding:8px;font-size:12px;display:none;z-index:5}
+.dl{border:1px solid var(--line);border-radius:5px;padding:6px 8px;margin-bottom:6px}
+.dl.on{border-color:var(--acc);background:#13283b}
+.dl .small{display:block}
+</style></head><body>
+<div class="app" id="app">
+<canvas id="cv" width="1280" height="800"></canvas>
+<div class="top">
+  <span class="ttl">PAYLOAD BENCH</span><span class="nm">Weather 1</span><span class="k">· 1965</span>
+  <span class="k">mass <b id="mass">—</b></span><span class="k">balance <b id="com">—</b></span>
+  <div class="seg" id="viewSeg"><button data-v="stowed">stowed</button><button data-v="deployed">deployed</button><button data-v="fairing">in the fairing</button></div>
+  <span style="margin-left:auto" class="k">fairing</span><div class="seg" id="fairSeg"><button data-v="orb">Orbiter Ø1.5 × 3 m</button><button data-v="lun">Lunar Ø2.3 × 5 m</button></div>
+  <button class="tb">Save</button>
+</div>
+<div class="pane left" id="pal"></div>
+<div class="tip" id="tip"></div>
+<div class="pane right">
+  <div class="tabs" id="tabs"><div data-t="checks">CHECKS</div><div data-t="part">PART</div><div data-t="designs">DESIGNS</div></div>
+  <div class="body" id="body"></div>
+</div>
+<div class="hint" id="hint">click a part on the craft (or the bus) · drag to turn · ?view= &amp;tab= &amp;sel= &amp;shape= &amp;still=1</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const Q=new URLSearchParams(location.search),$=s=>document.querySelector(s);
+if(Q.get('still'))$('#hint').style.display='none';
+// ---------------------------------------------------------------- state: the design is a bus and parts that mount on it
+const ST={view:Q.get('view')||'deployed',tab:Q.get('tab')||'checks',sel:Q.get('sel')||null,fair:'orb',open:Q.get('open')||null,
+  bus:{shape:Q.get('shape')||'faces',tn:+(Q.get('tn')||4),taper:Q.get('taper')==='1',n:+(Q.get('n')||8),d:+(Q.get('d')||0.8),h:+(Q.get('h')||.6)},skins:{},paint:'gold',az:+(Q.get('az')||35),el:16,
+  on:new Set(['wing','batt','whip','camW','horiz','wheel','boomAnt','kick']),dep:1,trim:Q.get('trim')==='1'};
+(Q.get('off')||'').split(',').filter(Boolean).forEach(p=>ST.on.delete(p));(Q.get('on')||'').split(',').filter(Boolean).forEach(p=>ST.on.add(p));
+if(Q.get('view')==='stowed'||Q.get('view')==='fairing')ST.dep=0;
+// the parts (palette): mass kg, power W (− draws), era, what it's for
+const PARTS={
+ wing:{cat:'POWER',n:'Solar wings (pair)',m:18,p:+0,era:1958,does:'Folding wings of cells, out after launch. 4 panels a side; more panels, more power, more to fold.',fold:true},
+ batt:{cat:'POWER',n:'Battery (side box)',m:14,p:0,era:1957,does:'Silver-zinc, 50 Wh. Carries the craft through the shadow.'},
+ rtg:{cat:'POWER',n:'RTG on a boom',m:20,p:40,era:1961,does:'40 W from decaying plutonium, day and night; on a folding boom away from the instruments.',fold:true},
+ whip:{cat:'TALK',n:'Whip antenna',m:1,p:-4,era:1957,does:'Omni, slow: telemetry and a few pictures a pass in low orbit.'},
+ boomAnt:{cat:'TALK',n:'Boom antenna',m:3,p:-8,era:1959,does:'Folds out from the side; faster than the whip, still no pointing.',fold:true},
+ dish:{cat:'TALK',n:'Dish, 1 m',m:9,p:-25,era:1962,does:'Fast, but only within its cone of home: the craft must point it.'},
+ camW:{cat:'SEE',n:'Wide camera',m:8,p:-20,era:1959,does:'Clouds and coastlines, 2 km a pixel; forgiving where it looks.'},
+ camN:{cat:'SEE',n:'Narrow camera',m:22,p:-35,era:1963,does:'Sharp (30 m), a small field: useless unless held on its target.'},
+ radar:{cat:'SEE',n:'Radar plank',m:60,p:-200,era:1978,does:'Sees through cloud and night; huge, hungry.',lock:true},
+ wheel:{cat:'POINT',n:'Reaction wheel',m:6,p:-10,era:1960,does:'Turns and holds the craft (inside the bus).'},
+ sun:{cat:'POINT',n:'Sun sensor',m:.5,p:-1,era:1958,does:'Knows where the sun is: point wings or a face at it.'},
+ horiz:{cat:'POINT',n:'Horizon sensor',m:2,p:-3,era:1962,does:'Knows where "down" is: hold a camera on the ground.'},
+ gg:{cat:'POINT',n:'Gravity boom',m:4,p:0,era:1963,does:'A long boom with a weight: points the base at the ground with no power and no computer (within ~5°).',fold:true},
+ kick:{cat:'MOVE',n:'Kick motor (solid)',m:30,p:0,era:1958,does:'A small solid motor under the bus: the last push into the orbit. Once lit, it burns to the end.'},
+ rcs:{cat:'MOVE',n:'Cold-gas quads',m:5,p:0,era:1960,does:'Small nudges and spin control.'},
+};
+const SK={gold:{c:'#c98a1e',mt:.75,r:.3,n:'gold foil',t:0},silver:{c:'#dfe3e7',mt:.5,r:.28,n:'silver foil',t:-5},alu:{c:'#f2f2f2',mt:.6,r:.18,n:'polished',t:25},
+  cells:{c:'#1d2a55',mt:.35,r:.35,n:'cells (makes power)',t:10},white:{c:'#efeee9',mt:0,r:.65,n:'white paint',t:-15},checks:{c:'#888',mt:0,r:.6,n:'thermal checks',t:0},black:{c:'#1b1c20',mt:.3,r:.6,n:'black blanket',t:20}};
+// ---------------------------------------------------------------- three
+const cvs=$('#cv'),ren=new THREE.WebGLRenderer({canvas:cvs,antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setClearColor(0x000000,0);ren.setPixelRatio(1);ren.setSize(1280,800,false);
+ren.outputEncoding=THREE.sRGBEncoding;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=.8;
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(32,1,.05,200);
+const sunL=new THREE.DirectionalLight('#fff4e4',2.4);sunL.position.set(8,10,6);scene.add(sunL);scene.add(new THREE.HemisphereLight('#3a4660','#1a2433',.8));
+{const r=new THREE.DirectionalLight('#9fc0ff',.6);r.position.set(-8,3,-6);scene.add(r)}
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+function cvTex(w,h,f,rep=[1,1],srgb=true){const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...rep);if(srgb)t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
+const crinkle=cvTex(256,256,(g,w,h)=>{const d=g.createImageData(w,h);for(let i=0;i<w*h;i++){const x=i%w,y=i/w|0,v=128+60*Math.sin(x*.21+Math.sin(y*.13)*3)*Math.sin(y*.17+Math.sin(x*.09)*2)+40*(Math.random()-.5);d.data.set([v,v,v,255],i*4)}g.putImageData(d,0,0)},[2,2],false);
+const cellT=()=>cvTex(128,128,(g,w,h)=>{g.fillStyle='#9aa2ab';g.fillRect(0,0,w,h);for(let i=0;i<4;i++)for(let j=0;j<4;j++){g.fillStyle=`hsl(225,55%,${14+Math.random()*6}%)`;g.fillRect(i*32+2,j*32+2,28,28)}},[2,2]);
+const checkT=()=>cvTex(64,64,(g)=>{for(let i=0;i<2;i++)for(let j=0;j<2;j++){g.fillStyle=(i+j)%2?'#141414':'#ecebe6';g.fillRect(i*32,j*32,32,32)}},[3,3]);
+const skinMat=k=>{const s=SK[k];const o={color:s.c,metalness:s.mt,roughness:s.r};if(k==='gold'||k==='silver'||k==='black'){o.bumpMap=crinkle;o.bumpScale=.004}
+  if(k==='cells'){o.map=cellT();o.color='#ffffff'}if(k==='checks'){o.map=checkT();o.color='#ffffff'}return new THREE.MeshStandardMaterial(o)};
+const M={strut:new THREE.MeshStandardMaterial({color:'#c9ccd0',metalness:.45,roughness:.35}),dark:new THREE.MeshStandardMaterial({color:'#3c3f44',metalness:.5,roughness:.5}),
+  white:new THREE.MeshStandardMaterial({color:'#efeee9',roughness:.6,side:THREE.DoubleSide}),lens:new THREE.MeshStandardMaterial({color:'#0a0f1a',metalness:.9,roughness:.05}),
+  cells:new THREE.MeshStandardMaterial({map:cellT(),metalness:.35,roughness:.35}),gold:skinMat('gold'),alu:skinMat('alu'),solid:new THREE.MeshStandardMaterial({color:'#2e2a26',roughness:.8}),
+  sel:new THREE.MeshBasicMaterial({color:'#7fd0ff',wireframe:true,transparent:true,opacity:.5}),
+  fair:new THREE.MeshStandardMaterial({color:'#e9edf2',roughness:.5,transparent:true,opacity:.18,side:THREE.DoubleSide,depthWrite:false}),
+  fairBad:new THREE.MeshStandardMaterial({color:'#ff6b5b',roughness:.5,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false})};
+const mk=(g,m,p,r)=>{const x=new THREE.Mesh(g,m);if(p)x.position.set(...p);if(r)x.rotation.set(...r);return x};
+const cyl=(r,h,m,p,rot,seg=24,r2=r)=>mk(new THREE.CylinderGeometry(r2,r,h,seg),m,p,rot);
+const box=(w,h,d,m,p,rot)=>mk(new THREE.BoxGeometry(w,h,d),m,p,rot);
+function rod(a,b,r,m){const A=V(...a),B=V(...b),d=B.clone().sub(A),x=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),8),m);x.position.copy(A).add(B).multiplyScalar(.5);x.quaternion.setFromUnitVectors(V(0,1,0),d.normalize());return x}
+function dishG(D,depth){const pts=[];for(let i=0;i<=16;i++){const r=D/2*i/16;pts.push(new THREE.Vector2(r,depth*(r/(D/2))**2))}return new THREE.LatheGeometry(pts,40)}
+const lerp=(a,b,t)=>a+(b-a)*t,cl=(x)=>Math.max(0,Math.min(1,x)),ease=t=>t*t*(3-2*t);
+// the bus: its faces are separate meshes so each takes a skin (face ids: s0..sN sides, top, bot)
+const defSkin=id=>id==='top'?'white':id==='bot'?'silver':'gold';
+const skinOf=id=>ST.skins[id]||defSkin(id);
+const busR=()=>{const b=ST.bus;return b.shape==='faces'||b.shape==='box'?b.d/2*Math.cos(Math.PI/(b.shape==='box'?4:b.n)):b.d/2};   // the mounting radius (apothem)
+function buildBus(){const g=new THREE.Group(),b=ST.bus,R=b.d/2,H=b.shape==='sphere'||b.shape==='faceted'?b.d:b.h;
+  const face=(geo,id,p,r)=>{const m=mk(geo,skinMat(skinOf(id)),p,r);m.userData={face:id,part:'bus'};g.add(m)};
+  if(b.shape==='sphere')face(new THREE.SphereGeometry(R,40,20),'s0');
+  else if(b.shape==='faceted'){const geo=new THREE.IcosahedronGeometry(R,1);const m=mk(geo,skinMat(skinOf('s0')));m.material.flatShading=true;m.userData={face:'s0',part:'bus'};g.add(m)}
+  else if(b.shape==='drum'){face(new THREE.CylinderGeometry(R,R,H,40,1,true),'s0');face(new THREE.CircleGeometry(R,40),'top',[0,H/2,0],[-Math.PI/2,0,0]);face(new THREE.CircleGeometry(R,40),'bot',[0,-H/2,0],[Math.PI/2,0,0])}
+  else if(b.shape==='truss'){const N=b.tn||4,R0=b.d/2,R1=R0*(b.taper?.55:1),ang=k=>k/N*6.2832+Math.PI/N,pt=(k,y,Rr)=>[Math.cos(ang(k))*Rr,y,Math.sin(ang(k))*Rr],bays=3;
+    for(let k=0;k<N;k++){g.add(rod(pt(k,-H/2,R0),pt(k,H/2,R1),.02,M.strut));
+      for(let j=0;j<=bays;j++){const y=-H/2+H*j/bays,Rr=lerp(R0,R1,j/bays);g.add(rod(pt(k,y,Rr),pt(k+1,y,Rr),.014,M.strut));
+        if(j<bays){const y2=-H/2+H*(j+1)/bays,R2=lerp(R0,R1,(j+1)/bays);g.add(rod(pt(k,y,Rr),pt(k+1,y2,R2),.01,M.strut))}}}   // longerons, rings, diagonals
+    face(new THREE.CylinderGeometry(R1*.45,R0*.45,H*.8,Math.max(N,6)),'s0');}
+  else{const N=b.shape==='box'?4:b.n,off=b.shape==='box'?Math.PI/4:Math.PI/N,ap=R*Math.cos(Math.PI/N),w=2*R*Math.sin(Math.PI/N);
+    for(let i=0;i<N;i++){const a=i/N*2*Math.PI;face(new THREE.PlaneGeometry(w,H),'s'+i,[Math.cos(a)*ap,0,Math.sin(a)*ap],[0,Math.PI/2-a,0])}
+    face(new THREE.CircleGeometry(R,N,off-Math.PI/N+Math.PI/N),'top',[0,H/2,0],[-Math.PI/2,0,Math.PI/N]);face(new THREE.CircleGeometry(R,N),'bot',[0,-H/2,0],[Math.PI/2,0,-Math.PI/N])}
+  g.userData.H=H;return g}
+// parts on the bus; t = deployed fraction (0 stowed, 1 out); each part's group carries userData.part for picking
+function buildParts(t){const g=new THREE.Group(),r=busR(),H=ST.bus.shape==='sphere'||ST.bus.shape==='faceted'?ST.bus.d:ST.bus.h;const T=(a,b)=>ease(cl((t-a)/(b-a)));
+  const P=(id,f)=>{if(!ST.on.has(id))return;const q=new THREE.Group();q.userData.part=id;f(q);q.traverse(o=>o.userData.part=id);g.add(q)};
+  P('wing',q=>{const pw=.55,ph=.7,n=4,Ly=.12,th=.028,sw=T(0,.3),k=T(.3,1);   // the arm swings out, then the hinges open together
+    for(const s of[1,-1]){const o=new THREE.Group(),w=new THREE.Group();w.add(rod([0,0,0],[Ly,0,0],.025,M.strut));
+      let par=w;for(let i=0;i<n;i++){const h=new THREE.Group();
+        if(i===0)h.position.set(Ly,0,0);else{h.position.set(pw,0,(i%2?-1:1)*th*(1-k));h.rotation.y=(i%2?1:-1)*Math.PI*(1-k)*.985}   // zig-zag: each hinge folds the other way
+        h.add(box(pw-.01,ph,.022,M.cells,[pw/2,0,0]));if(i>0)h.add(cyl(.012,ph*.9,M.strut,[0,0,0],null,8));par.add(h);par=h}
+      w.rotation.y=lerp(-Math.PI/2,0,sw);w.position.set(r+.06,H*.05,-(pw/2+Ly));o.add(w);o.rotation.y=s>0?0:Math.PI;q.add(o)}});
+  P('batt',q=>q.add(box(.24,.22,.16,skinMat('silver'),[0,-H*.15,r+.08])));
+  P('whip',q=>{const L=lerp(.15,1.1,T(.1,.6));q.add(rod([r*.6,H/2,r*.3],[r*.6+L*.25,H/2+L,r*.3],.008,M.alu))});
+  P('boomAnt',q=>{const a=lerp(Math.PI/2*.95,0,T(.2,.8)),L=1.4,b0=[0,H*.25,-r-.02],tip=[0,b0[1]-L*Math.sin(a),b0[2]-L*Math.cos(a)];q.add(rod(b0,tip,.02,M.strut));q.add(box(.25,.06,.06,M.white,tip))});
+  P('dish',q=>{const d=mk(dishG(1,.15),M.white,[0,H/2+.25,0]);q.add(d);q.add(cyl(.03,.25,M.strut,[0,H/2+.12,0]))});
+  P('camW',q=>{q.add(cyl(.07,.16,M.dark,[r*.35,-H/2-.08,0]));q.add(cyl(.05,.02,M.lens,[r*.35,-H/2-.17,0]))});
+  P('camN',q=>{q.add(cyl(.11,.45,M.white,[-r*.35,-H/2-.22,0]));q.add(cyl(.08,.02,M.lens,[-r*.35,-H/2-.45,0]))});
+  P('horiz',q=>q.add(box(.1,.06,.1,M.dark,[0,-H/2-.03,r*.5])));
+  P('sun',q=>q.add(box(.08,.04,.08,M.dark,[0,H/2+.02,-r*.5])));
+  P('wheel',q=>{});   // inside the bus
+  P('gg',q=>{const L=lerp(.3,6,T(.1,.9));q.add(rod([0,H/2,0],[0,H/2+L,0],.012,M.alu));q.add(mk(new THREE.SphereGeometry(.08,16,8),M.dark,[0,H/2+L+.05,0]))});
+  P('rtg',q=>{const a=lerp(Math.PI*.47,Math.PI*.12,T(.2,.8)),L=1.3,c=Math.cos(Math.PI*.75),s=Math.sin(Math.PI*.75),b0=[c*r,-H*.2,s*r],tip=[b0[0]+c*L*Math.cos(a),b0[1]-L*Math.sin(a),b0[2]+s*L*Math.cos(a)];
+    q.add(rod(b0,tip,.02,M.strut));q.add(cyl(.12,.4,M.dark,tip,null,12));for(let k=0;k<6;k++){const aa=k/6*6.28;q.add(box(.02,.4,.12,M.dark,[tip[0]+Math.cos(aa)*.15,tip[1],tip[2]+Math.sin(aa)*.15],[0,-aa,0]))}});
+  if(ST.trim&&ST.on.has('kick')){const c=calc();if(c.tm){const tq=new THREE.Group();tq.add(box(.08,.06,.12,new THREE.MeshStandardMaterial({color:'#b8873a',metalness:.8,roughness:.3}),[Math.cos(c.dir)*.24,-H/2-.06,Math.sin(c.dir)*.24],[0,-c.dir,0]));tq.traverse(o=>o.userData.part='kick');g.add(tq)}}
+  P('kick',q=>{q.add(cyl(.22,.5,M.solid,[0,-H/2-.35,0]));q.add(cyl(.1,.15,M.dark,[0,-H/2-.67,0],null,16,.16));q.add(cyl(.25,.08,M.strut,[0,-H/2-.06,0]))});
+  P('rcs',q=>{for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;q.add(box(.08,.08,.08,M.dark,[Math.cos(a)*r*1.02,H*.35,Math.sin(a)*r*1.02]))}});
+  P('radar',q=>{});
+  return g}
+let craft=null,stand=null,fairM=null;
+function rebuild(){if(craft)scene.remove(craft);craft=new THREE.Group();const bus=buildBus();craft.add(bus);craft.add(buildParts(ST.dep));
+  if(ST.sel){craft.traverse(o=>{if(o.isMesh&&o.userData.part===ST.sel){const e=new THREE.Mesh(o.geometry,M.sel);e.position.copy(o.position);e.rotation.copy(o.rotation);e.scale.copy(o.scale).multiplyScalar(1.03);o.parent.add(e)}})}
+  scene.add(craft);
+  if(!stand){stand=new THREE.Group();stand.add(cyl(.5,.08,M.dark,[0,0,0],null,32));stand.add(cyl(.05,.9,M.strut,[0,.45,0]));scene.add(stand)}
+  const H=bus.userData.H;stand.position.y=-H/2-(ST.on.has('kick')?.75:.25)-.9;stand.visible=ST.view!=='fairing';
+  if(fairM)scene.remove(fairM);fairM=null;
+  if(ST.view==='fairing'){const F=FAIR[ST.fair],fit=fitOf();fairM=new THREE.Group();const m=fit.ok?M.fair:M.fairBad;
+    fairM.add(mk(new THREE.CylinderGeometry(F.r,F.r,F.L*.7,48,1,true),m,[0,F.L*.35-F.base,0]));fairM.add(mk(new THREE.CylinderGeometry(.05,F.r,F.L*.3,48,1,true),m,[0,F.L*.85-F.base,0]));
+    fairM.add(cyl(F.r*.85,.12,M.strut,[0,-F.base-.06,0],null,48));scene.add(fairM)}
+  draw()}
+const FAIR={orb:{n:'Orbiter',r:.75,L:3,base:1.2},lun:{n:'Lunar',r:1.15,L:5,base:1.6}};
+function stowedBox(){const d=ST.dep;const g=new THREE.Group();g.add(buildBus());g.add(buildParts(0));const b=new THREE.Box3().setFromObject(g);let rr=0;g.updateMatrixWorld(true);
+  const v=new THREE.Vector3();g.traverse(o=>{if(o.isMesh){const pa=o.geometry.attributes.position;for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i).applyMatrix4(o.matrixWorld);rr=Math.max(rr,Math.hypot(v.x,v.z))}}});return{r:rr,h:b.max.y-b.min.y,top:b.max.y,bot:b.min.y}}
+function fitOf(){const s=stowedBox(),F=FAIR[ST.fair];return{ok:s.r<F.r-.03&&s.h<F.L-.2,r:s.r,h:s.h,F}}
+// ---------------------------------------------------------------- the numbers (illustrative)
+function calc(){const b=ST.bus,R=b.d/2,H=b.shape==='sphere'||b.shape==='faceted'?b.d:b.h,on=ST.on;
+  const busM=Math.round((b.shape==='truss'?25:45)*b.d*b.d*(H/.6)**.5);let m=busM,mx=0,mz=0,gen=0,need=12,sides=[];
+  const pos={batt:[0,R+.08],boomAnt:[0,-R-.7],rtg:[-.7*(R+.6),.7*(R+.6)],camW:[R*.35,0],camN:[-R*.35,0],horiz:[0,R*.5],sun:[0,-R*.5],whip:[R*.6,R*.3]};
+  for(const id of on){const p=PARTS[id];m+=p.m;if(p.p<0)need+=-p.p;else gen+=p.p;const q=pos[id];if(q){mx+=q[0]*p.m;mz+=q[1]*p.m}}
+  const faces=b.shape==='faces'||b.shape==='box'?(b.shape==='box'?4:b.n):1,ids=[...Array(faces)].map((_,i)=>'s'+i);
+  const cellA=ids.filter(i=>skinOf(i)==='cells').length/faces*Math.PI*b.d*H*.32;   // body cells see the sun at about a third of their area
+  const wingW=on.has('wing')?2*4*.55*.7*110:0,cellW=cellA*110;gen+=wingW+cellW;
+  const avgGen=(wingW+cellW)*.6+(on.has('rtg')?40:0),batt=on.has('batt')?50:0,shadowNeed=need*.6;
+  const tSkin=[...ids,'top','bot'].map(i=>SK[skinOf(i)].t).reduce((a,x)=>a+x,0)/(faces+2),temp=Math.round(14+tSkin+(need>60?6:0));
+  const raw=Math.hypot(mx,mz)/m*100,ring=.3,tm=ST.trim&&raw>=.5?Math.ceil(m*raw/100/ring*10)/10:0;   // the weight sits on the adapter ring (r 0.3 m) opposite the centre of mass
+  const dir=Math.atan2(-mz,-mx);if(tm){const L=Math.hypot(mx,mz),ux=mx/L,uz=mz/L;m+=tm;mx-=ux*ring*tm;mz-=uz*ring*tm}const com=Math.hypot(mx,mz)/m*100;
+  return{tm,raw:raw.toFixed(1),dir,m:Math.round(m),busM,gen:Math.round(gen),wingW:Math.round(wingW),cellW:Math.round(cellW),avgGen:Math.round(avgGen),need:Math.round(need),batt,shadowNeed:Math.round(shadowNeed),temp,com:com.toFixed(1),mx,mz,faces}}
+function checks(){const c=calc(),on=ST.on,f=fitOf(),rows=[];
+  // the job (D23's aim): Weather satellite, polar 300 km: a wide camera on the ground, pictures home each pass
+  const pw=c.avgGen>=c.need&&c.batt>=c.shadowNeed;
+  rows.push({id:'power',s:pw?'ok':c.avgGen<c.need?'bad':'bad',t:'Has power, in shadow too',v:pw?`Yes: makes ${c.avgGen} W on average, needs ${c.need}; the battery holds the 36 min of shadow.`:c.avgGen<c.need?`No: makes ${c.avgGen} W on average, needs ${c.need}. <span class="fix">Fix: bigger wings, cells on more faces, or an RTG.</span>`:`Dies in the shadow: nothing stores power for 36 min. <span class="fix">Fix: add a battery.</span>`,
+    n:[['wings in sun',c.wingW+' W'],['cells on the bus',c.cellW+' W'],['RTG',on.has('rtg')?'40 W':'—'],['average over an orbit',c.avgGen+' W'],['needs',c.need+' W'],['shadow: needs / battery',c.shadowNeed+' / '+c.batt+' Wh']]});
+  const talk=on.has('whip')||on.has('boomAnt')||on.has('dish');
+  rows.push({id:'talk',s:talk?'ok':'bad',t:'Talks home',v:talk?`Yes: ${on.has('dish')?'the dish (when pointed home)':on.has('boomAnt')?'the boom antenna':'the whip'}, ${on.has('boomAnt')||on.has('dish')?'every':'about 3 pictures a'} pass over a station.`:'Silent: nothing to talk with. <span class="fix">Fix: a whip (cheap) or the boom antenna.</span>',n:[['link',on.has('dish')?'64 kbit/s (pointed)':on.has('boomAnt')?'4 kbit/s':talk?'1 kbit/s':'—'],['a picture',on.has('camN')?'6 Mbit':'0.8 Mbit']]});
+  const cam=on.has('camW')||on.has('camN'),down=(on.has('horiz')&&on.has('wheel'))||on.has('gg');
+  rows.push({id:'point',s:!cam?'bad':down?'ok':'bad',t:'Keeps the camera on the ground',v:!cam?'No camera: the job wants pictures. <span class="fix">Fix: the wide camera.</span>':down?`Yes: ${on.has('gg')?'the gravity boom holds the base down (±5°, no power)':'the horizon sensor and the wheel hold it down'}.`:'It will drift off the ground. <span class="fix">Fix: a horizon sensor with the wheel, or a gravity boom.</span>',n:[['camera',on.has('camN')?'narrow: needs ±1°':on.has('camW')?'wide: needs ±10°':'—'],['pointing',on.has('gg')?'±5° (boom)':down?'±1° (sensor + wheel)':'none']]});
+  rows.push({id:'temp',s:c.temp>40||c.temp<-10?'bad':c.temp>32||c.temp<0?'warn':'ok',t:'Stays in its temperatures',v:c.temp>32?`Runs hot: ${c.temp} °C (the camera wants under 30). <span class="fix">Fix: white or silver on the sunny faces.</span>`:c.temp<0?`Runs cold: ${c.temp} °C. <span class="fix">Fix: gold or black on more faces.</span>`:`Yes: about ${c.temp} °C inside.`,n:[['skins (face by face)',[...Array(c.faces)].map((_,i)=>SK[skinOf('s'+i)].n.split(' ')[0]).join(', ')],['electronics heat',c.need+' W']]});
+  const bal=c.com<2;const tw=Math.ceil(c.m*c.com/100/.3*10)/10;
+  rows.push({id:'balance',s:bal?'ok':c.com<6?'warn':'bad',t:'Balanced on its axis',v:bal?(c.tm?`Yes: a ${c.tm} kg weight on the adapter, opposite the heavy side, brings it to ${c.com} cm. <span class="fix" data-trim="0">remove it</span>`:`Yes: the centre of mass is ${c.com} cm off the axis.`):`${c.com} cm off the axis: on the rocket the thrust pulls it round, and the kick motor will push it into a tumble. <span class="fix">Fix: move the heavy parts opposite each other, or</span> <button class="tb" data-trim="1">add a ${tw} kg balance weight</button>`,
+    n:[['off axis',(c.tm?c.raw+' → ':'')+c.com+' cm'],['balance weight',c.tm?c.tm+' kg on the adapter':'none'],['mass',c.m+' kg']]});
+  rows.push({id:'fit',s:f.ok?'ok':'bad',t:'Fits the fairing',v:f.ok?`Yes, folded: ${(f.r*2).toFixed(2)} m wide, ${f.h.toFixed(1)} m tall in the ${f.F.n} fairing (Ø${(f.F.r*2).toFixed(1)} × ${f.F.L} m).`:`No: folded it is ${(f.r*2).toFixed(2)} m wide and ${f.h.toFixed(1)} m tall; the ${f.F.n} fairing is Ø${(f.F.r*2).toFixed(1)} × ${f.F.L} m. <span class="fix">Fix: a smaller bus or dish, or the bigger fairing.</span>`,n:[['folded width / height',(f.r*2).toFixed(2)+' / '+f.h.toFixed(2)+' m'],['fairing inside',(f.F.r*2).toFixed(1)+' × '+f.F.L+' m']]});
+  return{rows,c}}
+// ---------------------------------------------------------------- panels
+function renderPal(){const cats={};for(const[id,p]of Object.entries(PARTS))(cats[p.cat]=cats[p.cat]||[]).push([id,p]);
+  let h='<div class="cat">FRAME</div><div class="pi" data-p="bus" style="justify-content:flex-start;border-color:#3d6a8f">Bus · '+ST.bus.shape+(ST.bus.shape==='faces'?' '+ST.bus.n:'')+' · '+ST.bus.d.toFixed(1)+' m</div>';
+  for(const[c,list]of Object.entries(cats)){h+=`<div class="cat">${c}</div>`;for(const[id,p]of list)h+=`<div class="pi${ST.on.has(id)?' on':''}${p.lock?' lock':''}" data-p="${id}" data-era="${p.lock?'from '+p.era:''}">${p.n}</div>`}
+  $('#pal').innerHTML=h;
+  document.querySelectorAll('.pi').forEach(e=>{const id=e.dataset.p;e.onclick=()=>{if(id==='bus'){ST.sel='bus';ST.tab='part'}else if(!PARTS[id].lock){if(ST.on.has(id)){ST.on.delete(id);if(ST.sel===id)ST.sel=null}else{ST.on.add(id);ST.sel=id;ST.tab='part'}}renderAll()};
+    e.onmouseenter=()=>{if(id==='bus')return;const p=PARTS[id],t=$('#tip');t.innerHTML=`<b>${p.n}</b><br>${p.does}<br><span class="small">${p.m} kg · ${p.p<0?-p.p+' W':p.p>0?'+'+p.p+' W':'no power'}${p.fold?' · folds for launch':''} · from ${p.era}</span>`;t.style.top=(e.getBoundingClientRect().top-$('#app').getBoundingClientRect().top)+'px';t.style.display='block'};
+    e.onmouseleave=()=>$('#tip').style.display='none'})}
+function renderBody(){document.querySelectorAll('#tabs div').forEach(d=>d.classList.toggle('on',d.dataset.t===ST.tab));const B=$('#body');
+  if(ST.tab==='checks'){const{rows}=checks(),bad=rows.filter(r=>r.s==='bad').length,warn=rows.filter(r=>r.s==='warn').length;
+    B.innerHTML=`<div class="job">Job <b>Weather satellite</b> <span class="small">· polar orbit, 300 km · wants a wide camera on the ground, pictures home each pass</span></div>
+    <div class="verdict ${bad?'bad':warn?'warn':'ok'}"><span>${bad?'NOT READY · '+bad+' to fix':warn?'READY · '+warn+' to watch':'READY FOR THE JOB'}</span><span>${rows.filter(r=>r.s==='ok').length} of ${rows.length} ok</span></div>`+
+    rows.map(r=>`<div class="row${ST.open===r.id?' open':''}" data-r="${r.id}"><div class="rh"><span class="dot ${r.s}"></span><div class="rt"><div class="t">${r.t}</div><div class="v">${r.v}</div></div></div><div class="nums"><table>${r.n.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</table></div></div>`).join('');
+    B.querySelectorAll('.row').forEach(e=>e.onclick=()=>{ST.open=ST.open===e.dataset.r?null:e.dataset.r;renderBody()});B.querySelectorAll('[data-trim]').forEach(e=>e.onclick=ev=>{ev.stopPropagation();ST.trim=e.dataset.trim==='1';renderAll()})}
+  else if(ST.tab==='part'){const s=ST.sel;
+    if(!s||s==='bus'){const b=ST.bus;B.innerHTML=`<div style="font-weight:bold;color:var(--acc)">The bus <span class="small">(one adjustable frame)</span></div><div class="small">Everything mounts on it. Shape, size and a skin per face: the same frame makes a ball, a drum or a gold box.</div>
+      <div class="opt"><div class="l">SHAPE</div>${['sphere','faceted','drum','faces','box','truss'].map(x=>`<button data-shape="${x}" class="${b.shape===x?'on':''}">${x==='faces'?'many faces':x==='faceted'?'faceted ball':x==='truss'?'open truss':x}</button>`).join('')}</div>
+      ${b.shape==='truss'?`<div class="opt"><div class="l">TRUSS</div>${[3,4,6,8].map(n=>`<button data-tn="${n}" class="${b.tn===n?'on':''}">${n===3?'triangle':n===4?'square':n===6?'hexagon':'octagon'}</button>`).join('')}<button data-taper class="${b.taper?'on':''}">tapered</button></div>`:''}
+      ${b.shape==='faces'?`<div class="opt"><div class="l">FACES</div>${[5,6,8,10].map(n=>`<button data-n="${n}" class="${b.n===n?'on':''}">${n}</button>`).join('')}</div>`:''}
+      <div class="opt"><div class="l">SIZE · <span id="dv">${b.d.toFixed(1)} m</span></div><input type="range" min="0.3" max="3" step="0.1" value="${b.d}" id="dR"></div>
+      ${b.shape!=='sphere'&&b.shape!=='faceted'?`<div class="opt"><div class="l">HEIGHT · <span id="hv">${b.h.toFixed(1)} m</span></div><input type="range" min="0.2" max="2.5" step="0.1" value="${b.h}" id="hR"></div>`:''}
+      <div class="opt"><div class="l">SKIN · click a face on the craft to paint it</div>${Object.entries(SK).map(([k,v])=>`<span class="sw${ST.paint===k?' on':''}" data-sk="${k}" title="${v.n}" style="background:${k==='checks'?'repeating-conic-gradient(#141414 0 25%,#ecebe6 0 50%) 0 0/10px 10px':k==='cells'?'#24346e':v.c}"></span>`).join('')}
+      <div class="small">${SK[ST.paint].n} · ${SK[ST.paint].t>0?'runs warmer':SK[ST.paint].t<0?'runs cooler':'neutral'}${ST.paint==='cells'?' · makes power on any face the sun sees':''}</div><button class="tb" id="all" style="margin-top:6px">all sides ${SK[ST.paint].n}</button></div>
+      <div class="small" style="margin-top:10px">Bus ${calc().busM} kg. Smaller is lighter and steadier on the rocket.</div>`;
+      B.querySelectorAll('[data-shape]').forEach(e=>e.onclick=()=>{ST.bus.shape=e.dataset.shape;ST.skins={};renderAll()});
+      B.querySelectorAll('[data-tn]').forEach(e=>e.onclick=()=>{ST.bus.tn=+e.dataset.tn;renderAll()});const tp=B.querySelector('[data-taper]');if(tp)tp.onclick=()=>{ST.bus.taper=!ST.bus.taper;renderAll()};
+      B.querySelectorAll('[data-n]').forEach(e=>e.onclick=()=>{ST.bus.n=+e.dataset.n;ST.skins={};renderAll()});
+      const dR=$('#dR');dR.oninput=()=>{ST.bus.d=+dR.value;$('#dv').textContent=ST.bus.d.toFixed(1)+' m';rebuild();topBar()};dR.onchange=()=>renderAll();
+      const hR=$('#hR');if(hR){hR.oninput=()=>{ST.bus.h=+hR.value;$('#hv').textContent=ST.bus.h.toFixed(1)+' m';rebuild();topBar()};hR.onchange=()=>renderAll()}
+      B.querySelectorAll('[data-sk]').forEach(e=>e.onclick=()=>{ST.paint=e.dataset.sk;renderBody()});
+      $('#all').onclick=()=>{const n=ST.bus.shape==='faces'?ST.bus.n:ST.bus.shape==='box'?4:1;for(let i=0;i<n;i++)ST.skins['s'+i]=ST.paint;renderAll()}}
+    else{const p=PARTS[s];B.innerHTML=`<div style="font-weight:bold;color:var(--acc)">${p.n}</div><div class="v" style="margin:4px 0 8px">${p.does}</div>
+      <table class="small"><tr><td>mass</td><td style="color:var(--ink)">${p.m} kg</td></tr><tr><td>power</td><td style="color:var(--ink)">${p.p<0?'draws '+-p.p+' W':p.p>0?'makes '+p.p+' W':'none'}</td></tr><tr><td>era</td><td style="color:var(--ink)">from ${p.era}</td></tr></table>
+      ${s==='wing'?'<div class="opt"><div class="l">PANELS A SIDE</div><button>2</button><button class="on">4</button><button>6</button></div>':''}
+      ${s==='boomAnt'||s==='rtg'?'<div class="opt"><div class="l">BOOM LENGTH</div><button>1 m</button><button class="on">1.4 m</button><button>2 m</button><button>3 m</button></div>':''}
+      ${s==='dish'?'<div class="opt"><div class="l">DISH</div><button>0.6 m</button><button class="on">1 m</button><button>1.5 m</button><button>2 m (folds)</button></div>':''}
+      ${p.fold?`<div class="opt"><div class="l">FOLDED FOR LAUNCH</div><div class="small">Deploys in flight with <b style="color:var(--ink)">P</b> (or a stage); the fairing check uses its folded shape. <button class="tb" id="anim">watch it unfold</button></div></div>`:''}
+      <button class="tb" id="rm" style="margin-top:10px">remove</button>`;
+      $('#rm').onclick=()=>{ST.on.delete(s);ST.sel=null;renderAll()};const a=$('#anim');if(a)a.onclick=()=>{ST.view='deployed';deploy(0)}}}
+  else{B.innerHTML=`<div class="small" style="margin-bottom:6px">The program's payloads. One flies on any rocket whose fairing it fits; a route launches copies.</div>
+    <div class="dl"><b>Beacon</b> <span class="small">starter · copy it and change it · 0.6 m sphere, whips · 84 kg</span></div>
+    <div class="dl on"><b>Weather 1</b> <span class="small">this one · ${calc().m} kg · fits: Orbiter, Lunar</span></div>
+    <div class="dl"><b>Relay A</b> <span class="small">drum, cells all round, boom antenna · 140 kg · fits: Orbiter · flown 2, up 2</span></div>
+    <div class="dl"><b>Customer: Orion TV-2</b> <span class="small">ready-made by the customer (you fly it) · 410 kg · fits: Lunar only</span></div>
+    <div style="margin-top:8px"><button class="tb">New (empty bus)</button> <button class="tb">Copy</button></div>
+    <div class="small" style="margin-top:12px">On the rocket it's one block on an adapter in the fairing: the Assembly counts its mass, balance and folded outline, and opens it here to change it.</div>`}}
+function topBar(){const c=calc();$('#mass').textContent=c.m+' kg';$('#com').textContent=c.com<2?'on axis':c.com+' cm off';
+  document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===ST.view));document.querySelectorAll('#fairSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===ST.fair))}
+function renderAll(){renderPal();renderBody();topBar();rebuild()}
+document.querySelectorAll('#tabs div').forEach(d=>d.onclick=()=>{ST.tab=d.dataset.t;renderBody()});
+document.querySelectorAll('#viewSeg button').forEach(b=>b.onclick=()=>{const v=b.dataset.v;const was=ST.view;ST.view=v;if(v==='deployed'&&ST.dep<1)deploy(ST.dep);else if(v!=='deployed'){ST.dep=0;renderAll()}else renderAll()});
+document.querySelectorAll('#fairSeg button').forEach(b=>b.onclick=()=>{ST.fair=b.dataset.v;renderAll()});
+// the deploy animates (QUEUE Proposed 2026-10-13): the yoke swings, the panels unfold one by one, booms swing and lock
+function deploy(from){const t0=performance.now();ST.dep=from;const step=()=>{ST.dep=Math.min(1,from+(performance.now()-t0)/3200);rebuild();topBar();if(ST.dep<1)requestAnimationFrame(step);else renderAll()};step()}
+// ---------------------------------------------------------------- view
+function draw(){const s=ST.view==='fairing'?FAIR[ST.fair].L*1.25+2:5.2+ST.bus.d*1.6,a=ST.az*Math.PI/180,e=ST.el*Math.PI/180,cy=ST.view==='fairing'?FAIR[ST.fair].L*.25-.4:0;
+  const vx=(12+248-340-12)/2;   // centre the craft between the panes
+  cam.aspect=1280/800;cam.position.set(s*Math.cos(e)*Math.cos(a),cy+s*Math.sin(e),s*Math.cos(e)*Math.sin(a));cam.lookAt(0,cy,0);cam.setViewOffset(1280,800,-vx,0,1280,800);cam.updateProjectionMatrix();ren.render(scene,cam)}
+const ray=new THREE.Raycaster();let drag=null,moved=0;
+cvs.onpointerdown=e=>{drag=[e.clientX,e.clientY];moved=0;cvs.setPointerCapture(e.pointerId)};
+cvs.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];moved+=Math.abs(dx)+Math.abs(dy);ST.az+=dx*.4;ST.el=Math.max(-70,Math.min(70,ST.el+dy*.3));drag=[e.clientX,e.clientY];draw()};
+cvs.onpointerup=e=>{drag=null;if(moved>4)return;const r=cvs.getBoundingClientRect(),p=new THREE.Vector2((e.clientX-r.left)/1280*2-1,-(e.clientY-r.top)/800*2+1);ray.setFromCamera(p,cam);
+  const hit=ray.intersectObject(craft,true).find(h=>h.object.userData.part);if(!hit)return;const u=hit.object.userData;
+  if(u.part==='bus'){if(ST.sel==='bus'&&ST.tab==='part'&&u.face){ST.skins[u.face]=ST.paint}ST.sel='bus';ST.tab='part'}else{ST.sel=u.part;ST.tab='part'}renderAll()};
+if(ST.tab==='part'&&!ST.sel)ST.sel='bus';
+renderAll();
+</script>
+</body></html>

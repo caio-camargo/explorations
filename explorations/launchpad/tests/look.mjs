@@ -570,11 +570,11 @@
 
 // aerofx-18. No bands at the terminator (look & sound effects beat, QUEUE Q352, PLAYTEST #87): the sky's view-ray march
 // starts each pixel's 12 steps at its own offset (interleaved gradient noise), so the count of steps in the planet's
-// shadow no longer steps in unison across the terminator.
+// shadow no longer steps in unison across the terminator. (Q250) Only from above 15–50 km: low down it hatched the day sky.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
-  const jit = /jt=fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
   check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
 }
 
@@ -653,6 +653,21 @@
     own === 1 && half === .5 && vac === 0 && near > .8 && far < .1 && wired, `own ${own}, quarter left ${half}, elsewhere in vacuum ${vac}, 50 m in air ${near.toFixed(2)}, 5 km ${far.toFixed(2)} · wired ${wired}`);
 }
 
+// sound-3. The Steppe rollout's sound (look & sound effects beat, QUEUE Q222): the car's rumble follows its speed (still at
+// both ends, loudest mid-way), a double clack at each 12.5 m rail joint, the boom's pump whining up in pitch while it raises
+// the rocket and the arms' rams after, a clunk as each phase ends; heard on the Rollout screen only.
+{
+  const H = html.replace(/\r\n/g, '\n'), blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END'));
+  const { sndRoll } = new Function(blk + ';return {sndRoll}')(), P = [7, 5, 1.5], L = 118;
+  const a = sndRoll(0, P, L), m = sndRoll(3.5, P, L), e = sndRoll(7, P, L), b1 = sndRoll(8, P, L), b2 = sndRoll(11, P, L), ar = sndRoll(12.75, P, L), z = sndRoll(20, P, L);
+  const ok = a.rumble === 0 && m.rumble === 1 && e.rumble === 0 && e.joint === Math.floor(L / 12.5) && a.hyd === 0 && m.hyd === 0 && b1.hyd > .45 && b2.hydF > b1.hydF
+    && ar.hyd > 0 && ar.hyd < b1.hyd && z.hyd === 0 && z.rumble === 0 && z.done.every(Boolean) && !m.done[0] && e.done[0] && !b2.done[1];
+  const wired = /RP=sc==='rollout'&&typeof rollPhase==='function'\?rollPhase\(\):null/.test(H) && /if\(ro\)sndRollEvents\(ro,RP\.t\)/.test(H) && /\(live\|\|ro\)\?AUD\.vol/.test(H)
+    && /fire\('clack',SHOT\.clack\(/.test(H) && /fire\('clunk',SHOT\.clunk\(/.test(H);
+  check('the Steppe rollout sounds: rumble with the car\'s speed, a clack per rail joint, the pump rising while the boom lifts, the arms after, a clunk per phase', ok && wired,
+    `rumble ${a.rumble}/${m.rumble}/${e.rumble}, joints ${e.joint}, pump ${b1.hyd.toFixed(2)} at ${b1.hydF.toFixed(0)} → ${b2.hydF.toFixed(0)} Hz, arms ${ar.hyd.toFixed(2)} · wired ${wired}`);
+}
+
 // aerofx-23. Tellus from above (look & sound sky & bodies beat, BEAUTY Q323 B6.1, 6.3, 6.4). The cloud cover's far-field
 // widening is even about the threshold's centre (it was lopsided: a blurred pixel came out ~4× cloudier than the ground
 // under it), starts once the finest octave is under a pixel (fw × 15), and the coverage has a milder stretch, a
@@ -719,4 +734,48 @@
   const ok = /vec3 c0=floor\(d\*90\.-\.5\);for\(int x=0;x<2;x\+\+\)for\(int y=0;y<2;y\+\+\)for\(int z=0;z<2;z\+\+\)/.test(sky) && /textureLod\(uGalC,sd,0\.\)\.a/.test(sky)
     && /\*smoothstep\(\.5\/90\.,\.15\/90\.,r\);/.test(sky) && !/if\(k==0&&br>1\.2\)c\+=/.test(sky);
   check('star halos: from the nearest 2×2×2 cells, fading out within half a cell (no straight edge at a cell border)', ok, `halo ${ok}`);
+}
+
+// aerofx-28. No aliasing on the clouds at liftoff (look & sound effects beat, QUEUE Q250, PLAYTEST #48): from low in
+// the air the sky's view-ray march starts mid-step (the per-pixel offset drew a fixed hatch over the day sky, which
+// crawled as the rocket climbed); the deck's billow detail fades once a pixel's footprint outgrows it, and the cloud
+// volume's finest noise once the march's steps do.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\);vec3 sR=vec3\(0\.\)/.test(page);
+  const deck = /float fm=fw\*uCR;dn=\.5\+\(vn\(cu\*2600\.\+uCT\*3\.\)-\.5\)\*\.6\*\(1\.-smoothstep\(800\.,3200\.,fm\)\)\+\(vn\(cu\*7800\.\)-\.5\)\*\.4\*\(1\.-smoothstep\(250\.,1000\.,fm\)\)/.test(page);
+  const vol = /float cdLod=0\.;/.test(page) && /mix\(vn\(w\/230\.\),\.5,cdLod\)/.test(page) && /cdLod=smoothstep\(230\.,700\.,ds\);float dn=cloudDens\(q\)/.test(page);
+  check('clouds at liftoff: the sky march starts mid-step low down, the deck\'s detail fades by footprint and the volume\'s by step length', sky && deck && vol,
+    `sky ${sky} · deck ${deck} · volume ${vol}`);
+}
+
+// aerofx-29. The igniter flashes when the engine lights, not when it is first drawn (look & sound effects beat, QUEUE
+// Q368): the spool only moves on drawn frames; after more than half a second of sim time undrawn (a script stepping the
+// physics, as the reference views do; the camera far away) it takes its target with no flash, rich start or puff, and a
+// new flight (the clock going back) forgets the last frame.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const frame = /function spoolFrame\(\)\{if\(simT<SPOOL_F\[1\]\)SPOOL_F\[1\]=-1e9;if\(simT!==SPOOL_F\[1\]\)\{SPOOL_F\[0\]=SPOOL_F\[1\];SPOOL_F\[1\]=simT\}\}/.test(page) && /function render\(\)\{spoolFrame\(\);/.test(page);
+  const gap = /sp=\{k:0,t:SPOOL_F\[0\],ig:-1e9,off:-1e9,tg:0\}\);const gap=simT-sp\.t,dt=clamp\(gap,0,5\);sp\.t=simT;/.test(page) && /if\(gap>\.5\)\{sp\.k=tg;sp\.tg=tg;return sp\}if\(sp\.k<\.02&&tg>0\)sp\.ig=simT;/.test(page);
+  check('the igniter flash follows the ignition: an engine first drawn long after it lit takes its spool with no flash; a new flight forgets the last frame', frame && gap,
+    `frames ${frame} · gap ${gap}`);
+}
+
+// aerofx-30. Selene out of the sky shader (look & sound sky & bodies beat, BEAUTY Q322 B6.5, Q250's Selene half): SKY_FS's
+// main only finds Selene (its air in front, and in alpha how much the clouds let through); the moon pass (MOON_FS,
+// drawMoons) shades it on top (blend DST_ALPHA, ONE), with every crater and fbm octave faded by the pixel's footprint, the
+// relief's slope taken over the footprint, lunar-Lambert photometry, an opposition surge and earthshine. Nyx shares it.
+// Views 164–168 look at it. The fade is checked numerically: from low Tellus orbit (a 13 px disc) no crater octave is left.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const sky = pg.slice(pg.indexOf('const SKY_FS='), pg.indexOf('const SKY_FS=') + pg.slice(pg.indexOf('const SKY_FS=')).indexOf('}`;'));
+  const mainSky = sky.slice(sky.lastIndexOf('void main(){')), moon = pg.slice(pg.indexOf('const MOON_FS='), pg.indexOf('const PMOON='));
+  const out = !/crat\(/.test(mainSky) && /col=ins;vis=1\.;/.test(mainSky) && /o=vec4\(col,vis\);/.test(mainSky);
+  const pass = /uSel>0\./.test(moon) && /blendFuncSeparate\(gl\.DST_ALPHA,gl\.ONE,gl\.ZERO,gl\.ONE\)/.test(pg) && /for\(const b of BODIES\)\{if\(!b\.parent\)continue;/.test(pg);
+  const photo = /2\.42e-4\*g\*g/.test(moon) && /\.6\/\(1\.\+/.test(moon) && /es=100\.\*\.35\*/.test(moon) && /smoothstep\(\.25,\.6,w\*f\)/.test(moon) && /fbmF\(/.test(moon);
+  // the footprint in Selene radii from 200 km over Tellus (fov 1 rad, 800 px) and the finest crater octave left
+  const w = (3.844e7 - 1.274e6 - 2e5) * 2 * Math.tan(0.5) / 800 / 3.48e5, left = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w * f < 0.6).length;
+  const w100 = 1e5 * 2 * Math.tan(0.5) / 800 / 3.48e5, left100 = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w100 * f < 0.6).length;
+  check('Selene drawn by the moon pass, filtered by footprint, with lunar photometry and earthshine (views 164–168)', out && pass && photo && left === 0 && left100 >= 4 && /if \(n >= 164 && n <= 168\)/.test(vj),
+    `out of SKY_FS ${out} · pass ${pass} · photometry ${photo} · crater octaves from low orbit ${left}, from 100 km ${left100}`);
 }

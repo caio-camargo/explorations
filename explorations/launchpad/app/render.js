@@ -22,7 +22,7 @@ function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);
 function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames under ~22 ms)
   const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
   if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<RS_MAX)RS=Math.min(RS_MAX,RS*1.12)}
-function render(){
+function render(){spoolFrame();
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();profMark('setup');
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
@@ -60,14 +60,13 @@ function render(){
    gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,CITY_TEX);gl.uniform1i(u.uCity,0);
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
    {const ns=sitesNear(norm(cpf),4),t=ns[0],f=siteFrame(t.u),a=new Float32Array(16);ns.forEach((x,i)=>a.set([x.u[0],x.u[1],x.u[2],x.h],i*4));
-    gl.uniform4fv(u['uSites[0]'],a);gl.uniform1i(u.uNS,ns.length);gl.uniform3fv(u.uPadE,f.e);gl.uniform3fv(u.uPadS,f.s);
+    gl.uniform4fv(u['uSites[0]'],a);gl.uniform1i(u.uNS,ns.length);gl.uniform3fv(u.uPadE,f.e);gl.uniform3fv(u.uPadS,f.s);gl.uniform3f(u.uPadK,t.kind==='pad'?padSchoolOf(t):0,shapeLo(t),siteWet(t)?1:0);   // (Q105) the nearest pad's own ground
     gl.uniform3fv(u.uPadL,mul(t.u,TELLUS.R+t.h).map((x,i)=>x-Math.round(cpf[i]/1000)*1000))}   // the nearest pad, in the same re-centred frame as loc
    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.w);gl.uniform1i(u.uWorld,1);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.c);gl.uniform1i(u.uClim,2);gl.activeTexture(gl.TEXTURE0);
    {const RT=TELLUS.R+TERR_TOP;gl.uniform2f(u.uGen,Math.cos(-WORLD.lon0),Math.sin(-WORLD.lon0));gl.uniform1f(u.uTcc,(d-RT)*(d+RT))}
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
-   gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
+   gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));   // (Q322) only where Selene is: the moon pass shades it
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
-   {const th=bodyTheta(SELENE,simT);gl.uniform3fv(u.uMdet,rotY(sub(camW,mp),-th).map(x=>x-Math.round(x/1000)*1000));if(u.uMrot)gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th))}
    galaxy();gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    if(u.uGalC){gl.activeTexture(gl.TEXTURE12);gl.bindTexture(gl.TEXTURE_CUBE_MAP,GALC.tex);gl.uniform1i(u.uGalC,12);gl.activeTexture(gl.TEXTURE0);gl.uniform1f(u.uGalE,GALC.enc);   // (Q321) the baked sky on unit 12
     gl.uniform1f(u.uStT,((HOOK.fxT??performance.now())/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
@@ -370,13 +369,15 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
   // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
   {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
+  // (Q286, UI.md § 3: no TU) a planet's label says how long the trip takes, half a transfer orbit from Tellus's, in days
+  const xferDays=nm=>{const B=SYSTEM_BODIES.find(b=>b.name===nm);if(!B)return'';const t=0.5*YEAR_D*((1+B.a)/2)**1.5;return`~${t<1000?Math.round(t/10)*10:Math.round(t/100)*100} days there`};
   // (flow, Q175) Helios and the planets, from epoch 1: on a ring in the ecliptic around the map's centre, at their ecliptic
   // longitude today (at their real places they'd be at infinity, mostly behind this camera); hidden behind Tellus
   if(mapShow('planets')){const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),moons=1.25*Math.max(...TELLUS.children.map(c=>c.rMax)),rr=moons<2.5*cam.mDist?Math.max(cam.mDist*.3,moons):cam.mDist*.3;let pv=null;   // (flow, Q256; PLAYTEST #55) outside the moons' orbits whenever they're in view: a compass, not a distance
     for(let i=0;i<=144;i++){const a=i/144*6.2832,p=add(c0,add(mul(E.X,rr*Math.cos(a)),mul(E.Y,rr*Math.sin(a))));if(pv&&i%2)seg(pv,p,[.62,.6,.5,.3]);pv=p}
     for(const m of planetMarks(tNow())){const p=madd(c0,m.u,rr),q=sub(p,camW),dq=len(q),tc=-dot(camW,q)/dq;
       if(tc>0&&tc<dq&&dot(camW,camW)-tc*tc<TELLUS.R*TELLUS.R)continue;
-      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:!nm?'':m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}
+      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:!nm?'':m.name==='Helios'?'Helios':`${m.name} · ${xferDays(m.name)}`,c:m.color})}
     labels.push({p:add(c0,mul(E.Y,-rr)),mark:'txt',t:'the planets: direction only, not to scale',c:'rgba(214,206,170,.75)'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.uniform1f(PLINE.u.uLk,1/EXPO.E);

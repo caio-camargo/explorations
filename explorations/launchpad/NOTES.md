@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -98,6 +98,10 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.181 — the sunglint at full strength, and a view that shows it (2026-10-13, sky & bodies, QUEUE Q387)
 - v1.183 — Q322 slice 1: the air's transmittance from a table, and airglow on the night limb (2026-10-13, sky & bodies)
 - v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies, QUEUE Q399, PLAYTEST #96)
+- v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
+- v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
+- v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
+- v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -241,6 +245,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
 - v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
+- v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 
@@ -270,6 +275,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.179 — warnings that explain themselves, and part cards that say what a part pairs with (2026-10-13, flow session, QUEUE Q340; PROBES § 8, D21, D22)
 - v1.182 — losses explained: the Debrief's *What happened*, and every line of money named (2026-10-13, flow session, QUEUE Q293; REVIEW § 3 gap 1)
 - v1.186 — the dark cockpit: news held in the climb, burns and landing; a master caution; only the phase's cards; unflyable hold modes hidden (2026-10-13, flow session, QUEUE Q286 slice 1; UI.md § 3, D16)
+- v1.189 — the Program and the map decluttered: offers one line each, far epochs as a count, no empty photo frame, a letterhead; planets labelled with the trip in days (2026-10-13, flow session, QUEUE Q286 slice 2; UI.md § 3)
+- v1.192 — one tooltip: the part cards and the craft hover in `#termTip`; the Rollout's checks and the joint chip explain themselves (2026-10-13, flow session, QUEUE Q391; UI.md rule 9)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
