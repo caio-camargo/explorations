@@ -6107,3 +6107,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checked:** full suite passed except `qa-2` (go to body), which fails on `main` as well: not this change (flag for QA). Browser: the bench flow end to end.
 - **Coordination:** served my browser checks on the shared port 8799 without the GPU lock before reading the GPU-runs memory; now on 8772 with the lock.
 - **Next:** Q422, propulsion on the bench (kick motors, hydrazine, apogee engine, the adapter as a separation ring).
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): how folded parts deploy (Q400's remainder, v1.199)
+- **Done:** vehicle had built the flight-bar buttons; flow added the part panel's *In flight:* line and the card's *deploys* row (`DEP_HOW`), and a first-time hint in space that names the key and lights the button, once per browser, only once no fairing covers the folded parts. On `main` as `078a2e3` (merged `5ee07f4`).
+- **Checks:** flow-27 (new), flow-8/22/24/26 and the builder's core sections pass; robot rows `deploy` and `m1` pass (the robot showed the first version hinting with the fairing still on; fixed). GPU lock taken with noclobber.
+- **Merge:** one conflict with vehicle's payload-bench change to `depNodes`, both kept.
