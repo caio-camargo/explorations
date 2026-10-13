@@ -86,6 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
+- v1.215 — the TV Satellite preset: a stationary orbit over the capital, flown to TV for the capital (2026-10-13, vehicle session, QUEUE Q412)
 - v1.207 — propulsion on the bench: kick motors (solid, burn to the end), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is the separation ring (2026-10-13, vehicle session, QUEUE Q422)
 - v1.198 — the payload bench, slice 1: satellites designed apart from the rocket and carried as one block; the bench's Checks; "make the parts inside a payload" (2026-10-13, vehicle session, QUEUE Q416)
 - v1.188 — flight buttons for landing legs (Y) and the cargo bay (B), beside the wings button (2026-10-13, vehicle session, QUEUE Q400)
@@ -161,7 +162,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.126 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
 - v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
 - v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
-- v1.215 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
+- v1.217 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -299,6 +300,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.199 — how folded parts deploy: the part panel and its card say so; a first-time hint in space (2026-10-13, flow session, QUEUE Q400's remainder, PLAYTEST #97)
 - v1.202 — the camera looks straight down: the pitch to ±90° with no flip, T for a top view in the Assembly (2026-10-13, flow session, QUEUE Q405, PLAYTEST #101)
 - v1.208 — heat and load you notice: H and L bars beside the navball in every phase, amber from 50 %, red from 90 %; the master caution blinks (2026-10-13, flow session, QUEUE Q271, PLAYTEST #71; W36)
+- v1.216 — the model's scale in the Assembly strip: "model 1:48 · 14.5 m" beside the program's line, with a hover term (2026-10-13, flow session, QUEUE Q277, from Q242) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

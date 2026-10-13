@@ -1177,3 +1177,15 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-29` (the fractions, the colour thresholds, the wiring, the blink); robot row `gauges` (a climb:
   faint; the nose forced to 70 %: amber; to 95 %: red, and the caution blinking with the reason); `m1` passes (its
   overlap check passes with the bars in the cluster). TESTING row 289.
+
+## v1.216 — the model's scale in the Assembly strip (2026-10-13, flow session, QUEUE Q277; from Q242)
+- **The Assembly's program line** (`#hqStrip`, under the letterhead) now names the model's scale and the real height:
+  "model 1:48 · 14.5 m" for the Orbiter, "model 1:96" for Crewed Lunar, 1:288 for a 120 m rocket. It is the same kit
+  scale the drafting board's title block prints (`deskScaleFor`, v1.115/v1.132), so the two always agree.
+- **Hover "model 1:N"** for the term `scale` (app/terms.js): what a scale model means, why a bigger design sits at a
+  smaller scale, and that the table, lamp and figure are drawn at the same scale.
+- `modelScaleHTML()` in `app/model-desk.js`; empty without the desk (`DESK_FX` off) or a design. The strip is rebuilt on
+  every design change (`editorChanged` → `renderProgram` → `progLayout`).
+- **Not done:** the Assembly panels as paperwork on the desk stay with R5 (Q241) and vehicle's Q237/Q238.
+- **Checks:** test `flow-30` (the text at 14.5 m and 120 m, empty without the desk, the wiring); robot row `scale`
+  (the Orbiter, then Crewed Lunar, hovering the term). TESTING row 297.

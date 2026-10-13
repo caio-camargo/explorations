@@ -6241,3 +6241,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (295), `QUEUE.md`,
   `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q420-A/`, `q420-C/`.
 
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): the TV Satellite, a stationary orbit over the capital (v1.215, Q412)
+- **Built:** `PRESETS['TV Satellite']` (an apogee-engine payload block in a 4 m fairing on the Heavy's launcher) and its payload as a bench starter; flown on the probe autopilot to a stationary orbit over Kamar, the mission's own check counts TV for the capital (test vehicle-30). Queued Q454: nothing tells the player when to start the transfer burn (26 min of coasting from the Cape).
+- **Checked:** vehicle and flow sections, and every section that loops over all presets, pass. The full suite was stopped by the system for low memory (chunk 2 passed; chunk 1's one failure is `main`'s: the Assembly's new top-view key `t` isn't in its key help, "Help lists every key the assembly handler reads"; chunks 3–4 not run).
+- **Next:** Q423 (bench parts, first set) or Q416 slice 2 with Q417, as Caio picks.
+
+## 2026-10-13 — flow session: Q277, the model's scale in the Assembly strip (v1.216)
+- The Assembly's program line (`#hqStrip`) reads "model 1:48 · 14.5 m" (the same kit scale as the drafting board's title block); hovering "model 1:N" explains the scale (term `scale`, app/terms.js). `modelScaleHTML()` in app/model-desk.js.
+- Checks: test flow-30; robot rows `scale` (Orbiter 1:48, Crewed Lunar 1:96 · 40.5 m, tooltip shown) and `m1` pass; full smoke not run (memory).
+- Numbers: built as v1.214/TESTING 295, both taken by other sessions meanwhile; renumbered at the merge to v1.216 / TESTING 297 (the first work commit's message still says v1.214).
+- Files: app/model-desk.js, app/terms.js, app/screens.js, tests/flow.mjs, playtest.mjs, NOTES.md, notes/flow.md, TESTING.md.
+- Next: the queue's next flow item (Q384 hover terms + touch, Q397 crew-loss chain, Q192 label merge).

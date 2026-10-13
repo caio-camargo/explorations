@@ -81,6 +81,9 @@ function deskMesh(N){const key=deskKey(N);if(deskMeshes.has(key))return deskMesh
 // where the desk sits: the ship's frame, its foot at the design's bottom (the base plate is under it); while parts below
 // were removed, the plate stays where it was and the design hangs above it (BLD.foot, Q247)
 const deskFoot=()=>typeof BLD!=='undefined'&&BLD.foot?BLD.foot():S.yBot;
+// (flow, QUEUE Q277) the Assembly strip names the scale: "model 1:48 · 14.5 m" (the real height beside it), hover explains
+function modelScaleHTML(){if(!DESK_FX||mode!=='editor'||!S||!S.alive||!isFinite(S.len)||S.len<=0)return'';const h=S.len+S.yBot-deskFoot(),N=deskScaleFor(h);
+  return`<span id="mdlScale" class="dim">${typeof term==='function'?term('scale',`model 1:${N}`):`model 1:${N}`} · ${h.toFixed(1)} m</span>`}
 function deskFrame(camW){const p=shipWorld(),f=deskFoot(),N=deskScaleFor(S.len+S.yBot-f);
   return{N,p,M:modelQ(S.q,sub(p,camW),[-S.cm[0],f,-S.cm[2]]),up:qrot(S.q,[0,1,0]),lamp:norm(qrot(S.q,[DESK_LAMP[0]-.05,DESK_LAMP[1],DESK_LAMP[2]-.02]))}}
 // the room's light: one warm lamp over the model, a dim warm room; everything is lit (no sun, no night)
