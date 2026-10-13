@@ -27,11 +27,19 @@ function fixText(f){if(!f)return'';if(!Array.isArray(f))return lc1(f.trim());con
 function whyMark(cls,html,W,tag='b'){if(!W||!cls||cls==='ok')return`<${tag}${cls?` class="${cls}"`:''}>${html}</${tag}>`;
   return`<${tag} class="${cls} term" data-wt="${attrEsc(W.t||'')}" data-wd="${attrEsc(W.d||'')}" data-wf="${attrEsc(fixText(W.fix))}">${html}</${tag}>`}
 const tipEsc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-// the tooltip: on hover of a [data-term] or a self-explaining mark [data-wt], under it (above when there's no room), inside the window
-document.addEventListener('mouseover',e=>{const el=e.target.closest&&e.target.closest('[data-term],[data-wt]'),tip=$('termTip');if(!tip)return;
-  if(!el){tip.classList.add('hidden');return}
-  if(el.dataset.wt!=null){const D=el.dataset;tip.innerHTML=`<b class="${el.classList.contains('bad')?'bad':'warn'}">${tipEsc(D.wt)}</b>${D.wd?`<div>${tipEsc(D.wd)}</div>`:''}${D.wf?`<div class="fix">Fix: ${tipEsc(D.wf)}</div>`:''}`}
-  else{const T=TERMS[el.dataset.term];if(!T)return;tip.innerHTML=`<b>${T.t}</b><div>${T.d}</div>`}
-  tip.classList.remove('hidden');
-  const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
-  tip.style.left=`${Math.max(6,Math.min(innerWidth-w-6,r.left))}px`;tip.style.top=`${r.bottom+6+h<innerHeight?r.bottom+6:Math.max(6,r.top-h-6)}px`});
+// the tooltip: one for every screen (#termTip). Terms and self-explaining marks show on hover of a [data-term] or
+// [data-wt], under it (above when there's no room); the builder's part cards (beside the parts list) and the hover over a
+// part on the craft (at the pointer) show through tipShow too (QUEUE Q391). Each use names itself (own: 'term', 'card',
+// 'craft'), so moving off one never closes another's; the tooltip always stays inside the window.
+function tipShow(own,html,at){const tip=$('termTip');if(!tip)return;tip.dataset.own=own;tip.classList.toggle('card',own!=='term');
+  if(tip.innerHTML!==html)tip.innerHTML=html;tip.classList.remove('hidden');const w=tip.offsetWidth,h=tip.offsetHeight;let x,y;
+  if(at.x!=null){x=at.x+14;y=at.y+14;if(x+w>innerWidth-6)x=at.x-w-14;if(y+h>innerHeight-6)y=at.y-h-14}   // at the pointer
+  else if(at.side){x=at.r.right+10;y=at.r.top-8;if(x+w>innerWidth-6)x=at.r.left-w-10}                    // beside it
+  else{x=at.r.left;y=at.r.bottom+6+h<innerHeight?at.r.bottom+6:at.r.top-h-6}                            // under it
+  tip.style.left=`${Math.round(Math.max(6,Math.min(innerWidth-w-6,x)))}px`;tip.style.top=`${Math.round(Math.max(6,Math.min(innerHeight-h-6,y)))}px`}
+function tipHide(own){const tip=$('termTip');if(tip&&(!own||tip.dataset.own===own))tip.classList.add('hidden')}
+document.addEventListener('mouseover',e=>{const el=e.target.closest&&e.target.closest('[data-term],[data-wt]');
+  if(!el){tipHide('term');return}let html;
+  if(el.dataset.wt!=null){const D=el.dataset;html=`<b class="${el.classList.contains('bad')?'bad':'warn'}">${tipEsc(D.wt)}</b>${D.wd?`<div>${tipEsc(D.wd)}</div>`:''}${D.wf?`<div class="fix">Fix: ${tipEsc(D.wf)}</div>`:''}`}
+  else{const T=TERMS[el.dataset.term];if(!T)return;html=`<b>${T.t}</b><div>${T.d}</div>`}
+  tipShow('term',html,{r:el.getBoundingClientRect()})});
