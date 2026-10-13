@@ -5874,3 +5874,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (250, 252, 254), `PLAYTEST.md` (#88), `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** the effects lane has nothing ready; the sound beat (Q362, Q363) would make today's effects audible.
 
+## 2026-10-13 — Caio + Claude (launchpad vehicle session, continued): Q382 v1.173, the SAS and the air
+
+- **Caio:** "the other designs are also flipping... some change that made everything less stable?" No change did: the presets fly
+  identically on `main` as of 2026-10-10 and today. What flips is separating in thick air: the Beeper and Passenger Orbiter
+  tumbled at separation on every autopilot. Traced: the air hits a light upper stage at once (~13 kN·m) and the SAS, a rate loop,
+  answers only as it starts turning, so its wheel came in too late. Stiffer gains and re-aiming at separation didn't help.
+- **v1.173, Q382:** the SAS feeds forward the destabilizing part of the last step's aero moment, while engines burn nose-first.
+  The Beeper holds through separation on the gyro autopilot; a reaction wheel now helps the fairing satellite; big fins up top no
+  longer tip stage 1. Cancelling the whole moment, a window after separation and a divergence-rate gate were tried and dropped.
+  `airSep` keeps only the steering rule (separate prograde first).
+- **Hopper:** with this it climbs straight, so the retune Caio approved (Q371) wasn't needed: reverted before shipping.
+- **Tests:** full suite; three core tests adjusted with reasons (canted ≤ 15°, impact prediction lined up, procedures v2 and the
+  tree cell, Q383 for world); `vehicle-24` new. Q372 (two failures on `main`) not reproduced in any mode at `e42f84b`.
+- **Files:** `explorations/launchpad/sim/vessel.js`, `sim/flight.js`, `app/editor.js`, `tests/vehicle.mjs`, `tests/core.mjs`,
+  `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (255), `QUEUE.md` (Q382 ✓, Q383, Q371, Q372, Q353), `ACTIVE_WORK.md`.
+- **Next:** Q353's remainder (the procedure executor holding prograde through a separation in air, control + space); Q329, Q341,
+  Q338 for vehicle.
