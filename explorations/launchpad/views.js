@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 162 the sunglint, 163 the night limb, 164–168 Selene (from 1,000 km, from low orbit, its night side, through the limb, under clouds), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -498,5 +498,40 @@ window.refView = async (n) => {
     const f = localFrame(S.r), D = norm(add(mul(f.n, 0.8), mul(f.up, 0.6)));   // the horizon lies ~40° below level from 400 km
     cam.pitch = Math.asin(clamp(dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)); cam.dist = 30; render(); await settle(); bare();
     return 'the night limb from 400 km';
+  }
+  // 164–168 (sky & bodies beat, QUEUE Q322 slice 2): Selene in its own pass. A small craft (the camera far behind it, so
+  // it's a speck) looking at Selene: 164 from 1,000 km over the terminator; 165 from 200 km over Tellus's night side, a
+  // gibbous Selene ~13 px across (Q250's aliasing); 166 100 km over the night side at new moon, lit by a full Tellus
+  // (earthshine); 167 nearly full, setting through the air 15 km over Tellus's limb from 200 km; 168 full, from 1.5 km
+  // over the ground at night under a partial deck (the clouds in front of it). The label gives Selene's centre in pixels
+  if (n >= 164 && n <= 168) {
+    stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0]; const sn = norm(SUN);
+    // the program time when Selene stands at an elongation from the sun (cosine c), searched over one orbit
+    const phase = c => { let bt = 0, be = 9; for (let tt = 0; tt < 2 * Math.PI / SELENE.n; tt += 600) { const e = Math.abs(dot(norm(moonPos(tt)), sn) - c); if (e < be) { be = e; bt = tt } } simT = bt };
+    let D, body = TELLUS, P, mD;
+    if (n === 164) { body = SELENE; const u = norm(cross(sn, [0, 1, 0])); P = mul(u, SELENE.R + 1e6); mD = mul(u, -1) }
+    else if (n === 166) { phase(1); body = SELENE; const u = norm(mul(moonPos(simT), -1)); P = mul(u, SELENE.R + 1e5); mD = mul(u, -1) }
+    else {
+      phase(n === 165 ? -0.5 : n === 167 ? -0.95 : -1); const m = norm(moonPos(simT));
+      if (n === 165) P = mul(norm(sub(m, sn)), TELLUS.R + 2e5);
+      else if (n === 167) {   // the ray to Selene grazes the air 15 km up: bisect the angle from Selene's direction
+        const b = norm(cross(m, [0, 1, 0])), at = th => mul(add(mul(m, Math.cos(th)), mul(b, Math.sin(th))), TELLUS.R + 2e5);
+        const ca = th => { const p = at(th), d = norm(sub(moonPos(simT), p)), t = -dot(p, d); return t < 0 ? len(p) : len(madd(p, d, t)) };
+        let lo = Math.PI / 2, hi = Math.PI * 0.75; for (let k = 0; k < 60; k++) { const md = (lo + hi) / 2; if (ca(md) > TELLUS.R + 15e3) lo = md; else hi = md }
+        P = at(lo) }
+      else { let u = m, best = 9; for (let a = 0; a < 6.283; a += .05) { const c = norm(add(m, mul(add(mul(norm(cross(m, [0, 1, 0])), Math.cos(a)), mul(norm(cross(m, cross(m, [0, 1, 0]))), Math.sin(a))), 0.5)));
+          const e = Math.abs(cloudAt(toPF(TELLUS, c, simT), simT) - 0.45); if (e < best) { best = e; u = c } }
+        P = mul(u, TELLUS.R + Math.max(0, terrainH(toPF(TELLUS, u, simT))) + 1500) }
+      mD = norm(sub(moonPos(simT), P)) }
+    S.body = body; S.r = P; const up = norm(P), side = norm(cross(mD, up));
+    S.v = body === SELENE ? surfVel(SELENE, S.r) : mul(norm(cross([0, 1, 0], up)), n === 168 ? 0 : Math.sqrt(TELLUS.mu / len(P)));
+    D = norm(add(mD, mul(side, n === 164 || n === 166 ? 0.25 : 0.08)));   // Selene a little off the craft in the middle
+    const f = localFrame(S.r); cam.pitch = Math.asin(clamp(-dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(D, f.e), dot(D, f.n)); cam.dist = 250;
+    render(); await settle(); bare();
+    const v = HOOK.view, mc = sub(add(bodyPos(SELENE, simT), [0, 0, 0]), v.camW), z = dot(mc, v.Fw), px = [v.W / 2 * (1 + dot(mc, v.R) / (z * v.tanX)), v.H / 2 * (1 - dot(mc, v.U) / (z * v.tanY))];
+    const el = Math.acos(clamp(dot(norm(moonPos(simT)), sn), -1, 1)) * 57.3;
+    return { 164: 'Selene from 1,000 km', 165: 'Selene from low orbit', 166: 'Selene\'s night side by Tellus-light', 167: 'Selene setting through the limb', 168: 'Selene from under the clouds' }[n]
+      + `, elongation ${el.toFixed(0)}°, centre ${px[0].toFixed(0)},${px[1].toFixed(0)} px, ${(2 * SELENE.R / len(mc) / (2 * v.tanY) * v.H).toFixed(0)} px across`;
   }
 };

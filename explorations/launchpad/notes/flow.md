@@ -1119,3 +1119,22 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
   TESTING row 271.
 - **Q286 is done** except the Assembly's GO/NO-GO board, which is D22's Checks tab: Q237 (vehicle, with flow). Not done
   from UI.md's rows: a phase card that changes by phase (landing: height and descent rate; burn: Δv to go).
+
+## v1.192 — one tooltip (2026-10-13, flow session, QUEUE Q391; UI.md rule 9, after Q340)
+- **One element:** the builder's part card (beside the parts list) and the hover over a part on the craft (at the
+  pointer) now show in `#termTip`, like the terms and the self-explaining warnings; `#partcard` and `#bldtip` are gone.
+- **How:** `tipShow(own, html, at)` / `tipHide(own)` in `app/terms.js`. `own` names the use ('term', 'card', 'craft'), so
+  moving off one never closes another's; `at` is `{r: rect}` (under it, above when there's no room), `{r, side: true}`
+  (beside it) or `{x, y}` (at the pointer); it always stays inside the window. A part card gets the `card` class (270 px,
+  the spec table). **For everyone:** a new tooltip goes through `tipShow`, not a new floating element.
+- **The Rollout explains itself:** each warning and stop can carry `W` (`warn(t, W)`, `bad(t, W)`; rendered with
+  `whyMark`): over budget, the account below zero, a part not open yet, a site that won't take it, stages over towns, the
+  weather, the liftoff TWR, instability, a joint past its rating,
+  decisions waiting. `launchWarnings` (vehicle) keeps its own wording, which already says the fix.
+- **The joint chip** in the part panel (right-click a part) explains itself past 70 %: what, why, `jointFix`.
+- **A catch on the way:** flow-8 cuts `app/rollout.js` up to `
+function rollChecks`; a comment line above it broke the
+  cut, so the comment sits on the function's line. The Rollout's icon rule (`.rc span`) now targets the icon only.
+- **Checks:** test `flow-26` (placement beside, at the pointer and under, clamped; the owners; no old elements; ten
+  explained Rollout checks); robot row `explain` (the stage-2 TWR mark, the camera's card in `#termTip`, the Rollout's
+  over-budget check hovered); `m1` passes; every flow section and the builder's core sections pass. TESTING row 273.

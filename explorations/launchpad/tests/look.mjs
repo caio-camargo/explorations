@@ -760,3 +760,22 @@
   check('the igniter flash follows the ignition: an engine first drawn long after it lit takes its spool with no flash; a new flight forgets the last frame', frame && gap,
     `frames ${frame} · gap ${gap}`);
 }
+
+// aerofx-30. Selene out of the sky shader (look & sound sky & bodies beat, BEAUTY Q322 B6.5, Q250's Selene half): SKY_FS's
+// main only finds Selene (its air in front, and in alpha how much the clouds let through); the moon pass (MOON_FS,
+// drawMoons) shades it on top (blend DST_ALPHA, ONE), with every crater and fbm octave faded by the pixel's footprint, the
+// relief's slope taken over the footprint, lunar-Lambert photometry, an opposition surge and earthshine. Nyx shares it.
+// Views 164–168 look at it. The fade is checked numerically: from low Tellus orbit (a 13 px disc) no crater octave is left.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const sky = pg.slice(pg.indexOf('const SKY_FS='), pg.indexOf('const SKY_FS=') + pg.slice(pg.indexOf('const SKY_FS=')).indexOf('}`;'));
+  const mainSky = sky.slice(sky.lastIndexOf('void main(){')), moon = pg.slice(pg.indexOf('const MOON_FS='), pg.indexOf('const PMOON='));
+  const out = !/crat\(/.test(mainSky) && /col=ins;vis=1\.;/.test(mainSky) && /o=vec4\(col,vis\);/.test(mainSky);
+  const pass = /uSel>0\./.test(moon) && /blendFuncSeparate\(gl\.DST_ALPHA,gl\.ONE,gl\.ZERO,gl\.ONE\)/.test(pg) && /for\(const b of BODIES\)\{if\(!b\.parent\)continue;/.test(pg);
+  const photo = /2\.42e-4\*g\*g/.test(moon) && /\.6\/\(1\.\+/.test(moon) && /es=100\.\*\.35\*/.test(moon) && /smoothstep\(\.25,\.6,w\*f\)/.test(moon) && /fbmF\(/.test(moon);
+  // the footprint in Selene radii from 200 km over Tellus (fov 1 rad, 800 px) and the finest crater octave left
+  const w = (3.844e7 - 1.274e6 - 2e5) * 2 * Math.tan(0.5) / 800 / 3.48e5, left = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w * f < 0.6).length;
+  const w100 = 1e5 * 2 * Math.tan(0.5) / 800 / 3.48e5, left100 = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w100 * f < 0.6).length;
+  check('Selene drawn by the moon pass, filtered by footprint, with lunar photometry and earthshine (views 164–168)', out && pass && photo && left === 0 && left100 >= 4 && /if \(n >= 164 && n <= 168\)/.test(vj),
+    `out of SKY_FS ${out} · pass ${pass} · photometry ${photo} · crater octaves from low orbit ${left}, from 100 km ${left100}`);
+}

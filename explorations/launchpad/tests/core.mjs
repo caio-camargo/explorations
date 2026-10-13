@@ -1368,7 +1368,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const per = api.POWERS.map(p => SI.filter(t => t.power === p.i).length);
   const gap = Math.min(...SI.flatMap((a, i) => SI.slice(i + 1).map(b => Math.acos(Math.min(1, dot(a.u, b.u))) * R)));
   const level = SI.filter(t => t.kind === 'pad').every(t => { const f = api.siteFrame(t.u);   // a sea platform floats: nothing levelled
-    return [0, 1, 2, 3].every(k => Math.abs(api.terrainH(norm(add(t.u, mul(k % 2 ? f.e : f.n, (k < 2 ? 1 : -1) * 1500 / R)))) - t.h) < 1e-9) && api.terrainSlope(TELLUS, t.u) < 0.01; });
+    return [10, 1800].every(d => [0, 1, 2, 3].every(k => Math.abs(api.terrainH(norm(add(t.u, mul(k % 2 ? f.e : f.n, (k < 2 ? 1 : -1) * d / R)))) - t.h) < 1e-9)) && api.terrainSlope(TELLUS, t.u) < (api.SITE_K(t) === 2 ? 0.2 : 0.01); });   // at the pad and past each school's own ground (Q105, test site-1: SHAPE_R 1.7 km); terrainSlope's ±15 m reaches Arsenal's hill behind the wall (z −11)
   check('sites: generated per power with every field the economy needs; home site first, at +X; ≥ 250 km apart; pads levelled',
     SI.length >= 10 && SI.every(t => fields.every(k => k in t) && t.h > 0 && t.downrange && Array.isArray(t.downrange.over)) && per.every(n => n >= 1)
       && SI[0].u[0] === 1 && SI[0].power === api.HOME && gap >= api.SITE_GAP - 1 && level,

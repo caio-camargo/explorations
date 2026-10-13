@@ -1043,8 +1043,9 @@ Mountain's shelter closed at a flight's start; Arsenal 1 s after lift-off. test.
 Stills: `output/launchpad/q231-pads/`.
 
 **Not built yet:**
-- The sites' ground: Arsenal's hillside, Coastal's jungle and sea, Mountain's ridge above the sea, Isle's green
-  peninsula (world's Q105). The meshes here assume flat ground.
+- ~~The sites' ground~~ **built** (world, v1.193, Q105; notes/world.md § v1.193): the ground now carries Arsenal's hill
+  (the mesh hill is gone), Coastal's clearing, Mountain's ridge, Isle's headland. `padGround` (the apron, slabs and road)
+  is still Cape's layout for every school.
 - Rollouts: the truck erector driving in and raising the rocket, the table rolling out, the trailer and strongback
   raising it. Only Steppe's is animated (flow's `rollPhase`).
 - The rail tilting (Q230), and lettering on the hangar and the assembly buildings.
@@ -1860,3 +1861,34 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   (view 56 every run); 60, 61, 153 are 0; the ignition views 68–72 (drawn every step on purpose) still flash and fade
   with age: 2.1, 1.6, 0.9, 0.2, and 2.0 at night.
 - **Check:** test `aerofx-29`.
+
+## v1.194 — Q322 slice 2: Selene out of the sky shader, filtered craters, regolith light and earthshine (2026-10-13, sky & bodies beat; BEAUTY B6.5, Q250's Selene half)
+
+- **What moved:** `SKY_FS`'s main still intersects Selene (one `sph`: the air in front and the depth need it) but no
+  longer shades it. It writes the air in front and, in the scene's alpha (unused until now), how much of Selene the
+  clouds let through (`vis`, multiplied by the shell's and the slab's cover). The moon pass (`MOON_FS`, `drawMoons`, which
+  drew only Nyx) now shades Selene too (`uSel`) and adds it on top with `blendFuncSeparate(DST_ALPHA, ONE, ZERO, ONE)`,
+  depth untouched; its air is the transmittance table (`trL`, a chord through the air = `trL(closest, 0)²`). Nyx
+  stays opaque and depth-tested. With no scene target the default framebuffer's alpha is reset to 1 after the pass.
+- **Aliasing (PLAYTEST #49):** from Tellus Selene is a 12–13 px disc, and its two crater octaves (18 and 55 cells per
+  radius) and the relief's fixed 1.4 km finite difference were all far finer than a pixel. Now every crater octave and
+  fbm octave fades to its mean once its cells near a pixel (`smoothstep(.25,.6, footprint × frequency)`, footprint in
+  radii, stretched by 1/μ toward the limb), and the octaves go on down close up (`MOON_OCT`: Selene 5 from 12.6 cells
+  per radius ×3, Nyx 4). The seas are filtered loosely (`w·.6`): they are what a small disc shows.
+- **The old night side was lit:** the relief term added `slope·0.8` with `ndl` clamped to 0, so every crater rim on
+  the night side caught the sun (views 164–166 before: a speckled night side; at 13 px, the shimmer). Now the relief
+  lights only within ~7° past the terminator (`smoothstep(-.12,.05,e)`): a harsh terminator.
+- **Cost:** a first form (6 octaves of `crat`, 27 cells, a second evaluation for the slope) cost 5–6 ms with Selene
+  filling the screen, for 2.7 ms saved in the sky pass. `cratG` returns the crater height and its gradient in one pass
+  over the 2×2×2 nearest cells (radii .12–.34 of a cell so the rim stays under half a cell; cells 1.43× larger so the
+  craters keep their size): sky + moon pass at 158 3.97 → ~2.7–3.3 ms, 112 3.10 → ~2.6–2.8, 166 4.47 → ~2.9–3.2
+  (RTX 3050, full resolution, a busy machine: ±0.5). Views without Selene unchanged (1, 3, 157: twinkle-level diffs).
+- **Light:** McEwen's lunar-Lambert (L(g) cubic in the phase angle; a full Selene is a flat disc), an opposition surge
+  (B0 .6, width .05: the bright patch round the craft's antisolar point in 112 and 158), earthshine from Tellus's lit
+  face by its phase as seen from the ground, with the relief. Real earthshine is ~1/4000 of the sun, under what
+  `EXPO` (×4 at most) can show, so it's ×100: a night side under a full Tellus is a dim grey (view 166). The mesh fill
+  (`airlessFill`) still has a constant sky term, not earthshine: a lander there is darker than its ground (*Proposed*).
+- **Not checked by eye:** clouds in front of Selene (168 found no cloud on its ray); the alpha path is by construction.
+- **Views:** 164 from 1,000 km over the terminator, 165 from low Tellus orbit (12 px), 166 the night side by
+  Tellus-light, 167 setting through the limb's air, 168 full from under the deck at night. Stills
+  `output/launchpad/beauty/q322s2-before/`, `q322s2-after/`, regression `q322s2-reg-*`. Test `aerofx-30`. TESTING 275.

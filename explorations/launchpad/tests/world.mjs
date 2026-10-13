@@ -410,3 +410,30 @@
       first.every((c, i) => G.CITIES[i].name === c.name) && G.SITES.filter(s => s.kind === 'sea').every(s => !towns.some(c => c.town === s.id)) && hit.kind === 'city' && hit.city === towns[0],
     rows.map(r => r.c ? `${r.t.name}: ${r.c.name} ${r.km.toFixed(0)} km, ${r.off.toFixed(0)}° off` : `${r.t.name}: none`).join('; '));
 }
+// site-1. The pad site's own ground per school (world session, QUEUE Q105; NOTES § v1.193): Arsenal's hill behind the
+// terrace (where the pad's mesh hill was), Mountain's ridge north and the fall south and east, Isle's headland, Coastal's
+// sea behind the pad when the site is low and coastal; every complex on flat ground, nothing changed beyond SHAPE_R
+// (1.7 km), Cape and Steppe untouched. Own SIM copy (it moves the home pad's height to try the wet case).
+{
+  const G = new Function(src + 'return {SITES,TELLUS,terrainH,seaAt,surfaceAt,siteFrame,sstep,SHAPE_R,set SS(v){SITE_SCHOOL=v}};')();
+  const T = G.TELLUS, t = G.SITES[0], f = G.siteFrame(t.u), ss = G.sstep;
+  const at = (x, z) => norm([t.u[0] + (f.e[0] * x + f.s[0] * z) / T.R, t.u[1] + (f.e[1] * x + f.s[1] * z) / T.R, t.u[2] + (f.e[2] * x + f.s[2] * z) / T.R]);
+  const H = (k, x, z) => { G.SS = () => k; return G.terrainH(at(x, z)) - t.h; };
+  // the complexes' footprints (x0, x1, z0, z1; the pad meshes' frame): all must stay flat
+  const FP = { 0: [[-60, 60, -60, 60]], 1: [[-60, 60, -60, 60]], 2: [[-90, 50, -10.4, 40]], 3: [[-50, 45, -40, 40], [-14, 14, -165, 0]], 4: [[-62, 32, -12, 40]], 5: [[-85, 85, -95, 85]] };
+  let flatBad = 0, farBad = 0;
+  for (const k of [0, 1, 2, 3, 4, 5]) { for (const [x0, x1, z0, z1] of FP[k]) for (let x = x0; x <= x1; x += 2) for (let z = z0; z <= z1; z += 2) if (Math.abs(H(k, x, z)) > 0.05) flatBad++;
+    for (const r of [1750, 2500, 4000]) for (let a = 0; a < 360; a += 45) { const x = r * Math.sin(a * Math.PI / 180), z = -r * Math.cos(a * Math.PI / 180); if (Math.abs(H(k, x, z) - H(0, x, z)) > 1e-6) farBad++; } }
+  const mesh = (x, z) => (4.6 + 8 * ss(-11, -34, z) + .7 * Math.sin(x * .23) * Math.sin(z * .19)) * (1 - ss(17, 44, Math.abs(x))) * Math.max(1 - ss(15, 19, Math.abs(x)), ss(-11.2, -22, z)) * (1 - ss(-50, -64, z));
+  let hill = 0; for (let x = -14; x <= 14; x += 2) for (let z = -50; z <= -12; z += 2) hill = Math.max(hill, Math.abs(H(2, x, z) - mesh(x, z)));
+  const drop = -Math.min(45, t.h - 3), n = z => [0, 1, 3].every(k => Math.abs(H(k, 0, z)) < 1e-9);
+  const ars = H(2, 0, -300), mtnN = H(4, 0, -300), mtnS = H(4, 0, 300), mtnE = H(4, 300, 0), isl = [H(5, 300, 0), H(5, -300, 0), H(5, 0, 300)], islN = H(5, 0, -300);
+  // the wet case: the same pad 20 m above a coast
+  const h0 = t.h, c0 = t.coastal; t.h = 20; t.coastal = true; G.SS = () => 5;
+  const wet = [[300, 0], [-300, 0], [0, 300]].every(([x, z]) => G.seaAt(T, at(x, z)) && G.surfaceAt(T, at(x, z)).name !== 'launch pad') && !G.seaAt(T, at(0, -300)) && !G.seaAt(T, at(60, 60));
+  G.SS = () => 3; const cwet = G.seaAt(T, at(0, 600)) && !G.seaAt(T, at(0, 200)); G.SS = () => 4; const mwet = G.seaAt(T, at(0, 400)) && G.terrainH(at(0, -300)) > 50;
+  t.h = h0; t.coastal = c0;
+  check('site-1: each school\'s site has its ground (Arsenal\'s hill where the mesh hill was, Mountain\'s ridge and fall, Isle\'s headland, the sea when low and coastal); every complex flat; nothing changes past 1.7 km',
+    flatBad === 0 && farBad === 0 && hill < 0.8 && n(-300) && ars > 40 && mtnN > 35 && mtnS < drop + 0.5 && mtnE < drop + 0.5 && isl.every(h => h < drop + 0.5) && Math.abs(islN) < 0.01 && wet && cwet && mwet,
+    `${flatBad} footprint points off flat, ${farBad} far points changed; Arsenal ±${hill.toFixed(2)} m of the mesh hill, ${ars.toFixed(0)} m at 300 m N; Mountain ${mtnN.toFixed(0)} N, ${mtnS.toFixed(0)} S, ${mtnE.toFixed(0)} E; Isle ${isl.map(h => h.toFixed(0)).join('/')} E/W/S, ${islN.toFixed(1)} N; wet: Isle ${wet}, Coastal ${cwet}, Mountain ${mwet}`);
+}

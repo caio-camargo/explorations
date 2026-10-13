@@ -60,14 +60,13 @@ function render(){spoolFrame();
    gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,CITY_TEX);gl.uniform1i(u.uCity,0);
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
    {const ns=sitesNear(norm(cpf),4),t=ns[0],f=siteFrame(t.u),a=new Float32Array(16);ns.forEach((x,i)=>a.set([x.u[0],x.u[1],x.u[2],x.h],i*4));
-    gl.uniform4fv(u['uSites[0]'],a);gl.uniform1i(u.uNS,ns.length);gl.uniform3fv(u.uPadE,f.e);gl.uniform3fv(u.uPadS,f.s);
+    gl.uniform4fv(u['uSites[0]'],a);gl.uniform1i(u.uNS,ns.length);gl.uniform3fv(u.uPadE,f.e);gl.uniform3fv(u.uPadS,f.s);gl.uniform3f(u.uPadK,t.kind==='pad'?padSchoolOf(t):0,shapeLo(t),siteWet(t)?1:0);   // (Q105) the nearest pad's own ground
     gl.uniform3fv(u.uPadL,mul(t.u,TELLUS.R+t.h).map((x,i)=>x-Math.round(cpf[i]/1000)*1000))}   // the nearest pad, in the same re-centred frame as loc
    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.w);gl.uniform1i(u.uWorld,1);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.c);gl.uniform1i(u.uClim,2);gl.activeTexture(gl.TEXTURE0);
    {const RT=TELLUS.R+TERR_TOP;gl.uniform2f(u.uGen,Math.cos(-WORLD.lon0),Math.sin(-WORLD.lon0));gl.uniform1f(u.uTcc,(d-RT)*(d+RT))}
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
-   gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
+   gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));   // (Q322) only where Selene is: the moon pass shades it
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
-   {const th=bodyTheta(SELENE,simT);gl.uniform3fv(u.uMdet,rotY(sub(camW,mp),-th).map(x=>x-Math.round(x/1000)*1000));if(u.uMrot)gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th))}
    galaxy();gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    if(u.uGalC){gl.activeTexture(gl.TEXTURE12);gl.bindTexture(gl.TEXTURE_CUBE_MAP,GALC.tex);gl.uniform1i(u.uGalC,12);gl.activeTexture(gl.TEXTURE0);gl.uniform1f(u.uGalE,GALC.enc);   // (Q321) the baked sky on unit 12
     gl.uniform1f(u.uStT,((HOOK.fxT??performance.now())/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure

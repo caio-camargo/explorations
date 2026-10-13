@@ -18,7 +18,7 @@ precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
-uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
+uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
@@ -111,10 +111,23 @@ float hgtG(vec3 g,vec2 uv,float k,out float m){vec4 w=wTexUV(uv);m=w.y;float e0=
   if(ih(i+ivec3(0,0,77))<.55){float dd=length(x-fl-.25-.5*vec3(ih(i+ivec3(0,0,78)),ih(i+ivec3(0,0,79)),ih(i+ivec3(0,0,80))))/.25;
    if(dd<1.)e+=v*(1800.+1600.*ih(i+ivec3(0,0,81)))*(1.-dd)*(1.-dd)*(dd<.12?.6+3.*dd:1.);}}
  return e;}
+// the nearest pad's own ground (QUEUE Q105): sim/world.js siteShape, term for term (change both). q = (east, south) in
+// metres in the pad's frame; uPadK = its school, how far the ground falls (m, negative), wet (1: the fall reaches the sea)
+float siteShapeG(vec2 q){float x=q.x,z=q.y,ax=abs(x),r=length(q),k=uPadK.x,lo=uPadK.y,H=0.;if(r>=${SHAPE_R}.||k<1.5)return 0.;
+ if(k<2.5){float we=x<0.?1.:0.,A=max((1.-sst(17.,mix(110.,44.,we),ax))*max(1.-sst(15.,mix(80.,32.,we),ax),sst(-11.2,-45.,z)),sst(-45.,-140.,z))*sst(-10.5,-11.2-24.*sst(16.,30.,ax),z);
+  H=(4.6+8.*sst(-11.,-34.,z)+30.*sst(-40.,-260.,z))*A*(1.-sst(-700.,-1400.,z));}
+ else if(k<3.5){if(uPadK.z>.5)H=lo*sst(0.,90.,z-380.+10.*sin(x*.019));}
+ else if(k<4.5)H=(9.*sst(-12.,-64.,z)+28.*sst(-64.,-280.,z))*(1.-sst(-700.,-1400.,z))+lo*sst(0.,160.,max(z-45.,x-70.));
+ else{float w=10.*sin(z*.021)+7.*sin(x*.033+z*.017);H=lo*sst(0.,70.,length(max(vec2(ax,z)-110.+w,0.))-40.);}
+ return H*(1.-sst(1100.,${SHAPE_R}.,r));}
+vec2 padXZ(vec3 pf){vec3 d=pf-uSites[0].xyz;return vec2(dot(d,uPadE),dot(d,uPadS))*uPR;}
 // height at a planet-fixed direction, with the pad levelled (as terrainH on the CPU)
-// the launch pads near the camera (up to 4, xyz = unit vector, w = pad height) are levelled as terrainH levels them all
+// the launch pads near the camera (up to 4, xyz = unit vector, w = pad height) are levelled as terrainH levels them all;
+// the nearest (uSites[0]) also gets its own ground (siteShapeG), which can rise above the climate texel's bound (ub)
+// and is steeper than lowland (m = 1: the march takes shorter steps there)
 float terr(vec3 pf,float k,out float m,out float ub){m=0.;vec3 g=toGen(pf);vec2 uv=wUV(g);ub=texture(uClim,uv).z;
- float dmin=1e30,hs=0.;for(int i=0;i<4;i++){if(i>=uNS)break;float dd=length(pf-uSites[i].xyz)*uPR;if(dd<dmin){dmin=dd;hs=uSites[i].w;}}
+ float dmin=1e30,hs=0.;int ni=0;for(int i=0;i<4;i++){if(i>=uNS)break;float dd=length(pf-uSites[i].xyz)*uPR;if(dd<dmin){dmin=dd;hs=uSites[i].w;ni=i;}}
+ if(ni==0&&dmin<${SHAPE_R}.&&uPadK.x>1.5){ub=max(ub,hs+50.);m=1.;return hs+siteShapeG(padXZ(pf));}
  if(dmin<2000.)return hs;float h=hgtG(g,uv,k,m);return dmin>4500.?h:h+(hs-h)*(1.-sst(2000.,4500.,dmin));}
 float terr(vec3 pf,float k){float m,ub;return terr(pf,k,m,ub);}
 // octaves worth drawing at a footprint fw (m per pixel): the finest kept has a wavelength of at least two pixels
@@ -130,7 +143,7 @@ float march(vec3 d,out float hh,float tS){hh=0.;vec2 sh=sph(uPc,uTcc,d);if(sh.y<
  float ub=0.,m=0.;
  for(int i=0;i<64;i++){vec3 p=d*t-uPc;float rl=length(p),alt=(t*t-2.*t*b+uPcc)/(rl+uPR);vec3 up=p/rl,pf=uProt*up;float cs=max(-dot(d,up),0.);
   // the air bound only needs the climate texel: skip the terrain while clearly above anything that could be here
-  if(alt>ub&&i>0){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;k=2.;vec3 g=toGen(uProt*normalize(d*t-uPc));ub=texture(uClim,wUV(g)).z;if(t>=t1)break;continue;}
+  if(alt>ub&&i>0){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;k=2.;vec3 pq=uProt*normalize(d*t-uPc),g=toGen(pq);ub=texture(uClim,wUV(g)).z;if(uPadK.x>1.5&&uNS>0&&length(pq-uSites[0].xyz)*uPR<${SHAPE_R}.)ub=max(ub,uSites[0].w+50.);if(t>=t1)break;continue;}
   float kF=octT(t,t*uPix/max(cs,.08)),kk=min(k,kF),h=terr(pf,kk,m,ub),bnd=kk<kF-.01?(m*${(RIDGE_A*1.3/2).toFixed(0)}.+300.)*exp2(1.-kk):0.,dh=alt-h-bnd;
   if(alt>ub){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;if(t>=t1)break;continue;}
   if(dh<0.){if(bnd>0.){k=kF;continue;}hit=true;hh=h;break;}
@@ -293,21 +306,30 @@ void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
  vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
- float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.;
+ float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.,vis=0.;
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
   float fade=sst(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
   // the terrain normal from the height field (planet-fixed), over about a pixel and a half
   vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
-   npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);}
+   npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);
+   if(uPadK.x>1.5){vec2 q=padXZ(pf);if(dot(q,q)<${SHAPE_R*SHAPE_R}.&&abs(siteShapeG(q))>.05)npf=normalize(mix(npf,pf,.5));}}   // (Q105) the pad's own ground: relief shading halved, so a cut bank facing away from the sun isn't black (the sky's ambient is ~1 %)
   vec3 alb=tellus(pf,npf,hT,gx,det,fade,oc);
+  // (Q105) the site's own ground cover, in the nearest pad's frame: Coastal's clearing of cut grass, the jungle's dark,
+  // mottled canopy round it (the rails and the assembly building kept clear, down to the beach when wet; the contrast
+  // makes the treeline, since an equatorial site's own colour is already rainforest), Isle's pasture on its headland
+  if(oc<.5&&(abs(uPadK.x-3.)<.5||uPadK.x>4.5)){vec3 pv=loc-uPadL;vec2 q=vec2(dot(pv,uPadE),dot(pv,uPadS));float far=1.-sst(1100.,1600.,length(q));
+   if(far>0.&&uPadK.x<3.5){float jm=sst(66.,82.,length(q*vec2(1.,.9))+8.*vn(vec3(q/23.,5.)))*(1.-(1.-sst(14.,20.,abs(q.x)))*sst(-178.,-166.,q.y)*step(q.y,0.))
+     *(1.-uPadK.z*sst(340.,372.,q.y+10.*sin(q.x*.019)));float cn=vn(vec3(q/6.,9.))+.5*vn(vec3(q/2.3,4.));
+     alb=mix(alb,mix(vec3(.11,.15,.05)*(.9+.2*vn(vec3(q/13.,2.))),vec3(.011,.03,.011)*(.35+1.1*cn),jm),far);}
+   else if(far>0.){float pm=1.-sst(.05,.3,siteShapeG(q)/min(uPadK.y,-1.));alb=mix(alb,vec3(.075,.15,.04)*(.85+.3*vn(vec3(q/31.,3.))),pm*far*.85);}}
   if(fade>0.&&oc<.5){
    // scrub: dark bushes on a 3 m grid, thinning in deserts and fading before they'd alias
    vec2 cb=floor(gx/3.),fb=gx/3.-cb;cb=mod(cb,4096.);float hb=h3(vec3(cb,5.)),grn=alb.g/max(alb.r,.01);
    vec2 ob=vec2(h3(vec3(cb,6.)),h3(vec3(cb,8.)))*.6+.2;float clump=vn(vec3(gx/45.,2.))+.5*vn(vec3(gx/11.,4.))-.75,bs=.05+.25*h3(vec3(cb,9.));
    float bush=step(1.1-.35*clamp(grn,0.,1.5)-.9*clump,hb)*(1.-smoothstep(bs*.5,bs,length(fb-ob)))*smoothstep(1.2,.4,fw);
-   vec3 pv=loc-uPadL;float paved=0.;if(dot(pv,pv)<4e6)alb=padGround(vec2(dot(pv,uPadE),dot(pv,uPadS)),alb,fw,paved);   // the nearest pad's own frame (east, south)
+   vec3 pv=loc-uPadL;float paved=0.;if(dot(pv,pv)<4e6){vec2 q=vec2(dot(pv,uPadE),dot(pv,uPadS));float un=sst(.3,1.5,abs(siteShapeG(q)));alb=mix(padGround(q,alb,fw,paved),alb,un);paved*=1.-un;}   // the nearest pad's own frame (east, south); none of the paint on its shaped ground (Q105)
    alb=mix(alb,alb*vec3(.35,.45,.3),bush*(1.-paved)*fade);npf=normalize(mix(npf,pf,paved));}
   vec3 st=sunTrans(p+n*20.);vec3 nb=oc>.5?n:normalize(transpose(uProt)*npf);   // npf is planet-fixed; n is inertial
   float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
@@ -325,17 +347,9 @@ void main(){
    col+=st*5.*gl*max(ndl,0.)+Fr*vec3(.05,.1,.2)*smoothstep(-.1,.2,ndl);}
   col=col*trans+ins;
  }else if(tM<1e29){
-  vec3 p=d*tM-uMc,n=normalize(p);
-  // crater relief: the height field's slope along the sun direction tilts the lighting (2 evaluations, no normal map)
-  // Selene turns (tidally locked): its markings and detail are in its own frame (uMrot = cos, sin of its angle)
-  #define MB(v) vec3(uMrot.x*(v).x-uMrot.y*(v).z,(v).y,uMrot.y*(v).x+uMrot.x*(v).z)
-  vec3 nb=MB(n),nb2=MB(normalize(n+normalize(uSun-n*dot(uSun,n))*.004));
-  float cr=crat(nb*18.)+.5*crat(nb*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(MB(d*tM)+uMdet):.5;
-  float cr2=crat(nb2*18.)+.5*crat(nb2*55.);
-  float slope=clamp((cr2-cr)*1.4,-.9,1.2);
-  float base=.16+.09*fbm(nb*3.)-.07*smoothstep(.5,.65,fbm(nb*1.6+3.)-${MARE_NEAR}*nb.x);
-  vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
-  float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
+  // (Q322 slice 2, BEAUTY B6.5) Selene is shaded by the moon pass (drawMoons, MOON_FS), added on top of this pass:
+  // here only the air in front of it, and in alpha (vis) how much of it the clouds below let through
+  col=ins;vis=1.;
  }else{
   float band;vec3 gal=galaxy(d,band);
   col=ins+trans*(gal+starsAt(d,band)+sunAt(d));
@@ -353,7 +367,7 @@ void main(){
   A/=ws;tm/=ws;float T=A.a;
   if(T<.999){vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tm+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tm/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=col*(1.-uVk*(1.-T))+uVk*(A.rgb*tr+(1.-T)*ic);if(tO>0.&&tO<tD)tD=tO;}}
+   col=col*(1.-uVk*(1.-T))+uVk*(A.rgb*tr+(1.-T)*ic);vis*=1.-uVk*(1.-T);if(tO>0.&&tO<tD)tD=tO;}}
  if(uCR>0.){vec2 hc=sph(uPc,uCcc,d);tC=uCcc>0.?(hc.x>0.&&hc.x<=hc.y?hc.x:-1.):hc.y;}
  float shW=1.-uVk*(1.-smoothstep(.5*uVD,uVD,tC));   // inside uVD the volume stands in for the shell
  if(tC>0.&&tC<tH&&shW>.001){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
@@ -365,9 +379,9 @@ void main(){
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));if(cov*shW>.5)tD=min(tD,tC);}}
+   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
  if(atl.a>0.)col=mix(col,pow(atl.rgb,vec3(2.2))*1.7*atlL,atl.a*uAtl);   // over the clouds: it's a map
- o=vec4(col,1.);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers)
+ o=vec4(col,vis);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers); alpha: Selene's share (Q322)
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
 const MESH_VS=`#version 300 es
@@ -1064,34 +1078,78 @@ precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb
 void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
  o=vec4(c*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
-// ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
-// against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
-// front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
+// ---- the moons (Nyx, and since Q322 slice 2 Selene): one full-screen ray-cast each, after the sky pass. The fragment
+// shader is SKY_FS's helpers (sph, trL, scatter, crat, fbm, detail) plus its own main. Selene (uSel 1) is added on top of
+// the sky pass, which drew the air in front of it and left in alpha what the clouds let through (blend DST_ALPHA, ONE);
+// Nyx (uSel 0) is drawn opaque with its own air, depth-tested against the sky (the sky pass doesn't know it's there).
+// (BEAUTY B6.5) Both are filtered by the pixel's footprint: every crater octave and fbm octave fades to its mean once its
+// cells near a pixel, and the relief's slope is taken over the footprint, so a 13 px Selene seen from Tellus is calm
+// instead of shimmering (Q250, PLAYTEST #49) and close up the craters go on down (uNoct). Regolith photometry: McEwen's
+// lunar-Lambert (a full Selene is a flat disc, not a ball), an opposition surge, a terminator where only the rims catch
+// light, and earthshine: the light of Tellus's lit face, by its phase seen from the ground.
 const MOON_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
-uniform vec3 uNc,uNdet,uNalb;uniform float uNcc;
-float rough(vec3 n){return crat(n*9.)+.6*crat(n*31.)+.35*crat(n*90.);}
+uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs;uniform vec2 uNrot;uniform vec4 uNoct;
+const float CM=.0042;   // cratG()'s mean
+float fbmF(vec3 p,float w){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*mix(.5,vn(p),1.-smoothstep(.25,.6,w));p=p*2.03+vec3(1.7,9.2,3.1);w*=2.03;a*=.5;}return s;}
+// craters with their gradient (xyz) in one pass, so the relief needs no second evaluation. crat()'s profile, with radii
+// .12–.34 of a cell (rim to 1.4×, under half a cell), so only the 2×2×2 nearest cells can reach a point: 8 cells, not 27
+// (the cells are 1.43× larger than crat's, uNoct.x 1/1.43 of what it would be, so the craters keep their size on the ground)
+vec4 cratG(vec3 p){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
+ for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;
+  vec3 q=o+vec3(h3(c),h3(c+17.3),h3(c+41.9))-f;float rad=.12+.22*h3(c+5.1),l=length(q),k=l/rad;if(k>=1.4)continue;
+  vec3 dk=-q/max(l*rad,1e-6);r+=k<1.?vec4(dk*1.2*k,(k*k-.75)*.6):vec4(-.5*dk,(1.4-k)*.5);}return vec4(r.w,r.xyz);}
+// craters at uNoct.w octaves from uNoct.x cells per radius, each uNoct.y finer and uNoct.z as deep; w = the footprint in
+// radii. x = height, yzw = its gradient on the unit sphere
+vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;i++){if(float(i)>=uNoct.w)break;float k=1.-smoothstep(.25,.6,w*f);if(k<=0.)break;
+ vec4 c=cratG(n*f+float(i)*7.31);s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  vec2 hn=sph(uNc,uNcc,d);if(!(uNcc>0.&&hn.x>0.))discard;float tN=hn.x;
- vec3 trans;vec3 ins=scatter(d,tN,trans);
+ vec3 trans,ins=vec3(0.);
+ if(uSel>0.){   // the sky pass drew the air in front: here only its transmittance, from the table (the ray reaches space)
+  vec3 c=-uPc;float r=length(c),mu=dot(c,d)/r;
+  if(r<uAR)trans=trL(r,mu);else{float b=-dot(c,d),rm=length(c+d*b);trans=b>0.&&b<tN&&rm<uAR?pow(trL(rm,0.),vec3(2.)):vec3(1.);}}
+ else ins=scatter(d,tN,trans);
  vec3 p=d*tN-uNc,n=normalize(p);
- // a rubble-pile look: craters at three scales, slope lighting along the sun as on Selene, dark mottled regolith
- float cr=rough(n),fade=smoothstep(3000.,150.,tN),det=fade>0.?detail(d*tN+uNdet):.5;
- vec3 ts=normalize(uSun-n*dot(uSun,n));float slope=clamp((rough(normalize(n+ts*.003))-cr)*1.2,-.9,1.2);
- float base=.75+.5*fbm(n*2.5)-.3*smoothstep(.45,.7,fbm(n*1.2+7.));
- vec3 alb=uNalb*(base+.12*cr+.25*fade*(det-.5));
- float ndl=max(dot(n,uSun),0.);vec3 col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
- o=vec4(col,1.);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers)
+ // the body's own frame (it turns: uNrot = cos, sin of its angle)
+ #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
+ vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.2);
+ vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w);
+ float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(3000.,150.,tN),det=fade>0.?detail(MB(d*tN)+uNdet):.5;
+ vec3 alb;
+ if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
+  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.07*fade*(det-.5))*vec3(1.,.98,.95);}
+ else alb=uNalb*(.75+.5*fbmF(n*2.5,w*2.5)-.3*smoothstep(.45,.7,fbmF(n*1.2+7.,w*1.2))+.12*cr+.25*fade*(det-.5));
+ float e=dot(n,uSun),mu0=clamp(e+slope*sqrt(max(1.-e*e,0.))*.8*smoothstep(-.12,.05,e),0.,1.6);   // past the terminator only the rims catch the sun
+ float cg=dot(uSun,V),g=acos(clamp(cg,-1.,1.))*57.29578,L=clamp(1.-.019*g+2.42e-4*g*g-1.46e-6*g*g*g,0.,1.);
+ float B=1.+.6/(1.+sqrt(max(1.-cg*cg,0.))/max(1.+cg,1e-3)/.05);   // the opposition surge (tan g/2 over a width of .05)
+ float refl=(2.*L*mu0/max(mu0+mu,1e-3)+(1.-L)*mu0)*B;
+ // earthshine: Tellus's lit face (albedo .35, a Lambert sphere's phase). Real, it's ~1/4000 of the sun, far under what
+ // the exposure (×4 at most) can show; ×100 so a night side under a full Tellus reads as a dim grey (3 % of the sunlit side)
+ vec3 wT=uPc-d*tN;float dT=length(wT);wT/=dT;float al=acos(clamp(dot(uSun,-wT),-1.,1.)),Ph=(sin(al)+(3.14159265-al)*cos(al))/3.14159265;
+ float eT=dot(n,wT),es=100.*.35*.6667*(uPR/dT)*(uPR/dT)*Ph*clamp(eT+clamp(dot(cg4.yzw,MB(normalize(wT-n*eT)))*uNs,-.9,1.2)*sqrt(max(1.-eT*eT,0.))*.8*smoothstep(-.12,.05,eT),0.,1.6);   // with the relief, as the sun's
+ vec3 col=alb*(refl*2.2+es*2.2+.0003);col=col*trans+ins;
+ o=uSel>0.?vec4(col,0.):vec4(col,1.);   // (Q314) linear light
  gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);
 }`;
 const PMOON=mkProg(QUAD_VS,MOON_FS);
 NYX.alb=[.085,.068,.054];   // carbonaceous: darker and browner than Selene
+// per body: crater octaves (cells per radius, finer by, deeper by, count) and the relief's slope gain
+const MOON_OCT=new Map([[SELENE,{oct:[12.6,3,.45,5],ns:.0056*1.43}],[NYX,{oct:[6.3,3.3,.6,4],ns:.0036*1.43}]]);
 function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
-  for(const b of BODIES){if(!b.parent||b===SELENE)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
-    if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
+  for(const b of BODIES){if(!b.parent)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
+    if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uPix,2*tanY/H);
       const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)}
-    gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);
-    gl.uniform3fv(u.uNdet,mul(C,-1).map(x=>x-Math.round(x/1000)*1000));gl.drawArrays(gl.TRIANGLES,0,3)}}
+    const sel=b===SELENE,th=b.lock||sel?bodyTheta(b,simT):0,mo=MOON_OCT.get(b)||MOON_OCT.get(NYX);
+    gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform1f(u.uNR,b.R);gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);gl.uniform1f(u.uSel,sel?1:0);
+    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);
+    gl.uniform3fv(u.uNdet,rotY(mul(C,-1),-th).map(x=>x-Math.round(x/1000)*1000));
+    // Selene: added where the sky pass found it (its alpha), depth untouched; Nyx: opaque, depth-tested
+    if(sel){gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.DST_ALPHA,gl.ONE,gl.ZERO,gl.ONE);gl.depthFunc(gl.ALWAYS);gl.depthMask(false)}
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    if(sel){gl.disable(gl.BLEND);gl.depthFunc(gl.LESS);gl.depthMask(true)}}
+  // the default framebuffer (no scene target) must not keep the sky's alpha: the page would show through
+  if(!SCN.on){gl.colorMask(false,false,false,true);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.colorMask(true,true,true,true);gl.clearColor(0,0,0,0)}}
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
@@ -2045,7 +2103,7 @@ function steppeTable(a,CO,STL,DK){const PIT=[.012,.012,.014,2],GL=[.64,.62,.57,2
 // ---- the other four schools' pads (QUEUE Q231, Q102 step 7; POWERS.md § "School briefs", mock-ups Q227 `mockups/schools/`
 // Pads). Each builds its own complex in place of Cape's; only the floodlight poles are shared (padLights lights them).
 // The moving parts are schoolRig's. The ground stays the sky shader's, and the site's shape (Arsenal's hill, Coastal's
-// jungle, Mountain's ridge, Isle's peninsula) is world's (Q105): what rises above it here is mesh, inside the sea
+// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.193): what rises above it here is mesh, inside the sea
 // platform's deck (x −256…86, z −194…80).
 // a heightfield patch y = f(x, z) over [x0, x1] × [z0, z1] in n × m cells (earth banks, the Arsenal hall's net); col a
 // colour or a function of the cell's corner
@@ -2066,8 +2124,7 @@ function bunker(a,x,z,r,CO){const pr=[];for(let i=0;i<=8;i++){const t=i/8*Math.P
 // with blast doors, a blockhouse with periscopes up-range, the assembly hall under a camouflage net, the propellant
 // tanks in a revetment
 function arsenalPad(a,TH,CO,STL,DK){const OL=[.31,.34,.21,2],EA=[.36,.37,.24,2];
-  box(a,[0,.05,0],17,.05,10.4,CO);box(a,[0,2.3,-10.8],17,2.3,.4,CO);   // the terrace and its retaining wall
-  hfield(a,(x,z)=>(4.6+8*sstep(-11,-34,z)+.7*Math.sin(x*.23)*Math.sin(z*.19))*(1-sstep(17,44,Math.abs(x)))*Math.max(1-sstep(15,19,Math.abs(x)),sstep(-11.2,-22,z))*(1-sstep(-50,-64,z)),-46,46,-64,-11.2,23,13,EA);   // (the floodlights' north poles stand on it)
+  box(a,[0,.05,0],17,.05,10.4,CO);box(a,[0,2.3,-10.8],17,2.3,.4,CO);   // the terrace and its retaining wall; the hill behind it is the ground's (siteShape, Q105)
   lathe(a,[[2.6,.1,[.05,.05,.05,1]],[2.6,.12,[.05,.05,.05,1]]],[0,0,0],32);for(let i=0;i<8;i++)rbox(a,[0,.13,0],2.6,.02,.06,STL,i*Math.PI/8);
   for(const s of[-1,1])box(a,[2.7*s,.75,19],.35,.75,15.5,CO);box(a,[0,.11,19],2.35,.01,15.5,DK);   // the chute, south
   const TX=7,TW=3;camoLattice(a,TX,0,TW,TH,(y,i)=>CAMO[(Math.floor(y/5)*3+i)%4]);box(a,[TX,TH+.15,0],TW/2+.5,.15,TW/2+.5,OL);tube(a,[TX,TH+.3,0],[TX,TH+7,0],.08,STL,6);
@@ -2123,6 +2180,7 @@ function islePad(a,TH,CO,STL,DK){const GV=[.5,.48,.44,2],WO=[.88,.86,.8,2],SH=[.
 // the school a site's pad is built in, and the mesh it draws (the current site's is sized to the rocket, padSync; any
 // other site in another school gets a default-height one, built once)
 const padSchoolOf=t=>SCHOOL_FORCE!=null?SCHOOL_FORCE:schoolOf(t&&t.power!=null?t.power:HOME);
+SITE_SCHOOL=t=>padSchoolOf(t);   // the ground under a site is its drawn pad's (sim/world.js siteShape, Q105)
 const PADX={};function padFor(t){const k=padSchoolOf(t);return k===padSch?PAD:PADX[k]||(PADX[k]=buildPad(32,k))}
 const PAD_GX=10.5,PAD_LIGHTS=[0,1,2,3].map(i=>{const t=.9+i*Math.PI/2;return[34*Math.cos(t),34*Math.sin(t)]});
 // what glows at night: the lamp faces, and the pools of light they throw on the ground around the pad (the ground is the
