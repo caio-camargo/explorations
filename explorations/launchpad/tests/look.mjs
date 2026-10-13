@@ -570,11 +570,11 @@
 
 // aerofx-18. No bands at the terminator (look & sound effects beat, QUEUE Q352, PLAYTEST #87): the sky's view-ray march
 // starts each pixel's 12 steps at its own offset (interleaved gradient noise), so the count of steps in the planet's
-// shadow no longer steps in unison across the terminator.
+// shadow no longer steps in unison across the terminator. (Q250) Only from above 15–50 km: low down it hatched the day sky.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
-  const jit = /jt=fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
   check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
 }
 
@@ -709,4 +709,17 @@
   const glow = /exp\(-pow\(\(hm-85e3\)\/5e3,2\.\)\)/.test(sky) && /smoothstep\(\.05,-\.2,dot\(normalize\(pt\),uSun\)\)/.test(sky);
   check('the air\'s transmittance from a table baked once (no march toward the sun), and airglow on the night limb (view 163)', table && glow && /if \(n === 163\)/.test(vj),
     `table ${table} · airglow ${glow} · view 163 ${/if \(n === 163\)/.test(vj)}`);
+}
+
+// aerofx-27. No aliasing on the clouds at liftoff (look & sound effects beat, QUEUE Q250, PLAYTEST #48): from low in
+// the air the sky's view-ray march starts mid-step (the per-pixel offset drew a fixed hatch over the day sky, which
+// crawled as the rocket climbed); the deck's billow detail fades once a pixel's footprint outgrows it, and the cloud
+// volume's finest noise once the march's steps do.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\);vec3 sR=vec3\(0\.\)/.test(page);
+  const deck = /float fm=fw\*uCR;dn=\.5\+\(vn\(cu\*2600\.\+uCT\*3\.\)-\.5\)\*\.6\*\(1\.-smoothstep\(800\.,3200\.,fm\)\)\+\(vn\(cu\*7800\.\)-\.5\)\*\.4\*\(1\.-smoothstep\(250\.,1000\.,fm\)\)/.test(page);
+  const vol = /float cdLod=0\.;/.test(page) && /mix\(vn\(w\/230\.\),\.5,cdLod\)/.test(page) && /cdLod=smoothstep\(230\.,700\.,ds\);float dn=cloudDens\(q\)/.test(page);
+  check('clouds at liftoff: the sky march starts mid-step low down, the deck\'s detail fades by footprint and the volume\'s by step length', sky && deck && vol,
+    `sky ${sky} · deck ${deck} · volume ${vol}`);
 }
