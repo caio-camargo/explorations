@@ -159,6 +159,10 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #mcWallTabs{display:flex;gap:6px;align-items:center;padding:5px 8px 0;position:relative;z-index:1}#mcWallTabs .dim{color:#3f8f5a}
 #mcTrack{flex:1;width:100%;min-height:0;display:block}#mcTrack.hidden{display:none}
 #mcCal{flex:1;overflow:auto;padding:14px 12px 8px;font-size:16px;--line:#1f6b39;--acc:#7dff9c;--dim:#3f8f5a}#mcCal .cl{font-size:16px;width:70px}#mcCal .cbar{font-size:15px;line-height:16px;background:rgba(125,255,156,.18)}#mcCal .cev{background:#ffb547}#mcCal .tk b{font:14px VT323,monospace}
+#mcNet{flex:1;overflow:auto;padding:8px 12px;font-size:15px;line-height:17px}#mcNet.hidden{display:none}#mcNet .dim{color:#3f8f5a}#mcNet .bad{color:#ff6a5a}#mcNet .warn{color:#ffb547}
+#mcNet .nbn{font-size:18px;margin-bottom:6px}#mcNet .nbn.bad{color:#ff6a5a;text-shadow:0 0 6px rgba(255,106,90,.5)}#mcNet .ngrid{display:grid;gap:4px 8px}#mcNet .nb{border-bottom:1px solid #1f6b39;font-size:18px}
+#mcNet .nl{color:#3f8f5a;align-self:center}#mcNet .nc{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;min-height:30px;border-bottom:1px dashed rgba(31,107,57,.6);padding-bottom:4px}
+#mcNet .nn{border:1px solid #1f6b39;padding:2px 6px;background:rgba(125,255,156,.06);max-width:200px}#mcNet .nn.paused{border-color:#ffb547}#mcNet .nn.bn{border:2px solid #ff6a5a}#mcNet .nfoot{margin-top:6px}
 #mcCons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;min-height:0}
 @media (max-width:1000px){#mcCons{grid-template-columns:repeat(2,minmax(0,1fr))}#mc{grid-template-rows:auto minmax(200px,40vh) auto}#mc .con{min-height:260px}}
 #mc .con{display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#3a4049 0,#2b3038 8%,#22262c 100%);border-top:4px solid #555d68;border-radius:6px 6px 0 0;padding:12px 10px 10px}
@@ -280,7 +284,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <div id="mc" class="hidden">
   <div id="mcTop"><button data-go="program">◀ Office [P]</button><h1>Mission control</h1><span id="mcDate"></span><span class="sp"></span><span id="mcNext"></span></div>
   <div id="mcWall"><div class="wl" id="mcClock"></div>
-    <div class="wl big"><div id="mcWallTabs"></div><canvas id="mcTrack"></canvas><div id="mcCal" class="hidden"></div><div class="scan"></div></div>
+    <div class="wl big"><div id="mcWallTabs"></div><canvas id="mcTrack"></canvas><div id="mcCal" class="hidden"></div><div id="mcNet" class="hidden"></div><div class="scan"></div></div>
     <div class="wl" id="mcPads"></div></div>
   <div id="mcCons"></div>
 </div>

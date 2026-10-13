@@ -55,6 +55,9 @@ function standHTML(s){const g=b=>b.mu/b.R**2,f=v=>v>9.95?'10+':v.toFixed(1),
   what=L.n===L.of?'as built':`what's left after its drops (${L.n} of ${L.of} parts)`,cl=L.legs&&Math.min(L.v,moon?moon.v:9)<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
   return`<div style="margin-top:4px">Touchdown <b class="${cl}">stands drifting up to ${f(L.v)} m/s</b> <span class="dim">sideways on ${B.name}${moon?`, ${f(moon.v)} on ${SELENE.name}`:''}: ${what}, on ${on}${pr?', as its landing procedure flies it':''}; faster, it tips over${L.legs?'':'. Legs widen the stance'}</span></div>`}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
+// later stages in the air (Q342): each one that lights while there's air, against what it takes to hold its course there
+function airHTML(A){if(!A||!A.length)return'';return A.map(a=>{const ok=a.holds,cl=ok?(a.tau<=0.7*a.auth&&a.lam<0.8*LAM_MAX?'ok':'warn'):'bad',k=x=>(x/1000).toFixed(x<9500?1:0);
+  return`<div>Stage ${a.k} in the air <b class="${cl}">${ok?'holds':'flips'}</b> <span class="dim">lights at ~${(a.h/1000).toFixed(0)} km, ${(a.q/1000).toFixed(1)} kPa on a standard ascent · ${ok?`need ${k(a.tau)} kN·m, has ${k(a.auth)}`:airWhy(a)}${a.cal<0?` · its centre of pressure ${(-a.cal).toFixed(1)} calibers ahead of its centre of mass${a.fair?' (the fairing up front)':''}`:''}</span>${ok?(a.cal<0&&a.q>3000?'<div class="sub">Unstable there: separate pointing prograde. Ten degrees off, it needs twice the steering.</div>':''):`<div class="sub">${airFix(a)}</div>`}</div>`}).join('')}
 function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
   // short of authority, a stable design just turns into the wind; an unstable one goes over
@@ -111,6 +114,7 @@ function editorChanged(){
     ${trimHTML(S)}
     ${standHTML(S)}
     ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
+    ${airHTML(a.air)}
     <div class="sub">${Math.min(cal(a.ful),cal(a.emp),cal(a.sup))<0?`Negative stability: it flips unless something steers it: the engines
     while they burn, steerable fins while there's air (the Control block says which hold). `:''}Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;

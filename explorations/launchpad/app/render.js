@@ -43,7 +43,8 @@ function render(){
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
     camW=madd(tgt,off,cam.dist);
     const bc=bodyPos(CB,simT),rc=sub(camW,bc),ra=len(rc);{const gR=CB.R+1.5+(CB.ground&&ra<CB.R+bodyTop(CB)+10?groundAlt(CB,toPF(CB,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
-    Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
+    Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0;
+    {const sh=camShake();if(sh){Fw=norm(add(Fw,add(mul(R,sh[0]),mul(U,sh[1]))));R=norm(cross(Fw,f.up));U=cross(R,Fw)}}}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   const desk=deskScene();   // (Q242) the Assembly: the design as a scale model on a drafting table, not on the pad
   if(desk)gl.clearColor(...DESK_BG.map(x=>x**2.2),1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
@@ -167,7 +168,7 @@ function render(){
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
-    const GF=groundFrame(camW),hits=[];
+    const GF=groundFrame(camW),hits=[],PSUN=lightEnv(p).sun.map(x=>x*lit(p));
     for(const[e,on]of PE){const sp=spoolOf(e,on);
       const f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,ig=ignOf(e,P),thr=sp.tg>0?Math.max(sp.k,.6*ig[3]):sp.k,[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01&&simT-sp.ig>.5)continue;
       const pf=plumeFrame(e),qt=pf.qt,sh=[pf.ex[0]-S.cm[0],pf.ex[1]-S.cm[1]+0.02,pf.ex[2]-S.cm[2]],Q=qt?qmul(S.q,qt):S.q,
@@ -179,7 +180,8 @@ function render(){
       gl.uniform3f(pu.uB,R,L,e.d.exit);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);gl.cullFace(inside?gl.BACK:gl.FRONT);
       gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
       gl.uniform4f(pu.uIg,ig[0],ig[1],ig[2],ig[3]);
-      gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
+      gl.uniform3fv(pu.uSunL,qrot(qconj(Q),SUN));gl.uniform3fv(pu.uSunC,PSUN);   // (Q319) sunlight on the exhaust, plume-local
+      gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.uniform1f(pu.uPf,P.pf||0);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
     if(hits.length&&IMPACT_FX){if(S.body.atm)drawImpact(GF,hits,VP);else drawDust(GF,hits,VP)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   // fin-tip vapor after the plumes: the trails don't write depth, so drawn before they'd vanish behind the exhaust even

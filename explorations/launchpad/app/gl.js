@@ -598,6 +598,7 @@ const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
 // (Q314) the emission volumes' radiance in the scene's linear units (plume, plasma, impingement): what was compressed
 // in display space (1 − e^−C) is now passed as is, so a core is many times brighter than sunlit paint and blooms
 const FXK=.8;
+const PLUME_SC=.5;   // (Q319) the exhaust's sunlight scattering: albedo × density scale (the gas glow term's units)
 // engine plume: a raymarched volume, axisymmetric about the nozzle axis, inside a bounding cylinder (unit lathe scaled by
 // uB = [R, L, exit radius]; local frame in metres, y 0 at the nozzle exit → −L downstream, s = −y). Shape follows the
 // pressure ratio n = pe/pa (exit over ambient): over-expanded jets pinch in, matched ones run straight with shock
@@ -615,10 +616,14 @@ ${PLUME_RB}
 void main(){float s=-aP.y*uB.y,k=min(uB.x,1.9*rb(s,uB.z)+.15*uB.z)*1.0086;vL=vec3(aP.x*k,-s,aP.z*k);
  vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLUME_FS=`#version 300 es
-precision highp float;const float FXK=${FXK.toFixed(3)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
-uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS,uGp,uIg;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
+precision highp float;const float FXK=${FXK.toFixed(3)},PSC=${PLUME_SC.toFixed(2)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo,uSunL,uSunC;uniform vec4 uK,uS,uGp,uIg;uniform float uFc,uT,uIn,uI,uOp,uPf;uniform sampler3D uN;
 ${PLUME_RB}
 void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
+ // (Q319, BEAUTY B2.1) sunlight scattered by the exhaust's droplets, soot and alumina: strongly forward (Henyey–Greenstein,
+ // g = 0.7, half isotropic), so a plume between the camera and the sun lights up. Seen against a dark sky at altitude or at
+ // twilight it is the glow of the plume itself, the "jellyfish"; at sea level the flame outshines it
+ float cs=dot(rd,uSunL),ph=.5*(.51/pow(1.49-1.4*cs,1.5)+1.)/12.566;vec3 sunS=uSunC*ph*PSC;
  // the stretch of the ray inside the bounding cylinder: from the proxy's front face (or the eye, when inside) to where it leaves
  vec3 p0=uIn>.5?uCam:vL;float t1;
  {float a=dot(rd.xz,rd.xz),b=dot(p0.xz,rd.xz),c=dot(p0.xz,p0.xz)-R*R,ts=a>1e-9?(-b+sqrt(max(0.,b*b-a*c)))/a:1e9;
@@ -632,14 +637,23 @@ void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
   float u=r/(b*(1.+(.08+.3*s/L)*(nn-.5)*2.)),d=pow(re/b,1.3);   // density ∝ (re/rb)², seen through a path ∝ rb
   if(u>1.4)continue;
   float prof=exp(-2.2*u*u)*smoothstep(1.4,1.,u),fade=smoothstep(L,L*.45,s+(nn-.5)*L*.25);
-  float core=smoothstep(Lp,0.,s+2.2*re*u)*smoothstep(1.05,.4,u);
-  float k=floor(s/Lc+.5),f=s/Lc-k,dm=k>=1.&&k<6.?exp(-.45*(k-1.))*exp(-f*f*14.-u*u*4.):0.;
+  // (Q319, B2.2) the core is turbulent, not a tube: eddies scrolling down at jet speed brighten and dim it and fray its edge
+  float ne=texture(uN,vec3(p.x*3.,s-uT*re*90.,p.z*3.)/re*.06+.53).r;
+  float core=smoothstep(Lp,0.,s+2.2*re*(u+.25*(ne-.5)))*smoothstep(1.05,.4,u+.3*(ne-.5))*(.65+.7*ne);
+  // (B2.3) shock diamonds, stronger the further off design the nozzle runs (|ln pe/pa|), with a Mach disk, a bright flat
+  // disc across the axis, at the first cell
+  float od=clamp(abs(log(uS.x))*.8,.25,1.),k=floor(s/Lc+.5),f=s/Lc-k,dm=k>=1.&&k<6.?od*1.6*exp(-.45*(k-1.))*exp(-f*f*14.-u*u*4.):0.;
+  if(k==1.)dm+=od*2.*exp(-f*f*90.)*smoothstep(.5,.1,u);
   float mantle=uK.z*uS.w*smoothstep(.35,.95,u)*smoothstep(1.35,1.,u)*smoothstep(0.,3.*re,s)*fade*(.4+1.2*nn);
   float rich=uIg.w*(.5+nn);vec3 co=mix(uCo,uMa*vec3(1.,.8,.6),min(rich,1.));
   float gf=min(1.,uIg.r+uIg.g+uIg.b);   // while the igniter flashes, its colour outshines the young flame
-  vec3 e=uI*(co*uK.x*core*d*.45+uDi*uK.y*uS.z*dm*.45*(1.-uIg.w)+uMa*(mantle+rich*prof*.6)*sqrt(d)*.5+uVa*prof*d*fade*(.6+.4*nn)*.18)*(1.-.85*gf)
+  // the gas cools as it expands (Q319, B2.2): its own glow falls with the plume's widening, (re/rb)^1.6, unless air mixes in
+  // and burns (uS.w), so a vacuum plume glows only near the nozzle and the rest is seen by the sunlight it scatters
+  float cool=mix(pow(min(1.,re/b),1.6),1.,uS.w);
+  vec3 e=uI*(co*uK.x*core*d*.45+uDi*uK.y*uS.z*dm*.45*(1.-uIg.w)+uMa*(mantle+rich*prof*.6)*sqrt(d)*.5+uVa*prof*d*fade*(.6+.4*nn)*.18*cool)*(1.-.85*gf)
+   +sunS*uI*prof*d*fade*(.55+.45*nn)
    +uIg.rgb*(core*2.+prof*(.6+nn))*d*smoothstep(6.*re,0.,s);   // the igniter's flash (TEA-TEB green on kerolox)
-  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8)+uK.w*rich*prof*smoothstep(1.5*re,5.*re,s)*smoothstep(14.*re,6.*re,s)*1.5;   // start/stop soot stays near the nozzle
+  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.6,.95,u)*smoothstep(1.25,1.,u)*smoothstep(4.5*re,1.5*re,s)*2.2)+(uK.w+uPf)*rich*prof*smoothstep(1.5*re,5.*re,s)*smoothstep(14.*re,6.*re,s)*1.5;   // start/stop soot stays near the nozzle; (Q319, B2.4) the dark curtain round a kerolox flame's root, the F-1's turbine exhaust
   C+=Tr*e*st;Tr*=exp(-(uSo*soot+uOp*uI*(core*d*.4+mantle*.25))*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
  float a=1.-dot(Tr,vec3(.333));
  o=vec4(C*FXK,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;   // (Q314) radiance as it is: the core outshines the day and blooms
@@ -792,7 +806,7 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
   float wk=0.;if(x>-2.*uEf&&rho<1.6*W){float xe=max(x,0.),dec=exp(-xe/uLw*3.)*smoothstep(-2.*uEf,0.,x);
    vec2 dr=qc.xz/max(rho,1e-4);float n2=texture(uN,vec3(dr*.7,xe/(uEp*5.)-uT*4.)).r,n3=texture(uN,vec3(dr*1.6,xe/(uEp*2.5)-uT*7.)+.37).r;
    float ring=exp(-pow((rho/W-.75)/.3,2.)),strk=smoothstep(.4,.8,n2*.6+n3*.4);
-   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3));cw=mix(ca,ce,smoothstep(0.,.3*uLw,xe+uEp*(n2-.5)));}   // the ablator's orange off the hull, rose to lavender downstream
+   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3))*(.55+.9*texture(uN,vec3(dr*.4,xe/(uEp*3.)-uT*11.)+.71).r);cw=mix(ca,ce,smoothstep(0.,.3*uLw,xe+uEp*(n2-.5)));}   // the ablator's orange off the hull, rose to lavender downstream
   vec3 cs=mix(ce,cc,smoothstep(.15,.9,w)*exp(-max(sd,0.)/(1.5*uD)));   // white-yellow facing the flow at the hull, the edge colour off it
   C+=(cs*sh*PSH+cw*wk*PWK)*uK*h/max(uEp,.3);t+=h;}
  o=vec4(C*FXK,0.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
@@ -817,7 +831,9 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
    if(z<-.3*S.y||z>zs*1.3)continue;
    float n1=texture(uN,vec3(p.x*1.3,ta*.6-uT*.4,p.z*1.3)/S.y*.25).r,n2=texture(uN,vec3(p.x,ta*3.,p.z)/S.y*.6+.3).r;
    float ro=S.y*(1.15+.95*sqrt(max(z,0.)/zs))*(1.+.3*(n1-.5)+.12*(n2-.5)),front=smoothstep(-.15*S.y,.35*zs,z),rear=1.-smoothstep(zs*(.86+.1*n2),zs*(.97+.1*n2),z);
-   dens+=S.z*front*rear*smoothstep(ro,ro*.62,rr)*(.5+n1*n2);}
+   // (Q320, BEAUTY B3.1) not one puff but several thin stacked rings, each with a sharp trailing edge, flickering
+   float rn=z/(.2*zs)+.15*(n1-.5),fr=fract(rn),ring=mix(.3,1.,smoothstep(.35,.9,fr)*(1.-smoothstep(.93,1.,fr)))*(.45+1.1*texture(uN,vec3(floor(rn)*.37,uT*7.,.5)).r);
+   dens+=S.z*front*rear*smoothstep(ro,ro*.62,rr)*(.5+n1*n2)*ring;}
   if(dens<=0.)continue;
   float sg=dens*uV*3./max(uSh[0].y,.3),a=1.-exp(-sg*ds);
   vec3 nr=vec3(p.x,0.,p.z)/max(rr,1e-3);float l=.5+.5*max(dot(nr,uSunL),0.)+.6*pow(max(dot(rd,uSunL),0.),6.);
@@ -1299,7 +1315,7 @@ HOOK.cloned=(a,b)=>a.forEach((p,i)=>{const m=MARKS.get(p);if(m)MARKS.set(b[i],{.
 HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.soot<.01&&m.char<.01)return;const l=len(m.cd)||1;
   shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
-let markT=null;
+let markT=null;const SPK={n:0,k:0};
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
   const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed&&!S.mkLift){S.mkLift=true;S.mkLiftT=simT}
   const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle,
@@ -1310,6 +1326,12 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
     if(p.cap.ablator)m.char=Math.max(m.char,clamp((p.T-420)/300,0,1),Math.min(1,3*(1-p.res.ablator/p.cap.ablator)));   // an ablator blackens far below its rating
     hotTo(m,kH,dt);if(kH>0&&sp>1)m.cd=madd(m.cd,fb,dt*kH/sp);   // the glow's windward side, also on parts whose bulk stays cool
     if(vacNozzle(p.d)){const tg=eng.includes(p)?S.throttle:0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
+  // (Q320, B4.3) the ship sheds sparks of ablator (and flakes of paint) from its hot face, as falling stages do
+  if(kH>0&&b===TELLUS&&sp>1){const abl=S.parts.some(p=>p.on&&p.cap.ablator&&p.res.ablator>0),va=sub(S.v,surfVel(b,S.r));SPK.n+=dt*kH*(abl?45:12);
+    for(;SPK.n>1&&SPK.k<40;SPK.n--,SPK.k++){const R=Math.random,u=norm([R()-.5,R()-.5,R()-.5]);
+      fxPuff(madd(S.r,u,S.radius*.8),add(madd(S.v,va,-(.02+.05*R())),mul(u,6*R())),{s0:.025+.035*R(),grow:0,a0:.9,life:.3+.7*R(),hot:abl?2.2:1.4})}SPK.n=Math.min(SPK.n,1);SPK.k=0}
+  ventTick(dt);   // (Q294) broken tanks venting
+  if(S.wet&&!S.mkSplash){S.mkSplash=true;splashFx(S)}   // (Q267) the moment it hits the sea
   for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
     for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
       const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
@@ -1347,7 +1369,7 @@ const PROPS={
   // ig: the igniter's flash colour and length (s), rich: how long the fuel-rich start lasts (s)
   kerolox:{ig:[.25,1,.35],igT:.3,rich:.7,tail:.8,co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
   alcohol:{ig:[1,.75,.35],igT:.15,rich:.4,tail:.4,co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
-  hypergolic:{ig:[1,.55,.5],igT:.05,rich:.15,tail:.15,co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
+  hypergolic:{ig:[1,.55,.5],igT:.05,rich:.15,tail:.15,co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[.35,.75,1.4],K:[2.4,1.8,.5,0],op:.25,pf:1.6},   // pf (Q319): the brown NO₂ puff of a fuel-rich start (so absorbs blue: brown)
   // solid: aluminised composite, blinding white-yellow, nearly opaque, few diamonds; its smoke is white (alumina)
   solid:{ig:[1,.95,.8],igT:.06,rich:.12,tail:.35,co:[1,.92,.78],di:[1,.9,.75],ma:[1,.62,.3],va:[1,.82,.6],so:[1,1,1],K:[7,.4,1.6,0],op:1.6},
   hydrolox:{ig:[.6,.6,1],igT:.05,rich:.1,tail:.1,co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
@@ -1526,6 +1548,7 @@ function debrisHeat(){if(mode!=='flight')return;const dt=Math.min(.1,Math.max(0,
     g.smk+=dt*k*12;while(g.smk>1){g.smk-=1;if(smoke.length>2500)smoke.shift();const R=Math.random;   // a dark trail of ablated paint and insulation
       smoke.push({pf:toPF(b,madd(d.r,[R()-.5,R()-.5,R()-.5],g.geo.radius),simT),t0:simT,s0:g.geo.radius*(1+R()),grow:3+3*R(),a0:.35*clamp(rho*3,.1,1),life:25+20*R(),rise:0,seed:R()*97})}}}
 let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
+let PLUME_LK=175;   // the plume light's strength (Q319, B2.5: was 110 before HDR, when the flame itself was capped at display white)
 const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
 function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
@@ -1536,7 +1559,7 @@ function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flig
     let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
     const w=thr*(e.d.exit/.55)**2*(.6+.4*Pr.K[0]/5),tt=simT*7+e.i*1.7,fl=.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7);
     P=madd(P,add(o,mul(dW,at)),w);const gf=Math.min(1,g[0]+g[1]+g[2]);for(let k=0;k<3;k++)C[k]+=w*fl*(Pr.co[k]*.4+Pr.ma[k]*.6)*(1-.8*gf)+(e.d.exit/.55)**2*g[k]*.6;W+=Math.max(w,.05);R0=Math.max(R0,e.d.exit*2.5)}   // (1−0.8 gf: the igniter's flash outshines the young flame)
-  if(W<=0)return;P=mul(P,1/W);const K=110*Math.min(1,pa*4+.15);   // dimmer in thin air (the plume's own glow goes too)
+  if(W<=0)return;P=mul(P,1/W);const K=PLUME_LK*Math.min(1,pa*4+.15);   // dimmer in thin air (the plume's own glow goes too)
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set(C.map(x=>x*K));
   const h=dot(sub(P,GF.O),GF.Y);if(h>0&&h<60)PLT.g={F:GF,h,foot:sub(P,mul(GF.Y,h))}}
 function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=Math.max(12,g.h*3.2);gl.useProgram(PPOOL.p);
@@ -1562,7 +1585,17 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
     rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
     a=clamp((k-.3)/.9,0,1),b=a*a*(3-2*a),c=[1,.45+.41*b,.12+.5*b],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
     P=add(sub(add(bodyPos(S.body,simT),S.r),camW),mul(f,ef+2*D));
-  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K));PLT.g=null}
+  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;const fl=.86+.08*Math.sin(simT*41.3)+.06*Math.sin(simT*97.1);   // (Q320, B4.4) the sheath flickers, and with it its light on everything
+  PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K*fl));PLT.g=null}
+// (Q320, BEAUTY B3.2 and B4.4) the camera shakes: a buffet through max-q, worst near Mach 1, and the rumble of re-entry by
+// the plasma's heat level. A sum of sines on sim time (deterministic, still when paused), in radians of view direction;
+// off in the map, out of flight and with SHAKE_FX = false
+let SHAKE_FX=true;
+function camShake(){if(!SHAKE_FX||mode!=='flight'||view==='map'||!S||!S.alive||!S.body.atm)return null;
+  const M=S.mach||0,q=S.qdyn||0,bf=.0022*sstep(8e3,30e3,q)*(1+1.5*Math.exp(-(((M-1)/.15)**2))),
+    qE=plasmaHeat(S.body,S.r,S.v,S.qHeat),kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0,A=bf+.0035*kH;
+  if(A<1e-5)return null;const t=simT;
+  return[A*(Math.sin(t*37.1)*.5+Math.sin(t*71.7+1.3)*.3+Math.sin(t*13.3+2.1)*.2),A*(Math.sin(t*41.9+.7)*.5+Math.sin(t*83.3+2.9)*.3+Math.sin(t*17.9+.4)*.2)]}
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
 const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[0,0,1],[1,0,0]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0],[1,0,0]]],v=[];
   for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}
@@ -1721,7 +1754,7 @@ function cutoffPuff(e){if(S.body!==TELLUS)return;const P=PROPS[pfxOf(e.d).prop]|
     fxPuff(madd(at,j,e.d.exit),add(S.v,add(mul(dn,6+10*R()),mul(j,4))),{s0:e.d.exit*(1+R()),grow:2+3*R()*(1+2*(1-pa)),a0:.35+.3*(P.tail||.3),life:2+3*R()*pa+1,hot:.4})}}
 // a puff that travels with a velocity (inertial frame, Tellus-centred) instead of hanging in the air: separation gas,
 // cutoff puffs, sparks. hot = how much it glows (sparks ~1)
-function fxPuff(r,v,o){if(smoke.length>2500)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,rise:0,seed:Math.random()*97})}
+function fxPuff(r,v,o){if(smoke.length>4000)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,rise:0,seed:Math.random()*97})}
 
 // [igniter colour × flash strength, richness] for an engine's current age since ignition
 function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9,ao=sp?simT-sp.off:1e9;if(a>3&&ao>3)return[0,0,0,0];const T=P.igT||.1,

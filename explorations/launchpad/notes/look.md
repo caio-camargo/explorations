@@ -1420,3 +1420,87 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
 - **Checks:** test `aerofx-12` (the bell's shape and ends, the ogive, hard and smooth profile normals, the shader's disc
   and its uniforms on both setters, the pad's light unchanged, blue and smaller from orbit); `look`'s airless-fill test
   now builds `diskOf` too. TESTING 232.
+
+## v1.153 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319; BEAUTY B2)
+- **Vacuum plumes stop being brown fog (B2.2).** The gas glow term (`uVa`) was as bright 20 m down a vacuum plume as at
+  the nozzle, so a wide plume read as an orange-brown cone. The gas cools as it expands, so its own glow now falls as
+  `(re/rb)^1.6` unless air mixes in and burns (`cool = mix(…, 1, uS.w)`): a vacuum plume glows only near the nozzle.
+- **Sunlight on the exhaust (B2.1).** What you see of the rest is sunlight scattered by droplets, soot and alumina.
+  The phase is half Henyey–Greenstein (g 0.7) and half isotropic, 18× brighter forward than back, so a plume between you
+  and the sun lights up: the twilight "jellyfish" in miniature. It is `PLUME_SC` (0.5; 2 read as white fog) × density,
+  coloured by `lightEnv(p).sun` and zero in a planet's shadow (`lit(p)`). At sea level the flame outshines it.
+- **The sea-level core (B2.2)** brightens and dims with eddies scrolling down at jet speed (one more noise fetch), which
+  also fray its edge; it no longer reads as a tube.
+- **Shock diamonds (B2.3)** are ×1.6 and scaled by how far off design the nozzle runs (`clamp(|ln n|·0.8, 0.25, 1)`); the
+  first cell has a Mach disk, a bright flat disc across the axis. Near design at sea level they stay faint, as they should.
+- **Palettes (B2.4).** Kerolox wears a stronger dark curtain round the flame's root (the F-1's turbine exhaust: 2.2× over
+  4.5 exit radii, was 0.8× over 3). Hypergolics puff brown at a fuel-rich start: `PROPS.hypergolic.pf` 1.6, with soot
+  that absorbs blue (`so` 0.35, 0.75, 1.4); a steady hypergolic flame stays clean. No engine burns hydrolox yet, so its
+  palette is untouched.
+- **The plume light (B2.5)** is `PLUME_LK` 175 (was 110, set when the flame was capped at display white).
+- **The contrail (B2.6)** runs to ρ = 0.006 (~33 km, was 0.02, ~26 km), with up to 4,000 puffs (was 2,500, which cut the
+  trail short on a climb: 2,457 → 3,957 puffs at T+100 s). Puffs live 110–170 s (was 70–120). The wind turns with height
+  (`h/6000 + 0.8 sin(h/2300)` rad about the local up) and peaks ×2.6 in a jet stream near 11 km, so the column kinks
+  and shears. It was one step at 8 km.
+- **Stills and cost** (RTX 3050): `output/launchpad/beauty/q319/`. `before/` and `t1`/`t2` are views 30–36 (`t1_cmp.png` with
+  PLUME_SC 2, `t2_grid.png` at 0.5), `sc_cmp.png` the sea-level close-ups, `n_cmp.png` the pad, `ct_cmp.png` the contrail,
+  `p-{before,after}-{high,low}/` the profiles. The plume pass costs +0.02–0.15 ms; smoke +0.0–0.7 ms with the longer
+  trail (view 31, High). The whole frame in the vacuum views read 1.5–3 ms higher, all in bloom and untracked time (the
+  GPU was shared with another session): measure again on a quiet machine.
+- **Not done (QUEUE *Proposed*):** heat haze (High), one light per cluster side, hydrolox's palette (when an engine burns
+  it), and a reference view of a long contrail at twilight.
+- **Seen on the way:** views 60–67 (the plume on the pad) shoot the rocket over bare grass, with the floodlit apron far off
+  at night; views 154–155 (max-q, staging) never leave the ground ("max-q 0.0 kPa at 0.2 km"). Both are on `main` as it
+  was; QUEUE *Proposed*.
+- **Checks:** test `aerofx-13`. TESTING 235.
+
+## v1.154 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320; BEAUTY B3.1–3.2, B4.3–4.4)
+- **Vapor collars as stacked rings (B3.1).** Each shoulder's collar is now four or five thin rings across its length
+  (`fract(z / 0.2·zs)`), each with a soft front and a sharp trailing edge, and each ring's density flickers on its own (a
+  noise fetch by ring index and time, ×0.45–1.55). Before, it was one smooth puff.
+- **The camera shakes (B3.2, B4.4)** (`camShake`, applied to the flight camera's direction in `render()`): a buffet of
+  0.0022 rad × q from 8 to 30 kPa, ×2.5 at Mach 1 (a Gaussian, σ 0.15), plus 0.0035 rad × the plasma's heat level in
+  re-entry. Sines at 13–83 Hz on sim time, so the reference views stay repeatable and a pause holds it still. Off in the map,
+  out of flight, and with `SHAKE_FX = false`. 0.003 rad at max-q near Mach 1, 0.0012 at Mach 2.
+- **Sparks from the ship (B4.3)**, as falling stages already shed them: from the hot face, 45/s × k with a working ablator
+  (hotter, `hot` 2.2) or 12/s of paint flakes without (1.4), at most 40 per tick, `fxPuff` 0.025–0.06 m. The smoke cap
+  is 4,000 for these too.
+- **The wake (B4.3)** flickers in ragged streamers: a noise ×0.55–1.45 scrolling down it at 11 per second.
+- **The plasma light flickers (B4.4)** ×0.86 ± 0.14 (two sines), so the sheath's warm light on the hull, smoke and stages
+  shimmers.
+- **Not done:** the leading edges warming faintly at high Mach on the ascent (B3.2: the hull glow's skin temperature only
+  follows the plasma); the radio blackout as silence (sound beat); Q250's clouds stay in Q250.
+- **Stills and cost** (RTX 3050, High): `output/launchpad/beauty/q320/cmp.png` (views 46, 50, 51, 54 before | after). The
+  vapor pass on view 50 was 0.5 → 0.19 ms and the plasma 0.58 → 0.57 ms on view 46: noise, as one fetch per sample was added.
+- **Checks:** test `aerofx-14` (the rings, the shake's shape and repeatability, the wiring). TESTING 236.
+
+## v1.155 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294; PLAYTEST #75)
+- **The sim** gains one hook and one log line at a failure (`sim/vessel.js`, before `detach`): `logEv('structure', …)` with
+  the joint, the kind of load and how far over it went, and `HOOK.crack(s, p)` (a no-op by default in `sim/core.js`).
+  Nothing else in the sim changes.
+- **The page** (`HOOK.crack`, `app/state.js`): at the broken joint (p's base), 25 sparks and 20 grey shards fly out at
+  6–30 m/s. A tank on either side of the joint breaks open. If it still holds over a fifth of its load and the air is over
+  5 % of sea level, it bursts into a fireball, `HOOK.boom` sized `∛(kg/500)` within 0.5–3 (a full 8 t tank: 2.5). Either
+  way it vents what's left as a white plume from its broken end (`VENTS`, `ventTick` from `marksTick`): over ~6 s,
+  puffs at 15–40 m/s with the vessel's velocity. In air they linger 4–8 s; in vacuum they flash out over a second. It
+  is render-side: the sim keeps the propellant where it was.
+- **The tumble** was there already (`detach` spins the broken-off part at 1.5 rad/s).
+- **Still to do:** the crack-and-groan sound (sound beat, QUEUE *Proposed*).
+- **Stills:** `output/launchpad/beauty/q294/crack_row.png` (an Orbiter's 8 t tank broken off its decoupler at T+35 s, at
+  0.2, 2 and 5 s; at 300 m/s the fireball is left behind the camera's frame within a fraction of a second).
+- **Checks:** test `aerofx-15` (the sim calls the hook on a real break, core's broadside Orbiter at 600 m/s; the page's
+  wiring). TESTING 237.
+
+## v1.156 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267; PLAYTEST #67)
+- **When:** the frame the sim sets `s.wet` (`seaCheck`'s splash verdict), once per flight (`S.mkSplash`), from `marksTick`.
+- **What** (`splashFx`, `app/state.js`): 90–365 spray puffs thrown up at 3–12 m/s·k and out at 2–8 m/s·k, living
+  0.6–1.5 s; and a ring of 64 puffs racing across the water at 5–8 m/s·√k for 2–3 s, half sunk in the sea so they read
+  as surf. k = v/8 · √(m / 3 t) within 0.3–2.5, so a 3 t capsule at 8 m/s is 1. The puffs are inertial `fxPuff`s with
+  no gravity, which is why they're short-lived.
+- **Tried and dropped: a foam patch** of planet-fixed smoke puffs. Billboards can't lie flat: from above, one stood
+  over the capsule like a small cloud. A foam patch and a dye marker belong in the sea's shading, with the swell the SIM
+  heaves craft on (`SEA_SWELL`), which the sea doesn't draw yet. Both grow `SKY_FS` (the Q19 rule: pay with a cut), so
+  they're QUEUE *Proposed* for sky & bodies / world.
+- **Stills:** `output/launchpad/beauty/q267/sq_row.png` (a capsule at 12.5 m/s: 0.3 s, 1.2 s, 10 s); `sp_row.png` is the
+  first, coarser try.
+- **Checks:** test `aerofx-16`. TESTING 238.

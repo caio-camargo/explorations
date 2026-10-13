@@ -19,15 +19,15 @@ function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=t
       else{const up=norm(nz),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),a=R()*6.283,rr=e.d.exit*(5+6*R())+(onPad?3:0);
         pf=add(mul(up,len(nz)-hn+1+R()*1.5),add(mul(X,Math.cos(a)*rr),mul(Z,Math.sin(a)*rr)));s0*=.7}
       smoke.push({pf,t0:simT,s0,grow:6+4*R(),a0:.5,life:40+30*R(),rise:1+1.5*R(),seed:R()*97})}}}
-function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.02)return;
+function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
   emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
-  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>2500)smoke.shift();
+  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>4000)smoke.shift();
     const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
-    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:70+Math.random()*50,rise:Math.random()*0.6,seed:Math.random()*97})}}}
+    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:110+Math.random()*60,rise:Math.random()*0.6,seed:Math.random()*97})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
 // of CPU a frame with ~1000 puffs.
 let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
@@ -39,8 +39,12 @@ function drawSmoke(VP,camW,R,U){
   for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
     let rx,ry,rz;const o=i*6;
     if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2]}   // fxPuff: inertial, ballistic
-    else{if(q.ux===undefined){const L=len(q.pf);q.ux=q.pf[0]/L;q.uy=q.pf[1]/L;q.uz=q.pf[2]/L;q.wf=L-TELLUS.R<8000?1:.4}
-      const ra=q.rise*age,wa=age*q.wf,x=q.pf[0]+q.ux*ra+WIND[0]*wa,y=q.pf[1]+q.uy*ra+WIND[1]*wa,z=q.pf[2]+q.uz*ra+WIND[2]*wa;
+    else{if(q.ux===undefined){const L=len(q.pf),u=[q.pf[0]/L,q.pf[1]/L,q.pf[2]/L],h=L-TELLUS.R;q.ux=u[0];q.uy=u[1];q.uz=u[2];
+        // (Q319, B2.6) the wind at the puff's height: it turns with height and peaks in a jet stream near 11 km, so a
+        // contrail kinks and shears as it drifts (was one step at 8 km)
+        const m=(h<20000?1:.4)+1.6*Math.exp(-(((h-11000)/4000)**2)),th=h/6000+.8*Math.sin(h/2300),c0=Math.cos(th),s0=Math.sin(th),uw=dot(u,WIND),x=cross(u,WIND);
+        q.wx=m*(WIND[0]*c0+x[0]*s0+u[0]*uw*(1-c0));q.wy=m*(WIND[1]*c0+x[1]*s0+u[1]*uw*(1-c0));q.wz=m*(WIND[2]*c0+x[2]*s0+u[2]*uw*(1-c0))}
+      const ra=q.rise*age,x=q.pf[0]+q.ux*ra+q.wx*age,y=q.pf[1]+q.uy*ra+q.wy*age,z=q.pf[2]+q.uz*ra+q.wz*age;
       rx=c*x+sn*z-camW[0];ry=y-camW[1];rz=-sn*x+c*z-camW[2]}
     smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
     smokeK[i]=rx*rx+ry*ry+rz*rz;smokeI[i]=i}
@@ -116,6 +120,30 @@ HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
 HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);sepFx(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
   if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,{...d.verdict,pf:d.impact.pf,parts:d.parts});d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
+// (Q294, PLAYTEST #75) a structural failure, at the broken joint (p's base): a crack of sparks and dark shards; a tank on
+// either side breaks open and vents its propellant as a white plume until it is gone (VENTS, ventTick); a tank that
+// still holds over a fifth of its load, in air, bursts into a fireball sized by what it holds. Render-side: the sim keeps
+// the propellant where it was.
+const VENTS=[];
+HOOK.crack=(s,p)=>{const b=s.body,J=add(s.r,qrot(s.q,sub([p.pos[0],p.y0,p.pos[2]],s.cm))),R=Math.random,h=len(s.r)-b.R,air=b.atm&&h<b.atm?density(b,h)/b.rho0:0;
+  for(let i=0;i<45;i++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(J,add(s.v,mul(u,6+24*R())),i<25?{s0:.03+.04*R(),grow:0,a0:.9,life:.3+.9*R(),hot:1.7}:{s0:.06+.1*R(),grow:0,a0:.8,life:1+2*R()})}
+  for(const[t,up]of[[p,-1],[p.parent,1]]){if(!t||t.d.kind!=='tank'||!t.cap.fuel)continue;const m=t.res.fuel||0;if(m<1)continue;
+    if(air>.05&&m>.2*t.cap.fuel)HOOK.boom(b,J,simT,clamp(Math.cbrt(m/500),.5,3));
+    VENTS.push({t,up,m0:m,m,air})}};
+function ventTick(dt){for(let i=VENTS.length-1;i>=0;i--){const V=VENTS[i],t=V.t,v=S&&S.parts.includes(t)?S:debris.find(d=>d.parts.includes(t));
+    if(!v||!dt){if(!v)VENTS.splice(i,1);continue}const R=Math.random,out=Math.min(V.m,dt*V.m0/6);V.m-=out;if(V.m<1){VENTS.splice(i,1);continue}
+    const e=qrot(v.q,[0,V.up,0]),J=add(v.r,qrot(v.q,sub([t.pos[0],t.y0+(V.up>0?t.h:0),t.pos[2]],v.cm))),n=Math.min(12,dt*40*Math.sqrt(V.m/V.m0)+R());
+    for(let k=0;k<n;k++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(madd(J,e,.2),add(v.v,add(mul(e,15+25*R()),mul(u,6*R()))),V.air>.02?{s0:.25+.25*R(),grow:2+2*R(),a0:.45,life:4+4*R()}:{s0:.3,grow:9,a0:.35,life:1+R()})}}}
+// (Q267, PLAYTEST #67) a splashdown: spray thrown up and out and a white ring racing across the surface, scaled by the
+// touchdown speed and the mass (k = v/8 · √(t/3), 0.3–2.5; a 3 t capsule at 8 m/s is 1). Inertial puffs (fxPuff: no
+// gravity, so short-lived). A lingering foam patch needs to lie flat on the water: billboard puffs stood up like clouds,
+// so it belongs in the sea's shading with the swell (QUEUE Q267's other half)
+function splashFx(s){const b=s.body;if(b!==TELLUS)return;const R=Math.random,up=norm(s.r),P=mul(up,b.R),v0=surfVel(b,P),
+    k=clamp((s.touchV||5)/8*Math.sqrt(s.mass/3000),.3,2.5),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),r0=(s.radius||1)*1.2;
+  for(let i=0;i<90+110*k;i++){const a=R()*6.2832,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
+    fxPuff(madd(P,h,r0*R()),add(v0,add(mul(up,(3+9*R())*k),mul(h,(2+6*R())*k))),{s0:.06+.1*R()*k,grow:.5+.5*R(),a0:.8,life:.6+.9*R()})}   // spray
+  for(let i=0;i<64;i++){const a=i/64*6.2832+R()*.1,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
+    fxPuff(madd(madd(P,h,r0),up,.2),add(v0,mul(h,(5+3*R())*Math.sqrt(k))),{s0:.15*k+.12,grow:.8,a0:.6,life:1.8+R()})}}   // the ring
 // staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
 // The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
 function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;

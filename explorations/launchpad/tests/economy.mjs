@@ -317,7 +317,7 @@
     M.nodes.some(n => n.kind === 'site') && sn && sn.slot === 'low' && bn && bn.kind === 'base' && bn.stock.supplies === 100 && bn.need.supplies === 10 && Math.round(bn.days) === 10
     && M.bottleneck && M.bottleneck.node === 'reg:42' && /10 days of supplies/.test(M.bottleneck.text), M.bottleneck ? M.bottleneck.text : 'no bottleneck');
   const N = readFileSync(new URL('./app/network.js', import.meta.url), 'utf8');
-  check('network model: the screen reads netModel() when it exists', /typeof netModel==='function'\?netModel\(\)/.test(N));
+  check('network model: the screen reads netModel() (its fallback went with N2, flow Q170)', /const netData=\(\)=>netModel\(\);/.test(N) && !/function netFallback/.test(N));
 }
 
 // econ-15. Rival personalities in the race and the program's own voice (economy session, QUEUE Q165, POWERS.md): a
