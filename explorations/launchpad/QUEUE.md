@@ -386,7 +386,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ✓ plan (NOTES § "Plan: low thrust on rails": ~2e-3 m/s² halves the Enyo trip, i.e. ~50 W of jet per kg of craft; NEP is for tugs; thrust on rails, arcs between flights, Edelbaum for routines) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
 | Q303 | A debris hit that **punctures a tank** (a leak) or **damages** a part, not only breaks it (Q200 v1.127 "Not yet") | M2 | S | ⚙ | ✓ v1.210 `e4c8389` (a tank holed past its wall's ballistic limit leaks by the orifice law, the jet pushes and turns the craft, empty at flight end; cells lose a string; other parts gather damage to a loss; test space-25; TESTING 291) |
-| Q304 | A docked composite's **power counts its passengers'** cells and batteries (today only the host's parts) (Q213, v1.126) | M2 | S | ⚙ | ready |
+| Q304 | A docked composite's **power counts its passengers'** cells and batteries (today only the host's parts) (Q213, v1.126) | M2 | S | ⚙ | → space 2026-10-13 |
 | Q331 | 📝 **The slow world** (D19 approved 2026-10-12; [`SYSTEM.md`](SYSTEM.md) § "The slow world"; with world, economy): the body in the innermost slot at M5 (orbit, 3:2 spin, look, ground with polar cold traps). Before that, its rules tried on Selene: rovers and bases carried through the night, following the twilight band, ice in polar craters beside sunlit ridges. Plan first | M5 | L | 📝 | ready (plan only) |
 
 ### world — the planet, sites, geography, Selene's ground (was terrain)
