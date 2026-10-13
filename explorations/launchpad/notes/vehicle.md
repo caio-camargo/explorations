@@ -1736,3 +1736,23 @@ Test `vehicle-12`. `--smoke` all pass.
 - **Drawn at their real size** (`app/gl.js` `partBody`): the fallback drew any new part as a 1.25 m drum, so the adapter, the
   motors, the thrusters, the spheres and the weight now have plain shapes from their own profiles; parts & pad styles them.
 - Not yet: ion; a stationary-orbit preset (Q412) built from these. TESTING 288.
+
+## v1.215 — a preset that reaches the stationary orbit: the TV Satellite (2026-10-13, vehicle session, QUEUE Q412, PLAYTEST #102)
+
+- **Caio:** "go ahead" (Q412 next: "no preset reaches the stationary orbit, so TV for the capital can't be flown"; M2's finish
+  line).
+- **The preset** (`PRESETS['TV Satellite']`, and its payload as a bench starter, `PAY_STARTERS['TV satellite']`): core, battery,
+  wheel, a long frame with two solar wings and two whips, an apogee engine (Q422) on a 0.7 m propellant sphere: 545 kg, 1,024
+  m/s of its own. A payload block with no bench link (`pid: null`: a player's payloads never overwrite it; "open on the bench"
+  makes one) in a **4 m fairing** (the 3 m left three parts out) on the Heavy's launcher (a Tank 2 t + Petrel over a Tank 8 t +
+  Kestrel with two boosters). No builder warnings; its upper stage holds to 30° off its path.
+- **Compared:** the Satellite's own launcher has 6,240 m/s in all against ~6,150 needed (too tight); a 4 t upper stage (6,894)
+  sagged back in the climb on the probe autopilot (TWR 0.33 lighting at 22 km; the builder flags its wheel filling too).
+- **Flown** (test `vehicle-30`, the probe autopilot, prograde after 10 km): a 110 km orbit with ~2,290 m/s left; **a coast until
+  a transfer burn now would arrive over the capital's longitude** (the far point is opposite, half a transfer later, while the
+  planet turns ~84°): 26 min from Dunnzar Cape for Kamar (41.6°S, 48°E); a prograde burn raises the far point to 5,668 km (the
+  upper stage runs dry part-way: staging releases the satellite and its engine finishes the burn); at the top the apogee engine
+  circularises: period 0.9995 day, e 0.0005, 0.00°, over 47.9°E, the capital sees it, **TV for the capital counts** (the
+  mission's own check), 378 m/s left to hold the slot. Without the wait it ends at 110°W, where Kamar can't see it.
+- **Not in the game yet:** anything that tells the player when to start that burn; QUEUE Q454.
+- TESTING 296.
