@@ -152,6 +152,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.125 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
 - v1.126 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
 - v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
+- v1.203 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

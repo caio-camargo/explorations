@@ -17,10 +17,10 @@ const powRTG=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.Wg)W+=p.d.Wg;return
 // what the panels give in full sun from direction u (the vessel's own frame): body cells their average share; a deployed wing
 // turns about its arm (the mount's outward normal n) to face the sun as well as that allows, so √(1 − (n·u)²) of its best
 function powSun(s,u){let W=0;for(const p of s.parts){if(!p.on||p.d.kind!=='solar')continue;
-    if(p.d.body)W+=p.d.Wp*SOL_BODY;else if(p.dep){const a=p.phi||0,c=Math.cos(a)*u[0]+Math.sin(a)*u[2];W+=p.d.Wp*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}}
+    if(p.d.body)W+=p.d.Wp*SOL_BODY*(1-(p.dmg||0));else if(p.dep){const a=p.phi||0,c=Math.cos(a)*u[0]+Math.sin(a)*u[2];W+=p.d.Wp*(1-(p.dmg||0))*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}}
   return W}
 // the best the panels can give (wings square to the sun): what the steady state assumes
-const powPeak=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.kind==='solar')W+=p.d.Wp*(p.d.body?SOL_BODY:SOL_WING);return W};
+const powPeak=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.kind==='solar')W+=p.d.Wp*(1-(p.dmg||0))*(p.d.body?SOL_BODY:SOL_WING);return W};
 // in the body's shadow: a cylinder behind it (the sun is fixed in the absolute frame, SUN_DIR, and far)
 function inShadow(b,r){const d=dot(r,SUN_DIR);return d<0&&len(sub(r,mul(SUN_DIR,d)))<b.R}
 // the share of a circular orbit of radius r spent in that shadow, its plane at beta to the sun: none once the sun is high

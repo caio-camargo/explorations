@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2097,3 +2097,26 @@ Fragments (v1.83) were a density per band that hit registered entries between fl
 - **The odds** (test `space-24`): after one 1 t breakup at 400 km, the Probe stack through the thickest band: **0.14
   hits a year**, about one in 70,000 flight-hours. Strikes come with a cascade or an anti-satellite test, as they should.
 - **Not yet:** a hit that punctures a tank (a leak) or damages instead of breaking; the fragment drawn (HOOK.fragIn).
+
+## v1.203 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
+
+v1.127's strike had two outcomes: a part lost, or "dented, no harm done". Now a hit can be in between (`fragStrike`,
+`sim/space.js`):
+- **A tank is holed** (fuel or the gas bottle's gas) when the piece gets through its wall: crater depth
+  0.91 L (vn / 7 km/s)^⅔ (a 1 g/cm³ piece into aluminium, the thin-plate rule's shape), holed past 1.8 × a 3 mm wall;
+  vn is the speed along the wall's normal, cos θ from a cosine-weighted roll. So a 1 cm piece holes a tank if it meets
+  the wall faster than ~3.2 km/s; a glancing one dents it. The hole is about the piece's size.
+- **The leak** (`leakTick`, from `missionTick` each step): the orifice law, fuel at 3 bar (**a 1 cm hole: 1.15 kg/s**,
+  an 8 t tank in ~2 hours), gas from 200 bar falling as the bottle empties (choked: 2.2 kg/s at first, a 15 kg bottle
+  mostly gone in ~10 s). **The jet pushes and turns the craft** through the hole's normal (the side the piece came
+  from), about the centre of mass: fuel's jet is ~25 m/s (28 N for a 1 cm hole: 0.18 m/s and ~0.02 rad/s on a 9.5 t
+  stack in a minute), gas's ~400 m/s (a kick of ~900 N). In physics steps only: on rails it only drains. A message says
+  the rate and the time to empty; another when it's dry.
+- **At flight end** a tank still leaking joins the registry empty (`leakDry` in `satRegister`), so station-keeping
+  sees what's left.
+- **A solar wing loses a string**: a quarter of its output (more for a big piece), lost once nothing is left; the power
+  budget reads `p.dmg` (`sim/power.js`). Antennas are still lost to any piece.
+- **Anything else gathers damage**: its share of the shattering energy (below a tenth: a dent), lost once that adds to
+  one. **Not yet:** damage does nothing else (a hit engine burns as new: Proposed); a leak's jet drawn; holes on the
+  registry's satellites between flights (they are struck by `fragTick`, lost or not).
+- Test `space-25`.
