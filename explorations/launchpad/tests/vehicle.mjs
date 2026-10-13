@@ -588,3 +588,28 @@
     side.length === 8 && !out.length && o && o.d.r === 0.4 && api.PARTS.cam.h === 0.3,
     `side boxes ${side.length}, outside the fairing: ${out.join(', ') || 'none'}; frame r ${o && o.d.r}; camera ${api.PARTS.cam.h} m`);
 }
+
+// vehicle-21. Later stages in the air (vehicle session, QUEUE Q342 / PLAYTEST #82): a satellite's upper stage with a payload
+// fairing up front, dropped at ~34 km and ~13 kPa by a small first stage, goes end over end (the fairing's joints never break:
+// the tumble is what Caio saw). airSep finds where each fresh stage lights on a standard ascent and whether it holds there:
+// short of steering (the satellite), or diverging faster than the autopilot catches it (the same with a reaction wheel: more
+// torque doesn't help); steerable fins on the upper stage fix it; the presets hold; a booster drop isn't a fresh stage. Flown:
+// the satellite tumbles after separating, holding prograde from 20 km; with steerable fins on its upper stage it doesn't.
+{
+  const L = ['t2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], sat = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', ...L]), whl = api.toV2(['core', 'rwheel', 'batt', 'sci', 'cam', 'fair', ...L]),
+    cf = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'cfins', 'petrel', 'dec', 't8', 'fins', 'kestrel']);
+  const A = d => api.airSep(d)[0] || {}, a = A(sat), w = A(whl), c = A(cf), warned = api.launchWarnings(sat).some(([k, x]) => /end over end/.test(x));
+  const presets = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Probe', 'Heavy', 'Asparagus', 'Lunar', 'Sample Return'].filter(n => api.airSep(api.PRESETS[n]).some(x => !x.holds));
+  const heavy = api.airSep(api.PRESETS.Heavy)[0];   // its boosters drop at ~19 km off a lit core: the stage checked is the upper one, high up
+  const fly = d => { const AS = api.TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = 2; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
+    let tS = null, mx = 0; for (let k = 0; k < 60000 && s.alive; k++) { const f = api.localFrame(s.r), h = api.len(s.r) - api.TELLUS.R;
+      if (h > 20000) s.sasMode = 'pro'; else { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(f.e, Math.cos(r)), api.mul(f.up, Math.sin(r)))); }
+      if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
+      if (tS != null && api.t > tS + 0.1 && s.qdyn > 500) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 10) break; api.advPhys(s); }
+    return { sep: tS != null, aoa: mx * 180 / Math.PI }; };
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const fs = fly(sat), fc = fly(cf); api.HOOK.msg = msg0;
+  check('later stages in the air (Q342): the fairing satellite\'s upper stage flips at ~34 km (short of steering; with a wheel, too fast), warned; steerable fins hold; presets hold; flown: it tumbles, with fins it doesn\'t',
+    a.k === 2 && !a.holds && a.why === 'auth' && a.h > 25e3 && a.h < 45e3 && a.q > 8e3 && a.q < 18e3 && a.fair && warned && !w.holds && w.why === 'fast' && c.holds && !presets.length && heavy && heavy.h > 45e3
+      && fs.sep && fs.aoa > 60 && fc.sep && fc.aoa < 20,
+    `satellite: stage ${a.k} at ${(a.h / 1e3).toFixed(0)} km ${(a.q / 1e3).toFixed(1)} kPa, ${a.holds ? 'holds' : 'flips (' + a.why + ')'}, warned ${warned}; with a wheel ${w.holds ? 'holds' : 'flips (' + w.why + ')'} λ ${w.lam && w.lam.toFixed(1)}/s; steerable fins ${c.holds ? 'hold' : 'flip'}; presets flagged: ${presets.join(', ') || 'none'}; Heavy's checked stage at ${heavy && (heavy.h / 1e3).toFixed(0)} km; flown: ${fs.aoa.toFixed(0)}° after separating, with fins ${fc.aoa.toFixed(0)}°`);
+}

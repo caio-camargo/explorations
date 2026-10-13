@@ -413,7 +413,42 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
   const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000});s.parts.forEach(p=>p.pfrac=0);
   const lift=rec(probe(s,{thr:1})),mq=rec(probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1}));
   s.parts.forEach(p=>{if(ls.includes(p.seg)&&p.res.fuel!=null)p.res.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=saved[i]});
-  geom(s);return{ful,emp,sup,lift,mq,ctl:controlReport(s)}}
+  geom(s);return{ful,emp,sup,lift,mq,ctl:controlReport(s),air:airSep(s.stack)}}
+// Later stages in the air (vehicle, QUEUE Q342 / PLAYTEST #82): a stage that lights while there's still air must hold its own
+// course there. A small first stage drops the upper one at 30-odd km and 10+ kPa, and an upper stage with a wide fairing up
+// front (centre of pressure well ahead of its centre of mass) goes end over end. Where each stage starts comes from a point
+// mass flown on the standard ascent (vertical to 200 m, flat by 38 km, the procedures' and the hand-flown profile) with
+// dvPlan's stages and the ship's drag; then that stage, as it flies (what's dropped gone, a fairing jettisoned before it
+// gone), is probed holding 5° off the airflow at that q, burning. Two ways to lose it, measured by flying (notes/vehicle.md
+// § v1.151): steering short of that 5° (wheels, gimbals, steerable fins at that q), or a divergence rate √(dM/dα / I) past
+// LAM_MAX, a light stage going over faster than the autopilot catches it (a reaction wheel doesn't help there). Only a fresh
+// stage: boosters dropping off a core that's already lit and steering don't count. [{k, h, q, M, holds, why: 'auth'|'fast',
+// tau, auth, cal, lam, load, lp}] for each stage that lights above 1 kPa.
+const LAM_MAX=5.5;
+function airSep(stack){if(!stack)return[];const s0=newShip(stack),P0=dvPlan(s0,0),P1=dvPlan(newShip(stack),1),P=P0.map((x,i)=>({...x,dvA:(P1[i]||x).dv})).filter(x=>x.dv>0.5);if(P.length<2)return[];
+  const fresh=(a,b)=>s0.events.slice(a,b).some(e=>e.ignite.length);   // a stage newly lit between plan steps a and b
+  const tab=dragTable(s0,0),AS=TELLUS.atm/7e4,mu=TELLUS.mu,R=TELLUS.R,starts=[];let x=0,h=0,vx=0,vh=0;
+  // thrust from each stage's mass flow and its exhaust speed in vacuum and at sea level (from the two plans), by the pressure
+  for(let i=0;i<P.length-1;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
+    const veV=st.dv/lr,veA=st.dvA/lr,dt=Math.max(0.2,T/600);
+    for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),f=clamp((h-200*AS)/(38000*AS-200*AS),0,1),pit=(90*(1-Math.pow(f,0.6)))*Math.PI/180,sp=Math.hypot(vx,vh),
+      rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*sp*sp*cda,g=mu/((R+h)*(R+h));
+      vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt}
+    const sp=Math.hypot(vx,vh),q=0.5*density(TELLUS,h)*sp*sp;if(q<1000)break;if(fresh(P[i].ev,P[i+1].ev))starts.push({ev:P[i+1].ev,h,q,M:sp/SND(h)})}
+  if(!starts.length)return[];
+  const out=[];for(const S1 of starts){const s=newShip(stack),on=s.parts.map(()=>true),lit=[];let k=0;
+    for(const e of s.events.slice(0,S1.ev)){for(const g of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===g)on[i]=false});
+      for(const i of e.fair||[]){const p=s.parts[i];if(p&&p.profF){p.fj=true;p.xm=0}}
+      if(e.ignite.length){k++;lit.push(...e.ignite)}}
+    S1.k=S1.ev;s.parts.forEach((p,i)=>p.on=on[i]);geom(s);rebuildShape(s);   // k: the staging list's number for the event that lights it
+    const segs=lit.filter(g=>s.parts.some(p=>p.on&&p.seg===g&&p.d.kind==='engine'));s.parts.forEach(p=>p.pfrac=0);
+    const r=probe(s,{M:S1.M,aoa:5,q:S1.q,h:S1.h,thr:1,segs});let lp=null,load=0;for(const p of s.parts)if(p.on&&p.parent&&p.pfrac>load){load=p.pfrac;lp=p}
+    const c=probe(s,{M:S1.M,aoa:4,q:5000,h:S1.h});
+    // how fast it would go over if nothing steered: an unstable airframe's divergence rate, √(dM/dα / I) (1/s)
+    const cal=(c.ycm-c.ycp)/(2*s.radius),lam=cal<0?Math.sqrt(r.tau/(5*Math.PI/180)/Math.max(s.I[0],s.I[2])):0;
+    const short=r.tau>1.1*r.auth,fast=lam>LAM_MAX;
+    out.push({...S1,holds:!short&&!fast,why:short?'auth':fast?'fast':'',tau:r.tau,auth:r.auth,cal,lam,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque})}
+  return out}
 
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in
 // the air it integrates drag from a CdA(Mach) table measured by the aero pass at the angle the vessel is holding to the
