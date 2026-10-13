@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
+**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -197,10 +197,44 @@ tucked in somewhere. what's good is this will definitely help stability, since t
 - **Folded for launch, as designed**: the bench shows the stowed and the deployed shape; the fairing check uses the
   stowed one; deploying in orbit animates (QUEUE Proposed, 2026-10-13).
 - **Stability**: payloads shrink (a 0.6 m bus, not a 1.25 m stack of round parts), so rockets get less top-heavy.
+- **Caio's notes on the mock-up (2026-10-13):** trusses in other shapes, not only a box: **triangle, square, hexagon,
+  octagon, straight or tapered**. Wings **unfold on hinges like an accordion** (the arm swings out from a pivot past
+  the bus's edge, then every hinge opens at once), never slide, and nothing passes through the body. **Balance on the
+  adapter:** an off-axis payload gets a balance weight on its adapter ring, opposite the heavy side, sized by the bench
+  in one click; it costs mass (a 111 kg craft 3.8 cm off needs 14 kg), so moving heavy parts opposite each other is
+  the better fix. The rocket's Assembly reads the payload's balance and warns as its own check does.
 - **Customers' payloads** (default, Caio to confirm): a commercial launch contract brings its satellite ready (you
   only fly it: mass, size, orbit, a deadline); your own program's satellites you design.
 - **Today's rocket-builder probe parts** (Q337's side parts, the octagonal frame) move to the bench; saved designs that
   carry them on the rocket keep working (a design with probe parts stacked is read as an implicit payload).
+
+### 6.2 Bench parts: a brainstorm (2026-10-13, for Caio to pick)
+
+Caio: "since this now gets its own screen, and it exists in a different scale than the rockets, sort of, we can
+brainstorm more parts, if it makes sense to." A part earns a place if it brings a **decision** (a trade, a timing, a
+risk), not only a look. Starred: the recommended first set.
+- **Spin, then despin** ★: spin the craft on a spin table before the kick motor fires (a steady burn with no
+  guidance), then **yo-yo weights** on cables unwind and stop the spin. Cheap stability with a timed, one-shot act.
+- **Tape recorder** ★: data stored between stations, a capacity in pictures; full means pictures lost. Makes the
+  network and the camera's appetite meet.
+- **Louvres and radiators** ★: shutters that open when warm (Voyager, Mariner): temperatures held over a wider range,
+  for mass; radiator fins for the hungry parts (radar, the late electronics).
+- **Film-return capsule** ★ (era 1): the pictures come home in a bucket caught by a plane or picked from the sea; sharp,
+  counts only if recovered. The early answer to "a narrow camera with no fast link".
+- **Entry probe** ★: a small sealed probe with a heat shield and a parachute, released from the bus before arrival
+  (Pioneer Venus, Galileo): a payload inside the payload, designed on the bench as its own block.
+- **Dispenser** ★: an adapter that carries 2 to 8 small satellites and releases them in turn (constellations, shared
+  launches); pairs with smaller stacks and routes.
+- **Instruments that make shapes**: a magnetometer on a long mast, particle detectors, a plasma-wave pair of wires,
+  micrometeoroid panels as big wings (Pegasus), an infrared radiometer (weather), a seismometer and a sample scoop for
+  landers, a laser retroreflector (cheap, passive: rangers on the ground pay for it).
+- **Talking**: a turnstile antenna (four short rods), a horn, a steerable dish on a gimbal, an unfurling mesh dish,
+  later a phased array.
+- **Power**: tracking wings (a drive that turns them to the sun: more power, a moving part that can stick), fixed
+  panels, fuel cells for short missions.
+- **Moving**: a hydrazine thruster cluster, a bipropellant apogee engine, an ion engine (late).
+- **Ends of life**: a drag sail or a deorbit motor (debris, D-rules), a crash camera that takes pictures until impact
+  (Ranger), an impactor.
 
 ## 7. Keeping them beautiful (D21)
 

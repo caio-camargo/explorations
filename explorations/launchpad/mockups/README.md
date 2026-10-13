@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.16 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.17 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -114,7 +114,11 @@ are designed apart from the rocket, like the Rover yard, from parts, never ready
   ground · stays in its temperatures · balanced on its axis · fits the fairing* (folded), each a verdict and its fix.
 - **Designs**: the program's payloads (a starter to copy, your own, a customer's ready-made one you only fly); on the
   rocket a payload is one block in the fairing.
-URL: `?view=stowed|deployed|fairing`, `&tab=checks|part|designs`, `&sel=bus|<part>`, `&shape=`, `&n=`, `&d=`, `&h=`,
+**Round 2 (Caio, 2026-10-13: "looks good"):** trusses as triangle, square, hexagon or octagon, straight or tapered
+(`truss-hex.png`); the wings unfold on hinges like an accordion from a pivot past the bus's edge, nothing through the
+body (`unfold-1…3.png`); a **balance weight** on the adapter, one click from the balance check (`balance.png`,
+`balanced.png`). More bench parts: PROBES § 6.2.
+URL: `?view=stowed|deployed|fairing`, `&tab=checks|part|designs`, `&sel=bus|<part>`, `&shape=`, `&tn=3|4|6|8`, `&taper=1`, `&trim=1`, `&n=`, `&d=`, `&h=`,
 `&on=` / `&off=<parts>`, `&open=<check>`, `&still=1`. Numbers are illustrative.
 
 **Pick:** _(Caio; if silent: build from this page: the bench as a screen beside the Rover yard, after the pointing slice S2)_
