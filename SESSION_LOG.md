@@ -6229,3 +6229,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   orbit, M3 qualifications), four as QUEUE *Proposed* lines.
 - **For Caio:** W42 (five questions, all with defaults).
 - **Next:** economy's remaining ready item is Q283 (crew skill revision, a plan); Q376 after space's Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q420 the band at the horizon in the deck (v1.214)
+
+- **Done:** reproduced in new views 178–179 (2.4 km, level); the shell past the volume's 20–40 km fade (and far ground)
+  drew a bright line; now fogged in the volume's own colour from inside the slab. Band 26 → 17 and 32 → 9 grey levels
+  (paired renders); 81, 82 unchanged. A sunlit fringe in the volume's own fading ring remains: *Proposed*.
+- **Collisions:** claimed after grepping for Q420; views 175–177 were sky2's, mine are 178–179; test renumbered
+  aerofx-39 (sky2 took 38). Lesson: before/after must come from the same view list, or each view's weather search lands
+  on a different clock.
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (295), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q420-A/`, `q420-C/`.
+
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): the TV Satellite, a stationary orbit over the capital (v1.215, Q412)
+- **Built:** `PRESETS['TV Satellite']` (an apogee-engine payload block in a 4 m fairing on the Heavy's launcher) and its payload as a bench starter; flown on the probe autopilot to a stationary orbit over Kamar, the mission's own check counts TV for the capital (test vehicle-30). Queued Q454: nothing tells the player when to start the transfer burn (26 min of coasting from the Cape).
+- **Checked:** vehicle and flow sections, and every section that loops over all presets, pass. The full suite was stopped by the system for low memory (chunk 2 passed; chunk 1's one failure is `main`'s: the Assembly's new top-view key `t` isn't in its key help, "Help lists every key the assembly handler reads"; chunks 3–4 not run).
+- **Next:** Q423 (bench parts, first set) or Q416 slice 2 with Q417, as Caio picks.

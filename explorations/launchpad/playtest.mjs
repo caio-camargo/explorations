@@ -1083,6 +1083,33 @@ ROWS[237] = {title: 'a structural failure shows', steps: [`{go('assembly'); PT.p
 // 213 and 233: mission control's walls in turn (W), the network page last
 ROWS[233] = {title: "mission control's walls (with 213)", steps: [DOCK_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); go('program'); if (screenNow() === 'debrief') go('program'); true`, {key: 'c'},
   `{const tabs = [...document.querySelectorAll('[data-mcwall]')].map(b => b.textContent); tabs}`, {shot: 'track'}, `{PT.click('[data-mcwall="pads"]'); true}`, {shot: 'pads'}, `{PT.click('[data-mcwall="net"]'); (document.getElementById('mc') || document.body).innerText.slice(0, 600)}`, {shot: 'network'}]};
+// batch 6 (test bench, 2026-10-13): the payload fairing (228), side boxes in a fairing (230), the race (212), a spent
+// stage recovered (292), overflight consent (294), the session recorder (203)
+const FAIRD = (list, mod = '') => `{const d = toV2(${JSON.stringify(list)}), f = k => (function g(n) { return n.k === k ? n : (n.c || []).map(g).find(Boolean) })(d.root); ${mod} stackDef = d; editorChanged(); go('assembly'); render(); true}`;
+const FAIR228 = ['cam', 'sci', 'sci', 'core', 'fair', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];
+ROWS[228] = {title: 'the payload fairing', steps: [M1_HELPERS, FAIRD(FAIR228), `{const D = BLD.design(), f = n => n.k === 'fair' ? n : (n.c || []).map(f).find(Boolean); BLD.st.sel = f(D.root); BLD.panel(); render();
+  ({panel: (document.querySelector('.bsel') || {}).innerText, staging: [...document.querySelectorAll('.stg, .stage, #staging *')].map(e => e.innerText).filter(t => /fairing/i.test(t)).slice(0, 2)})}`, {shot: 'desk'},
+  `{BLD.st.sel = null; PT.click('#bRoll'); render(); (document.getElementById('rollChecks') || {}).innerText}`, {shot: 'pad'}, `{PT.launch(); true}`,
+  `(async () => { const n0 = PT.log.length, a = await PT.ascent(); return {a, log: PT.logSince(n0).filter(l => /Fairing|Stage sep/.test(l))} })()`, `{PT.look(1.6, 0.1, 18); render(); true}`, {shot: 'orbit'}]};
+ROWS[230] = {title: 'side boxes in a fairing, the octagonal frame', steps: [FAIRD(['core', 'octl', 'cam', 'sci', 'fair', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'],
+  `f('sci').c.push({k: 'scam', at: {y: 0.5, a: 0, n: 1}, c: []}); f('octl').c.push({k: 'scam', at: {y: 0.5, a: 3, n: 1}, c: []});`), `{HOOK.edStill = true; cam.dist = 6; cam.edY = 9; cam.pitch = 0.15; render(); true}`, {wait: 600}, {shot: 'payload'}]};
+ROWS[212] = {title: 'rivals as programs', steps: [`{go('program'); window.TABS = [...document.querySelectorAll('[data-ptab]')].map(b => b.dataset.ptab); const t = TABS.find(x => /race|world/i.test(x)); if (t) PT.click('[data-ptab="' + t + '"]'); ({tabs: TABS, race: (document.getElementById('progBody') || document.body).innerText.slice(0, 900)})}`, {shot: 'day0'},
+  `{const n0 = PT.log.length; let k = 0; while (PROG.day < 250 && k++ < 200) advanceTo(Math.min(250, PROG.day + 25)); go('program'); const t = TABS.find(x => /race|world/i.test(x)); if (t) PT.click('[data-ptab="' + t + '"]');
+  ({day: +PROG.day.toFixed(0), race: (document.getElementById('progBody') || document.body).innerText.slice(0, 900), news: PT.logSince(n0).filter(l => /first|attempt|fail|rumou|announc/i.test(l)).slice(0, 10)})}`, {shot: 'day250'}]};
+ROWS[292] = {title: 'recovering a spent stage', steps: [M1_HELPERS, FAIRD(['chute', 'pod', 't2', 'petrel', 'dec', 'chute', 't8', 'fins', 'kestrel']), `{PT.click('#bRoll'); PT.launch(); true}`,
+  `(async () => { const n0 = PT.log.length, a = await PT.ascent(); let k = 0; const t0 = simT; while (simT - t0 < 600 && k++ < 1e6) advPhys(S); return {a, log: PT.logSince(n0).filter(l => /afloat|stage|recover/i.test(l)).slice(0, 8)} })()`,
+  `{const n0 = PT.log.length; go('program'); ({deb: (document.body.innerText.match(/Spent stage[^\\n]*/g) || []).slice(0, 3), news: PT.logSince(n0).filter(l => /recover|refurb/i.test(l))})}`, {shot: 'debrief'}]};
+ROWS[294] = {title: 'overflight rights', steps: [`{go('assembly'); render(); const sel = document.getElementById('siteSel'), opts = [...sel.options].map(o => o.value); let hit = null;
+  for (const v of opts) { sel.value = v; sel.dispatchEvent(new Event('change')); const b = document.querySelector('[data-overbuy]'); if (b) { hit = {site: v, btn: b.textContent, line: b.parentElement.innerText.slice(0, 300)}; break } } hit}`, {shot: 'picker'},
+  `(() => { const f0 = PROG.funds, b = document.querySelector('[data-overbuy]'); if (!b) return 'no consent button'; b.click(); if (typeof renderSites === 'function') renderSites(); return {paid: +(f0 - PROG.funds).toFixed(2), line: (document.body.innerText.match(/consent until day[^\\n]*/) || [''])[0]} })()`, {shot: 'consent'}]};
+ROWS[203] = {title: 'the session recorder', steps: [`{TEST.record = true; true}`, {wait: 1500}, `({on: REC.on})`, `{PT.preset('Sounding'); PT.click('#bRoll'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.landed || !S.alive, 3000, {autostage: true}); go('program'); true}`, {wait: 1500},
+  `(async () => { const t = JSON.stringify(recFile()), gz = await new Response(new Blob([t]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer(); return {events: REC.events.length, json: t.length, gzKB: +(gz.byteLength / 1024).toFixed(1), menu: (recMenu() || '').replace(/<[^>]+>/g, ' ').slice(0, 80)} })()`]};
+// batch 7 (test bench, 2026-10-13): the hardware schools (162, 179, 192), the Steppe pad and its rollout (178, 190), the
+// suits (193), the crew at the hatch (184) from reference scenes
+ROWS[192] = {title: 'the hardware schools on one rocket (refViews, with 162, 179)', steps: views(114, 115, 123, 124, 125, 126)};
+ROWS[178] = {title: 'the Steppe pad and its rollout (refViews, with 190)', steps: views(116, 117, 118, 119)};
+ROWS[193] = {title: 'the suits by school and generation (refViews)', steps: views(127, 130, 133, 136, 139, 142)};
+ROWS[184] = {title: 'the crew at the hatch (refViews)', steps: views(120, 121, 122)};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
