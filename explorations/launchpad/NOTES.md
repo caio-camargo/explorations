@@ -279,6 +279,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.135 — the cloud deck at half resolution; a pass profiler (2026-10-12, effects beat, QUEUE Q313)
 - v1.137 — the HDR scene: AgX, auto-exposure, bloom on real light, a grade (2026-10-12, effects beat, QUEUE Q314)
 - v1.149 — re-entry: the hull glows, the plasma in HDR (2026-10-12, effects beat, QUEUE Q318)
+- v1.150 — the craft's quick wins: Rao bells, ogive noses, smooth normals, the planet's light (2026-10-12, parts & pad beat, QUEUE Q315)
 - v1.151 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319)
 - v1.152 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320)
 - v1.153 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294)

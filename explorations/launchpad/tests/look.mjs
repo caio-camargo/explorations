@@ -148,7 +148,7 @@
   // on Selene's day side the ground term is lit; on its night side it is dark; far out in space there is none
   {
     const SM = new Function(src + 'return {BODIES,TELLUS,SELENE,bodyPos,norm,sub,add,mul,len,dot,cross,SUN_DIR,get t(){return simT}}')();
-    const F = new Function('BODIES', 'TELLUS', 'bodyPos', 'norm', 'sub', 'len', 'dot', 'SUN', 'simT', 'FILL_FX', body('airlessFill') + ';return airlessFill')(
+    const F = new Function('BODIES', 'TELLUS', 'bodyPos', 'norm', 'sub', 'len', 'dot', 'SUN', 'simT', 'FILL_FX', body('diskOf') + body('airlessFill') + ';return airlessFill')(
       SM.BODIES, SM.TELLUS, SM.bodyPos, SM.norm, SM.sub, SM.len, SM.dot, SM.SUN_DIR, SM.t, true);
     const C = SM.bodyPos(SM.SELENE, SM.t), at = (u, h) => SM.add(C, SM.mul(SM.norm(u), SM.SELENE.R + h));
     const w = SM.norm(SM.cross(SM.SUN_DIR, [0, 0, 1])), day = F(at(SM.add(SM.mul(SM.SUN_DIR, Math.sin(0.35)), SM.mul(w, Math.cos(0.35))), 2)),
@@ -451,7 +451,36 @@
     fs ? `luminance (sunlit white ≈ 4): 1,000 K ${Y(c10).toExponential(1)}, 1,200 K ${Y(c12).toFixed(3)}, 1,700 K ${Y(c17).toFixed(1)}, 2,200 K ${Y(c22).toFixed(0)}; g/r at 2,200 K ${(c22[1] / c22[0]).toFixed(2)} · wired ${wired} · plasma ${plasma}` : 'shader glow not found');
 }
 
-// aerofx-12. The flames, slice 1 (look & sound effects beat, BEAUTY Q319 B2.1–2.6). A plume's gas cools as it expands, so
+// aerofx-12. The craft's quick wins (look & sound parts & pad beat, BEAUTY B1.1–1.2, Q315). Bells follow Rao's parabola from the
+// throat (steep) to the lip (θe), same exit radius and throat as the part; the nose is a tangent ogive (tangent to the
+// hull, a point at its top); lathe normals are smooth along a curve and hard at a real edge; the body below is a disc of
+// light: at the pad the old hemisphere (same ground colour), from orbit smaller and blue-white, with its limb.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const F = new Function('SMOOTH_FX', 'SMOOTH_DEG', body('raoBell') + body('ogive') + body('latheN') + ';return {raoBell,ogive,latheN}')(true, 24);
+  const b = F.raoBell(.6, .15, .7, .72, 8, [0, 0, 0, 1], [1, 1, 1]), sl = i => (b[i + 1][0] - b[i][0]) / (b[i + 1][1] - b[i][1]);
+  const bell = b.length === 8 && b[0][0] === .6 && b[0][1] === 0 && Math.abs(b[7][0] - .15) < 1e-9 && Math.abs(b[7][1] - .7) < 1e-9
+    && b.every((p, i) => !i || p[0] < b[i - 1][0] && p[1] > b[i - 1][1]) && Math.abs(Math.atan(-sl(0)) * 180 / Math.PI - 8) < 5 && Math.atan(-sl(6)) * 180 / Math.PI > 45;
+  const og = F.ogive(.625, 1.6, 1.25, [1], [0]), nose = og[0][0] === .625 && og[og.length - 1][0] < 1e-6 && og.every((p, i) => !i || p[0] <= og[i - 1][0]) && Math.abs(og[1][0] - .625) < .025;
+  const E = F.latheN([[.625, 0], [.625, 1], [.3, 1.4], [0, 1.5]]), Ec = F.latheN(og);
+  const smooth = E[0][1][0] === 1 && E[1][0][1] > .5 && Ec[2][1][0] === Ec[3][0][0] && Ec[5] === null && Ec[4][1][0] === Ec[6][0][0];   // shoulder hard; ogive and its colour band smooth
+  const geo = /lathe\(out,BELL_FX&&RB&&ti===1\?raoBell\(/.test(pg) && /case'cone':lathe\(out,OGIVE_FX\?ogive\(/.test(pg);
+  const fs = pg.slice(pg.indexOf('const MESH_FS=`'), pg.indexOf('`;', pg.indexOf('const MESH_FS=`')));
+  const shader = /amb=mix\(uSky,uGnd,wp\)/.test(fs) && /uLimb\*exp\(-lb\*lb\*4\.\)/.test(fs) && /gl\.uniform4fv\(m\.uDsk,E\.dsk\)/.test(H) && /gl\.uniform4fv\(m\.uDsk,\[1,0,\.2,0\]\)/.test(H);
+  const SM = new Function(src + 'return {TELLUS,SUN_DIR,norm,len,dot,madd,clamp}')();
+  const L = new Function('airlessFill', 'TELLUS', 'norm', 'len', 'dot', 'madd', 'clamp', 'SUN', 'PLANET_FX', body('diskOf') + body('lightEnv') + ';return lightEnv')(
+    () => null, SM.TELLUS, SM.norm, SM.len, SM.dot, SM.madd, SM.clamp, SM.SUN_DIR, true);
+  const Lo = new Function('airlessFill', 'TELLUS', 'norm', 'len', 'dot', 'madd', 'clamp', 'SUN', 'PLANET_FX', body('diskOf') + body('lightEnv') + ';return lightEnv')(
+    () => null, SM.TELLUS, SM.norm, SM.len, SM.dot, SM.madd, SM.clamp, SM.SUN_DIR, false);
+  const at = h => SM.norm([SM.SUN_DIR[0] + .3, SM.SUN_DIR[1], SM.SUN_DIR[2] + .3]).map(x => x * (SM.TELLUS.R + h));
+  const pad = L(at(2)), padO = Lo(at(2)), leo = L(at(200e3)), far = L(at(4e6));
+  const light = Math.abs(pad.gnd[0] - padO.gnd[0]) < .01 && pad.dsk[0] > .99 && leo.gnd[2] > leo.gnd[0] && leo.dsk[0] < .9 && far.dsk[0] < leo.dsk[0] && leo.limb[2] > 0 && pad.limb[2] < .01;
+  check('craft quick wins: Rao bells (steep at the throat, θe at the lip), tangent ogive nose, smooth profile normals with hard edges; the planet as a disc of light (the pad unchanged, blue-white and smaller from orbit)',
+    bell && nose && smooth && geo && shader && light, `bell ${bell} · nose ${nose} · normals ${smooth} · geometry ${geo} · shader ${shader} · light ${light} (pad gnd ${pad.gnd[0].toFixed(3)} vs ${padO.gnd[0].toFixed(3)}, LEO ${leo.gnd.map(x => x.toFixed(3))} disc ${leo.dsk[0].toFixed(3)})`);
+}
+
+// aerofx-13. The flames, slice 1 (look & sound effects beat, BEAUTY Q319 B2.1–2.6). A plume's gas cools as it expands, so
 // its own glow falls with the widening, (re/rb)^1.6, unless air mixes in; sunlight scattered by the exhaust (forward
 // Henyey–Greenstein, g 0.7) lights it instead, in the planet's shadow not at all. The sea-level core is turbulent; shock
 // diamonds strengthen off design and the first has a Mach disk; a kerolox root wears a dark curtain; a hypergolic start puffs
@@ -472,7 +501,7 @@
     shader && wired && brown && fwd > 10 && trail, `shader ${shader} · wired ${wired} · hypergolic puff ${brown} (so ${so}) · forward/back scattering ${fwd.toFixed(0)}× · contrail ${trail}`);
 }
 
-// aerofx-13. The air and the wake (look & sound effects beat, BEAUTY Q320 B3.1–3.2, B4.3–4.4). Vapor collars are stacked
+// aerofx-14. The air and the wake (look & sound effects beat, BEAUTY Q320 B3.1–3.2, B4.3–4.4). Vapor collars are stacked
 // thin rings with sharp trailing edges that flicker; the camera buffets through max-q (worst near Mach 1) and rumbles in
 // re-entry, deterministic on sim time and off in the map; the ship sheds sparks of ablator from its hot face; the plasma
 // wake flickers in ragged streamers and its light flickers with it.
@@ -492,7 +521,7 @@
     `rings ${rings} · wired ${wired} · shake: calm ${calm} · max-q at M 1 ${amp(maxq).toFixed(4)} rad · at M 2 ${amp(sup).toFixed(4)} rad`);
 }
 
-// aerofx-14. A structural failure shows (look & sound effects beat, QUEUE Q294, PLAYTEST #75). The sim calls HOOK.crack at
+// aerofx-15. A structural failure shows (look & sound effects beat, QUEUE Q294, PLAYTEST #75). The sim calls HOOK.crack at
 // the broken joint and logs the cause; the page sprays sparks and shards there, a broken tank vents until its propellant
 // is gone, and a well-filled one in air bursts into a fireball sized by what it holds.
 {
@@ -509,7 +538,7 @@
     sim && page2 && !!crack, `sim ${sim} · page ${page2} · a broadside Orbiter cracked at ${crack || 'nothing'}`);
 }
 
-// aerofx-15. A splash at splashdown (look & sound effects beat, QUEUE Q267, PLAYTEST #67): the moment the craft hits the
+// aerofx-16. A splash at splashdown (look & sound effects beat, QUEUE Q267, PLAYTEST #67): the moment the craft hits the
 // sea (s.wet), once, spray thrown up and out and a ring racing across the surface, scaled by touchdown speed and mass.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));

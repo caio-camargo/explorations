@@ -5629,3 +5629,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum (same session): D23, the aim.** The Checks tab's first line and an overlay: a job or your own aim in up to
   three legs; every Δv need is the program's guess (a hidden, seeded error inside the stated bound; a study redraws it
   tighter; flown, known). UI.md 0.1.5 § 3.1, the mock-up's aim overlay (`aim.png`), a QUEUE Proposed line.
+
+## 2026-10-12 — Caio + Claude (launchpad look & sound, parts & pad): Q315 the craft's quick wins (v1.150)
+
+- **Done:** BEAUTY B1.1–1.2. Engine bells follow Rao's parabola per engine family; the nose cone is a tangent ogive;
+  `lathe` normals are smooth along curves and hard at real edges; the planet below is a disc of light (the pad
+  unchanged, blue-white and smaller from orbit, its limb in metal's reflection); rough metal spreads the sun (the
+  Petrel's bell had vanished in orbit without the old brown ambient).
+- **Measured:** RTX, full res, old vs new back to back: within ±1 ms noise on both settings. iGPU not measured (low
+  memory). Stills: `output/launchpad/beauty/q315-before/`, `q315-after/`, sheets `q315-compare/` (output is gitignored:
+  this machine only).
+- **Tests:** `aerofx-12` (new) and the look file pass; smoke passes after both merges. **The full suite didn't
+  finish** (once my 10-minute timeout, once stopped for low memory); Caio said merge on that.
+- **Merges:** v1.148 (vehicle) and v1.149 (effects Q318) landed first; `MESH_FS`'s uniform line conflicted (combined
+  by hand, then both shaders compiled in a headless check) and the effects test section's closing brace had to be
+  restored. The game lock was the effects session's at the end, so the merged build wasn't shot in the game.
+- **Files:** `explorations/launchpad/app/gl.js`, `app/render.js`, `app/model-desk.js`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md` (232), `QUEUE.md` (Q315 ✓, two Proposed lines), `ACTIVE_WORK.md`.
+- **Next for parts & pad:** run the full suite and one game shot on a quiet machine; then Q316 (shadows, surface,
+  greebles), Q294, Q330, Q245.
+
