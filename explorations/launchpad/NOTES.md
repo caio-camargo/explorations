@@ -86,6 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
+- v1.206 — propulsion on the bench: kick motors (solid, burn to the end), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is the separation ring (2026-10-13, vehicle session, QUEUE Q422)
 - v1.198 — the payload bench, slice 1: satellites designed apart from the rocket and carried as one block; the bench's Checks; "make the parts inside a payload" (2026-10-13, vehicle session, QUEUE Q416)
 - v1.188 — flight buttons for landing legs (Y) and the cargo bay (B), beside the wings button (2026-10-13, vehicle session, QUEUE Q400)
 - v1.185 — nothing unfolds inside a closed fairing: wings and boom antennas wait for the jettison (2026-10-13, vehicle session, QUEUE Q410)
