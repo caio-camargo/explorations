@@ -724,10 +724,10 @@
   const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't8', 'fins', 'kestrel']);
   // the fairing on top of the upper tank, the block on the fairing
   const e = api.payNew('Sat', api.PAY_STARTERS.Satellite); fair.at = 'u'; rocket.root.c.push(fair); fair.c.push({ ...api.payNode(e), at: 'u' });
-  const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.kind === 'padapt');
+  const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.key === 'padapt');
   const dA = api.stageStats(api.PRESETS.Satellite).stages.map(s => s.dvV), dB = api.stageStats(rocket).stages.map(s => s.dvV);
   const same = dA.length === dB.length && dA.every((v, i) => Math.abs(dB[i] - v) / v < 0.02), clean = !/payOf|"src"/.test(JSON.stringify(rocket));
-  const inside = pay.filter(p => p.d.kind !== 'padapt').every(p => p.inFair);
+  const inside = pay.filter(p => p.d.key !== 'padapt').every(p => p.inFair);
   e.name = 'Renamed'; e.d.root.c.push({ k: 'batt', at: 'u', c: [] }); const synced = api.paySync(rocket), blk = rocket.root.c.find(c => c.k === 'fair').c[0];
   const C = api.payChecks(api.PAY_STARTERS.Satellite, rocket, e.id).rows, cls = Object.fromEntries(C.map(r => [r.k, r.cl]));
   const short = cl(rocket); short.root.c.find(c => c.k === 'fair').fl = 2; const fitShort = api.payChecks(api.PAY_STARTERS.Satellite, short, e.id).rows.find(r => r.k === 'fit');
@@ -741,4 +741,50 @@
     B.parts.length === A.parts.length + 1 && padapt.length === 1 && inside && same && clean && synced === 1 && blk.name === 'Renamed' && JSON.stringify(blk.pd) === JSON.stringify(e.d)
       && ['power', 'link', 'turn', 'bal', 'fit'].every(k => cls[k] === 'ok') && fitShort.cl === 'bad' && beacon.cl === 'warn' && /days|hours/.test(beacon.t) && balL.cl === 'warn' && balK.cl === 'bad',
     `parts ${A.parts.length} → ${B.parts.length} (${padapt.length} adapter), payload inside ${inside}; Δv ${dA.map(v => v.toFixed(0)).join('/')} vs ${dB.map(v => v.toFixed(0)).join('/')}; clean ${clean}; synced ${synced}; checks ${C.map(r => r.k + ':' + r.cl).join(' ')}; 2 m fairing ${fitShort.cl} "${fitShort.t}"; beacon ${beacon.cl} "${beacon.t}"; lopsided ${balL.cl} "${balL.t}", with an engine ${balK.cl}`);
+}
+
+// vehicle-28. Propulsion on the bench (vehicle session, QUEUE Q422, PROBES § 6.3): a satellite with its own large kick motor
+// and a hydrazine thruster on a propellant sphere, carried as a block. The payload adapter is a separation ring: staging it in
+// orbit drops the upper stage, whose tank never fed the satellite. The kick motor waits, armed, until a touch on the throttle,
+// then burns to burnout at full thrust though the throttle is cut (~700 m/s, along its path), and leaves the hydrazine alone;
+// the thruster then burns from its sphere. The bench counts the payload's own Δv against a stationary orbit; the rocket's
+// stages count it too (the Assembly's Reaches sees rocket and payload together).
+{
+  const cl = x => JSON.parse(JSON.stringify(x)), P0 = api.PROG.payloads; api.PROG.payloads = [];
+  const pd = cl(api.PAY_STARTERS.Satellite), oct = (function g(n) { return n.k === 'octl' ? n : (n.c || []).map(g).find(Boolean); })(pd.root);
+  oct.c.push({ k: 'sph4', at: 'd', c: [{ k: 'hthr', at: 'd', c: [{ k: 'kick200', at: 'd', c: [] }] }] });
+  const e = api.payNew('Kick sat', pd), dvRow = api.payChecks(pd).rows.find(r => r.k === 'dv');
+  const R = { v: 2, root: { k: 't2', c: [{ k: 'fair', at: 'u', c: [{ ...api.payNode(e), at: 'u' }] }, { k: 'petrel', at: 'd', c: [] }] } }, st = api.stageStats(R).stages;
+  const msg0 = api.HOOK.msg, msgs = []; api.HOOK.msg = m => msgs.push(m);
+  api.t = 0; const s = api.newShip(R); api.S = s; const r0 = TELLUS.R + TELLUS.atm + 10000; s.landed = false; s.r = [r0, 0, 0]; s.v = [0, 0, Math.sqrt(TELLUS.mu / r0)];
+  const fuel = k => s.parts.filter(p => p.on && p.d.key === k).reduce((a, p) => a + (p.res.fuel || 0), 0), t2 = fuel('t2');
+  s.throttle = 0; for (let k = 0; k < 10 && s.evIdx < s.events.length && s.parts.some(p => p.on && p.d.key === 'petrel'); k++) api.stage(s);
+  const released = !s.parts.some(p => p.on && p.d.key === 'petrel'), armed = fuel('kick200');
+  const point = () => { const Y = norm(s.v), X = norm(cross(Y, [0, 1, 0])); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+  for (let i = 0; i < 50; i++) { point(); api.advPhys(s); } const waited = fuel('kick200'), v0 = Math.hypot(...s.v), h0 = fuel('sph4');
+  s.throttle = 1; point(); api.advPhys(s); s.throttle = 0;
+  for (let i = 0; i < 3000 && fuel('kick200') > 0; i++) { point(); api.advPhys(s); }
+  point(); api.advPhys(s);   // burnout is noticed on the next step
+  const dv = Math.hypot(...s.v) - v0, h1 = fuel('sph4'), thr = s.throttle;
+  s.throttle = 1; for (let i = 0; i < 500; i++) { point(); api.advPhys(s); } s.throttle = 0; const h2 = fuel('sph4');
+  api.HOOK.msg = msg0; api.PROG.payloads = P0;
+  check('propulsion on the bench (Q422): the adapter releases the payload and drops the upper stage; the kick motor waits armed, then burns to the end with the throttle cut (~700 m/s); its propellant and the hydrazine stay apart; the bench and the stages count its Δv',
+    released && armed > 0.17 && waited === armed && dv > 600 && dv < 800 && fuel('kick200') === 0 && thr === 0 && h0 - h1 < 0.002 && h1 - h2 > 0.0003
+      && msgs.some(m => /lit: it burns to the end/.test(m)) && msgs.some(m => /burnt out/.test(m)) && dvRow && /stationary/.test(dvRow.t) && st.length === 2 && st[1].dvV > 700,
+    `released ${released}, kick ${armed.toFixed(3)} t armed, ${waited.toFixed(3)} after waiting; Δv ${dv.toFixed(0)} m/s, throttle after ${thr}; hydrazine ${h0.toFixed(4)} → ${h1.toFixed(4)} (kick) → ${h2.toFixed(4)} (its own burn); bench "${dvRow && dvRow.t}"; stages ${st.map(x => x.dvV.toFixed(0)).join('/')}`);
+}
+
+// vehicle-29. The balance weight (Caio's round-2 note on the bench, Q416): a side mass whose kilograms its node carries (wk). On
+// the Satellite starter made lopsided (its instrument package moved beside the camera, 14 cm off the axis), a weight opposite
+// the offset, sized as the bench's button sizes it (mass × offset ÷ its lever), brings the balance check back to ok.
+{
+  const d = JSON.parse(JSON.stringify(api.PAY_STARTERS.Satellite)), oct = (function g(n) { return n.k === 'octl' ? n : (n.c || []).map(g).find(Boolean); })(d.root);
+  oct.c.find(c => c.k === 'ssci').at.a = -Math.PI / 2;
+  let s = api.newShip(d); const off = Math.hypot(s.cm[0], s.cm[2]), before = api.payChecks(d).rows.find(r => r.k === 'bal').cl;
+  const host = s.parts.filter(p => p.on && p.core && !p.inst.surf && !p.inst.rdec).sort((x, y) => y.d.r - x.d.r)[0], B = host.dn;   // the widest part on the main stack, as the bench's button picks
+  const rw = Math.hypot(host.pos[0], host.pos[2]) + host.d.r + api.PARTS.bwt.off, kg = Math.ceil(s.mass * off / rw);
+  B.c.push({ k: 'bwt', at: { y: host.h / 2, a: Math.atan2(-s.cm[2], -s.cm[0]) - (host.inst.rot || 0), n: 1, cy: 0.1 }, wk: kg, c: [] });
+  s = api.newShip(d); const w = s.parts.find(p => p.d.kind === 'bwt'), after = api.payChecks(d).rows.find(r => r.k === 'bal');
+  check('the balance weight: sized on its node, opposite the offset it brings a lopsided payload back to balanced', before === 'warn' && w && Math.abs(w.d.m * 1000 - kg) < 1e-6 && after.cl === 'ok',
+    `offset ${(off * 100).toFixed(0)} cm (${before}); a ${kg} kg weight: "${after.t}"`);
 }

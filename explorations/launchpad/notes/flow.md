@@ -1113,7 +1113,7 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
 - **The map:** a planet's label gives the trip, half a transfer orbit from Tellus's, in days ("Enyo · ~280 days there"),
   not its distance in TU, a unit nobody knows (`xferDays`, `app/render.js`). The label declutter by importance was
   already there (PLAYTEST #31).
-- **Checks:** test `flow-25`; robot row `desk` (four one-line offers, one opened; the far epochs counted; no empty
+- **Checks:** test `flow-25`; robot row `declutter` (four one-line offers, one opened; the far epochs counted; no empty
   frame); `m1` passes (its orbit map shows the planets in days; its SAS shows only the modes the probe can fly, slice 1).
   Every flow and economy section passes. The full smoke run was stopped by Claude Code for low memory and not re-run.
   TESTING row 271.
