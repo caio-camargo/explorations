@@ -3114,7 +3114,7 @@ Debrief shows the money, not which stage came back.
 Tests: `econ-27` (1 check: judged afloat at the drop and the same in view; local ships fetch and refurbish; beyond
 reach lost; a bare stage left to the fleet).
 
-## VNUM — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
+## v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
 
 v1.171 (Q181) charged opinion and relation for flying low over a neighbour that minds (`overK`: none from an ally,
 up to the whole from a hostile power, ×2 for a security state). W23 asked for the way out from the start: buying

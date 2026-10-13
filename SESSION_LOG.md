@@ -6208,3 +6208,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Numbering:** views 172–174 → 175–177 and test aerofx-35 → 38 after the merge (others took them the same hour).
 - **Next for sky & bodies:** Q80–Q85 wait on W29; Q364 (the sea's swell); *Proposed*: village lights, a land-use map.
 
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q380 overflight rights (v1.213)
+
+- **Done:** `overQuote(i)` / `buyOver(i)` (`sim/program.js`): a year's consent from a power that minds, `OVER_FEE·(1+3c)`
+  M (2M at relation 0, 7M from a hostile security state); refused under sanctions, at relation ≤ −0.5, by a racing
+  rival below 0. `overEnd` skips consenting powers; Debrief "with its consent"; ledger `over`. A button per minding
+  neighbour in the site picker (`app/editor.js` `renderSites`). Test `econ-28`; TESTING 294; NOTES § v1.213.
+- **Not checked in the browser** (the game lock was held): TESTING 294 is the check.
+- **Smoke:** the same two failures already on `main` (`qa-2`, assembly help key `t`).
+- **Next:** economy's ready list is down to plans (Q282 the simulator, Q283 crew skill revision) and Q376 after Q375.

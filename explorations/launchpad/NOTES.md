@@ -235,6 +235,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
 - Q386 measured: launch scrubs under the cloud belts (2026-10-13, economy session 2; kept, no code change)
 - v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332)
+- v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
 
 ## World: [`notes/world.md`](notes/world.md)
 
