@@ -450,8 +450,8 @@ function trimOf(s){const on=s.parts.map(p=>p.on),ign=new Set();let worst=null,k=
 function jointFix(w,own){if(!w||!w.p)return'';const dec=[w.p.d,w.p.parent.d].find(d=>d.kind==='dec'&&!d.istage&&!d.sc);
   return[dec?'an interstage decoupler instead (twice the bending rating, and its shell carries the load around the engine it encloses)':'',`reinforce that joint (right-click the part: joint)`,own?'less thrust low down (it flies through thick air too fast)':''].filter(Boolean).join(', or ').replace(/^./,c=>c.toUpperCase())+'.'}
 // what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
-function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='auth'?`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`:`it would go over in ${(1/a.lam).toFixed(2)} s, faster than its nozzles swing (${a.lag.toFixed(1)} s) to catch it (a reaction wheel doesn't help)`}
-function airFix(a){return a.first?`Fins ahead of the centre of mass push it over: bigger fins low on the first stage, or smaller ones up top.`:`Fins or steerable fins on it (right-click a fin for a bigger size), or a bigger first stage so it separates in thinner air (or coast up before staging); separate pointing prograde.`}
+function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`}
+function airFix(a){return`Separate pointing prograde (it then needs almost nothing), or more steering on it: a reaction wheel, steerable fins, bigger fins (right-click a fin), or a bigger first stage so it separates in thinner air.`}
 function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
     air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
     src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
@@ -463,7 +463,7 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
-  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} goes end over end ${a.first?'at max-q':'when it lights in the air'} (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa on a standard ascent): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
+  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} can go end over end when it lights in the air (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa on a standard ascent): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
   {const T=trimOf(s);if(T&&T.f>0.6)out.push(['warn',`Stage ${T.k} can't hold its course at full thrust: the thrust misses the centre of mass by ${(T.miss*100).toFixed(0)} cm (balance the other side, a counterweight, or deploy after the burn)`])}   // trim (Q337)
   // a payload fairing (Q337): what stands above its ring but isn't inside its outline meets the air
   for(const f of s.parts.filter(p=>p.profF)){const o=s.parts.filter(q=>q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<f.d.r+.5);
@@ -621,6 +621,14 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   const A=avOf(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
   let al=mul(sub(wd,wS),A.k);
   if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,wS),A.k/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
+  // the air's push away from the airflow, cancelled as it comes (vehicle, Q372): while engines burn nose-first, the part of the
+  // last step's aero moment that turns the nose away from the airflow (an unstable airframe's), the steering fins' own share
+  // left out, fed forward, as the builder's control check assumes. A rate loop alone answers only once the craft is turning, and
+  // a light unstable stage just separated in thick air goes over before it does. (Tried and dropped: only for a few seconds
+  // after a separation, since the integral can't take over a torque already cancelled; only for fast divergences.) The
+  // restoring part (a stable rocket's, a falling stage weathervaning) and the damping are left to the air, as before
+  if(s.tauA&&s.simTA===simT){const ff=qrot(s.q,[-s.tauA[0]/s.I[0],-s.tauA[1]/s.I[1],-s.tauA[2]/s.I[2]]);   // the integral's share along it is the same torque: drop it, don't count it twice
+    if(s.sasI){const u=norm(ff),k=dot(s.sasI,u);if(k*dot(ff,u)>0){al=madd(al,u,-k);s.sasI=madd(s.sasI,u,-k)}}al=add(al,ff)}
   return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,s.spun?0:clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}   // spun: the integral turns with the cone, keep its roll out too
 // Euler's equations (control session, spin): in the body frame I·dω/dt = τ − ω×(I·ω). The gyroscopic term is what makes a
 // spinning stage hold its axis and wobble (nutation) instead of turning to every torque. The wheels' stored momentum is left
@@ -835,7 +843,14 @@ function physStep(s,dt){
     // drag may not reverse the airflow within one step
     let Fa=[0,0,0];s.parts.forEach((p,i)=>{Fa=add(Fa,sub(p.F,F0[i]))});
     const lim=0.9*sp*s.mass/dt,fa=len(Fa);
-    if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}}
+    if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}
+    // the aero moment about the centre of mass, less what the steering fins give by deflecting, for the next step's SAS (Q372)
+    {let F1=[0,0,0],L1=[0,0,0];s.parts.forEach((p,i)=>{if(!p.on)return;F1=add(F1,sub(p.F,F0[i]));L1=add(L1,sub(p.L,L0[i]))});let tA=sub(L1,cross(s.cm,F1));
+     if(FC)for(const c of FC.out){const fd=c.p.fd&&c.p.fd[c.j]||0;if(c.dm)tA=sub(tA,mul(c.c,fd/c.dm))}
+     const ax=cross([0,1,0],mul(vb,1/sp)),al=len(ax),cmp=al>1e-6?dot(tA,mul(ax,1/al)):0;   // ax: the turn that brings the nose into the airflow
+     const fade=clamp((s.aoa-0.0087)/0.035,0,1);   // faded in from 0.5° to 2.5° of angle of attack: near zero the axis is noise
+     s.tauA=T>0&&s.aoa<Math.PI/3&&cmp<0&&fade>0?mul(ax,fade*cmp/al):null;s.simTA=simT+dt}}
+  else s.tauA=null;
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
   if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true)),ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
     rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}

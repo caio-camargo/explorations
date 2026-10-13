@@ -419,14 +419,13 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
 // front (centre of pressure well ahead of its centre of mass) goes end over end. Where each stage starts comes from a point
 // mass flown on the standard ascent (vertical to 200 m, flat by 38 km, the procedures' and the hand-flown profile) with
 // dvPlan's stages and the ship's drag; then that stage, as it flies (what's dropped gone, a fairing jettisoned before it
-// gone), is probed holding 5° off the airflow at that q, burning. Two ways to lose it, measured by flying (notes/vehicle.md
-// § v1.152, v1.164): needing more than AUTH_MAX × the steering it has (wheels, gimbals, steerable fins at that q; separated
-// prograde it sits nearer 1° than 5°, so some shortfall is survivable), or going over faster than its nozzles can swing to
-// catch it: divergence rate √(dM/dα / I) × the slowest lit gimbal's full swing time (gim / gimR) past LAG_MAX (a reaction
-// wheel doesn't help there). Only a fresh stage: boosters dropping off a core that's already lit and steering don't count.
-// Stage 1 is checked too, at its own max-q, for going over too fast only (the Control block has its steering): big fins up
-// top move its centre of pressure forward. [{k, h, q, M, holds, why: 'auth'|'fast', tau, auth, cal, lam, lag, load, lp}].
-const AUTH_MAX=1.5,LAG_MAX=1.7;
+// gone), is probed holding 5° off the airflow at that q, burning: it flips if that needs more than AUTH_MAX × the steering it
+// has (wheels, gimbals, steerable fins at that q). Measured by flying (notes/vehicle.md § v1.152, v1.164, v1.165): separated
+// pointing prograde it sits near 0° and almost anything holds; held 6–11° off its path (the pitch program in attitude hold)
+// the steering decides. Since the SAS cancels the air's torque as it comes (v1.165), going over "too fast to catch" is gone.
+// Only a fresh stage: boosters dropping off a core that's already lit and steering don't count. [{k, h, q, M, holds, why:
+// 'auth', tau, auth, cal, lam, load, lp}].
+const AUTH_MAX=1.5;
 // The standard ascent as a point mass (vehicle, Q342/Q347): vertical to 200 m, flat by 38 km (the procedures' and the
 // hand-flown profile), dvPlan's steps with thrust from each step's vacuum and sea-level exhaust speeds by pressure, the
 // ship's drag table. {qMax, hQ, MQ: the peak dynamic pressure and where, starts: [{ev, h, q, M}] each fresh stage lighting
@@ -446,8 +445,7 @@ function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)retur
       const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}}
     const sp=Math.hypot(vx,vh),q=0.5*density(TELLUS,h)*sp*sp;if(q<1000||i===P.length-1)break;if(fresh(P[i].ev,P[i+1].ev))starts.push({ev:P[i+1].ev,h,q,M:sp/SND(h)})}
   return out}
-function airSep(stack){if(!stack)return[];const E=ascentEst(stack),s1=newShip(stack),e1=s1.events.findIndex(e=>e.ignite.length);
-  const starts=[...(E.qMax>1000&&e1>=0?[{ev:e1+1,h:E.hQ,q:E.qMax,M:Math.max(0.8,E.MQ),first:true}]:[]),...E.starts];
+function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
   if(!starts.length)return[];
   const out=[];for(const S1 of starts){const s=newShip(stack),on=s.parts.map(()=>true),lit=[];let k=0;
     for(const e of s.events.slice(0,S1.ev)){for(const g of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===g)on[i]=false});
@@ -459,9 +457,8 @@ function airSep(stack){if(!stack)return[];const E=ascentEst(stack),s1=newShip(st
     const c=probe(s,{M:S1.M,aoa:4,q:5000,h:S1.h});
     // how fast it would go over if nothing steered: an unstable airframe's divergence rate, √(dM/dα / I) (1/s)
     const cal=(c.ycm-c.ycp)/(2*s.radius),lam=cal<0?Math.sqrt(r.tau/(5*Math.PI/180)/Math.max(s.I[0],s.I[2])):0;
-    const lag=s.parts.reduce((a,p)=>p.on&&p.d.kind==='engine'&&segs.includes(p.seg)?Math.max(a,(p.d.gim||0)/(p.d.gimR||10)):a,0),short=!S1.first&&r.tau>AUTH_MAX*r.auth,fast=lam*lag>LAG_MAX;
-    if(S1.first&&!fast)continue;   // stage 1 holding: the Control block already speaks for it
-    out.push({...S1,holds:!short&&!fast,why:short?'auth':fast?'fast':'',tau:r.tau,auth:r.auth,cal,lam,lag,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque})}
+    const short=r.tau>AUTH_MAX*r.auth;
+    out.push({...S1,holds:!short,why:short?'auth':'',tau:r.tau,auth:r.auth,cal,lam,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque})}
   return out}
 
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in

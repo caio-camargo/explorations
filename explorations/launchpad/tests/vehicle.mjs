@@ -289,7 +289,7 @@
   const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
   const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
   check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
-    est.join('|') === 'ok|warn|warn,warn|ok' && /Short of orbit/.test(hop[0][1]) && /end over end at max-q/.test(hop[1][1]) && /Tight/.test(tight[0][1])   // the Hopper also flips at max-q (Q348's stage-1 check; flown, it does)
+    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(hop[0][1]) && /Tight/.test(tight[0][1])
       && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
       && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
     `${est.join(' / ')}; climb to 400 km ${climb.toFixed(0)} m/s; "${best[0][1]}"`);
@@ -592,9 +592,9 @@
 // vehicle-21. Later stages in the air (vehicle session, QUEUE Q342 / PLAYTEST #82): a satellite's upper stage with a payload
 // fairing up front, dropped at ~34 km and ~13 kPa by a small first stage, goes end over end (the fairing's joints never break:
 // the tumble is what Caio saw). airSep finds where each fresh stage lights on a standard ascent and whether it holds there:
-// short of steering (the satellite), or diverging faster than the autopilot catches it (the same with a reaction wheel: more
-// torque doesn't help); steerable fins on the upper stage fix it; the presets hold; a booster drop isn't a fresh stage. Flown:
-// the satellite tumbles after separating, holding prograde from 20 km; with steerable fins on its upper stage it doesn't.
+// short of steering (the satellite); a reaction wheel or steerable fins on the upper stage fix it (the wheel only since the SAS
+// cancels the air's torque, v1.165); the presets hold; a booster drop isn't a fresh stage. Flown in attitude hold on the pitch
+// program (6–11° off its path at separation): the satellite tumbles; with steerable fins on its upper stage it doesn't.
 {
   const L = ['t2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], sat = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', ...L]), whl = api.toV2(['core', 'rwheel', 'batt', 'sci', 'cam', 'fair', ...L]),
     cf = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'cfins', 'petrel', 'dec', 't8', 'fins', 'kestrel']);
@@ -603,15 +603,15 @@
   const heavy = api.airSep(api.PRESETS.Heavy)[0];   // its boosters drop at ~19 km off a lit core: the stage checked is the upper one, high up
   const fly = d => { const AS = api.TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = 2; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
     let tS = null, mx = 0; for (let k = 0; k < 60000 && s.alive; k++) { const f = api.localFrame(s.r), h = api.len(s.r) - api.TELLUS.R;
-      if (h > 20000) s.sasMode = 'pro'; else { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(f.e, Math.cos(r)), api.mul(f.up, Math.sin(r)))); }
+      { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(f.e, Math.cos(r)), api.mul(f.up, Math.sin(r)))); }
       if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
       if (tS != null && api.t > tS + 0.1 && s.qdyn > 500) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 10) break; api.advPhys(s); }
     return { sep: tS != null, aoa: mx * 180 / Math.PI }; };
   const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const fs = fly(sat), fc = fly(cf); api.HOOK.msg = msg0;
-  check('later stages in the air (Q342): the fairing satellite\'s upper stage flips at ~34 km (short of steering; with a wheel, too fast), warned; steerable fins hold; presets hold; flown: it tumbles, with fins it doesn\'t',
-    a.k === 2 && !a.holds && a.why === 'auth' && a.h > 25e3 && a.h < 45e3 && a.q > 8e3 && a.q < 18e3 && a.fair && warned && !w.holds && w.why === 'fast' && c.holds && !presets.length && heavy && heavy.h > 45e3
+  check('later stages in the air (Q342): the fairing satellite\'s upper stage flips at ~34 km (short of steering), warned; a wheel or steerable fins hold; presets hold; flown in attitude hold: it tumbles, with fins it doesn\'t',
+    a.k === 2 && !a.holds && a.why === 'auth' && a.h > 25e3 && a.h < 45e3 && a.q > 8e3 && a.q < 18e3 && a.fair && warned && w.holds && c.holds && !presets.length && heavy && heavy.h > 45e3
       && fs.sep && fs.aoa > 60 && fc.sep && fc.aoa < 20,
-    `satellite: stage ${a.k} at ${(a.h / 1e3).toFixed(0)} km ${(a.q / 1e3).toFixed(1)} kPa, ${a.holds ? 'holds' : 'flips (' + a.why + ')'}, warned ${warned}; with a wheel ${w.holds ? 'holds' : 'flips (' + w.why + ')'} λ ${w.lam && w.lam.toFixed(1)}/s; steerable fins ${c.holds ? 'hold' : 'flip'}; presets flagged: ${presets.join(', ') || 'none'}; Heavy's checked stage at ${heavy && (heavy.h / 1e3).toFixed(0)} km; flown: ${fs.aoa.toFixed(0)}° after separating, with fins ${fc.aoa.toFixed(0)}°`);
+    `satellite: stage ${a.k} at ${(a.h / 1e3).toFixed(0)} km ${(a.q / 1e3).toFixed(1)} kPa, ${a.holds ? 'holds' : 'flips (' + a.why + ')'}, warned ${warned}; with a wheel ${w.holds ? 'holds' : 'flips'}; steerable fins ${c.holds ? 'hold' : 'flip'}; presets flagged: ${presets.join(', ') || 'none'}; Heavy's checked stage at ${heavy && (heavy.h / 1e3).toFixed(0)} km; flown: ${fs.aoa.toFixed(0)}° after separating, with fins ${fc.aoa.toFixed(0)}°`);
 }
 
 // vehicle-22. A fast rocket's own max-q (vehicle session, QUEUE Q347 / PLAYTEST #84): four boosters push a satellite launcher
@@ -630,27 +630,39 @@
 
 // vehicle-23. Fin sizes (vehicle session, QUEUE Q348 / PLAYTEST #85): a radial or steerable fin's node may carry fz, a step up
 // (0.9, 1.35, 2 m span). The plate scales; mass, shear and price by area; the root's bending rating by k³. Four 2 m radial fins
-// on the fairing satellite's upper stage (Q342) make it about neutral, so it holds in the air. But fins that big up top move the
-// whole rocket's centre of pressure forward, and with only the fin ring below it goes over at max-q (flown: it snaps there):
-// the builder now says so (stage 1 "at max-q": too fast for its nozzles). With 2 m fins low on the first stage as well, every
-// check holds, and flown it stays on course through max-q and past separation.
+// at the foot of the fairing satellite's upper stage (Q342) make it about neutral, so it holds in the air; flown in attitude
+// hold on the pitch program (the hard case, 6–11° off its path at separation) it stays on course through max-q and past
+// separation. (Before the SAS cancelled the air's torque, v1.165, fins that big up top tipped the whole rocket over at max-q.)
 {
   const f = (x, k) => x.k === k ? x : (x.c || []).map(c => f(c, k)).find(Boolean);
-  const sat = (top, bot) => { const d = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel', 'dec', 't8', ...(bot ? [] : ['fins']), 'kestrel']);
-    const n = { k: 'rfin', at: { y: 0.45, a: Math.PI / 4, n: 4 }, c: [] }; if (top) n.fz = top; f(d.root, 't2').c.push(n);
-    if (bot) f(d.root, 't8').c.push({ k: 'rfin', at: { y: 1.0, a: Math.PI / 4, n: 4 }, fz: bot, c: [] }); return d; };
+  const sat = fz => { const d = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']), n = { k: 'rfin', at: { y: 0.45, a: Math.PI / 4, n: 4 }, c: [] }; if (fz) n.fz = fz; f(d.root, 't2').c.push(n); return d; };
   const b = api.PARTS.rfin, z = api.finDef(b, 2), k = api.FIN_SZ[2].k, s0 = api.newShip(sat(0)), s2 = api.newShip(sat(2)), p2 = s2.parts.find(p => p.d.kind === 'rfin');
   const scale = Math.abs(z.span / b.span - k) < 1e-9 && Math.abs(z.m / b.m - k * k) < 1e-9 && Math.abs(z.B / b.B - k ** 3) < 1e-9 && z.key === 'rfin' && api.finDef(b, 0) === b && p2.d === z;
-  const c0 = api.vesselCost(s0.parts).cost, c2 = api.vesselCost(s2.parts).cost, up = d => api.airSep(d).find(a => !a.first), st1 = d => api.airSep(d).find(a => a.first);
-  const u0 = up(sat(0)), u2 = up(sat(2)), m2 = st1(sat(2)), bal = api.airSep(sat(2, 2)), warned = api.launchWarnings(sat(2)).some(([q, x]) => /at max-q/.test(x));
+  const c0 = api.vesselCost(s0.parts).cost, c2 = api.vesselCost(s2.parts).cost, a0 = api.airSep(sat(0))[0], a2 = api.airSep(sat(2));
   const fly = d => { const AS = api.TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = 2; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
     let tS = null, mx = 0; for (let i = 0; i < 60000 && s.alive; i++) { const fr = api.localFrame(s.r), h = api.len(s.r) - api.TELLUS.R;
-      if (h > 20000) s.sasMode = 'pro'; else { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(fr.e, Math.cos(r)), api.mul(fr.up, Math.sin(r)))); }
+      const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(fr.e, Math.cos(r)), api.mul(fr.up, Math.sin(r))));
       if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
       if (s.qdyn > 500 && (tS == null || api.t > tS + 0.1)) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 10) break; api.advPhys(s); }
     return { sep: tS != null, aoa: mx * 180 / Math.PI, alive: s.alive }; };
-  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const fl = fly(sat(2, 2)); api.HOOK.msg = msg0;
-  check('fin sizes (Q348): a 2 m radial fin scales span x2.2, mass by area, root bending by k^3, costs more; 2 m fins on the upper stage hold it in the air but tip the whole rocket over at max-q (warned); with 2 m fins low on stage 1 too, all hold and flown it stays on course',
-    scale && c2 > c0 && !u0.holds && u2.holds && u2.cal > u0.cal && m2 && !m2.holds && m2.why === 'fast' && warned && bal.every(a => a.holds) && fl.sep && fl.alive && fl.aoa < 20,
-    `2 m: span ${z.span.toFixed(2)} m, ${(z.m * 1000).toFixed(0)} kg, B ${z.B.toFixed(0)} kN·m; cost ${c0.toFixed(1)}M → ${c2.toFixed(1)}M; stage 2 ${u0.holds ? 'holds' : 'flips'} (cal ${u0.cal.toFixed(2)}) → ${u2.holds ? 'holds' : 'flips'} (cal ${u2.cal.toFixed(2)}); stage 1 with 2 m fins up top: ${m2 ? (m2.holds ? 'holds' : 'flips (' + m2.why + ', λ·lag ' + (m2.lam * m2.lag).toFixed(2) + ')') : 'not listed'}, warned ${warned}; both stages finned: ${bal.map(a => a.holds ? 'holds' : 'flips').join(', ') || 'nothing listed'}; flown ${fl.aoa.toFixed(0)}° at worst`);
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const fl = fly(sat(2)); api.HOOK.msg = msg0;
+  check('fin sizes (Q348): a 2 m radial fin scales span x2.2, mass by area, root bending by k^3, costs more; four on the satellite upper stage hold it in the air, and flown in attitude hold it stays on course through max-q and separation',
+    scale && c2 > c0 && !a0.holds && a2.length === 1 && a2[0].holds && a2[0].cal > a0.cal && fl.sep && fl.alive && fl.aoa < 20,
+    `2 m: span ${z.span.toFixed(2)} m, ${(z.m * 1000).toFixed(0)} kg, B ${z.B.toFixed(0)} kN·m; cost ${c0.toFixed(1)}M → ${c2.toFixed(1)}M; stage 2 ${a0.holds ? 'holds' : 'flips'} (cal ${a0.cal.toFixed(2)}) → ${a2.map(a => (a.holds ? 'holds' : 'flips') + ' (cal ' + a.cal.toFixed(2) + ')').join(', ')}; flown ${fl.aoa.toFixed(0)}° at worst`);
+}
+
+// vehicle-24. The SAS cancels the air's torque (vehicle session, QUEUE Q372, Caio: "the other designs are also flipping"): the
+// stock Beeper, flown on the gyro autopilot in attitude hold along the pitch program, used to go end over end the moment its
+// upper stage separated (~38 km, ~9 kPa): the air hit the light unstable stage with ~13 kN·m at once, and a rate loop only
+// answers once the craft turns, so its 15 kN·m wheel came in too late. With the last step's aero moment fed forward it holds.
+{
+  const fly = (d, av) => { const AS = api.TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = av; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
+    let tS = null, mx = 0; for (let i = 0; i < 60000 && s.alive; i++) { const fr = api.localFrame(s.r), h = api.len(s.r) - api.TELLUS.R;
+      const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(fr.e, Math.cos(r)), api.mul(fr.up, Math.sin(r))));
+      if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
+      if (tS != null && api.t > tS + 0.1 && s.qdyn > 500) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 15) break; api.advPhys(s); }
+    return { sep: tS != null, aoa: mx * 180 / Math.PI }; };
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const g = fly(api.PRESETS.Beeper, 0), c = fly(api.PRESETS.Beeper, 2); api.HOOK.msg = msg0;
+  check('SAS cancels the air\'s torque (Q372): the Beeper flown through separation in attitude hold stays on course, gyro autopilot and guidance computer alike',
+    g.sep && c.sep && g.aoa < 30 && c.aoa < 30, `after separating: gyro ${g.aoa.toFixed(0)}°, guidance computer ${c.aoa.toFixed(0)}° at worst`);
 }
