@@ -957,7 +957,35 @@ ROWS[284] = {title: 'a calmer camera shake, and its switch', steps: [SHAKE, `ovO
 ROWS[281] = {title: 'planets, stars by day, airglow (refViews)', steps: views(1, 19, 152, 156, 97, 98, 100, 160)};
 ROWS[278] = {title: 'clouds at liftoff, cloud shadows (refViews, with 272)', steps: views(80, 81, 82, 83, 153)};
 ROWS[275] = {title: 'Selene in its own pass (refViews)', steps: views(19, 158, 112, 113, 3)};
+ROWS[263] = {title: 'the sunglint, Tellus from above, the exposure, star halos (refViews, with 258, 262, 265, 269)', steps: views(162, 3, 157, 98, 160)};
 ROWS[274] = {title: "each school's pad, its ground and lettering (refViews, with 277)", steps: views(145, 146, 147, 148, 149, 151)};
+// 266 and 267: the Unfold button (Q409) and nothing unfolding inside a fairing (Q410), on the Satellite: on the pad, then
+// parked in orbit with the fairing dropped (as ROWS.deploy does); click, click again, then P
+const WINGS = `({dep: S.parts.filter(p => p.on && unfolds(p.d)).map(p => !!p.dep).join(), btn: PT.text('#bWings'), lit: document.getElementById('bWings').className})`;
+ROWS[266] = {title: 'unfold the wings: inside the fairing, then in orbit (with 267)', steps: [DOCK_HELPERS, M1_HELPERS,
+  `{go('assembly'); PT.preset('Satellite'); go('rollout'); PT.launch(); updateHUD(); render(); ${WINGS}}`,
+  `{const n0 = PT.log.length; PT.click('#bWings'); updateHUD(); ({...${WINGS}, said: PT.logSince(n0)})}`, {shot: 'pad'},
+  `{PT.park(S); S.rec.launched = true; const fr = S.parts.find(p => p.on && p.profF); if (fr) fairJettison(S, [S.parts.indexOf(fr)]); updateHUD(); render(); ${WINGS}}`,
+  `{PT.click('#bWings'); updateHUD(); PT.look(1.2, 0.2, 12); render(); ${WINGS}}`, {wait: 1500}, {shot: 'unfolded'},
+  `{PT.click('#bWings'); updateHUD(); ${WINGS}}`, `{PT.key('p'); updateHUD(); ${WINGS}}`]};
+// 260: the Satellite preset's checks in the Assembly (no warnings; stage 2 holds in the air, and how far; the power line)
+ROWS[260] = {title: 'a working satellite: its checks', steps: [`{go('assembly'); PT.preset('Satellite'); render(); const t = document.body.innerText;
+  ({warn: [...document.querySelectorAll('.warn, .bad, .w, .b')].map(e => e.innerText.trim()).filter(Boolean).slice(0, 6), holds: (t.match(/[^\\n]*holds[^\\n]*/g) || []).slice(0, 3), power: (t.match(/Power[^\\n]*/) || [''])[0]})}`, {shot: 'checks'},
+  `{const t = document.body.innerText.split(String.fromCharCode(10)), i = t.findIndex(l => /AERODYNAMICS/.test(l)), e = [...document.querySelectorAll('*')].find(x => x.children.length === 0 && /AERODYNAMICS/.test(x.textContent));
+   if (e) e.scrollIntoView({block: 'start'}); ({aero: t.slice(i, i + 16)})}`, {shot: 'aero'}]};
+// 286: the camera shake's levels (Q402): the largest sway (degrees) by part of the flight, on the Lunar through max-q and
+// its first staging: subsonic, transonic (Mach 0.8–1.2), supersonic, and the 2 s after a staging; Gentle, Full, Off
+const SHK = lv => `(()=>{ SHAKE_LV = ${lv}; SHAKE_FX = ${lv} > 0; go('assembly'); PT.preset('Lunar'); PT.launch(); S.throttle = 1; stage(S); const m = {sub: 0, trans: 0, sup: 0, staging: 0}; let ts = -9, e0 = S.evIdx;
+  PT.fly(() => simT > 180, 200, {ascent: true, autostage: true, each: () => { if (S.evIdx !== e0) { e0 = S.evIdx; ts = simT } const s = camShake(), a = s ? Math.hypot(s[0], s[1]) * 57.3 : 0;
+    const k = simT - ts < 2 ? 'staging' : S.mach < 0.8 ? 'sub' : S.mach < 1.2 ? 'trans' : 'sup'; m[k] = Math.max(m[k], a) }});
+  return {lv: SHAKE_LV, ...Object.fromEntries(Object.entries(m).map(([k, v]) => [k, +v.toFixed(3)])), stagings: S.evIdx} })()`;
+ROWS[286] = {title: 'camera shake: Off, Gentle, Full', steps: [M1_HELPERS, SHK(1), SHK(2), SHK(0)]};
+// 287: the effects clock stops with the pause (Q393): the Heavy's boosters burning, Esc, the clock and two shots 1 s apart
+ROWS[287] = {title: 'effects stop with the pause', steps: [`{go('assembly'); PT.preset('Heavy'); PT.launch(); S.throttle = 1; stage(S); PT.look(0.9, 0.05, 45); true}`, {wait: 2500},
+  {key: 'Escape'}, `{window.F0 = fxNow(); window.T0 = simT; true}`, {wait: 300}, `{document.querySelectorAll('#escm').forEach(e => e.style.visibility = 'hidden'); true}`, {shot: 'paused_a'}, {wait: 1200}, {shot: 'paused_b'},
+  `({fxRan: +(fxNow() - F0).toFixed(1), simRan: +(simT - T0).toFixed(2)})`, `{document.querySelectorAll('#escm').forEach(e => e.style.visibility = ''); true}`, {key: 'Escape'}, {wait: 1000},
+  `({fxAfter: +(fxNow() - F0).toFixed(0), simAfter: +(simT - T0).toFixed(2)})`
+  ]};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload

@@ -764,3 +764,4 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - flow — PLAYTEST **#112** (P3): the desk's offers wrap to two lines at 1280×800 and Aurora sounding's buttons hang below its card (TESTING 271) — test bench
 - world (with parts & pad) — PLAYTEST **#113** (P3): a soft dark band up the hill west of the Arsenal pad, view 145 (TESTING 274) — test bench
 - flow — **smoke fails on `main`** (test bench, 2026-10-13, v1.204): "Help lists every key the assembly handler reads — t": v1.202's top-view key (Q405) isn't in Help — Q405
+- vehicle — PLAYTEST **#114** (P2): the Satellite preset reads unstable in the Assembly (−0.28 calibers full, −0.56 at M1.6, *coasting flips*); v1.178 had no warnings (TESTING 260) — test bench
