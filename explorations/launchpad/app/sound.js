@@ -48,6 +48,13 @@ function sndOthers(src){let P=0,px=0,pl=0;
 // craft it reaches the crew through the structure, so even in vacuum; from elsewhere only through the air, as a boom.
 function sndVent(vs){let g=0;for(const v of vs||[]){const k=Math.sqrt(Math.max(0,Math.min(1,v.rate||0)));
     g+=v.own?k:k*Math.sqrt(Math.max(0,v.air||0))*250/(250+Math.max(0,v.d||0))}return Math.min(1,g)}
+// the Steppe rollout (Q222; rollPhase in app/rollout.js): t s since it began, P the phases' lengths [rails, boom, arms],
+// L the rails' length (m). The car's rumble follows its speed (the same smoothstep the drawing uses: still at both ends,
+// fastest mid-way), a wheel crosses a rail joint every 12.5 m (joint: how many so far), the boom's pump whines while it
+// raises the rocket and climbs in pitch as it goes, the arms' rams more quietly after; done: each phase over (a clunk)
+function sndRoll(t,P,L){const ph=(a,d)=>Math.min(1,Math.max(0,(t-a)/d)),bell=x=>4*x*(1-x),x0=ph(0,P[0]),x1=ph(P[0],P[1]),x2=ph(P[0]+P[1],P[2]);
+  return{rumble:bell(x0),rumbleF:45+95*bell(x0),joint:Math.floor(L*x0*x0*(3-2*x0)/12.5),
+    hyd:x1>0&&x1<1?0.45+0.55*bell(x1):x2>0&&x2<1?0.5*bell(x2):0,hydF:x2>0?260:120+110*x1,done:[x0>=1,x1>=1,x2>=1]}}
 // ==== SOUND MIX END
 const AUD={VOICES:true,Q67:true,ctx:null,on:true,vol:0.7,L:null,ev:{sep:0,ign:0,boom:0,chute:0,touch:0,crack:0,splash:0,blackIn:0,blackOut:0},last:null,ship:null,nOn:0,eng:new Set(),landed:false,chA:0,nBoom:0};
 try{AUD.on=localStorage.getItem('launchpad-sound')!=='0';const v=parseFloat(localStorage.getItem('launchpad-volume'));if(v>=0&&v<=1)AUD.vol=v}catch(e){}
@@ -73,6 +80,9 @@ function sndInit(){if(AUD.ctx)return;const AC=window.AudioContext||window.webkit
   AUD.PR=layer('brown','lowpass',260,0.7);AUD.PC=layer('pop','bandpass',1400,0.8);   // re-entry plasma: a rumble and the crackle (Q67)
   AUD.pan=c.createStereoPanner?c.createStereoPanner():null;if(AUD.pan)AUD.pan.connect(AUD.master);AUD.O=layer('brown','lowpass',500,0.7,AUD.pan||AUD.master);   // sounds from elsewhere
   AUD.VH=layer('white','highpass',2600,0.5);   // a venting tank's hiss (Q363)
+  // the rollout (Q222): the car's rumble, and the hydraulic pump: a sawtooth through a bandpass with a little hiss
+  AUD.RR=layer('brown','lowpass',90,0.7);{const o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=120;
+    f.type='bandpass';f.frequency.value=700;f.Q.value=0.9;g.gain.value=0;o.connect(f);f.connect(g);g.connect(AUD.master);o.start();AUD.RH={o,g,h:layer('white','bandpass',1800,1.2)}}
   AUD.L={air:layer('brown','lowpass',2000,0.5),str:layer('brown','lowpass',110,0.7),crk:layer('pop','bandpass',2200,0.6),wind:layer('white','bandpass',400,1.2,bufG),
     hiss:layer('white','highpass',3000,0.5),rcs:layer('white','bandpass',3500,1.5),sub,lfoA}}
 function sndWake(){if(!AUD.on)return;sndInit();if(AUD.ctx&&AUD.ctx.state==='suspended')AUD.ctx.resume()}   // browsers start audio only after a gesture
@@ -94,6 +104,8 @@ const SHOT={sep:k=>({f0:500,f1:120,dur:0.35,gain:0.5*k,thump:70}),   // pyros an
   // (Q363) a splashdown: a heavy whoomp of water, bigger for a faster or heavier craft
   splash:b=>({f0:Math.min(1400,b.lp*1.6),f1:120,dur:1.3,gain:b.gain,thump:38,delay:b.delay,noise:'brown',att:0.02}),
   // (Q362) the radio blackout: going in, a burst of static that cuts dead; coming out, the squelch (and sndBeep's Quindar tone)
+  // (Q222) the rollout: a wheel over a rail joint, and the heavy clunks as the car stops, the boom locks, the arms close
+  clack:k=>({type:'bandpass',f0:1400,f1:500,dur:0.09,gain:0.22*k,thump:85,att:0.002}),clunk:k=>({f0:700,f1:110,dur:0.5,gain:0.45*k,thump:48,att:0.003}),
   blackIn:()=>({type:'bandpass',f0:1800,f1:1500,dur:0.45,gain:0.16,att:0.01}),blackOut:()=>({type:'bandpass',f0:1500,f1:1900,dur:0.22,gain:0.13,att:0.005})};
 // a metal groan (Q363): a sawtooth sliding down through a lowpass, a little wobble, ~0.9 s
 function sndGroan(b){const c=AUD.ctx,t=c.currentTime+(b.delay||0)+0.05,o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain(),w=c.createOscillator(),wg=c.createGain();
@@ -135,12 +147,22 @@ function sndFx(){const me=shipWorld();for(const e of FXSND.splice(0)){const w=ad
     r=sndBoom(d,e.k==='splash'?Math.max(air,1):air,e.sz,e.own||d<60);AUD.ev[e.k]=(AUD.ev[e.k]||0)+1;if(r.gain>0.01&&AUD.on&&AUD.ctx){sndShot(SHOT[e.k](r));if(e.k==='crack')sndGroan(r)}}}
 function sndBooms(){const me=shipWorld();for(;AUD.nBoom<booms.length;AUD.nBoom++){const bm=booms[AUD.nBoom],w=add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)),d=len(sub(w,me));
     const r=sndBoom(d,bm.air,bm.sz,d<60);AUD.ev.boom++;if(r.gain>0.01&&AUD.on&&AUD.ctx)sndShot(SHOT.boom(r))}}
+// (Q222) the rollout's one-shots, by comparing with the last frame (a restart, t going back, resets quietly)
+function sndRollEvents(r,t){const R=AUD.roll,fire=(k,o,dl=0)=>{AUD.ev[k]=(AUD.ev[k]||0)+1;if(AUD.on&&AUD.ctx)sndShot({...o,delay:dl})};
+  if(!R||t<R.t){AUD.roll={t,joint:r.joint,done:r.done.slice()};return}
+  for(let j=R.joint;j<r.joint;j++){fire('clack',SHOT.clack(0.5+r.rumble));fire('clack',SHOT.clack(0.4+r.rumble),0.09)}   // a bogie's two axles
+  r.done.forEach((d,i)=>{if(d&&!R.done[i])fire('clunk',SHOT.clunk(i===1?1.2:1))});AUD.roll={t,joint:r.joint,done:r.done.slice()}}
 function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   const sc=screenNow(),live=(sc==='flight'||sc==='map')&&S&&!gamePaused(),st=live?sndState():null;
+  const RP=sc==='rollout'&&typeof rollPhase==='function'?rollPhase():null,ro=RP?sndRoll(RP.t,ROLL_S,typeof RIG!=="undefined"&&RIG&&RIG.bP?ROLL_DOOR+RIG.bP[2]:ROLL_DOOR):null;AUD.lastR=ro;
+  if(ro)sndRollEvents(ro,RP.t);else AUD.roll=null;
   if(live){sndEvents(st);sndBooms();sndFx()}else{AUD.nBoom=booms.length;FXSND.length=0}
   const m=AUD.last=live?sndMix(st):null;
   if(!AUD.ctx||!AUD.L)return;const c=AUD.ctx,t=c.currentTime,L=AUD.L,set=(p,v,tc=0.08)=>p.setTargetAtTime(v,t,tc);
-  set(AUD.master.gain,AUD.on&&!document.hidden&&live?AUD.vol*(sc==='map'?0.35:1):0,0.15);if(!m)return;
+  set(AUD.master.gain,AUD.on&&!document.hidden&&(live||ro)?AUD.vol*(sc==='map'?0.35:1):0,0.15);
+  if(AUD.RR){set(AUD.RR.g.gain,ro?0.5*ro.rumble:0,0.1);set(AUD.RR.f.frequency,ro?ro.rumbleF:90,0.2);set(AUD.RH.g.gain,ro?0.07*ro.hyd:0,0.12);set(AUD.RH.h.g.gain,ro?0.05*ro.hyd:0,0.12);
+    if(ro)set(AUD.RH.o.frequency,ro.hydF,0.3)}
+  if(!m)return;
   const vo=AUD.VOICES?sndVoices(st.engs,m.air):[];AUD.lastV=vo;
   AUD.V.forEach((v,i)=>{const x=vo[i];set(v.g.gain,x?0.22*x.g:0,0.12);if(x)set(v.f.frequency,x.f,0.2)});
   set(L.air.g.gain,0.55*m.air*(vo.length?0.8:1));

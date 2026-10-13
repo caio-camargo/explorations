@@ -653,6 +653,21 @@
     own === 1 && half === .5 && vac === 0 && near > .8 && far < .1 && wired, `own ${own}, quarter left ${half}, elsewhere in vacuum ${vac}, 50 m in air ${near.toFixed(2)}, 5 km ${far.toFixed(2)} · wired ${wired}`);
 }
 
+// sound-3. The Steppe rollout's sound (look & sound effects beat, QUEUE Q222): the car's rumble follows its speed (still at
+// both ends, loudest mid-way), a double clack at each 12.5 m rail joint, the boom's pump whining up in pitch while it raises
+// the rocket and the arms' rams after, a clunk as each phase ends; heard on the Rollout screen only.
+{
+  const H = html.replace(/\r\n/g, '\n'), blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END'));
+  const { sndRoll } = new Function(blk + ';return {sndRoll}')(), P = [7, 5, 1.5], L = 118;
+  const a = sndRoll(0, P, L), m = sndRoll(3.5, P, L), e = sndRoll(7, P, L), b1 = sndRoll(8, P, L), b2 = sndRoll(11, P, L), ar = sndRoll(12.75, P, L), z = sndRoll(20, P, L);
+  const ok = a.rumble === 0 && m.rumble === 1 && e.rumble === 0 && e.joint === Math.floor(L / 12.5) && a.hyd === 0 && m.hyd === 0 && b1.hyd > .45 && b2.hydF > b1.hydF
+    && ar.hyd > 0 && ar.hyd < b1.hyd && z.hyd === 0 && z.rumble === 0 && z.done.every(Boolean) && !m.done[0] && e.done[0] && !b2.done[1];
+  const wired = /RP=sc==='rollout'&&typeof rollPhase==='function'\?rollPhase\(\):null/.test(H) && /if\(ro\)sndRollEvents\(ro,RP\.t\)/.test(H) && /\(live\|\|ro\)\?AUD\.vol/.test(H)
+    && /fire\('clack',SHOT\.clack\(/.test(H) && /fire\('clunk',SHOT\.clunk\(/.test(H);
+  check('the Steppe rollout sounds: rumble with the car\'s speed, a clack per rail joint, the pump rising while the boom lifts, the arms after, a clunk per phase', ok && wired,
+    `rumble ${a.rumble}/${m.rumble}/${e.rumble}, joints ${e.joint}, pump ${b1.hyd.toFixed(2)} at ${b1.hydF.toFixed(0)} → ${b2.hydF.toFixed(0)} Hz, arms ${ar.hyd.toFixed(2)} · wired ${wired}`);
+}
+
 // aerofx-23. Tellus from above (look & sound sky & bodies beat, BEAUTY Q323 B6.1, 6.3, 6.4). The cloud cover's far-field
 // widening is even about the threshold's centre (it was lopsided: a blurred pixel came out ~4× cloudier than the ground
 // under it), starts once the finest octave is under a pixel (fw × 15), and the coverage has a milder stretch, a
