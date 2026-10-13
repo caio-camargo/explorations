@@ -6154,3 +6154,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Built:** kick motors (solid: armed by staging, lit by a throttle-up, full thrust to burnout), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is a separation ring (decoupler); the bench shows the payload's own Δv against a stationary orbit; a balance weight one click from the balance check (Caio's round-2 note); plain shapes at real size for the new parts. Tests vehicle-28, vehicle-29.
 - **Checked:** full suite passed except `qa-2` (fails on `main` too, flagged before). Browser on 8772 with the GPU lock (taken with noclobber, released).
 - **Next:** Q412 (a stationary-orbit preset built from these), Q423 (bench parts, first set), slice 2 of Q416 with Q417 (bus frame, small stacks).
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): heat and load you notice (Q271, v1.208)
+- **Done:** H and L bars beside the navball in every flight phase (the hottest part vs its limit, the most loaded joint vs its certified rating), faint under 50 %, amber from 50 %, red from 90 %, hover for the part; the master caution blinks for three seconds when its reasons change. On `main` as `a907f3c`; TESTING 289 in `ab0c954` (TESTING's counter said 288 while row 288 existed: fixed to 290).
+- **Checks:** flow-29 (new), flow-5/24 pass; robot rows `gauges` and `m1` pass (first labels HEAT/LOAD ran together at 12 px: now H/L, the title names them).
+- **Not done:** the hot part glowing on the rocket (look & sound).
