@@ -2059,8 +2059,8 @@ function strip(out,A,B,w,h,col){const dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,
 // pad the buildings stand on the concrete it paints (padGround: apron r 40, slabs at (36,18), (−45,−25), (20,−30), the
 // road leaving to the north-west). Further out, slabs, rail beds and roads are thin meshes. TH is the umbilical tower's
 // height (sized to the rocket); the service gantry and the lightning masts scale with it. Early-era Cape style.
-function buildPad(TH,sch=0){const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],AS=[.06,.06,.065,2],W=C.W;
-  if(sch===1)steppeTable(a,CO,STL,DK);else if(sch>=2)[arsenalPad,coastalPad,mountainPad,islePad][sch-2](a,TH,CO,STL,DK);else{   // (the pad per school, Q159: Steppe's below; Q231: the other four)
+function buildPad(TH,sch=0,pw=null){const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],AS=[.06,.06,.065,2],W=C.W;
+  if(sch===1)steppeTable(a,CO,STL,DK);else if(sch>=2)[arsenalPad,coastalPad,mountainPad,islePad][sch-2](a,TH,CO,STL,DK,padName(sch,pw));else{   // (the pad per school, Q159: Steppe's below; Q231: the other four)
   // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
   lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
   for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
@@ -2169,10 +2169,23 @@ function arsenalPad(a,TH,CO,STL,DK){const OL=[.31,.34,.21,2],EA=[.36,.37,.24,2];
 // Coastal: stacked upright in the assembly building and rolled out standing on a mobile launch table (the rig's) along
 // twin rails to a towerless pad: four lightning masts with wires between their tops, the giant deluge water tower,
 // smart low white buildings and a glass control centre, the cryogenic spheres
-function coastalPad(a,TH,CO,STL,DK){const WH=[.9,.9,.88,2],PA=[.62,.75,.86,2];
+// (Q245) lettering on the pads: a 5×7 capital font (35 bits a letter, rows top to bottom, base 36), built as geometry, one
+// box per run of lit pixels on a row, a hair proud of the wall, so the letters take the building's light; a line
+// break starts a line. Accents are dropped; anything not in the font is a space
+const FONT57={A:'76cqm29',B:'f2h64ou',C:'76btkxa',D:'f2gwzzy',E:'fjnugin',F:'fjnugi8',G:'76byipb',H:'8nmknjl',I:'6ywdqq6',J:'3hg6vrg',K:'8o8aez5',L:'85aef4v',M:'8t8nepd',N:'8nrdgz5',O:'76cgs32',P:'f2h63v4',Q:'76cgv9p',R:'f2h672p',S:'7nj2num',T:'fcs3z44',U:'8nmatke',V:'8nmatdw',W:'8nmdpyi',X:'8nho7qp',Y:'8nho2o4',Z:'fb2xk4f','-':'lrsw'};
+function padText(a,s,c,hMax,wMax,col){const L=String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().split('\n'),m=Math.max(...L.map(l=>l.length));if(!m)return;
+  const p=Math.min(hMax/(9*L.length-2),wMax/(m*6-1));   // lines 7 pixels tall, 2 apart
+  L.forEach((l,li)=>{const n=l.length,x0=c[0]-(n*6-1)*p/2,yc=c[1]+((L.length-1)/2-li)*9*p;
+    for(let i=0;i<n;i++){const g=FONT57[l[i]];if(!g)continue;const b=parseInt(g,36);
+      for(let r=0;r<7;r++){const y=yc+(3-r)*p;let k=0;while(k<5){if(!(Math.floor(b/2**(34-r*5-k))&1)){k++;continue}let e=k;while(e<5&&Math.floor(b/2**(34-r*5-e))&1)e++;
+        box(a,[x0+(i*6+(k+e)/2)*p,y,c[2]+.025],(e-k)*p/2,p/2,.025,col);k=e}}}})}
+// the names they carry: Coastal's agency over its assembly building's door, Isle's company on the hangar's sign
+function padName(sch,pw){const P=pw!=null&&typeof POWERS!=='undefined'?POWERS[pw]:null;if(!P)return'';return sch===3?'Centre Spatial\n'+P.root:sch===5?P.root+' Launch Co':''}
+function coastalPad(a,TH,CO,STL,DK,name){const WH=[.9,.9,.88,2],PA=[.62,.75,.86,2];
   box(a,[0,.04,0],17,.04,17,[.68,.67,.64,2]);box(a,[0,.09,8.5],2.6,.01,8.5,DK);for(const s of[-1,1])box(a,[3*s,.35,9.5],.3,.35,7.5,WH);   // the slab, the flame duct's mouth
   for(const x of[-3,3]){strip(a,[x,8],[x,-128],1.4,.05,CO);strip(a,[x,8],[x,-128],.14,.2,STL)}   // the twin rails, north to the building
   box(a,[0,17,-140],12,17,11,WH);box(a,[0,13,-128.95],5,13,.06,[.3,.31,.33,1]);box(a,[0,30.5,-128.9],12.05,.6,.06,PA);   // the assembly building, its door, a pastel band
+  padText(a,name,[0,27.95,-129],3.5,21,[.16,.25,.4,2]);   // the agency's name over the door (Q245)
   for(const[x,z]of[[-15,-15],[15,-15],[15,15],[-15,15]]){tube(a,[x,0,z],[x,TH+14,z],.32,[.82,.83,.84,1],8);tube(a,[x,TH+14,z],[x,TH+17,z],.06,STL,4);box(a,[x,.5,z],.9,.5,.9,CO)}
   for(let i=0;i<4;i++){const P=[[-15,-15],[15,-15],[15,15],[-15,15]],[x0,z0]=P[i],[x1,z1]=P[(i+1)%4];tube(a,[x0,TH+16.5,z0],[x1,TH+16.5,z1],.025,DK,4)}
   lathe(a,[[1.8,0,WH],[1.8,30,WH],[6,30,WH],[6,38,WH],[6,38,PA],[5.6,38.8,PA],[0,40.5,WH]],[-42,0,-30],28,[false,true]);   // the deluge water tower
@@ -2192,10 +2205,10 @@ function mountainPad(a,TH,CO,STL,DK){const ST=[.62,.6,.54,2],GR=[.38,.47,.29,2],
   for(const z of[-6,-2])box(a,[30,1.1,z],2.2,1.1,1.5,ST)}   // motor stores
 // Isle: a tiny pad, a gravel track north to the hangar the rocket rolls out of; a shed, a container office, one mast;
 // sheep. The strongback and its trailer are the rig's
-function islePad(a,TH,CO,STL,DK){const GV=[.5,.48,.44,2],WO=[.88,.86,.8,2],SH=[.12,.11,.1,2];
+function islePad(a,TH,CO,STL,DK,name){const GV=[.5,.48,.44,2],WO=[.88,.86,.8,2],SH=[.12,.11,.1,2];
   box(a,[0,.15,0],5.5,.15,5.5,CO);box(a,[0,.31,2.6],1.6,.01,2.2,DK);strip(a,[0,-5.5],[0,-75],4,.03,GV);
   box(a,[0,5,-84],13,5,9,[.8,.81,.82,1]);box(a,[0,10.1,-84],13.3,.12,9.3,[.3,.31,.32,1]);box(a,[0,4.2,-74.96],7,4.2,.05,[.32,.33,.35,1]);box(a,[0,8.9,-74.95],9,.75,.05,C.BK);
-  for(let i=0;i<5;i++)box(a,[-6+i*3,8.9,-74.9],1,.45,.02,C.W);   // the company's name (a sign; lettering not built)
+  padText(a,name,[0,8.9,-74.9],1.05,16.5,C.W);   // the company's name on its sign (Q245)
   box(a,[14,1.6,-20],3,1.6,2.5,[.55,.5,.42,2]);box(a,[14,3.3,-20],3.2,.12,2.7,[.3,.29,.28,1]);   // the shed
   box(a,[-14,1.3,-14],3.05,1.3,1.22,[.16,.32,.56,1]);box(a,[-14,1.5,-12.77],1.4,.5,.02,C.GL);   // the container office
   tube(a,[-10,0,6],[-10,20,6],.12,STL,6);box(a,[-10,20.2,6],.25,.2,.25,C.D);   // the mast
@@ -2205,7 +2218,7 @@ function islePad(a,TH,CO,STL,DK){const GV=[.5,.48,.44,2],WO=[.88,.86,.8,2],SH=[.
 // other site in another school gets a default-height one, built once)
 const padSchoolOf=t=>SCHOOL_FORCE!=null?SCHOOL_FORCE:schoolOf(t&&t.power!=null?t.power:HOME);
 SITE_SCHOOL=t=>padSchoolOf(t);   // the ground under a site is its drawn pad's (sim/world.js siteShape, Q105)
-const PADX={};function padFor(t){const k=padSchoolOf(t);return k===padSch?PAD:PADX[k]||(PADX[k]=buildPad(32,k))}
+const PADX={};function padFor(t){const k=padSchoolOf(t),pw=t&&t.power!=null?t.power:null,x=k+':'+pw;return k===padSch&&pw===padPw?PAD:PADX[x]||(PADX[x]=buildPad(32,k,pw))}   // (Q245) per power too: the lettering
 const PAD_GX=10.5,PAD_LIGHTS=[0,1,2,3].map(i=>{const t=.9+i*Math.PI/2;return[34*Math.cos(t),34*Math.sin(t)]});
 // what glows at night: the lamp faces, and the pools of light they throw on the ground around the pad (the ground is the
 // sky shader's, so the pools are additive discs just above it, drawn in the glow pass)
@@ -2326,7 +2339,7 @@ function schoolRig(TH,rig,sch){const STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],ext=rig
 // The tower is sized to the rocket standing on the pad (or being built): about 3 m above its top, in whole lattice bays,
 // 12.5–60 m. While a rocket stands there (or is being built) the pad holds it: swing arms reach from the tower to the
 // widest thing at each arm's height (boosters included), and hold-downs clamp its base. Ship x is pad x (east) here.
-let PAD=buildPad(32),RIG=buildRig(32,null),padTH=32,padSch=0,padKey='',padShip=null,padMode=null,padT0=-1e9,padNight=0;
+let PAD=buildPad(32),RIG=buildRig(32,null),padTH=32,padSch=0,padPw=null,padKey='',padShip=null,padMode=null,padT0=-1e9,padNight=0;
 function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0,ps=S.parts.filter(p=>p.on);if(!ps.length)return null;
   const bot=ps.filter(p=>p.y0<.01),core=bot.find(p=>Math.abs(p.pos[0])<.05&&Math.abs(p.pos[2])<.05)||bot[0];
   const xAt=h=>{let x=null;for(const p of ps){const y0=p.y0+base;if(h>=y0&&h<=y0+p.h){const e=p.pos[0]+p.d.r;if(x==null||e>x)x=e}}return x};
@@ -2354,8 +2367,8 @@ function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!
   if(S!==padShip||mode!==padMode){padShip=S;padMode=mode;padT0=mode==='flight'&&S.landed&&!S.mkLift?simT:-1e9}
   if(!pre)return;   // after liftoff the rig keeps its shape and only animates
   const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60),rig=padRig(H),sch=padSchoolOf(curSite());
-  const key=H+'|'+sch+'|'+(typeof crewGen==='function'?crewGen():0)+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch!==0?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
-  if(key===padKey)return;if(H!==padTH||sch!==padSch){PAD.free();PAD=buildPad(H,sch);padTH=H;padSch=sch}RIG.free();RIG=buildRig(H,rig,sch);padKey=key}
+  const key=H+'|'+sch+'|'+curSite().power+'|'+(typeof crewGen==='function'?crewGen():0)+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch!==0?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
+  if(key===padKey)return;const pw=curSite().power;if(H!==padTH||sch!==padSch||pw!==padPw){PAD.free();PAD=buildPad(H,sch,pw);padTH=H;padSch=sch;padPw=pw}RIG.free();RIG=buildRig(H,rig,sch);padKey=key}
 // the frame of the pad the rocket uses (curSite(): every site draws the static pad; the rig and the lights are only at
 // this one), with the same axes the pad's own draw uses (siteFrame: e, up, s)
 const padPF=()=>{const t=curSite();return mul(t.u,TELLUS.R+t.h)};
