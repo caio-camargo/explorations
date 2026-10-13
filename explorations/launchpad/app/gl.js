@@ -954,7 +954,7 @@ void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);float ws=0.;
 // (Sobotka's curve, the Blender 4 default; Wrensch's fit: fire keeps its colour into white instead of ACES's flat
 // orange), then the grade (a 32³ LUT on the display values: GRADE_LUT) and grain, which also dithers the 8-bit output
 const COMP_FS=`#version 300 es
-precision highp float;precision highp sampler3D;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,uB4;uniform sampler3D uLut;uniform vec2 uP4,uAs;uniform float uK,uE,uT,uVg,uGr;
+precision highp float;precision highp sampler3D;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,uB4;uniform sampler3D uLut;uniform vec2 uP4,uAs;uniform float uK,uE,uT,uVg,uGr,uHt;uniform vec4 uHa[4],uHb[4];uniform int uHn;
 vec3 fin(vec3 c){bvec3 b=equal(floatBitsToUint(c)&uvec3(0x7f800000u),uvec3(0x7f800000u));return vec3(b.x?0.:c.x,b.y?0.:c.y,b.z?0.:c.z);}   // NaN and ∞ to 0 by their bits (D3D compiles isnan away)
 vec3 tent(sampler2D t,vec2 uv,vec2 px){vec3 c=texture(t,uv).rgb*4.;c+=texture(t,uv+vec2(px.x,0.)).rgb*2.+texture(t,uv-vec2(px.x,0.)).rgb*2.+texture(t,uv+vec2(0.,px.y)).rgb*2.+texture(t,uv-vec2(0.,px.y)).rgb*2.;
  c+=texture(t,uv+px).rgb+texture(t,uv-px).rgb+texture(t,uv+vec2(px.x,-px.y)).rgb+texture(t,uv+vec2(-px.x,px.y)).rgb;return c/16.;}
@@ -962,7 +962,16 @@ vec3 agx(vec3 c){const mat3 I=mat3(.842479062253094,.0423282422610123,.042375654
  const mat3 O=mat3(1.19687900512017,-.0528968517574562,-.0529716355144438,-.0980208811401368,1.15190312990417,-.0980434501171241,-.0990297440797205,-.0989611768448433,1.15107367264116);
  vec3 x=clamp((log2(max(I*c,vec3(1e-10)))+12.47393)/16.5,0.,1.),x2=x*x,x4=x2*x2;
  x=15.5*x4*x2-40.14*x4*x+31.96*x4-6.868*x2*x+.4298*x2+.1191*x-.00232;return clamp(O*x,0.,1.);}
-void main(){vec2 uv=vNdc*.5+.5;vec3 c=fin(texture(uS,uv).rgb);   // a stray NaN pixel (a degenerate normal) stays one black pixel
+void main(){vec2 uv=vNdc*.5+.5;
+ // (Q319, BEAUTY B2.6) heat haze, High only: behind each nozzle firing in air (uHa: the segment's ends, aspect-corrected
+ // NDC; uHb: half-widths at each end, strength) the scene is looked up a little off, in ripples that scroll down the jet
+ if(uHn>0){float as=uAs.x/uAs.y;vec2 P=vNdc*vec2(as,1.),off=vec2(0.);
+  for(int i=0;i<4;i++){if(i>=uHn)break;vec4 A=uHa[i],B=uHb[i];vec2 ab=A.zw-A.xy;float L2=max(dot(ab,ab),1e-8),t=clamp(dot(P-A.xy,ab)/L2,0.,1.);
+   vec2 cp=A.xy+ab*t;float d=length(P-cp),w=mix(B.x,B.y,t);if(d>=w)continue;
+   vec2 ax=ab*inversesqrt(L2),pp=vec2(-ax.y,ax.x);float s=t*sqrt(L2)/max(w,1e-4),u=dot(P-cp,pp)/w,m=B.z*(1.-d/w)*(1.-d/w)*smoothstep(0.,.08,t)*(1.-smoothstep(.7,1.,t));
+   off+=m*w*.05*(pp*sin(s*7.-uHt*23.+u*5.)+ax*.5*sin(s*11.+u*9.-uHt*31.));}
+  uv+=off*vec2(1./as,1.)*.5;}
+ vec3 c=fin(texture(uS,uv).rgb);   // a stray NaN pixel (a degenerate normal) stays one black pixel
  if(uK>0.)c+=uK*(texture(uB1,uv).rgb*.3+tent(uB2,uv,uP4*.25)*.3+tent(uB3,uv,uP4*.5)*.25+tent(uB4,uv,uP4)*.15);   // each level tent-filtered at its own texel size (uP4 is the 1/16 level's)
  vec2 q=vNdc*uAs;c*=uE*(1.-uVg*pow(dot(q,q),1.25));   // the lens falls off toward the corners (uAs: aspect, the corner at 1)
  vec3 d=texture(uLut,agx(c)*(31./32.)+.5/32.).rgb;
@@ -1473,7 +1482,8 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
   gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,(HOOK.fxT??performance.now())%997);
-  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);gl.drawArrays(gl.TRIANGLES,0,3);
+  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);
+  gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
 // ---- fin-tip vapor: each fin tip's recent path, planet-fixed, with how much vapor it shed there. A fin sheds a tip
 // vortex in proportion to its load: the cross-flow component along its normal (so in a turn two fins of a ring trail
@@ -1548,6 +1558,13 @@ function debrisHeat(){if(mode!=='flight')return;const dt=Math.min(.1,Math.max(0,
     g.smk+=dt*k*12;while(g.smk>1){g.smk-=1;if(smoke.length>2500)smoke.shift();const R=Math.random;   // a dark trail of ablated paint and insulation
       smoke.push({pf:toPF(b,madd(d.r,[R()-.5,R()-.5,R()-.5],g.geo.radius),simT),t0:simT,s0:g.geo.radius*(1+R()),grow:3+3*R(),a0:.35*clamp(rho*3,.1,1),life:25+20*R(),rise:0,seed:R()*97})}}}
 let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
+// (Q319, B2.6) heat haze: up to four jets' screen segments for the composite, gathered while the plumes draw (hazeAdd)
+let HAZE_FX=true;const HAZE={n:0,a:new Float32Array(16),b:new Float32Array(16)};
+// a jet from o (camera-relative, its exit) along d, L long, re exit radius, R its widest radius, k strength: projected with VP
+// into aspect-corrected NDC (y up, the screen's half-height = 1; ty = tan of half the vertical field of view); skipped when either end is behind the camera
+function hazeAdd(VP,o,d,L,re,R,k,asp,ty){if(!HAZE_FX||HAZE.n>=4||k<.02)return;const pr=p=>{const x=VP[0]*p[0]+VP[4]*p[1]+VP[8]*p[2]+VP[12],y=VP[1]*p[0]+VP[5]*p[1]+VP[9]*p[2]+VP[13],w=VP[3]*p[0]+VP[7]*p[1]+VP[11]*p[2]+VP[15];return w>.1?[x/w*asp,y/w,w]:null};
+  const p0=pr(madd(o,d,re*.5)),p1=pr(madd(o,d,L*1.1));if(!p0||!p1)return;const i=HAZE.n++;
+  HAZE.a.set([p0[0],p0[1],p1[0],p1[1]],i*4);HAZE.b.set([re*2.4/(p0[2]*ty),R*1.3/(p1[2]*ty),Math.min(1,k),0],i*4)}
 let PLUME_LK=175;   // the plume light's strength (Q319, B2.5: was 110 before HDR, when the flame itself was capped at display white)
 const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();

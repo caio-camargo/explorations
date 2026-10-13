@@ -1504,3 +1504,18 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
 - **Stills:** `output/launchpad/beauty/q267/sq_row.png` (a capsule at 12.5 m/s: 0.3 s, 1.2 s, 10 s); `sp_row.png` is the
   first, coarser try.
 - **Checks:** test `aerofx-16`. TESTING 238.
+
+## v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319 B2.6)
+- **What:** the air behind a nozzle firing in air shimmers. On High only (`HAZE_FX` in `QUAL.high`; Low's description
+  says so). The composite (`COMP_FS`) reads the scene a little off where it falls on a jet. Bloom isn't shifted.
+- **How:** while the plumes draw, `hazeAdd` projects each jet (up to four) into a screen segment. The segment runs from
+  half an exit radius behind the nozzle to 1.1 plume lengths down, in aspect-corrected NDC, 2.4 exit radii wide at the
+  top and 1.3 of the plume's widest radius at the bottom. Its strength is throttle × min(1, 3·p/p₀), so it fades out with
+  the air. In the composite, inside a segment, the offset is two sine ripples, one across the jet and half as much along
+  it, scrolling down it on sim time (still when paused, so the reference views stay repeatable). The amplitude is 5 %
+  of the local half-width × (1 − d/w)², faded in over the first 8 % of the segment and out over its last 30 %.
+- **Limits:** it shifts whatever is in front of the jet too (a tower in front of the flame shimmers a little); no depth test.
+- **Cost** (RTX 3050, High, views 30, 34, 36 with `REF_EVAL` on and off): bloom plus composite 0.69–0.93 ms either way, which
+  is noise. Stills: `output/launchpad/beauty/q319-haze/haze_sheet.png` (on | off | difference ×8; row 1 is frame-identical,
+  rows 2–3 differ elsewhere because of random smoke and motion).
+- **Checks:** test `aerofx-17`. TESTING 240.

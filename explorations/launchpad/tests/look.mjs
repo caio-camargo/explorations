@@ -548,3 +548,20 @@
   const wetSet = /if\(!s\.wet\)\{if\(!touchdown\(s\)\)return;s\.wet=true;/.test(src);
   check('splashdown: spray and a racing ring once, when the sim sets s.wet, scaled by speed and mass', once && scaled && wetSet, `once ${once} · scaled ${!!scaled} · sim sets s.wet ${wetSet}`);
 }
+
+// aerofx-17. Heat haze (look & sound effects beat, BEAUTY Q319 B2.6): High only. Each jet firing in air adds a screen
+// segment (up to four) that the composite looks the scene up a little off along, in ripples that scroll down the jet.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const comp = page.slice(page.indexOf('const COMP_FS=`'), page.indexOf('`;', page.indexOf('const COMP_FS=`')));
+  const shader = /if\(uHn>0\)\{/.test(comp) && /uv\+=off\*vec2\(1\.\/as,1\.\)\*\.5;\}\n vec3 c=fin\(texture\(uS,uv\)\.rgb\);/.test(comp);
+  const wired = /HAZE\.n=0;/.test(page) && /if\(S\.body\.atm\)hazeAdd\(VP,o,qrot\(Q,\[0,-1,0\]\),L,e\.d\.exit,R,thr\*Math\.min\(1,pa\*3\),W\/H,tanY\)/.test(page)
+    && /gl\.uniform1i\(c\.uHn,HAZE\.n\)/.test(page) && /high:\{[^}]*HAZE_FX:1\}/.test(page) && /HAZE_FX=!!f\.HAZE_FX;/.test(page) && !/low:\{[^}]*HAZE_FX:1/.test(page);
+  const fn = page.match(/function hazeAdd\([\s\S]*?\n  HAZE\.a\.set[^\n]*\}/), HZ = { n: 0, a: new Float32Array(16), b: new Float32Array(16) };
+  const add2 = fn && new Function('HAZE_FX', 'HAZE', 'madd', fn[0] + ';return hazeAdd')(true, HZ, (a, d, k) => a.map((x, i) => x + d[i] * k));
+  const VP = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1, 0, 0, -.2, 0];   // looking down −z, w = distance
+  if (add2) { for (let i = 0; i < 6; i++) add2(VP, [0, 0, -50], [0, -1, 0], 20, .5, 3, 1, 1.6, 1); add2(VP, [0, 0, 50], [0, -1, 0], 20, .5, 3, 1, 1.6, 1) }
+  const proj = add2 && HZ.n === 4 && Math.abs(HZ.a[0]) < 1e-9 && HZ.a[3] < HZ.a[1] && HZ.b[1] > HZ.b[0];
+  check('heat haze: on High only, up to four jets in air, projected to screen segments that widen down the jet; the composite looks the scene up off them',
+    shader && wired && proj, `shader ${shader} · wired ${wired} · projection ${proj} (n ${HZ.n}, behind the camera skipped)`);
+}
