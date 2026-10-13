@@ -5965,3 +5965,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q387/`.
 - **Next for sky & bodies:** Q322 (the transmittance table, Selene out of `SKY_FS`).
 
+- **Addendum (design desk, 2026-10-13):** Q345 (the aim) made ready to build with Q237 (Caio: "let's queue to build").
+  Caio's playthrough notes filed as PLAYTEST #89–#93 (haze dithering, effects running through a pause, the city from
+  the air, stars by day, the bright stars' halo cut at its cell's border, cause found) with Proposed lines; a 3D mock-up
+  `mockups/city/` for #91 / Q394 (A grid, B old core, today; by era, height and light; budget line). Stills in
+  `output/launchpad/mockups/city/`.
