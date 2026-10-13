@@ -812,7 +812,25 @@
   check('volume cloud shadow: baked once on the coverage grid (SHD_FS), a lookup per ground pixel', look && bake, `lookup ${look} · bake ${bake}`);
 }
 
-// aerofx-33. A display rod under a hanging model (look & sound effects beat, QUEUE Q330): while parts below were removed
+// aerofx-33. The planets in the sky, a moon under a pixel, stars by the sky's contrast, a faint airglow (look & sound sky
+// & bodies beat, QUEUE Q374, Q395, Q407; PLAYTEST #11, #92, #103): planetSky turns each planet's magnitude (albedo,
+// radius, distances, phase) into the stars' br and SKY_FS's planetsAt draws them; a moon whose disc is under 1.5 px is
+// the moon pass's point with the whole disc's light; stars, planets and the galaxy lose SKY_CK × the sky's luminance
+// behind them; the airglow's line is a quarter of v1.183's. Views 169 (the planets), 170 (Selene as a point), 171 (dusk).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const planets = /function planetSky\(T\)/.test(pg) && /-26\.74-2\.5\*Math\.log10\(/.test(pg) && /vec3 planetsAt\(vec3 d\)/.test(pg) && /planetsAt\(d\)/.test(pg) && /gl\.uniform1i\(u\.uNPl,P\.length\)/.test(pg);
+  const point = /if\(pt&&\(aR>uPix\*1\.5\|\|th>uPix\*3\.\)\)discard;/.test(pg) && /\(aR\*aR\/\(rho\*rho\)\)/.test(pg) && /uMR<uPix\*1\.5\*length\(uMc\)/.test(pg);
+  const contrast = /const SKY_CK=30;/.test(pg) && /stp\*=max\(0\.,1\.-Ys\//.test(pg) && /gl3\*=max\(0\.,1\.-Ys\//.test(pg);
+  const glow = /vec3 glow=vec3\(\.3,1\.,\.4\)\*\.003\*ag\*/.test(pg);
+  // the stars' scale: a magnitude −1.5 planet is the brightest star (br 2.45); five magnitudes fainter is 1 % of it
+  const br = m => Math.min(8, 2.45 * 10 ** (-0.4 * (m + 1.5))), scale = Math.abs(br(-1.5) - 2.45) < 1e-9 && Math.abs(br(3.5) / br(-1.5) - 0.01) < 1e-9;
+  check('the planets as points on the stars\' scale, a sub-pixel moon as a point, stars faded by the sky behind them, a faint airglow (views 169–171)',
+    planets && point && contrast && glow && scale && /if \(n === 171\)/.test(vj) && /if \(n === 169 \|\| n === 170\)/.test(vj),
+    `planets ${planets} · point ${point} · contrast ${contrast} · airglow ${glow} · scale ${scale}`);
+}
+
+// aerofx-34. A display rod under a hanging model (look & sound effects beat, QUEUE Q330): while parts below were removed
 // the design hangs over the desk's base plate (BLD.foot, Q247); a steel rod rises from the plate's pin to its bottom, with
 // a collar, and the desk mesh is rebuilt when the gap changes.
 {
