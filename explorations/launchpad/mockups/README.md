@@ -518,6 +518,10 @@ program could draw its own from its seed, as the galaxy is since Q21.
 | **spiral** (e) | a neighbour spiral galaxy ~16° across, tilted: a golden core, blue arms with dust lanes, pink star-forming knots | Andromeda (M31, 3° in our sky), M81, M101 |
 | **cosmos** (f) | everything in one 80° frame: the showpiece galaxy, the Hubble nebula, the spiral | — |
 
+**Dimmed, 2026-10-13** (Caio: "both the galaxy and the nebula are too bright"): the galaxy and the sights are at half
+the first round's brightness; the bar's **galaxy** and **sights** buttons step them ×0.8 / ×1.25 (or `?gb=` and `?nb=`),
+so the level can be set by eye and carried into Q321.
+
 Not drawn yet: dark pillars proper (the dust is lanes, not columns), a supernova remnant's shell (the Veil), a
 planetary nebula, a globular cluster; any of them is the same recipe if wanted.
 
