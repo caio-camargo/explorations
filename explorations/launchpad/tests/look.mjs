@@ -160,8 +160,9 @@
   }
   // QUEUE Q65: the ground under the cloud volume takes the volume's own shadow (cloudShadowV, blended by uVk and the bake's
   // edge), with its A/B uniforms uploaded; the deck's variety is behind its own toggle
-  check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
-    pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
+  // (Q379: the march toward the sun is baked, SHD_FS; cloudShadowV reads it)
+  check('cloud volume shadows: the ground shading uses cloudShadowV, from cloudDens marched toward the sun (baked, Q379); toggles wired',
+    pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(P\+uSun\*/.test(pg) && /texture\(uShd,uq\)/.test(pg)
       && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);') && pg.includes('gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
   // QUEUE Q66: per-engine voices. Smaller nozzles sing higher; voices go by kind of engine (two Kestrels are one voice), the
   // biggest thrust shares first, at most four; nothing when nothing burns; equal shares sum to the airborne level in power
@@ -263,8 +264,8 @@
   const sch = i => i === 3 ? 1 : 0, vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   check('Steppe pad: a site is built in its owner\'s school (sea: home\'s), the tester\'s force wins; every site draws its own; views 116–119',
     P(null, sch, 0)({ power: 3 }) === 1 && P(null, sch, 0)({ power: 0 }) === 0 && P(null, sch, 3)({ power: null }) === 1 && P(0, sch, 0)({ power: 3 }) === 0 && P(1, sch, 0)({ power: 0 }) === 1
-      && /drawMesh\(padFor\(t\),M,site\)/.test(H) && /function buildPad\(TH,sch=0\)\{[^\n]*\n  if\(sch===1\)steppeTable\(a,CO,STL,DK\);else if/.test(page)
-      && /if\(key===padKey\)return;if\(H!==padTH\|\|sch!==padSch\)/.test(page) && /if\(RIG\.sch===1\)return drawSteppeRig/.test(page) && /SCHOOL_FORCE = 1;/.test(vj) && /n >= 116 && n <= 119/.test(vj));
+      && /drawMesh\(padFor\(t\),M,site\)/.test(H) && /function buildPad\(TH,sch=0,pw=null\)\{[^\n]*\n  if\(sch===1\)steppeTable\(a,CO,STL,DK\);else if/.test(page)
+      && /if\(key===padKey\)return;const pw=curSite\(\)\.power;if\(H!==padTH\|\|sch!==padSch\|\|pw!==padPw\)/.test(page) && /if\(RIG\.sch===1\)return drawSteppeRig/.test(page) && /SCHOOL_FORCE = 1;/.test(vj) && /n >= 116 && n <= 119/.test(vj));
 }
 
 // aerofx-5. The crew's look, slice 1 (look & sound effects beat, QUEUE Q195; Caio: W19 stylised human, suits by school and
@@ -358,7 +359,7 @@
     const o = mine.find(p => p[0] < -256 || p[0] > 86 || p[2] < -194 || p[2] > 80); if (o) out.push(`${i + 2}: off the deck at ${o.map(v => v.toFixed(0))}`); });
   const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   check('school pads: the four complexes build and stay on the sea platform\'s deck; buildPad and drawPadRig dispatch them; views 145–151',
-    !out.length && /else if\(sch>=2\)\[arsenalPad,coastalPad,mountainPad,islePad\]\[sch-2\]\(a,TH,CO,STL,DK\)/.test(page) && /if\(RIG\.sch>=2\)return drawSchoolRig/.test(page) && /n >= 145 && n <= 151/.test(vj), out.join(' | '));
+    !out.length && /else if\(sch>=2\)\[arsenalPad,coastalPad,mountainPad,islePad\]\[sch-2\]\(a,TH,CO,STL,DK,padName\(sch,pw\)\)/.test(page) && /if\(RIG\.sch>=2\)return drawSchoolRig/.test(page) && /n >= 145 && n <= 151/.test(vj), out.join(' | '));
 }
 
 // aerofx-7. The desk's polish (look & sound parts & pad beat, QUEUE Q276, from Q242; v1.132). The drafting board's title
@@ -780,7 +781,38 @@
     `out of SKY_FS ${out} · pass ${pass} · photometry ${photo} · crater octaves from low orbit ${left}, from 100 km ${left100}`);
 }
 
-// aerofx-31. The planets in the sky, a moon under a pixel, stars by the sky's contrast, a faint airglow (look & sound sky
+// aerofx-31. Lettering on the pads (look & sound effects beat, QUEUE Q245): a 5×7 font built as boxes, one per run of lit
+// pixels on a row; Coastal's agency name over its assembly building's door (two lines), Isle's company on the hangar's
+// sign, from the site's owner; the pad is rebuilt (and cached) per power, so another owner's site shows its own name.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('const FONT57='), page.indexOf('function coastalPad('));
+  const T = new Function('POWERS', src + 'const out=[],box=(o,c,hx,hy,hz)=>out.push({c,hx,hy});return {padText,padName,out}')([{ root: 'Asaro' }, { root: 'Mirtov' }]);
+  T.padText(null, 'I', [0, 0, 0], 7, 100, 0); const I = T.out.splice(0);   // I: a bar of 3, five single pixels, a bar of 3
+  T.padText(null, 'HÉ\nL', [0, 10, 0], 16, 100, 0); const two = T.out.splice(0), ys = two.map(b => b.c[1]);
+  T.padText(null, 'WWWWWWWWWW', [0, 0, 0], 7, 5.9, 0); const fit = Math.max(...T.out.map(b => Math.abs(b.c[0]) + b.hx));
+  const names = T.padName(3, 0) === 'Centre Spatial\nAsaro' && T.padName(5, 1) === 'Mirtov Launch Co' && T.padName(2, 0) === '' && T.padName(3, null) === '';
+  const ok = I.length === 7 && I[0].hx === 1.5 && two.length > 15 && Math.max(...ys) - Math.min(...ys) > 8 && fit <= 2.95 + 1e-9 && names;
+  const wired = /padText\(a,name,\[0,27\.95,-129\],3\.5,21,/.test(page) && /padText\(a,name,\[0,8\.9,-74\.9\],1\.05,16\.5,C\.W\)/.test(page)
+    && /PADX\[x\]\|\|\(PADX\[x\]=buildPad\(32,k,pw\)\)/.test(page) && /sch\+'\|'\+curSite\(\)\.power\+'\|'/.test(page);
+  check('lettering on the pads: a 5×7 font as boxes (runs merged, lines stacked, fitted to the width); Coastal\'s agency and Isle\'s company from the site\'s owner', ok && wired,
+    `I ${I.length} boxes · two lines ${two.length} · width ${fit.toFixed(2)} of 2.95 · names ${names} · wired ${wired}`);
+}
+
+// aerofx-32. The volume cloud shadow baked (look & sound sky & bodies beat, QUEUE Q379, Q326's measurement): cloudShadowV
+// no longer marches 5 cloudDens toward the sun per ground pixel; SHD_FS bakes the light through the slab from its base
+// (2 km) on the coverage's grid, re-baked with the coverage or when the sun has turned 0.1° over the ground, and a ground
+// point reads it where its sun ray reaches 2 km. (The pad's sky pass ~0.9 ms faster; the shadows match.)
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const f = pg.slice(pg.indexOf('float cloudShadowV('), pg.indexOf('void main(){', pg.indexOf('float cloudShadowV(')));
+  const look = !/cloudDens\(/.test(f) && /texture\(uShd,uq\)\.r/.test(f) && /max\(2000\.-\(length\(p\)-uPR\),0\.\)\/s/.test(f);
+  const bake = /const SHD_FS=/.test(pg) && /od\+=cloudDens\(P\+uSun\*\(float\(i\)\+\.5\)\*dt\)/.test(pg) && /dot\(sp,SHD\.sp\)>Math\.cos\(\.0017\)/.test(pg)
+    && /if\(VK>0\)\{covBake\(camW\);shdBake\(\)\}/.test(pg) && /gl\.uniform1i\(u\.uShd,14\)/.test(pg);
+  check('volume cloud shadow: baked once on the coverage grid (SHD_FS), a lookup per ground pixel', look && bake, `lookup ${look} · bake ${bake}`);
+}
+
+// aerofx-33. The planets in the sky, a moon under a pixel, stars by the sky's contrast, a faint airglow (look & sound sky
 // & bodies beat, QUEUE Q374, Q395, Q407; PLAYTEST #11, #92, #103): planetSky turns each planet's magnitude (albedo,
 // radius, distances, phase) into the stars' br and SKY_FS's planetsAt draws them; a moon whose disc is under 1.5 px is
 // the moon pass's point with the whole disc's light; stars, planets and the galaxy lose SKY_CK × the sky's luminance

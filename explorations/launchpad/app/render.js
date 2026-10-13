@@ -49,7 +49,7 @@ function render(){spoolFrame();
   const desk=deskScene();   // (Q242) the Assembly: the design as a scale model on a drafting table, not on the pad
   if(desk)gl.clearColor(...DESK_BG.map(x=>x**2.2),1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
-  profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
+  profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0){covBake(camW);shdBake()}
   if(!desk&&SKY_B5)galBake();   // (Q321) once per program seed and setting
   if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
@@ -74,7 +74,7 @@ function render(){spoolFrame();
     gl.uniform1f(u.uStT,((HOOK.fxT??performance.now())/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
    {const on=view==='map'&&mode==='flight'&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);
     if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
-   gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
+   gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);if(u.uShd){gl.activeTexture(gl.TEXTURE14);gl.bindTexture(gl.TEXTURE_2D,SHD.tex);gl.uniform1i(u.uShd,14)}gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
   profMark('sky depth');if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);

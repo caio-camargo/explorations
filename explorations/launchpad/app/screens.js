@@ -12,6 +12,7 @@ const ROOMS=new Set(['title','program','debrief','mission']);
 const inRoom=()=>ROOMS.has(screenNow());
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atTitle?'title':atDeb?'debrief':atMC?'mission':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
+  if(from==='assembly'&&typeof BLD!=='undefined'&&BLD.bench())BLD.benchClose(false);   // leaving the Assembly from the payload bench: it's saved, the rocket comes back (Q416)
   if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S){flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
     const D=S.rec&&S.rec.debrief;   // ...and a flight that flew is debriefed on the way out, once
     if(D&&D!==debShown&&s!=='rover'){debNext=s==='assembly'?'assembly':'program';debShown=D;s='debrief'}else if(s==='debrief')s='assembly'}
