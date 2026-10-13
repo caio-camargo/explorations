@@ -1113,7 +1113,7 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
 - **The map:** a planet's label gives the trip, half a transfer orbit from Tellus's, in days ("Enyo · ~280 days there"),
   not its distance in TU, a unit nobody knows (`xferDays`, `app/render.js`). The label declutter by importance was
   already there (PLAYTEST #31).
-- **Checks:** test `flow-25`; robot row `desk` (four one-line offers, one opened; the far epochs counted; no empty
+- **Checks:** test `flow-25`; robot row `declutter` (four one-line offers, one opened; the far epochs counted; no empty
   frame); `m1` passes (its orbit map shows the planets in days; its SAS shows only the modes the probe can fly, slice 1).
   Every flow and economy section passes. The full smoke run was stopped by Claude Code for low memory and not re-run.
   TESTING row 271.
@@ -1153,3 +1153,16 @@ function rollChecks`; a comment line above it broke the
   fairing: no; after the fairing drops: yes; a shut bay; the panel's line and the card's row); robot row `deploy` (the
   Satellite's wing selected: the *In flight:* line; parked in orbit, fairing dropped: the message and the lit button);
   `m1` passes. TESTING row 280.
+
+## v1.202 — the camera looks straight down (2026-10-13, flow session, QUEUE Q405; PLAYTEST #101)
+- **The pitch reaches ±90°** in flight and in the Assembly (it stopped at ±1.45 rad, `app/screens.js`'s drag).
+- **No flip at the pole:** the view's right-hand vector comes from the yaw (`cross(up, the camera's horizontal
+  direction)`, then square to the view) instead of `Fw × up`, which vanishes looking straight down. At every other angle
+  it is the same vector as before (flow-28 checks three), so nothing else moves; the camera shake uses the same rule.
+  Turning the yaw while looking down turns the picture about the axis, as it should.
+- **T in the Assembly:** a top view, straight down the axis, where the CoM and CoP markers show any offset; T again goes
+  back. It holds the design still while it's on (a turning top view spins) and survives a reframe. It's on the key strip.
+- **Not done:** a Top button next to the CoM readout (the key strip names it; D22's toolbar can carry it, Q237).
+- **Checks:** test `flow-28` (the same basis at other angles; orthonormal and continuous at the pole; the clamp; the T
+  key); robot row `topview` (the Satellite from above in the Assembly; the Satellite climbing, seen from straight above);
+  `m1` passes. TESTING row 283.

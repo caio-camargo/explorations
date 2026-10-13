@@ -13,6 +13,8 @@ layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4
 // power law with a floor under the exposure and a deliberate twinkle (Caio: keep it); the sun is a tiny blinding disc
 // with no spikes. SKY_B5 = false compiles the old galaxy, stars and sun back in (an A/B; the shader recompiles).
 const SKY_B5=true;
+// (Q395) the stars' contrast against the sky behind them: a star loses SKY_CK × the sky's luminance (0 = the old look)
+const SKY_CK=30;
 const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
@@ -22,7 +24,7 @@ uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov,uShd;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
-uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;
+uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;uniform vec4 uPlnD[6],uPlnC[6];uniform int uNPl;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
@@ -69,11 +71,11 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
   vec3 att=exp(-(BR*odR+BM*1.1*odM))*trL(r,b/r);sR+=att*dR;sM+=att*dM;}   // (Q322) toward the sun from the table
  trans=exp(-(BR*odR+BM*1.1*odM));
  float mu=dot(d,uSun),g=.76,pR=3./(16.*3.14159)*(1.+mu*mu),pM=3./(8.*3.14159)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
- // (Q322, BEAUTY B6.2) airglow: oxygen's green line from a thin layer ~85 km up, only where the layer is in the night. A
+ // (Q322, BEAUTY B6.2; Q407, PLAYTEST #103: a quarter as bright, a faint line) airglow: oxygen's green line from a thin layer ~85 km up, only where the layer is in the night. A
  // ray grazing the layer looks along ~20× its thickness (a line on the night limb); one that looks down crosses it once
  float tc=dot(d,uPc),ag;vec3 pt=d*clamp(tc,t0,t1)-uPc;float hm=length(pt)-uPR;
  if(tc>t1)ag=.05;else ag=hm>=85e3?exp(-pow((hm-85e3)/5e3,2.)):mix(.05,1.,exp(-(85e3-hm)/3e3));
- vec3 glow=vec3(.3,1.,.4)*.012*ag*smoothstep(.05,-.2,dot(normalize(pt),uSun))*trans;
+ vec3 glow=vec3(.3,1.,.4)*.003*ag*smoothstep(.05,-.2,dot(normalize(pt),uSun))*trans;
  return SUNI*(sR*BR*pR+sM*BM*pM)+glow;}
 // ---- the ground (terrain session): the same height the physics uses. A baked 512×256 map (uWorld: base height,
 // ruggedness, volcanism, salt), read with texelFetch and our own bilinear so the arithmetic matches the CPU's, plus
@@ -298,6 +300,11 @@ vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos
  float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);   // camera-fixed spikes (a lens artefact)
  return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);}
 `}float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
+// (Q374, PLAYTEST #11) the planets as points of light on the stars' scale (planetSky: br from each one's magnitude,
+// as the stars' brightest is ~−1.5), sharp and steady (no twinkle in space or air: they're discs, not points), under
+// the stars' exposure floor uStK. uPlnD = direction, br; uPlnC = colour, its point's radius in pixels
+vec3 planetsAt(vec3 d){vec3 c=vec3(0.);for(int i=0;i<6;i++){if(i>=uNPl)break;vec4 P=uPlnD[i];float r=length(d-P.xyz),rad=uPix*uPlnC[i].w;
+ if(r<rad*4.)c+=uPlnC[i].rgb*P.w*exp(-r*r/(rad*rad))*.9;}return c*uStK;}
 // the cloud volume's own shadow on the ground (QUEUE Q65): the light through the 2–5.5 km slab toward the sun (the
 // volume's extinction 1/180 m⁻¹, floor 0.25 for skylight); blended into the shell's shadow by uVk and a fade at the bake's
 // edge, so the shadows under the deck match the clouds drawn above them. uVs = 0 turns it off (A/B). (Q379) The march
@@ -358,7 +365,14 @@ void main(){
   col=ins;vis=1.;
  }else{
   float band;vec3 gal=galaxy(d,band);
-  col=ins+trans*(gal+starsAt(d,band)+sunAt(d));
+  // (Q395, PLAYTEST #92) the eye's contrast: each star, the planets and the galaxy lose the sky's brightness behind them
+  // ×SKY_CK (after the exposure floor), so faint ones and the halos go first: none in a blue day sky, a few at dusk, all
+  // at night and in space
+  vec3 stp=(starsAt(d,band)+planetsAt(d))*trans,gl3=gal*trans;float Ys=dot(ins,vec3(.2126,.7152,.0722))*${SKY_CK.toFixed(1)};
+  stp*=max(0.,1.-Ys/max(dot(stp,vec3(.2126,.7152,.0722)),1e-6));gl3*=max(0.,1.-Ys/max(dot(gl3,vec3(.2126,.7152,.0722)),1e-6));
+  col=ins+stp+gl3+trans*sunAt(d);
+  // (Q374) a Selene under 1.5 px is the moon pass's point: let it through here as for the disc
+  if(uMR<uPix*1.5*length(uMc)&&length(d-normalize(uMc))<uPix*3.)vis=1.;
  }
  // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
@@ -1110,12 +1124,20 @@ vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;
  vec4 c=cratG(n*f+float(i)*7.31);s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
- vec2 hn=sph(uNc,uNcc,d);if(!(uNcc>0.&&hn.x>0.))discard;float tN=hn.x;
+ vec2 hn=sph(uNc,uNcc,d);float dc=length(uNc),aR=uNR/dc;bool pt=!(uNcc>0.&&hn.x>0.);
+ // (Q374) under 1.5 px the disc would flicker between pixel centres: a point instead, with the whole disc's light (its
+ // solid angle × the mean radiance at this phase, a Lambert sphere's) spread over a pixel, so it shrinks into a dot smoothly
+ float th=length(d-uNc/dc);if(pt&&(aR>uPix*1.5||th>uPix*3.))discard;
+ float tN=pt?dc:hn.x;
  vec3 trans,ins=vec3(0.);
  if(uSel>0.){   // the sky pass drew the air in front: here only its transmittance, from the table (the ray reaches space)
   vec3 c=-uPc;float r=length(c),mu=dot(c,d)/r;
   if(r<uAR)trans=trL(r,mu);else{float b=-dot(c,d),rm=length(c+d*b);trans=b>0.&&b<tN&&rm<uAR?pow(trL(rm,0.),vec3(2.)):vec3(1.);}}
  else ins=scatter(d,tN,trans);
+ if(pt){float ca=dot(uSun,-uNc/dc),al=acos(clamp(ca,-1.,1.)),Ph=(sin(al)+(3.14159265-al)*ca)/3.14159265,rho=uPix*.7;
+  vec3 alb=uSel>0.?vec3(.19,.186,.18):uNalb;vec3 col=alb*(2.2*.8*Ph)*(aR*aR/(rho*rho))*exp(-th*th/(rho*rho));
+  if(uSel<=0.&&max(col.r,max(col.g,col.b))<1e-5)discard;   // Nyx is drawn opaque: only where its point shows
+  o=uSel>0.?vec4(col*trans,0.):vec4(col*trans+ins,1.);gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);return;}
  vec3 p=d*tN-uNc,n=normalize(p);
  // the body's own frame (it turns: uNrot = cos, sin of its angle)
  #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
@@ -1156,6 +1178,18 @@ function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
     if(sel){gl.disable(gl.BLEND);gl.depthFunc(gl.LESS);gl.depthMask(true)}}
   // the default framebuffer (no scene target) must not keep the sky's alpha: the page would show through
   if(!SCN.on){gl.colorMask(false,false,false,true);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.colorMask(true,true,true,true);gl.clearColor(0,0,0,0)}}
+// (Q374, PLAYTEST #11) the planets in the sky, for SKY_FS's planetsAt: each one's magnitude from Tellus at program time T
+// (geometric albedo p, radius R, distances r from Helios and Δ from Tellus, a Lambert sphere's phase), m = −26.74 −
+// 2.5 log10(p (R/Δ)² (TU/r)² Φ(α)), set on the stars' scale: their brightest (br 2.45) taken as m −1.5, so br =
+// 2.45·10^(−0.4 (m + 1.5)), capped at 8 (Hesper at its best, ~m −5). Under br .02 a planet isn't drawn.
+const PLANET_ALB={Hesper:.7,Enyo:.17,Astraea:.09,Hyperion:.5,Erebus:.5};
+function planetSky(T){const out=[],tu=TU();
+  for(const b of SYSTEM_BODIES){if(b.name==='Tellus')continue;const h=helioPos(b.name,T),q=fromTellus(b.name,T),r=len(h),D=len(q);
+    const ca=dot(h,q)/(r*D),al=Math.acos(clamp(ca,-1,1)),Ph=(Math.sin(al)+(Math.PI-al)*ca)/Math.PI;if(Ph<=0)continue;
+    const m=-26.74-2.5*Math.log10((PLANET_ALB[b.name]??.3)*(b.R/D)**2*(tu/r)**2*Ph),br=Math.min(8,2.45*10**(-0.4*(m+1.5)));if(br<.02)continue;
+    const c=[1,3,5].map(i=>(parseInt(b.color.slice(i,i+2),16)/255)**2.2),cm=Math.max(...c);
+    out.push({name:b.name,m,br,u:norm(q),c:c.map(x=>.35+.65*x/cm),px:.6+.45*Math.sqrt(Math.min(br,4))})}
+  return out}
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
@@ -1413,6 +1447,13 @@ function partBody(out,p){
         lathe(out,[[0,0,C.D],[.2,0,C.D],[.22,.04,C.D],[.12,.07,C.D],[0,.07,C.D]],F,16,[false,false])}   // footpad
       else{tube(out,H,P(.08,h*.4),.05,C.ST,10);tube(out,P(.08,h*.4),P(.08,.1),.032,PIS,10);tube(out,P(.05,h*.12),P(.07,h*.55),.02,C.D,6);
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
+    // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
+    case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
+    case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
+    case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
+    case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;
+    case'sph4':case'sph7':{const r=d.r,pts=[];for(let i=0;i<=10;i++){const t=Math.PI*i/10;pts.push([Math.max(.001,Math.sin(t)*r),h/2-Math.cos(t)*h/2,C.AU])}lathe(out,pts,o,20)}break;
+    case'bwt':rbox(out,[x+Math.cos(p.phi)*d.off,y+h/2,z+Math.sin(p.phi)*d.off],d.off,h/2,.08,C.D,p.phi);break;
     default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}
@@ -1649,7 +1690,7 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
-  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,(HOOK.fxT??performance.now())%997);
+  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,fxNow()%997);
   {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);
   gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
@@ -1700,7 +1741,7 @@ function drawPlasma(VP,camW,S,p,qH,all){const va=sub(S.v,surfVel(S.body,S.r)),vl
     su=ef+Math.abs(dot(Y,f)*mid)+3*D,X=norm(cross(f,Math.abs(f[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,f),Qf=qFromBasis(X,f,Z),qi=qconj(Qf),
     O=add(sub(p,camW),mul(f,su)),R=ep*1.9+D*3+.06*Lw+.2,L=su+ef+Lw+ep,cl=qrot(qi,mul(O,-1)),c=[0,-su,0],A=qrot(qi,Y),m0=add(c,mul(A,mid)),
     inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05,pu=PPLASMA.u;
-  gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
+  gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(pu.uM,false,modelQ(Qf,O));gl.uniform3f(pu.uB,R,L,0);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);
   gl.uniform3fv(pu.uA,A);gl.uniform3fv(pu.uM0,m0);gl.uniform3fv(pu.uC,m0);gl.uniform1f(pu.uK,k);gl.uniform1f(pu.uRb,rb);gl.uniform1f(pu.uHl,hl);
   gl.uniform1f(pu.uD,D);gl.uniform1f(pu.uLw,Lw);gl.uniform1f(pu.uEf,ef);gl.uniform1f(pu.uEp,ep);gl.uniform1fv(pu['uPr[0]'],hullProfile(S,all));
@@ -1761,7 +1802,7 @@ function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=M
   gl.uniform3f(u.uPlC,PLT.c[0]+PLT.c2[0],PLT.c[1]+PLT.c2[1],PLT.c[2]+PLT.c2[2]);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 // an explosion's flash, as the scene's point light (PLT) while it outshines the plumes: decays over ~0.3 s, then the
 // fireball's glow lingers dimmer for ~1 s
-function boomLight(camW){const now=HOOK.fxT??performance.now();let best=null,bk=0;
+function boomLight(camW){const now=fxNow();let best=null,bk=0;
   for(const bm of booms){const a=(now-bm.t0)/1000;if(a<0||a>2)continue;const k=bm.sz*(900*Math.exp(-a/.12)+120*Math.exp(-a/.8));if(k>bk){bk=k;best=[bm,a]}}
   if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2]+PLT.c2[0]+PLT.c2[1]+PLT.c2[2])return;PLT.c2.fill(0);const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);
@@ -1782,13 +1823,22 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
   PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K*fl));PLT.g=null}
 // (Q320, BEAUTY B3.2 and B4.4) the camera shakes: a buffet through max-q, worst near Mach 1, and the rumble of re-entry by
 // the plasma's heat level. A sum of sines on sim time (deterministic, still when paused), in radians of view direction;
-// off in the map, out of flight and with SHAKE_FX = false
-let SHAKE_FX=true;
-function camShake(){if(!SHAKE_FX||mode!=='flight'||view==='map'||!S||!S.alive||!S.body.atm)return null;
-  const M=S.mach||0,q=S.qdyn||0,bf=.0022*sstep(8e3,30e3,q)*(1+1.5*Math.exp(-(((M-1)/.15)**2))),
-    qE=plasmaHeat(S.body,S.r,S.v,S.qHeat),kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0,A=bf+.0035*kH;
-  if(A<1e-5)return null;const t=simT;
-  return[A*(Math.sin(t*37.1)*.5+Math.sin(t*71.7+1.3)*.3+Math.sin(t*13.3+2.1)*.2),A*(Math.sin(t*41.9+.7)*.5+Math.sin(t*83.3+2.9)*.3+Math.sin(t*17.9+.4)*.2)]}
+// off in the map, out of flight and with SHAKE_FX = false (Settings › camera shake, Q360).
+// (Q360, Caio 2026-10-13: "too intense and unpleasant to watch") It was a 6–13 Hz jitter, near the frame rate, so it
+// strobed, up to 0.3° at Mach 1. Now a sway at 1.5–4 Hz, about a quarter as strong: felt, not watched
+let SHAKE_FX=true,SHAKE_LV=1;   // (Q402) 0 off, 1 gentle, 2 full (Settings › Screens › Camera shake); SHAKE_FX = SHAKE_LV > 0
+// (Q402, PLAYTEST #98) the sway only round the transonic and peak q (from 15 kPa), and short jolts, not a steady buzz:
+// one as the ship goes through Mach 1, one at each staging (fewer parts on the same ship), a damped knock of ~0.25 s
+const SHK={s:null,n:0,m:0,t:-1e9,k:0,ph:0};
+function camShake(){if(!SHAKE_FX||!SHAKE_LV||mode!=='flight'||view==='map'||!S||!S.alive||!S.body.atm)return null;
+  const M=S.mach||0,q=S.qdyn||0,n=S.parts.reduce((c,p)=>c+(p.on?1:0),0),t=simT;
+  if(SHK.s!==S){SHK.s=S;SHK.n=n;SHK.m=M;SHK.t=-1e9}
+  if(n<SHK.n){SHK.t=t;SHK.k=.0032;SHK.ph=t*7.3%6.28}else if(SHK.m<1&&M>=1&&q>5e3){SHK.t=t;SHK.k=.0022*Math.min(1,q/2e4);SHK.ph=t*5.1%6.28}SHK.n=n;SHK.m=M;
+  const bf=.0007*sstep(15e3,30e3,q)*(1+1.2*Math.exp(-(((M-1)/.15)**2))),
+    qE=plasmaHeat(S.body,S.r,S.v,S.qHeat),kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0,A=(bf+.0011*kH)*SHAKE_LV,
+    dj=t-SHK.t,J=dj>=0&&dj<1?SHK.k*SHAKE_LV*Math.exp(-dj/.12)*Math.sin(dj*25):0;
+  if(A<1e-5&&Math.abs(J)<1e-5)return null;
+  return[A*(Math.sin(t*15.1)*.5+Math.sin(t*23.7+1.3)*.3+Math.sin(t*9.4+2.1)*.2)+J*Math.cos(SHK.ph)*.5,A*(Math.sin(t*17.3+.7)*.5+Math.sin(t*25.9+2.9)*.3+Math.sin(t*10.6+.4)*.2)+J*(.7+.3*Math.sin(SHK.ph))]}
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
 // (Q302) an incoming debris fragment: the sim rolls a hit FRAG_LEAD (3 s) ahead and hands it over (HOOK.fragIn: size L,
 // crossing speed vr, direction dir). A centimetre fragment kilometres off is invisible, so it's drawn as what an eye
@@ -1968,13 +2018,13 @@ function drawDust(G,hits,VP){let h=null,best=0;for(const x of hits){const k=x.th
   const u=PDUST.u,loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]),ip=loc(h.P),w=Math.min(1.5,best),
     Rd=8+28*w,Hb=2+.12*Rd,lo=[ip[0]-Rd*1.6,0,ip[2]-Rd*1.6],hi=[ip[0]+Rd*1.6,Hb,ip[2]+Rd*1.6],
     inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2],sl=[dot(SUN,G.X),dot(SUN,G.Y),dot(SUN,G.Z)];
-  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);
   gl.uniform4f(u.uIP,ip[0],ip[2],w,h.re*2+.15*h.sg);gl.uniform1f(u.uRd,Rd);gl.uniform3fv(u.uSunL,sl);gl.uniform3f(u.uAlb,.78,.76,.72);gl.uniform1f(u.uLit,4*Math.max(0,sl[1])+.05);
   gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
   gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const IPA=new Float32Array(16);
-function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(VBOX.vao);
   const loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]);
   hits.sort((a,b)=>b.w*b.re*b.re-a.w*a.re*a.re);const H4=hits.slice(0,4),top=H4[0],P=top.P2;
@@ -1989,6 +2039,11 @@ function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMa
   gl.uniform4fv(u.uIg,ig);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.min(1.3,W*(.7+.3*H4.length)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,re);
   gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);
   gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
+// (Q393, PLAYTEST #90) the effects' clock, in ms: it runs with real time (flames flicker and fireballs grow at their own
+// pace under time warp too) but stops while the game is paused, so a paused frame holds still. The plume, plasma, dust,
+// impact and composite shaders, explosions' ages and light, and the stars' twinkle read it; frame() advances it.
+// Reference views pin it (HOOK.fxT, Q312)
+let FXT=0;const fxNow=()=>HOOK.fxT??FXT;
 const SPOOL=new WeakMap();
 // the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the
 // ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)

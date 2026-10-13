@@ -578,3 +578,24 @@
   check('flow-27: folded parts say how they deploy (the part panel and its card); one first-time hint once out of the air, quiet, folded, not seen before',
     hint && told, `space ${space && space.id} · air ${!!air} · busy ${!!busy} · out ${!!out} · seen ${!!seen} · bay ${bay && bay.id} · told ${told}`);
 }
+
+// flow-28. The camera looks straight down (flow session, QUEUE Q405, PLAYTEST #101): the pitch reaches ±90° in flight and
+// in the Assembly; the view's right-hand vector comes from the yaw, so it is the same as before at any other angle and
+// still defined (no flip, no spin) at the pole; T in the Assembly toggles a top view, kept through a reframe.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const i = page.indexOf('const hz='), line = page.slice(i, page.indexOf('\n', i));
+  const { cross, norm, add, mul, dot, sub, len } = api;
+  const f = { n: [1, 0, 0], e: [0, 0, 1], up: [0, 1, 0] };
+  const basis = (yaw, pitch) => { const cam = { yaw, pitch }, cp = Math.cos(pitch), sp = Math.sin(pitch), off = add(add(mul(f.n, -cp * Math.cos(yaw)), mul(f.e, cp * Math.sin(yaw))), mul(f.up, sp));
+    const Fw = norm(mul(off, -1)), r = new Function('f', 'cam', 'cross', 'norm', 'add', 'mul', 'dot', 'sub', line + ';return rgt;')(f, cam, cross, norm, add, mul, dot, sub)(Fw);
+    return { Fw, R: r, U: cross(r, Fw), old: len(cross(Fw, f.up)) > 1e-9 ? norm(cross(Fw, f.up)) : null } };
+  const same = [[0.35, 0.12], [2, -0.8], [-1, 1.2]].every(([y, p]) => { const b = basis(y, p); return len(sub(b.R, b.old)) < 1e-9 });
+  const top = basis(0.35, Math.PI / 2), ortho = Math.abs(len(top.R) - 1) < 1e-9 && Math.abs(dot(top.R, top.Fw)) < 1e-9 && Math.abs(len(top.U) - 1) < 1e-9;
+  const near = basis(0.35, Math.PI / 2 - 1e-4), cont = len(sub(near.R, top.R)) < 1e-3 && len(sub(near.U, top.U)) < 1e-3;   // no flip at the pole
+  const clamp = page.includes('cam.pitch=clamp(cam.pitch+dy*.005,-Math.PI/2,Math.PI/2)');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const tkey = bsrc.includes("else if(k==='t'){topView()}") && bsrc.includes('<b>T</b> top view') && bsrc.includes('cam.pitch=topPrev?Math.PI/2:-0.05');
+  check('flow-28: the camera looks straight down: the same view at other angles, an orthonormal basis with no flip at the pole, the pitch to ±90°, T for a top view in the Assembly',
+    same && ortho && cont && clamp && tkey, `same ${same} · orthonormal at the pole ${ortho} · continuous ${cont} · clamp ${clamp} · T ${tkey}`);
+}

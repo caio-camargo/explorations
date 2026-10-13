@@ -884,7 +884,7 @@ ROWS.cockpit = {title: 'the dark cockpit', steps: [M1_HELPERS, `{go('assembly');
   checks: {dark: `!!window.MC286 && /MASTER CAUTION/.test(window.MC286) && PT.vis('#news') && !PT.vis('#mcau')`}, expect: {dark: v => v === true}};
 // desk: the Program decluttered (Q286 slice 2): a new career's desk (offers one line each, no empty photo frame, far
 // epochs as a count), then the first offer opened to its full text
-ROWS.desk = {title: 'the Program decluttered', steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'}, `{go('program'); ({offers: document.querySelectorAll('#deskTrayBox details.ms.of').length, photo: !!document.querySelector('#deskWall .photo'), locks: [...document.querySelectorAll('#program .ms.lock, #progBody .ms.lock, .ms.lock')].map(e => e.innerText).slice(0, 6)})}`, {shot: 'desk'},
+ROWS.declutter = {title: 'the Program decluttered', steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'}, `{go('program'); ({offers: document.querySelectorAll('#deskTrayBox details.ms.of').length, photo: !!document.querySelector('#deskWall .photo'), locks: [...document.querySelectorAll('#program .ms.lock, #progBody .ms.lock, .ms.lock')].map(e => e.innerText).slice(0, 6)})}`, {shot: 'desk'},
   `{const d = document.querySelector('#deskTrayBox details.ms.of'); d.open = true; ({open: d.open, text: d.innerText.slice(0, 300)})}`, {shot: 'offer'}],
   checks: {one: `document.querySelectorAll('#deskTrayBox details.ms.of').length > 0 && !document.querySelector('#deskWall .photo.empty')`}, expect: {one: v => v === true}};
 // deploy: how folded parts deploy (Q400): the Satellite's solar wing selected in the Assembly (the part panel's "In
@@ -892,6 +892,11 @@ ROWS.desk = {title: 'the Program decluttered', steps: [{click: '[data-cstart="ag
 ROWS.deploy = {title: 'how folded parts deploy', steps: [DOCK_HELPERS, M1_HELPERS, `{try { localStorage.removeItem('launchpad-hint-deploy') } catch (e) {} go('assembly'); PT.preset('Satellite'); const q = S.parts.find(p => p.on && unfolds(p.d)), n = q && q.dn; BLD.st.sel = n; BLD.panel(); render(); ({part: n && n.k, line: [...document.querySelectorAll('.bsel .sub')].map(e => e.innerText).find(t => /In flight/.test(t))})}`, {shot: 'panel'},
   `{go('rollout'); PT.launch(); PT.park(S); S.rec.launched = true; for (const p of S.parts) if (p.on && unfolds(p.d)) p.dep = false; const fr = S.parts.find(p => p.on && p.profF); if (fr) fairJettison(S, [S.parts.indexOf(fr)]); updateHUD(); render(); ({msg: PT.text('#msg'), lit: document.getElementById('bWings').classList.contains('hint'), btn: PT.text('#bWings')})}`, {shot: 'hint'}],
   checks: {hint: `/P unfolds/.test(document.getElementById('msg').innerText) || localStorage.getItem('launchpad-hint-deploy') === '1'`}, expect: {hint: v => v === true}};
+// topview: the camera straight down (Q405, PLAYTEST #101): T in the Assembly on the Satellite (the CoM marker off the
+// axis shows), T again back; then the Sounding rocket climbing, the camera dragged to straight down
+ROWS.topview = {title: 'the top-down camera', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Satellite'); render(); window.dispatchEvent(new KeyboardEvent('keydown', {key: 't'})); render(); window.P405 = cam.pitch; ({pitch: +cam.pitch.toFixed(3), R: HOOK.view.R.map(x => +x.toFixed(3))})}`, {shot: 'assembly_top'},
+  `{window.dispatchEvent(new KeyboardEvent('keydown', {key: 't'})); render(); go('rollout'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => simT > 8, 20); cam.pitch = Math.PI / 2; cam.dist = 40; render(); window.V405 = HOOK.view.R.concat(HOOK.view.U); ({pitch: +cam.pitch.toFixed(3), finite: window.V405.every(Number.isFinite)})}`, {shot: 'flight_top'}],
+  checks: {view: `(window.V405 || []).length === 6 && window.V405.every(Number.isFinite) && Math.abs(window.P405 - Math.PI / 2) < 1e-6`}, expect: {view: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
@@ -921,6 +926,38 @@ ROWS[202] = {title: 'the Assembly: park parts in the air', steps: [`go('assembly
   checks: {back: `S.parts.length === window.N202 && !(stackDef.park || []).length && !BLD.st.held`},
   expect: {back: v => v === true}};
 
+
+// The test bench's TESTING pass (2026-10-13): drivers for rows nobody had driven, newest first. Look rows are refView
+// scenes judged from the shots; feel stays a human's.
+// 282: a design hanging over the base plate stands on a display rod (Q330). The bottom part deleted from its own panel
+const BOTTOM = `(()=>{ const D = BLD.design(), deep = n => (n.c || []).length ? deep(n.c.at(-1)) : n; BLD.st.sel = deep(D.root); BLD.panel(); return BLD.st.sel.k })()`;
+ROWS[282] = {title: 'a display rod under a hanging model', steps: [`go('assembly'); PT.preset('Orbiter'); HOOK.edStill = true; cam.yaw = 0.7; cam.pitch = 0.15; render(); ({gap: BLD.st.gap || 0})`, {shot: 'whole'},
+  BOTTOM, `PT.clickText('button', '^delete'); render(); ({gap: +(BLD.st.gap || 0).toFixed(2), foot: +BLD.foot().toFixed(2), yBot: +S.yBot.toFixed(2)})`,
+  BOTTOM, `PT.clickText('button', '^delete'); BLD.st.sel = null; BLD.panel(); cam.yaw = 0.7; cam.pitch = 0.05; render(); ({gap: +(BLD.st.gap || 0).toFixed(2), parts: S.parts.map(p => p.d.key).join(' ')})`, {shot: 'hanging'}],
+  checks: {gap: `+(BLD.st.gap || 0).toFixed(2)`}, expect: {gap: v => v > 0}};
+// 270: the flight bar's Legs (Y) and Bay (B) buttons, clicked twice each; none on the Sounding
+// (no preset carries legs or a bay: a pod over a cargo bay, four legs on its tank, is built here)
+const LEGBAY = `(()=>{ const d = toV2(['chute', 'pod', 'bay', 't2', 'petrel']), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({k: 'leg', at: {y: 0.1, a: 0, n: 4}, c: []});
+  stackDef = d; editorChanged(); go('assembly'); PT.launch(); render(); return S.parts.filter(p => p.on).map(p => p.d.kind || p.d.key).join(' ') })()`;
+const DEPROW = (kind, id) => [`(()=>{ const b = document.getElementById('${id}'); return {shown: PT.vis('#${id}'), text: b && b.textContent} })()`, `PT.click('#${id}'); if (typeof updateHUD === 'function') updateHUD(); ({text: PT.text('#${id}'), lit: document.getElementById('${id}').className})`, {shot: kind + '_on'},
+  `PT.click('#${id}'); if (typeof updateHUD === 'function') updateHUD(); ({text: PT.text('#${id}'), lit: document.getElementById('${id}').className})`];
+ROWS[270] = {title: 'legs and bay buttons', steps: [LEGBAY, ...DEPROW('leg', 'bLegs'), ...DEPROW('bay', 'bBay'),
+  `go('assembly'); PT.preset('Sounding'); PT.launch(); render(); ({legs: PT.vis('#bLegs'), bay: PT.vis('#bBay')})`, {wait: 1500},
+  `if (typeof updateHUD === 'function') updateHUD(); ({after: true, legs: PT.vis('#bLegs'), bay: PT.vis('#bBay'), parts: S.parts.map(p => p.d.key).join(' ')})`, {shot: 'sounding'}],
+  checks: {none: `!PT.vis('#bLegs') && !PT.vis('#bBay')`}, expect: {none: v => v === true}};
+// 284: the camera shake's switch (Q360): the buffet's size at max-q on and off, and the setting after a reload. How it
+// feels is a human's
+const SHAKE = `(()=>{ go('assembly'); PT.preset('Lunar'); PT.launch(); S.throttle = 1; stage(S); let m = 0, n = 0; PT.fly(() => S.qdyn > 25000 || simT > 120, 200, {ascent: true});
+  for (let i = 0; i < 300; i++) { advPhys(S); const s = camShake(); if (s) { m = Math.max(m, Math.hypot(s[0], s[1])); n++ } } return {on: SHAKE_FX, q: Math.round(S.qdyn), mach: +S.mach.toFixed(2), frames: n, maxDeg: +(m * 57.3).toFixed(3)} })()`;
+ROWS[284] = {title: 'a calmer camera shake, and its switch', steps: [SHAKE, `ovOpen('settings'); const e = document.getElementById('setShake'); e.checked = false; e.dispatchEvent(new Event('change', {bubbles: true})); SHAKE_FX`, {shot: 'settings'}, SHAKE,
+  ...RELOAD, `SHAKE_FX`, `(()=>{ const e = document.getElementById('setShake'); if (e) { e.checked = true; e.dispatchEvent(new Event('change', {bubbles: true})) } else { SHAKE_FX = true; try { localStorage.setItem('launchpad-shake', '1') } catch (x) {} } return SHAKE_FX })()`],
+  checks: {after: `SHAKE_FX`}, expect: {after: v => v === true}};
+// look rows from reference scenes: 281 stars by day, dusk and night, planets, airglow; 278 and 272 clouds and their
+// shadows at liftoff and in the climb; 275 Selene in its own pass; 274 and 277 each school's pad, its ground and lettering
+ROWS[281] = {title: 'planets, stars by day, airglow (refViews)', steps: views(1, 19, 152, 156, 97, 98, 100, 160)};
+ROWS[278] = {title: 'clouds at liftoff, cloud shadows (refViews, with 272)', steps: views(80, 81, 82, 83, 153)};
+ROWS[275] = {title: 'Selene in its own pass (refViews)', steps: views(19, 158, 112, 113, 3)};
+ROWS[274] = {title: "each school's pad, its ground and lettering (refViews, with 277)", steps: views(145, 146, 147, 148, 149, 151)};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload

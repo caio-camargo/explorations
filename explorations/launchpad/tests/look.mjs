@@ -388,7 +388,7 @@
   const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const pad = /DESK_FX = n === 152;/.test(vj) && /HOOK\.fxT = null; ov\.style\.visibility = '';/.test(vj) && /'\.ui,#perf,#news,#msg,#deb,#ov'/.test(vj);
   const asm = /screenNow\(\) !== 'assembly'\) go\('assembly'\)/.test(vj) && !/if \(mode !== 'editor'\) document\.getElementById\('bEditor'\)\.click\(\);\n/.test(vj.replace(/const toBuilder[^\n]*\n/, ''));
-  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=HOOK\.fxT\?\?performance\.now\(\)/.test(page) && /function boomLight\(camW\)\{const now=HOOK\.fxT\?\?performance\.now\(\)/.test(page);
+  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=fxNow\(\)/.test(page) && /function boomLight\(camW\)\{const now=fxNow\(\)/.test(page) && /const fxNow=\(\)=>HOOK\.fxT\?\?FXT/.test(page);
   const moments = [152, 154].every(n => vj.includes(`n === ${n}`)) && /n >= 156 && n <= 158/.test(vj) && /153: \['Orbiter'/.test(vj) && /155: \['Lunar', 60000, 'stage'/.test(vj);
   const Q = new Function(page.slice(page.indexOf('const QUAL={'), page.indexOf('const setGet=')) + ';return {QUAL,QUAL_OLD}')();
   const pick = q => Q.QUAL[q] ? q : Q.QUAL_OLD[q] || 'high';   // as settings.js reads a saved setting
@@ -512,10 +512,10 @@
   // (PLAYTEST #88) the rings read as separate bands: now one streaked sheet hugging the hull, flickering as a whole, a thin
   // mist, from the strongest shoulder only
   const rings = !/fract\(rn\)/.test(vfs) && /\(\.75\+\.5\*st\)\*fl;\}/.test(vfs) && /dens\*uV\*1\.\/max/.test(vfs) && /x\[2\]>=\.9\*a\[0\]\[2\]/.test(page);
-  const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 12.3,
+  const cs = page.match(/const SHK=\{[^\n]*\nfunction camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, SHAKE_LV: 1, mode: 'flight', view: 'ship', simT: 12.3,
     sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
   const shake = cs && (S => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values(env), S));
-  const amp = r => r ? Math.hypot(r[0], r[1]) : 0, ship = (M, q) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0 });
+  const amp = r => r ? Math.hypot(r[0], r[1]) : 0, ship = (M, q) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0, parts: [] });
   const calm = shake && shake(ship(.3, 2e3)), maxq = shake && shake(ship(1, 32e3)), sup = shake && shake(ship(2, 32e3)), again = shake && shake(ship(1, 32e3));
   const wired = /const sh=camShake\(\);if\(sh\)\{Fw=norm\(add\(Fw/.test(page) && /SPK\.n\+=dt\*kH\*\(abl\?45:12\)/.test(page) && /fxPuff\(madd\(S\.r,u,S\.radius\*\.8\)/.test(page)
     && /PLT\.c\.set\(c\.map\(x=>x\*K\*fl\)\)/.test(page) && /xe\/\(uEp\*3\.\)-uT\*11\./.test(page);
@@ -812,7 +812,76 @@
   check('volume cloud shadow: baked once on the coverage grid (SHD_FS), a lookup per ground pixel', look && bake, `lookup ${look} · bake ${bake}`);
 }
 
-// aerofx-33. The haze without dither (look & sound sky & bodies beat, QUEUE Q392, PLAYTEST #89): measured, most of the
+// aerofx-33. The planets in the sky, a moon under a pixel, stars by the sky's contrast, a faint airglow (look & sound sky
+// & bodies beat, QUEUE Q374, Q395, Q407; PLAYTEST #11, #92, #103): planetSky turns each planet's magnitude (albedo,
+// radius, distances, phase) into the stars' br and SKY_FS's planetsAt draws them; a moon whose disc is under 1.5 px is
+// the moon pass's point with the whole disc's light; stars, planets and the galaxy lose SKY_CK × the sky's luminance
+// behind them; the airglow's line is a quarter of v1.183's. Views 169 (the planets), 170 (Selene as a point), 171 (dusk).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const planets = /function planetSky\(T\)/.test(pg) && /-26\.74-2\.5\*Math\.log10\(/.test(pg) && /vec3 planetsAt\(vec3 d\)/.test(pg) && /planetsAt\(d\)/.test(pg) && /gl\.uniform1i\(u\.uNPl,P\.length\)/.test(pg);
+  const point = /if\(pt&&\(aR>uPix\*1\.5\|\|th>uPix\*3\.\)\)discard;/.test(pg) && /\(aR\*aR\/\(rho\*rho\)\)/.test(pg) && /uMR<uPix\*1\.5\*length\(uMc\)/.test(pg);
+  const contrast = /const SKY_CK=30;/.test(pg) && /stp\*=max\(0\.,1\.-Ys\//.test(pg) && /gl3\*=max\(0\.,1\.-Ys\//.test(pg);
+  const glow = /vec3 glow=vec3\(\.3,1\.,\.4\)\*\.003\*ag\*/.test(pg);
+  // the stars' scale: a magnitude −1.5 planet is the brightest star (br 2.45); five magnitudes fainter is 1 % of it
+  const br = m => Math.min(8, 2.45 * 10 ** (-0.4 * (m + 1.5))), scale = Math.abs(br(-1.5) - 2.45) < 1e-9 && Math.abs(br(3.5) / br(-1.5) - 0.01) < 1e-9;
+  check('the planets as points on the stars\' scale, a sub-pixel moon as a point, stars faded by the sky behind them, a faint airglow (views 169–171)',
+    planets && point && contrast && glow && scale && /if \(n === 171\)/.test(vj) && /if \(n === 169 \|\| n === 170\)/.test(vj),
+    `planets ${planets} · point ${point} · contrast ${contrast} · airglow ${glow} · scale ${scale}`);
+}
+
+// aerofx-34. A display rod under a hanging model (look & sound effects beat, QUEUE Q330): while parts below were removed
+// the design hangs over the desk's base plate (BLD.foot, Q247); a steel rod rises from the plate's pin to its bottom, with
+// a collar, and the desk mesh is rebuilt when the gap changes.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const ok = /\|\$\{\(S\.yBot-deskFoot\(\)\)\.toFixed\(2\)\}`;/.test(page) && /\{const g=S\.yBot-deskFoot\(\);if\(g>\.006\*k\)\{const ST=\[\.62,\.63,\.66,1\];lathe\(a,\[\[\.004\*k,\.004\*k,ST\],\[\.004\*k,g,ST\]\],\[0,0,0\],12\);/.test(page);
+  check('a hanging model stands on a display rod from the base plate\'s pin to its bottom; the desk is rebuilt when the gap changes', ok, `rod ${ok}`);
+}
+
+// aerofx-35. A calmer camera shake, short jolts, and a choice (look & sound effects beat, QUEUE Q360, Q402; PLAYTEST #98;
+// Caio 2026-10-13: "too intense and unpleasant to watch"): a sway at 1.5–4 Hz (no term faster than 26 rad/s, so nothing
+// strobes against the frame rate), only from 15 kPa (transonic and peak q), at most ~0.12° at Mach 1's max-q on Gentle
+// (was ~0.45°); a damped knock going through Mach 1 and at each staging; Settings › Screens › Off / Gentle / Full.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cs = page.match(/const SHK=\{[^\n]*\nfunction camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), base = { SHAKE_FX: true, SHAKE_LV: 1, mode: 'flight', view: 'ship',
+    sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
+  // a run: f(t) gives the ship's state; returns the shake's size at each step (one closure, so SHK carries between calls)
+  const run = (f, lv = 1, T = 20) => { const env = { ...base, SHAKE_LV: lv }; let simT = 0, S = null;
+    const call = new Function(...Object.keys(env), 'get', cs[0] + ';return ()=>{const g=get();S=g.S;simT=g.t;return camShake()}');
+    let cur; const go = call(...Object.values(env), () => cur); const out = [];
+    for (let t = 0; t < T; t += 0.01) { cur = { S: f(t), t }; const r = (() => { const g = cur; return go() })(); out.push(r ? Math.hypot(r[0], r[1]) : 0) } return out };
+  const mk = (M, q, n) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0, parts: Array.from({ length: n }, () => ({ on: true })) });
+  const keep = {}, steady = t => keep.s || (keep.s = mk(1, 32e3, 10)); Object.assign(keep, {});
+  const peak = Math.max(...run(t => { const s = keep.a || (keep.a = mk(1, 32e3, 10)); return s }));
+  const low = Math.max(...run(t => { const s = keep.b || (keep.b = mk(.5, 10e3, 10)); s.qdyn = 10e3; return s }));
+  const stg = run(t => { const s = keep.c || (keep.c = mk(3, 1e3, 10)); s.parts.length = t < 5 ? 10 : 7; return s }), knock = Math.max(...stg.slice(500, 560)), after = Math.max(...stg.slice(700, 800));
+  const full = Math.max(...run(t => keep.d || (keep.d = mk(1, 32e3, 10)), 2)), off = Math.max(...run(t => keep.e || (keep.e = mk(1, 32e3, 10)), 0));
+  const rates = [...cs[0].matchAll(/Math\.sin\(t\*([\d.]+)/g)].map(m => +m[1]), slow = rates.length === 6 && Math.max(...rates) <= 26 && Math.min(...rates) >= 9;
+  const sw = /SHAKE_LV=Math\.min\(2,Math\.max\(0,\+setGet\('launchpad-shake','1'\)\|\|0\)\);SHAKE_FX=SHAKE_LV>0;/.test(H) && /\['Off','Gentle','Full'\]\.map\(\(l,k\)=>`<button data-shake=/.test(H)
+    && /if\(sk!=null\)\{SHAKE_LV=\+sk;SHAKE_FX=SHAKE_LV>0;setPut\('launchpad-shake',sk\)/.test(H);
+  check('camera shake: a slow sway only round transonic and peak q, ~0.12° on Gentle; a knock at staging that dies within a second; Off / Gentle / Full kept per browser',
+    slow && peak < .0025 && peak > .0012 && low === 0 && knock > .0008 && after === 0 && Math.abs(full / peak - 2) < .05 && off === 0 && sw,
+    `rates ${rates.join(', ')} · peak ${(peak * 57.3).toFixed(3)}° · at 10 kPa ${low} · staging knock ${(knock * 57.3).toFixed(3)}°, 2 s on ${after} · full ×${(full / peak).toFixed(2)} · off ${off} · setting ${sw}`);
+}
+
+// aerofx-36. Effects stop with the pause (look & sound effects beat, QUEUE Q393, PLAYTEST #90): one effects clock (FXT,
+// fxNow) that frame() advances by real time only while the game isn't paused; the plume, plasma, dust, impact and
+// composite shaders, explosions' ages and light, and the stars' twinkle read it (HOOK.fxT still pins it for the views);
+// none of them reads performance.now() any more.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const clock = /let FXT=0;const fxNow=\(\)=>HOOK\.fxT\?\?FXT;/.test(page) && /if\(!gamePaused\(\)\)FXT\+=dtR\*1000;/.test(page);
+  const readers = [/gl\.useProgram\(PPLASMA\.p\);[^\n]*uT,fxNow\(\)\/1000%1000\)/, /gl\.useProgram\(PDUST\.p\);[^\n]*uT,fxNow\(\)\/1000%1000\)/, /function drawImpact[^\n]*uT,fxNow\(\)\/1000%1000\)/,
+    /gl\.uniform1f\(c\.uT,fxNow\(\)%997\)/, /function boomLight\(camW\)\{const now=fxNow\(\);/, /const nowMs=fxNow\(\);/, /t0:fxNow\(\),sz,air/, /uStT,\(fxNow\(\)\/1000\)%1000\)/,
+    /gl\.uniform1f\(pu\.uFc,FC\);gl\.uniform1f\(pu\.uT,fxNow\(\)\/1000%1000\);/].map(r => r.test(page));
+  const stray = (page.match(/uT,performance\.now\(\)|t0:performance\.now\(\)|HOOK\.fxT\?\?performance\.now\(\)/g) || []).length;
+  check('effects stop with the pause: one effects clock advanced only while unpaused, read by every effect shader, explosion and the twinkle', clock && readers.every(Boolean) && stray === 0,
+    `clock ${clock} · readers ${readers.map(Number).join('')} · wall-clock effects left ${stray}`);
+}
+
+// aerofx-37. The haze without dither (look & sound sky & bodies beat, QUEUE Q392, PLAYTEST #89): measured, most of the
 // noise in a smooth hazy sky was the composite's grain (low and mid air) and scatter's per-pixel jitter (from orbit). The
 // jitter now applies only on rays that cross the planet's shadow (where it hides Q352's bands), and the grain is .012.
 {
