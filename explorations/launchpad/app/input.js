@@ -19,7 +19,8 @@ addEventListener('keydown',e=>{
   else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
   else if(k==='/'){warpTo=null;warpIdx=0}
   else if(k==='c'&&view==='map')cycleAtlas();
-  else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%(BODIES.length+1);const fb=BODIES[cam.focus-1];cam.mDist=fb&&fb.parent?fb.R*9.15:5*TELLUS.R}
+  else if(k==='tab'&&view==='map')mapFocusCycle(1);   // (Q262) the ship, the bodies, our craft: app/map-layers.js
+  else if(k==='home'&&view==='map')setMapFocus('ship');
   else if(k==='g')cycleTarget();
   else if(k==='b'&&S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'))tapeBay(recTape,S,S.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open)?'close':'open');
   else if(k==='y'&&S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'))tapeLegs(recTape,S,legsDown(S)?'up':'down');

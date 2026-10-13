@@ -756,6 +756,14 @@ ROWS.layers = {title: "the map's layers", steps: [DOCK_HELPERS, M1_HELPERS, `tes
   `for (const [k] of MAP_LAYERS) mapLaySet[k] = ['sats', 'links'].includes(k); renderMapLay(); render(); true`, {shot: 'ours'},
   `mapLaySet = {}; mapLaySave(); go('flight'); ({panel: PT.vis('#mapLay')})`],
   checks: {panel: `PT.vis('#mapLay')`}, expect: {panel: v => v === false}};
+// focus: what the map is centred on (Q262): a satellite up and the ship in orbit; the Focus list to the satellite, then a
+// double-click on Selene (projected from the map's camera), then Home back to the ship
+ROWS.focus = {title: "the map's focus", steps: [DOCK_HELPERS, M1_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); PT.preset('Beeper'); PT.launch(); PT.park(S); S.r = mul(S.r, -1); S.v = mul(S.v, -1); go('map'); render(); ({list: [...document.querySelectorAll('#mapFocus option')].map(o => o.textContent)})`, {shot: 'ship'},
+  `{const el = document.getElementById('mapFocus'); renderMapFocus(); el.value = 's:' + PROG.sats[0].id; el.dispatchEvent(new Event('change')); render(); ({key: mapFocusKey(), dist: Math.round(cam.mDist / 1e3)})}`, {shot: 'satellite'},
+  `{const V = HOOK.view, p = bodyPos(BODIES[1], simT), d = sub(p, V.camW), z = dot(d, V.Fw), k = cv.clientWidth / cv.width, x = (dot(d, V.R) / z / V.tanX + 1) / 2 * V.W * k, y = (1 - dot(d, V.U) / z / V.tanY) / 2 * V.H * k;
+    cv.dispatchEvent(new MouseEvent('dblclick', {clientX: x, clientY: y, bubbles: true})); render(); ({key: mapFocusKey(), at: [Math.round(x), Math.round(y)]})}`, {shot: 'selene'},
+  {key: 'Home'}, `render(); ({key: mapFocusKey()})`, {shot: 'home'}],
+  checks: {key: `mapFocusKey()`}, expect: {key: v => v === 'ship'}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
