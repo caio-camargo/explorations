@@ -1641,7 +1641,7 @@ Test `vehicle-12`. `--smoke` all pass.
   every antenna and camera draws now (`sim/power.js`). A satellite built from side parts used to show a 0 W load.
 - Test `vehicle-25`. TESTING 260.
 
-## v1.184 — a flight button for the unfolding parts (2026-10-13, vehicle session, QUEUE Q397)
+## v1.184 — a flight button for the unfolding parts (2026-10-13, vehicle session, QUEUE Q409)
 
 - **Caio:** "are there now controls that can extend the parts that start retracted?" (only the P key) then "yeah, let's add a
   button with P in parentheses".
@@ -1649,12 +1649,12 @@ Test `vehicle-12`. `--smoke` all pass.
   "Fold wings (P)" ("antennas", "wings and antennas" as fitted), lit while they're out; a click does what P does (recorded on the
   tape). Updated in `updateHUD` (`app/program-ui.js`). Checked in the browser on the Satellite preset.
 - Seen doing it: on the pad the wings unfold straight through the closed fairing; nothing stops deploying inside one (QUEUE
-  Q406; first numbered Q398, which collided with a playtest item).
+  Q410; first numbered Q398, which collided with a playtest item).
 - TESTING 266.
 
-## v1.185 — nothing unfolds inside a closed fairing (2026-10-13, vehicle session, QUEUE Q406)
+## v1.185 — nothing unfolds inside a closed fairing (2026-10-13, vehicle session, QUEUE Q410)
 
-- **Caio:** "sure, go ahead" (on Q406: the Satellite preset's wings unfolded through its fairing on the pad).
+- **Caio:** "sure, go ahead" (on Q410: the Satellite preset's wings unfolded through its fairing on the pad).
 - `wingOp` (`sim/power.js`) leaves folded any wing or boom antenna whose fairing (`inFair`, set at assembly) is still on with its
   shell (`profF`, not `fj`); the message says "Inside the fairing: jettison it first (stage), then unfold", or "(N still inside
   the fairing)" when others did unfold. The Assembly's own deploy toggle is untouched (a part left deployed there already

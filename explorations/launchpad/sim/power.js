@@ -53,7 +53,7 @@ function powerBudget(s,o={}){const b=o.body||TELLUS,r=o.r||b.R+(b.atm||0)+10000,
 // solar wings out ('out') or folded ('in'): instant for now (the look beat can animate them)
 // a boom antenna (fold, Q337) unfolds and folds with them
 const unfolds=d=>!!(d.wing||d.fold);
-// inside a fairing that's still on (the shell not jettisoned, the fairing not dropped) they stay folded (vehicle, Q406: they
+// inside a fairing that's still on (the shell not jettisoned, the fairing not dropped) they stay folded (vehicle, Q410: they
 // unfolded through it on the pad)
 const encased=(s,p)=>{const f=p.inFair;return!!f&&f.on&&!!f.profF&&!f.fj};
 function wingOp(s,op){const o=op==='out';let n=0,w=0,k=0;for(const p of s.parts)if(p.on&&unfolds(p.d)&&!!p.dep!==o){if(o&&encased(s,p)){k++;continue}p.dep=o;n++;if(p.d.wing)w++}
