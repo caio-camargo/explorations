@@ -733,3 +733,15 @@
   check('clouds at liftoff: the sky march starts mid-step low down, the deck\'s detail fades by footprint and the volume\'s by step length', sky && deck && vol,
     `sky ${sky} · deck ${deck} · volume ${vol}`);
 }
+
+// aerofx-29. The igniter flashes when the engine lights, not when it is first drawn (look & sound effects beat, QUEUE
+// Q368): the spool only moves on drawn frames; after more than half a second of sim time undrawn (a script stepping the
+// physics, as the reference views do; the camera far away) it takes its target with no flash, rich start or puff, and a
+// new flight (the clock going back) forgets the last frame.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const frame = /function spoolFrame\(\)\{if\(simT<SPOOL_F\[1\]\)SPOOL_F\[1\]=-1e9;if\(simT!==SPOOL_F\[1\]\)\{SPOOL_F\[0\]=SPOOL_F\[1\];SPOOL_F\[1\]=simT\}\}/.test(page) && /function render\(\)\{spoolFrame\(\);/.test(page);
+  const gap = /sp=\{k:0,t:SPOOL_F\[0\],ig:-1e9,off:-1e9,tg:0\}\);const gap=simT-sp\.t,dt=clamp\(gap,0,5\);sp\.t=simT;/.test(page) && /if\(gap>\.5\)\{sp\.k=tg;sp\.tg=tg;return sp\}if\(sp\.k<\.02&&tg>0\)sp\.ig=simT;/.test(page);
+  check('the igniter flash follows the ignition: an engine first drawn long after it lit takes its spool with no flash; a new flight forgets the last frame', frame && gap,
+    `frames ${frame} · gap ${gap}`);
+}
