@@ -5891,3 +5891,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (255), `QUEUE.md` (Q382 ✓, Q383, Q371, Q372, Q353), `ACTIVE_WORK.md`.
 - **Next:** Q353's remainder (the procedure executor holding prograde through a separation in air, control + space); Q329, Q341,
   Q338 for vehicle.
+- **Later still (sound overflow):** v1.174 Q363 + Q362: a crack and a metal groan at a structural failure, a venting tank's
+  hiss, the splash; the radio blackout's edges (static cut dead, then a squelch and a 2,525 Hz Quindar tone). Not heard in
+  a browser here (the headless audio context stays suspended): TESTING 256 is the ear check. Test `sound-2`.
+

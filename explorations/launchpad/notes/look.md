@@ -1692,3 +1692,19 @@ one log each). Noise between runs ≈ ±0.2 ms.
 - **Stills:** `output/launchpad/beauty/q335/c_ab.png` (a 1 t stage under its 600 m² main at 2.2 km; the same stage
   afloat with its surf).
 - **Checks:** test `aerofx-21`. TESTING 254.
+
+## v1.174 — the effects' sounds: a crack and groan, a venting hiss, the splash, the blackout's edges (2026-10-13, effects beat as sound overflow, QUEUE Q363, Q362)
+- **One-shots from the page** (`FXSND`, played by `sndFx` in `sndTick`, heard like booms with `sndBoom`'s law: through our
+  own structure at full, else through the air at the source, late (d/340) and duller with distance):
+  - a **structural failure** (`HOOK.crack`): a 0.18 s high crack with a 90 Hz thump, and a metal **groan** (`sndGroan`: a
+    sawtooth sliding 95 → 48 Hz under a lowpass, a 7 Hz wobble, ~0.9 s). Sized by √(mass / 5 t).
+  - a **splash** (`splashFx`, the capsule's and a stage's): a 1.3 s whoomp of brown noise sweeping down to 120 Hz on a
+    38 Hz thump, sized by the splash's k.
+- **A venting tank** (Q294's `VENTS`) hisses (a 2.6 kHz highpass layer, `AUD.VH`). Its level is `sndVent` in the pure mix
+  block: √(what's left of the first flow), through our structure even in vacuum, from elsewhere only through the air
+  (×250/(250+d)).
+- **The radio blackout (Q362):** the game has no radio bed to fall silent, so the blackout sounds at its edges, from
+  `plasmaOn(S)` (world's link rule). Going in: a 0.45 s burst of band-passed static that cuts dead. Coming out: a short
+  squelch and a 0.25 s **Quindar tone** at 2,525 Hz (the beep that keyed Apollo's voice loop).
+- **Checks:** test `sound-2` (the vent's levels and the wiring); in the browser every path ran without an error with
+  `sndInit()` forced (the headless audio context stays suspended, so nothing was heard there). TESTING 256.

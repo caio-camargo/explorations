@@ -44,8 +44,12 @@ function sndOthers(src){let P=0,px=0,pl=0;
   for(const o of src||[]){const loud=(o.T>0?Math.pow(o.T/4e6,0.3):0)+(o.whoosh||0),g=loud*Math.sqrt(Math.max(0,o.air||0))*250/(250+Math.max(0,o.d));
     if(!(g>0))continue;const w=g*g;P+=w;px+=w*Math.max(-1,Math.min(1,o.x||0));pl+=w*(80+2500/(1+o.d/2000))}
   return P>0?{g:Math.min(1,Math.sqrt(P)),pan:px/P,lp:pl/P}:{g:0,pan:0,lp:500}}
+// a venting tank's hiss (Q363): vs [{rate 0..1 (what's left of its first flow), d metres, air 0..1, own}]. On our own
+// craft it reaches the crew through the structure, so even in vacuum; from elsewhere only through the air, as a boom.
+function sndVent(vs){let g=0;for(const v of vs||[]){const k=Math.sqrt(Math.max(0,Math.min(1,v.rate||0)));
+    g+=v.own?k:k*Math.sqrt(Math.max(0,v.air||0))*250/(250+Math.max(0,v.d||0))}return Math.min(1,g)}
 // ==== SOUND MIX END
-const AUD={VOICES:true,Q67:true,ctx:null,on:true,vol:0.7,L:null,ev:{sep:0,ign:0,boom:0,chute:0,touch:0},last:null,ship:null,nOn:0,eng:new Set(),landed:false,chA:0,nBoom:0};
+const AUD={VOICES:true,Q67:true,ctx:null,on:true,vol:0.7,L:null,ev:{sep:0,ign:0,boom:0,chute:0,touch:0,crack:0,splash:0,blackIn:0,blackOut:0},last:null,ship:null,nOn:0,eng:new Set(),landed:false,chA:0,nBoom:0};
 try{AUD.on=localStorage.getItem('launchpad-sound')!=='0';const v=parseFloat(localStorage.getItem('launchpad-volume'));if(v>=0&&v<=1)AUD.vol=v}catch(e){}
 // the volume slider (QUEUE Q35) in the settings overlay's Sound row (flow's #setSound): 0–100 %, kept between visits
 function sndSettings(el){if(!el)return;el.innerHTML=`<label>volume <input type="range" id="setVol" min="0" max="100" step="5" value="${Math.round(AUD.vol*100)}"> <span id="setVolN">${Math.round(AUD.vol*100)} %</span></label>`;
@@ -68,6 +72,7 @@ function sndInit(){if(AUD.ctx)return;const AC=window.AudioContext||window.webkit
   AUD.V=[0,1,2,3].map(()=>layer('white','bandpass',400,1.4));   // the engine voices (Q66)
   AUD.PR=layer('brown','lowpass',260,0.7);AUD.PC=layer('pop','bandpass',1400,0.8);   // re-entry plasma: a rumble and the crackle (Q67)
   AUD.pan=c.createStereoPanner?c.createStereoPanner():null;if(AUD.pan)AUD.pan.connect(AUD.master);AUD.O=layer('brown','lowpass',500,0.7,AUD.pan||AUD.master);   // sounds from elsewhere
+  AUD.VH=layer('white','highpass',2600,0.5);   // a venting tank's hiss (Q363)
   AUD.L={air:layer('brown','lowpass',2000,0.5),str:layer('brown','lowpass',110,0.7),crk:layer('pop','bandpass',2200,0.6),wind:layer('white','bandpass',400,1.2,bufG),
     hiss:layer('white','highpass',3000,0.5),rcs:layer('white','bandpass',3500,1.5),sub,lfoA}}
 function sndWake(){if(!AUD.on)return;sndInit();if(AUD.ctx&&AUD.ctx.state==='suspended')AUD.ctx.resume()}   // browsers start audio only after a gesture
@@ -83,7 +88,21 @@ function sndShot(o){const c=AUD.ctx,t=c.currentTime+(o.delay||0),s=c.createBuffe
 const SHOT={sep:k=>({f0:500,f1:120,dur:0.35,gain:0.5*k,thump:70}),   // pyros and a decoupler letting go
   ign:solid=>solid?{f0:3000,f1:400,dur:0.5,gain:0.6,thump:55,noise:'white'}:{f0:900,f1:300,dur:0.8,gain:0.4,att:0.08,noise:'brown'},
   chute:k=>({type:'bandpass',f0:600,f1:250,dur:0.6,gain:0.35*k,att:0.03}),touch:k=>({f0:300,f1:90,dur:0.4,gain:Math.min(0.8,0.15+0.08*k),thump:60}),
-  boom:b=>({f0:b.lp*1.4,f1:Math.max(40,b.lp*0.25),dur:2.4,gain:b.gain,thump:45,delay:b.delay,noise:'brown',att:0.01})};
+  boom:b=>({f0:b.lp*1.4,f1:Math.max(40,b.lp*0.25),dur:2.4,gain:b.gain,thump:45,delay:b.delay,noise:'brown',att:0.01}),
+  // (Q363) a structural failure: a sharp crack (a high, short burst), with sndGroan's metal giving way under it
+  crack:b=>({type:'highpass',f0:Math.min(4000,b.lp*4),f1:Math.min(1200,b.lp*1.2),dur:0.18,gain:b.gain*0.9,thump:90,delay:b.delay,att:0.002}),
+  // (Q363) a splashdown: a heavy whoomp of water, bigger for a faster or heavier craft
+  splash:b=>({f0:Math.min(1400,b.lp*1.6),f1:120,dur:1.3,gain:b.gain,thump:38,delay:b.delay,noise:'brown',att:0.02}),
+  // (Q362) the radio blackout: going in, a burst of static that cuts dead; coming out, the squelch (and sndBeep's Quindar tone)
+  blackIn:()=>({type:'bandpass',f0:1800,f1:1500,dur:0.45,gain:0.16,att:0.01}),blackOut:()=>({type:'bandpass',f0:1500,f1:1900,dur:0.22,gain:0.13,att:0.005})};
+// a metal groan (Q363): a sawtooth sliding down through a lowpass, a little wobble, ~0.9 s
+function sndGroan(b){const c=AUD.ctx,t=c.currentTime+(b.delay||0)+0.05,o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain(),w=c.createOscillator(),wg=c.createGain();
+  o.type='sawtooth';o.frequency.setValueAtTime(95,t);o.frequency.exponentialRampToValueAtTime(48,t+0.9);w.frequency.value=7;wg.gain.value=6;w.connect(wg);wg.connect(o.frequency);
+  fl.type='lowpass';fl.frequency.value=Math.min(600,b.lp);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.35*b.gain,t+0.12);g.gain.exponentialRampToValueAtTime(1e-4,t+0.95);
+  o.connect(fl);fl.connect(g);g.connect(AUD.master);o.start(t);w.start(t);o.stop(t+1);w.stop(t+1)}
+// a Quindar tone (Q362): the 2,525 Hz beep that keyed Apollo's voice loop, as contact comes back after the blackout
+function sndBeep(f,dur,gain,delay=0){const c=AUD.ctx,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();o.frequency.value=f;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+0.01);g.gain.setValueAtTime(gain,t+dur-0.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+dur+0.02)}
 function sndState(){const b=S.body,h=len(S.r)-b.R,inAir=b.atm&&h<b.atm,E=S.alive?activeEngines(S):[];let T=0,Ts=0;
   for(const e of E){const t=e.d.thrust*1000*S.throttle;T+=t;if(pfxOf(e.d).prop==='solid')Ts+=t}
   if(S.lesT>0){const les=S.parts.find(p=>p.on&&p.d.kind==='les');if(les){T+=les.d.thrust*1000;Ts+=les.d.thrust*1000}}
@@ -97,21 +116,28 @@ function sndState(){const b=S.body,h=len(S.r)-b.R,inAir=b.atm&&h<b.atm,E=S.alive
       const sp=len(sub(g.v,surfVel(g.body,g.r))),qd=0.5*ag*g.body.rho0*sp*sp;if(qd<500)continue;
       others.push({d,T:0,whoosh:0.5*Math.min(1,Math.sqrt(qd/2e4)),air:Math.min(aMe,ag),x:dot(dv,rt)/Math.max(d,1)})}}
   const va=len(sub(S.v,surfVel(b,S.r)));
-  return{T,engs:eng,others,qh:S.alive?S.qHeat||0:0,va,pv:b===TELLUS?PLASMA_V:0,solid:T>0?Ts/T:0,pr:inAir?density(b,h)/b.rho0:0,M:S.alive?S.mach||0:0,q:S.alive?S.qdyn||0:0,v:inAir?(S.mach||0)*SND(h):0,hot,
+  const vents=VENTS.map(V=>{const own=S.parts.includes(V.t),g=own?S:debris.find(x=>x.parts.includes(V.t));if(!g)return null;const w=add(bodyPos(g.body,simT),g.r);
+    return{rate:V.m/V.m0,own,d:len(sub(w,me)),air:Math.min(aMe,airAt(g.body,g.r))}}).filter(Boolean);   // (Q363) broken tanks venting
+  return{T,engs:eng,others,vents,qh:S.alive?S.qHeat||0:0,va,pv:b===TELLUS?PLASMA_V:0,solid:T>0?Ts/T:0,pr:inAir?density(b,h)/b.rho0:0,M:S.alive?S.mach||0:0,q:S.alive?S.qdyn||0:0,v:inAir?(S.mach||0)*SND(h):0,hot,
     agl:S.landed?0:groundGap(S),rcs:!!(S.alive&&S.rcsShots&&S.rcsShots.length),eng:new Set(E.map(e=>e.i))}}
 // events, by comparing this frame's ship with the last one's (a new ship, a revert or a vessel switch resets quietly)
 function sndEvents(st){const on=S.parts.reduce((n,p)=>n+(p.on?1:0),0),fire=(k,o)=>{AUD.ev[k]++;if(AUD.on&&AUD.ctx)sndShot(o)};
-  if(AUD.ship!==S){AUD.ship=S;AUD.nOn=on;AUD.eng=st.eng;AUD.landed=S.landed;AUD.chA=S.chuteA||0;return}
+  if(AUD.ship!==S){AUD.ship=S;AUD.nOn=on;AUD.eng=st.eng;AUD.landed=S.landed;AUD.chA=S.chuteA||0;AUD.bo=null;return}
   if(S.alive&&on<AUD.nOn)fire('sep',SHOT.sep(Math.min(2,(AUD.nOn-on)/3+0.5)));
   if([...st.eng].some(i=>!AUD.eng.has(i)))fire('ign',SHOT.ign(st.solid>0.5));   // an engine that wasn't burning last frame
   const ch=S.chuteA||0;if(S.alive&&(AUD.chA<1&&ch>=1||AUD.chA<7&&ch>=7))fire('chute',SHOT.chute(ch>=7?1.4:1));
   if(S.alive&&S.landed&&!AUD.landed)fire('touch',SHOT.touch(S.touchV||1));
+  const bo=S.alive&&S.body===TELLUS&&plasmaOn(S);if(bo!==AUD.bo){if(AUD.bo!=null){if(bo)fire('blackIn',SHOT.blackIn());else{fire('blackOut',SHOT.blackOut());if(AUD.on&&AUD.ctx)sndBeep(2525,0.25,0.12,0.3)}}AUD.bo=bo}   // (Q362) the radio blackout's edges
   AUD.nOn=on;AUD.eng=st.eng;AUD.landed=S.landed;AUD.chA=ch}
+// (Q363) the page's one-shots (FXSND: a structural crack, a splash), heard like booms: through our own structure, else
+// through the air at the source, late and duller with distance
+function sndFx(){const me=shipWorld();for(const e of FXSND.splice(0)){const w=add(bodyPos(e.b,simT),e.r),d=len(sub(w,me)),hh=len(e.r)-e.b.R,air=e.b.atm&&hh<e.b.atm?density(e.b,hh)/e.b.rho0:0,
+    r=sndBoom(d,e.k==='splash'?Math.max(air,1):air,e.sz,e.own||d<60);AUD.ev[e.k]=(AUD.ev[e.k]||0)+1;if(r.gain>0.01&&AUD.on&&AUD.ctx){sndShot(SHOT[e.k](r));if(e.k==='crack')sndGroan(r)}}}
 function sndBooms(){const me=shipWorld();for(;AUD.nBoom<booms.length;AUD.nBoom++){const bm=booms[AUD.nBoom],w=add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)),d=len(sub(w,me));
     const r=sndBoom(d,bm.air,bm.sz,d<60);AUD.ev.boom++;if(r.gain>0.01&&AUD.on&&AUD.ctx)sndShot(SHOT.boom(r))}}
 function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   const sc=screenNow(),live=(sc==='flight'||sc==='map')&&S&&!gamePaused(),st=live?sndState():null;
-  if(live){sndEvents(st);sndBooms()}else AUD.nBoom=booms.length;
+  if(live){sndEvents(st);sndBooms();sndFx()}else{AUD.nBoom=booms.length;FXSND.length=0}
   const m=AUD.last=live?sndMix(st):null;
   if(!AUD.ctx||!AUD.L)return;const c=AUD.ctx,t=c.currentTime,L=AUD.L,set=(p,v,tc=0.08)=>p.setTargetAtTime(v,t,tc);
   set(AUD.master.gain,AUD.on&&!document.hidden&&live?AUD.vol*(sc==='map'?0.35:1):0,0.15);if(!m)return;
@@ -120,5 +146,5 @@ function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   set(L.air.g.gain,0.55*m.air*(vo.length?0.8:1));
   const pl=AUD.Q67?sndPlasma(st.qh,st.va,st.pv):0,ot=AUD.Q67?sndOthers(st.others):{g:0,pan:0,lp:500};AUD.lastP=pl;AUD.lastO=ot;
   set(AUD.PR.g.gain,0.35*pl,0.3);set(AUD.PC.g.gain,0.45*pl*pl,0.2);set(AUD.O.g.gain,0.4*ot.g,0.15);set(AUD.O.f.frequency,ot.lp,0.3);if(AUD.pan)set(AUD.pan.pan,ot.pan,0.15);set(L.air.f.frequency,m.airLp);set(L.str.g.gain,0.35*m.str);set(L.sub.gain,0.25*m.sub);set(L.crk.g.gain,0.5*m.crk);
-  set(L.wind.g.gain,0.4*m.wind,0.2);set(L.wind.f.frequency,m.windF,0.3);set(L.lfoA.gain,0.8*m.buf,0.2);set(L.hiss.g.gain,0.25*m.hiss,0.3);set(L.rcs.g.gain,m.rcs,0.02)}
+  set(L.wind.g.gain,0.4*m.wind,0.2);set(L.wind.f.frequency,m.windF,0.3);set(L.lfoA.gain,0.8*m.buf,0.2);set(L.hiss.g.gain,0.25*m.hiss,0.3);if(AUD.VH)set(AUD.VH.g.gain,0.3*sndVent(st.vents),0.15);set(L.rcs.g.gain,m.rcs,0.02)}
 
