@@ -6148,3 +6148,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   appended), Q422 propulsion, Q423 first parts, Q424 instruments and antennas, Q425 ends of life. Then Caio's flight
   notes: PLAYTEST #109 (rockets go straight up; nothing teaches the gravity turn), #110 (the navball's surface→orbit
   jump at 50 km: blend it, make the label clickable), #111 (SAS buttons as symbols); each with a QUEUE Proposed line.
+- **Addendum 5 (effects):** v1.205 Q402 (PLAYTEST #98 ✓ with v1.203): the shake's envelope from 15 kPa only, damped jolts at Mach 1 and staging, Settings › Screens › Off / Gentle / Full. v1.206 Q393 (PLAYTEST #90): one effects clock (`fxNow`, `FXT`) that stops with the pause, for every effect shader, explosion and the twinkle. Tests aerofx-35 (rewritten), aerofx-36; TESTING 286, 287. Neither seen moving in a browser (the GPU was the sky session's). Claim idle.
