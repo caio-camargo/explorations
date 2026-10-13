@@ -374,7 +374,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ✓ study (`study_cycler.mjs`, NOTES § "Q108: a Tellus–Enyo cycler": ballistic with Tellus flybys under ~800 km on our scale; taxis 1,702 / 2,022 m/s) |
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ✓ plan (NOTES § "Plan: low thrust on rails": ~2e-3 m/s² halves the Enyo trip, i.e. ~50 W of jet per kg of craft; NEP is for tugs; thrust on rails, arcs between flights, Edelbaum for routines) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
-| Q303 | A debris hit that **punctures a tank** (a leak) or **damages** a part, not only breaks it (Q200 v1.127 "Not yet") | M2 | S | ⚙ | → space 2026-10-13 |
+| Q303 | A debris hit that **punctures a tank** (a leak) or **damages** a part, not only breaks it (Q200 v1.127 "Not yet") | M2 | S | ⚙ | ✓ v1.210 `e4c8389` (a tank holed past its wall's ballistic limit leaks by the orifice law, the jet pushes and turns the craft, empty at flight end; cells lose a string; other parts gather damage to a loss; test space-25; TESTING 291) |
 | Q304 | A docked composite's **power counts its passengers'** cells and batteries (today only the host's parts) (Q213, v1.126) | M2 | S | ⚙ | ready |
 | Q331 | 📝 **The slow world** (D19 approved 2026-10-12; [`SYSTEM.md`](SYSTEM.md) § "The slow world"; with world, economy): the body in the innermost slot at M5 (orbit, 3:2 spin, look, ground with polar cold traps). Before that, its rules tried on Selene: rovers and bases carried through the night, following the twilight band, ice in polar craters beside sunlit ridges. Plan first | M5 | L | 📝 | ready (plan only) |
 
@@ -765,3 +765,6 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - world (with parts & pad) — PLAYTEST **#113** (P3): a soft dark band up the hill west of the Arsenal pad, view 145 (TESTING 274) — test bench
 - flow — **smoke fails on `main`** (test bench, 2026-10-13, v1.204): "Help lists every key the assembly handler reads — t": v1.202's top-view key (Q405) isn't in Help — Q405
 - vehicle — PLAYTEST **#114** (P2): the Satellite preset reads unstable in the Assembly (−0.28 calibers full, −0.56 at M1.6, *coasting flips*); v1.178 had no warnings (TESTING 260) — test bench
+- vehicle + space — a damaged part does something (v1.210 `p.dmg`): a hit engine loses thrust or its gimbal, a damaged wheel less torque, a damaged pod a slow air leak — Q303
+- look & sound (effects) — a holed tank's jet drawn (a fuel spray or a gas plume from the hole; `s.leaks[i]`: part, resource, body-frame normal) — Q303
+- QA — the tester menu has no way to seed debris (a debris setting and an anti-satellite test at the craft's height) to try strikes — Q303
