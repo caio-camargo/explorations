@@ -6025,3 +6025,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Done:** offers one line each (pay, days, Take, Pass, ⚠ for sanctions; a click opens the rest); epochs past the next, all locked, as a count; no empty photo frame before the first flight; a smaller letterhead; planets on the map labelled with the trip in days instead of TU. On `main` as `b7b053c`. With slice 1 (v1.186, the dark cockpit), Q286 is done; the Assembly's GO/NO-GO board stays with Q237 (D22's Checks tab).
 - **Checks:** flow-25 (new) and every flow and economy section pass; robot rows `desk` and `m1` pass. The full smoke run was stopped by Claude Code for low memory and not re-run.
 - **Next:** Q391 (the parts-list card and the craft hover into the one tooltip).
+- **Addendum 6 (design desk, 2026-10-13):** the bench round 2 (truss shapes, accordion wings, the balance weight); PROBES 0.1.6 § 6.1 notes and § 6.2 a brainstorm of bench parts for Caio to pick.
