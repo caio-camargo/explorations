@@ -283,7 +283,7 @@ void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
  vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
- float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.;
+ float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.,vis=0.;
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
@@ -315,17 +315,9 @@ void main(){
    col+=st*5.*gl*max(ndl,0.)+Fr*vec3(.05,.1,.2)*smoothstep(-.1,.2,ndl);}
   col=col*trans+ins;
  }else if(tM<1e29){
-  vec3 p=d*tM-uMc,n=normalize(p);
-  // crater relief: the height field's slope along the sun direction tilts the lighting (2 evaluations, no normal map)
-  // Selene turns (tidally locked): its markings and detail are in its own frame (uMrot = cos, sin of its angle)
-  #define MB(v) vec3(uMrot.x*(v).x-uMrot.y*(v).z,(v).y,uMrot.y*(v).x+uMrot.x*(v).z)
-  vec3 nb=MB(n),nb2=MB(normalize(n+normalize(uSun-n*dot(uSun,n))*.004));
-  float cr=crat(nb*18.)+.5*crat(nb*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(MB(d*tM)+uMdet):.5;
-  float cr2=crat(nb2*18.)+.5*crat(nb2*55.);
-  float slope=clamp((cr2-cr)*1.4,-.9,1.2);
-  float base=.16+.09*fbm(nb*3.)-.07*smoothstep(.5,.65,fbm(nb*1.6+3.)-${MARE_NEAR}*nb.x);
-  vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
-  float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
+  // (Q322 slice 2, BEAUTY B6.5) Selene is shaded by the moon pass (drawMoons, MOON_FS), added on top of this pass:
+  // here only the air in front of it, and in alpha (vis) how much of it the clouds below let through
+  col=ins;vis=1.;
  }else{
   float band;vec3 gal=galaxy(d,band);
   col=ins+trans*(gal+starsAt(d,band)+sunAt(d));
@@ -343,7 +335,7 @@ void main(){
   A/=ws;tm/=ws;float T=A.a;
   if(T<.999){vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tm+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tm/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=col*(1.-uVk*(1.-T))+uVk*(A.rgb*tr+(1.-T)*ic);if(tO>0.&&tO<tD)tD=tO;}}
+   col=col*(1.-uVk*(1.-T))+uVk*(A.rgb*tr+(1.-T)*ic);vis*=1.-uVk*(1.-T);if(tO>0.&&tO<tD)tD=tO;}}
  if(uCR>0.){vec2 hc=sph(uPc,uCcc,d);tC=uCcc>0.?(hc.x>0.&&hc.x<=hc.y?hc.x:-1.):hc.y;}
  float shW=1.-uVk*(1.-smoothstep(.5*uVD,uVD,tC));   // inside uVD the volume stands in for the shell
  if(tC>0.&&tC<tH&&shW>.001){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
@@ -353,9 +345,9 @@ void main(){
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));if(cov*shW>.5)tD=min(tD,tC);}}
+   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
  if(atl.a>0.)col=mix(col,pow(atl.rgb,vec3(2.2))*1.7*atlL,atl.a*uAtl);   // over the clouds: it's a map
- o=vec4(col,1.);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers)
+ o=vec4(col,vis);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers); alpha: Selene's share (Q322)
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
 const MESH_VS=`#version 300 es
@@ -1052,34 +1044,78 @@ precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb
 void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
  o=vec4(c*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
-// ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
-// against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
-// front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
+// ---- the moons (Nyx, and since Q322 slice 2 Selene): one full-screen ray-cast each, after the sky pass. The fragment
+// shader is SKY_FS's helpers (sph, trL, scatter, crat, fbm, detail) plus its own main. Selene (uSel 1) is added on top of
+// the sky pass, which drew the air in front of it and left in alpha what the clouds let through (blend DST_ALPHA, ONE);
+// Nyx (uSel 0) is drawn opaque with its own air, depth-tested against the sky (the sky pass doesn't know it's there).
+// (BEAUTY B6.5) Both are filtered by the pixel's footprint: every crater octave and fbm octave fades to its mean once its
+// cells near a pixel, and the relief's slope is taken over the footprint, so a 13 px Selene seen from Tellus is calm
+// instead of shimmering (Q250, PLAYTEST #49) and close up the craters go on down (uNoct). Regolith photometry: McEwen's
+// lunar-Lambert (a full Selene is a flat disc, not a ball), an opposition surge, a terminator where only the rims catch
+// light, and earthshine: the light of Tellus's lit face, by its phase seen from the ground.
 const MOON_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
-uniform vec3 uNc,uNdet,uNalb;uniform float uNcc;
-float rough(vec3 n){return crat(n*9.)+.6*crat(n*31.)+.35*crat(n*90.);}
+uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs;uniform vec2 uNrot;uniform vec4 uNoct;
+const float CM=.0042;   // cratG()'s mean
+float fbmF(vec3 p,float w){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*mix(.5,vn(p),1.-smoothstep(.25,.6,w));p=p*2.03+vec3(1.7,9.2,3.1);w*=2.03;a*=.5;}return s;}
+// craters with their gradient (xyz) in one pass, so the relief needs no second evaluation. crat()'s profile, with radii
+// .12–.34 of a cell (rim to 1.4×, under half a cell), so only the 2×2×2 nearest cells can reach a point: 8 cells, not 27
+// (the cells are 1.43× larger than crat's, uNoct.x 1/1.43 of what it would be, so the craters keep their size on the ground)
+vec4 cratG(vec3 p){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
+ for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;
+  vec3 q=o+vec3(h3(c),h3(c+17.3),h3(c+41.9))-f;float rad=.12+.22*h3(c+5.1),l=length(q),k=l/rad;if(k>=1.4)continue;
+  vec3 dk=-q/max(l*rad,1e-6);r+=k<1.?vec4(dk*1.2*k,(k*k-.75)*.6):vec4(-.5*dk,(1.4-k)*.5);}return vec4(r.w,r.xyz);}
+// craters at uNoct.w octaves from uNoct.x cells per radius, each uNoct.y finer and uNoct.z as deep; w = the footprint in
+// radii. x = height, yzw = its gradient on the unit sphere
+vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;i++){if(float(i)>=uNoct.w)break;float k=1.-smoothstep(.25,.6,w*f);if(k<=0.)break;
+ vec4 c=cratG(n*f+float(i)*7.31);s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  vec2 hn=sph(uNc,uNcc,d);if(!(uNcc>0.&&hn.x>0.))discard;float tN=hn.x;
- vec3 trans;vec3 ins=scatter(d,tN,trans);
+ vec3 trans,ins=vec3(0.);
+ if(uSel>0.){   // the sky pass drew the air in front: here only its transmittance, from the table (the ray reaches space)
+  vec3 c=-uPc;float r=length(c),mu=dot(c,d)/r;
+  if(r<uAR)trans=trL(r,mu);else{float b=-dot(c,d),rm=length(c+d*b);trans=b>0.&&b<tN&&rm<uAR?pow(trL(rm,0.),vec3(2.)):vec3(1.);}}
+ else ins=scatter(d,tN,trans);
  vec3 p=d*tN-uNc,n=normalize(p);
- // a rubble-pile look: craters at three scales, slope lighting along the sun as on Selene, dark mottled regolith
- float cr=rough(n),fade=smoothstep(3000.,150.,tN),det=fade>0.?detail(d*tN+uNdet):.5;
- vec3 ts=normalize(uSun-n*dot(uSun,n));float slope=clamp((rough(normalize(n+ts*.003))-cr)*1.2,-.9,1.2);
- float base=.75+.5*fbm(n*2.5)-.3*smoothstep(.45,.7,fbm(n*1.2+7.));
- vec3 alb=uNalb*(base+.12*cr+.25*fade*(det-.5));
- float ndl=max(dot(n,uSun),0.);vec3 col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
- o=vec4(col,1.);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers)
+ // the body's own frame (it turns: uNrot = cos, sin of its angle)
+ #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
+ vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.2);
+ vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w);
+ float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(3000.,150.,tN),det=fade>0.?detail(MB(d*tN)+uNdet):.5;
+ vec3 alb;
+ if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
+  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.07*fade*(det-.5))*vec3(1.,.98,.95);}
+ else alb=uNalb*(.75+.5*fbmF(n*2.5,w*2.5)-.3*smoothstep(.45,.7,fbmF(n*1.2+7.,w*1.2))+.12*cr+.25*fade*(det-.5));
+ float e=dot(n,uSun),mu0=clamp(e+slope*sqrt(max(1.-e*e,0.))*.8*smoothstep(-.12,.05,e),0.,1.6);   // past the terminator only the rims catch the sun
+ float cg=dot(uSun,V),g=acos(clamp(cg,-1.,1.))*57.29578,L=clamp(1.-.019*g+2.42e-4*g*g-1.46e-6*g*g*g,0.,1.);
+ float B=1.+.6/(1.+sqrt(max(1.-cg*cg,0.))/max(1.+cg,1e-3)/.05);   // the opposition surge (tan g/2 over a width of .05)
+ float refl=(2.*L*mu0/max(mu0+mu,1e-3)+(1.-L)*mu0)*B;
+ // earthshine: Tellus's lit face (albedo .35, a Lambert sphere's phase). Real, it's ~1/4000 of the sun, far under what
+ // the exposure (×4 at most) can show; ×100 so a night side under a full Tellus reads as a dim grey (3 % of the sunlit side)
+ vec3 wT=uPc-d*tN;float dT=length(wT);wT/=dT;float al=acos(clamp(dot(uSun,-wT),-1.,1.)),Ph=(sin(al)+(3.14159265-al)*cos(al))/3.14159265;
+ float eT=dot(n,wT),es=100.*.35*.6667*(uPR/dT)*(uPR/dT)*Ph*clamp(eT+clamp(dot(cg4.yzw,MB(normalize(wT-n*eT)))*uNs,-.9,1.2)*sqrt(max(1.-eT*eT,0.))*.8*smoothstep(-.12,.05,eT),0.,1.6);   // with the relief, as the sun's
+ vec3 col=alb*(refl*2.2+es*2.2+.0003);col=col*trans+ins;
+ o=uSel>0.?vec4(col,0.):vec4(col,1.);   // (Q314) linear light
  gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);
 }`;
 const PMOON=mkProg(QUAD_VS,MOON_FS);
 NYX.alb=[.085,.068,.054];   // carbonaceous: darker and browner than Selene
+// per body: crater octaves (cells per radius, finer by, deeper by, count) and the relief's slope gain
+const MOON_OCT=new Map([[SELENE,{oct:[12.6,3,.45,5],ns:.0056*1.43}],[NYX,{oct:[6.3,3.3,.6,4],ns:.0036*1.43}]]);
 function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
-  for(const b of BODIES){if(!b.parent||b===SELENE)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
-    if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
+  for(const b of BODIES){if(!b.parent)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
+    if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uPix,2*tanY/H);
       const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)}
-    gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);
-    gl.uniform3fv(u.uNdet,mul(C,-1).map(x=>x-Math.round(x/1000)*1000));gl.drawArrays(gl.TRIANGLES,0,3)}}
+    const sel=b===SELENE,th=b.lock||sel?bodyTheta(b,simT):0,mo=MOON_OCT.get(b)||MOON_OCT.get(NYX);
+    gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform1f(u.uNR,b.R);gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);gl.uniform1f(u.uSel,sel?1:0);
+    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);
+    gl.uniform3fv(u.uNdet,rotY(mul(C,-1),-th).map(x=>x-Math.round(x/1000)*1000));
+    // Selene: added where the sky pass found it (its alpha), depth untouched; Nyx: opaque, depth-tested
+    if(sel){gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.DST_ALPHA,gl.ONE,gl.ZERO,gl.ONE);gl.depthFunc(gl.ALWAYS);gl.depthMask(false)}
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    if(sel){gl.disable(gl.BLEND);gl.depthFunc(gl.LESS);gl.depthMask(true)}}
+  // the default framebuffer (no scene target) must not keep the sky's alpha: the page would show through
+  if(!SCN.on){gl.colorMask(false,false,false,true);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.colorMask(true,true,true,true);gl.clearColor(0,0,0,0)}}
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
