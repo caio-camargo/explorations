@@ -491,3 +491,20 @@
     rings && wired && calm === null && amp(maxq) > 0 && amp(maxq) < 0.01 && Math.abs(amp(maxq) - amp(again)) < 1e-12 && amp(maxq) > amp(sup),
     `rings ${rings} · wired ${wired} · shake: calm ${calm} · max-q at M 1 ${amp(maxq).toFixed(4)} rad · at M 2 ${amp(sup).toFixed(4)} rad`);
 }
+
+// aerofx-14. A structural failure shows (look & sound effects beat, QUEUE Q294, PLAYTEST #75). The sim calls HOOK.crack at
+// the broken joint and logs the cause; the page sprays sparks and shards there, a broken tank vents until its propellant
+// is gone, and a well-filled one in air bursts into a fireball sized by what it holds.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sim = /logEv\('structure',`\$\{p\.d\.name\} \/ \$\{p\.parent\.d\.name\} failed in/.test(src) && /HOOK\.crack\(s,p\);[^\n]*\n\s*detach\(s,subtree\(p\)/.test(src) && /crack\(\)\{\}/.test(src);
+  const page2 = /HOOK\.crack=\(s,p\)=>/.test(page) && /if\(air>\.05&&m>\.2\*t\.cap\.fuel\)HOOK\.boom\(b,J,simT,clamp\(Math\.cbrt\(m\/500\),\.5,3\)\)/.test(page) && /VENTS\.push\(\{t,up,m0:m,m,air\}\)/.test(page)
+    && /ventTick\(dt\);/.test(page) && /out=Math\.min\(V\.m,dt\*V\.m0\/6\)/.test(page);
+  // and the sim really calls it: an Orbiter broadside at 600 m/s through the air (core's structural test) breaks somewhere
+  let crack = null; api.HOOK.crack = (s, p) => { crack = p.d.name + ' / ' + p.parent.d.name };
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.HOOK.msg = () => {}; s.landed = false; s.r = [TELLUS.R + 3000, 0, 0]; s.v = add(api.surfVel(TELLUS, s.r), [0, 0, -600]);
+  for (let k = 0; k < 500 && !crack; k++) api.advPhys(s);
+  api.HOOK.crack = () => {};
+  check('structural failure: the sim calls HOOK.crack at the broken joint and logs it; the page sprays shards, vents a broken tank, bursts a loaded one in air',
+    sim && page2 && !!crack, `sim ${sim} · page ${page2} · a broadside Orbiter cracked at ${crack || 'nothing'}`);
+}

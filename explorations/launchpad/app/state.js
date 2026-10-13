@@ -120,6 +120,20 @@ HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
 HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);sepFx(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
   if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,{...d.verdict,pf:d.impact.pf,parts:d.parts});d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
+// (Q294, PLAYTEST #75) a structural failure, at the broken joint (p's base): a crack of sparks and dark shards; a tank on
+// either side breaks open and vents its propellant as a white plume until it is gone (VENTS, ventTick); a tank that
+// still holds over a fifth of its load, in air, bursts into a fireball sized by what it holds. Render-side: the sim keeps
+// the propellant where it was.
+const VENTS=[];
+HOOK.crack=(s,p)=>{const b=s.body,J=add(s.r,qrot(s.q,sub([p.pos[0],p.y0,p.pos[2]],s.cm))),R=Math.random,h=len(s.r)-b.R,air=b.atm&&h<b.atm?density(b,h)/b.rho0:0;
+  for(let i=0;i<45;i++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(J,add(s.v,mul(u,6+24*R())),i<25?{s0:.03+.04*R(),grow:0,a0:.9,life:.3+.9*R(),hot:1.7}:{s0:.06+.1*R(),grow:0,a0:.8,life:1+2*R()})}
+  for(const[t,up]of[[p,-1],[p.parent,1]]){if(!t||t.d.kind!=='tank'||!t.cap.fuel)continue;const m=t.res.fuel||0;if(m<1)continue;
+    if(air>.05&&m>.2*t.cap.fuel)HOOK.boom(b,J,simT,clamp(Math.cbrt(m/500),.5,3));
+    VENTS.push({t,up,m0:m,m,air})}};
+function ventTick(dt){for(let i=VENTS.length-1;i>=0;i--){const V=VENTS[i],t=V.t,v=S&&S.parts.includes(t)?S:debris.find(d=>d.parts.includes(t));
+    if(!v||!dt){if(!v)VENTS.splice(i,1);continue}const R=Math.random,out=Math.min(V.m,dt*V.m0/6);V.m-=out;if(V.m<1){VENTS.splice(i,1);continue}
+    const e=qrot(v.q,[0,V.up,0]),J=add(v.r,qrot(v.q,sub([t.pos[0],t.y0+(V.up>0?t.h:0),t.pos[2]],v.cm))),n=Math.min(12,dt*40*Math.sqrt(V.m/V.m0)+R());
+    for(let k=0;k<n;k++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(madd(J,e,.2),add(v.v,add(mul(e,15+25*R()),mul(u,6*R()))),V.air>.02?{s0:.25+.25*R(),grow:2+2*R(),a0:.45,life:4+4*R()}:{s0:.3,grow:9,a0:.35,life:1+R()})}}}
 // staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
 // The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
 function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;

@@ -1426,3 +1426,20 @@ could only catch near-white. Now the frame is light, and the camera is one place
 - **Stills and cost** (RTX 3050, High): `output/launchpad/beauty/q320/cmp.png` (views 46, 50, 51, 54 before | after). The
   vapor pass on view 50 was 0.5 → 0.19 ms and the plasma 0.58 → 0.57 ms on view 46: noise, as one fetch per sample was added.
 - **Checks:** test `aerofx-13` (the rings, the shake's shape and repeatability, the wiring). TESTING 233.
+
+## v1.152 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294; PLAYTEST #75)
+- **The sim** gains one hook and one log line at a failure (`sim/vessel.js`, before `detach`): `logEv('structure', …)` with
+  the joint, the kind of load and how far over it went, and `HOOK.crack(s, p)` (a no-op by default in `sim/core.js`).
+  Nothing else in the sim changes.
+- **The page** (`HOOK.crack`, `app/state.js`): at the broken joint (p's base), 25 sparks and 20 grey shards fly out at
+  6–30 m/s. A tank on either side of the joint breaks open. If it still holds over a fifth of its load and the air is over
+  5 % of sea level, it bursts into a fireball, `HOOK.boom` sized `∛(kg/500)` within 0.5–3 (a full 8 t tank: 2.5). Either
+  way it vents what's left as a white plume from its broken end (`VENTS`, `ventTick` from `marksTick`): over ~6 s,
+  puffs at 15–40 m/s with the vessel's velocity. In air they linger 4–8 s; in vacuum they flash out over a second. It
+  is render-side: the sim keeps the propellant where it was.
+- **The tumble** was there already (`detach` spins the broken-off part at 1.5 rad/s).
+- **Still to do:** the crack-and-groan sound (sound beat, QUEUE *Proposed*).
+- **Stills:** `output/launchpad/beauty/q294/crack_row.png` (an Orbiter's 8 t tank broken off its decoupler at T+35 s, at
+  0.2, 2 and 5 s; at 300 m/s the fireball is left behind the camera's frame within a fraction of a second).
+- **Checks:** test `aerofx-14` (the sim calls the hook on a real break, core's broadside Orbiter at 600 m/s; the page's
+  wiring). TESTING 234.

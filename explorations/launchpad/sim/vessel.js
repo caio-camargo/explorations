@@ -840,6 +840,8 @@ function physStep(s,dt){
   thermal(s,dt,rho*sp*sp*sp>0?Math.sqrt(rho/Math.max(s.radius,.3))*sp*sp*sp*SG*HEAT_GAIN:0,rho,sp);
   if(s.alive&&worst.frac>1){const p=worst.p;PROG.cert[p.sf1>=p.sf2?p.sk1:p.sk2]=1;   // a failure is a measurement too
     HOOK.msg(`Structural failure — ${p.d.name} / ${p.parent.d.name} (${worst.kind}, ${(worst.frac*100).toFixed(0)}%)`);
+    logEv('structure',`${p.d.name} / ${p.parent.d.name} failed in ${worst.kind} at ${(worst.frac*100).toFixed(0)}% of its strength`);
+    HOOK.crack(s,p);   // render-side: shards at the joint, a broken tank venting or a fireball (Q294)
     detach(s,subtree(p),[0,0,0],1.5)}}
 // ---- heat. Each part has a skin temperature: absorbed aero heat in, εσ(T⁴−T∞⁴) radiated out over its whole skin, heat
 // capacity of a 6 kg/m² metal skin. A shield's ablator boils off above 700 K at 2.5 MJ/kg and pins it there until gone.

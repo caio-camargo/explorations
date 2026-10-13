@@ -1,7 +1,7 @@
 'use strict';
 // ==== SIM BEGIN — pure simulation, no DOM/GL. Extracted by test.mjs for headless checks.
 const G0 = 9.80665, DT = 0.02;
-const HOOK = { msg(){}, boom(){}, rebuild(){}, debris(){}, news(){}, save(){}, logged(){}, log(){} };
+const HOOK = { msg(){}, boom(){}, crack(){}, rebuild(){}, debris(){}, news(){}, save(){}, logged(){}, log(){} };
 const INP = { pitch:0, yaw:0, roll:0, tx:0, ty:0, tz:0 };   // tx/ty/tz: RCS translation, body axes
 
 // ---- vectors / quaternions (plain arrays; doubles throughout)
