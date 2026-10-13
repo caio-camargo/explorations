@@ -165,6 +165,7 @@ const PRESETS={
   Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
   'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
   Satellite:null,   // set below, after toV2 (side parts on its frame)
+  'TV Satellite':null,   // set below, after the bench's starters (a payload block)
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
@@ -1000,6 +1001,18 @@ PRESETS.Satellite=(()=>{const d=toV2(['core','batt','rwheel','octl','fair','t2',
 const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core','batt']);d.root.c.push({k:'whip',at:{y:0.12,a:0,n:1},c:[]});return d})(),
   Satellite:(()=>{const d=JSON.parse(JSON.stringify(PRESETS.Satellite)),par=(n,t)=>{for(const c of n.c||[]){if(c===t)return n;const r=par(c,t);if(r)return r}return null},
     f=(function g(n){return n.k==='fair'?n:(n.c||[]).map(g).find(Boolean)})(d.root),h=par(d.root,f);h.c=h.c.filter(c=>c!==f);return{v:2,root:d.root}})()};
+// a stationary satellite (vehicle session, QUEUE Q412, PLAYTEST #102: "no preset reaches the stationary orbit", so TV for the
+// capital couldn't be flown). The payload: core, battery, wheel, a long frame with two wings and two whips, an apogee engine on
+// a 0.7 m sphere (545 kg, 1,024 m/s of its own), carried as a block (no bench link: pid null, so a player's payloads never
+// overwrite it; "open on the bench" makes one) in a 4 m fairing on the Heavy's launcher. Flown on the probe autopilot from
+// Dunnzar Cape: a 110 km orbit; a prograde burn raises the far point to the stationary height (the upper stage runs dry
+// part-way; staging releases the satellite and its engine goes on); at the top the apogee engine circularises to a day's
+// period: 0.9995 day, e 0.0004, 0.001°, ~380 m/s left to hold it. For TV the transfer burn must start so the satellite arrives
+// over the capital's longitude: 26 min of coasting in the low orbit, from the Cape, for Kamar
+PAY_STARTERS['TV satellite']=(()=>{const d=toV2(['core','batt','rwheel','octl','sph7','apogee']),o=(function g(n){return n.k==='octl'?n:(n.c||[]).map(g).find(Boolean)})(d.root);
+  o.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:2},c:[]});return d})();
+PRESETS['TV Satellite']=(()=>{const d=toV2(['fair','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}]);d.root.fl=4;
+  d.root.c.push({k:'pay',pid:null,name:'TV satellite',pd:JSON.parse(JSON.stringify(PAY_STARTERS['TV satellite'])),at:'u',c:[]});return d})();
 // the payload bench's Checks (PROBES § 6.1, D22's form): has power in shadow · can talk home · can turn · balanced · fits the
 // fairing it rides in (when the bench was opened from a rocket carrying it: rocket, the rocket's design, and pid, the block's
 // payload). Pointing and temperatures come with S2 (Q338). [{k, cl: 'ok'|'warn'|'bad', t, fix}], plus mass (t) and cost (M)

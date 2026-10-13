@@ -2082,3 +2082,46 @@ each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`
   `q401-merged/`. Test `aerofx-38`. TESTING 293.
 - **Not done:** village lights at night; a land-use map texture (the noise and the city blur stand in); fields don't
   follow terrain contours.
+
+## v1.214 — no bright band at the horizon from inside the deck (2026-10-13, sky & bodies beat, QUEUE Q420)
+
+Seen in Q250's ascent at 2.4 km under ~60 % cover: inside the deck a cream band ran along the horizon between grey cloud
+above and below, with 2×2 stairs (the half-resolution slab's upsample along it).
+
+- **Cause:** the cloud volume fades out over `uVD`/2–`uVD` (20–40 km). From inside the slab, a level ray outlives it and
+  meets the shell (at 3 km, ~39 km off for a camera at 2.4 km) lit like a sunlit top, or far ground past the volume's
+  reach: a bright line where everything near is fog.
+- **Fix** (`SKY_FS` main, after the shell): with the camera in the slab (2.2–5 km, fading to 1.5 and 6 km), a ray that
+  stays in the slab past `uVD`/2 is fogged, by how far past, in the volume's own mean colour along it (`vAvg`, the
+  half-res slab's colour over its opacity, kept where the volume reached opacity 0.05); through a gap, the far deck at
+  half brightness. Selene's alpha (`vis`) follows.
+- **Measured** (paired renders, the same view list, so the same weather): the band's peak over the rows around it
+  178: 26 → 17, 179: 32 → 9 grey levels; views 81 (3 km), 82 (8 km), 2 unchanged.
+- **Left:** in 178 part of the streak stays: the volume's own sunlit clouds in its fading ring (20–40 km), not the
+  shell. QUEUE *Proposed*.
+- **Views 178, 179** (new): 2.4 km in the deck, the camera level, looking along the horizon two ways.
+- **Check:** test `aerofx-39`. TESTING 295. Stills `output/launchpad/beauty/q420-A/` (before), `q420-C/` (after).
+
+## v1.218 — the new parts' look: the octagonal bus, side boxes, antennas, fairing rails, fins by size (2026-10-13, effects beat on parts & pad's behalf, QUEUE Q396; PROBES § 7)
+
+`app/gl.js` (`partBody`: `oct`/`octl`, `scam`/`ssci`/`sbatt`/`scomp`, `whip`, `bant`, `fair` + `fairSeams`, `rfin`/`cfin`;
+`C.AG`; `KIND` frame and comp → 7; `MESH_FS`'s foil crinkle).
+
+- **The octagonal frame:** was eight flat gold faces. Now a bus of eight bays between dark machined end rings: six in
+  silver foil, two opposite as black radiator panels with louvre blades; bare aluminium posts at the corners and a belt
+  round the middle, proud of the faces so they cast shadows.
+- **Side boxes, each with its own outline at a glance:** the camera a silver box behind a black lens hood with a white
+  radiator plate; the instruments gold foil with a sensor's round mouth and a radiator strip; the battery dark with five
+  cell ribs, an orange band and two red terminals; the computer grey with six heat-sink fins and a cable into the hull.
+  All still within `off + r` of the skin (the fairing fit, v1.148).
+- **Antennas:** the whip on a foot and a three-turn spring, tapering to a ball; the boom antenna's hinge, and out, a
+  thin three-longeron lattice (bays every ~0.3 m) rising a little, a crossed dipole on a white hub at its tip.
+- **Fairing:** dark separation rails along both seams (angles 0 and π), on the closed shell and on each falling half.
+- **Fins:** the root doubler and the plate's thickness grow with the size (0.9 / 1.35 / 2 m, Q348); the 1.35 m and 2 m
+  plates carry a stiffener rib on both faces.
+- **Foil:** a silver foil (`C.AG`, material 5 like the gold); the frame and the computer now take kind 7, so their foil
+  crinkles like the instruments'. Silver mottles more than gold (its normal tilts read little against the sky).
+- **Not done here:** the stack camera (`cam`) is unchanged; era-dependent foil (polished 60s vs gold 70s) waits on the
+  era ladder; deploy animation is Q411.
+- **Stills:** `output/launchpad/beauty/Q396/` (`bus_ab`: before | after; the Satellite preset on the pad, fairing off;
+  `boom_fins_*` with a boom antenna and 2 m / 1.35 m fins swapped in). **Check:** test `aerofx-40`. TESTING 299.

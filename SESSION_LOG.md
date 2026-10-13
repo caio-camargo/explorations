@@ -6208,3 +6208,57 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Numbering:** views 172–174 → 175–177 and test aerofx-35 → 38 after the merge (others took them the same hour).
 - **Next for sky & bodies:** Q80–Q85 wait on W29; Q364 (the sea's swell); *Proposed*: village lights, a land-use map.
 
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q380 overflight rights (v1.213)
+
+- **Done:** `overQuote(i)` / `buyOver(i)` (`sim/program.js`): a year's consent from a power that minds, `OVER_FEE·(1+3c)`
+  M (2M at relation 0, 7M from a hostile security state); refused under sanctions, at relation ≤ −0.5, by a racing
+  rival below 0. `overEnd` skips consenting powers; Debrief "with its consent"; ledger `over`. A button per minding
+  neighbour in the site picker (`app/editor.js` `renderSites`). Test `econ-28`; TESTING 294; NOTES § v1.213.
+- **Not checked in the browser** (the game lock was held): TESTING 294 is the check.
+- **Smoke:** the same two failures already on `main` (`qa-2`, assembly help key `t`).
+- **Next:** economy's ready list is down to plans (Q282 the simulator, Q283 crew skill revision) and Q376 after Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q282 plan, the simulator replaces revert
+
+- **Done (docs only):** NOTES § "Plan: the simulator replaces revert" (`notes/economy.md`). A simulator run is a normal
+  flight with `R.sim`: the program snapshotted at liftoff (Q257's `REVERT0`) and restored whole at the end
+  (`missionDiscard`), keeping only the time it cost and simulator hours per design. It flies a **believed world**
+  drawn per run: part strength between the certified and true rating, unsampled air bands ±25 %, ignitions on the
+  run's seed. Real flights lose revert (the tester keeps it). Five slices (core, screen, revert retired, legs from
+  orbit, M3 qualifications), four as QUEUE *Proposed* lines.
+- **For Caio:** W42 (five questions, all with defaults).
+- **Next:** economy's remaining ready item is Q283 (crew skill revision, a plan); Q376 after space's Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q420 the band at the horizon in the deck (v1.214)
+
+- **Done:** reproduced in new views 178–179 (2.4 km, level); the shell past the volume's 20–40 km fade (and far ground)
+  drew a bright line; now fogged in the volume's own colour from inside the slab. Band 26 → 17 and 32 → 9 grey levels
+  (paired renders); 81, 82 unchanged. A sunlit fringe in the volume's own fading ring remains: *Proposed*.
+- **Collisions:** claimed after grepping for Q420; views 175–177 were sky2's, mine are 178–179; test renumbered
+  aerofx-39 (sky2 took 38). Lesson: before/after must come from the same view list, or each view's weather search lands
+  on a different clock.
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (295), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q420-A/`, `q420-C/`.
+
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): the TV Satellite, a stationary orbit over the capital (v1.215, Q412)
+- **Built:** `PRESETS['TV Satellite']` (an apogee-engine payload block in a 4 m fairing on the Heavy's launcher) and its payload as a bench starter; flown on the probe autopilot to a stationary orbit over Kamar, the mission's own check counts TV for the capital (test vehicle-30). Queued Q454: nothing tells the player when to start the transfer burn (26 min of coasting from the Cape).
+- **Checked:** vehicle and flow sections, and every section that loops over all presets, pass. The full suite was stopped by the system for low memory (chunk 2 passed; chunk 1's one failure is `main`'s: the Assembly's new top-view key `t` isn't in its key help, "Help lists every key the assembly handler reads"; chunks 3–4 not run).
+- **Next:** Q423 (bench parts, first set) or Q416 slice 2 with Q417, as Caio picks.
+
+## 2026-10-13 — flow session: Q277, the model's scale in the Assembly strip (v1.216)
+- The Assembly's program line (`#hqStrip`) reads "model 1:48 · 14.5 m" (the same kit scale as the drafting board's title block); hovering "model 1:N" explains the scale (term `scale`, app/terms.js). `modelScaleHTML()` in app/model-desk.js.
+- Checks: test flow-30; robot rows `scale` (Orbiter 1:48, Crewed Lunar 1:96 · 40.5 m, tooltip shown) and `m1` pass; full smoke not run (memory).
+- Numbers: built as v1.214/TESTING 295, both taken by other sessions meanwhile; renumbered at the merge to v1.216 / TESTING 297 (the first work commit's message still says v1.214).
+- Files: app/model-desk.js, app/terms.js, app/screens.js, tests/flow.mjs, playtest.mjs, NOTES.md, notes/flow.md, TESTING.md.
+- Next: the queue's next flow item (Q384 hover terms + touch, Q397 crew-loss chain, Q192 label merge).
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a docked composite's power counts its passengers (v1.217, Q304)
+- **Done:** while docked, the vessel and its passengers share one battery store. The passengers' batteries, loads, RTGs and cells all count (`powEach` in `sim/power.js`), and a passenger's cells see the sun through that passenger's own attitude. Charge is pooled at `join` and split by battery capacity at `undock`. Shapes carry the solar damage from v1.210 (`o.dmg`). On `main` as `e087496`.
+- **Checks:** test space-26 (new) passes, as do space-23 (Q213's docking recharge) and space-25. The full run was **stopped by Claude Code for low system memory** before its summary; by then 722 checks had passed, and the 2 failures were both known on `main`: Q438 (Help keys) and `qa-2`. A `--smoke` run on the merged branch also failed *atlas is wired*. That check reads only app source, which this branch doesn't touch, so it comes from `main` (for flow or look; not filed by me).
+- **Correction:** Q303's follow-up Q442 (seed debris from the tester menu) was wrong: the menu already has a Debris block. Closed as not needed; TESTING 291 now uses the menu.
+- **Numbering:** `main` moved twice during the merges, so this went v1.215 → v1.217 and TESTING 296 → 298.
+- **Files:** `sim/power.js`, `sim/space.js`, `tests/space.mjs`, `notes/space.md` § v1.217, `NOTES.md`, `TESTING.md` (291 fixed, 298), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for space:** Q331 (the slow world, plan only) is the lane's last ready item; Q440 (damage that does something) is shared with vehicle.
+- **Addendum 6 (effects for parts & pad):** v1.218 Q396: the new parts' look (the octagonal bus's silver bays, black louvred radiators and corner posts; side boxes each readable; whip spring, lattice boom with a crossed dipole; fairing seam rails; fins' doublers by size and a rib on the big ones; a silver foil; frame and comp crinkle). Stills `output/launchpad/beauty/Q396/`. Test aerofx-40; TESTING 299. Next: Q411 (deploying animates; the sim side with vehicle).

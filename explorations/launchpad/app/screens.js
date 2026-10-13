@@ -192,7 +192,7 @@ function progLayout(){const kids=[...$('program').children];if(!kids.length)retu
     $('progTabs').innerHTML=PROG_TABS.filter(([k])=>k!=='inbox'&&(k!=='more'||box.more.length)).map(([k,l])=>
       `<button data-ptab="${k}" class="${k===progTab?'on':''}">${l}${k==='inbox'&&progInbox?`<span class="n">${progInbox}</span>`:''}</button>`).join('');
     body.replaceChildren(...box[progTab]);if(!box[progTab].length)body.innerHTML=`<div class="none">${progTab==='inbox'?'Nothing waiting for an answer.':'Nothing here yet.'}</div>`}
-  $('hqStrip').innerHTML=`${head.outerHTML}<span class="sp" style="flex:1"></span>${progInbox?`<span class="n">Inbox ${progInbox}</span>`:''}<button data-go="program">← Program [P]</button>`}
+  $('hqStrip').innerHTML=`${head.outerHTML}${typeof modelScaleHTML==='function'?modelScaleHTML():''}<span class="sp" style="flex:1"></span>${progInbox?`<span class="n">Inbox ${progInbox}</span>`:''}<button data-go="program">← Program [P]</button>`}
 {const raw=renderProgram;renderProgram=function(){raw();progLayout()}}
 document.addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset.ptab;if(!t)return;progTab=t;try{localStorage.setItem('launchpad-progtab',t)}catch(x){}renderProgram()});
 $('bLog3').onclick=()=>{toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')};

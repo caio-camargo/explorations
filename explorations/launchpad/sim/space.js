@@ -579,14 +579,14 @@ function dock(s,q,B,P){const Qb=qmul(qFromTo(P.Ab,mul(P.Aa,-1)),B.q);
   join(s,q,B,Qb,sub(P.Pa,qrot(Qb,sub(P.b.fv,B.cm))),P.a.body,P.a.i,P.b.i,'port')}
 // two bodies become one: q (body B, placed at attitude Qb and position rB) rides on the vessel, held by part hpi of body
 // host; the joined vessel takes the pair's total momentum and angular momentum
-function join(s,q,B,Qb,rB,host,hpi,ppi,kind){const R=s.q,cm0=s.cm.slice(),m0=s.mass;
+function join(s,q,B,Qb,rB,host,hpi,ppi,kind){const R=s.q,cm0=s.cm.slice(),m0=s.mass,E1=(s.E??powCap(s))+storeOf(q);   // one store from now on (Q304)
   const Iw=(q4,I,w)=>{const l=qrot(qconj(q4),w);return qrot(q4,[l[0]*I[0],l[1]*I[1],l[2]*I[2]])};
   const Pm=add(mul(s.v,m0),mul(B.v,B.m)),L=add(add(cross(s.r,mul(s.v,m0)),Iw(R,s.I,s.w)),add(cross(rB,mul(B.v,B.m)),Iw(Qb,B.I,B.w)));
   const toV=w=>add(qrot(qconj(R),sub(w,s.r)),cm0),qv=qmul(qconj(R),Qb);(s.att=s.att||[]);
   s.att.push({e:q,p:toV(add(rB,qrot(Qb,sub(q.cm,B.cm)))),q:qv,host,hpi,ppi,kind});
   for(const a of q.attached||[])s.att.push({e:a.e,p:toV(add(rB,qrot(Qb,sub(a.p,B.cm)))),q:qmul(qv,a.q),host:a.host||q.id,hpi:a.hpi,ppi:a.ppi,kind:a.kind});
   q.attached=[];q.docked=true;q.undockT=null;SAT_C.delete(q);if(s.target===q.id)s.target=null;if(q._v&&s.tgtV===q._v)s.tgtV=null;
-  geom(s);const rc=add(s.r,qrot(R,sub(s.cm,cm0)));s.r=rc;s.v=mul(Pm,1/s.mass);
+  geom(s);s.E=E1;const rc=add(s.r,qrot(R,sub(s.cm,cm0)));s.r=rc;s.v=mul(Pm,1/s.mass);
   const l=qrot(qconj(R),sub(L,cross(rc,Pm)));s.w=qrot(R,[l[0]/s.I[0],l[1]/s.I[1],l[2]/s.I[2]]);s.rcsJ=null;
   HOOK.msg(kind==='claw'?`Claw: holding ${q.name}`:kind==='arm'?`Arm: holding ${q.name}`:`Docked with ${q.name}`)}
 // the claw: a claw part of the vessel's own (not holding anything yet) whose tip touches a satellite at under CLAW_V
@@ -618,11 +618,13 @@ function undock(s,id,push){const a0=(s.att||[]).find(a=>a.e.id===id);if(!a0)retu
   const W=x=>add(s.r,qrot(R,sub(x,cm0))),H=hostPort(s,a0),ax=qrot(R,H?H.ax:[0,1,0]);
   let mg=0,cg=[0,0,0];for(const g of grp){mg+=g.e.mass;cg=madd(cg,g.p,g.e.mass)}cg=mul(cg,1/mg);
   const rg=W(cg),vg=add(s.v,cross(s.w,sub(rg,s.r)));
+  const C=powCap(s),Cg=grp.reduce((a,g)=>a+battCap(g.e),0),Eg=C>0?(s.E??C)*Cg/C:0;if(s.E!=null)s.E-=Eg;   // the store split by capacity (Q304)
   s.att=s.att.filter(x=>!grp.includes(x));geom(s);const rs=W(s.cm),vs=add(s.v,cross(s.w,sub(rs,s.r))),Mt=s.mass+mg;
   s.r=rs;s.v=madd(vs,ax,-push*mg/Mt);s.rcsJ=null;
   const e=a0.e;e.attached=grp.slice(1).map(x=>({e:x.e,p:add(qrot(qconj(a0.q),sub(x.p,a0.p)),e.cm),q:qmul(qconj(a0.q),x.q),host:x.host===e.id?0:x.host,hpi:x.hpi,ppi:x.ppi,kind:x.kind}));
   SAT_C.delete(e);kitSet(e);
-  if(e._v){const v=e._v;v.att=e.attached;e.attached=[];geom(v);rebuildShape(v);
+  e.Ewh=Eg/3600;e.vst={...(e.vst||{}),E:Eg};
+  if(e._v){const v=e._v;v.att=e.attached;e.attached=[];v.E=Eg;geom(v);rebuildShape(v);
     Object.assign(v,{r:rg,v:madd(vg,ax,push*s.mass/Mt),q:qmul(R,a0.q),w:s.w.slice(),fleet:true,alive:true,undockT:T});FLEET.push(v);
     if(push)HOOK.msg(a0.kind==='claw'?`Released ${v.name}`:`Undocked ${v.name}`);return true}
   Object.assign(e,{r:rg,v:madd(vg,ax,push*s.mass/Mt),epoch:T,spin:{q0:qmul(R,a0.q),w:s.w.slice(),T0:T},docked:false,undockT:T});if(s.body===TELLUS)delete e.bodyName;else e.bodyName=s.body.name;   // r, v in the frame it leaves in
@@ -731,7 +733,7 @@ const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi
   return{face:[o.pos[0],o.y0+o.h,o.pos[2]],ax:[0,1,0]}};
 // a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
 // carried a real crew (dummies don't count)
-function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
+function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
   if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day}return o})}   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
 // a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
 function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
@@ -765,7 +767,7 @@ const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loa
 const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),fj:s.parts.filter(p=>p.on&&p.fj).map(p=>p.i),E:s.E});   // fj: fairings jettisoned (vehicle, Q337)   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
-  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}}
+  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}if(o.dmg)p.dmg=o.dmg}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}
   for(const i of st.fj||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on){p.fj=true;p.xm=0}}   // a fairing already dropped (Q337)   // legs and wings as they were left (vehicle, Q121)
   if(q.pw&&q.Ewh!=null)s.E=q.Ewh*3600;else if(st.E!=null)s.E=st.E;   // the battery as it is now (Q213: between flights' drain), or as it was left (Q131); powerStep caps it

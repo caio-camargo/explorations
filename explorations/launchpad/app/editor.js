@@ -174,8 +174,10 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
     <div class="dim" style="margin:4px 0 8px">${fmtLat(cur.lat)} · free ${cur.rot.toFixed(0)} m/s east · lowest inclination ${cur.minInc.toFixed(1)}° · pad at ${cur.h.toFixed(0)} m<br>
     downrange ${dr.az}°: ${(dr.sea*100).toFixed(0)}% water${forn.length?`, over ${forn.map(pn).join(', ')}`:''} · polar corridor ${cur.polar||'none'}<br>
     ${cur.kind==='sea'?'a floating platform: stages of any size come by ship':cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}<br>
-    weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?(a.fee?`<br>${a.how}: ${fmtM(a.fee)} a launch`:''):bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
+    weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${forn.filter(i=>i!=null&&i!==HOME).map(i=>{const q=overQuote(i);   // (economy, Q380) overflight rights; flow: restyle freely
+      return q.ok?`<br>${pn(i)} minds low overflight: <button data-overbuy="${i}" ${PROG.funds>=q.fee?'':'disabled'}>A year's consent · ${fmtM(q.fee)}</button>`:q.have||/refuses|sanctions/.test(q.why)?`<br><span class="dim">Overflight: ${q.why}</span>`:''}).join('')}${a.ok?(a.fee?`<br>${a.how}: ${fmtM(a.fee)} a launch`:''):bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
   $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()};
+  for(const b of el.querySelectorAll('[data-overbuy]'))b.onclick=()=>{buyOver(+b.dataset.overbuy);renderSites()};
   // the one-line summary pinned above LAUNCH (PLAYTEST #20): the full picker above scrolls with the panel
   const sl=$('siteLine');if(sl)sl.innerHTML=`${a.ok&&fz.ok?'':'<span style="color:#ff8a7a">⛔</span> '}${cur.name} · ${fmtLat(cur.lat)} · ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?' · <span style="color:#ffc46b">downrange warning</span>':''}`;sl&&(sl.title=a.ok?fz.ok?'':fz.why:a.why)}
 $('bEditor').onclick=()=>go('assembly');

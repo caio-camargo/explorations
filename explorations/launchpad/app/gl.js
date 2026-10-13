@@ -424,7 +424,7 @@ void main(){
  }
  // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
- float tC=-1.,tD=tH;
+ float tC=-1.,tD=tH;vec3 vAvg=vec3(-1.);   // (Q420) the volume's mean colour along this ray, where it has some
  // (Q313) marched at half resolution by its own pass (SLAB_MAIN, before this one) and brought up here: of the four nearest
  // half-res texels, those whose ground hit matches this pixel's count (a depth-aware upsample, so the deck doesn't bleed
  // over a ridge or the rocket); the air between is applied here at the deck's mean depth (tm), with this pixel's own
@@ -432,7 +432,7 @@ void main(){
  if(uVk>0.&&uCR>0.){vec2 hp=gl_FragCoord.xy*.5-.5,f=fract(hp);ivec2 b=ivec2(floor(hp)),sz=textureSize(uSlabA,0);vec4 A=vec4(0.);float tm=0.,tO=0.,ws=0.,wb=-1.,lh=log(1.+min(tP,1e9));
   for(int k=0;k<4;k++){ivec2 o2=ivec2(k&1,k>>1),c=clamp(b+o2,ivec2(0),sz-1);vec4 bb=texelFetch(uSlabB,c,0);
    float w=(o2.x==1?f.x:1.-f.x)*(o2.y==1?f.y:1.-f.y)*exp(-abs(log(1.+min(bb.z,1e9))-lh)*6.)+1e-6;A+=w*texelFetch(uSlabA,c,0);tm+=w*bb.x;ws+=w;if(w>wb){wb=w;tO=bb.y;}}
-  A/=ws;tm/=ws;float T=A.a;
+  A/=ws;tm/=ws;float T=A.a;if(T<.95)vAvg=A.rgb/(1.-T);
   if(T<.999){vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tm+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tm/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
    col=col*(1.-uVk*(1.-T))+uVk*(A.rgb*tr+(1.-T)*ic);vis*=1.-uVk*(1.-T);if(tO>0.&&tO<tD)tD=tO;}}
@@ -448,6 +448,12 @@ void main(){
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
    col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
+ // (Q420) from inside the deck (the camera in the 2–5.5 km slab), a ray that stays in the slab past the volume's reach
+ // (it fades out over uVD/2–uVD) showed the shell lit like a top, or far ground, as a bright line at the horizon. It goes
+ // on through cloud: fog it in the volume's own mean colour along this ray, by how far past uVD/2 it stays in the slab
+ {float hc=length(uPc)-uPR,inC=uVk*smoothstep(1500.,2200.,hc)*smoothstep(6000.,5000.,hc);   // (no volume on this ray, a gap: the far deck as its underside, half as bright)
+  if(inC>0.){float r0=length(uPc),RB=uPR+2000.,RT=uPR+5500.;vec2 hb=sph(uPc,r0*r0-RB*RB,d),ht=sph(uPc,r0*r0-RT*RT,d);
+   float f=inC*smoothstep(.5*uVD,uVD,min(hb.x>0.?hb.x:ht.y,tH));col=mix(col,vAvg.x>=0.?vAvg:col*.5,f);vis*=1.-f;}}
  if(atl.a>0.)col=mix(col,pow(atl.rgb,vec3(2.2))*1.7*atlL,atl.a*uAtl);   // over the clouds: it's a map
  o=vec4(col,vis);   // (Q314) linear light: the composite exposes and tone-maps the frame once (its grain dithers); alpha: Selene's share (Q322)
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;

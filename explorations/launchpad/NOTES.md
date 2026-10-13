@@ -86,6 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
+- v1.215 — the TV Satellite preset: a stationary orbit over the capital, flown to TV for the capital (2026-10-13, vehicle session, QUEUE Q412)
 - v1.207 — propulsion on the bench: kick motors (solid, burn to the end), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is the separation ring (2026-10-13, vehicle session, QUEUE Q422)
 - v1.198 — the payload bench, slice 1: satellites designed apart from the rocket and carried as one block; the bench's Checks; "make the parts inside a payload" (2026-10-13, vehicle session, QUEUE Q416)
 - v1.188 — flight buttons for landing legs (Y) and the cargo bay (B), beside the wings button (2026-10-13, vehicle session, QUEUE Q400)
@@ -102,6 +103,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies, QUEUE Q399, PLAYTEST #96)
 - v1.197 — the volume cloud shadow baked, a lookup per ground pixel (2026-10-13, sky & bodies, QUEUE Q379)
 - v1.209 — the haze without dither (2026-10-13, sky & bodies, QUEUE Q392, PLAYTEST #89)
+- v1.214 — no bright band at the horizon from inside the deck (2026-10-13, sky & bodies, QUEUE Q420)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -110,6 +112,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.203 — a calmer camera shake (a slow sway, about a quarter as strong), and a switch for it in Settings (2026-10-13, effects, QUEUE Q360)
 - v1.205 — the camera shake only round transonic and peak q, short jolts at Mach 1 and staging, Off / Gentle / Full (2026-10-13, effects, QUEUE Q402, PLAYTEST #98)
 - v1.206 — effects stop with the pause: one effects clock for every effect shader, explosion and the twinkle (2026-10-13, effects, QUEUE Q393, PLAYTEST #90)
+- v1.218 — the new parts' look: the octagonal bus, side boxes, antennas, fairing rails, fins by size (2026-10-13, effects for parts & pad, QUEUE Q396)
 - v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 - v1.200 — the planets in the sky as points of light by their magnitudes, a moon under a pixel as a point, stars faded by the sky's contrast (none by day), a fainter airglow (2026-10-13, sky & bodies, QUEUE Q374, Q395, Q407)
 - v1.212 — farmland round settled land (fields, hedges, roads, woods, villages, filtered by footprint), a scrub range round each pad, coasts blended over the pixel (2026-10-13, sky & bodies, QUEUE Q401, Q403)
@@ -160,6 +163,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.126 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
 - v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
 - v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
+- v1.217 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -235,6 +239,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
 - Q386 measured: launch scrubs under the cloud belts (2026-10-13, economy session 2; kept, no code change)
 - v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332)
+- v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
+- Plan: the simulator replaces revert (2026-10-13, economy session 2, QUEUE Q282; D15.5, D17.2; nothing built)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -295,6 +301,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.199 — how folded parts deploy: the part panel and its card say so; a first-time hint in space (2026-10-13, flow session, QUEUE Q400's remainder, PLAYTEST #97)
 - v1.202 — the camera looks straight down: the pitch to ±90° with no flip, T for a top view in the Assembly (2026-10-13, flow session, QUEUE Q405, PLAYTEST #101)
 - v1.208 — heat and load you notice: H and L bars beside the navball in every phase, amber from 50 %, red from 90 %; the master caution blinks (2026-10-13, flow session, QUEUE Q271, PLAYTEST #71; W36)
+- v1.216 — the model's scale in the Assembly strip: "model 1:48 · 14.5 m" beside the program's line, with a hover term (2026-10-13, flow session, QUEUE Q277, from Q242) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

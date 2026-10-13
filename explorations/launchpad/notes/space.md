@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2120,3 +2120,20 @@ v1.127's strike had two outcomes: a part lost, or "dented, no harm done". Now a 
   one. **Not yet:** damage does nothing else (a hit engine burns as new: Proposed); a leak's jet drawn; holes on the
   registry's satellites between flights (they are struck by `fragTick`, lost or not).
 - Test `space-25`.
+
+## v1.217 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
+
+Docked, only the host's own parts counted for power: a satellite brought to a station drew nothing and gave nothing.
+- **One store** (`sim/power.js`, `powEach`): `powCap`, `powLoad`, `powRTG`, `powSun` and `powPeak` walk the vessel's
+  parts and every passenger's registry shape (`s.att`). A passenger's wings are out unless it was left with them folded
+  (its `vst.dep`); its cells see the sun through its attitude on the vessel (`a.q`), so a wing on a passenger docked
+  crosswise is lit as that wing is turned, not as the host's.
+- **Charge:** at `join` the passenger brings what it holds (`storeOf`: a vessel's `E`, an entry's `Ewh`, or its `vst.E`;
+  full if nothing says). At `undock` the store is split by battery capacity (`battCap`), so both leave at the same
+  share of full; the entry keeps it as `Ewh` (and `vst.E`), a vessel as `E`. `dockCharge` (v1.126) still runs first and
+  its message still says what moved; with the shared store, what each side leaves with is the split.
+- **Registration:** a composite registered at flight end gets one power budget for all of it (`satPowInit` →
+  `powerBudget` now counts passengers); the docked entries ride in its `attached`, as before.
+- **Solar damage** (v1.210 `p.dmg`) is kept in the shape (`o.dmg`) and restored by `vesselOf`.
+- **Not yet:** a passenger's computer for the composite's avionics (`hasComputer` is still the host's), and its crew.
+- Test `space-26`.

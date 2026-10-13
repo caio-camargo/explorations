@@ -907,7 +907,18 @@
     `farmland ${farm} · coast ${coast}`);
 }
 
-// aerofx-39. The new parts' look (look & sound effects beat, QUEUE Q396; PROBES § 7): the octagonal frame's bays (silver
+// aerofx-39. No bright band at the horizon from inside the deck (look & sound sky & bodies beat, QUEUE Q420): with the
+// camera in the 2–5.5 km slab, a ray that stays in the slab past uVD/2 (where the volume fades out) is fogged in the
+// volume's own mean colour along it (or, through a gap, the far deck at half brightness), not drawn as the shell's lit top.
+// Views 178–179 look along the horizon at 2.4 km.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const ok = /float T=A\.a;if\(T<\.95\)vAvg=A\.rgb\/\(1\.-T\);/.test(pg) && /inC=uVk\*smoothstep\(1500\.,2200\.,hc\)\*smoothstep\(6000\.,5000\.,hc\)/.test(pg)
+    && /col=mix\(col,vAvg\.x>=0\.\?vAvg:col\*\.5,f\);vis\*=1\.-f;/.test(pg) && /178: \[2400, 1\.75, 0\.0, 40\], 179: \[2400, 0\.2, 0\.0, 40\]/.test(vj);
+  check('inside the deck: rays that stay in the slab past the volume\'s reach are fogged in its own colour (no bright horizon band; views 178–179)', ok, `fog ${ok}`);
+}
+
+// aerofx-40. The new parts' look (look & sound effects beat, QUEUE Q396; PROBES § 7): the octagonal frame's bays (silver
 // foil, two black radiators with louvres), corner posts and belt; each side box with an outline of its own (the camera's
 // hood, the instruments' mouth, the battery's ribs, band and terminals, the computer's fins); the whip's spring and tip;
 // the boom antenna as a lattice with a crossed dipole; the fairing's separation rails; fins' doublers by size and a

@@ -615,3 +615,18 @@
   check('flow-29: heat and load you notice: HEAT and LOAD by the navball in every phase (part vs limit, joint vs rating), faint, amber from 50 %, red from 90 %; the master caution blinks on a new reason',
     fr && cls && wired, `fracs ${fr} (${f.heat.toFixed(2)}, ${f.load.toFixed(2)}) · classes ${cls} · wired ${wired}`);
 }
+
+// flow-30. The model's scale in the Assembly strip (flow session, QUEUE Q277): "model 1:48 · 14.5 m" beside the program's
+// line, a hover term saying what the scale means; the same kit scale the desk's title block prints.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function modelScaleHTML'), page.indexOf('function deskFrame'));
+  const X = (S, fx = true) => new Function('DESK_FX', 'mode', 'S', 'deskFoot', 'deskScaleFor', 'term', src + 'return modelScaleHTML();')
+    (fx, 'editor', S, () => S.yBot, h => [20, 24, 32, 48, 72, 96, 144, 200, 288, 400, 500].find(n => h / n <= 0.45) || 500, (k, t) => `<span data-term="${k}">${t}</span>`);
+  const orb = X({ alive: true, len: 14.5, yBot: 0 }), big = X({ alive: true, len: 120, yBot: 0 });
+  const txt = orb.includes('model 1:48</span> · 14.5 m') && big.includes('model 1:288') && orb.includes('data-term="scale"');
+  const off = X({ alive: true, len: 14.5, yBot: 0 }, false) === '' && X({ alive: false, len: 14.5, yBot: 0 }) === '';
+  const wired = H.includes("typeof modelScaleHTML==='function'?modelScaleHTML():''") && H.includes("scale:{t:") && H.includes("term('scale',");
+  check('flow-30: the Assembly strip names the model\'s scale (model 1:48 · 14.5 m; 1:288 for a 120 m rocket) with a hover term; nothing without the desk',
+    txt && off && wired, `text ${txt} (${orb.replace(/<[^>]+>/g, '')}) · off ${off} · wired ${wired}`);
+}
