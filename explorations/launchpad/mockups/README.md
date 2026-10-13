@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -55,6 +55,26 @@ up to three legs (orbit, land, come home), each with the program's guess and how
 URL: `?tab=checks|stages|part`, `&part=<id>`, `&hl=<ids>`, `&open=<row>`, `&aim=1`, `&still=1`.
 
 **Pick:** _(Caio; D22's layout holds if silent: the vehicle session builds from this page)_
+
+## city/ — a city from the air (PLAYTEST #91)
+
+Open `city/index.html` (drag to turn, wheel to zoom) or the stills in `output/launchpad/mockups/city/`
+(`<layout>-<view>-<light>.png`, 1280×800, software renderer). Caio: the city is "a loose agglomeration of buildings that
+look bad from far away and just sit on grass... a city-like distribution, more dense towards the center, with taller
+buildings... without blowing the performance budget". Real 3D (three.js): the buildings are **one instanced draw** with
+windows from the shader (lit windows at night), a baked contact shadow on the ground; the ground is a painted canvas
+here (streets, blocks, houses, parks, river, ring road and highways; street lights at night).
+- **A · grid** (New World): a tower downtown, mid-rise round it, houses to a ragged edge, industry on the river. ~9,400 boxes for 1.2M people.
+- **B · old core** (Old World): a low old town round a cathedral, even courtyard blocks on rings and boulevards, a tower district *outside* the centre (from 1975), slab estates. ~3,800 boxes.
+- **today**: `cityMesh`'s even scatter on grass (≤ 900 boxes), for comparison.
+- **Era** 1960 / 1985 / 2010: towers 110 → 240 → 420 m, more of them, glass from the 1980s, the sprawl wider.
+- **The far version** (40 km): only towers ≥ 70 m stay as boxes; the ground carries the rest.
+- **Budget** (for the build): one draw, ≤ ~10k boxes (~100k triangles); in the game the ground would be a 512² land-use
+  map (~1 MB) with streets and houses drawn by the ground shader, not a 4096² painting. Measure on the iGPU first.
+URL: `?lay=grid|radial|now`, `&size=big|town`, `&era=1960|1985|2010`, `&view=low|climb|high`, `&light=day|dusk|night`, `&az=`, `&still=1`.
+
+**Pick:** _(Caio; if silent: **both, by region**: each city takes A or B from the country it's in (the school's region),
+so the world isn't one kind of city; era growth on)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 
