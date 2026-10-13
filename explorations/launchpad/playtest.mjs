@@ -1009,6 +1009,48 @@ ROWS[250] = {title: 'the vapor collar (refViews)', steps: views(50, 51, 54, 55)}
 ROWS[244] = {title: 'a plume light per side', steps: [`{go('assembly'); PT.preset('Heavy'); PT.launch(); const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
   if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); S.throttle = 1; stage(S); const t1 = simT; while (simT - t1 < 1.5) advPhys(S); window.simulate0 = window.simulate0 || window.simulate; window.simulate = () => {}; true}`,
   `{PT.look(0.6, 0.05, 40); render(); true}`, {wait: 400}, {shot: 'side_a'}, `{PT.look(0.6 + Math.PI, 0.05, 40); render(); true}`, {wait: 400}, {shot: 'side_b'}]};
+// look rows from reference scenes, batch 4 (test bench, 2026-10-13): 219 the HDR scene on High then Low; 232 bells and
+// noses; 231 re-entry; 235 the flames; 236 the air and the wake; 293 farmland; 290 the haze; 281's planets and dusk;
+// 275's Selene; 248 the space sky on High and Low
+const LOW = `{applyQuality('low'); true}`;
+const viewsLow = (...ns) => ns.flatMap(n => [`refView(${n})`, {shot: 'low' + n}]);
+ROWS[219] = {title: 'the HDR scene, High then Low (refViews)', steps: [...views(1, 19, 153, 3, 156, 92), LOW, ...viewsLow(1, 19, 3)]};
+ROWS[232] = {title: "the craft's quick wins (refViews)", steps: views(4, 5, 6, 7, 8, 9)};
+ROWS[231] = {title: 're-entry: the hull glows, the plasma (refViews)', steps: views(40, 41, 44, 46, 47, 159)};
+ROWS[235] = {title: 'the flames, slice 1 (refViews)', steps: views(30, 31, 32, 33, 35, 36)};
+ROWS[236] = {title: 'the air and the wake (refViews)', steps: views(50, 52, 101, 102, 103, 104)};
+ROWS[293] = {title: "farmland, the pad's range, coasts (refViews)", steps: views(175, 176, 177, 153, 82, 3)};
+ROWS[290] = {title: 'the haze without dither (refViews)', steps: views(1, 171, 81, 82, 163, 3)};
+ROWS['281b'] = {title: 'planets and the pad at dusk (refViews, 281)', steps: views(169, 170, 171)};
+ROWS['275b'] = {title: 'Selene in its own pass, close (refViews, 275)', steps: views(164, 165, 166, 167, 168)};
+ROWS[248] = {title: 'the space sky, High then Low (refViews)', steps: [...views(97, 99, 100), LOW, ...viewsLow(97, 100)]};
+// builder rows (test bench, 2026-10-13): each design built as the row describes, then the Assembly's own lines read back
+// (the Control and Aerodynamics blocks, Touchdown), and the Rollout's checks where the row asks
+const PANEL = `PT.panel = re => document.body.innerText.split(String.fromCharCode(10)).filter(l => re.test(l)).slice(0, 14); true`;
+const DES = (list, mod = '') => `{const d = toV2(${JSON.stringify(list)}), f = k => (function g(n) { return n.k === k ? n : (n.c || []).map(g).find(Boolean) })(d.root); ${mod} stackDef = d; editorChanged(); go('assembly'); render();
+  PT.panel(/Stage \\d (in the air|at max-q)|Max-q|flips|holds|joint|interstage|Liftoff/)}`;
+const ROLLCHK = `{go('rollout'); render(); (document.getElementById('rollChecks') || {}).innerText}`;
+const SAT234 = ['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];
+// 234: the fairing satellite flips in the air; with a steerable fin ring under its tank it holds
+ROWS[234] = {title: 'a stage that flips in the air', steps: [PANEL, DES(SAT234), {shot: 'flips'}, ROLLCHK, {shot: 'rollout'},
+  DES(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'cfins', 'petrel', 'dec', 't8', 'fins', 'kestrel'])]};
+// 242: the same with four boosters: its own max-q and the decoupler joint; then an interstage decoupler
+const BOOST = ['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel', 'dec', 't8', 'fins', {k: 'kestrel', rad: {n: 4, dec: true, stack: ['cone', 't4', 'kestrel']}}];
+ROWS[242] = {title: "a fast rocket's own max-q", steps: [PANEL, DES(BOOST), {shot: 'boosters'}, DES(BOOST.map(k => k === 'dec' ? 'istage' : k))]};
+// 246: 2 m radial fins at the foot of the Tank 2 t; then the fin ring swapped for 2 m radial fins low on the Tank 8 t
+ROWS[246] = {title: 'bigger fins', steps: [PANEL, DES(SAT234, `f('t2').c.push({k: 'rfin', at: {y: 0.05, a: 0, n: 4}, fz: 2, c: []});`), {shot: 'fins_top'},
+  DES(SAT234.filter(k => k !== 'fins'), `f('t2').c.push({k: 'rfin', at: {y: 0.05, a: 0, n: 4}, fz: 2, c: []}); f('t8').c.push({k: 'rfin', at: {y: 0.05, a: 0, n: 4}, fz: 2, c: []});`), {shot: 'fins_both'}]};
+// 218: the Touchdown line for the Passenger, the Orbiter and the Hopper
+ROWS[218] = {title: 'the Touchdown quote', steps: [PANEL, ...['Passenger', 'Orbiter', 'Hopper'].map(n => `{go('assembly'); PT.preset('${n}'); render(); ({${JSON.stringify(n)}: PT.panel(/Touchdown/)})}`)]};
+// 239: the rocket on the pad: hanging on the design table, standing in its clamps at the Rollout and behind the Program
+ROWS[239] = {title: 'the rocket on the pad', steps: [`{go('assembly'); PT.preset('Orbiter'); render(); true}`, {shot: 'table'}, `{PT.click('#bRoll'); render(); ({screen: screenNow(), y: +S.yBot.toFixed(2)})}`, {wait: 800}, {shot: 'rollout'},
+  `{go('program'); render(); screenNow()}`, {wait: 800}, {shot: 'program'}, `{go('assembly'); render(); screenNow()}`, {wait: 800}, {shot: 'table_again'}]};
+// 205: a revert puts money, day, registry, flight count and logbook back as they were before liftoff
+const STATE205 = `({funds: +PROG.funds.toFixed(2), day: +PROG.day.toFixed(3), sats: (PROG.sats || []).length, flights: PROG.flights, log: Object.keys(PROG.logbook || PROG.lb || {}).length})`;
+ROWS[205] = {title: 'a revert discards the flight', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Beeper'); PT.click('#bRoll'); window.B205 = ${STATE205}; B205}`, {click: '#launch'},
+  `(async () => ({ascent: await PT.ascent()}))()`, `{go('flight'); PT.key('Escape'); true}`, `{const b = document.querySelector('[data-esc="revert"]') || [...document.querySelectorAll('#escm button')].find(x => /Revert/.test(x.textContent)); b.click(); b.click(); true}`, {wait: 1500},
+  `{({before: B205, after: ${STATE205}, screen: screenNow(), landed: S && S.landed})}`],
+  checks: {same: `JSON.stringify(${STATE205}) === JSON.stringify(B205)`}, expect: {same: v => v === true}};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
