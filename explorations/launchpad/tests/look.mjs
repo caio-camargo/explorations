@@ -637,3 +637,19 @@
   const sim = /d\.chA=/.test(src) && /d\.float=\{pf:pfc/.test(src);
   check('falling stage: a canopy per chute while d.chA is open; at sea a splash once, then the waterline laps (stage and ship)', can && sea && sim, `canopies ${can} · sea ${sea} · sim ${sim}`);
 }
+
+// aerofx-21. Tellus from above (look & sound sky & bodies beat, BEAUTY Q323 B6.1, 6.3, 6.4). The cloud cover's far-field
+// widening is even about the threshold's centre (it was lopsided: a blurred pixel came out ~4× cloudier than the ground
+// under it), starts once the finest octave is under a pixel (fw × 15), and the coverage has a milder stretch, a
+// patchiness term and latitude belts; sim/space.js cloudAt carries the same formula, so scrubs and photo windows follow
+// the drawn weather. The sea has Fresnel sky light and a Beckmann sunglint; the city lights are read at their mip.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = pg.slice(pg.indexOf('float cloudCovF('), pg.indexOf('float cloudCov(vec3 u)'));
+  const shader = /vec3\(7\.,8\.75,7\.\)/.test(fs) && /belt=\.03\*/.test(fs) && /-\.05\*smoothstep\(\.16,\.26,la\)/.test(fs) && /\.18\*\(vn\(u\*2\.6/.test(fs)
+    && /k=clamp\(fw\*15\.,0\.,\.3\);return smoothstep\(\.55-k,\.72\+k,c\)/.test(fs);
+  const cpu = /\*7\+t,\(u\[1\]\+w\[1\]\*\.26\)\*8\.75/.test(src) && /belt=\.03\*\(1-ss\(0,\.16,la\)\)-\.05\*ss\(\.16,\.26,la\)/.test(src) && /\.18\*\(vn\(u\[0\]\*2\.6\+7/.test(src) && /x=clamp\(\(c-\.55\)\/\.17,0,1\)/.test(src);
+  const sea = /Fr=\.02\+\.98\*pow\(1\.-cv,5\.\)/.test(pg) && /m2=\.0324/.test(pg) && /textureLod\(uCity,eq,max\(0\.,log2\(fw\/3900\.\)\)\)/.test(pg) && /gl\.generateMipmap\(gl\.TEXTURE_2D\);gl\.texParameteri\(gl\.TEXTURE_2D,gl\.TEXTURE_MIN_FILTER,gl\.LINEAR_MIPMAP_LINEAR\)/.test(pg);
+  check('Tellus from above: even far-field cloud filter, milder stretch, patchiness and belts in the shader and in cloudAt alike; the sea\'s Fresnel and sunglint; city lights by mip',
+    shader && cpu && sea, `shader ${shader} · cloudAt ${cpu} · sea and lights ${sea}`);
+}

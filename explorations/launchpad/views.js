@@ -215,7 +215,8 @@ window.refView = async (n) => {
     const [alt, yaw, pitch, dist] = cl[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
     // weather on demand: the first time offset (5-minute steps) at which the sky under the rocket is about 60 % covered
-    const wx = u => { pinWx = false; CLOUD_DT = 0; for (let k = 0; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300); if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; break } } };
+    const wx = u => { pinWx = false; CLOUD_DT = 0; for (let k = 1; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300);   // from k = 1: at k = 0 nothing has moved since setup and the near deck shows a stale coverage bake (Q323)
+      if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; break } } };
     if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 600) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0 }
     wx(norm(toPF(TELLUS, S.r, simT)));   // weather on demand: ~60 % cover under the rocket
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); window.simulate = () => {};
