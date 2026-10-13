@@ -463,3 +463,35 @@
     mk && n >= 14 && !old.length && fit && !noPair.length && !bare.length && shown,
     `whyMark ${mk} · ${n} marks, old ${old.join(' ') || 'none'} · fit ${fit} · pairs missing ${noPair.join(',') || 'none'} · markup ${bare.join(',') || 'none'} · shown ${shown}`);
 }
+
+// flow-23. Losses explained (flow session, QUEUE Q293; REVIEW-2026-10-11 § 3 gap 1): a flight keeps the failures on its
+// way (debFail: a joint that broke, a part that burned up, an engine that didn't light) with the time and the height; a
+// loss's Debrief shows that chain, the end, and what would help; a flight that got home lists them as incidents. The
+// money between liftoff and the settling is named line by line (budget day, running the program, debt repaid, ...) from
+// a ledger (PROG.led), not lumped as "days passing", and still adds up to what the program gained or lost.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; const P0 = JSON.stringify(P);   // (put back at the end: a started program turns know-how on for later sections)
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 3, funds: 200, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {}, day: 95 });
+  // a loss: a joint breaks at 9 s, then the nose hits the ground
+  api.t = 0; let s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let n = 0;
+  while (s.alive && api.t < 9 && n++ < 200000) api.advPhys(s);
+  api.debFail(s, 'structure', 'structural failure: Sparrow / Tank 1 broke in bending, at 131% of its strength');
+  s.alive = false; s.lossWhy = 'destroyed: the nose hit Tellus at 80 m/s';
+  const L = api.flightLeave(s), D = L && L.debrief, ch = D && D.loss;
+  const lost = !!ch && ch.chain.length === 1 && ch.chain[0].k === 'structure' && ch.chain[0].met > 8 && ch.chain[0].h > 100 && ch.end.why.includes('the nose hit') && ch.help.includes('joint') && D.outcome.k === 'lost';
+  // a flight that lands, with an engine that failed to light on the way; 120 days pass before it settles, over a budget day, with a debt (running the program costs
+  // nothing today, OVERHEAD = 0: a zero line is left out)
+  api.own().debt = 4; api.t = 0; s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false; n = 0;
+  api.debFail(s, 'ignite', 'the Sparrow failed to light (know-how 10%)');
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  s.rec.fails = s.rec.fails || []; if (!s.rec.fails.length) s.rec.fails.push({ k: 'ignite', why: 'the Sparrow failed to light (know-how 10%)', met: 0, h: 0 });
+  api.income(10); api.advanceDays(120);
+  const L2 = api.flightLeave(s), E = L2 && L2.debrief, M = E ? E.money : [], row = l => M.find(m => m.l.startsWith(l)), sum = M.reduce((a, m) => a + m.v, 0);
+  const named = E && !M.some(m => /days passing/.test(m.l)) && row('Budget day') && row('Budget day').v > 0 && !row('Running the program') && row('Debt repaid') && row('Debt repaid').v < 0
+    && Math.abs(sum - E.net) < 1e-6 && !row('Other');
+  const inc = E && !E.loss && E.incidents.some(t => t.startsWith('The Sparrow failed to light'));
+  const helps = ['structure', 'heat', 'ignite'].every(k => api.debHelp(k, '').length > 20) && api.debHelp(null, 'toppled over on Selene').includes('legs') && api.debHelp(null, 'sank: it filled').includes('land');
+  check('flow-23: losses explained: the failures on the way, the end and what helps; a landed flight lists them as incidents; the money between liftoff and settling named line by line, adding up',
+    lost && named && inc && helps, `chain ${ch ? ch.chain.map(f => `${f.k} T+${f.met.toFixed(0)}s ${(f.h / 1000).toFixed(1)} km`).join(', ') + ' → ' + ch.end.why + ' · help: ' + ch.help.slice(0, 40) : 'none'} · money ${M.map(m => `${m.l} ${m.v.toFixed(1)}`).join(' · ')} = ${E && E.net.toFixed(1)} · incident ${inc} · helps ${helps}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(P0));
+}

@@ -206,7 +206,7 @@ function obsTick(){const E=compEra();for(const q of satsUp()){if(q.junk)continue
 function stFind(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=typeof stationOf==='function'?stationOf(q):null;if(s&&f(s,q))return{q,s}}return null}
 function utilTick(d){const T=PROG.day*DAY_S;obsTick();
   for(const q of satsUp()){const s=q.shape&&stationOf(q);if(s&&s.crew>0&&s.sup>0)q.crewDays=(q.crewDays||0)+d}   // crewed days aboard (Q163)
-  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q)*satDuty(q));if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
+  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q)*satDuty(q),'sats');if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
@@ -547,7 +547,7 @@ function facTick(){for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.build
 function fleetSalvage(R){const lv=facLv('fleet');if(!lv||!R.launchPf)return;let got=0,n=0;const seen={};
   for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
     let val=0;for(const p of v.parts){val+=partPrice(p)*REFURB*FAC.fleet.sal[lv]*wearOf(p,TOUCH_OK);seen[p.d.key]={land:1}}got+=val-2;n++}
-  if(!n)return;PROG.funds+=got;khLearn({khSeen:seen},0.3);
+  if(!n)return;PROG.funds+=got;ledAdd('salvage',got);khLearn({khSeen:seen},0.3);
   HOOK.news(`Recovery fleet: ${n} stage${n>1?'s':''} fished out of the sea, ${got>=0?'+':''}${fmtM(got)} after ship time`,got>=0?'ok':'')}
 function facilitiesHTML(){return`<div class="ep">Facilities</div><div class="sub">`+Object.keys(FAC).map(id=>{const F=FAC[id],lv=facLv(id),f=(PROG.fac||{})[id],q=facQuote(id);
   return`<b>${F.name}</b> <span class="dim">level ${lv}: ${F.what(lv)}</span>`+(f&&f.building?`<br><span class="warn">building level ${f.building.lv}, ${(f.building.ready-PROG.day).toFixed(0)} days left</span>`:
@@ -793,7 +793,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
   const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch=nextWindow(D.rule,D.launch+1).day;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
   const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   if(D.watch&&D.cid!=null&&PROG.day<D.launch+WATCH_WAIT)continue;   // (flow, Q43) waiting for you to watch it; half a day without you and it flies itself
-  D.watch=false;  PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
+  D.watch=false;  PROG.funds-=cost+ops;ledAdd('dispatch',-(cost+ops));importNews(v);prodUnits(v);PROG.flights++;
   const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
   if(D.base!=null&&!res.deviation){D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';const sb=(PROG.sats||[]).find(q=>q.id===D.base);   // a supply run: no contract to settle
     HOOK.news(res.ok?`${D.title}: landed ${res.miss<1e3?`${res.miss.toFixed(0)} m`:`${(res.miss/1e3).toFixed(1)} km`} from the beacon${res.joined?`, now part of ${sb?sb.name:'the base'}`:', too far to join the base'}`:`${D.title} failed: ${res.why}`,res.ok&&res.joined?'ok':'bad');HOOK.save();continue}
@@ -906,7 +906,7 @@ function igniteOK(s,k){if(TEST.nofail||!khOn()||!s.rec)return true;
   for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719)*43758.5453)%1+1)%1;
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
-      HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);return false}}
+      HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);debFail(s,'ignite',`the ${p.d.name} failed to light (know-how ${(khBar(p.d.key)*100).toFixed(0)}%)`);return false}}
   return true}
 // generated flavours: the two biggest economies are the superpowers (open or closed by their second alignment axis), the
 // rest by what they have: rich and low-tech → resource state, high tension of alignment → security state, etc.
@@ -967,7 +967,7 @@ function flavTick(d,R){PROG.nat=PROG.nat||{};
 function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import'||(x[1].how==='giant'&&x[1].from!==HOME));
   if(grey.length)HOOK.news(`Bought through intermediaries at triple the price: ${grey.map(x=>PARTS[x[0]].name).join(', ')}`,'warn');
   if(imp.length||grey.length)opAdd(HOME,-0.4*natK()*(imp.length+grey.length)/Math.max(1,ks.length))}
-function demandMet(why){if(!PROG.demand)return;PROG.demand=null;opAdd(HOME,8);if(flav(HOME).money==='patronage')PROG.funds+=30;
+function demandMet(why){if(!PROG.demand)return;PROG.demand=null;opAdd(HOME,8);if(flav(HOME).money==='patronage'){PROG.funds+=30;ledAdd('patron',30)}
   HOOK.news(`The leadership is delighted (${why})${flav(HOME).money==='patronage'?': +30M':''}`,'ok')}
 function cancelProgram(R){PROG.cancelled=true;PROG.bmult=0;PROG.decisions=(PROG.decisions||[]).filter(x=>x.kind!=='defect'&&x.kind!=='hire');   // these two replace any pending career offers
   HOOK.news(`Regime change in ${POWERS[HOME].name}: the new government cancels the space program`,'bad');

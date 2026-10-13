@@ -258,7 +258,7 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
 function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
   return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
 function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
-  income(pay);PROG.cdone=(PROG.cdone||0)+1;
+  income(pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');HOOK.save()}
 function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].sel);if(!A.length)return;const N=selN();for(const c of A){c.base=c.base||(CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN());if(CT[c.type].done(c,N))selDone(c)}}
 // a satellite worth servicing: ours, earning (TV in view, or imagery with 30 % contact or more), an era behind or more,
@@ -309,7 +309,7 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
 function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();compTick();dispatchTick();
-  if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;   // running the program, from its first launch on (more as it grows)
+  if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;ledAdd('upkeep',-(OVERHEAD+OVERHEAD_CAP*capOf())*d);   // running the program, from its first launch on (more as it grows)
     floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
   const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
@@ -349,7 +349,7 @@ function ownKind(){const o=own(),ss=stateShare(),top=Object.entries(o.st).sort((
 function shiftShare(to,amt){const o=own(),get=k=>k==='pv'?o.pv:(o.st[k]||0),set=(k,v)=>{if(k==='pv')o.pv=v;else if(v>1e-9)o.st[k]=v;else delete o.st[k]};
   const others=[...Object.keys(o.st).map(Number),'pv'].filter(k=>k!==to&&get(k)>0),tot=others.reduce((a,k)=>a+get(k),0);amt=Math.min(amt,tot);
   for(const k of others)set(k,get(k)-amt*get(k)/tot);set(to,get(to)+amt)}
-function income(x){const o=own();if(o.debt>0){const r=Math.min(o.debt,x/2);o.debt-=r;x-=r}PROG.funds+=x}
+function income(x,k='paid'){ledAdd(k,x);const o=own();if(o.debt>0){const r=Math.min(o.debt,x/2);o.debt-=r;x-=r;ledAdd('debt',-r)}PROG.funds+=x}   // k: the Debrief's ledger line (Q293)
 const valuation=()=>80+40*Object.keys(PROG.done).length+6*(PROG.cdone||0);   // what investors think the program is worth (M)
 // how a power's money arrives (multiplies GRANT_100 × stake): its money axis, opinion where it matters, the cycles
 // the Assembly panel's study line: what this design's predictions are worth, and the office
@@ -369,12 +369,12 @@ function moneyK(i){const F=flav(i),op=opOf(i)/50,home=i===HOME;let k;
   return Math.max(0,k*(home?(PROG.bmult??1):1))}
 function budgetDay(){const o=own();let g=0;const parts=[];
   for(const k in o.st){if(sanctioned(+k))continue;const i=+k,x=GRANT_100*o.st[k]*Math.sqrt(POWERS[i].econ/POWERS[HOME].econ)*moneyK(i);g+=x;parts.push(`${POWERS[i].root} ${fmtM(x)}`)}
-  if(g<=0)return;PROG.funds+=g;
+  if(g<=0)return;PROG.funds+=g;ledAdd('budget',g);
   HOOK.news(Object.keys(o.st).length>1?`Budget day: members contribute ${fmtM(g)} (${parts.join(', ')})`:
     `Budget day: ${POWERS[+Object.keys(o.st)[0]].name} allocates ${fmtM(g)} to the space program${opOf(HOME)>60?' (and applauds)':opOf(HOME)<40?' (through gritted teeth)':''}`,g>=GRANT_100*stateShare()?'ok':'warn')}
 function floorCheck(){if(PROG.funds>=FUNDS_FLOOR)return;const o=own();
   if(stateShare()>=0.5){const k=+Object.entries(o.st).sort((a,b)=>b[1]-a[1])[0][0];PROG.bailouts=(PROG.bailouts||0)+1;PROG.bailRecent=(PROG.bailRecent||0)+1;
-    HOOK.news(`${POWERS[k].name} grudgingly tops up the space program (${fmtM(PROG.funds)} → ${fmtM(FUNDS_FLOOR)})`,'warn');PROG.funds=FUNDS_FLOOR;opAdd(k,-2);
+    HOOK.news(`${POWERS[k].name} grudgingly tops up the space program (${fmtM(PROG.funds)} → ${fmtM(FUNDS_FLOOR)})`,'warn');ledAdd('topup',FUNDS_FLOOR-PROG.funds);PROG.funds=FUNDS_FLOOR;opAdd(k,-2);
     if(PROG.bailouts>2&&o.pv>0){shiftShare(k,Math.min(o.pv,0.1));HOOK.news(`…and this time it takes a bigger stake: ${POWERS[k].root} now owns ${(o.st[k]*100).toFixed(0)}%`,'warn')}return}
   if(!(PROG.decisions||[]).some(d=>d.kind==='rescue'))offerDecision(rescueDecision())}
 // ---- decisions: offers that wait for an answer between flights

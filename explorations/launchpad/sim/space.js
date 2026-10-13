@@ -111,7 +111,7 @@ function stationsTick(d){const L=PROG.stations||[];if(!L.length)return;
   for(let i=L.length-1;i>=0;i--){const c=CITIES[L[i].ci],pw=c.power?c.power.i:HOME;if(pw===HOME||relOf(HOME,pw)>=-0.2)continue;
     L.splice(i,1);opAdd(pw,-2);HOOK.news(`${POWERS[pw].name} shuts our ground station at ${c.name} and keeps the furniture`,'bad')}
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100),n=L.filter(g=>{const c=CITIES[g.ci];return c.power&&c.power.i!==HOME}).length;
-  if(q1>q0&&n){const x=GS_LEASE*n*(q1-q0);PROG.funds-=x;PROG.leasePaid=(PROG.leasePaid||0)+x}}
+  if(q1>q0&&n){const x=GS_LEASE*n*(q1-q0);PROG.funds-=x;ledAdd('lease',-x);PROG.leasePaid=(PROG.leasePaid||0)+x}}
 // the sky shader's float value noise (h3/vn/fbm), ported with Math.fround at each step so the CPU sees the same clouds
 // the GPU draws. (It used to carry the land mask too; the terrain now has its own integer-hash noise, see "the world".)
 const F32=Math.fround,fr32=x=>F32(x-Math.floor(x));
@@ -1033,7 +1033,7 @@ function rcsStep(s,dt,tauB){const J=s.rcs&&rcsJets(s);s.rcsFire=0;s.rcsShots=[];
   // gas out of the fullest bottles first
   for(const p of s.parts.filter(p=>p.on&&p.res.gas>0).sort((a,b)=>b.res.gas-a.res.gas)){if(used<=0)break;const x=Math.min(used,p.res.gas);p.res.gas-=x;used-=x}}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
-function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c.p.dis&&t!=null)(PROG.disDone=PROG.disDone||[]).push({posted:c.posted,t});PROG.active.splice(i,1);income(c.p.pay);PROG.cdone=(PROG.cdone||0)+1;
+function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c.p.dis&&t!=null)(PROG.disDone=PROG.disDone||[]).push({posted:c.posted,t});PROG.active.splice(i,1);income(c.p.pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);sat.imgs++;
   HOOK.news(`${sat.name} delivers via ${st?st.name:'the pad'}: ${cTitle(c)} for ${POWERS[c.client].name} (+${fmtM(c.p.pay)})`,'ok')}
 // between flights: satellites with cameras look for their targets (in reach of the camera, sharp enough, sunlit, clear),
@@ -1057,7 +1057,7 @@ function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120*on);
       const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const cap=k*120*on,o=Math.min(q.owe||0,cap),x=Math.min(q.rec,cap-o);q.owe=(q.owe||0)-o;q.rec-=x;got+=x}}
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
-     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
+     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1),'sats');if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R()<1-Math.exp(-d/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');

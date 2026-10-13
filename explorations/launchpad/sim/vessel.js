@@ -871,6 +871,7 @@ function physStep(s,dt){
   if(s.alive&&worst.frac>1){const p=worst.p;PROG.cert[p.sf1>=p.sf2?p.sk1:p.sk2]=1;   // a failure is a measurement too
     HOOK.msg(`Structural failure — ${p.d.name} / ${p.parent.d.name} (${worst.kind}, ${(worst.frac*100).toFixed(0)}%)`);
     logEv('structure',`${p.d.name} / ${p.parent.d.name} failed in ${worst.kind} at ${(worst.frac*100).toFixed(0)}% of its strength`);
+    debFail(s,'structure',`structural failure: ${p.d.name} / ${p.parent.d.name} broke in ${worst.kind}, at ${(worst.frac*100).toFixed(0)}% of its strength`);   // (Q293) the Debrief's chain
     HOOK.crack(s,p);   // render-side: shards at the joint, a broken tank venting or a fireball (Q294)
     detach(s,subtree(p),[0,0,0],1.5)}}
 // ---- heat. Each part has a skin temperature: absorbed aero heat in, εσ(T⁴−T∞⁴) radiated out over its whole skin, heat
@@ -886,7 +887,7 @@ function thermal(s,dt,qStag,rho=0,sp=0){
     p.T=Math.max(T_AMB*0.9,p.T+net*dt/cap);if(!hot||p.T/p.d.Tmax>hot.T/hot.d.Tmax)hot=p}
   s.hot=hot;
   if(TEST.log&&hot&&!hot.heatLog&&hot.T>0.8*hot.d.Tmax){hot.heatLog=1;logEv('heat',`${hot.d.name} at ${hot.T.toFixed(0)} K, 80 % of its ${hot.d.Tmax} K limit`)}
-  if(hot&&hot.T>hot.d.Tmax){HOOK.msg(`${hot.d.name} burned up (${hot.T.toFixed(0)} K)`);if(hot===s.root)s.lossWhy=`burned up: the ${hot.d.name} reached ${hot.T.toFixed(0)} K, over its ${hot.d.Tmax} K`;partLost(s,hot)}}
+  if(hot&&hot.T>hot.d.Tmax){HOOK.msg(`${hot.d.name} burned up (${hot.T.toFixed(0)} K)`);debFail(s,'heat',`the ${hot.d.name} burned up at ${hot.T.toFixed(0)} K, over its ${hot.d.Tmax} K`);if(hot===s.root)s.lossWhy=`burned up: the ${hot.d.name} reached ${hot.T.toFixed(0)} K, over its ${hot.d.Tmax} K`;partLost(s,hot)}}
 function coolOnRails(s,dt){for(const p of s.parts)if(p.on)p.T=T_AMB+(p.T-T_AMB)*Math.exp(-dt/400)}
 // a destroyed part takes its branch with it; losing the root (the pod) ends the flight
 function partLost(s,p){const P=add(s.r,qrot(s.q,sub(partC(p),s.cm)));HOOK.boom(s.body,P,simT,0.6);

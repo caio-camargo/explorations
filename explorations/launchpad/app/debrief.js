@@ -20,7 +20,11 @@ function renderDebrief(){const D=debShown,el=$('debBody');
     +`<div class="lead">${cls?`<b>${o.t}</b>: `:''}${o.d}.`
     +(D.crew?` <span class="${D.crew.ok?'ok':'bad'}">${D.crew.line}.</span>`:'')   // (Q191)
     +(D.passenger?` ${D.passenger.ok?`${D.passenger.who} came through.`:`${D.passenger.who} ${D.passenger.why}.`}`:'')+`</div>`;
-  const L=sec('Money',D.money.map(m=>ln(m.l,money(m.v))).join('')+(D.net!=null?ln('Net for the program',money(D.net),'tot'):''))
+  // a loss explained (Q293): the failures on the way, in order, then the end, and what would help next time
+  const cap=t=>t[0].toUpperCase()+t.slice(1),at=f=>`<span class="was">T+${fmtT(f.met)}${f.h!=null?` · ${fmtKm(f.h)}`:''}</span>`;
+  const W=D.loss?sec('What happened',D.loss.chain.map(f=>ln(`${cap(f.why)}`,at(f))).join('')+ln(`<b>${cap(D.loss.end.why)}</b>`,at(D.loss.end),'bad')
+    +(D.loss.help?`<div class="help">What would help: ${D.loss.help}</div>`:'')):'';
+  const L=W+sec('Money',D.money.map(m=>ln(m.l,money(m.v))).join('')+(D.net!=null?ln('Net for the program',money(D.net),'tot'):''))
     +sec('Logbook',D.records.map(r=>ln(`${r.l} <span class="was">(${r.was?`was ${r.was}`:'first measured'})</span>`,r.v)).join(''));
   const R=sec('Missions',D.missions.map(m=>ln(`✓ ${m.l}`,m.first?'<span class="neg">first</span>':'')).join(''))
     +sec('Certified by telemetry',D.certs.map(c=>ln(c.l,`${pct(c.a)} → ${pct(c.b)}`)).join(''))

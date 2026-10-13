@@ -8,7 +8,29 @@
 // know-how. Nothing here changes the program: it only compares before and after.
 let DEBRIEF_LAST=null;
 function debSnap(){const kh={};for(const k in PROG.kh||{})kh[k]=PROG.kh[k].use;
-  return{funds:PROG.funds,day:PROG.day,kh,done:Object.keys(PROG.done||{}),satN:PROG.satN||0,recOrbit:PROG.recs&&PROG.recs.orbit}}
+  return{funds:PROG.funds,day:PROG.day,kh,done:Object.keys(PROG.done||{}),satN:PROG.satN||0,recOrbit:PROG.recs&&PROG.recs.orbit,led:{...(PROG.led||{})}}}
+// ---- the money ledger (flow, QUEUE Q293; REVIEW-2026-10-11 § 3 gap 1): what moves the funds between liftoff and the
+// settling, by kind, so the Debrief names each line instead of one "days passing" lump. Running totals in PROG.led; the
+// Debrief takes the difference from its snapshot. The flight's own items (hardware, pay, refurbishment, damages) are
+// itemized from its record as before; 'paid' is all income() and the flight's own pay is taken back out of it.
+const LED_L={budget:'Budget day',topup:'Government top-up',upkeep:'Running the program',lease:'Ground station leases',sats:'Satellite income (pictures, TV)',
+  contracts:'Contracts completed between flights',paid:'Pay for other flights (dispatches)',debt:'Debt repaid from income',dispatch:'Dispatched flights launched',salvage:'Recovery fleet salvage',patron:"The leadership's reward"};
+function ledAdd(k,v){if(!(Math.abs(v)>0))return;const L=PROG.led||(PROG.led={});L[k]=(L[k]||0)+v}
+// what went wrong on the way (Q293): the flight's failures in order, with the time and the height; a loss shows them as the
+// chain that led to it, a flight that got home lists them as incidents
+function debFail(s,k,why){const R=s&&s.rec;if(!R||!R.launched)return;const F=R.fails||(R.fails=[]);if(F.length>=8)return;
+  F.push({k,why,met:simT,h:Math.max(0,len(s.r)-s.body.R)})}
+const debT=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;   // a flight time, m:ss (sim-side: no fmtT here)
+// what helps, by what went wrong first: one line, plain words (the Assembly says the rest before the next launch)
+function debHelp(k,why){why=why||'';
+  if(k==='structure')return"Reinforce the joint that broke (right-click the part: joint), use an interstage decoupler, or climb more gently through max-q. The Assembly shows each joint's load before you fly.";
+  if(k==='heat'||/burned up/.test(why))return'A heat shield under what comes home, a shallower way back in, or a nose cone over what faces the air.';
+  if(k==='ignite')return'An engine new to us can fail to light; the test stand and flights raise its know-how. A failed ignition alone can be tried again (stage again).';
+  if(/topple|tipped|fell over/.test(why))return"Touch down with no sideways drift, or on wider legs (the Assembly's Touchdown line says how much it stands).";
+  if(/sank/.test(why))return'Come down on land, or bring a capsule that floats.';
+  if(/collided|hit .* at \d+ m\/s$/.test(why)&&!/hit (Tellus|Selene|the nose)/.test(why))return'Close in slowly: under a few m/s near another craft.';
+  if(/hit|nose/.test(why))return'Come down slower: a parachute opened low and slow, or a landing burn.';
+  return''}
 // the paid items missionComplete, contractEval and stagePay add to the flight's record
 const debPaid=(R,k,l,pay,x)=>{if(R)(R.paid||(R.paid=[])).push({k,l,pay,...x});logEv('pay',`${k}: ${l}, ${pay.toFixed(1)} M`)};
 function debOutcome(s,R){const B=s.body,km=v=>fmtKm(Math.max(0,v));
@@ -39,7 +61,14 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
   add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');add('Site lease',-(R.siteFee||0),'cost');add('Sponsor covers the failed attempt',R.cover||0,'cover');
   for(const p of R.paid||[]){add(p.k==='contract'?`Contract: ${p.l}`:p.k==='stage'?`${p.l} (share)`:p.l,p.pay,p.k);if(p.k==='mission')D.missions.push({l:p.l,pay:p.pay,first:!!p.first})}
   add(`Refurbishment${R.recovery?` (${R.recovery})`:''}`,R.refund||0,'refund');add('Damages to towns',-(R.dmg||0),'dmg');
-  if(b){D.net=PROG.funds-b.funds;const rest=D.net-M.reduce((a,m)=>a+m.v,0);{const nd=Math.max(0,PROG.day-b.day).toFixed(0);add(`${nd} day${nd==='1'?'':'s'} passing (budget, upkeep, debt)`,rest,'days')}}
+  if(b){D.net=PROG.funds-b.funds;const nd=Math.max(0,PROG.day-b.day),L0=b.led||{},L1=PROG.led||{},own=(R.paid||[]).reduce((a,p)=>a+p.pay,0);
+    D.days=nd;
+    for(const k in LED_L){let v=(L1[k]||0)-(L0[k]||0);if(k==='paid')v-=own;add(k==='upkeep'?`${LED_L[k]} (${nd.toFixed(nd<10?1:0)} days)`:LED_L[k],v,k)}
+    const rest=D.net-M.reduce((a,m)=>a+m.v,0);add('Other',rest,'other')}   // (an old save's flight, or money no ledger line names yet)
+  // the failures on the way (Q293): for a loss, the chain that led to it and what helps; otherwise incidents
+  const F=(R.fails||[]).map(f=>({...f}));
+  if(out.k==='lost'){D.loss={chain:F,end:{met:simT,why:s.lossWhy||out.d},help:debHelp(F[0]&&F[0].k,F.length?F[0].why:s.lossWhy)}}
+  else for(const f of F)D.incidents.push(`${f.why[0].toUpperCase()+f.why.slice(1)} (T+${debT(f.met)}, ${fmtKm(f.h)})`);
   D.certs=(ups||[]).map(u=>({l:PARTS[u.k]?PARTS[u.k].name:u.k,a:u.a,b:u.b}));
   for(const id of R.newLog||[]){const F=LOGF.find(f=>f.id===id),e=(PROG.log||{})[id];if(F&&e)D.records.push({l:F.label,v:F.fmt(e.v),was:e.hist&&e.hist.length?F.fmt(e.hist[e.hist.length-1]):null})}
   if(b&&PROG.recs&&PROG.recs.orbit!==b.recOrbit&&b.recOrbit!=null)D.records.push({l:'Cheapest trip to orbit',v:`${fmtM(PROG.recs.orbit)} net`,was:fmtM(b.recOrbit)});
