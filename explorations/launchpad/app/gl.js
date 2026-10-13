@@ -582,7 +582,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   else if(k==7){                                           // instruments: crinkled gold foil between bolted equipment rings
    if(m==5){vec2 g=vec2(s,v)*vec2(60.,46.);float fd=smoothstep(.02,.005,fp),fd2=smoothstep(.008,.002,fp);   // crinkles: tilt, not tint
     float nx=vn2(g)-.5+.5*(vn2(g*2.3+7.)-.5)*fd2,ny=vn2(g+3.1)-.5+.5*(vn2(g*2.3+1.)-.5)*fd2;
-    nO+=(T*nx+vec3(0.,1.,0.)*ny)*.75*fd;alb*=.92+.16*vn2(g*.25);}
+    nO+=(T*nx+vec3(0.,1.,0.)*ny)*.75*fd;float sv=1.-smoothstep(.05,.2,alb.r-alb.b);alb*=mix(.92+.16*vn2(g*.25),.72+.5*vn2(g*.25)*vn2(g*.6+5.),sv*fd);}   // (Q396) silver foil: tilts read less against the sky, so it mottles more
    else if(side)alb=mix(alb,vec3(.45),max(dots(s,v,.035*sc,.09*sc,.009*sc,fp),dots(s,v,h-.035*sc,.09*sc,.009*sc,fp)));}
   else if(k==8&&side){                                     // biocapsule: a porthole with a bolted frame, a hatch seam
    vec2 q=vec2(abs(fract(vU.x-.125+.5)-.5)*6.2832*R*.75,v-.47*sc);float dr=length(q);
@@ -1251,7 +1251,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15,frame:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15,frame:7,comp:7};   // (Q396) frame, comp: kind 7, so their foil crinkles
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0)+16384*(PK.up||0),PK.i)}   // the school (×32), the maker's hue (×256, 10° steps) and the upper-stage flag (×16384, Q228) ride in the kind (Q102)
@@ -1274,7 +1274,7 @@ function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o
     V(0,y,(a0+a1)/2,[0,ny],c);V(r,y,a0,[0,ny],c);V(r,y,a1,[0,ny],c)}};
   if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
 const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.36,.33,.31,1],Y:[.75,.6,.15],R:[.7,.12,.1],GL:[.05,.06,.08,4],CON:[.6,.59,.56,2],SH:[.35,.22,.12,2],
-  BK:[.07,.07,.08],ST:[.5,.5,.52,1],AU:[.8,.6,.22,5]};
+  BK:[.07,.07,.08],ST:[.5,.5,.52,1],AU:[.8,.6,.22,5],AG:[.78,.8,.84,5]};   // AG: silver foil (Q396), crinkled like the gold
 function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,1],[2,-1]]){const n=[0,0,0];n[ax]=s;const h=[hx,hy,hz],u=(ax+1)%3,v=(ax+2)%3,P=(a,b)=>{const p=c.slice();p[ax]+=s*h[ax];p[u]+=a*h[u];p[v]+=b*h[v];return p};
   const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])pv(out,q[i],n,col)}}
 function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
@@ -1349,6 +1349,9 @@ function latheArc(out,prof,o,a0,a1,cOut,cIn,seg=20){const own=o[0]===PK.o[0]&&o[
 let OGIVE_FX=true;
 function ogive(R,L,yb,c0,c1){const rho=(R*R+L*L)/(2*R),r=y=>Math.max(0,Math.sqrt(Math.max(rho*rho-y*y,0))+R-rho),P=[];
   for(const y of[0,.3,.6,.85,1.05,yb])P.push([r(y),y,c0]);P.push([r(yb),yb,c1]);for(const y of[1.42,1.53,L])P.push([r(y),y,c1]);return P}
+// (Q396) the fairing's two separation rails, along the seams between its halves (angles 0 and π), a hair proud of the shell
+function fairSeams(out,pr,o){for(const a of[0,Math.PI]){const c=Math.cos(a),sn=Math.sin(a);for(let i=0;i+1<pr.length;i++){const[r0,y0]=pr[i],[r1,y1]=pr[i+1];if(r0<.05&&r1<.05)continue;
+  tube(out,[o[0]+c*(r0+.008),o[1]+y0,o[2]+sn*(r0+.008)],[o[0]+c*(r1+.008),o[1]+y1,o[2]+sn*(r1+.008)],.014,C.D,4)}}}
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
@@ -1359,7 +1362,11 @@ function partBody(out,p){
     // reaction wheel (Q23): a squat machined housing between bolted flanges, a gold-foil band, four motor pods
     case'rwheel':lathe(out,[[.625,0,C.D],[.625,.035,C.D],[.6,.035,C.ST],[.6,.1,C.ST],[.6,.1,C.AU],[.6,.2,C.AU],[.6,.2,C.ST],[.6,.265,C.ST],[.625,.265,C.D],[.625,.3,C.D]],o);
       for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;rbox(out,[x+Math.cos(a)*.63,y+h/2,z+Math.sin(a)*.63],.035,.07,.06,C.D,a)}break;
-    case'rfin':case'cfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
+    // (Q396) the root doubler grows with the fin's size (0.9 / 1.35 / 2 m, Q348), and the bigger plates carry a stiffener
+    // rib along their span on both faces
+    case'rfin':case'cfin':{const k=d.span/.9,ca=Math.cos(p.phi),sa=Math.sin(p.phi),th=.035*Math.min(k,1.4);fin(out,o,p.phi,0,d.span,h,th,(p.i||0)%2?C.BK:C.W);
+      rbox(out,[x+ca*.06*k,y+h*.35,z+sa*.06*k],.06*k,h*.3,.07*Math.min(k,1.5),C.ST,p.phi);
+      if(k>1.2)for(const sd of[-1,1])rbox(out,[x+ca*d.span*.4-sa*(th+.008)*sd,y+h*.42,z+sa*d.span*.4+ca*(th+.008)*sd],d.span*.36,.012,.008,C.ST,p.phi)}break;
     // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
       tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
@@ -1422,8 +1429,16 @@ function partBody(out,p){
     case'cam':lathe(out,[[.625,0,C.D],[.625,.04,C.D],[.625,.04,C.ST],[.625,.26,C.ST],[.625,.26,C.D],[.625,.3,C.D]],o);
       box(out,[x,y+.15,z+.6],.18,.1,.05,C.BK);tube(out,[x,y+.15,z+.56],[x,y+.15,z+.72],.09,C.D,14,false);tube(out,[x,y+.15,z+.56],[x,y+.15,z+.67],.07,C.GL,14,true);
       box(out,[x,y+.15,z-.61],.13,.08,.03,C.G);break;
-    // the octagonal frame (placeholder): eight foil-covered faces between dark end rings
-    case'oct':case'octl':lathe(out,[[.4,0,C.D],[.4,.04,C.D],[.4,.04,C.AU],[.4,h-.04,C.AU],[.4,h-.04,C.D],[.4,h,C.D]],o,8);break;
+    // the octagonal frame (Q396, PROBES § 7: a compact core with real materials): a bus of eight bays between dark
+    // machined end rings; six bays in silver foil, two opposite in black radiator panels with louvre blades; bare aluminium
+    // posts at the corners and a belt round the middle, all proud of the faces so they cast shadows
+    case'oct':case'octl':{lathe(out,[[.4,0,C.D],[.4,.04,C.D],[.36,.04,C.D],[.36,h-.04,C.D],[.4,h-.04,C.D],[.4,h,C.D]],o,8);
+      const ap=.4*Math.cos(Math.PI/8),hw=.4*Math.sin(Math.PI/8),fh=(h-.08)/2;
+      for(let k=0;k<8;k++){const a=(k+.5)*Math.PI/4,c=Math.cos(a),sn=Math.sin(a),rad=k%4===1,F=(r,yy)=>[x+c*r,y+yy,z+sn*r];
+        rbox(out,F(ap-.008,h/2),.008,fh,hw-.012,rad?C.BK:C.AG,a);
+        if(rad)for(let j=0;j<5;j++)rbox(out,F(ap+.006,.04+(j+.5)*(h-.08)/5),.006,(h-.08)/12,hw-.03,C.ST,a);   // louvres
+        const b=k*Math.PI/4;tube(out,[x+Math.cos(b)*.395,y+.04,z+Math.sin(b)*.395],[x+Math.cos(b)*.395,y+h-.04,z+Math.sin(b)*.395],.014,C.ST,4)}   // corner posts
+      lathe(out,[[.408,h/2-.015,C.ST],[.408,h/2+.015,C.ST]],o,8,[false,false])}break;
     case'ant':lathe(out,[[.625,0,C.D],[.625,.12,C.D],[.3,.3,C.W]],o);tube(out,[x,y+.3,z],[x,y+.62,z],.03,C.ST,8);
       {const pr=[];for(let i=0;i<=8;i++){const r=.3*i/8;pr.push([r,.62+r*r/.6,[.84,.85,.86]])}lathe(out,pr,[x,y,z],24,[false,false]);
        for(let k=0;k<3;k++){const t=k*2.094;tube(out,[x+.29*Math.cos(t),y+.76,z+.29*Math.sin(t)],[x,y+.79,z],.008,C.D,4)}tube(out,[x,y+.74,z],[x,y+.81,z],.03,C.D,8,true);
@@ -1437,9 +1452,10 @@ function partBody(out,p){
     case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     // payload fairing (Q337): the ring, and its shell while on; cut away on one side at the design table so the payload shows
-    case'fair':{if(p.half){const pr=fairProf(d,p.fll??d.fl0).slice(1);latheArc(out,pr,o,p.half>0?0:Math.PI,p.half>0?Math.PI:2*Math.PI,C.W,C.G,14);break}
+    case'fair':{if(p.half){const pr=fairProf(d,p.fll??d.fl0).slice(1);latheArc(out,pr,o,p.half>0?0:Math.PI,p.half>0?Math.PI:2*Math.PI,C.W,C.G,14);fairSeams(out,pr,o);break}
       lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1);
-      if(typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll))latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false])}break;
+      if(typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll))latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
+      fairSeams(out,pr,o)}break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
     case'wren':engine(out,p,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o);break;
     case'sparrow':engine(out,p,[[.3,0,C.K],[.12,.45,C.D],[.3,.55,C.G],[.625,.72,C.G],[.625,.8,C.G]],o);break;
@@ -1461,16 +1477,32 @@ function partBody(out,p){
     // canister on the skin, or out: a thin boom from the side, a little rising, with its element at the tip
     // the side boxes (Q337; placeholders): a box standing off the skin on two struts, each with its tell (a lens, louvers, cells' cover, a vent grille)
     // within off + r of the skin, so they fit a fairing; the camera's lens looks outward
-    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];
-      const D=(d.off||0)+d.r,W=d.w||d.r,b1=D-(d.key==='scam'?.03:.006),col=d.key==='scam'?C.W:d.key==='ssci'?C.AU:d.key==='sbatt'?C.D:C.G;
+    // (Q396) each with an outline of its own at a glance: the camera a silver box behind a black lens hood; the instruments
+    // gold foil with a sensor's round mouth and a radiator strip; the battery a dark ribbed block with an orange band and
+    // two terminals; the computer grey with heat-sink fins and a cable into the hull. All within off + r of the skin
+    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],t=[-n[2],0,n[0]],P=(r,yy,w=0)=>[x+n[0]*r+t[0]*w,y+yy,z+n[2]*r+t[2]*w];
+      const D=(d.off||0)+d.r,W=d.w||d.r,k=d.key,b1=D-(k==='scam'?.045:k==='scomp'?.02:.012),col=k==='scam'?C.AG:k==='ssci'?C.AU:k==='sbatt'?C.D:C.G;
       for(const yy of[.08,h-.08])tube(out,P(0,yy),P(.02,yy),.012,C.ST,5);
       rbox(out,P((.02+b1)/2,h/2),(b1-.02)/2,h/2,W,col,a);
-      if(d.key==='scam'){tube(out,P(b1-.005,h*.6),P(D,h*.6),.05,C.D,12,false);tube(out,P(b1,h*.6),P(D-.004,h*.6),.038,C.GL,12,true)}
-      else if(d.key==='ssci')for(let k=0;k<4;k++)rbox(out,P(b1+.003,.08+k*(h-.16)/3),.003,.02,W*.75,C.ST,a);
-      else if(d.key==='scomp')for(let k=0;k<3;k++)rbox(out,P(b1+.003,h*.3+k*.06),.003,.012,W*.6,C.BK,a)}break;
-    case'whip':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.04,y,z+n[2]*.04];rbox(out,[c[0],y+.04,c[2]],.03,.04,.03,C.D,a);tube(out,[c[0],y+.08,c[2]],[c[0]+n[0]*.02,y+h+.5,c[2]+n[2]*.02],.008,C.ST,6)}break;
-    case'bant':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];rbox(out,P(.06,h/2),.05,h/2,.06,C.D,a);
-      if(p.dep){const L=d.span,t=P(.1+L,h*.6+L*.18);tube(out,P(.1,h*.6),t,.012,C.ST,6);tube(out,P(.1+L*.5,h*.6+L*.09),P(.1+L*.5,h*.6+L*.09+.01),.02,C.ST,6);rbox(out,t,.04,.04,.12,C.W,a)}
+      if(k==='scam'){tube(out,P(b1-.005,h*.6),P(D,h*.6),.055,C.BK,12,false);tube(out,P(b1,h*.6),P(D-.02,h*.6),.04,C.GL,12,true);   // hood, lens
+        rbox(out,P(b1+.004,h*.22),.004,.03,W*.7,C.W,a)}   // a white radiator plate below it
+      else if(k==='ssci'){tube(out,P(b1-.004,h*.62),P(D,h*.62),.045,C.ST,12,false);tube(out,P(b1,h*.62),P(D-.004,h*.62),.032,C.BK,12,true);   // the sensor's mouth
+        rbox(out,P(b1+.004,h*.22),.004,h*.12,W*.8,C.W,a)}
+      else if(k==='sbatt'){for(let j=0;j<5;j++)rbox(out,P(b1+.004,h/2,(j-2)*W*.38),.006,h/2-.03,W*.12,C.BK,a);   // cell ribs
+        rbox(out,P((.02+b1)/2,h*.78),(b1-.02)/2+.002,.012,W+.002,C.O,a);for(const w of[-.4,.4])tube(out,P(b1*.6,h,W*w),P(b1*.6,h+.03,W*w),.008,C.R,5)}   // band, terminals
+      else{for(let j=0;j<6;j++)rbox(out,P(b1+.01,h/2,(j-2.5)*W*.32),.01,h/2-.05,.003,C.ST,a);   // heat-sink fins
+        tube(out,P(.03,.05),P(b1*.7,.04),.008,C.BK,5)}}break;
+    // (Q396) the whip: a foot, a spring, a thin rod tapering to a ball at the tip
+    case'whip':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.04,y,z+n[2]*.04],tp=[c[0]+n[0]*.02,y+h+.5,c[2]+n[2]*.02],mid=[c[0]+n[0]*.01,y+.08+(h+.42)*.5,c[2]+n[2]*.01];
+      rbox(out,[c[0],y+.035,c[2]],.03,.035,.03,C.D,a);for(let j=0;j<3;j++)lathe(out,[[.016,.075+j*.022,C.ST],[.016,.087+j*.022,C.ST]],[c[0],y,c[2]],8,[false,false]);
+      tube(out,[c[0],y+.08,c[2]],mid,.008,C.ST,6);tube(out,mid,tp,.005,C.ST,6);rbox(out,tp,.014,.014,.014,C.D,a)}break;
+    // (Q396) the boom antenna: a canister with its hinge; out, a thin three-longeron lattice boom rising a little, and at
+    // its tip a crossed dipole on a small white hub (PROBES § 7: long thin lines, never a fat cylinder)
+    case'bant':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],tg=[-n[2],0,n[0]],P=(r,yy,w=0)=>[x+n[0]*r+tg[0]*w,y+yy,z+n[2]*r+tg[2]*w];rbox(out,P(.06,h/2),.05,h/2,.06,C.D,a);
+      rbox(out,P(.11,h*.6),.012,.03,.05,C.ST,a);   // the hinge
+      if(p.dep){const L=d.span,y0=h*.6,e=.022,lon=[[0,e],[-e*.87,-e*.5],[e*.87,-e*.5]],Q=(f,j)=>P(.12+L*f,y0+L*.18*f+lon[j][1],lon[j][0]),N=Math.max(4,Math.round(L/.3));
+        for(let j=0;j<3;j++){tube(out,Q(0,j),Q(1,j),.004,C.ST,4);for(let i=0;i<N;i++)tube(out,Q(i/N,j),Q((i+1)/N,(j+1)%3),.0025,C.ST,3)}
+        const tp=P(.12+L,y0+L*.18);rbox(out,tp,.035,.035,.035,C.W,a);for(const[u,v]of[[.3,0],[0,.3]])tube(out,[tp[0]-tg[0]*u,tp[1]-v,tp[2]-tg[2]*u],[tp[0]+tg[0]*u,tp[1]+v,tp[2]+tg[2]*u],.006,C.ST,4)}
       else rbox(out,P(.13,h/2),.02,h/2-.03,.04,C.ST,a)}break;
     case'rtg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.3,y,z+n[2]*.3];tube(out,[x,y+h/2,z],[c[0],y+h/2,c[2]],.03,C.ST,6);
       lathe(out,[[0,.05,C.D],[.12,.05,C.D],[.12,h-.05,C.D],[0,h-.05,C.D]],c,12,[false,false]);for(let k=0;k<4;k++)fin(out,c,k*Math.PI/2,.12,.08,h-.1,.01,C.D)}break;

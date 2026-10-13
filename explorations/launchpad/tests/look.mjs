@@ -906,3 +906,24 @@
   check('farmland round settled land, filtered by footprint; the coast blended over the pixel (views 175–177)', farm && coast && /if \(n >= 175 && n <= 177\)/.test(vj),
     `farmland ${farm} · coast ${coast}`);
 }
+
+// aerofx-39. The new parts' look (look & sound effects beat, QUEUE Q396; PROBES § 7): the octagonal frame's bays (silver
+// foil, two black radiators with louvres), corner posts and belt; each side box with an outline of its own (the camera's
+// hood, the instruments' mouth, the battery's ribs, band and terminals, the computer's fins); the whip's spring and tip;
+// the boom antenna as a lattice with a crossed dipole; the fairing's separation rails; fins' doublers by size and a
+// stiffener on the big ones; foil crinkles on the frame and computer too (kind 7), and a silver foil.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const body = page.slice(page.indexOf('function partBody(out,p){'), page.indexOf('\nfunction ', page.indexOf('function partBody(out,p){') + 10));
+  const has = {
+    silver: /AG:\[\.78,\.8,\.84,5\]/.test(page) && /frame:7,comp:7\}/.test(page),
+    frame: /rad\?C\.BK:C\.AG,a\)/.test(body) && /\/\/ louvres/.test(body) && /\/\/ corner posts/.test(body),
+    boxes: /\/\/ hood, lens/.test(body) && /\/\/ the sensor's mouth/.test(body) && /\/\/ cell ribs/.test(body) && /\/\/ band, terminals/.test(body) && /\/\/ heat-sink fins/.test(body),
+    whip: /case'whip':[\s\S]*?for\(let j=0;j<3;j\+\+\)lathe/.test(body),
+    boom: /case'bant':[\s\S]*?lon=\[\[0,e\]/.test(body) && /\/\/ the hinge/.test(body),
+    fairing: /function fairSeams\(out,pr,o\)/.test(page) && (body.match(/fairSeams\(out,pr,o\)/g) || []).length === 2,
+    fins: /case'rfin':case'cfin':\{const k=d\.span\/\.9/.test(body) && /if\(k>1\.2\)for\(const sd of\[-1,1\]\)rbox/.test(body)
+  };
+  check('the new parts\' look: frame bays and radiators, side boxes each readable, whip and lattice boom, fairing rails, fins by size, foil that crinkles',
+    Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
