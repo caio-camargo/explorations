@@ -333,7 +333,7 @@ void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
  vec4 w=uM*vec4(P,1.);vP=w.xyz;vO=aP;vNo=N;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*N;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl,uPl2;uniform vec3 uPlC,uPlC2;uniform vec3 uFlC;uniform float uPadM;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
@@ -570,6 +570,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   c+=dif*vec3(1.,.88,.7)*(fl+.05*smoothstep(160.,40.,length(vP-uFlC)))*uFlI;}   // + faint spill bounced off the apron
  // the engine plumes' light (plumeLight, aerofx): one soft point light in the flame, uPl = (position, core radius)
  if(uPlC.r+uPlC.g>0.){vec3 L=uPl.xyz-vP;float d2=dot(L,L);c+=dif*uPlC*(max(dot(n,L*inversesqrt(d2)),0.)*.85+.15)/(d2+uPl.w*uPl.w);}
+ if(uPlC2.r+uPlC2.g>0.){vec3 L=uPl2.xyz-vP;float d2=dot(L,L);c+=dif*uPlC2*(max(dot(n,L*inversesqrt(d2)),0.)*.85+.15)/(d2+uPl2.w*uPl2.w);}   // (Q319, B2.5) the other side of a wide cluster
  o=vec4(max(c,vec3(0.)),1.);}`;
 const LINE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=2) in vec4 aC;uniform mat4 uVP;uniform float uFc;out vec4 vC;out float vW;
@@ -666,8 +667,8 @@ const PNOISE=(()=>{const n=32,d=new Uint8Array(n*n*n);let x=12345;for(let i=0;i<
   gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.bindTexture(gl.TEXTURE_3D,null);return t})();
 // smoke: camera-facing puffs, soft round falloff, lit like the meshes and tone-mapped the same way
 const SMOKE_VS=`#version 300 es
-layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;uniform vec4 uPl;uniform vec3 uPlC;out vec4 vQ;out float vW,vS;out vec3 vPl;
-void main(){vec3 L=uPl.xyz-aP;vPl=uPlC*.18/(dot(L,L)+4.*uPl.w*uPl.w);gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vQ=aQ;vS=aS;}`;
+layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;uniform vec4 uPl,uPl2;uniform vec3 uPlC,uPlC2;out vec4 vQ;out float vW,vS;out vec3 vPl;
+void main(){vec3 L=uPl.xyz-aP,L2=uPl2.xyz-aP;vPl=uPlC*.18/(dot(L,L)+4.*uPl.w*uPl.w)+uPlC2*.18/(dot(L2,L2)+4.*uPl2.w*uPl2.w);gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vQ=aQ;vS=aS;}`;
 const SMOKE_FS=`#version 300 es
 precision highp float;in vec4 vQ;in float vW,vS;in vec3 vPl;out vec4 o;uniform vec3 uLight,uAmb,uSq;uniform float uFc;
 float h(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
@@ -1568,28 +1569,35 @@ function hazeAdd(VP,o,d,L,re,R,k,asp,ty){if(!HAZE_FX||HAZE.n>=4||k<.02)return;co
   const p0=pr(madd(o,d,re*.5)),p1=pr(madd(o,d,L*1.1));if(!p0||!p1)return;const i=HAZE.n++;
   HAZE.a.set([p0[0],p0[1],p1[0],p1[1]],i*4);HAZE.b.set([re*2.4/(p0[2]*ty),R*1.3/(p1[2]*ty),Math.min(1,k),0],i*4)}
 let PLUME_LK=175;   // the plume light's strength (Q319, B2.5: was 110 before HDR, when the flame itself was capped at display white)
-const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
+const PLT={p:new Float32Array(4),c:new Float32Array(3),p2:new Float32Array(4),c2:new Float32Array(3),g:null};   // p2/c2: a wide cluster's other side (Q319)
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
-function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
-  const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;
+function plumeLight(camW){PLT.c.fill(0);PLT.c2.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
+  const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;const rec=[];
   for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
       pf=plumeFrame(e),Q=pf.qt?qmul(S.q,pf.qt):S.q,o=add(sub(p,camW),qrot(S.q,sub(pf.ex,S.cm))),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
     if(thr<.01&&g[0]+g[1]+g[2]<.01)continue;
     let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
     const w=thr*(e.d.exit/.55)**2*(.6+.4*Pr.K[0]/5),tt=simT*7+e.i*1.7,fl=.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7);
-    P=madd(P,add(o,mul(dW,at)),w);const gf=Math.min(1,g[0]+g[1]+g[2]);for(let k=0;k<3;k++)C[k]+=w*fl*(Pr.co[k]*.4+Pr.ma[k]*.6)*(1-.8*gf)+(e.d.exit/.55)**2*g[k]*.6;W+=Math.max(w,.05);R0=Math.max(R0,e.d.exit*2.5)}   // (1−0.8 gf: the igniter's flash outshines the young flame)
+    const q=add(o,mul(dW,at)),gf=Math.min(1,g[0]+g[1]+g[2]),ce=[0,1,2].map(k=>w*fl*(Pr.co[k]*.4+Pr.ma[k]*.6)*(1-.8*gf)+(e.d.exit/.55)**2*g[k]*.6);
+    P=madd(P,q,w);for(let k=0;k<3;k++)C[k]+=ce[k];W+=Math.max(w,.05);R0=Math.max(R0,e.d.exit*2.5);rec.push({q,w:Math.max(w,.05),ce,x:e.pos[0],z:e.pos[2]})}   // (1−0.8 gf: the igniter's flash outshines the young flame)
   if(W<=0)return;P=mul(P,1/W);const K=PLUME_LK*Math.min(1,pa*4+.15);   // dimmer in thin air (the plume's own glow goes too)
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set(C.map(x=>x*K));
+  // (Q319, B2.5) a wide rocket (engines spread over 2.5 m: boosters, a broad cluster) gets a light per side, split
+  // across its widest spread, so each side lights its own flank and the pad under it
+  let ax=null,dm=2.5;for(const a of rec)for(const b of rec){const d=Math.hypot(a.x-b.x,a.z-b.z);if(d>dm){dm=d;ax=[(a.x-b.x)/d,(a.z-b.z)/d]}}
+  if(ax){const cx=rec.reduce((s,r)=>s+r.x*r.w,0)/W,cz=rec.reduce((s,r)=>s+r.z*r.w,0)/W,G2=[[],[]];for(const r of rec){const t=((r.x-cx)*ax[0]+(r.z-cz)*ax[1])/(dm/2);if(Math.abs(t)<.35){const h={...r,w:r.w/2,ce:r.ce.map(x=>x/2)};G2[0].push(h);G2[1].push(h)}else G2[t>0?1:0].push(r)}   // the core between them feeds both
+    if(G2[0].length&&G2[1].length){const sum=(g,P_,C_)=>{let w=0,q=[0,0,0],c=[0,0,0];for(const r of g){w+=r.w;q=madd(q,r.q,r.w);for(let k=0;k<3;k++)c[k]+=r.ce[k]}q=mul(q,1/w);P_.set([q[0],q[1],q[2],R0]);C_.set(c.map(x=>x*K))};
+      sum(G2[0],PLT.p,PLT.c);sum(G2[1],PLT.p2,PLT.c2)}}
   const h=dot(sub(P,GF.O),GF.Y);if(h>0&&h<60)PLT.g={F:GF,h,foot:sub(P,mul(GF.Y,h))}}
 function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=Math.max(12,g.h*3.2);gl.useProgram(PPOOL.p);
   gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniformMatrix4fv(u.uM,false,mat4(F.X,F.Y,F.Z,g.foot));gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uR,Rp);
   const dk=1-sstep(-.05,.2,dot(norm(S.r),SUN));gl.uniform1f(u.uDk,.12+.88*dk);   // added onto already-lit ground: in daylight a flame pool barely shows
-  gl.uniform3fv(u.uPlC,PLT.c);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
+  gl.uniform3f(u.uPlC,PLT.c[0]+PLT.c2[0],PLT.c[1]+PLT.c2[1],PLT.c[2]+PLT.c2[2]);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 // an explosion's flash, as the scene's point light (PLT) while it outshines the plumes: decays over ~0.3 s, then the
 // fireball's glow lingers dimmer for ~1 s
 function boomLight(camW){const now=HOOK.fxT??performance.now();let best=null,bk=0;
   for(const bm of booms){const a=(now-bm.t0)/1000;if(a<0||a>2)continue;const k=bm.sz*(900*Math.exp(-a/.12)+120*Math.exp(-a/.8));if(k>bk){bk=k;best=[bm,a]}}
-  if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2])return;const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
+  if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2]+PLT.c2[0]+PLT.c2[1]+PLT.c2[2])return;PLT.c2.fill(0);const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);
   if(bm.b===TELLUS){const Y=norm(ps),g=groundR(TELLUS,toPF(TELLUS,ps,simT)),h=len(ps)-g;
     if(h>-1&&h<80){const X=norm(cross(Y,Math.abs(Y[1])<.9?[0,1,0]:[1,0,0]));PLT.g={F:{X,Y,Z:cross(X,Y)},h:Math.max(h,R0*.5),foot:sub(P,mul(Y,h))}}}}
@@ -1604,7 +1612,7 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
     rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
     a=clamp((k-.3)/.9,0,1),b=a*a*(3-2*a),c=[1,.45+.41*b,.12+.5*b],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
     P=add(sub(add(bodyPos(S.body,simT),S.r),camW),mul(f,ef+2*D));
-  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;const fl=.86+.08*Math.sin(simT*41.3)+.06*Math.sin(simT*97.1);   // (Q320, B4.4) the sheath flickers, and with it its light on everything
+  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2]+PLT.c2[0]+PLT.c2[1]+PLT.c2[2])return;PLT.c2.fill(0);const fl=.86+.08*Math.sin(simT*41.3)+.06*Math.sin(simT*97.1);   // (Q320, B4.4) the sheath flickers, and with it its light on everything
   PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K*fl));PLT.g=null}
 // (Q320, BEAUTY B3.2 and B4.4) the camera shakes: a buffet through max-q, worst near Mach 1, and the rumble of re-entry by
 // the plasma's heat level. A sum of sines on sim time (deterministic, still when paused), in radians of view direction;

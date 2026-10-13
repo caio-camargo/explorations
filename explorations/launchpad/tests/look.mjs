@@ -73,7 +73,7 @@
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   const fsrc = pg.slice(pg.indexOf('function plasmaLight('), pg.indexOf('\nlet PLASMA_LK'));
   const hsrc = pg.slice(pg.indexOf('function plasmaHeat('), pg.indexOf('\n', pg.indexOf('function plasmaHeat(')));
-  const { TELLUS: T } = api, clamp = (x, a, b) => Math.min(b, Math.max(a, x)), PLT = { p: new Float32Array(4), c: new Float32Array(3), g: 1 };
+  const { TELLUS: T } = api, clamp = (x, a, b) => Math.min(b, Math.max(a, x)), PLT = { p: new Float32Array(4), c: new Float32Array(3), p2: new Float32Array(4), c2: new Float32Array(3), g: 1 };
   const S = { body: T, alive: true, radius: 0.66, yTop: 0.72, yBot: -0.48, qHeat: 1.6e5 };
   const env = { PLASMA_LIGHT: true, PLASMA_FX: true, mode: 'flight', S, PLT, simT: 0, PLASMA_LK: 5, len, sub, add, mul, dot, clamp,
     surfVel: api.surfVel, qrot: api.qrot, bodyPos: () => [0, 0, 0], PLASMA_V: api.PLASMA_V };
@@ -574,4 +574,17 @@
   const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
   const jit = /jt=fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
   check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
+}
+
+// aerofx-19. A plume light per side of a wide rocket (look & sound effects beat, BEAUTY Q319 B2.5): engines spread over
+// 2.5 m split across their widest spread into two lights (the core between them feeds both); the mesh and smoke shaders
+// take the second light; the ground pool takes the total; an explosion or the plasma taking over clears it.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const shaders = (page.match(/uniform vec4 uPl,uPl2;uniform vec3 uPlC,uPlC2;/g) || []).length === 2 && /if\(uPlC2\.r\+uPlC2\.g>0\.\)\{vec3 L=uPl2\.xyz-vP;/.test(page) && /uPlC2\*\.18\/\(dot\(L2,L2\)/.test(page);
+  const split = /let ax=null,dm=2\.5;/.test(page) && /if\(Math\.abs\(t\)<\.35\)\{const h=\{\.\.\.r,w:r\.w\/2,ce:r\.ce\.map\(x=>x\/2\)\}/.test(page) && /sum\(G2\[0\],PLT\.p,PLT\.c\);sum\(G2\[1\],PLT\.p2,PLT\.c2\)/.test(page);
+  const wired = /gl\.uniform4fv\(m\.uPl2,PLT\.p2\);gl\.uniform3fv\(m\.uPlC2,PLT\.c2\)/.test(page) && /gl\.uniform4fv\(su\.uPl2,PLT\.p2\);gl\.uniform3fv\(su\.uPlC2,PLT\.c2\)/.test(page)
+    && /gl\.uniform3f\(u\.uPlC,PLT\.c\[0\]\+PLT\.c2\[0\]/.test(page) && (page.match(/PLT\.c2\[2\]\)return;PLT\.c2\.fill\(0\);/g) || []).length === 2 && /PLT\.c\.fill\(0\);PLT\.c2\.fill\(0\);PLT\.g=null;/.test(page);
+  check('plume light per side: a wide rocket gets two lights (the core feeding both), shaders take both, the pool the total, a flash or the plasma clears the second',
+    shaders && split && wired, `shaders ${shaders} · split ${split} · wired ${wired}`);
 }

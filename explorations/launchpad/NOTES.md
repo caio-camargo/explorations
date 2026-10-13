@@ -292,6 +292,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319)
 - v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352)
 - Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow)
+- v1.162 — a plume light per side of a wide rocket (2026-10-13, effects beat, QUEUE Q319)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
