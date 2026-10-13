@@ -1519,3 +1519,18 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   is noise. Stills: `output/launchpad/beauty/q319-haze/haze_sheet.png` (on | off | difference ×8; row 1 is frame-identical,
   rows 2–3 differ elsewhere because of random smoke and motion).
 - **Checks:** test `aerofx-17`. TESTING 240.
+
+## v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352; PLAYTEST #87)
+- **Seen:** from orbit, a few broad stripes parallel to the terminator in the blue air just before the night side
+  (reproduced 800 km up over the day/night line, looking down; stills `output/launchpad/beauty/q352/term_*.png`).
+- **Not the sun-transmittance integral:** `sunTrans` at 24 samples instead of 6 drew the same bands
+  (`t6_vs_t24.png`). Not the output either: 8-bit quantisation after AgX and the LUT makes many fine steps, and these
+  were few and broad.
+- **The cause:** `scatter` marches each view ray in 12 fixed steps and skips a step in the planet's shadow. Every pixel
+  sampled the same fractions of its ray, so across the terminator the count of lit steps changed one at a time
+  everywhere at once: up to 12 levels, drawn as stripes.
+- **The fix:** each pixel starts its steps at its own offset (interleaved gradient noise, as the plume and plasma marches
+  already do). The stripes become a fine static dither that the grain hides (`before_after_crop.png`). Two ALU in
+  `SKY_FS`'s `scatter`; the sky pass measured the same in two alternating A/B rounds against `main` (views 97, 156,
+  157: 1.45–2.02 ms on both). No step was added (the Q19 rule).
+- **Checks:** test `aerofx-18`. TESTING 241.
