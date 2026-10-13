@@ -263,6 +263,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.169 — what the map is centred on (2026-10-13, flow session, QUEUE Q262; PLAYTEST #62)
 - v1.175 — hover terms: the glossary (2026-10-13, flow session, QUEUE Q287; UI.md rule 9)
 - v1.179 — warnings that explain themselves, and part cards that say what a part pairs with (2026-10-13, flow session, QUEUE Q340; PROBES § 8, D21, D22)
+- v1.182 — losses explained: the Debrief's *What happened*, and every line of money named (2026-10-13, flow session, QUEUE Q293; REVIEW § 3 gap 1)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

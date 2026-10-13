@@ -1055,3 +1055,26 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
 - **Not yet:** the palette card and the craft hover are still their own elements (`#partcard`, `#bldtip`), not `#termTip`;
   a missing-sensor warning (PROBES S2) and a boom's load (S1's folding boom) when those parts land; the Rollout's
   warnings and the builder's joint chips in the part panel.
+
+## v1.182 — losses explained (2026-10-13, flow session, QUEUE Q293; REVIEW-2026-10-11 § 3 gap 1)
+- **The failures on the way:** a flight keeps what went wrong, in order, with the flight time and the height
+  (`debFail(s, k, why)`, `sim/debrief.js`; `s.rec.fails`): a joint that broke (`sim/vessel.js`, structural failure), a part
+  that burned up (thermal), an engine that failed to light (`igniteOK`, with its know-how). The end itself was already
+  kept since Q264 (`s.lossWhy`).
+- **The Debrief, for a loss:** a *What happened* section first: each failure (T+, km), the end in red, then *What would
+  help* (one line by what went wrong first: `debHelp`; a joint, heat, ignition, a topple, a sinking, a crash, a
+  collision). A flight that got home lists its failures as incidents instead.
+- **Money named:** the "N days passing (budget, upkeep, debt)" lump is gone. A ledger (`PROG.led`, `ledAdd(k, v)`) keeps
+  running totals by kind, and the Debrief shows the difference since liftoff: budget day, government top-up, running the
+  program, ground station leases, satellite income, contracts completed between flights, pay for other flights
+  (dispatches), debt repaid from income, dispatched flights launched, recovery fleet salvage, the leadership's reward.
+  `income(x, k)` takes the line (default `paid`: the flight's own pay is taken back out of it). What no line names yet
+  shows as *Other* (an old save's first flight, for one); the lines still add up to the net.
+- **For economy and space:** a new way money moves between flights wants a `ledAdd` line (and a label in `LED_L`), or it
+  shows as *Other*. Running costs are 0 today (`OVERHEAD`), so that line doesn't show.
+- **Checks:** test `flow-23` (a loss with a broken joint: its chain, end and help; a landed flight with a failed ignition:
+  an incident; 120 days with a budget day and a debt: named lines that add up, no lump, no *Other*; it puts the program
+  back after, since a started program turns know-how on for later sections); robot row `loss` (the Debrief of a Sounding
+  rocket lost after a joint broke); `m1`, flow-1, the economy sections pass. TESTING row 264.
+- **Not yet:** a cause for a crew lost while the vehicle survives (the crew line has its own); the chain on the Program's
+  flight history; the Rollout warning that would have caught it, linked from *What would help*.
