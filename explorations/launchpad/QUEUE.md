@@ -761,3 +761,5 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - flow (+ vehicle) — PLAYTEST **#109** (P2): **teach the gravity turn**: a first-flight hint (lean east at ~100 m/s, then hold prograde), a pitch-over marker on the navball for the standard profile, and later a pitch programmer part (gyro era). S–M
 - flow — PLAYTEST **#110** (P2): **the navball's surface→orbit jump**: blend the reference over 40–60 km so prograde slides and SAS follows smoothly; the SURFACE/ORBIT label clickable (auto / surface / orbit). S
 - flow — PLAYTEST **#111** (P3): **SAS buttons as symbols** (the navball's own marks, words as tooltips); normal and radial marks drawn on the navball too. S
+- flow — PLAYTEST **#112** (P3): the desk's offers wrap to two lines at 1280×800 and Aurora sounding's buttons hang below its card (TESTING 271) — test bench
+- world (with parts & pad) — PLAYTEST **#113** (P3): a soft dark band up the hill west of the Arsenal pad, view 145 (TESTING 274) — test bench
