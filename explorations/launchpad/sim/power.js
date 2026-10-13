@@ -64,7 +64,7 @@ const unfolds=d=>!!(d.wing||d.fold);
 // inside a fairing that's still on (the shell not jettisoned, the fairing not dropped) they stay folded (vehicle, Q410: they
 // unfolded through it on the pad)
 const encased=(s,p)=>{const f=p.inFair;return!!f&&f.on&&!!f.profF&&!f.fj};
-function wingOp(s,op){const o=op==='out';let n=0,w=0,k=0;for(const p of s.parts)if(p.on&&unfolds(p.d)&&!!p.dep!==o){if(o&&encased(s,p)){k++;continue}p.dep=o;n++;if(p.d.wing)w++}
+function wingOp(s,op){const o=op==='out';let n=0,w=0,k=0;for(const p of s.parts)if(p.on&&unfolds(p.d)&&!!p.dep!==o){if(o&&encased(s,p)){k++;continue}p.dep=o;p.depT=simT;n++;if(p.d.wing)w++}
   if(n){HOOK.rebuild();const nm=w===n?'Solar wings':w?'Solar wings and antennas':'Antennas';HOOK.msg(`${nm} ${o?'out':'folded'}${k?` (${k} still inside the fairing)`:''}`)}
   else if(k)HOOK.msg(`Inside the fairing: jettison it first (stage), then unfold`);return n}
 const wingsOut=s=>s.parts.some(p=>p.on&&unfolds(p.d)&&p.dep);

@@ -1358,6 +1358,13 @@ function ogive(R,L,yb,c0,c1){const rho=(R*R+L*L)/(2*R),r=y=>Math.max(0,Math.sqrt
 // (Q396) the fairing's two separation rails, along the seams between its halves (angles 0 and π), a hair proud of the shell
 function fairSeams(out,pr,o){for(const a of[0,Math.PI]){const c=Math.cos(a),sn=Math.sin(a);for(let i=0;i+1<pr.length;i++){const[r0,y0]=pr[i],[r1,y1]=pr[i+1];if(r0<.05&&r1<.05)continue;
   tube(out,[o[0]+c*(r0+.008),o[1]+y0,o[2]+sn*(r0+.008)],[o[0]+c*(r1+.008),o[1]+y1,o[2]+sn*(r1+.008)],.014,C.D,4)}}}
+// (Q411) folding parts move: the sim stamps p.depT when a wing, boom antenna or leg starts out or back (wingOp, legOp, as
+// doorT for bay doors), and the drawing follows its fraction in sim time, so it pauses and warps with the game: a wing's
+// boom slides out and its panels unfold one after another (4 s), a boom antenna swings up and out, then extends (3 s), a
+// leg swings down (1.6 s). No stamp (set in the Assembly, a loaded save): at once. 0 stowed … 1 out
+const DEP_S={wing:4,ant:3,leg:1.6};
+function depF(p){const on=!!p.dep;if(p.depT==null)return on?1:0;const T=p.d.kind==='leg'?DEP_S.leg:p.d.wing?DEP_S.wing:DEP_S.ant,f=clamp((simT-p.depT)/T,0,1);return on?f:1-f}
+const depKey=s=>s?s.parts.filter(p=>p.on&&p.depT!=null).map(p=>Math.round(depF(p)*40)).join():'';
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
@@ -1473,9 +1480,11 @@ function partBody(out,p){
     // solar wing: stowed, a folded pack of four panels against the skin; deployed, a boom and yoke out to a wing of four
     // framed panels (its plane holds n and y, as power.js assumes)
     case'wpanel':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r],CELL=[.08,.11,.28,4];
-      if(p.dep){const L=d.span,b0=.6,w=L/4;tube(out,P(.02,h/2),P(b0-.05,h/2),.03,C.ST,6);rbox(out,P(b0-.03,h/2),.03,h*.5,.025,C.D,a);   // boom, yoke
-        for(let k=0;k<4;k++){const c=b0+(k+.5)*w;rbox(out,P(c,h/2),w/2-.015,h/2-.02,.008,CELL,a);rbox(out,P(c,h/2),w/2,h/2,.004,C.ST,a)}   // cells on a frame
-        rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}   // the wing's edge spars
+      const f=depF(p);if(f>0){const L=d.span,w=L/4,b0=.13+.47*sstep(0,.25,f),u=clamp((f-.25)/.75,0,1);tube(out,P(.02,h/2),P(b0-.05,h/2),.03,C.ST,6);rbox(out,P(b0-.03,h/2),.03,h*.5,.025,C.D,a);   // boom, yoke
+        // (Q411) the panels unfold one after another, an accordion hinged at alternate edges
+        let H=P(b0,h/2);for(let k=0;k<4;k++){const g=sstep(0,1,u*4-k),th=(1-g)*Math.PI/2*(k%2?-1:1),dr=[Math.cos(a+th),0,Math.sin(a+th)],fo=(1-g)*k*.02,c=[H[0]+dr[0]*w/2+n[0]*fo,H[1],H[2]+dr[2]*w/2+n[2]*fo];
+          rbox(out,c,w/2-.015,h/2-.02,.008,CELL,a+th);rbox(out,c,w/2,h/2,.004,C.ST,a+th);H=[H[0]+dr[0]*w,H[1],H[2]+dr[2]*w]}   // cells on a frame
+        if(u>=1){rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}}   // the wing's edge spars, once flat
       else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover
     // solar cells on the body: tiles that follow a 0.625 m hull's curve (4 columns × 4 rows), on a thin steel backing
     // RTG (vehicle session, Q131; placeholder): a dark finned drum standing off the skin on a short strut
@@ -1506,9 +1515,10 @@ function partBody(out,p){
     // its tip a crossed dipole on a small white hub (PROBES § 7: long thin lines, never a fat cylinder)
     case'bant':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],tg=[-n[2],0,n[0]],P=(r,yy,w=0)=>[x+n[0]*r+tg[0]*w,y+yy,z+n[2]*r+tg[2]*w];rbox(out,P(.06,h/2),.05,h/2,.06,C.D,a);
       rbox(out,P(.11,h*.6),.012,.03,.05,C.ST,a);   // the hinge
-      if(p.dep){const L=d.span,y0=h*.6,e=.022,lon=[[0,e],[-e*.87,-e*.5],[e*.87,-e*.5]],Q=(f,j)=>P(.12+L*f,y0+L*.18*f+lon[j][1],lon[j][0]),N=Math.max(4,Math.round(L/.3));
+      const f=depF(p);if(f>0){const sw=sstep(0,.35,f),Le=d.span*(.12+.88*sstep(.35,1,f)),e=.022,lon=[[0,e],[-e*.87,-e*.5],[e*.87,-e*.5]],B=P(.12,h*.6);   // (Q411) swings up and out, then extends
+        const D=norm([n[0]*sw,1-sw+.18*sw,n[2]*sw]),u2=norm(cross(D,tg)),Q=(fr,j)=>[B[0]+D[0]*Le*fr+tg[0]*lon[j][0]+u2[0]*lon[j][1],B[1]+D[1]*Le*fr+u2[1]*lon[j][1],B[2]+D[2]*Le*fr+tg[2]*lon[j][0]+u2[2]*lon[j][1]],N=Math.max(2,Math.round(Le/.3));
         for(let j=0;j<3;j++){tube(out,Q(0,j),Q(1,j),.004,C.ST,4);for(let i=0;i<N;i++)tube(out,Q(i/N,j),Q((i+1)/N,(j+1)%3),.0025,C.ST,3)}
-        const tp=P(.12+L,y0+L*.18);rbox(out,tp,.035,.035,.035,C.W,a);for(const[u,v]of[[.3,0],[0,.3]])tube(out,[tp[0]-tg[0]*u,tp[1]-v,tp[2]-tg[2]*u],[tp[0]+tg[0]*u,tp[1]+v,tp[2]+tg[2]*u],.006,C.ST,4)}
+        const tp=[B[0]+D[0]*Le,B[1]+D[1]*Le,B[2]+D[2]*Le],dl=.3*sstep(.85,1,f);rbox(out,tp,.035,.035,.035,C.W,a);if(dl>.01)for(const[u,v]of[[dl,0],[0,dl]])tube(out,[tp[0]-tg[0]*u,tp[1]-v,tp[2]-tg[2]*u],[tp[0]+tg[0]*u,tp[1]+v,tp[2]+tg[2]*u],.006,C.ST,4)}
       else rbox(out,P(.13,h/2),.02,h/2-.03,.04,C.ST,a)}break;
     case'rtg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.3,y,z+n[2]*.3];tube(out,[x,y+h/2,z],[c[0],y+h/2,c[2]],.03,C.ST,6);
       lathe(out,[[0,.05,C.D],[.12,.05,C.D],[.12,h-.05,C.D],[0,h-.05,C.D]],c,12,[false,false]);for(let k=0;k<4;k++)fin(out,c,k*Math.PI/2,.12,.08,h-.1,.01,C.D)}break;
@@ -1527,7 +1537,7 @@ function partBody(out,p){
     // → chrome piston → footpad on a ball joint, and a brace from the lower mount to the strut's middle.
     case'leg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r],PIS=[.74,.75,.77,1],H=P(.08,h*.9);
       rbox(out,P(.05,h*.9),.05,.07,.1,C.D,a);rbox(out,P(.04,h*.12),.04,.05,.08,C.D,a);   // hinge and lower mount fittings
-      if(p.dep){const F=[x+n[0]*d.reach,y-d.drop,z+n[2]*d.reach],K=add(H,mul(sub(F,H),.55)),Fp=add(F,[0,.09,0]);
+      const f=depF(p);if(f>0){const g=sstep(0,1,f),F1=[x+n[0]*d.reach,y-d.drop,z+n[2]*d.reach],F0=P(.1,.05),F=add(F0,mul(sub(F1,F0),g)),K=add(H,mul(sub(F,H),.55)),Fp=add(F,[0,.09,0]);   // (Q411) swings down
         tube(out,H,K,.05,C.ST,10);tube(out,K,Fp,.032,PIS,10);tube(out,P(.06,h*.12),add(H,mul(sub(F,H),.6)),.022,C.D,6);
         lathe(out,[[.02,.06,C.D],[.05,.09,C.D],[.02,.12,C.D]],F,8,[false,false]);   // ball joint
         lathe(out,[[0,0,C.D],[.2,0,C.D],[.22,.04,C.D],[.12,.07,C.D],[0,.07,C.D]],F,16,[false,false])}   // footpad

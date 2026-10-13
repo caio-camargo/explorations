@@ -49,7 +49,7 @@ function landStance(s,g,nev){const on0=s.parts.map(p=>p.on),fu0=s.parts.map(p=>p
 // a lost vessel keeps its cause (Q264): s.lossWhy, a clause for the Debrief's outcome and the message that stays on screen
 function lose(s,why,boom){s.alive=false;s.lossWhy=why;if(boom)HOOK.boom(s.body,s.r,simT,boom);logEv('loss',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
 // legs down (op 'down') or up ('up'): instant for now (the look beat can animate the swing); returns how many moved
-function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;n++}
+function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;p.depT=simT;n++}
   if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
 const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);
 // a procedure puts the legs down by itself (vehicle, Q121): descending within 1.5 km of the ground

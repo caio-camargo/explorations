@@ -51,7 +51,7 @@ const SAT_MESH=new WeakMap();   // registry entry → its mesh, built on first s
 function satMesh(q){let me=SAT_MESH.get(q.shape);if(!me){const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]}));
     for(const p of parts)if(p.mk)MARKS.set(p,{soot:p.mk[0],char:p.mk[1],cd:p.mk.slice(2),frost:0,glow:0});SAT_MESH.set(q.shape,me={mesh:partsMesh(parts),parts})}return me}   // keyed by shape: a part broken off is a new shape
 const FLEET_MESH=new WeakMap();   // a fleet vessel's mesh, rebuilt when it loses parts (parts only ever come off)
-function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
+function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v)+'|'+depKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
 const bayKey=s=>s?s.parts.filter(p=>p.on&&p.d.kind==='bay').map(p=>Math.round(doorF(p)*40)).join():'';
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
 // economy: a deviated dispatch, handed over at the moment it deviated (not rounded to a whole day); no revert

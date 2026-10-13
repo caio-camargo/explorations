@@ -109,7 +109,7 @@ function render(){spoolFrame();
   if(!DF&&len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
-  profMark('ship');{const k=bayKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
+  profMark('ship');{const k=bayKey(S)+'|'+depKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
   {const k=mode==='editor'&&!atRoll&&S.parts.some(p=>p.on&&p.profF&&!p.fj);if(k!==S._cutK){const was=S._cutK;S._cutK=k;if(was!==undefined)HOOK.rebuild()}}   // a payload fairing: cut away at the design table, whole on the pad (vehicle, Q337)
   if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=groundAlt(S.body,toPF(S.body,sub(p,bc),simT)),hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=rollTilt(camW,modelQ(S.q,sub(p,camW),mul(S.cm,-1)));   /* (rollTilt: lying on the erector in a Steppe rollout, Q193) */
     if(DF){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);   // (Q242) the model's shadow on the drawing, along the lamp
