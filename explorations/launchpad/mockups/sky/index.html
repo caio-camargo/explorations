@@ -201,19 +201,25 @@ const VIEWS = {
   'limb-night':      V({cap: '<b>Tellus\'s night limb</b>: the air\'s thin blue shell lit from behind at the terminator (orange-red where the light grazes), the green airglow band above the dark limb, sodium city lights below. Real: ISS night photos (airglow and city lights, e.g. ISS030-E), the Earth\'s limb at sunset.', cam: [0, 1.157, 0], at: [0, .62, -1], sun: [.15, -.62, -1], exp: 3, fov: 32}),
   'tellus-mid':      V({cap: '<b>Tellus from mid orbit</b> (4,000 km, D18.5): a gibbous disc, the limb a thin blue line, the terminator softened by the air, cities on the night side, sunglint on the sea; only the brightest stars at this exposure. Real: DSCOVR/EPIC and Galileo\'s Earth from a few thousand km; Apollo 4\'s 18,000 km frames.', cam: [0, .4, 4.15], at: [0, 0, 0], sun: [.75, .2, .62], exp: .9, fov: 50}),
   'earthshine':      V({cap: '<b>Selene\'s earthshine</b>: a crescent with its night side faintly blue-grey in Tellus\'s light, the maria visible in it (exaggerated ×12 over reality so it reads at play exposure). Real: the Moon\'s "old moon in the new moon\'s arms"; Apollo photos of earthshine.', cam: [0, 0, 0], at: [0, 0, -1], planet: 0, moon: 1, moonC: [0, 0, -5.2], moonR: .273, sun: [.97, 0, .25], exp: 1.6, fov: 22}),
-  'nebula':          V({cap: '<b>(c) A nebula, natural colour</b> (round 2): an emission nebula ~25° across above the limb: hydrogen\'s pink-red clouds, oxygen\'s teal in the hot core, a blue reflection haze, dark dust pillars pointing at the core with bright rims, the young cluster at its heart. Far brighter than any real nebula to the eye: this is the photograph. Real: the Carina and Orion nebulae (ESO, Hubble), the Lagoon.', cam: [0, 1.157, 0], at: [.15, .95, -1], sun: [0, -.3, 1], neb: 1, exp: 3}),
-  'nebula-hubble':   V({cap: '<b>(d) The same nebula in the Hubble palette</b>: the NASA look: sulphur mapped to red, hydrogen to gold, oxygen to blue, so it reads gold and teal with copper edges. Real: the Pillars of Creation (Hubble 1995, 2014; JWST 2022), the Carina "Cosmic Cliffs".', cam: [0, 1.157, 0], at: [.15, .95, -1], sun: [0, -.3, 1], neb: 2, exp: 3}),
-  'spiral':          V({cap: '<b>(e) A neighbour spiral galaxy</b>, ~16° across, tilted: a golden core, blue arms with dust lanes, pink star-forming knots. Real: Andromeda (M31, ~3° in our sky), M81, the Pinwheel (M101).', cam: [0, 1.157, 0], at: [-.3, .95, -1], sun: [0, -.3, 1], spi: 1, exp: 3}),
-  'cosmos':          V({cap: '<b>(f) Everything</b>: the showpiece galaxy, the Hubble-palette nebula and the spiral in one wide frame over the night limb. Each program could draw its own (seeded, as the galaxy is since Q21).', cam: [0, 1.157, 0], at: [-.05, 1.0, -1], sun: [0, -.3, 1], neb: 2, spi: 1, galK: 3.5, exp: 3, fov: 80}),
+  'nebula':          V({cap: '<b>(c) A nebula, natural colour</b> (round 2): an emission nebula ~25° across above the limb: hydrogen\'s pink-red clouds, oxygen\'s teal in the hot core, a blue reflection haze, dark dust pillars pointing at the core with bright rims, the young cluster at its heart. Far brighter than any real nebula to the eye: this is the photograph. Real: the Carina and Orion nebulae (ESO, Hubble), the Lagoon.', cam: [0, 1.157, 0], aim: 'nb', sun: [0, -.3, 1], neb: 1, exp: 3}),
+  'nebula-hubble':   V({cap: '<b>(d) The same nebula in the Hubble palette</b>: the NASA look: sulphur mapped to red, hydrogen to gold, oxygen to blue, so it reads gold and teal with copper edges. Real: the Pillars of Creation (Hubble 1995, 2014; JWST 2022), the Carina "Cosmic Cliffs".', cam: [0, 1.157, 0], aim: 'nb', sun: [0, -.3, 1], neb: 2, exp: 3}),
+  'spiral':          V({cap: '<b>(e) A neighbour spiral galaxy</b>, ~16° across, tilted: a golden core, blue arms with dust lanes, pink star-forming knots. Real: Andromeda (M31, ~3° in our sky), M81, the Pinwheel (M101).', cam: [0, 1.157, 0], aim: 'sp', sun: [0, -.3, 1], spi: 1, exp: 3}),
+  'cosmos':          V({cap: '<b>(f) Everything</b>: the showpiece galaxy, the Hubble-palette nebula and the spiral in one wide frame over the night limb. Each program could draw its own (seeded, as the galaxy is since Q21).', cam: [0, 1.157, 0], aim: 'both', sun: [0, -.3, 1], neb: 2, spi: 1, galK: 3.5, exp: 3, fov: 90}),
 };
 // the galaxy's plane and centre, fixed for the mock-up (the game draws them per program, PROG.gseed)
 const norm = v => { const l = Math.hypot(...v); return v.map(x => x / l) }, sub = (a, b) => a.map((x, i) => x - b[i]),
   cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const NBD = norm([.2, .05, -1]), SPD = norm([-.32, 0, -1]);
 const GX = norm(cross(norm([0, .3, -1]), norm([-1, .9, -.2]))), GC0 = norm([-.55, .35, -1]), GC = norm(sub(GC0, GX.map(x => x * (GC0[0] * GX[0] + GC0[1] * GX[1] + GC0[2] * GX[2]))));
 
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+// a direction deg° off the band's midline, from the band point nearest v (s: which side)
+const place = (v, deg, s) => { const d = norm(v), b = norm(d.map((x, i) => x - GX[i] * dot3(d, GX))), a = deg * Math.PI / 180; return norm(b.map((x, i) => x * Math.cos(a) + s * GX[i] * Math.sin(a))) };
+const NB_POS = {band: place([.2, .05, -1], 0, 1), edge: place([.2, .05, -1], 22, 1)}, SPD = place([-.8, .3, -1], 40, -1);
+let NBD = NB_POS.edge;
+// a view that aims at a sight: its azimuth, at elevation el (deg) from the camera, so the limb stays in frame
+const aimAt = (cam, d, el) => { const az = Math.atan2(d[0], -d[2]), e = el * Math.PI / 180; return [cam[0] + Math.sin(az) * Math.cos(e), cam[1] + Math.sin(e), cam[2] - Math.cos(az) * Math.cos(e)] };
 const P = new URLSearchParams(location.search), cv = document.getElementById('c'), gl = cv.getContext('webgl2', {preserveDrawingBuffer: true});
-let view = P.get('view') in VIEWS ? P.get('view') : 'subtle', tw = P.has('tw') ? +P.get('tw') : 1,
+let view = P.get('view') in VIEWS ? P.get('view') : 'subtle', tw = P.has('tw') ? +P.get('tw') : 1, nbpos = P.get('nbpos') === 'band' ? 'band' : 'edge',
   gb = P.has('gb') ? +P.get('gb') : 1, nb = P.has('nb') ? +P.get('nb') : 1, sb = P.has('sb') ? +P.get('sb') : 1;   // galaxy, nebula, spiral brightness (?gb= ?nb= ?sb=), × the shader's values (1 = Caio's picks)
 const tFix = P.has('t') ? +P.get('t') : null, still = P.has('still');
 if (still) document.body.classList.add('still');
@@ -226,8 +232,10 @@ const U = n => gl.getUniformLocation(pr, n);
 function draw(ms) {
   const w = Math.round(cv.clientWidth * Math.min(devicePixelRatio, 2)), h = Math.round(cv.clientHeight * Math.min(devicePixelRatio, 2));
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h }
-  gl.viewport(0, 0, w, h); const v = VIEWS[view];
-  const F = norm(sub(v.at, v.cam)), R = norm(cross(F, [0, 1, 0])), Uu = cross(R, F);
+  gl.viewport(0, 0, w, h); const v = VIEWS[view]; NBD = NB_POS[nbpos];
+  const elOf = d => Math.asin(d[1]) * 180 / Math.PI;   // aim 12° below the sight: it sits in the upper half, the limb near the bottom
+  const at = v.aim === 'nb' ? aimAt(v.cam, NBD, elOf(NBD) - 12) : v.aim === 'sp' ? aimAt(v.cam, SPD, -3) : v.aim === 'both' ? aimAt(v.cam, norm(NBD.map((x, i) => x + SPD[i])), 0) : v.at;
+  const F = norm(sub(at, v.cam)), R = norm(cross(F, [0, 1, 0])), Uu = cross(R, F);
   gl.uniform2f(U('uRes'), w, h); gl.uniform3fv(U('uCam'), v.cam); gl.uniform3fv(U('uF'), F); gl.uniform3fv(U('uR'), R); gl.uniform3fv(U('uU'), Uu);
   gl.uniform3fv(U('uSun'), norm(v.sun)); gl.uniform1f(U('uTan'), Math.tan(v.fov * Math.PI / 360)); gl.uniform1f(U('uT'), tFix ?? ms / 1000);
   gl.uniform1f(U('uExp'), v.exp); gl.uniform1f(U('uTw'), tw); gl.uniform1f(U('uGalK'), P.has('galk') ? +P.get('galk') : v.galK); gl.uniform1f(U('uGame'), v.game);
@@ -240,12 +248,13 @@ const bar = document.getElementById('bar'), cap = document.getElementById('cap')
 function ui() {
   bar.innerHTML = Object.keys(VIEWS).map(k => `<button data-v="${k}" class="${k === view ? 'on' : ''}">${k}</button>`).join('') +
     '<span class="sep"></span>twinkle ' + ['off', 'gentle', 'through the air'].map((l, i) => `<button data-t="${i}" class="${i === tw ? 'on' : ''}">${l}</button>`).join('') +
+    `<span class="sep"></span>nebula ${['edge', 'band'].map(k => `<button data-p="${k}" class="${k === nbpos ? 'on' : ''}">${k === 'edge' ? 'at the band\'s edge' : 'in the band'}</button>`).join('')}` +
     `<span class="sep"></span>galaxy <button data-g="-1">−</button> ${gb.toFixed(2)}× <button data-g="1">+</button>` +
     ` nebula <button data-n="-1">−</button> ${nb.toFixed(2)}× <button data-n="1">+</button>` +
     ` spiral <button data-s="-1">−</button> ${sb.toFixed(2)}× <button data-s="1">+</button>`;
   cap.innerHTML = VIEWS[view].cap + (VIEWS[view].game ? '' : ' <i>Twinkle animates here, not in the stills.</i>');
 }
-bar.onclick = e => { const t = e.target; if (t.dataset.v) view = t.dataset.v; if (t.dataset.t) tw = +t.dataset.t; if (t.dataset.g) gb *= +t.dataset.g > 0 ? 1.25 : .8; if (t.dataset.n) nb *= +t.dataset.n > 0 ? 1.25 : .8; if (t.dataset.s) sb *= +t.dataset.s > 0 ? 1.25 : .8; ui(); if (tFix != null || still) requestAnimationFrame(draw) };
+bar.onclick = e => { const t = e.target; if (t.dataset.v) view = t.dataset.v; if (t.dataset.t) tw = +t.dataset.t; if (t.dataset.p) nbpos = t.dataset.p; if (t.dataset.g) gb *= +t.dataset.g > 0 ? 1.25 : .8; if (t.dataset.n) nb *= +t.dataset.n > 0 ? 1.25 : .8; if (t.dataset.s) sb *= +t.dataset.s > 0 ? 1.25 : .8; ui(); if (tFix != null || still) requestAnimationFrame(draw) };
 ui(); requestAnimationFrame(draw);
 </script>
 </body>
