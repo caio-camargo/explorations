@@ -5929,3 +5929,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/program.js`, `sim/procedures.js` (`dispatchRun` keeps `D.satId`), `sim/contracts.js` (`routeTick` in `econTick`), `app/program-ui.js`, `test.mjs` (exports), `tests/economy.mjs` (econ-25), `notes/economy.md` § v1.177, `NOTES.md`, `QUEUE.md`, `TESTING.md` 259, `ACTIVE_WORK.md`.
 - **Next:** economy's ready list: Q296, Q332.
 
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): a working Satellite preset (Q390, v1.178)
+- **Asked:** a satellite with batteries, a wheel and panels that doesn't tip over on ascent, flown to orbit.
+- **Found:** the builder said "holds" for such a fairing satellite, yet held ~10° off its path it filled its reaction wheel (the gimbal only unloads it at half authority) and went over; and side cameras/antennas drew no power.
+- **Built:** `PRESETS.Satellite` (orbit with ~520–565 m/s spare, prograde, 5–10° below, or the pitch program in attitude hold); `airStore` in the builder's in-air check (why 'store', a per-stage hold limit in degrees); every antenna and camera draws power. Test vehicle-25; full suite passed.
+- **Files:** `sim/vessel.js`, `sim/flight.js`, `sim/power.js`, `app/editor.js`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (260), `QUEUE.md`.
+- **Next:** TESTING 260 in a browser; Q353 (procedures hold prograde through separations) remains control + space.

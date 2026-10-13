@@ -666,3 +666,36 @@
   check('SAS cancels the air\'s torque (Q382): the Beeper flown through separation in attitude hold stays on course, gyro autopilot and guidance computer alike',
     g.sep && c.sep && g.aoa < 30 && c.aoa < 30, `after separating: gyro ${g.aoa.toFixed(0)}°, guidance computer ${c.aoa.toFixed(0)}° at worst`);
 }
+
+// vehicle-25. A working satellite, and the wheels' storage in the air (vehicle session, Caio: "a satellite that doesn't tip over
+// during ascent and is also viable"). The Satellite preset (core, battery, wheel, a long octagonal frame with two wings, a whip,
+// a camera and an instrument package, in a fairing on the Orbiter's launcher) shows no warnings, draws its antenna and camera's
+// 15 W, and flies to orbit on the probe autopilot with Δv to spare, pointing prograde and in attitude hold on the pitch program.
+// The same payload on a 4 t upper stage lights at ~25 km: holding 5° off fills its wheel in a few seconds though its torque is
+// in hand, and flown 5° below prograde it goes over; the builder now says so (why 'store'), and gives the preset's limit (~7°).
+{
+  const sat = api.PRESETS.Satellite, W = api.launchWarnings(sat), a = api.airSep(sat)[0], pb = api.powerBudget(api.newShip(sat)), kinds = api.newShip(sat).parts.map(p => p.d.kind);
+  const t4 = (() => { const d = JSON.parse(JSON.stringify(sat)), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean); f(d.root).k = 't4'; return d; })(), b = api.airSep(t4)[0];
+  const AS = TELLUS.atm / 7e4, tgt = TELLUS.atm + 10000;
+  // mode 'pro': the pitch program to 10 km, then prograde; 'hold': the program in attitude hold all the way; 'lag5': 5° below prograde from 10 km
+  const fly = (d, mode, stopAfterSep = 0) => { api.t = 0; const s = api.newShip(d); api.S = s; s.av = 1; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
+    let phase = 'up', tS = null, mx = 0; for (let k = 0; k < 400000 && s.alive; k++) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R, f = api.localFrame(s.r);
+      if (phase === 'up') { if (mode === 'pro' && h > 10000 * AS) s.sasMode = 'pro';
+        else if (mode === 'lag5' && h > 10000 * AS) { const v = norm(s.v), ax = norm(cross(v, f.up)); s.sasMode = 'stab'; s.hold = norm(add(mul(v, Math.cos(5 / 57.3)), mul(cross(ax, v), Math.sin(5 / 57.3)))); }
+        else { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.sasMode = 'stab'; s.hold = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))); }
+        if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; } }
+      else if (phase === 'coast') { s.sasMode = 'pro'; s.throttle = h < TELLUS.atm && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
+        const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > TELLUS.atm && api.timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(api.engAcc(s), 0.1))) phase = 'circ'; }
+      else { const hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(TELLUS.mu / len(s.r))), s.v); s.sasMode = 'stab'; s.hold = norm(need); s.throttle = 1;
+        if (el.pe - TELLUS.R > TELLUS.atm + 2000 || len(need) < 3 || api.dvRemaining(s).tot < 0.5) { s.throttle = 0; break; } }
+      { const nx = s.events[s.evIdx]; if (nx && nx.fair && h > 40000 && s.qdyn < 300) api.stage(s); }   // the fairing off in thin air
+      if (tS != null && s.qdyn > 500) mx = Math.max(mx, s.aoa);
+      if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
+      if (stopAfterSep && tS != null && api.t > tS + stopAfterSep) break; api.advPhys(s); }
+    const el = elements(s.r, s.v, TELLUS.mu); return { orbit: s.alive && el.pe - TELLUS.R > TELLUS.atm, left: api.dvRemaining(s).tot, aoa: mx * 180 / Math.PI }; };
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const pro = fly(sat, 'pro'), hold = fly(sat, 'hold'), over = fly(t4, 'lag5', 90); api.HOOK.msg = msg0;
+  check('a working satellite: the Satellite preset has no warnings, sci + camera + antenna, a 15 W load its wings cover; it reaches orbit with Δv to spare prograde and in attitude hold; held to ~7° (its wheel); on a 4 t upper stage its wheel fills (flagged) and 5° off it goes over',
+    !W.length && ['sci', 'cam', 'ant', 'batt', 'rwheel', 'solar'].every(k => kinds.includes(k)) && pb.ok && pb.use >= 15 && a.holds && a.lim >= 5 && a.lim <= 12
+      && pro.orbit && pro.left > 300 && hold.orbit && hold.left > 300 && hold.aoa < 30 && !b.holds && b.why === 'store' && over.aoa > 60,
+    `warnings ${W.length ? W.map(w => w[1]).join(' | ') : 'none'}; power ${pb.use} W of ${pb.avg.toFixed(0)}, ${pb.ok ? 'ok' : 'short'}; in the air ${a.holds ? 'holds' : 'flips'} to ~${a.lim}°; prograde ${pro.orbit ? 'orbit' : 'no orbit'} ${pro.left.toFixed(0)} m/s left; attitude hold ${hold.orbit ? 'orbit' : 'no orbit'} ${hold.left.toFixed(0)} m/s, ${hold.aoa.toFixed(0)}° at worst; 4 t upper stage ${b.holds ? 'holds' : 'flips (' + b.why + ', fills in ' + b.fill.toFixed(0) + ' s)'}, flown 5° off ${over.aoa.toFixed(0)}°`);
+}

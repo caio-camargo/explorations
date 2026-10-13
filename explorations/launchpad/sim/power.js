@@ -7,6 +7,9 @@
 // back to the analog autopilot, until the panels catch up. The antenna and camera loads count in the budget; what a flat
 // battery does to their service is the space lane's (Q27, Q50), not done here.
 Object.assign(PARTS.ant,{W:5});Object.assign(PARTS.cam,{W:10});Object.assign(PARTS.core,{kWh:0.5});
+// every antenna and camera draws, the side forms and the boom antenna too (vehicle, 2026-10-13: they drew nothing, so a satellite
+// built from them showed a 0 W load)
+for(const k in PARTS){const d=PARTS[k];if(d.W==null&&(d.kind==='ant'||d.kind==='cam'))d.W=PARTS[d.kind].W}
 const KWH=3.6e6,SOL_BODY=0.32,SOL_WING=0.9;   // cells on a skin average ~a third of full sun; a wing on its own arm loses ~10 %
 const powCap=s=>{let E=0;for(const p of s.parts)if(p.on&&p.d.kWh)E+=p.d.kWh*KWH;return E};
 const powLoad=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.W)W+=p.d.W;return W};

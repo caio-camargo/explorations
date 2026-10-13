@@ -1602,3 +1602,41 @@ Test `vehicle-12`. `--smoke` all pass.
   core: the impact prediction is taken once descending and lined up (the Hopper now climbs straight to ~40 km), canted engines
   ≤ 15°, procedures v2 also passes when the crew is lost only to the tree cell it lands on (a few metres moved it there;
   the hazard is Q383). TESTING 255.
+
+## v1.178 — a working satellite preset; the builder counts the wheels' storage in the air (2026-10-13, vehicle session, QUEUE Q390)
+
+- **Caio:** "i'm having trouble making a satellite that doesn't tip over during ascent and is also viable--ie includes
+  batteries, a reaction wheel, solar panel etc. let's make a model and make sure it can successfully get into orbit".
+- **Reproduced:** core, battery, wheel and an octagonal bus (two wings, a whip, a side camera) in a fairing on the Orbiter's
+  launcher. The builder said stage 2 "holds"; flown in attitude hold on the pitch program it went over at ~43 km, 15 s after
+  separating, on every autopilot. Traced: not torque (the air pushed ~10 kN·m against 21.6 in hand) but **storage**: the wheels
+  carry the steady load and the gimbal only unloads them, up to half its authority (`physStep`'s dump), so holding ~10° off for
+  15 s filled wheel + core (170 kN·m·s) and the gimbal alone lost it in a second. Letting the gimbal unload at 95 % saved the gyro
+  flight only; the other autopilots went over later (the steady torque is about the gimbal's own): not shipped.
+- **Measured** (scratch `satfly.mjs`; av1 unless noted; fairing off above 40 km under 300 Pa; spare = Δv left in a 100-km orbit):
+  - the bus, 2 t upper stage: prograde from 10 km 771 m/s; 5°, 8° or 10° below prograde all hold (720–765); the pitch program
+    in attitude hold goes over (~10.5° off).
+  - fins on its upper stage (4 × 0.9 / 1.35 / 2 m): steady, but their mass and drag leave it short of orbit, or it still flips
+    (0.9 m). A steerable fin ring: holds everywhere, 3–146 m/s spare. Not a fix for a light upper stage.
+  - a 4 t upper stage: 1,451 prograde, but it lights at ~25 km, 19 kPa and goes over 5° below prograde (wheel full ~70 s in).
+    With a steerable ring it holds, 87–760. A bigger first stage under it: a slow, sagging climb.
+  - a second wheel: holds every way flown, ~330 spare (a 400 km orbit takes ~310 more).
+  - the gyro autopilot has no prograde mode (its "prograde" runs were holds).
+- **The Satellite preset** (`PRESETS.Satellite`): core, battery, reaction wheel, a long octagonal frame carrying two solar wings,
+  a whip, a side camera and a side instrument package (the satellite, reconnaissance and imaging contracts), in a fairing on the
+  Orbiter's launcher; 595 kg of payload with its fairing. No builder warnings; 15 W of load against ~340 W from the wings, its
+  1.5 kWh against ~4 Wh per shadow. Flown: prograde 565 m/s spare, 5° below 518, 10° below 550, the pitch program in
+  attitude hold 521 (14° at worst); the guidance computer 566 prograde, 518 5° below; the gyro autopilot held the pitch program (485) and tumbled
+  once 5° below prograde but recovered to orbit (439).
+- **The builder's in-air check** (`airSep`, `airStore` in `sim/flight.js`): besides steering short of 1.5× what holding 5°
+  takes, a stage now **flips (why 'store') if holding 5° off fills its wheels before the air thins**: the torque past half the
+  gimbal's authority (and the fins', which fall with q) integrated over the stage's q after it lights, each second along the
+  standard ascent (`ascentRun` keeps `qs` per start, until under 300 Pa), against `s.hmax`. It flags only the two 4 t versions
+  among every preset and candidate. `lim` = the most it holds off its path; the line under "holds" says "held more than ~N° off
+  its path it may go over (its reaction wheels fill)". Conservative: flown, the stage sits 2–4° off the airflow 5° below
+  prograde, so the wheels fill later than the estimate's 5°, and the preset (lim ~7°) held 14° off on the pitch program. The
+  warning doesn't quote seconds for that reason; its fix leads with "separate pointing prograde and keep it there", then
+  another wheel, steerable or bigger fins, a bigger first stage.
+- **Power:** the side camera, the whip and the boom antenna drew nothing (their records never got the inline parts' 10 W / 5 W):
+  every antenna and camera draws now (`sim/power.js`). A satellite built from side parts used to show a 0 W load.
+- Test `vehicle-25`. TESTING 260.
