@@ -570,11 +570,11 @@
 
 // aerofx-18. No bands at the terminator (look & sound effects beat, QUEUE Q352, PLAYTEST #87): the sky's view-ray march
 // starts each pixel's 12 steps at its own offset (interleaved gradient noise), so the count of steps in the planet's
-// shadow no longer steps in unison across the terminator.
+// shadow no longer steps in unison across the terminator. (Q250) Only from above 15–50 km: low down it hatched the day sky.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
-  const jit = /jt=fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
   check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
 }
 
@@ -719,4 +719,29 @@
   const ok = /vec3 c0=floor\(d\*90\.-\.5\);for\(int x=0;x<2;x\+\+\)for\(int y=0;y<2;y\+\+\)for\(int z=0;z<2;z\+\+\)/.test(sky) && /textureLod\(uGalC,sd,0\.\)\.a/.test(sky)
     && /\*smoothstep\(\.5\/90\.,\.15\/90\.,r\);/.test(sky) && !/if\(k==0&&br>1\.2\)c\+=/.test(sky);
   check('star halos: from the nearest 2×2×2 cells, fading out within half a cell (no straight edge at a cell border)', ok, `halo ${ok}`);
+}
+
+// aerofx-28. No aliasing on the clouds at liftoff (look & sound effects beat, QUEUE Q250, PLAYTEST #48): from low in
+// the air the sky's view-ray march starts mid-step (the per-pixel offset drew a fixed hatch over the day sky, which
+// crawled as the rocket climbed); the deck's billow detail fades once a pixel's footprint outgrows it, and the cloud
+// volume's finest noise once the march's steps do.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\);vec3 sR=vec3\(0\.\)/.test(page);
+  const deck = /float fm=fw\*uCR;dn=\.5\+\(vn\(cu\*2600\.\+uCT\*3\.\)-\.5\)\*\.6\*\(1\.-smoothstep\(800\.,3200\.,fm\)\)\+\(vn\(cu\*7800\.\)-\.5\)\*\.4\*\(1\.-smoothstep\(250\.,1000\.,fm\)\)/.test(page);
+  const vol = /float cdLod=0\.;/.test(page) && /mix\(vn\(w\/230\.\),\.5,cdLod\)/.test(page) && /cdLod=smoothstep\(230\.,700\.,ds\);float dn=cloudDens\(q\)/.test(page);
+  check('clouds at liftoff: the sky march starts mid-step low down, the deck\'s detail fades by footprint and the volume\'s by step length', sky && deck && vol,
+    `sky ${sky} · deck ${deck} · volume ${vol}`);
+}
+
+// aerofx-29. The igniter flashes when the engine lights, not when it is first drawn (look & sound effects beat, QUEUE
+// Q368): the spool only moves on drawn frames; after more than half a second of sim time undrawn (a script stepping the
+// physics, as the reference views do; the camera far away) it takes its target with no flash, rich start or puff, and a
+// new flight (the clock going back) forgets the last frame.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const frame = /function spoolFrame\(\)\{if\(simT<SPOOL_F\[1\]\)SPOOL_F\[1\]=-1e9;if\(simT!==SPOOL_F\[1\]\)\{SPOOL_F\[0\]=SPOOL_F\[1\];SPOOL_F\[1\]=simT\}\}/.test(page) && /function render\(\)\{spoolFrame\(\);/.test(page);
+  const gap = /sp=\{k:0,t:SPOOL_F\[0\],ig:-1e9,off:-1e9,tg:0\}\);const gap=simT-sp\.t,dt=clamp\(gap,0,5\);sp\.t=simT;/.test(page) && /if\(gap>\.5\)\{sp\.k=tg;sp\.tg=tg;return sp\}if\(sp\.k<\.02&&tg>0\)sp\.ig=simT;/.test(page);
+  check('the igniter flash follows the ignition: an engine first drawn long after it lit takes its spool with no flash; a new flight forgets the last frame', frame && gap,
+    `frames ${frame} · gap ${gap}`);
 }

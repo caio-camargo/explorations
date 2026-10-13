@@ -6021,7 +6021,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   § 6.1). Next for the desk: a mock-up of the bench.
 - **Addendum 5 (design desk, 2026-10-13):** `mockups/bench/`, the payload bench (D24): palette by job, the bus as one frame with a skin per face, Checks against the job, stowed / deployed (animated) / in the fairing, Designs. Stills in `output/launchpad/mockups/bench/`.
 
-## 2026-10-13 — Caio + Claude (launchpad world session): Q105 each school's pad site has its own ground (v1.189)
+## 2026-10-13 — Caio + Claude (launchpad flow session): the Program and the map decluttered (Q286 slice 2, v1.189); Q286 done
+- **Done:** offers one line each (pay, days, Take, Pass, ⚠ for sanctions; a click opens the rest); epochs past the next, all locked, as a count; no empty photo frame before the first flight; a smaller letterhead; planets on the map labelled with the trip in days instead of TU. On `main` as `b7b053c`. With slice 1 (v1.186, the dark cockpit), Q286 is done; the Assembly's GO/NO-GO board stays with Q237 (D22's Checks tab).
+- **Checks:** flow-25 (new) and every flow and economy section pass; robot rows `desk` and `m1` pass. The full smoke run was stopped by Claude Code for low memory and not re-run.
+- **Next:** Q391 (the parts-list card and the craft hover into the one tooltip).
+- **Addendum 6 (design desk, 2026-10-13):** the bench round 2 (truss shapes, accordion wings, the balance weight); PROBES 0.1.6 § 6.1 notes and § 6.2 a brainstorm of bench parts for Caio to pick.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, 2nd session, continued): clouds at liftoff (Q250, v1.190) and the igniter's timing in views (Q368, v1.191)
+- **Done:** v1.190 Q250 (clouds half): measured a liftoff under cloud in frame pairs; the day sky's fixed diagonal hatch (my v1.159 per-pixel step offset in `scatter`, which postdates PLAYTEST #48) now only applies from 15–50 km up; the deck's billow detail fades by pixel footprint, the volume's 230 m noise by march step (`cdLod`). #48 left open for a re-look in play (TESTING 272). v1.191 Q368: the plume spool skips the igniter flash after an undrawn gap or a clock reset (`spoolFrame`), so reference views' plume colours are steady; ignition views 68–72 still flash.
+- **Files:** `app/gl.js`, `app/render.js`, `tests/look.mjs` (aerofx-18 amended, aerofx-28, aerofx-29), `notes/look.md` § v1.190, § v1.191, NOTES, QUEUE (Q250 ◐, Q368 ✓, three Proposed: far terrain slivers for world, the in-deck horizon band, views that pick weather before flying), PLAYTEST #48, TESTING 272.
+- **Checks:** every look and sound section passes (58). The full suite not run (memory). Stills: `output/launchpad/beauty/Q250/`.
+- **Next:** idle; overflow candidates Q222 (Steppe rollout sound), Q245/Q330 (pad), Q360 (shake switch, with flow).
+
+## 2026-10-13 — Caio + Claude (launchpad world session): Q105 each school's pad site has its own ground (v1.192)
 
 - **Done:** `siteShape` (`sim/world.js`) is a height offset from the pad, per school, inside 1.7 km. Arsenal: a hill
   behind the retaining wall, rising to 42 m north; its mesh hill is gone. Coastal: a cut-grass clearing in dark jungle
@@ -6039,6 +6051,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   command overwrote and then deleted it. Two Chrome runs may have overlapped for ~2 minutes. The lock was restored at
   13:06. Next time, check and write the lock in the same command as the run, never after a separate wait.
 - **Files:** `sim/world.js`, `app/gl.js`, `app/render.js`, `tests/world.mjs`, `tests/core.mjs`, `test.mjs` (api `SITE_K`),
-  `notes/world.md`, `notes/look.md`, `NOTES.md`, `TESTING.md` (271), `QUEUE.md`, `ACTIVE_WORK.md`.
+  `notes/world.md`, `notes/look.md`, `NOTES.md`, `TESTING.md` (273), `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next for world:** Q251 / Q365 (mountains from orbit), Q379, Q336, Q324. Three Proposed lines from this one: `padGround`
   per school, a view of the wet sites, and `q19-hdr` taking these shader changes.
+

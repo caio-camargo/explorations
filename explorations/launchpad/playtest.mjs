@@ -881,6 +881,11 @@ ROWS.cockpit = {title: 'the dark cockpit', steps: [M1_HELPERS, `{go('assembly');
   `{const p = S.parts.find(q => q.on && q.d.kind === 'cone') || S.parts.find(q => q.on); S.hot = p; p.T = p.d.Tmax * 0.95; updateHUD(); render(); window.MC286 = PT.text('#mcau'); p.T = 300; ({mcau: window.MC286})}`, {shot: 'caution'},
   `(async () => { await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}); updateHUD(); render(); return {landed: S.landed, phase: cpPhase(), news: PT.vis('#news'), mcau: PT.vis('#mcau')} })()`, {shot: 'landed'}],
   checks: {dark: `!!window.MC286 && /MASTER CAUTION/.test(window.MC286) && PT.vis('#news') && !PT.vis('#mcau')`}, expect: {dark: v => v === true}};
+// desk: the Program decluttered (Q286 slice 2): a new career's desk (offers one line each, no empty photo frame, far
+// epochs as a count), then the first offer opened to its full text
+ROWS.desk = {title: 'the Program decluttered', steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'}, `{go('program'); ({offers: document.querySelectorAll('#deskTrayBox details.ms.of').length, photo: !!document.querySelector('#deskWall .photo'), locks: [...document.querySelectorAll('#program .ms.lock, #progBody .ms.lock, .ms.lock')].map(e => e.innerText).slice(0, 6)})}`, {shot: 'desk'},
+  `{const d = document.querySelector('#deskTrayBox details.ms.of'); d.open = true; ({open: d.open, text: d.innerText.slice(0, 300)})}`, {shot: 'offer'}],
+  checks: {one: `document.querySelectorAll('#deskTrayBox details.ms.of').length > 0 && !document.querySelector('#deskWall .photo.empty')`}, expect: {one: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 

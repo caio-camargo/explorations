@@ -55,8 +55,10 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);if(ta.y<0.||ta.x>ta.y)return vec3(0.);
  float t0=max(ta.x,0.),t1=min(ta.y,tMax);if(t1<=t0)return vec3(0.);
  // (Q352, PLAYTEST #87) each pixel's 12 steps start at its own offset (interleaved gradient noise): with the same offset
- // everywhere, the count of steps in the planet's shadow changed one at a time across the terminator and drew bands
- float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));vec3 sR=vec3(0.),sM=vec3(0.);
+ // everywhere, the count of steps in the planet's shadow changed one at a time across the terminator and drew bands.
+ // (Q250) Only from high up: from low in the air the first step (tens of km) spans most of the air's density, so the
+ // offset drew a fixed diagonal hatch over the whole day sky; under 15 km every pixel starts mid-step as before
+ float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=mix(.5,fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),smoothstep(15e3,50e3,length(uPc)-uPR));vec3 sR=vec3(0.),sM=vec3(0.);
  for(int i=0;i<12;i++){float t=t0+(float(i)+jt)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
   float dR=exp(-h/HR)*ds,dM=exp(-h/HM)*ds;odR+=dR;odM+=dM;
   float b=dot(p,uSun);if(b<0.&&r*r-b*b<uPR*uPR)continue;
@@ -228,9 +230,10 @@ float cloudCov(vec3 u){return cloudCovF(u,0.);}
 // bright, bellies dark), one step toward the sun, and the sky; aerial perspective like the shell's.
 float covNear(vec3 cu){float g=dot(cu,uCv0);vec2 uv=uPR*vec2(dot(cu,uCvE),dot(cu,uCvN))/(g*uCvX)*.5+.5;
  if(g<=0.||any(lessThan(uv,vec2(.002)))||any(greaterThan(uv,vec2(.998))))return 0.;return texture(uCov,uv).r;}
+float cdLod=0.;   // (Q250) the march's step length over the billows' scale: their finer octave fades where steps outgrow it (set by SLAB_MAIN)
 float cloudDens(vec3 q){float r=length(q);vec3 u=q/r,cu=uProt*u;float hf=(r-uPR-2000.)/3500.;if(hf<0.||hf>1.)return 0.;
  float c=covNear(cu);if(c<.01)return 0.;
- vec3 w=cu*uPR+vec3(uCT*400.,0.,uCT*250.);float n=vn(w/650.)*.65+vn(w/230.)*.35,tw=vn(w/2600.);
+ vec3 w=cu*uPR+vec3(uCT*400.,0.,uCT*250.);float n=vn(w/650.)*.65+mix(vn(w/230.),.5,cdLod)*.35,tw=vn(w/2600.);
  float top=mix(.15,1.,c*c*(3.-2.*c))*(.45+1.1*tw)*mix(1.,.55+.9*vn(w/9000.+3.7),uVv),shape=smoothstep(0.,.06,hf)*smoothstep(top,top*.5,hf);
  return clamp(c*shape*1.9-(1.-n)*.85,0.,1.);}
 // ---- the sky behind everything (aerofx; PLAYTEST #10). Inertial directions, so the sky turns as the planet does not.
@@ -377,7 +380,9 @@ void main(){
  float shW=1.-uVk*(1.-smoothstep(.5*uVD,uVD,tC));   // inside uVD the volume stands in for the shell
  if(tC>0.&&tC<tH&&shW>.001){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
   // up close: billowy detail on top of the weather-scale coverage (fades out with distance, so orbit views pay nothing)
-  float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){dn=vn(cu*2600.+uCT*3.)*.6+vn(cu*7800.)*.4;cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
+  // (Q250) each octave (2.5 km, 820 m) fades once a pixel's footprint on the deck outgrows it: seen edge-on from under
+  // the deck it drew slivers that popped from frame to frame
+  float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){float fm=fw*uCR;dn=.5+(vn(cu*2600.+uCT*3.)-.5)*.6*(1.-smoothstep(800.,3200.,fm))+(vn(cu*7800.)-.5)*.4*(1.-smoothstep(250.,1000.,fm));cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
   if(cov>.002){float ndl=dot(cn,uSun),below=uCcc<0.?1.:0.,lit=clamp(ndl*.6+.4,0.,1.)*smoothstep(-.15,.1,ndl);
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
@@ -779,7 +784,7 @@ void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  if(tA>=0.&&tB>tA){const int N=72;float L=tB-tA,j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
   vec3 sT=sunTrans(d*(.5*(tA+tB))-uPc)*5.,amb=vec3(.42,.5,.62)*(.12+.88*clamp(dot(normalize(-uPc),uSun)*3.+.3,0.,1.));
   for(int i=0;i<N;i++){float x=(float(i)+j)/float(N),t=tA+L*x*x,ds=L*2.*x/float(N)+L/float(N*N);
-   vec3 q=d*t-uPc;float dn=cloudDens(q)*(1.-smoothstep(.5*uVD,uVD,t));if(dn<.003)continue;
+   vec3 q=d*t-uPc;cdLod=smoothstep(230.,700.,ds);float dn=cloudDens(q)*(1.-smoothstep(.5*uVD,uVD,t));if(dn<.003)continue;
    float a=1.-exp(-dn*ds/180.),hf=(length(q)-uPR-2000.)/3500.,dl=cloudDens(q+uSun*250.)+cloudDens(q+uSun*800.),lt=max(exp(-dl*2.2),mix(.4,.28,uVv)*exp(-dl*.35));
    vec3 cs=vec3(.9)*(sT*(.08+.92*lt)*(.5+.5*smoothstep(0.,.8,hf))*.8+amb*(.35+.4*hf)*.6);
    if(uVv>0.)cs*=mix(1.,.82+.32*vn(uProt*normalize(q)*uPR/7000.+1.3),uVv);
@@ -1925,8 +1930,14 @@ const SPOOL=new WeakMap();
 // ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)
 // on = the engine is still burning (in activeEngines); an engine that stops (cutoff, flameout) keeps a decaying plume, and
 // the moment its target drops to zero stamps sp.off, the cutoff clock for the tail-off (ignOf) and a smoke puff
-function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT,ig:-1e9,off:-1e9,tg:0});const dt=clamp(simT-sp.t,0,5);sp.t=simT;
-  const tg=on?(e.les?1:S.throttle):0;if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
+// (Q368) The spool only moves when a frame draws the plume. When the last drawn frame is more than half a second of sim
+// time back (a script stepping the physics without drawing, as the reference views do; the camera far away), whatever
+// started or stopped did so out of sight: the spool takes its target with no igniter flash, fuel-rich start or puff.
+// SPOOL_F = [the previous drawn frame's simT, this one's], kept by render().
+const SPOOL_F=[-1e9,-1e9];
+function spoolFrame(){if(simT<SPOOL_F[1])SPOOL_F[1]=-1e9;if(simT!==SPOOL_F[1]){SPOOL_F[0]=SPOOL_F[1];SPOOL_F[1]=simT}}   // the clock going back (a new flight): no last frame
+function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:SPOOL_F[0],ig:-1e9,off:-1e9,tg:0});const gap=simT-sp.t,dt=clamp(gap,0,5);sp.t=simT;
+  const tg=on?(e.les?1:S.throttle):0;if(gap>.5){sp.k=tg;sp.tg=tg;return sp}if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
   const a=simT-sp.ig;sp.k+=(tg-sp.k)*(1-Math.exp(-dt/(tg<sp.k?.22:a<.6?.3:.12)));return sp}
 // the engines whose plume shows: the burning ones, and stopped ones still tailing off: [[engine, burning]]
 function plumeEngines(){const A=S.alive?activeEngines(S):[],out=A.map(e=>[e,true]);
@@ -2056,7 +2067,7 @@ function steppeTable(a,CO,STL,DK){const PIT=[.012,.012,.014,2],GL=[.64,.62,.57,2
 // ---- the other four schools' pads (QUEUE Q231, Q102 step 7; POWERS.md § "School briefs", mock-ups Q227 `mockups/schools/`
 // Pads). Each builds its own complex in place of Cape's; only the floodlight poles are shared (padLights lights them).
 // The moving parts are schoolRig's. The ground stays the sky shader's, and the site's shape (Arsenal's hill, Coastal's
-// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.189): what rises above it here is mesh, inside the sea
+// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.192): what rises above it here is mesh, inside the sea
 // platform's deck (x −256…86, z −194…80).
 // a heightfield patch y = f(x, z) over [x0, x1] × [z0, z1] in n × m cells (earth banks, the Arsenal hall's net); col a
 // colour or a function of the cell's corner

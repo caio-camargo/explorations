@@ -1043,7 +1043,7 @@ Mountain's shelter closed at a flight's start; Arsenal 1 s after lift-off. test.
 Stills: `output/launchpad/q231-pads/`.
 
 **Not built yet:**
-- ~~The sites' ground~~ **built** (world, v1.189, Q105; notes/world.md § v1.189): the ground now carries Arsenal's hill
+- ~~The sites' ground~~ **built** (world, v1.192, Q105; notes/world.md § v1.192): the ground now carries Arsenal's hill
   (the mesh hill is gone), Coastal's clearing, Mountain's ridge, Isle's headland. `padGround` (the apron, slabs and road)
   is still Cape's layout for every school.
 - Rollouts: the truck erector driving in and raising the rocket, the table rolling out, the trailer and strongback
@@ -1814,3 +1814,50 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
 - **Seen** at E 12 (to make halos plain): before, halos cut square on one side; after, round and soft
   (`output/launchpad/beauty/pt96-before/`, `pt96-after/`; at normal exposure `pt96-normal/`).
 - **Check:** test `aerofx-27`. TESTING 269.
+
+## v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects beat, QUEUE Q250, PLAYTEST #48)
+
+`app/gl.js` (`SKY_FS`: `scatter`, `cloudDens`, the shell's billow detail; `SLAB_MAIN`).
+
+- **How it was measured:** the Orbiter's liftoff under ~45 % and ~60 % cover, the default chase camera, frames rendered
+  in pairs 1/30 s apart (grain off) and differenced, at 0.4, 0.9, 1.7, 2.4 and 3 km. Stills only show some of it: the
+  crawl is in the motion.
+- **The biggest crawl today, mine (v1.159, Q352; two days after the report, so not what Caio saw on 10-10):** `scatter`'s 12 view-ray steps each start at a per-pixel offset. From the
+  ground the first step is tens of km long and spans most of the air's density, so the offset drew a fixed diagonal
+  hatch over the whole day sky (clear or cloudy), which crawled as the rocket climbed. Now the offset only applies from
+  15–50 km up (`smoothstep` on the camera's height); lower, every pixel starts mid-step as before Q352. The terminator
+  from orbit (what Q352 fixed) is unchanged. Sky flicker between paired frames at 0.4 km: 3.8 → 1.5 (mean, 8-bit),
+  at 0.9 km 1.4 → 1.0; the hatch is gone from view 1's sky.
+- **The deck's billow detail by footprint:** the shell's two near octaves (2.5 km, 820 m) fade once a pixel's footprint
+  on the deck outgrows each (`fm`), keeping their mean, so a deck seen edge-on far away doesn't draw sub-pixel lumps.
+- **The volume's finest noise by step length:** `cdLod`, set per step in `SLAB_MAIN`, fades `cloudDens`'s 230 m octave
+  where the march's steps pass 230–700 m (far along a grazing ray). The clouds look the same up close; far edges are a
+  touch softer. `cloudShadowV` keeps the full noise (cdLod 0).
+- **What the report saw is not settled:** the two filters above are the clouds' own aliasing as measured, and they are
+  small. #48 stays open for a look in play (TESTING 272).
+- **Not the clouds, filed:** (1) thin slivers that pop above the hazy horizon from ~1.5 km stay with the clouds and the
+  shell off: far terrain grazing the horizon (world). (2) Inside the deck at 2–3 km, a bright band at the horizon with
+  2×2 stair edges: the volume fading out at `uVD` and the half-resolution upsample. (3) The white specks past the coast
+  are the buildings of a town, not clouds.
+- **Harness note:** `tNow()` jumps to the launch day at the first `advPhys` after launch (`S.rec.day0`), so a script
+  that picks the weather before flying must re-pin `CLOUD_DT` after the first step (views 81–83 pick it after).
+- **Stills:** `output/launchpad/beauty/Q250/` (`liftoff_before/after`, `flicker_before/after`: the frame-pair
+  differences ×6, `view1_before/after`). **Check:** test `aerofx-28` (and `aerofx-18` amended). TESTING 272.
+
+## v1.191 — the igniter flashes when the engine lights, not when it is first drawn (2026-10-13, effects beat, QUEUE Q368)
+
+`app/gl.js` (`spoolOf`, `SPOOL_F`, `spoolFrame`), `app/render.js` (`render` keeps the frame clock).
+
+- **Why it flashed at T+19 s:** the plume's spool, which stamps the ignition time the igniter flash and the fuel-rich
+  start read (`ignOf`), only moves when a frame draws the plume. The reference views step the physics to T+19 s (or
+  T+30 s) without drawing, so the first drawn frame met an engine it took for just lit. Whether the page's own loop
+  happened to draw a frame in between varied run to run. View 56 also inherited view 54's last frame: a new flight
+  starts the clock again, and 54 and 56 end at nearly the same sim time.
+- **Now:** `render()` keeps the previous drawn frame's sim time; a spool unseen for more than 0.5 s of sim time (or
+  new since then) takes its target directly, with no flash, rich start or cutoff puff, and the clock going back forgets
+  the last frame. In play every frame draws, so a launch flashes as before; an engine lit while the map was open no
+  longer flashes late on return.
+- **Measured** (flash or richness at capture, two runs each): views 54, 56, 2, 55 were 1.6 / 1.1 / 1.4 / 1.0, now 0
+  (view 56 every run); 60, 61, 153 are 0; the ignition views 68–72 (drawn every step on purpose) still flash and fade
+  with age: 2.1, 1.6, 0.9, 0.2, and 2.0 at night.
+- **Check:** test `aerofx-29`.
