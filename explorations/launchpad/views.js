@@ -210,7 +210,8 @@ window.refView = async (n) => {
   }
   // 80–83: clouds with depth. The Orbiter's ascent (pitch kick at 8 s, prograde) to alt m, seen from yaw/pitch/dist; the
   // sim is frozen for the capture. 80 is on the pad looking up past the rocket. [alt, yaw, pitch, dist]
-  const cl = { 80: [0, 0.9, -0.45, 30], 81: [3000, 1.75, 0.05, 40], 82: [8000, 1.75, 0.45, 60], 83: [25000, 1.75, 0.5, 60] };
+  // 178–179 (Q420): 2.4 km in the deck, the camera level, looking along the horizon two ways
+  const cl = { 80: [0, 0.9, -0.45, 30], 81: [3000, 1.75, 0.05, 40], 82: [8000, 1.75, 0.45, 60], 83: [25000, 1.75, 0.5, 60], 178: [2400, 1.75, 0.0, 40], 179: [2400, 0.2, 0.0, 40] };
   if (cl[n]) {
     const [alt, yaw, pitch, dist] = cl[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
