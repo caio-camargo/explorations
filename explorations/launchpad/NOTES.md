@@ -99,6 +99,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.183 — Q322 slice 1: the air's transmittance from a table, and airglow on the night limb (2026-10-13, sky & bodies)
 - v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies, QUEUE Q399, PLAYTEST #96)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
+- v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
