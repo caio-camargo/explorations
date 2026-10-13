@@ -251,7 +251,7 @@ function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,b
 function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
   return{ok:worst<=1,worst,p:wp}}
-function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
+function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.sim&&R.launched&&phys)R.simS=(R.simS||0)+dt;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
   if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
@@ -259,7 +259,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;REVERT0={R,prog:JSON.stringify(PROG)};if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch?0:studyWait(s);R.padWait=R.watch?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
+  if(!R.launched){if(s.landed)return;REVERT0={R,prog:JSON.stringify(PROG)};if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -411,7 +411,29 @@ let REVERT0=null;
 function missionDiscard(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return false;
   if(REVERT0&&REVERT0.R===R){const p=JSON.parse(REVERT0.prog);for(const k in PROG)delete PROG[k];Object.assign(PROG,p)}
   R.ended=true;R.reverted=true;REVERT0=null;return true}
-function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+// The simulator (Q449, Q282 slice 1; NOTES economy § "Plan: the simulator replaces revert", W42 on its defaults). A run is
+// a normal flight with R.sim set, started before liftoff: liftoff snapshots the program as for a revert (REVERT0) but
+// charges nothing and waits for nothing (no prep, pad, study or weather); news is collected into the run's log and saves
+// are muted, so a crash mid-run reloads the program from before it. The physics flies a believed world drawn per run:
+// each part's strength between its certified and its true rating (simK, on the joint check), each unsampled band of air
+// ±25 % (SIM.air, in density), ignitions on the run's seed. simEnd discards the flight whole (missionDiscard) and keeps
+// two things: time (a day per simulated hour, half a day at least; time on rails isn't simulator time) and the hours
+// per design (PROG.simH, for the crew's qualifications, M3).
+const SIM_DAY_H=1,SIM_MIN_D=0.5;let SIM_N=0;
+function simHash(t){let h=2166136261;for(let i=0;i<t.length;i++)h=Math.imul(h^t.charCodeAt(i),16777619);return h>>>0}
+function simK(key){if(!SIM)return 1;const k=SIM.k;if(k[key]==null){const c=certOf(key),u=rng(SIM.seed^simHash(key))();k[key]=c+(1-c)*u}return k[key]}   // never above the truth; equal only when fully certified
+function simStart(s,seed){const R=s&&s.rec;if(!R||R.launched||R.ended||SIM)return false;
+  seed=seed!=null?seed>>>0:(simHash(`${PROG.day}:${++SIM_N}:${PROG.flights}`));const u=rng(seed^0x5bd1e995);
+  SIM={seed,R,k:{},air:BANDS.map(k=>PROG.atm[k]?1:1+0.25*(2*u()-1)),log:[],news0:HOOK.news,save0:HOOK.save};
+  HOOK.news=(t,cls='')=>{SIM.log.push({t,cls})};HOOK.save=()=>{};R.sim=true;return true}
+function simEnd(s){const R=s&&s.rec;if(!R||!R.sim||R.ended)return null;const run=SIM&&SIM.R===R?SIM:null;
+  const out={sim:true,launched:!!R.launched,hours:(R.simS||0)/3600,alive:!!s.alive,landed:!!s.landed,far:R.far||0,seed:run?run.seed:null,log:run?run.log:[]};
+  if(R.launched)missionDiscard(s);else{R.ended=true;R.reverted=true}
+  if(run){HOOK.news=run.news0;HOOK.save=run.save0;SIM=null}
+  out.days=out.launched?Math.max(SIM_MIN_D,out.hours/SIM_DAY_H):0;advanceDays(out.days);
+  if(out.launched){const k=s.stack?designKey(s.stack):'?';PROG.simH=PROG.simH||{};PROG.simH[k]=(PROG.simH[k]||0)+out.hours}
+  HOOK.save();return out}
+function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
@@ -935,7 +957,7 @@ function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=p
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(TEST.nofail||!khOn()||!s.rec)return true;
   for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
-    const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719)*43758.5453)%1+1)%1;
+    const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719+(SIM?SIM.seed*0.0137:0))*43758.5453)%1+1)%1;   // a simulator run rolls on its own seed
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
       HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);debFail(s,'ignite',`the ${p.d.name} failed to light (know-how ${(khBar(p.d.key)*100).toFixed(0)}%)`);return false}}
   return true}

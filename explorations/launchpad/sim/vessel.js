@@ -789,7 +789,7 @@ function structLoads(s,aNg,al,w,tauCtrl,probe){
     const fA=dot(Fj,A),axial=-fA,shear=len(sub(Fj,mul(A,fA))),bend=len(sub(Mj,mul(A,dot(Mj,A))));
     // the weaker side governs, times the joint's reinforcement. An interstage carries the load around the engine it
     // encloses, so the enclosed engine's own (weaker) rating drops out of both joints it sits between.
-    const a1=p.encBy?p.encBy.d:p.d,a2=p.d.istage?p.d:(par.encBy?par.encBy.d:par.d),lim=k=>1000*Math.min(a1[k],a2[k])*JR[p.jr||0].k;
+    const a1=p.encBy?p.encBy.d:p.d,a2=p.d.istage?p.d:(par.encBy?par.encBy.d:par.d),lim=k=>1000*(SIM?Math.min(a1[k]*simK(a1.key),a2[k]*simK(a2.key)):Math.min(a1[k],a2[k]))*JR[p.jr||0].k;   // in the simulator, each side's believed strength (simK)
     const fa=axial>0?axial/lim('T'):-axial/lim('C'),fs=shear/lim('S'),fb=bend/lim('B'),jk=1000*JR[p.jr||0].k;
     // each side against its own rating: what telemetry can certify for that part
     const side=d=>Math.max(axial>0?axial/(d.T*jk):-axial/(d.C*jk),shear/(d.S*jk),bend/(d.B*jk));p.sk1=a1.key;p.sk2=a2.key;

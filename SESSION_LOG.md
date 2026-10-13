@@ -6263,3 +6263,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for space:** Q331 (the slow world, plan only) is the lane's last ready item; Q440 (damage that does something) is shared with vehicle.
 - **Addendum 6 (effects for parts & pad):** v1.218 Q396: the new parts' look (the octagonal bus's silver bays, black louvred radiators and corner posts; side boxes each readable; whip spring, lattice boom with a crossed dipole; fairing seam rails; fins' doublers by size and a rib on the big ones; a silver foil; frame and comp crinkle). Stills `output/launchpad/beauty/Q396/`. Test aerofx-40; TESTING 299. Next: Q411 (deploying animates; the sim side with vehicle).
 - **Addendum 7 (effects):** v1.219 Q411 ◐: deploying animates (the sim stamps `p.depT` in `wingOp`/`legOp`, the drawing follows `depF` in sim time: wings panel by panel, the boom antenna swings and extends, legs swing down); the sim's count at 1 filed for vehicle (Proposed). Test aerofx-41; TESTING 300. Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2): the simulator core (v1.220, Q449)
+- **W42 answered on its defaults** (Caio: "ok on defaults"), recorded in DECISIONS.
+- **Q449 ✓ v1.220**, slice 1 of Q282:
+  - `simStart`/`simEnd` and a global `SIM`. A run lifts off with no charges or waits, collects its news and mutes saves.
+  - It flies the believed world: strength between certified and true (`simK` on the joint check), unsampled air ±25 % in `density`, ignitions on the run's seed.
+  - `missionEnd` routes a run to `simEnd`, which discards the flight, advances max(½, hours) days and adds the hours to `PROG.simH[design]`.
+- **Test econ-29:** the program after a run equals a control advanced the same days; a joint at 84 % of its true rating breaks at the certified edge.
+- **No TESTING row:** nothing is on screen until Q450.
+- **Files:** `sim/core.js`, `sim/program.js`, `sim/vessel.js`, `tests/economy.mjs`, `notes/economy.md` § v1.220, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`, `DECISIONS.md`.
+- **Next:** Q450 (flow, the simulator screen) is ready. Economy's ready item is Q283 (crew-skill plan revision).

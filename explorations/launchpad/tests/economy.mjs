@@ -652,3 +652,44 @@
       !poor.ok && /refuses/.test(poor.why) && plain.ok && plain.fee > q0.fee && !rival.ok && /rival/.test(rival.why) && !sanc.ok,
     `${D.POWERS[i].name}: ally "${ally.why}"; at 0 ${q0.fee}M; at −0.2 ${plain.fee}M; ${poor.why}; ${rival.why}; ${sanc.why}`);
 }
+
+// econ-29. The simulator core (economy session 2, QUEUE Q449, Q282 slice 1, W42 on its defaults): a run lifts off with no
+// charges or waits, collects its news and mutes saves, flies the believed world (each part's strength between certified
+// and true, unsampled air ±25 %), and ends discarded: the program as before except the days (a day per simulated hour,
+// half a day at least) and the design's simulator hours. A joint loaded between its believed and true ratings breaks in
+// the simulator and not in a real flight. Own SIM copy.
+{
+  const mk = () => { const D = new Function(src + 'return {simStart,simEnd,simK,missionTick,missionEnd,newShip,probe,density,advanceDays,TELLUS,PROG,HOOK,certOf,designKey,getSIM:()=>SIM,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+    D.HOOK.msg = () => {}; D.resetHome(); Object.assign(D.PROG, { wseed: 5, day: 40, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 3, done: {}, atm: { 0: 1 } });
+    D.chooseStart('agency'); D.PROG.funds = 200; return D; };
+  const D = mk(), C = mk(), P = D.PROG, news = []; let saves = 0; D.HOOK.news = t => news.push(t); D.HOOK.save = () => { saves++; }; C.HOOK.news = C.HOOK.save = () => {};
+  const stack = ['chute', 'pod', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], before = JSON.stringify(P);
+  const s = D.newShip(stack); s.landed = false; const started = D.simStart(s), f0 = P.funds, d0 = P.day;
+  D.missionTick(s, 0, false); const S = D.getSIM(), free = s.rec.launched && P.funds === f0 && P.day === d0;
+  const air = [5e3, 25e3, 45e3].map(h => D.density(D.TELLUS, h) / (D.TELLUS.rho0 * Math.exp(-h / D.TELLUS.H)));
+  const ks = [...new Set(stack)], kOK = ks.every(k => { const b = D.simK(k), c = D.certOf(k); return b >= c - 1e-12 && b <= 1 + 1e-12; }) && ks.some(k => D.simK(k) < 0.999), kv = ks.map(k => `${k} ${D.simK(k).toFixed(2)}/${D.certOf(k).toFixed(2)}`).join(" ");
+  news.length = 0; saves = 0; D.HOOK.news('Something in the papers'); D.HOOK.save(); const muted = !news.length && !saves && S.log.length === 1;
+  s.rec.simS = 2 * 3600; P.funds -= 50; const out = D.missionEnd(s);
+  C.advanceDays(2);   // the control: the same program, two days on, no simulator
+  const after = JSON.parse(JSON.stringify(P)), b0 = JSON.parse(before), key = D.designKey(stack);
+  const days = after.day - b0.day, hrs = after.simH && after.simH[key]; delete after.simH;
+  const same = JSON.stringify(after) === JSON.stringify(C.PROG), restored = D.getSIM() === null && saves === 1;
+  D.HOOK.news('after'); const unmuted = news.length === 1;
+  // a short run is half a day
+  const s2 = D.newShip(stack); s2.landed = false; D.simStart(s2); D.missionTick(s2, 0, false); s2.rec.simS = 600; const day1 = P.day, o2 = D.missionEnd(s2);
+  const short = P.day - day1;
+  // a joint loaded between its believed and true ratings
+  const s3 = D.newShip(stack); let q = 2000, wr = null; for (; q < 2e5; q *= 1.15) { wr = D.probe(s3, { M: 1.2, aoa: 8, q, h: 9000, thr: 1 }).worst; if (wr.frac > 0.8) break; }
+  const p = wr.p, real = wr.frac; const s4 = D.newShip(stack); s4.landed = false; D.simStart(s4); D.missionTick(s4, 0, false); const S4 = D.getSIM();
+  for (const k of ks) S4.k[k] = D.certOf(k);   // the pessimistic edge of the draw
+  const sim = D.probe(D.newShip(stack), { M: 1.2, aoa: 8, q, h: 9000, thr: 1 }).worst.frac; D.missionEnd(s4);
+  const realAgain = D.probe(D.newShip(stack), { M: 1.2, aoa: 8, q, h: 9000, thr: 1 }).worst.frac;
+  check('simulator: a run lifts off free (no money, no days), flies believed air (sampled band true, unsampled ±25 %) and believed strength (between certified and true), collects its news, saves nothing',
+    started && free && Math.abs(air[0] - 1) < 1e-12 && air.slice(1).every(x => x >= 0.75 && x <= 1.25) && air.slice(1).some(x => Math.abs(x - 1) > 1e-6) && kOK && muted,
+    `air ×${air.map(x => x.toFixed(3)).join(', ')}; simK/cert ${kv}`);
+  check('simulator: the end discards the run whole: the program as before but for 2 days (2 simulated hours) and the design\'s 2 simulator hours; a 10-minute run costs half a day; hooks restored',
+    out && out.sim && same && Math.abs(days - 2) < 1e-9 && Math.abs(hrs - 2) < 1e-9 && restored && unmuted && Math.abs(short - 0.5) < 1e-9 && o2.days === 0.5,
+    `${days} days, ${hrs} h, same ${same}; short run ${o2 && o2.days} d`);
+  check('simulator: a joint at 80–95 % of its true rating breaks at the believed (certified) edge and not in a real flight',
+    real > 0.8 && real < 1 && sim > 1 && Math.abs(realAgain - real) < 1e-9, `${p && p.d.name}: real ${(real * 100).toFixed(0)} %, simulator ${(sim * 100).toFixed(0)} % at q ${q.toFixed(0)} Pa`);
+}

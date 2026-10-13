@@ -107,7 +107,10 @@ const surfVel=(b,r)=>{const w=bodyOmega(b);return[w*r[2],0,-w*r[0]]};   // ω×r
 const toPF=(b,v,t)=>rotY(v,-bodyTheta(b,t));
 const fromPF=(b,v,t)=>rotY(v,bodyTheta(b,t));
 const qBody=(b,t)=>qaxis([0,1,0],bodyTheta(b,t));
-const density=(b,h)=>b.atm&&h<b.atm?b.rho0*Math.exp(-h/b.H):0;
+// the simulator (economy Q449): a run flies the program's believed world, drawn per run; null outside a run, so real
+// flights and tapes fly the true numbers. SIM.air: each 10 km band of Tellus's air the program hasn't sampled, ±25 %.
+let SIM=null;
+const density=(b,h)=>b.atm&&h<b.atm?b.rho0*Math.exp(-h/b.H)*(SIM&&b===TELLUS?SIM.air[Math.floor(h/1e4)]??1:1):0;
 const pressure=(b,h)=>b.atm&&h<b.atm?Math.exp(-h/b.H):0;
 const physAlt=b=>b.atm?b.atm:5000;   // below this, coasting is simulated, not on rails
 

@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3203,3 +3203,41 @@ pessimistic edge (the certified rating, the densest air); (3) ignition failures 
 (**default**), or a "no failures" practice switch; (4) revert gone from real flights entirely (**default**, D15.5), or
 kept for the first N flights of a new program as a tutorial crutch; (5) the simulator the same in every era (**default**),
 or cheaper in time with compute (from the mainframes on). The error bars stay knowledge, never compute.
+
+## v1.220 — the simulator core (2026-10-13, economy session 2, QUEUE Q449; Q282 slice 1, W42 on its defaults)
+
+The headless half of the simulator (§ "Plan: the simulator replaces revert"). Nothing on screen yet: the *Simulate*
+button, the banner and the simulator debrief are flow's Q450, so there's no TESTING row.
+
+- **`simStart(s, seed?)`** (`sim/program.js`), before liftoff, sets `R.sim` and the global **`SIM`** (`sim/core.js`,
+  null outside a run): `{seed, R, k, air, log}`. It collects news into `SIM.log`, mutes `HOOK.save`, and keeps both hooks
+  to put back. Each run gets its own seed (day, a counter, flights); passing a seed repeats a draw (the HUD's "same
+  conditions" option, Q450).
+- **Liftoff in a run** snapshots `REVERT0` as before but charges nothing (hardware, ops, lease) and waits for nothing
+  (prep, study, pad, the daily window, weather).
+- **The believed world.** `simK(key)` = cert + (1 − cert)·u, drawn per part type per run (seed ⊕ a hash of the key). The
+  joint check in `structLoads` (`sim/vessel.js`) takes each side's rating × its `simK`. `density` (`sim/core.js`)
+  multiplies Tellus's air by `SIM.air[band]`: 1 for sampled bands, 1 ± 0.25·u for the rest. `igniteOK` adds the run's
+  seed to its roll. Outside a run every factor is exactly 1 and the true path is the old expression, so real flights,
+  tapes and probes are unchanged.
+- **The predictions** (planner, landing spread) also call `density`, so inside a run they see the run's air. This is the
+  same thing a real flight does with the true air.
+- **Simulator time** is `R.simS`: physics steps after liftoff (`missionTick(…, phys)`). Time on rails is free.
+- **`simEnd(s)`**, reached through `missionEnd` (so every way out of a flight, *End flight*, the program screen and
+  `resetShip`, ends a run cleanly), does three things:
+  - discards the flight with `missionDiscard`, or just closes it if it never lifted off, and puts the hooks back;
+  - advances `max(0.5, hours)` days (`SIM_DAY_H` 1, `SIM_MIN_D` 0.5; nothing if it never lifted off);
+  - adds the hours to `PROG.simH[designKey]` and saves.
+
+  It returns `{sim, launched, hours, days, alive, landed, far, seed, log}` for the simulator debrief.
+
+**Measured** (econ-29, a fresh agency on the Orbiter's stack):
+- **Draws:** strength at 0.72–0.95 of true against certified ratings of 0.61–0.70; unsampled air ×0.975 and ×0.999.
+- **What's kept:** a 2-hour run leaves the program identical to a control advanced 2 days, plus 2 simulator hours on the
+  design. A 10-minute run costs half a day.
+- **A joint between its ratings:** the Tank 8 t joint at 84 % of its true rating reads 138 % at the certified edge.
+  It breaks in the simulator and holds in a real flight.
+
+For space and flow: `R.sim` and `SIM` are the switches. Anything a flight writes outside `PROG` (FLEET, debris, the
+registry's live objects) is reset the same way revert resets it (`resetShip`). A leg simulated from orbit (Q452) must
+take its snapshot through `simStart` before `R.launched` is set, as `app/program-ui.js` does now for `REVERT0`.
