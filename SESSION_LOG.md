@@ -6001,3 +6001,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** flow-24 (new), flow-5, flow-21–23 pass; `--smoke` all passed before the merge; robot rows `cockpit` and `m1` pass (m1's overlap check caught the caution crossing the centre message; fixed).
 - **Merge:** one conflict with vehicle's new Wings (P) button in `updateHUD`, both kept.
 - **Next:** Q286 slice 2 (the Program and the map), claimed.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): PLAYTEST #96 / Q399 star halos (v1.187)
+
+- **Done:** the brightest stars' halo was cut straight at its hashed cell's border (my Q321 code); now drawn from the
+  nearest 2×2×2 cells and faded within half a cell. A 3×3×3 first try cost ~0.45 ms in star views; this one is within
+  noise. Test `aerofx-27`; TESTING 269; PLAYTEST #96 moved to Done.
+- **Noticed:** PLAYTEST #102–104 are each used twice on `main` (other sessions); check_numbers stops on them.
+- **Next for sky & bodies:** Q322 slice 2 (Selene out of `SKY_FS`).
+
