@@ -5970,3 +5970,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   the air, stars by day, the bright stars' halo cut at its cell's border, cause found) with Proposed lines; a 3D mock-up
   `mockups/city/` for #91 / Q394 (A grid, B old core, today; by era, height and light; budget line). Stills in
   `output/launchpad/mockups/city/`.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): losses explained (Q293, v1.182)
+- **Done:** the Debrief of a lost flight starts with *What happened*: the failures on the way in order (a joint that broke, a part that burned up, an engine that didn't light; T+ and km, `debFail`), the end, and *What would help*. The money's "days passing" lump is replaced by named lines from a ledger (`PROG.led`, `ledAdd`, `income(x, k)`). On `main` as `e85e9fe` (merged `40f3723`).
+- **Checks:** flow-23 (new), flow-1, flow-22, all 25 economy sections, vehicle-23/25 pass; robot rows `loss` and `m1` pass. Smoke before the fix showed flow-23 leaking a started program into vehicle-23/25; flow-23 now restores PROG (verified by running them in order). The full smoke wasn't re-run after that fix; its other failure is the known "node chain flown" FLAG.
+- **Files:** `sim/debrief.js`, `app/debrief.js`, hooks in `sim/vessel.js`, `sim/program.js`, `sim/contracts.js`, `sim/space.js`; `index.html` (CSS), `test.mjs` (api export), `tests/flow.mjs`, `playtest.mjs`, NOTES.md, notes/flow.md, TESTING.md (264).
+- **Noted:** PLAYTEST #93 is doubled on main (not flow's); flagged in QUEUE Proposed.
+- **Next:** Q286 (the declutter pass).
