@@ -74,7 +74,7 @@ function render(){spoolFrame();
     gl.uniform1i(u.uNPl,P.length);gl.uniform4fv(u['uPlnD[0]'],D);gl.uniform4fv(u['uPlnC[0]'],C)}
    galaxy();gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    if(u.uGalC){gl.activeTexture(gl.TEXTURE12);gl.bindTexture(gl.TEXTURE_CUBE_MAP,GALC.tex);gl.uniform1i(u.uGalC,12);gl.activeTexture(gl.TEXTURE0);gl.uniform1f(u.uGalE,GALC.enc);   // (Q321) the baked sky on unit 12
-    gl.uniform1f(u.uStT,((HOOK.fxT??performance.now())/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
+    gl.uniform1f(u.uStT,(fxNow()/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
    {const on=view==='map'&&mode==='flight'&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);
     if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);if(u.uShd){gl.activeTexture(gl.TEXTURE14);gl.bindTexture(gl.TEXTURE_2D,SHD.tex);gl.uniform1i(u.uShd,14)}gl.activeTexture(gl.TEXTURE0);
@@ -173,7 +173,7 @@ function render(){spoolFrame();
   profMark('plume pool');if(near)drawPlumePool(VP);profMark('plumes');
   const PE=near&&S.alive&&mode==='flight'?plumeEngines():[];HAZE.n=0;
   if(PE.length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
-    gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
+    gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,fxNow()/1000%1000);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
     const GF=groundFrame(camW),hits=[],PSUN=lightEnv(p).sun.map(x=>x*lit(p));
@@ -206,7 +206,7 @@ function render(){spoolFrame();
   if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));
       gl.uniformMatrix4fv(m.uM,false,modelQ(q,sub(add(p,qrot(S.q,sub(z.at,S.cm))),camW),0,[.14,.4,.14]));gl.uniform1f(m.uGlow,.6*(1-age/.08));gl.bindVertexArray(PUFF.vao);gl.drawArrays(gl.TRIANGLES,0,PUFF.n)}}
-  const nowMs=HOOK.fxT??performance.now();   // the effects clock; reference views pin it (HOOK.fxT, Q312)
+  const nowMs=fxNow();   // the effects clock (Q393: stops with the pause); reference views pin it (HOOK.fxT, Q312)
   profMark('booms');if(booms.length){const u=PBOOM.u,E=lightEnv(camW);gl.useProgram(PBOOM.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,nowMs/1000%1000);
     gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);

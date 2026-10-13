@@ -388,7 +388,7 @@
   const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const pad = /DESK_FX = n === 152;/.test(vj) && /HOOK\.fxT = null; ov\.style\.visibility = '';/.test(vj) && /'\.ui,#perf,#news,#msg,#deb,#ov'/.test(vj);
   const asm = /screenNow\(\) !== 'assembly'\) go\('assembly'\)/.test(vj) && !/if \(mode !== 'editor'\) document\.getElementById\('bEditor'\)\.click\(\);\n/.test(vj.replace(/const toBuilder[^\n]*\n/, ''));
-  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=HOOK\.fxT\?\?performance\.now\(\)/.test(page) && /function boomLight\(camW\)\{const now=HOOK\.fxT\?\?performance\.now\(\)/.test(page);
+  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=fxNow\(\)/.test(page) && /function boomLight\(camW\)\{const now=fxNow\(\)/.test(page) && /const fxNow=\(\)=>HOOK\.fxT\?\?FXT/.test(page);
   const moments = [152, 154].every(n => vj.includes(`n === ${n}`)) && /n >= 156 && n <= 158/.test(vj) && /153: \['Orbiter'/.test(vj) && /155: \['Lunar', 60000, 'stage'/.test(vj);
   const Q = new Function(page.slice(page.indexOf('const QUAL={'), page.indexOf('const setGet=')) + ';return {QUAL,QUAL_OLD}')();
   const pick = q => Q.QUAL[q] ? q : Q.QUAL_OLD[q] || 'high';   // as settings.js reads a saved setting
@@ -864,4 +864,19 @@
   check('camera shake: a slow sway only round transonic and peak q, ~0.12° on Gentle; a knock at staging that dies within a second; Off / Gentle / Full kept per browser',
     slow && peak < .0025 && peak > .0012 && low === 0 && knock > .0008 && after === 0 && Math.abs(full / peak - 2) < .05 && off === 0 && sw,
     `rates ${rates.join(', ')} · peak ${(peak * 57.3).toFixed(3)}° · at 10 kPa ${low} · staging knock ${(knock * 57.3).toFixed(3)}°, 2 s on ${after} · full ×${(full / peak).toFixed(2)} · off ${off} · setting ${sw}`);
+}
+
+// aerofx-36. Effects stop with the pause (look & sound effects beat, QUEUE Q393, PLAYTEST #90): one effects clock (FXT,
+// fxNow) that frame() advances by real time only while the game isn't paused; the plume, plasma, dust, impact and
+// composite shaders, explosions' ages and light, and the stars' twinkle read it (HOOK.fxT still pins it for the views);
+// none of them reads performance.now() any more.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const clock = /let FXT=0;const fxNow=\(\)=>HOOK\.fxT\?\?FXT;/.test(page) && /if\(!gamePaused\(\)\)FXT\+=dtR\*1000;/.test(page);
+  const readers = [/gl\.useProgram\(PPLASMA\.p\);[^\n]*uT,fxNow\(\)\/1000%1000\)/, /gl\.useProgram\(PDUST\.p\);[^\n]*uT,fxNow\(\)\/1000%1000\)/, /function drawImpact[^\n]*uT,fxNow\(\)\/1000%1000\)/,
+    /gl\.uniform1f\(c\.uT,fxNow\(\)%997\)/, /function boomLight\(camW\)\{const now=fxNow\(\);/, /const nowMs=fxNow\(\);/, /t0:fxNow\(\),sz,air/, /uStT,\(fxNow\(\)\/1000\)%1000\)/,
+    /gl\.uniform1f\(pu\.uFc,FC\);gl\.uniform1f\(pu\.uT,fxNow\(\)\/1000%1000\);/].map(r => r.test(page));
+  const stray = (page.match(/uT,performance\.now\(\)|t0:performance\.now\(\)|HOOK\.fxT\?\?performance\.now\(\)/g) || []).length;
+  check('effects stop with the pause: one effects clock advanced only while unpaused, read by every effect shader, explosion and the twinkle', clock && readers.every(Boolean) && stray === 0,
+    `clock ${clock} · readers ${readers.map(Number).join('')} · wall-clock effects left ${stray}`);
 }
