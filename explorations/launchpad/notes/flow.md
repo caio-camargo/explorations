@@ -933,3 +933,23 @@ between flights paid nothing on arrival. Now it does:
 - **Not yet:** public interest and cruise science per day during a cruise (economy's design, "Paying along the way");
   a flyby completing in the background (passive flybys); the Flight row's "where" still says "Selene orbit" for a vessel
   only passing through (`netModel`'s wording, economy).
+
+## v1.150 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
+N2 of the network plan (§ "Network screen plan"), built where Q241 R4 put the network: mission control's wall.
+- **A third page on the wall**, *Network · nodes* (W cycles ground track → pads → nodes; `MC_PAGES` in `app/mission.js`,
+  `#mcNet` in `index.html`). It draws `netModel().nodes` with `netNodesHTML(N)` (`app/network.js`): a schematic, not the
+  orbital map. Bodies as columns (Tellus first, then the others in the model's order), and rows by netModel's slot,
+  stationary at the top, then high orbit, low orbit and the surface. Each node is a box: its name, its kind in words
+  (site, ground station, the craft's kind, station, base); a crewed node adds supplies, what it eats a day and days
+  left (red under 30); a paused one says so (out of supplies or adrift); a craft out of contact says "no contact now"
+  (from `N.links`).
+- **The bottleneck line on top** (`N.bottleneck`, economy's rule: the crewed node with the fewest days under 30), and
+  its node framed in red. With none: "No bottleneck: no crewed node is short of supplies".
+- **`netFallback` is gone**; `netData()` is `netModel()`. Economy's `econ-14` check now asserts that instead of the old
+  `typeof netModel` switch (one line in `tests/economy.mjs`).
+- **Checks:** test `flow-17`: the page is wired; a Probe at 300 km sits in Tellus's low-orbit row and every site and
+  station in the surface row; with a crewed Selene base at 10 days added, the columns run Tellus then Selene, the
+  bottleneck line names it, its box is framed, its supplies read "400 kg · eats 40 kg/d". TESTING row 232; robot row
+  `playtest.mjs 232` (seen on the RTX at 1280×800: both pages fit, the base framed in red).
+- **Not yet:** routes (N3, with routines), clicking a node for its panel (N3), the plan's coverage bar on relays
+  (Q218 draws coverage on the map), rivals and the era's look (N4).

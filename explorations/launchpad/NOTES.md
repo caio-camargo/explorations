@@ -241,6 +241,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.138 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
 - v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
 - v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
+- v1.150 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

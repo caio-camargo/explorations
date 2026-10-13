@@ -329,3 +329,28 @@
       && b.paid === 0 && !b.st.arrive && !b.note && ui,
     `${a.M.name}: "${a.note}" · timeline "${a.ev && a.ev.text}" · paid ${a.paid.toFixed(1)}M of ${want.toFixed(1)}M · not launched for it: ${b.paid.toFixed(1)}M · ui ${ui}`);
 }
+
+// flow-17. The network's nodes (flow session, QUEUE Q170, N2; NOTES § UI "Network screen plan"): mission control's wall has
+// a third page (W cycles track → pads → net) drawing netModel()'s nodes as a schematic: bodies as columns, Tellus first, the
+// orbit bands above the surface; a crewed node's supplies and days; the bottleneck on top and its node marked. The screen
+// reads netModel() only: netFallback is gone.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const wired = !/netFallback\(/.test(page) && /const netData=\(\)=>netModel\(\);/.test(page) && H.includes('id="mcNet"')
+    && /MC_PAGES=\['track','pads','net'\]/.test(page) && /\$\('mcNet'\)\.innerHTML=netNodesHTML\(N\)/.test(page);
+  const fn = new Function(page.slice(page.indexOf('const NET_SLOTS'), page.indexOf('// the pads\' calendar:')) + 'return netNodesHTML;')();
+  const X = new Function(src + 'return {netModel,newShip,PRESETS,satRegister,TELLUS,PROG,HOOK};')();
+  const P = X.PROG, T = X.TELLUS; X.HOOK.news = () => {}; X.HOOK.msg = () => {}; X.HOOK.save = () => {}; P.sats = []; P.day = 0; P.dispatch = [];
+  const s = X.newShip(X.PRESETS.Probe), a = T.R + 300e3;
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -Math.sqrt(T.mu / a)] }); X.satRegister(s, { day0: 0 });
+  const N = X.netModel(), q = P.sats.at(-1), probe = N.nodes.find(n => n.id === `reg:${q.id}`);
+  const h0 = fn(N), band = (h, l, m) => h.slice(h.indexOf(`<div class="nl">${l}</div>`), m ? h.indexOf(`<div class="nl">${m}</div>`) : undefined);
+  const placed = probe && probe.slot === 'low' && band(h0, 'Low orbit', 'Surface').includes(`<b>${q.name}</b>`)
+    && N.nodes.filter(n => n.slot === 'surface').every(n => band(h0, 'Surface').includes(`<b>${n.name}</b>`)) && /No bottleneck/.test(h0);
+  const base = { id: 'reg:999', kind: 'base', body: 'Selene', slot: 'surface', name: 'Selene Base 1', stock: { supplies: 400 }, need: { supplies: 40 }, days: 10, paused: false };
+  const M = { ...N, nodes: [...N.nodes, base], bottleneck: { text: 'Selene Base 1 has 10 days of supplies left', node: 'reg:999', good: 'supplies' } }, h1 = fn(M);
+  const cols = h1.indexOf('<div class="nb">Tellus</div>') > 0 && h1.indexOf('<div class="nb">Tellus</div>') < h1.indexOf('<div class="nb">Selene</div>');
+  const bn = /class="nbn bad">Bottleneck: Selene Base 1 has 10 days/.test(h1) && /class="nn bn" data-node="reg:999"/.test(h1) && /supplies 400 kg · eats 40 kg\/d/.test(h1) && /10 days left/.test(h1);
+  check('flow-17: mission control\'s third wall page draws netModel()\'s nodes (bodies as columns, orbit bands over the surface), a crewed node\'s supplies and the bottleneck; netFallback is gone',
+    wired && placed && cols && bn, `wired ${wired} · placed ${placed} (${N.nodes.length} nodes, probe ${probe && probe.slot}) · columns ${cols} · bottleneck ${bn}`);
+}
