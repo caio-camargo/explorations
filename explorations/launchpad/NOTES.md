@@ -290,6 +290,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.156 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267)
 - v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319)
 - v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352)
+- Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
