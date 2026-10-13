@@ -5992,3 +5992,31 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   haze) after Caio's "big improvement, right direction"; PLAYTEST #94 (no visible way to deploy folded parts, P1) and #95
   (farmland on Tellus, the pad's surroundings); Q252 (solid motors) raised to M1 at Caio's word.
 - **Renumbered (design desk):** my PLAYTEST #93 (stars' halo) → **#96**, #94 (deploy control) → **#97**; the test bench took #93 and #94 in the same window.
+- **Addendum 3 (design desk, 2026-10-13):** PLAYTEST #98 (camera shake, P1), #99 (pixelated coasts), #100 (the road
+  to the pad goes nowhere); a Proposed line for animated deploys; `mockups/satellites/` (thirteen craft after real ones
+  against today's: smaller parts, bus shapes, skins, appendages) with a Proposed line; hands-on instruments wait for S2.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the dark cockpit (Q286 slice 1, v1.186)
+- **Done:** `app/cockpit.js`: in a critical phase (the climb through the air, a burn, a landing) the news ticker is held and comes back when quiet; only the phase's cards show (pinned ones stay); one MASTER CAUTION under the readout names what's red (heat over 90 %, a joint over its rating, the impact over a town); hold modes the avionics can't fly are hidden (SAS's title says when they come); Ap · Pe not shown landed, "under the surface" instead of a negative Pe. On `main` as `325c1b0` (merged `46766f0`).
+- **Checks:** flow-24 (new), flow-5, flow-21–23 pass; `--smoke` all passed before the merge; robot rows `cockpit` and `m1` pass (m1's overlap check caught the caution crossing the centre message; fixed).
+- **Merge:** one conflict with vehicle's new Wings (P) button in `updateHUD`, both kept.
+- **Next:** Q286 slice 2 (the Program and the map), claimed.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): PLAYTEST #96 / Q399 star halos (v1.187)
+
+- **Done:** the brightest stars' halo was cut straight at its hashed cell's border (my Q321 code); now drawn from the
+  nearest 2×2×2 cells and faded within half a cell. A 3×3×3 first try cost ~0.45 ms in star views; this one is within
+  noise. Test `aerofx-27`; TESTING 269; PLAYTEST #96 moved to Done.
+- **Noticed:** PLAYTEST #102–104 are each used twice on `main` (other sessions); check_numbers stops on them.
+- **Next for sky & bodies:** Q322 slice 2 (Selene out of `SKY_FS`).
+
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): deploy buttons and the fairing rule (v1.184, v1.185, v1.188)
+- **Built:** flight-bar buttons for wings/boom antennas (P), landing legs (Y) and the cargo bay (B), each shown only when fitted (Q409, Q400's vehicle part); nothing unfolds inside a fairing that's still on (Q410). Checked in the browser.
+- **Numbers:** Q397/Q398/Q406 collided with other sessions' items twice; mine are Q409 and Q410. PLAYTEST #102–#104 are filed twice by two other sessions (not mine, left as is).
+- **Files:** `index.html`, `app/program-ui.js`, `sim/power.js`, `tests/vehicle.mjs` (vehicle-26; vehicle-18 jettisons first), `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (266, 267, 270), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** flow's Q400 remainder (Part tab line, first-time hint); vehicle's ready list: Q341 (the folding boom), Q329, Q338.
+- **Addendum 4 (design desk, 2026-10-13):** **D24**: satellites are parts, not products (the bus one adjustable frame),
+  built on a **payload bench** apart from the rocket like the Rover yard, then one block in the fairing (PROBES 0.1.4
+  § 6.1). Next for the desk: a mock-up of the bench.
+- **Addendum 5 (design desk, 2026-10-13):** `mockups/bench/`, the payload bench (D24): palette by job, the bus as one frame with a skin per face, Checks against the job, stowed / deployed (animated) / in the fairing, Designs. Stills in `output/launchpad/mockups/bench/`.

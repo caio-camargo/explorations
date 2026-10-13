@@ -1078,3 +1078,25 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
   rocket lost after a joint broke); `m1`, flow-1, the economy sections pass. TESTING row 264.
 - **Not yet:** a cause for a crew lost while the vehicle survives (the crew line has its own); the chain on the Program's
   flight history; the Rollout warning that would have caught it, linked from *What would help*.
+
+## v1.186 — the dark cockpit (2026-10-13, flow session, QUEUE Q286 slice 1; UI.md § 3 Flight row, D16)
+- **The phase** (`cpPhase()`, new `app/cockpit.js`): *ascent* (in the air, climbing or burning), *burn* (an engine lit
+  out of the air), *landing* (coming down through the air or low over an airless body), or quiet. It uses the Ascent
+  card's own condition (`ascentOn`), so the gauges, the cards and the cockpit agree.
+- **News held:** in a phase the ticker is hidden (`#news.held`); headlines still arrive and come back, the latest three,
+  once things are quiet. The Program's Inbox keeps every one as before.
+- **Only the phase's cards:** in a phase only Ascent, Descent and Target show; Payload, Fleet, Vehicle, Hardware and
+  Rover fold away unless pinned (`CP_CARDS`, `renderCards`).
+- **MASTER CAUTION:** one red box under the readout, its width, naming whatever is red: a part over 90 % of its heat
+  limit, a joint over its certified rating, the impact point over a town (`cautions()`). Nothing red, no box.
+- **Hold modes:** a mode the avionics can't fly isn't shown any more (it was greyed out); the SAS button's title says
+  which come next and with which era.
+- **Ap · Pe:** not shown landed (it was "—"); a periapsis under the ground reads *under the surface*, not "−1270 km".
+- **Checks:** test `flow-24` (the phases, the cautions, the wiring, the hidden modes, Ap · Pe); robot row `cockpit` (a
+  Sounding climb: no ticker, only the Ascent card; a forced 95 % heat and the range warning in the caution; landed, the
+  news back and no caution); `m1` passes (its overlap check caught the caution crossing the centre message: it's now the
+  readout's width). TESTING row 268.
+- **Not in this slice:** a phase card that changes by phase (landing: height and descent rate big; burn: Δv to go); the
+  help bar was already behind the menu. **Slice 2:** the Program (NEXT card, offers one line each, the letterhead, locked
+  missions as a count) and the map (labels by importance, days instead of TU). The Assembly's GO/NO-GO board is D22's
+  Checks tab, built with Q237 (vehicle).

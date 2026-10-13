@@ -1547,7 +1547,7 @@ delivery whenever the goal is met: 5.3 h. `node career.mjs 3 3` prints the same 
 - A rollout warning when a stage's drop zone nears a town: `dropVerdict` already knows, and towns are never downrange,
   so only an abort or a dogleg would find one.
 
-## v1.184 — each school's pad site has its own ground (2026-10-13, world session, QUEUE Q105)
+## v1.189 — each school's pad site has its own ground (2026-10-13, world session, QUEUE Q105)
 
 Q231 built the four schools' complexes on flat ground (notes/look.md § "The four schools' pads"), with Arsenal's hill
 as a mesh. Q105 gives each site the ground its brief describes (POWERS.md § "School briefs", mock-ups Q227).

@@ -410,7 +410,7 @@
       first.every((c, i) => G.CITIES[i].name === c.name) && G.SITES.filter(s => s.kind === 'sea').every(s => !towns.some(c => c.town === s.id)) && hit.kind === 'city' && hit.city === towns[0],
     rows.map(r => r.c ? `${r.t.name}: ${r.c.name} ${r.km.toFixed(0)} km, ${r.off.toFixed(0)}° off` : `${r.t.name}: none`).join('; '));
 }
-// site-1. The pad site's own ground per school (world session, QUEUE Q105; NOTES § v1.184): Arsenal's hill behind the
+// site-1. The pad site's own ground per school (world session, QUEUE Q105; NOTES § v1.189): Arsenal's hill behind the
 // terrace (where the pad's mesh hill was), Mountain's ridge north and the fall south and east, Isle's headland, Coastal's
 // sea behind the pad when the site is low and coastal; every complex on flat ground, nothing changed beyond SHAPE_R
 // (1.7 km), Cape and Steppe untouched. Own SIM copy (it moves the home pad's height to try the wet case).

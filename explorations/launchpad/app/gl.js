@@ -249,8 +249,15 @@ vec3 starsAt(vec3 d,float band){vec3 c=vec3(0.);
   float m=h3(ci+9.),br=k==0?.25+2.2*pow(m,5.):k==1?.07+.25*pow(m,2.):.025+.05*m;
   float t=h3(ci+5.3);vec3 tc=t<.1?vec3(.62,.74,1.):t<.45?vec3(.88,.92,1.):t<.75?vec3(1.,.95,.84):t<.92?vec3(1.,.84,.62):vec3(1.,.66,.45);
   float ph=h3(ci+2.2)*6.2832,f=1.5+2.5*h3(ci+4.4),tw=max(1.+.35*(.5*sin(uStT*f+ph)+.3*sin(uStT*f*2.3+ph*1.7)+.2*sin(uStT*f*5.1+ph*.3)),0.);
-  float rad=min(uPix*(.6+.45*sqrt(br)),.22/sc);c+=tc*br*tw*exp(-r*r/(rad*rad))*.9;
-  if(k==0&&br>1.2)c+=tc*br*tw*.015*exp(-r/(uPix*5.));}
+  float rad=min(uPix*(.6+.45*sqrt(br)),.22/sc);c+=tc*br*tw*exp(-r*r/(rad*rad))*.9;}
+ // (PLAYTEST #96) the brightest stars' halo reaches past their cell, so it comes from the 2×2×2 cells nearest this
+ // pixel (it was cut straight at the border), fading to nothing within half a cell, which those always cover; each star kept by the band at its own place, so the halo can't half-vanish
+ vec3 c0=floor(d*90.-.5);for(int x=0;x<2;x++)for(int y=0;y<2;y++)for(int z=0;z<2;z++){vec3 ci=c0+vec3(x,y,z);float hs=h3(ci);if(hs<.9947)continue;
+  float m=h3(ci+9.),br=.25+2.2*pow(m,5.);if(br<=1.2)continue;vec3 j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3)),sd=normalize((ci+.3+j*.4)/90.);
+  if(hs<.9967-.002*textureLod(uGalC,sd,0.).a)continue;float r=length(d-sd),t=h3(ci+5.3);
+  vec3 tc=t<.1?vec3(.62,.74,1.):t<.45?vec3(.88,.92,1.):t<.75?vec3(1.,.95,.84):t<.92?vec3(1.,.84,.62):vec3(1.,.66,.45);
+  float ph=h3(ci+2.2)*6.2832,f=1.5+2.5*h3(ci+4.4),tw=max(1.+.35*(.5*sin(uStT*f+ph)+.3*sin(uStT*f*2.3+ph*1.7)+.2*sin(uStT*f*5.1+ph*.3)),0.);
+  c+=tc*br*tw*.015*exp(-r/(uPix*5.))*smoothstep(.5/90.,.15/90.,r);}   // and fades out within half a cell, inside the cells that draw it
  return c*uStK;}
 // the sun (Q321): a limb-darkened disc (0.27°) that clips to white at any exposure, a tight glare and a faint veil; no
 // diffraction spikes (they were a camera's, fixed to the screen)
@@ -2049,7 +2056,7 @@ function steppeTable(a,CO,STL,DK){const PIT=[.012,.012,.014,2],GL=[.64,.62,.57,2
 // ---- the other four schools' pads (QUEUE Q231, Q102 step 7; POWERS.md § "School briefs", mock-ups Q227 `mockups/schools/`
 // Pads). Each builds its own complex in place of Cape's; only the floodlight poles are shared (padLights lights them).
 // The moving parts are schoolRig's. The ground stays the sky shader's, and the site's shape (Arsenal's hill, Coastal's
-// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.184): what rises above it here is mesh, inside the sea
+// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.189): what rises above it here is mesh, inside the sea
 // platform's deck (x −256…86, z −194…80).
 // a heightfield patch y = f(x, z) over [x0, x1] × [z0, z1] in n × m cells (earth banks, the Arsenal hall's net); col a
 // colour or a function of the cell's corner
