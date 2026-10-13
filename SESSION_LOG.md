@@ -5995,3 +5995,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 3 (design desk, 2026-10-13):** PLAYTEST #98 (camera shake, P1), #99 (pixelated coasts), #100 (the road
   to the pad goes nowhere); a Proposed line for animated deploys; `mockups/satellites/` (thirteen craft after real ones
   against today's: smaller parts, bus shapes, skins, appendages) with a Proposed line; hands-on instruments wait for S2.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the dark cockpit (Q286 slice 1, v1.186)
+- **Done:** `app/cockpit.js`: in a critical phase (the climb through the air, a burn, a landing) the news ticker is held and comes back when quiet; only the phase's cards show (pinned ones stay); one MASTER CAUTION under the readout names what's red (heat over 90 %, a joint over its rating, the impact over a town); hold modes the avionics can't fly are hidden (SAS's title says when they come); Ap · Pe not shown landed, "under the surface" instead of a negative Pe. On `main` as `325c1b0` (merged `46766f0`).
+- **Checks:** flow-24 (new), flow-5, flow-21–23 pass; `--smoke` all passed before the merge; robot rows `cockpit` and `m1` pass (m1's overlap check caught the caution crossing the centre message; fixed).
+- **Merge:** one conflict with vehicle's new Wings (P) button in `updateHUD`, both kept.
+- **Next:** Q286 slice 2 (the Program and the map), claimed.
