@@ -1603,7 +1603,7 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
   disc is 250× and the glare smaller.
 - **A/B:** `SKY_B5 = false` compiles the old galaxy, stars and sun back in (the shader recompiles; no bake).
 - **Views:** 159 the program's nebula, 160 its spiral, each over the limb from the night side; `refset.mjs`'s set now
-  ends at 160.
+  ends at 160. (**Renumbered 172, 173** in Q392: these shadowed the effects beat's 159–160 in `views.js`, which came later.)
 - **Seen** (RTX, High; `output/launchpad/beauty/q321-before/`, `q321-after/`, Low `q321-after-low/`): views 97–100 show
   the band with lanes and a bulge instead of a smooth smear, a field of coloured stars where there were almost none, the
   sun small; 156 the same over the limb; 159 the nebula a faint copper veil beside the band, 160 a small spiral alone.
@@ -1969,3 +1969,87 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
 - **Cost:** within noise (a 6-entry loop per sky pixel that sees space; the point mode only near a sub-pixel moon).
 - **Views:** 169 the planets, 170 Selene under a pixel, 171 the pad at dusk. Stills `output/launchpad/beauty/q374-after/`,
   `q395-before/`, `q395-after/`, `q374-merged/`. Test `aerofx-33`. TESTING 281.
+
+## v1.201 — a display rod under a hanging model on the desk (2026-10-13, effects beat, QUEUE Q330)
+
+`app/model-desk.js` (`deskMesh`, `deskKey`).
+
+- Since Q327 (v1.139) a design whose lower parts were removed hangs over the desk's base plate (`BLD.foot`). Now a
+  steel rod (4 mm at model scale) rises from the plate's pin to the design's bottom (`S.yBot`), into the nozzle as a
+  kit model's stand does, with a collar where it leaves the pin. Only when the gap is over 6 mm at model scale; the
+  desk mesh's key carries the gap, so it is rebuilt as parts are added or removed.
+- The lamp's shadow on the paper is still the model's only (the rod casts none); a nit, left.
+- **Stills:** `output/launchpad/beauty/Q330/` (`standing`, `hanging_8m`: view 152 with the foot 8 m below). **Check:**
+  test `aerofx-34`. TESTING 282.
+
+## v1.203 — a calmer camera shake, and a switch for it (2026-10-13, effects beat, QUEUE Q360)
+
+`app/gl.js` (`camShake`), `app/settings.js` (the switch).
+
+- **Caio (2026-10-13):** "it's not only the switch, it's the shake itself, which is too intense and unpleasant to
+  watch". Q320's shake (v1.154) was a sum of sines at 13–83 rad/s (2–13 Hz): near the frame rate it strobed rather
+  than shook, and it reached ~0.45° of view direction at Mach 1's max-q (~0.4° at a re-entry's peak).
+- **Now:** the same shape (a max-q buffet worst near Mach 1, the re-entry rumble by the plasma's heat), as a sway at
+  9–26 rad/s (1.5–4 Hz), at most ~0.12° at max-q and ~0.14° at re-entry's peak: about a quarter. Still deterministic on
+  sim time (still when paused), off in the map.
+- **The switch:** Settings › Screens › "camera shake (the max-q buffet, re-entry)", kept per browser
+  (`launchpad-shake`). **Flow:** one row added to your `renderSettings` and its change handler, nothing else.
+- Not seen moving in a browser here (the GPU was another session's); the numbers are the test's. **Check:** test
+  `aerofx-35` (and `aerofx-14`). TESTING 284.
+
+## v1.205 — the camera shake as PLAYTEST #98 asked: only round transonic and peak q, short jolts, Off / Gentle / Full (2026-10-13, effects beat, QUEUE Q402)
+
+`app/gl.js` (`camShake`, `SHK`, `SHAKE_LV`), `app/settings.js`.
+
+- **Builds on v1.203** (the slow 1.5–4 Hz sway at about a quarter the strength). Now also:
+  - **a narrower envelope:** the buffet starts at 15 kPa (was 8), so it is the transonic stretch and peak q only;
+  - **jolts:** a damped knock (~4 Hz, gone in ~0.4 s) as the ship goes through Mach 1 (in air over 5 kPa) and at each
+    staging (fewer parts on the same ship): ~0.06° on Gentle;
+  - **Off / Gentle / Full** in Settings › Screens (replacing v1.203's checkbox; Full doubles it), default Gentle, kept
+    per browser (`launchpad-shake`: a saved '1' from v1.203 reads as Gentle, '0' as Off).
+- **Flow:** the shake row in `renderSettings` is now three buttons, handled in the click listener beside the quality's.
+- Not seen moving in a browser (numbers from the test). **Check:** tests `aerofx-35` (rewritten), `aerofx-14`. TESTING 286.
+
+## v1.206 — effects stop with the pause (2026-10-13, effects beat, QUEUE Q393, PLAYTEST #90)
+
+`app/gl.js` (`FXT`, `fxNow`), `app/loop.js` (`frame` advances it), `app/render.js`, `app/state.js`.
+
+- **Caio (PLAYTEST #90):** "the boosters' effect keeps playing when the game is paused". The plume, plasma, dust,
+  impact and composite shaders, explosions' ages and light, and the stars' twinkle all took their time from
+  `performance.now()`, so a paused frame kept moving (flames flickering, fireballs growing and fading).
+- **Now one effects clock**, `fxNow()` (ms): `frame()` adds real time to it only while the game isn't paused (the Esc
+  menu or Settings open), so a pause holds every effect still and they carry on from there. It keeps real-time pace under
+  time warp (a flame flickers at its own rate; sim-time effects such as smoke already follow the sim). Reference views
+  still pin it with `HOOK.fxT`.
+- Left on the wall clock on purpose: the exposure's easing (`expoTick`: the picture holds still anyway), the prediction
+  caches and HUD timers (not looks).
+- Not seen in a browser here (the GPU was another session's); the wiring is the test's. **Check:** test `aerofx-36`
+  (and the views test's clock pattern amended). TESTING 287.
+
+## v1.209 — the haze without dither (2026-10-13, sky & bodies beat, QUEUE Q392, PLAYTEST #89)
+
+Caio: "the diffusion effect in atmosphere or whatever it is has visible dithering". **Measured, not bisected:** the
+fine-grain noise in a smooth hazy sky (luminance minus a 7×7 blur, std in grey levels over the flat regions), with
+each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`–`V3`):
+
+| | pad | ascent 3 km | max-q 10 km | 200 km | sunrise | terminator 800 km |
+|---|---|---|---|---|---|---|
+| main (v1.197) | 4.58 | 3.38 | 3.23 | 4.19 | 1.95 | 4.47 |
+| grain off | 3.24 | 0.85 | 0.79 | 3.90 | 1.55 | |
+| + `scatter`'s jitter off | 3.24 | 0.85 | 0.79 | 1.41 | 1.23 | |
+| + the cloud slab's jitter off | 3.25 | 0.81 | 0.79 | 1.41 | 1.22 | |
+| **fixed** | 3.45 | 1.46 | 1.38 | 1.54 | 1.33 | 1.94 |
+
+(The pad's ~3.2 that stays is the ground's texture inside the "flat" mask, not noise.)
+
+- **The composite's grain** (Q314, `GRADE.gr`) was most of it low and mid air: triangular noise, ~3.7 grey levels in
+  the mid-tones, new every frame. **.035 → .012**: still dithers the 8-bit output, a trace of the press-photo grain.
+  A taste knob if Caio wants more.
+- **`scatter`'s per-pixel jitter** (Q352) was most of it from orbit. It's there to hide the bands a fixed step count
+  draws where a ray crosses the planet's shadow; now it applies only on such rays (the shadow state at the ray's start,
+  middle and end differs). The terminator from 800 km (view 160) shows no bands, with less noise.
+- The cloud slab's jitter doesn't matter (V3).
+- **Views 172, 173:** Q321's nebula and spiral were numbered 159 and 160, and their branch came first in `views.js`,
+  so the effects beat's 159 (the shield from upstream) and 160 (the terminator) never ran. Renumbered; `refset.mjs`'s
+  set takes 172–173.
+- **Check:** test `aerofx-37`; aerofx-18's and Q250's checks updated to the jitter's new form. TESTING 290.

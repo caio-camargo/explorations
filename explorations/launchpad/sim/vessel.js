@@ -35,7 +35,23 @@ const PARTS={
   octl:{name:'Octagonal frame, long',kind:'frame',m:0.07,h:1.0,r:0.4,C:1500,T:800,B:250},
   // a payload's adapter (vehicle, Q416, D24): the ring a payload designed on the bench stands on inside the rocket; never in the
   // parts list, it comes with a payload block
-  padapt:{name:'Payload adapter',kind:'padapt',payOnly:true,m:0.03,h:0.15,r:0.625,C:900,T:600,B:250,prof:[[.625,0],[.625,.05],[.5,.15]]},
+  // the payload adapter is its separation ring too (Q422): a decoupler, so a payload's own propellant never feeds the stage
+  // under it, and releasing it drops that stage
+  padapt:{name:'Payload adapter',kind:'dec',payOnly:true,m:0.03,h:0.15,r:0.625,C:1200,T:500,B:250,prof:[[.625,0],[.625,.05],[.5,.15]]},
+  // propulsion on the payload bench (vehicle, QUEUE Q422, PROBES § 6.3; Caio: "for very light satellites, to get them into high
+  // orbit (and the correct orbit)"). Kick motors: solids with their own propellant (res fuel on the motor, no other tank feeds
+  // it or is fed by it, flowGroups), lit by the first throttle-up after their stage is lit, then full thrust to burnout:
+  // no throttle, no shutdown (Q252's rule). Hydrazine thrusters and the bipropellant apogee engine burn from the propellant
+  // spheres like any engine from its tanks, restartable (fuel and oxidiser aren't told apart)
+  // a balance weight (Caio's round-2 note on the bench, Q416): a side mass whose kilograms the node carries (wk), sized at layout
+  bwt:{name:'Balance weight',kind:'bwt',surf:true,noAero:true,m:0.005,h:0.2,r:0.06,off:0.06,C:900,T:600,S:300,B:150},
+  kick30:{name:'Kick motor, small (solid)',kind:'engine',solid:true,m:0.004,res0:{fuel:0.027},h:0.35,r:0.15,cm:.5,thrust:6,gim:0,gimR:10,ispA:255,ispV:285,exit:0.1,C:900,T:600,B:200,prof:[[.1,0],[.04,.08],[.13,.14],[.15,.22],[.13,.3],[.06,.35]]},
+  kick80:{name:'Kick motor, medium (solid)',kind:'engine',solid:true,m:0.009,res0:{fuel:0.071},h:0.5,r:0.22,cm:.5,thrust:12,gim:0,gimR:10,ispA:255,ispV:285,exit:0.14,C:900,T:600,B:200,prof:[[.14,0],[.06,.11],[.19,.2],[.22,.32],[.19,.43],[.09,.5]]},
+  kick200:{name:'Kick motor, large (solid)',kind:'engine',solid:true,m:0.02,res0:{fuel:0.18},h:0.75,r:0.32,cm:.5,thrust:25,gim:0,gimR:10,ispA:255,ispV:285,exit:0.2,C:1200,T:700,B:250,prof:[[.2,0],[.08,.16],[.28,.3],[.32,.48],[.28,.64],[.13,.75]]},
+  hthr:{name:'Hydrazine thrusters (4 × 22 N)',kind:'engine',m:0.006,h:0.12,r:0.2,cm:.5,thrust:0.088,gim:0,gimR:10,ispA:150,ispV:220,exit:0.04,C:900,T:600,B:200,prof:[[.2,0],[.2,.12]]},
+  apogee:{name:'Apogee engine (biprop, 440 N)',kind:'engine',m:0.005,h:0.35,r:0.12,cm:.6,thrust:0.44,gim:0,gimR:10,ispA:120,ispV:312,exit:0.1,C:900,T:600,B:200,prof:[[.1,0],[.04,.18],[.08,.25],[.12,.35]]},
+  sph4:{name:'Propellant sphere 0.4 m',kind:'tank',wet:0.035,dry:0.004,h:0.4,r:0.2,prof:[[.06,0],[.15,.05],[.2,.2],[.15,.35],[.06,.4]]},
+  sph7:{name:'Propellant sphere 0.7 m',kind:'tank',wet:0.17,dry:0.015,h:0.7,r:0.35,prof:[[.1,0],[.26,.09],[.35,.35],[.26,.61],[.1,.7]]},
   adapt:{name:'Adapter 2.5 → 1.25 m',kind:'adapt',m:0.4,h:1.5,r:1.25,C:2500,T:1200,B:450,prof:[[1.25,0],[1.25,.15],[.625,1.35],[.625,1.5]]},
   // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
   rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
@@ -254,7 +270,7 @@ function layoutDesign(des){
   while(queue.length){const{mem,L}=queue.shift(),lineQ=[...L.byM.values()];
     for(const m of [...mem].sort((a,b)=>b.y-a.y))for(const c of m.nd.c||[]){if(!radAt(c.at))continue;
       if(PARTS[c.k].surf){ // a surface part sits on the host's skin at that height; no line, no children
-        const P=L.byM.get(m),at=c.at,d=finDef(PARTS[c.k],c.fz),n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;   // finDef: a sized fin (Q348)
+        const P=L.byM.get(m),at=c.at,d=wtDef(finDef(PARTS[c.k],c.fz),c.wk),n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;   // finDef: a sized fin (Q348)
         for(let k=0;k<n;k++){const ph=P.rot+at.a+2*Math.PI*k/n,nx=Math.cos(ph),nz=Math.sin(ph),
           q={nd:c,d,x:P.x+rp*nx,z:P.z+rp*nz,y0:yc-(at.cy??d.h/2),rot:ph,phi:ph,line:-1,surf:true,path:P.path+'/'+k};inst.push(q);
           joints.push({a:P,b:q,axis:[nx,0,nz],P:[q.x,yc,q.z],j:c.j||0})}
@@ -383,6 +399,7 @@ const fairLen=(nd,d)=>{const L=nd&&nd.fl;return d.fls.includes(L)?L:d.fl0};
 // rating by k³, as its own air load times its lever grows, so a bigger fin is no weaker for its size. A sized fin gets its own
 // definition (same key), cached, so everything that reads p.d (aero, steering, loads, drawing) sees the bigger plate.
 const FIN_SZ=[{k:1,n:'0.9 m'},{k:1.5,n:'1.35 m'},{k:2.2,n:'2 m'}],FIN_C={};
+const WT_C={};function wtDef(d,kg){if(d.kind!=='bwt'||!(kg>0))return d;kg=Math.round(kg);const id='bwt:'+kg;return WT_C[id]||(WT_C[id]={...d,m:kg/1000,name:`Balance weight, ${kg} kg`})}
 function finDef(d,fz){if(d.kind!=='rfin'||!fz||!FIN_SZ[fz])return d;const id=d.key+':'+fz;if(FIN_C[id])return FIN_C[id];const k=FIN_SZ[fz].k,a=k*k;
   return FIN_C[id]={...d,fz,span:d.span*k,chord:d.chord*k,h:d.h*k,m:d.m*a,C:d.C*a,T:d.T*a,S:d.S*a,B:d.B*a*k,pk:a,name:`${d.name} ${FIN_SZ[fz].n}`}}
 function fairProf(d,L){const r=d.r,h=d.h;return[[d.rb||r,0],[r,h],[r,h+.6*L],[.86*r,h+.78*L],[.56*r,h+.9*L],[.2*r,h+.98*L],[0,h+L]]}
@@ -400,7 +417,7 @@ function partMass(p){let m=dryMass(p);for(const k in p.res)m+=p.res[k]*RES[k].de
 // Fuel flow follows the part tree: it crosses every joint except a decoupler's own (decoupler ↔ the part it holds on to),
 // unless that decoupler is set to crossfeed. Engines draw on every tank in their flow group, the tanks whose segment will
 // be dropped soonest first (proportionally within that tier) — so crossfed boosters run dry before the core is touched.
-function flowGroups(s,on){const g=new Array(s.parts.length).fill(-1),cut=p=>(p.d.kind==='dec'||p.d.kind==='rdec')&&!p.xfeed;let n=0;
+function flowGroups(s,on){const g=new Array(s.parts.length).fill(-1),cut=p=>(p.d.kind==='dec'||p.d.kind==='rdec')&&!p.xfeed||p.d.solid||p.parent&&p.parent.d.solid;let n=0;   // a solid motor shares its propellant with nothing (Q422)
   for(const p0 of s.parts){if(!on[p0.i]||g[p0.i]>=0)continue;g[p0.i]=n;const st=[p0];
     while(st.length){const p=st.pop(),nb=p.children.filter(c=>!cut(c));if(p.parent&&!cut(p))nb.push(p.parent);
       for(const q of nb)if(on[q.i]&&g[q.i]<0){g[q.i]=n;st.push(q)}}n++}
@@ -837,6 +854,10 @@ function physStep(s,dt){
   const r=s.r,rl=len(r),h=rl-b.R,pr=pressure(b,h);
   for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0;p.Q=0}
   const eng=activeEngines(s);let T=0;
+  // kick motors (Q422): lit by a throttle-up once their stage is lit, then full thrust to burnout whatever the throttle says
+  for(const p of eng)if(p.d.solid&&!p.lit&&s.throttle>0){p.lit=true;HOOK.msg(`${p.d.name.replace(/ \(solid\)$/,'')} lit: it burns to the end`)}
+  if(eng.some(p=>p.d.solid&&p.lit))s.throttle=1;
+  else if(s.parts.some(p=>p.on&&p.lit&&!p.spent&&p.d.solid)){for(const p of s.parts)if(p.on&&p.lit&&p.d.solid&&!p.spent){p.spent=true;HOOK.msg(`${p.d.name.replace(/ \(solid\)$/,'')} burnt out`)}s.throttle=0}
   // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
@@ -994,8 +1015,12 @@ function payChecks(d,rocket=null,pid=null){if(!d||!d.root)return{rows:[],mass:0,
   // balance: off the axis, a payload with its own engine burns crooked (bad); without one it only leans the stack a little (warn)
   {const off=Math.hypot(s.cm[0],s.cm[2]),eng=s.parts.some(p=>p.on&&p.d.kind==='engine');out.push(off<0.05?{k:'bal',cl:'ok',t:`Balanced: the centre of mass ${(off*100).toFixed(1)} cm off the axis`}
     :{k:'bal',cl:eng?'bad':'warn',t:`Off balance: the centre of mass ${(off*100).toFixed(0)} cm off the axis`,fix:eng?'its engine would push past the centre of mass and turn it: the same parts on the other side, or a counterweight':'the same parts on the other side, or a counterweight: it leans the rocket a little, and spins lopsided'})}
+  // its own Δv (Q422), against the last legs a satellite does itself: from a transfer orbit to a stationary one, or a raise
+  {const dv=dvPlan(s,0).reduce((a,x)=>a+x.dv,0);if(dv>1){const b=TELLUS,mu=b.mu,r0=b.R+b.atm+10000,rg=Math.cbrt(mu/(b.rot*b.rot)),
+      gto=Math.sqrt(mu/rg)-Math.sqrt(mu*(2/rg-2/(r0+rg))),solid=s.parts.some(p=>p.on&&p.d.solid);
+    out.push({k:'dv',cl:'ok',t:`Its own Δv: ${f(dv)} m/s${solid?' (a kick motor fires once, all of it)':''}; a stationary orbit from a transfer orbit takes ${f(gto)} m/s at the top (${f((rg-b.R)/1000)} km)`})}}
   if(rocket&&pid!=null){const R=JSON.parse(JSON.stringify(rocket));let blk=null;const w=n=>{if(isPay(n)&&n.pid===pid&&!blk){blk=n;n.pd=JSON.parse(JSON.stringify(d))}(n.c||[]).forEach(w)};if(R.root)w(R.root);
-    if(blk){const r=newShip(R),F=r.parts.find(p=>p.on&&p.profF),P=r.parts.filter(p=>p.on&&p.dn.payOf&&p.d.kind!=='padapt'),o=P.filter(p=>!p.inFair);
+    if(blk){const r=newShip(R),F=r.parts.find(p=>p.on&&p.profF),P=r.parts.filter(p=>p.on&&p.dn.payOf&&p.d.key!=='padapt'),o=P.filter(p=>!p.inFair);
       out.push(!F?{k:'fit',cl:'warn',t:'Rides in the open: no fairing over it on the rocket',fix:'a payload fairing under it'}
         :o.length?{k:'fit',cl:'bad',t:`${o.length} part${o.length>1?'s stick':' sticks'} out of the ${F.fl} m fairing`,fix:'a longer fairing (on the rocket), or fold it (wings and booms fold for launch)'}
         :{k:'fit',cl:'ok',t:`Fits the ${F.fl} m fairing, folded`})}}

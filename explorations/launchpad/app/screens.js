@@ -223,6 +223,6 @@ addEventListener('mousemove',e=>{
   if(hDrag){hDrag.cur=toCv(e);return}
   if(nDrag){const q=pickOrbit(toCv(e));if(q&&S.node)S.node.t=q.t;return}
   if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
-  if(view==='map'){cam.mYaw-=dx*.005;cam.mPitch=clamp(cam.mPitch+dy*.005,-1.5,1.5)}else{cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.005,-1.45,1.45)}});
+  if(view==='map'){cam.mYaw-=dx*.005;cam.mPitch=clamp(cam.mPitch+dy*.005,-1.5,1.5)}else{cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.005,-Math.PI/2,Math.PI/2)   /* (Q405) to straight down and up: render.js keeps the view's right-hand side from the yaw */}});
 cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(clamp(e.deltaY,-300,300)*.0025);if(view==='map')cam.mDist=clamp(cam.mDist*f,TELLUS.R*.37,TELLUS.R*333);else cam.dist=clamp(cam.dist*f,4,2e5)},{passive:false});
 

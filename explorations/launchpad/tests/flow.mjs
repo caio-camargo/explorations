@@ -578,3 +578,40 @@
   check('flow-27: folded parts say how they deploy (the part panel and its card); one first-time hint once out of the air, quiet, folded, not seen before',
     hint && told, `space ${space && space.id} · air ${!!air} · busy ${!!busy} · out ${!!out} · seen ${!!seen} · bay ${bay && bay.id} · told ${told}`);
 }
+
+// flow-28. The camera looks straight down (flow session, QUEUE Q405, PLAYTEST #101): the pitch reaches ±90° in flight and
+// in the Assembly; the view's right-hand vector comes from the yaw, so it is the same as before at any other angle and
+// still defined (no flip, no spin) at the pole; T in the Assembly toggles a top view, kept through a reframe.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const i = page.indexOf('const hz='), line = page.slice(i, page.indexOf('\n', i));
+  const { cross, norm, add, mul, dot, sub, len } = api;
+  const f = { n: [1, 0, 0], e: [0, 0, 1], up: [0, 1, 0] };
+  const basis = (yaw, pitch) => { const cam = { yaw, pitch }, cp = Math.cos(pitch), sp = Math.sin(pitch), off = add(add(mul(f.n, -cp * Math.cos(yaw)), mul(f.e, cp * Math.sin(yaw))), mul(f.up, sp));
+    const Fw = norm(mul(off, -1)), r = new Function('f', 'cam', 'cross', 'norm', 'add', 'mul', 'dot', 'sub', line + ';return rgt;')(f, cam, cross, norm, add, mul, dot, sub)(Fw);
+    return { Fw, R: r, U: cross(r, Fw), old: len(cross(Fw, f.up)) > 1e-9 ? norm(cross(Fw, f.up)) : null } };
+  const same = [[0.35, 0.12], [2, -0.8], [-1, 1.2]].every(([y, p]) => { const b = basis(y, p); return len(sub(b.R, b.old)) < 1e-9 });
+  const top = basis(0.35, Math.PI / 2), ortho = Math.abs(len(top.R) - 1) < 1e-9 && Math.abs(dot(top.R, top.Fw)) < 1e-9 && Math.abs(len(top.U) - 1) < 1e-9;
+  const near = basis(0.35, Math.PI / 2 - 1e-4), cont = len(sub(near.R, top.R)) < 1e-3 && len(sub(near.U, top.U)) < 1e-3;   // no flip at the pole
+  const clamp = page.includes('cam.pitch=clamp(cam.pitch+dy*.005,-Math.PI/2,Math.PI/2)');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const tkey = bsrc.includes("else if(k==='t'){topView()}") && bsrc.includes('<b>T</b> top view') && bsrc.includes('cam.pitch=topPrev?Math.PI/2:-0.05');
+  check('flow-28: the camera looks straight down: the same view at other angles, an orthonormal basis with no flip at the pole, the pitch to ±90°, T for a top view in the Assembly',
+    same && ortho && cont && clamp && tkey, `same ${same} · orthonormal at the pole ${ortho} · continuous ${cont} · clamp ${clamp} · T ${tkey}`);
+}
+
+// flow-29. Heat and load you notice (flow session, QUEUE Q271, PLAYTEST #71; W36's default): HEAT and LOAD beside the
+// navball in every phase, the hottest part against its limit and the most loaded joint against its certified rating;
+// faint under 50 %, amber from 50 %, red from 90 %; the master caution blinks when its reasons change.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function hlFracs'), page.indexOf('function hlGauges'));
+  const X = S => new Function('mode', 'S', 'certOf', src + 'return {hlFracs, hlCls};')('flight', S, () => 2);
+  const S = { alive: true, hot: { T: 700, d: { Tmax: 1000, name: 'Nose cone' } }, maxLoadP: { on: true, sk1: 'a', sk2: 'b', d: { name: 'Kestrel' }, parent: { d: { name: 'Tank 8' } } }, maxLoad: 1.9 };
+  const f = X(S).hlFracs(), c = X(S).hlCls, none = X({ alive: true }).hlFracs();
+  const fr = Math.abs(f.heat - 0.7) < 1e-9 && Math.abs(f.load - 0.95) < 1e-9 && f.hp === 'Nose cone' && f.lp === 'Kestrel / Tank 8' && none.heat === 0 && none.load === 0;
+  const cls = c(0.3) === '' && c(0.5) === 'warn' && c(0.89) === 'warn' && c(0.9) === 'bad';
+  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
+  check('flow-29: heat and load you notice: HEAT and LOAD by the navball in every phase (part vs limit, joint vs rating), faint, amber from 50 %, red from 90 %; the master caution blinks on a new reason',
+    fr && cls && wired, `fracs ${fr} (${f.heat.toFixed(2)}, ${f.load.toFixed(2)}) · classes ${cls} · wired ${wired}`);
+}
