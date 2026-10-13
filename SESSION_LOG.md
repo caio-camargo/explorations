@@ -6154,3 +6154,90 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Built:** kick motors (solid: armed by staging, lit by a throttle-up, full thrust to burnout), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is a separation ring (decoupler); the bench shows the payload's own Δv against a stationary orbit; a balance weight one click from the balance check (Caio's round-2 note); plain shapes at real size for the new parts. Tests vehicle-28, vehicle-29.
 - **Checked:** full suite passed except `qa-2` (fails on `main` too, flagged before). Browser on 8772 with the GPU lock (taken with noclobber, released).
 - **Next:** Q412 (a stationary-orbit preset built from these), Q423 (bench parts, first set), slice 2 of Q416 with Q417 (bus frame, small stacks).
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): heat and load you notice (Q271, v1.208)
+- **Done:** H and L bars beside the navball in every flight phase (the hottest part vs its limit, the most loaded joint vs its certified rating), faint under 50 %, amber from 50 %, red from 90 %, hover for the part; the master caution blinks for three seconds when its reasons change. On `main` as `a907f3c`; TESTING 289 in `ab0c954` (TESTING's counter said 288 while row 288 existed: fixed to 290).
+- **Checks:** flow-29 (new), flow-5/24 pass; robot rows `gauges` and `m1` pass (first labels HEAT/LOAD ran together at 12 px: now H/L, the title names them).
+- **Not done:** the hot part glowing on the rocket (look & sound).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q392 the haze's dither (v1.209)
+
+- **Done:** measured the sky's fine-grain noise with each suspect off: the composite's grain (low/mid air) and
+  `scatter`'s per-pixel jitter (orbit) were the dither. Grain .035 → .012; the jitter only on rays crossing the planet's
+  shadow. Noise 3.4 → 1.5 grey levels low down, 4.2 → 1.5 from orbit; no terminator bands. PLAYTEST #89 → Done.
+- **Found:** my Q321 views 159–160 shadowed the effects beat's 159 (shield) and 160 (terminator); renumbered to 172–173.
+- **Collisions:** checked ACTIVE_WORK/QUEUE for Q392 before claiming; sky2's airglow edit in the same function merged
+  cleanly; my test renumbered aerofx-37 (sky2 took 33).
+- **Files:** `app/gl.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (290),
+  `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q392/`.
+
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a debris hit holes a tank or damages a part (v1.210, Q303)
+- **Done:** `fragStrike` has a middle outcome. A tank (fuel or gas) is holed when the piece gets through a 3 mm wall (crater depth by the thin-plate rule's shape, on the normal speed; a glancing piece dents). It leaks by the orifice law: a 1 cm hole loses 1.15 kg/s of fuel, or 2.2 kg/s of gas falling as the bottle empties. The jet pushes and turns the craft in physics steps. A tank still leaking reaches the registry empty. Solar wings lose a string (a quarter of their output); other parts gather damage until it adds up to a loss. On `main` as `e4c8389`.
+- **Checks:** test space-25 (new), space-24 still passes; the full suite passes 718 checks and fails 1: `qa-2` (go to body), which already failed on `main` (vehicle's log above).
+- **Files:** `sim/space.js`, `sim/program.js` (`missionTick` calls `leakTick`), `sim/power.js` (`p.dmg`), `tests/space.mjs`, `notes/space.md` § v1.210, `NOTES.md`, `TESTING.md` (291), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Numbering:** took v1.203 at the start; `main` reached v1.209 during the run, so renumbered at merge (check_numbers).
+- **Next:** space's next ready item is Q304 (a docked composite's power counts its passengers). Proposed: damage that does something, the jet drawn, debris seeding in the tester menu.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q386 measured, Q332 recovering a spent stage (v1.211)
+
+- **Q386 ✓ (no code):** scrub odds under v1.176's cloud belts, measured per latitude (`career.mjs` doesn't fly through
+  `weatherHold`): at worst 8 % of days at the equator, 0.14 slip days a launch; subtropics clearer. Kept (the default).
+  NOTES § "Q386 measured" (`notes/economy.md`).
+- **Q332 ✓ v1.211 (renumbered at merge: space took v1.210):** `dropRecord(d)` (`sim/flight.js`) judges a chuted stage's fate at sea at the drop (`debSea`
+  factored out of `debAfloat`), so it survives the 40 km cull; `stageRecover(R)` (`sim/program.js`) fetches one still
+  afloat when the ships arrive, refurbished at its splash wear less ship time (ledger `stages`). Test `econ-27`
+  (prediction 8.2 m/s / 24.0 h vs 8.1 / 24.0 flown in view; +8.9M for the Orbiter's first stage); TESTING 292.
+- **Smoke on main:** `qa-2` and the assembly help (key `t`, already flagged by the test bench) fail independently.
+- **Files:** `sim/flight.js`, `sim/program.js`, `sim/debrief.js`, `app/state.js`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's ready items: Q380 (overflight rights; needs flow's decision card), Q282/Q283 (plans).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, 2nd session): farmland and coasts (Q401, Q403, v1.212)
+
+- **Q374 settled:** Caio meant the map's planets and ring, already a toggleable layer; fine as is (QUEUE note).
+- **Done:** farmland from the ground shader round settled land (climate × settlement from the blurred city texture and
+  each pad's town): fields in two orientations, strips, five crops, hedges, crop rows, woods, country roads, villages,
+  all filtered by footprint; a muted scrub range within 6 km of each pad instead of lawn. Coasts blended over the pixel's
+  height change (no staircase from orbit).
+- **Measured:** interleaved A/B ×2: +0.2–0.8 ms on wide aerial views, −0.3 at the pad. First tries recorded in the notes
+  (a desert city, the tropics' wetness over 1, a sheared grid).
+- **Tests:** `aerofx-38`; all 68 look sections pass after merging main; browser check of 175, 177, 17, 157, 173 after it.
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (293), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q401-*`, `q403-before/`.
+- **Numbering:** views 172–174 → 175–177 and test aerofx-35 → 38 after the merge (others took them the same hour).
+- **Next for sky & bodies:** Q80–Q85 wait on W29; Q364 (the sea's swell); *Proposed*: village lights, a land-use map.
+
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q380 overflight rights (v1.213)
+
+- **Done:** `overQuote(i)` / `buyOver(i)` (`sim/program.js`): a year's consent from a power that minds, `OVER_FEE·(1+3c)`
+  M (2M at relation 0, 7M from a hostile security state); refused under sanctions, at relation ≤ −0.5, by a racing
+  rival below 0. `overEnd` skips consenting powers; Debrief "with its consent"; ledger `over`. A button per minding
+  neighbour in the site picker (`app/editor.js` `renderSites`). Test `econ-28`; TESTING 294; NOTES § v1.213.
+- **Not checked in the browser** (the game lock was held): TESTING 294 is the check.
+- **Smoke:** the same two failures already on `main` (`qa-2`, assembly help key `t`).
+- **Next:** economy's ready list is down to plans (Q282 the simulator, Q283 crew skill revision) and Q376 after Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q282 plan, the simulator replaces revert
+
+- **Done (docs only):** NOTES § "Plan: the simulator replaces revert" (`notes/economy.md`). A simulator run is a normal
+  flight with `R.sim`: the program snapshotted at liftoff (Q257's `REVERT0`) and restored whole at the end
+  (`missionDiscard`), keeping only the time it cost and simulator hours per design. It flies a **believed world**
+  drawn per run: part strength between the certified and true rating, unsampled air bands ±25 %, ignitions on the
+  run's seed. Real flights lose revert (the tester keeps it). Five slices (core, screen, revert retired, legs from
+  orbit, M3 qualifications), four as QUEUE *Proposed* lines.
+- **For Caio:** W42 (five questions, all with defaults).
+- **Next:** economy's remaining ready item is Q283 (crew skill revision, a plan); Q376 after space's Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q420 the band at the horizon in the deck (v1.214)
+
+- **Done:** reproduced in new views 178–179 (2.4 km, level); the shell past the volume's 20–40 km fade (and far ground)
+  drew a bright line; now fogged in the volume's own colour from inside the slab. Band 26 → 17 and 32 → 9 grey levels
+  (paired renders); 81, 82 unchanged. A sunlit fringe in the volume's own fading ring remains: *Proposed*.
+- **Collisions:** claimed after grepping for Q420; views 175–177 were sky2's, mine are 178–179; test renumbered
+  aerofx-39 (sky2 took 38). Lesson: before/after must come from the same view list, or each view's weather search lands
+  on a different clock.
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (295), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q420-A/`, `q420-C/`.
+

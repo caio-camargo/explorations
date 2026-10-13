@@ -14,7 +14,7 @@ function debSnap(){const kh={};for(const k in PROG.kh||{})kh[k]=PROG.kh[k].use;
 // Debrief takes the difference from its snapshot. The flight's own items (hardware, pay, refurbishment, damages) are
 // itemized from its record as before; 'paid' is all income() and the flight's own pay is taken back out of it.
 const LED_L={budget:'Budget day',topup:'Government top-up',upkeep:'Running the program',lease:'Ground station leases',sats:'Satellite income (pictures, TV)',
-  contracts:'Contracts completed between flights',paid:'Pay for other flights (dispatches)',debt:'Debt repaid from income',dispatch:'Dispatched flights launched',salvage:'Recovery fleet salvage',patron:"The leadership's reward"};
+  contracts:'Contracts completed between flights',paid:'Pay for other flights (dispatches)',debt:'Debt repaid from income',dispatch:'Dispatched flights launched',salvage:'Recovery fleet salvage',stages:'Spent stages recovered',over:'Overflight rights',patron:"The leadership's reward"};
 function ledAdd(k,v){if(!(Math.abs(v)>0))return;const L=PROG.led||(PROG.led={});L[k]=(L[k]||0)+v}
 // what went wrong on the way (Q293): the flight's failures in order, with the time and the height; a loss shows them as the
 // chain that led to it, a flight that got home lists them as incidents
@@ -76,7 +76,7 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
     if(v.kind==='city')D.incidents.push(`A stage fell on ${town}${abroad?` (${pw.name})`:''}`);
     else if(v.kind==='near')D.incidents.push(`A stage fell near ${town}${abroad?` (${pw.name})`:''}`);
     else if(abroad)D.incidents.push(`A stage came down in ${pw.name}`)}
-  for(const k in R.overK||{}){const c=R.overK[k];D.incidents.push(`Flew low over ${POWERS[k].name}${c>0?`: it protests (opinion −${(OVER_OP*c).toFixed(1)})`:', a friend: no objection'}`)}   // Q181
+  for(const k in R.overK||{}){const c=R.overK[k];D.incidents.push(`Flew low over ${POWERS[k].name}${c>0?`: it protests (opinion −${(OVER_OP*c).toFixed(1)})`:c<0?', with its consent':', a friend: no objection'}`)}   // Q181
   if(R.bio&&!R.bioOK)D.incidents.push(`${R.pet} ${R.bioWhy}`);
   if(b)for(const k in PROG.kh||{}){const a=b.kh[k]??use0(k),v=PROG.kh[k].use;if(v>a+0.005)D.kh.push({l:PARTS[k]?PARTS[k].name:k,a,b:v})}
   D.kh.sort((x,y)=>(y.b-y.a)-(x.b-x.a));

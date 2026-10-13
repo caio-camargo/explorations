@@ -3085,3 +3085,121 @@ see them; measured directly instead: 72 longitudes × 400 days per latitude, wit
 small everywhere: at worst ~0.14 days per launch, a few days a year for a busy program. No site scrubs out of its share,
 so nothing retuned. If scrubs should ever matter (a pressure that favours subtropical sites), the lever is
 `SCRUB_CLOUD`, not the belts.
+
+## v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332, from Q300 v1.142)
+
+v1.142 (world) let a stage with chutes among its parts come down slowly and float for ~24 h, but nothing could fetch it,
+and once it was 40 km from your craft it was culled and forgotten. Now:
+
+- **Its fate is judged at the drop** (`dropRecord(d)`, `sim/flight.js`, called from `HOOK.debris` in `app/state.js`
+  instead of building the record inline): for a stage with chutes whose predicted impact is at sea, the sea-level
+  sink rate under its canopies (√(2 m g / (ρ₀ · 600 m² · n))) against the sea's limit; past it, it breaks up; under it,
+  its hull as `debAfloat` judges it (`debSea`, factored out of `debAfloat`: the holed parts, the rest pose, `sinkTime`),
+  hanging nose up. The record carries `sea: {fate: 'afloat'|'sank'|'broke', sp, afloat}`. If the stage does come down
+  in view, `debAfloat` overwrites the record with what happened.
+- **The ships fetch it** (`stageRecover(R)`, `sim/program.js`, in `missionEnd` before `fleetSalvage`): the same ships
+  as `recoveryOf` (local boats to 200 km, the recovery fleet's range when built, 10 m/s from an hour's notice). Still
+  afloat when they arrive: refurbished like a vessel, `partPrice × REFURB × wearOf(p, splash speed)` per part, less 2M
+  of ship time; news line, ledger `stages` ("Spent stages recovered" in the Debrief). Beyond reach or sunk first: a news
+  line, and the recovery fleet (if built) still salvages it for parts as before. A bare stage is unchanged (the fleet's).
+
+**Measured** (`econ-27`): the Orbiter's empty first stage under one chute: predicted 8.2 m/s and 24.0 h afloat at the
+drop; flown down in view 8.1 m/s and 24.0 h. Fetched from the launch point's sea: +8.9M (its parts at 65 % × 0.8 wear,
+less ship time).
+
+**Not yet:** the impact point is still the ballistic prediction (`debrisImpact` ignores the canopies; drift under
+them is a few km at most); the builder doesn't say that chutes on a stage make it recoverable (vehicle/flow); the
+Debrief shows the money, not which stage came back.
+
+Tests: `econ-27` (1 check: judged afloat at the drop and the same in view; local ships fetch and refurbish; beyond
+reach lost; a bare stage left to the fleet).
+
+## v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
+
+v1.171 (Q181) charged opinion and relation for flying low over a neighbour that minds (`overK`: none from an ally,
+up to the whole from a hostile power, ×2 for a security state). W23 asked for the way out from the start: buying
+consent, which rivals may refuse.
+
+- **`overQuote(i)`** (`sim/program.js`, beside `overEnd`): `{ok, why, fee, have}`. Not needed when `overK(i)` is 0;
+  refused under sanctions either way, at relation ≤ `OVER_NO` (−0.5), and by a **rival in the race** (`PROG.riv[i]`)
+  at any relation below 0. Fee `OVER_FEE·(1 + 3c)` M for a year: 2M at relation 0, 4M at −1, 7M from a hostile
+  security state (a launch's lease is 6M; the protest it saves is opinion −1 to −6 per flight).
+- **`buyOver(i)`**: pays (ledger `over`, "Overflight rights" in the Debrief), `PROG.overR[i]` = a year from today,
+  a news line. **`overEnd`** skips a power with consent (`R.overK[i] = −1`); the Debrief says "with its consent".
+- **The site picker** (`renderSites`, `app/editor.js`): under the downrange line, for each foreign power under the
+  planned downrange, a *A year's consent · fee* button, or why not (refused, sanctions, consent until day N). Flow:
+  one block, restyle freely, or move it to a decision card.
+
+**Not yet:** consent is offered only for the powers under the site's planned downrange (the cost is judged on the
+track flown); a renewal reminder; the rival's refusal as a news beat. Not checked in the browser (the game lock was
+held); TESTING row.
+
+Tests: `econ-28` (1 check: an ally needs none; 2M at relation 0, on the ledger, free overflight for a year then the
+cost again; refused at −0.6, by a rival at −0.2 but not a non-rival, under sanctions).
+
+## Plan: the simulator replaces revert (2026-10-13, economy session 2, QUEUE Q282; D15.5, D17.2; nothing built)
+
+**The decisions:** D15.5: fly any mission in a simulator, free of money and news, revert at will; real flights can't
+be reverted. D17.2: the simulator flies the program's **believed** numbers and error bars, never the true ratings, and
+costs **time, not money**. CREW § Skill: simulator time is what trains crew qualifications (M3).
+
+**What exists to build on:**
+- **The discard path** (Q257, v1.123): at liftoff `missionTick` snapshots the program (`REVERT0 = {R, prog}`) and
+  `missionDiscard(s)` restores it whole: no registry entry, no pay, no log. `revertFlight` (`app/state.js`, the R key
+  after a crash or landing, and the button) is that plus `resetShip`. A flight from orbit snapshots the same way
+  (`app/program-ui.js`).
+- **Belief versus truth** in the sim today: joints are judged by the builder against the **certified** rating
+  (`certOf`, 70 % of the true one rising to it with telemetry) while the physics uses the true one; each 10 km band
+  of air carries ±25 % density uncertainty until sampled (shown as the landing spread; the physics flies the true air);
+  ignition failures roll on know-how (`igniteOK`, `khUse`); Δv needs are the program's guess (D23, `predErr`).
+- Liftoff charges hardware, operations and the lease, waits prep and pad days and the weather, and from then on news,
+  know-how, certification, records, contracts, the registry and procedures all write into `PROG`.
+
+**The shape: a believed world inside a discarded flight.** A simulator run is a normal flight with `R.sim` set:
+1. **Start** (*Simulate* beside *Launch*): snapshot `PROG` (`REVERT0`, as now), mute `HOOK.news` and `HOOK.save`
+   (collected into the run's log; a crash mid-run reloads the save from before it). No hardware, ops, lease, prep,
+   pad wait or weather hold: the liftoff block skips its charges and waits when `R.sim`.
+2. **The believed world**, drawn once per run from a seed (each run differs, none is the truth):
+   - each part's strength: true × (cert + (1 − cert)·u), u uniform in [0, 1]: inside the engineers' reserve, never
+     above the truth, equal to it only for a fully certified part;
+   - each unsampled 10 km band's density × (1 + 0.25·(2u − 1)); sampled bands as flown;
+   - ignitions roll as now (the know-how rate is already what the program believes), on the run's seed.
+   The physics reads these through one indirection (`simK(p)` on the joint check, `simAir(h)` on `density`), 1 outside
+   the simulator, so real flights and tapes are untouched.
+3. **Revert at will** inside a run: back to the pad with a fresh draw (or the same draw: an option on the HUD).
+4. **End** (the run ends, the player leaves, or reverts): `missionDiscard` restores `PROG` whole; then apply the only
+   two things a run keeps: **time** (`advanceDays`, below) and **simulator hours** per design (`PROG.simH[procKey]`,
+   for CREW's qualifications in M3 and for a "flown in the simulator" mark on the design). A short **simulator
+   debrief**: how far it got, margins (Δv left, peak load as a share of the believed rating, landing speed), what broke
+   and why, and the line "these are the program's believed numbers".
+5. **Real flights can't be reverted**: the R key and the button go (the tester keeps them, `TEST`). Before liftoff
+   nothing is charged, so leaving the pad stays free. *End flight* and recovery are unchanged.
+
+**Time, not money (default):** a run costs one calendar day per hour of simulated flight, at least half a day per
+start from the pad (a revert starts a new run). An ascent to orbit is about half a day; a week-long Selene mission
+flown through in warp is not a week of sim hours, because warped time isn't simulator time (only time at 1×–4×
+counts). Deadlines and dispatches keep running, so practice competes with flying.
+
+**Why it's not a free pass (pillar 7 kept):** the sim is pessimistic where the engineers are (strength) and uncertain
+where the air is, and failures still roll; a design that flies clean in five runs is likely, not certain, to fly. The
+true margin only shows in a real flight, and a real loss stays.
+
+**Slices:**
+1. **The core** (economy + space, ⚙): `R.sim`, the skipped charges, muted news and save, the believed draws behind
+   `simK`/`simAir`, `simEnd` (discard + time + `simH`). Test: a run leaves `PROG` byte-identical except `day` and
+   `simH`; a joint loaded between its believed and true ratings breaks in the sim and not in a real flight; no money.
+2. **The screen** (flow, 🖥): *Simulate* beside *Launch* (and in Rollout), a SIMULATOR banner on the HUD, revert on R
+   inside it, the simulator debrief, *Leave the simulator*.
+3. **Revert retired** from real flights (flow + QA): the key and button gone outside the tester; PLAYROUTE, TESTING 96
+   and 127, and the robot (`playtest.mjs`) paths that revert updated.
+4. **Simulate a leg** (space + flow): start in orbit beside a ghost copy of a registry object (rendezvous, docking,
+   landing practice), from `R.fromOrbit`'s path.
+5. **Qualifications** (M3, with Q283): `simH` per vessel type and per skill (rendezvous, docking, landing) become the
+   crew's badges.
+
+**Questions for Caio (W42; defaults if silent):** (1) the time cost: a day per simulated hour, half a day at least per
+run (**default**), or a flat day per run; (2) each run draws its own believed world (**default**), or always the
+pessimistic edge (the certified rating, the densest air); (3) ignition failures in the sim at the believed rate
+(**default**), or a "no failures" practice switch; (4) revert gone from real flights entirely (**default**, D15.5), or
+kept for the first N flights of a new program as a tutorial crutch; (5) the simulator the same in every era (**default**),
+or cheaper in time with compute (from the mainframes on). The error bars stay knowledge, never compute.

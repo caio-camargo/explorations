@@ -605,3 +605,50 @@
     `up: [${up}]; ${[low, sank, slot].map(L).join('; ')}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// econ-27. Recovering a spent stage (economy session 2, QUEUE Q332, from Q300 v1.142): a stage with chutes coming down at
+// sea has its fate judged at the drop (it floats or not, for how long), so it survives the stage leaving the scene; the
+// ships fetch it if it is still afloat when they arrive, and it is refurbished like a vessel. Own SIM copy.
+{
+  const G = new Function(src + 'return {PRESETS,TELLUS,PROG,HOOK,newShip,geom,stage,seaAt,bodyH,fromPF,surfVel,stepDebris,debris,dropVerdict,dropRecord,stageRecover,RECOVER_LOCAL,setT:t=>{simT=t},getT:()=>simT,DT};')();
+  const T = G.TELLUS, P = G.PROG, got = [], news = []; G.HOOK.msg = () => {}; G.HOOK.boom = () => {}; G.HOOK.rebuild = () => {}; G.HOOK.debris = d => got.push(d); G.HOOK.news = t => news.push(t);
+  let a = 0; const at = x => norm([Math.cos(x), 0.05, Math.sin(x)]); while (!(T.ground.sea - G.bodyH(T, mul(at(a), T.R)) > 200 && G.dropVerdict(T, mul(at(a), T.R)).kind === 'sea')) a += 0.002;
+  const open = at(a), pf = mul(open, T.R);
+  G.setT(0); const s = G.newShip(G.PRESETS.Orbiter); for (const p of s.parts) if (p.on && p.res.fuel != null) p.res.fuel = 0; G.geom(s); G.stage(s); G.stage(s);
+  const d0 = got.find(d => d.parts.some(p => p.d.kind === 'tank')), mk = n => ({ ...d0, chutes: n, impact: { b: T, pf }, verdict: G.dropVerdict(T, pf) });
+  const bare = G.dropRecord(mk(0)), one = G.dropRecord(mk(1));
+  // the live fall (as sea-2): the same stage under one chute, stepped down to the water; debAfloat rewrites its record
+  const live = mk(1), r0 = G.fromPF(T, mul(open, T.R + 3000), 0); Object.assign(live, { r: r0, v: add(G.surfVel(T, r0), mul(norm(r0), -120)), w: [0.3, 0.1, 0.2], t: 0, chA: 0, float: null, dead: false, mesh: null });
+  G.dropRecord(live); const pre = live.drop.sea; G.debris.length = 0; G.debris.push(live);
+  for (let t = 0; t < 1500 && G.debris.length && !live.float; t += G.DT) { G.stepDebris(G.DT); G.setT(G.getT() + G.DT); }
+  const post = live.drop.sea;
+  Object.assign(P, { funds: 100, led: {}, fac: {} });
+  const near = { launchPf: pf, drops: [{ ...one }] }, far = { launchPf: mul(at(a + 0.6), T.R), drops: [{ ...one }] }, nochute = { launchPf: pf, drops: [{ ...bare }] };
+  const f0 = P.funds; G.stageRecover(near); const back = P.funds - f0; G.stageRecover(far); G.stageRecover(nochute); const after = P.funds - f0;
+  check('stage recovery: a chuted stage at sea is judged afloat at the drop (the same as when it comes down in view), fetched by local ships and refurbished; one beyond their reach is lost; a bare one is left to the fleet',
+    !bare.sea && one.sea && one.sea.fate === 'afloat' && one.sea.sp < 14 && post && post.fate === 'afloat' && Math.abs(post.afloat - one.sea.afloat) < 0.25 * one.sea.afloat &&
+      back > 0 && near.drops[0].fate === 'recovered' && Math.abs(P.led.stages - back) < 1e-9 && far.drops[0].fate === 'beyond our ships' && Math.abs(after - back) < 1e-9 && !nochute.drops[0].fate,
+    `predicted ${one.sea && one.sea.sp.toFixed(1)} m/s, afloat ${(one.sea.afloat / 3600).toFixed(1)} h; in view ${post && post.sp.toFixed(1)} m/s, ${post && (post.afloat / 3600).toFixed(1)} h; refurbished +${back.toFixed(2)}M; ${news.join(' | ')}`);
+}
+
+// econ-28. Overflight rights (economy session 2, QUEUE Q380, W23): a year's consent from a power that minds, priced by
+// how much it minds; with it, flying low over its land costs nothing; refused under sanctions, at poor relations, and
+// by a rival in the race on poor terms. Own SIM copy.
+{
+  const D = new Function(src + 'return {overEnd,overK,overQuote,buyOver,overHave,POWERS,PROG,HOOK,pairKey,relOf,opOf,archOf,YEAR_D,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { wseed: 5, day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 1, done: {}, overNews: {} });
+  D.chooseStart('agency'); Object.assign(P, { funds: 100, led: {}, overR: {}, riv: null });
+  const i = D.POWERS.find(p => p.i !== 0 && D.archOf(p.i) !== 'security').i, key = D.pairKey(0, i), fly = () => ({ over: { [i]: 1 } });
+  P.rel[key] = 0.6; const ally = D.overQuote(i);
+  P.rel[key] = 0; const q0 = D.overQuote(i), f0 = P.funds, bought = D.buyOver(i), paid = f0 - P.funds, o0 = D.opOf(i), R1 = fly(); news.length = 0; D.overEnd(R1);
+  const free = D.opOf(i) === o0 && R1.overK[i] === -1 && !news.length && D.overQuote(i).have;
+  P.day += D.YEAR_D + 1; const R2 = fly(); D.overEnd(R2); const lapsed = D.opOf(i) < o0 && R2.overK[i] > 0;
+  P.rel[key] = -0.6; const poor = D.overQuote(i);
+  P.rel[key] = -0.2; const plain = D.overQuote(i); P.riv = { [i]: { got: {} } }; const rival = D.overQuote(i); P.riv = null;
+  P.sanc[i] = P.day + 100; const sanc = D.overQuote(i); P.sanc = {};
+  check('overflight rights: an ally needs none; at relation 0 a year\'s consent costs 2M (on the ledger) and makes flying over it free, for a year; refused at −0.6, by a rival in the race at −0.2 (not by a non-rival), and under sanctions',
+    !ally.ok && q0.ok && Math.abs(q0.fee - 2) < 0.051 && bought && Math.abs(paid - q0.fee) < 1e-9 && Math.abs(P.led.over + q0.fee) < 1e-9 && free && lapsed &&
+      !poor.ok && /refuses/.test(poor.why) && plain.ok && plain.fee > q0.fee && !rival.ok && /rival/.test(rival.why) && !sanc.ok,
+    `${D.POWERS[i].name}: ally "${ally.why}"; at 0 ${q0.fee}M; at −0.2 ${plain.fee}M; ${poor.why}; ${rival.why}; ${sanc.why}`);
+}

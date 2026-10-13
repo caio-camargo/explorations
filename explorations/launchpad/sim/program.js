@@ -255,6 +255,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
   if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
+  if(s.leaks)leakTick(s,dt,phys);   // space Q303: a holed tank leaks
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
@@ -353,7 +354,23 @@ function overTick(s,R,dt){R.overT=(R.overT||0)+(dt||0);if(R.overT<1)return;R.ove
   const pf=toPF(TELLUS,s.r,simT);if(Math.acos(clamp(dot(norm(pf),norm(R.launchPf)),-1,1))*TELLUS.R>OVER_D)return;
   const p=powerAt(pf),host=(SITES.find(t=>t.id===R.site)||{}).power;if(!p||p.i===HOME||p.i===host)return;(R.over||(R.over={}))[p.i]=1}
 const overK=i=>clamp((0.5-relOf(HOME,i))/1.5,0,1)*(archOf(i)==='security'?2:1);
-function overEnd(R){R.overK={};for(const k in R.over||{}){const i=+k,c=R.overK[i]=overK(i);if(!(c>0))continue;opAdd(i,-OVER_OP*c);
+// overflight rights (Q380, W23: a decision from the start, and rivals may refuse): a year's consent from a power that
+// minds (overK > 0), priced by how much it minds: OVER_FEE·(1 + 3c) M: 2M at relation 0, 4M at −1, 7M from a hostile security
+// state. Refused under sanctions (either way), at relation OVER_NO or worse, and by a rival in the race on poor terms
+// (relation < 0). With consent, flying low over it costs nothing (overEnd).
+const OVER_FEE=1,OVER_NO=-0.5;
+const overHave=i=>((PROG.overR||{})[i]??-1)>PROG.day;
+function overQuote(i){const P=POWERS[i],c=overK(i);if(!P||i===HOME)return{ok:false,why:''};
+  if(overHave(i))return{ok:false,have:true,why:`consent until day ${Math.floor(PROG.overR[i])}`};
+  if(!(c>0))return{ok:false,why:`${P.name} doesn't mind: no consent needed`};
+  if(sanctioned(i))return{ok:false,why:`${P.name} has sanctions on the program`};
+  if(sanctioned(HOME))return{ok:false,why:`our own government's sanctions bar a deal with ${P.name}`};
+  const r=relOf(HOME,i);if(r<=OVER_NO)return{ok:false,why:`${P.name} refuses: relations are too poor`};
+  if(r<0&&PROG.riv&&PROG.riv[i])return{ok:false,why:`${P.name} refuses: a rival in the race won't wave our rockets through`};
+  return{ok:true,why:'',fee:Math.round(OVER_FEE*(1+3*c)*10)/10}}
+function buyOver(i){const q=overQuote(i);if(!q.ok||PROG.funds<q.fee)return false;PROG.funds-=q.fee;ledAdd('over',-q.fee);
+  PROG.overR=PROG.overR||{};PROG.overR[i]=PROG.day+YEAR_D;HOOK.news(`${POWERS[i].name} grants a year's overflight rights: −${fmtM(q.fee)}`,'ok');HOOK.save();return true}
+function overEnd(R){R.overK={};for(const k in R.over||{}){const i=+k;if(overHave(i)){R.overK[i]=-1;continue}const c=R.overK[i]=overK(i);if(!(c>0))continue;opAdd(i,-OVER_OP*c);
   const key=pairKey(HOME,i);PROG.rel[key]=clamp(relOf(HOME,i)-OVER_REL*c,-1,1);PROG.overNews=PROG.overNews||{};
   if(!(PROG.day-(PROG.overNews[i]??-1e9)<YEAR_D)){PROG.overNews[i]=PROG.day;HOOK.news(`${POWERS[i].name} protests a rocket flying low over its territory`,'warn')}}}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
@@ -399,7 +416,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
-  fleetSalvage(R);
+  stageRecover(R);fleetSalvage(R);
   // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
   overEnd(R);
   for(const v of R.drops){const pw=v.power;if(!pw)continue;
@@ -544,9 +561,19 @@ function buildFac(id){const q=facQuote(id);if(!q.ok||PROG.funds<q.cost)return fa
   PROG.funds-=q.cost;f.building={lv:f.lv+1,ready:PROG.day+q.days};HOOK.news(`Construction starts: ${FAC[id].name}, level ${f.lv+1} (${q.days} days)`,'ok');HOOK.save();return true}
 function facTick(){for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.building&&PROG.day>=f.building.ready){f.lv=f.building.lv;f.building=null;
   HOOK.news(`${FAC[id].name} level ${f.lv} is open: ${FAC[id].what(f.lv)}`,'ok');HOOK.save()}}}
+// (Q332) a spent stage afloat under its chutes is fetched like a vessel (recoveryOf's ships: local boats, or the fleet's
+// range, at RECOVER_V from an hour's notice) if it's still afloat when they arrive: refurbished at its splash's wear,
+// less the ship time. What sinks first is lost (the fleet, if built, still salvages it below).
+function stageRecover(R){if(!R.launchPf)return;const lv=facLv('fleet'),reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);let got=0,n=0,lost=0;
+  for(const v of R.drops){const f=v.sea;if(v.kind!=='sea'||!f||f.fate!=='afloat'||!v.pf||!v.parts)continue;
+    const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R,sail=RECOVER_PREP+d/RECOVER_V;
+    if(d>reach||f.afloat<sail){v.fate=d>reach?'beyond our ships':'sank before the ships arrived';lost++;continue}
+    let val=0;for(const p of v.parts)val+=partPrice(p)*REFURB*wearOf(p,f.sp);v.got=val-2;v.fate='recovered';got+=v.got;n++}
+  if(n){PROG.funds+=got;ledAdd('stages',got);R.stageBack=got;HOOK.news(`Spent stage${n>1?'s':''} recovered from the sea: ${n>1?`${n}, `:''}${got>=0?'+':''}${fmtM(got)} refurbished, after ship time`,got>=0?'ok':'')}
+  if(lost)HOOK.news(`${lost} spent stage${lost>1?'s':''} came down under ${lost>1?'their':'its'} chutes but ${lost>1?'were':'was'} lost at sea`,'')}
 // salvaged for parts: load and heat wear count, the splash itself doesn't
 function fleetSalvage(R){const lv=facLv('fleet');if(!lv||!R.launchPf)return;let got=0,n=0;const seen={};
-  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
+  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts||v.got)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
     let val=0;for(const p of v.parts){val+=partPrice(p)*REFURB*FAC.fleet.sal[lv]*wearOf(p,TOUCH_OK);seen[p.d.key]={land:1}}got+=val-2;n++}
   if(!n)return;PROG.funds+=got;ledAdd('salvage',got);khLearn({khSeen:seen},0.3);
   HOOK.news(`Recovery fleet: ${n} stage${n>1?'s':''} fished out of the sea, ${got>=0?'+':''}${fmtM(got)} after ship time`,got>=0?'ok':'')}

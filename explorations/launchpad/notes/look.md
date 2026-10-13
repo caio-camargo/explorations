@@ -1603,7 +1603,7 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
   disc is 250× and the glare smaller.
 - **A/B:** `SKY_B5 = false` compiles the old galaxy, stars and sun back in (the shader recompiles; no bake).
 - **Views:** 159 the program's nebula, 160 its spiral, each over the limb from the night side; `refset.mjs`'s set now
-  ends at 160.
+  ends at 160. (**Renumbered 172, 173** in Q392: these shadowed the effects beat's 159–160 in `views.js`, which came later.)
 - **Seen** (RTX, High; `output/launchpad/beauty/q321-before/`, `q321-after/`, Low `q321-after-low/`): views 97–100 show
   the band with lanes and a bulge instead of a smooth smear, a field of coloured stars where there were almost none, the
   sun small; 156 the same over the limb; 159 the nebula a faint copper veil beside the band, 160 a small spiral alone.
@@ -2025,3 +2025,79 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
   caches and HUD timers (not looks).
 - Not seen in a browser here (the GPU was another session's); the wiring is the test's. **Check:** test `aerofx-36`
   (and the views test's clock pattern amended). TESTING 287.
+
+## v1.209 — the haze without dither (2026-10-13, sky & bodies beat, QUEUE Q392, PLAYTEST #89)
+
+Caio: "the diffusion effect in atmosphere or whatever it is has visible dithering". **Measured, not bisected:** the
+fine-grain noise in a smooth hazy sky (luminance minus a 7×7 blur, std in grey levels over the flat regions), with
+each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`–`V3`):
+
+| | pad | ascent 3 km | max-q 10 km | 200 km | sunrise | terminator 800 km |
+|---|---|---|---|---|---|---|
+| main (v1.197) | 4.58 | 3.38 | 3.23 | 4.19 | 1.95 | 4.47 |
+| grain off | 3.24 | 0.85 | 0.79 | 3.90 | 1.55 | |
+| + `scatter`'s jitter off | 3.24 | 0.85 | 0.79 | 1.41 | 1.23 | |
+| + the cloud slab's jitter off | 3.25 | 0.81 | 0.79 | 1.41 | 1.22 | |
+| **fixed** | 3.45 | 1.46 | 1.38 | 1.54 | 1.33 | 1.94 |
+
+(The pad's ~3.2 that stays is the ground's texture inside the "flat" mask, not noise.)
+
+- **The composite's grain** (Q314, `GRADE.gr`) was most of it low and mid air: triangular noise, ~3.7 grey levels in
+  the mid-tones, new every frame. **.035 → .012**: still dithers the 8-bit output, a trace of the press-photo grain.
+  A taste knob if Caio wants more.
+- **`scatter`'s per-pixel jitter** (Q352) was most of it from orbit. It's there to hide the bands a fixed step count
+  draws where a ray crosses the planet's shadow; now it applies only on such rays (the shadow state at the ray's start,
+  middle and end differs). The terminator from 800 km (view 160) shows no bands, with less noise.
+- The cloud slab's jitter doesn't matter (V3).
+- **Views 172, 173:** Q321's nebula and spiral were numbered 159 and 160, and their branch came first in `views.js`,
+  so the effects beat's 159 (the shield from upstream) and 160 (the terminator) never ran. Renumbered; `refset.mjs`'s
+  set takes 172–173.
+- **Check:** test `aerofx-37`; aerofx-18's and Q250's checks updated to the jitter's new form. TESTING 290.
+
+## v1.212 — farmland round settled land, a scrub range round each pad, coasts without the staircase (2026-10-13, sky & bodies beat, QUEUE Q401, Q403; PLAYTEST #95, #99)
+
+- **Q401, farmland** (`farmSettle`, `farmland`, in `tellus()`): the old faint tint of 260 m squares within 4 km of the
+  camera is gone. How much ground is farmed = climate (green, mild, flat, under ~1,800 m, not rugged; the wet tropics
+  about half, as clearings and plantations) × settlement (0.35 everywhere, plus the city texture read at mips 5 and 7, a
+  blur of ~100–400 km, plus each pad's town within 40 km). A ~3–6 km noise against that fraction says which land is farmed.
+  The fields: two grid orientations (300 m and 430 m fields) switching along a wandering line, which is also a road; some
+  fields split into strips; five crops (greens, ripe yellow, ochre, ploughed brown, drier with less rain); hedges on 70 %;
+  crop rows close up; woods in ~3 km patches; country roads on a warped ~3 km grid; villages in some 5 km cells by the
+  settled fraction. Every part fades with the footprint to its mean (`fline`: a filtered line), so from 35 km and orbit
+  farmland is a mottled regional tint. `FARM_FX = false` compiles the old look.
+  - First tries, measured: the largest city (Fenor Falls) is in a desert, so view 175 picks the largest city in
+    farmable climate (Kamar); the Cape pad's wetness is 1.49 (the climate map goes past 1), which a ceiling of .95
+    excluded; a field size varying in place sheared the grid (gx is millions of metres).
+- **The pad's range:** fields stop 2.5–4 km from every pad; within 6 km the ground is cleared scrub (dark brush and dry
+  pale grass in ~20–80 m patches, muted) instead of the flat lawn (views 17, 177).
+- **Q403, coasts:** `tellus()` blends sea and land over ±½ of the height's change across the pixel (`fwidth(hT)` taken in
+  `main`, where control flow is uniform; zero at a silhouette, where the hit distance jumps), and the shallow fringe and
+  the beach widen with it. From 4,000 km an island's single-pixel specks smooth into a line (view 157). The coast's shape
+  is the height's, as before (the detail octaves already fractal it up close).
+- **Cost:** interleaved A/B, two rounds: the sky pass +0.2 to +0.8 ms in wide aerial views (175, 176), +0.2 at 177,
+  −0.3 at the pad (17).
+- **Views:** 175 farmland from 6 km near a city, 176 from 35 km, 177 the Cape pad from 3 km (each searches the weather
+  clock for clear air over the target). They were 172–174 until a merge: the galaxy views took 172–173 the same hour.
+  Stills `output/launchpad/beauty/q401-before1/2`, `q401-after1/2` (A/B), `q401-after/` (final), `q403-before/`,
+  `q401-merged/`. Test `aerofx-38`. TESTING 293.
+- **Not done:** village lights at night; a land-use map texture (the noise and the city blur stand in); fields don't
+  follow terrain contours.
+
+## v1.214 — no bright band at the horizon from inside the deck (2026-10-13, sky & bodies beat, QUEUE Q420)
+
+Seen in Q250's ascent at 2.4 km under ~60 % cover: inside the deck a cream band ran along the horizon between grey cloud
+above and below, with 2×2 stairs (the half-resolution slab's upsample along it).
+
+- **Cause:** the cloud volume fades out over `uVD`/2–`uVD` (20–40 km). From inside the slab, a level ray outlives it and
+  meets the shell (at 3 km, ~39 km off for a camera at 2.4 km) lit like a sunlit top, or far ground past the volume's
+  reach: a bright line where everything near is fog.
+- **Fix** (`SKY_FS` main, after the shell): with the camera in the slab (2.2–5 km, fading to 1.5 and 6 km), a ray that
+  stays in the slab past `uVD`/2 is fogged, by how far past, in the volume's own mean colour along it (`vAvg`, the
+  half-res slab's colour over its opacity, kept where the volume reached opacity 0.05); through a gap, the far deck at
+  half brightness. Selene's alpha (`vis`) follows.
+- **Measured** (paired renders, the same view list, so the same weather): the band's peak over the rows around it
+  178: 26 → 17, 179: 32 → 9 grey levels; views 81 (3 km), 82 (8 km), 2 unchanged.
+- **Left:** in 178 part of the streak stays: the volume's own sunlit clouds in its fading ring (20–40 km), not the
+  shell. QUEUE *Proposed*.
+- **Views 178, 179** (new): 2.4 km in the deck, the camera level, looking along the horizon two ways.
+- **Check:** test `aerofx-39`. TESTING 295. Stills `output/launchpad/beauty/q420-A/` (before), `q420-C/` (after).

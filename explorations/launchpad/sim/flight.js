@@ -268,19 +268,32 @@ function stepDebris(dt){
 // (debRest), holed past SEA_HOLE as a vessel is, riding the swell (seaBob) until its parts have flooded (sinkTime). What
 // brings a stage down slowly is parachutes among its parts: they open by themselves (a barometric switch, as on the
 // Shuttle's boosters) on the vessel's rules, one canopy per chute part. True if it's handled (afloat, or sunk at once).
-function debAfloat(d,pf){const b=d.body,sp=len(sub(d.v,surfVel(b,d.r))),lim=TOUCH_MAX+surfaceAt(b,pf).soft;
-  if(sp>=lim)return false;
-  const sh={parts:d.parts,body:b,mass:d.mass,lines:shapeLines(d.parts)},P=seaPts(sh),up=norm(d.r),up0=qrot(qconj(d.q),up),z=pt=>dot(sub(pt.b,d.cm),up0);
+// the hull of a stage hitting the water at sp (its sea limit lim), coming down along up0 (body frame): which parts are holed,
+// its rest pose (null: too dense to float) and how long it floats (s)
+function debSea(d,b,sp,lim,up0){const sh={parts:d.parts,body:b,mass:d.mass,lines:shapeLines(d.parts)},P=seaPts(sh),z=pt=>dot(sub(pt.b,d.cm),up0);
   const hh=seaHoleH(sp,lim);if(hh){const zl=Math.min(...P.pts.map(z));sh.holed=new Map(P.pts.filter(pt=>z(pt)<zl+1&&hh<(SEA_FLOOD[pt.p.d.kind]??12)).map(pt=>[pt.p,hh]))}   // the parts that hit first
-  const R=debRest(P,d.cm,d.mass,seaRho(b),up0);
-  if(!R){logEv('contact',`a spent stage came down in the sea at ${sp.toFixed(1)} m/s and sank`);d.dead=true;return true}
-  const T=sinkTime(sh),u=norm(pf),q=qmul(qFromTo(qrot(d.q,R.up),up),d.q),pfc=mul(u,b.R+b.ground.sea+R.H),tilt=Math.acos(clamp(R.up[1],-1,1));
+  const R=debRest(P,d.cm,d.mass,seaRho(b),up0);return{sh,P,R,hh,T:R?sinkTime(sh):0}}
+function debAfloat(d,pf){const b=d.body,sp=len(sub(d.v,surfVel(b,d.r))),lim=TOUCH_MAX+surfaceAt(b,pf).soft;
+  if(sp>=lim){if(d.drop)d.drop.sea={fate:'broke',sp};return false}
+  const{sh,P,R,hh,T}=debSea(d,b,sp,lim,qrot(qconj(d.q),norm(d.r))),up=norm(d.r);
+  if(!R){logEv('contact',`a spent stage came down in the sea at ${sp.toFixed(1)} m/s and sank`);if(d.drop)d.drop.sea={fate:'sank',sp,afloat:0};d.dead=true;return true}
+  if(d.drop)d.drop.sea={fate:'afloat',sp,afloat:T};
+  const u=norm(pf),q=qmul(qFromTo(qrot(d.q,R.up),up),d.q),pfc=mul(u,b.R+b.ground.sea+R.H),tilt=Math.acos(clamp(R.up[1],-1,1));
   let y0=Infinity,y1=-Infinity;for(const pt of P.pts){y0=Math.min(y0,pt.b[1]);y1=Math.max(y1,pt.b[1])}d.len=y1-y0;
   d.float={pf:pfc,q:qmul(qconj(qBody(b,simT)),q),t:simT,az:(Math.sin(pfc[0]*1e-3+pfc[2]*7e-4)*0.5+0.5)*2*Math.PI,sinkAt:simT+T,dry:R.dry,tilt,draft:seaDraft(P,d.cm,R.up,R.H)};
   d.r=fromPF(b,pfc,simT);d.q=q;d.v=surfVel(b,d.r);d.w=[0,0,0];d.chA=0;
   const att=tilt<0.35?'upright':tilt>2.8?'upside down':`on its side (${(tilt*57.3).toFixed(0)}°)`;
   logEv('contact',`a spent stage came down in the sea at ${sp.toFixed(1)} m/s${hh?', holed,':''} and floats ${att}, ${(R.dry*100).toFixed(0)} % dry; ${isFinite(T)?`sinks in ${(T/3600).toFixed(1)} h`:'stays afloat'}`);
   HOOK.msg(`Spent stage afloat, ${att}`);return true}
+// (Q332) what the flight records of a dropped stage (app/state.js, at the drop): where it falls (dropVerdict at the
+// predicted impact) and, for one with chutes coming down at sea, its fate there, judged now so that it survives the
+// stage leaving the scene (culled at 40 km): it hangs nose up under its canopies at their sea-level sink rate, and floats
+// or not as debAfloat would judge it. debAfloat overwrites it if the stage does come down in view.
+function dropRecord(d){const v={...d.verdict,pf:d.impact.pf,parts:d.parts};d.drop=v;
+  const n=d.chutes??d.parts.filter(p=>p.d.kind==='chute').length;if(v.kind!=='sea'||!n||d.impact.b!==TELLUS)return v;
+  const b=TELLUS,lim=TOUCH_MAX+surfaceAt(b,v.pf).soft,sp=Math.sqrt(2*d.mass*G0/(density(b,0)*n*600));
+  if(sp>=lim){v.sea={fate:'broke',sp};return v}
+  const o=debSea(d,b,sp,lim,[0,1,0]);v.sea=o.R?{fate:'afloat',sp,afloat:o.T}:{fate:'sank',sp,afloat:0};return v}
 // the rest pose at sea: over the tilt of the hull (in the vertical plane it came down in), the pose of least potential
 // energy, m·g·z_G − ρ·g·∫z dV, each with the waterline where buoyancy equals weight. {up (body frame), H (the centre of
 // mass above the water), dry (share of the hull)}, or null: too dense to float.
