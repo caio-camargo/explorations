@@ -5626,3 +5626,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   log. Stills (gitignored): `output/launchpad/mockups/builder/`.
 - **Next:** vehicle builds Q237 from the mock-up (with flow for the board) and works PLAYTEST #81–#85; Caio may mark up
   the mock-up. Open with Caio: W29 (bodies round 2), W33 (face lab).
+- **Addendum (same session): D23, the aim.** The Checks tab's first line and an overlay: a job or your own aim in up to
+  three legs; every Δv need is the program's guess (a hidden, seeded error inside the stated bound; a study redraws it
+  tighter; flown, known). UI.md 0.1.5 § 3.1, the mock-up's aim overlay (`aim.png`), a QUEUE Proposed line.

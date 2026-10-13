@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -89,7 +89,7 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
 | Screen | Read 1 (biggest) | Read 2 (while working) | Read 3 (on click or hover) | Cut or hide |
 |---|---|---|---|---|
 | **Program** | **what to do next** (one card: the next mission or decision, with its deadline) · funds · date | the open contracts and offers as **one line each** (name, pay, days left); the time strip (launch windows, deadlines, budget day) | an offer's full text; tabs for Fleet, World, Industry, Company | the agency name shrinks to a letterhead; "Why: …" lines; locked missions beyond the next epoch (a count instead); the empty photo frame until there's a photo |
-| **Assembly** | **D22: three tabs, never a scroll.** **Checks** (default): a GO/NO-GO board for the chosen mission: *Reaches its target · Gets off the pad · Holds together · Flies straight · The payload works · Budget and time* (+ *Escape* when crewed, *Recovery* when it comes home); each a plain verdict and its fix | **Stages** (the staging list with Δv, TWR, burn time; hover a stage to light its parts and dim the rest) · **Part** (on selecting one: what it's for, its options, its loads, what it pairs with) · the build tools as a **toolbar on the 3D view** | each board row opens its numbers (Δv by stage, TWR, mass, joint loads, stability in calibers, cost breakdown, imports, know-how, study) | right-click options; the key-help bar; jargon as labels ("coasting flips", "calibers", "weathervanes"); the red on a normal upper-stage TWR; locked parts collapsed into one line per family |
+| **Assembly** | **D22: three tabs, never a scroll.** **Checks** (default): **the aim** on its first line (D23, § 3.1), then a GO/NO-GO board for it: *Reaches its target · Gets off the pad · Holds together · Flies straight · The payload works · Budget and time* (+ *Escape* when crewed, *Recovery* when it comes home); each a plain verdict and its fix | **Stages** (the staging list with Δv, TWR, burn time; hover a stage to light its parts and dim the rest) · **Part** (on selecting one: what it's for, its options, its loads, what it pairs with) · the build tools as a **toolbar on the 3D view** | each board row opens its numbers (Δv by stage, TWR, mass, joint loads, stability in calibers, cost breakdown, imports, know-how, study) | right-click options; the key-help bar; jargon as labels ("coasting flips", "calibers", "weathervanes"); the red on a normal upper-stage TWR; locked parts collapsed into one line per family |
 | **Flight** (ascent, burns, landing) | the navball with the burn or hold marker · altitude and speed (one line) · the **master caution** | the current stage and its fuel; a **phase card** (ascent: q and heat; landing: height and descent rate; burn: Δv to go) | everything else on hover or the readout's `+` | the news during ascent, burns and landing (it queues for the next quiet moment); hold modes the vessel can't fly; Ap/Pe while landed; the help bar |
 | **Map** | the orbit and the **result** of the planned burn (encounter or not, periapsis), big | Ap/Pe on the orbit, the next node, time to it | overlays (coverage, targets, windows), one at a time | labels that collide (declutter by importance, hide the rest at that zoom); the flight's dark panels; units nobody knows ("TU" → days) |
 | **Debrief** | the verdict stamp (PAID / FAILED / FIRST) and the money | the flight as a time strip with what mattered (staging, anomalies, objectives) | the logbook entry, the telemetry details | — |
@@ -99,6 +99,25 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
 1. **Squint:** blurred, the two or three blobs that stand out are its read 1.
 2. **Five seconds:** someone who sees it for five seconds can say what needs attention and what to do next.
 3. **Inventory:** every element on it is in its row above, or it's cut.
+
+### 3.1 The aim and the program's guess (D23)
+
+**The aim** is what the Checks tab checks against. Its line opens an overlay over the Assembly (`mockups/builder/?aim=1`):
+- **A job:** the accepted contracts and program missions, their target filled in.
+- **Or your own, in up to three legs.** Each leg: *orbit* (around a body; altitude; tilt: as the pad, polar, stationary,
+  or a number), *hop to a height*, *flyby*, *land* (on a body; anywhere on the near side by default, or a spot picked on
+  a small globe), *meet a craft* (the craft and stations up). Then another leg: *come home* (splash down, on land) or
+  *stay*. Every detail has a default, so an aim is two clicks.
+- **Saved with the design**; each leg is marked on the stage that flies it (Stages tab); procedures, the Rollout and
+  Dispatch take it as their target.
+
+**Every Δv need it shows is the program's guess, never the answer with a band round it.** The guess is the true need
+off by a hidden error *e*: drawn once per program, destination and knowledge level (seeded, so reopening the Assembly
+never rerolls it and nothing can be averaged out), and always inside the bound the line states, so "could be 30 % off"
+is never a lie. The bound is the compute era's (`predErr`: human computers 30 %, mainframes 15 %, …), wider where
+nobody has been (×1.5–2: "a rough guess: nobody has landed there"). A study redraws *e* inside its tighter bound (the
+guess moves, sometimes the wrong way first); a flight that does the leg makes it known (the flown number). The verdict
+follows: *Reaches it* (known, with spare), *Probably* (the guess says yes, the bound says maybe), *Unlikely*, *Short*.
 
 ## 4. What this changes in the queue
 
