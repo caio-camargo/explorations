@@ -374,3 +374,20 @@
   check('flow-18: the page opens on the title screen; the charter asks whose program and how it starts, then signs it; no desk before; a founded career shows it signed',
     wired && open && picked && signed, `wired ${wired} · open ${open} · picked ${picked} · signed ${signed}`);
 }
+
+// flow-19. Map layers (flow session, QUEUE Q261, PLAYTEST #61): each of drawMap's passes belongs to a layer that mapShow
+// gates; a layer never touched follows the era (cities before the first orbit, then satellites, debris and the planets);
+// one the player set stays set. The target is drawn whatever its layer.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END')), dm = page.slice(page.indexOf('function drawMap('), page.indexOf('// ---- navball'));
+  const wired = ['moons', 'links', 'planets', 'cities', 'targets', 'stations', 'names'].every(k => dm.includes(`mapShow('${k}')`)) && dm.includes(`mapShow(q.junk?'debris':'sats')`)
+    && /if\(q\.id!==S\.target&&!mapShow\(q\.junk\?'debris':'sats'\)\)continue/.test(dm) && H.includes('id="bLay"') && H.includes('id="mapLay"');
+  const L = page.slice(page.indexOf('const MAP_LAYERS'), page.indexOf('function renderMapLay'));
+  const X = new Function(src + L + 'return {mapShow,MAP_LAYERS,PROG,set:o=>{mapLaySet=o}};')();
+  X.PROG.done = {}; const e1 = X.MAP_LAYERS.map(([k]) => X.mapShow(k));
+  const early = X.mapShow('cities') && !X.mapShow('planets') && X.mapShow('sats') && X.mapShow('moons');
+  X.PROG.done.beeper = true; const later = !X.mapShow('cities') && X.mapShow('planets') && X.mapShow('debris');
+  X.set({ cities: true, sats: false }); const mine = X.mapShow('cities') && !X.mapShow('sats') && X.mapShow('planets');
+  check('flow-19: map layers: every drawMap pass is gated; the era picks the defaults (cities before the first orbit, then satellites, debris and planets); a layer you set stays set; the target always shows',
+    wired && early && later && mine, `wired ${wired} · early ${early} (${e1.map(Number).join('')}) · after the beeper ${later} · set by you ${mine}`);
+}

@@ -748,6 +748,14 @@ ROWS.charter = {title: 'the title screen and the charter', gate: true, flags: nu
   `go('title'); ({screen: screenNow(), buttons: document.querySelectorAll('#ttlCharter button').length, menu: PT.text('#ttlMenu')})`, {shot: 'signed'},
   {key: 'Enter'}, `({screen: screenNow()})`],
   checks: {screen: `screenNow()`}, expect: {screen: v => v === 'program'}};
+// layers: the map's layers (Q261): a satellite up and the ship in orbit; the map with the era's defaults, the panel open,
+// then everything on (busy), then only our things with no names
+ROWS.layers = {title: "the map's layers", steps: [DOCK_HELPERS, M1_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); PT.preset('Beeper'); PT.launch(); PT.park(S); go('map'); render(); ({screen: screenNow(), btn: PT.vis('#bLay')})`,
+  {click: '#bLay'}, `render(); ({panel: PT.text('#mapLay'), boxes: PT.boxes()})`, {shot: 'defaults'},
+  `for (const [k] of MAP_LAYERS) mapLaySet[k] = true; renderMapLay(); render(); true`, {shot: 'all'},
+  `for (const [k] of MAP_LAYERS) mapLaySet[k] = ['sats', 'links'].includes(k); renderMapLay(); render(); true`, {shot: 'ours'},
+  `mapLaySet = {}; mapLaySave(); go('flight'); ({panel: PT.vis('#mapLay')})`],
+  checks: {panel: `PT.vis('#mapLay')`}, expect: {panel: v => v === false}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
