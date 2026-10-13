@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.43 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: running list
+**Version**: 0.1.44 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -88,6 +88,7 @@ docking, rescues, landings, stations) stays flown and messy. That's the difficul
 | 83 | P1 | **The rocket hovers above the pad until Launch, then drops to the ground** (Caio, 2026-10-12): on the pad before clicking launch it floats; on launch it jumps down to ground level. Lead: likely from #78's fix (Q327 v1.139, `placeRoot`: the root keeps its placed height in the Assembly; "only the rollout stands it on the pad"), so the pad view before launch still draws the Assembly's height. Seen on every launch | vehicle |
 | 84 | P2 | **With four boosters, the rocket snapped at the first engine** (Caio, 2026-10-12, after shortening the fairing; "maybe that was the problem"). Lead: find which joint breaks (`maxLoad`, the joint list): if the boosters' radial decouplers sit on the core's **engine**, their thrust and moment go through the engine's joint (Kestrel B 300 kN·m) instead of a tank's (B 450); if it's the core engine's joint to its tank, four boosters push the core up into it. Joint reinforcement (reinforced 2×, heavy 4×) is in the part options but easy to miss: the break message and a builder warning should name the joint and suggest it (Q340's self-explaining warnings) | vehicle |
 | 85 | P2 | **Bigger fins** (Caio, 2026-10-12: "i definitely need the option for bigger fins"). Today: the radial and steerable fins are 0.9 m span × 0.9 m chord; only the 2.5 m fin ring is bigger (1.8 m). Lead: a **size option** on the radial and steerable fins (as the fairing's length steps: e.g. 0.9 / 1.4 / 2.0 m span), mass and joint rating scaling with area, so a long fairing or a top-heavy stack can be stabilised | vehicle |
+| 86 | P2 | **Mountains look bad from space**, worst where they poke out of the clouds (Caio, 2026-10-13: "probably some lighting issue"). Leads to check first, with stills from orbit (`refset.mjs`): relief shading from unfiltered normals at distance (PLAYTEST #50, Q251); peaks above the cloud deck drawn without the haze and scattering the air in front of them should add (aerial perspective), or lit as if bare; no cloud shadows on the ground; the HDR exposure (v1.137) or the planet-as-light change (v1.150) shifting their tone | look & sound (sky & bodies), world |
 
 ## Done
 
