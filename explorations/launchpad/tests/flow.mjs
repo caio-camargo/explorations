@@ -176,7 +176,7 @@
 // in-tray, not a folder tab, and its button (the tray's label) still answers data-ptab="inbox".
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const rooms = /const ROOMS=new Set\(\['program','debrief','mission'\]\)/.test(page), gate = /if\(!inRoom\(\)\)\{adaptRes\(dtR\);render\(\);deskPhotoTick\(\)\}/.test(page);
+  const rooms = /const ROOMS=new Set\(\['title','program','debrief','mission'\]\)/.test(page), gate = /if\(!inRoom\(\)\)\{adaptRes\(dtR\);render\(\);deskPhotoTick\(\)\}/.test(page);
   const bare = (page.match(/(^|[^.\w])render\(\);/gm) || []).length;   // the one draw call is the gated one
   const body = /toggle\('room',inRoom\(\)\)/.test(page), tabs = /filter\(\(\[k\]\)=>k!=='inbox'&&/.test(page);
   const tray = /<button id="deskTrayN" data-ptab="inbox"/.test(H) && /<div id="deskTrayBox">/.test(H) && /deskLayout\(box,progGate\)/.test(page);
@@ -353,4 +353,24 @@
   const bn = /class="nbn bad">Bottleneck: Selene Base 1 has 10 days/.test(h1) && /class="nn bn" data-node="reg:999"/.test(h1) && /supplies 400 kg · eats 40 kg\/d/.test(h1) && /10 days left/.test(h1);
   check('flow-17: mission control\'s third wall page draws netModel()\'s nodes (bodies as columns, orbit bands over the surface), a crewed node\'s supplies and the bottleneck; netFallback is gone',
     wired && placed && cols && bn, `wired ${wired} · placed ${placed} (${N.nodes.length} nodes, probe ${probe && probe.slot}) · columns ${cols} · bottleneck ${bn}`);
+}
+
+// flow-18. The title screen and the charter (flow session, QUEUE Q241 R3; NOTES § UI "Plan: real screens"): the page opens
+// on a room of its own; a new career fills in the charter (Article 1 whose program, Article 2 how it starts) and signs it
+// (Found the program); the desk never shows before that; a career under way shows its charter signed, nothing to click.
+// The first-run gate left the Program's folder.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const wired = /ROOMS=new Set\(\['title',/.test(page) && /renderEditor\(\);go\('title'\);/.test(page) && /if\(s==='program'&&needCharter\(\)\)s='title';/.test(page)
+    && H.includes('id="ttl"') && /title:\[\{k:\['enter'\]/.test(page) && !/data-start=/.test(page.slice(page.indexOf('function ownershipHTML'), page.indexOf('function contractsHTML')));
+  const T = page.slice(page.indexOf('let ttlPick=null'), page.indexOf('function renderTitle'));
+  const X = new Function(src + T + 'return {charterHTML,needCharter,chooseStart,START,ARCH,PROG,HOOK,set pick(k){ttlPick=k}};')();
+  X.HOOK.save = () => {}; const kinds = Object.keys(X.START), btn = (h, k) => new RegExp(`id="bFound" data-start="${k}"`).test(h);
+  const before = X.needCharter(), h0 = X.charterHTML(false);
+  const open = before && ['', ...Object.keys(X.ARCH)].every(k => h0.includes(`data-arch="${k}"`)) && kinds.every(k => h0.includes(`data-cstart="${k}"`)) && btn(h0, kinds[0]);
+  X.pick = 'company'; const h1 = X.charterHTML(false), picked = btn(h1, 'company') && /class="sig">[^<]*Aerospace</.test(h1);
+  X.chooseStart('company'); const h2 = X.charterHTML(true);
+  const signed = !X.needCharter() && !h2.includes('<button') && /In force/.test(h2) && /class="opt on"><span class="bx"><\/span><span><b>[^<]*· /.test(h2);
+  check('flow-18: the page opens on the title screen; the charter asks whose program and how it starts, then signs it; no desk before; a founded career shows it signed',
+    wired && open && picked && signed, `wired ${wired} · open ${open} · picked ${picked} · signed ${signed}`);
 }
