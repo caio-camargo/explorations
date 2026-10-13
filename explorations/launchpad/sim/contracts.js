@@ -323,7 +323,7 @@ function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();c
   backTick();
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
-  flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);giantTick(d,R);raceTick()}
+  flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);giantTick(d,R);raceTick();routeTick()}
 // ---- ownership: what the program is. Shares that sum to 1: state stakes by power (st) and private capital (pv).
 // Everything scales with the shares, so a part-privatized agency sits between the archetypes:
 //  · budget day comes from each state shareholder, by its stake and its opinion of us; private capital pays nothing

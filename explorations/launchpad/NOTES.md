@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -206,6 +206,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 - v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; D17.4)
 - v1.171 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
+- v1.175 — routines: a route keeps N satellites up (2026-10-13, economy session, QUEUE Q184; W27, D17.1)
 
 ## World: [`notes/world.md`](notes/world.md)
 

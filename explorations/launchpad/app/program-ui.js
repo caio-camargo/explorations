@@ -17,6 +17,11 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.devtake){takeDeviation(+ds.devtake)}
   else if(ds.devlose){loseDeviation(+ds.devlose,'let go');renderProgram()}
   else if(ds.wd){if(!withdrawContract(+ds.wd))HOOK.msg('Not possible right now');renderProgram()}   // economy (Q93)
+  else if(ds.mkroute){const r=makeRoute((PROG.sats||[]).find(x=>x.id===+ds.mkroute));if(!r.ok)HOOK.msg(r.why);renderProgram()}   // economy (Q184): routines
+  else if(ds.rorder){const r=orderRoute(+ds.rorder);if(!r.ok)HOOK.msg(r.why);renderProgram()}
+  else if(ds.rauto){const R=routeOf(+ds.rauto),r=R&&setRouteAuto(R.id,!R.auto);if(r&&!r.ok)HOOK.msg(r.why);renderProgram()}
+  else if(ds.rkeep){const R=routeOf(+ds.rkeep);if(R){R.keep=Math.max(1,+ds.k);HOOK.save()}renderProgram()}
+  else if(ds.rdrop){dropRoute(+ds.rdrop);renderProgram()}
   else if(ds.baserun){const b=(PROG.sats||[]).find(x=>x.id===+ds.baserun),r=b&&orderBaseRun(b,stackDef);HOOK.msg(r&&r.ok?`Supply run dispatched to ${b.name}`:`Supply run: ${r?r.why:'no such base'}`);renderProgram()}   // economy (Q61)
   else if(ds.dry){const r=orderDryRun(stackDef);HOOK.msg(r.ok?`Dry run: ${r.proc.from}'s procedure flies it, ${fmtDv(r.margin)} to spare (provisional)`:`Trajectory office: ${r.why}`);renderProgram();editorChanged()}
   else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
@@ -90,7 +95,7 @@ function fragHTML(){const F=PROG.frag;if(!F)return'';const n=F.reduce((a,x)=>a+x
 function satsHTML0(){const all=satsUp(),L=all.filter(q=>!q.junk),J=all.filter(q=>q.junk);const T=tNow();
   return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim">and ${J.length} piece${J.length>1?'s':''} of debris (spent stages and dead satellites, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t; G targets them in flight)</div>`:'')+fragHTML()+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
-    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${q.pw&&satDuty(q)<1?` · <span class="warn">batteries flat: ${satDuty(q)>0?`works ${Math.round(satDuty(q)*100)} % of the time, in sunlight`:'silent'}</span>`:''}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time${q.rate?` at ${q.rate>=1e3?(q.rate/1e3).toFixed(0)+' kbit/s':q.rate.toFixed(0)+' bit/s'}, recorder ${Math.round((q.rec||0)/REC_CAP*100)}% full`:''}`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${q.pw&&satDuty(q)<1?` · <span class="warn">batteries flat: ${satDuty(q)>0?`works ${Math.round(satDuty(q)*100)} % of the time, in sunlight`:'silent'}</span>`:''}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time${q.rate?` at ${q.rate>=1e3?(q.rate/1e3).toFixed(0)+' kbit/s':q.rate.toFixed(0)+' bit/s'}, recorder ${Math.round((q.rec||0)/REC_CAP*100)}% full`:''}`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}${routeLine(q)}</div>`}).join('')}
 function gsHTML(){if(!PROG.done||!PROG.done.beeper)return'';const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
   const have=stationsAll().map(g=>`<span style="color:${pc(g.power)}">${g.name}</span>`).join(' · ');
   const sites=gsSites().map(ci=>{const c=CITIES[ci],v=gsCheck(ci),pw=c.power?c.power.i:HOME;

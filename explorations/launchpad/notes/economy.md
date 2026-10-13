@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3006,3 +3006,40 @@ plan wanted, and is never a nag from friends.
 
 Tests: `econ-24` (2 checks: recorded low and climbing, not in orbit at 120 km, not above 150 km, not over home; an ally
 shrugs, a rival protests once a year, a security state double).
+
+## v1.175 — routines: a route keeps N satellites up (2026-10-13, economy session, QUEUE Q184, Q110 slice 1; W27, D17.1)
+
+**Scope:** Q184 named "a repeating supply run to a base", written before D17.1 moved resupply to M3 with crew and made
+M2's finish line "a routine repeat satellite launch keeps a network up". So this slice is the satellite routine; base
+and station resupply routes are the next slice, at M3.
+
+**A route** (`PROG.routes`, `sim/program.js` beside dispatch) keeps `keep` satellites of one design up in one orbit (its
+height and inclination taken from the satellite it was made from). **Made** from the Fleet tab: a satellite in Tellus orbit
+whose design (`q.stack`) has an ascent procedure shows *Make a routine*. **Its runs are dispatches with no contract**
+(`orderRoute`; `routeC` stands in for the contract so `dispatchQuote`, the pads, the windows, the weather scrubs and the
+money hold all apply unchanged); `dispatchRun` flies the procedure headless and registers what it puts up, now keeping
+the new satellite's id on the dispatch (`D.satId`, one line in `sim/procedures.js`) so the route tags it (`q.route`).
+**A clean run** reached the route's orbit (within 15 % of its height, 2° of its plane) and left a satellite up.
+
+**W27's ladder:** runs are ordered by hand at first; after **3 clean runs in a row** and once the automation ladder allows
+deployments (`autoAllowed('deploy')`, mainframes), *Repeat by itself* is offered (opt-in per route, MIDGAME decision 1).
+Then `routeTick` (end of `econTick`) orders one run whenever fewer than `keep` of the route's satellites are **up**:
+not junk, not adrift, and able to hold their orbit and stay out of the air for more than **30 days** (`ROUTE_LEAD`),
+so a replacement is on its way before one is lost. A failed or off-orbit run resets the clean count and pauses the
+repeating until a clean one. A route waits while one of its runs is queued or needs you.
+
+**Shown:** the Fleet line under each of the route's satellites (*n of N up*, the next run, *keep N±1*, *Order a run*,
+*Repeat by itself* with the reason it's not yet allowed, *End*); `netModel().routes` (id, name, from site, to band,
+keep, up, auto, why, next launch, runs, clean) for the network page; the pad calendar's bars carry `route` (flow can
+style a routine's bar).
+
+**Measured** (`econ-25`): three Beeper runs to its hand-flown 106 km orbit all fly clean headless. At that height
+most re-enter within 30 days, so only 1 of 4 counts as up: a low route keeps re-ordering, which is the honest cost of a
+low orbit (the Fleet line shows it). Mainframes allow repeating from day ~1455 in that world.
+
+**Not yet:** resupply routes to stations and bases (M3, D17.1; `baseRun` exists for one-off supply runs); replacing a
+satellite for an era upgrade (D17.5's replacement offers); a cost-per-year line for a route; the network page drawing
+routes (flow).
+
+Tests: `econ-25` (2 checks: made from a satellite, three hand-ordered runs fly clean and join the route; repeating
+waits for mainframes, then orders exactly one run when short, on the network model and the pad calendar).

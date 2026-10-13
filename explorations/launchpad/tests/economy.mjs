@@ -558,3 +558,32 @@
   check('overflight: an ally doesn\'t mind; a rival protests (opinion −3, × 2 for a security state), one headline a program year',
     ally && hit && once && Math.abs(k1 - (D.archOf(i) === 'security' ? 2 : 1)) < 1e-9, `${far.p.name} (${D.archOf(i)}): opinion ${o1.toFixed(1)} → ${D.opOf(i).toFixed(1)}; ${news.join(' | ')}`);
 }
+
+// econ-25. Routines (economy session, QUEUE Q184, Q110 slice 1; W27, D17.1): a route keeps N satellites of one design up
+// in one orbit. Its runs are dispatches with no contract, flown headless, and what they put up joins the route. Ordered
+// by hand at first; after three clean runs, and with the mainframes era, it may repeat by itself, ordering a run when
+// fewer than N are up.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = api.PRESETS.Beeper, news = [];
+  api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; P.day = 0; P.dispatch = []; P.dispN = 0; P.routes = []; P.wseed = 4242; P.fac = {}; P.sanc = {}; P.lines = {}; P.dev = {};
+  P.kh = {}; P.cert = {}; for (const p of api.newShip(st).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }   // known parts: the runs' rolls are not what this tests
+  const s = handAscent(api, st);
+  const q0 = { id: 900, name: 'Beeper 1', stack: st, r: s.r.slice(), v: s.v.slice(), epoch: api.t, mass: s.mass, born: 0, imgs: 0, pending: [], sci: 1 };
+  P.sats = [q0]; P.satN = 900;
+  const line0 = api.routeLine(q0), mk = api.makeRoute(q0, 1), r = mk.route;
+  const fly = () => { const o = api.orderRoute(r.id); const D = P.dispatch[P.dispatch.length - 1]; for (let k = 0; k < 8 && D.status === 'queued'; k++) { P.day = D.launch; api.dispatchTick(); } return { o, D }; };
+  const runs = [fly(), fly(), fly()], ups = api.routeSats(r).length, tagged = P.sats.filter(q => q.route === r.id).length;
+  check('routine: made from a satellite whose design has a procedure; three runs ordered by hand fly headless, each puts a satellite up on the route, all clean (at 106 km most re-enter within the 30-day lead, so they do not count as up)',
+    /data-mkroute="900"/.test(line0) && mk.ok && runs.every(x => x.o.ok && x.D.status === 'done') && r.runs === 3 && r.clean === 3 && tagged === 4 && ups >= 1,
+    `${r.name}; runs ${runs.map(x => x.D.status + (x.D.why ? ` (${x.D.why})` : '')).join(', ')}; ${ups} of the route's ${tagged} up and holding`);
+  const early = api.setRouteAuto(r.id, true), eraWhy = api.routeAutoWhy(r);
+  let d = P.day; while (!api.autoAllowed('deploy').ok && d < 40000) { d += 100; P.day = d; }
+  const on = api.setRouteAuto(r.id, true); r.keep = ups + 1; const n0 = P.dispatch.length; api.routeTick(); const auto = P.dispatch[P.dispatch.length - 1];
+  api.routeTick(); const once = P.dispatch.length === n0 + 1;
+  const net = api.netModel().routes[0], bar = api.netModel().pads.flatMap(p => p.bars).find(b => b.route === r.id);
+  check('routine: repeating by itself waits for the mainframes era; then a route short of its number orders one run (not two), shown on the network model and the pad calendar',
+    !early.ok && /mainframe/i.test(eraWhy) && on.ok && P.dispatch.length === n0 + 1 && auto.route === r.id && auto.auto && once && net && net.keep === ups + 1 && net.next != null && bar,
+    `before: "${eraWhy}"; from day ${d}; routine run on day ${auto && auto.launch.toFixed(1)}; network route ${net ? `${net.up}/${net.keep} to ${net.to}` : 'none'}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}

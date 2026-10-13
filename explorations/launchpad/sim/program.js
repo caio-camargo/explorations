@@ -645,7 +645,7 @@ function dispatchTarget(c){const p=c.p;return{pe:p.alt*1e3,ap:p.alt*1e3,inc:p.in
 // the estimate for a design (stack) on a contract: {ok, why, p, lo, hi, margin}
 function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];if(!proc||proc.kind!=='orbit')return{ok:false,why:'no procedure for this design: fly it to orbit by hand first'};
   const v=newShip(stack),T=dispatchTarget(c),R0={orb:{...T,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},cdone:[]};
-  if(!CT[c.type].ok(R0,c.p,{rec:R0,parts:v.parts}))return{ok:false,why:'this design cannot do this contract (its payload)'};
+  if(CT[c.type]&&!CT[c.type].ok(R0,c.p,{rec:R0,parts:v.parts}))return{ok:false,why:'this design cannot do this contract (its payload)'};   // a route (Q184) has no contract to check
   const a0=(proc.target?(proc.target.pe+proc.target.ap)/2:T.pe),vc=h=>Math.sqrt(TELLUS.mu/(TELLUS.R+h)),
     extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(1-Math.cos(T.inc*Math.PI/180)),margin=(proc.margin!=null?proc.margin:dvRemaining(v).tot-proc.dv)-extra;   // a dry run's measured margin when there is one
   const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
@@ -692,7 +692,7 @@ function procSiteOf(stack){const pr=(PROG.procs||{})[procKey(stack)];return(pr&&
 function dispatchSite(stack){const t=procSiteOf(stack),a=siteAccessOf(t);return{t,ok:a.ok,why:a.ok?'':a.why,fee:a.ok?a.fee||0:0}}
 function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),lk=partLaunchWhy(v.parts);if(lk)return{ok:false,why:lk};const cost=vesselCost(v.parts).cost,
   prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
-  const busy=(PROG.dispatch||[]).some(x=>x.status==='queued'&&x.cid===c.id);
+  const busy=(PROG.dispatch||[]).some(x=>(x.status==='queued'||x.status==='deviated')&&(c.route!=null?x.route===c.route:x.cid===c.id));
   const ds=dispatchSite(stack);if(!ds.ok)return{...e,ok:false,why:ds.why};
   const rule=procWindow(e.proc,'any'),win=nextWindow(rule,start+prep);
   return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
@@ -718,7 +718,8 @@ const devWaiting=()=>(PROG.dispatch||[]).filter(x=>x.status==='deviated');
 // N2's nodes as they exist today (our sites, ground stations, satellites by body and orbit band, stations and bases
 // with their supplies), no routes until routines exist, and the bottleneck: the crewed node shortest of supplies.
 const NET_BAND=h=>h<2e6?'low':h<2e7?'high':'stationary';
-function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*DAY_S;
+function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],T=D*DAY_S;
+  const routes=(PROG.routes||[]).map(r=>{const B=routeBusy(r);return{id:r.id,kind:'satellites',name:r.name,from:procSiteOf(r.stack).id,to:`Tellus ${NET_BAND(r.alt*1e3)}`,keep:r.keep,up:routeSats(r).length,auto:r.auto,why:r.auto?'':routeAutoWhy(r),next:B?B.launch:null,runs:r.runs,clean:r.clean}});   // Q184
   for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus',life=q.landed?Infinity:skLife(q);
     const fall=q.landed?Infinity:decayLife(q),then=isFinite(fall)?`, then re-enters`:'';   // (flow, Q203) what Fleet says: decay, not "0 more days"
     fleet.push({id:q.id,name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
@@ -727,7 +728,7 @@ function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*
   for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({dev:x.id,name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
     else if(x.status==='deviated')fleet.push({dev:x.id,name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
   for(let p=0;p<padsN();p++)pads.push({pad:p,bars:(PROG.dispatch||[]).filter(x=>x.status==='queued'&&x.pad===p)
-    .flatMap(x=>{const r=Math.min(x.launch,x.ready??x.launch),t=`${x.title} · ${designName(x.stack)||'our design'}`;return[{from:Math.max(D,x.ordered??D),to:r,kind:'dispatch',title:t},...(x.launch-r>=0.05?[{from:Math.max(D,r),to:x.launch,kind:'window',title:`${t}: waiting for its window`}]:[])]})});
+    .flatMap(x=>{const r=Math.min(x.launch,x.ready??x.launch),t=`${x.title} · ${designName(x.stack)||'our design'}`;return[{from:Math.max(D,x.ordered??D),to:r,kind:'dispatch',title:t,route:x.route??null},...(x.launch-r>=0.05?[{from:Math.max(D,r),to:x.launch,kind:'window',title:`${t}: waiting for its window`}]:[])]})});
   for(const t of homeSites())nodes.push({id:`site:${t.id}`,kind:'site',body:'Tellus',slot:'surface',name:t.name,stock:{},need:{}});
   for(const g of stationsAll())if(g.ci!=null)nodes.push({id:`gs:${g.ci}`,kind:'ground station',body:'Tellus',slot:'surface',name:g.name,stock:{},need:{}});
   for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus';let slot='surface';
@@ -787,7 +788,7 @@ function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed
 const WATCH_WAIT=0.5;   // days a watched dispatch waits at its launch for you (flow, Q43)
 function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)loseDeviation(D.id,`${D.dev.why}, and nobody was at the console`);
   for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
-  const c=D.base!=null?null:(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
+  const c=D.base!=null?null:D.route!=null?routeC(D.route):(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const dsx=dispatchSite(D.stack);if(!dsx.ok){D.status='cancelled';D.why=dsx.why;HOOK.news(`Dispatch stood down: ${D.title}. ${dsx.why}`,'warn');continue}
   const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch=nextWindow(D.rule,D.launch+1).day;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
   const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
@@ -799,10 +800,57 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
   if(res.deviation){D.status='deviated';D.dev={...res.deviation,at:PROG.day};HOOK.news(`⚠ A dispatched flight needs you: ${D.title}. ${res.deviation.why}`,'bad');HOOK.save();continue}
   D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
   const seen={};for(const p of v.parts)if(p.on)seen[p.d.key]=p.d.kind==='engine'?{fly:1,maxq:1,burn:1}:{fly:1,maxq:1};khLearn({khSeen:seen});
+  if(D.route!=null){routeRun(D,res);HOOK.save();continue}   // a routine's run (Q184): no contract to settle
   if(res.ok){const R={orb:res.orb,cdone:[],dv:res.dv,dispatched:true};contractEval({rec:R,parts:v.parts});
     HOOK.news(R.cdone.length?`Dispatched flight to orbit: ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, ${R.cdone.join(', ')}`:`Dispatched flight reached ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, outside the contract's window`,R.cdone.length?'ok':'warn')}
   else HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');
   HOOK.save()}}
+// ---- routines (QUEUE Q184, Q110 slice 1; W27, D17.1; MIDGAME § "The automation ladder"): a route keeps N satellites
+// of one design up in one orbit, M2's "routine repeat satellite launch". Made from a satellite in Tellus orbit whose
+// design has an ascent procedure; its runs are dispatches with no contract (dispatchRun flies the procedure headless and
+// registers what it puts up, tagged q.route). W27: ordered by hand each time at first; after ROUTE_CLEAN clean runs in a
+// row, and once the ladder allows deployments (autoAllowed('deploy'), the mainframes era), the player may let it repeat
+// by itself (opt-in per route, MIDGAME decision 1): routeTick then orders a run whenever fewer than `keep` of its
+// satellites are up, counting one that will re-enter or stop holding its orbit within ROUTE_LEAD days as gone. A failed
+// run pauses the repeating until a clean one. Resupply routes (stations, bases) are M3, with crew (D17.1).
+const ROUTE_CLEAN=3,ROUTE_LEAD=30;
+const routeOf=id=>(PROG.routes||[]).find(r=>r.id===id);
+const routeC=id=>{const r=routeOf(id);return r?{type:'route',route:r.id,id:-r.id,p:{alt:r.alt,inc:r.inc}}:null};
+function routeFrom(q){if(!q||q.junk||q.bodyName||q.landed||q.docked)return{ok:false,why:'only a satellite in Tellus orbit'};
+  if(!q.stack)return{ok:false,why:'its design was not kept'};const pr=(PROG.procs||{})[procKey(q.stack)];
+  if(!pr||pr.kind!=='orbit')return{ok:false,why:'its design has no ascent procedure: fly one to orbit by hand'};
+  if(q.route!=null&&routeOf(q.route))return{ok:false,why:'already on a route'};
+  const[r,v]=satAt(q,PROG.day*DAY_S),el=elements(r,v,TELLUS.mu),alt=Math.round(((el.pe+el.ap)/2-TELLUS.R)/1e3),inc=Math.round(Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578);
+  return{ok:true,why:'',alt,inc}}
+function makeRoute(q,keep=1){const f=routeFrom(q);if(!f.ok)return f;PROG.routes=PROG.routes||[];PROG.routeN=(PROG.routeN||0)+1;
+  const r={id:PROG.routeN,name:`${satKind(q)}s at ${f.alt} km, ${f.inc}°`,stack:JSON.parse(JSON.stringify(q.stack)),alt:f.alt,inc:f.inc,keep:Math.max(1,keep|0),auto:false,paused:false,runs:0,clean:0,made:PROG.day,sat0:q.id};
+  q.route=r.id;PROG.routes.push(r);HOOK.news(`A routine: keep ${r.keep} ${r.name} up, ${designName(r.stack)||'our design'} flying it`,'ok');HOOK.save();return{ok:true,route:r}}
+const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&q.adrift==null&&skLife(q)>ROUTE_LEAD&&decayLife(q)>ROUTE_LEAD);
+const routeBusy=r=>(PROG.dispatch||[]).find(x=>x.route===r.id&&(x.status==='queued'||x.status==='deviated'));
+// whether it may repeat by itself, and why not
+function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;
+  if(r.paused)return'paused after a failed run: order one by hand';return''}
+function routeQuote(r){const c=routeC(r.id);return c?dispatchQuote(c,r.stack):{ok:false,why:'no such route'}}
+function orderRoute(id,auto){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};const q=routeQuote(r);if(!q.ok)return q;
+  PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
+  PROG.dispatch.push({id:PROG.dispN,route:r.id,title:`${r.name}, run ${r.runs+1}`,stack:r.stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day,auto:!!auto});
+  HOOK.news(`${auto?'Routine':'Ordered'}: ${r.name}, run ${r.runs+1}, on pad ${q.pad+1} in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)} (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return{...q,ok:true}}
+// a run's outcome: clean = it reached the route's orbit (within 15 % of its height, 2° of its plane) and left a satellite up
+function routeRun(D,res){const r=routeOf(D.route);if(!r)return;r.runs++;const o=res.orb,q=D.satId!=null&&(PROG.sats||[]).find(x=>x.id===D.satId);
+  const near=o&&Math.abs((o.pe+o.ap)/2e3-r.alt)<=0.15*r.alt&&Math.abs((o.inc??r.inc)-r.inc)<=2;if(q)q.route=r.id;
+  if(res.ok&&near&&q){r.clean++;r.paused=false;HOOK.news(`${D.title}: ${q.name} is up (${routeSats(r).length} of ${r.keep})`,'ok')}
+  else{r.clean=0;r.paused=r.auto;HOOK.news(`${D.title} ${res.ok?`missed the route's orbit (${o?`${o.pe/1e3|0}×${o.ap/1e3|0} km`:'no orbit'})`:`failed: ${res.why||'lost'}`}${r.auto?'; the routine pauses until a clean run':''}`,'bad')}}
+function routeTick(){for(const r of PROG.routes||[]){if(!r.auto||routeAutoWhy(r)||routeBusy(r))continue;if(routeSats(r).length>=r.keep)continue;
+  const q=orderRoute(r.id,true);if(!q.ok&&!r.held){r.held=1;HOOK.news(`Routine held: ${r.name}. ${q.why}`,'warn')}else if(q.ok)r.held=0}}
+function setRouteAuto(id,on){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};if(on){const w=routeAutoWhy(r);if(w)return{ok:false,why:w}}r.auto=!!on;HOOK.save();return{ok:true}}
+function dropRoute(id){const r=routeOf(id);if(!r)return false;PROG.routes=PROG.routes.filter(x=>x!==r);for(const q of PROG.sats||[])if(q.route===id)delete q.route;HOOK.save();return true}
+// the line under a satellite in the Fleet tab: make a routine from it, or its routine's state and controls
+function routeLine(q){const r=q.route!=null&&routeOf(q.route);
+  if(!r){const f=routeFrom(q);return f.ok?` · <button data-mkroute="${q.id}" title="keep satellites like this one up in this orbit: order the runs yourself, and after ${ROUTE_CLEAN} clean ones, let it repeat">Make a routine</button>`:''}
+  const B=routeBusy(r),w=routeAutoWhy(r),up=routeSats(r).length;
+  return` · <span class="dim">routine: ${up} of ${r.keep} up${B?`, run ${r.runs+1} ${B.status==='deviated'?'needs you':`launches in ${Math.ceil(B.launch-PROG.day)} d`}`:''}</span>`+
+    ` <button data-rkeep="${r.id}" data-k="${r.keep+1}">keep ${r.keep+1}</button>${r.keep>1?` <button data-rkeep="${r.id}" data-k="${r.keep-1}">keep ${r.keep-1}</button>`:''}`+
+    `${B?'':` <button data-rorder="${r.id}">Order a run</button>`} <button data-rauto="${r.id}" ${!r.auto&&w?`disabled title="${w}"`:''}>${r.auto?'Stop repeating':'Repeat by itself'}</button> <button data-rdrop="${r.id}">End</button>`}
 // ---- dry runs as the trajectory office's study (QUEUE Q46; the bodies session's procAdopt does the flying): the office
 // tries every stored orbit procedure on a design that has none, headless. It costs like a study (the computing era,
 // the centre's speed), DRY_K times dearer and a quarter more per procedure tried, and the days pass when ordered.

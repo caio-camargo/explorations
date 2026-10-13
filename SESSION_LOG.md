@@ -5891,3 +5891,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (255), `QUEUE.md` (Q382 ✓, Q383, Q371, Q372, Q353), `ACTIVE_WORK.md`.
 - **Next:** Q353's remainder (the procedure executor holding prograde through a separation in air, control + space); Q329, Q341,
   Q338 for vehicle.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): Q184 routines (v1.175)
+- **Scope:** D17.1 moved resupply to M3, so Q184 became M2's routine repeat satellite launch; base resupply routes are a Proposed M3 line.
+- **Built:** a route keeps N satellites of a design up in an orbit; runs are dispatches with no contract (pads, windows, scrubs, money as for any dispatch); W27: three clean runs by order, then with mainframes an opt-in *Repeat by itself* that orders a run when fewer than N will be up in 30 days. Fleet line controls, `netModel().routes`, pad bars tagged.
+- **Measured:** three Beeper runs to 106 km fly clean headless; most re-enter within 30 days, so a low route keeps re-ordering (shown).
+- **Not checked in a browser:** the Fleet line's buttons (TESTING 257).
+- **Files:** `sim/program.js`, `sim/procedures.js` (`dispatchRun` keeps `D.satId`), `sim/contracts.js` (`routeTick` in `econTick`), `app/program-ui.js`, `test.mjs` (exports), `tests/economy.mjs` (econ-25), `notes/economy.md` § v1.175, `NOTES.md`, `QUEUE.md`, `TESTING.md` 257, `ACTIVE_WORK.md`.
+- **Next:** economy's ready list: Q296, Q332.
+
