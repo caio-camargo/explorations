@@ -2125,3 +2125,26 @@ above and below, with 2×2 stairs (the half-resolution slab's upsample along it)
   era ladder; deploy animation is Q411.
 - **Stills:** `output/launchpad/beauty/Q396/` (`bus_ab`: before | after; the Satellite preset on the pad, fairing off;
   `boom_fins_*` with a boom antenna and 2 m / 1.35 m fins swapped in). **Check:** test `aerofx-40`. TESTING 299.
+
+## v1.219 — deploying animates: wings unfold panel by panel, the boom antenna swings out and extends, legs swing down (2026-10-13, effects beat, QUEUE Q411)
+
+`app/gl.js` (`DEP_S`, `depF`, `depKey`; `wpanel`, `bant`, `leg` in `partBody`), `app/render.js` and `app/program-ui.js` (the
+mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp each.
+
+- **Caio (2026-10-13):** folding parts snapped. Now they move, on the bay doors' pattern (`doorT`/`doorF`): the sim stamps
+  `p.depT = simT` when a wing, boom antenna or leg starts out or back, and the drawing follows `depF(p)` (0 stowed … 1 out)
+  in sim time, so it pauses with the game and runs fast under warp. Without a stamp (set in the Assembly, a loaded save,
+  a ship seen for the first time) it is at once.
+  - **Solar wing (4 s):** the boom slides out (first quarter), then the four panels unfold one after another, an accordion
+    hinged at alternate edges; the edge spars appear once it is flat.
+  - **Boom antenna (3 s):** swings from along the skin up and out (first third), then the lattice extends; the dipole's
+    arms open at the end.
+  - **Leg (1.6 s):** the foot swings from its stowed place down to `legFoot`'s, strut and brace following.
+  - While a fraction moves, the ship's (and the fleet's) mesh is rebuilt each frame (the key carries the fractions, as
+    the bay doors' does): a few seconds of rebuilds per deploy.
+- **The sim still counts a part as out at once** (power, the antenna's gain, the legs' feet, `qMax` tear-off): Q411's
+  "the sim counts a part out only at 1" is the vehicle session's (a Proposed line). **Vehicle:** the two stamps
+  (`p.depT=simT`) in `wingOp` and `legOp` are mine; nothing else in the sim changed.
+- **Stills:** `output/launchpad/beauty/Q411/deploy_sequence.png` (0.6, 1.4, 2.2, 3.0, 4.2 s; the Satellite on the pad,
+  its fairing off, a boom antenna swapped in) and the frames `dq_*`. **Check:** test `aerofx-41` (and aerofx-3's leg
+  pattern amended). TESTING 300.

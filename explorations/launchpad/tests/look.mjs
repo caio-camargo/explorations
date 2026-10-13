@@ -222,7 +222,7 @@
   const leg = body('partBody').slice(body('partBody').indexOf("case'leg':"));
   check('part looks: leg, solar wing, body cells, battery and computer are drawn; the deployed leg\'s foot is legFoot\'s',
     ["case'leg':", "case'wpanel':", "case'bpanel':", "case'batt':", "case'ocomp':"].every(c => pg.split(c).length === 2) && !pg.includes('placeholder until the parts & pad beat')
-      && !pg.includes('placeholders until the parts & pad beat') && /F=\[x\+n\[0\]\*d\.reach,y-d\.drop,z\+n\[2\]\*d\.reach\]/.test(leg)
+      && !pg.includes('placeholders until the parts & pad beat') && /F1=\[x\+n\[0\]\*d\.reach,y-d\.drop,z\+n\[2\]\*d\.reach\]/.test(leg)
       && /const legFoot=p=>\{const a=p\.phi\|\|0;return\[p\.pos\[0\]\+p\.d\.reach\*Math\.cos\(a\),p\.y0-p\.d\.drop/.test(H));
 }
 
