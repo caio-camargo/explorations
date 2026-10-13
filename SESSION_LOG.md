@@ -6144,8 +6144,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `PLAYTEST.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** economy's next ready items: Q332 (recovering a spent stage), Q380 (overflight rights), Q386 (scrub odds).
   The Fleet line clause (what a route's satellite is counted by) waits for Q296's Fleet line (Proposed).
+- **Addendum 7 (design desk, 2026-10-13):** the bench queued to build: Q416 already with vehicle (round 2's notes
+  appended), Q422 propulsion, Q423 first parts, Q424 instruments and antennas, Q425 ends of life. Then Caio's flight
+  notes: PLAYTEST #109 (rockets go straight up; nothing teaches the gravity turn), #110 (the navball's surface→orbit
+  jump at 50 km: blend it, make the label clickable), #111 (SAS buttons as symbols); each with a QUEUE Proposed line.
+- **Addendum 5 (effects):** v1.205 Q402 (PLAYTEST #98 ✓ with v1.203): the shake's envelope from 15 kPa only, damped jolts at Mach 1 and staging, Settings › Screens › Off / Gentle / Full. v1.206 Q393 (PLAYTEST #90): one effects clock (`fxNow`, `FXT`) that stops with the pause, for every effect shader, explosion and the twinkle. Tests aerofx-35 (rewritten), aerofx-36; TESTING 286, 287. Neither seen moving in a browser (the GPU was the sky session's). Claim idle.
 
-## 2026-10-13 — Caio + Claude (launchpad vehicle session): propulsion on the bench (v1.206, Q422) and the balance weight
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): propulsion on the bench (v1.207, Q422) and the balance weight
 - **Built:** kick motors (solid: armed by staging, lit by a throttle-up, full thrust to burnout), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is a separation ring (decoupler); the bench shows the payload's own Δv against a stationary orbit; a balance weight one click from the balance check (Caio's round-2 note); plain shapes at real size for the new parts. Tests vehicle-28, vehicle-29.
 - **Checked:** full suite passed except `qa-2` (fails on `main` too, flagged before). Browser on 8772 with the GPU lock (taken with noclobber, released).
 - **Next:** Q412 (a stationary-orbit preset built from these), Q423 (bench parts, first set), slice 2 of Q416 with Q417 (bus frame, small stacks).

@@ -2009,3 +2009,19 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
     per browser (`launchpad-shake`: a saved '1' from v1.203 reads as Gentle, '0' as Off).
 - **Flow:** the shake row in `renderSettings` is now three buttons, handled in the click listener beside the quality's.
 - Not seen moving in a browser (numbers from the test). **Check:** tests `aerofx-35` (rewritten), `aerofx-14`. TESTING 286.
+
+## v1.206 — effects stop with the pause (2026-10-13, effects beat, QUEUE Q393, PLAYTEST #90)
+
+`app/gl.js` (`FXT`, `fxNow`), `app/loop.js` (`frame` advances it), `app/render.js`, `app/state.js`.
+
+- **Caio (PLAYTEST #90):** "the boosters' effect keeps playing when the game is paused". The plume, plasma, dust,
+  impact and composite shaders, explosions' ages and light, and the stars' twinkle all took their time from
+  `performance.now()`, so a paused frame kept moving (flames flickering, fireballs growing and fading).
+- **Now one effects clock**, `fxNow()` (ms): `frame()` adds real time to it only while the game isn't paused (the Esc
+  menu or Settings open), so a pause holds every effect still and they carry on from there. It keeps real-time pace under
+  time warp (a flame flickers at its own rate; sim-time effects such as smoke already follow the sim). Reference views
+  still pin it with `HOOK.fxT`.
+- Left on the wall clock on purpose: the exposure's easing (`expoTick`: the picture holds still anyway), the prediction
+  caches and HUD timers (not looks).
+- Not seen in a browser here (the GPU was another session's); the wiring is the test's. **Check:** test `aerofx-36`
+  (and the views test's clock pattern amended). TESTING 287.

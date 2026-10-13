@@ -1686,7 +1686,7 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
-  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,(HOOK.fxT??performance.now())%997);
+  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,fxNow()%997);
   {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);
   gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
@@ -1737,7 +1737,7 @@ function drawPlasma(VP,camW,S,p,qH,all){const va=sub(S.v,surfVel(S.body,S.r)),vl
     su=ef+Math.abs(dot(Y,f)*mid)+3*D,X=norm(cross(f,Math.abs(f[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,f),Qf=qFromBasis(X,f,Z),qi=qconj(Qf),
     O=add(sub(p,camW),mul(f,su)),R=ep*1.9+D*3+.06*Lw+.2,L=su+ef+Lw+ep,cl=qrot(qi,mul(O,-1)),c=[0,-su,0],A=qrot(qi,Y),m0=add(c,mul(A,mid)),
     inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05,pu=PPLASMA.u;
-  gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
+  gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(pu.uM,false,modelQ(Qf,O));gl.uniform3f(pu.uB,R,L,0);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);
   gl.uniform3fv(pu.uA,A);gl.uniform3fv(pu.uM0,m0);gl.uniform3fv(pu.uC,m0);gl.uniform1f(pu.uK,k);gl.uniform1f(pu.uRb,rb);gl.uniform1f(pu.uHl,hl);
   gl.uniform1f(pu.uD,D);gl.uniform1f(pu.uLw,Lw);gl.uniform1f(pu.uEf,ef);gl.uniform1f(pu.uEp,ep);gl.uniform1fv(pu['uPr[0]'],hullProfile(S,all));
@@ -1798,7 +1798,7 @@ function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=M
   gl.uniform3f(u.uPlC,PLT.c[0]+PLT.c2[0],PLT.c[1]+PLT.c2[1],PLT.c[2]+PLT.c2[2]);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 // an explosion's flash, as the scene's point light (PLT) while it outshines the plumes: decays over ~0.3 s, then the
 // fireball's glow lingers dimmer for ~1 s
-function boomLight(camW){const now=HOOK.fxT??performance.now();let best=null,bk=0;
+function boomLight(camW){const now=fxNow();let best=null,bk=0;
   for(const bm of booms){const a=(now-bm.t0)/1000;if(a<0||a>2)continue;const k=bm.sz*(900*Math.exp(-a/.12)+120*Math.exp(-a/.8));if(k>bk){bk=k;best=[bm,a]}}
   if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2]+PLT.c2[0]+PLT.c2[1]+PLT.c2[2])return;PLT.c2.fill(0);const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);
@@ -2014,13 +2014,13 @@ function drawDust(G,hits,VP){let h=null,best=0;for(const x of hits){const k=x.th
   const u=PDUST.u,loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]),ip=loc(h.P),w=Math.min(1.5,best),
     Rd=8+28*w,Hb=2+.12*Rd,lo=[ip[0]-Rd*1.6,0,ip[2]-Rd*1.6],hi=[ip[0]+Rd*1.6,Hb,ip[2]+Rd*1.6],
     inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2],sl=[dot(SUN,G.X),dot(SUN,G.Y),dot(SUN,G.Z)];
-  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);
   gl.uniform4f(u.uIP,ip[0],ip[2],w,h.re*2+.15*h.sg);gl.uniform1f(u.uRd,Rd);gl.uniform3fv(u.uSunL,sl);gl.uniform3f(u.uAlb,.78,.76,.72);gl.uniform1f(u.uLit,4*Math.max(0,sl[1])+.05);
   gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
   gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const IPA=new Float32Array(16);
-function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(VBOX.vao);
   const loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]);
   hits.sort((a,b)=>b.w*b.re*b.re-a.w*a.re*a.re);const H4=hits.slice(0,4),top=H4[0],P=top.P2;
@@ -2035,6 +2035,11 @@ function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMa
   gl.uniform4fv(u.uIg,ig);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.min(1.3,W*(.7+.3*H4.length)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,re);
   gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);
   gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
+// (Q393, PLAYTEST #90) the effects' clock, in ms: it runs with real time (flames flicker and fireballs grow at their own
+// pace under time warp too) but stops while the game is paused, so a paused frame holds still. The plume, plasma, dust,
+// impact and composite shaders, explosions' ages and light, and the stars' twinkle read it; frame() advances it.
+// Reference views pin it (HOOK.fxT, Q312)
+let FXT=0;const fxNow=()=>HOOK.fxT??FXT;
 const SPOOL=new WeakMap();
 // the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the
 // ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)

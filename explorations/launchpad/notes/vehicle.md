@@ -1708,7 +1708,7 @@ Test `vehicle-12`. `--smoke` all pass.
   dressing of the bench.
 - Test `vehicle-27`. TESTING 279.
 
-## v1.206 — propulsion on the bench (2026-10-13, vehicle session, QUEUE Q422, PROBES § 6.3)
+## v1.207 — propulsion on the bench (2026-10-13, vehicle session, QUEUE Q422, PROBES § 6.3)
 
 - **Caio:** "there are new satellite items in the queue, we can get started on that". Q422 first (after Q416's slice 1).
 - **Parts** (`sim/vessel.js`, prices in `sim/program.js`): kick motors, solid, small / medium / large (31 / 80 / 200 kg, 6 / 12
@@ -1735,4 +1735,4 @@ Test `vehicle-12`. `--smoke` all pass.
   the payload itself rather than the adapter, which only exists on the rocket (test `vehicle-29`).
 - **Drawn at their real size** (`app/gl.js` `partBody`): the fallback drew any new part as a 1.25 m drum, so the adapter, the
   motors, the thrusters, the spheres and the weight now have plain shapes from their own profiles; parts & pad styles them.
-- Not yet: ion; a stationary-orbit preset (Q412) built from these. TESTING 287.
+- Not yet: ion; a stationary-orbit preset (Q412) built from these. TESTING 288.
