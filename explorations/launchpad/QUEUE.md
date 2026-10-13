@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.92 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 0.1.93 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -51,7 +51,7 @@ the feedback I paste into PLAYTEST items.* For the **test bench** (Caio's second
 
 ## Flags (read before merging)
 
-- **TWO CHECKS FAIL ON `main`** (seen 2026-10-13 at `e42f84b` by sky & bodies' smoke run, not caused by Q321): *node chain flown* (planned 400×400 km, flown −1266×0.7 km: the second burn goes wrong) and *later stages in the air (Q342)*. **Q372** (vehicle, with space) fixes them; until then those two failures aren't your merge. Suspects: v1.164's recalibrated in-air check, v1.152's `airSep`.
+- ~~**TWO CHECKS FAIL ON `main`** (seen 2026-10-13 at `e42f84b` by sky & bodies' smoke run, not caused by Q321): *node chain flown* (planned 400×400 km, flown −1266×0.7 km: the second burn goes wrong) and *later stages in the air (Q342)*. **Q372** (vehicle, with space) fixes them; until then those two failures aren't your merge. Suspects: v1.164's recalibrated in-air check, v1.152's `airSep`.~~ **Not reproduced** (vehicle, 2026-10-13: both pass alone, in `--smoke` and `--smoke --jobs 3`, and at v1.173). If either fails again, paste the output into Q372; a parallel-shard flake is Q311's (platform).
 - **A test bench runs on Caio's second computer** (2026-10-12, `docs/session-roles.md` § Test bench): it guards `main` (`--smoke` and `m1` after each version), takes 🖥🖥 and "quiet machine" items (Q19's A/B, Q215, Q233) and walks untried TESTING rows. **Lanes:** leave those to it; your own 🖥 checks stay yours.
 - **THE BEAUTY PASS IS QUEUED (D18, [`BEAUTY.md`](BEAUTY.md), 2026-10-12): Q312–Q324 across the look & sound beats and world.** Order: B0 first (Q312 views → Q313 half-res buffers → Q314 HDR); Q314 changes every shader's output (no more per-shader tone-mapping) and `render()`'s pass order: **every beat, merge main after it lands** and write new shaders for the HDR composite. `SKY_FS` items shrink it or pay for what they add (Q19). Each item: before/after stills and GPU ms on both settings and both GPUs.
 - **A loss keeps its cause (v1.133, Q264): `s.lossWhy`** (a clause) is set at every way a vessel dies; in `sim/flight.js` use `lose(s, why, boom)`. **Every lane** adding a new way to die: set it (`debOutcome` and the on-screen message read it). **Flow/economy (Q293):** the Debrief's *Lost* line already is the cause.
@@ -533,7 +533,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q298 | **`check_docs.mjs`** (ROADMAP § Documents rule 7): a header version that differs from the doc's history, a doc missing from INDEX or ROADMAP's catalog, broken relative links, stale "after Qn" (see the Proposed line) | — | S | ⚙ | ready |
 | Q299 | **One load path**: `app/state.js`'s boot calls `recLoad` (it repeats the load's derived state: HOME, rivals, board, tables), so a replay and a reload can't drift apart (Q275) | M2 | S | ⚙ | ready |
 | Q308 | `check_numbers.mjs` on a branch cut **before the NOTES split** missed a version collision (economy's v1.128 vs flow's, and offered v1.129 that `notes/vehicle.md` had): read versions from `origin/main`'s `notes/*.md` whatever the branch's own layout (Q188 merge, v1.130) | — | S | ⚙ | ready |
-| Q311 | **A parallel-shard flake**: `node test.mjs --smoke --jobs 4` failed "presets" once (Passenger Orbiter: 0 m/s spare, 0.00 orbits, 2026-10-12, flow); passes alone and in a serial smoke run on the same tree. Find the shared state | — | S | ⚙ | ready |
+| Q311 | **A parallel-shard flake**: `node test.mjs --smoke --jobs 4` failed "presets" once (Passenger Orbiter: 0 m/s spare, 0.00 orbits, 2026-10-12, flow); passes alone and in a serial smoke run on the same tree. Find the shared state Maybe also Q372's two failures (node chain, later stages in the air), seen once by sky & bodies' smoke run and not reproduced | — | S | ⚙ | ready |
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
