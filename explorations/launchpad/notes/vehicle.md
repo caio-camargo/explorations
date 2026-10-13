@@ -1530,3 +1530,20 @@ Test `vehicle-12`. `--smoke` all pass.
   Rollout rebuilds the ship (`editorChanged`, `app/screens.js`), and so does entering the Program with a design (was: only
   after a flight). Assembly → Rollout → Assembly → Program → Assembly: 3.00, 0.00, 3.00, 0.00, 3.00 m.
 - UI only, so no `test.mjs` section (the flow and platform sections pass). TESTING 239.
+
+## v1.160 — a fast rocket's own max-q (2026-10-13, vehicle session, QUEUE Q347; PLAYTEST #84)
+
+- **What broke:** flown (a satellite launcher, four boosters hung off the core's Kestrel as the Heavy preset hangs two,
+  boosters without fins), the joint that snaps is the **decoupler under the upper stage's Petrel** ("the first engine" from
+  the top), in bending at 35 s: four boosters push it through thick air so fast that q peaks near **76 kPa**. The Assembly's
+  max-q case was a fixed 25 kPa, so it showed that joint at a comfortable ~30%. With fins on the boosters the flight was
+  gentler and held (30–55%); boosters on the core's tank instead of its engine held too.
+- **`ascentEst(stack)`** (`sim/flight.js`): `airSep`'s point-mass ascent, pulled out, cached on the design, now flying every
+  step and keeping the peak: `{qMax, hQ, MQ, starts}`. The Orbiter's estimate is 34 kPa against 33.2 flown.
+- **The max-q case** (`analyze`, `ana.mq`): at the design's own peak when that is past 25 kPa (`mq.q`, `mq.M`, `mq.own`),
+  else the old 25 kPa / M1.2. The four-booster rocket: 74 kPa, 91% at the decoupler; with an interstage decoupler 44%.
+  Presets all stay under 65%.
+- **Saying why** (`jointFix`, `sim/vessel.js`): under the Max-q line from 70% up, and in the Rollout's joint warning, which now
+  names the joint: an interstage decoupler instead (when a plain decoupler is in the joint), reinforce the joint (the part's
+  *joint* option), or less thrust low down (when it's the design's own peak).
+- Test `vehicle-22`. TESTING 242.

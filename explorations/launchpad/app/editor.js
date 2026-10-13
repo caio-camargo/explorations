@@ -109,7 +109,7 @@ function editorChanged(){
     <div>Stability <span class="dim">(CoM ahead of CoP, calibers)</span><br>
     full <b class="${cc(cal(a.ful))}">${cal(a.ful).toFixed(2)}</b> · stage-1 dry <b class="${cc(cal(a.emp))}">${cal(a.emp).toFixed(2)}</b> · M1.6 <b class="${cc(cal(a.sup))}">${cal(a.sup).toFixed(2)}</b></div>
     <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.cert.frac)}">${(a.lift.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.cert)}</span></div>
-    <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.cert)}</span>
+    <div>Max-q ${(a.mq.q/1000).toFixed(0)} kPa · M${a.mq.M.toFixed(1)} · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${a.mq.own?'its own peak on a standard ascent (past the 25 kPa design case) · ':''}${jn(a.mq.cert)}</span>${a.mq.cert.frac>0.7?`<div class="sub">${a.mq.cert.frac>1?jointFix(a.mq.cert,a.mq.own):'Near its rating (a turn or a gust adds to it): '+jointFix(a.mq.cert,a.mq.own).replace(/^./,c=>c.toLowerCase())}</div>`:''}
 </div>
     ${trimHTML(S)}
     ${standHTML(S)}

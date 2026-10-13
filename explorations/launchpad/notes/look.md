@@ -1534,3 +1534,21 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   `SKY_FS`'s `scatter`; the sky pass measured the same in two alternating A/B rounds against `main` (views 97, 156,
   157: 1.45–2.02 ms on both). No step was added (the Q19 rule).
 - **Checks:** test `aerofx-18`. TESTING 241.
+
+## Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow; PLAYTEST #86)
+- **Seen:** from 1,000 km over Tellus's highest ground (8.9 km), the range reads as crumpled white paper: lumpy grey
+  shading on solid white, with a hard outline where it meets the cloud deck. Stills in
+  `output/launchpad/beauty/q351/` (`m_col.png`, zoom `m2_zoom.png`). Found with a scratch view: the ship over the highest
+  `terrainH` point, looking down.
+- **The cause is the snow mask, not the lighting.** In `tellus()` (`SKY_FS`), snow and ice hold only on gentle ground:
+  `steep = sst(.12,.3,slope)` keeps faces steeper than ~35° as bare rock, which is what gives a range its relief. But
+  `slope` comes from `npf`, the normal from the height differences over `eps = max(fw·1.5, 1)`, filtered to the pixel's
+  footprint. From orbit a pixel covers hundreds of metres, every slope averages out to gentle, the steep-face test never
+  fires, and the whole range above the snow line turns snow. The relief shading left on it is the crumple.
+- **Not the cloud edge:** the shell is drawn only in front of the ground (`tC < tH`), so peaks above it cut a hard
+  contour. Letting the cloud lap 1,200 m up the ground at the hit point (tried, reverted) changed nothing visible here:
+  these peaks stand 4–7 km above the deck, and the white is snow.
+- **The fix belongs to world** (with Q251, relief normals at distance): carry how steep the ground is *inside* a pixel.
+  For example, bake a slope-variance channel with the world texture and let `steep` use `max(slope, expected sub-pixel
+  steepness)` as the footprint grows, so ridges stay rock and valleys and gentle shelves hold the snow. It grows
+  `SKY_FS`, so pay with a cut (Q19) or fold it into Q323 (Tellus from above). QUEUE *Proposed*.

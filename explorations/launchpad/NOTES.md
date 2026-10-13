@@ -84,6 +84,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.148 — side boxes fit the fairing (the side camera looks outward), a 0.3 m stack camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
 - v1.152 — later stages in the air: the fairing satellite's upper stage tumbles after separating; the builder and Rollout say so and what helps (2026-10-12, vehicle session, QUEUE Q342)
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
+- v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -197,7 +198,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
 - v1.104 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
-- v1.160 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
+- v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -290,6 +291,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.156 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267)
 - v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319)
 - v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352)
+- Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
