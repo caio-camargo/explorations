@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2859,3 +2859,22 @@ our depots and relays (LATE_GAME rule 5); launch rides sold to us.
 
 Tests: `econ-22` (3 checks: arrival, prototypes, orbit, sales cheaper than an import; share, pay and floor, news, price
 to ×1.0; sanctions from its power stop its sales). **Waiting on Caio:** W40 (three defaults, built).
+
+## v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; DECISIONS D17.4)
+
+**Before:** a missed deadline (and a withdrawal, priced the same since Q93) cost −10 standing with the source and −3 of
+the client's opinion. **Now** (`contractLost`, `backTick` in `sim/contracts.js`): the job is lost and nothing else; the
+client asks again **60–120 days later** (seeded per contract) as a fresh offer for the same job and pay, with "Asked
+again: *client* still needs it" as its reason and a *Back on offer* news line. It drops instead if its type's mission is
+no longer done, the client sanctions us, or the job's reason is gone (types with `open()`: a satellite to service, a
+station's need; those regenerate their target and keep the pay). A full board makes it wait for a free line. Harm to
+people keeps its own costs (losses and crew rules don't go through here). The withdraw button's tooltip says so.
+
+**Measured** (`career.mjs 4 8`, 144 runs, before → after): flights 37.8 → 40.1, contracts done 29.9 → 33.2, final
+opinion 49.5 → 53.8, final funds 903 → 872M (−3 %, inside the runner's seed noise), lowest funds 61 → 60M, bailouts 1.3
+→ 1.1. The poor-world companies end lower (frugal 203 → 129M, resource 516 → 269M) though their lowest funds and
+bailouts don't move; with 8 seeds that's not separable from noise, so I'm noting it, not tuning for it.
+
+Tests: `econ-23` (2 checks: no loss, the same job comes back with its reason; a full board waits, a sanctioning client or
+a vanished target drops it); `econ-9`'s withdraw check and core's missed-deadline check rewritten to the new rule. Test
+fixtures that reset `offers`/`active` reset `back` too.

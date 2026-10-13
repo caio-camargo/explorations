@@ -8,6 +8,11 @@ if(!gl){document.body.innerHTML='<p style="padding:2em">WebGL2 is required.</p>'
 const SUN=norm([1,0.12,0.05]),FAR=1e12,FC=2/Math.log2(FAR+1);
 const QUAD_VS=`#version 300 es
 layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4(aV,0.,1.);}`;
+// The space sky (QUEUE Q321, BEAUTY B5, W39; mock-up mockups/sky/): the galaxy, a nebula and a neighbour spiral are baked
+// once per program into a cube map (galBake, GAL_FS), so SKY_FS's main only samples it; the stars are sharp discs by a
+// power law with a floor under the exposure and a deliberate twinkle (Caio: keep it); the sun is a tiny blinding disc
+// with no spikes. SKY_B5 = false compiles the old galaxy, stars and sun back in (an A/B; the shader recompiles).
+const SKY_B5=true;
 const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
@@ -17,7 +22,7 @@ uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
-uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
+uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
@@ -205,7 +210,27 @@ float cloudDens(vec3 q){float r=length(q);vec3 u=q/r,cu=uProt*u;float hf=(r-uPR-
 // The home galaxy is generated from the world seed (galaxyParams): a band on a great circle (normal uGx) with a bulge at
 // its centre (uGc), dust lanes along its midplane, a satellite galaxy (uGs: direction, size) and a nebula (uGn).
 // uGp = (band half-width, bulge size, dust, arm contrast); uGt = the band's tint.
-vec3 galaxy(vec3 d,out float band){float b=dot(d,uGx),lc=dot(d,uGc),cl=.5+.5*lc,w=uGp.x*(.6+.9*cl*cl);   // the band widens toward the centre
+${SKY_B5?`vec3 galaxy(vec3 d,out float band){vec4 g=texture(uGalC,d);band=g.a;return uGalE>.5?g.rgb*g.rgb*.05:g.rgb;}   // (Q321) baked; RGBA8 stores sqrt(20 c)
+// stars (Q321): three layers on hashed cells, ~40 bright, ~300 medium, ~1,500 faint in a 60° frame, more along the band;
+// brightness by a power law, colour by temperature; each a small sharp disc at least a pixel wide (no shimmer as the view
+// turns), a soft halo on the brightest. uStK lifts them when the exposure is low (the floor, D18.2: in daylight only the
+// brightest stay). The twinkle is deliberate (Caio 2026-10-12): each star's brightness drifts on its own seed, ±35 %.
+vec3 starsAt(vec3 d,float band){vec3 c=vec3(0.);
+ for(int k=0;k<3;k++){float sc=k==0?90.:k==1?200.:420.;vec3 sd=d*sc,ci=floor(sd);
+  float th=(k==0?.9967:k==1?.995:.994)-(k==2?.02:.002)*band;if(h3(ci)<th)continue;
+  vec3 j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3));float r=length(d-normalize((ci+.3+j*.4)/sc));
+  float m=h3(ci+9.),br=k==0?.25+2.2*pow(m,5.):k==1?.07+.25*pow(m,2.):.025+.05*m;
+  float t=h3(ci+5.3);vec3 tc=t<.1?vec3(.62,.74,1.):t<.45?vec3(.88,.92,1.):t<.75?vec3(1.,.95,.84):t<.92?vec3(1.,.84,.62):vec3(1.,.66,.45);
+  float ph=h3(ci+2.2)*6.2832,f=1.5+2.5*h3(ci+4.4),tw=max(1.+.35*(.5*sin(uStT*f+ph)+.3*sin(uStT*f*2.3+ph*1.7)+.2*sin(uStT*f*5.1+ph*.3)),0.);
+  float rad=min(uPix*(.6+.45*sqrt(br)),.22/sc);c+=tc*br*tw*exp(-r*r/(rad*rad))*.9;
+  if(k==0&&br>1.2)c+=tc*br*tw*.015*exp(-r/(uPix*5.));}
+ return c*uStK;}
+// the sun (Q321): a limb-darkened disc (0.27°) that clips to white at any exposure, a tight glare and a faint veil; no
+// diffraction spikes (they were a camera's, fixed to the screen)
+vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos(clamp(sdn,-1.,1.)),r=th/.0047;
+ float disc=r<1.?(1.-.55*(1.-sqrt(1.-r*r))):0.;disc*=smoothstep(1.,.92,r);
+ return vec3(1.,.97,.92)*(disc*250.+exp(-th/.003)*4.+exp(-th/.02)*.35+exp(-th/.15)*.015);}   // the game's bloom spreads it: kept small
+`:`vec3 galaxy(vec3 d,out float band){float b=dot(d,uGx),lc=dot(d,uGc),cl=.5+.5*lc,w=uGp.x*(.6+.9*cl*cl);   // the band widens toward the centre
  band=exp(-b*b/(w*w));float ac=acos(clamp(lc,-1.,1.)),bulge=exp(-ac*ac/(uGp.y*uGp.y))*exp(-b*b/(uGp.y*uGp.y*.35));
  // everything sampled on the sphere (no angle coordinates, so no seams); clumps stretched along the band by squashing
  // the noise across it
@@ -231,7 +256,7 @@ vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos
  vec3 q=d-uSun*sdn;float a=atan(dot(q,uU),dot(q,uR));
  float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);   // camera-fixed spikes (a lens artefact)
  return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);}
-float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
+`}float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
 // the cloud volume's own shadow on the ground (QUEUE Q65): 5 steps toward the sun through the 2–5.5 km slab, the volume's
 // extinction (1/180 m⁻¹), floor 0.25 for skylight; blended into the shell's shadow by uVk and a fade at the bake's edge,
 // so the shadows under the deck match the clouds drawn above them. uVs = 0 turns it off (A/B).
@@ -1711,10 +1736,67 @@ function fmtAlt(v,fine){const a=Math.abs(v);return a>=1e5?(v/1e3).toFixed(0)+' k
 function makeGal(seed){const R=rng(seed*7919+101),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
   const gx=norm(add(dir(),[0,.3,0])),c0=dir(),gc=norm(sub(c0,mul(gx,dot(c0,gx)))),off=a=>norm(add(gc,a));
   const s=dir(),nb=norm(add(mul(gc,.6),add(mul(gx,.15),mul(dir(),.5))));
-  return{seed,gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()]}}
+  return{seed,gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()],...galSights(gx,R)}}
+// (Q321, W39) the sights against the band: the nebula 22° off its midline at a seeded point along it (nebulae lie along
+// the band; Orion is ~20° off), the spiral 40° off (spirals are seen only far from the band's dust, the zone of
+// avoidance); a seeded noise offset and the spiral's roll, so each program draws its own
+function galSights(gx,R){const bp=v=>norm(sub(v,mul(gx,dot(v,gx)))),off=(p,a,sg)=>norm(add(mul(p,Math.cos(a)),mul(gx,sg*Math.sin(a)))),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
+  const nd=off(bp(dir()),22*Math.PI/180,R()<.5?-1:1),sd=off(bp(dir()),40*Math.PI/180,R()<.5?-1:1);
+  return{nd,sd,go:[R()*40,R()*40,R()*40],sr:[R()*6.2832,.8+.5*R()]}}
 // a different galaxy each playthrough (QUEUE Q21): the program's own seed PROG.gseed, drawn the first time the sky is
 // drawn and saved with the program (a reset clears it; the tester's sandbox has its own). The planet stays WSEED's.
 let GAL=makeGal(WSEED);
+// the bake (Q321): GAL_FS draws the band, the nebula and the spiral (mockups/sky/'s functions and Caio's levels: the band
+// 100 %, the nebula 7.5 %, the spiral 4.5 % of round 2's, one palette for both galaxies, the nebula in the Hubble
+// palette), the band's density in alpha for the stars; into a cube map (512² a face on High, 256² on Low; RGBA16F, or
+// RGBA8 holding sqrt(20 c)), once per program seed and setting, mipmapped. ~10 ms once; nothing per frame.
+const GAL_FS=`#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform int uFace;uniform vec3 uGx,uGc,uNbD,uSpD,uGo;uniform vec2 uSpR;uniform float uEnc;
+float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
+            mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*vn(p);p=p*2.03+1.7;a*=.5;}return s;}
+void frameOf(vec3 c,out vec3 T,out vec3 B){T=normalize(cross(c,abs(c.y)<.9?vec3(0,1,0):vec3(1,0,0)));B=cross(T,c);}
+vec3 band(vec3 d,out float bd){float b=dot(d,uGx),lc=dot(d,uGc),cl=.5+.5*lc,w=.10*(.55+1.1*cl*cl);
+ bd=exp(-b*b/(w*w));float ac=acos(clamp(lc,-1.,1.)),bulge=exp(-ac*ac/.09)*exp(-b*b/.012);
+ vec3 q=d+uGo*.01;float cloud=fbm(q*6.)*.6+fbm(q*23.+3.)*.3+fbm(q*70.)*.1,cl2=smoothstep(.35,.85,cloud);
+ float lane=smoothstep(.42,.7,fbm(q*11.+7.))*exp(-b*b/(w*w*.18))*(.55+.45*cl);
+ float I=bd*(.12+1.25*cl2*cl2)+bulge*1.8;I*=1.-.88*lane;
+ vec3 c=mix(vec3(.78,.84,1.),vec3(1.,.83,.6),clamp(bulge*1.2+cl*.25,0.,1.))*I;
+ c+=vec3(1.,.28,.38)*smoothstep(.72,.9,fbm(q*17.+11.))*bd*(1.-lane)*.35+vec3(.55,.7,1.)*smoothstep(.93,.99,vn(q*170.+5.))*bd*.6;
+ return c*.03;}
+vec3 nebula(vec3 d){if(dot(d,uNbD)<.6)return vec3(0.);vec3 T,B;frameOf(uNbD,T,B);vec2 p=vec2(dot(d,T),dot(d,B))/.22;
+ p=mat2(.8,-.6,.6,.8)*p;p.x*=.62;float r=length(p);if(r>2.4)return vec3(0.);
+ vec3 w=vec3(p*1.6,3.)+uGo+vec3(fbm(vec3(p*1.3,1.)+uGo),fbm(vec3(p*1.3,5.)+uGo),0.)*1.6;
+ float edge=fbm(vec3(p*1.2,8.)+uGo)*.9+fbm(vec3(p*4.,3.)+uGo)*.3,env=exp(-r*r*1.1)*smoothstep(.3,.8,edge+.6-.5*r)*smoothstep(2.,1.1,r);
+ float f1=1.-abs(2.*fbm(w)-1.),f2=1.-abs(2.*fbm(w*2.7+4.)-1.),fil=pow(f1,4.)*.7+pow(f2,6.)*.5;
+ float core=exp(-r*r*3.5),oiii=(fil*.6+.4*fbm(w*1.3+9.))*core,ha=(fil*1.4+.15)*env*(1.-.85*core),sii=pow(f2,8.)*env*smoothstep(.3,1.,r);
+ float dl=1.-abs(2.*fbm(vec3(p*.9,12.)+uGo+.4*fbm(w*2.))-1.),dst=smoothstep(.82,.95,dl)*smoothstep(1.8,.6,r),rim=(smoothstep(.72,.82,dl)-smoothstep(.82,.9,dl))*env*core*2.;
+ vec3 c=vec3(1.,.68,.18)*ha+vec3(.1,.5,1.)*oiii*.9+vec3(1.,.25,.08)*sii*1.2+vec3(.2,.35,.8)*fbm(w*.7+2.)*env*.12+vec3(1.,.9,.7)*rim;
+ c*=1.-.93*dst;c+=vec3(.75,.85,1.)*exp(-r*r*80.)*.8;return c*.08*.075;}
+vec3 spiral(vec3 d){if(dot(d,uSpD)<.95)return vec3(0.);vec3 T,B;frameOf(uSpD,T,B);vec2 p=vec2(dot(d,T),dot(d,B))/.2;
+ float ca=cos(uSpR.x),sa=sin(uSpR.x);p=mat2(ca,-sa,sa,ca)*p;p.y/=cos(uSpR.y);float r=length(p),th=atan(p.y,p.x);if(r>1.4)return vec3(0.);
+ float ph=th-log(max(r,.02))/tan(.3)+fbm(vec3(p*3.,1.)+uGo)*.6,arm=pow(.5+.5*cos(2.*ph),3.),lane=pow(.5+.5*cos(2.*ph-.6),10.);
+ float disc=exp(-r/.4)*smoothstep(1.35,.7,r),bul=exp(-r*r/.012),knots=smoothstep(.75,.9,vn(vec3(p*22.,4.)+uGo))*arm*smoothstep(.15,.3,r)*disc;
+ vec3 c=mix(vec3(.78,.84,1.),vec3(.66,.76,1.),arm*.5)*disc*(.25+arm*1.1)*(1.-.75*lane*smoothstep(.08,.2,r))+vec3(1.,.8,.5)*bul*2.2+vec3(1.,.35,.55)*knots*1.4;
+ return c*.35*.045;}
+void main(){vec2 q=vNdc;vec3 d=uFace==0?vec3(1.,-q.y,-q.x):uFace==1?vec3(-1.,-q.y,q.x):uFace==2?vec3(q.x,1.,q.y):uFace==3?vec3(q.x,-1.,-q.y):uFace==4?vec3(q.x,-q.y,1.):vec3(-q.x,-q.y,-1.);
+ d=normalize(d);float bd;vec3 c=band(d,bd)+nebula(d)+spiral(d);o=vec4(uEnc>.5?sqrt(c*20.):c,bd);}`;
+const PGALB=SKY_B5?mkProg(QUAD_VS,GAL_FS):null,GALC={tex:null,fb:null,seed:null,n:0,enc:0};
+function galBake(){const g=galaxy(),n=typeof quality!=='undefined'&&quality==='low'?256:512;if(!PGALB||GALC.seed===g.seed&&GALC.n===n)return GALC;
+  const C=GALC,f16=HDR_RT;if(C.tex)gl.deleteTexture(C.tex);C.tex=gl.createTexture();if(!C.fb)C.fb=gl.createFramebuffer();
+  gl.activeTexture(gl.TEXTURE12);gl.bindTexture(gl.TEXTURE_CUBE_MAP,C.tex);
+  for(let f=0;f<6;f++)gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X+f,0,f16?gl.RGBA16F:gl.RGBA8,n,n,0,gl.RGBA,f16?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_CUBE_MAP,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  for(const w of[gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_CUBE_MAP,w,gl.CLAMP_TO_EDGE);
+  const fb0=gl.getParameter(gl.FRAMEBUFFER_BINDING),vp=gl.getParameter(gl.VIEWPORT),dt=gl.isEnabled(gl.DEPTH_TEST),u=PGALB.u;
+  gl.useProgram(PGALB.p);gl.uniform3fv(u.uGx,g.gx);gl.uniform3fv(u.uGc,g.gc);gl.uniform3fv(u.uNbD,g.nd);gl.uniform3fv(u.uSpD,g.sd);gl.uniform3fv(u.uGo,g.go);gl.uniform2fv(u.uSpR,g.sr);gl.uniform1f(u.uEnc,f16?0:1);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,C.fb);gl.viewport(0,0,n,n);gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(quadVAO);
+  for(let f=0;f<6;f++){gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_CUBE_MAP_POSITIVE_X+f,C.tex,0);gl.uniform1i(u.uFace,f);gl.drawArrays(gl.TRIANGLES,0,3)}
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_CUBE_MAP_POSITIVE_X,null,0);gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fb0);gl.viewport(vp[0],vp[1],vp[2],vp[3]);if(dt)gl.enable(gl.DEPTH_TEST);gl.activeTexture(gl.TEXTURE0);
+  C.seed=g.seed;C.n=n;C.enc=f16?0:1;return C}
 function galaxy(){if(PROG.gseed==null)PROG.gseed=1+Math.floor(Math.random()*2147483646);if(GAL.seed!==PROG.gseed)GAL=makeGal(PROG.gseed);return GAL}
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();

@@ -1575,3 +1575,40 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
 - **Not built: the ascent's leading-edge warmth** (BEAUTY B3.2, Q320's leftover). The skin stays near 400–600 K on a
   climb, and a blackbody there is invisible even at night (1,000 K is 3e-4 of sunlit paint, `aerofx-11`). Only a stylised
   tint would show it, against the doc's rule that every effect teaches something true. Left out on purpose.
+
+## v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
+
+BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (Caio, 2026-10-12–13). `app/gl.js`,
+`app/render.js`, `views.js`, `refset.mjs`.
+
+- **The galaxy, a nebula and a spiral, baked once per program** (`GAL_FS`, `galBake`). A cube map (512² a face on
+  High, 256² on Low; RGBA16F, or RGBA8 holding sqrt(20c) without float targets), mipmapped, on texture unit 12, drawn
+  when the program's seed or the setting changes (~10 ms once). `SKY_FS`'s `galaxy()` is now one `texture()` call: the
+  noise that was in its main per pixel is gone (Q19's rule: the sky shader shrinks). The bake is the mock-up's code at
+  Caio's levels: the band 100 % (star clouds, dust lanes, a warm bulge, a few pink nebulae and blue clusters), the
+  **nebula** at 7.5 % in the Hubble palette, the **spiral** at 4.5 %, both galaxies in one palette. Alpha holds the
+  band's density, which the stars read.
+- **Where the sights sit** (`galSights`, appended to `makeGal`, so every old seed keeps its band): the nebula 22° off
+  the band's midline at a seeded point along it (nebulae lie along the band; Orion is ~20° off), the spiral 40° off
+  (the zone of avoidance), a seeded noise offset and the spiral's roll. Each program has its own.
+- **Stars** (`starsAt`): three layers on hashed cells, ~40 bright, ~300 medium, ~1,500 faint in a 60° frame, more
+  along the band; brightness by a power law, colour by temperature, each a small sharp disc at least a pixel wide, a
+  soft halo on the brightest. **The floor** (D18.2): `uStK = max(1, 1.2 / E)` lifts them when the exposure is low, so in
+  daylight only the brightest stay. **The twinkle, on purpose** (Caio: "the stars currently twinkle, maybe we can
+  preserve that"; the old twinkle was one-pixel stars shimmering, which sharp stars would lose): each star's brightness
+  drifts on its own seed, ±35 %, a couple of times a second (`uStT`, `HOOK.fxT` in reference views).
+- **The sun** (`sunAt`): a limb-darkened 0.27° disc, a tight glare and a faint veil; the four screen-fixed spikes are
+  gone. The mock-up's 900× disc bloomed into a soft ball in the game (the composite's bloom has no threshold), so the
+  disc is 250× and the glare smaller.
+- **A/B:** `SKY_B5 = false` compiles the old galaxy, stars and sun back in (the shader recompiles; no bake).
+- **Views:** 159 the program's nebula, 160 its spiral, each over the limb from the night side; `refset.mjs`'s set now
+  ends at 160.
+- **Seen** (RTX, High; `output/launchpad/beauty/q321-before/`, `q321-after/`, Low `q321-after-low/`): views 97–100 show
+  the band with lanes and a bulge instead of a smooth smear, a field of coloured stars where there were almost none, the
+  sun small; 156 the same over the limb; 159 the nebula a faint copper veil beside the band, 160 a small spiral alone.
+- **Measured** (full resolution, before → after, ms): 3 5.1 → 3.8, 97 3.2 → 2.3, 98 2.8 → 2.8, 99 3.7 → 3.8, 100
+  3.5 → 3.5, 156 3.3 → 4.6, 157 3.4 → 4.2, 158 6.6 → 7.4, pad 12.4 → 11.8: noise on a busy machine, no clear cost or
+  gain. **Not measured:** the iGPU; the first-load time (`SKY_FS` lost its galaxy noise but gained three star layers).
+- **Checks:** test `aerofx-20` (the nebula 22° and the spiral 40° off the band for five seeds; the bake, its unit and
+  wiring; the new stars and sun; the old code behind `SKY_B5`); the galaxy-per-program test builds `galSights` too.
+  TESTING 248.

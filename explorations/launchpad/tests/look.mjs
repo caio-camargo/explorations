@@ -135,7 +135,7 @@
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
   const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')(), P = {};
-  const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
+  const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + body('galSights') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
     SIMF.rng, SIMF.norm, SIMF.add, SIMF.sub, SIMF.mul, SIMF.dot, SIMF.WSEED, P);
   const a = G.galaxy(), s1 = P.gseed, b = G.galaxy(), w = G.makeGal(SIMF.WSEED), o = G.makeGal(s1 + 1);
   P.gseed = null; const c = G.galaxy(), s2 = P.gseed;
@@ -587,4 +587,24 @@
     && /gl\.uniform3f\(u\.uPlC,PLT\.c\[0\]\+PLT\.c2\[0\]/.test(page) && (page.match(/PLT\.c2\[2\]\)return;PLT\.c2\.fill\(0\);/g) || []).length === 2 && /PLT\.c\.fill\(0\);PLT\.c2\.fill\(0\);PLT\.g=null;/.test(page);
   check('plume light per side: a wide rocket gets two lights (the core feeding both), shaders take both, the pool the total, a flash or the plasma clears the second',
     shaders && split && wired, `shaders ${shaders} · split ${split} · wired ${wired}`);
+}
+
+// aerofx-20. The space sky (look & sound sky & bodies beat, BEAUTY Q321 B5, W39; mockups/sky/). The band, a nebula and a
+// spiral are baked once per program into a cube map (GAL_FS, galBake on unit 12) and SKY_FS's main only samples it; the
+// stars are three power-law layers with a floor and a twinkle; the sun has no spikes; SKY_B5 keeps the old code for an
+// A/B. Each program's nebula sits 22° off the band's midline and its spiral 40° off, for any seed.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const SM = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')();
+  const mk = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', body('makeGal') + body('galSights') + ';return makeGal')(SM.rng, SM.norm, SM.add, SM.sub, SM.mul, SM.dot);
+  const offs = [1, 2, 7, 12345, SM.WSEED].map(seed => { const g = mk(seed), a = v => Math.asin(Math.abs(SM.dot(v, g.gx))) * 180 / Math.PI; return [a(g.nd), a(g.sd)] });
+  const placed = offs.every(([n, s]) => Math.abs(n - 22) < .01 && Math.abs(s - 40) < .01);
+  const sky = /const SKY_B5=true;/.test(pg) && /vec3 galaxy\(vec3 d,out float band\)\{vec4 g=texture\(uGalC,d\);/.test(pg) && /uniform samplerCube uGalC;/.test(pg)
+    && /\$\{SKY_B5\?`/.test(pg) && /pow\(abs\(cos\(a\*2\.\)\),600\.\)/.test(pg);   // the new code, and the old one kept behind SKY_B5
+  const bake = /const GAL_FS=`/.test(pg) && /function galBake\(\)/.test(pg) && /gl\.TEXTURE_CUBE_MAP_POSITIVE_X\+f/.test(pg) && /gl\.generateMipmap\(gl\.TEXTURE_CUBE_MAP\)/.test(pg)
+    && /if\(!desk&&SKY_B5\)galBake\(\);/.test(pg) && /gl\.uniform1i\(u\.uGalC,12\)/.test(pg) && /Math\.max\(1,1\.2\/EXPO\.E\)/.test(pg);
+  const newSun = (() => { const i = pg.indexOf('${SKY_B5?`'), j = pg.indexOf('`:`', i); const n = pg.slice(i, j); return /float th=\(k==0\?\.9967/.test(n) && /tw=max\(1\.\+\.35\*/.test(n) && !/cos\(a\*2\.\)/.test(n) })();
+  check('space sky: band, nebula and spiral baked to a cube once per program (unit 12), SKY_FS samples it; sharp stars with a floor and a twinkle; no sun spikes; nebula 22° and spiral 40° off the band for any seed; the old code kept behind SKY_B5',
+    placed && sky && bake && newSun, `offsets (nebula, spiral °) ${offs.map(o => o.map(x => x.toFixed(1)).join('/')).join(', ')} · shader ${sky} · bake ${bake} · new stars/sun ${newSun}`);
 }
