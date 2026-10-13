@@ -243,6 +243,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
 - v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
 - v1.151 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
+- v1.160 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

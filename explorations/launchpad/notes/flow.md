@@ -953,3 +953,31 @@ N2 of the network plan (§ "Network screen plan"), built where Q241 R4 put the n
   `playtest.mjs 233` (seen on the RTX at 1280×800: both pages fit, the base framed in red).
 - **Not yet:** routes (N3, with routines), clicking a node for its panel (N3), the plan's coverage bar on relays
   (Q218 draws coverage on the map), rivals and the era's look (N4).
+
+## v1.160 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
+R3 of the real-screens plan (§ "Plan: real screens"; mock-up `mockups/screens/?s=title`).
+- **The page opens on the title screen**, a room (`title` in `ROOMS`, `go('title')`, `#ttl`, `app/title.js`): a dimmed
+  night pad (CSS: stars, a tower's silhouette), the menu at the left, the program's charter on it.
+- **A new career fills in the charter**: Article 1 *Whose program?* (the archetypes and Random world, `data-arch`),
+  Article 2 *How does it start?* (`START`, `data-cstart`; the first is ticked), the signature and the seal with the name
+  it will have (`charterName`, progName's rule), and **Found the program ▶** (`#bFound`, `data-start`: `chooseStart`, then
+  the desk). This replaces the first-run gate in the Program's folder (Q41, Q269): `ownershipHTML` returns nothing
+  before the charter, and its `data-arch`/`data-start` handlers moved to `app/title.js`.
+- **No desk before the charter:** `needCharter()` (not chosen, no flights); `go('program')` lands on the title while it
+  holds, and `progGate` is now `needCharter()`.
+- **A career under way** shows its charter signed: its choices ticked, the rest faded, an *In force* stamp, nothing to
+  click. **Continue** (Enter) goes to the desk; **New program** asks twice, then resets (`resetProgram()`, factored out
+  of the Program's *reset program*, which now lands on the title). Settings, Tester (tester mode) beside them; the Esc
+  menu has *Title screen*.
+- **Cross-lane:** `tests/core.mjs`'s merge guard reads the Program's click chain from `ds.dk` (its `ds.start` head moved);
+  `flow-10` counts the title among the rooms. **Robot:** `PT.start(k)` signs the charter (ticks k, then Found); rows m1,
+  desk and 156 click `[data-cstart="agency"]` then `#bFound`; row 75 uses `PT.start`.
+- **Checks:** test `flow-18` (the wiring; an open charter lists every archetype and start with Found on the ticked one;
+  ticking company names it Aerospace; after `chooseStart` the charter is signed, with no buttons). Robot row `charter`
+  (sees the charter, ticks a power and the consortium, signs, the desk opens; back on the title it's signed and Enter
+  continues) and `m1` pass. TESTING row 242.
+- **Every load now stops on the title**, one Enter from the desk (the plan's "Continue skips it": the charter, not the
+  screen). If that's a click too many, skipping the title for a save is one line in program-ui's start-up.
+- **Not yet:** the director's own name on the signature (a typed name, saved); the program's real seal (`powerMark`)
+  instead of the red wax; the era's look on the title.
+
