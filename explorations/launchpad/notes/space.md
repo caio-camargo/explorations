@@ -2121,7 +2121,7 @@ v1.127's strike had two outcomes: a part lost, or "dented, no harm done". Now a 
   registry's satellites between flights (they are struck by `fragTick`, lost or not).
 - Test `space-25`.
 
-## v1.2XX — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
+## v1.215 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
 
 Docked, only the host's own parts counted for power: a satellite brought to a station drew nothing and gave nothing.
 - **One store** (`sim/power.js`, `powEach`): `powCap`, `powLoad`, `powRTG`, `powSun` and `powPeak` walk the vessel's

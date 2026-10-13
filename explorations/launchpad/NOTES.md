@@ -102,6 +102,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies, QUEUE Q399, PLAYTEST #96)
 - v1.197 — the volume cloud shadow baked, a lookup per ground pixel (2026-10-13, sky & bodies, QUEUE Q379)
 - v1.209 — the haze without dither (2026-10-13, sky & bodies, QUEUE Q392, PLAYTEST #89)
+- v1.214 — no bright band at the horizon from inside the deck (2026-10-13, sky & bodies, QUEUE Q420)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -160,6 +161,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.126 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
 - v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
 - v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
+- v1.215 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -235,6 +237,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
 - Q386 measured: launch scrubs under the cloud belts (2026-10-13, economy session 2; kept, no code change)
 - v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332)
+- v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
+- Plan: the simulator replaces revert (2026-10-13, economy session 2, QUEUE Q282; D15.5, D17.2; nothing built)
 
 ## World: [`notes/world.md`](notes/world.md)
 
