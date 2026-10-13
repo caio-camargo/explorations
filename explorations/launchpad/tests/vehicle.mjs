@@ -651,7 +651,7 @@
     `2 m: span ${z.span.toFixed(2)} m, ${(z.m * 1000).toFixed(0)} kg, B ${z.B.toFixed(0)} kN·m; cost ${c0.toFixed(1)}M → ${c2.toFixed(1)}M; stage 2 ${a0.holds ? 'holds' : 'flips'} (cal ${a0.cal.toFixed(2)}) → ${a2.map(a => (a.holds ? 'holds' : 'flips') + ' (cal ' + a.cal.toFixed(2) + ')').join(', ')}; flown ${fl.aoa.toFixed(0)}° at worst`);
 }
 
-// vehicle-24. The SAS cancels the air's torque (vehicle session, QUEUE Q372, Caio: "the other designs are also flipping"): the
+// vehicle-24. The SAS cancels the air's torque (vehicle session, QUEUE Q382, Caio: "the other designs are also flipping"): the
 // stock Beeper, flown on the gyro autopilot in attitude hold along the pitch program, used to go end over end the moment its
 // upper stage separated (~38 km, ~9 kPa): the air hit the light unstable stage with ~13 kN·m at once, and a rate loop only
 // answers once the craft turns, so its 15 kN·m wheel came in too late. With the last step's aero moment fed forward it holds.
@@ -663,6 +663,6 @@
       if (tS != null && api.t > tS + 0.1 && s.qdyn > 500) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 15) break; api.advPhys(s); }
     return { sep: tS != null, aoa: mx * 180 / Math.PI }; };
   const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const g = fly(api.PRESETS.Beeper, 0), c = fly(api.PRESETS.Beeper, 2); api.HOOK.msg = msg0;
-  check('SAS cancels the air\'s torque (Q372): the Beeper flown through separation in attitude hold stays on course, gyro autopilot and guidance computer alike',
+  check('SAS cancels the air\'s torque (Q382): the Beeper flown through separation in attitude hold stays on course, gyro autopilot and guidance computer alike',
     g.sep && c.sep && g.aoa < 30 && c.aoa < 30, `after separating: gyro ${g.aoa.toFixed(0)}°, guidance computer ${c.aoa.toFixed(0)}° at worst`);
 }

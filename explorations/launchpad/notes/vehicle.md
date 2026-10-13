@@ -1567,3 +1567,38 @@ Test `vehicle-12`. `--smoke` all pass.
 - **Found:** the **Hopper preset** flips at max-q in flight (straight up: from 3° to 111° in a second at 16 s and 111 kPa, as
   its tank drains), and the builder now says so. Left as it is: Q371.
 - Test `vehicle-23`. TESTING 246.
+
+## v1.173 — the SAS cancels the air's torque; flips at staging mostly gone (2026-10-13, vehicle session, QUEUE Q382)
+
+- **Caio:** "the other designs are also flipping, i wonder if there was some change that made everything less stable". **No
+  change did:** the presets' stability and their stage-1 flights are identical on `main` as of 2026-10-10 and today (same
+  calibers, same angles of attack to the tenth of a degree).
+- **What flips:** separating in thick air. Flown through staging in attitude hold on the pitch program, with any autopilot,
+  the Beeper and Passenger Orbiter went end over end at separation (~96 s, 8–11 kPa), as Caio's satellites did. A stiffer
+  rate loop doesn't fix it (gain ×3, lag ×0.3: same); re-aiming the hold along the path at separation doesn't either.
+- **Why** (traced, the Beeper): the moment it separates the air hits the light upper stage with ~13 kN·m. The SAS is a rate
+  loop: it asks for torque only as the craft starts to turn, ~0.4 kN·m at first, ramping up; by the time its 15 kN·m wheel is
+  at full torque the stage is 28° off and the air pushes 35. Not a shortage of torque: a controller that doesn't see the air.
+- **The fix** (`ctrlAccel`, `physStep`, `sim/vessel.js`): each step keeps the part of its **aero moment about the centre of
+  mass that turns the nose away from the airflow** (`s.tauA`: an unstable airframe's push; less what the steerable fins give by
+  deflecting), while engines burn and within 60° of nose-first, faded in from 0.5° to 2.5° of angle of attack; the SAS **feeds
+  it forward**, cancelling it within its authority, which is what the builder's control check always assumed. The restoring
+  part and the damping are left to the air (cancelling the whole moment broke stable darts, falling stages and asymmetric
+  rockets in four tests). Tried and dropped: only for a few seconds after a separation (the integral can't take over a torque
+  already cancelled, so it flipped when the window closed); only for fast divergences. Flown: the Beeper holds through separation on every autopilot (gyro 14°, guidance computer 15°);
+  the fairing satellite with a reaction wheel holds (11°, was 180° with three wheels); big fins up top no longer tip the
+  first stage over at max-q; held prograde at separation, everything I flew holds, even the bare fairing satellite. The
+  canted-engine test's asymmetric rocket now leans into its sideways drift (11.5° in 50 s, was 3.2°): still climbing; the
+  test's limit is 15° now.
+  What still flips is a stage that really lacks the steering for the angle it separates at: the Passenger Orbiter in
+  attitude hold, ~10° off its path, needs ~23 kN·m and has 20 (prograde, it holds).
+- **The Hopper is back as it was** (Tank 2 t): with the feed-forward it climbs straight (124 kPa, 0°) and the Q371 retune
+  isn't needed. Caio had approved it; reverted before it shipped.
+- **The builder's in-air check** (`airSep`) keeps one rule: steering short of 1.5× what holding 5° takes. The divergence-rate
+  rule and the stage-1 max-q line (v1.164) are gone: that failure mode was the controller's, and it's fixed. The advice leads
+  with separating pointing prograde; a reaction wheel helps again.
+- Tests: `vehicle-24` (the Beeper through separation, gyro and guidance computer); `vehicle-21` (a wheel now holds; its flight
+  stays in attitude hold), `vehicle-23` (2 m fins up top fly in attitude hold), `vehicle-4` back to the Hopper short only;
+  core: the impact prediction is taken once descending and lined up (the Hopper now climbs straight to ~40 km), canted engines
+  ≤ 15°, procedures v2 also passes when the crew is lost only to the tree cell it lands on (a few metres moved it there;
+  the hazard is Q383). TESTING 255.

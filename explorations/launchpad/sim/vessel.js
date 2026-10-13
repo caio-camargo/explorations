@@ -621,7 +621,7 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   const A=avOf(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
   let al=mul(sub(wd,wS),A.k);
   if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,wS),A.k/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
-  // the air's push away from the airflow, cancelled as it comes (vehicle, Q372): while engines burn nose-first, the part of the
+  // the air's push away from the airflow, cancelled as it comes (vehicle, Q382): while engines burn nose-first, the part of the
   // last step's aero moment that turns the nose away from the airflow (an unstable airframe's), the steering fins' own share
   // left out, fed forward, as the builder's control check assumes. A rate loop alone answers only once the craft is turning, and
   // a light unstable stage just separated in thick air goes over before it does. (Tried and dropped: only for a few seconds
@@ -844,7 +844,7 @@ function physStep(s,dt){
     let Fa=[0,0,0];s.parts.forEach((p,i)=>{Fa=add(Fa,sub(p.F,F0[i]))});
     const lim=0.9*sp*s.mass/dt,fa=len(Fa);
     if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}
-    // the aero moment about the centre of mass, less what the steering fins give by deflecting, for the next step's SAS (Q372)
+    // the aero moment about the centre of mass, less what the steering fins give by deflecting, for the next step's SAS (Q382)
     {let F1=[0,0,0],L1=[0,0,0];s.parts.forEach((p,i)=>{if(!p.on)return;F1=add(F1,sub(p.F,F0[i]));L1=add(L1,sub(p.L,L0[i]))});let tA=sub(L1,cross(s.cm,F1));
      if(FC)for(const c of FC.out){const fd=c.p.fd&&c.p.fd[c.j]||0;if(c.dm)tA=sub(tA,mul(c.c,fd/c.dm))}
      const ax=cross([0,1,0],mul(vb,1/sp)),al=len(ax),cmp=al>1e-6?dot(tA,mul(ax,1/al)):0;   // ax: the turn that brings the nose into the airflow

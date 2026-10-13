@@ -228,7 +228,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     return { ok: !!p, dist, dt, flight: api.t - (pred ? pred.t0 : 0), v: p && p.v, vAct: s.crashSpeed ?? 'landed', dv: p ? p.v - (s.crashSpeed ?? vLand) : NaN };
   }
   const hop = compare('hopper', { stack: ['chute', 'pod', 't2', 'fins', 'kestrel'], init: s => { s.throttle = 1; api.stage(s); } },
-    s => { api.INP.pitch = api.t >= 5 && api.t < 5.4 ? 1 : 0; if (api.t > 6) s.sasMode = 'pro'; return !s.landed && api.t > 30 && dot(s.v, s.r) < 0 && s.aoa < 0.17; });   // descending and lined up with its path (since Q372 it climbs straight to ~40 km, and at apex it is still swinging round)
+    s => { api.INP.pitch = api.t >= 5 && api.t < 5.4 ? 1 : 0; if (api.t > 6) s.sasMode = 'pro'; return !s.landed && api.t > 30 && dot(s.v, s.r) < 0 && s.aoa < 0.17; });   // descending and lined up with its path (since Q382 it climbs straight to ~40 km, and at apex it is still swinging round)
   api.INP.pitch = 0;
   check('impact prediction: a ballistic Hopper from apex lands where predicted', hop.ok && hop.dist < 2000 && Math.abs(hop.dt) < 10,
     `predicted ${(hop.flight).toFixed(0)} s ahead: ${(hop.dist / 1000).toFixed(2)} km off, ${hop.dt.toFixed(1)} s early/late; predicted ${hop.v.toFixed(0)} m/s, actual ${typeof hop.vAct === 'number' ? hop.vAct.toFixed(0) : hop.vAct} m/s`);
@@ -785,7 +785,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     return { alive: s.alive, tilt }; };
   const f0 = fly(0), f1 = fly(aim);
   check('canted engines: "balance" zeroes the thrust torque of a Sparrow core + lone Condor; uncanted it flips, balanced it climbs',
-    torque(L1) < 0.01 * torque(L0) && f0.tilt > 90 && f1.alive && f1.tilt < 15,   // 15° since Q372: the SAS feeding the air's push forward lets it lean into its sideways drift (11.5°; was 3.2°)
+    torque(L1) < 0.01 * torque(L0) && f0.tilt > 90 && f1.alive && f1.tilt < 15,   // 15° since Q382: the SAS feeding the air's push forward lets it lean into its sideways drift (11.5°; was 3.2°)
     `cant ${aim.toFixed(2)}°, torque ${torque(L0).toFixed(0)} → ${torque(L1).toFixed(2)} kN·m; max tilt ${f0.tilt.toFixed(0)}° → ${f1.tilt.toFixed(1)}°`);
 }
 
@@ -1134,7 +1134,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const Rp = s.rec, now = P.procs[key];
     check('procedures v2: the executor flies it end to end through SAS: crew on Selene and home safe; a cheaper run replaces the procedure',
       // or, flown end to end and back on the spot, lost only to the trees there: a chute touchdown (< 8 m/s) on a tree cell (20 m
-      // cells: a few metres' difference in the ascent decides it; Q372's SAS change moved it onto one; the hazard itself is Q374)
+      // cells: a few metres' difference in the ascent decides it; Q382's SAS change moved it onto one; the hazard itself is Q383)
       ((s.alive && s.landed && Rp.crewOK && !!P.done.crewland && now && now.dv <= dv0) || (s.landSurface && s.landSurface.hit > 0 && s.touchV < 8)) && s.body === TELLUS && Rp.crewed && s.proc && s.proc.miss < 500,
       `back on the recorded spot (${s.proc && s.proc.miss != null ? s.proc.miss.toFixed(0) : '?'} m off); ${(api.t / 86400).toFixed(2)} days, peak ${(Rp.cgMax || 0).toFixed(1)} g, splashdown ${(s.touchV || 0).toFixed(1)} m/s; ${Rp.dv.toFixed(0)} m/s in all (procedure ${dv0.toFixed(0)} → ${now ? now.dv.toFixed(0) : '?'})`); }
   // the same phases to Nyx (inclined 30°, eccentric): met at its far node, landed on, and home, with the recorded ascent
