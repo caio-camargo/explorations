@@ -5807,7 +5807,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   deliberate twinkle; the sun a small disc with no spikes (toned down from the mock-up for the game's bloom); views
   159–160 for the sights. `SKY_B5 = false` restores the old sky.
 - **Measured:** RTX High and Low, before/after within noise; iGPU and first-load time not measured (Proposed line).
-- **Tests:** `aerofx-20` (new) and the look file pass; smoke passes except two checks that also fail on `main`
+- **Tests:** `aerofx-22` (new) and the look file pass; smoke passes except two checks that also fail on `main`
   (FLAG in QUEUE *Proposed*: *node chain flown*, *later stages in the air*).
 - **Files:** `app/gl.js`, `app/render.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
   `TESTING.md` (247), `QUEUE.md`, `ACTIVE_WORK.md`.
@@ -5891,12 +5891,41 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (255), `QUEUE.md` (Q382 ✓, Q383, Q371, Q372, Q353), `ACTIVE_WORK.md`.
 - **Next:** Q353's remainder (the procedure executor holding prograde through a separation in air, control + space); Q329, Q341,
   Q338 for vehicle.
+- **Later still (sound overflow):** v1.174 Q363 + Q362: a crack and a metal groan at a structural failure, a venting tank's
+  hiss, the splash; the radio blackout's edges (static cut dead, then a squelch and a 2,525 Hz Quindar tone). Not heard in
+  a browser here (the headless audio context stays suspended): TESTING 256 is the ear check. Test `sound-2`.
 
-## 2026-10-13 — Caio + Claude (launchpad economy session): Q184 routines (v1.175)
+## 2026-10-13 — flow session: Q287, hover terms (v1.175)
+- **Q287 ✓ v1.175** (UI.md rule 9, merged and pushed, `f7096f3`): one glossary (`TERMS`, `app/terms.js`: Δv, TWR, max-q,
+  apoapsis, periapsis, know-how, stability margin) and one tooltip (`#termTip`) for every screen; `term(k)` marks a word.
+  Marked: the HUD's Ap · Pe, Δv, TWR and the Instruments max-q; the node panel's Δv; the builder's stage rows, Total Δv,
+  Stability, Max-q; the rollout's TWR checks; the Program's and Debrief's Know-how. The builder's "(CoM ahead of CoP,
+  calibers)" sub-line folded into the Stability term.
+- **Checks:** test `flow-21`; `--smoke` passes on the merge; robot rows `terms` (builder and live HUD tooltips) and `m1`.
+- **Unblocked:** Q340 (part cards and self-explaining warnings grow from this tooltip).
+- **Files:** `app/terms.js` (new), `app/program-ui.js`, `app/editor.js`, `app/rollout.js`, `app/debrief.js`, `index.html`,
+  `tests/flow.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** Q340, Q293, Q286.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q323 Tellus from above, slice 1 (v1.176)
+
+- **Done:** the far-field cloud filter was lopsided (a blurred pixel ~4× cloudier than the ground) and started too
+  early: fixed, so mid orbit shows weather systems with clear sea between; a milder stretch, patchiness and latitude
+  belts in the shader and in `cloudAt` alike (scrub odds moved a little: FLAG for economy); the sea's Fresnel and
+  sunglint; city lights by mip with a sodium tint; view 80's weather search from step 1 (step 0 hits a stale bake).
+- **Found, not fixed:** p2 is ~7× overexposed by the auto-exposure meter (effects' `EXPO`), which keeps the sea pale and
+  the clouds clipped; Proposed line with the numbers. The sunglint isn't in any view yet.
+- **Tests:** `aerofx-23` (new), look, world, core 16 pass. My Q321 test renumbered `aerofx-22` (effects took
+  `aerofx-20` the same hour).
+- **Files:** `app/gl.js`, `sim/space.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (258),
+  `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for sky & bodies:** the exposure item (effects, or this beat if free), then Q322.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): Q184 routines (v1.177)
 - **Scope:** D17.1 moved resupply to M3, so Q184 became M2's routine repeat satellite launch; base resupply routes are a Proposed M3 line.
 - **Built:** a route keeps N satellites of a design up in an orbit; runs are dispatches with no contract (pads, windows, scrubs, money as for any dispatch); W27: three clean runs by order, then with mainframes an opt-in *Repeat by itself* that orders a run when fewer than N will be up in 30 days. Fleet line controls, `netModel().routes`, pad bars tagged.
 - **Measured:** three Beeper runs to 106 km fly clean headless; most re-enter within 30 days, so a low route keeps re-ordering (shown).
-- **Not checked in a browser:** the Fleet line's buttons (TESTING 257).
-- **Files:** `sim/program.js`, `sim/procedures.js` (`dispatchRun` keeps `D.satId`), `sim/contracts.js` (`routeTick` in `econTick`), `app/program-ui.js`, `test.mjs` (exports), `tests/economy.mjs` (econ-25), `notes/economy.md` § v1.175, `NOTES.md`, `QUEUE.md`, `TESTING.md` 257, `ACTIVE_WORK.md`.
+- **Not checked in a browser:** the Fleet line's buttons (TESTING 259).
+- **Files:** `sim/program.js`, `sim/procedures.js` (`dispatchRun` keeps `D.satId`), `sim/contracts.js` (`routeTick` in `econTick`), `app/program-ui.js`, `test.mjs` (exports), `tests/economy.mjs` (econ-25), `notes/economy.md` § v1.177, `NOTES.md`, `QUEUE.md`, `TESTING.md` 259, `ACTIVE_WORK.md`.
 - **Next:** economy's ready list: Q296, Q332.
 

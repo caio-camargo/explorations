@@ -161,7 +161,7 @@ vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
 // wetlands, beaches. Albedos roughly physical (forest ~.1, grass ~.2, desert ~.35).
 vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocean){
  ocean=0.;
- if(h<0.){ocean=1.;float dp=-h;vec3 col=mix(vec3(.007,.04,.11),vec3(.003,.016,.06),sst(200.,3000.,dp));
+ if(h<0.){ocean=1.;float dp=-h;vec3 col=mix(vec3(.007,.04,.11),vec3(.003,.016,.06),sst(200.,3000.,dp));col=mix(col,vec3(.006,.03,.045),.45*sst(.55,.85,abs(pf.y)));   // (Q323) greener cold seas
   return mix(col,vec3(.02,.11,.12),pow(sst(70.,0.,dp),2.));}                         // shallow turquoise over the shelf
  vec3 g=toGen(pf);vec4 w=wTex(g),cl=texture(uClim,wUV(g));
  float T=cl.x-6.5*max(h-max(w.x,0.),0.)/1000.,W=cl.y,m=w.y,v=w.z,sf=w.w,slope=1.-dot(npf,pf);
@@ -190,9 +190,15 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
 // A cheap domain warp (three value-noise lookups) swirls the cells; stretching y makes them run east–west like zonal winds.
 // fw: the pixel's footprint on the shell (unit-sphere units). Far and grazing samples widen the threshold toward the mean
 // coverage instead of aliasing into speckle and a hard bright rim where the shell is seen edge-on.
+// (Q323, BEAUTY B6.1) From mid orbit the deck was a white swirl hiding every continent, though the planet is ~85 % clear
+// at full detail (sim/space.js cloudAt): the far-field widening was lopsided (the window's low edge fell 0.3, its high
+// edge rose 0.12), so a blurred pixel came out about 4× cloudier than the ground under it. It now widens evenly about
+// the same centre. Also a milder stretch (×1.25 along y, not ×1.8: fewer streaks), a large-scale patchiness term, and
+// mild latitude belts (a wetter equator, clearer subtropics, the storm tracks). cloudAt carries the same formula.
 float cloudCovF(vec3 u,float fw){vec3 w=vec3(vn(u*4.+uCT*.3),vn(u*4.+vec3(5.2,1.3,uCT*.3)),vn(u*4.+vec3(9.1,uCT*.3,2.7)))-.5;
- vec3 q=(u+w*.22)*vec3(6.,11.,6.)+vec3(uCT,0.,uCT*.6);
- float c=fbm(q)+.35*(fbm(u*1.7+vec3(4.,1.,uCT*.2))-.5),k=clamp(fw*60.,0.,.3);return smoothstep(.55-k,.72+k*.4,c)*(1.-k*.8);}
+ vec3 q=(u+w*.26)*vec3(7.,8.75,7.)+vec3(uCT,0.,uCT*.6);
+ float la=abs(u.y),belt=.03*(1.-smoothstep(.0,.16,la))-.05*smoothstep(.16,.26,la)*(1.-smoothstep(.5,.62,la))+.02*smoothstep(.66,.8,la)*(1.-smoothstep(.9,.97,la));
+ float c=fbm(q)+.35*(fbm(u*1.7+vec3(4.,1.,uCT*.2))-.5)+.18*(vn(u*2.6+vec3(7.,uCT*.1,3.))-.5)+belt,k=clamp(fw*15.,0.,.3);return smoothstep(.55-k,.72+k,c)*(1.-k*.8);}   // k grows once the finest octave (~1/220 of the radius) is under a pixel: the weather cells stay sharp from mid orbit
 float cloudCov(vec3 u){return cloudCovF(u,0.);}
 // the deck with depth, near a low camera (uVk > 0: the camera is under ~20 km): a slab from 2 to 5.5 km marched out to
 // uVD. Coverage comes from uCov, cloudCovF baked round the point under the camera (gnomonic, half-extent uCvX m; the
@@ -288,13 +294,17 @@ void main(){
   vec3 st=sunTrans(p+n*20.);vec3 nb=oc>.5?n:normalize(transpose(uProt)*npf);   // npf is planet-fixed; n is inertial
   float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
   // cities: an equirectangular texture (r = built-up, g = lights); a street grid shows up close
-  vec2 eq=vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5);vec4 ct=texture(uCity,eq);float urb=ct.r*(1.-oc);
+  vec2 eq=vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5);vec4 ct=textureLod(uCity,eq,max(0.,log2(fw/3900.)));float urb=ct.r*(1.-oc);   // (Q323) the mip by the pixel's footprint (a texel is ~3.9 km)
   if(uAtl>0.){atl=texture(uAtlas,eq);atlL=.5+.5*smoothstep(-.12,.2,ndl);}   // the atlas stays readable on the night side
   float street=0.;if(urb>.01){vec2 g=abs(fract(gx/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
   col=alb*(ndb*st*5.*cloudShadowV(p)+vec3(.01,.016,.03));
   // night lights: a soft glow from orbit; up close they gather onto the streets
-  col+=vec3(1.,.72,.38)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
-  if(oc>.5)col+=st*pow(max(dot(reflect(d,n),uSun),0.),90.)*1.5*step(0.,ndl);
+  col+=vec3(1.,.6,.25)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
+  // (Q323, BEAUTY B6.3, Q268) the sea: the sky reflected by Fresnel (it brightens toward the limb), and a sunglint as a
+  // wind-roughened surface makes it (Beckmann, slope 0.18: a wide smeared patch from orbit, not a pin)
+  if(oc>.5){vec3 h2=normalize(uSun-d);float cv=max(dot(-d,n),0.),Fr=.02+.98*pow(1.-cv,5.),ch=max(dot(n,h2),1e-3),c2=ch*ch,m2=.0324;
+   float gl=exp(-(1.-c2)/(c2*m2))/(4.*m2*c2*c2*max(cv,.05))*(.02+.98*pow(1.-max(dot(h2,uSun),0.),5.));
+   col+=st*5.*gl*max(ndl,0.)*.25+Fr*vec3(.05,.1,.2)*smoothstep(-.1,.2,ndl);}
   col=col*trans+ins;
  }else if(tM<1e29){
   vec3 p=d*tM-uMc,n=normalize(p);
@@ -621,7 +631,7 @@ const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
     for(let y=Math.floor(cy-rpx);y<=cy+rpx;y++)for(let x=Math.floor(cx-sx);x<=cx+sx;x++){const dx=(x-cx)/sx,dy=(y-cy)/rpx,r2=dx*dx+dy*dy;if(r2>1||y<0||y>=H)continue;
       const k=((y*W+((x%W)+W)%W)*4),v=Math.exp(-r2*2.6)*(.7+.3*R());d[k]=Math.min(255,d[k]+v*255);d[k+1]=Math.min(255,d[k+1]+v*255*(.5+.5*Math.min(1,c.pop/1e6)))}}
   const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);   // (Q323) mips: the lights from orbit
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t})();
 // (Q314) the emission volumes' radiance in the scene's linear units (plume, plasma, impingement): what was compressed
 // in display space (1 − e^−C) is now passed as is, so a core is many times brighter than sunlit paint and blooms

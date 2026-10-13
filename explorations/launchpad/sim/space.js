@@ -122,10 +122,12 @@ function vn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let 
   return L(L(L(H(0,0,0),H(1,0,0),fx),L(H(0,1,0),H(1,1,0),fx),fy),L(L(H(0,0,1),H(1,0,1),fx),L(H(0,1,1),H(1,1,1),fx),fy),fz)}
 function fbm(x,y,z){let a=.5,s=0;for(let i=0;i<6;i++){s+=a*vn(x,y,z);x=F32(x*2.03+1.7);y=F32(y*2.03+9.2);z=F32(z*2.03+3.1);a*=.5}return s}
 // cloud cover at a planet-fixed unit vector at program time T: the sky shader's cloudCovF, ported like that
-function cloudAt(u,T){const t=(T*2e-4)%500,a=4;
+// (Q323) the shader's milder stretch, patchiness and latitude belts: the scrubs and the photo windows follow the drawn weather
+function cloudAt(u,T){const t=(T*2e-4)%500,a=4,ss=(e0,e1,v)=>{const y=clamp((v-e0)/(e1-e0),0,1);return y*y*(3-2*y)};
   const w=[vn(u[0]*a+t*.3,u[1]*a+t*.3,u[2]*a+t*.3),vn(u[0]*a+5.2,u[1]*a+1.3,u[2]*a+t*.3),vn(u[0]*a+9.1,u[1]*a+t*.3,u[2]*a+2.7)].map(x=>x-.5);
-  const q=[(u[0]+w[0]*.22)*6+t,(u[1]+w[1]*.22)*11,(u[2]+w[2]*.22)*6+t*.6];
-  const c=fbm(q[0],q[1],q[2])+.35*(fbm(u[0]*1.7+4,u[1]*1.7+1,u[2]*1.7+t*.2)-.5),x=clamp((c-.55)/.17,0,1);return x*x*(3-2*x)}
+  const q=[(u[0]+w[0]*.26)*7+t,(u[1]+w[1]*.26)*8.75,(u[2]+w[2]*.26)*7+t*.6],la=Math.abs(u[1]);
+  const belt=.03*(1-ss(0,.16,la))-.05*ss(.16,.26,la)*(1-ss(.5,.62,la))+.02*ss(.66,.8,la)*(1-ss(.9,.97,la));
+  const c=fbm(q[0],q[1],q[2])+.35*(fbm(u[0]*1.7+4,u[1]*1.7+1,u[2]*1.7+t*.2)-.5)+.18*(vn(u[0]*2.6+7,u[1]*2.6+t*.1,u[2]*2.6+3)-.5)+belt,x=clamp((c-.55)/.17,0,1);return x*x*(3-2*x)}
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute

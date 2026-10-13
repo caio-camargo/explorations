@@ -764,6 +764,11 @@ ROWS.focus = {title: "the map's focus", steps: [DOCK_HELPERS, M1_HELPERS, `testE
     cv.dispatchEvent(new MouseEvent('dblclick', {clientX: x, clientY: y, bubbles: true})); render(); ({key: mapFocusKey(), at: [Math.round(x), Math.round(y)]})}`, {shot: 'selene'},
   {key: 'Home'}, `render(); ({key: mapFocusKey()})`, {shot: 'home'}],
   checks: {key: `mapFocusKey()`}, expect: {key: v => v === 'ship'}};
+// terms: hover terms (Q287): the Orbiter in the Assembly, hover Δv in the stage rows; then in orbit, hover the HUD's Ap
+ROWS.terms = {title: 'hover terms', steps: [DOCK_HELPERS, M1_HELPERS, `{PT.preset('Orbiter'); render(); const el = document.querySelector('#stats [data-term="dv"]'); el.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({tip: PT.text('#termTip'), shown: PT.vis('#termTip')})}`, {shot: 'builder'},
+  `{PT.preset('Beeper'); PT.launch(); PT.park(S); render(); updateHUD(); const el = document.querySelector('#info [data-term="ap"]'); el.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({tip: PT.text('#termTip'), shown: PT.vis('#termTip')})}`, {shot: 'hud'},
+  `document.body.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({shown: PT.vis('#termTip')})`],
+  checks: {gone: `PT.vis('#termTip')`}, expect: {gone: v => v === false}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 

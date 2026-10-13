@@ -22,7 +22,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`${typeof flagSVG==='function'?flagSVG(p,18):''}<span style="color:${pc(p)}">${p.name}</span> <span class="dim">(${ARCH[archOf(p.i)].name.toLowerCase()})</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
   {const used=Object.keys(PROG.kh||{}).sort((a,b)=>khBar(b)-khBar(a)),bar=k=>`<span class="acc">${'▮'.repeat(Math.round(khBar(k)*8))}${'▯'.repeat(8-Math.round(khBar(k)*8))}</span>`,
      prod=k=>{const x=sourceOf(k);return x.how==='line'?`${x.line.lic!=null?'licensed':'own'} line, maturity ${(x.line.m*100).toFixed(0)}%`:x.how==='home'?'home-made':x.how==='grey'?'<span class="bad">grey market</span>':x.how==='giant'?`from ${x.name} (${POWERS[x.from].root})`:`from ${POWERS[x.from].root}`};
-   if(used.length)html+=`<div class="ep">Know-how</div><div class="sub">${used.slice(0,10).map(k=>`${bar(k)} ${PARTS[k].name} <span class="dim">· ${prod(k)}</span>`).join('<br>')}</div>`}
+   if(used.length)html+=`<div class="ep">${term('kh','Know-how')}</div><div class="sub">${used.slice(0,10).map(k=>`${bar(k)} ${PARTS[k].name} <span class="dim">· ${prod(k)}</span>`).join('<br>')}</div>`}
   {const S2=PROG.stand2,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]);
    html+=`<div class="ep">Test stand</div><div class="sub">`+(!S2?`<button data-stand="build" ${PROG.funds>=STAND_COST?'':'disabled'}>Build a test stand ${fmtM(STAND_COST)}, ${STAND_DAYS} d</button> <span class="dim">ground tests: know-how and certification without flying</span>`:
      PROG.day<S2.ready?`Under construction, ready in ${(S2.ready-PROG.day).toFixed(0)} days`:S2.job?`Testing the ${PARTS[S2.job.k].name} (${S2.job.mode==='destroy'?'to destruction':'qualification'}), ${(S2.job.end-PROG.day).toFixed(0)} days left`:
@@ -66,7 +66,7 @@ function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500
     return`<div>${lbl} <b class="${cl}">${ok?'holds':stable?'weathervanes':'flips'}</b> <span class="dim">need ${k(r.tau)} kN·m · ${src(r,c.rcs)}</span></div>`};
   const A=AV[avNow()],nx=AV[avNow()+1];
   return`<h2>Control</h2><div>SAS <b>${A.name}</b> <span class="dim">${A.modes?A.modes.length===1?'attitude hold only':'hold and the velocity-vector modes':'every mode'}${nx?` · ${nx.name.toLowerCase()} with ${COMP_ERAS[nx.era].name.toLowerCase()}`:''}</span></div>
-    <div class="dim">Holding 5° off the airflow at max-q (25 kPa, M1.2):</div>
+    <div class="dim">Holding 5° off the airflow at ${term('maxq','max-q')} (25 kPa, M1.2):</div>
     ${row('burning',c.burn)}${row('coasting',c.coast)}
     <div>Roll <span class="dim">${src(c.roll,c.rcs)}${src(c.roll,c.rcs)==='nothing'?'':' kN·m'}</span></div>
     <div>90° turn in vacuum <b>${sec(c.turn.wheels)}</b> <span class="dim">wheels${c.rcs?' + RCS':''}</span> · <b>${sec(c.turn.burn)}</b> <span class="dim">first stage lit</span></div>
@@ -95,10 +95,10 @@ function editorChanged(){
   if(empty){$('stats').innerHTML='<div class="dim">empty — pick a command pod from the parts list</div>';return}
   const{stages,mass}=stageStats(stackDef);let tot=0,html='';
   stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok';
-    html+=`<div class="seg"><b>Stage ${i+1}</b> <span class="dim">${s.m0.toFixed(2)} t → ${s.mf.toFixed(2)} t</span><br>Δv <b>${s.dvV.toFixed(0)}</b> / ${s.dvA.toFixed(0)} m/s · TWR <span class="${tw}">${s.twr.toFixed(2)}</span> · ${s.burn.toFixed(0)} s</div>`});
+    html+=`<div class="seg"><b>Stage ${i+1}</b> <span class="dim">${s.m0.toFixed(2)} t → ${s.mf.toFixed(2)} t</span><br>${term('dv','Δv')} <b>${s.dvV.toFixed(0)}</b> / ${s.dvA.toFixed(0)} m/s · ${term('twr','TWR')} <span class="${tw}">${s.twr.toFixed(2)}</span> · ${s.burn.toFixed(0)} s</div>`});
   {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`+studyLine(S);$('launch').textContent=ok?'LAUNCH [L]':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
    html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
-  html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
+  html+=`<div style="margin-top:6px">Total ${term('dv','Δv')} <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
     ${powerLine(S)}
     ${lifeLine(S)}
     <div class="sub">${logHintHTML()}</div>`;
@@ -107,10 +107,10 @@ function editorChanged(){
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
   const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
   html+=`<h2>Aerodynamics &amp; structure</h2>
-    <div>Stability <span class="dim">(CoM ahead of CoP, calibers)</span><br>
+    <div>${term('stab','Stability')} <span class="dim">in calibers</span><br>
     full <b class="${cc(cal(a.ful))}">${cal(a.ful).toFixed(2)}</b> · stage-1 dry <b class="${cc(cal(a.emp))}">${cal(a.emp).toFixed(2)}</b> · M1.6 <b class="${cc(cal(a.sup))}">${cal(a.sup).toFixed(2)}</b></div>
     <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.cert.frac)}">${(a.lift.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.cert)}</span></div>
-    <div>Max-q ${(a.mq.q/1000).toFixed(0)} kPa · M${a.mq.M.toFixed(1)} · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${a.mq.own?'its own peak on a standard ascent (past the 25 kPa design case) · ':''}${jn(a.mq.cert)}</span>${a.mq.cert.frac>0.7?`<div class="sub">${a.mq.cert.frac>1?jointFix(a.mq.cert,a.mq.own):'Near its rating (a turn or a gust adds to it): '+jointFix(a.mq.cert,a.mq.own).replace(/^./,c=>c.toLowerCase())}</div>`:''}
+    <div>${term('maxq','Max-q')} ${(a.mq.q/1000).toFixed(0)} kPa · M${a.mq.M.toFixed(1)} · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${a.mq.own?'its own peak on a standard ascent (past the 25 kPa design case) · ':''}${jn(a.mq.cert)}</span>${a.mq.cert.frac>0.7?`<div class="sub">${a.mq.cert.frac>1?jointFix(a.mq.cert,a.mq.own):'Near its rating (a turn or a gust adds to it): '+jointFix(a.mq.cert,a.mq.own).replace(/^./,c=>c.toLowerCase())}</div>`:''}
 </div>
     ${trimHTML(S)}
     ${standHTML(S)}

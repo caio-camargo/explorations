@@ -3007,7 +3007,7 @@ plan wanted, and is never a nag from friends.
 Tests: `econ-24` (2 checks: recorded low and climbing, not in orbit at 120 km, not above 150 km, not over home; an ally
 shrugs, a rival protests once a year, a security state double).
 
-## v1.175 — routines: a route keeps N satellites up (2026-10-13, economy session, QUEUE Q184, Q110 slice 1; W27, D17.1)
+## v1.177 — routines: a route keeps N satellites up (2026-10-13, economy session, QUEUE Q184, Q110 slice 1; W27, D17.1)
 
 **Scope:** Q184 named "a repeating supply run to a base", written before D17.1 moved resupply to M3 with crew and made
 M2's finish line "a routine repeat satellite launch keeps a network up". So this slice is the satellite routine; base

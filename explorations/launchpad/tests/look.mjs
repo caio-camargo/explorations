@@ -591,7 +591,7 @@
     shaders && split && wired, `shaders ${shaders} · split ${split} · wired ${wired}`);
 }
 
-// aerofx-20. The space sky (look & sound sky & bodies beat, BEAUTY Q321 B5, W39; mockups/sky/). The band, a nebula and a
+// aerofx-22. The space sky (look & sound sky & bodies beat, BEAUTY Q321 B5, W39; mockups/sky/). The band, a nebula and a
 // spiral are baked once per program into a cube map (GAL_FS, galBake on unit 12) and SKY_FS's main only samples it; the
 // stars are three power-law layers with a floor and a twinkle; the sun has no spikes; SKY_B5 keeps the old code for an
 // A/B. Each program's nebula sits 22° off the band's midline and its spiral 40° off, for any seed.
@@ -636,4 +636,35 @@
     && /if\(S\.landed&&S\.water\)surfFx\(S,b,S\.r,S\.q,/.test(page) && /function surfFx\(o,b,r,q,L0,rad,dt\)/.test(page);
   const sim = /d\.chA=/.test(src) && /d\.float=\{pf:pfc/.test(src);
   check('falling stage: a canopy per chute while d.chA is open; at sea a splash once, then the waterline laps (stage and ship)', can && sea && sim, `canopies ${can} · sea ${sea} · sim ${sim}`);
+}
+
+// sound-2. The effects' sounds (look & sound effects beat as sound overflow, QUEUE Q363, Q362): a venting tank hisses
+// through our own structure even in vacuum and fades as it empties, from elsewhere only through the air; a structural
+// crack (with a groan) and a splash are queued by the page (FXSND) and heard like booms; the radio blackout's edges sound
+// (static cut dead going in; a squelch and a 2,525 Hz Quindar tone coming out).
+{
+  const H = html.replace(/\r\n/g, '\n'), blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END'));
+  const { sndVent } = new Function(blk + ';return {sndVent}')();
+  const own = sndVent([{ rate: 1, own: true, air: 0, d: 0 }]), half = sndVent([{ rate: .25, own: true }]), vac = sndVent([{ rate: 1, own: false, air: 0, d: 50 }]),
+    near = sndVent([{ rate: 1, own: false, air: 1, d: 50 }]), far = sndVent([{ rate: 1, own: false, air: 1, d: 5000 }]);
+  const wired = /FXSND\.push\(\{k:'crack',b,r:J,/.test(H) && /FXSND\.push\(\{k:'splash',b,r:P,sz:k,own:s===S\}\)/.test(H) && /if\(live\)\{sndEvents\(st\);sndBooms\(\);sndFx\(\)\}/.test(H)
+    && /sndBeep\(2525,0\.25,0\.12,0\.3\)/.test(H) && /const bo=S\.alive&&S\.body===TELLUS&&plasmaOn\(S\)/.test(H) && /set\(AUD\.VH\.g\.gain,0\.3\*sndVent\(st\.vents\)/.test(H);
+  check('effects\' sounds: a vent hisses through our structure in vacuum and fades as it empties, from elsewhere only through air; crack, splash and the blackout\'s edges are wired',
+    own === 1 && half === .5 && vac === 0 && near > .8 && far < .1 && wired, `own ${own}, quarter left ${half}, elsewhere in vacuum ${vac}, 50 m in air ${near.toFixed(2)}, 5 km ${far.toFixed(2)} · wired ${wired}`);
+}
+
+// aerofx-23. Tellus from above (look & sound sky & bodies beat, BEAUTY Q323 B6.1, 6.3, 6.4). The cloud cover's far-field
+// widening is even about the threshold's centre (it was lopsided: a blurred pixel came out ~4× cloudier than the ground
+// under it), starts once the finest octave is under a pixel (fw × 15), and the coverage has a milder stretch, a
+// patchiness term and latitude belts; sim/space.js cloudAt carries the same formula, so scrubs and photo windows follow
+// the drawn weather. The sea has Fresnel sky light and a Beckmann sunglint; the city lights are read at their mip.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = pg.slice(pg.indexOf('float cloudCovF('), pg.indexOf('float cloudCov(vec3 u)'));
+  const shader = /vec3\(7\.,8\.75,7\.\)/.test(fs) && /belt=\.03\*/.test(fs) && /-\.05\*smoothstep\(\.16,\.26,la\)/.test(fs) && /\.18\*\(vn\(u\*2\.6/.test(fs)
+    && /k=clamp\(fw\*15\.,0\.,\.3\);return smoothstep\(\.55-k,\.72\+k,c\)/.test(fs);
+  const cpu = /\*7\+t,\(u\[1\]\+w\[1\]\*\.26\)\*8\.75/.test(src) && /belt=\.03\*\(1-ss\(0,\.16,la\)\)-\.05\*ss\(\.16,\.26,la\)/.test(src) && /\.18\*\(vn\(u\[0\]\*2\.6\+7/.test(src) && /x=clamp\(\(c-\.55\)\/\.17,0,1\)/.test(src);
+  const sea = /Fr=\.02\+\.98\*pow\(1\.-cv,5\.\)/.test(pg) && /m2=\.0324/.test(pg) && /textureLod\(uCity,eq,max\(0\.,log2\(fw\/3900\.\)\)\)/.test(pg) && /gl\.generateMipmap\(gl\.TEXTURE_2D\);gl\.texParameteri\(gl\.TEXTURE_2D,gl\.TEXTURE_MIN_FILTER,gl\.LINEAR_MIPMAP_LINEAR\)/.test(pg);
+  check('Tellus from above: even far-field cloud filter, milder stretch, patchiness and belts in the shader and in cloudAt alike; the sea\'s Fresnel and sunglint; city lights by mip',
+    shader && cpu && sea, `shader ${shader} · cloudAt ${cpu} · sea and lights ${sea}`);
 }

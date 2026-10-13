@@ -234,7 +234,7 @@ const unlocksOf=id=>Object.values(TOOLS).filter(T=>T.fact===id).map(T=>T.name);
 function payloadRows(){const R=S.rec,out=[];if(!R)return out;
   if(R.bio){out.push(['Passenger',R.bioOK?`${R.pet} · <span class="${R.g>G_LIM*.8?'bad':R.g>G_LIM*.5?'warn':'ok'}">${R.g.toFixed(1)} g</span> <span class="dim">(max ${R.gMax.toFixed(1)}/${G_LIM})</span> · cabin <span class="${R.cabin>CABIN_MAX-10?'bad':'ok'}">${R.cabin.toFixed(0)} K</span> · air ${fmtT(AIR_S-simT)}`:`<span class="bad">${R.pet} ${R.bioWhy}</span>`])}
   if(S.parts.some(p=>p.on&&p.d.kind==='sci')){const b=Object.keys(R.bands).map(Number).sort((a,b)=>a-b);
-    out.push(['Instruments',`telemetry live · max-q ${(R.sciQ/1000).toFixed(1)} kPa${b.length?` · air samples ${b[0]*10}–${(b[b.length-1]+1)*10} km`:''}`])}
+    out.push(['Instruments',`telemetry live · ${term('maxq','max-q')} ${(R.sciQ/1000).toFixed(1)} kPa${b.length?` · air samples ${b[0]*10}–${(b[b.length-1]+1)*10} km`:''}`])}
   if((PROG.active&&PROG.active.length)||R.cdone.length)out.push(['Contracts',[...R.cdone.map(t=>`<span class="ok">✔ ${t}</span>`),...(PROG.active||[]).map(c=>`<span class="dim">${cTitle(c)}</span>`)].join(' · ')]);
   return out}
 // ---- rendezvous UI: choosing a target, the closest-approach cache, the HUD rows
@@ -305,8 +305,8 @@ function updateHUD(){
   const core=[['MET',`T+${fmtT(simT)} · ${b.name} · ${sit}${link}`],
     radar?['Radar alt',`${fmtD(Math.max(0,groundGap(S)))}${vsTxt} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]:['Altitude',`${fmtD(h)}${vsTxt}`],
     ['Speed',air?`${srf.toFixed(0)} m/s <span class="dim">surface</span>`:`${len(S.v).toFixed(0)} m/s <span class="dim">orbital</span>`],
-    ['Ap · Pe',S.landed?'—':`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
-    ['Δv',`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · TWR ${twr.toFixed(2)}`]];
+    [`${term('ap','Ap')} · ${term('pe','Pe')}`,S.landed?'—':`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
+    [term('dv','Δv'),`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · ${term('twr','TWR')} ${twr.toFixed(2)}`]];
   $('info').innerHTML=core.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   renderCards();gaugeSlot();
   const w=WARPS[warpIdx];$('warpN').textContent=`${w}×${w>1&&!railsOK(S)?' (physics)':''}`;$('warp').classList.toggle('on',w>1);
@@ -373,7 +373,7 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
   for(let k=0;k<3;k++)$('nd'+k).textContent=n.dv[k].toFixed(1)+' m/s';
   const tt=n.t-simT,start=tt-(isFinite(est)?nodeLead(S,dv):0),more=(S.nodeQ||[]).length;   // the lead puts half the Δv before the node (vehicle, Q33)
   $('nd-sum').innerHTML=pick+(n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
-    `Δv <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`);
+    `${term('dv','Δv')} <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`);
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
 renderEditor();go('title');   // (Q241 R3) the page opens on the title screen
 requestAnimationFrame(frame);

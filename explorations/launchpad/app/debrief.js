@@ -24,7 +24,7 @@ function renderDebrief(){const D=debShown,el=$('debBody');
     +sec('Logbook',D.records.map(r=>ln(`${r.l} <span class="was">(${r.was?`was ${r.was}`:'first measured'})</span>`,r.v)).join(''));
   const R=sec('Missions',D.missions.map(m=>ln(`✓ ${m.l}`,m.first?'<span class="neg">first</span>':'')).join(''))
     +sec('Certified by telemetry',D.certs.map(c=>ln(c.l,`${pct(c.a)} → ${pct(c.b)}`)).join(''))
-    +sec('Know-how',D.kh.slice(0,8).map(k=>ln(k.l,`${pct(k.a)} → ${pct(k.b)}`)).join('')+(D.kh.length>8?ln(`and ${D.kh.length-8} more parts`):''))
+    +sec(term('kh','Know-how'),D.kh.slice(0,8).map(k=>ln(k.l,`${pct(k.a)} → ${pct(k.b)}`)).join('')+(D.kh.length>8?ln(`and ${D.kh.length-8} more parts`):''))
     +sec('Incidents',D.incidents.map(t=>ln(t,'','bad')).join(''))
     +(D.streak>1?`<div class="ln" style="margin-top:12px"><span>${D.streak} flights in a row with no stage on a town.</span></div>`:'');
   el.innerHTML=h+`<div class="cols"><div>${L}</div><div>${R}</div></div>`;
