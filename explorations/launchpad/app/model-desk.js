@@ -20,7 +20,7 @@ let DESK_NM={st:null,sv:null,n:-1,v:''};   // deskName's last answer: it runs ev
 const deskName=()=>{const st=S.stack||stackDef,SV=PROG.designs&&PROG.designs.saved||[];if(DESK_NM.st===st&&DESK_NM.sv===SV&&DESK_NM.n===SV.length)return DESK_NM.v;
   const K=typeof designKey==='function'&&designKey,k=K&&K(st),sv=k&&SV.find(d=>K(d.stack)===k);   // the player's own name for it, if saved (v1.129)
   DESK_NM={st,sv:SV,n:SV.length,v:String(sv&&sv.name||typeof designName==='function'&&designName(st)||'').toUpperCase().slice(0,24)};return DESK_NM.v};
-const deskKey=N=>`${N}|${deskName()}|${typeof schoolOf==='function'?schoolOf(0):0}|${typeof crewGen==='function'?crewGen():0}|${S.parts.length}|${S.len.toFixed(2)}`;
+const deskKey=N=>`${N}|${deskName()}|${typeof schoolOf==='function'?schoolOf(0):0}|${typeof crewGen==='function'?crewGen():0}|${S.parts.length}|${S.len.toFixed(2)}|${(S.yBot-deskFoot()).toFixed(2)}`;
 // the desk's mesh in model metres × N, origin at the model's foot (the base plate's top), y up
 function deskMesh(N){const key=deskKey(N);if(deskMeshes.has(key))return deskMeshes.get(key);const a=[],bulb=[],k=N,B=(c,h,col)=>box(a,c.map(x=>x*k),h[0]*k,h[1]*k,h[2]*k,col);
   const WOOD=[.3,.17,.09],WOOD2=[.2,.11,.06],PAPER=[.78,.75,.67],INK=[.16,.2,.32],LAMP=[.18,.32,.26],BRASS=[.75,.58,.25,1],GREY=[.5,.5,.52,1];
@@ -63,6 +63,9 @@ function deskMesh(N){const key=deskKey(N);if(deskMeshes.has(key))return deskMesh
     OB(-.335,.22,-.006,.014,.02,.08,[.3,.18,.1]);OB(.02,.045,.0025,.345,.001,.014,[.78,.66,.42]);OB(.02,.059,.003,.345,.0011,.0012,[.15,.1,.07])}
   {const BASE=[.08,.08,.09];lathe(a,[[.07*k,-.012*k,BASE],[.07*k,-.002*k,BASE],[.066*k,0,BASE]],[0,0,0],40)}   // the base plate the model stands on
   lathe(a,[[.012*k,0,GREY],[.012*k,.004*k,GREY]],[0,0,0],16);   // its pin
+  // (Q330) a design hanging over the plate (parts below removed, BLD.foot) stands on a display rod up to its bottom, as a
+  // kit model does: a 4 mm steel rod from the pin, a collar where it leaves it
+  {const g=S.yBot-deskFoot();if(g>.006*k){const ST=[.62,.63,.66,1];lathe(a,[[.004*k,.004*k,ST],[.004*k,g,ST]],[0,0,0],12);lathe(a,[[.007*k,.004*k,ST],[.007*k,.009*k,ST],[.004*k,.011*k,ST]],[0,0,0],16,[false,true])}}
   {const[x,y,z]=DESK_LAMP,bx=-.5,bz=-.3;   // the architect's lamp: a base, a post, an arm, a shade
     lathe(a,[[.06*k,T*k,LAMP],[.06*k,(T+.015)*k,LAMP],[.03*k,(T+.025)*k,LAMP]],[bx*k,0,bz*k],24);
     B([bx,T+.25,bz],[.006,.23,.006],BRASS);

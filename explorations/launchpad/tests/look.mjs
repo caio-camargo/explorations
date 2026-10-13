@@ -829,3 +829,27 @@
     planets && point && contrast && glow && scale && /if \(n === 171\)/.test(vj) && /if \(n === 169 \|\| n === 170\)/.test(vj),
     `planets ${planets} · point ${point} · contrast ${contrast} · airglow ${glow} · scale ${scale}`);
 }
+
+// aerofx-34. A display rod under a hanging model (look & sound effects beat, QUEUE Q330): while parts below were removed
+// the design hangs over the desk's base plate (BLD.foot, Q247); a steel rod rises from the plate's pin to its bottom, with
+// a collar, and the desk mesh is rebuilt when the gap changes.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const ok = /\|\$\{\(S\.yBot-deskFoot\(\)\)\.toFixed\(2\)\}`;/.test(page) && /\{const g=S\.yBot-deskFoot\(\);if\(g>\.006\*k\)\{const ST=\[\.62,\.63,\.66,1\];lathe\(a,\[\[\.004\*k,\.004\*k,ST\],\[\.004\*k,g,ST\]\],\[0,0,0\],12\);/.test(page);
+  check('a hanging model stands on a display rod from the base plate\'s pin to its bottom; the desk is rebuilt when the gap changes', ok, `rod ${ok}`);
+}
+
+// aerofx-35. A calmer camera shake, and a switch (look & sound effects beat, QUEUE Q360; Caio 2026-10-13: "too intense
+// and unpleasant to watch"): a sway at 1.5–4 Hz (no term faster than 26 rad/s, so nothing strobes against the frame
+// rate), at most ~0.12° at Mach 1's max-q (was ~0.45°); Settings › Screens › camera shake, kept per browser.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 0,
+    sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
+  const at = t => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values({ ...env, simT: t }), { alive: true, body: { atm: 1 }, mach: 1, qdyn: 32e3, r: [], v: [], qHeat: 0 });
+  let peak = 0; for (let t = 0; t < 20; t += 0.01) { const r = at(t); peak = Math.max(peak, Math.hypot(r[0], r[1])) }
+  const rates = [...cs[0].matchAll(/Math\.sin\(t\*([\d.]+)/g)].map(m => +m[1]), slow = rates.length === 6 && Math.max(...rates) <= 26 && Math.min(...rates) >= 9;
+  const sw = /SHAKE_FX=setGet\('launchpad-shake','1'\)!=='0'/.test(H) && /ck\('setShake',SHAKE_FX,'camera shake/.test(H) && /id==='setShake'\)\{SHAKE_FX=on;setPut\('launchpad-shake'/.test(H);
+  check('camera shake: a slow sway (1.5–4 Hz), at most ~0.12° at max-q (was ~0.45°); a Settings switch kept per browser', slow && peak < .0025 && peak > .0012 && sw,
+    `rates ${rates.join(', ')} rad/s · peak at M 1 max-q ${(peak * 57.3).toFixed(3)}° · switch ${sw}`);
+}

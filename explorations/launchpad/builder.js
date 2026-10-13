@@ -401,6 +401,8 @@ function tooltip(){if(!tipOK())return;
     (partInfo(pdef(n.k))?`<div class="pcs">${partInfo(pdef(n.k))}</div>`:'')+(partPairs(pdef(n.k))?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(pdef(n.k))}</div>`:'')+(w?`<div>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span></div>`:'')+
     (ps.length?'':`<div class="warn">parked: not attached</div>`)+`<div class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</div>`;
   const k=V()?V().W/innerWidth:1;tipShow('craft',html,{x:st.mouse[0]/k,y:st.mouse[1]/k})}
+// (flow, Q405; PLAYTEST #101) T: the camera straight down at the design and back (the CoM's offset from the axis shows)
+let topPrev=null;function topView(){if(topPrev==null){topPrev={p:cam.pitch,s:HOOK.edStill};cam.pitch=Math.PI/2;HOOK.edStill=true;note('Top view: straight down the axis (T again: back)')}else{cam.pitch=topPrev.p;HOOK.edStill=topPrev.s;topPrev=null}}   // (still while it's on: a turning top view spins)
 // (Q235, PLAYTEST #42) start from scratch: one undo step; the palette, presets and saved designs are untouched
 function clearDesign(){if(isEmpty(stackDef))return;snapshot();stackDef={v:2,root:null};st.held=null;st.sel=null;st.reframe=true;editorChanged();note('Cleared: pick a part to start (Ctrl+Z brings the design back)')}
 function btn(parent,label,on,fn,tip){const b=document.createElement('button');b.textContent=label;if(on)b.className='on';if(tip)b.title=tip;b.onclick=e=>{e.stopPropagation();fn()};parent.appendChild(b);return b}
@@ -580,7 +582,7 @@ function changed(){
 // the plate the design stands on, in the ship's frame (y from the CoM): its bottom, or lower while parts below were removed
 const foot=()=>S.yBot-(mode==='editor'&&st.gap||0);
 function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
-  let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(st.bench?4:14,S.len*(st.bench?2.5:1.5),w*(st.bench?5:12));cam.pitch=-0.05;cam.edY=0}   // the bench works at satellite scale (Q416)
+  let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(st.bench?4:14,S.len*(st.bench?2.5:1.5),w*(st.bench?5:12));cam.pitch=topPrev?Math.PI/2:-0.05;cam.edY=0}   // the bench works at satellite scale (Q416)
 
 // ---- input. Capture-phase on window, so the main script's camera drag only sees what we let through.
 function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw=draw;HOOK.edOverlay=overlay;
@@ -603,7 +605,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .pcp{margin-top:5px;line-height:1.35}   /* (flow, Q340) what a part pairs with */
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);
-  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
+  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>T</b> top view · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
   el('editor').appendChild(help);
   const cvs=el('gl'),cpos=e=>[e.clientX*cvs.width/cvs.clientWidth,e.clientY*cvs.height/cvs.clientHeight];
   addEventListener('mousedown',e=>{if(mode!=='editor'||e.target!==cvs)return;st.mouse=cpos(e);update();
@@ -631,6 +633,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     if(k==='x'){const i=SYM.indexOf(st.sym);st.sym=SYM[(i+(e.shiftKey?SYM.length-1:1))%SYM.length];st.ghostKey='';refresh()}
     else if(k==='c'){st.snap=!st.snap;refresh()}
     else if(k==='r'){st.dec=!st.dec;refresh()}
+    else if(k==='t'){topView()}   // (flow, Q405) straight down at the design, to see the CoM off the axis
     else if(k==='escape'){if(st.held)drop();else if(st.sel){st.sel=null;refresh()}}
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   el('target').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(!b)return;st.sym=+b.dataset.sym;st.ghostKey='';refresh()});

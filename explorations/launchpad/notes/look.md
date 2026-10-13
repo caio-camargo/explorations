@@ -1969,3 +1969,30 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
 - **Cost:** within noise (a 6-entry loop per sky pixel that sees space; the point mode only near a sub-pixel moon).
 - **Views:** 169 the planets, 170 Selene under a pixel, 171 the pad at dusk. Stills `output/launchpad/beauty/q374-after/`,
   `q395-before/`, `q395-after/`, `q374-merged/`. Test `aerofx-33`. TESTING 281.
+
+## v1.201 — a display rod under a hanging model on the desk (2026-10-13, effects beat, QUEUE Q330)
+
+`app/model-desk.js` (`deskMesh`, `deskKey`).
+
+- Since Q327 (v1.139) a design whose lower parts were removed hangs over the desk's base plate (`BLD.foot`). Now a
+  steel rod (4 mm at model scale) rises from the plate's pin to the design's bottom (`S.yBot`), into the nozzle as a
+  kit model's stand does, with a collar where it leaves the pin. Only when the gap is over 6 mm at model scale; the
+  desk mesh's key carries the gap, so it is rebuilt as parts are added or removed.
+- The lamp's shadow on the paper is still the model's only (the rod casts none); a nit, left.
+- **Stills:** `output/launchpad/beauty/Q330/` (`standing`, `hanging_8m`: view 152 with the foot 8 m below). **Check:**
+  test `aerofx-34`. TESTING 282.
+
+## v1.203 — a calmer camera shake, and a switch for it (2026-10-13, effects beat, QUEUE Q360)
+
+`app/gl.js` (`camShake`), `app/settings.js` (the switch).
+
+- **Caio (2026-10-13):** "it's not only the switch, it's the shake itself, which is too intense and unpleasant to
+  watch". Q320's shake (v1.154) was a sum of sines at 13–83 rad/s (2–13 Hz): near the frame rate it strobed rather
+  than shook, and it reached ~0.45° of view direction at Mach 1's max-q (~0.4° at a re-entry's peak).
+- **Now:** the same shape (a max-q buffet worst near Mach 1, the re-entry rumble by the plasma's heat), as a sway at
+  9–26 rad/s (1.5–4 Hz), at most ~0.12° at max-q and ~0.14° at re-entry's peak: about a quarter. Still deterministic on
+  sim time (still when paused), off in the map.
+- **The switch:** Settings › Screens › "camera shake (the max-q buffet, re-entry)", kept per browser
+  (`launchpad-shake`). **Flow:** one row added to your `renderSettings` and its change handler, nothing else.
+- Not seen moving in a browser here (the GPU was another session's); the numbers are the test's. **Check:** test
+  `aerofx-35` (and `aerofx-14`). TESTING 284.
