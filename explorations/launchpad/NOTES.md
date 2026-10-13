@@ -224,6 +224,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; D17.4)
 - v1.171 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
 - v1.177 — routines: a route keeps N satellites up (2026-10-13, economy session, QUEUE Q184; W27, D17.1)
+- v1.202 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
 
 ## World: [`notes/world.md`](notes/world.md)
 
