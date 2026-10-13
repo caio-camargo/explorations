@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -237,6 +237,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
 - v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
+- v1.184 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 

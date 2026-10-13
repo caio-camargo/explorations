@@ -1,5 +1,5 @@
 # Launchpad notes — World
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1546,3 +1546,65 @@ delivery whenever the goal is met: 5.3 h. `node career.mjs 3 3` prints the same 
 - A town isn't drawn differently from a city (no launch-viewing crowds, no causeway).
 - A rollout warning when a stage's drop zone nears a town: `dropVerdict` already knows, and towns are never downrange,
   so only an abort or a dogleg would find one.
+
+## v1.184 — each school's pad site has its own ground (2026-10-13, world session, QUEUE Q105)
+
+Q231 built the four schools' complexes on flat ground (notes/look.md § "The four schools' pads"), with Arsenal's hill
+as a mesh. Q105 gives each site the ground its brief describes (POWERS.md § "School briefs", mock-ups Q227).
+
+**How.** `siteShape(k, x, z, lo, wet)` (`sim/world.js`) is a height offset from the pad's own height, in the pad's frame
+(x east, z south, metres, as the pad meshes). `terrainH` adds it within `SHAPE_R` (1.7 km) of a pad, inside the 2 km
+levelled zone. Physics, landing, `seaAt`, the map and the shader all see the same ground. In the sky shader, `siteShapeG`
+mirrors it term for term for the pad nearest the camera (`uSites[0]`; uniform `uPadK` = school, `lo`, wet). Change both
+together. The school comes from `SITE_SCHOOL(t)`: the owner's school from `POWERS` in the SIM, set to `padSchoolOf` by
+`app/gl.js`, so the ground follows the drawn pad (the program's own archetype, the tester's `SCHOOL_FORCE`).
+- **Arsenal (2):** the hill behind the retaining wall (z −11). Behind the wall it matches the old mesh hill (4.6 → 12.6 m),
+  then rises to 42 m by 260 m north and falls back by 1.4 km. Its flanks ease out past the wall's ends: narrow on the
+  west, where the hall stands; wide on the east. The mesh hill (`hfield` in `arsenalPad`) is gone.
+- **Coastal (3):** flat. A clearing of cut grass (r ~70 m, plus the rails and the assembly building), then dark, mottled
+  jungle canopy, as colour only. The site's own colour is already rainforest at the equator, and only the contrast
+  makes a treeline. The sea behind the pad (380 m south) only when wet.
+- **Mountain (4):** the ridge climbs north past the terraces (9 m at their top, 37 m by 280 m). The ground falls away
+  south of z 45 and east of x 70, by `lo`.
+- **Isle (5):** a headland about 150 m wide, open to the north (the neck). The ground falls `lo` to the east, south and
+  west over 70 m, with a wavy edge. Pasture-green colour on top.
+- **`lo` and wet.** Pads stand on their levelled plateau at 66–1,332 m (seed 13; home 157 m). A sea next to the pad
+  would need a cliff of hundreds of metres. So the fall reaches the sea (`lo = −(h+8)`) only on a **coastal site under
+  60 m** (`SITE_WET`). Elsewhere it falls 45 m (`SHAPE_DROP`, less on a pad under 48 m): an escarpment above lower
+  land, which rises back to the plateau by 1.7 km. *Default taken, not asked:* moving sites to real coastlines would
+  touch the site search and economy's site rules; ask Caio if the sea matters more.
+- **Everything else is unchanged.** Every complex's footprint stays flat (test), and so do Cape and Steppe. Past 1.7 km
+  nothing changes, so neither do the 2–4.5 km blend, towns, rover spots (5–8 km) or the ground stations' horizon masks
+  (first sample 1.84 km).
+
+**The shader needed four things:**
+1. **The march's air bound:** `ub` comes from the climate texel's maximum, which a hill above the plateau can exceed.
+   Near the shaped pad, `terr` and the march's skip branch raise it to the pad height + 50 m.
+2. **Step length:** inside the shaped zone, `m = 1`, so the march takes shorter steps on the steeper ground.
+3. **The pad's paint:** `padGround`, Cape's apron and access road for every school, fades out where the ground is
+   shaped by more than ~0.3 m. Before that, it painted concrete and asphalt up Arsenal's hill.
+4. **Relief shading:** on the shaped ground the relief normal is halved toward the vertical. The sky shader's ambient
+   is ~1 % of direct light, so the cut bank facing away from a low sun was pitch black.
+
+**Two wrong first tries, measured:**
+1. Copying the mesh hill's flanks exactly (0 → 8 m within 11 m past the wall's ends) gave slopes of 3.4. They drew as a
+   rock-coloured band (view 151) and a black face (view 145).
+2. A single hill whose foot line slides north beside the wall was worse (3.7): a short rise that moves sideways is a
+   steep flank.
+The kept form peaks at 1.3 in the two cut corners by the wall's ends, and is ≤ 1 elsewhere.
+
+**Checked:**
+- Test `site-1` (`tests/world.mjs`): footprints flat, past 1.7 km unchanged, Arsenal within 0.7 m of the mesh hill
+  behind the wall, Mountain and Isle as above, and the wet cases are sea.
+- Core 39's "pads levelled" now samples 10 m and 1.8 km (it sampled 1.5 km, inside the shape).
+- `--smoke` all passed with that fix.
+- Stills of views 145–151, before and after: `output/launchpad/q105/` (RTX 3050, High). The shaders compile; frame
+  times look the same within noise (5–7 ms).
+
+**Not yet:**
+- `padGround` is still Cape's layout for every school (Isle sits on Cape's 40 m apron, slabs and road). A per-school
+  ground layout is the parts & pad beat's.
+- Arsenal's access road now stops at the hill.
+- The wet case isn't in any view: the home pad is 157 m up.
+- Branch `q19-hdr` (Q19) has its own copy of the terrain march (`PTERR`). Merging it needs `uPadK` and the `ub`/`m`
+  changes above.
