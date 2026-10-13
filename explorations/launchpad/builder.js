@@ -291,6 +291,52 @@ const PART_INFO={
   bpanel:'Solar cells fixed on the skin: a little power, always there.',
   rtg:'Steady power from decaying isotopes, day or night, wherever it is: costly.'};
 const partInfo=d=>PART_INFO[d.key]||d.base&&PART_INFO[d.base]||PART_INFO[d.kind]||'';
+// what a part pairs with (flow, QUEUE Q340; PROBES § 8): the part card's last line, on the palette card and on the craft's hover
+const PART_PAIRS={
+  cone:'the top of a stack: anything blunt up there pays for it in drag and heat',
+  chute:'a capsule or a probe that comes home; a heat shield under it if it comes back from orbit',
+  pod:'a heat shield and a parachute to come home; an escape tower on an unproven rocket',
+  les:'a crew capsule on top of an unproven rocket',
+  tank:'an engine under it; a decoupler under the stage, to drop it once it\'s empty',
+  shield:'a capsule above it and a parachute to finish the landing',
+  dec:'an engine on each side of the split: one stage below, the next above',
+  istage:'an upper-stage engine sitting inside its skirt',
+  fair:'a payload on its ring; a longer shell if anything pokes out (the Assembly says what)',
+  frame:'side boxes (camera, battery, instruments, computer), an antenna and solar panels on its faces',
+  adapt:'a 2.5 m stage below, a 1.25 m stack above',
+  rdec:'a booster or a side tank, with a nose cone on top',
+  fins:'heavy parts high up: the further ahead the balance point, the better fins work',
+  rfin:'three or four around the tail (radial mounts), heavy parts high up',
+  rcs:'a gas bottle; a probe core or a pilot to fire it',
+  gas:'RCS thrusters',
+  rwheel:'RCS for the big turns: wheels slow down once they reach their top speed',
+  spin:'an upper stage with no steering of its own',
+  core:'a battery and an antenna: it has to be heard from home to be flown',
+  comp:'a probe core and a battery; on a satellite, it runs the pointing',
+  sci:'an antenna to send the readings, or a parachute to bring the samples back',
+  bio:'a parachute and a heat shield: the passenger only counts if it comes back alive',
+  cam:'an antenna to send the pictures, and power: solar panels and a battery for the night side',
+  ant:'power to run it, and a ground station in view (the Network)',
+  bant:'power to run it; open it (P) once the air is thin, after the fairing drops',
+  engine:'tanks above it; a decoupler under it when it isn\'t the bottom stage',
+  wren:'landing legs and a lander\'s tanks: it throttles low enough to hover',
+  petrel:'an upper stage over a first stage that does the climbing',
+  kestrel:'big tanks above it, boosters on the side for heavier loads',
+  port:'a matching port on the other craft, and RCS for the last metres',
+  claw:'RCS for a slow, lined-up approach',
+  arm:'a station to work on; power',
+  hab:'a docking port, and a crew capsule to get there and home',
+  lab:'a crew aboard, power, and a docking port',
+  bay:'a payload on its floor; doors shut until the air is thin',
+  leg:'a lander engine (the Wren), and a wide part to spread them around',
+  rover:'landing legs, so it stands to roll off',
+  beacon:'a lander that stays on the surface',
+  ballast:'a test flight: put it where the payload will go, to prove the rocket lifts that much',
+  batt:'solar panels or an RTG to fill it',
+  solar:'a battery for the night side',
+  wpanel:'a battery for the night side; open it once the fairing is gone and the air is thin',
+  rtg:'anything that draws power, day and night: no battery needed for the shadow'};
+const partPairs=d=>PART_PAIRS[d.key]||d.base&&PART_PAIRS[d.base]||PART_PAIRS[d.kind]||'';
 function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.kind==='tank')L.push(['propellant',n(d.wet-d.dry,'t')],['mass',`${n(d.wet,'t')} full, ${n(d.dry,'t')} empty`]);else L.push(['mass',n(d.m,'t',3)]);
   if(d.kind==='engine')L.push(['thrust',`${d.thrust} kN`],['Isp',`${d.ispA} s sea level · ${d.ispV} s vacuum`]);
@@ -305,7 +351,8 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   return L}
 function partCardHTML(k){const d=PARTS[k],lk=typeof partOpen==='function'?partOpen(k):{ok:true};
   return`<b>${d.name}</b><div class="pcs">${partInfo(d)}</div>`+(lk.ok?'':`<div class="warn">Not open yet: it ${lk.why}. You can design with it; a launch with it is refused.</div>`)+
-    `<table>${partSpecs(d).map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`}
+    `<table>${partSpecs(d).map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}${d.era!=null&&typeof COMP_ERAS!=='undefined'&&COMP_ERAS[d.era]?`<tr><td>era</td><td>${COMP_ERAS[d.era].name}</td></tr>`:''}</table>`+
+    (partPairs(d)?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(d)}</div>`:'')}
 function cardAt(b,k){let c=el('partcard');if(!c){c=document.createElement('div');c.id='partcard';document.body.appendChild(c)}
   if(!b){c.style.display='none';return}c.innerHTML=partCardHTML(k);c.style.display='block';const r=b.getBoundingClientRect(),h=c.offsetHeight;
   c.style.left=(r.right+10)+'px';c.style.top=Math.max(8,Math.min(innerHeight-h-8,r.top-8))+'px'}
@@ -315,7 +362,7 @@ function tooltip(){let t=el('bldtip');if(!t){t=document.createElement('div');t.i
   const n=st.hover;if(!n||mode!=='editor'||st.held||!st.mouse){t.style.display='none';return}
   const ps=S.parts.filter(p=>p.on&&p.dn===n),w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null);
   t.innerHTML=`<b>${name(n.k)}</b>${ps.filter(p=>!p.inst.rdec).length>1?` <span class="dim">×${ps.filter(p=>!p.inst.rdec).length}</span>`:''}`+
-    (partInfo(PARTS[n.k])?`<div class="pcs">${partInfo(PARTS[n.k])}</div>`:'')+(w?`<br>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span>`:'')+
+    (partInfo(PARTS[n.k])?`<div class="pcs">${partInfo(PARTS[n.k])}</div>`:'')+(partPairs(PARTS[n.k])?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(PARTS[n.k])}</div>`:'')+(w?`<br>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span>`:'')+
     (ps.length?'':`<br><span class="warn">parked: not attached</span>`)+`<br><span class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</span>`;
   const k=V()?V().W/innerWidth:1;t.style.display='block';t.style.left=(st.mouse[0]/k+14)+'px';t.style.top=(st.mouse[1]/k+14)+'px'}
 // (Q235, PLAYTEST #42) start from scratch: one undo step; the palette, presets and saved designs are untouched
@@ -491,6 +538,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 #partcard{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-size:11.5px;display:none;z-index:6;width:260px}
 #partcard table{border-collapse:collapse;margin-top:4px;width:100%}#partcard td{padding:1px 0;vertical-align:top;text-align:left}#partcard td:first-child{color:var(--dim);padding-right:8px;white-space:nowrap}
 .pcs{color:var(--fg);margin:2px 0;line-height:1.35}#bldtip .pcs{max-width:260px;white-space:normal}
+.pcp{margin-top:5px;line-height:1.35}#bldtip .pcp{max-width:260px;white-space:normal}   /* (flow, Q340) what a part pairs with */
 #bldtip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:11.5px;display:none;z-index:5}
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);

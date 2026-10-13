@@ -769,6 +769,11 @@ ROWS.terms = {title: 'hover terms', steps: [DOCK_HELPERS, M1_HELPERS, `{PT.prese
   `{PT.preset('Beeper'); PT.launch(); PT.park(S); render(); updateHUD(); const el = document.querySelector('#info [data-term="ap"]'); el.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({tip: PT.text('#termTip'), shown: PT.vis('#termTip')})}`, {shot: 'hud'},
   `document.body.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({shown: PT.vis('#termTip')})`],
   checks: {gone: `PT.vis('#termTip')`}, expect: {gone: v => v === false}};
+// explain: warnings that explain themselves and part cards (Q340): the Orbiter in the Assembly with too little money, hover
+// the cost (over budget: why and the fixes); hover the camera in the parts list (its card ends with what it pairs with)
+ROWS.explain = {title: 'self-explaining warnings, part cards', steps: [DOCK_HELPERS, M1_HELPERS, `{go('assembly'); PT.preset('Orbiter'); window.F340 = PROG.funds; PROG.funds = 1; editorChanged(); render(); const el = document.querySelector('#stats [data-wt]'); el.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({marks: document.querySelectorAll('#stats [data-wt]').length, tip: PT.text('#termTip'), shown: PT.vis('#termTip')})}`, {shot: 'warning'},
+  `{document.body.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); PROG.funds = window.F340; editorChanged(); const b = [...document.querySelectorAll('#palette button')].find(x => x.textContent.startsWith(PARTS.cam.name)); b.dispatchEvent(new MouseEvent('mouseenter')); ({card: PT.text('#partcard')})}`, {shot: 'card'}],
+  checks: {tip: `PT.vis('#termTip') === false && /Pairs with/.test(document.getElementById('partcard').innerText)`}, expect: {tip: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 

@@ -437,3 +437,29 @@
   check('flow-21: hover terms: one glossary, one tooltip; every term used on screen, none nested; the HUD, builder, rollout and know-how marked; the stability sub-line folded into its term',
     used.length === keys.length && flat && mark && sites, `used ${used.length}/${keys.length} (${keys.filter(k => !used.includes(k)).join(',') || 'all'}) · flat ${flat} · markup ${mark} · sites ${sites}`);
 }
+
+// flow-22. The tooltip grows past terms (flow session, QUEUE Q340; PROBES.md § 8, D21, D22's Checks rows). Warnings that
+// explain themselves: every amber or red mark in the Assembly's readout goes through whyMark, which carries what's wrong,
+// why it matters and the fixes into the one tooltip (#termTip); a mark that's fine stays plain. A fairing with something
+// poking out says so. Part cards: every part says what it pairs with, on the palette card and on the craft's hover.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const X = new Function(page.slice(page.indexOf('const TERMS='), page.indexOf('// the tooltip:')) + 'return {whyMark,fixText,TERMS};')();
+  const W = { t: 'Too "hot" <b>', d: 'Why it is', fix: ['One fix.', 'RCS thrusters'] }, m = X.whyMark('bad', '9%', W), plain = X.whyMark('ok', '9%', W);
+  const mk = plain === '<b class="ok">9%</b>' && X.whyMark('warn', 'x', null) === '<b class="warn">x</b>' && m.startsWith('<b class="bad term" data-wt="Too &quot;hot&quot; &lt;b&gt;"')
+    && m.includes('data-wf="one fix; or RCS thrusters."') && X.fixText('Fix it.') === 'fix it.' && !!X.TERMS.trim;
+  const ed = page.slice(page.indexOf('function trimHTML'), page.indexOf('function renderSites')), n = ed.split('whyMark(').length - 1;
+  const old = ['<b class="${cl}">', '<b class="${c(ok', 'class="${tw}"', '<b class="${cc(', '<b class="${lc(', '<div class="warn">No reaction', 'Cost <b class="${ok?'].filter(x => ed.includes(x));
+  const F = new Function('whyMark', page.slice(page.indexOf('function fitHTML'), page.indexOf('function standHTML')) + 'return fitHTML;')(X.whyMark);
+  const f = { on: true, d: { kind: 'fair', r: 0.6, name: 'Payload fairing' }, profF: [[0.6, 0], [0.6, 0.3], [0.6, 2.3]], y0: 10, h: 0.3, pos: [0, 10, 0] };
+  const inside = { on: true, d: { kind: 'sci', r: 0.3, name: 'Instruments' }, y0: 10.4, h: 0.5, pos: [0, 10.4, 0], inFair: f }, out = { ...inside, inFair: null, d: { kind: 'ant', r: 0.1, name: 'Boom antenna' }, dep: true };
+  const fit0 = F({ parts: [f, inside] }), fit1 = F({ parts: [f, inside, out] });
+  const fit = fit0 === '' && fit1.includes('1 part outside the shell') && fit1.includes('Boom antenna pokes out of the fairing') && fit1.includes('fold it for launch');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const B = new Function(bsrc.slice(bsrc.indexOf('const PART_INFO='), bsrc.indexOf('function partSpecs')) + 'return {partPairs,partInfo};')();
+  const parts = Object.values(api.PARTS), noPair = parts.filter(d => !B.partPairs(d)).map(d => d.key), bare = parts.filter(d => B.partPairs(d).includes('<')).map(d => d.key);
+  const shown = bsrc.includes('Pairs with</span> ${partPairs(d)}') && bsrc.includes('Pairs with</span> ${partPairs(PARTS[n.k])}');
+  check('flow-22: warnings explain themselves (what, why, the fixes, one tooltip; fine marks stay plain); a fairing with a part poking out says so; every part says what it pairs with, on its card and on the craft',
+    mk && n >= 14 && !old.length && fit && !noPair.length && !bare.length && shown,
+    `whyMark ${mk} · ${n} marks, old ${old.join(' ') || 'none'} · fit ${fit} · pairs missing ${noPair.join(',') || 'none'} · markup ${bare.join(',') || 'none'} · shown ${shown}`);
+}
