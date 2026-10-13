@@ -1800,3 +1800,94 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   earthshine, a harsh terminator). Seen in passing: the night side from orbit is fairly bright at the exposure's
   ceiling (E 3.86: the ground's ambient term), not this item's.
 - **Stills:** `output/launchpad/beauty/q322-before/`, `q322-after/`. **Check:** test `aerofx-26`. TESTING 265.
+
+## v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies beat, QUEUE Q399, PLAYTEST #96)
+
+- **Cause** (design desk's reading, confirmed): `starsAt` (Q321) shades each pixel from the star in its own hashed cell;
+  the brightest layer's halo (e-fold 5 px) reached past the cell into cells that never draw it, so it ended in a
+  straight line on one side.
+- **Fix:** the halo is drawn from the 2×2×2 cells nearest the pixel (`floor(d·90 − 0.5)`), each star kept by the band
+  at its own place (one `textureLod` of the baked sky, only for the rare candidate cells), and fades to nothing within
+  half a cell, which those eight cells always cover. The disc is untouched. A first try with 3×3×3 cells and a 1.2-cell
+  fade cost ~0.45 ms in star views (97, 99); the eight-cell form is within noise (A/B in one session, 1.1–1.4 → 1.25–1.3).
+- **Seen** at E 12 (to make halos plain): before, halos cut square on one side; after, round and soft
+  (`output/launchpad/beauty/pt96-before/`, `pt96-after/`; at normal exposure `pt96-normal/`).
+- **Check:** test `aerofx-27`. TESTING 269.
+
+## v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects beat, QUEUE Q250, PLAYTEST #48)
+
+`app/gl.js` (`SKY_FS`: `scatter`, `cloudDens`, the shell's billow detail; `SLAB_MAIN`).
+
+- **How it was measured:** the Orbiter's liftoff under ~45 % and ~60 % cover, the default chase camera, frames rendered
+  in pairs 1/30 s apart (grain off) and differenced, at 0.4, 0.9, 1.7, 2.4 and 3 km. Stills only show some of it: the
+  crawl is in the motion.
+- **The biggest crawl today, mine (v1.159, Q352; two days after the report, so not what Caio saw on 10-10):** `scatter`'s 12 view-ray steps each start at a per-pixel offset. From the
+  ground the first step is tens of km long and spans most of the air's density, so the offset drew a fixed diagonal
+  hatch over the whole day sky (clear or cloudy), which crawled as the rocket climbed. Now the offset only applies from
+  15–50 km up (`smoothstep` on the camera's height); lower, every pixel starts mid-step as before Q352. The terminator
+  from orbit (what Q352 fixed) is unchanged. Sky flicker between paired frames at 0.4 km: 3.8 → 1.5 (mean, 8-bit),
+  at 0.9 km 1.4 → 1.0; the hatch is gone from view 1's sky.
+- **The deck's billow detail by footprint:** the shell's two near octaves (2.5 km, 820 m) fade once a pixel's footprint
+  on the deck outgrows each (`fm`), keeping their mean, so a deck seen edge-on far away doesn't draw sub-pixel lumps.
+- **The volume's finest noise by step length:** `cdLod`, set per step in `SLAB_MAIN`, fades `cloudDens`'s 230 m octave
+  where the march's steps pass 230–700 m (far along a grazing ray). The clouds look the same up close; far edges are a
+  touch softer. `cloudShadowV` keeps the full noise (cdLod 0).
+- **What the report saw is not settled:** the two filters above are the clouds' own aliasing as measured, and they are
+  small. #48 stays open for a look in play (TESTING 272).
+- **Not the clouds, filed:** (1) thin slivers that pop above the hazy horizon from ~1.5 km stay with the clouds and the
+  shell off: far terrain grazing the horizon (world). (2) Inside the deck at 2–3 km, a bright band at the horizon with
+  2×2 stair edges: the volume fading out at `uVD` and the half-resolution upsample. (3) The white specks past the coast
+  are the buildings of a town, not clouds.
+- **Harness note:** `tNow()` jumps to the launch day at the first `advPhys` after launch (`S.rec.day0`), so a script
+  that picks the weather before flying must re-pin `CLOUD_DT` after the first step (views 81–83 pick it after).
+- **Stills:** `output/launchpad/beauty/Q250/` (`liftoff_before/after`, `flicker_before/after`: the frame-pair
+  differences ×6, `view1_before/after`). **Check:** test `aerofx-28` (and `aerofx-18` amended). TESTING 272.
+
+## v1.191 — the igniter flashes when the engine lights, not when it is first drawn (2026-10-13, effects beat, QUEUE Q368)
+
+`app/gl.js` (`spoolOf`, `SPOOL_F`, `spoolFrame`), `app/render.js` (`render` keeps the frame clock).
+
+- **Why it flashed at T+19 s:** the plume's spool, which stamps the ignition time the igniter flash and the fuel-rich
+  start read (`ignOf`), only moves when a frame draws the plume. The reference views step the physics to T+19 s (or
+  T+30 s) without drawing, so the first drawn frame met an engine it took for just lit. Whether the page's own loop
+  happened to draw a frame in between varied run to run. View 56 also inherited view 54's last frame: a new flight
+  starts the clock again, and 54 and 56 end at nearly the same sim time.
+- **Now:** `render()` keeps the previous drawn frame's sim time; a spool unseen for more than 0.5 s of sim time (or
+  new since then) takes its target directly, with no flash, rich start or cutoff puff, and the clock going back forgets
+  the last frame. In play every frame draws, so a launch flashes as before; an engine lit while the map was open no
+  longer flashes late on return.
+- **Measured** (flash or richness at capture, two runs each): views 54, 56, 2, 55 were 1.6 / 1.1 / 1.4 / 1.0, now 0
+  (view 56 every run); 60, 61, 153 are 0; the ignition views 68–72 (drawn every step on purpose) still flash and fade
+  with age: 2.1, 1.6, 0.9, 0.2, and 2.0 at night.
+- **Check:** test `aerofx-29`.
+
+## v1.194 — Q322 slice 2: Selene out of the sky shader, filtered craters, regolith light and earthshine (2026-10-13, sky & bodies beat; BEAUTY B6.5, Q250's Selene half)
+
+- **What moved:** `SKY_FS`'s main still intersects Selene (one `sph`: the air in front and the depth need it) but no
+  longer shades it. It writes the air in front and, in the scene's alpha (unused until now), how much of Selene the
+  clouds let through (`vis`, multiplied by the shell's and the slab's cover). The moon pass (`MOON_FS`, `drawMoons`, which
+  drew only Nyx) now shades Selene too (`uSel`) and adds it on top with `blendFuncSeparate(DST_ALPHA, ONE, ZERO, ONE)`,
+  depth untouched; its air is the transmittance table (`trL`, a chord through the air = `trL(closest, 0)²`). Nyx
+  stays opaque and depth-tested. With no scene target the default framebuffer's alpha is reset to 1 after the pass.
+- **Aliasing (PLAYTEST #49):** from Tellus Selene is a 12–13 px disc, and its two crater octaves (18 and 55 cells per
+  radius) and the relief's fixed 1.4 km finite difference were all far finer than a pixel. Now every crater octave and
+  fbm octave fades to its mean once its cells near a pixel (`smoothstep(.25,.6, footprint × frequency)`, footprint in
+  radii, stretched by 1/μ toward the limb), and the octaves go on down close up (`MOON_OCT`: Selene 5 from 12.6 cells
+  per radius ×3, Nyx 4). The seas are filtered loosely (`w·.6`): they are what a small disc shows.
+- **The old night side was lit:** the relief term added `slope·0.8` with `ndl` clamped to 0, so every crater rim on
+  the night side caught the sun (views 164–166 before: a speckled night side; at 13 px, the shimmer). Now the relief
+  lights only within ~7° past the terminator (`smoothstep(-.12,.05,e)`): a harsh terminator.
+- **Cost:** a first form (6 octaves of `crat`, 27 cells, a second evaluation for the slope) cost 5–6 ms with Selene
+  filling the screen, for 2.7 ms saved in the sky pass. `cratG` returns the crater height and its gradient in one pass
+  over the 2×2×2 nearest cells (radii .12–.34 of a cell so the rim stays under half a cell; cells 1.43× larger so the
+  craters keep their size): sky + moon pass at 158 3.97 → ~2.7–3.3 ms, 112 3.10 → ~2.6–2.8, 166 4.47 → ~2.9–3.2
+  (RTX 3050, full resolution, a busy machine: ±0.5). Views without Selene unchanged (1, 3, 157: twinkle-level diffs).
+- **Light:** McEwen's lunar-Lambert (L(g) cubic in the phase angle; a full Selene is a flat disc), an opposition surge
+  (B0 .6, width .05: the bright patch round the craft's antisolar point in 112 and 158), earthshine from Tellus's lit
+  face by its phase as seen from the ground, with the relief. Real earthshine is ~1/4000 of the sun, under what
+  `EXPO` (×4 at most) can show, so it's ×100: a night side under a full Tellus is a dim grey (view 166). The mesh fill
+  (`airlessFill`) still has a constant sky term, not earthshine: a lander there is darker than its ground (*Proposed*).
+- **Not checked by eye:** clouds in front of Selene (168 found no cloud on its ray); the alpha path is by construction.
+- **Views:** 164 from 1,000 km over the terminator, 165 from low Tellus orbit (12 px), 166 the night side by
+  Tellus-light, 167 setting through the limb's air, 168 full from under the deck at night. Stills
+  `output/launchpad/beauty/q322s2-before/`, `q322s2-after/`, regression `q322s2-reg-*`. Test `aerofx-30`. TESTING 275.

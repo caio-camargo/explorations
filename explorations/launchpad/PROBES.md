@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-12
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -171,6 +171,80 @@ length, bus faces. Six adjustable parts give hundreds of shapes.
 **4. Schools style everything** (POWERS.md): a Steppe probe and a Cape probe doing the same job look like different
 countries built them.
 
+**5. Parts, not products (D24).** Caio (2026-10-13): "i don't want to take away the player design experience by having
+them be too readymade." The craft in `mockups/satellites/` are what a player *could* build, never catalog items: no part
+is a whole satellite. The **bus is one adjustable frame**: its shape (sphere, faceted ball, drum, 4 to 10 faces, box,
+open truss), its size (0.3 to 3 m) and a skin per face (polished, gold or silver foil, cells, white, thermal checks,
+black blanket); everything else is a part that mounts on it. Smaller stacks (0.3, 0.6 m) and a kick motor come with it.
+Example designs only as a copy-and-change starter on the bench (two: the first beacon, and one of the era's), never as
+parts.
+**6. Signature shapes come from jobs** (the dish farm, the radar plank, the helix ring, the sunshade tube, the mesh dish,
+the gravity boom): each is a part a contract or a law asks for, so a player who takes the job builds the shape.
+
+### 6.1 The payload bench (D24)
+
+Mock-up: [`mockups/bench/`](mockups/bench/index.html).
+
+Caio: "they're kind of like the rover in that they probably need to be designed separately from the rocket and then
+tucked in somewhere. what's good is this will definitely help stability, since the satellites will end up much smaller."
+- **Its own place, like the Rover yard** (`app/rover-yard.js`: designs in `PROG.rovers`, mounted by the `rvfold` and
+  `rvdeck` parts): designs live in the program's **payloads**; the bench works at satellite scale (small parts, a close
+  camera, the craft on a stand), with its own Checks tab (D22's form): *has power in shadow · can talk home · can point
+  what it must · stays in its temperatures · balanced (CoM) · fits the fairing you chose*.
+- **On the rocket it's one block**: mounted on an adapter inside the fairing, its mass, CoM and outline counted; the
+  rocket builder shows it, doesn't edit it (open it on the bench from there). The same payload flies on any rocket; a
+  route (Q184) launches copies.
+- **Folded for launch, as designed**: the bench shows the stowed and the deployed shape; the fairing check uses the
+  stowed one; deploying in orbit animates (QUEUE Proposed, 2026-10-13).
+- **Stability**: payloads shrink (a 0.6 m bus, not a 1.25 m stack of round parts), so rockets get less top-heavy.
+- **Caio's notes on the mock-up (2026-10-13):** trusses in other shapes, not only a box: **triangle, square, hexagon,
+  octagon, straight or tapered**. Wings **unfold on hinges like an accordion** (the arm swings out from a pivot past
+  the bus's edge, then every hinge opens at once), never slide, and nothing passes through the body. **Balance on the
+  adapter:** an off-axis payload gets a balance weight on its adapter ring, opposite the heavy side, sized by the bench
+  in one click; it costs mass (a 111 kg craft 3.8 cm off needs 14 kg), so moving heavy parts opposite each other is
+  the better fix. The rocket's Assembly reads the payload's balance and warns as its own check does.
+- **Customers' payloads** (default, Caio to confirm): a commercial launch contract brings its satellite ready (you
+  only fly it: mass, size, orbit, a deadline); your own program's satellites you design.
+- **Today's rocket-builder probe parts** (Q337's side parts, the octagonal frame) move to the bench; saved designs that
+  carry them on the rocket keep working (a design with probe parts stacked is read as an implicit payload).
+
+### 6.2 Bench parts: a brainstorm (2026-10-13, for Caio to pick)
+
+**Caio's picks (2026-10-13):** the tape recorder, louvres and radiators, the film-return capsule, the entry probe and the
+dispenser are in; **instruments that make shapes and the kinds of antennas: "very good"**; **ends of life: "an
+interesting mechanic"**, in; thrusters in, by efficiency and power (below). **Tracking wings dropped:** wings already
+turn about their arm to face the sun (`powSun`, `sim/power.js`); a cheaper fixed paddle for era 1 can come later as a
+sidegrade. **Spin, then despin: pending**, explained to Caio; default: not in the first set.
+
+Caio: "since this now gets its own screen, and it exists in a different scale than the rockets, sort of, we can
+brainstorm more parts, if it makes sense to." A part earns a place if it brings a **decision** (a trade, a timing, a
+risk), not only a look. Starred: the recommended first set.
+- **Spin, then despin** ★: spin the craft on a spin table before the kick motor fires (a steady burn with no
+  guidance), then **yo-yo weights** on cables unwind and stop the spin. Cheap stability with a timed, one-shot act.
+- **Tape recorder** ★: data stored between stations, a capacity in pictures; full means pictures lost. Makes the
+  network and the camera's appetite meet.
+- **Louvres and radiators** ★: shutters that open when warm (Voyager, Mariner): temperatures held over a wider range,
+  for mass; radiator fins for the hungry parts (radar, the late electronics).
+- **Film-return capsule** ★ (era 1): the pictures come home in a bucket caught by a plane or picked from the sea; sharp,
+  counts only if recovered. The early answer to "a narrow camera with no fast link".
+- **Entry probe** ★: a small sealed probe with a heat shield and a parachute, released from the bus before arrival
+  (Pioneer Venus, Galileo): a payload inside the payload, designed on the bench as its own block.
+- **Dispenser** ★: an adapter that carries 2 to 8 small satellites and releases them in turn (constellations, shared
+  launches); pairs with smaller stacks and routes.
+- **Instruments that make shapes**: a magnetometer on a long mast, particle detectors, a plasma-wave pair of wires,
+  micrometeoroid panels as big wings (Pegasus), an infrared radiometer (weather), a seismometer and a sample scoop for
+  landers, a laser retroreflector (cheap, passive: rangers on the ground pay for it).
+- **Talking**: a turnstile antenna (four short rods), a horn, a steerable dish on a gimbal, an unfurling mesh dish,
+  later a phased array.
+- **Power**: tracking wings (a drive that turns them to the sun: more power, a moving part that can stick), fixed
+  panels, fuel cells for short missions.
+- **Moving**, by efficiency (Isp), thrust and power: cold gas (70 s, the weakest, no power, era 1); **hydrazine**
+  (~220 s: three times cold gas, no real power draw, the workhorse from the late 1960s); a bipropellant apogee engine
+  (~310 s, strong: the big push into a high orbit); **ion** (~3,000 s: ten times hydrazine, but a whisper of thrust and
+  kilowatts of power: months of burning, the wings sized for the engine; late).
+- **Ends of life**: a drag sail or a deorbit motor (debris, D-rules), a crash camera that takes pictures until impact
+  (Ranger), an impactor.
+
 ## 7. Keeping them beautiful (D21)
 
 What makes Voyager beautiful, as rules:
@@ -208,6 +282,8 @@ Lanes: vehicle (parts, builder readout, attitude law), space (link gains, satell
 economy (contracts that want radar or the magnetometer), look & sound (parts & pad: the meshes, fold and deploy).
 
 ## 10. Decisions
+
+D24 (2026-10-13): parts, not products; the payload bench (§ 6 rules 5–6, § 6.1).
 
 D20 (2026-10-12, [`DECISIONS.md`](DECISIONS.md)): the direction approved; slices S1 → S3; strict pointing; Caio added
 the attitude law ("cameras that always point at the planet, or even at another satellite, or later a space station");

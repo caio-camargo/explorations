@@ -6,8 +6,10 @@ const $=id=>document.getElementById(id);
 // the construction screen lives in builder.js (BLD)
 function renderEditor(){BLD.init();editorChanged();renderSites()}
 function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',3:'Epoch 3 · satellites that work',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
-  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;
-    for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
+  const epNow=Math.min(...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep),9);   // (Q286) the first epoch with work left
+  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;const Ms=MISSIONS.filter(m=>m.ep===ep);
+    if(ep>epNow+1&&Ms.every(M=>!PROG.done[M.id]&&!missionOpen(M))){html+=`<div class="ms lock">🔒 ${Ms.length} mission${Ms.length>1?'s':''}, once ${EP[ep-1].replace(/^Epoch \d+ · /,'')} is under way</div>`;continue}   // (Q286, UI.md § 3) beyond the next epoch: a count
+    for(const M of Ms){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
       else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
@@ -174,10 +176,11 @@ const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal',
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   if(rcsJets(S)){const b=document.createElement('button');b.className='wide'+(S.rcs?' on':'');b.textContent='RCS '+(S.rcs?'ON':'OFF')+' [V]';b.onclick=()=>{S.rcs=!S.rcs;renderSAS()};el.appendChild(b)}
-  t.title=avOf(S).name;
+  t.title=avOf(S).name;const no=[];
   for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');
-    if(!sasModeOK(S,k)){const g=avNext(k);b.disabled=true;b.style.opacity=.35;b.title=`${avOf(S).name}: no ${n.toLowerCase()} mode. ${g.name} with ${COMP_ERAS[g.era].name.toLowerCase()}.`}
-    else b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
+    if(!sasModeOK(S,k)){const g=avNext(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()})`);continue}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
+    b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}
+  if(no.length)t.title=`${avOf(S).name}. Not yet: ${no.join(', ')}`}
 function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
   const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];
     if(e.decouple.length)parts.push(e.radial?'drop '+S.segs[e.decouple[0]].label.split(' (')[0]:'decouple');

@@ -5995,3 +5995,41 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 3 (design desk, 2026-10-13):** PLAYTEST #98 (camera shake, P1), #99 (pixelated coasts), #100 (the road
   to the pad goes nowhere); a Proposed line for animated deploys; `mockups/satellites/` (thirteen craft after real ones
   against today's: smaller parts, bus shapes, skins, appendages) with a Proposed line; hands-on instruments wait for S2.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the dark cockpit (Q286 slice 1, v1.186)
+- **Done:** `app/cockpit.js`: in a critical phase (the climb through the air, a burn, a landing) the news ticker is held and comes back when quiet; only the phase's cards show (pinned ones stay); one MASTER CAUTION under the readout names what's red (heat over 90 %, a joint over its rating, the impact over a town); hold modes the avionics can't fly are hidden (SAS's title says when they come); Ap · Pe not shown landed, "under the surface" instead of a negative Pe. On `main` as `325c1b0` (merged `46766f0`).
+- **Checks:** flow-24 (new), flow-5, flow-21–23 pass; `--smoke` all passed before the merge; robot rows `cockpit` and `m1` pass (m1's overlap check caught the caution crossing the centre message; fixed).
+- **Merge:** one conflict with vehicle's new Wings (P) button in `updateHUD`, both kept.
+- **Next:** Q286 slice 2 (the Program and the map), claimed.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): PLAYTEST #96 / Q399 star halos (v1.187)
+
+- **Done:** the brightest stars' halo was cut straight at its hashed cell's border (my Q321 code); now drawn from the
+  nearest 2×2×2 cells and faded within half a cell. A 3×3×3 first try cost ~0.45 ms in star views; this one is within
+  noise. Test `aerofx-27`; TESTING 269; PLAYTEST #96 moved to Done.
+- **Noticed:** PLAYTEST #102–104 are each used twice on `main` (other sessions); check_numbers stops on them.
+- **Next for sky & bodies:** Q322 slice 2 (Selene out of `SKY_FS`).
+
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): deploy buttons and the fairing rule (v1.184, v1.185, v1.188)
+- **Built:** flight-bar buttons for wings/boom antennas (P), landing legs (Y) and the cargo bay (B), each shown only when fitted (Q409, Q400's vehicle part); nothing unfolds inside a fairing that's still on (Q410). Checked in the browser.
+- **Numbers:** Q397/Q398/Q406 collided with other sessions' items twice; mine are Q409 and Q410. PLAYTEST #102–#104 are filed twice by two other sessions (not mine, left as is).
+- **Files:** `index.html`, `app/program-ui.js`, `sim/power.js`, `tests/vehicle.mjs` (vehicle-26; vehicle-18 jettisons first), `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (266, 267, 270), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** flow's Q400 remainder (Part tab line, first-time hint); vehicle's ready list: Q341 (the folding boom), Q329, Q338.
+- **Addendum 4 (design desk, 2026-10-13):** **D24**: satellites are parts, not products (the bus one adjustable frame),
+  built on a **payload bench** apart from the rocket like the Rover yard, then one block in the fairing (PROBES 0.1.4
+  § 6.1). Next for the desk: a mock-up of the bench.
+- **Addendum 5 (design desk, 2026-10-13):** `mockups/bench/`, the payload bench (D24): palette by job, the bus as one frame with a skin per face, Checks against the job, stowed / deployed (animated) / in the fairing, Designs. Stills in `output/launchpad/mockups/bench/`.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the Program and the map decluttered (Q286 slice 2, v1.189); Q286 done
+- **Done:** offers one line each (pay, days, Take, Pass, ⚠ for sanctions; a click opens the rest); epochs past the next, all locked, as a count; no empty photo frame before the first flight; a smaller letterhead; planets on the map labelled with the trip in days instead of TU. On `main` as `b7b053c`. With slice 1 (v1.186, the dark cockpit), Q286 is done; the Assembly's GO/NO-GO board stays with Q237 (D22's Checks tab).
+- **Checks:** flow-25 (new) and every flow and economy section pass; robot rows `desk` and `m1` pass. The full smoke run was stopped by Claude Code for low memory and not re-run.
+- **Next:** Q391 (the parts-list card and the craft hover into the one tooltip).
+- **Addendum 6 (design desk, 2026-10-13):** the bench round 2 (truss shapes, accordion wings, the balance weight); PROBES 0.1.6 § 6.1 notes and § 6.2 a brainstorm of bench parts for Caio to pick.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, 2nd session, continued): clouds at liftoff (Q250, v1.190) and the igniter's timing in views (Q368, v1.191)
+- **Done:** v1.190 Q250 (clouds half): measured a liftoff under cloud in frame pairs; the day sky's fixed diagonal hatch (my v1.159 per-pixel step offset in `scatter`, which postdates PLAYTEST #48) now only applies from 15–50 km up; the deck's billow detail fades by pixel footprint, the volume's 230 m noise by march step (`cdLod`). #48 left open for a re-look in play (TESTING 272). v1.191 Q368: the plume spool skips the igniter flash after an undrawn gap or a clock reset (`spoolFrame`), so reference views' plume colours are steady; ignition views 68–72 still flash.
+- **Files:** `app/gl.js`, `app/render.js`, `tests/look.mjs` (aerofx-18 amended, aerofx-28, aerofx-29), `notes/look.md` § v1.190, § v1.191, NOTES, QUEUE (Q250 ◐, Q368 ✓, three Proposed: far terrain slivers for world, the in-deck horizon band, views that pick weather before flying), PLAYTEST #48, TESTING 272.
+- **Checks:** every look and sound section passes (58). The full suite not run (memory). Stills: `output/launchpad/beauty/Q250/`.
+- **Next:** idle; overflow candidates Q222 (Steppe rollout sound), Q245/Q330 (pad), Q360 (shake switch, with flow).
+

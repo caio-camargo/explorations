@@ -29,10 +29,13 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
   else if(ds.test){const[k,m]=ds.test.split(':');if(!startTest(k,m))HOOK.msg('The stand is busy, or there is not enough money');renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
-  const row=(c,act)=>`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
+  const risk=c=>{const r=offerRisk(c);return[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)]};
+  const body=(c,act)=>`<span class="dim">${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
     (c.why?`<div class="sub dim">Why: ${c.why}</div>`:'')+`<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b> <button data-wd="${c.id}" title="frees the slot now; like a missed deadline, the client asks again in a few months">Withdraw</button>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
-    (()=>{const r=offerRisk(c),w=[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)];return w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:''})()+
-    (act?'':`<button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button>`)+`</div>`;
+    (w=>w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:'')(risk(c));
+  // (Q286, UI.md § 3) an offer is one line: name, pay, days left, Take and Pass (⚠ when taking it risks sanctions); a click opens the rest
+  const row=(c,act)=>act?`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· </span>${body(c,act)}</div>`
+    :`<details class="ms of"><summary><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${Math.max(0,c.expires-PROG.day).toFixed(0)} d</span>${risk(c).length?' <span class="bad" title="taking it risks sanctions: open it">⚠</span>':''} <span class="ofb"><button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button></span></summary>${body(c,act)}</details>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
     (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
     `<div class="ep">Offers</div>`+(PROG.offers.length?PROG.offers.map(c=>row(c,false)).join(''):'<div class="sub">none right now</div>')+
@@ -305,14 +308,18 @@ function updateHUD(){
   const core=[['MET',`T+${fmtT(simT)} · ${b.name} · ${sit}${link}`],
     radar?['Radar alt',`${fmtD(Math.max(0,groundGap(S)))}${vsTxt} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]:['Altitude',`${fmtD(h)}${vsTxt}`],
     ['Speed',air?`${srf.toFixed(0)} m/s <span class="dim">surface</span>`:`${len(S.v).toFixed(0)} m/s <span class="dim">orbital</span>`],
-    [`${term('ap','Ap')} · ${term('pe','Pe')}`,S.landed?'—':`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
+    ...(S.landed?[]:[[`${term('ap','Ap')} · ${term('pe','Pe')}`,`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${el.pe>b.R?fmtD(el.pe-b.R):'<span class="dim">under the surface</span>'}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`]]),   // (Q286) not landed; a Pe underground isn't a number
     [term('dv','Δv'),`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · ${term('twr','TWR')} ${twr.toFixed(2)}`]];
   $('info').innerHTML=core.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
-  renderCards();gaugeSlot();
+  renderCards();gaugeSlot();if(typeof cockpit==='function')cockpit();   // (Q286) news held, master caution
   // the unfolding parts' button (vehicle, Caio 2026-10-13: "a button with P in parentheses"): what P does, shown when the craft has any
   {const u=S.alive&&S.parts.filter(p=>p.on&&unfolds(p.d)),bw=$('bWings');bw.classList.toggle('hidden',!(u&&u.length));
     if(u&&u.length){const wg=u.some(p=>p.d.wing),an=u.some(p=>!p.d.wing),nm=wg&&an?'Wings and antennas':wg?'Wings':'Antennas',out=wingsOut(S),t=`${out?'Fold':'Unfold'} ${nm.toLowerCase()} (P)`;
       if(bw.textContent!==t)bw.textContent=t;bw.classList.toggle('on',out)}}
+  // legs and the cargo bay the same way (vehicle, Q400: PLAYTEST #97, "no visible way to deploy folded parts")
+  {const tog=(id,has,on,txt)=>{const e=$(id);e.classList.toggle('hidden',!has);if(has){const t=txt(on);if(e.textContent!==t)e.textContent=t;e.classList.toggle('on',on)}};
+    tog('bLegs',S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'),S.alive&&legsDown(S),on=>on?'Legs up (Y)':'Legs down (Y)');
+    tog('bBay',S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'),S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open),on=>on?'Close bay (B)':'Open bay (B)')}
   const w=WARPS[warpIdx];$('warpN').textContent=`${w}×${w>1&&!railsOK(S)?' (physics)':''}`;$('warp').classList.toggle('on',w>1);
   renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)
@@ -347,6 +354,8 @@ $('bProc').onclick=e=>{const pr=procsOf(stackDef)[+(e.currentTarget.dataset.i||0
   HOOK.msg(`Procedure: ${pr.by}, ${pr.kind==='mission'?pr.sig.replace(':',' '):'to orbit'}, the best flown so far · any control key takes over`)};
 function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot off — you have control')}
 $('bWings').onclick=e=>{e.currentTarget.blur();if(S.alive&&S.parts.some(p=>p.on&&unfolds(p.d)))tapeWings(recTape,S,wingsOut(S)?'in':'out')};
+$('bLegs').onclick=e=>{e.currentTarget.blur();if(S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'))tapeLegs(recTape,S,legsDown(S)?'up':'down')};
+$('bBay').onclick=e=>{e.currentTarget.blur();if(S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'))tapeBay(recTape,S,S.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open)?'close':'open')};
 $('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();S.rec.orbT0=t.orbT0??0;player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
 $('bSaveTape').onclick=()=>{if(recTape&&recTape.byProc&&!player){HOOK.msg('This flight was flown by a procedure: it is already automated (the ▶ Procedure button)');return}if(recTape&&recTape.fromOrbit&&!player){HOOK.msg('Autopilot tapes start from the pad: this flight began in orbit');return}try{const T=player?tapeCut(player):recTape;localStorage.setItem(tapeKey(),JSON.stringify({v:T.v,stack:T.stack,ops:T.ops,site:T.site}));
   HOOK.msg(`Saved ${fmtT(tapeDuration(T))} of flight as this design's autopilot`)}catch(e){HOOK.msg('Could not save (browser storage unavailable)')}};

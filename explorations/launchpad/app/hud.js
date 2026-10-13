@@ -39,7 +39,8 @@ function cardFolds(cards,avail){const fold=new Set();let tot=cards.reduce((a,c)=
   return fold}
 const hudPins=new Set((()=>{try{return JSON.parse(localStorage.getItem('launchpad-hud-pins')||'[]')}catch(e){return[]}})()),hudShut=new Set(),hudSince=new Map();
 function renderCards(){const el=$('cards');if(!el)return;const now=performance.now();
-  const on=mode==='flight'&&!!S?HUD_CARDS.filter(c=>view!=='map'||c.id==='target').map(c=>{const pin=hudPins.has(c.id);if(!pin&&c.when&&!c.when())return null;const rows=c.rows();return rows.length?{c,rows,pin}:null}).filter(Boolean):[];
+  const on=mode==='flight'&&!!S?HUD_CARDS.filter(c=>view!=='map'||c.id==='target').map(c=>{const pin=hudPins.has(c.id);if(!pin&&c.when&&!c.when())return null;if(!pin&&typeof cpPhase==='function'&&cpPhase()&&!CP_CARDS.includes(c.id))return null;   // (Q286) the dark cockpit
+     const rows=c.rows();return rows.length?{c,rows,pin}:null}).filter(Boolean):[];
   for(const id of[...hudSince.keys()])if(!on.some(x=>x.c.id===id))hudSince.delete(id);
   for(const x of on)if(!hudSince.has(x.c.id))hudSince.set(x.c.id,now);
   el.classList.toggle('hidden',!on.length);if(!on.length){el.innerHTML='';return}

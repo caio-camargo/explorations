@@ -1078,3 +1078,44 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
   rocket lost after a joint broke); `m1`, flow-1, the economy sections pass. TESTING row 264.
 - **Not yet:** a cause for a crew lost while the vehicle survives (the crew line has its own); the chain on the Program's
   flight history; the Rollout warning that would have caught it, linked from *What would help*.
+
+## v1.186 — the dark cockpit (2026-10-13, flow session, QUEUE Q286 slice 1; UI.md § 3 Flight row, D16)
+- **The phase** (`cpPhase()`, new `app/cockpit.js`): *ascent* (in the air, climbing or burning), *burn* (an engine lit
+  out of the air), *landing* (coming down through the air or low over an airless body), or quiet. It uses the Ascent
+  card's own condition (`ascentOn`), so the gauges, the cards and the cockpit agree.
+- **News held:** in a phase the ticker is hidden (`#news.held`); headlines still arrive and come back, the latest three,
+  once things are quiet. The Program's Inbox keeps every one as before.
+- **Only the phase's cards:** in a phase only Ascent, Descent and Target show; Payload, Fleet, Vehicle, Hardware and
+  Rover fold away unless pinned (`CP_CARDS`, `renderCards`).
+- **MASTER CAUTION:** one red box under the readout, its width, naming whatever is red: a part over 90 % of its heat
+  limit, a joint over its certified rating, the impact point over a town (`cautions()`). Nothing red, no box.
+- **Hold modes:** a mode the avionics can't fly isn't shown any more (it was greyed out); the SAS button's title says
+  which come next and with which era.
+- **Ap · Pe:** not shown landed (it was "—"); a periapsis under the ground reads *under the surface*, not "−1270 km".
+- **Checks:** test `flow-24` (the phases, the cautions, the wiring, the hidden modes, Ap · Pe); robot row `cockpit` (a
+  Sounding climb: no ticker, only the Ascent card; a forced 95 % heat and the range warning in the caution; landed, the
+  news back and no caution); `m1` passes (its overlap check caught the caution crossing the centre message: it's now the
+  readout's width). TESTING row 268.
+- **Not in this slice:** a phase card that changes by phase (landing: height and descent rate big; burn: Δv to go); the
+  help bar was already behind the menu. **Slice 2:** the Program (NEXT card, offers one line each, the letterhead, locked
+  missions as a count) and the map (labels by importance, days instead of TU). The Assembly's GO/NO-GO board is D22's
+  Checks tab, built with Q237 (vehicle).
+
+## v1.189 — the Program and the map decluttered (2026-10-13, flow session, QUEUE Q286 slice 2; UI.md § 3 Program and Map rows)
+- **Offers, one line each:** name, pay, days left, Take and Pass, and ⚠ when taking it risks sanctions. A click on the
+  line opens the rest (client, *Why*, the brief, the risk); a `<details>` row in `contractsHTML` (`app/program-ui.js`).
+  Taken contracts keep their full rows (their Withdraw and dispatch lines are things you act on).
+- **Missions:** an epoch past the next one, with nothing open or done in it, is one line: "🔒 8 missions, once first
+  orbit is under way" (`renderProgram`, `app/editor.js`). The current and next epochs list everything as before.
+- **The wall:** no empty photo frame ("no flights yet") until the first flight's photo exists (`deskWall`); the Debrief
+  still pins its own.
+- **The letterhead:** the program's name 22 px instead of 30: a letterhead, so the NEXT card and the funds lead.
+- **The map:** a planet's label gives the trip, half a transfer orbit from Tellus's, in days ("Enyo · ~280 days there"),
+  not its distance in TU, a unit nobody knows (`xferDays`, `app/render.js`). The label declutter by importance was
+  already there (PLAYTEST #31).
+- **Checks:** test `flow-25`; robot row `desk` (four one-line offers, one opened; the far epochs counted; no empty
+  frame); `m1` passes (its orbit map shows the planets in days; its SAS shows only the modes the probe can fly, slice 1).
+  Every flow and economy section passes. The full smoke run was stopped by Claude Code for low memory and not re-run.
+  TESTING row 271.
+- **Q286 is done** except the Assembly's GO/NO-GO board, which is D22's Checks tab: Q237 (vehicle, with flow). Not done
+  from UI.md's rows: a phase card that changes by phase (landing: height and descent rate; burn: Δv to go).
