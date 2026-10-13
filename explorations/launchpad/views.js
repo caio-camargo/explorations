@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 162 the sunglint, 163 the night limb, 164–168 Selene (from 1,000 km, from low orbit, its night side, through the limb, under clouds), 169 the planets, 170 Selene under a pixel, 171 the pad at dusk, 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 162 the sunglint, 163 the night limb, 164–168 Selene (from 1,000 km, from low orbit, its night side, through the limb, under clouds), 169 the planets, 170 Selene under a pixel, 171 the pad at dusk, 172–174 farmland from the air (near a city from 6 and 35 km, the pad from 3 km), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -509,6 +509,26 @@ window.refView = async (n) => {
   // side (a point with the whole disc's light, not a flicker)
   // 171 (sky & bodies beat, QUEUE Q395): the pad at dusk, the sun ~6° below the horizon, looking along the horizon away
   // from the sunset, the camera low: the first bright stars, none of the faint
+  // 172–174 (sky & bodies beat, QUEUE Q401): farmland from the air at noon-ish. 172 6 km up, 25 km from the largest city
+  // in farmable climate, looking toward it 25° down; 173 the same from 35 km; 174 the home pad's surroundings from 3 km, 8 km out
+  if (n >= 172 && n <= 174) {
+    stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0];
+    const th = bodyTheta(TELLUS, simT), toW = u => rotY(u, th);
+    let tgtPF, name; if (n === 174) { tgtPF = SITES[0].u; name = SITES[0].name || 'the pad' } else { const ok = c => { const B = biomeAt(c.u); return B.h > 30 && B.h < 800 && B.T > 9 && B.T < 22 && B.wet > .38 && B.wet < .65 }, c = (CITIES.filter(ok).sort((a, b) => b.pop - a.pop)[0]) || CITIES[0]; tgtPF = c.u; name = c.name }
+    // turn the planet so the target has the sun ~50° up (noon-ish light), by moving simT
+    const want = norm(add(SUN, [0, 0, 0])); let bt = simT, be = 9; for (let k = 0; k < 2880; k++) { const tt = simT + k * 10, u = rotY(tgtPF, bodyTheta(TELLUS, tt)), e = Math.abs(dot(u, want) - 0.77); if (e < be) { be = e; bt = tt } } simT = bt;
+    const tu = toW(tgtPF), th2 = bodyTheta(TELLUS, simT), tw = rotY(tgtPF, th2), alt = { 172: 6e3, 173: 35e3, 174: 3e3 }[n], off = { 172: 25e3, 173: 60e3, 174: 8e3 }[n];
+    const side = norm(cross(tw, [0, 1, 0])), u = norm(add(tw, mul(side, off / TELLUS.R))), P = mul(u, TELLUS.R + Math.max(0, terrainH(rotY(u, -th2))) + alt);
+    S.r = P; S.v = mul(norm(cross([0, 1, 0], u)), 0.0001); const f = localFrame(S.r);
+    const hz = norm(sub(tw, mul(f.up, dot(tw, f.up)))), a = n === 173 ? 0.6 : n === 174 ? 0.36 : 0.44, L = norm(sub(mul(hz, Math.cos(a)), mul(f.up, Math.sin(a))));
+    cam.pitch = Math.asin(clamp(-dot(L, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(L, f.e), dot(L, f.n)); cam.dist = 40;
+    // clear weather over the target and halfway to it (the first 5-minute weather offset with both under 5 % cover)
+    const mid = norm(add(tgtPF, rotY(u, -th2))); pinWx = false; CLOUD_DT = 0;
+    for (let k = 1; k < 6000; k++) { const T = tNow() + k * 300; if (cloudAt(tgtPF, T) < 0.05 && cloudAt(mid, T) < 0.05) { CLOUD_DT = k * 300; break } }
+    render(); await settle(); bare();
+    return `${name} from ${(alt / 1e3).toFixed(0)} km up, ${(off / 1e3).toFixed(0)} km out`;
+  }
   if (n === 171) {
     toBuilder(); stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click(); markT = null;
     const t0 = simT; for (let k = 1; k < 4000; k++) { const tt = t0 + k * 20, site = norm(sub(fromPF(TELLUS, padPF(), tt), bodyPos(TELLUS, tt))), e = dot(site, SUN);

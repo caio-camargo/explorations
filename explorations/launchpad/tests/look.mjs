@@ -838,3 +838,18 @@
   const ok = /\|\$\{\(S\.yBot-deskFoot\(\)\)\.toFixed\(2\)\}`;/.test(page) && /\{const g=S\.yBot-deskFoot\(\);if\(g>\.006\*k\)\{const ST=\[\.62,\.63,\.66,1\];lathe\(a,\[\[\.004\*k,\.004\*k,ST\],\[\.004\*k,g,ST\]\],\[0,0,0\],12\);/.test(page);
   check('a hanging model stands on a display rod from the base plate\'s pin to its bottom; the desk is rebuilt when the gap changes', ok, `rod ${ok}`);
 }
+
+// aerofx-35. Farmland and soft coasts (look & sound sky & bodies beat, QUEUE Q401, Q403; PLAYTEST #95, #99): tellus()
+// farms what's green, mild, flat and settled (farmSettle: the city texture blurred, each pad's town) with fields, hedges,
+// roads, woods and villages, every part filtered by the footprint; the coast blends sea and land over the height's change
+// across the pixel (fwidth in main, none at a silhouette) with the fringe widening. Views 172–174 from the air.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const farm = /float farmSettle\(vec3 pf\)/.test(pg) && /vec3 farmland\(vec3 pf,vec2 gx,float W,float fw,float frac,vec3 nat,float det,float fade\)/.test(pg)
+    && /const FARM_FX=true;/.test(pg) && /float fline\(float d,float w,float fw,float sz\)/.test(pg) && /farmland\(pf,gx,W,fw,frac,col,det,fade\)/.test(pg)
+    && !/vec2 cl2=mod\(floor\(gx\/260\.\),4096\.\)/.test(pg);
+  const coast = /float hwT=fwidth\(tP\)<\.3\*tP\?min\(fwidth\(hT\),2000\.\):0\.;/.test(pg) && /float sea=hw>1\.\?sst\(\.5\*hw,-\.5\*hw,h\):step\(h,0\.\);/.test(pg)
+    && /return mix\(mix\(col,snow,max\(sn,ice\)\),seaC,sea\);/.test(pg) && /tellus\(pf,npf,hT,gx,det,fade,fw,hwT,oc\)/.test(pg);
+  check('farmland round settled land, filtered by footprint; the coast blended over the pixel (views 172–174)', farm && coast && /if \(n >= 172 && n <= 174\)/.test(vj),
+    `farmland ${farm} · coast ${coast}`);
+}

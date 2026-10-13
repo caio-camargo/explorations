@@ -15,6 +15,8 @@ layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4
 const SKY_B5=true;
 // (Q395) the stars' contrast against the sky behind them: a star loses SKY_CK × the sky's luminance (0 = the old look)
 const SKY_CK=30;
+// (Q401) farmland in tellus(); false compiles the old look (an A/B)
+const FARM_FX=true;
 const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
@@ -184,10 +186,46 @@ vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
 // biome colours from the climate map (temperature with a 6.5 K/km lapse, wetness), blended across the same thresholds
 // biomeAt uses on the CPU; then rock on steep slopes, snow where it's cold and not too steep, salt pans, basalt,
 // wetlands, beaches. Albedos roughly physical (forest ~.1, grass ~.2, desert ~.35).
-vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocean){
- ocean=0.;
- if(h<0.){ocean=1.;float dp=-h;vec3 col=mix(vec3(.007,.04,.11),vec3(.003,.016,.06),sst(200.,3000.,dp));col=mix(col,vec3(.006,.03,.045),.45*sst(.55,.85,abs(pf.y)));   // (Q323) greener cold seas
-  return mix(col,vec3(.02,.11,.12),pow(sst(70.,0.,dp),2.));}                         // shallow turquoise over the shelf
+// (Q401, PLAYTEST #95) farmland round settled land: how much of the ground is farmed (settlement from a blurred read of
+// the city texture plus each pad's town, times the climate: green, mild, flat, not high or rugged), and the fields
+// themselves: two grid orientations meeting along wandering lines, irregular fields and strips in greens, ochres, ripe
+// yellow and ploughed brown (drier with less rain), hedgerows, country roads, woods and villages. Everything fades by the
+// footprint fw (m) toward its mean, so from orbit farmland is a mottled regional tint, not a shimmer. FARM_FX = false: off
+float farmSettle(vec3 pf){vec2 eq=vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5);
+ float s=textureLod(uCity,eq,5.).r*6.+textureLod(uCity,eq,7.).r*14.;
+ for(int i=0;i<4;i++){if(i>=uNS)break;float dd=length(uSites[i].xyz-pf)*uPR;s+=.8*sst(40e3,8e3,dd);}   // each pad's town (both planet-fixed)
+ return clamp(.35+s,0.,1.);}
+float fline(float d,float w,float fw,float sz){return mix(1.-sst(w-.5*fw,w+.5*fw,d),min(2.*w/sz,1.),sst(.15*sz,.5*sz,fw));}   // a line of half-width w, filtered
+vec3 farmland(vec3 pf,vec2 gx,float W,float fw,float frac,vec3 nat,float det,float fade){
+ float sw=vn(pf*180.)+.35*vn(pf*900.);vec2 q=sw>.62?mat2(.799,.602,-.602,.799)*gx:gx;   // two orientations, switching on a ~7 km noise
+ vec2 wq=q+vec2(vn(pf*1500.),vn(pf*1500.+7.))*120.;float sz=sw>.62?430.:300.;   // fields a little wobbly; a size per orientation (a size varying in place would shear a grid this far from its origin)
+ vec2 g=wq/vec2(sz,sz*.62),c=floor(g),f=fract(g);float hs=fract(sin(dot(c,vec2(12.9898,78.233)))*43758.55),hs2=fract(hs*91.7);
+ if(hs2<.45){f.x=fract(f.x*2.);c.x+=step(.5,fract(g.x))*.5;hs=fract(hs*13.1+step(.5,fract(g.x))*.37);}   // some fields split in strips
+ float dry=sst(.55,.3,W);
+ vec3 c0=vec3(.075,.13,.035),c1=vec3(.11,.16,.055),c2=vec3(.25,.21,.085),c3=vec3(.21,.16,.085),c4=vec3(.10,.075,.045);
+ vec3 crop=hs<.3-.15*dry?c0:hs<.52-.12*dry?c1:hs<.72?c2:hs<.87?c3:c4,mean=mix(vec3(.13,.15,.06),vec3(.17,.15,.075),dry);
+ float fz=min(sz,sz*.62);crop=mix(crop,mean,sst(.25*fz,.8*fz,fw));
+ crop*=mix(1.,.9+.2*sin(f.y*fz*2.0944),sst(4.,1.,fw)*fade);   // crop rows, 3 m apart, close up
+ float de=min(min(f.x,1.-f.x)*sz*(hs2<.45?.5:1.),min(f.y,1.-f.y)*sz*.62),hedge=fline(de,3.,fw,fz)*step(.3,fract(hs*7.3));
+ vec3 col=mix(crop,vec3(.03,.06,.025),hedge*.8);
+ // woods in patches (~3 km), more where it's wetter
+ float wd=sst(.62,.68,vn(pf*400.)*.7+vn(pf*1300.)*.3+.15*(min(W,1.)-.5));col=mix(col,nat*.55+vec3(.02,.045,.018),wd);
+ // country roads: a coarse warped grid (~3 km) and the line where the orientations meet
+ vec2 rq=(gx+vec2(vn(pf*300.),vn(pf*300.+3.))*900.)/3000.;vec2 rf=abs(fract(rq)-.5)*3000.;float rd=fline(1500.-max(rf.x,rf.y),4.,fw,3000.);rd=max(rd,fline(abs(sw-.62)*9000.,4.,fw,3000.));col=mix(col,vec3(.17,.155,.13),rd*.85);
+ // villages: one in some ~5 km cells, more where it's settled; roofs on a 14 m grid, grey and red
+ vec2 vc=floor(gx/5000.),vo=(vec2(fract(sin(dot(vc,vec2(3.1,7.7)))*4375.5),fract(sin(dot(vc,vec2(5.3,1.9)))*3758.5))*.6+.2)*5000.;
+ float vr=180.+200.*fract(sin(dot(vc,vec2(9.1,2.3)))*1375.5),vd=length(gx-vc*5000.-vo),vil=sst(vr,vr*.6,vd)*step(fract(sin(dot(vc,vec2(1.7,4.1)))*2375.5),frac*.9);
+ if(vil>0.){vec2 rg=fract(gx/14.);float roof=1.-sst(.35,.45,max(abs(rg.x-.5),abs(rg.y-.5)));vec3 rc=fract(sin(dot(floor(gx/14.),vec2(4.1,1.3)))*475.5)<.5?vec3(.2,.085,.05):vec3(.14,.13,.12);
+  col=mix(col,mix(mix(vec3(.09,.1,.06),rc,roof),vec3(.12,.115,.1),sst(5.,20.,fw)),vil*.75);}
+ return col;}
+// (Q403, PLAYTEST #99) hw: how much the height changes across this pixel (fwidth in main). The coast was a hard h < 0
+// per pixel, a staircase from afar; now sea and land blend over ±hw/2 (sharp close up, soft from orbit), and the
+// shallow fringe and the beach widen with it
+vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,float fw,float hw,out float ocean){
+ float sea=hw>1.?sst(.5*hw,-.5*hw,h):step(h,0.);vec3 seaC=vec3(0.);ocean=sea;
+ if(sea>0.){float dp=max(-h,0.);vec3 col=mix(vec3(.007,.04,.11),vec3(.003,.016,.06),sst(200.,3000.,dp));col=mix(col,vec3(.006,.03,.045),.45*sst(.55,.85,abs(pf.y)));   // (Q323) greener cold seas
+  seaC=mix(col,vec3(.02,.11,.12),pow(sst(70.+.5*hw,0.,dp),2.));                      // shallow turquoise over the shelf
+  if(sea>=1.)return seaC;}
  vec3 g=toGen(pf);vec4 w=wTex(g),cl=texture(uClim,wUV(g));
  float T=cl.x-6.5*max(h-max(w.x,0.),0.)/1000.,W=cl.y,m=w.y,v=w.z,sf=w.w,slope=1.-dot(npf,pf);
  vec3 rainf=vec3(.022,.065,.02),sav=vec3(.19,.16,.075),hdes=vec3(.36,.26,.14),tfor=vec3(.035,.085,.028),grass=vec3(.10,.16,.045),cdes=vec3(.27,.23,.16),
@@ -198,18 +236,28 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
  float mid=fbm(pf*90.+2.);col*=.72+.56*mid;col=mix(col,tfor,sst(.56,.7,fbm(pf*420.))*.4*sst(.3,.5,W)*sst(0.,6.,T));
  col=mix(col,vec3(.62,.6,.55)*(.9+.2*mid),sst(.3,.7,sf));                                    // salt pans
  col=mix(col,vec3(.06,.055,.05),sst(.3,.6,v)*sst(200.,700.,h));                              // basalt on the volcanic arcs
- col=mix(col,vec3(.17,.15,.10),sst(12.,3.,h)*.8);                                            // beaches
+ col=mix(col,vec3(.17,.15,.10),sst(12.+.3*hw,3.,h)*.8);                                     // beaches (wider from afar, Q403)
  col=mix(col,rock*(.8+.4*mid),max(sst(.06,.2,slope),sst(1.,-3.,T)*.55));                    // cliffs, and bare ground above the trees
- // close up: a patchwork of fields where it's green, mild and flat
- if(fade>0.){vec2 cl2=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl2,vec2(12.9898,78.233)))*43758.55),farm=fade*sst(.25,.4,W)*sst(.8,.6,W)*sst(.04,.01,slope)*sst(6.,11.,T)*sst(25.,21.,T)*(1.-sf);
-  col=mix(col,col*mix(vec3(.85,.92,.75),vec3(1.18,1.1,.85),hsh),farm*.45);col*=mix(1.,.85+.3*det,fade);}   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
+ // (Q401) farmland where it's green, mild, flat and settled (it replaced v1.x's faint close-up tint of 260 m squares)
+ if(${FARM_FX?1:0}==1){float suit=sst(.22,.35,W)*mix(1.,.55,sst(.9,1.3,W))*sst(.08,.03,slope)*sst(4.,9.,T)*sst(31.,26.,T)*(1.-sf)*sst(2200.,1200.,h)*sst(.7,.45,m)*sst(5.,25.,h);
+  if(suit>.01){float frac=suit*farmSettle(pf),k=clamp(fw/4000.,0.,.3),fm=sst(1.-frac-.06-k,1.-frac+.06+k,vn(pf*220.)*.65+vn(pf*700.)*.35);
+   float dS=1e9;for(int i=0;i<4;i++){if(i>=uNS)break;dS=min(dS,length(uSites[i].xyz-pf)*uPR);}
+   fm*=sst(2500.,4000.,dS);   // a cleared range round each pad, no fields
+   if(fm>.001)col=mix(col,farmland(pf,gx,W,fw,frac,col,det,fade),fm);}}
+ // (Q401) the range round a pad is cleared scrub, not lawn: dark brush and dry pale grass in patches (~20–80 m),
+ // their contrast fading with the footprint
+ {float dS=1e9;for(int i=0;i<4;i++){if(i>=uNS)break;dS=min(dS,length(uSites[i].xyz-pf)*uPR);}
+  if(dS<6000.){vec3 pp=pf*uPR;float n=vn(pp/70.)*.6+vn(pp/19.)*.4,k=sst(6000.,2500.,dS)*sst(60.,8.,fw);
+   vec3 sc=col*mix(vec3(.62,.75,.6),vec3(1.45,1.2,.78),sst(.3,.7,n))*vec3(1.05,.95,.85);sc=mix(sc,vec3(dot(sc,vec3(.3,.55,.15)))*vec3(1.05,1.,.85),.35);   // muted: a range, not a lawn
+   col=mix(col,sc,k*.9);}}
+ col*=mix(1.,.85+.3*det,fade);   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
  // snow and ice hold on gentle ground only: faces steeper than ~35° stay bare rock, which is what gives a range its relief
  float steep=sst(.12,.3,slope),sn=sst(-.5,-5.,T)*(1.-steep)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T)*(1.-.85*steep);
  // (Q52) the high ranges were one white cap: wind-scoured rock shows through where the ice is thin (outcrops on a ~4 km
  // and ~1.2 km noise, more on steeper slopes, none on flat ice sheets), old blue glacier ice in the hollows, and the snow's tone varies
  if(uIv>0.){float ex=vn(pf*300.)*.6+vn(pf*1100.)*.4,bare=sst(.55,.68,ex+.25*sst(.05,.12,slope))*sst(.003,.02,slope);ice*=1.-.85*bare*uIv;sn*=1.-.85*bare*uIv;
   snow=mix(snow,vec3(.42,.52,.62),sst(.6,.78,vn(pf*640.+5.))*.45*uIv*sst(.02,.0,slope))*(1.-.1*uIv+.2*uIv*mid);}
- return mix(col,snow,max(sn,ice));}
+ return mix(mix(col,snow,max(sn,ice)),seaC,sea);}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
 // planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
 // A cheap domain warp (three value-noise lookups) swirls the cells; stretching y makes them run east–west like zonal winds.
@@ -313,7 +361,7 @@ float cloudShadowV(vec3 p){float sh=cloudShadow(p);if(uVk*uVs<=0.)return sh;vec3
  return mix(sh,texture(uShd,uq).r,w);}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
- float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
+ float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;float hwT=fwidth(tP)<.3*tP?min(fwidth(hT),2000.):0.;   // (Q403) the height's change across the pixel, here where control flow is uniform; none at a silhouette
  vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
  float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.,vis=0.;
  if(tP<tM){
@@ -324,7 +372,7 @@ void main(){
   vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
    npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);
    if(uPadK.x>1.5){vec2 q=padXZ(pf);if(dot(q,q)<${SHAPE_R*SHAPE_R}.&&abs(siteShapeG(q))>.05)npf=normalize(mix(npf,pf,.5));}}   // (Q105) the pad's own ground: relief shading halved, so a cut bank facing away from the sun isn't black (the sky's ambient is ~1 %)
-  vec3 alb=tellus(pf,npf,hT,gx,det,fade,oc);
+  vec3 alb=tellus(pf,npf,hT,gx,det,fade,fw,hwT,oc);
   // (Q105) the site's own ground cover, in the nearest pad's frame: Coastal's clearing of cut grass, the jungle's dark,
   // mottled canopy round it (the rails and the assembly building kept clear, down to the beach when wet; the contrast
   // makes the treeline, since an equatorial site's own colour is already rainforest), Isle's pasture on its headland
