@@ -1775,3 +1775,28 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   wide silvery sheen on the open sea, as in photos from orbit. Views 1, 3, 146 unchanged; p2 (157) gains a soft
   highlight on the disc. Stills `output/launchpad/beauty/q387/`.
 - **Check:** test `aerofx-25`. TESTING 263.
+
+## v1.183 — Q322 slice 1: the air's transmittance from a table, and airglow on the night limb (2026-10-13, sky & bodies beat; BEAUTY B6.2)
+
+`app/gl.js` (`SKY_FS`: `trL`, `sunTrans`, `scatter`; `TRL_TEX`; `drawMoons`), `app/render.js` (the uniform), `views.js` (163).
+
+- **The table:** `TRL_TEX`, 256 (μ) × 64 (r) RGBA16F on texture unit 13, baked once in JS at load (64 midpoint steps
+  per texel, the shader's Rayleigh and Mie coefficients), in Bruneton's layout (r by the distance to the horizon ρ, μ by
+  the distance to the top of the air), so the horizon gets most of the texels. `trL(r, μ)` reads it; `sunTrans` is one
+  read (was 6 steps), and `scatter`'s light toward the sun is one read per view step (was 4 steps × 12). Below the
+  horizon (μ < −ρ/r) the ground hides the sun, faded over its half-width.
+- **More exact, not only cheaper:** against a 20,000-step integral the table agrees to 0.001 at every height and sun
+  angle tried; the old 6-step march let 3–7 % too much light through near the ground (h 20 m, sun 40°: blue 0.727 old,
+  0.674 table, 0.673 exact). Lit ground and clouds are a touch dimmer and warmer; side by side the views look the same.
+- **Sky pass, ms** (RTX 3050, High, full resolution, before → after in the same session): pad 6.81 → 6.58, ascent
+  4.19 → 3.58, 200 km 4.50 → 3.58, night pad 6.62 → 6.26, clouds 0.2 km 6.32 → 6.05, 8 km 4.57 → 4.07, max-q 4.02 → 3.78,
+  sunrise 2.66 → 2.19, the spiral 3.12 → 1.85, sunglint 5.15 → 3.20. As Q326 said, the pad gains little (the ground
+  dominates there); in flight and in orbit 0.3–1.9 ms.
+- **Airglow:** oxygen's green line from a layer ~85 km up (5 km wide above, a 3 km fade below), from the ray's closest
+  approach: a ray grazing the layer looks along ~20× its thickness, one looking down crosses it once (a floor of 0.05);
+  only where the layer is in the night. **View 163** (the night limb from 400 km): a thin green line over the dark
+  limb with black between, as in the photos from orbit. Day views unchanged.
+- **Left for slice 2:** Selene out of `SKY_FS` into the moon pass (Q250's aliasing from low orbit, opposition surge,
+  earthshine, a harsh terminator). Seen in passing: the night side from orbit is fairly bright at the exposure's
+  ceiling (E 3.86: the ground's ambient term), not this item's.
+- **Stills:** `output/launchpad/beauty/q322-before/`, `q322-after/`. **Check:** test `aerofx-26`. TESTING 265.

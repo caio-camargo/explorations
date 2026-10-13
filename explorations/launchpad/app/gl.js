@@ -22,7 +22,7 @@ uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
-uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;
+uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
@@ -42,9 +42,14 @@ float crat(vec3 p){vec3 i=floor(p),f=fract(p);float r=0.;
 // ray from the camera (origin) vs sphere centred at C; cc=|C|^2-R^2 comes from the CPU in float64
 vec2 sph(vec3 C,float cc,vec3 d){float b=dot(d,C),D=b*b-cc;if(D<0.)return vec2(-1.,-2.);float s=sqrt(D),t0,t1;
  if(b>0.){t1=b+s;t0=cc/t1;}else{t0=b-s;t1=abs(t0)>1e-9?cc/t0:0.;}return vec2(t0,t1);}
-vec3 sunTrans(vec3 p){if(uAR<=0.)return vec3(1.);float r=length(p),b=dot(p,uSun),c=r*r-uAR*uAR,tl=-b+sqrt(max(b*b-c,0.)),sl=tl/6.,lR=0.,lM=0.;
- for(int j=0;j<6;j++){vec3 q=p+uSun*(float(j)+.5)*sl;float hq=max(length(q)-uPR,0.);lR+=exp(-hq/HR)*sl;lM+=exp(-hq/HM)*sl;}
- return exp(-(BR*lR+BM*1.1*lM));}
+// (Q322, BEAUTY B6.2) the air's transmittance from radius r along a direction of cosine mu to the top of the air, baked
+// once (TRL_TEX, Bruneton's (r, mu) layout: rho = the distance to the horizon, d = to the top of the air). It replaces six
+// steps per call in sunTrans and scatter's 12 × 4 inner loop, and is far more exact at grazing sun (the six steps spanned
+// up to 1,100 km): the terminator's reds. Below the horizon the ground hides the sun, faded over the sun's half-width.
+vec3 trL(float r,float mu){if(r>=uAR)return vec3(1.);float H=sqrt((uAR-uPR)*(uAR+uPR)),rho=sqrt(max((r-uPR)*(r+uPR),0.)),c=(uAR-r)*(uAR+r),s=sqrt(max(c+r*r*mu*mu,0.));
+ float d=mu>=0.?c/max(r*mu+s,1e-3):s-r*mu,dn=uAR-r,dx=rho+H,xm=clamp((d-dn)/max(dx-dn,1e-3),0.,1.),xr=rho/H;
+ return texture(uTrL,vec2(.5/256.+xm*(255./256.),.5/64.+xr*(63./64.))).rgb*smoothstep(-rho/r-.005,-rho/r,mu);}
+vec3 sunTrans(vec3 p){if(uAR<=0.)return vec3(1.);float r=length(p);return trL(r,dot(p,uSun)/r);}
 vec3 scatter(vec3 d,float tMax,out vec3 trans){
  trans=vec3(1.);if(uAR<=0.)return vec3(0.);
  vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);if(ta.y<0.||ta.x>ta.y)return vec3(0.);
@@ -55,12 +60,15 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  for(int i=0;i<12;i++){float t=t0+(float(i)+jt)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
   float dR=exp(-h/HR)*ds,dM=exp(-h/HM)*ds;odR+=dR;odM+=dM;
   float b=dot(p,uSun);if(b<0.&&r*r-b*b<uPR*uPR)continue;
-  float c=r*r-uAR*uAR,tl=-b+sqrt(max(b*b-c,0.)),sl=tl/4.,lR=0.,lM=0.;
-  for(int j=0;j<4;j++){vec3 q=p+uSun*(float(j)+.5)*sl;float hq=length(q)-uPR;lR+=exp(-hq/HR)*sl;lM+=exp(-hq/HM)*sl;}
-  vec3 att=exp(-(BR*(odR+lR)+BM*1.1*(odM+lM)));sR+=att*dR;sM+=att*dM;}
+  vec3 att=exp(-(BR*odR+BM*1.1*odM))*trL(r,b/r);sR+=att*dR;sM+=att*dM;}   // (Q322) toward the sun from the table
  trans=exp(-(BR*odR+BM*1.1*odM));
  float mu=dot(d,uSun),g=.76,pR=3./(16.*3.14159)*(1.+mu*mu),pM=3./(8.*3.14159)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
- return SUNI*(sR*BR*pR+sM*BM*pM);}
+ // (Q322, BEAUTY B6.2) airglow: oxygen's green line from a thin layer ~85 km up, only where the layer is in the night. A
+ // ray grazing the layer looks along ~20× its thickness (a line on the night limb); one that looks down crosses it once
+ float tc=dot(d,uPc),ag;vec3 pt=d*clamp(tc,t0,t1)-uPc;float hm=length(pt)-uPR;
+ if(tc>t1)ag=.05;else ag=hm>=85e3?exp(-pow((hm-85e3)/5e3,2.)):mix(.05,1.,exp(-(85e3-hm)/3e3));
+ vec3 glow=vec3(.3,1.,.4)*.012*ag*smoothstep(.05,-.2,dot(normalize(pt),uSun))*trans;
+ return SUNI*(sR*BR*pR+sM*BM*pM)+glow;}
 // ---- the ground (terrain session): the same height the physics uses. A baked 512×256 map (uWorld: base height,
 // ruggedness, volcanism, salt), read with texelFetch and our own bilinear so the arithmetic matches the CPU's, plus
 // procedural detail on an integer hash (bit-identical lattice values on both sides). uClim: temperature and wetness.
@@ -625,6 +633,17 @@ const WORLD_TEX=(()=>{const n=WTW*WTH,a=new Float32Array(n*4),c=new Float32Array
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filt);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filt);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t};
   return{w:mk(gl.RGBA32F,a,gl.NEAREST),c:mk(gl.RGBA16F,c,gl.LINEAR)}})();
+// (Q322) the transmittance table for SKY_FS's trL: 256 (mu) × 64 (r) texels, each the sea of air from radius r along
+// mu to the top (64 midpoint steps, Rayleigh + Mie with the shader's coefficients), on texture unit 13 for good
+const TRL_TEX=(()=>{const W=256,Hn=64,Rg=TELLUS.R,Rt=TELLUS.R+TELLUS.atm,H=Math.sqrt(Rt*Rt-Rg*Rg),HR=TELLUS.H,HM=TELLUS.H*1200/5600,
+    BR=[5.8e-6,13.5e-6,33.1e-6],BM=5e-6,d=new Float32Array(W*Hn*4);
+  for(let j=0;j<Hn;j++)for(let i=0;i<W;i++){const xr=j/(Hn-1),xm=i/(W-1),rho=H*xr,r=Math.sqrt(rho*rho+Rg*Rg),dn=Rt-r,dx=rho+H,dd=dn+xm*(dx-dn),
+      mu=dd===0?1:Math.max(-1,Math.min(1,(H*H-rho*rho-dd*dd)/(2*r*dd))),N=64,ds=dd/N;let lR=0,lM=0;
+    for(let k=0;k<N;k++){const t=(k+.5)*ds,hq=Math.max(Math.sqrt(t*t+2*r*mu*t+r*r)-Rg,0);lR+=Math.exp(-hq/HR)*ds;lM+=Math.exp(-hq/HM)*ds}
+    const o=(j*W+i)*4;for(let c=0;c<3;c++)d[o+c]=Math.exp(-(BR[c]*lR+BM*1.1*lM));d[o+3]=1}
+  const t=gl.createTexture();gl.activeTexture(gl.TEXTURE13);gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,W,Hn,0,gl.RGBA,gl.FLOAT,d);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.activeTexture(gl.TEXTURE0);return t})();
 const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
   for(const c of CITIES){const lat=Math.asin(c.u[1]),lon=Math.atan2(c.u[2],c.u[0]),ang=c.rad/TELLUS.R,rpx=ang/Math.PI*H*1.8+2;
     const cx=(lon/6.2832+.5)*W,cy=(lat/Math.PI+.5)*H,sx=rpx/Math.max(.2,Math.cos(lat));
@@ -1058,7 +1077,7 @@ NYX.alb=[.085,.068,.054];   // carbonaceous: darker and browner than Selene
 function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
   for(const b of BODIES){if(!b.parent||b===SELENE)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
     if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
-      const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);gl.bindVertexArray(quadVAO)}
+      const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)}
     gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);
     gl.uniform3fv(u.uNdet,mul(C,-1).map(x=>x-Math.round(x/1000)*1000));gl.drawArrays(gl.TRIANGLES,0,3)}}
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);

@@ -490,4 +490,13 @@ window.refView = async (n) => {
     cam.pitch = Math.asin(clamp(dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)); cam.dist = 40; render(); await settle(); bare();
     return 'the sunglint from 400 km, sun ' + (Math.asin(clamp(dot(u, sn), -1, 1)) * 57.3).toFixed(0) + '° up, cover here ' + cloudAt(u, simT).toFixed(2);
   }
+  // 163 (sky & bodies beat, QUEUE Q322): the night limb. The ship 400 km over the middle of the night side, the camera
+  // behind it looking down at the horizon: the airglow's green line over the dark limb, the cities below
+  if (n === 163) {
+    await refView(157); const sn = norm(SUN), u = norm(add(mul(sn, -1), mul(norm(cross(sn, [0, 1, 0])), 0.25)));
+    S.r = mul(u, TELLUS.R + 4e5); S.v = mul(norm(cross(u, [0, 1, 0])), Math.sqrt(TELLUS.mu / len(S.r)));
+    const f = localFrame(S.r), D = norm(add(mul(f.n, 0.8), mul(f.up, 0.6)));   // the horizon lies ~40° below level from 400 km
+    cam.pitch = Math.asin(clamp(dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)); cam.dist = 30; render(); await settle(); bare();
+    return 'the night limb from 400 km';
+  }
 };

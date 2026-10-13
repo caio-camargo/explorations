@@ -696,3 +696,17 @@
   const view = /if \(n === 162\)/.test(vj) && /Math\.sin\(40 \/ 57\.3\)/.test(vj) && /terrainH\(c\) > -1000/.test(vj) && /TELLUS\.R \+ 4e5/.test(vj);
   check('the sunglint at full strength (no quarter), and view 162 over clear open sea with the sun 40° up', glint && view, `glint ${glint} · view 162 ${view}`);
 }
+
+// aerofx-26. The air's transmittance table, and airglow (look & sound sky & bodies beat, BEAUTY Q322 B6.2): sunTrans and
+// scatter's light toward the sun read a 256 × 64 table baked once (TRL_TEX, Bruneton's (r, mu) layout, unit 13) instead
+// of marching (6 steps per call, 12 × 4 in scatter); below the horizon the ground hides the sun. A thin green airglow
+// layer ~85 km up shows on the night limb only. View 163 looks at it.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const sky = pg.slice(pg.indexOf('const SKY_FS='), pg.indexOf('float sst(float a'));
+  const table = /vec3 trL\(float r,float mu\)/.test(sky) && /return trL\(r,dot\(p,uSun\)\/r\);/.test(sky) && /\*trL\(r,b\/r\);/.test(sky) && !/for\(int j=0;j<[46];j\+\+\)/.test(sky)
+    && /const TRL_TEX=/.test(pg) && /gl\.TEXTURE13/.test(pg) && /if\(u\.uTrL\)gl\.uniform1i\(u\.uTrL,13\)/.test(pg);
+  const glow = /exp\(-pow\(\(hm-85e3\)\/5e3,2\.\)\)/.test(sky) && /smoothstep\(\.05,-\.2,dot\(normalize\(pt\),uSun\)\)/.test(sky);
+  check('the air\'s transmittance from a table baked once (no march toward the sun), and airglow on the night limb (view 163)', table && glow && /if \(n === 163\)/.test(vj),
+    `table ${table} · airglow ${glow} · view 163 ${/if \(n === 163\)/.test(vj)}`);
+}

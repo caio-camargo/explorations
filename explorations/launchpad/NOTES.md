@@ -93,6 +93,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.176 — Tellus from above, slice 1: clouds you can see through, the sea's sheen, lights without shimmer (2026-10-13, sky & bodies, QUEUE Q323)
 - v1.180 — the exposure reads the brightest spot, not the blur: a planet on black exposed for its clouds (2026-10-13, sky & bodies, QUEUE Q385)
 - v1.181 — the sunglint at full strength, and a view that shows it (2026-10-13, sky & bodies, QUEUE Q387)
+- v1.183 — Q322 slice 1: the air's transmittance from a table, and airglow on the night limb (2026-10-13, sky & bodies)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -5977,3 +5977,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/debrief.js`, `app/debrief.js`, hooks in `sim/vessel.js`, `sim/program.js`, `sim/contracts.js`, `sim/space.js`; `index.html` (CSS), `test.mjs` (api export), `tests/flow.mjs`, `playtest.mjs`, NOTES.md, notes/flow.md, TESTING.md (264).
 - **Noted:** PLAYTEST #93 is doubled on main (not flow's); flagged in QUEUE Proposed.
 - **Next:** Q286 (the declutter pass).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q322 slice 1, the air's table and airglow (v1.183)
+
+- **Done:** a transmittance table baked once replaces the sky shader's marches toward the sun (exact to 0.001; the old
+  march let 3–7 % too much light through near the ground); 0.3–1.9 ms off the sky pass in flight and orbit, ~0.2 on
+  the pad. Airglow, a thin green line on the night limb; view 163 shows it.
+- **Tests:** `aerofx-26` (new), all aerofx sections pass. Smoke not rerun (memory; last attempt reaped).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (265),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q322-before/`, `q322-after/`.
+- **Next for sky & bodies:** Q322 slice 2 (Selene out of `SKY_FS`, Q250's aliasing).
+
