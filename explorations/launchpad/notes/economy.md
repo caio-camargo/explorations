@@ -3065,3 +3065,23 @@ counts one as gone `ROUTE_LEAD` (30) days before its end.
 reworked by the other economy session; a one-clause follow-up there).
 
 Tests: `econ-26` (1 check).
+
+## Q386 measured: launch scrubs under the cloud belts (2026-10-13, economy session 2; no code change)
+
+v1.176 (Q323) gave `cloudAt` latitude belts (the shader's `belt` term). Scrubs (cover > `SCRUB_CLOUD` 0.9, a day's slip
+each, up to `SCRUB_MAX` 5) only cost days, and `career.mjs` doesn't fly through `weatherHold`, so a career re-run can't
+see them; measured directly instead: 72 longitudes × 400 days per latitude, with the belts and with `belt` set to 0.
+
+| lat | days that scrub, belts / none | slip days per launch, belts / none | worst site |
+|---|---|---|---|
+| 0° | 8.2 % / 4.9 % | 0.091 / 0.052 | 0.14 |
+| 5° | 5.9 / 4.7 | 0.065 / 0.051 | 0.12 |
+| 15° | 1.5 / 4.5 | 0.015 / 0.048 | 0.04 |
+| 28° | 1.4 / 4.3 | 0.014 / 0.045 | 0.04 |
+| 45° | 5.3 / 4.8 | 0.057 / 0.051 | 0.10 |
+| 62° | 7.2 / 5.1 | 0.080 / 0.055 | 0.13 |
+
+**Kept** (Q386's default): Earth's pattern (the wet equator, clear subtropics, stormy subpolar belts), and the cost is
+small everywhere: at worst ~0.14 days per launch, a few days a year for a busy program. No site scrubs out of its share,
+so nothing retuned. If scrubs should ever matter (a pressure that favours subtropical sites), the lever is
+`SCRUB_CLOUD`, not the belts.
