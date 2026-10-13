@@ -811,3 +811,12 @@
     && /if\(VK>0\)\{covBake\(camW\);shdBake\(\)\}/.test(pg) && /gl\.uniform1i\(u\.uShd,14\)/.test(pg);
   check('volume cloud shadow: baked once on the coverage grid (SHD_FS), a lookup per ground pixel', look && bake, `lookup ${look} · bake ${bake}`);
 }
+
+// aerofx-33. A display rod under a hanging model (look & sound effects beat, QUEUE Q330): while parts below were removed
+// the design hangs over the desk's base plate (BLD.foot, Q247); a steel rod rises from the plate's pin to its bottom, with
+// a collar, and the desk mesh is rebuilt when the gap changes.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const ok = /\|\$\{\(S\.yBot-deskFoot\(\)\)\.toFixed\(2\)\}`;/.test(page) && /\{const g=S\.yBot-deskFoot\(\);if\(g>\.006\*k\)\{const ST=\[\.62,\.63,\.66,1\];lathe\(a,\[\[\.004\*k,\.004\*k,ST\],\[\.004\*k,g,ST\]\],\[0,0,0\],12\);/.test(page);
+  check('a hanging model stands on a display rod from the base plate\'s pin to its bottom; the desk is rebuilt when the gap changes', ok, `rod ${ok}`);
+}
