@@ -1815,12 +1815,19 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
 // off in the map, out of flight and with SHAKE_FX = false (Settings › camera shake, Q360).
 // (Q360, Caio 2026-10-13: "too intense and unpleasant to watch") It was a 6–13 Hz jitter, near the frame rate, so it
 // strobed, up to 0.3° at Mach 1. Now a sway at 1.5–4 Hz, about a quarter as strong: felt, not watched
-let SHAKE_FX=true;
-function camShake(){if(!SHAKE_FX||mode!=='flight'||view==='map'||!S||!S.alive||!S.body.atm)return null;
-  const M=S.mach||0,q=S.qdyn||0,bf=.0007*sstep(8e3,30e3,q)*(1+1.2*Math.exp(-(((M-1)/.15)**2))),
-    qE=plasmaHeat(S.body,S.r,S.v,S.qHeat),kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0,A=bf+.0011*kH;
-  if(A<1e-5)return null;const t=simT;
-  return[A*(Math.sin(t*15.1)*.5+Math.sin(t*23.7+1.3)*.3+Math.sin(t*9.4+2.1)*.2),A*(Math.sin(t*17.3+.7)*.5+Math.sin(t*25.9+2.9)*.3+Math.sin(t*10.6+.4)*.2)]}
+let SHAKE_FX=true,SHAKE_LV=1;   // (Q402) 0 off, 1 gentle, 2 full (Settings › Screens › Camera shake); SHAKE_FX = SHAKE_LV > 0
+// (Q402, PLAYTEST #98) the sway only round the transonic and peak q (from 15 kPa), and short jolts, not a steady buzz:
+// one as the ship goes through Mach 1, one at each staging (fewer parts on the same ship), a damped knock of ~0.25 s
+const SHK={s:null,n:0,m:0,t:-1e9,k:0,ph:0};
+function camShake(){if(!SHAKE_FX||!SHAKE_LV||mode!=='flight'||view==='map'||!S||!S.alive||!S.body.atm)return null;
+  const M=S.mach||0,q=S.qdyn||0,n=S.parts.reduce((c,p)=>c+(p.on?1:0),0),t=simT;
+  if(SHK.s!==S){SHK.s=S;SHK.n=n;SHK.m=M;SHK.t=-1e9}
+  if(n<SHK.n){SHK.t=t;SHK.k=.0032;SHK.ph=t*7.3%6.28}else if(SHK.m<1&&M>=1&&q>5e3){SHK.t=t;SHK.k=.0022*Math.min(1,q/2e4);SHK.ph=t*5.1%6.28}SHK.n=n;SHK.m=M;
+  const bf=.0007*sstep(15e3,30e3,q)*(1+1.2*Math.exp(-(((M-1)/.15)**2))),
+    qE=plasmaHeat(S.body,S.r,S.v,S.qHeat),kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0,A=(bf+.0011*kH)*SHAKE_LV,
+    dj=t-SHK.t,J=dj>=0&&dj<1?SHK.k*SHAKE_LV*Math.exp(-dj/.12)*Math.sin(dj*25):0;
+  if(A<1e-5&&Math.abs(J)<1e-5)return null;
+  return[A*(Math.sin(t*15.1)*.5+Math.sin(t*23.7+1.3)*.3+Math.sin(t*9.4+2.1)*.2)+J*Math.cos(SHK.ph)*.5,A*(Math.sin(t*17.3+.7)*.5+Math.sin(t*25.9+2.9)*.3+Math.sin(t*10.6+.4)*.2)+J*(.7+.3*Math.sin(SHK.ph))]}
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
 // (Q302) an incoming debris fragment: the sim rolls a hit FRAG_LEAD (3 s) ahead and hands it over (HOOK.fragIn: size L,
 // crossing speed vr, direction dir). A centimetre fragment kilometres off is invisible, so it's drawn as what an eye
