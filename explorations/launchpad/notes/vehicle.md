@@ -1640,3 +1640,14 @@ Test `vehicle-12`. `--smoke` all pass.
 - **Power:** the side camera, the whip and the boom antenna drew nothing (their records never got the inline parts' 10 W / 5 W):
   every antenna and camera draws now (`sim/power.js`). A satellite built from side parts used to show a 0 W load.
 - Test `vehicle-25`. TESTING 260.
+
+## v1.184 — a flight button for the unfolding parts (2026-10-13, vehicle session, QUEUE Q397)
+
+- **Caio:** "are there now controls that can extend the parts that start retracted?" (only the P key) then "yeah, let's add a
+  button with P in parentheses".
+- `#bWings` in the flight bar, next to Map: shown while the craft has solar wings or boom antennas, reading "Unfold wings (P)" /
+  "Fold wings (P)" ("antennas", "wings and antennas" as fitted), lit while they're out; a click does what P does (recorded on the
+  tape). Updated in `updateHUD` (`app/program-ui.js`). Checked in the browser on the Satellite preset.
+- Seen doing it: on the pad the wings unfold straight through the closed fairing; nothing stops deploying inside one (QUEUE
+  398).
+- TESTING 266.
