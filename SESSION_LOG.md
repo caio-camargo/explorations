@@ -5948,3 +5948,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   ready), `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q385-*`.
 - **Next for sky & bodies:** Q387 (the sunglint view), Q322.
 
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): warnings that explain themselves, part cards (Q340, v1.179)
+- **Done:** every amber or red mark in the Assembly readout hovers to what's wrong, why, and *Fix:* (`whyMark`, `app/terms.js`, the one `#termTip`); a new fairing-fit check (parts outside the shell); a *Trim* term; part cards (palette and craft hover) end with *Pairs with* (`PART_PAIRS`, `builder.js`). On `main` as `f273926`.
+- **Checks:** test flow-22 and flow-21 pass; `--smoke` passed before merging origin/main; robot rows `explain` and `m1` pass. The post-merge smoke run was stopped by Claude Code for low memory and not rerun (the merge clashed on one line of `airHTML`, resolved; flow tests pass after it).
+- **Files:** `app/terms.js`, `app/editor.js`, `builder.js`, `index.html` (CSS), `tests/flow.mjs`, `playtest.mjs`, NOTES.md, notes/flow.md, TESTING.md (row 261).
+- **Next:** Q293 (losses explained in the Debrief), Q286 (declutter); follow-ups in QUEUE Proposed.
