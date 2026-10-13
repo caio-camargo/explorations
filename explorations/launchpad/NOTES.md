@@ -105,6 +105,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
 - v1.196 — lettering on the pads: Coastal's agency over its assembly building's door, Isle's company on its hangar (2026-10-13, effects, QUEUE Q245)
 - v1.201 — a display rod under a hanging model on the desk (2026-10-13, effects, QUEUE Q330)
+- v1.203 — a calmer camera shake (a slow sway, about a quarter as strong), and a switch for it in Settings (2026-10-13, effects, QUEUE Q360)
+- v1.205 — the camera shake only round transonic and peak q, short jolts at Mach 1 and staging, Off / Gentle / Full (2026-10-13, effects, QUEUE Q402, PLAYTEST #98)
 - v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 - v1.200 — the planets in the sky as points of light by their magnitudes, a moon under a pixel as a point, stars faded by the sky's contrast (none by day), a fainter airglow (2026-10-13, sky & bodies, QUEUE Q374, Q395, Q407)
 
@@ -225,6 +227,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; D17.4)
 - v1.171 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
 - v1.177 — routines: a route keeps N satellites up (2026-10-13, economy session, QUEUE Q184; W27, D17.1)
+- v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
+- Q386 measured: launch scrubs under the cloud belts (2026-10-13, economy session 2; kept, no code change)
 
 ## World: [`notes/world.md`](notes/world.md)
 

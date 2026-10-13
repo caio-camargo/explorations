@@ -512,10 +512,10 @@
   // (PLAYTEST #88) the rings read as separate bands: now one streaked sheet hugging the hull, flickering as a whole, a thin
   // mist, from the strongest shoulder only
   const rings = !/fract\(rn\)/.test(vfs) && /\(\.75\+\.5\*st\)\*fl;\}/.test(vfs) && /dens\*uV\*1\.\/max/.test(vfs) && /x\[2\]>=\.9\*a\[0\]\[2\]/.test(page);
-  const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 12.3,
+  const cs = page.match(/const SHK=\{[^\n]*\nfunction camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, SHAKE_LV: 1, mode: 'flight', view: 'ship', simT: 12.3,
     sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
   const shake = cs && (S => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values(env), S));
-  const amp = r => r ? Math.hypot(r[0], r[1]) : 0, ship = (M, q) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0 });
+  const amp = r => r ? Math.hypot(r[0], r[1]) : 0, ship = (M, q) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0, parts: [] });
   const calm = shake && shake(ship(.3, 2e3)), maxq = shake && shake(ship(1, 32e3)), sup = shake && shake(ship(2, 32e3)), again = shake && shake(ship(1, 32e3));
   const wired = /const sh=camShake\(\);if\(sh\)\{Fw=norm\(add\(Fw/.test(page) && /SPK\.n\+=dt\*kH\*\(abl\?45:12\)/.test(page) && /fxPuff\(madd\(S\.r,u,S\.radius\*\.8\)/.test(page)
     && /PLT\.c\.set\(c\.map\(x=>x\*K\*fl\)\)/.test(page) && /xe\/\(uEp\*3\.\)-uT\*11\./.test(page);
@@ -837,4 +837,31 @@
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const ok = /\|\$\{\(S\.yBot-deskFoot\(\)\)\.toFixed\(2\)\}`;/.test(page) && /\{const g=S\.yBot-deskFoot\(\);if\(g>\.006\*k\)\{const ST=\[\.62,\.63,\.66,1\];lathe\(a,\[\[\.004\*k,\.004\*k,ST\],\[\.004\*k,g,ST\]\],\[0,0,0\],12\);/.test(page);
   check('a hanging model stands on a display rod from the base plate\'s pin to its bottom; the desk is rebuilt when the gap changes', ok, `rod ${ok}`);
+}
+
+// aerofx-35. A calmer camera shake, short jolts, and a choice (look & sound effects beat, QUEUE Q360, Q402; PLAYTEST #98;
+// Caio 2026-10-13: "too intense and unpleasant to watch"): a sway at 1.5–4 Hz (no term faster than 26 rad/s, so nothing
+// strobes against the frame rate), only from 15 kPa (transonic and peak q), at most ~0.12° at Mach 1's max-q on Gentle
+// (was ~0.45°); a damped knock going through Mach 1 and at each staging; Settings › Screens › Off / Gentle / Full.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cs = page.match(/const SHK=\{[^\n]*\nfunction camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), base = { SHAKE_FX: true, SHAKE_LV: 1, mode: 'flight', view: 'ship',
+    sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
+  // a run: f(t) gives the ship's state; returns the shake's size at each step (one closure, so SHK carries between calls)
+  const run = (f, lv = 1, T = 20) => { const env = { ...base, SHAKE_LV: lv }; let simT = 0, S = null;
+    const call = new Function(...Object.keys(env), 'get', cs[0] + ';return ()=>{const g=get();S=g.S;simT=g.t;return camShake()}');
+    let cur; const go = call(...Object.values(env), () => cur); const out = [];
+    for (let t = 0; t < T; t += 0.01) { cur = { S: f(t), t }; const r = (() => { const g = cur; return go() })(); out.push(r ? Math.hypot(r[0], r[1]) : 0) } return out };
+  const mk = (M, q, n) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0, parts: Array.from({ length: n }, () => ({ on: true })) });
+  const keep = {}, steady = t => keep.s || (keep.s = mk(1, 32e3, 10)); Object.assign(keep, {});
+  const peak = Math.max(...run(t => { const s = keep.a || (keep.a = mk(1, 32e3, 10)); return s }));
+  const low = Math.max(...run(t => { const s = keep.b || (keep.b = mk(.5, 10e3, 10)); s.qdyn = 10e3; return s }));
+  const stg = run(t => { const s = keep.c || (keep.c = mk(3, 1e3, 10)); s.parts.length = t < 5 ? 10 : 7; return s }), knock = Math.max(...stg.slice(500, 560)), after = Math.max(...stg.slice(700, 800));
+  const full = Math.max(...run(t => keep.d || (keep.d = mk(1, 32e3, 10)), 2)), off = Math.max(...run(t => keep.e || (keep.e = mk(1, 32e3, 10)), 0));
+  const rates = [...cs[0].matchAll(/Math\.sin\(t\*([\d.]+)/g)].map(m => +m[1]), slow = rates.length === 6 && Math.max(...rates) <= 26 && Math.min(...rates) >= 9;
+  const sw = /SHAKE_LV=Math\.min\(2,Math\.max\(0,\+setGet\('launchpad-shake','1'\)\|\|0\)\);SHAKE_FX=SHAKE_LV>0;/.test(H) && /\['Off','Gentle','Full'\]\.map\(\(l,k\)=>`<button data-shake=/.test(H)
+    && /if\(sk!=null\)\{SHAKE_LV=\+sk;SHAKE_FX=SHAKE_LV>0;setPut\('launchpad-shake',sk\)/.test(H);
+  check('camera shake: a slow sway only round transonic and peak q, ~0.12° on Gentle; a knock at staging that dies within a second; Off / Gentle / Full kept per browser',
+    slow && peak < .0025 && peak > .0012 && low === 0 && knock > .0008 && after === 0 && Math.abs(full / peak - 2) < .05 && off === 0 && sw,
+    `rates ${rates.join(', ')} · peak ${(peak * 57.3).toFixed(3)}° · at 10 kPa ${low} · staging knock ${(knock * 57.3).toFixed(3)}°, 2 s on ${after} · full ×${(full / peak).toFixed(2)} · off ${off} · setting ${sw}`);
 }

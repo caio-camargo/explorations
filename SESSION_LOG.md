@@ -6132,3 +6132,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Done:** the pitch reaches ±90° in flight and the Assembly; `render.js` takes the view's right-hand vector from the yaw, the same as before at other angles and defined at the pole (no flip, no spin); T in the Assembly toggles a top view (on the key strip, survives a reframe). On `main` as `ae920b3`.
 - **Checks:** flow-28 (new), flow-7/8/26/27 and the builder's core sections pass; robot rows `topview` and `m1` pass.
 - **Not done:** a Top button by the CoM readout (D22's toolbar, Q237).
+- **Addendum 4 (effects):** v1.203 Q360 at Caio's ask (the shake too intense): `camShake` is a 1.5–4 Hz sway at about a quarter the strength (was a 2–13 Hz jitter up to ~0.45°), and Settings › Screens › camera shake (one row in flow's `renderSettings`). Test aerofx-35; TESTING 284. Seen in passing: `.git/objects/d2/8aa2d… (1)`, a stray copy from the 10-07 Drive repair, makes git print "bad sha1 file"; harmless (the object is packed), left in place. Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2): a dry satellite counts as up on its routine (Q414, v1.204)
+
+- **Done:** PLAYTEST #104 (the robot's `m2` gap): `routeSats` now counts by `routeLife(q)` (`sim/program.js`): a low
+  orbit, where holding only fights drag, serves while it holds plus while it decays; a slot the tides move must still be
+  held. Test `econ-26`; NOTES § v1.204 (`notes/economy.md`); TESTING 285. Took v1.204 (v1.202 went to flow meanwhile).
+- **Found:** `qa-2` (go to body, a source scan) fails on `main` independently of this change; QUEUE *Proposed* for QA.
+- **Files:** `sim/program.js`, `test.mjs` (api exports), `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
+  `PLAYTEST.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's next ready items: Q332 (recovering a spent stage), Q380 (overflight rights), Q386 (scrub odds).
+  The Fleet line clause (what a route's satellite is counted by) waits for Q296's Fleet line (Proposed).
+- **Addendum 7 (design desk, 2026-10-13):** the bench queued to build: Q416 already with vehicle (round 2's notes
+  appended), Q422 propulsion, Q423 first parts, Q424 instruments and antennas, Q425 ends of life. Then Caio's flight
+  notes: PLAYTEST #109 (rockets go straight up; nothing teaches the gravity turn), #110 (the navball's surface→orbit
+  jump at 50 km: blend it, make the label clickable), #111 (SAS buttons as symbols); each with a QUEUE Proposed line.
