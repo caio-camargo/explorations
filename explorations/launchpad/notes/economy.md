@@ -3085,3 +3085,31 @@ see them; measured directly instead: 72 longitudes × 400 days per latitude, wit
 small everywhere: at worst ~0.14 days per launch, a few days a year for a busy program. No site scrubs out of its share,
 so nothing retuned. If scrubs should ever matter (a pressure that favours subtropical sites), the lever is
 `SCRUB_CLOUD`, not the belts.
+
+## v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332, from Q300 v1.142)
+
+v1.142 (world) let a stage with chutes among its parts come down slowly and float for ~24 h, but nothing could fetch it,
+and once it was 40 km from your craft it was culled and forgotten. Now:
+
+- **Its fate is judged at the drop** (`dropRecord(d)`, `sim/flight.js`, called from `HOOK.debris` in `app/state.js`
+  instead of building the record inline): for a stage with chutes whose predicted impact is at sea, the sea-level
+  sink rate under its canopies (√(2 m g / (ρ₀ · 600 m² · n))) against the sea's limit; past it, it breaks up; under it,
+  its hull as `debAfloat` judges it (`debSea`, factored out of `debAfloat`: the holed parts, the rest pose, `sinkTime`),
+  hanging nose up. The record carries `sea: {fate: 'afloat'|'sank'|'broke', sp, afloat}`. If the stage does come down
+  in view, `debAfloat` overwrites the record with what happened.
+- **The ships fetch it** (`stageRecover(R)`, `sim/program.js`, in `missionEnd` before `fleetSalvage`): the same ships
+  as `recoveryOf` (local boats to 200 km, the recovery fleet's range when built, 10 m/s from an hour's notice). Still
+  afloat when they arrive: refurbished like a vessel, `partPrice × REFURB × wearOf(p, splash speed)` per part, less 2M
+  of ship time; news line, ledger `stages` ("Spent stages recovered" in the Debrief). Beyond reach or sunk first: a news
+  line, and the recovery fleet (if built) still salvages it for parts as before. A bare stage is unchanged (the fleet's).
+
+**Measured** (`econ-27`): the Orbiter's empty first stage under one chute: predicted 8.2 m/s and 24.0 h afloat at the
+drop; flown down in view 8.1 m/s and 24.0 h. Fetched from the launch point's sea: +8.9M (its parts at 65 % × 0.8 wear,
+less ship time).
+
+**Not yet:** the impact point is still the ballistic prediction (`debrisImpact` ignores the canopies; drift under
+them is a few km at most); the builder doesn't say that chutes on a stage make it recoverable (vehicle/flow); the
+Debrief shows the money, not which stage came back.
+
+Tests: `econ-27` (1 check: judged afloat at the drop and the same in view; local ships fetch and refurbish; beyond
+reach lost; a bare stage left to the fleet).

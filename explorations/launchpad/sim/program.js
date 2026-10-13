@@ -255,6 +255,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
   if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
+  if(s.leaks)leakTick(s,dt,phys);   // space Q303: a holed tank leaks
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
@@ -399,7 +400,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
-  fleetSalvage(R);
+  stageRecover(R);fleetSalvage(R);
   // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
   overEnd(R);
   for(const v of R.drops){const pw=v.power;if(!pw)continue;
@@ -544,9 +545,19 @@ function buildFac(id){const q=facQuote(id);if(!q.ok||PROG.funds<q.cost)return fa
   PROG.funds-=q.cost;f.building={lv:f.lv+1,ready:PROG.day+q.days};HOOK.news(`Construction starts: ${FAC[id].name}, level ${f.lv+1} (${q.days} days)`,'ok');HOOK.save();return true}
 function facTick(){for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.building&&PROG.day>=f.building.ready){f.lv=f.building.lv;f.building=null;
   HOOK.news(`${FAC[id].name} level ${f.lv} is open: ${FAC[id].what(f.lv)}`,'ok');HOOK.save()}}}
+// (Q332) a spent stage afloat under its chutes is fetched like a vessel (recoveryOf's ships: local boats, or the fleet's
+// range, at RECOVER_V from an hour's notice) if it's still afloat when they arrive: refurbished at its splash's wear,
+// less the ship time. What sinks first is lost (the fleet, if built, still salvages it below).
+function stageRecover(R){if(!R.launchPf)return;const lv=facLv('fleet'),reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);let got=0,n=0,lost=0;
+  for(const v of R.drops){const f=v.sea;if(v.kind!=='sea'||!f||f.fate!=='afloat'||!v.pf||!v.parts)continue;
+    const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R,sail=RECOVER_PREP+d/RECOVER_V;
+    if(d>reach||f.afloat<sail){v.fate=d>reach?'beyond our ships':'sank before the ships arrived';lost++;continue}
+    let val=0;for(const p of v.parts)val+=partPrice(p)*REFURB*wearOf(p,f.sp);v.got=val-2;v.fate='recovered';got+=v.got;n++}
+  if(n){PROG.funds+=got;ledAdd('stages',got);R.stageBack=got;HOOK.news(`Spent stage${n>1?'s':''} recovered from the sea: ${n>1?`${n}, `:''}${got>=0?'+':''}${fmtM(got)} refurbished, after ship time`,got>=0?'ok':'')}
+  if(lost)HOOK.news(`${lost} spent stage${lost>1?'s':''} came down under ${lost>1?'their':'its'} chutes but ${lost>1?'were':'was'} lost at sea`,'')}
 // salvaged for parts: load and heat wear count, the splash itself doesn't
 function fleetSalvage(R){const lv=facLv('fleet');if(!lv||!R.launchPf)return;let got=0,n=0;const seen={};
-  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
+  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts||v.got)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
     let val=0;for(const p of v.parts){val+=partPrice(p)*REFURB*FAC.fleet.sal[lv]*wearOf(p,TOUCH_OK);seen[p.d.key]={land:1}}got+=val-2;n++}
   if(!n)return;PROG.funds+=got;ledAdd('salvage',got);khLearn({khSeen:seen},0.3);
   HOOK.news(`Recovery fleet: ${n} stage${n>1?'s':''} fished out of the sea, ${got>=0?'+':''}${fmtM(got)} after ship time`,got>=0?'ok':'')}

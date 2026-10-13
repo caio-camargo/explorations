@@ -6171,3 +6171,24 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/gl.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (290),
   `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q392/`.
 
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a debris hit holes a tank or damages a part (v1.210, Q303)
+- **Done:** `fragStrike` has a middle outcome. A tank (fuel or gas) is holed when the piece gets through a 3 mm wall (crater depth by the thin-plate rule's shape, on the normal speed; a glancing piece dents). It leaks by the orifice law: a 1 cm hole loses 1.15 kg/s of fuel, or 2.2 kg/s of gas falling as the bottle empties. The jet pushes and turns the craft in physics steps. A tank still leaking reaches the registry empty. Solar wings lose a string (a quarter of their output); other parts gather damage until it adds up to a loss. On `main` as `e4c8389`.
+- **Checks:** test space-25 (new), space-24 still passes; the full suite passes 718 checks and fails 1: `qa-2` (go to body), which already failed on `main` (vehicle's log above).
+- **Files:** `sim/space.js`, `sim/program.js` (`missionTick` calls `leakTick`), `sim/power.js` (`p.dmg`), `tests/space.mjs`, `notes/space.md` § v1.210, `NOTES.md`, `TESTING.md` (291), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Numbering:** took v1.203 at the start; `main` reached v1.209 during the run, so renumbered at merge (check_numbers).
+- **Next:** space's next ready item is Q304 (a docked composite's power counts its passengers). Proposed: damage that does something, the jet drawn, debris seeding in the tester menu.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q386 measured, Q332 recovering a spent stage (v1.211)
+
+- **Q386 ✓ (no code):** scrub odds under v1.176's cloud belts, measured per latitude (`career.mjs` doesn't fly through
+  `weatherHold`): at worst 8 % of days at the equator, 0.14 slip days a launch; subtropics clearer. Kept (the default).
+  NOTES § "Q386 measured" (`notes/economy.md`).
+- **Q332 ✓ v1.211 (renumbered at merge: space took v1.210):** `dropRecord(d)` (`sim/flight.js`) judges a chuted stage's fate at sea at the drop (`debSea`
+  factored out of `debAfloat`), so it survives the 40 km cull; `stageRecover(R)` (`sim/program.js`) fetches one still
+  afloat when the ships arrive, refurbished at its splash wear less ship time (ledger `stages`). Test `econ-27`
+  (prediction 8.2 m/s / 24.0 h vs 8.1 / 24.0 flown in view; +8.9M for the Orbiter's first stage); TESTING 292.
+- **Smoke on main:** `qa-2` and the assembly help (key `t`, already flagged by the test bench) fail independently.
+- **Files:** `sim/flight.js`, `sim/program.js`, `sim/debrief.js`, `app/state.js`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's ready items: Q380 (overflight rights; needs flow's decision card), Q282/Q283 (plans).
