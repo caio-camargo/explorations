@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.14 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.15 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -93,6 +93,8 @@ next to a 1.8 m figure. Four directions, all shown (Caio: "yes, all four"):
    blankets; a material per part, by era and school, nearly free to draw.
 4. **Signature appendages**: swept whips, paddles, a sunshade tube, a dish farm, a radar plank, a helix ring, a mesh
    dish on a truss, a gravity boom, RTG fins.
+
+**Caio, 2026-10-13:** "they look good, but i don't want to take away the player design experience by having them be too readymade"; designed apart like the rover → **D24** (PROBES § 6.1). The craft are examples of what a player can build, not parts.
 
 **Pick:** _(Caio; if silent: all four go into PROBES as § 6's variety rules and a slice S4 after S2: smaller stacks and
 the kick motor first (cheapest, biggest change), then skins, then bus shapes, then the appendages with their jobs)_

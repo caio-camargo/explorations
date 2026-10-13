@@ -6016,3 +6016,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Numbers:** Q397/Q398/Q406 collided with other sessions' items twice; mine are Q409 and Q410. PLAYTEST #102–#104 are filed twice by two other sessions (not mine, left as is).
 - **Files:** `index.html`, `app/program-ui.js`, `sim/power.js`, `tests/vehicle.mjs` (vehicle-26; vehicle-18 jettisons first), `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (266, 267, 270), `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** flow's Q400 remainder (Part tab line, first-time hint); vehicle's ready list: Q341 (the folding boom), Q329, Q338.
+- **Addendum 4 (design desk, 2026-10-13):** **D24**: satellites are parts, not products (the bus one adjustable frame),
+  built on a **payload bench** apart from the rocket like the Rover yard, then one block in the fairing (PROBES 0.1.4
+  § 6.1). Next for the desk: a mock-up of the bench.
