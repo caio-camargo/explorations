@@ -307,6 +307,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.168 — the vapor collar, calmer: one thin sheet, not bands (2026-10-13, effects beat, PLAYTEST #88)
 - v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
 - v1.172 — a falling stage under its chutes, its splash, and the waterline (2026-10-13, effects beat, QUEUE Q335)
+- v1.174 — the effects' sounds: crack and groan, venting hiss, the splash, the blackout's edges (2026-10-13, effects beat, QUEUE Q363, Q362)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

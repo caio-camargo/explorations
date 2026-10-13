@@ -637,3 +637,18 @@
   const sim = /d\.chA=/.test(src) && /d\.float=\{pf:pfc/.test(src);
   check('falling stage: a canopy per chute while d.chA is open; at sea a splash once, then the waterline laps (stage and ship)', can && sea && sim, `canopies ${can} · sea ${sea} · sim ${sim}`);
 }
+
+// sound-2. The effects' sounds (look & sound effects beat as sound overflow, QUEUE Q363, Q362): a venting tank hisses
+// through our own structure even in vacuum and fades as it empties, from elsewhere only through the air; a structural
+// crack (with a groan) and a splash are queued by the page (FXSND) and heard like booms; the radio blackout's edges sound
+// (static cut dead going in; a squelch and a 2,525 Hz Quindar tone coming out).
+{
+  const H = html.replace(/\r\n/g, '\n'), blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END'));
+  const { sndVent } = new Function(blk + ';return {sndVent}')();
+  const own = sndVent([{ rate: 1, own: true, air: 0, d: 0 }]), half = sndVent([{ rate: .25, own: true }]), vac = sndVent([{ rate: 1, own: false, air: 0, d: 50 }]),
+    near = sndVent([{ rate: 1, own: false, air: 1, d: 50 }]), far = sndVent([{ rate: 1, own: false, air: 1, d: 5000 }]);
+  const wired = /FXSND\.push\(\{k:'crack',b,r:J,/.test(H) && /FXSND\.push\(\{k:'splash',b,r:P,sz:k,own:s===S\}\)/.test(H) && /if\(live\)\{sndEvents\(st\);sndBooms\(\);sndFx\(\)\}/.test(H)
+    && /sndBeep\(2525,0\.25,0\.12,0\.3\)/.test(H) && /const bo=S\.alive&&S\.body===TELLUS&&plasmaOn\(S\)/.test(H) && /set\(AUD\.VH\.g\.gain,0\.3\*sndVent\(st\.vents\)/.test(H);
+  check('effects\' sounds: a vent hisses through our structure in vacuum and fades as it empties, from elsewhere only through air; crack, splash and the blackout\'s edges are wired',
+    own === 1 && half === .5 && vac === 0 && near > .8 && far < .1 && wired, `own ${own}, quarter left ${half}, elsewhere in vacuum ${vac}, 50 m in air ${near.toFixed(2)}, 5 km ${far.toFixed(2)} · wired ${wired}`);
+}
