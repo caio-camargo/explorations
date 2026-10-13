@@ -148,7 +148,7 @@
   // on Selene's day side the ground term is lit; on its night side it is dark; far out in space there is none
   {
     const SM = new Function(src + 'return {BODIES,TELLUS,SELENE,bodyPos,norm,sub,add,mul,len,dot,cross,SUN_DIR,get t(){return simT}}')();
-    const F = new Function('BODIES', 'TELLUS', 'bodyPos', 'norm', 'sub', 'len', 'dot', 'SUN', 'simT', 'FILL_FX', body('airlessFill') + ';return airlessFill')(
+    const F = new Function('BODIES', 'TELLUS', 'bodyPos', 'norm', 'sub', 'len', 'dot', 'SUN', 'simT', 'FILL_FX', body('diskOf') + body('airlessFill') + ';return airlessFill')(
       SM.BODIES, SM.TELLUS, SM.bodyPos, SM.norm, SM.sub, SM.len, SM.dot, SM.SUN_DIR, SM.t, true);
     const C = SM.bodyPos(SM.SELENE, SM.t), at = (u, h) => SM.add(C, SM.mul(SM.norm(u), SM.SELENE.R + h));
     const w = SM.norm(SM.cross(SM.SUN_DIR, [0, 0, 1])), day = F(at(SM.add(SM.mul(SM.SUN_DIR, Math.sin(0.35)), SM.mul(w, Math.cos(0.35))), 2)),
@@ -429,4 +429,53 @@
     && /uniform1f\(PLINE\.u\.uLk,1\/EXPO\.E\)/.test(page) && /expoNow\(\); render\(\)/.test(vj);
   check('HDR scene: no shader tone-maps itself; linear RGBA16F target on both settings; one composite (bloom, exposure, AgX, LUT, grain); exposure read back without a stall',
     selfTm.length === 0 && once && target && expo, `self-tone-mapping ${selfTm.join(', ') || 'none'} · composite ${once} · target ${target} · exposure ${expo}`);
+}
+
+// aerofx-11. Re-entry, the hull glows (look & sound effects beat, BEAUTY Q318 B4.1–4.2). The windward skin's surface
+// temperature follows the plasma's heat level k (wallT: the sim's p.T is the part's bulk and peaks far lower), eases in
+// over ~2 s and out over ~6 s, on the ship and on falling stages, and goes to MESH_FS as uHt. The shader's blackbody (a
+// Wien fit per channel, scene units with sunlit white paint ≈ 4) is invisible at 1,000 K, a dull red at 1,200 K, out-glows
+// sunlit paint at 1,700 K (k ≈ 1, a low-orbit return) and is yellow-white at 2,200 K (k ≈ 1.5, from Selene).
+// The plasma's stagnation point is white-yellow and its edge lavender; plasmaLight takes the core's colour.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const wl = page.match(/const wallT=(k=>[^,]+),/), w = wl && new Function('return ' + wl[1])();
+  const fs = page.match(/emis\+=\.85\*exp\(vec3\(([^)]*)\)-vec3\(([^)]*)\)\/Tl\)/), A = fs && fs[1].split(',').map(Number), X = fs && fs[2].split(',').map(Number);
+  const bb = T => A.map((a, i) => .85 * Math.exp(a - X[i] / T)), Y = c => .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+  const c10 = fs && bb(1000), c12 = fs && bb(1200), c17 = fs && bb(1700), c22 = fs && bb(2200);
+  const wired = /hotTo\(m,kH,dt\);if\(kH>0&&sp>1\)m\.cd=/.test(page) && /const kH=d\.body\.atm\?DEBH\.get\(d\)\?\.k\|\|0:0;/.test(page) && /g\.k=0;if\(g\.q<1\.5e4\)continue;const k=g\.k=/.test(page)
+    && /HTA\[i\]=m\.hot\|\|0/.test(page) && /gl\.uniform4fv\(u\['uHt\[0\]'\],HTA\)/.test(page) && /float ht=uHt\[pi\/4\]\[pi%4\];/.test(page);
+  const plasma = /vec3 cs=mix\(ce,cc,/.test(page) && /c=\[1,\.45\+\.41\*b,\.12\+\.5\*b\]/.test(page);
+  check('re-entry hull glow: skin temperature from the heat level, eased, on ship and stages; a blackbody that is dark at 1,000 K, dull red at 1,200 K, brighter than sunlit paint at 1,700 K, yellow-white at 2,200 K; the plasma white-yellow at the stagnation point',
+    w && w(0) === 290 && w(1) === 1700 && w(1.5) === 2200 && wired && plasma && Y(c10) < 1e-3 && Y(c12) < .05 && c12[0] > 5 * c12[1] && Y(c17) > 4 && c22[1] / c22[0] > .25 && Y(c22) > 30,
+    fs ? `luminance (sunlit white ≈ 4): 1,000 K ${Y(c10).toExponential(1)}, 1,200 K ${Y(c12).toFixed(3)}, 1,700 K ${Y(c17).toFixed(1)}, 2,200 K ${Y(c22).toFixed(0)}; g/r at 2,200 K ${(c22[1] / c22[0]).toFixed(2)} · wired ${wired} · plasma ${plasma}` : 'shader glow not found');
+}
+
+// aerofx-12. The craft's quick wins (look & sound parts & pad beat, BEAUTY B1.1–1.2, Q315). Bells follow Rao's parabola from the
+// throat (steep) to the lip (θe), same exit radius and throat as the part; the nose is a tangent ogive (tangent to the
+// hull, a point at its top); lathe normals are smooth along a curve and hard at a real edge; the body below is a disc of
+// light: at the pad the old hemisphere (same ground colour), from orbit smaller and blue-white, with its limb.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const F = new Function('SMOOTH_FX', 'SMOOTH_DEG', body('raoBell') + body('ogive') + body('latheN') + ';return {raoBell,ogive,latheN}')(true, 24);
+  const b = F.raoBell(.6, .15, .7, .72, 8, [0, 0, 0, 1], [1, 1, 1]), sl = i => (b[i + 1][0] - b[i][0]) / (b[i + 1][1] - b[i][1]);
+  const bell = b.length === 8 && b[0][0] === .6 && b[0][1] === 0 && Math.abs(b[7][0] - .15) < 1e-9 && Math.abs(b[7][1] - .7) < 1e-9
+    && b.every((p, i) => !i || p[0] < b[i - 1][0] && p[1] > b[i - 1][1]) && Math.abs(Math.atan(-sl(0)) * 180 / Math.PI - 8) < 5 && Math.atan(-sl(6)) * 180 / Math.PI > 45;
+  const og = F.ogive(.625, 1.6, 1.25, [1], [0]), nose = og[0][0] === .625 && og[og.length - 1][0] < 1e-6 && og.every((p, i) => !i || p[0] <= og[i - 1][0]) && Math.abs(og[1][0] - .625) < .025;
+  const E = F.latheN([[.625, 0], [.625, 1], [.3, 1.4], [0, 1.5]]), Ec = F.latheN(og);
+  const smooth = E[0][1][0] === 1 && E[1][0][1] > .5 && Ec[2][1][0] === Ec[3][0][0] && Ec[5] === null && Ec[4][1][0] === Ec[6][0][0];   // shoulder hard; ogive and its colour band smooth
+  const geo = /lathe\(out,BELL_FX&&RB&&ti===1\?raoBell\(/.test(pg) && /case'cone':lathe\(out,OGIVE_FX\?ogive\(/.test(pg);
+  const fs = pg.slice(pg.indexOf('const MESH_FS=`'), pg.indexOf('`;', pg.indexOf('const MESH_FS=`')));
+  const shader = /amb=mix\(uSky,uGnd,wp\)/.test(fs) && /uLimb\*exp\(-lb\*lb\*4\.\)/.test(fs) && /gl\.uniform4fv\(m\.uDsk,E\.dsk\)/.test(H) && /gl\.uniform4fv\(m\.uDsk,\[1,0,\.2,0\]\)/.test(H);
+  const SM = new Function(src + 'return {TELLUS,SUN_DIR,norm,len,dot,madd,clamp}')();
+  const L = new Function('airlessFill', 'TELLUS', 'norm', 'len', 'dot', 'madd', 'clamp', 'SUN', 'PLANET_FX', body('diskOf') + body('lightEnv') + ';return lightEnv')(
+    () => null, SM.TELLUS, SM.norm, SM.len, SM.dot, SM.madd, SM.clamp, SM.SUN_DIR, true);
+  const Lo = new Function('airlessFill', 'TELLUS', 'norm', 'len', 'dot', 'madd', 'clamp', 'SUN', 'PLANET_FX', body('diskOf') + body('lightEnv') + ';return lightEnv')(
+    () => null, SM.TELLUS, SM.norm, SM.len, SM.dot, SM.madd, SM.clamp, SM.SUN_DIR, false);
+  const at = h => SM.norm([SM.SUN_DIR[0] + .3, SM.SUN_DIR[1], SM.SUN_DIR[2] + .3]).map(x => x * (SM.TELLUS.R + h));
+  const pad = L(at(2)), padO = Lo(at(2)), leo = L(at(200e3)), far = L(at(4e6));
+  const light = Math.abs(pad.gnd[0] - padO.gnd[0]) < .01 && pad.dsk[0] > .99 && leo.gnd[2] > leo.gnd[0] && leo.dsk[0] < .9 && far.dsk[0] < leo.dsk[0] && leo.limb[2] > 0 && pad.limb[2] < .01;
+  check('craft quick wins: Rao bells (steep at the throat, θe at the lip), tangent ogive nose, smooth profile normals with hard edges; the planet as a disc of light (the pad unchanged, blue-white and smaller from orbit)',
+    bell && nose && smooth && geo && shader && light, `bell ${bell} · nose ${nose} · normals ${smooth} · geometry ${geo} · shader ${shader} · light ${light} (pad gnd ${pad.gnd[0].toFixed(3)} vs ${padO.gnd[0].toFixed(3)}, LEO ${leo.gnd.map(x => x.toFixed(3))} disc ${leo.dsk[0].toFixed(3)})`);
 }

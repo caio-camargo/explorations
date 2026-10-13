@@ -1340,3 +1340,83 @@ could only catch near-white. Now the frame is light, and the camera is one place
   Low on the iGPU (Low now pays a float target and the composite) and the map view's lines.
 - **Checks:** test `aerofx-10` (no shader tone-maps itself; the RGBA16F target on both settings; one composite with
   AgX, the LUT, exposure and grain; the exposure read back without a stall; map lines and `bare()`). TESTING 219.
+
+## v1.149 — re-entry: the hull glows, the plasma in HDR (2026-10-12, effects beat, QUEUE Q318; BEAUTY B4.1–4.2)
+- **What drives the glow: the skin, not the part.** A headless study (three entries, scratch, 2026-10-12) found the
+  sim's `p.T` never gets near glowing: it is the part's bulk, a lumped thermal mass. Peaks: a heat shield 700 K (Selene
+  return), a bare pod 922 K (low orbit); a blackbody is invisible below ~1,000 K. Real shield *surfaces* run 1,500–2,800 K.
+  So the glow follows the plasma's heat level k (`plasmaHeat`'s scale: about 1 at the peak of a low-orbit return, 1.5
+  coming back from Selene, above 0.05 for 340–380 s of a low-orbit return and 95 s of a lunar one). A new mark,
+  **`hot`**, holds the windward skin's surface temperature, `wallT(k) = 700 + 1000·k` K (290 K without plasma). It heats
+  over ~2 s and cools over ~6 s (`hotTo`), on the ship (`marksTick`) and on falling stages (`debrisHeat` keeps `g.k`).
+  The plasma's k also feeds the char direction `cd`, so a part whose bulk stays cool still knows its windward side.
+- **The shader** (`MESH_FS`, the marks block): `uHt[24]` = four parts' `hot` per vec4. The local temperature is `hot`
+  on the face meeting the flow, half of it on the sides (`dot(vNo, cd)`), ±5 % noise streaked like the char. Emission
+  is a blackbody in the scene's units: 1 = 8,150 cd/m², because the sun in space is 5 and sunlit white paint ≈ 4. Per
+  channel it is a Wien fit to Planck → CIE → linear sRGB, `exp(a − x/T)` (a = 16.46, 17.03, 20.83; x = 23,014, 26,819,
+  41,004 K), within 1 % (r) and 10 % (g) over 1,000–2,800 K. Blue is loose but tiny below 2,000 K. ×0.85 emissivity.
+  It is steep, as the physics is: 1,000 K is 3e-4 (nothing), 1,200 K 0.015 (a dull red only the night shows), 1,700 K
+  5.5 (out-glows sunlit paint, orange), 2,200 K 150 (yellow-white, blooms). It costs one exp per pixel on hot parts only.
+- **The plasma's colours** (`PLASMA_FS`): `core(k)` at the stagnation point, orange at low k turning white-yellow; `edge(k)`
+  off the hull, rose turning lavender as it heats (Orion's and Dragon's footage); the wake leaves the hull in the
+  ablator's orange and turns rose to lavender within 0.3 of its length. Brightness: the sheath ×7 (was 3) and the wake
+  ×0.5 (was 0.35), `PLASMA_SH`/`PLASMA_WK`, so a lunar return's sheath blooms against the day. `plasmaLight` takes
+  `core(k)`'s colour.
+- **The reference views heat the skin:** the entry views (40–47) fly the descent with `advPhys` and freeze the clock, so
+  `marksTick` never ran (the skin sat at 202 K). They now run four 5 s mark ticks before the shot.
+- **What you see:** shield-first and seen from upstream, the shield is a white-yellow disc in a bloom. From the side the
+  sheath is warm at the hull and the trail lavender. Nose-first at 35° (view 44), the windward flank glows orange. In
+  view 45, at ~50° to the flow, the shield sits on the lee side and stays dark, which is right. High up (view 103, k ≈ 0.3)
+  the trail is rose where it was orange.
+- **Stills and cost** (RTX 3050): `output/launchpad/beauty/q318/`, with the before/after sheets `cmp_*.png` (views 40, 44–47,
+  103), `a2_grid.png`, the upstream shots `f46_grid.png`, and `prof-{before,after}-{high,low}.out`. Full-res frame 4.4–6.8 ms
+  either way; the ship pass 0.01–0.03 ms and the plasma 0.2–0.6 ms before and after (noise). Not tried on the iGPU.
+- **Checks:** test `aerofx-11` (wallT, the wiring, the blackbody's luminance and colour at 1,000/1,200/1,700/2,200 K, the
+  plasma's core colour). TESTING 231.
+
+## v1.150 — the craft's quick wins: bells, noses, smooth normals, the planet's light (2026-10-12, parts & pad beat, QUEUE Q315)
+
+BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plus the two places that set the mesh's light
+(`render.js`, `deskLight`). Drawing only: the sim's outlines (`PARTS[...].prof`, `fairProf`) are untouched.
+
+- **Smooth normals along the profile** (`latheN`, used by every `lathe`). Where two profile segments meet at under
+  `SMOOTH_DEG` (24°), the vertex normal is their average; above it the edge stays hard (a shoulder, a flange, a cap). A
+  duplicated point for a colour band doesn't break the curve. Every lathed part benefits: the gas bottle's domes, the
+  fairing's shell (its seven points already curve), the capsule. `SMOOTH_FX = false` for an A/B.
+- **Rao bells** (`raoBell`, in `engine`). The bell is a quadratic Bézier (a parabola) from the throat to the lip,
+  tangent at the lip at θe, through a control point at height f of the bell, so it opens steeply below the throat
+  (45–60°) and runs nearly straight at the exit. Per family `BELL_RAO` [f, θe°]: Wren [.55, 12], Sparrow [.6, 10],
+  Petrel [.72, 8] (the vacuum bell flares hardest), Kestrel [.6, 9], Condor [.62, 7]. 8 points; same exit radius and
+  throat as the part, so the plume, the gimbal (`setMoves`) and the bell's shader detail are unchanged. The colour and
+  material blend lip → throat as the two-point bell's did. `BELL_FX = false`: the cone.
+- **Ogive nose** (`ogive`, the `cone` part and `cone25`). A tangent ogive (tangent to the hull at its base, a point at
+  1.6 m), 8 points plus the scorched tip's colour band; within ~2 cm of the old faceted cone, so the outline reads the
+  same, only round. Only Beeper, Passenger Orbiter and the side boosters carry it; the capsules' cones are conical by
+  design. `OGIVE_FX = false`: the old cone.
+- **The planet as a disc of light** (`lightEnv` → `dsk`, `limb`; `diskOf`; `MESH_FS`). The ambient used to be a brown
+  hemisphere below the craft at every height (the "ground" in orbit). Now the body below is a disc: `uDsk` = (sin α,
+  cos α, the rim's width in the reflection) for its angular radius α, and its share of the light on a normal is
+  sin²α·cos θ, wrapped past the rim ((cos θ + sin α)/(1 + sin α), clamped). At the pad (α ≈ 90°) that is exactly the
+  old hemisphere, and the ground colour is the old one (test `aerofx-12`: 0.285 both). With height the colour blends,
+  with the air's own scale (22 km), into **Tellus from above**, blue-white [.2, .26, .36] × the lit share (from the
+  local sun at the pad to half the disc lit when it's small). In the hull's **reflection** the planet ends at its rim,
+  blurred by roughness (rough metal sees it past its rim), with a thin **blue limb** (`uLimb`). From LEO the disc
+  is 0.864 sin α, from 4,000 km 0.24. Near an airless body (`airlessFill`) the same disc in its grey. `PLANET_FX = false`
+  brings the old brown hemisphere back (A/B).
+- **Rough metal spreads the sun** (`c += sun·ndl·F0·metal·rough·0.6`). Found in the first after-shot: the Petrel's
+  bell in orbit nearly vanished. Metals get no diffuse light, so its exterior showed only what it reflected, and it had
+  been reflecting the brown hemisphere. Now it reflects black space and the planet below; the extra lobe keeps a sunlit
+  bell legible. On the pad this brightens sunlit metal slightly.
+- **Seen** (RTX 3050, High; `output/launchpad/beauty/q315-before/`, `q315-after/`, sheets in `q315-compare/`, before
+  left): the bells are bell-shaped at the pad (`bell-cape-3x.png`, view 114) and from below (view 10); in orbit the
+  shadow side takes a blue-white earthshine instead of brown, the Petrel bell reads (`orbit-3x.png`, `glow.png`, views
+  3 and 14). Pad, max-q and booster views (1, 54, 56, 77, 154) look the same apart from the bells.
+- **Measured** (RTX, full resolution, old code against new, back to back): pad 11.9 → 12.7 ms High, 11.3 → 11.4 Low;
+  orbit 3.9 → 4.4 / 4.9 → 4.5; the Cape view 12.5 → 12.9 / 12.5 → 12.4. Within the run-to-run noise (±1 ms on a busy
+  machine): no measurable cost, as BEAUTY § 5 expected. **Not measured: the iGPU** (low memory). Vertices: the bells
+  go from 2 profile points to 8 (32 around), the nose from 6 to 10, nothing else changes count.
+- **Not done:** self-shadowing, the surface pass and greebles are Q316; frost Q317. Picking (`hitPart`) and the shoulder
+  sampling for vapor (`app/gl.js` ~702, ~721) still read the sim's outline (`prof`): the drawn bell bulges a few cm past it.
+- **Checks:** test `aerofx-12` (the bell's shape and ends, the ogive, hard and smooth profile normals, the shader's disc
+  and its uniforms on both setters, the pad's light unchanged, blue and smaller from orbit); `look`'s airless-fill test
+  now builds `diskOf` too. TESTING 232.

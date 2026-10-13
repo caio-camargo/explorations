@@ -81,7 +81,7 @@ const deskFoot=()=>typeof BLD!=='undefined'&&BLD.foot?BLD.foot():S.yBot;
 function deskFrame(camW){const p=shipWorld(),f=deskFoot(),N=deskScaleFor(S.len+S.yBot-f);
   return{N,p,M:modelQ(S.q,sub(p,camW),[-S.cm[0],f,-S.cm[2]]),up:qrot(S.q,[0,1,0]),lamp:norm(qrot(S.q,[DESK_LAMP[0]-.05,DESK_LAMP[1],DESK_LAMP[2]-.02]))}}
 // the room's light: one warm lamp over the model, a dim warm room; everything is lit (no sun, no night)
-function deskLight(m,F){gl.uniform3fv(m.uSun,F.lamp);gl.uniform3fv(m.uSunCol,[2.5,2.15,1.65]);gl.uniform3fv(m.uSky,[.42,.38,.33]);gl.uniform3fv(m.uGnd,[.3,.22,.15]);gl.uniform3fv(m.uUp,F.up);
+function deskLight(m,F){gl.uniform3fv(m.uSun,F.lamp);gl.uniform3fv(m.uSunCol,[2.5,2.15,1.65]);gl.uniform3fv(m.uSky,[.42,.38,.33]);gl.uniform3fv(m.uGnd,[.3,.22,.15]);gl.uniform4fv(m.uDsk,[1,0,.2,0]);gl.uniform3fv(m.uLimb,[0,0,0]);gl.uniform3fv(m.uUp,F.up);
   if(m.uFlI)gl.uniform1f(m.uFlI,0)}
 function deskDraw(drawMesh,m,F){const D=deskMesh(F.N);drawMesh(D.desk,F.M,F.p);gl.uniform1f(m.uGlow,2.5);drawMesh(D.bulb,F.M,F.p);gl.uniform1f(m.uGlow,0)}
 // the model's shadow on the paper: the same projection the pad uses, onto the table plane, along the lamp

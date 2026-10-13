@@ -140,6 +140,7 @@ window.refView = async (n) => {
       Y = mul(va, Math.sign(sy) || 1), X = norm(cross(Y, norm(S.r))); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null }   // the shield's end upstream
     else if (aoa) { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), s = norm(cross(va, up)), a = aoa / 57.2958,
       Y = add(mul(va, -Math.cos(a)), mul(up, Math.sin(a))), X = norm(cross(Y, s)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null }
+    for (let k = 0; k < 4; k++) { markT = simT - 5; marksTick() }   // (Q318) the skin heats as it would have over the last 20 s of the descent
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return 'entry h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km v ' + len(S.v).toFixed(0) + ' q ' + (S.qHeat / 1000).toFixed(0) + ' kW/m2 alive ' + S.alive;
   }
