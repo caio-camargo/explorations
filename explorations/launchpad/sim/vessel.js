@@ -397,12 +397,12 @@ function dvPlan(s,pr){
   // a segment is ready to drop once its own tanks are empty (with crossfeed its engines would run on, on others' fuel)
   const segDry=k=>{const T=s.parts.filter((p,i)=>on[i]&&p.seg===k&&p.cap.fuel);return T.length?T.every(p=>fuel[p.i]<=1e-9):!s.parts.some((p,i)=>on[i]&&p.seg===k&&p.d.kind==='engine'&&ign[k]&&gF(grp[i])>1e-9)};
   if(s.evIdx===0&&!engs().length&&s.events[ev]&&s.events[ev].ignite.length&&!s.events[ev].decouple.length)fire();
-  let st={dv:0,burn:0,m0:mass(),twr:0},guard=0,first=true;
+  let st={dv:0,burn:0,m0:mass(),twr:0,ev},guard=0,first=true;   // ev: events fired when this step starts (Q342)
   const tw=()=>{const T=[0,0,0];for(const p of engs()){const d=tdirOf(p),f=engineMdot(p.d)*p.d.ispA*G0;T[0]+=f*d[0];T[1]+=f*d[1];T[2]+=f*d[2]}return len(T)/(mass()*G0)};st.twr=tw();
   while(guard++<400){
     const E=engs(),next=s.events[ev],dry=next&&next.decouple.length&&next.decouple.every(segDry);
     if(!E.length||dry){if(!next||next.chute)break;
-      if(st.dv>0.5||first){st.m1=mass();out.push(st)}first=false;fire();st={dv:0,burn:0,m0:mass(),twr:0};st.twr=tw();continue}
+      if(st.dv>0.5||first){st.m1=mass();out.push(st)}first=false;fire();st={dv:0,burn:0,m0:mass(),twr:0,ev};st.twr=tw();continue}
     // each flow group burns its lowest-rank tier of tanks; the step ends when the first tier empties (proportional draining
     // empties a whole tier at once), so the plan is exact piecewise — no time step
     const md={},Tv=[0,0,0];let M=0;for(const p of E){const g=grp[p.i],m=engineMdot(p.d),d=tdirOf(p),f=m*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0;md[g]=(md[g]||0)+m;M+=m;Tv[0]+=f*d[0];Tv[1]+=f*d[1];Tv[2]+=f*d[2]}
@@ -439,6 +439,9 @@ function trimOf(s){const on=s.parts.map(p=>p.on),ign=new Set();let worst=null,k=
     for(const q of E){const d=tdirOf(q),f=q.d.thrust*1000,r=sub(thrustPt(q),C);L=add(L,cross(r,mul(d,f)));F+=f;A+=f*Math.sin((q.d.gim||0)*Math.PI/180)*Math.abs(r[1])}
     const t=Math.hypot(L[0],L[2]),x={k,f:A>0?t/A:t>1?Infinity:0,miss:F?t/F:0,F};if(!worst||x.f>worst.f)worst=x}
   return worst}
+// what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
+function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='auth'?`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`:`it would go over in ${(1/a.lam).toFixed(2)} s, faster than the autopilot can catch it (a reaction wheel doesn't help)`}
+function airFix(a){return`Fins or steerable fins on it, or a bigger first stage so it separates in thinner air (or coast up before staging); separate pointing prograde.`}
 function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
     air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
     src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
@@ -450,6 +453,7 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
+  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} goes end over end when it lights in the air (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa on a standard ascent): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
   {const T=trimOf(s);if(T&&T.f>0.6)out.push(['warn',`Stage ${T.k} can't hold its course at full thrust: the thrust misses the centre of mass by ${(T.miss*100).toFixed(0)} cm (balance the other side, a counterweight, or deploy after the burn)`])}   // trim (Q337)
   // a payload fairing (Q337): what stands above its ring but isn't inside its outline meets the air
   for(const f of s.parts.filter(p=>p.profF)){const o=s.parts.filter(q=>q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<f.d.r+.5);
@@ -864,9 +868,9 @@ function partLost(s,p){const P=add(s.r,qrot(s.q,sub(partC(p),s.cm)));HOOK.boom(s
 function launchSegs(s){const e=s.events[0];return e&&!e.decouple.length?e.ignite:[]}
 // What-if analysis for the assembly screen: centre of pressure, stability margin, and joint loads at liftoff and
 // at max-q (trimmed, i.e. controls exactly cancel the aero torque — the worst steady case the pilot can hold).
-function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
+function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0,segs=null}){   // segs: the segments burning (a later stage's, Q342); default the launch's
   for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}geom(s);
-  const pr=Math.exp(-h/TELLUS.H),ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
+  const pr=Math.exp(-h/TELLUS.H),ls=segs||launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
   if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p),d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2])}
   let Fx=0,Lz=0,fin=0;
   if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];fin=finCols(s,vb,[0,0,0],rho).auth[2];   // pitch about z

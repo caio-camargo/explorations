@@ -1489,3 +1489,32 @@ Test `vehicle-12`. `--smoke` all pass.
   prograde control still flies 80 × 30 km. Whether Tellus's tide should tell the two apart is **Q344** (space).
 - Test `vehicle-20` (all four side boxes on a 1.25 m stack and on the frame inside a fairing; the frame's radius; the camera's
   height). TESTING 230.
+
+## v1.152 — later stages in the air: why the fairing satellite tumbles, and the builder saying so (2026-10-12, vehicle session, QUEUE Q342; PLAYTEST #82)
+
+- **What breaks:** nothing, at first. Measured (a satellite, core + battery + instruments + camera under a 3 m fairing, on the
+  Orbiter's launcher): the fairing's own joints carry 9% of their certified rating at 5° and max-q, 27% at 15°; flown, no joint
+  fails even tumbling. What happens is the **upper stage going end over end** right after separation: the small first stage
+  drops it at ~34 km and ~12.6 kPa, and the fairing up front puts its centre of pressure 1.5 calibers ahead of its centre of
+  mass (any pointed nose does this; a flat top, as the satellites had before, has no nose lift in the aero model, which is why
+  they flew so stable). Within 0.5 s it is 60° off its path. That is what Caio saw as "the craft tilts and the fairing snaps".
+- **Why steering doesn't save it**, flown: the stage is light (pitch inertia 2,800 kg·m² against 128,000 for the stack it came
+  off), so it diverges with a time constant of ~0.2 s at 10+ kPa, faster than SAS reacts; and holding the pitch program's
+  attitude it separates 6–11° off its path, where the shell's load beats one Petrel's 3° gimbal. A reaction wheel doesn't help
+  (its torque goes unused at that speed); three don't either. Clearing the SAS integral at staging doesn't help. The stock
+  **Beeper and Passenger Orbiter flip the same way** when flown through staging in attitude hold on the standard profile;
+  holding **prograde** from 20 km they don't (Q353).
+- **`airSep(stack)`** (`sim/flight.js`, in `analyze` as `ana.air`): where each fresh stage lights on a standard ascent (a point
+  mass on the procedures' pitch profile, with `dvPlan`'s steps, thrust from each step's vacuum and sea-level exhaust speeds by
+  pressure, and the ship's drag table: 34 km / 12.7 kPa against 33.9 / 12.6 flown), then that stage as it flies (dropped
+  parts gone, a fairing jettisoned before it gone) probed holding 5° at that q, burning. It **flips** if the steering is short
+  by more than 10%, or its divergence rate `√(dM/dα / I)` passes `LAM_MAX` 5.5/s; both thresholds from flying sixteen designs
+  (every case right: flips at ≥ 5.8/s or short; holds with steerable fins, a passive fin ring, a bigger first stage, each
+  separated prograde). A booster drop off a lit core isn't a fresh stage (Heavy, Asparagus). `dvPlan` steps now carry `ev`
+  (events fired when the step starts); `probe` takes `segs` (the burning segments).
+- **Builder:** the Control block has a **Stage N in the air** line: holds / flips, where it lights, why (the steering it needs
+  against what it has, or how fast it would go over), the centre of pressure ahead (and "the fairing up front"), and what
+  helps: fins or steerable fins on it, a bigger first stage (or coast up before staging), separating pointing prograde. An
+  unstable stage that holds gets the prograde advice. **Rollout:** the same as a warning. Every preset holds.
+- Test `vehicle-21` (the satellite flips, short of steering; with a wheel, too fast; steerable fins hold; no preset flagged;
+  Heavy's checked stage is its upper one; flown, the satellite tumbles 179° and with steerable fins stays within 2°). TESTING 234.

@@ -7,7 +7,8 @@
 // and DISPATCH (queued launches, ones that need you, the last results). It draws from netModel() (economy's, Q154) and the
 // registry, and changes nothing itself: its buttons are the Program's (data-fly, data-mc, data-devtake, data-devlose,
 // data-adv), so they do what they did there. Opens with the old Network screen's rule (netOpen: something of ours out there).
-let mcPage='track';   // the wall: 'track' (the ground track) or 'pads' (the pads' calendar)
+let mcPage='track';   // the wall: 'track' (the ground track), 'pads' (the pads' calendar) or 'net' (the network's nodes, Q170)
+const MC_PAGES=['track','pads','net'];
 const mcHM=d=>{const f=((d%1)+1)%1,m=Math.floor(f*1440);return`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`},   // a day as a 24-hour clock
   mcIn=d=>d<=0?'now':d<1?`${Math.max(1,Math.round(d*24))} h`:d<YEAR_D?`${Math.round(d)} d`:`${(d/YEAR_D).toFixed(1)} y`,
   mcLamp=(t,c='')=>`<span class="lg ${c}">${t}</span>`,
@@ -51,9 +52,9 @@ function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*
   $('mcPads').innerHTML=`<div class="k">Pads</div>`+(N.pads||[]).map(p=>{const b=p.bars.find(x=>x.kind==='dispatch')||p.bars[0],w=p.bars.find(x=>x.kind==='window');
       return`<div class="v">Pad ${p.pad+1} ${b?'<span class="warn">booked</span>':'<span class="ok">free</span>'}</div>`+(b?`<div class="s">${b.title.split(' · ')[0]}<br>${(w||b).to-D<=0?'launching now':`launch in ${mcIn((w||b).to-D)}`}${w?' (window)':''}</div>`:'')}).join('')
     +`<div class="k">Launch site</div><div class="s">${curSite().name}</div><div class="scan"></div>`;
-  $('mcWallTabs').innerHTML=[['track','Ground track · Tellus'],['pads',`Pads · next ${NET_DAYS} days`]].map(([k,l])=>`<button data-mcwall="${k}" class="${mcPage===k?'on':''}">${l}</button>`).join('')+'<span class="sp"></span><span class="dim">[W]</span>';
-  $('mcTrack').classList.toggle('hidden',mcPage!=='track');$('mcCal').classList.toggle('hidden',mcPage!=='pads');
-  if(mcPage==='pads')$('mcCal').innerHTML=netCalHTML(N);else mcTrackDraw();
+  $('mcWallTabs').innerHTML=[['track','Ground track · Tellus'],['pads',`Pads · next ${NET_DAYS} days`],['net','Network · nodes']].map(([k,l])=>`<button data-mcwall="${k}" class="${mcPage===k?'on':''}">${l}</button>`).join('')+'<span class="sp"></span><span class="dim">[W]</span>';
+  $('mcTrack').classList.toggle('hidden',mcPage!=='track');$('mcCal').classList.toggle('hidden',mcPage!=='pads');$('mcNet').classList.toggle('hidden',mcPage!=='net');
+  if(mcPage==='pads')$('mcCal').innerHTML=netCalHTML(N);else if(mcPage==='net')$('mcNet').innerHTML=netNodesHTML(N);else mcTrackDraw();
   // FLIGHT: the fleet, soonest first
   const F=(N.fleet||[]).slice().sort((a,b)=>(a.t??1e9)-(b.t??1e9)),dOf=id=>(PROG.dispatch||[]).find(x=>x.id===id);
   const fRow=f=>{const q=f.id!=null?sat(f.id):null,cr=q&&q.cruise?cruiseNext(q,T):null,x=f.dev!=null?dOf(f.dev):null,due=x&&mcDue(x);

@@ -82,6 +82,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.146 — the payload fairing: a shell that keeps the payload out of the air, dropped in two halves (2026-10-12, vehicle session, QUEUE Q337 part 1)
 - v1.147 — side antennas (whip, boom antenna), side boxes, the trim readout and thrust line (2026-10-12, vehicle session, QUEUE Q337 part 2)
 - v1.148 — side boxes fit the fairing (the side camera looks outward), a 0.3 m stack camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
+- v1.152 — later stages in the air: the fairing satellite's upper stage tumbles after separating; the builder and Rollout say so and what helps (2026-10-12, vehicle session, QUEUE Q342)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -241,6 +242,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.138 — a planned burn moved to the next contact (2026-10-12, flow session, QUEUE Q196)
 - v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
 - v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
+- v1.151 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
