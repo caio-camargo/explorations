@@ -986,7 +986,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15,frame:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0)+16384*(PK.up||0),PK.i)}   // the school (×32), the maker's hue (×256, 10° steps) and the upper-stage flag (×16384, Q228) ride in the kind (Q102)
@@ -1131,9 +1131,11 @@ function partBody(out,p){
       tube(out,add(c,[0,.68,0]),[x,y+.68,z],.008,C.ST,5,false)}break;
     case'les':lathe(out,[[.18,0,C.D],[.18,1.3,C.R],[.26,1.42,C.D],[.26,1.6,C.R],[.1,1.9,C.R],[0,2.1,C.D]],o);break;
     case'crew':case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
-    case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.ST],[.625,.44,C.ST],[.625,.44,C.D],[.625,.5,C.D]],o);
-      box(out,[x,y+.25,z+.6],.24,.17,.05,C.BK);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.78],.15,C.D,14,false);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.7],.11,C.GL,14,true);
-      box(out,[x,y+.25,z-.61],.17,.12,.03,C.G);break;
+    case'cam':lathe(out,[[.625,0,C.D],[.625,.04,C.D],[.625,.04,C.ST],[.625,.26,C.ST],[.625,.26,C.D],[.625,.3,C.D]],o);
+      box(out,[x,y+.15,z+.6],.18,.1,.05,C.BK);tube(out,[x,y+.15,z+.56],[x,y+.15,z+.72],.09,C.D,14,false);tube(out,[x,y+.15,z+.56],[x,y+.15,z+.67],.07,C.GL,14,true);
+      box(out,[x,y+.15,z-.61],.13,.08,.03,C.G);break;
+    // the octagonal frame (placeholder): eight foil-covered faces between dark end rings
+    case'oct':case'octl':lathe(out,[[.4,0,C.D],[.4,.04,C.D],[.4,.04,C.AU],[.4,h-.04,C.AU],[.4,h-.04,C.D],[.4,h,C.D]],o,8);break;
     case'ant':lathe(out,[[.625,0,C.D],[.625,.12,C.D],[.3,.3,C.W]],o);tube(out,[x,y+.3,z],[x,y+.62,z],.03,C.ST,8);
       {const pr=[];for(let i=0;i<=8;i++){const r=.3*i/8;pr.push([r,.62+r*r/.6,[.84,.85,.86]])}lathe(out,pr,[x,y,z],24,[false,false]);
        for(let k=0;k<3;k++){const t=k*2.094;tube(out,[x+.29*Math.cos(t),y+.76,z+.29*Math.sin(t)],[x,y+.79,z],.008,C.D,4)}tube(out,[x,y+.74,z],[x,y+.81,z],.03,C.D,8,true);
@@ -1170,12 +1172,14 @@ function partBody(out,p){
     // side antennas (vehicle, Q337; placeholders for look & sound): a whip on a small foot; a boom antenna as a folded
     // canister on the skin, or out: a thin boom from the side, a little rising, with its element at the tip
     // the side boxes (Q337; placeholders): a box standing off the skin on two struts, each with its tell (a lens, louvers, cells' cover, a vent grille)
-    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],t=[-n[2],0,n[0]],w=d.r,P=(r,yy,s=0)=>[x+n[0]*r+t[0]*s,y+yy,z+n[2]*r+t[2]*s];
-      const col=d.key==='scam'?C.W:d.key==='ssci'?C.AU:d.key==='sbatt'?C.D:C.G;for(const yy of[.08,h-.08])tube(out,P(0,yy),P(.06,yy),.015,C.ST,5);
-      rbox(out,P(.06+w*.7,h/2),w*.7,h/2,w*.8,col,a);
-      if(d.key==='scam'){lathe(out,[[.06,0,C.D],[.06,.08,C.D],[.045,.08,C.GL]],P(.06+w*.7,h-.02),12)}
-      else if(d.key==='ssci')for(let k=0;k<4;k++)rbox(out,P(.06+w*1.41,.08+k*(h-.16)/3),.006,.02,w*.6,C.ST,a);
-      else if(d.key==='scomp')for(let k=0;k<3;k++)rbox(out,P(.06+w*1.41,h*.3+k*.06),.006,.012,w*.5,C.BK,a)}break;
+    // within off + r of the skin, so they fit a fairing; the camera's lens looks outward
+    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];
+      const D=(d.off||0)+d.r,W=d.w||d.r,b1=D-(d.key==='scam'?.03:.006),col=d.key==='scam'?C.W:d.key==='ssci'?C.AU:d.key==='sbatt'?C.D:C.G;
+      for(const yy of[.08,h-.08])tube(out,P(0,yy),P(.02,yy),.012,C.ST,5);
+      rbox(out,P((.02+b1)/2,h/2),(b1-.02)/2,h/2,W,col,a);
+      if(d.key==='scam'){tube(out,P(b1-.005,h*.6),P(D,h*.6),.05,C.D,12,false);tube(out,P(b1,h*.6),P(D-.004,h*.6),.038,C.GL,12,true)}
+      else if(d.key==='ssci')for(let k=0;k<4;k++)rbox(out,P(b1+.003,.08+k*(h-.16)/3),.003,.02,W*.75,C.ST,a);
+      else if(d.key==='scomp')for(let k=0;k<3;k++)rbox(out,P(b1+.003,h*.3+k*.06),.003,.012,W*.6,C.BK,a)}break;
     case'whip':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.04,y,z+n[2]*.04];rbox(out,[c[0],y+.04,c[2]],.03,.04,.03,C.D,a);tube(out,[c[0],y+.08,c[2]],[c[0]+n[0]*.02,y+h+.5,c[2]+n[2]*.02],.008,C.ST,6)}break;
     case'bant':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];rbox(out,P(.06,h/2),.05,h/2,.06,C.D,a);
       if(p.dep){const L=d.span,t=P(.1+L,h*.6+L*.18);tube(out,P(.1,h*.6),t,.012,C.ST,6);tube(out,P(.1+L*.5,h*.6+L*.09),P(.1+L*.5,h*.6+L*.09+.01),.02,C.ST,6);rbox(out,t,.04,.04,.12,C.W,a)}

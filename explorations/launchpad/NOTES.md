@@ -81,6 +81,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.145 — deploy in the Assembly: legs, solar wings and bay doors roll out as left (2026-10-12, vehicle session, QUEUE Q328; PLAYTEST #79)
 - v1.146 — the payload fairing: a shell that keeps the payload out of the air, dropped in two halves (2026-10-12, vehicle session, QUEUE Q337 part 1)
 - v1.147 — side antennas (whip, boom antenna), side boxes, the trim readout and thrust line (2026-10-12, vehicle session, QUEUE Q337 part 2)
+- v1.148 — side boxes fit the fairing (the side camera looks outward), a 0.3 m stack camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

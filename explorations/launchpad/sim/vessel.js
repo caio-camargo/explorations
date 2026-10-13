@@ -29,6 +29,10 @@ const PARTS={
   // halves. The shell weighs fm tonnes a metre and goes with it. It bulges wider than the stack it sits on (r against the
   // ring's foot rb), so parts as wide as the stack fit inside.
   fair:{name:'Payload fairing',kind:'fair',m:0.04,h:0.2,r:0.8,rb:0.625,fm:0.035,fls:[2,3,4,5,6],fl0:3,C:2500,T:1200,B:450,prof:[[.625,0],[.8,.2]]},
+  // octagonal frame (vehicle, Caio's testing 2026-10-12): a narrow bus, 0.8 m across, to build a satellite round; side parts
+  // sit on its faces, and what stacks on it rests on a joint of its radius
+  oct:{name:'Octagonal frame',kind:'frame',m:0.04,h:0.5,r:0.4,C:1500,T:800,B:250},
+  octl:{name:'Octagonal frame, long',kind:'frame',m:0.07,h:1.0,r:0.4,C:1500,T:800,B:250},
   adapt:{name:'Adapter 2.5 → 1.25 m',kind:'adapt',m:0.4,h:1.5,r:1.25,C:2500,T:1200,B:450,prof:[[1.25,0],[1.25,.15],[.625,1.35],[.625,1.5]]},
   // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
   rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
@@ -95,16 +99,17 @@ const PARTS={
   bio:{name:'Biocapsule',kind:'bio',m:0.45,h:1.0,cm:.4,C:900,T:600,B:200,prof:[[.625,0],[.625,.08],[.42,.85],[.3,.88],[.3,1.0]]},
   ballast:{name:'Mass simulator 0.5 t',kind:'ballast',m:0.5,h:0.5,C:2500,T:1200,B:450},
   // satellite kit: a camera (≈10 µrad, so ~2 m from 200 km) and an antenna to send pictures down. Left in orbit, they keep working.
-  cam:{name:'Imaging camera',kind:'cam',m:0.12,h:0.5,C:900,T:600,B:200},
+  cam:{name:'Imaging camera',kind:'cam',m:0.12,h:0.3,C:900,T:600,B:200},
   ant:{name:'Cone antenna (early whip)',kind:'ant',m:0.04,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.12],[.3,.3]]},
   // antennas on the side (vehicle, Q337; PROBES § 3.2): the whip survives the air at whip gain; the boom antenna rides
   // folded (fold: P unfolds it with the solar wings), gives `gain` × the whip once out, and tears off above qMax while out
   // side forms of the small boxes (vehicle, Q337; PROBES § 3.1): the same numbers as the stack slices, on the skin: they
-  // save stack height and move the centre of mass. kin: the part whose know-how, certification and production line they share
-  scam:{kin:'cam',name:'Imaging camera (side)',kind:'cam',surf:true,noAero:true,m:0.12,h:0.45,r:0.14,off:0.14,C:900,T:600,B:200},
-  ssci:{kin:'sci',name:'Instrument package (side)',kind:'sci',surf:true,noAero:true,m:0.08,h:0.4,r:0.15,off:0.15,C:900,T:600,B:200},
-  sbatt:{kin:'batt',name:'Battery 1 kWh (side)',kind:'batt',surf:true,noAero:true,m:0.02,h:0.3,r:0.1,off:0.1,kWh:1,C:900,T:600,B:200},
-  scomp:{kin:'ocomp',name:'Onboard computer (side)',kind:'comp',surf:true,noAero:true,m:0.03,h:0.3,r:0.12,off:0.12,W:50,era:2,C:900,T:600,B:200},
+  // save stack height and move the centre of mass. kin: the part whose know-how, certification and production line they share.
+  // off + r (how far they stand out) stays within a payload fairing's bulge over a 1.25 m stack; w: half their width round it
+  scam:{kin:'cam',name:'Imaging camera (side)',kind:'cam',surf:true,noAero:true,m:0.12,h:0.45,r:0.07,off:0.07,w:0.13,C:900,T:600,B:200},
+  ssci:{kin:'sci',name:'Instrument package (side)',kind:'sci',surf:true,noAero:true,m:0.08,h:0.4,r:0.07,off:0.07,w:0.15,C:900,T:600,B:200},
+  sbatt:{kin:'batt',name:'Battery 1 kWh (side)',kind:'batt',surf:true,noAero:true,m:0.02,h:0.3,r:0.05,off:0.05,w:0.1,kWh:1,C:900,T:600,B:200},
+  scomp:{kin:'ocomp',name:'Onboard computer (side)',kind:'comp',surf:true,noAero:true,m:0.03,h:0.3,r:0.06,off:0.06,w:0.1,W:50,era:2,C:900,T:600,B:200},
   whip:{kin:'ant',name:'Whip antenna',kind:'ant',surf:true,noAero:true,m:0.01,h:0.5,r:0.03,off:0.03,C:900,T:600,B:200},
   bant:{name:'Boom antenna',kind:'ant',fold:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.07,off:0.07,gain:5,span:3,qMax:1500,C:900,T:600,S:150,B:60},
   condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,gim:4,gimR:8,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
