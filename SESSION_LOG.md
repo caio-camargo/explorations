@@ -5773,3 +5773,22 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/title.js` (new), `app/screens.js`, `app/program-ui.js`, `app/editor.js`, `index.html`, `tests/flow.mjs`,
   `tests/core.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next for flow:** Q261 (map layer toggles), Q262 (map focus); R5 after vehicle's Q237/Q238.
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session, continued): Q347 v1.160, Q348 v1.164
+
+- **v1.160, Q347 (PLAYTEST #84):** with four boosters on the core's engine, the joint that snaps is the decoupler under the
+  upper stage's Petrel, at ~76 kPa. The builder's max-q case was a fixed 25 kPa. New `ascentEst` (`airSep`'s point-mass
+  ascent, now keeping the peak; the Orbiter comes out at 34 against 33.2 kPa flown) sets the max-q case at the rocket's own
+  peak. `jointFix` names what helps (an interstage, which halves it; reinforcing; less thrust low down), from 70% in the
+  builder and in the Rollout. Test `vehicle-22`.
+- **v1.164, Q348 (PLAYTEST #85):** fins have a size option, 0.9 / 1.35 / 2 m (`finDef`). Flown: big fins on the upper stage fix
+  the Q342 flip but push the whole rocket over at max-q unless stage 1 gets big fins low down too. `airSep` is recalibrated
+  on every flight so far (steering short beyond 1.5×; divergence rate × gimbal swing time beyond 1.7) and checks stage 1 at
+  max-q. Test `vehicle-23`; `vehicle-4` updated (the Hopper now also warns).
+- **Found:** the **Hopper preset flips at max-q** in flight (Q371, Caio's call: retune it or keep it as a lesson).
+- **Tests:** the full suite passed for v1.164 apart from `vehicle-4`, whose expectation I updated (it now passes). v1.160
+  passed the full suite.
+- **Files:** `explorations/launchpad/sim/flight.js`, `sim/vessel.js`, `sim/program.js`, `app/editor.js`, `app/rollout.js`,
+  `builder.js`, `test.mjs`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (242, 246), `PLAYTEST.md`
+  (#84, #85 done), `QUEUE.md` (Q347 ✓, Q348 ✓, Q371), `ACTIVE_WORK.md`.
+- **Next for vehicle:** Q371 if Caio wants it retuned; Q329 (action groups), Q341 (folding boom), Q338 (pointing).
