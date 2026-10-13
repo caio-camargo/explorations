@@ -605,3 +605,28 @@
     `up: [${up}]; ${[low, sank, slot].map(L).join('; ')}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// econ-27. Recovering a spent stage (economy session 2, QUEUE Q332, from Q300 v1.142): a stage with chutes coming down at
+// sea has its fate judged at the drop (it floats or not, for how long), so it survives the stage leaving the scene; the
+// ships fetch it if it is still afloat when they arrive, and it is refurbished like a vessel. Own SIM copy.
+{
+  const G = new Function(src + 'return {PRESETS,TELLUS,PROG,HOOK,newShip,geom,stage,seaAt,bodyH,fromPF,surfVel,stepDebris,debris,dropVerdict,dropRecord,stageRecover,RECOVER_LOCAL,setT:t=>{simT=t},getT:()=>simT,DT};')();
+  const T = G.TELLUS, P = G.PROG, got = [], news = []; G.HOOK.msg = () => {}; G.HOOK.boom = () => {}; G.HOOK.rebuild = () => {}; G.HOOK.debris = d => got.push(d); G.HOOK.news = t => news.push(t);
+  let a = 0; const at = x => norm([Math.cos(x), 0.05, Math.sin(x)]); while (!(T.ground.sea - G.bodyH(T, mul(at(a), T.R)) > 200 && G.dropVerdict(T, mul(at(a), T.R)).kind === 'sea')) a += 0.002;
+  const open = at(a), pf = mul(open, T.R);
+  G.setT(0); const s = G.newShip(G.PRESETS.Orbiter); for (const p of s.parts) if (p.on && p.res.fuel != null) p.res.fuel = 0; G.geom(s); G.stage(s); G.stage(s);
+  const d0 = got.find(d => d.parts.some(p => p.d.kind === 'tank')), mk = n => ({ ...d0, chutes: n, impact: { b: T, pf }, verdict: G.dropVerdict(T, pf) });
+  const bare = G.dropRecord(mk(0)), one = G.dropRecord(mk(1));
+  // the live fall (as sea-2): the same stage under one chute, stepped down to the water; debAfloat rewrites its record
+  const live = mk(1), r0 = G.fromPF(T, mul(open, T.R + 3000), 0); Object.assign(live, { r: r0, v: add(G.surfVel(T, r0), mul(norm(r0), -120)), w: [0.3, 0.1, 0.2], t: 0, chA: 0, float: null, dead: false, mesh: null });
+  G.dropRecord(live); const pre = live.drop.sea; G.debris.length = 0; G.debris.push(live);
+  for (let t = 0; t < 1500 && G.debris.length && !live.float; t += G.DT) { G.stepDebris(G.DT); G.setT(G.getT() + G.DT); }
+  const post = live.drop.sea;
+  Object.assign(P, { funds: 100, led: {}, fac: {} });
+  const near = { launchPf: pf, drops: [{ ...one }] }, far = { launchPf: mul(at(a + 0.6), T.R), drops: [{ ...one }] }, nochute = { launchPf: pf, drops: [{ ...bare }] };
+  const f0 = P.funds; G.stageRecover(near); const back = P.funds - f0; G.stageRecover(far); G.stageRecover(nochute); const after = P.funds - f0;
+  check('stage recovery: a chuted stage at sea is judged afloat at the drop (the same as when it comes down in view), fetched by local ships and refurbished; one beyond their reach is lost; a bare one is left to the fleet',
+    !bare.sea && one.sea && one.sea.fate === 'afloat' && one.sea.sp < 14 && post && post.fate === 'afloat' && Math.abs(post.afloat - one.sea.afloat) < 0.25 * one.sea.afloat &&
+      back > 0 && near.drops[0].fate === 'recovered' && Math.abs(P.led.stages - back) < 1e-9 && far.drops[0].fate === 'beyond our ships' && Math.abs(after - back) < 1e-9 && !nochute.drops[0].fate,
+    `predicted ${one.sea && one.sea.sp.toFixed(1)} m/s, afloat ${(one.sea.afloat / 3600).toFixed(1)} h; in view ${post && post.sp.toFixed(1)} m/s, ${post && (post.afloat / 3600).toFixed(1)} h; refurbished +${back.toFixed(2)}M; ${news.join(' | ')}`);
+}

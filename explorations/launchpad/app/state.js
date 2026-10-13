@@ -119,7 +119,7 @@ HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/
   for(let i=0;i<30+20*k;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=(15+45*R())*k;fxPuff(r,add(v0,mul(u,sp)),{s0:.08+.08*R()*k,grow:0,a0:.9,life:.3+.9*R(),hot:1.8})}};
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
 HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);sepFx(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
-  if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,{...d.verdict,pf:d.impact.pf,parts:d.parts});d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
+  if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,dropRecord(d));d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
 // (Q294, PLAYTEST #75) a structural failure, at the broken joint (p's base): a crack of sparks and dark shards; a tank on
 // either side breaks open and vents its propellant as a white plume until it is gone (VENTS, ventTick); a tank that
 // still holds over a fifth of its load, in air, bursts into a fireball sized by what it holds. Render-side: the sim keeps
