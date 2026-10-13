@@ -1518,3 +1518,15 @@ Test `vehicle-12`. `--smoke` all pass.
   unstable stage that holds gets the prograde advice. **Rollout:** the same as a warning. Every preset holds.
 - Test `vehicle-21` (the satellite flips, short of steering; with a wheel, too fast; steerable fins hold; no preset flagged;
   Heavy's checked stage is its upper one; flown, the satellite tumbles 179° and with steerable fins stays within 2°). TESTING 234.
+
+## v1.157 — the rocket stands on the pad outside the Assembly (2026-10-13, vehicle session, QUEUE Q346; PLAYTEST #83)
+
+- **The bug:** the builder places the ship `LIFT` (3 m) plus `gap` above the pad, VAB-style, so parts can go under it; that
+  placement (`changed()` in `builder.js`) ran whatever the screen, so the Rollout and the Program's backdrop showed the rocket
+  hanging 3 m up, and Launch (a fresh ship, landed) dropped it to the pad. Measured on the Orbiter preset: Rollout 3.00 m
+  before, 0.00 after. Not Q327's doing (a preset with no gap hung the same 3 m); Q327 only made a mid-air part's extra height
+  show too.
+- **The fix:** the hang only on the Assembly (`screenNow()==='assembly'`); everywhere else it stands on the pad. Entering the
+  Rollout rebuilds the ship (`editorChanged`, `app/screens.js`), and so does entering the Program with a design (was: only
+  after a flight). Assembly → Rollout → Assembly → Program → Assembly: 3.00, 0.00, 3.00, 0.00, 3.00 m.
+- UI only, so no `test.mjs` section (the flow and platform sections pass). TESTING 239.
