@@ -20,7 +20,7 @@ uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
-uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
+uniform sampler2D uCov,uShd;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
@@ -294,14 +294,16 @@ vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos
  float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);   // camera-fixed spikes (a lens artefact)
  return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);}
 `}float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
-// the cloud volume's own shadow on the ground (QUEUE Q65): 5 steps toward the sun through the 2–5.5 km slab, the volume's
-// extinction (1/180 m⁻¹), floor 0.25 for skylight; blended into the shell's shadow by uVk and a fade at the bake's edge,
-// so the shadows under the deck match the clouds drawn above them. uVs = 0 turns it off (A/B).
+// the cloud volume's own shadow on the ground (QUEUE Q65): the light through the 2–5.5 km slab toward the sun (the
+// volume's extinction 1/180 m⁻¹, floor 0.25 for skylight); blended into the shell's shadow by uVk and a fade at the bake's
+// edge, so the shadows under the deck match the clouds drawn above them. uVs = 0 turns it off (A/B). (Q379) The march
+// toward the sun (5 cloudDens per ground pixel, 1.4 ms of the pad's sky pass, Q326) is baked: uShd holds it from the
+// slab's base (SHD_FS, on uCov's grid), and a ground point reads it where its sun ray reaches 2 km (exact below 2 km).
 float cloudShadowV(vec3 p){float sh=cloudShadow(p);if(uVk*uVs<=0.)return sh;vec3 cu=uProt*normalize(p);float g=dot(cu,uCv0);
  vec2 uv=uPR*vec2(dot(cu,uCvE),dot(cu,uCvN))/(g*uCvX)*.5+.5;float e=max(abs(uv.x-.5),abs(uv.y-.5)),w=uVk*uVs*(1.-smoothstep(.36,.47,e))*step(0.,g);
- float s=dot(normalize(p),uSun);if(w<=0.||s<=.02)return sh;float hg=length(p)-uPR,t0=max(2000.-hg,0.)/s,t1=min((5500.-hg)/s,t0+30000.),dt=(t1-t0)/5.,od=0.;
- for(int i=0;i<5;i++)od+=cloudDens(p+uSun*(t0+(float(i)+.5)*dt));
- return mix(sh,max(exp(-od*dt/180.),.25),w);}
+ float s=dot(normalize(p),uSun);if(w<=0.||s<=.02)return sh;vec3 qu=uProt*normalize(p+uSun*max(2000.-(length(p)-uPR),0.)/s);
+ vec2 uq=uPR*vec2(dot(qu,uCvE),dot(qu,uCvN))/(dot(qu,uCv0)*uCvX)*.5+.5;
+ return mix(sh,texture(uShd,uq).r,w);}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
@@ -1552,6 +1554,28 @@ function covBake(camW){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin
   const e=norm(cross([0,1,0],c0)),n=cross(c0,e);Object.assign(COV,{c0,e,n,ct});
   const u2=PCOV.u;gl.useProgram(PCOV.p);gl.bindFramebuffer(gl.FRAMEBUFFER,COV.fb);gl.viewport(0,0,COV.n0,COV.n0);gl.disable(gl.DEPTH_TEST);
   gl.uniform1f(u2.uCT,ct);gl.uniform1f(u2.uPR,TELLUS.R);gl.uniform1f(u2.uCvX,COV.ext);gl.uniform3fv(u2.uCv0,c0);gl.uniform3fv(u2.uCvE,e);gl.uniform3fv(u2.uCvN,n);
+  gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.enable(gl.DEPTH_TEST)}
+// (Q379) the volume's shadow baked on the coverage's grid: each texel is the light reaching the slab's base (2 km) through
+// the slab toward the sun (5 steps, as cloudShadowV marched per pixel before). Planet-fixed (uProt = I, the sun turned
+// into the planet's frame). Re-baked with the coverage, or when the sun has turned 0.1° over the ground
+const SHD_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
+void main(){vec2 xy=vNdc*uCvX;vec3 u=normalize(uCv0+(xy.x*uCvE+xy.y*uCvN)/uPR);float s=dot(u,uSun);if(s<=.02){o=vec4(1.);return;}
+ vec3 P=u*(uPR+2000.);float dt=min(3500./s,30000.)/5.,od=0.;
+ for(int i=0;i<5;i++)od+=cloudDens(P+uSun*(float(i)+.5)*dt);
+ o=vec4(max(exp(-od*dt/180.),.25),0.,0.,1.);}`;
+const PSHD=mkProg(QUAD_VS,SHD_FS);
+const SHD={tex:null,fb:null,key:''};
+function shdBake(){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th),sp=[c*SUN[0]-s*SUN[2],SUN[1],s*SUN[0]+c*SUN[2]],
+    key=[COV.ct,...COV.c0,CLOUD_VARY?1:0].join(',');
+  if(SHD.tex&&SHD.key===key&&dot(sp,SHD.sp)>Math.cos(.0017))return;
+  if(!SHD.tex){SHD.tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,SHD.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,COV.n0,COV.n0,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    SHD.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,SHD.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,SHD.tex,0)}
+  SHD.key=key;SHD.sp=sp;const u=PSHD.u;gl.useProgram(PSHD.p);gl.bindFramebuffer(gl.FRAMEBUFFER,SHD.fb);gl.viewport(0,0,COV.n0,COV.n0);gl.disable(gl.DEPTH_TEST);
+  gl.uniformMatrix3fv(u.uProt,false,[1,0,0,0,1,0,0,0,1]);gl.uniform3fv(u.uSun,sp);gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uCT,COV.ct);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);
+  gl.uniform1f(u.uCvX,COV.ext);gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);
+  gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
   gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.enable(gl.DEPTH_TEST)}
 let BLOOM=true;   // false: no glow (Low; A/B). The frame still goes through the HDR target and the composite (Q314)
 const HDR_RT=!!gl.getExtension('EXT_color_buffer_float');   // RGBA16F targets; without it, RGBA8 (light above 1 clips)

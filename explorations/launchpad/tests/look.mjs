@@ -160,8 +160,9 @@
   }
   // QUEUE Q65: the ground under the cloud volume takes the volume's own shadow (cloudShadowV, blended by uVk and the bake's
   // edge), with its A/B uniforms uploaded; the deck's variety is behind its own toggle
-  check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
-    pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
+  // (Q379: the march toward the sun is baked, SHD_FS; cloudShadowV reads it)
+  check('cloud volume shadows: the ground shading uses cloudShadowV, from cloudDens marched toward the sun (baked, Q379); toggles wired',
+    pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(P\+uSun\*/.test(pg) && /texture\(uShd,uq\)/.test(pg)
       && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);') && pg.includes('gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
   // QUEUE Q66: per-engine voices. Smaller nozzles sing higher; voices go by kind of engine (two Kestrels are one voice), the
   // biggest thrust shares first, at most four; nothing when nothing burns; equal shares sum to the airborne level in power
@@ -778,4 +779,17 @@
   const w100 = 1e5 * 2 * Math.tan(0.5) / 800 / 3.48e5, left100 = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w100 * f < 0.6).length;
   check('Selene drawn by the moon pass, filtered by footprint, with lunar photometry and earthshine (views 164–168)', out && pass && photo && left === 0 && left100 >= 4 && /if \(n >= 164 && n <= 168\)/.test(vj),
     `out of SKY_FS ${out} · pass ${pass} · photometry ${photo} · crater octaves from low orbit ${left}, from 100 km ${left100}`);
+}
+
+// aerofx-31. The volume cloud shadow baked (look & sound sky & bodies beat, QUEUE Q379, Q326's measurement): cloudShadowV
+// no longer marches 5 cloudDens toward the sun per ground pixel; SHD_FS bakes the light through the slab from its base
+// (2 km) on the coverage's grid, re-baked with the coverage or when the sun has turned 0.1° over the ground, and a ground
+// point reads it where its sun ray reaches 2 km. (The pad's sky pass ~0.9 ms faster; the shadows match.)
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const f = pg.slice(pg.indexOf('float cloudShadowV('), pg.indexOf('void main(){', pg.indexOf('float cloudShadowV(')));
+  const look = !/cloudDens\(/.test(f) && /texture\(uShd,uq\)\.r/.test(f) && /max\(2000\.-\(length\(p\)-uPR\),0\.\)\/s/.test(f);
+  const bake = /const SHD_FS=/.test(pg) && /od\+=cloudDens\(P\+uSun\*\(float\(i\)\+\.5\)\*dt\)/.test(pg) && /dot\(sp,SHD\.sp\)>Math\.cos\(\.0017\)/.test(pg)
+    && /if\(VK>0\)\{covBake\(camW\);shdBake\(\)\}/.test(pg) && /gl\.uniform1i\(u\.uShd,14\)/.test(pg);
+  check('volume cloud shadow: baked once on the coverage grid (SHD_FS), a lookup per ground pixel', look && bake, `lookup ${look} · bake ${bake}`);
 }
