@@ -3043,3 +3043,25 @@ routes (flow).
 
 Tests: `econ-25` (2 checks: made from a satellite, three hand-ordered runs fly clean and join the route; repeating
 waits for mainframes, then orders exactly one run when short, on the network model and the pad calendar).
+
+## v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
+
+The robot's `m2` run (Q233) made a route from a weather satellite at 293 × 301 km with no station-keeping propellant:
+it would stay up ~1,034 days, but `routeSats` asked for 30 days of holding *and* 30 of decay, so the route read 0 of 1
+from the moment it was made and, repeating, would re-order at once.
+
+**The rule** (`routeLife(q)` in `sim/program.js`, beside `routeSats`): what holding buys depends on the orbit.
+- A **slot the tides move** (`slotRate(q) > 0`: high orbits, stationary): dry, it drifts out of the place it was put
+  for, so it serves `min(skLife, decayLife)`, as before.
+- A **low orbit** (`slotRate` 0): holding only fights drag. Dry or drifting it still serves while it sinks, so it
+  serves `skLife + decayLife` (holds while its tanks last, then decays from that orbit).
+`q.adrift` no longer excludes by itself: an adrift low satellite has `skLife` 0 and counts by its decay. A route still
+counts one as gone `ROUTE_LEAD` (30) days before its end.
+
+**Measured** (`econ-26`): a dry Beeper at 300 km decays in ~4,800 days and counts; dry at 106 km (0 days) and dry at
+3,000 km (tides 0.03 m/s a day, can't hold) don't.
+
+**Not yet:** the Fleet line doesn't say which of these a route's satellite is counted by (Q296's Fleet line is being
+reworked by the other economy session; a one-clause follow-up there).
+
+Tests: `econ-26` (1 check).

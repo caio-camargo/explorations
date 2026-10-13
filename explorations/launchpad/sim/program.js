@@ -811,7 +811,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
 // registers what it puts up, tagged q.route). W27: ordered by hand each time at first; after ROUTE_CLEAN clean runs in a
 // row, and once the ladder allows deployments (autoAllowed('deploy'), the mainframes era), the player may let it repeat
 // by itself (opt-in per route, MIDGAME decision 1): routeTick then orders a run whenever fewer than `keep` of its
-// satellites are up, counting one that will re-enter or stop holding its orbit within ROUTE_LEAD days as gone. A failed
+// satellites are up, counting one that will re-enter (or, in a slot, stop holding it) within ROUTE_LEAD days as gone. A failed
 // run pauses the repeating until a clean one. Resupply routes (stations, bases) are M3, with crew (D17.1).
 const ROUTE_CLEAN=3,ROUTE_LEAD=30;
 const routeOf=id=>(PROG.routes||[]).find(r=>r.id===id);
@@ -825,7 +825,10 @@ function routeFrom(q){if(!q||q.junk||q.bodyName||q.landed||q.docked)return{ok:fa
 function makeRoute(q,keep=1){const f=routeFrom(q);if(!f.ok)return f;PROG.routes=PROG.routes||[];PROG.routeN=(PROG.routeN||0)+1;
   const r={id:PROG.routeN,name:`${satKind(q)}s at ${f.alt} km, ${f.inc}°`,stack:JSON.parse(JSON.stringify(q.stack)),alt:f.alt,inc:f.inc,keep:Math.max(1,keep|0),auto:false,paused:false,runs:0,clean:0,made:PROG.day,sat0:q.id};
   q.route=r.id;PROG.routes.push(r);HOOK.news(`A routine: keep ${r.keep} ${r.name} up, ${designName(r.stack)||'our design'} flying it`,'ok');HOOK.save();return{ok:true,route:r}}
-const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&q.adrift==null&&skLife(q)>ROUTE_LEAD&&decayLife(q)>ROUTE_LEAD);
+// how long it serves its route (Q414, PLAYTEST #104): a slot the tides move (slotRate) is lost once it stops holding it; a
+// low orbit only fights drag, so dry or drifting it still serves while it sinks, until it re-enters
+const routeLife=q=>slotRate(q)>0?Math.min(skLife(q),decayLife(q)):skLife(q)+decayLife(q);
+const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&routeLife(q)>ROUTE_LEAD);
 const routeBusy=r=>(PROG.dispatch||[]).find(x=>x.route===r.id&&(x.status==='queued'||x.status==='deviated'));
 // whether it may repeat by itself, and why not
 function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;

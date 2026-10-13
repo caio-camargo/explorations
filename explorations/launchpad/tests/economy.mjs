@@ -587,3 +587,21 @@
     `before: "${eraWhy}"; from day ${d}; routine run on day ${auto && auto.launch.toFixed(1)}; network route ${net ? `${net.up}/${net.keep} to ${net.to}` : 'none'}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// econ-26. A dry satellite on a routine counts as up by its real lifetime (economy session 2, QUEUE Q414, PLAYTEST #104):
+// a low orbit only fights drag, so with no propellant it still serves until it re-enters; a slot the tides move is lost
+// once it can't hold it.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = api.PRESETS.Beeper, R0 = api.TELLUS.R, mu = api.TELLUS.mu;
+  api.HOOK.news = () => {}; api.HOOK.save = () => {}; P.day = 0;
+  const ship = api.newShip(st), shape = api.shapeOf(ship.parts.filter(p => p.on !== false));
+  for (const o of shape) if (o.res) for (const k in o.res) o.res[k] = 0;
+  const dry = (id, km) => { const r = R0 + km * 1e3; return { id, name: `Dry ${km}`, route: 77, shape: JSON.parse(JSON.stringify(shape)), r: [r, 0, 0], v: [0, 0, -Math.sqrt(mu / r)], epoch: 0, mass: ship.mass, born: 0, imgs: 0, pending: [] }; };
+  const low = dry(1, 300), sank = dry(2, 106), slot = dry(3, 3000);
+  P.sats = [low, sank, slot]; const up = api.routeSats({ id: 77 }).map(q => q.id);
+  const L = q => `${q.name}: holds ${api.skLife(q).toFixed(0)} d, decays ${api.decayLife(q) < Infinity ? api.decayLife(q).toFixed(0) + ' d' : 'never'}, slot ${api.slotRate(q).toFixed(2)} m/s/d`;
+  check('routine: a dry satellite at 300 km (no propellant to fight drag) counts as up while its decay lasts; one re-entering within 30 days does not; a dry one in a slot the tides move does not',
+    api.skLife(low) === 0 && api.decayLife(low) > 30 && up.includes(1) && !up.includes(2) && api.slotRate(slot) > 0 && !up.includes(3),
+    `up: [${up}]; ${[low, sank, slot].map(L).join('; ')}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
