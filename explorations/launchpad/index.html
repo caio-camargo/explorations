@@ -113,6 +113,8 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #ttlCharter .seal{position:absolute;right:26px;top:14px;width:92px;height:92px;overflow:hidden;border-radius:50%;background:radial-gradient(circle,#c33 0 55%,#a11 56% 62%,#c33 63%);box-shadow:0 2px 6px rgba(0,0,0,.4);color:#fde;font:bold 9px/1.1 'Courier Prime',monospace;display:flex;align-items:center;justify-content:center;text-align:center;letter-spacing:.5px;text-transform:uppercase;transform:rotate(12deg);opacity:.9;pointer-events:none}
 @media (max-width:1100px){#ttlCharter{left:0;margin-left:230px}}@media (max-width:900px){#ttlMenu{position:static;padding:20px 20px 0}#ttlCharter{margin:16px auto;width:min(620px,94vw);padding:20px 16px 16px}#ttlCharter .seal{width:70px;height:70px;font-size:9px}}
 .term{border-bottom:1px dotted currentColor;cursor:help}   /* (flow, Q287) hover terms: app/terms.js */
+#news.held{display:none}   /* (flow, Q286) the dark cockpit: news held in a critical phase (app/cockpit.js) */
+#mcau{position:fixed;z-index:7;box-sizing:border-box;padding:4px 9px;background:#5a0f0a;color:#ffd9d2;border:1px solid #ff6a5a;border-radius:4px;font:12px/1.4 ui-monospace,monospace}#mcau.hidden{display:none}#mcau b{color:#fff;margin-right:6px;letter-spacing:.06em}
 #termTip{position:fixed;z-index:60;max-width:320px;padding:7px 10px;background:#0c1118;color:#dfe6ee;border:1px solid #3a4a5c;border-radius:4px;font:12px/1.4 ui-monospace,monospace;box-shadow:0 4px 14px rgba(0,0,0,.5);pointer-events:none;text-transform:none;letter-spacing:0;text-shadow:none}#termTip.hidden{display:none}#termTip b{display:block;margin-bottom:3px;color:#ffd27a}#termTip b.warn{color:var(--warn)}#termTip b.bad{color:var(--bad)}#termTip .fix{margin-top:5px;color:#bfe3c4}   /* (Q340) a warning that explains itself: whyMark */
 #prog{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(210px,270px) minmax(0,1fr) minmax(190px,250px);grid-template-rows:auto auto minmax(0,1fr);column-gap:22px;row-gap:12px;padding:0 20px 16px}
 #prog,#deb{--fg:#2a2620;--dim:#6b6252;--acc:#1d4f8f;--ok:#2f6b2f;--warn:#a5521a;--bad:#b3262a;--line:#9c8f78;
@@ -125,7 +127,8 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #prog .sub{color:var(--dim)}#prog .ep{color:#1d2a44;font:bold 12px 'Courier Prime',monospace;letter-spacing:.14em;text-transform:uppercase}
 #deskLH{grid-column:1/-1;margin:0 -20px;height:80px;display:flex;align-items:center;gap:16px;padding:0 26px;background:#efe6cf;border-bottom:3px double #2a2620;box-shadow:0 3px 10px rgba(0,0,0,.4)}
 #deskLH .flag{border:1px solid #2a2620;flex:none}#deskLH .org{flex:1;min-width:0}
-#deskLH .org .n{font:30px/1 'Bebas Neue',Impact,sans-serif;letter-spacing:3px;color:#1d2a44}#deskLH .org .s{font-size:12px;color:var(--dim)}
+#deskLH .org .n{font:22px/1 'Bebas Neue',Impact,sans-serif;letter-spacing:3px;color:#1d2a44}   /* (Q286) a letterhead, not a headline */
+details.ms.of>summary{cursor:pointer;list-style:none}details.ms.of>summary::-webkit-details-marker{display:none}details.ms.of .ofb{float:right}details.ms.of[open]>summary{margin-bottom:3px}   /* (Q286) one-line offers */#deskLH .org .s{font-size:12px;color:var(--dim)}
 #deskLH .ledger{font-size:12px;text-align:right}#deskLH .ledger b{display:block;font-size:22px;color:#1d2a44}
 #deskLH .cal{width:80px;height:64px;background:#fff;border:1px solid #888;text-align:center;box-shadow:2px 2px 4px rgba(0,0,0,.3);flex:none}
 #deskLH .cal .m{background:#b3262a;color:#fff;font:bold 11px/17px 'Courier Prime',monospace;letter-spacing:1px}#deskLH .cal .d{font:bold 28px/30px 'Courier Prime',monospace}#deskLH .cal .y{font-size:10px;color:#555}
@@ -330,7 +333,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
   <div id="cards" class="hidden"></div>
-  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><button data-warp="1">▶</button></span><button id="bMap">Map [M]</button><select id="mapFocus" title="what the map is centred on: Tab next · Home the ship · double-click a body or craft"></select><button id="bLay" title="what the map shows">Layers</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bRevert">Revert</button><button id="bEditor">Design table</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
+  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><button data-warp="1">▶</button></span><button id="bMap">Map [M]</button><select id="mapFocus" title="what the map is centred on: Tab next · Home the ship · double-click a body or craft"></select><button id="bLay" title="what the map shows">Layers</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bWings" class="hidden" title="unfold the solar wings and boom antennas, or fold them; in thick air (over ~1 kPa) they tear off">Wings out (P)</button><button id="bLegs" class="hidden" title="landing legs down or up">Legs down (Y)</button><button id="bBay" class="hidden" title="cargo bay doors open or closed: open, the payload meets the air and its heat">Open bay (B)</button><button id="bRevert">Revert</button><button id="bEditor">Design table</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div id="mapLay" class="hidden"></div>
   <div id="navwrap">
     <div id="gslot" class="hidden"></div>
@@ -406,6 +409,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <script src="app/render.js"></script>
 <script src="app/program-ui.js"></script>
 <script src="app/hud.js"></script>
+<script src="app/cockpit.js"></script>
 <script src="app/debrief.js"></script>
 <script src="app/bodyview.js"></script>
 <script src="app/settings.js"></script>

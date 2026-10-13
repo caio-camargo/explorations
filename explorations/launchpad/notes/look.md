@@ -1800,3 +1800,45 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   earthshine, a harsh terminator). Seen in passing: the night side from orbit is fairly bright at the exposure's
   ceiling (E 3.86: the ground's ambient term), not this item's.
 - **Stills:** `output/launchpad/beauty/q322-before/`, `q322-after/`. **Check:** test `aerofx-26`. TESTING 265.
+
+## v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies beat, QUEUE Q399, PLAYTEST #96)
+
+- **Cause** (design desk's reading, confirmed): `starsAt` (Q321) shades each pixel from the star in its own hashed cell;
+  the brightest layer's halo (e-fold 5 px) reached past the cell into cells that never draw it, so it ended in a
+  straight line on one side.
+- **Fix:** the halo is drawn from the 2×2×2 cells nearest the pixel (`floor(d·90 − 0.5)`), each star kept by the band
+  at its own place (one `textureLod` of the baked sky, only for the rare candidate cells), and fades to nothing within
+  half a cell, which those eight cells always cover. The disc is untouched. A first try with 3×3×3 cells and a 1.2-cell
+  fade cost ~0.45 ms in star views (97, 99); the eight-cell form is within noise (A/B in one session, 1.1–1.4 → 1.25–1.3).
+- **Seen** at E 12 (to make halos plain): before, halos cut square on one side; after, round and soft
+  (`output/launchpad/beauty/pt96-before/`, `pt96-after/`; at normal exposure `pt96-normal/`).
+- **Check:** test `aerofx-27`. TESTING 269.
+
+## v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects beat, QUEUE Q250, PLAYTEST #48)
+
+`app/gl.js` (`SKY_FS`: `scatter`, `cloudDens`, the shell's billow detail; `SLAB_MAIN`).
+
+- **How it was measured:** the Orbiter's liftoff under ~45 % and ~60 % cover, the default chase camera, frames rendered
+  in pairs 1/30 s apart (grain off) and differenced, at 0.4, 0.9, 1.7, 2.4 and 3 km. Stills only show some of it: the
+  crawl is in the motion.
+- **The biggest crawl today, mine (v1.159, Q352; two days after the report, so not what Caio saw on 10-10):** `scatter`'s 12 view-ray steps each start at a per-pixel offset. From the
+  ground the first step is tens of km long and spans most of the air's density, so the offset drew a fixed diagonal
+  hatch over the whole day sky (clear or cloudy), which crawled as the rocket climbed. Now the offset only applies from
+  15–50 km up (`smoothstep` on the camera's height); lower, every pixel starts mid-step as before Q352. The terminator
+  from orbit (what Q352 fixed) is unchanged. Sky flicker between paired frames at 0.4 km: 3.8 → 1.5 (mean, 8-bit),
+  at 0.9 km 1.4 → 1.0; the hatch is gone from view 1's sky.
+- **The deck's billow detail by footprint:** the shell's two near octaves (2.5 km, 820 m) fade once a pixel's footprint
+  on the deck outgrows each (`fm`), keeping their mean, so a deck seen edge-on far away doesn't draw sub-pixel lumps.
+- **The volume's finest noise by step length:** `cdLod`, set per step in `SLAB_MAIN`, fades `cloudDens`'s 230 m octave
+  where the march's steps pass 230–700 m (far along a grazing ray). The clouds look the same up close; far edges are a
+  touch softer. `cloudShadowV` keeps the full noise (cdLod 0).
+- **What the report saw is not settled:** the two filters above are the clouds' own aliasing as measured, and they are
+  small. #48 stays open for a look in play (TESTING 272).
+- **Not the clouds, filed:** (1) thin slivers that pop above the hazy horizon from ~1.5 km stay with the clouds and the
+  shell off: far terrain grazing the horizon (world). (2) Inside the deck at 2–3 km, a bright band at the horizon with
+  2×2 stair edges: the volume fading out at `uVD` and the half-resolution upsample. (3) The white specks past the coast
+  are the buildings of a town, not clouds.
+- **Harness note:** `tNow()` jumps to the launch day at the first `advPhys` after launch (`S.rec.day0`), so a script
+  that picks the weather before flying must re-pin `CLOUD_DT` after the first step (views 81–83 pick it after).
+- **Stills:** `output/launchpad/beauty/Q250/` (`liftoff_before/after`, `flicker_before/after`: the frame-pair
+  differences ×6, `view1_before/after`). **Check:** test `aerofx-28` (and `aerofx-18` amended). TESTING 272.

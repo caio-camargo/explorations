@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.13 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.16 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -77,6 +77,47 @@ URL: `?lay=grid|radial|now`, `&size=big|town`, `&era=1960|1985|2010`, `&view=low
 
 **Pick:** _(Caio; if silent: **both, by region**: each city takes A or B from the country it's in (the school's region),
 so the world isn't one kind of city; era growth on)_
+
+## satellites/ — satellites that don't look alike (PROBES § 6; Caio 2026-10-13)
+
+Open `satellites/index.html` (click a craft to turn it; `?sat=<id>`; `&env=1` adds reflections on a real GPU) or the
+stills in `output/launchpad/mockups/satellites/` (`lineup.png` and one per craft, software renderer). Caio: "still
+concerned that they will look samey... more shape variety that is not just cylinders. maybe some of the parts just need
+to be smaller?" Thirteen craft after real ones (Sputnik, Explorer 1 and 6, Telstar, TIROS, a KH-7-like telescope,
+Mariner 4, a 1980s comsat, Seasat, GPS, ATS-6, a gravity-gradient satellite, a Cassini-like truss craft), built only
+from proposed parts and skins, against today's (the octagonal frame, the instrument package, side boxes, wings), each
+next to a 1.8 m figure. Four directions, all shown (Caio: "yes, all four"):
+1. **Smaller parts**: 0.3 and 0.6 m stacks and a kick motor; the first satellites were a ball or a pencil.
+2. **Bus shapes from jobs**: sphere, faceted ball, spin drum (spinners must be round), bus with bays, box, open truss.
+3. **Skins**: polished metal, gold and silver foil, cells as skin, white paint, thermal checks and stripes, black
+   blankets; a material per part, by era and school, nearly free to draw.
+4. **Signature appendages**: swept whips, paddles, a sunshade tube, a dish farm, a radar plank, a helix ring, a mesh
+   dish on a truss, a gravity boom, RTG fins.
+
+**Caio, 2026-10-13:** "they look good, but i don't want to take away the player design experience by having them be too readymade"; designed apart like the rover → **D24** (PROBES § 6.1). The craft are examples of what a player can build, not parts.
+
+**Pick:** _(Caio; if silent: all four go into PROBES as § 6's variety rules and a slice S4 after S2: smaller stacks and
+the kick motor first (cheapest, biggest change), then skins, then bus shapes, then the appendages with their jobs)_
+
+## bench/ — the payload bench (D24 → PROBES § 6.1)
+
+Open `bench/index.html` (real 3D: click a part on the craft or in the palette, drag to turn, paint faces) or the stills in
+`output/launchpad/mockups/bench/` (`checks`, `stowed`, `fairing`, `bus-drum`, `part-wing`, `designs`; 1280×800). Satellites
+are designed apart from the rocket, like the Rover yard, from parts, never ready-made:
+- **Top bar**: the design, its mass and balance; **stowed / deployed / in the fairing** (the deploy animates: the
+  yoke swings, the panels unfold one by one, booms swing and lock); the fairing it must fit (Orbiter or Lunar).
+- **Left, the palette** by job: Power, Talk, See, Point, Move; hover for what a part does; era-locked parts greyed.
+- **The bus is one frame** (Part tab with the bus selected): shape (sphere, faceted ball, drum, many faces, box, open
+  truss), faces, size 0.3–3 m, height, and a **skin per face**: pick a swatch, click faces on the craft (gold, silver,
+  polished, cells that make power, white, thermal checks, black blanket; each runs warmer or cooler).
+- **Checks against the job** (D22's form, D23's aim): *has power in shadow too · talks home · keeps the camera on the
+  ground · stays in its temperatures · balanced on its axis · fits the fairing* (folded), each a verdict and its fix.
+- **Designs**: the program's payloads (a starter to copy, your own, a customer's ready-made one you only fly); on the
+  rocket a payload is one block in the fairing.
+URL: `?view=stowed|deployed|fairing`, `&tab=checks|part|designs`, `&sel=bus|<part>`, `&shape=`, `&n=`, `&d=`, `&h=`,
+`&on=` / `&off=<parts>`, `&open=<check>`, `&still=1`. Numbers are illustrative.
+
+**Pick:** _(Caio; if silent: build from this page: the bench as a screen beside the Rover yard, after the pointing slice S2)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 

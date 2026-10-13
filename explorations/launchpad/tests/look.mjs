@@ -711,7 +711,17 @@
     `table ${table} · airglow ${glow} · view 163 ${/if \(n === 163\)/.test(vj)}`);
 }
 
-// aerofx-27. No aliasing on the clouds at liftoff (look & sound effects beat, QUEUE Q250, PLAYTEST #48): from low in
+// aerofx-27. The bright stars' halo isn't cut at a cell's border (look & sound sky & bodies beat, PLAYTEST #96): starsAt
+// draws the brightest layer's halo from the 2×2×2 cells nearest the pixel, each star kept by the band at its own place,
+// and the halo fades to nothing within half a cell, which those cells always cover.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), sky = pg.slice(pg.indexOf('vec3 starsAt('), pg.indexOf('vec3 sunAt('));
+  const ok = /vec3 c0=floor\(d\*90\.-\.5\);for\(int x=0;x<2;x\+\+\)for\(int y=0;y<2;y\+\+\)for\(int z=0;z<2;z\+\+\)/.test(sky) && /textureLod\(uGalC,sd,0\.\)\.a/.test(sky)
+    && /\*smoothstep\(\.5\/90\.,\.15\/90\.,r\);/.test(sky) && !/if\(k==0&&br>1\.2\)c\+=/.test(sky);
+  check('star halos: from the nearest 2×2×2 cells, fading out within half a cell (no straight edge at a cell border)', ok, `halo ${ok}`);
+}
+
+// aerofx-28. No aliasing on the clouds at liftoff (look & sound effects beat, QUEUE Q250, PLAYTEST #48): from low in
 // the air the sky's view-ray march starts mid-step (the per-pixel offset drew a fixed hatch over the day sky, which
 // crawled as the rocket climbed); the deck's billow detail fades once a pixel's footprint outgrows it, and the cloud
 // volume's finest noise once the march's steps do.

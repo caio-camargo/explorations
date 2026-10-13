@@ -1640,3 +1640,33 @@ Test `vehicle-12`. `--smoke` all pass.
 - **Power:** the side camera, the whip and the boom antenna drew nothing (their records never got the inline parts' 10 W / 5 W):
   every antenna and camera draws now (`sim/power.js`). A satellite built from side parts used to show a 0 W load.
 - Test `vehicle-25`. TESTING 260.
+
+## v1.184 — a flight button for the unfolding parts (2026-10-13, vehicle session, QUEUE Q409)
+
+- **Caio:** "are there now controls that can extend the parts that start retracted?" (only the P key) then "yeah, let's add a
+  button with P in parentheses".
+- `#bWings` in the flight bar, next to Map: shown while the craft has solar wings or boom antennas, reading "Unfold wings (P)" /
+  "Fold wings (P)" ("antennas", "wings and antennas" as fitted), lit while they're out; a click does what P does (recorded on the
+  tape). Updated in `updateHUD` (`app/program-ui.js`). Checked in the browser on the Satellite preset.
+- Seen doing it: on the pad the wings unfold straight through the closed fairing; nothing stops deploying inside one (QUEUE
+  Q410; first numbered Q398, which collided with a playtest item).
+- TESTING 266.
+
+## v1.185 — nothing unfolds inside a closed fairing (2026-10-13, vehicle session, QUEUE Q410)
+
+- **Caio:** "sure, go ahead" (on Q410: the Satellite preset's wings unfolded through its fairing on the pad).
+- `wingOp` (`sim/power.js`) leaves folded any wing or boom antenna whose fairing (`inFair`, set at assembly) is still on with its
+  shell (`profF`, not `fj`); the message says "Inside the fairing: jettison it first (stage), then unfold", or "(N still inside
+  the fairing)" when others did unfold. The Assembly's own deploy toggle is untouched (a part left deployed there already
+  doesn't count as inside, and warns).
+- Tests: `vehicle-26`; `vehicle-18` jettisons the shell before unfolding its boom antenna. TESTING 267.
+
+## v1.188 — flight buttons for legs and the cargo bay (2026-10-13, vehicle session, QUEUE Q400's vehicle part)
+
+- **Caio:** "ok good, let's keep going". Q400 (PLAYTEST #97, P1: "no visible way to deploy folded parts") asked for an on-screen
+  control for everything that deploys. With v1.184's wings button (Q409): `#bLegs` "Legs down (Y)" / "Legs up (Y)" and `#bBay`
+  "Open bay (B)" / "Close bay (B)" in the flight bar, shown only when the craft has legs or a bay, lit while deployed; a click
+  does what the key does (recorded on the tape). `updateHUD`, `app/program-ui.js`. Checked in the browser on a probe with a bay
+  and four legs.
+- Left for flow (Q400): the Part tab saying how a part deploys, and a first-time hint in space.
+- TESTING 270.
