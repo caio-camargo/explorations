@@ -19,15 +19,15 @@ function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=t
       else{const up=norm(nz),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),a=R()*6.283,rr=e.d.exit*(5+6*R())+(onPad?3:0);
         pf=add(mul(up,len(nz)-hn+1+R()*1.5),add(mul(X,Math.cos(a)*rr),mul(Z,Math.sin(a)*rr)));s0*=.7}
       smoke.push({pf,t0:simT,s0,grow:6+4*R(),a0:.5,life:40+30*R(),rise:1+1.5*R(),seed:R()*97})}}}
-function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.02)return;
+function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
   emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
-  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>2500)smoke.shift();
+  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>4000)smoke.shift();
     const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
-    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:70+Math.random()*50,rise:Math.random()*0.6,seed:Math.random()*97})}}}
+    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:110+Math.random()*60,rise:Math.random()*0.6,seed:Math.random()*97})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
 // of CPU a frame with ~1000 puffs.
 let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
@@ -39,8 +39,12 @@ function drawSmoke(VP,camW,R,U){
   for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
     let rx,ry,rz;const o=i*6;
     if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2]}   // fxPuff: inertial, ballistic
-    else{if(q.ux===undefined){const L=len(q.pf);q.ux=q.pf[0]/L;q.uy=q.pf[1]/L;q.uz=q.pf[2]/L;q.wf=L-TELLUS.R<8000?1:.4}
-      const ra=q.rise*age,wa=age*q.wf,x=q.pf[0]+q.ux*ra+WIND[0]*wa,y=q.pf[1]+q.uy*ra+WIND[1]*wa,z=q.pf[2]+q.uz*ra+WIND[2]*wa;
+    else{if(q.ux===undefined){const L=len(q.pf),u=[q.pf[0]/L,q.pf[1]/L,q.pf[2]/L],h=L-TELLUS.R;q.ux=u[0];q.uy=u[1];q.uz=u[2];
+        // (Q319, B2.6) the wind at the puff's height: it turns with height and peaks in a jet stream near 11 km, so a
+        // contrail kinks and shears as it drifts (was one step at 8 km)
+        const m=(h<20000?1:.4)+1.6*Math.exp(-(((h-11000)/4000)**2)),th=h/6000+.8*Math.sin(h/2300),c0=Math.cos(th),s0=Math.sin(th),uw=dot(u,WIND),x=cross(u,WIND);
+        q.wx=m*(WIND[0]*c0+x[0]*s0+u[0]*uw*(1-c0));q.wy=m*(WIND[1]*c0+x[1]*s0+u[1]*uw*(1-c0));q.wz=m*(WIND[2]*c0+x[2]*s0+u[2]*uw*(1-c0))}
+      const ra=q.rise*age,x=q.pf[0]+q.ux*ra+q.wx*age,y=q.pf[1]+q.uy*ra+q.wy*age,z=q.pf[2]+q.uz*ra+q.wz*age;
       rx=c*x+sn*z-camW[0];ry=y-camW[1];rz=-sn*x+c*z-camW[2]}
     smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
     smokeK[i]=rx*rx+ry*ry+rz*rz;smokeI[i]=i}

@@ -1373,3 +1373,36 @@ could only catch near-white. Now the frame is light, and the camera is one place
   either way; the ship pass 0.01–0.03 ms and the plasma 0.2–0.6 ms before and after (noise). Not tried on the iGPU.
 - **Checks:** test `aerofx-11` (wallT, the wiring, the blackbody's luminance and colour at 1,000/1,200/1,700/2,200 K, the
   plasma's core colour). TESTING 231.
+
+## v1.150 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319; BEAUTY B2)
+- **Vacuum plumes stop being brown fog (B2.2).** The gas glow term (`uVa`) was as bright 20 m down a vacuum plume as at
+  the nozzle, so a wide plume read as an orange-brown cone. The gas cools as it expands, so its own glow now falls as
+  `(re/rb)^1.6` unless air mixes in and burns (`cool = mix(…, 1, uS.w)`): a vacuum plume glows only near the nozzle.
+- **Sunlight on the exhaust (B2.1).** What you see of the rest is sunlight scattered by droplets, soot and alumina.
+  The phase is half Henyey–Greenstein (g 0.7) and half isotropic, 18× brighter forward than back, so a plume between you
+  and the sun lights up: the twilight "jellyfish" in miniature. It is `PLUME_SC` (0.5; 2 read as white fog) × density,
+  coloured by `lightEnv(p).sun` and zero in a planet's shadow (`lit(p)`). At sea level the flame outshines it.
+- **The sea-level core (B2.2)** brightens and dims with eddies scrolling down at jet speed (one more noise fetch), which
+  also fray its edge; it no longer reads as a tube.
+- **Shock diamonds (B2.3)** are ×1.6 and scaled by how far off design the nozzle runs (`clamp(|ln n|·0.8, 0.25, 1)`); the
+  first cell has a Mach disk, a bright flat disc across the axis. Near design at sea level they stay faint, as they should.
+- **Palettes (B2.4).** Kerolox wears a stronger dark curtain round the flame's root (the F-1's turbine exhaust: 2.2× over
+  4.5 exit radii, was 0.8× over 3). Hypergolics puff brown at a fuel-rich start: `PROPS.hypergolic.pf` 1.6, with soot
+  that absorbs blue (`so` 0.35, 0.75, 1.4); a steady hypergolic flame stays clean. No engine burns hydrolox yet, so its
+  palette is untouched.
+- **The plume light (B2.5)** is `PLUME_LK` 175 (was 110, set when the flame was capped at display white).
+- **The contrail (B2.6)** runs to ρ = 0.006 (~33 km, was 0.02, ~26 km), with up to 4,000 puffs (was 2,500, which cut the
+  trail short on a climb: 2,457 → 3,957 puffs at T+100 s). Puffs live 110–170 s (was 70–120). The wind turns with height
+  (`h/6000 + 0.8 sin(h/2300)` rad about the local up) and peaks ×2.6 in a jet stream near 11 km, so the column kinks
+  and shears. It was one step at 8 km.
+- **Stills and cost** (RTX 3050): `output/launchpad/beauty/q319/`. `before/` and `t1`/`t2` are views 30–36 (`t1_cmp.png` with
+  PLUME_SC 2, `t2_grid.png` at 0.5), `sc_cmp.png` the sea-level close-ups, `n_cmp.png` the pad, `ct_cmp.png` the contrail,
+  `p-{before,after}-{high,low}/` the profiles. The plume pass costs +0.02–0.15 ms; smoke +0.0–0.7 ms with the longer
+  trail (view 31, High). The whole frame in the vacuum views read 1.5–3 ms higher, all in bloom and untracked time (the
+  GPU was shared with another session): measure again on a quiet machine.
+- **Not done (QUEUE *Proposed*):** heat haze (High), one light per cluster side, hydrolox's palette (when an engine burns
+  it), and a reference view of a long contrail at twilight.
+- **Seen on the way:** views 60–67 (the plume on the pad) shoot the rocket over bare grass, with the floodlit apron far off
+  at night; views 154–155 (max-q, staging) never leave the ground ("max-q 0.0 kPa at 0.2 km"). Both are on `main` as it
+  was; QUEUE *Proposed*.
+- **Checks:** test `aerofx-12`. TESTING 232.

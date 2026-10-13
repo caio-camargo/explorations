@@ -450,3 +450,24 @@
     w && w(0) === 290 && w(1) === 1700 && w(1.5) === 2200 && wired && plasma && Y(c10) < 1e-3 && Y(c12) < .05 && c12[0] > 5 * c12[1] && Y(c17) > 4 && c22[1] / c22[0] > .25 && Y(c22) > 30,
     fs ? `luminance (sunlit white ≈ 4): 1,000 K ${Y(c10).toExponential(1)}, 1,200 K ${Y(c12).toFixed(3)}, 1,700 K ${Y(c17).toFixed(1)}, 2,200 K ${Y(c22).toFixed(0)}; g/r at 2,200 K ${(c22[1] / c22[0]).toFixed(2)} · wired ${wired} · plasma ${plasma}` : 'shader glow not found');
 }
+
+// aerofx-12. The flames, slice 1 (look & sound effects beat, BEAUTY Q319 B2.1–2.6). A plume's gas cools as it expands, so
+// its own glow falls with the widening, (re/rb)^1.6, unless air mixes in; sunlight scattered by the exhaust (forward
+// Henyey–Greenstein, g 0.7) lights it instead, in the planet's shadow not at all. The sea-level core is turbulent; shock
+// diamonds strengthen off design and the first has a Mach disk; a kerolox root wears a dark curtain; a hypergolic start puffs
+// brown. The contrail runs to ~33 km with up to 4,000 puffs, in a wind that turns with height and peaks near 11 km.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = page.slice(page.indexOf('const PLUME_FS=`'), page.indexOf('`;', page.indexOf('const PLUME_FS=`')));
+  const shader = /float cool=mix\(pow\(min\(1\.,re\/b\),1\.6\),1\.,uS\.w\);/.test(fs) && /\*\.18\*cool\)/.test(fs) && /\+sunS\*uI\*prof\*d\*fade/.test(fs)
+    && /ph=\.5\*\(\.51\/pow\(1\.49-1\.4\*cs,1\.5\)\+1\.\)\/12\.566/.test(fs) && /if\(k==1\.\)dm\+=od\*2\.\*exp/.test(fs) && /\(uK\.w\+uPf\)\*rich/.test(fs) && /\(\.65\+\.7\*ne\)/.test(fs);
+  const wired = /gl\.uniform3fv\(pu\.uSunL,qrot\(qconj\(Q\),SUN\)\);gl\.uniform3fv\(pu\.uSunC,PSUN\)/.test(page) && /PSUN=lightEnv\(p\)\.sun\.map\(x=>x\*lit\(p\)\)/.test(page)
+    && /gl\.uniform1f\(pu\.uPf,P\.pf\|\|0\)/.test(page) && /const K=PLUME_LK\*/.test(page);
+  const pr = page.match(/hypergolic:\{[^}]*so:\[([^\]]*)\][^}]*pf:([\d.]+)\}/), so = pr && pr[1].split(',').map(Number);
+  const brown = pr && +pr[2] > 0 && so[2] > so[1] && so[1] > so[0];
+  const hg = cs => .5 * (.51 / Math.pow(1.49 - 1.4 * cs, 1.5) + 1) / 12.566, fwd = hg(1) / hg(-1);
+  const trail = /rho<0\.006\)return;/.test(page) && /smoke\.length>4000\)smoke\.shift\(\);/.test(page) && /life:110\+Math\.random\(\)\*60,/.test(page)
+    && /Math\.exp\(-\(\(\(h-11000\)\/4000\)\*\*2\)\),th=h\/6000/.test(page) && !/q\.wf/.test(page);
+  check('flames slice 1: vacuum glow cools with expansion, sunlight scatters forward (none in shadow), turbulent core, Mach disk, kerolox curtain, a brown hypergolic puff; a longer, sheared contrail',
+    shader && wired && brown && fwd > 10 && trail, `shader ${shader} · wired ${wired} · hypergolic puff ${brown} (so ${so}) · forward/back scattering ${fwd.toFixed(0)}× · contrail ${trail}`);
+}

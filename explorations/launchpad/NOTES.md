@@ -279,6 +279,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.135 — the cloud deck at half resolution; a pass profiler (2026-10-12, effects beat, QUEUE Q313)
 - v1.137 — the HDR scene: AgX, auto-exposure, bloom on real light, a grade (2026-10-12, effects beat, QUEUE Q314)
 - v1.149 — re-entry: the hull glows, the plasma in HDR (2026-10-12, effects beat, QUEUE Q318)
+- v1.150 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
