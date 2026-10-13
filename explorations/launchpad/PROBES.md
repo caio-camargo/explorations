@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -210,6 +210,12 @@ tucked in somewhere. what's good is this will definitely help stability, since t
 
 ### 6.2 Bench parts: a brainstorm (2026-10-13, for Caio to pick)
 
+**Caio's picks (2026-10-13):** the tape recorder, louvres and radiators, the film-return capsule, the entry probe and the
+dispenser are in; **instruments that make shapes and the kinds of antennas: "very good"**; **ends of life: "an
+interesting mechanic"**, in; thrusters in, by efficiency and power (below). **Tracking wings dropped:** wings already
+turn about their arm to face the sun (`powSun`, `sim/power.js`); a cheaper fixed paddle for era 1 can come later as a
+sidegrade. **Spin, then despin: pending**, explained to Caio; default: not in the first set.
+
 Caio: "since this now gets its own screen, and it exists in a different scale than the rockets, sort of, we can
 brainstorm more parts, if it makes sense to." A part earns a place if it brings a **decision** (a trade, a timing, a
 risk), not only a look. Starred: the recommended first set.
@@ -232,7 +238,10 @@ risk), not only a look. Starred: the recommended first set.
   later a phased array.
 - **Power**: tracking wings (a drive that turns them to the sun: more power, a moving part that can stick), fixed
   panels, fuel cells for short missions.
-- **Moving**: a hydrazine thruster cluster, a bipropellant apogee engine, an ion engine (late).
+- **Moving**, by efficiency (Isp), thrust and power: cold gas (70 s, the weakest, no power, era 1); **hydrazine**
+  (~220 s: three times cold gas, no real power draw, the workhorse from the late 1960s); a bipropellant apogee engine
+  (~310 s, strong: the big push into a high orbit); **ion** (~3,000 s: ten times hydrazine, but a whisper of thrust and
+  kilowatts of power: months of burning, the wings sized for the engine; late).
 - **Ends of life**: a drag sail or a deorbit motor (debris, D-rules), a crash camera that takes pictures until impact
   (Ranger), an impactor.
 
