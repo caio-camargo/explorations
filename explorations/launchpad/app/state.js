@@ -54,7 +54,7 @@ function drawSmoke(VP,camW,R,U){
       v[k]=smokeP[o]+R[0]*a+U[0]*b;v[k+1]=smokeP[o+1]+R[1]*a+U[1]*b;v[k+2]=smokeP[o+2]+R[2]*a+U[2]*b;
       v[k+3]=cx;v[k+4]=cy;v[k+5]=smokeP[o+4];v[k+6]=smokeP[o+5];v[k+7]=seed;k+=8}}
   const E=lightEnv(camW),su=PSMOKE.u;gl.useProgram(PSMOKE.p);gl.uniformMatrix4fv(su.uVP,false,VP);gl.uniform1f(su.uFc,FC);gl.uniform3fv(su.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(su.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
-  const Fz=cross(R,U);gl.uniform3f(su.uSq,dot(SUN,R),dot(SUN,U),dot(SUN,Fz));gl.uniform4fv(su.uPl,PLT.p);gl.uniform3fv(su.uPlC,PLT.c);
+  const Fz=cross(R,U);gl.uniform3f(su.uSq,dot(SUN,R),dot(SUN,U),dot(SUN,Fz));gl.uniform4fv(su.uPl,PLT.p);gl.uniform3fv(su.uPlC,PLT.c);gl.uniform4fv(su.uPl2,PLT.p2);gl.uniform3fv(su.uPlC2,PLT.c2);
   gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);gl.bufferData(gl.ARRAY_BUFFER,v.subarray(0,k),gl.DYNAMIC_DRAW);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
 const rcsSeen={};   // RCS nozzle index → when it last fired (render-side, for the puffs)

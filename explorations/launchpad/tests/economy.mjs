@@ -477,3 +477,35 @@
     ff.length >= 2 && P.riv.home === racer.i && !P.riv[racer.i] && oldHome && oldHome.k === 2 && oldHome.got.beeper === 50 && oldHome.got.hop === 120 && P.riv[res.i] != null && keepRacer.length > 0,
     `by day 400 rivals had ${ff.join(', ')}; old home ${JSON.stringify(oldHome)}`);
 }
+
+// econ-22. The commercial giant (economy session, QUEUE Q206, D10; POWERS.md § Commercial giant): a company, not a power,
+// arriving in world year 18–21 with a year of exploding prototypes, then orbit; from then on it sells parts to anyone
+// (undercutting imports) and takes a growing share of the commercial market, which commercial offers' pay loses (floored);
+// its power's sanctions reach it.
+{
+  const D = new Function(src + 'return {giantTick,giantShare,giantSells,giantYear,sourceOf,relOf,genOffer,payFloor,PROG,HOOK,POWERS,YEAR_D,IMPORT_K,rng,chooseStart,setHome:h=>{HOME=h;PROG.home=h}};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  Object.assign(P, { homeArch: 'resource', wseed: 1000, day: 0, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 1, done: { beeper: { day: 1 } }, giant: null, cycle: 0 });
+  D.setHome(0); D.chooseStart('company');
+  const k = 'pod', before = D.sourceOf(k), R = D.rng(7);
+  const y0 = D.giantYear(); P.day = Math.floor((y0 - 0.01) * D.YEAR_D); D.giantTick(1, R); const early = P.giant;
+  P.day = Math.ceil(y0 * D.YEAR_D) + 1; D.giantTick(1, R); const G = P.giant;
+  const arrived = G && G.day === P.day && news.some(t => t.includes(G.name) && /prototype/.test(t)) && !D.giantSells() && D.giantShare() === 0;
+  for (let d = P.day; d < G.orbit; d += 5) { P.day = d; D.giantTick(5, R); }
+  const ruds = G.rud; P.day = G.orbit; D.giantTick(1, R); const up = news.some(t => /reaches orbit/.test(t));
+  const sell0 = D.giantSells(), at0 = D.sourceOf(k);
+  check('giant: none before its year; arrives with a prototype on the news, sells nothing while prototypes blow up, then reaches orbit and sells us parts cheaper than an import',
+    early === null && arrived && ruds <= 2 && up && sell0 && at0.how === 'giant' && at0.k < D.IMPORT_K && before.how !== 'home' && before.how !== 'giant',
+    `year ${y0.toFixed(2)}; ${G.name} in ${D.POWERS[G.i].root}, day ${G.day}, orbit ${G.orbit}, ${ruds} RUD; ${k}: ${before.how} ×${before.k} → ${at0.how} ×${at0.k}`);
+  const offerPay = (share) => { P.day = G.orbit + share * 4 * D.YEAR_D / 0.4; const o = [], r = D.rng(99); for (let n = 0; n < 40; n++) { const x = D.genOffer('com', r); if (x) o.push(x); } return o; };
+  const a = offerPay(0), b = offerPay(0.4), sumA = a.reduce((s, x) => s + x.p.pay, 0), sumB = b.reduce((s, x) => s + x.p.pay, 0);
+  const floored = b.every(x => x.p.pay >= D.payFloor(x.type) - 1e-9);
+  P.day = G.orbit + 5 * D.YEAR_D; news.length = 0; D.giantTick(1, R);
+  check('giant: its market share grows to 40 % over four years; commercial offers pay less by it (never under the floor); yearly price-cut news; its parts fall to our own price',
+    Math.abs(D.giantShare() - 0.4) < 1e-9 && sumB < sumA * 0.85 && floored && D.sourceOf(k).k === 1 && news.some(t => /cuts its prices/.test(t)),
+    `com pay over 40 offers ${sumA.toFixed(0)} → ${sumB.toFixed(0)}; part ×${D.sourceOf(k).k}`);
+  const i0 = G.i, other = D.POWERS.find(p => p.i !== 0 && D.relOf(0, p.i) > -0.2); G.i = other.i; const ok1 = D.sourceOf(k).how === 'giant';
+  P.sanc[G.i] = P.day + 100; const sancd = ok1 && D.giantSells() === null && D.sourceOf(k).how !== 'giant';
+  check("giant: it answers to its power's law: sanctions from that power stop its sales to us", sancd, `based in ${other.root}: before ${ok1 ? 'giant' : '?'}, sanctioned ${D.sourceOf(k).how}`);
+  G.i = i0;
+}

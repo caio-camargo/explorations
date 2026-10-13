@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2829,3 +2829,33 @@ Caio's W26.1: rivals are programs from the start, not seeded schedules. The plan
 Tests: `econ-21` (5 checks: forecast and worlds differ; an attempt fails then succeeds and the race is lost; the spur;
 commodity money; old save and defection). `econ-13` and `econ-15` pass unchanged. **Waiting on Caio:** W38 (spur,
 panel by openness, second-place news; defaults built).
+
+## v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10, POWERS.md § Commercial giant)
+
+**What it is:** a company, the one rival that isn't a nation (`PROG.giant`, `sim/contracts.js` beside the rivals). It
+has no entry in `POWERS`, `RIVALS` or the race; it is based in a power and answers to its law.
+- **Arrival** (`giantTick`, from `econTick` after `rivTick`): when the world's computing year (`worldCompYear`, so a
+  computing centre brings it a little sooner) passes **18–21**, drawn per world (`giantYear`, from `wseed`). Its base is
+  drawn by economy × (0.4 + openness), home included; its name from Foundry's forms (*# Industries*, *# Space*, *#works*,
+  *#ward*). News: a steel prototype on a live stream, orbit promised within a year.
+- **Prototypes** for 320–480 days: up to two "rapid unscheduled disassembly" headlines; it sells nothing yet.
+- **Orbit**, then the market: its share (`giantShare()`) grows from 0 to **40 % over four years**; every **commercial**
+  offer's pay is × (1 − share) in `genOffer`, never under `payFloor`. A price-cut headline each of those four years.
+- **It sells parts to anyone, us included** (`giantSells()`): `sourceOf` returns `{how:'giant', k, from, name}` for any
+  part home can't make, before imports: k = 1.2 falling to 1.0 with its share (an import is ×1.5). Not while its power
+  sanctions us or is hostile (relation ≤ −0.2), as imports. Bought abroad, it costs the same opinion at home as an import
+  (`importNews`). Its parts arrive certified like imports; we can start our own line for one (not a licence).
+- **UI:** the builder's source line reads "from *Name* (*Power*)"; the imports line on rollout "*Name* ×1.2".
+  `partMaker` (`app/gl.js`) draws its parts in our school until Foundry exists (Q205).
+
+**Measured** (`econ-22`): in world 1000 it arrives at year 19.6 in Dunnzar, orbits 432 days later after two RUDs; a
+capsule a resource state imported at ×1.5 comes from it at ×1.2. At the full 40 % share, 40 commercial offers pay
+**1460 → 1176M (−19 %, not −40 %)**: the pay floor holds the cheap jobs (sounding, test, beeper), so the giant bites the
+big commercial work and leaves a floor to climb from. No effect on `career.mjs` (4 years; it arrives around year 20).
+
+**Not yet:** racing for the capstones (Q138's later slices: the race has only the three early firsts); Foundry's look on
+its parts (Q205); choosing its part over one we make (a builder choice: decision 2's mixed rockets); it as a customer for
+our depots and relays (LATE_GAME rule 5); launch rides sold to us.
+
+Tests: `econ-22` (3 checks: arrival, prototypes, orbit, sales cheaper than an import; share, pay and floor, news, price
+to ×1.0; sanctions from its power stop its sales). **Waiting on Caio:** W40 (three defaults, built).

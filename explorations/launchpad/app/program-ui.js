@@ -3,22 +3,14 @@
 'use strict';
 // ============================================================ program UI: the contract board (economy session)
 function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
-  if(!o.chosen&&!PROG.flights)return `<div class="ep">Whose program? <span class="dim">(your power)</span></div><div class="sub gq">The country behind the launch site: how the money arrives, what the public wants from you, and what a failure costs.</div>`+   // (flow, Q41) each choice explained in one sentence, on screen
-    [['', `Random world`, `Whatever the launch site's power was generated as: a ${ARCH[POWERS[0].arch].name.toLowerCase()} this time.`],...Object.entries(ARCH).map(([k,v])=>[k,v.name,v.blurb])].map(([k,n,b])=>{const on=(PROG.homeArch||'')===k;
-      return `<div class="ms gc${on?' on':''}"><button data-arch="${k}" class="${on?'on':''}">${n}</button><div class="sub">${b}</div></div>`}).join('')+
-    `<div class="ep">How does the program start?</div><div class="sub gq">Who owns it: where the money comes from, and who you answer to.</div>`+
-    `<div class="gsum">Chosen: <b>${PROG.homeArch?ARCH[PROG.homeArch].name:`Random world (${ARCH[POWERS[0].arch].name.toLowerCase()})`}</b>. Picking how it starts begins the career.</div>`+   // (flow, Q269; PLAYTEST #69)
-    Object.entries(START).map(([k,v])=>
-    `<div class="ms gc"><button data-start="${k}">${v.name} · ${fmtM(v.funds)}</button><div class="sub">${v.blurb}</div></div>`).join('');
+  if(!o.chosen&&!PROG.flights)return '';   // (flow, Q241 R3) the charter on the title screen asks this now (app/title.js)
   const shares=[...Object.entries(o.st).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<span style="color:${pc(+k)}">${POWERS[+k].root}</span> ${(x*100).toFixed(0)}%`),...(o.pv>0?[`private ${(o.pv*100).toFixed(0)}%`]:[])].join(' · ');
   return `<div class="ep">${progName()} <span class="dim">· ${ownKind()}</span></div><div class="sub">${shares}${o.debt>0?` · <span class="bad">debt ${fmtM(o.debt)}</span>`:''}</div>`+
     ((PROG.history||[]).length?`<div class="sub dim">${PROG.history.map(h=>`day ${h.day.toFixed(0)}: ${h.from} ${h.move}`).join('<br>')}</div>`:'')+
     (PROG.decisions||[]).map(d=>`<div class="ms" style="border-left-color:var(--warn)"><b>${d.title}</b><div class="sub">${d.text} <i>${Math.max(0,d.expires-PROG.day).toFixed(0)} days to answer</i></div>`+
       d.opts.map(([k,l])=>`<button data-dk="${d.id}:${k}">${l}</button>`).join(' ')+`</div>`).join('')}
 document.addEventListener('click',e=>{const ds=e.target.dataset||{};
-  if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderProgram()}
-  else if(ds.start){chooseStart(ds.start);renderProgram();editorChanged()}
-  else if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}
+  if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}
   else if(ds.line){const[k,m]=ds.line.split(':');if(!startProdLine(k,m))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.stand){if(!buildStand())HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
@@ -378,5 +370,5 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
   $('nd-sum').innerHTML=pick+(n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
     `Δv <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`);
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
-renderEditor();go('program');
+renderEditor();go('title');   // (Q241 R3) the page opens on the title screen
 requestAnimationFrame(frame);

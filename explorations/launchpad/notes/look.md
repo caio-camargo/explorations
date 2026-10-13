@@ -1534,3 +1534,44 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   `SKY_FS`'s `scatter`; the sky pass measured the same in two alternating A/B rounds against `main` (views 97, 156,
   157: 1.45–2.02 ms on both). No step was added (the Q19 rule).
 - **Checks:** test `aerofx-18`. TESTING 241.
+
+## Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow; PLAYTEST #86)
+- **Seen:** from 1,000 km over Tellus's highest ground (8.9 km), the range reads as crumpled white paper: lumpy grey
+  shading on solid white, with a hard outline where it meets the cloud deck. Stills in
+  `output/launchpad/beauty/q351/` (`m_col.png`, zoom `m2_zoom.png`). Found with a scratch view: the ship over the highest
+  `terrainH` point, looking down.
+- **The cause is the snow mask, not the lighting.** In `tellus()` (`SKY_FS`), snow and ice hold only on gentle ground:
+  `steep = sst(.12,.3,slope)` keeps faces steeper than ~35° as bare rock, which is what gives a range its relief. But
+  `slope` comes from `npf`, the normal from the height differences over `eps = max(fw·1.5, 1)`, filtered to the pixel's
+  footprint. From orbit a pixel covers hundreds of metres, every slope averages out to gentle, the steep-face test never
+  fires, and the whole range above the snow line turns snow. The relief shading left on it is the crumple.
+- **Not the cloud edge:** the shell is drawn only in front of the ground (`tC < tH`), so peaks above it cut a hard
+  contour. Letting the cloud lap 1,200 m up the ground at the hit point (tried, reverted) changed nothing visible here:
+  these peaks stand 4–7 km above the deck, and the white is snow.
+- **The fix belongs to world** (with Q251, relief normals at distance): carry how steep the ground is *inside* a pixel.
+  For example, bake a slope-variance channel with the world texture and let `steep` use `max(slope, expected sub-pixel
+  steepness)` as the footprint grows, so ridges stay rock and valleys and gentle shelves hold the snow. It grows
+  `SKY_FS`, so pay with a cut (Q19) or fold it into Q323 (Tellus from above). QUEUE *Proposed*.
+
+## v1.162 — a plume light per side of a wide rocket (2026-10-13, effects beat, QUEUE Q319 B2.5)
+- **Before:** every burning engine fed one point light at their weighted middle, so a rocket with boosters lit its flanks
+  and the pad as if from its axis.
+- **Now** (`plumeLight`): when the engines spread over 2.5 m (a Heavy's boosters, a broad cluster), they split across
+  their widest spread into two lights, `PLT.p/c` and `PLT.p2/c2`. Engines within 0.35 of the half-spread of the middle
+  (the core) feed both at half weight, so the Heavy splits evenly (67 / 68 in view 54, was all in one). A single-core
+  rocket keeps one light. `MESH_FS` and `SMOKE_VS` take the second light; the ground pool takes the total; an
+  explosion's flash or the re-entry plasma, taking over the light when brighter, clears the second.
+- **Seen on the way:** in the scripted reference views the kerolox igniter's green flash (`ignOf`) is sometimes still on
+  at T+19 s, on `main` too, run to run: its timing there doesn't follow sim time. So the plume light reads green in some
+  shots. A view nit, not touched.
+- **Stills:** `output/launchpad/beauty/q319-lights/v56_ab.png` (main | this, by day; the light matters at night and on the pad).
+- **Checks:** test `aerofx-19`. TESTING 244.
+
+## Reference views 159–161 (2026-10-13, effects beat; no version: tooling)
+- **159** view 46's shield-first entry from upstream: the shield's glowing face (Q318; views 40–47 never showed it).
+- **160** the terminator 800 km up, looking down along the day/night line (Q352's bands).
+- **161** a mountain range from 1,000 km: the ship over Tellus's highest ground, found on a 0.02 rad search (Q351;
+  8,924 m today). Stills `output/launchpad/beauty/views159/`.
+- **Not built: the ascent's leading-edge warmth** (BEAUTY B3.2, Q320's leftover). The skin stays near 400–600 K on a
+  climb, and a blackbody there is invisible even at night (1,000 K is 3e-4 of sunlit paint, `aerofx-11`). Only a stylised
+  tint would show it, against the doc's rule that every effect teaches something true. Left out on purpose.

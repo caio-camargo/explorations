@@ -31,8 +31,8 @@ window.PT = {
   log: [],   // every HOOK.msg / HOOK.news line since the helpers were injected, with the sim time
   hookLog() { if (HOOK.__pt) return; HOOK.__pt = 1; for (const k of ['msg', 'news']) { const f = HOOK[k]; HOOK[k] = (...a) => { PT.log.push((typeof simT === 'number' ? simT.toFixed(1) : '') + ' ' + k + ': ' + String(a[0]).replace(/<[^>]+>/g, '')); return f.apply(HOOK, a) } } },
   logSince(n) { return PT.log.slice(n) },
-  // pass the "Whose program? / How does it start?" gate (first start button, default power)
-  start(k) { const b = k ? document.querySelector('[data-start="'+k+'"]') : document.querySelector('[data-start]'); if (b) b.click(); return !!b },
+  // sign the charter on the title screen (Q241 R3): tick how it starts (k, else the first), then Found the program
+  start(k) { const c = k && document.querySelector('[data-cstart="'+k+'"]'); if (c) c.click(); const b = document.querySelector('#bFound'); if (b) b.click(); return !!b },
   click(sel) { const e = typeof sel === 'string' ? document.querySelector(sel) : sel; if (!e) throw new Error('no element ' + sel); e.click(); return true },
   clickText(sel, re) { const e = [...document.querySelectorAll(sel)].find(x => new RegExp(re).test(x.textContent)); if (!e) throw new Error('no ' + sel + ' ~ ' + re); e.click(); return e.textContent.trim().slice(0, 60) },
   key(k, opt = {}) { const ev = new KeyboardEvent('keydown', {key: k, bubbles: true, ...opt}); (document.activeElement || document.body).dispatchEvent(ev); window.dispatchEvent(new KeyboardEvent('keyup', {key: k, bubbles: true})); return k },
@@ -434,7 +434,7 @@ ROWS[100] = {title: 'tester menu controls', steps: [
 ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'gate'}, `({build: document.getElementById('bBuild').disabled, gate: progGate})`,
   {key: 'b'}, `({screen: screenNow(), msg: PT.msg()})`, {shot: 'b_refused'},
   `PT.click('[data-arch="closedSuper"]'); ({arch: PROG.homeArch})`, {shot: 'arch'},
-  `PT.click('[data-start="company"]'); ({gate: progGate, build: document.getElementById('bBuild').disabled, funds: PROG.funds, name: progName()})`, {shot: 'started'}],
+  `PT.start('company'); ({gate: progGate, build: document.getElementById('bBuild').disabled, funds: PROG.funds, name: progName()})`, {shot: 'started'}],
   checks: {gate: `progGate`}, expect: {gate: v => v === false}};
 
 // M1's finish line (QUEUE Q55, ROADMAP § M1): a new career, no tester flags, from the first-run gate to the first orbit
@@ -469,7 +469,7 @@ true`;
 // The Program as the director's desk (flow, QUEUE Q239 R1): a Sounding flown in real frames (so the liftoff photo is
 // taken by frame(), as in play), then the desk with the photo, the clipping and, after a first, a certificate.
 ROWS.desk = {title: 'the Program as a desk: photo, clipping, in-tray; the Debrief as the report', gate: true, flags: null, steps: [M1_HELPERS,
-  {click: '[data-start="agency"]'}, {shot: 'desk_new'},
+  {click: '[data-cstart="agency"]'}, {click: '#bFound'}, {shot: 'desk_new'},
   `(async()=>{ go('assembly'); PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); await new Promise(r => setTimeout(r, 6000)); return {photo: !!localStorage.getItem('launchpad-photo'), screen: screenNow(), room: document.body.classList.contains('room')} })()`,
   `(()=>{ PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); go('program'); return {screen: screenNow(), room: document.body.classList.contains('room'), photo: !!document.querySelector('#debWall img'), head: PT.text('#debHead'), boxes: PT.boxes()} })()`,
   {shot: 'report'}, `(()=>{ go('program'); return {screen: screenNow(), room: document.body.classList.contains('room'), wall: document.getElementById('deskWall').innerText.slice(0, 300)} })()`,
@@ -478,7 +478,7 @@ ROWS.desk = {title: 'the Program as a desk: photo, clipping, in-tray; the Debrie
 ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)', gate: true, flags: null, steps: [M1_HELPERS,
   // the first-run gate, with real clicks
   {say: 'A new player opens the game for the first time'}, {shot: 'gate'}, `({tester: typeof TEST === 'object' ? TEST.on : null, gate: progGate, boxes: PT.boxes()})`,
-  {say: 'Picks a space agency to start a career'}, {click: '[data-start="agency"]'}, `({gate: progGate, build: document.getElementById('bBuild').disabled, ...PT.state(), program: PT.text('#prog').slice(0, 600)})`, {shot: 'program'},
+  {say: 'Picks a space agency to start a career'}, {click: '[data-cstart="agency"]'}, {click: '#bFound'}, `({gate: progGate, build: document.getElementById('bBuild').disabled, ...PT.state(), program: PT.text('#prog').slice(0, 600)})`, {shot: 'program'},
   `PT.m1 = {boxes: {program: PT.boxes()}}; PT.m1.boxes.program`,
   // flight 1: Sounding, "Above the weather"
   {say: 'First contract, "Above the weather": to the Assembly (B) to build a sounding rocket'}, {key: 'b'}, `PT.preset('Sounding'); ({screen: screenNow(), cost: vesselCost(S.parts).cost, funds: PROG.funds, boxes: (PT.m1.boxes.assembly = PT.boxes())})`, {shot: 'assembly'},
@@ -738,7 +738,17 @@ ROWS[164] = {title: 'mission control (was: the network screen)', steps: [DOCK_HE
 ROWS[233] = {title: "the network's nodes on mission control's wall", steps: [...ROWS[164].steps.slice(0, 3), {key: 'w'}, {key: 'w'},
   `({page: mcPage, text: document.getElementById('mcNet').innerText.slice(0, 400)})`, {shot: 'nodes'},
   `{const nm = netModel; window.netModel = () => {const M = nm(); M.nodes.push({id: 'reg:999', kind: 'base', body: 'Selene', slot: 'surface', name: 'Selene Base 1', stock: {supplies: 400}, need: {supplies: 40}, days: 10, paused: false}); M.bottleneck = {text: 'Selene Base 1 has 10 days of supplies left', node: 'reg:999', good: 'supplies'}; return M}; renderMission(); document.getElementById('mcNet').innerText.slice(0, 200)}`, {shot: 'bottleneck'}]};
-ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-start="agency"]'},
+// charter: the title screen and the charter (Q241 R3): a new player sees the charter; ticks a power and a start, signs;
+// the desk opens; back on the title (Esc menu's Title screen) the charter is signed and Enter continues.
+ROWS.charter = {title: 'the title screen and the charter', gate: true, flags: null, steps: [M1_HELPERS, {shot: 'charter'},
+  `({screen: screenNow(), desk: PT.vis('#prog'), boxes: PT.boxes(), menu: PT.text('#ttlMenu')})`,
+  {click: '#ttlCharter [data-arch]:not([data-arch=""])'}, {click: '[data-cstart="consortium"]'}, {shot: 'ticked'},
+  `({found: document.getElementById('bFound').dataset.start, sig: PT.text('#ttlCharter .sig')})`,
+  {click: '#bFound'}, `({screen: screenNow(), name: progName(), funds: PROG.funds})`, {shot: 'desk'},
+  `go('title'); ({screen: screenNow(), buttons: document.querySelectorAll('#ttlCharter button').length, menu: PT.text('#ttlMenu')})`, {shot: 'signed'},
+  {key: 'Enter'}, `({screen: screenNow()})`],
+  checks: {screen: `screenNow()`}, expect: {screen: v => v === 'program'}};
+ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
 // 200: the Assembly keeps the design where it was (Q247): deleting the parts underneath leaves the root still on screen and

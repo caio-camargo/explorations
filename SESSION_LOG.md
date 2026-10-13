@@ -5737,3 +5737,39 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `mockups/sky/index.html`, `mockups/README.md`, `QUEUE.md` (W39, Q253 state, a Proposed line), `ACTIVE_WORK.md`.
 - **Next:** Q321 on W39 (sky & bodies).
 
+## 2026-10-13 — Caio + Claude (launchpad economy session): Q206 the commercial giant (v1.161)
+- **Built:** the commercial giant (D10, POWERS § Commercial giant) as `PROG.giant` in `sim/contracts.js`: arrives in world year 18–21, a year of exploding prototypes, then orbit; sells us any part home can't make at ×1.2 falling to ×1.0 (`sourceOf` → `how:'giant'`, before imports); commercial offers pay × (1 − its share), share to 40 % over four years, floored; its power's sanctions stop its sales. News in its voice.
+- **Measured:** at full share commercial pay falls 19 %, not 40 %: the floor holds the cheap jobs. No effect on `career.mjs` (it arrives ~year 20).
+- **Files:** `sim/contracts.js`, `sim/program.js` (`sourceOf`, `importNews`), `app/editor.js` (source line, line candidates), `tests/economy.mjs` (econ-22), `notes/economy.md` § v1.161, `NOTES.md`, `QUEUE.md` (Q206 ✓, W40, two Proposed), `TESTING.md` 243, `ACTIVE_WORK.md`.
+- **Next:** W40 (three defaults, built). Economy's next ready: Q181 (overflight), Q184 (routines), Q295 (missed deadlines, M1), Q296, Q332.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, second session, continued): Q319 finished, Q352, Q351, views
+
+- **Done, on `main`:** v1.158 heat haze (High only: the composite looks the scene up off each jet's screen segment);
+  v1.159 Q352, no bands at the terminator (`scatter`'s 12 fixed view-ray steps were the cause, not `sunTrans` or the output;
+  jittered per pixel, measured at no cost); v1.162 a plume light per side of a wide rocket (Q319 done); views 159–161.
+- **Q351 diagnosed, not fixed:** the snow mask's slope comes from footprint-filtered normals, so from orbit no face is
+  steep and a whole range turns snow. The fix is world's (a sub-pixel steepness term, with Q251); in QUEUE *Proposed*.
+- **Dropped Q361** (ascent leading-edge warmth): invisible as a blackbody at a climb's 400–600 K. Caio can reopen it.
+- **Seen:** the reference views' igniter flash timing doesn't follow sim time (Proposed for QA).
+- **Tests:** `aerofx-17` to `aerofx-19` new; all look sections pass on each merged tree. No full-suite run (memory was short).
+- **Files:** `app/gl.js`, `app/render.js`, `app/settings.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `TESTING.md` (240, 241, 244), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** a full suite on a quiet machine; the effects lane has nothing ready; overflow candidates are Q250 (cloud
+  aliasing at liftoff, with a `SKY_FS` cut) or Q357's twilight contrail (needs a time-of-day control in the views).
+
+
+## 2026-10-13 — flow session: Q241 R3, the title screen and the charter (v1.163)
+- **Q241 R3 ✓ v1.163** (merged and pushed, `45917ea`): the page opens on a title room (`app/title.js`, `#ttl`): a night
+  pad, the menu, the program's charter. A new career fills it in (Article 1 whose program, Article 2 how it starts) and
+  signs it (*Found the program*); the desk never shows before (`needCharter()`). A founded career shows its charter
+  signed, *In force*; Continue (Enter) goes to the desk; New program asks twice. The Esc menu has *Title screen*.
+- **Cross-lane:** the first-run gate left `ownershipHTML` (program-ui.js) with its `data-arch`/`data-start` handlers;
+  `resetProgram()` factored out of the Program's reset (editor.js); core's merge guard and `flow-10` follow.
+- **Renumbered twice on merge** (v1.160 → v1.161 → v1.163; TESTING 242 → 243 → 245): three lanes shipped meanwhile.
+- **Checks:** test `flow-18`; `--smoke` passes on the pushed merge; robot rows `charter` (1280×800: the whole charter
+  fits, ticks move, signed after) and `m1` pass.
+- **Waiting on Caio (Proposed line):** skip the title on load when a save exists? Default: keep it (one Enter).
+- **Files:** `app/title.js` (new), `app/screens.js`, `app/program-ui.js`, `app/editor.js`, `index.html`, `tests/flow.mjs`,
+  `tests/core.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** Q261 (map layer toggles), Q262 (map focus); R5 after vehicle's Q237/Q238.

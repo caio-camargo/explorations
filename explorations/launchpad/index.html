@@ -85,6 +85,31 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 @font-face{font-family:'Courier Prime';src:url(fonts/courier-prime.woff2) format('woff2');font-display:swap}
 @font-face{font-family:'Courier Prime';font-weight:700;src:url(fonts/courier-prime-bold.woff2) format('woff2');font-display:swap}
 @font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue.woff2) format('woff2');font-display:swap}
+/* the title screen and the charter (flow, Q241 R3; mock-up mockups/screens/?s=title): a dimmed night pad, the menu, the charter */
+#ttl{position:fixed;inset:0;z-index:2;overflow:auto;background:radial-gradient(ellipse at 70% 110%,#3a3020 0,#1a1812 30%,transparent 60%),linear-gradient(180deg,#05070d 0,#0d1320 55%,#151a22 100%)}
+#ttl .tsky{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(1px 1px at 12% 18%,#cfd6e6,transparent),radial-gradient(1px 1px at 31% 9%,#aab3c6,transparent),radial-gradient(1px 1px at 47% 27%,#dde3ee,transparent),radial-gradient(1px 1px at 63% 12%,#9aa3b6,transparent),radial-gradient(1.5px 1.5px at 82% 22%,#eef1f7,transparent),radial-gradient(1px 1px at 91% 7%,#aab3c6,transparent),radial-gradient(1px 1px at 7% 41%,#9aa3b6,transparent),radial-gradient(1px 1px at 22% 33%,#cfd6e6,transparent),radial-gradient(1px 1px at 74% 38%,#bfc6d6,transparent);opacity:.8}
+#ttl .tpad{position:absolute;right:6%;bottom:0;width:90px;height:62%;pointer-events:none;background:linear-gradient(90deg,transparent 0 30px,#07080b 30px 60px,transparent 60px),repeating-linear-gradient(180deg,transparent 0 26px,#07080b 26px 29px);clip-path:polygon(0 100%,30% 0,70% 0,100% 100%);opacity:.9}
+#ttlMenu{position:absolute;left:46px;top:38%;display:flex;flex-direction:column;gap:10px;align-items:flex-start;z-index:1}
+#ttlMenu button{background:none;border:none;padding:0;font:30px 'Bebas Neue',sans-serif;letter-spacing:4px;color:#e9dcb9;text-shadow:0 2px 6px #000;opacity:.55;cursor:pointer;text-align:left}
+#ttlMenu button.on,#ttlMenu button:hover{opacity:1}#ttlMenu small{display:block;font:13px 'Courier Prime',monospace;letter-spacing:1px;opacity:.8}
+#ttlCharter{position:relative;margin:16px auto;left:90px;width:640px;padding:22px 40px 18px;box-sizing:border-box;color:#2a2620;font-family:'Courier Prime',monospace;box-shadow:0 10px 40px rgba(0,0,0,.6);background:#f3ead4;background-image:radial-gradient(ellipse at 50% 0,rgba(255,255,255,.4),transparent 60%),repeating-linear-gradient(180deg,transparent 0 23px,rgba(0,0,0,.025) 23px 24px)}
+#ttlCharter .t1{font:64px/0.85 'Bebas Neue',sans-serif;letter-spacing:8px;color:#1d2a44;text-align:center}
+#ttlCharter .t2{text-align:center;font-size:12px;letter-spacing:5px;color:#6b6252;margin:4px 0 8px;text-transform:uppercase}
+#ttlCharter .rule{border-top:3px double #2a2620;margin:6px 0 6px}
+#ttlCharter .q{font-weight:bold;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#1d2a44;margin:10px 0 1px}
+#ttlCharter .why{font-style:italic;font-size:11.5px;color:#6b6252;margin-bottom:3px}
+#ttlCharter .opt{display:flex;gap:10px;font:12px/1.3 'Courier Prime',monospace;margin:2px 0;align-items:flex-start;color:#2a2620;background:none;border:none;padding:1px 0;text-align:left;width:100%;cursor:pointer}
+#ttlCharter.signed .opt{cursor:default}#ttlCharter.signed .opt:not(.on){opacity:.45}
+#ttlCharter button.opt:hover b{text-decoration:underline}
+#ttlCharter .opt .bx{flex:none;width:15px;height:15px;border:2px solid #2a2620;margin-top:1px;position:relative}
+#ttlCharter .opt.on .bx:after{content:'✗';position:absolute;left:0;top:-7px;font:bold 20px 'Courier Prime',monospace;color:#b3262a}
+#ttlCharter .opt b{color:#1d2a44}
+#ttlCharter .sign{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-end;font-size:12px;border-top:3px double #2a2620;padding-top:12px}
+#ttlCharter .sig{font:26px 'Special Elite',cursive;color:#1d2a44}#ttlCharter .dim{color:#6b6252}
+#ttlCharter #bFound{font:22px 'Bebas Neue',sans-serif;letter-spacing:3px;background:#1d2a44;color:#f3ead4;border:none;padding:8px 16px;cursor:pointer;white-space:nowrap}#ttlCharter #bFound:hover{background:#b3262a}
+#ttlCharter .inforce{font:bold 14px 'Courier Prime',monospace;letter-spacing:3px;color:#b3262a;border:3px solid #b3262a;padding:4px 10px;transform:rotate(-6deg);text-transform:uppercase;white-space:nowrap}
+#ttlCharter .seal{position:absolute;right:26px;top:14px;width:92px;height:92px;overflow:hidden;border-radius:50%;background:radial-gradient(circle,#c33 0 55%,#a11 56% 62%,#c33 63%);box-shadow:0 2px 6px rgba(0,0,0,.4);color:#fde;font:bold 9px/1.1 'Courier Prime',monospace;display:flex;align-items:center;justify-content:center;text-align:center;letter-spacing:.5px;text-transform:uppercase;transform:rotate(12deg);opacity:.9;pointer-events:none}
+@media (max-width:1100px){#ttlCharter{left:0;margin-left:230px}}@media (max-width:900px){#ttlMenu{position:static;padding:20px 20px 0}#ttlCharter{margin:16px auto;width:min(620px,94vw);padding:20px 16px 16px}#ttlCharter .seal{width:70px;height:70px;font-size:9px}}
 #prog{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(210px,270px) minmax(0,1fr) minmax(190px,250px);grid-template-rows:auto auto minmax(0,1fr);column-gap:22px;row-gap:12px;padding:0 20px 16px}
 #prog,#deb{--fg:#2a2620;--dim:#6b6252;--acc:#1d4f8f;--ok:#2f6b2f;--warn:#a5521a;--bad:#b3262a;--line:#9c8f78;
   font:13px/1.4 'Courier Prime',Courier,monospace;color:var(--fg);
@@ -268,6 +293,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   </div>
 </div>
 
+<div id="ttl" class="hidden"><div class="tsky"></div><div class="tpad"></div><div id="ttlMenu"></div><div id="ttlCharter"></div></div>
 <div id="prog" class="hidden">
   <div id="deskLH"></div><div id="progHead" class="hidden"></div>
   <div id="deskTray"><button id="deskTrayN" data-ptab="inbox" title="the Inbox: what needs an answer">IN</button><div id="deskTrayBox"></div></div>
@@ -364,6 +390,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <script src="app/input.js"></script>
 <script src="app/screens.js"></script>
 <script src="app/desk.js"></script>
+<script src="app/title.js"></script>
 <script src="app/rover-yard.js"></script>
 <script src="app/sound.js"></script>
 <script src="app/loop.js"></script>
