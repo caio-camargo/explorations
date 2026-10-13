@@ -421,3 +421,19 @@
   check('flow-20: the map centres on the ship, a body or one of our craft (the Focus list, Tab, double-click, Home); a craft that\'s gone hands it back to the ship',
     wired && ok, `wired ${wired} · ${info}`);
 }
+
+// flow-21. Hover terms (flow session, QUEUE Q287; UI.md rule 9): jargon is a word you hover, explained once in TERMS and
+// shown by one tooltip every screen shares; every term is used somewhere on screen; one level deep (no markup inside an
+// explanation); the HUD's Ap · Pe and Δv, the builder's stage rows, stability and max-q, the rollout's TWR and the
+// know-how headings are marked; the builder's "(CoM ahead of CoP, calibers)" sub-line went into its term.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const X = new Function(page.slice(page.indexOf('const TERMS='), page.indexOf('// the tooltip:')) + 'return {TERMS,term};')();
+  const keys = Object.keys(X.TERMS), rest = page.replace(page.slice(page.indexOf('const TERMS='), page.indexOf('// the tooltip:')), ''), used = keys.filter(k => rest.includes("term('" + k + "'"));
+  const flat = keys.every(k => !/[<>]/.test(X.TERMS[k].d) && X.TERMS[k].d.length > 40);
+  const mark = /^<span class="term" data-term="dv">Δv<\/span>$/.test(X.term('dv', 'Δv')) && X.term('nope', 'x') === 'x';
+  const sites = [/\[`\$\{term\('ap','Ap'\)\} · \$\{term\('pe','Pe'\)\}`/, /\[term\('dv','Δv'\),/, /\$\{term\('stab','Stability'\)\}/, /\$\{term\('maxq','Max-q'\)\}/, /can't lift off: \$\{term\('twr','TWR'\)\}/, /sec\(term\('kh','Know-how'\)/]
+    .every(r => r.test(page)) && !/CoM ahead of CoP, calibers/.test(page) && H.includes('id="termTip"');
+  check('flow-21: hover terms: one glossary, one tooltip; every term used on screen, none nested; the HUD, builder, rollout and know-how marked; the stability sub-line folded into its term',
+    used.length === keys.length && flat && mark && sites, `used ${used.length}/${keys.length} (${keys.filter(k => !used.includes(k)).join(',') || 'all'}) · flat ${flat} · markup ${mark} · sites ${sites}`);
+}
