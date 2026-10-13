@@ -5649,3 +5649,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for parts & pad:** run the full suite and one game shot on a quiet machine; then Q316 (shadows, surface,
   greebles), Q294, Q330, Q245.
 
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q253 the space-sky mock-ups
+
+- **Done:** `explorations/launchpad/mockups/sky/index.html`, a standalone page with 9 views: today's stars, galaxy and
+  sun ported from `app/gl.js` for comparison; the proposal's subtle and showpiece galaxy, sharp power-law stars, a
+  spike-less sun, the night limb with airglow, Tellus from 4,000 km, Selene's earthshine. Stills in
+  `output/launchpad/mockups/sky/` (gitignored), shot on the software renderer so no game lock was needed.
+- **Twinkle (Caio's ask):** the game has no twinkle code; today's comes from one-pixel stars shimmering plus the
+  composite's grain, so Q321's sharp stars would lose it. The page makes it deliberate with three settings (gentle,
+  through the air only, off); a Proposed line tells Q321 to keep it.
+- **Waiting on Caio:** W39 (subtle or showpiece; the new sun; the twinkle), default if silent: subtle, new sun, gentle.
+- **Known faults of the mock-up:** a faint second airglow arc over the night disc; placeholder continents.
+- **Files:** `mockups/sky/index.html` (new), `mockups/README.md` (§ sky), `QUEUE.md` (Q253 ✓, W39, two Proposed lines),
+  `ACTIVE_WORK.md`.
+- **Next:** Q321 on W39's pick or default (sky & bodies); for parts & pad, the Q315 follow-ups and Q316.
+

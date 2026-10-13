@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: for Caio to pick
+**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -487,3 +487,34 @@ fittings; an alternative is pilot white-on-red. The game already draws the defau
 `SUITS` in `app/crew-look.js`, one build item per school.
 
 **Caio (2026-10-10):** too samey across eras and schools; replaced by round 2.
+
+## sky/ — the sky in space (QUEUE Q253 → Q321 the space sky, Q323 Tellus from above; PLAYTEST #52, BEAUTY D18.4–5)
+
+Open `sky/index.html` (one button per view, the twinkle toggle) or the stills in `output/launchpad/mockups/sky/`
+(`<view>.png`, 1280×800, shot on the software renderer at t = 0). One fragment shader, the game's light pipeline in
+miniature (linear light, exposure, AgX, grain). `now` and `sun-now` port today's `galaxy()`, `starsAt()` and `sunAt()`
+from `app/gl.js` for comparison; the rest are the proposal. Real references are named in each caption, not copied in.
+
+| View | What it shows | Real references |
+|---|---|---|
+| **now** | today's stars and galaxy from 200 km over the night side: a smooth bright band, stars one pixel each | — |
+| **subtle** (a) | the same frame, proposed: the band a faint river with star clouds and dark lanes; stars by a power law (~40 bright, ~300 medium, ~1,500 faint in a 60° frame), coloured by temperature, each a small sharp disc (no shimmer) | ISS night-side photos at a few seconds' exposure |
+| **showpiece** (b) | the same frame at 3.5× the galaxy: brighter clouds, the dust, pink nebulae, blue clusters | Don Pettit's ISS long exposures; ground astrophotography of the galactic core |
+| **galaxy-up** | the galactic centre, away from Tellus (subtle; `?galk=3.5` for the showpiece) | — |
+| **sun-now** / **sun** | today's disc with four camera-fixed spikes, against a tiny disc that clips to white, a tight glare and a faint veil; at daylight exposure only the brightest stars stay (D18.2's floor) | ISS and Apollo frames with the sun in view |
+| **limb-night** | the night limb: the air's shell lit from behind, orange where the light grazes, the green airglow line above the dark limb | ISS night photos (airglow, city lights) |
+| **tellus-mid** | Tellus from 4,000 km: a gibbous disc, a thin blue limb, a soft terminator, cities on the night side, a small sunglint | DSCOVR/EPIC; Galileo's Earth; Apollo 4 |
+| **earthshine** | Selene as a crescent, its night side blue-grey in Tellus's light, maria visible (×12 over reality, to read at play exposure) | "the old moon in the new moon's arms"; Apollo earthshine photos |
+
+**Twinkle** (Caio, 2026-10-12: "the stars currently twinkle, maybe we can preserve that"). The game has no twinkle code:
+what twinkles today is the one-pixel stars shimmering as the view turns or the resolution adapts, plus the composite's
+grain, so Q321's sharp stars would lose it. The proposal makes it deliberate: each star's brightness drifts on its own
+seed, a couple of times a second, ±35 % (the bar's *gentle*, the default); *through the air* keeps space steady and
+twinkles only near the limb (the real thing); *off*. It animates on the page; the stills are frozen.
+
+**Known faults of the mock-up** (not of the proposal): a faint second green arc over the night disc (where the airglow's
+path switches from rays that miss the ground to rays that hit it); the land on the day side is a flat tan; Tellus's
+continents are placeholder noise (Q323 owns the real look).
+
+**Pick:** _(Caio; W39. Default if silent: (a) subtle, the proposed sun, twinkle gentle everywhere)_
+

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Space sky mock-ups</title>
+<!-- Launchpad mock-up for QUEUE Q253 (PLAYTEST #52, BEAUTY D18.4–5): the sky in space, for Caio to pick from pictures and
+     for the sky & bodies beat to build from (Q321 the space sky, Q323 Tellus from above). A standalone page: never loaded
+     by index.html, no game code. One fragment shader: the star field, the galaxy (the game's of today, and a proposal at
+     two strengths), the sun, Tellus (sea, land, cloud, city lights, the air's limb, airglow) and Selene (earthshine).
+     Linear light → exposure → AgX, like the game's composite since v1.137.
+     ?view=<key> picks a still (the bar does the same); ?tw=0|1|2 the twinkle (off, gentle, through the air only);
+     ?t=<s> freezes the clock (stills use t=0). -->
+<style>
+  :root { --bg: #05070b; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #bar { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+    background: rgba(5, 7, 11, .78); padding: 6px 8px; border-radius: 6px; }
+  #bar button { background: #1b2029; color: var(--fg); border: 1px solid #333b48; border-radius: 4px; padding: 3px 8px; font: inherit; cursor: pointer; }
+  #bar button.on { border-color: var(--acc); color: var(--acc); }
+  #bar .sep { width: 1px; height: 18px; background: #333b48; margin: 0 4px; }
+  #cap { position: fixed; left: 8px; right: 8px; bottom: 8px; background: rgba(5, 7, 11, .78); padding: 6px 10px; border-radius: 6px; color: var(--dim); max-width: 900px; }
+  #cap b { color: var(--fg); }
+  body.still #bar, body.still #cap { display: none; }
+  @media (max-width: 600px) { #bar { left: 4px; right: 4px; } #cap { left: 4px; right: 4px; font-size: 12px; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bar"></div>
+<div id="cap"></div>
+<script>
+'use strict';
+const FS = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uF,uR,uU,uSun;uniform float uTan,uT,uExp,uTw,uGalK,uGame,uSpk,uPlanet,uMoon,uMoonR;uniform vec3 uMoonC;
+uniform vec3 uGx,uGc;
+float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
+            mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*vn(p);p=p*2.03+1.7;a*=.5;}return s;}
+vec2 sph(vec3 ro,vec3 rd,vec3 c,float r){vec3 q=ro-c;float b=dot(q,rd),k=dot(q,q)-r*r,h=b*b-k;if(h<0.)return vec2(-1.);h=sqrt(h);return vec2(-b-h,-b+h);}
+
+// ---- TODAY'S GAME (app/gl.js galaxy() and starsAt(), its params for one seed), for comparison
+vec3 galaxyNow(vec3 d,out float band){vec4 P=vec4(.12,.25,.75,.55);vec3 Gt=vec3(.85,.87,1.);
+ float b=dot(d,uGx),lc=dot(d,uGc),cl=.5+.5*lc,w=P.x*(.6+.9*cl*cl);band=exp(-b*b/(w*w));
+ float ac=acos(clamp(lc,-1.,1.)),bulge=exp(-ac*ac/(P.y*P.y))*exp(-b*b/(P.y*P.y*.35));
+ vec3 q=d-uGx*b*.65;float n=vn(q*7.)*.5+vn(q*19.+1.7)*.3+vn(q*53.+4.1)*.2,arm=mix(1.,smoothstep(.3,.75,vn(q*4.+2.)),P.w);
+ float dust=P.z*smoothstep(.38,.62,vn(q*13.+3.)*.6+vn(q*37.)*.4)*exp(-b*b/(w*w*.15));
+ float I=(band*(.3+1.1*n*n)*arm+bulge*2.2)*(1.-.8*dust)+band*.15;
+ return mix(Gt,vec3(1.,.8,.55),clamp(bulge*1.4,0.,1.))*I*.07;}
+vec3 starsNow(vec3 d,float band){vec3 c=vec3(0.);
+ for(int k=0;k<2;k++){float sc=k==0?220.:560.;vec3 sd=d*sc,ci=floor(sd),j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3));
+  float th=k==0?.993-.004*band:.9965-.012*band;if(h3(ci)<th)continue;
+  float t=h3(ci+5.3),br=(k==0?.25+3.5*pow(h3(ci+9.),5.):.12+.25*h3(ci+9.)),r=length(fract(sd)-j*.6-.2);
+  vec3 tc=t<.12?vec3(.7,.8,1.):t<.55?vec3(.95,.97,1.):t<.8?vec3(1.,.92,.75):vec3(1.,.72,.5);
+  c+=tc*br*smoothstep(k==0?.22:.16,0.,r)*.6;}
+ return c;}
+
+// ---- PROPOSAL: the galaxy. A band with a warm bulge, star clouds and dark dust lanes (the Great Rift's look), a few
+// pink emission nebulae and blue clusters along it. uGalK: 1 subtle (most of the sky black, the band a faint river),
+// 3.5 showpiece (the long-exposure photograph).
+vec3 galaxyNew(vec3 d,out float band){float b=dot(d,uGx),lc=dot(d,uGc),cl=.5+.5*lc,w=.10*(.55+1.1*cl*cl);
+ band=exp(-b*b/(w*w));float ac=acos(clamp(lc,-1.,1.)),bulge=exp(-ac*ac/.09)*exp(-b*b/.012);
+ vec3 q=d;float cloud=fbm(q*6.)*.6+fbm(q*23.+3.)*.3+fbm(q*70.)*.1,cl2=smoothstep(.35,.85,cloud);
+ float lane=smoothstep(.42,.7,fbm(q*11.+7.))*exp(-b*b/(w*w*.18))*(.55+.45*cl);   // dust along the midplane
+ float I=band*(.12+1.25*cl2*cl2)+bulge*1.8;I*=1.-.88*lane;
+ vec3 c=mix(vec3(.78,.84,1.),vec3(1.,.83,.6),clamp(bulge*1.2+cl*.25,0.,1.))*I;
+ float hii=smoothstep(.72,.9,fbm(q*17.+11.))*band*(1.-lane);c+=vec3(1.,.28,.38)*hii*.35;   // emission nebulae
+ float blu=smoothstep(.93,.99,vn(q*170.+5.))*band;c+=vec3(.55,.7,1.)*blu*.6;   // young clusters
+ return c*.06*uGalK;}
+
+// ---- PROPOSAL: stars. Three layers, brightness by a power law (few bright, many faint), colour by temperature, each a
+// small sharp disc whose size grows with brightness (so the bright ones read without spikes), one pixel wide at least
+// (no shimmer as the view turns). Twinkle, kept on purpose (Caio 2026-10-12): each star's brightness drifts on its own
+// seed, a couple of times a second, ±35 %; uTw 1 everywhere, 2 only through the air (rays grazing the limb), 0 off.
+vec3 starsNew(vec3 d,float band,float air){vec3 c=vec3(0.);float px=2.*uTan/uRes.y;
+ for(int k=0;k<3;k++){float sc=k==0?90.:k==1?200.:420.;vec3 sd=d*sc,ci=floor(sd);
+  float th=(k==0?.9967:k==1?.995:.994)-(k==2?.02:.002)*band;if(h3(ci)<th)continue;   // ~40, ~300, ~1,500 stars in a 60° frame
+  vec3 j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3));vec3 sp=(ci+.3+j*.4)/sc;float r=length(d-normalize(sp));
+  float m=h3(ci+9.),br=k==0?.25+2.2*pow(m,5.):k==1?.07+.25*pow(m,2.):.025+.05*m;   // brightness, power law: at night exposure the faint ones are dim, in daylight only the brightest stay
+  float t=h3(ci+5.3);vec3 tc=t<.1?vec3(.62,.74,1.):t<.45?vec3(.88,.92,1.):t<.75?vec3(1.,.95,.84):t<.92?vec3(1.,.84,.62):vec3(1.,.66,.45);
+  float tw=1.;if(uTw>.5){float ph=h3(ci+2.2)*6.2832,f=1.5+2.5*h3(ci+4.4),wob=.5*sin(uT*f+ph)+.3*sin(uT*f*2.3+ph*1.7)+.2*sin(uT*f*5.1+ph*.3);
+   float amt=uTw<1.5?.35:.8*air;tw=max(1.+amt*wob,0.);}
+  float rad=min(px*(.6+.45*sqrt(br)),.22/sc);c+=tc*br*tw*exp(-r*r/(rad*rad))*.9;
+  if(k==0&&br>1.2)c+=tc*br*tw*.015*exp(-r/(px*5.));}   // a soft halo on the brightest (the lens, not a spike)
+ return c;}
+
+// ---- the sun. Today: the disc, a corona and four camera-fixed spikes (app/gl.js sunAt). Proposal: a tiny blinding
+// disc (it clips to white at any exposure), a tight glare and a wide veil, no spikes; uSpk 1 keeps today's spikes.
+vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos(clamp(sdn,-1.,1.)),r=th/.0047;
+ float disc=r<1.?(1.-.55*(1.-sqrt(1.-r*r))):0.;disc*=smoothstep(1.,.92,r);
+ vec3 q=d-uSun*sdn;float a=atan(dot(q,uU),dot(q,uR));
+ float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);
+ if(uSpk>.5)return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);
+ return vec3(1.,.97,.92)*(disc*900.+exp(-th/.004)*12.+exp(-th/.025)*.7+exp(-th/.15)*.02);}
+
+// ---- Tellus at the origin, radius 1 (1,274 km), the air 0.08 (100 km) with a 0.006 scale height (7.5 km) drawn
+// thicker for legibility. Sea, land, cloud and city lights from noise; lit by the sun with a soft terminator.
+const float AT=.08,HS=.012;
+vec3 ground(vec3 n,float mu,out float spec){vec3 w=n*3.+vec3(fbm(n*2.+1.),fbm(n*2.+5.),fbm(n*2.+9.))*1.2;float lf=fbm(w)*.75+fbm(n*14.)*.25,land=smoothstep(.5,.53,lf);
+ vec3 cw=n*vec3(5.,11.,5.)+fbm(n*6.)*1.5;float cl=smoothstep(.5,.78,fbm(cw)*.6+fbm(n*19.)*.25+fbm(n*45.)*.15);
+ float lat=abs(n.y);cl*=.55+.6*smoothstep(.15,.45,lat)*(1.-smoothstep(.75,.95,lat))+.3*(1.-smoothstep(0.,.12,lat));   // clear belts, a wet equator
+ vec3 sea=mix(vec3(.01,.03,.08),vec3(.02,.08,.11),smoothstep(.44,.5,lf));
+ vec3 lnd=mix(vec3(.05,.075,.03),vec3(.14,.11,.07),smoothstep(.4,.7,fbm(n*9.)+.3*(1.-smoothstep(.1,.4,lat))));
+ if(lat>.86)lnd=vec3(.75);
+ vec3 a=mix(sea,lnd,land);spec=(1.-land)*(1.-cl);a=mix(a,vec3(.72),cl);
+ vec3 day=a*max(mu,0.)*smoothstep(-.05,.1,mu);
+ float city=land*(1.-cl*.8)*smoothstep(.06,-.08,mu)*smoothstep(.7,.82,vn(n*90.))*smoothstep(.45,.6,fbm(n*7.+2.))*(1.-smoothstep(.7,.8,lat));
+ return day+vec3(1.,.62,.28)*city*.03;}   // sodium lights
+vec3 tellus(vec3 ro,vec3 rd,inout float tHit,out float air){air=0.;vec3 c=vec3(0.);
+ vec2 ha=sph(ro,rd,vec3(0.),1.+AT);if(ha.y<0.)return c;vec2 hg=sph(ro,rd,vec3(0.),1.);
+ float t0=max(ha.x,0.),t1=hg.x>0.?hg.x:ha.y;
+ // the air: in-scatter along the ray in 12 steps, sunlit share by the sample's own sun angle (a reddened terminator)
+ vec3 ins=vec3(0.);float od=0.,dt=(t1-t0)/12.;vec3 bR=vec3(.18,.42,1.);
+ for(int i=0;i<12;i++){vec3 p=ro+rd*(t0+dt*(float(i)+.5));float h=length(p)-1.,rho=exp(-max(h,0.)/HS);od+=rho*dt;
+  float mu=dot(normalize(p),uSun),lit=smoothstep(-.12,.05,mu);vec3 sunT=exp(-bR*1.4*(1.-smoothstep(-.1,.3,mu))*3.);
+  ins+=rho*dt*lit*sunT*bR*(1.+.4*dot(rd,uSun))*.32;
+}
+ air=1.-exp(-od*40.);vec3 tr=exp(-bR*od*30.);
+ // airglow: a thin green shell at 95 km (drawn at 0.058 R, 0.003 thick), its path length worked out exactly from the ray's
+ // closest approach (edge-on it is a bright thin line above the night limb; face-on, over the disc, a faint wash)
+ {float rA=1.058,wA=.003,tc=-dot(ro,rd),bb=length(ro+rd*max(tc,0.));vec3 pc=ro+rd*max(tc,0.);
+  float path=hg.x>0.?wA/max(abs(dot(normalize(ro+rd*hg.x),rd)),.05):(bb<rA+wA?2.*sqrt(max((rA+wA)*(rA+wA)-bb*bb,0.))-2.*sqrt(max(rA*rA-bb*bb,0.)):0.);
+  float night=1.-smoothstep(-.15,.05,dot(normalize(pc),uSun));ins+=vec3(.25,1.,.35)*path*.006*night;}
+ if(hg.x>0.){tHit=hg.x;vec3 p=ro+rd*hg.x,n=normalize(p);float mu=dot(n,uSun),sp;vec3 g=ground(n,mu,sp)*3.;
+  vec3 h=normalize(uSun-rd);g+=vec3(1.,.95,.85)*sp*pow(max(dot(n,h),0.),1500.)*8.*max(mu,0.);   // sunglint
+  c=g*tr;}
+ else tHit=ha.y;
+ return c+ins*5.;}
+// Selene: grey regolith, maria and craters from noise, lit by the sun and, on its night side, by Tellus (earthshine,
+// bluish, about 1/5000 of daylight in reality, drawn ~1/400 so it reads)
+vec3 selene(vec3 ro,vec3 rd,inout float tHit){vec2 h=sph(ro,rd,uMoonC,uMoonR);if(h.x<0.)return vec3(-1.);tHit=h.x;
+ vec3 n=normalize(ro+rd*h.x-uMoonC);float mare=smoothstep(.55,.62,fbm(n*2.5+9.)),cr=fbm(n*18.)*.6+fbm(n*60.)*.4;
+ vec3 a=mix(vec3(.16,.155,.15),vec3(.07,.07,.075),mare)*(.75+.5*cr);float mu=dot(n,uSun);
+ vec3 E=normalize(-uMoonC);float es=max(dot(n,E),0.);
+ return a*(max(mu,0.)*smoothstep(-.01,.02,mu)*5.+vec3(.55,.7,1.)*es*.2);}
+vec3 agx(vec3 c){const mat3 I=mat3(.842479062253094,.0423282422610123,.0423756549057051,.0784335999999992,.878468636469772,.0784336,.0792237451477643,.0791661274605434,.879142973793104);
+ const mat3 O=mat3(1.19687900512017,-.0528968517574562,-.0529716355144438,-.0980208811401368,1.15190312990417,-.0980434501171241,-.0990297440797205,-.0989611768448433,1.15107367264116);
+ vec3 x=clamp((log2(max(I*c,vec3(1e-10)))+12.47393)/16.5,0.,1.),x2=x*x,x4=x2*x2;
+ x=15.5*x4*x2-40.14*x4*x+31.96*x4-6.868*x2*x+.4298*x2+.1191*x-.00232;return clamp(O*x,0.,1.);}
+void main(){vec2 q=(gl_FragCoord.xy*2.-uRes)/uRes.y;vec3 rd=normalize(uF+uR*q.x*uTan+uU*q.y*uTan);
+ float tHit=1e9,air=0.;vec3 c=vec3(0.);
+ if(uPlanet>.5)c=tellus(uCam,rd,tHit,air);
+ if(uMoon>.5){float tm=1e9;vec3 m=selene(uCam,rd,tm);if(m.x>=0.&&tm<tHit){c=m;tHit=tm;}}
+ if(tHit>1e8||(uPlanet>.5&&sph(uCam,rd,vec3(0.),1.).x<0.&&uMoon<.5)){
+  float band;vec3 bg;float vis=tHit>1e8?1.:exp(-air*3.);   // the sky shows through the thin limb
+  if(uGame>.5){bg=galaxyNow(rd,band)+starsNow(rd,band);}
+  else{bg=galaxyNew(rd,band)+starsNew(rd,band,clamp(air*6.,0.,1.)+(tHit>1e8?0.:1.));}
+  c+=bg*vis+sunAt(rd)*vis;}
+ c*=uExp;
+ vec3 col=pow(agx(c),vec3(1.));   // AgX's fit outputs display-referred (sRGB-ish) values
+ vec2 g=gl_FragCoord.xy;float n=fract(sin(dot(g+uT,vec2(12.9898,78.233)))*43758.5453)-.5;col+=n*.012;   // a little grain, as the game's composite
+ o=vec4(col,1.);}`;
+
+// ---- views. Camera from Tellus's centre in radii; f = what it looks at; sun direction; exposure (the game's E range is
+// 0.25–4 on a scene normalised to sunlit paint ≈ 1; here exp multiplies the same linear light)
+const V = (o) => Object.assign({planet: 1, moon: 0, exp: 1, galK: 1, game: 0, spk: 0, fov: 60}, o);
+const VIEWS = {
+  'now':             V({cap: '<b>Today</b>: the game\'s stars and galaxy (one seed), from 200 km over the night side, at the same exposure as (a) and (b). Compare the other night views with this frame.', cam: [0, 1.157, 0], at: [0, .85, -1], sun: [0, -.3, 1], game: 1, exp: 3}),
+  'subtle':          V({cap: '<b>(a) Subtle galaxy</b> (D18.4 default): the same frame. Most of the sky stays black; the band is a faint grey river with dark lanes, the bulge a warm smudge; stars by a power law, a few bright, many faint, coloured by temperature. Real: ISS night-side photos at a few seconds\' exposure (the Milky Way just visible over the limb).', cam: [0, 1.157, 0], at: [0, .85, -1], sun: [0, -.3, 1], galK: 1, exp: 3}),
+  'showpiece':       V({cap: '<b>(b) Showpiece galaxy</b>: the same frame as a long-exposure photograph: star clouds, the Great Rift\'s dust, pink nebulae, blue clusters. Real: Don Pettit\'s long exposures from the ISS; ground astrophotography of the galactic core.', cam: [0, 1.157, 0], at: [0, .85, -1], sun: [0, -.3, 1], galK: 3.5, exp: 3}),
+  'galaxy-up':       V({cap: '<b>Looking away from Tellus</b> at the galactic centre, subtle: the band and its bulge with nothing else in frame. Try the showpiece with ?galk=3.5.', cam: [0, 1.157, 0], at: [-.55, 1.62, -1], sun: [0, -.3, 1], planet: 1, galK: 1, exp: 3}),
+  'sun-now':         V({cap: '<b>Today\'s sun</b>: a disc with four camera-fixed diffraction spikes, over the day side.', cam: [0, 1.157, 0], at: [0, .95, -1], sun: [0, -.05, -1], spk: 1, exp: .55}),
+  'sun':             V({cap: '<b>Proposed sun</b> (Q321): a tiny disc that clips to white at any exposure, a tight glare and a wide veil, no spikes. At this daylight exposure only the brightest stars survive (the floor, D18.2). Real: ISS and Apollo photos with the sun in frame.', cam: [0, 1.157, 0], at: [0, .95, -1], sun: [0, -.05, -1], exp: .55}),
+  'limb-night':      V({cap: '<b>Tellus\'s night limb</b>: the air\'s thin blue shell lit from behind at the terminator (orange-red where the light grazes), the green airglow band above the dark limb, sodium city lights below. Real: ISS night photos (airglow and city lights, e.g. ISS030-E), the Earth\'s limb at sunset.', cam: [0, 1.157, 0], at: [0, .62, -1], sun: [.15, -.62, -1], exp: 3, fov: 32}),
+  'tellus-mid':      V({cap: '<b>Tellus from mid orbit</b> (4,000 km, D18.5): a gibbous disc, the limb a thin blue line, the terminator softened by the air, cities on the night side, sunglint on the sea; only the brightest stars at this exposure. Real: DSCOVR/EPIC and Galileo\'s Earth from a few thousand km; Apollo 4\'s 18,000 km frames.', cam: [0, .4, 4.15], at: [0, 0, 0], sun: [.75, .2, .62], exp: .9, fov: 50}),
+  'earthshine':      V({cap: '<b>Selene\'s earthshine</b>: a crescent with its night side faintly blue-grey in Tellus\'s light, the maria visible in it (exaggerated ×12 over reality so it reads at play exposure). Real: the Moon\'s "old moon in the new moon\'s arms"; Apollo photos of earthshine.', cam: [0, 0, 0], at: [0, 0, -1], planet: 0, moon: 1, moonC: [0, 0, -5.2], moonR: .273, sun: [.97, 0, .25], exp: 1.6, fov: 22}),
+};
+// the galaxy's plane and centre, fixed for the mock-up (the game draws them per program, PROG.gseed)
+const norm = v => { const l = Math.hypot(...v); return v.map(x => x / l) }, sub = (a, b) => a.map((x, i) => x - b[i]),
+  cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const GX = norm(cross(norm([0, .3, -1]), norm([-1, .9, -.2]))), GC0 = norm([-.55, .35, -1]), GC = norm(sub(GC0, GX.map(x => x * (GC0[0] * GX[0] + GC0[1] * GX[1] + GC0[2] * GX[2]))));
+
+const P = new URLSearchParams(location.search), cv = document.getElementById('c'), gl = cv.getContext('webgl2', {preserveDrawingBuffer: true});
+let view = P.get('view') in VIEWS ? P.get('view') : 'subtle', tw = P.has('tw') ? +P.get('tw') : 1;
+const tFix = P.has('t') ? +P.get('t') : null, still = P.has('still');
+if (still) document.body.classList.add('still');
+const sh = (t, s) => { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) { document.title = 'ERR ' + gl.getShaderInfoLog(x); throw new Error(gl.getShaderInfoLog(x)) } return x };
+const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, '#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}')); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
+gl.bindAttribLocation(pr, 0, 'p'); gl.linkProgram(pr); gl.useProgram(pr);
+const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(pr, n);
+function draw(ms) {
+  const w = Math.round(cv.clientWidth * Math.min(devicePixelRatio, 2)), h = Math.round(cv.clientHeight * Math.min(devicePixelRatio, 2));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h }
+  gl.viewport(0, 0, w, h); const v = VIEWS[view];
+  const F = norm(sub(v.at, v.cam)), R = norm(cross(F, [0, 1, 0])), Uu = cross(R, F);
+  gl.uniform2f(U('uRes'), w, h); gl.uniform3fv(U('uCam'), v.cam); gl.uniform3fv(U('uF'), F); gl.uniform3fv(U('uR'), R); gl.uniform3fv(U('uU'), Uu);
+  gl.uniform3fv(U('uSun'), norm(v.sun)); gl.uniform1f(U('uTan'), Math.tan(v.fov * Math.PI / 360)); gl.uniform1f(U('uT'), tFix ?? ms / 1000);
+  gl.uniform1f(U('uExp'), v.exp); gl.uniform1f(U('uTw'), tw); gl.uniform1f(U('uGalK'), P.has('galk') ? +P.get('galk') : v.galK); gl.uniform1f(U('uGame'), v.game);
+  gl.uniform1f(U('uSpk'), v.spk); gl.uniform1f(U('uPlanet'), v.planet); gl.uniform1f(U('uMoon'), v.moon); gl.uniform3fv(U('uMoonC'), v.moonC || [0, 0, -9]); gl.uniform1f(U('uMoonR'), v.moonR || .27);
+  gl.uniform3fv(U('uGx'), GX); gl.uniform3fv(U('uGc'), GC);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  if (tFix == null && !still) requestAnimationFrame(draw); else document.title = 'READY ' + view;
+}
+const bar = document.getElementById('bar'), cap = document.getElementById('cap');
+function ui() {
+  bar.innerHTML = Object.keys(VIEWS).map(k => `<button data-v="${k}" class="${k === view ? 'on' : ''}">${k}</button>`).join('') +
+    '<span class="sep"></span>twinkle ' + ['off', 'gentle', 'through the air'].map((l, i) => `<button data-t="${i}" class="${i === tw ? 'on' : ''}">${l}</button>`).join('');
+  cap.innerHTML = VIEWS[view].cap + (VIEWS[view].game ? '' : ' <i>Twinkle animates here, not in the stills.</i>');
+}
+bar.onclick = e => { const t = e.target; if (t.dataset.v) view = t.dataset.v; if (t.dataset.t) tw = +t.dataset.t; ui(); if (tFix != null || still) requestAnimationFrame(draw) };
+ui(); requestAnimationFrame(draw);
+</script>
+</body>
+</html>
