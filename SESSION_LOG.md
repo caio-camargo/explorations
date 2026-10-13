@@ -6020,3 +6020,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   built on a **payload bench** apart from the rocket like the Rover yard, then one block in the fairing (PROBES 0.1.4
   § 6.1). Next for the desk: a mock-up of the bench.
 - **Addendum 5 (design desk, 2026-10-13):** `mockups/bench/`, the payload bench (D24): palette by job, the bus as one frame with a skin per face, Checks against the job, stowed / deployed (animated) / in the fairing, Designs. Stills in `output/launchpad/mockups/bench/`.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the Program and the map decluttered (Q286 slice 2, v1.189); Q286 done
+- **Done:** offers one line each (pay, days, Take, Pass, ⚠ for sanctions; a click opens the rest); epochs past the next, all locked, as a count; no empty photo frame before the first flight; a smaller letterhead; planets on the map labelled with the trip in days instead of TU. On `main` as `b7b053c`. With slice 1 (v1.186, the dark cockpit), Q286 is done; the Assembly's GO/NO-GO board stays with Q237 (D22's Checks tab).
+- **Checks:** flow-25 (new) and every flow and economy section pass; robot rows `desk` and `m1` pass. The full smoke run was stopped by Claude Code for low memory and not re-run.
+- **Next:** Q391 (the parts-list card and the craft hover into the one tooltip).
