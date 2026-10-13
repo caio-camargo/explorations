@@ -90,6 +90,12 @@ const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;
 // the orbit the flight is aimed at (an accepted satellite contract's altitude, else low Tellus orbit; Q131), the sun in its
 // plane (the longest shadow): the panels' and RTGs' average against the load, and the battery against one pass through the shadow
 const powerAim=()=>{const a=flightAims().filter(x=>x.alt).sort((x,y)=>y.alt-x.alt)[0];return a?{r:TELLUS.R+a.alt*1000}:{}};
+// the payload bench's Checks (Q416, PROBES § 6.1): payChecks against the rocket it was opened from, if that carries it
+function benchHTML(empty){if(empty)return'<div class="dim">an empty payload: start from a probe core, or a starter below the parts</div>';
+  const b=BLD.bench(),C=payChecks(stackDef,b&&b.back&&isV2(b.back.def)?b.back.def:null,b?b.id:null),sym={ok:'✓',warn:'!',bad:'✕'};
+  return`<h2 style="margin-top:0">Payload checks</h2>`+C.rows.map(r=>`<div class="${r.cl}" style="margin-top:3px">${sym[r.cl]} ${r.t}${r.fix?`<div class="sub">${r.fix}</div>`:''}</div>`).join('')+
+    `<div style="margin-top:8px">${(C.mass*1000).toFixed(0)} kg · ${fmtM(C.cost)} <span class="dim">(the payload alone)</span></div>
+    <div class="sub">Pointing and temperatures are checked once the attitude law comes (PROBES S2). Done takes it back to the rocket; every block of it there follows.</div>`}
 function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.Wg||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s,powerAim()),f=x=>x.toFixed(0);
   const okA=B.avg>=B.use,okB=B.battWh>=B.needWh,c=x=>x?'ok':'bad';
   const WA={t:`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`,d:'Averaged over a whole orbit, night side included, it makes less than it uses: the battery drains a little every orbit until it runs flat and the craft goes quiet.',fix:['more solar panels, or a solar wing','an RTG, which works day and night','fewer parts drawing power']},
@@ -106,9 +112,13 @@ function lifeLine(s){if(!s.parts.some(p=>['ant','cam','sci'].includes(p.d.kind))
   const W={t:`Short-lived at ${alt} km: under a year`,d:'Its service ends when it comes down or drifts off its slot, and a contract that wants it up for longer counts it as lost.',fix:['a higher orbit: the air thins fast with height','more propellant left once it\'s there: a bigger last stage or a lighter payload']};
   return`<div style="margin-top:4px">Lifetime at ${alt} km ${c==='warn'?whyMark('warn',t,W,'span'):`<span class="${c}">${t}</span>`}</div>`}
 function editorChanged(){
-  const empty=BLD.isEmpty(stackDef);
-  if(!empty){resetShip();S.ana=analyze(S)}
+  const empty=BLD.isEmpty(stackDef),bench=BLD.bench();
+  if(!bench&&isV2(stackDef))paySync(stackDef);   // blocks follow their payload's bench copy (Q416)
+  if(!empty){resetShip();S.ana=bench?null:analyze(S)}
   BLD.panel();
+  {const r=$('bRoll');if(r){r.disabled=!!bench;r.style.opacity=bench?.45:'';r.textContent=bench?'ON THE PAYLOAD BENCH':'BUILD AND LAUNCH ▶ [L]';r.title=bench?'on the payload bench: Done goes back to the rocket':'build it for real: the launch site, the checks, then LAUNCH'}
+    const h=$('statsHd');if(h)h.style.display=bench?'none':''}
+  if(bench){$('stats').innerHTML=benchHTML(empty);BLD.frameCam();renderProgram();return}
   if(empty){$('stats').innerHTML='<div class="dim">empty — pick a command pod from the parts list</div>';return}
   const{stages,mass}=stageStats(stackDef);let tot=0,html='';
   stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok',x=s.twr.toFixed(2);

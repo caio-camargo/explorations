@@ -671,7 +671,8 @@
 // vehicle-25. A working satellite, and the wheels' storage in the air (vehicle session, Caio: "a satellite that doesn't tip over
 // during ascent and is also viable"). The Satellite preset (core, battery, wheel, a long octagonal frame with two wings, a whip,
 // a camera and an instrument package, in a fairing on the Orbiter's launcher) shows no warnings, draws its antenna and camera's
-// 15 W, and flies to orbit on the probe autopilot with Δv to spare, pointing prograde and in attitude hold on the pitch program.
+// 15 W, and flies to orbit on the probe autopilot with Δv to spare, pointing prograde and 10° below it. (Balanced on the bench, Q416,
+// with its instrument package opposite the camera, it tumbles once on the pitch program in attitude hold, ~14° off, but makes orbit.)
 // The same payload on a 4 t upper stage lights at ~25 km: holding 5° off fills its wheel in a few seconds though its torque is
 // in hand, and flown 5° below prograde it goes over; the builder now says so (why 'store'), and gives the preset's limit (~7°).
 {
@@ -682,7 +683,7 @@
   const fly = (d, mode, stopAfterSep = 0) => { api.t = 0; const s = api.newShip(d); api.S = s; s.av = 1; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
     let phase = 'up', tS = null, mx = 0; for (let k = 0; k < 400000 && s.alive; k++) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R, f = api.localFrame(s.r);
       if (phase === 'up') { if (mode === 'pro' && h > 10000 * AS) s.sasMode = 'pro';
-        else if (mode === 'lag5' && h > 10000 * AS) { const v = norm(s.v), ax = norm(cross(v, f.up)); s.sasMode = 'stab'; s.hold = norm(add(mul(v, Math.cos(5 / 57.3)), mul(cross(ax, v), Math.sin(5 / 57.3)))); }
+        else if (/^lag/.test(mode) && h > 10000 * AS) { const v = norm(s.v), ax = norm(cross(v, f.up)), g = +mode.slice(3) / 57.3; s.sasMode = 'stab'; s.hold = norm(add(mul(v, Math.cos(g)), mul(cross(ax, v), Math.sin(g)))); }
         else { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.sasMode = 'stab'; s.hold = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))); }
         if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; } }
       else if (phase === 'coast') { s.sasMode = 'pro'; s.throttle = h < TELLUS.atm && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
@@ -694,11 +695,11 @@
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
       if (stopAfterSep && tS != null && api.t > tS + stopAfterSep) break; api.advPhys(s); }
     const el = elements(s.r, s.v, TELLUS.mu); return { orbit: s.alive && el.pe - TELLUS.R > TELLUS.atm, left: api.dvRemaining(s).tot, aoa: mx * 180 / Math.PI }; };
-  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const pro = fly(sat, 'pro'), hold = fly(sat, 'hold'), over = fly(t4, 'lag5', 90); api.HOOK.msg = msg0;
-  check('a working satellite: the Satellite preset has no warnings, sci + camera + antenna, a 15 W load its wings cover; it reaches orbit with Δv to spare prograde and in attitude hold; held to ~7° (its wheel); on a 4 t upper stage its wheel fills (flagged) and 5° off it goes over',
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const pro = fly(sat, 'pro'), lag = fly(sat, 'lag10'), hold = fly(sat, 'hold'), over = fly(t4, 'lag5', 90); api.HOOK.msg = msg0;
+  check('a working satellite: the Satellite preset has no warnings, sci + camera + antenna, a 15 W load its wings cover; it reaches orbit with Δv to spare prograde and 10° below; held to ~7° (its wheel), past that (the pitch program in attitude hold, ~14° off) it may tumble but still makes orbit; on a 4 t upper stage its wheel fills (flagged) and 5° off it goes over',
     !W.length && ['sci', 'cam', 'ant', 'batt', 'rwheel', 'solar'].every(k => kinds.includes(k)) && pb.ok && pb.use >= 15 && a.holds && a.lim >= 5 && a.lim <= 12
-      && pro.orbit && pro.left > 300 && hold.orbit && hold.left > 300 && hold.aoa < 30 && !b.holds && b.why === 'store' && over.aoa > 60,
-    `warnings ${W.length ? W.map(w => w[1]).join(' | ') : 'none'}; power ${pb.use} W of ${pb.avg.toFixed(0)}, ${pb.ok ? 'ok' : 'short'}; in the air ${a.holds ? 'holds' : 'flips'} to ~${a.lim}°; prograde ${pro.orbit ? 'orbit' : 'no orbit'} ${pro.left.toFixed(0)} m/s left; attitude hold ${hold.orbit ? 'orbit' : 'no orbit'} ${hold.left.toFixed(0)} m/s, ${hold.aoa.toFixed(0)}° at worst; 4 t upper stage ${b.holds ? 'holds' : 'flips (' + b.why + ', fills in ' + b.fill.toFixed(0) + ' s)'}, flown 5° off ${over.aoa.toFixed(0)}°`);
+      && pro.orbit && pro.left > 300 && lag.orbit && lag.left > 300 && lag.aoa < 30 && hold.orbit && !b.holds && b.why === 'store' && over.aoa > 60,
+    `warnings ${W.length ? W.map(w => w[1]).join(' | ') : 'none'}; power ${pb.use} W of ${pb.avg.toFixed(0)}, ${pb.ok ? 'ok' : 'short'}; in the air ${a.holds ? 'holds' : 'flips'} to ~${a.lim}°; prograde ${pro.orbit ? 'orbit' : 'no orbit'} ${pro.left.toFixed(0)} m/s left; 10° below prograde ${lag.orbit ? 'orbit' : 'no orbit'} ${lag.left.toFixed(0)} m/s, ${lag.aoa.toFixed(0)}° at worst; the pitch program in attitude hold ${hold.orbit ? 'orbit' : 'no orbit'} ${hold.left.toFixed(0)} m/s (${hold.aoa.toFixed(0)}° at worst); 4 t upper stage ${b.holds ? 'holds' : 'flips (' + b.why + ', fills in ' + b.fill.toFixed(0) + ' s)'}, flown 5° off ${over.aoa.toFixed(0)}°`);
 }
 
 // vehicle-26. Nothing unfolds inside a closed fairing (vehicle session, QUEUE Q410): on the pad, P (or its button) unfolded the
@@ -710,4 +711,34 @@
   const fe = s.events.findIndex(e => e.fair && e.fair.length); let n1 = -1; if (fe >= 0) { while (s.evIdx <= fe) api.stage(s); n1 = api.wingOp(s, 'out'); } api.HOOK.msg = m0;
   check('nothing unfolds inside a closed fairing (Q410): the Satellite preset\'s wings stay folded on the pad, saying why; after the fairing is jettisoned both unfold',
     n0 === 0 && said && n1 === 2 && api.wingsOut(s), `in the fairing: ${n0} unfolded, "${msgs.find(m => /fairing/i.test(m)) || ''}"; after jettison: ${n1}`);
+}
+
+// vehicle-27. The payload bench, slice 1 (vehicle session, QUEUE Q416, D24, PROBES § 6.1): a satellite designed apart from the
+// rocket rides it as one block {k:'pay', pid, pd}. Laid out, the block is a payload adapter with the payload standing on it:
+// the Satellite preset rebuilt as fairing + block has the same parts plus the adapter, all of the payload inside the fairing,
+// the same stages within 2 %, and the design's JSON carries no layout copies. A block follows its bench copy (paySync). The
+// bench's Checks pass for the Satellite starter (and its fit on that rocket); a short fairing fails the fit; the first beacon
+// runs on its battery alone (a warning with its days); a lopsided payload warns, and with an engine of its own it fails.
+{
+  const cl = x => JSON.parse(JSON.stringify(x)), P0 = api.PROG.payloads; api.PROG.payloads = [];
+  const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't8', 'fins', 'kestrel']);
+  // the fairing on top of the upper tank, the block on the fairing
+  const e = api.payNew('Sat', api.PAY_STARTERS.Satellite); fair.at = 'u'; rocket.root.c.push(fair); fair.c.push({ ...api.payNode(e), at: 'u' });
+  const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.kind === 'padapt');
+  const dA = api.stageStats(api.PRESETS.Satellite).stages.map(s => s.dvV), dB = api.stageStats(rocket).stages.map(s => s.dvV);
+  const same = dA.length === dB.length && dA.every((v, i) => Math.abs(dB[i] - v) / v < 0.02), clean = !/payOf|"src"/.test(JSON.stringify(rocket));
+  const inside = pay.filter(p => p.d.kind !== 'padapt').every(p => p.inFair);
+  e.name = 'Renamed'; e.d.root.c.push({ k: 'batt', at: 'u', c: [] }); const synced = api.paySync(rocket), blk = rocket.root.c.find(c => c.k === 'fair').c[0];
+  const C = api.payChecks(api.PAY_STARTERS.Satellite, rocket, e.id).rows, cls = Object.fromEntries(C.map(r => [r.k, r.cl]));
+  const short = cl(rocket); short.root.c.find(c => c.k === 'fair').fl = 2; const fitShort = api.payChecks(api.PAY_STARTERS.Satellite, short, e.id).rows.find(r => r.k === 'fit');
+  const beacon = api.payChecks(api.PAY_STARTERS['First beacon']).rows.find(r => r.k === 'power');
+  const lop = cl(api.PAY_STARTERS.Satellite), oct = (function g(n) { return n.k === 'octl' ? n : (n.c || []).map(g).find(Boolean); })(lop.root);
+  oct.c.find(c => c.k === 'ssci').at.a = -Math.PI / 2; const balL = api.payChecks(lop).rows.find(r => r.k === 'bal');
+  const kick = cl(lop); (function g(n) { if (n.k === 'octl') n.c.push({ k: 'wren', at: 'd', c: [] }); else (n.c || []).forEach(g); })(kick.root);
+  const balK = api.payChecks(kick).rows.find(r => r.k === 'bal');
+  api.PROG.payloads = P0;
+  check('the payload bench (Q416): a satellite as one block lays out as an adapter and its parts, inside the fairing, flying as the preset does; blocks follow the bench; its Checks pass, a short fairing fails, a battery-only beacon and a lopsided payload warn, lopsided with an engine fails',
+    B.parts.length === A.parts.length + 1 && padapt.length === 1 && inside && same && clean && synced === 1 && blk.name === 'Renamed' && JSON.stringify(blk.pd) === JSON.stringify(e.d)
+      && ['power', 'link', 'turn', 'bal', 'fit'].every(k => cls[k] === 'ok') && fitShort.cl === 'bad' && beacon.cl === 'warn' && /days|hours/.test(beacon.t) && balL.cl === 'warn' && balK.cl === 'bad',
+    `parts ${A.parts.length} → ${B.parts.length} (${padapt.length} adapter), payload inside ${inside}; Δv ${dA.map(v => v.toFixed(0)).join('/')} vs ${dB.map(v => v.toFixed(0)).join('/')}; clean ${clean}; synced ${synced}; checks ${C.map(r => r.k + ':' + r.cl).join(' ')}; 2 m fairing ${fitShort.cl} "${fitShort.t}"; beacon ${beacon.cl} "${beacon.t}"; lopsided ${balL.cl} "${balL.t}", with an engine ${balK.cl}`);
 }
