@@ -116,7 +116,7 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #news.held{display:none}   /* (flow, Q286) the dark cockpit: news held in a critical phase (app/cockpit.js) */
 #hlg{display:flex;gap:4px;align-self:flex-end}#hlg .g{position:relative;width:12px;height:110px;border:1px solid var(--line);border-radius:3px;background:var(--panel);margin-bottom:16px}   /* (flow, Q271) HEAT and LOAD by the navball */
 #hlg .f{position:absolute;left:0;right:0;bottom:0;height:0;background:#56606c;border-radius:2px}#hlg .g.warn .f{background:var(--warn)}#hlg .g.bad .f{background:var(--bad);box-shadow:0 0 8px var(--bad)}
-#hlg i{position:absolute;left:-2px;right:-2px;bottom:50%;border-top:1px solid #7d8a9a}#hlg i.r{bottom:90%;border-top-color:var(--bad)}#hlg b{position:absolute;top:100%;left:50%;transform:translateX(-50%) rotate(0deg);font-size:8px;color:var(--dim);letter-spacing:.04em;margin-top:3px}
+#hlg i{position:absolute;left:-2px;right:-2px;bottom:50%;border-top:1px solid #7d8a9a}#hlg i.r{bottom:90%;border-top-color:var(--bad)}#hlg b{position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:10px;color:var(--dim);margin-top:2px}
 @media (max-width:1000px),(max-height:620px){#hlg .g{height:90px}}
 #mcau.new{animation:mcblink .5s steps(2,start) 6}@keyframes mcblink{to{visibility:hidden}}
 button.hint{box-shadow:0 0 0 2px var(--warn),0 0 14px var(--warn)}   /* (flow, Q400) the first-time deploy hint lights its button */
@@ -345,7 +345,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
     <div id="gslot" class="hidden"></div>
     <div id="thr"><div id="thrf"></div></div>
     <div style="position:relative"><div id="navtxt"></div><canvas id="nav" width="180" height="180"></canvas></div>
-    <div id="hlg"><div class="g" id="gHeat"><div class="f"></div><i></i><i class="r"></i><b>HEAT</b></div><div class="g" id="gLoad"><div class="f"></div><i></i><i class="r"></i><b>LOAD</b></div></div>
+    <div id="hlg"><div class="g" id="gHeat"><div class="f"></div><i></i><i class="r"></i><b>H</b></div><div class="g" id="gLoad"><div class="f"></div><i></i><i class="r"></i><b>L</b></div></div>
     <div id="sas"></div>
   </div>
   <div class="panel bl" id="stages"></div>

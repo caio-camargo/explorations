@@ -27,7 +27,7 @@ function hlFracs(){if(mode!=='flight'||!S||!S.alive)return{heat:0,load:0};const 
 const hlCls=x=>x>=.9?'bad':x>=.5?'warn':'';
 function hlGauges(){const F=hlFracs();for(const[id,x,who,what]of[['gHeat',F.heat,F.hp,'of its heat limit'],['gLoad',F.load,F.lp,'of its certified rating']]){const g=$(id);if(!g)continue;
   const h=`${Math.round(Math.min(1,Math.max(0,x))*100)}%`,c=hlCls(x);if(g.firstChild.style.height!==h)g.firstChild.style.height=h;if(g.className!==`g ${c}`.trim())g.className=`g ${c}`.trim();
-  const t=who?`${who}: ${Math.round(x*100)}% ${what}`:'nothing loaded yet';if(g.title!==t)g.title=t}}
+  const t=`${id==='gHeat'?'HEAT':'LOAD'}: ${who?`${who}, ${Math.round(x*100)}% ${what}`:'nothing yet'}`;if(g.title!==t)g.title=t}}
 let mcPrev='';
 function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();hlGauges();
   let m=$('mcau');if(!m){m=document.createElement('div');m.id='mcau';m.className='hidden';(document.getElementById('hud')||document.body).appendChild(m)}

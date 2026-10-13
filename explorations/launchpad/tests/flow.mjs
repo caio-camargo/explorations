@@ -611,7 +611,7 @@
   const f = X(S).hlFracs(), c = X(S).hlCls, none = X({ alive: true }).hlFracs();
   const fr = Math.abs(f.heat - 0.7) < 1e-9 && Math.abs(f.load - 0.95) < 1e-9 && f.hp === 'Nose cone' && f.lp === 'Kestrel / Tank 8' && none.heat === 0 && none.load === 0;
   const cls = c(0.3) === '' && c(0.5) === 'warn' && c(0.89) === 'warn' && c(0.9) === 'bad';
-  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('id="gLoad"') && page.includes('depHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
+  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
   check('flow-29: heat and load you notice: HEAT and LOAD by the navball in every phase (part vs limit, joint vs rating), faint, amber from 50 %, red from 90 %; the master caution blinks on a new reason',
     fr && cls && wired, `fracs ${fr} (${f.heat.toFixed(2)}, ${f.load.toFixed(2)}) · classes ${cls} · wired ${wired}`);
 }
