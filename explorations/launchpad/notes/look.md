@@ -1945,3 +1945,39 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
 - **Seen:** views 1, 15, 80–83 before and after alike (no pixel differs by more than grain; `output/launchpad/beauty/
   q379-before/`, `q379-after/`).
 - **Check:** test `aerofx-32`; the Q65 check in look.mjs now looks for the march in the bake. TESTING 278.
+
+## v1.200 — the planets in the sky, a moon under a pixel, stars by the sky's contrast, a faint airglow (2026-10-13, sky & bodies beat, QUEUE Q374, Q395, Q407; PLAYTEST #11, #92, #103)
+
+- **Q374, read as:** the planets were only the map's 2D dots (UI on a ring "direction only, not to scale": left as they
+  are, flow's), and absent from the 3D sky; a moon under a pixel flickered out between pixel centres. Now:
+  - **The planets** (`planetSky(T)`, app/gl.js): each one's magnitude from Tellus, m = −26.74 − 2.5 log10(p (R/Δ)²
+    (TU/r)² Φ(α)) with geometric albedos `PLANET_ALB` (Hesper .7, Enyo .17, Astraea .09, Hyperion .5, Erebus .5) and a
+    Lambert sphere's phase, put on the stars' scale (their brightest, br 2.45, taken as m −1.5), capped at br 8.
+    `SKY_FS`'s `planetsAt` draws them as the stars' discs, steady, under the same floor `uStK`. On day 0 (view 169):
+    Hesper m −5.6 and Hyperion −3.4 (both at the cap), Enyo −0.4 (br 0.9, a bright star), Astraea and Erebus too faint
+    to draw. The renderer's sun is still fixed (`SUN`) while the planets move with the year, so their phases drift from
+    what the sky shows over a long program (the system's slice 3).
+  - **A moon under 1.5 px** is the moon pass's point: the disc's solid angle × its mean radiance at that phase, spread
+    over a 0.7 px Gaussian, so it shrinks into a dot continuously (view 170: Selene from 600,000 km, a faint star). The sky
+    pass lets Selene's point through its alpha as it does the disc (`uMR` is uploaded again for it).
+- **Q395 (PLAYTEST #92), the eye's contrast:** stars, planets and the galaxy each lose `SKY_CK` (30) × the luminance of
+  the sky in front of them, after the exposure floor; faint ones and the halos go first. Day (view 18): none (a few
+  showed before); dusk, the sun 5.8° down (new view 171): a few bright ones high up, none in the twilight band (dozens
+  before); night (19) and space (97, 163): as before. `SKY_CK` is baked into the shader (0 = the old look).
+- **Q407 (PLAYTEST #103):** the airglow's line is a quarter as bright (.012 → .003): a faint thin line on the night limb
+  (view 163).
+- **Cost:** within noise (a 6-entry loop per sky pixel that sees space; the point mode only near a sub-pixel moon).
+- **Views:** 169 the planets, 170 Selene under a pixel, 171 the pad at dusk. Stills `output/launchpad/beauty/q374-after/`,
+  `q395-before/`, `q395-after/`, `q374-merged/`. Test `aerofx-33`. TESTING 281.
+
+## v1.201 — a display rod under a hanging model on the desk (2026-10-13, effects beat, QUEUE Q330)
+
+`app/model-desk.js` (`deskMesh`, `deskKey`).
+
+- Since Q327 (v1.139) a design whose lower parts were removed hangs over the desk's base plate (`BLD.foot`). Now a
+  steel rod (4 mm at model scale) rises from the plate's pin to the design's bottom (`S.yBot`), into the nozzle as a
+  kit model's stand does, with a collar where it leaves the pin. Only when the gap is over 6 mm at model scale; the
+  desk mesh's key carries the gap, so it is rebuilt as parts are added or removed.
+- The lamp's shadow on the paper is still the model's only (the rod casts none); a nit, left.
+- **Stills:** `output/launchpad/beauty/Q330/` (`standing`, `hanging_8m`: view 152 with the foot 8 m below). **Check:**
+  test `aerofx-34`. TESTING 282.

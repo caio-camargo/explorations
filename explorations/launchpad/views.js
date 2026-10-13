@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 162 the sunglint, 163 the night limb, 164–168 Selene (from 1,000 km, from low orbit, its night side, through the limb, under clouds), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 162 the sunglint, 163 the night limb, 164–168 Selene (from 1,000 km, from low orbit, its night side, through the limb, under clouds), 169 the planets, 170 Selene under a pixel, 171 the pad at dusk, 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -504,6 +504,39 @@ window.refView = async (n) => {
   // gibbous Selene ~13 px across (Q250's aliasing); 166 100 km over the night side at new moon, lit by a full Tellus
   // (earthshine); 167 nearly full, setting through the air 15 km over Tellus's limb from 200 km; 168 full, from 1.5 km
   // over the ground at night under a partial deck (the clouds in front of it). The label gives Selene's centre in pixels
+  // 169–170 (sky & bodies beat, QUEUE Q374): 169 the planets: 300 km over the night side, looking at the brightest
+  // planet (the label lists every planet's magnitude and br); 170 Selene under a pixel, from 600,000 km on its sunward
+  // side (a point with the whole disc's light, not a flicker)
+  // 171 (sky & bodies beat, QUEUE Q395): the pad at dusk, the sun ~6° below the horizon, looking along the horizon away
+  // from the sunset, the camera low: the first bright stars, none of the faint
+  if (n === 171) {
+    toBuilder(); stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click(); markT = null;
+    const t0 = simT; for (let k = 1; k < 4000; k++) { const tt = t0 + k * 20, site = norm(sub(fromPF(TELLUS, padPF(), tt), bodyPos(TELLUS, tt))), e = dot(site, SUN);
+      if (e < -0.1 && e > -0.11) { simT = tt; break } }
+    syncLanded(S); markT = null; padShip = null;
+    const f = localFrame(shipWorld()), sh = norm(sub(SUN, mul(f.up, dot(SUN, f.up))));   // the camera on the sunset side, looking away from it
+    cam.yaw = Math.atan2(dot(sh, f.e), -dot(sh, f.n)); cam.pitch = 0.05; cam.dist = 60; render(); await settle(); bare();
+    return 'the pad at dusk, sun ' + (Math.asin(clamp(dot(norm(sub(fromPF(TELLUS, padPF(), simT), bodyPos(TELLUS, simT))), SUN), -1, 1)) * 57.3).toFixed(1) + '°';
+  }
+  if (n === 169 || n === 170) {
+    stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0]; const sn = norm(SUN);
+    let mD, P, txt;
+    if (n === 169) {
+      const ps = planetSky(tNow()).sort((a, b) => b.br - a.br); mD = ps[0].u;
+      const up = norm(sub(mul(sn, -1), mul(mD, dot(mul(sn, -1), mD) * 0.6))); P = mul(up, TELLUS.R + 3e5);
+      txt = 'the planets: ' + ps.map(x => `${x.name} m ${x.m.toFixed(1)} br ${x.br.toFixed(2)}`).join(', ');
+    } else {
+      const m = moonPos(simT); P = add(m, mul(norm(add(sn, [0, 0.3, 0])), 6e8)); mD = norm(sub(m, P));
+      txt = `Selene from ${(len(sub(m, P)) / 1e3).toFixed(0)} km`;
+    }
+    S.r = P; S.v = mul(norm(cross([0, 1, 0], norm(P))), Math.sqrt(TELLUS.mu / len(P)));
+    const up = norm(P), side = norm(cross(mD, up)), D = norm(add(mD, mul(side, 0.08)));
+    const f = localFrame(S.r); cam.pitch = Math.asin(clamp(-dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(D, f.e), dot(D, f.n)); cam.dist = 250;
+    render(); await settle(); bare();
+    const v = HOOK.view, z = dot(mD, v.Fw), px = [v.W / 2 * (1 + dot(mD, v.R) / (z * v.tanX)), v.H / 2 * (1 - dot(mD, v.U) / (z * v.tanY))];
+    return txt + `; target at ${px[0].toFixed(0)},${px[1].toFixed(0)} px`;
+  }
   if (n >= 164 && n <= 168) {
     stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
     window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0]; const sn = norm(SUN);
