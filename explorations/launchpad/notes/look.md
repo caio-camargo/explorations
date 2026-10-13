@@ -1340,3 +1340,36 @@ could only catch near-white. Now the frame is light, and the camera is one place
   Low on the iGPU (Low now pays a float target and the composite) and the map view's lines.
 - **Checks:** test `aerofx-10` (no shader tone-maps itself; the RGBA16F target on both settings; one composite with
   AgX, the LUT, exposure and grain; the exposure read back without a stall; map lines and `bare()`). TESTING 219.
+
+## v1.149 — re-entry: the hull glows, the plasma in HDR (2026-10-12, effects beat, QUEUE Q318; BEAUTY B4.1–4.2)
+- **What drives the glow: the skin, not the part.** A headless study (three entries, scratch, 2026-10-12) found the
+  sim's `p.T` never gets near glowing: it is the part's bulk, a lumped thermal mass. Peaks: a heat shield 700 K (Selene
+  return), a bare pod 922 K (low orbit); a blackbody is invisible below ~1,000 K. Real shield *surfaces* run 1,500–2,800 K.
+  So the glow follows the plasma's heat level k (`plasmaHeat`'s scale: about 1 at the peak of a low-orbit return, 1.5
+  coming back from Selene, above 0.05 for 340–380 s of a low-orbit return and 95 s of a lunar one). A new mark,
+  **`hot`**, holds the windward skin's surface temperature, `wallT(k) = 700 + 1000·k` K (290 K without plasma). It heats
+  over ~2 s and cools over ~6 s (`hotTo`), on the ship (`marksTick`) and on falling stages (`debrisHeat` keeps `g.k`).
+  The plasma's k also feeds the char direction `cd`, so a part whose bulk stays cool still knows its windward side.
+- **The shader** (`MESH_FS`, the marks block): `uHt[24]` = four parts' `hot` per vec4. The local temperature is `hot`
+  on the face meeting the flow, half of it on the sides (`dot(vNo, cd)`), ±5 % noise streaked like the char. Emission
+  is a blackbody in the scene's units: 1 = 8,150 cd/m², because the sun in space is 5 and sunlit white paint ≈ 4. Per
+  channel it is a Wien fit to Planck → CIE → linear sRGB, `exp(a − x/T)` (a = 16.46, 17.03, 20.83; x = 23,014, 26,819,
+  41,004 K), within 1 % (r) and 10 % (g) over 1,000–2,800 K. Blue is loose but tiny below 2,000 K. ×0.85 emissivity.
+  It is steep, as the physics is: 1,000 K is 3e-4 (nothing), 1,200 K 0.015 (a dull red only the night shows), 1,700 K
+  5.5 (out-glows sunlit paint, orange), 2,200 K 150 (yellow-white, blooms). It costs one exp per pixel on hot parts only.
+- **The plasma's colours** (`PLASMA_FS`): `core(k)` at the stagnation point, orange at low k turning white-yellow; `edge(k)`
+  off the hull, rose turning lavender as it heats (Orion's and Dragon's footage); the wake leaves the hull in the
+  ablator's orange and turns rose to lavender within 0.3 of its length. Brightness: the sheath ×7 (was 3) and the wake
+  ×0.5 (was 0.35), `PLASMA_SH`/`PLASMA_WK`, so a lunar return's sheath blooms against the day. `plasmaLight` takes
+  `core(k)`'s colour.
+- **The reference views heat the skin:** the entry views (40–47) fly the descent with `advPhys` and freeze the clock, so
+  `marksTick` never ran (the skin sat at 202 K). They now run four 5 s mark ticks before the shot.
+- **What you see:** shield-first and seen from upstream, the shield is a white-yellow disc in a bloom. From the side the
+  sheath is warm at the hull and the trail lavender. Nose-first at 35° (view 44), the windward flank glows orange. In
+  view 45, at ~50° to the flow, the shield sits on the lee side and stays dark, which is right. High up (view 103, k ≈ 0.3)
+  the trail is rose where it was orange.
+- **Stills and cost** (RTX 3050): `output/launchpad/beauty/q318/`, with the before/after sheets `cmp_*.png` (views 40, 44–47,
+  103), `a2_grid.png`, the upstream shots `f46_grid.png`, and `prof-{before,after}-{high,low}.out`. Full-res frame 4.4–6.8 ms
+  either way; the ship pass 0.01–0.03 ms and the plasma 0.2–0.6 ms before and after (noise). Not tried on the iGPU.
+- **Checks:** test `aerofx-11` (wallT, the wiring, the blackbody's luminance and colour at 1,000/1,200/1,700/2,200 K, the
+  plasma's core colour). TESTING 231.

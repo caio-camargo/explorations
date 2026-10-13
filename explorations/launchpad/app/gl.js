@@ -761,7 +761,7 @@ precision highp float;const float FXK=${FXK.toFixed(3)},PSH=${PLASMA_SH.toFixed(
 uniform vec3 uB,uCam,uA,uM0,uC;uniform float uFc,uT,uIn,uK,uRb,uHl,uD,uLw,uEf,uEp,uPr[32];uniform sampler3D uN;
 // (Q318, BEAUTY B4.2) the shock layer's colours by heat level k, after Orion's and Dragon's entry footage: the stagnation
 // point white-yellow (orange while k is low), the sheath's edge rose turning lavender as it heats, the wake magenta with
-// the ablator's orange in it. Shared with plasmaLight's colour (plasmaCore).
+// the ablator's orange in it. plasmaLight's colour is core(k).
 vec3 core(float k){return mix(vec3(1.,.45,.12),vec3(1.,.86,.62),smoothstep(.3,1.2,k));}
 vec3 edge(float k){return mix(vec3(1.,.26,.34),vec3(.82,.46,1.),smoothstep(.4,1.2,k));}
 void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;float t1;
@@ -1533,10 +1533,9 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
   const qE=plasmaHeat(S.body,S.r,S.v,S.qHeat);if(qE<=1.5e4)return;const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<50)return;
   const k=clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),f=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
     rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
-    c=plasmaCore(k),K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
+    a=clamp((k-.3)/.9,0,1),b=a*a*(3-2*a),c=[1,.45+.41*b,.12+.5*b],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
     P=add(sub(add(bodyPos(S.body,simT),S.r),camW),mul(f,ef+2*D));
   if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K));PLT.g=null}
-const plasmaCore=k=>{const a=sstep(.3,1.2,k);return[1,.45+.41*a,.12+.5*a]};   // PLASMA_FS's core(k)
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
 const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[0,0,1],[1,0,0]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0],[1,0,0]]],v=[];
   for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}

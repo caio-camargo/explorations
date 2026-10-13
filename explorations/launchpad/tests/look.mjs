@@ -445,7 +445,7 @@
   const c10 = fs && bb(1000), c12 = fs && bb(1200), c17 = fs && bb(1700), c22 = fs && bb(2200);
   const wired = /hotTo\(m,kH,dt\);if\(kH>0&&sp>1\)m\.cd=/.test(page) && /const kH=d\.body\.atm\?DEBH\.get\(d\)\?\.k\|\|0:0;/.test(page) && /g\.k=0;if\(g\.q<1\.5e4\)continue;const k=g\.k=/.test(page)
     && /HTA\[i\]=m\.hot\|\|0/.test(page) && /gl\.uniform4fv\(u\['uHt\[0\]'\],HTA\)/.test(page) && /float ht=uHt\[pi\/4\]\[pi%4\];/.test(page);
-  const plasma = /vec3 cs=mix\(ce,cc,/.test(page) && /c=plasmaCore\(k\)/.test(page);
+  const plasma = /vec3 cs=mix\(ce,cc,/.test(page) && /c=\[1,\.45\+\.41\*b,\.12\+\.5\*b\]/.test(page);
   check('re-entry hull glow: skin temperature from the heat level, eased, on ship and stages; a blackbody that is dark at 1,000 K, dull red at 1,200 K, brighter than sunlit paint at 1,700 K, yellow-white at 2,200 K; the plasma white-yellow at the stagnation point',
     w && w(0) === 290 && w(1) === 1700 && w(1.5) === 2200 && wired && plasma && Y(c10) < 1e-3 && Y(c12) < .05 && c12[0] > 5 * c12[1] && Y(c17) > 4 && c22[1] / c22[0] > .25 && Y(c22) > 30,
     fs ? `luminance (sunlit white ≈ 4): 1,000 K ${Y(c10).toExponential(1)}, 1,200 K ${Y(c12).toFixed(3)}, 1,700 K ${Y(c17).toFixed(1)}, 2,200 K ${Y(c22).toFixed(0)}; g/r at 2,200 K ${(c22[1] / c22[0]).toFixed(2)} · wired ${wired} · plasma ${plasma}` : 'shader glow not found');
