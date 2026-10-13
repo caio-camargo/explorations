@@ -13,6 +13,8 @@ layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4
 // power law with a floor under the exposure and a deliberate twinkle (Caio: keep it); the sun is a tiny blinding disc
 // with no spikes. SKY_B5 = false compiles the old galaxy, stars and sun back in (an A/B; the shader recompiles).
 const SKY_B5=true;
+// (Q395) the stars' contrast against the sky behind them: a star loses SKY_CK × the sky's luminance (0 = the old look)
+const SKY_CK=30;
 const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
@@ -22,7 +24,7 @@ uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
-uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;
+uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;uniform vec4 uPlnD[6],uPlnC[6];uniform int uNPl;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
@@ -65,11 +67,11 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
   vec3 att=exp(-(BR*odR+BM*1.1*odM))*trL(r,b/r);sR+=att*dR;sM+=att*dM;}   // (Q322) toward the sun from the table
  trans=exp(-(BR*odR+BM*1.1*odM));
  float mu=dot(d,uSun),g=.76,pR=3./(16.*3.14159)*(1.+mu*mu),pM=3./(8.*3.14159)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
- // (Q322, BEAUTY B6.2) airglow: oxygen's green line from a thin layer ~85 km up, only where the layer is in the night. A
+ // (Q322, BEAUTY B6.2; Q407, PLAYTEST #103: a quarter as bright, a faint line) airglow: oxygen's green line from a thin layer ~85 km up, only where the layer is in the night. A
  // ray grazing the layer looks along ~20× its thickness (a line on the night limb); one that looks down crosses it once
  float tc=dot(d,uPc),ag;vec3 pt=d*clamp(tc,t0,t1)-uPc;float hm=length(pt)-uPR;
  if(tc>t1)ag=.05;else ag=hm>=85e3?exp(-pow((hm-85e3)/5e3,2.)):mix(.05,1.,exp(-(85e3-hm)/3e3));
- vec3 glow=vec3(.3,1.,.4)*.012*ag*smoothstep(.05,-.2,dot(normalize(pt),uSun))*trans;
+ vec3 glow=vec3(.3,1.,.4)*.003*ag*smoothstep(.05,-.2,dot(normalize(pt),uSun))*trans;
  return SUNI*(sR*BR*pR+sM*BM*pM)+glow;}
 // ---- the ground (terrain session): the same height the physics uses. A baked 512×256 map (uWorld: base height,
 // ruggedness, volcanism, salt), read with texelFetch and our own bilinear so the arithmetic matches the CPU's, plus
@@ -294,6 +296,11 @@ vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos
  float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);   // camera-fixed spikes (a lens artefact)
  return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);}
 `}float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
+// (Q374, PLAYTEST #11) the planets as points of light on the stars' scale (planetSky: br from each one's magnitude,
+// as the stars' brightest is ~−1.5), sharp and steady (no twinkle in space or air: they're discs, not points), under
+// the stars' exposure floor uStK. uPlnD = direction, br; uPlnC = colour, its point's radius in pixels
+vec3 planetsAt(vec3 d){vec3 c=vec3(0.);for(int i=0;i<6;i++){if(i>=uNPl)break;vec4 P=uPlnD[i];float r=length(d-P.xyz),rad=uPix*uPlnC[i].w;
+ if(r<rad*4.)c+=uPlnC[i].rgb*P.w*exp(-r*r/(rad*rad))*.9;}return c*uStK;}
 // the cloud volume's own shadow on the ground (QUEUE Q65): 5 steps toward the sun through the 2–5.5 km slab, the volume's
 // extinction (1/180 m⁻¹), floor 0.25 for skylight; blended into the shell's shadow by uVk and a fade at the bake's edge,
 // so the shadows under the deck match the clouds drawn above them. uVs = 0 turns it off (A/B).
@@ -352,7 +359,14 @@ void main(){
   col=ins;vis=1.;
  }else{
   float band;vec3 gal=galaxy(d,band);
-  col=ins+trans*(gal+starsAt(d,band)+sunAt(d));
+  // (Q395, PLAYTEST #92) the eye's contrast: each star, the planets and the galaxy lose the sky's brightness behind them
+  // ×SKY_CK (after the exposure floor), so faint ones and the halos go first: none in a blue day sky, a few at dusk, all
+  // at night and in space
+  vec3 stp=(starsAt(d,band)+planetsAt(d))*trans,gl3=gal*trans;float Ys=dot(ins,vec3(.2126,.7152,.0722))*${SKY_CK.toFixed(1)};
+  stp*=max(0.,1.-Ys/max(dot(stp,vec3(.2126,.7152,.0722)),1e-6));gl3*=max(0.,1.-Ys/max(dot(gl3,vec3(.2126,.7152,.0722)),1e-6));
+  col=ins+stp+gl3+trans*sunAt(d);
+  // (Q374) a Selene under 1.5 px is the moon pass's point: let it through here as for the disc
+  if(uMR<uPix*1.5*length(uMc)&&length(d-normalize(uMc))<uPix*3.)vis=1.;
  }
  // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
@@ -1104,12 +1118,20 @@ vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;
  vec4 c=cratG(n*f+float(i)*7.31);s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
- vec2 hn=sph(uNc,uNcc,d);if(!(uNcc>0.&&hn.x>0.))discard;float tN=hn.x;
+ vec2 hn=sph(uNc,uNcc,d);float dc=length(uNc),aR=uNR/dc;bool pt=!(uNcc>0.&&hn.x>0.);
+ // (Q374) under 1.5 px the disc would flicker between pixel centres: a point instead, with the whole disc's light (its
+ // solid angle × the mean radiance at this phase, a Lambert sphere's) spread over a pixel, so it shrinks into a dot smoothly
+ float th=length(d-uNc/dc);if(pt&&(aR>uPix*1.5||th>uPix*3.))discard;
+ float tN=pt?dc:hn.x;
  vec3 trans,ins=vec3(0.);
  if(uSel>0.){   // the sky pass drew the air in front: here only its transmittance, from the table (the ray reaches space)
   vec3 c=-uPc;float r=length(c),mu=dot(c,d)/r;
   if(r<uAR)trans=trL(r,mu);else{float b=-dot(c,d),rm=length(c+d*b);trans=b>0.&&b<tN&&rm<uAR?pow(trL(rm,0.),vec3(2.)):vec3(1.);}}
  else ins=scatter(d,tN,trans);
+ if(pt){float ca=dot(uSun,-uNc/dc),al=acos(clamp(ca,-1.,1.)),Ph=(sin(al)+(3.14159265-al)*ca)/3.14159265,rho=uPix*.7;
+  vec3 alb=uSel>0.?vec3(.19,.186,.18):uNalb;vec3 col=alb*(2.2*.8*Ph)*(aR*aR/(rho*rho))*exp(-th*th/(rho*rho));
+  if(uSel<=0.&&max(col.r,max(col.g,col.b))<1e-5)discard;   // Nyx is drawn opaque: only where its point shows
+  o=uSel>0.?vec4(col*trans,0.):vec4(col*trans+ins,1.);gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);return;}
  vec3 p=d*tN-uNc,n=normalize(p);
  // the body's own frame (it turns: uNrot = cos, sin of its angle)
  #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
@@ -1150,6 +1172,18 @@ function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
     if(sel){gl.disable(gl.BLEND);gl.depthFunc(gl.LESS);gl.depthMask(true)}}
   // the default framebuffer (no scene target) must not keep the sky's alpha: the page would show through
   if(!SCN.on){gl.colorMask(false,false,false,true);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.colorMask(true,true,true,true);gl.clearColor(0,0,0,0)}}
+// (Q374, PLAYTEST #11) the planets in the sky, for SKY_FS's planetsAt: each one's magnitude from Tellus at program time T
+// (geometric albedo p, radius R, distances r from Helios and Δ from Tellus, a Lambert sphere's phase), m = −26.74 −
+// 2.5 log10(p (R/Δ)² (TU/r)² Φ(α)), set on the stars' scale: their brightest (br 2.45) taken as m −1.5, so br =
+// 2.45·10^(−0.4 (m + 1.5)), capped at 8 (Hesper at its best, ~m −5). Under br .02 a planet isn't drawn.
+const PLANET_ALB={Hesper:.7,Enyo:.17,Astraea:.09,Hyperion:.5,Erebus:.5};
+function planetSky(T){const out=[],tu=TU();
+  for(const b of SYSTEM_BODIES){if(b.name==='Tellus')continue;const h=helioPos(b.name,T),q=fromTellus(b.name,T),r=len(h),D=len(q);
+    const ca=dot(h,q)/(r*D),al=Math.acos(clamp(ca,-1,1)),Ph=(Math.sin(al)+(Math.PI-al)*ca)/Math.PI;if(Ph<=0)continue;
+    const m=-26.74-2.5*Math.log10((PLANET_ALB[b.name]??.3)*(b.R/D)**2*(tu/r)**2*Ph),br=Math.min(8,2.45*10**(-0.4*(m+1.5)));if(br<.02)continue;
+    const c=[1,3,5].map(i=>(parseInt(b.color.slice(i,i+2),16)/255)**2.2),cm=Math.max(...c);
+    out.push({name:b.name,m,br,u:norm(q),c:c.map(x=>.35+.65*x/cm),px:.6+.45*Math.sqrt(Math.min(br,4))})}
+  return out}
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
