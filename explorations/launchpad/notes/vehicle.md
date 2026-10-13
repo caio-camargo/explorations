@@ -1471,3 +1471,21 @@ Test `vehicle-12`. `--smoke` all pass.
   fairing at whip gain, unfolds to ×5 and says so, warns and doesn't fit when out at launch, tears off out in air, a
   registry shape's gain, the side camera counts and moves the CoM, shares the camera's know-how) and `vehicle-19`
   (symmetric 0%, a side camera 1.5%, a side tank 52%, one side booster 96% and the warning). TESTING 229.
+
+## v1.148 — builder notes: side boxes fit the fairing, a smaller camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
+
+- **Side boxes fit a payload fairing** (`scam`, `ssci`, `sbatt`, `scomp`): they stood out 0.2–0.3 m from the skin, past the
+  fairing's 0.175 m bulge over a 1.25 m stack, so a side camera stuck out of the shell. Now `off + r` is 0.10–0.14 m and a new
+  **`w`** gives their half-width round the skin; the mesh keeps within `off + r`. The **side camera's lens looks outward** (it
+  looked up the axis, copied from the stack camera). Nothing in the sim depends on where a camera looks yet; pointing (Q338)
+  will take the outward axis.
+- **The stack camera** (`cam`) is 0.3 m tall, was 0.5 m: a short drum with the lens out the side. Same mass.
+- **Octagonal frame** (`oct` 0.5 m, `octl` 1 m; kind `frame`, in *Structure*): a narrow bus 0.8 m across (r 0.4) to build a
+  satellite round. Side parts sit on its faces; what stacks on it rests on a joint of its radius (weaker than a 1.25 m one).
+  Placeholder look: eight foil faces between dark rings (`lathe` with 8 segments).
+- **The Nyx orbit flight** (`fly_ladder.mjs`, test `bodies-1`): the shorter camera tipped the Probe's retrograde 80 × 30 km Nyx
+  orbit under the ~103 h the mission needs. Measured, that orbit decays onto Nyx at ~98 h **whichever way round it goes**
+  (76 km: both 4.14 days; 73 km: both last), so it passed on `main` by a whisker. `nyxorb` now captures at 70 × 30 km; the
+  prograde control still flies 80 × 30 km. Whether Tellus's tide should tell the two apart is **Q344** (space).
+- Test `vehicle-20` (all four side boxes on a 1.25 m stack and on the frame inside a fairing; the frame's radius; the camera's
+  height). TESTING 230.

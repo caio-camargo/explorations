@@ -14,7 +14,10 @@ export const LADDER = SR => [
     { k: 'ascend', stage: 0, pitchH: 3000, ap: 20e3, pe: 15e3 }, { k: 'return', perigee: 45e3 }], ['beeper', 'farside', 'selimp', 'selland']],
   ['nyxfind', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 300e3 }], ['beeper', 'farside']],
   ['nyxfly', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 200e3 }], ['beeper', 'farside', 'nyxfind']],
-  ['nyxorb', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 40e3, retro: true }, { k: 'capture', ap: 80e3, pe: 30e3 }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
+  // nyxorb captures lower than the control (vehicle session, 2026-10-12): measured, the same 80 × 30 km orbit decays onto Nyx
+  // at ~98 h whichever way round it goes, so the 0.2 m shorter camera on the Probe was enough to tip the retrograde flight
+  // under the ~103 h it needs. At 70 km it lasts. The control's "which way round matters" is QUEUE Q344 (space)
+  ['nyxorb', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 40e3, retro: true }, { k: 'capture', ap: 70e3, pe: 30e3 }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
   ['nyxorb:pro', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 40e3, retro: false }, { k: 'capture', ap: 80e3, pe: 30e3 }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
   ['nyxland', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 100e3 }, { k: 'capture', ap: 300e3, pe: 40e3 }, { k: 'land' }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
 ];

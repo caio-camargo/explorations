@@ -331,7 +331,7 @@ void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
  vec4 w=uM*vec4(P,1.);vP=w.xyz;vO=aP;vNo=N;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*N;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
@@ -527,6 +527,14 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
     fr=mk.y*edge*run*(.12+.16*fine+.1*(1.-clamp(v/max(lv,.01),0.,1.)));
    alb=mix(alb,vec3(.86,.9,.95),fr);rough=mix(rough,.8,fr);metal*=1.-fr;nO+=T*(fine-.5)*.15*fr;}
   if(k==2&&mk.w>0.){float g=mk.w*(1.-smoothstep(.35,.75,clamp(v/max(h,.01),0.,1.)));emis+=mix(vec3(.6,.05,0.),vec3(1.,.55,.15),g)*g*g*4.;}
+  // (Q318, BEAUTY B4.1) the hull glows: uHt = the windward skin's surface temperature (K, four parts per vec4). Hottest
+  // where the face meets the flow (the char's direction), falling to half on the sides; streaked like the char. Emitted as a
+  // blackbody in the scene's linear units (1 = 8,150 cd/m²; sunlit white paint ≈ 4): per channel a Wien fit to
+  // Planck → sRGB, exp(a − x/T), within 1 % (r) and 10 % (g) over 1,000–2,800 K. Steep on purpose: 1,200 K is a dull red
+  // only the night shows, 1,700 K out-glows sunlit paint, 2,200 K is yellow-white and blooms.
+  float ht=uHt[pi/4][pi%4];
+  if(ht>800.){float wd=dot(ch.xyz,ch.xyz)>.5?smoothstep(-.2,.95,dot(vNo,ch.xyz)):1.,Tl=ht*(.5+.5*wd)*(.95+.1*vn2(side?vec2(s*9.,v*.9):q2*7.));
+   emis+=.85*exp(vec3(16.46,17.03,20.83)-vec3(23014.,26819.,41004.)/Tl);}
  }
  // the launch complex (uPadM, set while the pad and its rig draw; PLAYTEST #4): surface detail from the pad-local position
  // (metres) and the material class. Concrete: formwork seams, mottling, rain stains running down from the tops. White
@@ -697,6 +705,7 @@ function depthTarget(w,h){const D=DEPTH_RT;if(D.w===w&&D.h===h)return D;if(!D.te
 // streaks peeling off the hull's edges, uLw long; and a dim core in the wake.
 // the hull's envelope radius at 32 stations from its bottom to its top (ship frame; radial parts count by their offset)
 let PLASMA_FX=true;   // false hides the re-entry plasma (GPU A/B)
+const PLASMA_SH=7,PLASMA_WK=.5;   // (Q318) the sheath's and the wake's brightness: the sheath outshines the day (was 3 and .35 before HDR)
 const HULLPR=new Float32Array(32);
 function hullProfile(s,all){const y0=s.cm[1]+s.yBot,dy=(s.yTop-s.yBot)/31;HULLPR.fill(0);
   for(const p of s.parts){if(!p.on&&!all)continue;const off=Math.hypot(p.pos[0],p.pos[2]),pr=p.d.prof;
@@ -752,16 +761,20 @@ const PLASMA_VS=`#version 300 es
 layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform float uFc;out vec3 vL;out float vW;
 void main(){vL=aP*vec3(uB.x*1.0086,uB.y,uB.x*1.0086);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLASMA_FS=`#version 300 es
-precision highp float;const float FXK=${FXK.toFixed(3)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+precision highp float;const float FXK=${FXK.toFixed(3)},PSH=${PLASMA_SH.toFixed(2)},PWK=${PLASMA_WK.toFixed(2)};precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
 uniform vec3 uB,uCam,uA,uM0,uC;uniform float uFc,uT,uIn,uK,uRb,uHl,uD,uLw,uEf,uEp,uPr[32];uniform sampler3D uN;
-vec3 heat(float k){return k<.5?mix(vec3(1.,.28,.06),vec3(1.,.55,.22),k*2.):mix(vec3(1.,.55,.22),vec3(1.,.7,.95),min(1.,(k-.5)*2.));}
+// (Q318, BEAUTY B4.2) the shock layer's colours by heat level k, after Orion's and Dragon's entry footage: the stagnation
+// point white-yellow (orange while k is low), the sheath's edge rose turning lavender as it heats, the wake magenta with
+// the ablator's orange in it. plasmaLight's colour is core(k).
+vec3 core(float k){return mix(vec3(1.,.45,.12),vec3(1.,.86,.62),smoothstep(.3,1.2,k));}
+vec3 edge(float k){return mix(vec3(1.,.26,.34),vec3(.82,.46,1.),smoothstep(.4,1.2,k));}
 void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;float t1;
  {float a=dot(rd.xz,rd.xz),b=dot(p0.xz,rd.xz),c=dot(p0.xz,p0.xz)-R*R,ts=a>1e-9?(-b+sqrt(max(0.,b*b-a*c)))/a:1e9;
   float ty=rd.y<-1e-6?(-L-p0.y)/rd.y:rd.y>1e-6?-p0.y/rd.y:1e9;t1=max(0.,min(ts,ty));if(uIn>.5)t1=min(t1,length(vL-uCam));}
  // steps sized by the distance to the hull: fine through the thin shock layer, coarse down the wake (≤ 56 steps);
  // ahead of the hull and clear of the shock layer, a step jumps straight to it
  float j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),dmax=t1/16.,t=0.,h=0.;
- vec3 C=vec3(0.),cs=heat(uK),cw=heat(uK*.4);
+ vec3 C=vec3(0.),cc=core(uK),ce=edge(uK),ca=vec3(1.,.42,.13),cw=ce;
  for(int i=0;i<56;i++){if(t>=t1)break;vec3 p=p0+rd*(t+h*j),q=p-uM0;
   // the hull's signed distance and the normal of its nearest face; the ray stops at the hull
   // (the slope correction to the radial distance only holds near the surface: far out it would pull distant points in)
@@ -779,8 +792,9 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
   float wk=0.;if(x>-2.*uEf&&rho<1.6*W){float xe=max(x,0.),dec=exp(-xe/uLw*3.)*smoothstep(-2.*uEf,0.,x);
    vec2 dr=qc.xz/max(rho,1e-4);float n2=texture(uN,vec3(dr*.7,xe/(uEp*5.)-uT*4.)).r,n3=texture(uN,vec3(dr*1.6,xe/(uEp*2.5)-uT*7.)+.37).r;
    float ring=exp(-pow((rho/W-.75)/.3,2.)),strk=smoothstep(.4,.8,n2*.6+n3*.4);
-   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3));}
-  C+=(cs*sh*3.+cw*wk*.35)*uK*h/max(uEp,.3);t+=h;}
+   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3));cw=mix(ca,ce,smoothstep(0.,.3*uLw,xe+uEp*(n2-.5)));}   // the ablator's orange off the hull, rose to lavender downstream
+  vec3 cs=mix(ce,cc,smoothstep(.15,.9,w)*exp(-max(sd,0.)/(1.5*uD)));   // white-yellow facing the flow at the hull, the edge colour off it
+  C+=(cs*sh*PSH+cw*wk*PWK)*uK*h/max(uEp,.3);t+=h;}
  o=vec4(C*FXK,0.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // transonic vapor cones: a lit cloud raymarched in the ship's frame (y = ship axis, origin above the top, the plume's proxy
 // lathe). Flow speeds up round each hull shoulder (the end of a nose cone, a step down in diameter), the air expands and
@@ -990,7 +1004,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15,frame:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0)+16384*(PK.up||0),PK.i)}   // the school (×32), the maker's hue (×256, 10° steps) and the upper-stage flag (×16384, Q228) ride in the kind (Q102)
@@ -1158,9 +1172,11 @@ function partBody(out,p){
       tube(out,add(c,[0,.68,0]),[x,y+.68,z],.008,C.ST,5,false)}break;
     case'les':lathe(out,[[.18,0,C.D],[.18,1.3,C.R],[.26,1.42,C.D],[.26,1.6,C.R],[.1,1.9,C.R],[0,2.1,C.D]],o);break;
     case'crew':case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
-    case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.ST],[.625,.44,C.ST],[.625,.44,C.D],[.625,.5,C.D]],o);
-      box(out,[x,y+.25,z+.6],.24,.17,.05,C.BK);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.78],.15,C.D,14,false);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.7],.11,C.GL,14,true);
-      box(out,[x,y+.25,z-.61],.17,.12,.03,C.G);break;
+    case'cam':lathe(out,[[.625,0,C.D],[.625,.04,C.D],[.625,.04,C.ST],[.625,.26,C.ST],[.625,.26,C.D],[.625,.3,C.D]],o);
+      box(out,[x,y+.15,z+.6],.18,.1,.05,C.BK);tube(out,[x,y+.15,z+.56],[x,y+.15,z+.72],.09,C.D,14,false);tube(out,[x,y+.15,z+.56],[x,y+.15,z+.67],.07,C.GL,14,true);
+      box(out,[x,y+.15,z-.61],.13,.08,.03,C.G);break;
+    // the octagonal frame (placeholder): eight foil-covered faces between dark end rings
+    case'oct':case'octl':lathe(out,[[.4,0,C.D],[.4,.04,C.D],[.4,.04,C.AU],[.4,h-.04,C.AU],[.4,h-.04,C.D],[.4,h,C.D]],o,8);break;
     case'ant':lathe(out,[[.625,0,C.D],[.625,.12,C.D],[.3,.3,C.W]],o);tube(out,[x,y+.3,z],[x,y+.62,z],.03,C.ST,8);
       {const pr=[];for(let i=0;i<=8;i++){const r=.3*i/8;pr.push([r,.62+r*r/.6,[.84,.85,.86]])}lathe(out,pr,[x,y,z],24,[false,false]);
        for(let k=0;k<3;k++){const t=k*2.094;tube(out,[x+.29*Math.cos(t),y+.76,z+.29*Math.sin(t)],[x,y+.79,z],.008,C.D,4)}tube(out,[x,y+.74,z],[x,y+.81,z],.03,C.D,8,true);
@@ -1197,12 +1213,14 @@ function partBody(out,p){
     // side antennas (vehicle, Q337; placeholders for look & sound): a whip on a small foot; a boom antenna as a folded
     // canister on the skin, or out: a thin boom from the side, a little rising, with its element at the tip
     // the side boxes (Q337; placeholders): a box standing off the skin on two struts, each with its tell (a lens, louvers, cells' cover, a vent grille)
-    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],t=[-n[2],0,n[0]],w=d.r,P=(r,yy,s=0)=>[x+n[0]*r+t[0]*s,y+yy,z+n[2]*r+t[2]*s];
-      const col=d.key==='scam'?C.W:d.key==='ssci'?C.AU:d.key==='sbatt'?C.D:C.G;for(const yy of[.08,h-.08])tube(out,P(0,yy),P(.06,yy),.015,C.ST,5);
-      rbox(out,P(.06+w*.7,h/2),w*.7,h/2,w*.8,col,a);
-      if(d.key==='scam'){lathe(out,[[.06,0,C.D],[.06,.08,C.D],[.045,.08,C.GL]],P(.06+w*.7,h-.02),12)}
-      else if(d.key==='ssci')for(let k=0;k<4;k++)rbox(out,P(.06+w*1.41,.08+k*(h-.16)/3),.006,.02,w*.6,C.ST,a);
-      else if(d.key==='scomp')for(let k=0;k<3;k++)rbox(out,P(.06+w*1.41,h*.3+k*.06),.006,.012,w*.5,C.BK,a)}break;
+    // within off + r of the skin, so they fit a fairing; the camera's lens looks outward
+    case'scam':case'ssci':case'sbatt':case'scomp':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];
+      const D=(d.off||0)+d.r,W=d.w||d.r,b1=D-(d.key==='scam'?.03:.006),col=d.key==='scam'?C.W:d.key==='ssci'?C.AU:d.key==='sbatt'?C.D:C.G;
+      for(const yy of[.08,h-.08])tube(out,P(0,yy),P(.02,yy),.012,C.ST,5);
+      rbox(out,P((.02+b1)/2,h/2),(b1-.02)/2,h/2,W,col,a);
+      if(d.key==='scam'){tube(out,P(b1-.005,h*.6),P(D,h*.6),.05,C.D,12,false);tube(out,P(b1,h*.6),P(D-.004,h*.6),.038,C.GL,12,true)}
+      else if(d.key==='ssci')for(let k=0;k<4;k++)rbox(out,P(b1+.003,.08+k*(h-.16)/3),.003,.02,W*.75,C.ST,a);
+      else if(d.key==='scomp')for(let k=0;k<3;k++)rbox(out,P(b1+.003,h*.3+k*.06),.003,.012,W*.6,C.BK,a)}break;
     case'whip':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.04,y,z+n[2]*.04];rbox(out,[c[0],y+.04,c[2]],.03,.04,.03,C.D,a);tube(out,[c[0],y+.08,c[2]],[c[0]+n[0]*.02,y+h+.5,c[2]+n[2]*.02],.008,C.ST,6)}break;
     case'bant':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r];rbox(out,P(.06,h/2),.05,h/2,.06,C.D,a);
       if(p.dep){const L=d.span,t=P(.1+L,h*.6+L*.18);tube(out,P(.1,h*.6),t,.012,C.ST,6);tube(out,P(.1+L*.5,h*.6+L*.09),P(.1+L*.5,h*.6+L*.09+.01),.02,C.ST,6);rbox(out,t,.04,.04,.12,C.W,a)}
@@ -1265,11 +1283,18 @@ function partsMesh(parts){const a=[];UPPER=upperOf(parts);for(const p of parts){
 //           the ablator it has used).
 //   frost — fuelled tanks waiting on the pad are LOX-cold; frost sheds over the first minute of flight, faster with speed
 //   glow  — a vacuum engine's radiatively cooled nozzle extension: heats over ~6 s of burn, cools over ~12 s after cutoff
-const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4);
-const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,cd:[0,0,0]});return m};
+//   hot   — the windward skin's surface temperature (K) in a fast re-entry (Q318): radiative equilibrium with the shock
+//           layer, from the plasma's heat level k (wallT), not the part's p.T: the sim's p.T is the part's bulk, a lumped
+//           thermal mass that peaks far lower (700 K on a shield, 920 K on a bare pod; scratch study 2026-10-12). Heats over
+//           ~2 s, cools over ~6 s once the air thins or slows. MESH_FS glows it as a blackbody.
+const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4),HTA=new Float32Array(96);
+// the skin's surface temperature for a heat level k (plasmaHeat's scale: k ≈ 1 at the peak of a low-orbit return,
+// 1.5 coming back from Selene); the ambient below the plasma
+const wallT=k=>k>0?700+1000*k:290,hotTo=(m,k,dt)=>{const tg=wallT(k);m.hot+=(tg-m.hot)*(1-Math.exp(-dt/(tg>m.hot?2:6)))};
+const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,hot:0,cd:[0,0,0]});return m};
 // a registered satellite keeps the marks it flew with: soot, and char with its windward direction. Frost and nozzle
 // glow are gone within a minute, long before anyone flies past. Rounded: they go into the save.
-HOOK.unshape=(parts,by)=>{for(const p of parts){const o=by.get(p.i);if(o&&o.mk)MARKS.set(p,{soot:o.mk[0],char:o.mk[1],cd:o.mk.slice(2),frost:0,glow:0})}};   // a rebuilt vessel's marks
+HOOK.unshape=(parts,by)=>{for(const p of parts){const o=by.get(p.i);if(o&&o.mk)MARKS.set(p,{soot:o.mk[0],char:o.mk[1],cd:o.mk.slice(2),frost:0,glow:0,hot:0})}};   // a rebuilt vessel's marks
 HOOK.cloned=(a,b)=>a.forEach((p,i)=>{const m=MARKS.get(p);if(m)MARKS.set(b[i],{...m,cd:m.cd.slice()})});   // a separated vessel keeps its marks
 HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.soot<.01&&m.char<.01)return;const l=len(m.cd)||1;
   shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
@@ -1277,21 +1302,23 @@ const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
 let markT=null;
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
   const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed&&!S.mkLift){S.mkLift=true;S.mkLiftT=simT}
-  const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle;
+  const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle,
+    qE=S.alive&&b.atm?plasmaHeat(b,S.r,S.v,S.qHeat):0,kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0;
   for(const p of S.parts){if(!p.on)continue;const m=markOf(p);
     if(p.cap.fuel)m.frost=pad?1:Math.max(0,m.frost-dt*(1/45+sp/6000));
     if(p.T>480){m.char=Math.max(m.char,clamp((p.T-480)/(p.d.Tmax-480),0,1));if(sp>1)m.cd=madd(m.cd,fb,(p.T-480)*dt/sp)}
     if(p.cap.ablator)m.char=Math.max(m.char,clamp((p.T-420)/300,0,1),Math.min(1,3*(1-p.res.ablator/p.cap.ablator)));   // an ablator blackens far below its rating
+    hotTo(m,kH,dt);if(kH>0&&sp>1)m.cd=madd(m.cd,fb,dt*kH/sp);   // the glow's windward side, also on parts whose bulk stays cool
     if(vacNozzle(p.d)){const tg=eng.includes(p)?S.throttle:0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
   for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
     for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
       const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
-  for(const d of debris)for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12)}}
+  for(const d of debris){const kH=d.body.atm?DEBH.get(d)?.k||0:0;for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12);hotTo(m,kH,dt)}}}
 // the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
-function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
+function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
-    CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4)}
-  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA);setMoves(u,parts)}
+    CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4);HTA[i]=m.hot||0}
+  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA);gl.uniform4fv(u['uHt[0]'],HTA);setMoves(u,parts)}
 // the moving parts of these parts into the mesh shader's uMv table (QUEUE Q23): engine bells turned by their gimbal
 // (p.gv: the thrust along tdir + gv, the bell turning about its throat) and steerable fin plates by their deflection
 // (p.fd, rad, about each plate's radial axis through mid-chord, the sim's sign). Up to 16; parts at rest are left out.
@@ -1491,7 +1518,7 @@ function debrisHeat(){if(mode!=='flight')return;const dt=Math.min(.1,Math.max(0,
     if(!g){if(rho<=0)continue;g={geo:debrisGeo(d),q:0,spk:0,smk:0};DEBH.set(d,g)}
     g.geo.r=d.r;g.geo.v=d.v;g.geo.q=d.q;const va=sub(d.v,surfVel(b,d.r)),sp=len(va),
       qs=rho>0?Math.sqrt(rho/Math.max(g.geo.radius,.3))*sp*sp*sp*SG*HEAT_GAIN:0;g.q+=(qs-g.q)*(1-Math.exp(-dt/.5));
-    if(g.q<1.5e4)continue;const k=clamp(Math.log(g.q/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),fb=sp>1?qrot(qconj(d.q),mul(va,1/sp)):[0,1,0];
+    g.k=0;if(g.q<1.5e4)continue;const k=g.k=clamp(Math.log(g.q/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),fb=sp>1?qrot(qconj(d.q),mul(va,1/sp)):[0,1,0];
     for(const p of d.parts){const m=markOf(p);m.char=Math.min(1,m.char+dt*k*.12);m.cd=madd(m.cd,fb,dt*k)}   // it chars as it burns
     if(b!==TELLUS)continue;const lead=add(d.r,mul(va,-(g.geo.radius+.5)/Math.max(sp,1)*0));
     g.spk+=dt*k*40;while(g.spk>1){g.spk-=1;const R=Math.random,u=norm([R()-.5,R()-.5,R()-.5]);   // sparks peel off and fall behind
@@ -1533,7 +1560,7 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
   const qE=plasmaHeat(S.body,S.r,S.v,S.qHeat);if(qE<=1.5e4)return;const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<50)return;
   const k=clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),f=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
     rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
-    a=clamp(k,0,1),c=a<.5?[1,.28+.54*a,.06+.32*a]:[1,.55+.3*(a-.5),.22+1.46*(a-.5)],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
+    a=clamp((k-.3)/.9,0,1),b=a*a*(3-2*a),c=[1,.45+.41*b,.12+.5*b],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
     P=add(sub(add(bodyPos(S.body,simT),S.r),camW),mul(f,ef+2*D));
   if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K));PLT.g=null}
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)

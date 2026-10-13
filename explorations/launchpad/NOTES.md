@@ -81,6 +81,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.145 — deploy in the Assembly: legs, solar wings and bay doors roll out as left (2026-10-12, vehicle session, QUEUE Q328; PLAYTEST #79)
 - v1.146 — the payload fairing: a shell that keeps the payload out of the air, dropped in two halves (2026-10-12, vehicle session, QUEUE Q337 part 1)
 - v1.147 — side antennas (whip, boom antenna), side boxes, the trim readout and thrust line (2026-10-12, vehicle session, QUEUE Q337 part 2)
+- v1.148 — side boxes fit the fairing (the side camera looks outward), a 0.3 m stack camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -277,6 +278,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.134 — the reference views, `refset.mjs`, graphics Low/High (2026-10-12, effects beat, QUEUE Q312)
 - v1.135 — the cloud deck at half resolution; a pass profiler (2026-10-12, effects beat, QUEUE Q313)
 - v1.137 — the HDR scene: AgX, auto-exposure, bloom on real light, a grade (2026-10-12, effects beat, QUEUE Q314)
+- v1.149 — re-entry: the hull glows, the plasma in HDR (2026-10-12, effects beat, QUEUE Q318)
+- v1.150 — the craft's quick wins: Rao bells, ogive noses, smooth normals, the planet's light (2026-10-12, parts & pad beat, QUEUE Q315)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
