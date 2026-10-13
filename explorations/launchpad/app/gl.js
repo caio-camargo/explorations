@@ -802,7 +802,7 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
   float wk=0.;if(x>-2.*uEf&&rho<1.6*W){float xe=max(x,0.),dec=exp(-xe/uLw*3.)*smoothstep(-2.*uEf,0.,x);
    vec2 dr=qc.xz/max(rho,1e-4);float n2=texture(uN,vec3(dr*.7,xe/(uEp*5.)-uT*4.)).r,n3=texture(uN,vec3(dr*1.6,xe/(uEp*2.5)-uT*7.)+.37).r;
    float ring=exp(-pow((rho/W-.75)/.3,2.)),strk=smoothstep(.4,.8,n2*.6+n3*.4);
-   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3));cw=mix(ca,ce,smoothstep(0.,.3*uLw,xe+uEp*(n2-.5)));}   // the ablator's orange off the hull, rose to lavender downstream
+   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3))*(.55+.9*texture(uN,vec3(dr*.4,xe/(uEp*3.)-uT*11.)+.71).r);cw=mix(ca,ce,smoothstep(0.,.3*uLw,xe+uEp*(n2-.5)));}   // the ablator's orange off the hull, rose to lavender downstream
   vec3 cs=mix(ce,cc,smoothstep(.15,.9,w)*exp(-max(sd,0.)/(1.5*uD)));   // white-yellow facing the flow at the hull, the edge colour off it
   C+=(cs*sh*PSH+cw*wk*PWK)*uK*h/max(uEp,.3);t+=h;}
  o=vec4(C*FXK,0.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
@@ -827,7 +827,9 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
    if(z<-.3*S.y||z>zs*1.3)continue;
    float n1=texture(uN,vec3(p.x*1.3,ta*.6-uT*.4,p.z*1.3)/S.y*.25).r,n2=texture(uN,vec3(p.x,ta*3.,p.z)/S.y*.6+.3).r;
    float ro=S.y*(1.15+.95*sqrt(max(z,0.)/zs))*(1.+.3*(n1-.5)+.12*(n2-.5)),front=smoothstep(-.15*S.y,.35*zs,z),rear=1.-smoothstep(zs*(.86+.1*n2),zs*(.97+.1*n2),z);
-   dens+=S.z*front*rear*smoothstep(ro,ro*.62,rr)*(.5+n1*n2);}
+   // (Q320, BEAUTY B3.1) not one puff but several thin stacked rings, each with a sharp trailing edge, flickering
+   float rn=z/(.2*zs)+.15*(n1-.5),fr=fract(rn),ring=mix(.3,1.,smoothstep(.35,.9,fr)*(1.-smoothstep(.93,1.,fr)))*(.45+1.1*texture(uN,vec3(floor(rn)*.37,uT*7.,.5)).r);
+   dens+=S.z*front*rear*smoothstep(ro,ro*.62,rr)*(.5+n1*n2)*ring;}
   if(dens<=0.)continue;
   float sg=dens*uV*3./max(uSh[0].y,.3),a=1.-exp(-sg*ds);
   vec3 nr=vec3(p.x,0.,p.z)/max(rr,1e-3);float l=.5+.5*max(dot(nr,uSunL),0.)+.6*pow(max(dot(rd,uSunL),0.),6.);
@@ -1286,7 +1288,7 @@ HOOK.cloned=(a,b)=>a.forEach((p,i)=>{const m=MARKS.get(p);if(m)MARKS.set(b[i],{.
 HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.soot<.01&&m.char<.01)return;const l=len(m.cd)||1;
   shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
-let markT=null;
+let markT=null;const SPK={n:0,k:0};
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
   const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed&&!S.mkLift){S.mkLift=true;S.mkLiftT=simT}
   const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle,
@@ -1297,6 +1299,10 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
     if(p.cap.ablator)m.char=Math.max(m.char,clamp((p.T-420)/300,0,1),Math.min(1,3*(1-p.res.ablator/p.cap.ablator)));   // an ablator blackens far below its rating
     hotTo(m,kH,dt);if(kH>0&&sp>1)m.cd=madd(m.cd,fb,dt*kH/sp);   // the glow's windward side, also on parts whose bulk stays cool
     if(vacNozzle(p.d)){const tg=eng.includes(p)?S.throttle:0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
+  // (Q320, B4.3) the ship sheds sparks of ablator (and flakes of paint) from its hot face, as falling stages do
+  if(kH>0&&b===TELLUS&&sp>1){const abl=S.parts.some(p=>p.on&&p.cap.ablator&&p.res.ablator>0),va=sub(S.v,surfVel(b,S.r));SPK.n+=dt*kH*(abl?45:12);
+    for(;SPK.n>1&&SPK.k<40;SPK.n--,SPK.k++){const R=Math.random,u=norm([R()-.5,R()-.5,R()-.5]);
+      fxPuff(madd(S.r,u,S.radius*.8),add(madd(S.v,va,-(.02+.05*R())),mul(u,6*R())),{s0:.025+.035*R(),grow:0,a0:.9,life:.3+.7*R(),hot:abl?2.2:1.4})}SPK.n=Math.min(SPK.n,1);SPK.k=0}
   for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
     for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
       const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
@@ -1550,7 +1556,17 @@ function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S
     rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
     a=clamp((k-.3)/.9,0,1),b=a*a*(3-2*a),c=[1,.45+.41*b,.12+.5*b],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
     P=add(sub(add(bodyPos(S.body,simT),S.r),camW),mul(f,ef+2*D));
-  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K));PLT.g=null}
+  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;const fl=.86+.08*Math.sin(simT*41.3)+.06*Math.sin(simT*97.1);   // (Q320, B4.4) the sheath flickers, and with it its light on everything
+  PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K*fl));PLT.g=null}
+// (Q320, BEAUTY B3.2 and B4.4) the camera shakes: a buffet through max-q, worst near Mach 1, and the rumble of re-entry by
+// the plasma's heat level. A sum of sines on sim time (deterministic, still when paused), in radians of view direction;
+// off in the map, out of flight and with SHAKE_FX = false
+let SHAKE_FX=true;
+function camShake(){if(!SHAKE_FX||mode!=='flight'||view==='map'||!S||!S.alive||!S.body.atm)return null;
+  const M=S.mach||0,q=S.qdyn||0,bf=.0022*sstep(8e3,30e3,q)*(1+1.5*Math.exp(-(((M-1)/.15)**2))),
+    qE=plasmaHeat(S.body,S.r,S.v,S.qHeat),kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0,A=bf+.0035*kH;
+  if(A<1e-5)return null;const t=simT;
+  return[A*(Math.sin(t*37.1)*.5+Math.sin(t*71.7+1.3)*.3+Math.sin(t*13.3+2.1)*.2),A*(Math.sin(t*41.9+.7)*.5+Math.sin(t*83.3+2.9)*.3+Math.sin(t*17.9+.4)*.2)]}
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
 const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[0,0,1],[1,0,0]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0],[1,0,0]]],v=[];
   for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}
@@ -1709,7 +1725,7 @@ function cutoffPuff(e){if(S.body!==TELLUS)return;const P=PROPS[pfxOf(e.d).prop]|
     fxPuff(madd(at,j,e.d.exit),add(S.v,add(mul(dn,6+10*R()),mul(j,4))),{s0:e.d.exit*(1+R()),grow:2+3*R()*(1+2*(1-pa)),a0:.35+.3*(P.tail||.3),life:2+3*R()*pa+1,hot:.4})}}
 // a puff that travels with a velocity (inertial frame, Tellus-centred) instead of hanging in the air: separation gas,
 // cutoff puffs, sparks. hot = how much it glows (sparks ~1)
-function fxPuff(r,v,o){if(smoke.length>2500)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,rise:0,seed:Math.random()*97})}
+function fxPuff(r,v,o){if(smoke.length>4000)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,rise:0,seed:Math.random()*97})}
 
 // [igniter colour × flash strength, richness] for an engine's current age since ignition
 function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9,ao=sp?simT-sp.off:1e9;if(a>3&&ao>3)return[0,0,0,0];const T=P.igT||.1,

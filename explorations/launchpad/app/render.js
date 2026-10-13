@@ -43,7 +43,8 @@ function render(){
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
     camW=madd(tgt,off,cam.dist);
     const bc=bodyPos(CB,simT),rc=sub(camW,bc),ra=len(rc);{const gR=CB.R+1.5+(CB.ground&&ra<CB.R+bodyTop(CB)+10?groundAlt(CB,toPF(CB,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
-    Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
+    Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0;
+    {const sh=camShake();if(sh){Fw=norm(add(Fw,add(mul(R,sh[0]),mul(U,sh[1]))));R=norm(cross(Fw,f.up));U=cross(R,Fw)}}}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   const desk=deskScene();   // (Q242) the Assembly: the design as a scale model on a drafting table, not on the pad
   if(desk)gl.clearColor(...DESK_BG.map(x=>x**2.2),1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);

@@ -1406,3 +1406,23 @@ could only catch near-white. Now the frame is light, and the camera is one place
   at night; views 154–155 (max-q, staging) never leave the ground ("max-q 0.0 kPa at 0.2 km"). Both are on `main` as it
   was; QUEUE *Proposed*.
 - **Checks:** test `aerofx-12`. TESTING 232.
+
+## v1.151 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320; BEAUTY B3.1–3.2, B4.3–4.4)
+- **Vapor collars as stacked rings (B3.1).** Each shoulder's collar is now four or five thin rings across its length
+  (`fract(z / 0.2·zs)`), each with a soft front and a sharp trailing edge, and each ring's density flickers on its own (a
+  noise fetch by ring index and time, ×0.45–1.55). Before, it was one smooth puff.
+- **The camera shakes (B3.2, B4.4)** (`camShake`, applied to the flight camera's direction in `render()`): a buffet of
+  0.0022 rad × q from 8 to 30 kPa, ×2.5 at Mach 1 (a Gaussian, σ 0.15), plus 0.0035 rad × the plasma's heat level in
+  re-entry. Sines at 13–83 Hz on sim time, so the reference views stay repeatable and a pause holds it still. Off in the map,
+  out of flight, and with `SHAKE_FX = false`. 0.003 rad at max-q near Mach 1, 0.0012 at Mach 2.
+- **Sparks from the ship (B4.3)**, as falling stages already shed them: from the hot face, 45/s × k with a working ablator
+  (hotter, `hot` 2.2) or 12/s of paint flakes without (1.4), at most 40 per tick, `fxPuff` 0.025–0.06 m. The smoke cap
+  is 4,000 for these too.
+- **The wake (B4.3)** flickers in ragged streamers: a noise ×0.55–1.45 scrolling down it at 11 per second.
+- **The plasma light flickers (B4.4)** ×0.86 ± 0.14 (two sines), so the sheath's warm light on the hull, smoke and stages
+  shimmers.
+- **Not done:** the leading edges warming faintly at high Mach on the ascent (B3.2: the hull glow's skin temperature only
+  follows the plasma); the radio blackout as silence (sound beat); Q250's clouds stay in Q250.
+- **Stills and cost** (RTX 3050, High): `output/launchpad/beauty/q320/cmp.png` (views 46, 50, 51, 54 before | after). The
+  vapor pass on view 50 was 0.5 → 0.19 ms and the plasma 0.58 → 0.57 ms on view 46: noise, as one fetch per sample was added.
+- **Checks:** test `aerofx-13` (the rings, the shake's shape and repeatability, the wiring). TESTING 233.

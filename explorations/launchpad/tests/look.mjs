@@ -471,3 +471,23 @@
   check('flames slice 1: vacuum glow cools with expansion, sunlight scatters forward (none in shadow), turbulent core, Mach disk, kerolox curtain, a brown hypergolic puff; a longer, sheared contrail',
     shader && wired && brown && fwd > 10 && trail, `shader ${shader} · wired ${wired} · hypergolic puff ${brown} (so ${so}) · forward/back scattering ${fwd.toFixed(0)}× · contrail ${trail}`);
 }
+
+// aerofx-13. The air and the wake (look & sound effects beat, BEAUTY Q320 B3.1–3.2, B4.3–4.4). Vapor collars are stacked
+// thin rings with sharp trailing edges that flicker; the camera buffets through max-q (worst near Mach 1) and rumbles in
+// re-entry, deterministic on sim time and off in the map; the ship sheds sparks of ablator from its hot face; the plasma
+// wake flickers in ragged streamers and its light flickers with it.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const vfs = page.slice(page.indexOf('const VAPOR_FS=`'), page.indexOf('`;', page.indexOf('const VAPOR_FS=`')));
+  const rings = /fr=fract\(rn\),ring=/.test(vfs) && /\*ring;\}/.test(vfs);
+  const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 12.3,
+    sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
+  const shake = cs && (S => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values(env), S));
+  const amp = r => r ? Math.hypot(r[0], r[1]) : 0, ship = (M, q) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0 });
+  const calm = shake && shake(ship(.3, 2e3)), maxq = shake && shake(ship(1, 32e3)), sup = shake && shake(ship(2, 32e3)), again = shake && shake(ship(1, 32e3));
+  const wired = /const sh=camShake\(\);if\(sh\)\{Fw=norm\(add\(Fw/.test(page) && /SPK\.n\+=dt\*kH\*\(abl\?45:12\)/.test(page) && /fxPuff\(madd\(S\.r,u,S\.radius\*\.8\)/.test(page)
+    && /PLT\.c\.set\(c\.map\(x=>x\*K\*fl\)\)/.test(page) && /xe\/\(uEp\*3\.\)-uT\*11\./.test(page);
+  check('the air and the wake: stacked flickering vapor rings; a max-q buffet worst near Mach 1, none in calm air, repeatable; ship sparks, a ragged wake and a flickering plasma light',
+    rings && wired && calm === null && amp(maxq) > 0 && amp(maxq) < 0.01 && Math.abs(amp(maxq) - amp(again)) < 1e-12 && amp(maxq) > amp(sup),
+    `rings ${rings} · wired ${wired} · shake: calm ${calm} · max-q at M 1 ${amp(maxq).toFixed(4)} rad · at M 2 ${amp(sup).toFixed(4)} rad`);
+}
