@@ -1421,7 +1421,7 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   and its uniforms on both setters, the pad's light unchanged, blue and smaller from orbit); `look`'s airless-fill test
   now builds `diskOf` too. TESTING 232.
 
-## v1.151 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319; BEAUTY B2)
+## v1.153 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319; BEAUTY B2)
 - **Vacuum plumes stop being brown fog (B2.2).** The gas glow term (`uVa`) was as bright 20 m down a vacuum plume as at
   the nozzle, so a wide plume read as an orange-brown cone. The gas cools as it expands, so its own glow now falls as
   `(re/rb)^1.6` unless air mixes in and burns (`cool = mix(…, 1, uS.w)`): a vacuum plume glows only near the nozzle.
@@ -1452,9 +1452,9 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
 - **Seen on the way:** views 60–67 (the plume on the pad) shoot the rocket over bare grass, with the floodlit apron far off
   at night; views 154–155 (max-q, staging) never leave the ground ("max-q 0.0 kPa at 0.2 km"). Both are on `main` as it
   was; QUEUE *Proposed*.
-- **Checks:** test `aerofx-13`. TESTING 233.
+- **Checks:** test `aerofx-13`. TESTING 235.
 
-## v1.152 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320; BEAUTY B3.1–3.2, B4.3–4.4)
+## v1.154 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320; BEAUTY B3.1–3.2, B4.3–4.4)
 - **Vapor collars as stacked rings (B3.1).** Each shoulder's collar is now four or five thin rings across its length
   (`fract(z / 0.2·zs)`), each with a soft front and a sharp trailing edge, and each ring's density flickers on its own (a
   noise fetch by ring index and time, ×0.45–1.55). Before, it was one smooth puff.
@@ -1472,9 +1472,9 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   follows the plasma); the radio blackout as silence (sound beat); Q250's clouds stay in Q250.
 - **Stills and cost** (RTX 3050, High): `output/launchpad/beauty/q320/cmp.png` (views 46, 50, 51, 54 before | after). The
   vapor pass on view 50 was 0.5 → 0.19 ms and the plasma 0.58 → 0.57 ms on view 46: noise, as one fetch per sample was added.
-- **Checks:** test `aerofx-14` (the rings, the shake's shape and repeatability, the wiring). TESTING 234.
+- **Checks:** test `aerofx-14` (the rings, the shake's shape and repeatability, the wiring). TESTING 236.
 
-## v1.153 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294; PLAYTEST #75)
+## v1.155 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294; PLAYTEST #75)
 - **The sim** gains one hook and one log line at a failure (`sim/vessel.js`, before `detach`): `logEv('structure', …)` with
   the joint, the kind of load and how far over it went, and `HOOK.crack(s, p)` (a no-op by default in `sim/core.js`).
   Nothing else in the sim changes.
@@ -1489,9 +1489,9 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
 - **Stills:** `output/launchpad/beauty/q294/crack_row.png` (an Orbiter's 8 t tank broken off its decoupler at T+35 s, at
   0.2, 2 and 5 s; at 300 m/s the fireball is left behind the camera's frame within a fraction of a second).
 - **Checks:** test `aerofx-15` (the sim calls the hook on a real break, core's broadside Orbiter at 600 m/s; the page's
-  wiring). TESTING 235.
+  wiring). TESTING 237.
 
-## v1.154 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267; PLAYTEST #67)
+## v1.156 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267; PLAYTEST #67)
 - **When:** the frame the sim sets `s.wet` (`seaCheck`'s splash verdict), once per flight (`S.mkSplash`), from `marksTick`.
 - **What** (`splashFx`, `app/state.js`): 90–365 spray puffs thrown up at 3–12 m/s·k and out at 2–8 m/s·k, living
   0.6–1.5 s; and a ring of 64 puffs racing across the water at 5–8 m/s·√k for 2–3 s, half sunk in the sea so they read
@@ -1503,4 +1503,4 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   they're QUEUE *Proposed* for sky & bodies / world.
 - **Stills:** `output/launchpad/beauty/q267/sq_row.png` (a capsule at 12.5 m/s: 0.3 s, 1.2 s, 10 s); `sp_row.png` is the
   first, coarser try.
-- **Checks:** test `aerofx-16`. TESTING 236.
+- **Checks:** test `aerofx-16`. TESTING 238.
