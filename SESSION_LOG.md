@@ -5992,3 +5992,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   haze) after Caio's "big improvement, right direction"; PLAYTEST #94 (no visible way to deploy folded parts, P1) and #95
   (farmland on Tellus, the pad's surroundings); Q252 (solid motors) raised to M1 at Caio's word.
 - **Renumbered (design desk):** my PLAYTEST #93 (stars' halo) → **#96**, #94 (deploy control) → **#97**; the test bench took #93 and #94 in the same window.
+- **Addendum 3 (design desk, 2026-10-13):** PLAYTEST #98 (camera shake, P1), #99 (pixelated coasts), #100 (the road
+  to the pad goes nowhere); a Proposed line for animated deploys; `mockups/satellites/` (thirteen craft after real ones
+  against today's: smaller parts, bus shapes, skins, appendages) with a Proposed line; hands-on instruments wait for S2.
