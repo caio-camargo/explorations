@@ -5678,3 +5678,28 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `tests/economy.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md` (Q170 ✓, two Proposed
   lines), `ACTIVE_WORK.md`.
 - **Next for flow:** Q241 R3 (the charter), Q261 (map layers), Q262 (map focus).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, second session): Q318, Q319 slice 1, Q320, Q294, Q267
+
+- **Done, on `main`:** v1.149 Q318 (the hull glows by its skin temperature, a blackbody in scene units; the plasma
+  white-yellow at the stagnation point and lavender at the edge); v1.153 Q319 slice 1 (vacuum plumes cool as they
+  expand and show by scattered sunlight; turbulent sea-level cores; Mach disks; the kerolox curtain; a hypergolic brown
+  puff; a brighter plume light; the contrail to ~33 km with a turning wind); v1.154 Q320 (stacked flickering vapor rings,
+  the max-q buffet and re-entry rumble `camShake`, sparks from the ship, a ragged wake); v1.155 Q294 (`HOOK.crack` in the
+  sim; shards, a venting tank, a fireball); v1.156 Q267 (spray and a racing ring at splashdown).
+- **Found by measuring:** the sim's `p.T` is a lumped bulk (shield 700 K, bare pod 922 K) and never glows, so the glow
+  follows the plasma's heat level. The re-entry reference views never ticked the marks. The smoke cap of 2,500 cut a
+  climb's contrail short.
+- **Tests:** `aerofx-11`, `aerofx-13` to `aerofx-16` (new), and every look section pass on the merged tree. **The full suite
+  never finished**: one run was stopped by me for a newer tree, one by low memory, at 381 and 157 passes with no
+  failures. Caio said push.
+- **Renumbered twice** while merging (main took v1.150 to v1.152 and TESTING 232 to 234 meanwhile); my tests are aerofx-13 to 16
+  because Q315 took aerofx-12.
+- **Dropped:** a foam patch at splashdown. Billboard puffs stood up like clouds, so it is proposed with the swell, in the
+  sea's shading.
+- **Seen on `main`, not mine:** views 60–67 shoot the rocket off its pad; views 154–155 never leave the ground (Proposed).
+- **Files:** `explorations/launchpad/app/gl.js`, `app/state.js`, `app/render.js`, `sim/core.js`, `sim/vessel.js` (one hook
+  and one log line), `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (231, 235–238), `QUEUE.md`,
+  `ACTIVE_WORK.md`. Stills in `output/launchpad/beauty/q318`, `q319`, `q320`, `q294`, `q267` (gitignored).
+- **Next:** the full suite on a quiet machine; Q319's heat haze and cluster lights; the Proposed reference views.
+
