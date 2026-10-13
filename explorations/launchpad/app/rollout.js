@@ -24,7 +24,7 @@ function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=t=>out.push(['w
   const st=stageStats(stackDef).stages[0];if(st)st.twr<1?bad(`Stage 1 can't lift off: TWR ${st.twr.toFixed(2)}`):st.twr<1.15?warn(`Stage 1 is sluggish: TWR ${st.twr.toFixed(2)}`):ok(`Liftoff TWR ${st.twr.toFixed(2)}`);
   const A=S.ana;if(A){const cal=r=>(r.ycm-r.ycp)/(2*S.radius),m=Math.min(cal(A.ful),cal(A.sup));
     if(m<0)(A.ctl&&A.ctl.steer?warn:bad)(`Aerodynamically unstable (${m.toFixed(2)} calibers)${A.ctl&&A.ctl.steer?': only steering keeps it straight':' and nothing to steer it'}`);
-    const j=Math.max(A.lift.cert.frac,A.mq.cert.frac);if(j>1)warn(`A joint is past its certified rating (${(j*100).toFixed(0)}% at ${A.mq.cert.frac>=A.lift.cert.frac?'max-q':'liftoff'})`)}
+    const j=Math.max(A.lift.cert.frac,A.mq.cert.frac);if(j>1){const w=A.mq.cert.frac>=A.lift.cert.frac?A.mq.cert:A.lift.cert,at=w===A.mq.cert?`max-q, ${(A.mq.q/1000).toFixed(0)} kPa`:'liftoff';warn(`A joint is past its certified rating (${(j*100).toFixed(0)}% at ${at}: ${w.p?`${w.p.d.name} / ${w.p.parent.d.name}, ${w.kind}`:''}). ${jointFix(w,w===A.mq.cert&&A.mq.own)}`)}}
   if(S.parts.some(p=>p.on&&p.d.kind==='bio')&&!safetyReview(newShip(stackDef)).ok)warn('Flight safety won\'t approve a passenger on this design');
   for(const[k,x]of launchWarnings(stackDef))(k==='ok'?ok:warn)(x);   // Δv for the flight's aim, a parachute for whoever rides (vehicle, Q48)
   const nd=(PROG.decisions||[]).length;if(nd)warn(`${nd} decision${nd>1?'s':''} waiting in the Program's Inbox`);

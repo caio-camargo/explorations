@@ -84,6 +84,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.148 — side boxes fit the fairing (the side camera looks outward), a 0.3 m stack camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
 - v1.152 — later stages in the air: the fairing satellite's upper stage tumbles after separating; the builder and Rollout say so and what helps (2026-10-12, vehicle session, QUEUE Q342)
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
+- v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -613,3 +613,17 @@
       && fs.sep && fs.aoa > 60 && fc.sep && fc.aoa < 20,
     `satellite: stage ${a.k} at ${(a.h / 1e3).toFixed(0)} km ${(a.q / 1e3).toFixed(1)} kPa, ${a.holds ? 'holds' : 'flips (' + a.why + ')'}, warned ${warned}; with a wheel ${w.holds ? 'holds' : 'flips (' + w.why + ')'} λ ${w.lam && w.lam.toFixed(1)}/s; steerable fins ${c.holds ? 'hold' : 'flip'}; presets flagged: ${presets.join(', ') || 'none'}; Heavy's checked stage at ${heavy && (heavy.h / 1e3).toFixed(0)} km; flown: ${fs.aoa.toFixed(0)}° after separating, with fins ${fc.aoa.toFixed(0)}°`);
 }
+
+// vehicle-22. A fast rocket's own max-q (vehicle session, QUEUE Q347 / PLAYTEST #84): four boosters push a satellite launcher
+// through thick air so fast its dynamic pressure peaks near 75 kPa, three times the 25 kPa design case, and the decoupler under
+// the upper stage's Petrel snapped (flown: 102%). The Assembly's max-q case now uses the design's own peak on the standard
+// ascent when it's higher (the Orbiter's estimate matches its flight's 33 kPa), names the joint and suggests an interstage
+// decoupler, which carries the load round the engine (the same rocket with one: about half).
+{
+  const top = ['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel'], rad = { k: 'kestrel', rad: { n: 4, dec: true, stack: ['cone', 't4', 'kestrel'] } };
+  const four = api.toV2([...top, 'dec', 't8', 'fins', rad]), ist = api.toV2([...top, 'istage', 't8', 'fins', rad]);
+  const A = d => api.analyze(api.newShip(d)).mq, a = A(four), b = A(ist), o = api.ascentEst(api.PRESETS.Orbiter), fix = api.jointFix(a.cert, a.own);
+  check('a fast rocket\'s own max-q (Q347): four boosters peak near 75 kPa, the decoupler joint near its rating, an interstage suggested and about halving it; the Orbiter\'s estimate ~33 kPa',
+    a.own && a.q > 60e3 && a.q < 90e3 && a.cert.frac > 0.75 && /dec/.test(a.cert.p.d.key + a.cert.p.parent.d.key) && /interstage/.test(fix) && b.cert.frac < 0.6 * a.cert.frac && o.qMax > 30e3 && o.qMax < 37e3,
+    `four boosters: max-q ${(a.q / 1e3).toFixed(0)} kPa M${a.M.toFixed(1)}, ${(a.cert.frac * 100).toFixed(0)}% ${a.cert.kind} at ${a.cert.p && a.cert.p.d.key + '/' + a.cert.p.parent.d.key}; "${fix}"; with an interstage ${(b.cert.frac * 100).toFixed(0)}%; Orbiter ${(o.qMax / 1e3).toFixed(1)} kPa`);
+}
