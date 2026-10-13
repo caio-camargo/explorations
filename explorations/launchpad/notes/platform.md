@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-11
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -631,3 +631,39 @@ design on the Assembly, the camera, and each flight's tape between a start and a
   SIM the page built from `sim/*.js`, both hashes match. Robot `m1` passes (no overlapping boxes).
 - **Not yet:** the viewer (R2), scrubbing and the camera path (R3), robot rows from a recording (R4). A flight that was
   already flying when recording started isn't recorded as a flight (its tape began before the recording); its path is.
+
+## The satellite-network robot run: M2's finish line (2026-10-13, test bench, QUEUE Q233)
+
+`node playtest.mjs m2`, written first like `m1` (Q55): it **fails until M2 lands**, and each failed check names what's
+missing (the comment beside each `expect` says whose it is). A new career plays all of `m1`'s steps (no tester flags, nothing
+seeded), then what a player would do in epoch 3:
+- **a weather satellite**: the Satellite preset (v1.178) flown 3° east of north, so the planet's spin helps instead of being
+  cancelled (~82°), then raised to ~300 km so it lasts;
+- **a routine** made from it in the Fleet tab (*Make a routine*), three runs ordered there by hand, and *Repeat by itself*
+  switched on the first time it's allowed;
+- **TV for the capital**: the same preset east to a low orbit, then raised to the stationary orbit and circularised onto
+  the equator;
+- **then years at [N] only**: mission control's *Wait* button, until the routine has repeated by itself for a year or the
+  calendar passes day 4,000 (12 steps of ≤ 150 waits). A decision is declined (its last option) and a deviation let go;
+  both are listed in the output.
+
+Before each flight it presses [N] until the program can pay for the rocket (a refused Rollout otherwise "flies" a ship
+that never launched). The flights are the robot's own (`PT.ascentAz`, `PT.raise`: attitude set directly, like `PT.ascent`),
+so they prove the career path, not that the rocket is flyable by hand.
+
+**Robot lessons.** Circularise along the path you're flying, not a compass heading: by apoapsis a polar flight is at 47°
+latitude, where "5° east of north" is ~10° off its real heading, and that plane change (~570 m/s) emptied the tank. The
+first due-north try also ran dry: going north cancels the pad's 278 m/s of spin (~290 m/s more than going east).
+
+**First result on `main` (v1.184), 52 s:** `m1` ✓, weather satellite ✓ (293 × 301 km, 82.3°, flown dry), routine made
+("Lookouts at 297 km, 82°"); fails on:
+- **TV**: the Satellite runs dry raising its apoapsis at 1,323 km (the stationary orbit is 5,668 km up: ~1,640 m/s past
+  a low orbit; the Satellite has ~490) → PLAYTEST #101;
+- **three clean runs**: ordering one is refused, "153 m/s short for this orbit" (the design's procedure to 300 km
+  polar). A route made from a raised orbit (716 km) instead flew one run, which "broke up in the climb" → PLAYTEST #102;
+- **kept up**: the route counts its satellite 0 of 1 up from the moment it's made: `routeSats` needs 30 days of
+  station-keeping (`skLife`), and a satellite with no fuel "holds 0 d" though it stays up 1,034 d → PLAYTEST #103;
+- **repeating, a run by itself, earning**: these follow from the three above. 41 waits took the calendar from day 178
+  to 4,000 (~90 days a wait).
+
+Also seen: once a route's satellites have all come down, its Fleet line is gone, and with it *Order a run* → PLAYTEST #104.

@@ -504,6 +504,101 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
     debrief: v => v[0] === true && v[1] === true,  // flow Q2
     boxes: v => v.length === 0}};                  // M1: no box covers another at 1280×800
 
+// M2's finish line (QUEUE Q233, ROADMAP § M2, DECISIONS D17.1), written first like Q55 for M1: it FAILS until M2 lands, and
+// each failed check names what's missing. A new career plays m1's two flights (no tester flags, nothing seeded), then the
+// two epoch-3 satellites a player would: a Weather satellite (the Satellite preset flown north into a polar orbit) and TV
+// for the capital (the same preset, east, then raised to the stationary orbit and circularised over the equator: the robot's
+// own burns, attitude set directly as in PT.ascent). It makes a routine from the weather satellite in the Fleet tab, orders
+// three runs by hand, turns on *Repeat by itself* as soon as it's allowed, and from then on lets time pass only by mission
+// control's [N] Wait (a decision is declined, a deviation let go; both listed). Finish: the network still earns and the
+// routine keeps it up. ~4 program years (the mainframes allow repeating from day ~1455), in steps of at most 150 waits.
+const M2_HELPERS = String.raw`
+PT.m2 = {adv: 0, stops: [], declined: [], letGo: 0, autoOn: null, sats0: null, led: {}, upMin: null, autoRuns: 0, flights: []};
+PT.point = Y => { const f = localFrame(S.r), ref = Math.abs(dot(Y, f.n)) > 0.9 ? f.e : f.n, X = norm(cross(Y, ref)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0] };
+PT.incl = () => { const el = elements(S.r, S.v, TELLUS.mu); return +(Math.acos(Math.max(-1, Math.min(1, el.h[1] / el.hl))) * 57.29578).toFixed(1) };
+// PT.ascent toward a heading (az degrees from north: 0 polar, 90 east), circularised along the path it flies
+PT.ascentAz = (az = 90, flatKm = 38) => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000, A = az * Math.PI / 180; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up'; const ph = PT.m2.ph = [], mark = p => { const el = elements(s.r, s.v, TELLUS.mu); ph.push([p, Math.round(simT), Math.round(dvRemaining(s).tot), Math.round((el.ap - TELLUS.R) / 1e3), Math.round((len(s.r) - TELLUS.R) / 1e3), Math.round(len(s.v))]) };
+  const hdg = f => norm(add(mul(f.n, Math.cos(A)), mul(f.e, Math.sin(A)))), pitch = d => { const f = localFrame(s.r), r = d * Math.PI / 180; PT.point(norm(add(mul(hdg(f), Math.cos(r)), mul(f.up, Math.sin(r))))) };
+  const body = () => { if (!(s.alive && k++ < 400000)) return false; const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
+    if (k === 1 || k === 3000) mark('up'); if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (flatKm * 1000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; mark('coast') } }
+    else if (phase === 'coast') { pitch(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
+      const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(engAcc(s), 0.1))) { phase = 'circ'; mark('circ') } }
+    else { const f = localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(TELLUS.mu / len(s.r))), s.v); PT.point(norm(need)); s.throttle = 1;   // along the orbit's own heading: a local compass heading up here is a plane change
+      if (el.pe - TELLUS.R > ATM + 2000 || len(need) < 3) { s.throttle = 0; return false } }
+    if (s.throttle > 0 && dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) stage(s);
+    advPhys(s) };
+  PT.loop(body, Infinity, {}); const o = PT.orbit(); return {alive: s.alive, why: s.lossWhy || null, phase, t: Math.round(simT), dvLeft: Math.round(dvRemaining(s).tot), ph: PT.m2.ph, pe: Math.round(o.pe / 1e3), ap: Math.round(o.ap / 1e3), inc: PT.incl(), log: PT.log.slice(-5)} };
+// from a low orbit: prograde until the apoapsis reaches R, coast to it, then circularise there: in the orbit's own plane, or
+// (eq) onto the equator, the plane change folded into the burn. Stops when the last stage runs dry
+PT.raise = (R, eq = false) => { const s = S, mu = TELLUS.mu; let k = 0, phase = 'raise', dry = null;
+  const body = () => { if (!(s.alive && k++ < 3e6)) return false; const el = elements(s.r, s.v, mu), up = norm(s.r), dir = eq ? norm(cross([0, 1, 0], s.r)) : norm(sub(s.v, mul(up, dot(s.v, up)))), need = sub(mul(dir, Math.sqrt(mu / len(s.r))), s.v);
+    if (phase === 'raise') { PT.point(norm(s.v)); s.throttle = 1; if (el.ap >= R) { s.throttle = 0; phase = 'coast' } }
+    else if (phase === 'coast') { s.throttle = 0; if (timeToNu(el, Math.PI) < Math.max(20, 0.5 * len(need) / Math.max(engAcc(s), 0.1))) phase = 'circ' }
+    else { PT.point(norm(need)); s.throttle = 1; if (len(need) < 2) { s.throttle = 0; return false } }
+    if (s.throttle > 0 && dvRemaining(s).cur <= 0.5) { if (s.evIdx < s.events.length) stage(s); else { s.throttle = 0; dry = phase; return false } }
+    advPhys(s) };
+  PT.loop(body, Infinity, {}); const el = elements(s.r, s.v, mu);
+  return {alive: s.alive, dry, pe: Math.round((el.pe - TELLUS.R) / 1e3), ap: Math.round((el.ap - TELLUS.R) / 1e3), statKm: Math.round((R - TELLUS.R) / 1e3), periodH: +(2 * Math.PI * Math.sqrt(Math.abs(el.a) ** 3 / mu) / 3600).toFixed(2), dayH: +(DAY_S / 3600).toFixed(2), inc: PT.incl()} };
+PT.route = () => (PROG.routes || [])[0] || null;
+PT.runs = () => { const r = PT.route(); return r ? (PROG.dispatch || []).filter(D => D.route === r.id).map(D => [D.status, +(D.launch || 0).toFixed(0), D.why || '', D.orb ? Math.round(D.orb.pe / 1e3) + '×' + Math.round(D.orb.ap / 1e3) + ' km' : '', D.auto ? 'auto' : 'ordered']) : [] };
+PT.netNow = () => { const r = PT.route(); return {day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), sats: (PROG.sats || []).filter(q => !q.junk).length, route: r && {name: r.name, keep: r.keep, up: routeSats(r).length, runs: r.runs, clean: r.clean, auto: r.auto, why: routeAutoWhy(r)}, led: PROG.led && {sats: +(PROG.led.sats || 0).toFixed(1)}, runs: PT.runs()} };
+// time passes only by mission control's [N] Wait; between waits: a new decision declined (its last option), a deviation let go,
+// and the routine's Repeat by itself switched on the first time it's allowed. Stops after max waits or when until() holds
+PT.waitN = (until, max = 150) => { let n = 0; const M = PT.m2;
+  while (n++ < max && !until()) {
+    for (const d of [...(PROG.decisions || [])]) { const o = (d.opts || []).at(-1); if (o) { resolveDecision(d.id, o[0]); M.declined.push(d.title || d.kind) } }
+    for (const D of PROG.dispatch || []) if (D.status === 'deviated') { loseDeviation(D.id, 'let go'); M.letGo++ }
+    const r = PT.route(); if (r && !r.auto && !routeAutoWhy(r)) { go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rauto="' + r.id + '"]'); if (b) { b.click(); if (r.auto) M.autoOn = +PROG.day.toFixed(1) } }
+    if (screenNow() !== 'mission') go('mission'); renderMission(); const b = document.querySelector('#mcNext [data-adv]'); if (!b) { M.stops.push('day ' + PROG.day.toFixed(0) + ': nothing dated to wait for'); break }
+    const d0 = PROG.day; b.click(); M.adv++; renderMission();
+    if (r) { const up = routeSats(r).length; if (r.auto && (M.upMin == null || up < M.upMin)) M.upMin = up }
+    if (PROG.day <= d0 + 1e-9) { M.stops.push('day ' + PROG.day.toFixed(0) + ': the wait did not move the calendar (' + (document.getElementById('msg') || {}).innerText + ')'); break } }
+  M.autoRuns = (PROG.dispatch || []).filter(D => D.auto && D.status === 'done').length;
+  return {waits: M.adv, ...PT.netNow()} };
+true`;
+// a flight as a player makes it: the preset in the Assembly, [N] until the program can pay for it, rolled out and launched
+const M2_FLIGHT = (name, preset, fly) => [{say: name + ': the Satellite preset in the Assembly, rolled out and launched'},
+  `go('assembly'); PT.preset(${JSON.stringify(preset)}); PT.m2.cost = vesselCost(S.parts).cost; ({cost: +PT.m2.cost.toFixed(1), funds: +PROG.funds.toFixed(1)})`,
+  `({wait: PT.waitN(() => PROG.funds >= PT.m2.cost * 1.1, 40)})`,
+  `go('assembly'); PT.preset(${JSON.stringify(preset)}); true`, {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), launched: mode === 'flight' && !!S.rec, funds: +PROG.funds.toFixed(1)})`, fly, `PT.showUI(); true`, {shot: name.toLowerCase().replace(/\W+/g, '_')},
+  `go('program'); PT.m2.flights.push(${JSON.stringify(name)}); ({debrief: PT.debrief(), ...PT.state(), sats: (PROG.sats || []).map(q => q.name + (q.route != null ? ' (route)' : ''))})`];
+ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time by [N] only (M2 finish line)', gate: true, flags: null, steps: [
+  ...ROWS.m1.steps, M2_HELPERS,
+  `PT.m2.after1 = PT.state(); ({wxsat: missionOpen(MISSIONS.find(m => m.id === 'wxsat')), tv: missionOpen(MISSIONS.find(m => m.id === 'tv'))})`,
+  // the weather satellite: a near-polar orbit (80–100° counts), 3° east of north so the planet's spin helps instead of being
+  // cancelled (~82°), then up to ~300 km so it lasts (at ~106 km it re-enters within weeks)
+  ...M2_FLIGHT('Weather satellite', 'Satellite', `(()=>({polar: PT.ascentAz(3), raise: PT.raise(TELLUS.R + 300e3)}))()`),
+  // the routine, from it, in the Fleet tab: keep one up
+  {say: 'A routine from the Fleet tab: keep the weather satellite up'},
+  `(()=>{ go('program'); PT.click('[data-ptab="fleet"]'); const bs = [...document.querySelectorAll('[data-mkroute]')]; if (bs[0]) bs[0].click();
+     return {buttons: bs.length, why: (PROG.sats || []).filter(q => !q.junk).map(q => q.name + ': ' + (routeFrom(q).why || 'ok') + ', holds ' + Math.round(skLife(q)) + ' d, decays in ' + Math.round(decayLife(q)) + ' d'), route: PT.netNow().route} })()`, {shot: 'fleet_route'},
+  // TV: east to a low orbit, then up to the stationary orbit
+  ...M2_FLIGHT('TV satellite', 'Satellite', `(()=>({low: PT.ascentAz(90), raise: PT.raise(STAT_R, true)}))()`),
+  // three runs ordered by hand, each waited out with [N]
+  ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
+     b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,
+    `PT.waitN(() => { const r = PT.route(); return !r || !(PROG.dispatch || []).some(x => x.route === r.id && (x.status === 'queued' || x.status === 'deviated')) }, 40)`]),
+  {shot: 'after_runs'},
+  // years at [N]: until the routine has repeated by itself for a year, or ~4,000 days
+  ...Array.from({length: 12}, () => `PT.waitN(() => PROG.day > 4000 || (PT.m2.autoOn != null && PROG.day > PT.m2.autoOn + 400 && PT.m2.autoRuns > 0), 150)`),
+  `go('program'); PT.click('[data-ptab="fleet"]'); ({...PT.netNow(), m2: PT.m2, news: PT.logSince(0).slice(-12)})`, {shot: 'fleet_end'},
+  `go('mission'); renderMission(); true`, {shot: 'mission_end'}],
+  checks: {m1: `!!PROG.done.weather && !!PROG.done.beeper`, wxsat: `!!PROG.done.wxsat`, tv: `!!PROG.done.tv`, route: `!!PT.route()`,
+    clean3: `PT.route() ? PT.route().clean : 0`, repeating: `PT.route() ? PT.route().auto : false`, autoRuns: `PT.m2.autoRuns`,
+    keptUp: `PT.route() ? routeSats(PT.route()).length + ' of ' + PT.route().keep + ' up, at least ' + PT.m2.upMin + ' while repeating' : 'no route'`,
+    earning: `(PROG.sats || []).filter(q => !q.junk && isTV(q, PROG.day * DAY_S)).length`, satsIncome: `+((PROG.led || {}).sats || 0).toFixed(1)`,
+    waitsOnly: `PT.m2.adv`, declined: `PT.m2.declined`, letGo: `PT.m2.letGo`},
+  expect: {m1: v => v === true,                          // the first hour (m1) still plays
+    wxsat: v => v === true,                              // a weather satellite from a player's preset (vehicle: polar from the pad)
+    tv: v => v === true,                                 // a stationary orbit over the capital (vehicle: a preset that gets there; space/flow: a way to aim the longitude)
+    route: v => v === true,                              // a routine made from it (economy Q184)
+    clean3: v => v >= 3,                                 // three clean runs by order (economy W27 ladder; space: the route's procedure reaches its orbit)
+    repeating: v => v === true,                          // Repeat by itself, once the mainframes allow it
+    autoRuns: v => v >= 1,                               // the routine launched a replacement by itself
+    keptUp: v => !/^0 of|no route|least (0|null) /.test(v),   // and kept the network up while repeating
+    earning: v => v >= 1,                                // a TV satellite earning at the end
+    satsIncome: v => v > 0}};                            // the network earned over time (the ledger's 'sats' line)
+
 // Moons (QUEUE Q30 slice 1, NOTES § "Plan: robot drivers…"): the Selene and Nyx ladders flown in the page by the game's
 // own procedures, with fly_ladder.mjs (fetched, its Node-only tail cut, imported from a blob) driving them. Its HOOK is a
 // dummy, so the page's HUD and news (and PT.log) see everything a player would. Each mission is one step, then shots.
