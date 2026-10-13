@@ -6218,3 +6218,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Not checked in the browser** (the game lock was held): TESTING 294 is the check.
 - **Smoke:** the same two failures already on `main` (`qa-2`, assembly help key `t`).
 - **Next:** economy's ready list is down to plans (Q282 the simulator, Q283 crew skill revision) and Q376 after Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q282 plan, the simulator replaces revert
+
+- **Done (docs only):** NOTES § "Plan: the simulator replaces revert" (`notes/economy.md`). A simulator run is a normal
+  flight with `R.sim`: the program snapshotted at liftoff (Q257's `REVERT0`) and restored whole at the end
+  (`missionDiscard`), keeping only the time it cost and simulator hours per design. It flies a **believed world**
+  drawn per run: part strength between the certified and true rating, unsampled air bands ±25 %, ignitions on the
+  run's seed. Real flights lose revert (the tester keeps it). Five slices (core, screen, revert retired, legs from
+  orbit, M3 qualifications), four as QUEUE *Proposed* lines.
+- **For Caio:** W42 (five questions, all with defaults).
+- **Next:** economy's remaining ready item is Q283 (crew skill revision, a plan); Q376 after space's Q375.
