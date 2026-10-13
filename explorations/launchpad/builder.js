@@ -170,6 +170,12 @@ function benchClose(pick){if(!st.bench)return;const e=benchSave(),b=st.bench.bac
   stackDef=b.def;st.undo=b.undo;st.redo=b.redo;st.gap=b.gap||0;st.pin=b.pin;st.held=null;st.sel=null;st.reframe=true;
   const n=isV2(stackDef)?paySync(stackDef):0;if(pick&&e&&e.d.root)st.held=payNode(e);editorChanged();palette();
   note(pick&&st.held?`${e.name}: click a glowing node to put it on`:n?`${e.name} updated on the rocket`:'Back to the rocket')}
+// one click from the bench's balance check (Caio's round-2 note): a balance weight opposite the centre of mass's offset, on the
+// widest part of the main stack (the longest lever), just heavy enough to bring it back
+function addBalance(){if(!st.bench||isEmpty(stackDef))return;const D=design(),off=Math.hypot(S.cm[0],S.cm[2]);if(off<0.005){note('Already balanced');return}
+  const host=S.parts.filter(p=>p.on&&p.core&&!p.inst.surf&&!p.inst.rdec).sort((x,y)=>y.d.r-x.d.r)[0];if(!host)return;const B=host.dn;   // the widest part on the main stack: the longest lever, the lightest weight
+  const rw=Math.hypot(host.pos[0],host.pos[2])+host.d.r+PARTS.bwt.off,kg=Math.ceil(S.mass*off/(rw-0)),a=Math.atan2(-S.cm[2],-S.cm[0])-(host.inst.rot||0);
+  edit(()=>{kids(B).push({k:'bwt',at:{y:+(host.h/2).toFixed(3),a:+a.toFixed(5),n:1,cy:PARTS.bwt.h/2},wk:kg,c:[]});ensureIds(D)});note(`A ${kg} kg balance weight opposite the offset`)}
 // a block whose bench copy is gone gets a new one from what it carries
 function payFromBlock(n){const e=payNew(n.name,n.pd);n.pid=e.id;n.name=e.name;return e}
 // the parts a fairing encloses, lifted onto the bench as a new payload: the design re-hung from the fairing, whose top child (the
@@ -178,7 +184,7 @@ function makePay(f){const D=design(),path=rootPath(D.root,f);if(!path||!path.sli
   const top0=kids(f).find(c=>c.at==='u')||(path.length>1&&path[path.length-1]===f&&f.at==='d'?path[path.length-2]:null);if(!top0||isPay(top0)){note('Nothing on top of the fairing to lift');return}
   snapshot();if(path.length>1)reroot(path);const top=kids(f).find(c=>c.at==='u');if(!top){note('Nothing on top of the fairing to lift');return}
   const sub=noIds(cl(top));delete sub.at;const e=payNew(null,{v:2,root:sub});e.m=0;const blk={...payNode(e),at:'u'};if(top.j)blk.j=top.j;f.c[f.c.indexOf(top)]=blk;
-  ensureIds(D);st.sel=blk;editorChanged();e.m=S.parts.filter(p=>p.on&&p.dn.payOf===blk&&p.d.kind!=='padapt').reduce((a,p)=>a+partMass(p),0);HOOK.save&&HOOK.save();palette();note(`Made ${e.name}: open it on the bench to change it`)}
+  ensureIds(D);st.sel=blk;editorChanged();e.m=S.parts.filter(p=>p.on&&p.dn.payOf===blk&&p.d.key!=='padapt').reduce((a,p)=>a+partMass(p),0);HOOK.save&&HOOK.save();palette();note(`Made ${e.name}: open it on the bench to change it`)}
 function drop(){if(!st.held)return;st.held=null;if(isEmpty(stackDef)&&stackDef&&stackDef.park)delete stackDef.park;st.ghostKey='';refresh()}
 function del(n){if(!n)return;snapshot();detachNode(n);if(st.sel&&nodes(n).includes(st.sel))st.sel=null;editorChanged()}
 let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target');if(e)e.innerHTML=statusHTML()}
@@ -278,7 +284,15 @@ const PART_INFO={
   whip:'A whip antenna on the side: the plain radio, tough enough for the climb.',
   bant:'A boom antenna, folded for launch: P swings it out once the air is thin, and it hears home about five times better than a whip. Out in thick air it tears off.',
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
-  padapt:'The ring a payload stands on inside the rocket. It comes with every payload block.',
+  padapt:'The ring a payload stands on inside the rocket. It comes with every payload block, and it is the separation ring: staging it releases the payload and drops the stage under it.',
+  bwt:'A plain mass on the side, to bring a lopsided payload\'s centre of mass back onto the axis. The bench sizes it for you.',
+  kick30:'A small solid motor for a light satellite: once lit it burns to the end, full thrust, no stopping. The early way into the final orbit.',
+  kick80:'A solid kick motor for a few hundred kilos of satellite: it fires once, all of it, to circularise or raise an orbit.',
+  kick200:'The biggest kick motor: from a transfer orbit to the final one for a mid-size satellite. One shot; point it first.',
+  hthr:'Four small hydrazine thrusters: gentle, restartable pushes to trim an orbit and hold a station, from propellant spheres.',
+  apogee:'A small restartable rocket engine for a satellite\'s own big burns, like the one into a stationary orbit, from propellant spheres.',
+  sph4:'A small propellant sphere for a satellite\'s thrusters or apogee engine.',
+  sph7:'A larger propellant sphere: enough for a satellite\'s climb from a transfer orbit to a stationary one.',
   pay:'A satellite designed on the payload bench, carried as one block: open it on the bench to change it.',
   rdec:'Holds a side part on and lets it go when its stage fires.',
   fins:'A ring of fixed fins at the tail: it keeps the rocket pointing into the airflow, like an arrow\'s feathers.',
@@ -333,6 +347,14 @@ const PART_PAIRS={
   frame:'side boxes (camera, battery, instruments, computer), an antenna and solar panels on its faces',
   adapt:'a 2.5 m stage below, a 1.25 m stack above',
   padapt:'a payload block, inside a fairing',
+  bwt:'the payload bench\'s balance check',
+  kick30:'a payload released in a transfer orbit, pointed by its wheels',
+  kick80:'a payload released in a transfer orbit, pointed by its wheels',
+  kick200:'a payload released in a transfer orbit, pointed by its wheels',
+  hthr:'propellant spheres, and a reaction wheel to point it',
+  apogee:'propellant spheres, and a reaction wheel to point it',
+  sph4:'hydrazine thrusters or an apogee engine',
+  sph7:'an apogee engine, or hydrazine thrusters',
   pay:'a fairing over it, and a stage under it',
   rdec:'a booster or a side tank, with a nose cone on top',
   fins:'heavy parts high up: the further ahead the balance point, the better fins work',
@@ -431,7 +453,7 @@ function panel(){
   const sub=nodes(n).length-1;
   sel.innerHTML=`<div class="bhd"><b>${name(n.k)}</b>${copies>1?` <span class="dim">×${copies}</span>`:''}</div><div class="sub">${where}${sub?` · carries ${sub} part${sub>1?'s':''}`:''}</div>`;
   const row=(label)=>{const r=document.createElement('div');r.className='brow';r.innerHTML=`<span class="dim">${label}</span>`;sel.appendChild(r);return r};
-  if(isPay(n)){const e=payById(n.pid),m=ps.filter(p=>p.d.kind!=='padapt').reduce((a,p)=>a+partMass(p),0),fair=S.parts.some(f=>f.on&&f.profF),out=fair?ps.filter(p=>p.d.kind!=='padapt'&&!p.inFair).length:0;
+  if(isPay(n)){const e=payById(n.pid),m=ps.filter(p=>p.d.key!=='padapt').reduce((a,p)=>a+partMass(p),0),fair=S.parts.some(f=>f.on&&f.profF),out=fair?ps.filter(p=>p.d.key!=='padapt'&&!p.inFair).length:0;
     sel.querySelector('.bhd').innerHTML=`<b>Payload: ${esc(n.name||'')}</b>`;
     {const r=row('carries'),i=document.createElement('span');i.className=out||!fair?'warn':'dim';i.textContent=` ${Math.round(m*1000)} kg in ${ps.length-1} parts, on its adapter${!fair?' · no fairing over it':out?` · ${out} outside the fairing`:''}`;r.appendChild(i)}
     {const r=row('');btn(r,'open on the bench',false,()=>benchOpen(e||payFromBlock(n)),e?'change it on the payload bench: every block of it follows':'its bench copy is gone: opening makes a new one from this block')}
@@ -519,7 +541,7 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
       if(st.held&&isPay(st.held)&&st.held.pid===e.id)b.classList.add('on');
       ed.textContent='✎';ed.title='open it on the payload bench';ed.onclick=()=>benchOpen(e);r.append(b,ed);pal.appendChild(r)}
     const nb=document.createElement('button');nb.innerHTML='+ New payload<span>bench</span>';nb.title='design a satellite on the payload bench, apart from the rocket';nb.onclick=()=>benchOpen(null);pal.appendChild(nb)}
-  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','fair','frame','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','fair','frame','adapt','port','claw','bay','bwt']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!d.payOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
@@ -629,5 +651,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   el('target').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(!b)return;st.sym=+b.dataset.sym;st.ghostKey='';refresh()});
   palette()}
-return{bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
+return{addBalance,bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
 })();
