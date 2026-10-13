@@ -3086,7 +3086,7 @@ small everywhere: at worst ~0.14 days per launch, a few days a year for a busy p
 so nothing retuned. If scrubs should ever matter (a pressure that favours subtropical sites), the lever is
 `SCRUB_CLOUD`, not the belts.
 
-## v1.210 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332, from Q300 v1.142)
+## v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332, from Q300 v1.142)
 
 v1.142 (world) let a stage with chutes among its parts come down slowly and float for ~24 h, but nothing could fetch it,
 and once it was 40 km from your craft it was culled and forgotten. Now:
