@@ -1443,6 +1443,13 @@ function partBody(out,p){
         lathe(out,[[0,0,C.D],[.2,0,C.D],[.22,.04,C.D],[.12,.07,C.D],[0,.07,C.D]],F,16,[false,false])}   // footpad
       else{tube(out,H,P(.08,h*.4),.05,C.ST,10);tube(out,P(.08,h*.4),P(.08,.1),.032,PIS,10);tube(out,P(.05,h*.12),P(.07,h*.55),.02,C.D,6);
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
+    // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
+    case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
+    case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
+    case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
+    case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;
+    case'sph4':case'sph7':{const r=d.r,pts=[];for(let i=0;i<=10;i++){const t=Math.PI*i/10;pts.push([Math.max(.001,Math.sin(t)*r),h/2-Math.cos(t)*h/2,C.AU])}lathe(out,pts,o,20)}break;
+    case'bwt':rbox(out,[x+Math.cos(p.phi)*d.off,y+h/2,z+Math.sin(p.phi)*d.off],d.off,h/2,.08,C.D,p.phi);break;
     default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}

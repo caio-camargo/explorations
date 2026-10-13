@@ -95,7 +95,7 @@ const powerAim=()=>{const a=flightAims().filter(x=>x.alt).sort((x,y)=>y.alt-x.al
 // the payload bench's Checks (Q416, PROBES § 6.1): payChecks against the rocket it was opened from, if that carries it
 function benchHTML(empty){if(empty)return'<div class="dim">an empty payload: start from a probe core, or a starter below the parts</div>';
   const b=BLD.bench(),C=payChecks(stackDef,b&&b.back&&isV2(b.back.def)?b.back.def:null,b?b.id:null),sym={ok:'✓',warn:'!',bad:'✕'};
-  return`<h2 style="margin-top:0">Payload checks</h2>`+C.rows.map(r=>`<div class="${r.cl}" style="margin-top:3px">${sym[r.cl]} ${r.t}${r.fix?`<div class="sub">${r.fix}</div>`:''}</div>`).join('')+
+  return`<h2 style="margin-top:0">Payload checks</h2>`+C.rows.map(r=>`<div class="${r.cl}" style="margin-top:3px">${sym[r.cl]} ${r.t}${r.fix?`<div class="sub">${r.fix}</div>`:''}${r.k==='bal'&&r.cl!=='ok'?'<button data-bal="1" style="margin-top:2px">add a balance weight</button>':''}</div>`).join('')+
     `<div style="margin-top:8px">${(C.mass*1000).toFixed(0)} kg · ${fmtM(C.cost)} <span class="dim">(the payload alone)</span></div>
     <div class="sub">Pointing and temperatures are checked once the attitude law comes (PROBES S2). Done takes it back to the rocket; every block of it there follows.</div>`}
 function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.Wg||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s,powerAim()),f=x=>x.toFixed(0);
@@ -160,7 +160,7 @@ function editorChanged(){
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
   renderProgram();
   $('stats').innerHTML=html;if(atRoll)renderRollout()}   // (a site picked in the Rollout rebuilds the ship: refresh the checks)
-$('stats').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.study){if(!orderStudy(S))HOOK.msg('Not possible right now');editorChanged()}});   // economy: trajectory studies
+$('stats').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.bal){BLD.addBalance();return}if(e.target.dataset&&e.target.dataset.study){if(!orderStudy(S))HOOK.msg('Not possible right now');editorChanged()}});   // economy: trajectory studies
 $('launch').onclick=()=>{if(BLD.isEmpty(stackDef))return;BLD.drop();{const fee=siteAccessOf(curSite()).fee||0;if(vesselCost(S.parts).cost+fee>PROG.funds+1e-9){HOOK.msg(`Over budget: this design costs ${fmtM(vesselCost(S.parts).cost)}${fee?` plus ${fmtM(fee)} for the site`:''}, the program has ${fmtM(PROG.funds)}`);return}}
   {const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts),rv=rvLaunchWhy(S.parts)||partLaunchWhy(S.parts);if(rv){HOOK.msg(rv);return}if(!a.ok){HOOK.msg(a.why);renderSites();return}if(!fz.ok){HOOK.msg(fz.why);renderSites();return}const w=downrangeWarning(t);if(w)HOOK.news(w,'warn')}resetShip();go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
 // ---- the launch-site picker (terrain session): ours first, then abroad (refused until economy's siteAccess allows it).
