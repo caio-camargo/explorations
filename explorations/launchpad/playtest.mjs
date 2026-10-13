@@ -1100,6 +1100,12 @@ ROWS[294] = {title: 'overflight rights', steps: [`{go('assembly'); render(); con
   `(() => { const f0 = PROG.funds, b = document.querySelector('[data-overbuy]'); if (!b) return 'no consent button'; b.click(); if (typeof renderSites === 'function') renderSites(); return {paid: +(f0 - PROG.funds).toFixed(2), line: (document.body.innerText.match(/consent until day[^\\n]*/) || [''])[0]} })()`, {shot: 'consent'}]};
 ROWS[203] = {title: 'the session recorder', steps: [`{TEST.record = true; true}`, {wait: 1500}, `({on: REC.on})`, `{PT.preset('Sounding'); PT.click('#bRoll'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.landed || !S.alive, 3000, {autostage: true}); go('program'); true}`, {wait: 1500},
   `(async () => { const t = JSON.stringify(recFile()), gz = await new Response(new Blob([t]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer(); return {events: REC.events.length, json: t.length, gzKB: +(gz.byteLength / 1024).toFixed(1), menu: (recMenu() || '').replace(/<[^>]+>/g, ' ').slice(0, 80)} })()`]};
+// batch 7 (test bench, 2026-10-13): the hardware schools (162, 179, 192), the Steppe pad and its rollout (178, 190), the
+// suits (193), the crew at the hatch (184) from reference scenes
+ROWS[192] = {title: 'the hardware schools on one rocket (refViews, with 162, 179)', steps: views(114, 115, 123, 124, 125, 126)};
+ROWS[178] = {title: 'the Steppe pad and its rollout (refViews, with 190)', steps: views(116, 117, 118, 119)};
+ROWS[193] = {title: 'the suits by school and generation (refViews)', steps: views(127, 130, 133, 136, 139, 142)};
+ROWS[184] = {title: 'the crew at the hatch (refViews)', steps: views(120, 121, 122)};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
