@@ -6154,3 +6154,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Built:** kick motors (solid: armed by staging, lit by a throttle-up, full thrust to burnout), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is a separation ring (decoupler); the bench shows the payload's own Δv against a stationary orbit; a balance weight one click from the balance check (Caio's round-2 note); plain shapes at real size for the new parts. Tests vehicle-28, vehicle-29.
 - **Checked:** full suite passed except `qa-2` (fails on `main` too, flagged before). Browser on 8772 with the GPU lock (taken with noclobber, released).
 - **Next:** Q412 (a stationary-orbit preset built from these), Q423 (bench parts, first set), slice 2 of Q416 with Q417 (bus frame, small stacks).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q392 the haze's dither (v1.208)
+
+- **Done:** measured the sky's fine-grain noise with each suspect off: the composite's grain (low/mid air) and
+  `scatter`'s per-pixel jitter (orbit) were the dither. Grain .035 → .012; the jitter only on rays crossing the planet's
+  shadow. Noise 3.4 → 1.5 grey levels low down, 4.2 → 1.5 from orbit; no terminator bands. PLAYTEST #89 → Done.
+- **Found:** my Q321 views 159–160 shadowed the effects beat's 159 (shield) and 160 (terminator); renumbered to 172–173.
+- **Collisions:** checked ACTIVE_WORK/QUEUE for Q392 before claiming; sky2's airglow edit in the same function merged
+  cleanly; my test renumbered aerofx-37 (sky2 took 33).
+- **Files:** `app/gl.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (289),
+  `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q392/`.
+

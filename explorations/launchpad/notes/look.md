@@ -2025,3 +2025,31 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
   caches and HUD timers (not looks).
 - Not seen in a browser here (the GPU was another session's); the wiring is the test's. **Check:** test `aerofx-36`
   (and the views test's clock pattern amended). TESTING 287.
+
+## v1.208 — the haze without dither (2026-10-13, sky & bodies beat, QUEUE Q392, PLAYTEST #89)
+
+Caio: "the diffusion effect in atmosphere or whatever it is has visible dithering". **Measured, not bisected:** the
+fine-grain noise in a smooth hazy sky (luminance minus a 7×7 blur, std in grey levels over the flat regions), with
+each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`–`V3`):
+
+| | pad | ascent 3 km | max-q 10 km | 200 km | sunrise | terminator 800 km |
+|---|---|---|---|---|---|---|
+| main (v1.197) | 4.58 | 3.38 | 3.23 | 4.19 | 1.95 | 4.47 |
+| grain off | 3.24 | 0.85 | 0.79 | 3.90 | 1.55 | |
+| + `scatter`'s jitter off | 3.24 | 0.85 | 0.79 | 1.41 | 1.23 | |
+| + the cloud slab's jitter off | 3.25 | 0.81 | 0.79 | 1.41 | 1.22 | |
+| **fixed** | 3.45 | 1.46 | 1.38 | 1.54 | 1.33 | 1.94 |
+
+(The pad's ~3.2 that stays is the ground's texture inside the "flat" mask, not noise.)
+
+- **The composite's grain** (Q314, `GRADE.gr`) was most of it low and mid air: triangular noise, ~3.7 grey levels in
+  the mid-tones, new every frame. **.035 → .012**: still dithers the 8-bit output, a trace of the press-photo grain.
+  A taste knob if Caio wants more.
+- **`scatter`'s per-pixel jitter** (Q352) was most of it from orbit. It's there to hide the bands a fixed step count
+  draws where a ray crosses the planet's shadow; now it applies only on such rays (the shadow state at the ray's start,
+  middle and end differs). The terminator from 800 km (view 160) shows no bands, with less noise.
+- The cloud slab's jitter doesn't matter (V3).
+- **Views 172, 173:** Q321's nebula and spiral were numbered 159 and 160, and their branch came first in `views.js`,
+  so the effects beat's 159 (the shield from upstream) and 160 (the terminator) never ran. Renumbered; `refset.mjs`'s
+  set takes 172–173.
+- **Check:** test `aerofx-37`; aerofx-18's and Q250's checks updated to the jitter's new form. TESTING 289.
