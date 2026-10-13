@@ -6171,3 +6171,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/gl.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (290),
   `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q392/`.
 
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q386 measured, Q332 recovering a spent stage (v1.210)
+
+- **Q386 ✓ (no code):** scrub odds under v1.176's cloud belts, measured per latitude (`career.mjs` doesn't fly through
+  `weatherHold`): at worst 8 % of days at the equator, 0.14 slip days a launch; subtropics clearer. Kept (the default).
+  NOTES § "Q386 measured" (`notes/economy.md`).
+- **Q332 ✓ v1.210:** `dropRecord(d)` (`sim/flight.js`) judges a chuted stage's fate at sea at the drop (`debSea`
+  factored out of `debAfloat`), so it survives the 40 km cull; `stageRecover(R)` (`sim/program.js`) fetches one still
+  afloat when the ships arrive, refurbished at its splash wear less ship time (ledger `stages`). Test `econ-27`
+  (prediction 8.2 m/s / 24.0 h vs 8.1 / 24.0 flown in view; +8.9M for the Orbiter's first stage); TESTING 291.
+- **Smoke on main:** `qa-2` and the assembly help (key `t`, already flagged by the test bench) fail independently.
+- **Files:** `sim/flight.js`, `sim/program.js`, `sim/debrief.js`, `app/state.js`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's ready items: Q380 (overflight rights; needs flow's decision card), Q282/Q283 (plans).
