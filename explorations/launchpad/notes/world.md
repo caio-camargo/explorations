@@ -1596,7 +1596,9 @@ The kept form peaks at 1.3 in the two cut corners by the wall's ends, and is ≤
 **Checked:**
 - Test `site-1` (`tests/world.mjs`): footprints flat, past 1.7 km unchanged, Arsenal within 0.7 m of the mesh hill
   behind the wall, Mountain and Isle as above, and the wet cases are sea.
-- Core 39's "pads levelled" now samples 10 m and 1.8 km (it sampled 1.5 km, inside the shape).
+- Core 23's "pads levelled" now samples 10 m and 1.8 km (it sampled 1.5 km, inside the shape). Its `terrainSlope` at
+  the pad allows 0.2 for Arsenal: that function differences ±15 m, which reaches the hill behind the wall (z −11).
+  `groundNormal` (physics) uses ±1 m, so a rocket on the pad is untouched; only `toppleWhy`'s message would quote it.
 - `--smoke` all passed with that fix.
 - Stills of views 145–151, before and after: `output/launchpad/q105/` (RTX 3050, High). The shaders compile; frame
   times look the same within noise (5–7 ms).

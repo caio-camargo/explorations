@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "launchpad-terrain",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8773", "--directory", "C:/Users/caioa/dev/launchpad-terrain/explorations"],
+      "port": 8773
+    }
+  ]
+}
