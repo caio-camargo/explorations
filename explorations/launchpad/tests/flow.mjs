@@ -458,7 +458,7 @@
   const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const B = new Function(bsrc.slice(bsrc.indexOf('const PART_INFO='), bsrc.indexOf('function partSpecs')) + 'return {partPairs,partInfo};')();
   const parts = Object.values(api.PARTS), noPair = parts.filter(d => !B.partPairs(d)).map(d => d.key), bare = parts.filter(d => B.partPairs(d).includes('<')).map(d => d.key);
-  const shown = bsrc.includes('Pairs with</span> ${partPairs(d)}') && bsrc.includes('Pairs with</span> ${partPairs(PARTS[n.k])}');
+  const shown = bsrc.includes('Pairs with</span> ${partPairs(d)}') && bsrc.includes('Pairs with</span> ${partPairs(pdef(n.k))}')   /* pdef: a payload block (vehicle, Q416) has no PARTS entry */;
   check('flow-22: warnings explain themselves (what, why, the fixes, one tooltip; fine marks stay plain); a fairing with a part poking out says so; every part says what it pairs with, on its card and on the craft',
     mk && n >= 14 && !old.length && fit && !noPair.length && !bare.length && shown,
     `whyMark ${mk} · ${n} marks, old ${old.join(' ') || 'none'} · fit ${fit} · pairs missing ${noPair.join(',') || 'none'} · markup ${bare.join(',') || 'none'} · shown ${shown}`);

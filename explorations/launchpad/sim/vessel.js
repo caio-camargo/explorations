@@ -33,6 +33,9 @@ const PARTS={
   // sit on its faces, and what stacks on it rests on a joint of its radius
   oct:{name:'Octagonal frame',kind:'frame',m:0.04,h:0.5,r:0.4,C:1500,T:800,B:250},
   octl:{name:'Octagonal frame, long',kind:'frame',m:0.07,h:1.0,r:0.4,C:1500,T:800,B:250},
+  // a payload's adapter (vehicle, Q416, D24): the ring a payload designed on the bench stands on inside the rocket; never in the
+  // parts list, it comes with a payload block
+  padapt:{name:'Payload adapter',kind:'padapt',payOnly:true,m:0.03,h:0.15,r:0.625,C:900,T:600,B:250,prof:[[.625,0],[.625,.05],[.5,.15]]},
   adapt:{name:'Adapter 2.5 → 1.25 m',kind:'adapt',m:0.4,h:1.5,r:1.25,C:2500,T:1200,B:450,prof:[[1.25,0],[1.25,.15],[.625,1.35],[.625,1.5]]},
   // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
   rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
@@ -210,8 +213,36 @@ function profR(d,y){const pr=d.prof;if(y<=pr[0][1])return pr[0][0];
 // Every part instance of a v2 design (symmetric copies included) and the joints between them. y up, the root's bottom at
 // 0 (assemble shifts the lowest part to 0). An instance: {nd, d, x, z, y0, rot, phi, line, rdec?}: rot is the frame
 // angle its own radial children are measured in, phi the outward angle of the radial attachment that placed its line.
+// ---- payloads (vehicle, QUEUE Q416, D24, PROBES § 6.1): a satellite is designed on the payload bench, apart from the rocket,
+// and rides it as one block: a design node {k:'pay', pid, pd, name} carrying its own copy of the payload's design (pd, a v2
+// design), so a saved rocket, its procedure and a registered satellite stay whole if the bench's copy changes or goes. At
+// layout the block becomes a payload adapter with the payload standing on it (payExpand): the physics, aero, power and
+// deploying see ordinary parts. The adapter and the payload's parts are copies, each with payOf → the block's node, so the
+// builder treats them as one piece; every other node is laid out as itself. Payload designs live in PROG.payloads [{id, name,
+// d}]; a rocket's blocks follow the bench when it's opened in the Assembly (paySync).
+const isPay=n=>!!n&&n.k==='pay';
+function payHas(n){return!!n&&(isPay(n)||(n.c||[]).some(payHas))}
+// the payload's own tree re-hung from the bottom of its root's stack line, so it stands on the adapter by that part's bottom
+function payStandOn(root){const chain=[root];for(let n=root;;){const d=(n.c||[]).find(c=>c.at==='d');if(!d)break;chain.push(d);n=d}
+  const cp=chain.map(n=>({...n,c:(n.c||[]).filter(c=>!chain.includes(c))}));
+  for(let i=cp.length-1;i>0;i--){cp[i].c.push(cp[i-1]);cp[i-1].at='u'}const B=cp[cp.length-1];delete B.at;return B}
+function payExpand(des){if(!payHas(des.root))return des;
+  const mark=(n,blk)=>{const c={...n,c:(n.c||[]).map(x=>mark(x,blk))};delete c.id;Object.defineProperty(c,'payOf',{value:blk});return c};
+  const walk=n=>{if(isPay(n)){const pr=n.pd&&n.pd.root,ad={k:'padapt',at:n.at,c:(n.c||[]).map(walk)};if(n.j)ad.j=n.j;Object.defineProperty(ad,'payOf',{value:n});
+      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top)}return ad}
+    const c={...n,c:(n.c||[]).map(walk)};Object.defineProperty(c,'src',{value:n});return c};
+  return{...des,root:walk(des.root)}}
+const payDesigns=()=>{if(typeof PROG==='undefined')return[];if(!Array.isArray(PROG.payloads))PROG.payloads=[];return PROG.payloads};
+const payById=id=>payDesigns().find(x=>x.id===id)||null;
+function payNew(name,d){const L=payDesigns(),id=1+L.reduce((m,x)=>Math.max(m,x.id||0),0),e={id,name:name||`Payload ${id}`,d:JSON.parse(JSON.stringify(d||{v:2,root:null}))};L.push(e);return e}
+// a rocket design's block for a payload entry
+const payNode=e=>({k:'pay',pid:e.id,name:e.name,pd:JSON.parse(JSON.stringify(e.d)),c:[]});
+// bring every block in a design up to its bench copy (renamed or rebuilt there); returns how many changed. A block whose entry
+// is gone keeps its own copy
+function paySync(des){if(!isV2(des)||!des.root)return 0;let n=0;const walk=x=>{if(isPay(x)){const e=payById(x.pid);if(e){const j=JSON.stringify(e.d);
+    if(JSON.stringify(x.pd)!==j||x.name!==e.name){x.pd=JSON.parse(j);x.name=e.name;n++}}}(x.c||[]).forEach(walk)};walk(des.root);return n}
 function layoutDesign(des){
-  const inst=[],joints=[];des=toV2(des);if(!des||!des.root)return{inst,joints};
+  const inst=[],joints=[];des=toV2(des);if(!des||!des.root)return{inst,joints};des=payExpand(des);
   let lineN=0;
   const place=(mem,x,z,yS,rot,phi,path)=>{const id=lineN++,byM=new Map();
     for(const m of [...mem].sort((a,b)=>a.y-b.y)){const d=PARTS[m.nd.k],q={nd:m.nd,d,x,z,y0:yS+m.y,rot,phi,line:id,path};inst.push(q);byM.set(m,q)}
@@ -237,6 +268,7 @@ function layoutDesign(des){
           joints.push({a:P,b:q,axis:N,P:[P.x+rp*nx,yc,P.z+rp*nz],j:c.j||0},{a:q,b:E,axis:N,P:[P.x+(D-rs)*nx,yc,P.z+(D-rs)*nz],j:c.j||0})}
         else joints.push({a:P,b:E,axis:N,P:[P.x+rp*nx,yc,P.z+rp*nz],j:c.j||0});
         queue.push({mem:cm,L:CL})}}}
+  for(const q of inst)if(q.nd.src)q.nd=q.nd.src;   // back to the design's own nodes (payExpand's copies of them)
   return{inst,joints}}
 // Design → a tree of parts rooted at the vessel's root (pod, capsule, instruments, else the design's root), in vessel
 // coordinates (y up from the lowest part's bottom). Each part knows its joint to its parent: the point jP and the axis jA
@@ -941,7 +973,34 @@ PRESETS.Probe=(()=>{const d=toV2(['ant','cam','sci','core','t4','t4','petrel','i
 // attitude hold. Unstable in the air after separating (the fairing up front): the builder says it holds up to ~7° off its path
 // before its wheel may fill (conservative: flown, it held 14° off on the pitch program); a second wheel ~12°, but leaves ~330 m/s
 PRESETS.Satellite=(()=>{const d=toV2(['core','batt','rwheel','octl','fair','t2','petrel','dec','t8','fins','kestrel']),f=(n=>n.k==='octl'?n:null),h=(function g(n){return f(n)||(n.c||[]).map(g).find(Boolean)})(d.root);
-  h.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:1},c:[]},{k:'scam',at:{y:0.3,a:-Math.PI/2,n:1},c:[]},{k:'ssci',at:{y:0.75,a:-Math.PI/2,n:1},c:[]});return d})();
+  h.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:1},c:[]},{k:'scam',at:{y:0.3,a:-Math.PI/2,n:1},c:[]},{k:'ssci',at:{y:0.75,a:Math.PI/2,n:1},c:[]});return d})();
+// the payload bench's starters (Q416, D24: "example designs only as a copy-and-change starter on the bench"): the first beacon
+// (a probe core, a battery and a whip) and the Satellite preset's payload, everything above its fairing
+const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core','batt']);d.root.c.push({k:'whip',at:{y:0.12,a:0,n:1},c:[]});return d})(),
+  Satellite:(()=>{const d=JSON.parse(JSON.stringify(PRESETS.Satellite)),par=(n,t)=>{for(const c of n.c||[]){if(c===t)return n;const r=par(c,t);if(r)return r}return null},
+    f=(function g(n){return n.k==='fair'?n:(n.c||[]).map(g).find(Boolean)})(d.root),h=par(d.root,f);h.c=h.c.filter(c=>c!==f);return{v:2,root:d.root}})()};
+// the payload bench's Checks (PROBES § 6.1, D22's form): has power in shadow · can talk home · can turn · balanced · fits the
+// fairing it rides in (when the bench was opened from a rocket carrying it: rocket, the rocket's design, and pid, the block's
+// payload). Pointing and temperatures come with S2 (Q338). [{k, cl: 'ok'|'warn'|'bad', t, fix}], plus mass (t) and cost (M)
+function payChecks(d,rocket=null,pid=null){if(!d||!d.root)return{rows:[],mass:0,cost:0};const s=newShip(d),out=[],f=x=>x.toFixed(0);
+  {const B=powerBudget(s);if(!(B.use>0))out.push({k:'power',cl:'ok',t:'Draws no power'});
+    else if(!(B.peak+B.rtg>0))out.push({k:'power',cl:B.battWh>0?'warn':'bad',t:B.battWh>0?`Runs on its battery alone: ${f(B.battWh)} Wh at ${f(B.use)} W lasts about ${B.battWh/B.use/24<2?f(B.battWh/B.use)+' hours':f(B.battWh/B.use/24)+' days'}`:`No power at all for its ${f(B.use)} W`,fix:'solar cells or a wing keep it going; an RTG day and night'});
+    else{const okA=B.avg>=B.use,okB=B.battWh>=B.needWh;out.push({k:'power',cl:okA&&okB?'ok':'bad',t:okA&&okB?`Power in shadow: +${f(B.avg)} W against −${f(B.use)} W, ${f(B.needWh)} Wh for each shadow of ${f(B.battWh)}`:
+      !okA?`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`:`The battery can't last the night: ${f(B.needWh)} Wh needed, ${f(B.battWh)} Wh aboard`,
+      fix:okA&&okB?'':!okA?'more solar panels or a solar wing, or an RTG':'a bigger battery, or an RTG'})}}
+  {const A=s.parts.filter(p=>p.on&&p.d.kind==='ant');out.push(A.length?{k:'link',cl:'ok',t:`Talks home: ${A.map(p=>p.d.name.toLowerCase()).filter((x,i,a)=>a.indexOf(x)===i).join(', ')}`}
+    :{k:'link',cl:'warn',t:"No antenna: it can't send anything home",fix:'a whip or a boom antenna'})}
+  out.push(s.torque>0?{k:'turn',cl:'ok',t:`Turns itself: ${(s.torque/1000).toFixed(s.torque<9500?1:0)} kN·m of wheels`}:{k:'turn',cl:'warn',t:'Nothing turns it once it is on its own',fix:'a probe core or a reaction wheel'});
+  // balance: off the axis, a payload with its own engine burns crooked (bad); without one it only leans the stack a little (warn)
+  {const off=Math.hypot(s.cm[0],s.cm[2]),eng=s.parts.some(p=>p.on&&p.d.kind==='engine');out.push(off<0.05?{k:'bal',cl:'ok',t:`Balanced: the centre of mass ${(off*100).toFixed(1)} cm off the axis`}
+    :{k:'bal',cl:eng?'bad':'warn',t:`Off balance: the centre of mass ${(off*100).toFixed(0)} cm off the axis`,fix:eng?'its engine would push past the centre of mass and turn it: the same parts on the other side, or a counterweight':'the same parts on the other side, or a counterweight: it leans the rocket a little, and spins lopsided'})}
+  if(rocket&&pid!=null){const R=JSON.parse(JSON.stringify(rocket));let blk=null;const w=n=>{if(isPay(n)&&n.pid===pid&&!blk){blk=n;n.pd=JSON.parse(JSON.stringify(d))}(n.c||[]).forEach(w)};if(R.root)w(R.root);
+    if(blk){const r=newShip(R),F=r.parts.find(p=>p.on&&p.profF),P=r.parts.filter(p=>p.on&&p.dn.payOf&&p.d.kind!=='padapt'),o=P.filter(p=>!p.inFair);
+      out.push(!F?{k:'fit',cl:'warn',t:'Rides in the open: no fairing over it on the rocket',fix:'a payload fairing under it'}
+        :o.length?{k:'fit',cl:'bad',t:`${o.length} part${o.length>1?'s stick':' sticks'} out of the ${F.fl} m fairing`,fix:'a longer fairing (on the rocket), or fold it (wings and booms fold for launch)'}
+        :{k:'fit',cl:'ok',t:`Fits the ${F.fl} m fairing, folded`})}}
+  else out.push({k:'fit',cl:'ok',t:'The fairing fit is checked on the rocket that carries it'});
+  return{rows:out,mass:s.mass/1000,cost:vesselCost(s.parts).cost}}
 // the Docking preset (vehicle session, Q78): a docking head on the Orbiter's launcher, so the docking rows can be flown from
 // presets. A port on top, a probe core with an onboard computer (Docking SAS needs one on a probe, v1.68) and a battery,
 // two RCS rings and two gas bottles on the upper tank. Launch it twice, one as the target; or chase a satellite with a port.

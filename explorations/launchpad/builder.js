@@ -21,7 +21,9 @@ const kids=n=>n.c||(n.c=[]);
 const nodes=n=>n?[n,...kids(n).flatMap(nodes)]:[];
 const isEmpty=d=>Array.isArray(d)?!d.length:!d||!d.root;
 const parentOf=(n,t)=>{for(const c of kids(n)){if(c===t)return n;const r=parentOf(c,t);if(r)return r}return null};
-const name=k=>PARTS[k].name;
+// a payload block (Q416) isn't a part: it lays out as an adapter and the payload's own parts, each pointing back at it (payOf)
+const PAYDEF={key:'pay',kind:'pay',name:'Payload',m:0,h:0},pdef=k=>PARTS[k]||PAYDEF,name=k=>pdef(k).name;
+const dnOf=p=>p&&p.dn?(p.dn.payOf||p.dn):null;   // the design node a part answers to: its payload block, else its own
 const DPR=()=>Math.min(devicePixelRatio||1,1.5);
 // deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
 const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':null};
@@ -29,7 +31,7 @@ const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{c
 const DEP_HOW={leg:'Y, or Legs down on the flight bar (top right): put them down before touchdown',
   wing:'P, or the Unfold button on the flight bar (top right): once the air is thin, after the fairing drops; open in thick air, it tears off',
   bay:"B, or Open bay on the flight bar (top right): once the air is thin; shut, it shields what's inside"};
-const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&depOf(p.dn.k)).map(p=>p.dn))];
+const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&!p.dn.payOf&&depOf(p.dn.k)).map(p=>p.dn))];   // a payload's are set on the bench
 
 // ---- design access. A preset stays in the old array format (so its saved autopilot tape still matches) until the
 // first edit; then the tree that the current ship was assembled from becomes the design, so S.parts[].dn are its nodes.
@@ -52,7 +54,7 @@ function loadDesign(d){st.held=null;st.sel=null;st.hover=null;stackDef=cl(d);st.
 function aimCant(p,s=S){const on=s.parts.map(()=>true),ign=new Set();
   for(const e of s.events){for(const k of e.decouple)s.parts.forEach((q,i)=>{if(q.seg===k)on[i]=false});for(const k of e.ignite)ign.add(k);if(e.ignite.includes(p.seg))break}
   let m=0,C=[0,0,0];s.parts.forEach((q,i)=>{if(!on[i])return;const w=partMass(q),c=partC(q);m+=w;C=[C[0]+w*c[0],C[1]+w*c[1],C[2]+w*c[2]]});C=C.map(x=>x/m);
-  const E=s.parts.filter((q,i)=>on[i]&&q.d.kind==='engine'&&ign.has(q.seg)),mine=q=>q.dn===p.dn&&q.phi!=null;
+  const E=s.parts.filter((q,i)=>on[i]&&q.d.kind==='engine'&&ign.has(q.seg)),mine=q=>dnOf(q)===p.dn&&q.phi!=null;
   const tau=th=>{let L=[0,0,0];for(const q of E){const d=mine(q)?cantDir(th,q.phi):tdirOf(q),f=q.d.thrust,r=sub(thrustPt(q),C);L=add(L,cross(r,[d[0]*f,d[1]*f,d[2]*f]))}return len(L)};
   let best=0,bt=tau(0);for(let th=-30;th<=30+1e-9;th+=0.05){const t=tau(th);if(t<bt-1e-6*Math.max(1,bt)||Math.abs(t-bt)<=1e-6*Math.max(1,bt)&&Math.abs(th)<Math.abs(best)){bt=t;best=th}}
   return Math.round(best*100)/100}
@@ -115,18 +117,18 @@ function rayHit(r){let best=null;if(!r||isEmpty(stackDef))return null;
 // ---- where the held part would go. Stack nodes near the cursor win; else the surface under it; else nowhere.
 function heldNeeds(h){const k=kids(h);return{top:!k.some(c=>c.at==='u'),bot:!k.some(c=>c.at==='d')}}
 function stackSlots(){const out=[];if(isEmpty(stackDef))return out;
-  for(const p of S.parts){if(!p.on||p.inst.rdec||p.inst.surf)continue;const n=p.dn,k=kids(n);
+  for(const p of S.parts){if(!p.on||p.inst.rdec||p.inst.surf||p.dn.payOf)continue;const n=p.dn,k=kids(n);   // nothing attaches to a payload's parts
     const topFree=n.at!=='d'&&!k.some(c=>c.at==='u'),botFree=n.at!=='u'&&!k.some(c=>c.at==='d');
     if(topFree)out.push({p,side:'u',v:[p.pos[0],p.y0+p.h,p.pos[2]]});if(botFree)out.push({p,side:'d',v:[p.pos[0],p.y0,p.pos[2]]})}
   return out}
 function findSlot(){const h=st.held;if(!h||!st.mouse)return null;
-  const surf=!!PARTS[h.k].surf;
+  const surf=!isPay(h)&&!!PARTS[h.k].surf;
   if(isEmpty(stackDef))return null;   // nothing built: the part floats with the cursor and is put down where clicked (placeRoot)
   const need=heldNeeds(h),m=st.mouse;let best=null,bd=NODE_PX*DPR();
   if(!surf)for(const s of stackSlots()){if(s.side==='u'&&!need.bot||s.side==='d'&&!need.top)continue;const q=proj(s.v);if(!q)continue;
     const dd=Math.hypot(q[0]-m[0],q[1]-m[1]);if(dd<bd){bd=dd;best=s}}
-  if(best)return{p:best.p,at:best.side};
-  const hit=rayHit(mouseRay());if(!hit||hit.p.inst.rdec||hit.p.inst.surf)return null;
+  if(best)return{p:best.p,at:best.side};if(isPay(h))return null;   // a payload block goes on a stack node only
+  const hit=rayHit(mouseRay());if(!hit||hit.p.inst.rdec||hit.p.inst.surf||hit.p.dn.payOf)return null;
   const p=hit.p,I=p.inst;let a=Math.atan2(hit.pt[2]-p.pos[2],hit.pt[0]-p.pos[0])-I.rot,y=clamp(hit.pt[1]-p.y0,0,p.h);
   if(st.snap)a=Math.round(a/SNAP_A)*SNAP_A;a=((a%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
   const cy=PARTS[h.k].h/2;
@@ -142,7 +144,7 @@ function trial(slot){const h=st.held,old=h.at,D=design();let L;
   else{const host=slot.p.dn;h.at=slot.at;kids(host).push(h);try{L=layoutDesign(D)}finally{host.c.pop()}}
   if(old===undefined)delete h.at;else h.at=old;
   const set=new Set(nodes(h)),sh=isEmpty(stackDef)?0:S.parts[0].y0-S.parts[0].inst.y0;
-  return L.inst.filter(q=>set.has(q.nd)).map(q=>({d:q.d,pos:[q.x,0,q.z],y0:q.y0+sh,h:q.d.h,phi:q.phi,rdec:q.rdec||q.surf}))}
+  return L.inst.filter(q=>set.has(q.nd)||set.has(q.nd.payOf)).map(q=>({d:q.d,pos:[q.x,0,q.z],y0:q.y0+sh,h:q.d.h,phi:q.phi,rdec:q.rdec||q.surf}))}
 function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.inst.rdec&&!p.inst.surf);const all=[...G.filter(g=>!g.rdec)];
   const hit=(a,b)=>{const dx=Math.hypot(a.pos[0]-b.pos[0],a.pos[2]-b.pos[2]),oy=Math.min(a.y0+a.h,b.y0+b.h)-Math.max(a.y0,b.y0);
     return dx<1e-3?oy>1e-3:dx<a.d.r+b.d.r-0.02&&oy>0.02};
@@ -151,12 +153,36 @@ function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.in
 function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?noIds(cl(h)):h;
   if(slot.root){delete put.at;D.root=put;if(st.hang==null)st.reframe=true}else{put.at=cl(slot.at);kids(slot.p.dn).push(put)}
   ensureIds(D);if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
-function pickUp(p,copy){const n=p.dn,D=design();
+function pickUp(p,copy){const n=dnOf(p),D=design();
   if(!copy&&n===D.root&&kids(n).length){snapshot();const pk=D.park;D.root=null;if(pk)D.park=pk;st.held=n;st.sel=null;st.ghostKey='';editorChanged();   // the whole rocket (Q327); parked parts wait, placed relative to the root
     note('The whole rocket: click where it should hang · right-click drops it (Ctrl+Z brings it back)');return}
   if(copy){st.held=noIds(cl(n));delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
   snapshot();detachNode(n);st.held=n;st.sel=null;st.ghostKey='';editorChanged()}
 function grab(k){st.held={k,c:[]};if(PARTS[k].kind==='rover'&&typeof rvPack==='function')st.held.rvd=rvPack();st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
+// ---- the payload bench (Q416, D24, PROBES § 6.1): the same builder, editing a payload design instead of the rocket. Opening it
+// puts the rocket aside (with its undo); Done writes the payload back to PROG.payloads, brings the rocket back and brings its
+// blocks up to date (paySync); "Done, and pick it up" hands you the block to put on the rocket
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function grabPay(e){if(!e||!e.d||!e.d.root){note('An empty payload: open it on the bench and build it first');return}
+  st.held=payNode(e);st.sel=null;st.ghostKey='';refresh();note(`${e.name}: click a glowing node (inside a fairing, on top of the stage that carries it)`)}
+function benchOpen(e){if(st.bench)return;if(!e)e=payNew(null,null);
+  st.bench={id:e.id,back:{def:stackDef,undo:st.undo,redo:st.redo,gap:st.gap,pin:st.pin}};st.undo=[];st.redo=[];st.held=null;st.sel=null;st.pin=null;st.gap=0;
+  stackDef=cl(e.d&&e.d.root?e.d:{v:2,root:null});st.reframe=true;editorChanged();palette();note(`Payload bench: ${e.name}. Build it here; Done takes it back to the rocket`)}
+function benchSave(){if(!st.bench)return null;const e=payById(st.bench.id);if(!e)return null;
+  e.d=isEmpty(stackDef)?{v:2,root:null}:cl(design());e.m=isEmpty(stackDef)?0:S.mass/1000;HOOK.save&&HOOK.save();return e}
+function benchClose(pick){if(!st.bench)return;const e=benchSave(),b=st.bench.back;st.bench=null;
+  stackDef=b.def;st.undo=b.undo;st.redo=b.redo;st.gap=b.gap||0;st.pin=b.pin;st.held=null;st.sel=null;st.reframe=true;
+  const n=isV2(stackDef)?paySync(stackDef):0;if(pick&&e&&e.d.root)st.held=payNode(e);editorChanged();palette();
+  note(pick&&st.held?`${e.name}: click a glowing node to put it on`:n?`${e.name} updated on the rocket`:'Back to the rocket')}
+// a block whose bench copy is gone gets a new one from what it carries
+function payFromBlock(n){const e=payNew(n.name,n.pd);n.pid=e.id;n.name=e.name;return e}
+// the parts a fairing encloses, lifted onto the bench as a new payload: the design re-hung from the fairing, whose top child (the
+// enclosed stack and everything on it) becomes the block
+function makePay(f){const D=design(),path=rootPath(D.root,f);if(!path||!path.slice(1).every(x=>x.at==='u'||x.at==='d')){note('Only for a fairing on the main stack');return}
+  const top0=kids(f).find(c=>c.at==='u')||(path.length>1&&path[path.length-1]===f&&f.at==='d'?path[path.length-2]:null);if(!top0||isPay(top0)){note('Nothing on top of the fairing to lift');return}
+  snapshot();if(path.length>1)reroot(path);const top=kids(f).find(c=>c.at==='u');if(!top){note('Nothing on top of the fairing to lift');return}
+  const sub=noIds(cl(top));delete sub.at;const e=payNew(null,{v:2,root:sub});e.m=0;const blk={...payNode(e),at:'u'};if(top.j)blk.j=top.j;f.c[f.c.indexOf(top)]=blk;
+  ensureIds(D);st.sel=blk;editorChanged();e.m=S.parts.filter(p=>p.on&&p.dn.payOf===blk&&p.d.kind!=='padapt').reduce((a,p)=>a+partMass(p),0);HOOK.save&&HOOK.save();palette();note(`Made ${e.name}: open it on the bench to change it`)}
 function drop(){if(!st.held)return;st.held=null;if(isEmpty(stackDef)&&stackDef&&stackDef.park)delete stackDef.park;st.ghostKey='';refresh()}
 function del(n){if(!n)return;snapshot();detachNode(n);if(st.sel&&nodes(n).includes(st.sel))st.sel=null;editorChanged()}
 let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target');if(e)e.innerHTML=statusHTML()}
@@ -173,7 +199,7 @@ function statusHTML(){
 function update(){
   if(mode!=='editor')return;
   if(st.held){st.slot=findSlot();st.hover=null}
-  else{st.slot=null;const h=st.mouse&&!st.press?rayHit(mouseRay()):null;st.hover=h?h.p.dn:null}
+  else{st.slot=null;const h=st.mouse&&!st.press?rayHit(mouseRay()):null;st.hover=h?dnOf(h.p):null}
   tooltip()}
 function meshOf(list,tint){const a=[];for(const p of list)partShape(a,p);if(tint)for(let i=0;i<a.length;i+=VX){a[i+6]=tint[0];a[i+7]=tint[1];a[i+8]=tint[2];a[i+9]=0}return a.length?makeMesh(a):null}
 function ghostMeshes(){const s=st.slot,key=st.held?JSON.stringify([st.held,s&&s.root,s&&s.p&&s.p.i,s&&s.at]):'';
@@ -184,8 +210,8 @@ function ghostMeshes(){const s=st.slot,key=st.held?JSON.stringify([st.held,s&&s.
 function parkMeshes(){const P=parkedInst(),key=JSON.stringify(stackDef.park||null)+'|'+P.map(q=>q.pos.concat(q.y0).map(v=>v.toFixed(3))).join();
   if(key===st.parkKey)return st.parkM;st.parkKey=key;if(st.parkM){st.parkM.s&&st.parkM.s.free();st.parkM.g&&st.parkM.g.free()}
   st.parkM=P.length?{s:meshOf(P),g:meshOf(P,[.35,.55,1])}:null;return st.parkM}
-function hiMesh(){const key=st.hover?String(S.parts.findIndex(p=>p.dn===st.hover))+(st.sel===st.hover):'';
-  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?[...S.parts,...parkedInst()].filter(p=>p.on&&p.dn===st.hover):
+function hiMesh(){const key=st.hover?String(S.parts.findIndex(p=>dnOf(p)===st.hover))+(st.sel===st.hover):'';
+  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&dnOf(p)===st.sel):[],hov=st.hover?[...S.parts,...parkedInst()].filter(p=>p.on&&dnOf(p)===st.hover):
     st.hiAtom?S.parts.filter(p=>p.on&&st.hiAtom.segs.includes(p.seg)&&(st.hiAtom.kind!=='i'||p.d.kind==='engine')):[];
   const k2=key+'|'+sel.map(p=>p.i).join(',')+'|'+hov.map(p=>p.i).join(',');if(k2===st.hiKey)return st.hi;st.hiKey=k2;
   if(st.hi){st.hi.h&&st.hi.h.free();st.hi.s&&st.hi.s.free()}st.hi={h:meshOf(hov,[.5,.8,1]),s:meshOf(sel,[1,.75,.3])};return st.hi}
@@ -256,6 +282,8 @@ const PART_INFO={
   whip:'A whip antenna on the side: the plain radio, tough enough for the climb.',
   bant:'A boom antenna, folded for launch: P swings it out once the air is thin, and it hears home about five times better than a whip. Out in thick air it tears off.',
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
+  padapt:'The ring a payload stands on inside the rocket. It comes with every payload block.',
+  pay:'A satellite designed on the payload bench, carried as one block: open it on the bench to change it.',
   rdec:'Holds a side part on and lets it go when its stage fires.',
   fins:'A ring of fixed fins at the tail: it keeps the rocket pointing into the airflow, like an arrow\'s feathers.',
   rfin:'A single fin for the side of a part; place several around the body to keep the rocket straight in air. Right-click it for a bigger size.',
@@ -308,6 +336,8 @@ const PART_PAIRS={
   fair:'a payload on its ring; a longer shell if anything pokes out (the Assembly says what)',
   frame:'side boxes (camera, battery, instruments, computer), an antenna and solar panels on its faces',
   adapt:'a 2.5 m stage below, a 1.25 m stack above',
+  padapt:'a payload block, inside a fairing',
+  pay:'a fairing over it, and a stage under it',
   rdec:'a booster or a side tank, with a nose cone on top',
   fins:'heavy parts high up: the further ahead the balance point, the better fins work',
   rfin:'three or four around the tail (radial mounts), heavy parts high up',
@@ -366,9 +396,9 @@ function cardAt(b,k){if(!tipOK())return;if(!b){tipHide('card');return}tipShow('c
 // ---- tooltip and panels
 function tooltip(){if(!tipOK())return;
   const n=st.hover;if(!n||mode!=='editor'||st.held||!st.mouse){tipHide('craft');return}
-  const ps=S.parts.filter(p=>p.on&&p.dn===n),w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null);
-  const cp=ps.filter(p=>!p.inst.rdec).length,html=`<b>${name(n.k)}${cp>1?` <span class="dim">×${cp}</span>`:''}</b>`+
-    (partInfo(PARTS[n.k])?`<div class="pcs">${partInfo(PARTS[n.k])}</div>`:'')+(partPairs(PARTS[n.k])?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(PARTS[n.k])}</div>`:'')+(w?`<div>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span></div>`:'')+
+  const ps=S.parts.filter(p=>p.on&&dnOf(p)===n),w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null);
+  const cp=ps.filter(p=>!p.inst.rdec).length,html=`<b>${isPay(n)?`Payload: ${String(n.name||'').replace(/</g,'&lt;')}`:name(n.k)}${cp>1?` <span class="dim">×${cp}</span>`:''}</b>`+
+    (partInfo(pdef(n.k))?`<div class="pcs">${partInfo(pdef(n.k))}</div>`:'')+(partPairs(pdef(n.k))?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(pdef(n.k))}</div>`:'')+(w?`<div>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span></div>`:'')+
     (ps.length?'':`<div class="warn">parked: not attached</div>`)+`<div class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</div>`;
   const k=V()?V().W/innerWidth:1;tipShow('craft',html,{x:st.mouse[0]/k,y:st.mouse[1]/k})}
 // (Q235, PLAYTEST #42) start from scratch: one undo step; the palette, presets and saved designs are untouched
@@ -377,6 +407,12 @@ function btn(parent,label,on,fn,tip){const b=document.createElement('button');b.
 function edit(fn){snapshot();fn();editorChanged()}
 function panel(){
   const box=el('stack');if(!box)return;box.innerHTML='';
+  if(st.bench){const e=payById(st.bench.id),bn=document.createElement('div');bn.className='bstg';box.appendChild(bn);
+    bn.innerHTML=`<div class="bhd2">Payload bench</div><div class="blsave"><input id="pbName" maxlength="40" value="${esc(e?e.name:'')}" title="its name"></div>`;
+    const inp=bn.querySelector('#pbName');inp.onkeydown=ev=>ev.stopPropagation();inp.oninput=()=>{if(e){e.name=inp.value.trim()||e.name;HOOK.save&&HOOK.save()}};
+    const g=document.createElement('div');g.className='bgrp';bn.appendChild(g);
+    btn(g,'✓ done',false,()=>benchClose(false),'save it and go back to the rocket (blocks of it on the rocket follow)');
+    btn(g,'✓ done, and pick it up',false,()=>benchClose(true),'save it, go back to the rocket and hold it, to put it on a stage inside a fairing').disabled=isEmpty(stackDef)}
   const bar=document.createElement('div');bar.className='bbar';box.appendChild(bar);
   const sy=document.createElement('div');sy.className='bgrp';sy.innerHTML='<span class="dim">radial mounts</span>';for(const n of SYM)btn(sy,'×'+n,st.sym===n,()=>{st.sym=n;st.ghostKey='';refresh()},'a part placed on the side of another goes on this many times, evenly around it [X / Shift+X]');bar.appendChild(sy);
   const t2=document.createElement('div');t2.className='bgrp';bar.appendChild(t2);
@@ -386,7 +422,7 @@ function panel(){
   const t3=document.createElement('div');t3.className='bgrp';bar.appendChild(t3);
   btn(t3,'↶ undo',false,()=>restore(st.undo,st.redo),'Ctrl+Z').disabled=!st.undo.length;
   btn(t3,'↷ redo',false,()=>restore(st.redo,st.undo),'Ctrl+Y').disabled=!st.redo.length;
-  btn(t3,'save design…',false,()=>{const i=el('blName');if(!i)return;i.scrollIntoView({block:'center'});i.focus()},'name it and keep it under Your designs (every launch also keeps its design under Launched)').disabled=isEmpty(stackDef);
+  if(!st.bench)btn(t3,'save design…',false,()=>{const i=el('blName');if(!i)return;i.scrollIntoView({block:'center'});i.focus()},'name it and keep it under Your designs (every launch also keeps its design under Launched)').disabled=isEmpty(stackDef);
   btn(t3,'✕ clear design',false,clearDesign,'remove every part and start from scratch (Ctrl+Z brings them back)').disabled=isEmpty(stackDef);
   const dn=depNodes();if(dn.length){const t4=document.createElement('div');t4.className='bgrp';t4.innerHTML='<span class="dim">deploy</span>';bar.appendChild(t4);
     const all=on=>edit(()=>{design();for(const n of dn)if(on)n.dep=true;else delete n.dep});
@@ -395,11 +431,19 @@ function panel(){
   if(!isEmpty(stackDef))staging(box);
   const n=st.sel;const sel=document.createElement('div');sel.className='bsel';box.appendChild(sel);
   if(!n||isEmpty(stackDef)||!nodes(design().root).includes(n)){st.sel=null;sel.innerHTML='<div class="sub">Right-click a part for its options.</div>';return}
-  const D=design(),par=parentOf(D.root,n),ps=S.parts.filter(p=>p.on&&p.dn===n),copies=ps.filter(p=>!p.inst.rdec).length;
+  const D=design(),par=parentOf(D.root,n),ps=S.parts.filter(p=>p.on&&dnOf(p)===n),copies=ps.filter(p=>!p.inst.rdec).length;
   const where=!par?'root part':n.at==='u'?`on top of ${name(par.k)}`:n.at==='d'?`under ${name(par.k)}`:`radial on ${name(par.k)}, ${n.at.y.toFixed(2)} m up, ${(n.at.a*180/Math.PI).toFixed(0)}°`;
   const sub=nodes(n).length-1;
   sel.innerHTML=`<div class="bhd"><b>${name(n.k)}</b>${copies>1?` <span class="dim">×${copies}</span>`:''}</div><div class="sub">${where}${sub?` · carries ${sub} part${sub>1?'s':''}`:''}</div>`;
   const row=(label)=>{const r=document.createElement('div');r.className='brow';r.innerHTML=`<span class="dim">${label}</span>`;sel.appendChild(r);return r};
+  if(isPay(n)){const e=payById(n.pid),m=ps.filter(p=>p.d.kind!=='padapt').reduce((a,p)=>a+partMass(p),0),fair=S.parts.some(f=>f.on&&f.profF),out=fair?ps.filter(p=>p.d.kind!=='padapt'&&!p.inFair).length:0;
+    sel.querySelector('.bhd').innerHTML=`<b>Payload: ${esc(n.name||'')}</b>`;
+    {const r=row('carries'),i=document.createElement('span');i.className=out||!fair?'warn':'dim';i.textContent=` ${Math.round(m*1000)} kg in ${ps.length-1} parts, on its adapter${!fair?' · no fairing over it':out?` · ${out} outside the fairing`:''}`;r.appendChild(i)}
+    {const r=row('');btn(r,'open on the bench',false,()=>benchOpen(e||payFromBlock(n)),e?'change it on the payload bench: every block of it follows':'its bench copy is gone: opening makes a new one from this block')}
+    {const r=row('');btn(r,'pick up',false,()=>{const p=ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});btn(r,'delete',false,()=>del(n))}
+    return}
+  if(PARTS[n.k].kind==='fair'&&!st.bench){const top=kids(n).find(c=>c.at==='u'),pr=parentOf(D.root,n);if(top&&!isPay(top)||!top&&pr&&n.at==='d'&&!isPay(pr)){const r=row('payload');
+    btn(r,'make the parts inside a payload',false,()=>makePay(n),'lift what this fairing encloses onto the payload bench: the rocket carries it as one block, and the same payload can fly on any rocket')}}
   if(par){const w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null),r=row('joint');
     if(w){const s=document.createElement('span');s.className=w.f>1?'bad':w.f>.7?'warn':'ok';s.textContent=` ${(w.f*100).toFixed(0)}% ${w.p.anaKind||''} `;r.appendChild(s)
       if(w.f>.7&&w.p.parent&&typeof fixText==='function'){s.classList.add('term');Object.assign(s.dataset,{wt:`The joint ${w.p.d.name} / ${w.p.parent.d.name} at ${(w.f*100).toFixed(0)}% of its rating`,   // (Q391) the chip explains itself
@@ -475,12 +519,18 @@ function staging(box){
     if(i<S0.length-1){const m=btn(r,'⇣',false,()=>go({stage:i+1},{row:i}),`fire stage ${i+2} with this one, in one press`);m.className='smerge'}});
   if(S0.length)gap(S0.length)}
 function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
+  if(!st.bench){const h=document.createElement('div');h.className='pcat';h.textContent='Payloads';pal.appendChild(h);
+    for(const e of payDesigns()){const r=document.createElement('div'),b=document.createElement('button'),ed=document.createElement('button');r.className='blrow';
+      b.innerHTML=`${esc(e.name)}<span>${e.d&&e.d.root?Math.round((e.m||0)*1000)+' kg':'empty'}</span>`;b.title='pick it up: put it on top of a stage, inside a fairing';b.onclick=()=>grabPay(e);
+      if(st.held&&isPay(st.held)&&st.held.pid===e.id)b.classList.add('on');
+      ed.textContent='✎';ed.title='open it on the payload bench';ed.onclick=()=>benchOpen(e);r.append(b,ed);pal.appendChild(r)}
+    const nb=document.createElement('button');nb.innerHTML='+ New payload<span>bench</span>';nb.title='design a satellite on the payload bench, apart from the rocket';nb.onclick=()=>benchOpen(null);pal.appendChild(nb)}
   const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','fair','frame','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
-  const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
+  const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!d.payOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
   for(const[cat,kinds]of CAT){const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
-    for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||!kinds.includes(d.kind))continue;
+    for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||d.payOnly||!kinds.includes(d.kind))continue;
       const b=document.createElement('button'),lk=typeof partOpen==='function'?partOpen(k):{ok:true};   // Q190: a part not open yet is listed, dimmed, with its reason
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
       b.innerHTML=`${d.name}<span>${lk.ok?spec:'🔒 '+lk.short}</span>`;if(!lk.ok)b.classList.add('lock');
@@ -488,6 +538,9 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
       if(st.held&&st.held.k===k&&!kids(st.held).length)b.classList.add('on');
       b.onclick=()=>st.held&&st.held.k===k&&!kids(st.held).length?drop():grab(k);pal.appendChild(b)}}
   const pre=el('presets');pre.innerHTML='';
+  if(st.bench){const h=document.createElement('div');h.className='pcat';h.textContent='Starters';pre.appendChild(h);
+    for(const k in PAY_STARTERS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.title='start from this one and change it (Ctrl+Z goes back)';b.onclick=()=>{snapshot();loadDesign(PAY_STARTERS[k])};pre.appendChild(b)}
+    return}
   {const b=document.createElement('button');b.textContent='✕ Empty';b.title='start from scratch: clear the design (Ctrl+Z brings it back)';b.style.margin='0 4px 4px 0';b.disabled=isEmpty(stackDef);b.onclick=clearDesign;pre.appendChild(b)}
   for(const k in PRESETS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}
   library(pre)}
@@ -527,7 +580,7 @@ function changed(){
 // the plate the design stands on, in the ship's frame (y from the CoM): its bottom, or lower while parts below were removed
 const foot=()=>S.yBot-(mode==='editor'&&st.gap||0);
 function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
-  let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(14,S.len*1.5,w*12);cam.pitch=-0.05;cam.edY=0}
+  let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(st.bench?4:14,S.len*(st.bench?2.5:1.5),w*(st.bench?5:12));cam.pitch=-0.05;cam.edY=0}   // the bench works at satellite scale (Q416)
 
 // ---- input. Capture-phase on window, so the main script's camera drag only sees what we let through.
 function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw=draw;HOOK.edOverlay=overlay;
@@ -563,7 +616,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
   addEventListener('mouseup',e=>{if(mode!=='editor')return;const p=st.press;st.press=null;if(st.pan){st.pan=false;return}
     if(!p||p.drag||e.target!==cvs)return;
     if(p.b===0){if(st.held){const s=st.slot;if(s&&!s.bad)place(s,p.mod.shift);else if(s&&s.bad)note('Blocked: it would overlap a part');else if(!s)parkHeld(p.mod.shift)}
-      else if(st.hover){const pp=S.parts.find(q=>q.on&&q.dn===st.hover&&!q.inst.rdec)||S.parts.find(q=>q.dn===st.hover)||parkedInst().find(q=>q.dn===st.hover);if(pp)pickUp(pp,p.mod.ctrl)}
+      else if(st.hover){const pp=S.parts.find(q=>q.on&&dnOf(q)===st.hover&&!q.inst.rdec)||S.parts.find(q=>dnOf(q)===st.hover)||parkedInst().find(q=>dnOf(q)===st.hover);if(pp)pickUp(pp,p.mod.ctrl)}
       else if(st.sel){st.sel=null;refresh()}}
     else if(p.b===2){if(st.held)drop();else if(st.hover){st.sel=st.hover;refresh()}else if(st.sel){st.sel=null;refresh()}}
     update()});
@@ -582,5 +635,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   el('target').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(!b)return;st.sym=+b.dataset.sym;st.ghostKey='';refresh()});
   palette()}
-return{stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
+return{bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
 })();
