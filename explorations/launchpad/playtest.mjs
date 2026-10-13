@@ -1106,6 +1106,16 @@ ROWS[192] = {title: 'the hardware schools on one rocket (refViews, with 162, 179
 ROWS[178] = {title: 'the Steppe pad and its rollout (refViews, with 190)', steps: views(116, 117, 118, 119)};
 ROWS[193] = {title: 'the suits by school and generation (refViews)', steps: views(127, 130, 133, 136, 139, 142)};
 ROWS[184] = {title: 'the crew at the hatch (refViews)', steps: views(120, 121, 122)};
+// batch 8 (test bench, 2026-10-13): power lines (161, 185), late parts locked in a real career (194), the verbose log (199)
+const PWR = `(document.body.innerText.match(/Power[^\\n]*(\\n[^\\n]*){0,2}/) || [''])[0]`;
+ROWS[185] = {title: "the Probe's power line", steps: [`{go('assembly'); PT.preset('Probe'); render(); ${PWR}}`, {shot: 'probe'}]};
+ROWS[161] = {title: 'a probe on an RTG', steps: [`{const d = toV2(['core', 'rtg', 't2', 'petrel']), f = n => n.k === 'core' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({k: 'whip', at: {y: 0.5, a: 0, n: 1}, c: []}); stackDef = d; editorChanged(); go('assembly'); render(); ${PWR}}`, {shot: 'rtg'}]};
+ROWS[194] = {title: 'late parts are locked until their mission (a real career)', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'}, `{go('assembly'); render();
+  [...document.querySelectorAll('.pal *')].filter(e => e.children.length === 0 && /🔒/.test(e.textContent)).length || (document.body.innerText.match(/🔒/g) || []).length}`, {shot: 'palette'},
+  `{stackDef = JSON.parse(JSON.stringify(PRESETS.Docking)); editorChanged(); render(); PT.click('#bRoll'); render(); (document.getElementById('rollChecks') || {}).innerText}`, {shot: 'rollout'},
+  `{const n0 = PT.log.length; PT.launch(); ({mode, screen: screenNow(), said: PT.logSince(n0)})}`]};
+ROWS[199] = {title: "the tester's verbose log", steps: [M1_HELPERS, `{TEST.log = true; LOG.length = 0; PT.preset('Sounding'); PT.click('#bRoll'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.landed || !S.alive, 3000, {autostage: true}); go('program'); advanceTo(PROG.day + 20);
+  ({lines: LOG.length, kinds: [...new Set(LOG.map(e => e.kind))], first: LOG.slice(0, 8).map(e => e.kind + ': ' + e.text)})}`, {shot: 'panel'}]};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
