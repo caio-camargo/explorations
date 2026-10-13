@@ -5703,3 +5703,27 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `ACTIVE_WORK.md`. Stills in `output/launchpad/beauty/q318`, `q319`, `q320`, `q294`, `q267` (gitignored).
 - **Next:** the full suite on a quiet machine; Q319's heat haze and cluster lights; the Proposed reference views.
 
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): builder notes v1.148, Q342 v1.152, Q346 v1.157
+
+- **v1.148, Caio's builder notes:** the side boxes (`scam`, `ssci`, `sbatt`, `scomp`) stood out past the fairing's bulge;
+  now `off + r` ≤ 0.14 m, with a width `w`. The side camera's lens looks outward. The stack camera is 0.3 m tall (was 0.5).
+  New **octagonal frame** (`oct` 0.5 m, `octl` 1 m, 0.8 m across) in Structure. Test `vehicle-20`. The shorter camera tipped
+  `bodies-1`'s Nyx orbit: measured, that orbit decays at ~98 h whichever way round, so `nyxorb` now captures at 70 km (Q344).
+- **v1.152, Q342 (PLAYTEST #82):** no joint breaks. The satellite's upper stage goes end over end right after separating
+  (~34 km, ~13 kPa), because the fairing puts its centre of pressure ahead and the light stage diverges faster than SAS
+  and one Petrel can catch. A reaction wheel doesn't help (measured). New `airSep` finds where each fresh stage lights and
+  whether it holds. Thresholds come from flying sixteen designs, and every one is classified right. The builder shows "Stage N
+  in the air" with the reason and the fixes that worked in flight; the Rollout warns. Test `vehicle-21` (two real flights).
+- **Found:** the stock **Beeper and Passenger Orbiter** tumble at separation too when flown in attitude hold on the standard
+  profile, and are fine holding prograde: **Q353** (control + space).
+- **v1.157, Q346 (PLAYTEST #83, P1):** the builder's 3 m VAB hang applied on every screen. It now applies only on the
+  Assembly, so the Rollout and the Program's backdrop stand the rocket on the pad. It was not Q327's doing: a preset hung
+  3 m too.
+- **Tests:** the full suite passed after v1.148 and after v1.152 (in four chunks). v1.157 is UI-only, and its flow and platform
+  sections passed. The last merge of `main` (v1.153–156, look and flow) was not run through the whole suite with these.
+- **Renumbered twice** while merging (main took v1.149–151, TESTING 231–233, Q345 and Q349 meanwhile).
+- **Files:** `explorations/launchpad/sim/vessel.js`, `sim/flight.js`, `sim/program.js`, `app/gl.js`, `app/editor.js`,
+  `app/screens.js`, `builder.js`, `fly_ladder.mjs`, `test.mjs`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`,
+  `TESTING.md` (230, 234, 239), `PLAYTEST.md` (#82, #83 done), `QUEUE.md` (Q342 ✓, Q346 ✓, Q344, Q353), `ACTIVE_WORK.md`.
+- **Next for vehicle:** Q347 (four boosters snapped at the first engine), Q348 (bigger fins, which Q342's advice leans on),
+  then Q329, Q341, Q338.
