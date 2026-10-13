@@ -907,7 +907,7 @@
     `farmland ${farm} · coast ${coast}`);
 }
 
-// aerofx-38. No bright band at the horizon from inside the deck (look & sound sky & bodies beat, QUEUE Q420): with the
+// aerofx-39. No bright band at the horizon from inside the deck (look & sound sky & bodies beat, QUEUE Q420): with the
 // camera in the 2–5.5 km slab, a ray that stays in the slab past uVD/2 (where the volume fades out) is fogged in the
 // volume's own mean colour along it (or, through a gap, the far deck at half brightness), not drawn as the shell's lit top.
 // Views 178–179 look along the horizon at 2.4 km.
