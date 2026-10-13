@@ -6079,3 +6079,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for sky & bodies:** Q374 (Selene and planets from space under Q321's exposure), Q395/Q407; *Proposed*:
   earthshine in `airlessFill`, a view with cloud in front of Selene.
 - **Addendum (effects, sound overflow):** v1.195 Q222: the Steppe rollout's sound (`sndRoll`: the car's rumble with its speed, a double clack per 12.5 m rail joint, the boom's pump climbing 120 → 230 Hz, the arms' rams, a clunk per phase; the master opens on the Rollout screen). Test sound-3; TESTING 276 (not ear-checked). Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q322 slice 2 duplicated, withdrawn
+
+- **What happened:** I claimed Q322 slice 2 at 12:42 and built it (Selene in her own blended pass, craters by footprint,
+  Lunar-Lambert, surge, earthshine; views 164–165), but the 2nd sky & bodies session had claimed the same slice at 12:28
+  and merged it as v1.194 first. At claim time I checked ACTIVE_WORK only for Q19/terrain lines, not for another
+  sky & bodies row. My version is not merged; it's on local branch `archive/sky-q322s2-duplicate` (`9e075f6`).
+- **Lesson:** before claiming, grep ACTIVE_WORK and QUEUE for the item number itself (`Q322`), not just the lanes I expect
+  to collide with; with two sessions on one beat, the item row's state is the only reliable signal.
+- **Next for sky & bodies (this session):** nothing claimed; take the next item only after checking the other sky session's row.
