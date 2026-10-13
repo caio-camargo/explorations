@@ -903,6 +903,10 @@ ROWS.gauges = {title: 'HEAT and LOAD by the navball', steps: [M1_HELPERS, `{go('
   `{const p = S.parts.find(q => q.on && q.d.kind === 'cone') || S.parts.find(q => q.on); S.hot = p; p.T = p.d.Tmax * 0.7; updateHUD(); render(); ({heat: document.getElementById('gHeat').className, t: document.getElementById('gHeat').title})}`, {shot: 'amber'},
   `{const p = S.hot; p.T = p.d.Tmax * 0.95; updateHUD(); render(); window.G271 = [document.getElementById('gHeat').className, PT.text('#mcau'), document.getElementById('mcau').classList.contains('new')]; ({g: window.G271})}`, {shot: 'red'}],
   checks: {red: `(window.G271 || [])[0] === 'g bad' && /MASTER CAUTION heat/.test(window.G271[1]) && window.G271[2] === true`}, expect: {red: v => v === true}};
+// scale: the model's scale in the Assembly strip (Q277): the Orbiter (model 1:48), then Crewed Lunar (1:96), hovering the term
+ROWS.scale = {title: 'the model scale in the strip', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Orbiter'); editorChanged(); window.SC1 = ($('mdlScale') || {}).textContent; ({sc: window.SC1})}`, {shot: 'scale_orbiter'},
+  `{PT.preset('Crewed Lunar'); editorChanged(); window.SC2 = ($('mdlScale') || {}).textContent; const t = document.querySelector('#mdlScale [data-term]'); t && t.dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); ({sc: window.SC2, tip: !!(document.getElementById('termTip') && document.getElementById('termTip').offsetHeight)})}`, {shot: 'scale_lunar'}],
+  checks: {scale: `String(window.SC1).startsWith('model 1:48') && String(window.SC2).startsWith('model 1:96')`}, expect: {scale: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 

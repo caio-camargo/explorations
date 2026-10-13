@@ -13,6 +13,7 @@ const TERMS={
   pe:{t:'Periapsis (Pe)',d:'The lowest point of the orbit. Inside the air it won\'t last: the craft slows each pass and comes down. Raise it with a prograde burn at the apoapsis.'},
   kh:{t:'Know-how',d:'What the team has learned about a part by building and flying it, in one bar. Low know-how means engines that fail to light, slower stacking and science that pays less; flights, the test stand and development projects raise it.'},
   trim:{t:'Trim',d:'An engine whose thrust misses the centre of mass turns the craft, so the steering spends part of what it has holding it straight. The share it spends is the trim: under 20% is fine, near 100% leaves nothing for flying.'},
+  scale:{t:'The model\'s scale',d:'The rocket on the table is a scale model, like a kit: at 1:48, 1 cm of the model is 48 cm of the real rocket. The scale is the smallest kit scale that keeps the model under 45 cm, so a bigger design sits at a smaller scale. The table, the lamp and the little figure on the base plate (a real 1.8 m person) are drawn at the same scale.'},   // (flow, Q277)
   stab:{t:'Stability margin',d:'How far the centre of mass sits ahead of the centre of pressure, in body widths (calibers). Positive: it flies nose-first like an arrow (0.5 and up is comfortable); negative: it wants to fly backwards and flips.'},
 };
 const term=(k,txt)=>TERMS[k]?`<span class="term" data-term="${k}">${txt||TERMS[k].t}</span>`:(txt||k);
