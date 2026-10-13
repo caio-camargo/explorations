@@ -6061,3 +6061,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for world:** Q251 / Q365 (mountains from orbit), Q379, Q336, Q324. Three Proposed lines from this one: `padGround`
   per school, a view of the wet sites, and `q19-hdr` taking these shader changes.
 
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, 2nd session): Q322 slice 2, Selene in its own pass (v1.194)
+
+- **Done:** Selene left `SKY_FS`'s main; the moon pass shades it on top (the sky's alpha carries the clouds' cover).
+  Craters and fbm filtered by footprint, so the 12 px Selene seen from Tellus no longer shimmers (PLAYTEST #49, Q250's
+  half), and the craters go on down close up. Found and fixed: every crater rim on the night side was lit (relief term
+  with `ndl` clamped to 0). Lunar-Lambert light, an opposition surge, earthshine ×100 with relief. One-pass crater
+  gradient over 8 cells: sky + moon 0.5–1.5 ms cheaper where Selene fills the view (a first form cost 2–3 ms more).
+- **Views:** 164–168 (Selene from 1,000 km, from low orbit, its night side, through the limb, under clouds).
+- **Tests:** `aerofx-30` (new); all 59 look sections pass after merging main; post-merge browser check of 158, 165, 1.
+  Smoke not run (machine at 1–3 GB free).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (275),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q322s2-before/`, `q322s2-after/`, `q322s2-reg-*`, `q322s2-merged/`.
+- **Process slips:** I overwrote another session's `.game-busy` note while checking it (restored as "held"); my first
+  "after" run went to another session's server on port 8803 (two servers can bind one port on Windows): check
+  `netstat` before picking a port. Renumbered v1.192 → v1.194 and TESTING 273 → 275 after flow and world pushed.
+- **Next for sky & bodies:** Q374 (Selene and planets from space under Q321's exposure), Q395/Q407; *Proposed*:
+  earthshine in `airlessFill`, a view with cloud in front of Selene.
+
