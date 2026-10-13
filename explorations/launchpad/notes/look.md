@@ -1603,7 +1603,7 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
   disc is 250× and the glare smaller.
 - **A/B:** `SKY_B5 = false` compiles the old galaxy, stars and sun back in (the shader recompiles; no bake).
 - **Views:** 159 the program's nebula, 160 its spiral, each over the limb from the night side; `refset.mjs`'s set now
-  ends at 160.
+  ends at 160. (**Renumbered 172, 173** in Q392: these shadowed the effects beat's 159–160 in `views.js`, which came later.)
 - **Seen** (RTX, High; `output/launchpad/beauty/q321-before/`, `q321-after/`, Low `q321-after-low/`): views 97–100 show
   the band with lanes and a bulge instead of a smooth smear, a field of coloured stars where there were almost none, the
   sun small; 156 the same over the limb; 159 the nebula a faint copper veil beside the band, 160 a small spiral alone.

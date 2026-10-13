@@ -575,7 +575,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
-  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\*step\(\.5,abs\(s0-s1\)\+abs\(s1-s2\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
   check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
 }
 
@@ -743,7 +743,7 @@
 // volume's finest noise once the march's steps do.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\);vec3 sR=vec3\(0\.\)/.test(page);
+  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\*step\(\.5,abs\(s0-s1\)\+abs\(s1-s2\)\)\);vec3 sR=vec3\(0\.\)/.test(page);
   const deck = /float fm=fw\*uCR;dn=\.5\+\(vn\(cu\*2600\.\+uCT\*3\.\)-\.5\)\*\.6\*\(1\.-smoothstep\(800\.,3200\.,fm\)\)\+\(vn\(cu\*7800\.\)-\.5\)\*\.4\*\(1\.-smoothstep\(250\.,1000\.,fm\)\)/.test(page);
   const vol = /float cdLod=0\.;/.test(page) && /mix\(vn\(w\/230\.\),\.5,cdLod\)/.test(page) && /cdLod=smoothstep\(230\.,700\.,ds\);float dn=cloudDens\(q\)/.test(page);
   check('clouds at liftoff: the sky march starts mid-step low down, the deck\'s detail fades by footprint and the volume\'s by step length', sky && deck && vol,
@@ -810,4 +810,15 @@
   const bake = /const SHD_FS=/.test(pg) && /od\+=cloudDens\(P\+uSun\*\(float\(i\)\+\.5\)\*dt\)/.test(pg) && /dot\(sp,SHD\.sp\)>Math\.cos\(\.0017\)/.test(pg)
     && /if\(VK>0\)\{covBake\(camW\);shdBake\(\)\}/.test(pg) && /gl\.uniform1i\(u\.uShd,14\)/.test(pg);
   check('volume cloud shadow: baked once on the coverage grid (SHD_FS), a lookup per ground pixel', look && bake, `lookup ${look} · bake ${bake}`);
+}
+
+// aerofx-33. The haze without dither (look & sound sky & bodies beat, QUEUE Q392, PLAYTEST #89): measured, most of the
+// noise in a smooth hazy sky was the composite's grain (low and mid air) and scatter's per-pixel jitter (from orbit). The
+// jitter now applies only on rays that cross the planet's shadow (where it hides Q352's bands), and the grain is .012.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const sc = pg.slice(pg.indexOf('vec3 scatter(vec3 d'), pg.indexOf('return SUNI*', pg.indexOf('vec3 scatter(vec3 d')));
+  const jit = /float s0=b0<0\.&&dot\(q0,q0\)-b0\*b0<uPR\*uPR\?1\.:0\./.test(sc) && /\*step\(\.5,abs\(s0-s1\)\+abs\(s1-s2\)\)\)/.test(sc);
+  const grain = /const GRADE=\{[^}]*gr:\.012\}/.test(pg);
+  check('haze without dither: scatter jitters only rays crossing the planet\'s shadow; grain .012', jit && grain, `jitter ${jit} · grain ${grain}`);
 }

@@ -13,7 +13,7 @@ import fs from 'node:fs';
 const [out, ...args] = process.argv.slice(2);
 if (!out) { console.log('usage: node refset.mjs <outDir> [n n-m ...]'); process.exit(1) }
 const range = s => { const [a, b] = s.split('-').map(Number); return b ? Array.from({length: b - a + 1}, (_, i) => a + i) : [a] };
-const SET = '1-10 30-36 40-47 50-56 60-77 80-83 90-93 97-104 112-115 123-126 152-160';
+const SET = '1-10 30-36 40-47 50-56 60-77 80-83 90-93 97-104 112-115 123-126 152-160 172-173';
 const views = (args.length ? args : SET.split(' ')).flatMap(range);
 const URL0 = process.env.REF_URL || 'http://localhost:8790/launchpad/index.html', port = 9300 + Math.floor(Math.random() * 500);
 const gpu = process.env.SHOT_FLAGS ? process.env.SHOT_FLAGS.split(' ') : ['--use-angle=d3d11', '--enable-gpu', ...(process.env.SHOT_IGPU ? ['--force_low_power_gpu'] : ['--force_high_performance_gpu'])];
