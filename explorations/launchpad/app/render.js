@@ -86,7 +86,7 @@ function render(){
   const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
   // ---- meshes
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
-  {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
+  {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up);gl.uniform4fv(m.uDsk,E.dsk);gl.uniform3fv(m.uLimb,E.limb)}
   const DF=desk&&deskFrame(camW);if(DF)deskLight(m,DF);
   const lit=DF?()=>1:p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
   marksTick();padSync();padLights(m,camW);if(DF)gl.uniform1f(m.uFlI,0);plumeLight(camW);plasmaLight(camW);boomLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform3fv(m.uPlC,PLT.c);

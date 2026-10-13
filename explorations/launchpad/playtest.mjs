@@ -733,9 +733,9 @@ ROWS[165] = {title: "the Beeper's lifetime line", steps: [`go('assembly'); PT.pr
   `go('assembly'); PT.preset('Beeper'); (document.querySelector('#editor .right').innerText.match(/Lifetime.*/) || ['no Lifetime line'])[0]`, {shot: 'beeper_contract'}]};
 ROWS[164] = {title: 'mission control (was: the network screen)', steps: [DOCK_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); go('program'); if (screenNow() === 'debrief') go('program'); const n = document.getElementById('bMC'); ({shown: n && !n.classList.contains('hidden')})`, {key: 'c'},
   `({screen: screenNow(), text: (document.querySelector('#mc') || document.body).innerText.slice(0, 500)})`, {shot: 'network'}]};
-// 232: the network's nodes on mission control's wall (Q170, N2): row 164's setup and C, W twice to the nodes page; then a Selene
+// 233: the network's nodes on mission control's wall (Q170, N2): row 164's setup and C, W twice to the nodes page; then a Selene
 // base short of supplies added to netModel's answer (the page only draws it) for the bottleneck line and its frame.
-ROWS[232] = {title: "the network's nodes on mission control's wall", steps: [...ROWS[164].steps.slice(0, 3), {key: 'w'}, {key: 'w'},
+ROWS[233] = {title: "the network's nodes on mission control's wall", steps: [...ROWS[164].steps.slice(0, 3), {key: 'w'}, {key: 'w'},
   `({page: mcPage, text: document.getElementById('mcNet').innerText.slice(0, 400)})`, {shot: 'nodes'},
   `{const nm = netModel; window.netModel = () => {const M = nm(); M.nodes.push({id: 'reg:999', kind: 'base', body: 'Selene', slot: 'surface', name: 'Selene Base 1', stock: {supplies: 400}, need: {supplies: 40}, days: 10, paused: false}); M.bottleneck = {text: 'Selene Base 1 has 10 days of supplies left', node: 'reg:999', good: 'supplies'}; return M}; renderMission(); document.getElementById('mcNet').innerText.slice(0, 200)}`, {shot: 'bottleneck'}]};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-start="agency"]'},

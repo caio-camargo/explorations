@@ -934,7 +934,7 @@ between flights paid nothing on arrival. Now it does:
   a flyby completing in the background (passive flybys); the Flight row's "where" still says "Selene orbit" for a vessel
   only passing through (`netModel`'s wording, economy).
 
-## v1.150 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
+## v1.151 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
 N2 of the network plan (§ "Network screen plan"), built where Q241 R4 put the network: mission control's wall.
 - **A third page on the wall**, *Network · nodes* (W cycles ground track → pads → nodes; `MC_PAGES` in `app/mission.js`,
   `#mcNet` in `index.html`). It draws `netModel().nodes` with `netNodesHTML(N)` (`app/network.js`): a schematic, not the
@@ -949,7 +949,7 @@ N2 of the network plan (§ "Network screen plan"), built where Q241 R4 put the n
   `typeof netModel` switch (one line in `tests/economy.mjs`).
 - **Checks:** test `flow-17`: the page is wired; a Probe at 300 km sits in Tellus's low-orbit row and every site and
   station in the surface row; with a crewed Selene base at 10 days added, the columns run Tellus then Selene, the
-  bottleneck line names it, its box is framed, its supplies read "400 kg · eats 40 kg/d". TESTING row 232; robot row
-  `playtest.mjs 232` (seen on the RTX at 1280×800: both pages fit, the base framed in red).
+  bottleneck line names it, its box is framed, its supplies read "400 kg · eats 40 kg/d". TESTING row 233; robot row
+  `playtest.mjs 233` (seen on the RTX at 1280×800: both pages fit, the base framed in red).
 - **Not yet:** routes (N3, with routines), clicking a node for its panel (N3), the plan's coverage bar on relays
   (Q218 draws coverage on the map), rivals and the era's look (N4).

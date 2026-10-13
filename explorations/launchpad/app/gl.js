@@ -331,7 +331,7 @@ void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
  vec4 w=uM*vec4(P,1.);vP=w.xyz;vO=aP;vNo=N;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*N;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
@@ -367,8 +367,9 @@ float sqw(float x,float fw){fw=min(fw,.25);return mix(.5,smoothstep(.25-fw,.25+f
 float band(float x,float a,float b,float fw){fw=fw*.75+1e-5;return smoothstep(a-fw,a+fw,x)*(1.-smoothstep(b-fw,b+fw,x));}
 // dots of radius rad every per along s, on the row at height v0 (rivets, bolts)
 float dots(float s,float v,float v0,float per,float rad,float fw){vec2 q=vec2((fract(s/per+.5)-.5)*per,v-v0);return(1.-smoothstep(rad,rad+fw,length(q)))*smoothstep(rad*2.5,rad*.6,fw);}
-// Same light as the planet: sun irradiance already reddened by the air (uSunCol, CPU-integrated), sky above and ground
-// bounce below as hemispheric ambient, Blinn–Phong specular normalised by roughness, metals and glass reflecting a sky/ground
+// Same light as the planet: sun irradiance already reddened by the air (uSunCol, CPU-integrated), sky above and the
+// body below as a disc of light (BEAUTY B1.2, Q315: uDsk = sin and cos of its angular radius, the reflection's edge
+// width; uGnd its colour, lit fraction included; at the pad the disc is a hemisphere and this is the old ambient), Blinn–Phong specular normalised by roughness, metals and glass reflecting a sky/ground
 // gradient, in the same linear light as the sky (Q314: the composite tone-maps both), so a white tank and the ground
 // under it agree.
 void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
@@ -554,9 +555,12 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
  float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
- vec3 sun=uSunCol*uLit,amb=mix(uGnd,uSky,.5+.5*dot(n,uUp));
- vec3 Rr=reflect(-V,n),env=mix(uGnd,uSky*1.3,smoothstep(-.15,.25,dot(Rr,uUp)));
+ float ds=uDsk.x,dn=-dot(n,uUp),wp=ds*ds*clamp((dn+ds)/(1.+ds),0.,1.);   // the disc's share of the light on n: sin²α·cos θ, wrapped past its rim
+ vec3 sun=uSunCol*uLit,amb=mix(uSky,uGnd,wp);
+ vec3 Rr=reflect(-V,n);float dr=-dot(Rr,uUp)-uDsk.y,lb=dr/(uDsk.z+rough*rough*1.6);   // the reflected ray against the disc's rim (0 at the limb), blurred by roughness: rough metal sees the planet past its rim
+ vec3 env=mix(uSky*1.3,uGnd,smoothstep(-1.25,.75,lb))+uLimb*exp(-lb*lb*4.);   // the planet in the hull, its blue limb a thin ring
  vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+(m==4?1.:.35))+emis;
+ c+=sun*ndl*F0*metal*rough*.6;   // (Q315) rough metal spreads the sun past its highlight: in orbit, with no planet in its reflection, a bell still reads
  // floodlights: banks on 16 m poles aimed at the pad (uFlC); a soft cone and inverse-square falloff, so the pad and the
  // near faces of buildings are lit and the far sides and the outskirts fall to dark (PLAYTEST #4)
  if(uFlI>0.){float fl=0.;for(int i=0;i<4;i++){vec3 L=uFl[i]-vP;float d2=dot(L,L);vec3 Ld=L*inversesqrt(d2);
@@ -1004,14 +1008,23 @@ const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0)+16384*(PK.up||0),PK.i)}   // the school (×32), the maker's hue (×256, 10° steps) and the upper-stage flag (×16384, Q228) ride in the kind (Q102)
-// surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
-function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o[0]&&o[2]===PK.o[2];
-  const V=(r,y,a,nr,ny,c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
-  for(let i=0;i<prof.length-1;i++){const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1];let nr=y1-y0,ny=-(r1-r0);const l=Math.hypot(nr,ny);if(l<1e-9)continue;nr/=l;ny/=l;
+// surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band).
+// Normals are smooth along the profile where two segments meet at under SMOOTH_DEG (a bell's or a nose's curve, BEAUTY
+// B1.1, Q315), hard at real edges (a shoulder, a flange, a cap); a duplicated point for a colour band doesn't break them.
+let SMOOTH_FX=true;const SMOOTH_DEG=24;
+function latheN(prof){const N=[];for(let i=0;i<prof.length-1;i++){const[r0,y0]=prof[i],[r1,y1]=prof[i+1];const nr=y1-y0,ny=-(r1-r0),l=Math.hypot(nr,ny);N.push(l<1e-9?null:[nr/l,ny/l])}
+  const c=Math.cos(SMOOTH_DEG*Math.PI/180),E=[];   // E[i] = [normal at the segment's start, at its end]
+  for(let i=0;i<N.length;i++){if(!N[i]){E.push(null);continue}let a=N[i],b=N[i];
+    if(SMOOTH_FX){let j=i-1;while(j>=0&&!N[j])j--;if(j>=0&&N[j][0]*N[i][0]+N[j][1]*N[i][1]>c){const m=[N[j][0]+N[i][0],N[j][1]+N[i][1]],l=Math.hypot(m[0],m[1]);a=[m[0]/l,m[1]/l]}
+      j=i+1;while(j<N.length&&!N[j])j++;if(j<N.length&&N[j][0]*N[i][0]+N[j][1]*N[i][1]>c){const m=[N[j][0]+N[i][0],N[j][1]+N[i][1]],l=Math.hypot(m[0],m[1]);b=[m[0]/l,m[1]/l]}}
+    E.push([a,b])}return E}
+function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o[0]&&o[2]===PK.o[2],E=latheN(prof);
+  const V=(r,y,a,[nr,ny],c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
+  for(let i=0;i<prof.length-1;i++){if(!E[i])continue;const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1],[n0,n1]=E[i];
     for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
-      V(r0,y0,a0,nr,ny,c0);V(r1,y1,a0,nr,ny,c1);V(r1,y1,a1,nr,ny,c1);V(r0,y0,a0,nr,ny,c0);V(r1,y1,a1,nr,ny,c1);V(r0,y0,a1,nr,ny,c0)}}
+      V(r0,y0,a0,n0,c0);V(r1,y1,a0,n1,c1);V(r1,y1,a1,n1,c1);V(r0,y0,a0,n0,c0);V(r1,y1,a1,n1,c1);V(r0,y0,a1,n0,c0)}}
   const cap=(r,y,c,ny)=>{if(r<=0)return;for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
-    V(0,y,(a0+a1)/2,0,ny,c);V(r,y,a0,0,ny,c);V(r,y,a1,0,ny,c)}};
+    V(0,y,(a0+a1)/2,[0,ny],c);V(r,y,a0,[0,ny],c);V(r,y,a1,[0,ny],c)}};
   if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
 const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.36,.33,.31,1],Y:[.75,.6,.15],R:[.7,.12,.1],GL:[.05,.06,.08,4],CON:[.6,.59,.56,2],SH:[.35,.22,.12,2],
   BK:[.07,.07,.08],ST:[.5,.5,.52,1],AU:[.8,.6,.22,5]};
@@ -1051,8 +1064,17 @@ function partSchool(p){if(SCHOOL_FORCE!=null)return SCHOOL_FORCE;return schoolOf
 function partHue(p){const i=partMaker(p);return typeof POWERS!=='undefined'&&POWERS[i]?Math.round((POWERS[i].hue||0)/10)%36:2}
 // an engine: the bell (exit → throat) gets kind 'bell' with R = its exit radius and h = the throat height; the rest is the
 // mount. Big engines carry a turbopump beside the throat, its exhaust duct running down into the bell wall.
+// The bell's contour (BEAUTY B1.1, Q315): Rao's thrust-optimised parabola, a quadratic Bézier from the throat to the exit
+// lip, tangent at the lip at θe and through a control point at height f of the bell (from the lip), so it opens fast
+// below the throat and runs nearly straight at the exit. Per family [f, θe°]: a vacuum engine flares hardest; boosters
+// stay slimmer. Drawing only: the sim's outline (PARTS prof) and the exit radius are unchanged. BELL_FX = false: the cone.
+let BELL_FX=true;const BELL_RAO={wren:[.55,12],sparrow:[.6,10],petrel:[.72,8],kestrel:[.6,9],condor:[.62,7]};
+function raoBell(re,rt,yt,f,te,c0,c1,n=7){const yc=f*yt,rc=re-Math.tan(te*Math.PI/180)*yc,P=[];
+  for(let i=0;i<=n;i++){const t=i/n,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t;   // the colour (and material) blends lip → throat, as the two-point bell's did
+    P.push([a*re+b*rc+c*rt,b*yc+c*yt,[0,1,2,3].map(k=>(c0[k]||0)*(1-t)+(c1[k]||0)*t)])}return P}
 function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][0]<prof[ti][0])ti=i;const K=PK,[rt,yt]=prof[ti];
-  PK={...K,k:KIND.bell,R:prof[0][0],h:yt};lathe(out,prof.slice(0,ti+1),o,32,[false,false]);
+  PK={...K,k:KIND.bell,R:prof[0][0],h:yt};const RB=BELL_RAO[p.d.base||p.d.key];
+  lathe(out,BELL_FX&&RB&&ti===1?raoBell(prof[0][0],rt,yt,RB[0],RB[1],prof[0][2],prof[1][2]):prof.slice(0,ti+1),o,32,[false,false]);
   PK={...K,k:KIND.mount};lathe(out,prof.slice(ti),o,28,[false,true]);
   if(p.d.thrust>=200){const px=o[0]+rt+.15,pz=o[2],G=C.ST;
     lathe(out,[[0,yt-.08,G],[.07,yt-.06,G],[.09,yt,G],[.09,yt+.22,G],[.06,yt+.26,G],[0,yt+.27,G]],[px,o[1],pz],12,[false,false]);
@@ -1075,10 +1097,15 @@ function latheArc(out,prof,o,a0,a1,cOut,cIn,seg=20){const own=o[0]===PK.o[0]&&o[
     for(let j=0;j<seg;j++){const b0=a0+(a1-a0)*j/seg,b1=a0+(a1-a0)*(j+1)/seg,q0=Math.max(r0-.02,0),q1=Math.max(r1-.02,0);
       V(r0,y0,b0,nr,ny,cOut);V(r1,y1,b0,nr,ny,cOut);V(r1,y1,b1,nr,ny,cOut);V(r0,y0,b0,nr,ny,cOut);V(r1,y1,b1,nr,ny,cOut);V(r0,y0,b1,nr,ny,cOut);
       V(q0,y0,b0,-nr,-ny,cIn);V(q1,y1,b1,-nr,-ny,cIn);V(q1,y1,b0,-nr,-ny,cIn);V(q0,y0,b0,-nr,-ny,cIn);V(q0,y0,b1,-nr,-ny,cIn);V(q1,y1,b1,-nr,-ny,cIn)}}}
+// a tangent ogive nose (BEAUTY B1.1, Q315): radius R at its base, tangent to the hull there, a point at height L; painted
+// c0 below yb, c1 above (the scorched tip), 8 points. OGIVE_FX = false: the old faceted cone.
+let OGIVE_FX=true;
+function ogive(R,L,yb,c0,c1){const rho=(R*R+L*L)/(2*R),r=y=>Math.max(0,Math.sqrt(Math.max(rho*rho-y*y,0))+R-rho),P=[];
+  for(const y of[0,.3,.6,.85,1.05,yb])P.push([r(y),y,c0]);P.push([r(yb),yb,c1]);for(const y of[1.42,1.53,L])P.push([r(y),y,c1]);return P}
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
-    case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
+    case'cone':lathe(out,OGIVE_FX?ogive(.625,1.6,1.25,C.W,C.D):[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
     case'fins':case'cfins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
@@ -2110,12 +2137,20 @@ let FILL_FX=true;
 function airlessFill(p){let nb=null;if(!FILL_FX)return null;for(const b of BODIES){if(b===TELLUS||b.atm)continue;const q=sub(p,bodyPos(b,simT)),d=len(q);
     if(d<b.R*4&&(!nb||d-b.R<nb.h))nb={b,q,h:d-b.R}}
   if(!nb)return null;const up=norm(nb.q),g=5*(nb.b.albedo??.12)*Math.max(0,dot(up,SUN))*Math.exp(-Math.max(nb.h,0)/(nb.b.R*.6));
-  return{sun:[5,5,5],up,sky:[.006,.007,.01],gnd:[.95,.92,.88].map(x=>x*g)}}
+  const sa=Math.min(nb.b.R/(nb.b.R+Math.max(nb.h,0)),1);return{sun:[5,5,5],up,sky:[.006,.007,.01],gnd:[.95,.92,.88].map(x=>x*g),dsk:diskOf(sa),limb:[0,0,0]}}
+// the body below as a disc (BEAUTY B1.2, Q315): sin and cos of its angular radius and the width of its rim in the hull's
+// reflection (soft at the pad, where the disc is the whole lower hemisphere, sharp from orbit)
+function diskOf(sa){const ca=Math.sqrt(Math.max(1-sa*sa,0));return[sa,ca,.03+.17*sa**8,0]}
 function lightEnv(p){const af=airlessFill(p);if(af)return af;const up=norm(p),h=len(p)-TELLUS.R,mu=dot(up,SUN),BR=[5.8e-6,13.5e-6,33.1e-6],BM=5e-6*1.1;
   let odR=0,odM=0;if(h<TELLUS.atm){const b=dot(p,SUN),c=dot(p,p)-(TELLUS.R+TELLUS.atm)**2,tl=-b+Math.sqrt(Math.max(b*b-c,0)),n=10,sl=tl/n;
     for(let i=0;i<n;i++){const q=madd(p,SUN,(i+.5)*sl),hq=Math.max(0,len(q)-TELLUS.R);odR+=Math.exp(-hq/TELLUS.H)*sl;odM+=Math.exp(-hq/(TELLUS.H*1200/5600))*sl}}
-  const T=BR.map(b=>Math.exp(-(b*odR+BM*odM))),day=clamp((mu+.08)/.35,0,1),air=Math.exp(-Math.max(h,0)/22000),shine=clamp(mu+.25,0,1)*Math.exp(-Math.max(h,0)/2.5e6);
-  return{sun:T.map(t=>5*t),up,sky:[.30,.45,.80].map(x=>x*.75*day*air),gnd:[.30,.27,.21].map(x=>x*(.6*day*air+.35*shine))}}
+  const T=BR.map(b=>Math.exp(-(b*odR+BM*odM))),day=clamp((mu+.08)/.35,0,1),air=Math.exp(-Math.max(h,0)/22000),shine=clamp(mu+.25,0,1);
+  // the ground near the pad (brown, through the air), Tellus from above (Q315: blue-white, sea and cloud; its lit share
+  // goes from the local sun at the pad to half the disc lit when it's small), the blue limb when the air is a thin shell
+  const sa=Math.min(TELLUS.R/len(p),1),lit=clamp((.5+.5*mu)*(1-sa**8)+(mu+.25)*sa**8,0,1),hi=1-air,lm=clamp(mu+.3,0,1)*hi*(PLANET_FX?1:0);
+  const gnd=PLANET_FX?[.30,.27,.21].map((x,i)=>x*(.6*day+.35*shine)*air+[.2,.26,.36][i]*lit*hi):[.30,.27,.21].map(x=>x*(.6*day*air+.35*shine*Math.exp(-Math.max(h,0)/2.5e6)));
+  return{sun:T.map(t=>5*t),up,sky:[.30,.45,.80].map(x=>x*.75*day*air),gnd,dsk:PLANET_FX?diskOf(sa):[1,0,.2,0],limb:[.05,.11,.3].map(x=>x*lm)}}
+let PLANET_FX=true;   // false: the old brown hemisphere below the craft at every height (A/B)
 // ---- matrices (column-major)
 function mat4(R,U,Fw,t){return[R[0],R[1],R[2],0,U[0],U[1],U[2],0,Fw[0],Fw[1],Fw[2],0,t[0],t[1],t[2],1]}
 function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
