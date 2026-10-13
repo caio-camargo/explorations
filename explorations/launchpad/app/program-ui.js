@@ -309,6 +309,10 @@ function updateHUD(){
     [term('dv','Δv'),`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · ${term('twr','TWR')} ${twr.toFixed(2)}`]];
   $('info').innerHTML=core.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   renderCards();gaugeSlot();
+  // the unfolding parts' button (vehicle, Caio 2026-10-13: "a button with P in parentheses"): what P does, shown when the craft has any
+  {const u=S.alive&&S.parts.filter(p=>p.on&&unfolds(p.d)),bw=$('bWings');bw.classList.toggle('hidden',!(u&&u.length));
+    if(u&&u.length){const wg=u.some(p=>p.d.wing),an=u.some(p=>!p.d.wing),nm=wg&&an?'Wings and antennas':wg?'Wings':'Antennas',out=wingsOut(S),t=`${out?'Fold':'Unfold'} ${nm.toLowerCase()} (P)`;
+      if(bw.textContent!==t)bw.textContent=t;bw.classList.toggle('on',out)}}
   const w=WARPS[warpIdx];$('warpN').textContent=`${w}×${w>1&&!railsOK(S)?' (physics)':''}`;$('warp').classList.toggle('on',w>1);
   renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)
@@ -342,6 +346,7 @@ function updateAutoBtn(){updateProcBtn();const t=loadTape();$('bAuto').classList
 $('bProc').onclick=e=>{const pr=procsOf(stackDef)[+(e.currentTarget.dataset.i||0)];if(!pr)return;if(pr.site&&siteById(pr.site))PROG.site=pr.site;resetShip();procStart(S,landPick?procWithSite(pr,landPick.body,landPick.pf):pr);if(recTape)recTape.byProc=true;updateAutoBtn();
   HOOK.msg(`Procedure: ${pr.by}, ${pr.kind==='mission'?pr.sig.replace(':',' '):'to orbit'}, the best flown so far · any control key takes over`)};
 function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot off — you have control')}
+$('bWings').onclick=e=>{e.currentTarget.blur();if(S.alive&&S.parts.some(p=>p.on&&unfolds(p.d)))tapeWings(recTape,S,wingsOut(S)?'in':'out')};
 $('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();S.rec.orbT0=t.orbT0??0;player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
 $('bSaveTape').onclick=()=>{if(recTape&&recTape.byProc&&!player){HOOK.msg('This flight was flown by a procedure: it is already automated (the ▶ Procedure button)');return}if(recTape&&recTape.fromOrbit&&!player){HOOK.msg('Autopilot tapes start from the pad: this flight began in orbit');return}try{const T=player?tapeCut(player):recTape;localStorage.setItem(tapeKey(),JSON.stringify({v:T.v,stack:T.stack,ops:T.ops,site:T.site}));
   HOOK.msg(`Saved ${fmtT(tapeDuration(T))} of flight as this design's autopilot`)}catch(e){HOOK.msg('Could not save (browser storage unavailable)')}};
