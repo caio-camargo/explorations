@@ -87,6 +87,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
 - v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
+- Q326 — where the sky's time goes at the pad (2026-10-13, sky & bodies; measurement: the ground 4.7 of 7.4 ms, its march ~1.9, the volume cloud shadow 1.4, `scatter` 0.4)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -5843,3 +5843,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/map-layers.js`, `app/render.js`, `app/input.js`, `app/screens.js`, `index.html`, `tests/flow.mjs`,
   `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
 - **Next for flow:** the rest of the ready list (Q287 hover glossary, Q293 losses explained, Q286 declutter, …).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q326 where the sky's time goes at the pad
+
+- **Done (measurement only):** each part of `SKY_FS`'s main stubbed in turn in the running page, the sky pass timed on
+  the pad views. Of 7.4 ms: the ground 4.7 (its march ~1.9, the volume cloud shadow 1.4, the albedo 1.0, the normal
+  0.4), `scatter` 0.4, the deck 0.3. So Q322's table won't buy back the pad's time; Q19's march and a baked cloud
+  shadow will. Two Proposed lines. The run waited ~3 min for the effects session's lock and for memory.
+- **Files:** `notes/look.md` (§ Q326), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q326/`.
+- **Next for sky & bodies:** Q322 (for the look: the limb, Selene out of `SKY_FS`), Q323.
+
