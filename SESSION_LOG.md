@@ -6089,3 +6089,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Lesson:** before claiming, grep ACTIVE_WORK and QUEUE for the item number itself (`Q322`), not just the lanes I expect
   to collide with; with two sessions on one beat, the item row's state is the only reliable signal.
 - **Next for sky & bodies (this session):** nothing claimed; take the next item only after checking the other sky session's row.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q379 the volume cloud shadow baked (v1.196)
+
+- **Done:** `cloudShadowV`'s per-pixel march toward the sun is baked on the coverage grid and looked up; pad sky pass
+  7.44 → 6.52 ms, 1.2–1.7 ms off at 3–8 km and under the deck; stills unchanged. Test `aerofx-31`; the old Q65 check
+  updated; TESTING 277.
+- **Process:** claimed after grepping ACTIVE_WORK/QUEUE for the item number (the duplicate lesson); GPU lock with
+  noclobber, the threading server, small refset batches.
+- **Files:** `app/gl.js`, `app/render.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (277), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q379-before/`, `q379-after/`.
+

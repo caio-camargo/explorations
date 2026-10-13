@@ -1910,3 +1910,20 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
 - **Not touched:** whether the rocket reads right lying ~10 m up on the boom's cradle arms (Q222's other half, a look
   at the Q159 boom's geometry): it read fine in the earlier rollout stills; reopen if it looks off in play.
 - **Check:** test `sound-3`.
+
+## v1.196 — the volume cloud shadow baked, a lookup per ground pixel (2026-10-13, sky & bodies beat, QUEUE Q379)
+
+Q326 found `cloudShadowV` (Q65's shadow of the cloud volume on the ground) the biggest single part of the pad's sky pass
+after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 7.4.
+
+- **Now:** `SHD_FS` bakes, on the coverage bake's own grid (512², ±50 km gnomonic round the point under the camera,
+  planet-fixed), the light reaching the slab's base (2 km) through the slab toward the sun: the same 5 steps, the same
+  extinction and floor. A ground point walks its sun ray up to 2 km and reads the bake there, which is the same integral
+  for any ground below 2 km (above it, inside the slab, the shadow is slightly too deep). Re-baked with the coverage or
+  when the sun has turned 0.1° over the ground (~8 s); texture unit 14.
+- **Sky pass, ms** (RTX 3050, High, full resolution, A/B in one session): pad 7.44 → 6.52, complex 7.37 → 6.83, clouds
+  from the pad (80) 6.85 → 5.15, 3 km (81) 3.60 → 2.37, 8 km (82) 4.23 → 2.93; 25 km (83, above the volume) unchanged.
+  The bake costs ~0.3 ms the frames it runs.
+- **Seen:** views 1, 15, 80–83 before and after alike (no pixel differs by more than grain; `output/launchpad/beauty/
+  q379-before/`, `q379-after/`).
+- **Check:** test `aerofx-31`; the Q65 check in look.mjs now looks for the march in the bake. TESTING 277.
