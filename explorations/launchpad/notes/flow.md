@@ -1014,3 +1014,21 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
 - **Not yet:** focus on a rival's satellite (economy's Q187 makes them targets); remembering the focus when the map is
   left and reopened.
 
+## v1.175 — hover terms: the glossary (2026-10-13, flow session, QUEUE Q287; UI.md rule 9, D16)
+- **One glossary, one tooltip** (`app/terms.js`): `TERMS` holds each term's name and a two- or three-sentence
+  explanation; `term(k, text)` marks a word (dotted underline, help cursor); one `#termTip` shared by every screen shows
+  it under the word (above when there's no room). One level deep: an explanation has no terms inside. It follows the
+  pointer, so the HUD's per-frame redraw doesn't drop it.
+- **The terms:** Δv, TWR, max-q, apoapsis, periapsis, know-how, stability margin. Know-how's text follows economy's
+  v1.30 design (ignition failures, stacking time, science yield; flights, the stand and development raise it).
+- **Marked:** the HUD's *Ap · Pe* and *Δv* rows and its TWR, the node panel's Δv, the Instruments card's max-q; the
+  builder's stage rows (Δv, TWR), *Total Δv*, *Stability*, *Max-q* and the control block's max-q; the rollout's TWR
+  checks; the Program's and the Debrief's *Know-how* headings.
+- **A sub-line went:** the builder's "Stability (CoM ahead of CoP, calibers)" is now *Stability* (a term) "in calibers".
+- **For everyone:** new jargon on any screen: add it to `TERMS` and write `term('k')`. Q340's part cards and
+  self-explaining warnings are this same tooltip grown (flow, with vehicle).
+- **Checks:** test `flow-21` (every term used on screen, none nested, the sites marked, the sub-line gone); robot row
+  `terms` (the tooltip over the builder's Δv and the live HUD's Ap; gone when the pointer leaves); `m1` passes.
+  TESTING row 257.
+- **Not yet:** more terms as screens need them (SOI, prograde, inclination, specific impulse); touch (a tap shows it).
+
