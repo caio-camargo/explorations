@@ -6,8 +6,10 @@ const $=id=>document.getElementById(id);
 // the construction screen lives in builder.js (BLD)
 function renderEditor(){BLD.init();editorChanged();renderSites()}
 function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',3:'Epoch 3 · satellites that work',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
-  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;
-    for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
+  const epNow=Math.min(...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep),9);   // (Q286) the first epoch with work left
+  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;const Ms=MISSIONS.filter(m=>m.ep===ep);
+    if(ep>epNow+1&&Ms.every(M=>!PROG.done[M.id]&&!missionOpen(M))){html+=`<div class="ms lock">🔒 ${Ms.length} mission${Ms.length>1?'s':''}, once ${EP[ep-1].replace(/^Epoch \d+ · /,'')} is under way</div>`;continue}   // (Q286, UI.md § 3) beyond the next epoch: a count
+    for(const M of Ms){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
       else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}

@@ -518,3 +518,21 @@
   check('flow-24: the dark cockpit: the phase (climb, burn, landing, quiet) holds the news and the off-phase cards; a master caution names what is red; unflyable hold modes hidden; Ap · Pe not landed, no underground number',
     phases && caut && wired && modes && apPe, `phases ${JSON.stringify(ph)} · cautions ${[...hot, ...load, ...range].join(' | ')} · wired ${wired} · modes ${modes} · Ap/Pe ${apPe}`);
 }
+
+// flow-25. The declutter, the Program and the map (flow session, QUEUE Q286 slice 2; UI.md § 3 Program and Map rows):
+// an offer is one line (name, pay, days left, Take and Pass, ⚠ for a sanction risk) and opens to its full text; an epoch
+// beyond the next, all locked, is one line with a count; no empty photo frame on the wall; the name is a letterhead; a
+// planet's map label gives the trip in days (half a transfer orbit), not its distance in TU.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const ct = page.slice(page.indexOf('function contractsHTML'), page.indexOf('function contractsHTML') + 4000);
+  const offers = ct.includes('<details class="ms of"><summary><b>${cTitle(c)}</b>') && ct.includes('Why: ${c.why}') && ct.includes('data-acc="${c.id}"') && ct.includes('data-dec="${c.id}"');
+  const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('ep>epNow+1&&Ms.every(') && rp.includes('mission${Ms.length>1?');
+  const wall = page.slice(page.indexOf('function deskWall'), page.indexOf('function deskWall') + 400), frame = wall.includes('if(ph)h+=deskPhotoCard(ph)') && !wall.includes('no flights yet');
+  const lh = H.includes("#deskLH .org .n{font:22px/1");
+  const line = page.slice(page.indexOf('const xferDays='), page.indexOf('\n', page.indexOf('const xferDays=')));
+  const xd = new Function('SYSTEM_BODIES', 'YEAR_D', line + 'return xferDays;')(api.SYSTEM_BODIES || [{ name: 'Enyo', a: 1.52 }, { name: 'Hyperion', a: 5.2 }], 365.25);
+  const days = xd('Enyo') === '~260 days there' && xd('Hyperion') === '~1000 days there' && !page.includes('.toFixed(2)} TU`');
+  check('flow-25: the Program and the map decluttered: offers one line each (the rest on a click), far epochs a count, no empty photo frame, a letterhead; planets labelled with the trip in days',
+    offers && epochs && frame && lh && days, `offers ${offers} · epochs ${epochs} · frame ${frame} · letterhead ${lh} · days ${xd('Enyo')}, ${xd('Hyperion')}, no TU ${!page.includes('.toFixed(2)} TU`')}`);
+}

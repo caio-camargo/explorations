@@ -370,13 +370,15 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
   // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
   {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
+  // (Q286, UI.md § 3: no TU) a planet's label says how long the trip takes, half a transfer orbit from Tellus's, in days
+  const xferDays=nm=>{const B=SYSTEM_BODIES.find(b=>b.name===nm);if(!B)return'';const t=0.5*YEAR_D*((1+B.a)/2)**1.5;return`~${t<1000?Math.round(t/10)*10:Math.round(t/100)*100} days there`};
   // (flow, Q175) Helios and the planets, from epoch 1: on a ring in the ecliptic around the map's centre, at their ecliptic
   // longitude today (at their real places they'd be at infinity, mostly behind this camera); hidden behind Tellus
   if(mapShow('planets')){const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),moons=1.25*Math.max(...TELLUS.children.map(c=>c.rMax)),rr=moons<2.5*cam.mDist?Math.max(cam.mDist*.3,moons):cam.mDist*.3;let pv=null;   // (flow, Q256; PLAYTEST #55) outside the moons' orbits whenever they're in view: a compass, not a distance
     for(let i=0;i<=144;i++){const a=i/144*6.2832,p=add(c0,add(mul(E.X,rr*Math.cos(a)),mul(E.Y,rr*Math.sin(a))));if(pv&&i%2)seg(pv,p,[.62,.6,.5,.3]);pv=p}
     for(const m of planetMarks(tNow())){const p=madd(c0,m.u,rr),q=sub(p,camW),dq=len(q),tc=-dot(camW,q)/dq;
       if(tc>0&&tc<dq&&dot(camW,camW)-tc*tc<TELLUS.R*TELLUS.R)continue;
-      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:!nm?'':m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}
+      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:!nm?'':m.name==='Helios'?'Helios':`${m.name} · ${xferDays(m.name)}`,c:m.color})}
     labels.push({p:add(c0,mul(E.Y,-rr)),mark:'txt',t:'the planets: direction only, not to scale',c:'rgba(214,206,170,.75)'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.uniform1f(PLINE.u.uLk,1/EXPO.E);
