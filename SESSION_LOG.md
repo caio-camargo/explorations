@@ -5861,3 +5861,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Fixed:** v1.165's missed-deadline check in `tests/core.mjs` failed in a full run when the client's opinion drifted −2 on its own; it now compares with the same 40 days without the contract.
 - **Next:** economy's ready list: Q184 (routines), Q296, Q332.
 
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, second session, later): PLAYTEST #88, Q302, Q335
+
+- **Done, on `main`:** v1.168 PLAYTEST #88 (the vapor collar as one thin streaked sheet from the strongest shoulder, a third
+  as dense and greyer; Caio saw stacked white bands, which were my Q320 rings plus collars stacked from close shoulders);
+  v1.170 Q302 (an incoming debris fragment as a sunlit streak on its path, a flash and sparks at the strike); v1.172 Q335
+  (a canopy per chute over a falling stage, its splash at sea, a waterline lapping round anything afloat).
+- **Found and fixed on the way:** every smoke puff in vacuum rendered black. `S.qHeat` unset made `plasmaHeat` NaN, which
+  `plasmaLight` let through into the shared light; the smoke vertex shader had no guard.
+- **Tests:** `aerofx-14` updated; `aerofx-20` and `aerofx-21` new; all look sections pass on each merged tree. No full suite.
+- **Files:** `app/gl.js`, `app/render.js`, `app/state.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`
+  (250, 252, 254), `PLAYTEST.md` (#88), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** the effects lane has nothing ready; the sound beat (Q362, Q363) would make today's effects audible.
+
