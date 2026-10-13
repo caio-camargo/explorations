@@ -508,7 +508,9 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const vfs = page.slice(page.indexOf('const VAPOR_FS=`'), page.indexOf('`;', page.indexOf('const VAPOR_FS=`')));
-  const rings = /fr=fract\(rn\),ring=/.test(vfs) && /\*ring;\}/.test(vfs);
+  // (PLAYTEST #88) the rings read as separate bands: now one streaked sheet hugging the hull, flickering as a whole, a thin
+  // mist, from the strongest shoulder only
+  const rings = !/fract\(rn\)/.test(vfs) && /\(\.75\+\.5\*st\)\*fl;\}/.test(vfs) && /dens\*uV\*1\.\/max/.test(vfs) && /x\[2\]>=\.9\*a\[0\]\[2\]/.test(page);
   const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 12.3,
     sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
   const shake = cs && (S => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values(env), S));
@@ -516,7 +518,7 @@
   const calm = shake && shake(ship(.3, 2e3)), maxq = shake && shake(ship(1, 32e3)), sup = shake && shake(ship(2, 32e3)), again = shake && shake(ship(1, 32e3));
   const wired = /const sh=camShake\(\);if\(sh\)\{Fw=norm\(add\(Fw/.test(page) && /SPK\.n\+=dt\*kH\*\(abl\?45:12\)/.test(page) && /fxPuff\(madd\(S\.r,u,S\.radius\*\.8\)/.test(page)
     && /PLT\.c\.set\(c\.map\(x=>x\*K\*fl\)\)/.test(page) && /xe\/\(uEp\*3\.\)-uT\*11\./.test(page);
-  check('the air and the wake: stacked flickering vapor rings; a max-q buffet worst near Mach 1, none in calm air, repeatable; ship sparks, a ragged wake and a flickering plasma light',
+  check('the air and the wake: one thin flickering vapor collar per stack (PLAYTEST #88); a max-q buffet worst near Mach 1, none in calm air, repeatable; ship sparks, a ragged wake and a flickering plasma light',
     rings && wired && calm === null && amp(maxq) > 0 && amp(maxq) < 0.01 && Math.abs(amp(maxq) - amp(again)) < 1e-12 && amp(maxq) > amp(sup),
     `rings ${rings} · wired ${wired} · shake: calm ${calm} · max-q at M 1 ${amp(maxq).toFixed(4)} rad · at M 2 ${amp(sup).toFixed(4)} rad`);
 }

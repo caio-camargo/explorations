@@ -786,7 +786,7 @@ function drawVapor(VP,camW){if(!VAPOR_FX||!S.alive||S.body!==TELLUS)return;const
   const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<1)return;const fl=qrot(qconj(S.q),mul(va,1/vl)),ds=fl[1]>0?1:-1;   // downstream is −y when flying nose first
   const p=shipWorld(),O=sub(p,camW),cl=qrot(qconj(S.q),mul(O,-1)),u=PVAPOR.u,E=lightEnv(camW);let first=true;
   for(const ln of vaporLines(S)){if(!first&&!VAPOR_SIDE)break;first=false;
-    const pr=lineProfile(ln.parts,ln.lo,ln.hi,ln.ax,ln.az),hl=(ln.hi-ln.lo)/2,dy=2*hl/31,sh=hullShoulders(pr,ds>0?-1:1);if(!sh.length)continue;
+    const pr=lineProfile(ln.parts,ln.lo,ln.hi,ln.ax,ln.az),hl=(ln.hi-ln.lo)/2,dy=2*hl/31,sh=hullShoulders(pr,ds>0?-1:1).filter((x,i,a)=>x[2]>=.9*a[0][2]&&a.slice(0,i).every(y=>Math.abs(y[0]-x[0])>4));if(!sh.length)continue;   // (PLAYTEST #88) the strongest shoulder, and only others as strong and apart: weaker ones stacked into bands
     const rmax=Math.max(...pr),m=rmax*.5,R=rmax*2.6+.3,L=2*hl+2*m,top=ln.hi-S.cm[1]+m,ox=ln.ax-S.cm[0],oz=ln.az-S.cm[2],
       Mo=modelQ(S.q,O,[ox,top,oz]),clL=[cl[0]-ox,cl[1]-top,cl[2]-oz],
       inside=clL[1]<.01&&clL[1]>-L-.01&&Math.hypot(clL[0],clL[2])<R*1.01+.05;
@@ -858,16 +858,17 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
   for(int k=0;k<3;k++){vec4 S=uSh[k];if(S.z<=0.)continue;float z=(S.x-ta)*uDs,zs=S.y*(1.+6.*clamp(uMa-.86,0.,.35));
    if(z<-.3*S.y||z>zs*1.3)continue;
    float n1=texture(uN,vec3(p.x*1.3,ta*.6-uT*.4,p.z*1.3)/S.y*.25).r,n2=texture(uN,vec3(p.x,ta*3.,p.z)/S.y*.6+.3).r;
-   float ro=S.y*(1.15+.95*sqrt(max(z,0.)/zs))*(1.+.3*(n1-.5)+.12*(n2-.5)),front=smoothstep(-.15*S.y,.35*zs,z),rear=1.-smoothstep(zs*(.86+.1*n2),zs*(.97+.1*n2),z);
-   // (Q320, BEAUTY B3.1) not one puff but several thin stacked rings, each with a sharp trailing edge, flickering
-   float rn=z/(.2*zs)+.15*(n1-.5),fr=fract(rn),ring=mix(.3,1.,smoothstep(.35,.9,fr)*(1.-smoothstep(.93,1.,fr)))*(.45+1.1*texture(uN,vec3(floor(rn)*.37,uT*7.,.5)).r);
-   dens+=S.z*front*rear*smoothstep(ro,ro*.62,rr)*(.5+n1*n2)*ring;}
+   float ro=S.y*(1.06+.6*sqrt(max(z,0.)/zs))*(1.+.08*(n1-.5)+.05*(n2-.5)),front=smoothstep(-.15*S.y,.35*zs,z),rear=1.-smoothstep(zs*(.86+.1*n2),zs*(.97+.1*n2),z);
+   // (PLAYTEST #88; was Q320's stacked rings, which read as separate bands) one collar, streaked round its circumference
+   // along the flow, the whole of it flickering as the shock wanders
+   float st=texture(uN,vec3(atan(p.z,p.x)*1.6,z/zs*.4,k)).r,fl=.8+.4*texture(uN,vec3(uT*5.,float(k)*.31,.5)).r;
+   dens+=S.z*front*rear*smoothstep(ro,ro*.8,rr)*(.7+.3*n1)*(.75+.5*st)*fl;}   // (PLAYTEST #88) a thin sheet, smooth-edged, hugging the hull (was up to 2.1 hull radii with a lumpy rim)
   if(dens<=0.)continue;
-  float sg=dens*uV*3./max(uSh[0].y,.3),a=1.-exp(-sg*ds);
+  float sg=dens*uV*1./max(uSh[0].y,.3),a=1.-exp(-sg*ds);   // (PLAYTEST #88) a thin mist (was ×3: near opaque white)
   vec3 nr=vec3(p.x,0.,p.z)/max(rr,1e-3);float l=.5+.5*max(dot(nr,uSunL),0.)+.6*pow(max(dot(rd,uSunL),0.),6.);
   ls+=Tr*a*l;acc+=Tr*a;Tr*=1.-a;if(Tr<.02)break;}
  if(acc<1e-4)discard;
- vec3 c=vec3(.95,.96,.98)*(uLight*(ls/acc)*1.25+uAmb*.6);
+ vec3 c=vec3(.86,.88,.92)*(uLight*(ls/acc)*.95+uAmb*.55);   // (PLAYTEST #88) less bright white than sunlit paint
  float al=1.-Tr;o=vec4(c*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // the plume meeting the ground: a volume in a ground frame (y up; on the pad, the pad's frame, x east, z south down the
 // flame channel) inside a box uLo..uHi. Around the impact point uIP a hot splash spreads over the deck; on the pad most of

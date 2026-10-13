@@ -1612,3 +1612,19 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
 - **Checks:** test `aerofx-20` (the nebula 22° and the spiral 40° off the band for five seeds; the bake, its unit and
   wiring; the new stars and sun; the old code behind `SKY_B5`); the galaxy-per-program test builds `galSights` too.
   TESTING 248.
+
+## v1.168 — the vapor collar, calmer: one thin sheet, not bands (2026-10-13, effects beat; PLAYTEST #88)
+- **Caio:** the air effects on ascent "look like several separate bands that show up for a short while", and are
+  probably too white.
+- **Why:** two things stacked. v1.154's rings (Q320) cut each collar into thin bands with gaps; and `hullShoulders`
+  finds up to three shoulders per stack (the Orbiter: stations 27, 21 and 23, two of them nearly on top of each other),
+  so the collars stacked down the body. Each collar was also near-opaque white and puffy: up to 2.1 hull radii wide with
+  a lumpy rim.
+- **Now:** one shoulder per stack, the strongest, plus others only if as strong (≥ 90 %) and over 4 stations apart.
+  The collar is one sheet, 1.06–1.66 hull radii (rim noise ±8 %, was ±30 %), streaked round its circumference along the
+  flow and flickering as a whole. It is a thin mist: density ×1 (was ×3), colour 0.86–0.92 at 0.95 of the sun (was
+  0.95–0.98 at 1.25). The Mach window is unchanged (0.84–1.28 below 15 km): it is a few seconds of the climb, as in
+  life.
+- **Stills:** `output/launchpad/beauty/pt88/` (`z53b.png` close: before | after; `ab_50_54.png` wide; `after/` is the
+  first try, one collar per shoulder with streaks, still two bands).
+- **Checks:** test `aerofx-14` now checks the single streaked sheet, the thinner mist and the shoulder filter. TESTING 250.
