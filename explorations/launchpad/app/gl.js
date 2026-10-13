@@ -1908,8 +1908,14 @@ const SPOOL=new WeakMap();
 // ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)
 // on = the engine is still burning (in activeEngines); an engine that stops (cutoff, flameout) keeps a decaying plume, and
 // the moment its target drops to zero stamps sp.off, the cutoff clock for the tail-off (ignOf) and a smoke puff
-function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT,ig:-1e9,off:-1e9,tg:0});const dt=clamp(simT-sp.t,0,5);sp.t=simT;
-  const tg=on?(e.les?1:S.throttle):0;if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
+// (Q368) The spool only moves when a frame draws the plume. When the last drawn frame is more than half a second of sim
+// time back (a script stepping the physics without drawing, as the reference views do; the camera far away), whatever
+// started or stopped did so out of sight: the spool takes its target with no igniter flash, fuel-rich start or puff.
+// SPOOL_F = [the previous drawn frame's simT, this one's], kept by render().
+const SPOOL_F=[-1e9,-1e9];
+function spoolFrame(){if(simT<SPOOL_F[1])SPOOL_F[1]=-1e9;if(simT!==SPOOL_F[1]){SPOOL_F[0]=SPOOL_F[1];SPOOL_F[1]=simT}}   // the clock going back (a new flight): no last frame
+function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:SPOOL_F[0],ig:-1e9,off:-1e9,tg:0});const gap=simT-sp.t,dt=clamp(gap,0,5);sp.t=simT;
+  const tg=on?(e.les?1:S.throttle):0;if(gap>.5){sp.k=tg;sp.tg=tg;return sp}if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
   const a=simT-sp.ig;sp.k+=(tg-sp.k)*(1-Math.exp(-dt/(tg<sp.k?.22:a<.6?.3:.12)));return sp}
 // the engines whose plume shows: the burning ones, and stopped ones still tailing off: [[engine, burning]]
 function plumeEngines(){const A=S.alive?activeEngines(S):[],out=A.map(e=>[e,true]);

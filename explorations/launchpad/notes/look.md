@@ -1842,3 +1842,21 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   that picks the weather before flying must re-pin `CLOUD_DT` after the first step (views 81–83 pick it after).
 - **Stills:** `output/launchpad/beauty/Q250/` (`liftoff_before/after`, `flicker_before/after`: the frame-pair
   differences ×6, `view1_before/after`). **Check:** test `aerofx-28` (and `aerofx-18` amended). TESTING 272.
+
+## v1.191 — the igniter flashes when the engine lights, not when it is first drawn (2026-10-13, effects beat, QUEUE Q368)
+
+`app/gl.js` (`spoolOf`, `SPOOL_F`, `spoolFrame`), `app/render.js` (`render` keeps the frame clock).
+
+- **Why it flashed at T+19 s:** the plume's spool, which stamps the ignition time the igniter flash and the fuel-rich
+  start read (`ignOf`), only moves when a frame draws the plume. The reference views step the physics to T+19 s (or
+  T+30 s) without drawing, so the first drawn frame met an engine it took for just lit. Whether the page's own loop
+  happened to draw a frame in between varied run to run. View 56 also inherited view 54's last frame: a new flight
+  starts the clock again, and 54 and 56 end at nearly the same sim time.
+- **Now:** `render()` keeps the previous drawn frame's sim time; a spool unseen for more than 0.5 s of sim time (or
+  new since then) takes its target directly, with no flash, rich start or cutoff puff, and the clock going back forgets
+  the last frame. In play every frame draws, so a launch flashes as before; an engine lit while the map was open no
+  longer flashes late on return.
+- **Measured** (flash or richness at capture, two runs each): views 54, 56, 2, 55 were 1.6 / 1.1 / 1.4 / 1.0, now 0
+  (view 56 every run); 60, 61, 153 are 0; the ignition views 68–72 (drawn every step on purpose) still flash and fade
+  with age: 2.1, 1.6, 0.9, 0.2, and 2.0 at night.
+- **Check:** test `aerofx-29`.

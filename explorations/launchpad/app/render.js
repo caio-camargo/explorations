@@ -22,7 +22,7 @@ function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);
 function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames under ~22 ms)
   const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
   if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<RS_MAX)RS=Math.min(RS_MAX,RS*1.12)}
-function render(){
+function render(){spoolFrame();
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();profMark('setup');
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
