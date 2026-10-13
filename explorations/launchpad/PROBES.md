@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
+**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -214,7 +214,7 @@ tucked in somewhere. what's good is this will definitely help stability, since t
 dispenser are in; **instruments that make shapes and the kinds of antennas: "very good"**; **ends of life: "an
 interesting mechanic"**, in; thrusters in, by efficiency and power (below). **Tracking wings dropped:** wings already
 turn about their arm to face the sun (`powSun`, `sim/power.js`); a cheaper fixed paddle for era 1 can come later as a
-sidegrade. **Spin, then despin: pending**, explained to Caio; default: not in the first set.
+sidegrade. **Spin, then despin: left out for now** (Caio).
 
 Caio: "since this now gets its own screen, and it exists in a different scale than the rockets, sort of, we can
 brainstorm more parts, if it makes sense to." A part earns a place if it brings a **decision** (a trade, a timing, a
@@ -244,6 +244,26 @@ risk), not only a look. Starred: the recommended first set.
   kilowatts of power: months of burning, the wings sized for the engine; late).
 - **Ends of life**: a drag sail or a deorbit motor (debris, D-rules), a crash camera that takes pictures until impact
   (Ranger), an impactor.
+
+### 6.3 Propulsion on the bench (Caio, 2026-10-13)
+
+Caio: "do we have satellite-specific thrusters and fuel tanks? i imagine they would need to be considerable smaller.
+but i like the idea of those for very light satellites, to get them into high orbit (and the correct orbit)."
+**Today there are none:** the smallest engine is the Wren lander (150 kg, 18 kN) and the smallest tank holds a tonne;
+a satellite has only the cold-gas quads (70 s) and a 15 kg bottle. The bench gets its own, at satellite scale:
+- **Kick motors (solid)** in three sizes (~30, 80, 200 kg): one shot, burns to the end, ~280 s. The early way into the
+  final orbit: the rocket leaves it in a transfer orbit, the kick motor circularises at the top (as Star motors did
+  for comsats). Once lit, no stopping (Q252).
+- **Hydrazine**: thrusters of 1–20 N in clusters, ~220 s, no real power; **tanks as small spheres** (0.25–0.7 m,
+  10–150 kg of propellant), in the bus, the truss bays or outside. Trimming the orbit, holding a station, a modest
+  raise. Restartable; a tank empty means the end of station-keeping (the satellite's life, Q296).
+- **A bipropellant apogee engine** (~400 N, ~310 s) with **a pair of tanks** (fuel and oxidiser): the comsat's own
+  push from a transfer orbit into a stationary one; restartable, so the circularisation can be split and corrected.
+- **Ion** (late): ~3,000 s, millinewtons, kilowatts; a xenon tank; months of thrust, wings sized for the engine.
+- **The bench shows its Δv against the job's last legs** (D23): "the rocket leaves it in a transfer orbit; the payload
+  must add 1,480 m/s (the program's guess) to reach a stationary orbit; it carries 1,620". The Assembly's Reaches check
+  counts the rocket and the payload together, so a light rocket and a satellite with its own engine reach high orbits.
+- **Shapes for free**: spherical tanks, a nozzle under the bus, thruster clusters on the corners all read at a glance.
 
 ## 7. Keeping them beautiful (D21)
 
