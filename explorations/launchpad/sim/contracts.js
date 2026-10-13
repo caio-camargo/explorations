@@ -223,9 +223,22 @@ function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
 const FLOOR_K=1.3,FLOOR_PRESET={apex:'Sounding',sample:'Sounding',landing:'Sounding',field:'Sounding',aurora:'Sounding',ballistic:'Sounding',test:'Hopper',
   bioHop:'Passenger',touristHop:'Passenger',sat:'Beeper',recon:'Beeper',touristOrbit:'Passenger Orbiter'},FLOOR_BACK={Sounding:.5,Hopper:.5,Passenger:.4};
 function payFloor(type){const k=FLOOR_PRESET[type];if(!k||!PRESETS[k])return 0;return Math.round(FLOOR_K*vesselCost(newShip(PRESETS[k]).parts).cost*(1-(FLOOR_BACK[k]||0))*10)/10}
-// withdrawing from a taken contract (Q93): the slot comes free at once, at a missed deadline's price (standing, opinion)
-function withdrawContract(id){const i=(PROG.active||[]).findIndex(c=>c.id===id);if(i<0)return false;const c=PROG.active.splice(i,1)[0];standAdd(c.src,-10);opAdd(c.client,-3);
-  HOOK.news(`Withdrawn: ${cTitle(c)} for ${POWERS[c.client].name}`,'warn');HOOK.save();return true}
+// a missed deadline costs a wait (QUEUE Q295, DECISIONS D17.4): the contract is lost, with no standing or opinion lost,
+// and the client asks again 60–120 days later, as a fresh offer for the same job and pay, unless what made the job is
+// gone (a target satellite, a station's need: those regenerate or drop), the client sanctions us, or the type is no longer
+// open. A full board makes it wait for a free line. Harm to people keeps its own costs (losses, crew), untouched here.
+const BACK_D=[60,120];
+function contractLost(c){const R=rng((PROG.wseed^(c.id*7919))>>>0);(PROG.back=PROG.back||[]).push({c,day:Math.round(PROG.day+BACK_D[0]+(BACK_D[1]-BACK_D[0])*R())})}
+function backTick(){if(!(PROG.back||[]).length)return;PROG.offers=PROG.offers||[];
+  PROG.back=PROG.back.filter(b=>{if(b.day>PROG.day)return true;const c=b.c,T=CT[c.type];
+    if(!T||(T.req&&!PROG.done[T.req])||sanctioned(c.client))return false;if(PROG.offers.length>=BOARD_MAX)return true;
+    let p=c.p;if(T.open){if(!T.open())return false;p=T.gen(rng((PROG.wseed^(c.id*104729))>>>0));if(!p)return false;p.pay=c.p.pay}
+    PROG.cseq=(PROG.cseq||0)+1;PROG.offers.push({id:PROG.cseq,type:c.type,src:c.src,client:c.client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,back:1,
+      why:`Asked again: ${POWERS[c.client].name} still needs it`});
+    HOOK.news(`Back on offer: ${cTitle({type:c.type,p})} for ${POWERS[c.client].name}`,'ok');return false})}
+// withdrawing from a taken contract (Q93): the slot comes free at once, at a missed deadline's price (since Q295: a wait)
+function withdrawContract(id){const i=(PROG.active||[]).findIndex(c=>c.id===id);if(i<0)return false;const c=PROG.active.splice(i,1)[0];contractLost(c);
+  HOOK.news(`Withdrawn: ${cTitle(c)} for ${POWERS[c.client].name}. They will ask again in a few months`,'warn');HOOK.save();return true}
 // why an offer appeared, in one line (QUEUE Q45): the strongest true reason among the things that make offers: a first
 // that opened the type, tension (military), the business cycle (commercial), what the client cares about, the program's
 // standing with that kind of client, home's own government. Worked out once, when the offer is made, and kept on it.
@@ -305,8 +318,9 @@ function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();c
   for(const k in SRC){const rate=SRC[k].rate*(0.4+2.4*flav(HOME).pri[PRI_OF[k]])*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=Math.min(4,Math.floor(rate*d+R()));
     for(let j=0;j<n&&PROG.offers.length<BOARD_MAX;j++){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
   PROG.offers=PROG.offers.filter(o=>o.expires>PROG.day);
-  for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(c.deadline>PROG.day)continue;PROG.active.splice(i,1);standAdd(c.src,-10);opAdd(c.client,-3);
-    HOOK.news(`Missed deadline: ${cTitle(c)} for ${POWERS[c.client].name}`,'bad')}
+  for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(c.deadline>PROG.day)continue;PROG.active.splice(i,1);contractLost(c);
+    HOOK.news(`Missed deadline: ${cTitle(c)} for ${POWERS[c.client].name}. They will ask again in a few months`,'warn')}
+  backTick();
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
   flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);giantTick(d,R);raceTick()}

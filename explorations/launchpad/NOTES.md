@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -86,7 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
-- v1.165 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
+- v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -201,6 +201,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.104 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
 - v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
+- v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; D17.4)
 
 ## World: [`notes/world.md`](notes/world.md)
 

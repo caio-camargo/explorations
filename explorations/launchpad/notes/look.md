@@ -1576,7 +1576,7 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   climb, and a blackbody there is invisible even at night (1,000 K is 3e-4 of sunlit paint, `aerofx-11`). Only a stylised
   tint would show it, against the doc's rule that every effect teaches something true. Left out on purpose.
 
-## v1.165 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
+## v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
 
 BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (Caio, 2026-10-12–13). `app/gl.js`,
 `app/render.js`, `views.js`, `refset.mjs`.
@@ -1611,4 +1611,4 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
   gain. **Not measured:** the iGPU; the first-load time (`SKY_FS` lost its galaxy noise but gained three star layers).
 - **Checks:** test `aerofx-20` (the nebula 22° and the spiral 40° off the band for five seeds; the bake, its unit and
   wiring; the new stars and sun; the old code behind `SKY_B5`); the galaxy-per-program test builds `galSights` too.
-  TESTING 247.
+  TESTING 248.

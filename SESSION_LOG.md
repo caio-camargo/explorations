@@ -5793,7 +5793,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (#84, #85 done), `QUEUE.md` (Q347 ✓, Q348 ✓, Q371), `ACTIVE_WORK.md`.
 - **Next for vehicle:** Q371 if Caio wants it retuned; Q329 (action groups), Q341 (folding boom), Q338 (pointing).
 
-## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q321 the space sky (v1.165)
+## 2026-10-13 — Caio + Claude (launchpad economy session): W40 on the defaults; Q295 a missed deadline costs a wait (v1.165)
+- **W40:** Caio took the commercial giant's defaults; recorded in DECISIONS, row left QUEUE.
+- **Built (Q295, D17.4):** a missed deadline or a withdrawal loses the job and nothing else; the client posts it again 60–120 days later (same job and pay, "Asked again"), unless its reason is gone or the client sanctions us; a full board makes it wait.
+- **Measured:** `career.mjs 4 8` before → after: contracts 29.9 → 33.2, opinion 49.5 → 53.8, final funds −3 % (noise band); poor-world companies end lower, not separable from noise at 8 seeds.
+- **Files:** `sim/contracts.js`, `app/program-ui.js` (tooltip), `tests/economy.mjs` (econ-23, econ-9), `tests/core.mjs` (the missed-deadline check), fixtures in `tests/*.mjs` reset `back`, `notes/economy.md` § v1.165, `NOTES.md`, `QUEUE.md`, `DECISIONS.md` (W40), `TESTING.md` 247, `ACTIVE_WORK.md`.
+- **Next:** economy's ready list: Q187 (plan), Q181, Q184, Q296, Q332.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q321 the space sky (v1.166)
 
 - **Done:** the galaxy band, the Hubble-palette nebula and the spiral baked once per program into a cube map (unit 12)
   at Caio's W39 levels and placements, so `SKY_FS` only samples it; power-law sharp stars with an exposure floor and a

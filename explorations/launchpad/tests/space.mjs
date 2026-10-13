@@ -481,7 +481,7 @@
   const D = new Function(src + 'return {PROG,HOOK,TELLUS,SELENE,DAY_S,advanceDays,CAM_BPS,REC_CAP,FAR_BITS,TLM_BITS,newShip,PRESETS,missionTick,physStep,advRails,linkOf,fromPF,curSite,bodyRel,SUN_DIR,DT,get t(){return simT},set t(v){simT=v},set ORB_T0(v){ORB_T0=v}};')();
   D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {}; D.HOOK.logged = () => {};
   const P = D.PROG, T = D.TELLUS; D.ORB_T0 = 0;
-  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
+  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
   const sat = altKm => { fresh(); const r0 = T.R + altKm * 1e3, v = Math.sqrt(T.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
     for (let k = 0; k < 10; k++) D.advanceDays(2); const q = P.sats[0]; return { q, share: q.got / (D.CAM_BPS * D.DAY_S * 20), contact: q.contact, rate: q.rate }; };
   const lo = sat(300), hi = sat(2000);
