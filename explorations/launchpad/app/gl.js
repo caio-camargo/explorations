@@ -59,8 +59,12 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  // (Q352, PLAYTEST #87) each pixel's 12 steps start at its own offset (interleaved gradient noise): with the same offset
  // everywhere, the count of steps in the planet's shadow changed one at a time across the terminator and drew bands.
  // (Q250) Only from high up: from low in the air the first step (tens of km) spans most of the air's density, so the
- // offset drew a fixed diagonal hatch over the whole day sky; under 15 km every pixel starts mid-step as before
- float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=mix(.5,fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),smoothstep(15e3,50e3,length(uPc)-uPR));vec3 sR=vec3(0.),sM=vec3(0.);
+ // offset drew a fixed diagonal hatch over the whole day sky; under 15 km every pixel starts mid-step as before.
+ // (Q392, PLAYTEST #89) And only on rays that cross the planet's shadow (its start, middle and end not all lit or all
+ // dark): elsewhere the offset only added noise to the haze (the limb from orbit: std 3.9 → 1.4 grey levels)
+ vec3 q0=d*t0-uPc,q1=d*(.5*(t0+t1))-uPc,q2=d*t1-uPc;float b0=dot(q0,uSun),b1=dot(q1,uSun),b2=dot(q2,uSun);
+ float s0=b0<0.&&dot(q0,q0)-b0*b0<uPR*uPR?1.:0.,s1=b1<0.&&dot(q1,q1)-b1*b1<uPR*uPR?1.:0.,s2=b2<0.&&dot(q2,q2)-b2*b2<uPR*uPR?1.:0.;
+ float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=mix(.5,fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),smoothstep(15e3,50e3,length(uPc)-uPR)*step(.5,abs(s0-s1)+abs(s1-s2)));vec3 sR=vec3(0.),sM=vec3(0.);
  for(int i=0;i<12;i++){float t=t0+(float(i)+jt)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
   float dR=exp(-h/HR)*ds,dM=exp(-h/HM)*ds;odR+=dR;odM+=dM;
   float b=dot(p,uSun);if(b<0.&&r*r-b*b<uPR*uPR)continue;
@@ -1443,6 +1447,13 @@ function partBody(out,p){
         lathe(out,[[0,0,C.D],[.2,0,C.D],[.22,.04,C.D],[.12,.07,C.D],[0,.07,C.D]],F,16,[false,false])}   // footpad
       else{tube(out,H,P(.08,h*.4),.05,C.ST,10);tube(out,P(.08,h*.4),P(.08,.1),.032,PIS,10);tube(out,P(.05,h*.12),P(.07,h*.55),.02,C.D,6);
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
+    // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
+    case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
+    case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
+    case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
+    case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;
+    case'sph4':case'sph7':{const r=d.r,pts=[];for(let i=0;i<=10;i++){const t=Math.PI*i/10;pts.push([Math.max(.001,Math.sin(t)*r),h/2-Math.cos(t)*h/2,C.AU])}lathe(out,pts,o,20)}break;
+    case'bwt':rbox(out,[x+Math.cos(p.phi)*d.off,y+h/2,z+Math.sin(p.phi)*d.off],d.off,h/2,.08,C.D,p.phi);break;
     default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}
@@ -1635,7 +1646,7 @@ function bloomBegin(w,h){SCN.on=false;const T=sceneTarget(w,h);if(!T.ok)return;S
 // (Q314) the grade: a 32³ LUT on AgX's display values. D18.1, 1960s press photography: contrast back into AgX's soft
 // curve (a logit S, per channel, and a little saturation back, since AgX desaturates), blacks a little crushed toward blue-black, warm
 // highlights. One LUT for now; a LUT per era later (BEAUTY B0.4)
-const GRADE={c:1.4,b:-.06,sat:1.12,warm:[.035,.008,-.045],cool:[-.012,-.004,.018],K:.22,vg:.2,gr:.035};
+const GRADE={c:1.4,b:-.06,sat:1.12,warm:[.035,.008,-.045],cool:[-.012,-.004,.018],K:.22,vg:.2,gr:.012};   // (Q392, PLAYTEST #89) grain .035 → .012: ~3.7 grey levels of noise in a smooth hazy sky read as dither; .012 still dithers the 8-bit output
 function gradeFn(r,g,b){const lg=x=>{x=Math.min(Math.max(x,1e-4),1-1e-4);return Math.log(x/(1-x))},sg=x=>1/(1+Math.exp(-x));
   let o=[r,g,b].map(x=>x<=0?0:sg(GRADE.c*lg(x)+GRADE.b));{const y=.2126*o[0]+.7152*o[1]+.0722*o[2];o=o.map(x=>y+(x-y)*GRADE.sat)}const Y=.2126*o[0]+.7152*o[1]+.0722*o[2],hi=Y*Y,lo=4*Y*(1-Y)*(1-Y);
   return o.map((x,i)=>Math.min(1,Math.max(0,x+GRADE.warm[i]*hi+GRADE.cool[i]*lo)))}
@@ -1679,7 +1690,7 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
-  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,(HOOK.fxT??performance.now())%997);
+  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,fxNow()%997);
   {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);
   gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
@@ -1730,7 +1741,7 @@ function drawPlasma(VP,camW,S,p,qH,all){const va=sub(S.v,surfVel(S.body,S.r)),vl
     su=ef+Math.abs(dot(Y,f)*mid)+3*D,X=norm(cross(f,Math.abs(f[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,f),Qf=qFromBasis(X,f,Z),qi=qconj(Qf),
     O=add(sub(p,camW),mul(f,su)),R=ep*1.9+D*3+.06*Lw+.2,L=su+ef+Lw+ep,cl=qrot(qi,mul(O,-1)),c=[0,-su,0],A=qrot(qi,Y),m0=add(c,mul(A,mid)),
     inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05,pu=PPLASMA.u;
-  gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
+  gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(pu.uM,false,modelQ(Qf,O));gl.uniform3f(pu.uB,R,L,0);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);
   gl.uniform3fv(pu.uA,A);gl.uniform3fv(pu.uM0,m0);gl.uniform3fv(pu.uC,m0);gl.uniform1f(pu.uK,k);gl.uniform1f(pu.uRb,rb);gl.uniform1f(pu.uHl,hl);
   gl.uniform1f(pu.uD,D);gl.uniform1f(pu.uLw,Lw);gl.uniform1f(pu.uEf,ef);gl.uniform1f(pu.uEp,ep);gl.uniform1fv(pu['uPr[0]'],hullProfile(S,all));
@@ -1791,7 +1802,7 @@ function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=M
   gl.uniform3f(u.uPlC,PLT.c[0]+PLT.c2[0],PLT.c[1]+PLT.c2[1],PLT.c[2]+PLT.c2[2]);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 // an explosion's flash, as the scene's point light (PLT) while it outshines the plumes: decays over ~0.3 s, then the
 // fireball's glow lingers dimmer for ~1 s
-function boomLight(camW){const now=HOOK.fxT??performance.now();let best=null,bk=0;
+function boomLight(camW){const now=fxNow();let best=null,bk=0;
   for(const bm of booms){const a=(now-bm.t0)/1000;if(a<0||a>2)continue;const k=bm.sz*(900*Math.exp(-a/.12)+120*Math.exp(-a/.8));if(k>bk){bk=k;best=[bm,a]}}
   if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2]+PLT.c2[0]+PLT.c2[1]+PLT.c2[2])return;PLT.c2.fill(0);const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);
@@ -2007,13 +2018,13 @@ function drawDust(G,hits,VP){let h=null,best=0;for(const x of hits){const k=x.th
   const u=PDUST.u,loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]),ip=loc(h.P),w=Math.min(1.5,best),
     Rd=8+28*w,Hb=2+.12*Rd,lo=[ip[0]-Rd*1.6,0,ip[2]-Rd*1.6],hi=[ip[0]+Rd*1.6,Hb,ip[2]+Rd*1.6],
     inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2],sl=[dot(SUN,G.X),dot(SUN,G.Y),dot(SUN,G.Z)];
-  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);
   gl.uniform4f(u.uIP,ip[0],ip[2],w,h.re*2+.15*h.sg);gl.uniform1f(u.uRd,Rd);gl.uniform3fv(u.uSunL,sl);gl.uniform3f(u.uAlb,.78,.76,.72);gl.uniform1f(u.uLit,4*Math.max(0,sl[1])+.05);
   gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
   gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const IPA=new Float32Array(16);
-function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,fxNow()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(VBOX.vao);
   const loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]);
   hits.sort((a,b)=>b.w*b.re*b.re-a.w*a.re*a.re);const H4=hits.slice(0,4),top=H4[0],P=top.P2;
@@ -2028,6 +2039,11 @@ function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMa
   gl.uniform4fv(u.uIg,ig);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.min(1.3,W*(.7+.3*H4.length)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,re);
   gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);
   gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
+// (Q393, PLAYTEST #90) the effects' clock, in ms: it runs with real time (flames flicker and fireballs grow at their own
+// pace under time warp too) but stops while the game is paused, so a paused frame holds still. The plume, plasma, dust,
+// impact and composite shaders, explosions' ages and light, and the stars' twinkle read it; frame() advances it.
+// Reference views pin it (HOOK.fxT, Q312)
+let FXT=0;const fxNow=()=>HOOK.fxT??FXT;
 const SPOOL=new WeakMap();
 // the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the
 // ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)

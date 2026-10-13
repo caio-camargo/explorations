@@ -114,7 +114,7 @@ addEventListener('resize',()=>{msgLayout();bldLayout()});
 let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true;msgLayout()};
 HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/b.rho0*3,0,1):0;
-  booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz,air,seed:Math.random()*40});
+  booms.push({b,pf:toPF(b,r,t),t0:fxNow(),sz,air,seed:Math.random()*40});
   if(b!==TELLUS)return;const v0=S&&S.body===b&&len(sub(S.r,r))<200?S.v:surfVel(b,r),R=Math.random,k=Math.sqrt(sz);   // sparks and burning fragments
   for(let i=0;i<30+20*k;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=(15+45*R())*k;fxPuff(r,add(v0,mul(u,sp)),{s0:.08+.08*R()*k,grow:0,a0:.9,life:.3+.9*R(),hot:1.8})}};
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};

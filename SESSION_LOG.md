@@ -6144,3 +6144,30 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `PLAYTEST.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** economy's next ready items: Q332 (recovering a spent stage), Q380 (overflight rights), Q386 (scrub odds).
   The Fleet line clause (what a route's satellite is counted by) waits for Q296's Fleet line (Proposed).
+- **Addendum 7 (design desk, 2026-10-13):** the bench queued to build: Q416 already with vehicle (round 2's notes
+  appended), Q422 propulsion, Q423 first parts, Q424 instruments and antennas, Q425 ends of life. Then Caio's flight
+  notes: PLAYTEST #109 (rockets go straight up; nothing teaches the gravity turn), #110 (the navball's surface→orbit
+  jump at 50 km: blend it, make the label clickable), #111 (SAS buttons as symbols); each with a QUEUE Proposed line.
+- **Addendum 5 (effects):** v1.205 Q402 (PLAYTEST #98 ✓ with v1.203): the shake's envelope from 15 kPa only, damped jolts at Mach 1 and staging, Settings › Screens › Off / Gentle / Full. v1.206 Q393 (PLAYTEST #90): one effects clock (`fxNow`, `FXT`) that stops with the pause, for every effect shader, explosion and the twinkle. Tests aerofx-35 (rewritten), aerofx-36; TESTING 286, 287. Neither seen moving in a browser (the GPU was the sky session's). Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): propulsion on the bench (v1.207, Q422) and the balance weight
+- **Built:** kick motors (solid: armed by staging, lit by a throttle-up, full thrust to burnout), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is a separation ring (decoupler); the bench shows the payload's own Δv against a stationary orbit; a balance weight one click from the balance check (Caio's round-2 note); plain shapes at real size for the new parts. Tests vehicle-28, vehicle-29.
+- **Checked:** full suite passed except `qa-2` (fails on `main` too, flagged before). Browser on 8772 with the GPU lock (taken with noclobber, released).
+- **Next:** Q412 (a stationary-orbit preset built from these), Q423 (bench parts, first set), slice 2 of Q416 with Q417 (bus frame, small stacks).
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): heat and load you notice (Q271, v1.208)
+- **Done:** H and L bars beside the navball in every flight phase (the hottest part vs its limit, the most loaded joint vs its certified rating), faint under 50 %, amber from 50 %, red from 90 %, hover for the part; the master caution blinks for three seconds when its reasons change. On `main` as `a907f3c`; TESTING 289 in `ab0c954` (TESTING's counter said 288 while row 288 existed: fixed to 290).
+- **Checks:** flow-29 (new), flow-5/24 pass; robot rows `gauges` and `m1` pass (first labels HEAT/LOAD ran together at 12 px: now H/L, the title names them).
+- **Not done:** the hot part glowing on the rocket (look & sound).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q392 the haze's dither (v1.209)
+
+- **Done:** measured the sky's fine-grain noise with each suspect off: the composite's grain (low/mid air) and
+  `scatter`'s per-pixel jitter (orbit) were the dither. Grain .035 → .012; the jitter only on rays crossing the planet's
+  shadow. Noise 3.4 → 1.5 grey levels low down, 4.2 → 1.5 from orbit; no terminator bands. PLAYTEST #89 → Done.
+- **Found:** my Q321 views 159–160 shadowed the effects beat's 159 (shield) and 160 (terminator); renumbered to 172–173.
+- **Collisions:** checked ACTIVE_WORK/QUEUE for Q392 before claiming; sky2's airglow edit in the same function merged
+  cleanly; my test renumbered aerofx-37 (sky2 took 33).
+- **Files:** `app/gl.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (290),
+  `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q392/`.
+

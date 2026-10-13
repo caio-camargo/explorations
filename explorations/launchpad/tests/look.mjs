@@ -388,7 +388,7 @@
   const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const pad = /DESK_FX = n === 152;/.test(vj) && /HOOK\.fxT = null; ov\.style\.visibility = '';/.test(vj) && /'\.ui,#perf,#news,#msg,#deb,#ov'/.test(vj);
   const asm = /screenNow\(\) !== 'assembly'\) go\('assembly'\)/.test(vj) && !/if \(mode !== 'editor'\) document\.getElementById\('bEditor'\)\.click\(\);\n/.test(vj.replace(/const toBuilder[^\n]*\n/, ''));
-  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=HOOK\.fxT\?\?performance\.now\(\)/.test(page) && /function boomLight\(camW\)\{const now=HOOK\.fxT\?\?performance\.now\(\)/.test(page);
+  const clock = /HOOK\.fxT = b\.t0 \+ age \* 1000/.test(vj) && /const nowMs=fxNow\(\)/.test(page) && /function boomLight\(camW\)\{const now=fxNow\(\)/.test(page) && /const fxNow=\(\)=>HOOK\.fxT\?\?FXT/.test(page);
   const moments = [152, 154].every(n => vj.includes(`n === ${n}`)) && /n >= 156 && n <= 158/.test(vj) && /153: \['Orbiter'/.test(vj) && /155: \['Lunar', 60000, 'stage'/.test(vj);
   const Q = new Function(page.slice(page.indexOf('const QUAL={'), page.indexOf('const setGet=')) + ';return {QUAL,QUAL_OLD}')();
   const pick = q => Q.QUAL[q] ? q : Q.QUAL_OLD[q] || 'high';   // as settings.js reads a saved setting
@@ -575,7 +575,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
-  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  const jit = /jt=mix\(\.5,fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\),smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\*step\(\.5,abs\(s0-s1\)\+abs\(s1-s2\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
   check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
 }
 
@@ -743,7 +743,7 @@
 // volume's finest noise once the march's steps do.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\);vec3 sR=vec3\(0\.\)/.test(page);
+  const sky = /smoothstep\(15e3,50e3,length\(uPc\)-uPR\)\*step\(\.5,abs\(s0-s1\)\+abs\(s1-s2\)\)\);vec3 sR=vec3\(0\.\)/.test(page);
   const deck = /float fm=fw\*uCR;dn=\.5\+\(vn\(cu\*2600\.\+uCT\*3\.\)-\.5\)\*\.6\*\(1\.-smoothstep\(800\.,3200\.,fm\)\)\+\(vn\(cu\*7800\.\)-\.5\)\*\.4\*\(1\.-smoothstep\(250\.,1000\.,fm\)\)/.test(page);
   const vol = /float cdLod=0\.;/.test(page) && /mix\(vn\(w\/230\.\),\.5,cdLod\)/.test(page) && /cdLod=smoothstep\(230\.,700\.,ds\);float dn=cloudDens\(q\)/.test(page);
   check('clouds at liftoff: the sky march starts mid-step low down, the deck\'s detail fades by footprint and the volume\'s by step length', sky && deck && vol,
@@ -864,4 +864,30 @@
   check('camera shake: a slow sway only round transonic and peak q, ~0.12° on Gentle; a knock at staging that dies within a second; Off / Gentle / Full kept per browser',
     slow && peak < .0025 && peak > .0012 && low === 0 && knock > .0008 && after === 0 && Math.abs(full / peak - 2) < .05 && off === 0 && sw,
     `rates ${rates.join(', ')} · peak ${(peak * 57.3).toFixed(3)}° · at 10 kPa ${low} · staging knock ${(knock * 57.3).toFixed(3)}°, 2 s on ${after} · full ×${(full / peak).toFixed(2)} · off ${off} · setting ${sw}`);
+}
+
+// aerofx-36. Effects stop with the pause (look & sound effects beat, QUEUE Q393, PLAYTEST #90): one effects clock (FXT,
+// fxNow) that frame() advances by real time only while the game isn't paused; the plume, plasma, dust, impact and
+// composite shaders, explosions' ages and light, and the stars' twinkle read it (HOOK.fxT still pins it for the views);
+// none of them reads performance.now() any more.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const clock = /let FXT=0;const fxNow=\(\)=>HOOK\.fxT\?\?FXT;/.test(page) && /if\(!gamePaused\(\)\)FXT\+=dtR\*1000;/.test(page);
+  const readers = [/gl\.useProgram\(PPLASMA\.p\);[^\n]*uT,fxNow\(\)\/1000%1000\)/, /gl\.useProgram\(PDUST\.p\);[^\n]*uT,fxNow\(\)\/1000%1000\)/, /function drawImpact[^\n]*uT,fxNow\(\)\/1000%1000\)/,
+    /gl\.uniform1f\(c\.uT,fxNow\(\)%997\)/, /function boomLight\(camW\)\{const now=fxNow\(\);/, /const nowMs=fxNow\(\);/, /t0:fxNow\(\),sz,air/, /uStT,\(fxNow\(\)\/1000\)%1000\)/,
+    /gl\.uniform1f\(pu\.uFc,FC\);gl\.uniform1f\(pu\.uT,fxNow\(\)\/1000%1000\);/].map(r => r.test(page));
+  const stray = (page.match(/uT,performance\.now\(\)|t0:performance\.now\(\)|HOOK\.fxT\?\?performance\.now\(\)/g) || []).length;
+  check('effects stop with the pause: one effects clock advanced only while unpaused, read by every effect shader, explosion and the twinkle', clock && readers.every(Boolean) && stray === 0,
+    `clock ${clock} · readers ${readers.map(Number).join('')} · wall-clock effects left ${stray}`);
+}
+
+// aerofx-37. The haze without dither (look & sound sky & bodies beat, QUEUE Q392, PLAYTEST #89): measured, most of the
+// noise in a smooth hazy sky was the composite's grain (low and mid air) and scatter's per-pixel jitter (from orbit). The
+// jitter now applies only on rays that cross the planet's shadow (where it hides Q352's bands), and the grain is .012.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const sc = pg.slice(pg.indexOf('vec3 scatter(vec3 d'), pg.indexOf('return SUNI*', pg.indexOf('vec3 scatter(vec3 d')));
+  const jit = /float s0=b0<0\.&&dot\(q0,q0\)-b0\*b0<uPR\*uPR\?1\.:0\./.test(sc) && /\*step\(\.5,abs\(s0-s1\)\+abs\(s1-s2\)\)\)/.test(sc);
+  const grain = /const GRADE=\{[^}]*gr:\.012\}/.test(pg);
+  check('haze without dither: scatter jitters only rays crossing the planet\'s shadow; grain .012', jit && grain, `jitter ${jit} · grain ${grain}`);
 }
