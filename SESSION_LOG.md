@@ -5758,3 +5758,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** a full suite on a quiet machine; the effects lane has nothing ready; overflow candidates are Q250 (cloud
   aliasing at liftoff, with a `SKY_FS` cut) or Q357's twilight contrail (needs a time-of-day control in the views).
 
+
+## 2026-10-13 — flow session: Q241 R3, the title screen and the charter (v1.163)
+- **Q241 R3 ✓ v1.163** (merged and pushed, `45917ea`): the page opens on a title room (`app/title.js`, `#ttl`): a night
+  pad, the menu, the program's charter. A new career fills it in (Article 1 whose program, Article 2 how it starts) and
+  signs it (*Found the program*); the desk never shows before (`needCharter()`). A founded career shows its charter
+  signed, *In force*; Continue (Enter) goes to the desk; New program asks twice. The Esc menu has *Title screen*.
+- **Cross-lane:** the first-run gate left `ownershipHTML` (program-ui.js) with its `data-arch`/`data-start` handlers;
+  `resetProgram()` factored out of the Program's reset (editor.js); core's merge guard and `flow-10` follow.
+- **Renumbered twice on merge** (v1.160 → v1.161 → v1.163; TESTING 242 → 243 → 245): three lanes shipped meanwhile.
+- **Checks:** test `flow-18`; `--smoke` passes on the pushed merge; robot rows `charter` (1280×800: the whole charter
+  fits, ticks move, signed after) and `m1` pass.
+- **Waiting on Caio (Proposed line):** skip the title on load when a save exists? Default: keep it (one Enter).
+- **Files:** `app/title.js` (new), `app/screens.js`, `app/program-ui.js`, `app/editor.js`, `index.html`, `tests/flow.mjs`,
+  `tests/core.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** Q261 (map layer toggles), Q262 (map focus); R5 after vehicle's Q237/Q238.
