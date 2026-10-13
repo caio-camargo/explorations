@@ -44,8 +44,10 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  trans=vec3(1.);if(uAR<=0.)return vec3(0.);
  vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);if(ta.y<0.||ta.x>ta.y)return vec3(0.);
  float t0=max(ta.x,0.),t1=min(ta.y,tMax);if(t1<=t0)return vec3(0.);
- float ds=(t1-t0)/12.,odR=0.,odM=0.;vec3 sR=vec3(0.),sM=vec3(0.);
- for(int i=0;i<12;i++){float t=t0+(float(i)+.5)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
+ // (Q352, PLAYTEST #87) each pixel's 12 steps start at its own offset (interleaved gradient noise): with the same offset
+ // everywhere, the count of steps in the planet's shadow changed one at a time across the terminator and drew bands
+ float ds=(t1-t0)/12.,odR=0.,odM=0.,jt=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));vec3 sR=vec3(0.),sM=vec3(0.);
+ for(int i=0;i<12;i++){float t=t0+(float(i)+jt)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
   float dR=exp(-h/HR)*ds,dM=exp(-h/HM)*ds;odR+=dR;odM+=dM;
   float b=dot(p,uSun);if(b<0.&&r*r-b*b<uPR*uPR)continue;
   float c=r*r-uAR*uAR,tl=-b+sqrt(max(b*b-c,0.)),sl=tl/4.,lR=0.,lM=0.;

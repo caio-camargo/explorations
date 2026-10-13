@@ -565,3 +565,13 @@
   check('heat haze: on High only, up to four jets in air, projected to screen segments that widen down the jet; the composite looks the scene up off them',
     shader && wired && proj, `shader ${shader} · wired ${wired} · projection ${proj} (n ${HZ.n}, behind the camera skipped)`);
 }
+
+// aerofx-18. No bands at the terminator (look & sound effects beat, QUEUE Q352, PLAYTEST #87): the sky's view-ray march
+// starts each pixel's 12 steps at its own offset (interleaved gradient noise), so the count of steps in the planet's
+// shadow no longer steps in unison across the terminator.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
+  const jit = /jt=fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
+}

@@ -36,7 +36,7 @@ const FS = `#version 300 es
 precision highp float;
 out vec4 o;
 uniform vec2 uRes;uniform vec3 uCam,uF,uR,uU,uSun;uniform float uTan,uT,uExp,uTw,uGalK,uGame,uSpk,uPlanet,uMoon,uMoonR;uniform vec3 uMoonC;
-uniform vec3 uGx,uGc,uNbD,uSpD;uniform float uNeb,uSpi,uGB,uNB;
+uniform vec3 uGx,uGc,uNbD,uSpD;uniform float uNeb,uSpi,uGB,uNB,uSB;
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
  return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
@@ -94,7 +94,7 @@ vec3 nebula(vec3 d){float cz=dot(d,uNbD);if(cz<.6)return vec3(0.);vec3 T,B;frame
  if(uNeb<1.5)c=vec3(1.,.16,.28)*ha+vec3(.15,.85,.8)*oiii*.75+vec3(.3,.45,1.)*refl+vec3(1.,.6,.5)*rim;
  else c=vec3(1.,.68,.18)*ha+vec3(.1,.5,1.)*oiii*.9+vec3(1.,.25,.08)*sii*1.2+vec3(.2,.35,.8)*refl+vec3(1.,.9,.7)*rim;
  c*=1.-.93*dst;c+=vec3(.75,.85,1.)*exp(-r*r*80.)*.8;   // the young cluster's glow
- return c*.08*uNB;}   // halved 2026-10-13 (Caio: too bright)
+ return c*.08*.075*uNB;}   // Caio 2026-10-13: halved, then 5–10 % of that (7.5 %)
 // a neighbour spiral galaxy ~16° across (Andromeda is 3°; this one is close, or the game's licence), tilted 62°: a
 // golden bulge, two blue arms on a logarithmic spiral with dust lanes on their inner edges, pink star-forming knots
 vec3 spiral(vec3 d){float cz=dot(d,uSpD);if(cz<.95)return vec3(0.);vec3 T,B;frameOf(uSpD,T,B);vec2 p=vec2(dot(d,T),dot(d,B))/.2;
@@ -102,8 +102,8 @@ vec3 spiral(vec3 d){float cz=dot(d,uSpD);if(cz<.95)return vec3(0.);vec3 T,B;fram
  float ph=th-log(max(r,.02))/tan(.3)+fbm(vec3(p*3.,1.))*.6,arm=pow(.5+.5*cos(2.*ph),3.),lane=pow(.5+.5*cos(2.*ph-.6),10.);
  float disc=exp(-r/.4)*smoothstep(1.35,.7,r),bul=exp(-r*r/.012);
  float knots=smoothstep(.75,.9,vn(vec3(p*22.,4.)))*arm*smoothstep(.15,.3,r)*disc;
- vec3 c=vec3(.6,.72,1.)*disc*(.25+arm*1.1)*(1.-.75*lane*smoothstep(.08,.2,r))+vec3(1.,.8,.5)*bul*2.2+vec3(1.,.35,.55)*knots*1.4;
- return c*.35*uNB;}
+ vec3 c=mix(vec3(.78,.84,1.),vec3(.66,.76,1.),arm*.5)*disc*(.25+arm*1.1)*(1.-.75*lane*smoothstep(.08,.2,r))+vec3(1.,.8,.5)*bul*2.2+vec3(1.,.35,.55)*knots*1.4;
+ return c*.35*.045*uSB;}   // Caio 2026-10-13: 3–6 % of round 2 (4.5 %)
 
 // ---- PROPOSAL: stars. Three layers, brightness by a power law (few bright, many faint), colour by temperature, each a
 // small sharp disc whose size grows with brightness (so the bright ones read without spikes), one pixel wide at least
@@ -214,7 +214,7 @@ const GX = norm(cross(norm([0, .3, -1]), norm([-1, .9, -.2]))), GC0 = norm([-.55
 
 const P = new URLSearchParams(location.search), cv = document.getElementById('c'), gl = cv.getContext('webgl2', {preserveDrawingBuffer: true});
 let view = P.get('view') in VIEWS ? P.get('view') : 'subtle', tw = P.has('tw') ? +P.get('tw') : 1,
-  gb = P.has('gb') ? +P.get('gb') : 1, nb = P.has('nb') ? +P.get('nb') : 1;   // galaxy and sights brightness (?gb= ?nb=), × the shader's values
+  gb = P.has('gb') ? +P.get('gb') : 1, nb = P.has('nb') ? +P.get('nb') : 1, sb = P.has('sb') ? +P.get('sb') : 1;   // galaxy, nebula, spiral brightness (?gb= ?nb= ?sb=), × the shader's values (1 = Caio's picks)
 const tFix = P.has('t') ? +P.get('t') : null, still = P.has('still');
 if (still) document.body.classList.add('still');
 const sh = (t, s) => { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) { document.title = 'ERR ' + gl.getShaderInfoLog(x); throw new Error(gl.getShaderInfoLog(x)) } return x };
@@ -232,7 +232,7 @@ function draw(ms) {
   gl.uniform3fv(U('uSun'), norm(v.sun)); gl.uniform1f(U('uTan'), Math.tan(v.fov * Math.PI / 360)); gl.uniform1f(U('uT'), tFix ?? ms / 1000);
   gl.uniform1f(U('uExp'), v.exp); gl.uniform1f(U('uTw'), tw); gl.uniform1f(U('uGalK'), P.has('galk') ? +P.get('galk') : v.galK); gl.uniform1f(U('uGame'), v.game);
   gl.uniform1f(U('uSpk'), v.spk); gl.uniform1f(U('uPlanet'), v.planet); gl.uniform1f(U('uMoon'), v.moon); gl.uniform3fv(U('uMoonC'), v.moonC || [0, 0, -9]); gl.uniform1f(U('uMoonR'), v.moonR || .27);
-  gl.uniform3fv(U('uGx'), GX); gl.uniform3fv(U('uGc'), GC); gl.uniform3fv(U('uNbD'), NBD); gl.uniform3fv(U('uSpD'), SPD); gl.uniform1f(U('uNeb'), v.neb); gl.uniform1f(U('uGB'), gb); gl.uniform1f(U('uNB'), nb); gl.uniform1f(U('uSpi'), v.spi);
+  gl.uniform3fv(U('uGx'), GX); gl.uniform3fv(U('uGc'), GC); gl.uniform3fv(U('uNbD'), NBD); gl.uniform3fv(U('uSpD'), SPD); gl.uniform1f(U('uNeb'), v.neb); gl.uniform1f(U('uGB'), gb); gl.uniform1f(U('uNB'), nb); gl.uniform1f(U('uSB'), sb); gl.uniform1f(U('uSpi'), v.spi);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (tFix == null && !still) requestAnimationFrame(draw); else document.title = 'READY ' + view;
 }
@@ -241,10 +241,11 @@ function ui() {
   bar.innerHTML = Object.keys(VIEWS).map(k => `<button data-v="${k}" class="${k === view ? 'on' : ''}">${k}</button>`).join('') +
     '<span class="sep"></span>twinkle ' + ['off', 'gentle', 'through the air'].map((l, i) => `<button data-t="${i}" class="${i === tw ? 'on' : ''}">${l}</button>`).join('') +
     `<span class="sep"></span>galaxy <button data-g="-1">−</button> ${gb.toFixed(2)}× <button data-g="1">+</button>` +
-    ` sights <button data-n="-1">−</button> ${nb.toFixed(2)}× <button data-n="1">+</button>`;
+    ` nebula <button data-n="-1">−</button> ${nb.toFixed(2)}× <button data-n="1">+</button>` +
+    ` spiral <button data-s="-1">−</button> ${sb.toFixed(2)}× <button data-s="1">+</button>`;
   cap.innerHTML = VIEWS[view].cap + (VIEWS[view].game ? '' : ' <i>Twinkle animates here, not in the stills.</i>');
 }
-bar.onclick = e => { const t = e.target; if (t.dataset.v) view = t.dataset.v; if (t.dataset.t) tw = +t.dataset.t; if (t.dataset.g) gb *= +t.dataset.g > 0 ? 1.25 : .8; if (t.dataset.n) nb *= +t.dataset.n > 0 ? 1.25 : .8; ui(); if (tFix != null || still) requestAnimationFrame(draw) };
+bar.onclick = e => { const t = e.target; if (t.dataset.v) view = t.dataset.v; if (t.dataset.t) tw = +t.dataset.t; if (t.dataset.g) gb *= +t.dataset.g > 0 ? 1.25 : .8; if (t.dataset.n) nb *= +t.dataset.n > 0 ? 1.25 : .8; if (t.dataset.s) sb *= +t.dataset.s > 0 ? 1.25 : .8; ui(); if (tFix != null || still) requestAnimationFrame(draw) };
 ui(); requestAnimationFrame(draw);
 </script>
 </body>

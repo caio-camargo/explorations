@@ -197,7 +197,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
 - v1.104 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
-- v1.159 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
+- v1.160 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -289,6 +289,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.155 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294)
 - v1.156 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267)
 - v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319)
+- v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
