@@ -132,7 +132,7 @@ const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolut
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
 function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
-function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
+function satRegister(s,R){leakDry(s);if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
   const B=s.body,el=elements(s.r,s.v,B.mu);let cruise=0;
   if(!settled(B,el)){if(!(len(s.r)-B.R>(B.atm||0)))return;cruise=1}   // not a lasting orbit but above the air: in flight (Q49); in the air at flight end: dropped, as before
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
@@ -233,11 +233,11 @@ function fragRate(q){const F=fragBands(),c=resid(q);let s=0;for(let b=0;b<BAND_N
 // rolled each step, the same rate as between flights (4 n R² v, R the craft's half length, scaled by the debris setting).
 // A hit is rolled FRAG_LEAD seconds ahead: s.fragIn holds the fragment on its way (size from the L^-1.71 law, a crossing
 // speed, a direction in the local horizontal) and HOOK.fragIn lets a view draw it coming. When it arrives it strikes
-// one part (by size): a fragile one (cells, antenna) is lost to any piece; anything else only to 40 J per gram, as the
-// shattering rule. Crewed craft are not struck by surprise (as between flights): a warning once a flight instead.
+// one part (by size): what that does is fragStrike's (Q303: holes, leaks, damage). Crewed craft are not struck by
+// surprise (as between flights): a warning once a flight instead.
 // Real odds are small (a Probe stack through the thickest band after one 1 t breakup at 400 km: 0.14 hits a year): strikes
 // come with a cascade or an anti-satellite test, as they should.
-const FRAG_LEAD=3,FRAG_FRAGILE={solar:1,ant:1};
+const FRAG_LEAD=3;
 function fragPass(s,dt,roll){const R=s.rec;if(!roll)roll=R?R.fragRng||(R.fragRng=rng((PROG.flights*7919+(PROG.wseed|0))|0)):Math.random;   // seeded per flight: replays and procedures stay repeatable
   if(s.fragIn&&simT>=s.fragIn.at){const x=s.fragIn;s.fragIn=null;fragStrike(s,x,roll)}
   if(s.fragIn||!s.alive||s.landed||s.body!==TELLUS)return 0;const b=Math.floor((len(s.r)-TELLUS.R-TELLUS.atm)/BAND_W);if(b<0||b>=BAND_N)return 0;
@@ -247,11 +247,42 @@ function fragPass(s,dt,roll){const R=s.rec;if(!roll)roll=R?R.fragRng||(R.fragRng
   if(roll()>=1-Math.exp(-lam*dt))return lam;
   const L=Math.min(0.5,FRAG_LC*Math.pow(1-roll(),-1/1.71)),up=norm(s.r),e=norm(cross(up,s.v)),a=2*Math.PI*roll(),dir=add(mul(norm(s.v),Math.cos(a)),mul(e,Math.sin(a)));
   s.fragIn={at:simT+FRAG_LEAD,L,m:FRAG_RHO*Math.PI/6*L*L*L,vr:v*(0.3+1.4*roll()),dir};HOOK.fragIn&&HOOK.fragIn(s,s.fragIn);return lam}
+// What a strike does (Q303): a part hit with its shattering energy (40 J/g) is lost, an antenna to any piece. Below that:
+// - a tank (fuel or gas) is holed when the piece gets through its wall: crater depth 0.91 L (vn / 7 km/s)^(2/3) (a 1 g/cm³
+//   piece into aluminium; the thin-plate rule's shape), holed past 1.8 × a 3 mm wall, vn the speed along the wall's normal
+//   (cos θ from a cosine-weighted roll). The hole is about the piece's size; what leaks runs by the orifice law: fuel at 3
+//   bar (a 1 cm hole: 1.2 kg/s, its jet 25 m/s), gas from 200 bar falling as it empties (choked: 1 cm: 2.2 kg/s at first, a
+//   400 m/s jet). The jet pushes and turns the craft (in physics steps; on rails it only drains), and a leaking tank
+//   joins the registry empty;
+// - a solar wing loses a string (a quarter of its output, more for a big piece) and is lost once nothing is left;
+// - anything else takes damage as its share of the shattering energy (below a tenth: a dent) and is lost once that adds
+//   to one. Damage has no other effect yet (an engine still burns as new: QUEUE Proposed).
+const HOLE_WALL=3e-3,HOLE_P={fuel:3e5,gas:2e7},HOLE_JET={fuel:24.5,gas:400},GAS_CHOKE=0.002333,DMG_MIN=0.1,SOL_STRING=0.25;
+function holeOf(x,cosT){const vn=x.vr*cosT,P=0.91*x.L*Math.pow(vn/7000,2/3);return P>=1.8*HOLE_WALL?Math.max(0.5*x.L,x.L*Math.cbrt(vn/7000)):0}
+// kg/s out of a hole of area A in part p's resource k (gas pressure falls with what's left: isothermal)
+function leakRate(p,k,A){const left=p.res[k]||0;if(!(left>0))return 0;
+  return k==='gas'?0.6*A*HOLE_P.gas*(left/(p.cap.gas||left))*GAS_CHOKE:0.6*A*Math.sqrt(2*1000*HOLE_P.fuel)}
 function fragStrike(s,x,roll=Math.random){const on=s.parts.filter(p=>p.on);if(!on.length||!s.alive)return null;
   const w=on.map(p=>Math.cbrt(partMass(p))**2),W=w.reduce((a,c)=>a+c,0);let u=roll()*W,i=0;while(i<on.length-1&&(u-=w[i])>0)i++;const p=on[i];
-  const E=0.5*x.m*x.vr*x.vr,lost=FRAG_FRAGILE[p.d.kind]||E>=CAT_E*partMass(p)*1000,cm=(x.L*100).toFixed(x.L<0.1?1:0);
-  HOOK.msg(`Debris: a ${cm} cm fragment at ${(x.vr/1000).toFixed(1)} km/s struck the ${p.d.name}${lost?', which is lost':': dented, no harm done'}`);
-  if(lost)partLost(s,p);return{p,lost,E}}
+  const E=0.5*x.m*x.vr*x.vr,Es=CAT_E*partMass(p)*1000,cm=(x.L*100).toFixed(x.L<0.1?1:0),kind=p.d.kind,k=['fuel','gas'].find(k=>p.res[k]>0);
+  let lost=kind==='ant'||E>=Es,hole=0,what=': dented, no harm done';
+  if(!lost&&k){hole=holeOf(x,Math.sqrt(roll()));if(hole){const A=Math.PI*hole*hole/4,rate=leakRate(p,k,A),din=x.dir?qrot(qconj(s.q),mul(x.dir,-1)):[1,0,0];
+      let n=[din[0],0,din[2]];n=len(n)>1e-6?norm(n):[1,0,0];(s.leaks=s.leaks||[]).push({p,k,A,n});
+      const t=(p.res[k]*1000)/rate;what=`, holed: ${k==='gas'?'gas':'fuel'} leaking at ${rate.toFixed(1)} kg/s (${t<90?`${Math.round(t)} s`:`${Math.round(t/60)} min`} to empty at that rate)`}}
+  else if(!lost&&kind==='solar'){p.dmg=(p.dmg||0)+Math.max(SOL_STRING,E/Es);lost=p.dmg>=1-1e-9;if(!lost)what=`: a string cut, ${Math.round((1-p.dmg)*100)} % of its output left`}
+  else if(!lost&&E>=DMG_MIN*Es){p.dmg=(p.dmg||0)+E/Es;lost=p.dmg>=1;if(!lost)what=`: damaged (${Math.round(p.dmg*100)} %)`}
+  HOOK.msg(`Debris: a ${cm} cm fragment at ${(x.vr/1000).toFixed(1)} km/s struck the ${p.d.name}${lost?', which is lost':what}`);
+  if(lost)partLost(s,p);return{p,lost,E,hole,dmg:p.dmg||0}}
+// a holed tank each step: what leaks, and in physics steps the jet's push and turn (outward through the hole's normal, so
+// the craft is pushed the other way, about its centre of mass)
+function leakTick(s,dt,phys){const L=s.leaks;if(!L||!L.length||!(dt>0))return;
+  for(const h of L){const p=h.p;if(!p.on){h.done=1;continue}const k=h.k,dm=Math.min(p.res[k]||0,leakRate(p,k,h.A)*dt/1000);if(!(dm>0)){h.done=1;HOOK.msg(`The ${p.d.name} has leaked dry`);continue}
+    p.res[k]-=dm;if(!phys||!s.alive||s.landed||!(s.mass>0))continue;
+    const F=dm*1000/dt*HOLE_JET[k],c=partC(p),rad=p.d.r||1,arm=sub(add(c,mul(h.n,rad)),s.cm),Fb=mul(h.n,-F),tau=cross(arm,Fb);
+    s.v=madd(s.v,qrot(s.q,Fb),dt/s.mass);s.w=madd(s.w,qrot(s.q,[tau[0]/s.I[0],tau[1]/s.I[1],tau[2]/s.I[2]]),dt)}
+  s.leaks=L.filter(h=>!h.done)}
+// flight end: a tank still leaking reaches the registry empty
+function leakDry(s){if(!s.leaks||!s.leaks.length)return;for(const h of s.leaks)if(h.p.on)h.p.res[h.k]=0;s.leaks=[];geom(s)}
 function asatTest(name,h,mass=1000){const n=breakup(h,mass);HOOK.news(`${name} tests an anti-satellite weapon at ${Math.round(h/1e3)} km: about ${Math.round(n/1e3)},000 new fragments in that band`,'bad');return n}
 function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0))return;
   for(const x of PROG.breakups||[])if(!x.frag){breakup(x.h,x.mass);x.frag=1}

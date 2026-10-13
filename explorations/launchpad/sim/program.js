@@ -16,6 +16,7 @@
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
+PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
 PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
@@ -254,6 +255,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
   if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
+  if(s.leaks)leakTick(s,dt,phys);   // space Q303: a holed tank leaks
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
@@ -398,7 +400,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
-  fleetSalvage(R);
+  stageRecover(R);fleetSalvage(R);
   // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
   overEnd(R);
   for(const v of R.drops){const pw=v.power;if(!pw)continue;
@@ -543,9 +545,19 @@ function buildFac(id){const q=facQuote(id);if(!q.ok||PROG.funds<q.cost)return fa
   PROG.funds-=q.cost;f.building={lv:f.lv+1,ready:PROG.day+q.days};HOOK.news(`Construction starts: ${FAC[id].name}, level ${f.lv+1} (${q.days} days)`,'ok');HOOK.save();return true}
 function facTick(){for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.building&&PROG.day>=f.building.ready){f.lv=f.building.lv;f.building=null;
   HOOK.news(`${FAC[id].name} level ${f.lv} is open: ${FAC[id].what(f.lv)}`,'ok');HOOK.save()}}}
+// (Q332) a spent stage afloat under its chutes is fetched like a vessel (recoveryOf's ships: local boats, or the fleet's
+// range, at RECOVER_V from an hour's notice) if it's still afloat when they arrive: refurbished at its splash's wear,
+// less the ship time. What sinks first is lost (the fleet, if built, still salvages it below).
+function stageRecover(R){if(!R.launchPf)return;const lv=facLv('fleet'),reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);let got=0,n=0,lost=0;
+  for(const v of R.drops){const f=v.sea;if(v.kind!=='sea'||!f||f.fate!=='afloat'||!v.pf||!v.parts)continue;
+    const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R,sail=RECOVER_PREP+d/RECOVER_V;
+    if(d>reach||f.afloat<sail){v.fate=d>reach?'beyond our ships':'sank before the ships arrived';lost++;continue}
+    let val=0;for(const p of v.parts)val+=partPrice(p)*REFURB*wearOf(p,f.sp);v.got=val-2;v.fate='recovered';got+=v.got;n++}
+  if(n){PROG.funds+=got;ledAdd('stages',got);R.stageBack=got;HOOK.news(`Spent stage${n>1?'s':''} recovered from the sea: ${n>1?`${n}, `:''}${got>=0?'+':''}${fmtM(got)} refurbished, after ship time`,got>=0?'ok':'')}
+  if(lost)HOOK.news(`${lost} spent stage${lost>1?'s':''} came down under ${lost>1?'their':'its'} chutes but ${lost>1?'were':'was'} lost at sea`,'')}
 // salvaged for parts: load and heat wear count, the splash itself doesn't
 function fleetSalvage(R){const lv=facLv('fleet');if(!lv||!R.launchPf)return;let got=0,n=0;const seen={};
-  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
+  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts||v.got)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
     let val=0;for(const p of v.parts){val+=partPrice(p)*REFURB*FAC.fleet.sal[lv]*wearOf(p,TOUCH_OK);seen[p.d.key]={land:1}}got+=val-2;n++}
   if(!n)return;PROG.funds+=got;ledAdd('salvage',got);khLearn({khSeen:seen},0.3);
   HOOK.news(`Recovery fleet: ${n} stage${n>1?'s':''} fished out of the sea, ${got>=0?'+':''}${fmtM(got)} after ship time`,got>=0?'ok':'')}
@@ -811,7 +823,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
 // registers what it puts up, tagged q.route). W27: ordered by hand each time at first; after ROUTE_CLEAN clean runs in a
 // row, and once the ladder allows deployments (autoAllowed('deploy'), the mainframes era), the player may let it repeat
 // by itself (opt-in per route, MIDGAME decision 1): routeTick then orders a run whenever fewer than `keep` of its
-// satellites are up, counting one that will re-enter or stop holding its orbit within ROUTE_LEAD days as gone. A failed
+// satellites are up, counting one that will re-enter (or, in a slot, stop holding it) within ROUTE_LEAD days as gone. A failed
 // run pauses the repeating until a clean one. Resupply routes (stations, bases) are M3, with crew (D17.1).
 const ROUTE_CLEAN=3,ROUTE_LEAD=30;
 const routeOf=id=>(PROG.routes||[]).find(r=>r.id===id);
@@ -825,7 +837,10 @@ function routeFrom(q){if(!q||q.junk||q.bodyName||q.landed||q.docked)return{ok:fa
 function makeRoute(q,keep=1){const f=routeFrom(q);if(!f.ok)return f;PROG.routes=PROG.routes||[];PROG.routeN=(PROG.routeN||0)+1;
   const r={id:PROG.routeN,name:`${satKind(q)}s at ${f.alt} km, ${f.inc}°`,stack:JSON.parse(JSON.stringify(q.stack)),alt:f.alt,inc:f.inc,keep:Math.max(1,keep|0),auto:false,paused:false,runs:0,clean:0,made:PROG.day,sat0:q.id};
   q.route=r.id;PROG.routes.push(r);HOOK.news(`A routine: keep ${r.keep} ${r.name} up, ${designName(r.stack)||'our design'} flying it`,'ok');HOOK.save();return{ok:true,route:r}}
-const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&q.adrift==null&&skLife(q)>ROUTE_LEAD&&decayLife(q)>ROUTE_LEAD);
+// how long it serves its route (Q414, PLAYTEST #104): a slot the tides move (slotRate) is lost once it stops holding it; a
+// low orbit only fights drag, so dry or drifting it still serves while it sinks, until it re-enters
+const routeLife=q=>slotRate(q)>0?Math.min(skLife(q),decayLife(q)):skLife(q)+decayLife(q);
+const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&routeLife(q)>ROUTE_LEAD);
 const routeBusy=r=>(PROG.dispatch||[]).find(x=>x.route===r.id&&(x.status==='queued'||x.status==='deviated'));
 // whether it may repeat by itself, and why not
 function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;

@@ -3043,3 +3043,73 @@ routes (flow).
 
 Tests: `econ-25` (2 checks: made from a satellite, three hand-ordered runs fly clean and join the route; repeating
 waits for mainframes, then orders exactly one run when short, on the network model and the pad calendar).
+
+## v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
+
+The robot's `m2` run (Q233) made a route from a weather satellite at 293 × 301 km with no station-keeping propellant:
+it would stay up ~1,034 days, but `routeSats` asked for 30 days of holding *and* 30 of decay, so the route read 0 of 1
+from the moment it was made and, repeating, would re-order at once.
+
+**The rule** (`routeLife(q)` in `sim/program.js`, beside `routeSats`): what holding buys depends on the orbit.
+- A **slot the tides move** (`slotRate(q) > 0`: high orbits, stationary): dry, it drifts out of the place it was put
+  for, so it serves `min(skLife, decayLife)`, as before.
+- A **low orbit** (`slotRate` 0): holding only fights drag. Dry or drifting it still serves while it sinks, so it
+  serves `skLife + decayLife` (holds while its tanks last, then decays from that orbit).
+`q.adrift` no longer excludes by itself: an adrift low satellite has `skLife` 0 and counts by its decay. A route still
+counts one as gone `ROUTE_LEAD` (30) days before its end.
+
+**Measured** (`econ-26`): a dry Beeper at 300 km decays in ~4,800 days and counts; dry at 106 km (0 days) and dry at
+3,000 km (tides 0.03 m/s a day, can't hold) don't.
+
+**Not yet:** the Fleet line doesn't say which of these a route's satellite is counted by (Q296's Fleet line is being
+reworked by the other economy session; a one-clause follow-up there).
+
+Tests: `econ-26` (1 check).
+
+## Q386 measured: launch scrubs under the cloud belts (2026-10-13, economy session 2; no code change)
+
+v1.176 (Q323) gave `cloudAt` latitude belts (the shader's `belt` term). Scrubs (cover > `SCRUB_CLOUD` 0.9, a day's slip
+each, up to `SCRUB_MAX` 5) only cost days, and `career.mjs` doesn't fly through `weatherHold`, so a career re-run can't
+see them; measured directly instead: 72 longitudes × 400 days per latitude, with the belts and with `belt` set to 0.
+
+| lat | days that scrub, belts / none | slip days per launch, belts / none | worst site |
+|---|---|---|---|
+| 0° | 8.2 % / 4.9 % | 0.091 / 0.052 | 0.14 |
+| 5° | 5.9 / 4.7 | 0.065 / 0.051 | 0.12 |
+| 15° | 1.5 / 4.5 | 0.015 / 0.048 | 0.04 |
+| 28° | 1.4 / 4.3 | 0.014 / 0.045 | 0.04 |
+| 45° | 5.3 / 4.8 | 0.057 / 0.051 | 0.10 |
+| 62° | 7.2 / 5.1 | 0.080 / 0.055 | 0.13 |
+
+**Kept** (Q386's default): Earth's pattern (the wet equator, clear subtropics, stormy subpolar belts), and the cost is
+small everywhere: at worst ~0.14 days per launch, a few days a year for a busy program. No site scrubs out of its share,
+so nothing retuned. If scrubs should ever matter (a pressure that favours subtropical sites), the lever is
+`SCRUB_CLOUD`, not the belts.
+
+## v1.211 — recovering a spent stage (2026-10-13, economy session 2, QUEUE Q332, from Q300 v1.142)
+
+v1.142 (world) let a stage with chutes among its parts come down slowly and float for ~24 h, but nothing could fetch it,
+and once it was 40 km from your craft it was culled and forgotten. Now:
+
+- **Its fate is judged at the drop** (`dropRecord(d)`, `sim/flight.js`, called from `HOOK.debris` in `app/state.js`
+  instead of building the record inline): for a stage with chutes whose predicted impact is at sea, the sea-level
+  sink rate under its canopies (√(2 m g / (ρ₀ · 600 m² · n))) against the sea's limit; past it, it breaks up; under it,
+  its hull as `debAfloat` judges it (`debSea`, factored out of `debAfloat`: the holed parts, the rest pose, `sinkTime`),
+  hanging nose up. The record carries `sea: {fate: 'afloat'|'sank'|'broke', sp, afloat}`. If the stage does come down
+  in view, `debAfloat` overwrites the record with what happened.
+- **The ships fetch it** (`stageRecover(R)`, `sim/program.js`, in `missionEnd` before `fleetSalvage`): the same ships
+  as `recoveryOf` (local boats to 200 km, the recovery fleet's range when built, 10 m/s from an hour's notice). Still
+  afloat when they arrive: refurbished like a vessel, `partPrice × REFURB × wearOf(p, splash speed)` per part, less 2M
+  of ship time; news line, ledger `stages` ("Spent stages recovered" in the Debrief). Beyond reach or sunk first: a news
+  line, and the recovery fleet (if built) still salvages it for parts as before. A bare stage is unchanged (the fleet's).
+
+**Measured** (`econ-27`): the Orbiter's empty first stage under one chute: predicted 8.2 m/s and 24.0 h afloat at the
+drop; flown down in view 8.1 m/s and 24.0 h. Fetched from the launch point's sea: +8.9M (its parts at 65 % × 0.8 wear,
+less ship time).
+
+**Not yet:** the impact point is still the ballistic prediction (`debrisImpact` ignores the canopies; drift under
+them is a few km at most); the builder doesn't say that chutes on a stage make it recoverable (vehicle/flow); the
+Debrief shows the money, not which stage came back.
+
+Tests: `econ-27` (1 check: judged afloat at the drop and the same in view; local ships fetch and refurbish; beyond
+reach lost; a bare stage left to the fleet).

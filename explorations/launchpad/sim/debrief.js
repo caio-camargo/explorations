@@ -14,7 +14,7 @@ function debSnap(){const kh={};for(const k in PROG.kh||{})kh[k]=PROG.kh[k].use;
 // Debrief takes the difference from its snapshot. The flight's own items (hardware, pay, refurbishment, damages) are
 // itemized from its record as before; 'paid' is all income() and the flight's own pay is taken back out of it.
 const LED_L={budget:'Budget day',topup:'Government top-up',upkeep:'Running the program',lease:'Ground station leases',sats:'Satellite income (pictures, TV)',
-  contracts:'Contracts completed between flights',paid:'Pay for other flights (dispatches)',debt:'Debt repaid from income',dispatch:'Dispatched flights launched',salvage:'Recovery fleet salvage',patron:"The leadership's reward"};
+  contracts:'Contracts completed between flights',paid:'Pay for other flights (dispatches)',debt:'Debt repaid from income',dispatch:'Dispatched flights launched',salvage:'Recovery fleet salvage',stages:'Spent stages recovered',patron:"The leadership's reward"};
 function ledAdd(k,v){if(!(Math.abs(v)>0))return;const L=PROG.led||(PROG.led={});L[k]=(L[k]||0)+v}
 // what went wrong on the way (Q293): the flight's failures in order, with the time and the height; a loss shows them as the
 // chain that led to it, a flight that got home lists them as incidents

@@ -1707,3 +1707,32 @@ Test `vehicle-12`. `--smoke` all pass.
 - Not yet (slice 2, Q417): the adjustable bus frame, 0.3/0.6 m stacks, a kick motor; the office's way in (flow); the desk's
   dressing of the bench.
 - Test `vehicle-27`. TESTING 279.
+
+## v1.207 — propulsion on the bench (2026-10-13, vehicle session, QUEUE Q422, PROBES § 6.3)
+
+- **Caio:** "there are new satellite items in the queue, we can get started on that". Q422 first (after Q416's slice 1).
+- **Parts** (`sim/vessel.js`, prices in `sim/program.js`): kick motors, solid, small / medium / large (31 / 80 / 200 kg, 6 / 12
+  / 25 kN, 285 s vacuum; `kick30`, `kick80`, `kick200`); hydrazine thrusters, 4 × 22 N, 220 s (`hthr`); a bipropellant apogee
+  engine, 440 N, 312 s (`apogee`); propellant spheres 0.4 and 0.7 m (35 and 170 kg full; `sph4`, `sph7`). Fuel and oxidiser
+  aren't told apart: the liquid engines draw from the spheres like any engine from its tanks. Plain shapes from their profiles;
+  their look is parts & pad's (Q396's line).
+- **Solids** (Q252's rule): a kick motor carries its own propellant (res fuel on the motor) and `flowGroups` cuts every joint
+  round it, so nothing else feeds it or is fed by it. Lit by its stage it waits, **armed**, until the throttle first goes up;
+  then `physStep` holds the throttle at 1 until it burns out ("… lit: it burns to the end", "… burnt out", throttle back to
+  0). Released at full throttle it fires at once: once lit, no stopping. While it burns, liquid engines lit in the same stage
+  burn too (the hydrazine lost 0.8 kg in the test).
+- **The payload adapter is the separation ring now** (kind `dec`): staging it releases the payload and drops the stage under
+  it, and the cut stops the upper stage's engine drinking the satellite's propellant. A block's payload is its own last stage.
+- **The bench's Checks** add the payload's own Δv against a stationary orbit from a transfer orbit (641 m/s at the top, 5,668 km
+  up on Tellus). The rocket's stages include the payload's (the Assembly's Reaches counts them together, as Q422 asked).
+- Measured (test `vehicle-28`): the Satellite starter with a large kick motor and a 4 × 22 N thruster on a 0.4 m sphere, in a
+  fairing on a Tank 2 t + Petrel, put in a 110 km orbit: released (the Petrel gone), armed through 1 s of coasting, a touch on
+  the throttle → 714 m/s along its path in ~20 s with the throttle cut; then 10 s of hydrazine (0.4 kg).
+- **The balance weight** (Caio's round-2 note on the bench): `bwt`, a side mass whose kilograms its node carries (`wk`, sized at
+  layout by `wtDef` as fins are by `finDef`); the bench's balance check, when off, has **add a balance weight** (`addBalance`):
+  opposite the offset on the widest part of the main stack (the longest lever), mass × offset ÷ lever. On the Satellite made
+  lopsided (14 cm): 111 kg brings it to 1 cm. Heavy on a narrow bus: moving parts is cheaper, and the check says so. It goes on
+  the payload itself rather than the adapter, which only exists on the rocket (test `vehicle-29`).
+- **Drawn at their real size** (`app/gl.js` `partBody`): the fallback drew any new part as a 1.25 m drum, so the adapter, the
+  motors, the thrusters, the spheres and the weight now have plain shapes from their own profiles; parts & pad styles them.
+- Not yet: ion; a stationary-orbit preset (Q412) built from these. TESTING 288.

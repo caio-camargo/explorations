@@ -696,5 +696,46 @@
   check('space Q200: fragments rolled as you pass: seen coming, they strike a part when they arrive (cells to any piece, the rest to 40 J/g); crewed craft are warned',
     perYear > 0 && coming && notYet && solLost && landed && bigOK && bigLost && warned,
     `real odds after a 1 t breakup at 400 km: ${perYear.toExponential(1)} hits a year for the Probe; forced: a ${(x.L * 100).toFixed(0)} cm piece at ${(x.vr / 1e3).toFixed(1)} km/s, `
-    + `cells lost ${solLost}, 1 cm on the ${on[iBig].d.name} dents (${(dent.E / 1e3).toFixed(0)} kJ), 50 cm destroys it (${(huge.E / 1e9).toFixed(1)} GJ); crewed: "${msgs[m0] || ''}" · ${JSON.stringify({ coming, notYet, solLost, landed, bigOK, bigLost, warned })}`);
+    + `cells lost ${solLost}, 1 cm on the ${on[iBig].d.name} is not lost (${(dent.E / 1e3).toFixed(0)} kJ), 50 cm destroys it (${(huge.E / 1e9).toFixed(1)} GJ); crewed: "${msgs[m0] || ''}" · ${JSON.stringify({ coming, notYet, solLost, landed, bigOK, bigLost, warned })}`);
+}
+
+// space-25. A debris hit that holes a tank or damages a part (space session, QUEUE Q303): a piece that gets through a tank's
+// wall leaves a hole that leaks by the orifice law (fuel at 3 bar, gas from 200 bar), its jet pushing and turning the craft;
+// a glancing piece only dents; a solar wing loses a string; other parts gather damage until it adds to their loss; a tank
+// still leaking at flight end joins the registry empty.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,fragStrike,leakTick,leakDry,leakRate,partMass,powPeak,TELLUS,HOOK,CAT_E};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.boom = () => {}; D.HOOK.rebuild = () => {};
+  const T = D.TELLUS, orbit = s => { const r = T.R + 400e3; Object.assign(s, { body: T, landed: false, alive: true, r: [r, 0, 0], v: [0, 0, Math.sqrt(T.mu / r)], w: [0, 0, 0] }); return s; };
+  const piece = (L, vr) => ({ L, m: 1000 * Math.PI / 6 * L ** 3, vr, dir: [0, 0, 1] });
+  // aim the part roll at part p, then the remaining rolls in turn
+  const aim = (s, p, ...rest) => { const on = s.parts.filter(q => q.on), w = on.map(q => Math.cbrt(D.partMass(q)) ** 2), W = w.reduce((a, c) => a + c, 0), i = on.indexOf(p);
+    const seq = [(w.slice(0, i).reduce((a, c) => a + c, 0) + w[i] / 2) / W, ...rest]; let k = 0; return () => seq[k++] ?? 0.5; };
+  // a 1 cm piece at 7 km/s, square on, into the full 8 t tank: holed, ~1.15 kg/s of fuel
+  const s = orbit(D.newShip(['t8', 'kestrel'])), tank = s.parts.find(p => p.d.kind === 'tank'), eng = s.parts.find(p => p.d.kind === 'engine'), f0 = tank.res.fuel;
+  const h = D.fragStrike(s, piece(0.01, 7000), aim(s, tank, 1)), rate = s.leaks && s.leaks.length === 1 ? D.leakRate(tank, 'fuel', s.leaks[0].A) : 0;
+  const holed = h && !h.lost && h.hole > 0 && rate > 1 && rate < 1.4 && /holed: fuel leaking/.test(msgs.at(-1));
+  // a minute of physics steps: the fuel goes, the jet (~28 N) pushes and turns it
+  const v0 = s.v.slice(); for (let i = 0; i < 60; i++) D.leakTick(s, 1, true); const lostKg = (f0 - tank.res.fuel) * 1000, dv = Math.hypot(...s.v.map((x, i) => x - v0[i])), spin = Math.hypot(...s.w);
+  const leaks = Math.abs(lostKg - rate * 60) < 0.02 * rate * 60 && dv > 0.5 * rate * 24.5 * 60 / s.mass && dv < 1.5 * rate * 24.5 * 60 / s.mass && spin > 0;
+  // on rails it only drains; at flight end it is emptied
+  const w1 = s.w.slice(); D.leakTick(s, 600, false); const rails = s.w.every((x, i) => x === w1[i]) && tank.res.fuel < f0;
+  D.leakDry(s); const dry = tank.res.fuel === 0 && s.leaks.length === 0;
+  // a glancing piece (cos θ 0.1) dents it
+  const s2 = orbit(D.newShip(['t8', 'kestrel'])), t2 = s2.parts.find(p => p.d.kind === 'tank'), g = D.fragStrike(s2, piece(0.01, 7000), aim(s2, t2, 0.01)), dent = g && !g.hole && !(s2.leaks || []).length && /dented/.test(msgs.at(-1));
+  // gas: a 15 kg bottle at 200 bar through a 1 cm hole: ~2.2 kg/s, falling as it empties
+  const s3 = orbit(D.newShip(['t8', 'kestrel'])), b = s3.parts.find(p => p.d.kind === 'tank'); b.res = { gas: 0.015 }; b.cap = { gas: 0.015 };
+  D.fragStrike(s3, piece(0.01, 7000), aim(s3, b, 1)); const g0 = D.leakRate(b, 'gas', s3.leaks[0].A); for (let i = 0; i < 50; i++) D.leakTick(s3, 0.1, true); const g1 = D.leakRate(b, 'gas', s3.leaks[0]?.A ?? 0);
+  const gas = g0 > 1.8 && g0 < 2.6 && g1 < g0 && Math.hypot(...s3.w) > 0;
+  // a solar wing (the Probe's cells) loses a string to a centimetre piece
+  const pr = orbit(D.newShip(D.PRESETS.Probe)), sol = pr.parts.find(p => p.d.kind === 'solar'), W0 = D.powPeak(pr);
+  const sh = D.fragStrike(pr, piece(0.01, 7000), aim(pr, sol)), W1 = D.powPeak(pr), string = sh && !sh.lost && sol.on && Math.abs(sol.dmg - 0.25) < 1e-9 && W1 < W0 && /string cut/.test(msgs.at(-1));
+  // the engine: half its shattering energy damages it, twice loses it
+  const Es = D.CAT_E * D.partMass(eng) * 1000, half = vr => Math.cbrt(Es * 0.5 * 2 / (vr * vr) / (1000 * Math.PI / 6)), s4 = orbit(D.newShip(['t8', 'kestrel'])), e4 = s4.parts.find(p => p.d.kind === 'engine');
+  const d1 = D.fragStrike(s4, piece(half(7000), 7000), aim(s4, e4)), dmg1 = d1 && !d1.lost && Math.abs(e4.dmg - 0.5) < 0.01 && /damaged \(50 %\)/.test(msgs.at(-1));
+  const d2 = D.fragStrike(s4, piece(half(7000) * 1.01, 7000), aim(s4, e4)), dmg2 = d2 && d2.lost && !e4.on;
+  check('space Q303: a debris hit holes a tank (it leaks by the orifice law, the jet pushes and turns the craft; empty at flight end), a glancing one dents, cells lose a string, damage adds up to a loss',
+    holed && leaks && rails && dry && dent && gas && string && dmg1 && dmg2,
+    `1 cm at 7 km/s on the tank: hole ${(h?.hole * 1000).toFixed(1)} mm, ${rate.toFixed(2)} kg/s, ${lostKg.toFixed(0)} kg in 60 s, Δv ${(dv * 1000).toFixed(1)} mm/s, spin ${spin.toExponential(1)} rad/s; `
+    + `gas ${g0.toFixed(2)} → ${g1.toFixed(2)} kg/s; cells ${Math.round(W0)} → ${Math.round(W1)} W · ${JSON.stringify({ holed, leaks, rails, dry, dent, gas, string, dmg1, dmg2 })}`);
 }

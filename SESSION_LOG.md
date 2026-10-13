@@ -6132,3 +6132,63 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Done:** the pitch reaches ±90° in flight and the Assembly; `render.js` takes the view's right-hand vector from the yaw, the same as before at other angles and defined at the pole (no flip, no spin); T in the Assembly toggles a top view (on the key strip, survives a reframe). On `main` as `ae920b3`.
 - **Checks:** flow-28 (new), flow-7/8/26/27 and the builder's core sections pass; robot rows `topview` and `m1` pass.
 - **Not done:** a Top button by the CoM readout (D22's toolbar, Q237).
+- **Addendum 4 (effects):** v1.203 Q360 at Caio's ask (the shake too intense): `camShake` is a 1.5–4 Hz sway at about a quarter the strength (was a 2–13 Hz jitter up to ~0.45°), and Settings › Screens › camera shake (one row in flow's `renderSettings`). Test aerofx-35; TESTING 284. Seen in passing: `.git/objects/d2/8aa2d… (1)`, a stray copy from the 10-07 Drive repair, makes git print "bad sha1 file"; harmless (the object is packed), left in place. Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2): a dry satellite counts as up on its routine (Q414, v1.204)
+
+- **Done:** PLAYTEST #104 (the robot's `m2` gap): `routeSats` now counts by `routeLife(q)` (`sim/program.js`): a low
+  orbit, where holding only fights drag, serves while it holds plus while it decays; a slot the tides move must still be
+  held. Test `econ-26`; NOTES § v1.204 (`notes/economy.md`); TESTING 285. Took v1.204 (v1.202 went to flow meanwhile).
+- **Found:** `qa-2` (go to body, a source scan) fails on `main` independently of this change; QUEUE *Proposed* for QA.
+- **Files:** `sim/program.js`, `test.mjs` (api exports), `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
+  `PLAYTEST.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's next ready items: Q332 (recovering a spent stage), Q380 (overflight rights), Q386 (scrub odds).
+  The Fleet line clause (what a route's satellite is counted by) waits for Q296's Fleet line (Proposed).
+- **Addendum 7 (design desk, 2026-10-13):** the bench queued to build: Q416 already with vehicle (round 2's notes
+  appended), Q422 propulsion, Q423 first parts, Q424 instruments and antennas, Q425 ends of life. Then Caio's flight
+  notes: PLAYTEST #109 (rockets go straight up; nothing teaches the gravity turn), #110 (the navball's surface→orbit
+  jump at 50 km: blend it, make the label clickable), #111 (SAS buttons as symbols); each with a QUEUE Proposed line.
+- **Addendum 5 (effects):** v1.205 Q402 (PLAYTEST #98 ✓ with v1.203): the shake's envelope from 15 kPa only, damped jolts at Mach 1 and staging, Settings › Screens › Off / Gentle / Full. v1.206 Q393 (PLAYTEST #90): one effects clock (`fxNow`, `FXT`) that stops with the pause, for every effect shader, explosion and the twinkle. Tests aerofx-35 (rewritten), aerofx-36; TESTING 286, 287. Neither seen moving in a browser (the GPU was the sky session's). Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): propulsion on the bench (v1.207, Q422) and the balance weight
+- **Built:** kick motors (solid: armed by staging, lit by a throttle-up, full thrust to burnout), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is a separation ring (decoupler); the bench shows the payload's own Δv against a stationary orbit; a balance weight one click from the balance check (Caio's round-2 note); plain shapes at real size for the new parts. Tests vehicle-28, vehicle-29.
+- **Checked:** full suite passed except `qa-2` (fails on `main` too, flagged before). Browser on 8772 with the GPU lock (taken with noclobber, released).
+- **Next:** Q412 (a stationary-orbit preset built from these), Q423 (bench parts, first set), slice 2 of Q416 with Q417 (bus frame, small stacks).
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): heat and load you notice (Q271, v1.208)
+- **Done:** H and L bars beside the navball in every flight phase (the hottest part vs its limit, the most loaded joint vs its certified rating), faint under 50 %, amber from 50 %, red from 90 %, hover for the part; the master caution blinks for three seconds when its reasons change. On `main` as `a907f3c`; TESTING 289 in `ab0c954` (TESTING's counter said 288 while row 288 existed: fixed to 290).
+- **Checks:** flow-29 (new), flow-5/24 pass; robot rows `gauges` and `m1` pass (first labels HEAT/LOAD ran together at 12 px: now H/L, the title names them).
+- **Not done:** the hot part glowing on the rocket (look & sound).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q392 the haze's dither (v1.209)
+
+- **Done:** measured the sky's fine-grain noise with each suspect off: the composite's grain (low/mid air) and
+  `scatter`'s per-pixel jitter (orbit) were the dither. Grain .035 → .012; the jitter only on rays crossing the planet's
+  shadow. Noise 3.4 → 1.5 grey levels low down, 4.2 → 1.5 from orbit; no terminator bands. PLAYTEST #89 → Done.
+- **Found:** my Q321 views 159–160 shadowed the effects beat's 159 (shield) and 160 (terminator); renumbered to 172–173.
+- **Collisions:** checked ACTIVE_WORK/QUEUE for Q392 before claiming; sky2's airglow edit in the same function merged
+  cleanly; my test renumbered aerofx-37 (sky2 took 33).
+- **Files:** `app/gl.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (290),
+  `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q392/`.
+
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a debris hit holes a tank or damages a part (v1.210, Q303)
+- **Done:** `fragStrike` has a middle outcome. A tank (fuel or gas) is holed when the piece gets through a 3 mm wall (crater depth by the thin-plate rule's shape, on the normal speed; a glancing piece dents). It leaks by the orifice law: a 1 cm hole loses 1.15 kg/s of fuel, or 2.2 kg/s of gas falling as the bottle empties. The jet pushes and turns the craft in physics steps. A tank still leaking reaches the registry empty. Solar wings lose a string (a quarter of their output); other parts gather damage until it adds up to a loss. On `main` as `e4c8389`.
+- **Checks:** test space-25 (new), space-24 still passes; the full suite passes 718 checks and fails 1: `qa-2` (go to body), which already failed on `main` (vehicle's log above).
+- **Files:** `sim/space.js`, `sim/program.js` (`missionTick` calls `leakTick`), `sim/power.js` (`p.dmg`), `tests/space.mjs`, `notes/space.md` § v1.210, `NOTES.md`, `TESTING.md` (291), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Numbering:** took v1.203 at the start; `main` reached v1.209 during the run, so renumbered at merge (check_numbers).
+- **Next:** space's next ready item is Q304 (a docked composite's power counts its passengers). Proposed: damage that does something, the jet drawn, debris seeding in the tester menu.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2, continued): Q386 measured, Q332 recovering a spent stage (v1.211)
+
+- **Q386 ✓ (no code):** scrub odds under v1.176's cloud belts, measured per latitude (`career.mjs` doesn't fly through
+  `weatherHold`): at worst 8 % of days at the equator, 0.14 slip days a launch; subtropics clearer. Kept (the default).
+  NOTES § "Q386 measured" (`notes/economy.md`).
+- **Q332 ✓ v1.211 (renumbered at merge: space took v1.210):** `dropRecord(d)` (`sim/flight.js`) judges a chuted stage's fate at sea at the drop (`debSea`
+  factored out of `debAfloat`), so it survives the 40 km cull; `stageRecover(R)` (`sim/program.js`) fetches one still
+  afloat when the ships arrive, refurbished at its splash wear less ship time (ledger `stages`). Test `econ-27`
+  (prediction 8.2 m/s / 24.0 h vs 8.1 / 24.0 flown in view; +8.9M for the Orbiter's first stage); TESTING 292.
+- **Smoke on main:** `qa-2` and the assembly help (key `t`, already flagged by the test bench) fail independently.
+- **Files:** `sim/flight.js`, `sim/program.js`, `sim/debrief.js`, `app/state.js`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's ready items: Q380 (overflight rights; needs flow's decision card), Q282/Q283 (plans).

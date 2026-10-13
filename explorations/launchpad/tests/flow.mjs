@@ -599,3 +599,19 @@
   check('flow-28: the camera looks straight down: the same view at other angles, an orthonormal basis with no flip at the pole, the pitch to ±90°, T for a top view in the Assembly',
     same && ortho && cont && clamp && tkey, `same ${same} · orthonormal at the pole ${ortho} · continuous ${cont} · clamp ${clamp} · T ${tkey}`);
 }
+
+// flow-29. Heat and load you notice (flow session, QUEUE Q271, PLAYTEST #71; W36's default): HEAT and LOAD beside the
+// navball in every phase, the hottest part against its limit and the most loaded joint against its certified rating;
+// faint under 50 %, amber from 50 %, red from 90 %; the master caution blinks when its reasons change.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function hlFracs'), page.indexOf('function hlGauges'));
+  const X = S => new Function('mode', 'S', 'certOf', src + 'return {hlFracs, hlCls};')('flight', S, () => 2);
+  const S = { alive: true, hot: { T: 700, d: { Tmax: 1000, name: 'Nose cone' } }, maxLoadP: { on: true, sk1: 'a', sk2: 'b', d: { name: 'Kestrel' }, parent: { d: { name: 'Tank 8' } } }, maxLoad: 1.9 };
+  const f = X(S).hlFracs(), c = X(S).hlCls, none = X({ alive: true }).hlFracs();
+  const fr = Math.abs(f.heat - 0.7) < 1e-9 && Math.abs(f.load - 0.95) < 1e-9 && f.hp === 'Nose cone' && f.lp === 'Kestrel / Tank 8' && none.heat === 0 && none.load === 0;
+  const cls = c(0.3) === '' && c(0.5) === 'warn' && c(0.89) === 'warn' && c(0.9) === 'bad';
+  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
+  check('flow-29: heat and load you notice: HEAT and LOAD by the navball in every phase (part vs limit, joint vs rating), faint, amber from 50 %, red from 90 %; the master caution blinks on a new reason',
+    fr && cls && wired, `fracs ${fr} (${f.heat.toFixed(2)}, ${f.load.toFixed(2)}) · classes ${cls} · wired ${wired}`);
+}
