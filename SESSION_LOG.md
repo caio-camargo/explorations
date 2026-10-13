@@ -5727,3 +5727,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `TESTING.md` (230, 234, 239), `PLAYTEST.md` (#82, #83 done), `QUEUE.md` (Q342 ✓, Q346 ✓, Q344, Q353), `ACTIVE_WORK.md`.
 - **Next for vehicle:** Q347 (four boosters snapped at the first engine), Q348 (bigger fins, which Q342's advice leans on),
   then Q329, Q341, Q338.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q253 round 2, spectacular sights
+
+- **Done:** four views on `mockups/sky/` at Caio's ask ("a visible nebula ... colorized like those NASA photos"): an
+  emission nebula ~25° across in natural colour and in the Hubble palette (ridged filaments, a teal core, a dust lane), a
+  tilted neighbour spiral ~16° across, and all of them in one frame. Stills in `output/launchpad/mockups/sky/`.
+- **W39 grows** a sights choice; default if silent: the Hubble-palette nebula with (a), the new sun, gentle twinkle.
+- **Files:** `mockups/sky/index.html`, `mockups/README.md`, `QUEUE.md` (W39, Q253 state, a Proposed line), `ACTIVE_WORK.md`.
+- **Next:** Q321 on W39 (sky & bodies).
+
