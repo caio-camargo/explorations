@@ -423,8 +423,9 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
 // has (wheels, gimbals, steerable fins at that q). Measured by flying (notes/vehicle.md § v1.152, v1.164, v1.165): separated
 // pointing prograde it sits near 0° and almost anything holds; held 6–11° off its path (the pitch program in attitude hold)
 // the steering decides. Since the SAS cancels the air's torque as it comes (v1.165), going over "too fast to catch" is gone.
-// Only a fresh stage: boosters dropping off a core that's already lit and steering don't count. [{k, h, q, M, holds, why:
-// 'auth', tau, auth, cal, lam, load, lp}].
+// Only a fresh stage: boosters dropping off a core that's already lit and steering don't count. It also flips if holding 5°
+// off fills its wheels before the air thins (airStore). [{k, h, q, M, holds, why: 'auth' | 'store', tau, auth, cal, lam, load,
+// lp, hmax, need, fill, lim}].
 const AUTH_MAX=1.5;
 // The standard ascent as a point mass (vehicle, Q342/Q347): vertical to 200 m, flat by 38 km (the procedures' and the
 // hand-flown profile), dvPlan's steps with thrust from each step's vacuum and sea-level exhaust speeds by pressure, the
@@ -435,16 +436,29 @@ function ascentEst(stack){const key=JSON.stringify(stack);if(ASC_C.key===key)ret
 function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)return out;
   const s0=newShip(stack),P0=dvPlan(s0,0),P1=dvPlan(newShip(stack),1),P=P0.map((x,i)=>({...x,dvA:(P1[i]||x).dv})).filter(x=>x.dv>0.5);if(!P.length)return out;
   const fresh=(a,b)=>s0.events.slice(a,b).some(e=>e.ignite.length);   // a stage newly lit between plan steps a and b
-  const tab=dragTable(s0,0),AS=TELLUS.atm/7e4,mu=TELLUS.mu,R=TELLUS.R,starts=out.starts;let x=0,h=0,vx=0,vh=0;
+  const tab=dragTable(s0,0),AS=TELLUS.atm/7e4,mu=TELLUS.mu,R=TELLUS.R,starts=out.starts;let x=0,h=0,vx=0,vh=0,cur=null,tq=0;
   // thrust from each stage's mass flow and its exhaust speed in vacuum and at sea level (from the two plans), by the pressure
   for(let i=0;i<P.length;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
     const veV=st.dv/lr,veA=st.dvA/lr,dt=Math.max(0.2,T/600);
     for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),f=clamp((h-200*AS)/(38000*AS-200*AS),0,1),pit=(90*(1-Math.pow(f,0.6)))*Math.PI/180,sp=Math.hypot(vx,vh),
       rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*sp*sp*cda,g=mu/((R+h)*(R+h));
       vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt;
-      const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}}
-    const sp=Math.hypot(vx,vh),q=0.5*density(TELLUS,h)*sp*sp;if(q<1000||i===P.length-1)break;if(fresh(P[i].ev,P[i+1].ev))starts.push({ev:P[i+1].ev,h,q,M:sp/SND(h)})}
+      const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}
+      if(cur){tq+=dt;if(tq>=1){tq-=1;if(qq<300)cur=null;else cur.qs.push(qq)}}}   // a fresh stage's q, each second until the air thins (airStore)
+    const sp=Math.hypot(vx,vh),q=0.5*density(TELLUS,h)*sp*sp;if(q<1000||i===P.length-1)break;cur=null;if(fresh(P[i].ev,P[i+1].ev)){cur={ev:P[i+1].ev,h,q,M:sp/SND(h),qs:[]};tq=0;starts.push(cur)}}
   return out}
+// The wheels' storage over the stage's time in thick air (vehicle, Caio's satellites, 2026-10-13). Held off its path an unstable
+// stage needs a steady torque; the wheels give it and the gimbal and steerable fins only unload them, up to half of what they
+// can give (physStep's dump), so a torque past that fills the wheels. Flown: a fairing satellite on a 4 t upper stage that
+// lights at 25 km went over 5° below prograde when its wheels filled (~70 s in), though its torque was in hand; on a 2 t stage
+// lighting at 33 km the same satellite held 10° below prograde and went over at ~10.5° off on the pitch program. Taken here: the
+// air's torque and the fins' authority go with q along the standard ascent after it lights (ascentRun's qs, each second); the
+// gimbal's stays. need(α): the momentum the wheels take holding α° off the airflow until the air thins; fill: seconds to fill
+// them at 5° (Infinity if they don't); lim: the most it holds off its path (this and AUTH_MAX), degrees, ≤ 30.
+function airStore(r,S1,hmax){const qs=S1.qs&&S1.qs.length?S1.qs:[S1.q],g=0.5*r.gim;
+  const run=a=>{let H=0,t=Infinity;for(let i=0;i<qs.length;i++){const k=qs[i]/S1.q;H+=Math.max(0,(r.tau*a/5-0.5*r.fin)*k-g);if(H>hmax&&t===Infinity)t=i+1}return{H,t}};
+  let lim=0;for(let a=0.5;a<=30;a+=0.5){if(run(a).H>hmax||r.tau*a/5>AUTH_MAX*r.auth)break;lim=a}
+  return{need:a=>run(a).H,lim,fill:run(5).t}}
 function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
   if(!starts.length)return[];
   const out=[];for(const S1 of starts){const s=newShip(stack),on=s.parts.map(()=>true),lit=[];let k=0;
@@ -457,8 +471,9 @@ function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
     const c=probe(s,{M:S1.M,aoa:4,q:5000,h:S1.h});
     // how fast it would go over if nothing steered: an unstable airframe's divergence rate, √(dM/dα / I) (1/s)
     const cal=(c.ycm-c.ycp)/(2*s.radius),lam=cal<0?Math.sqrt(r.tau/(5*Math.PI/180)/Math.max(s.I[0],s.I[2])):0;
-    const short=r.tau>AUTH_MAX*r.auth;
-    out.push({...S1,holds:!short,why:short?'auth':'',tau:r.tau,auth:r.auth,cal,lam,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque})}
+    const st=airStore(r,S1,s.hmax),short=r.tau>AUTH_MAX*r.auth,full=!short&&st.need(5)>s.hmax;
+    out.push({...S1,holds:!short&&!full,why:short?'auth':full?'store':'',tau:r.tau,auth:r.auth,cal,lam,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque,
+      hmax:s.hmax,need:st.need(5),fill:st.fill,lim:st.lim,fin:r.fin})}
   return out}
 
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in

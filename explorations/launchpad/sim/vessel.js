@@ -145,6 +145,7 @@ const PRESETS={
   // centre of pressure forward (+0.94 → −0.67 calibers), so a second fin ring puts it back (+0.91; measured: 580 m/s spare in orbit)
   Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
   'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
+  Satellite:null,   // set below, after toV2 (side parts on its frame)
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
@@ -450,8 +451,8 @@ function trimOf(s){const on=s.parts.map(p=>p.on),ign=new Set();let worst=null,k=
 function jointFix(w,own){if(!w||!w.p)return'';const dec=[w.p.d,w.p.parent.d].find(d=>d.kind==='dec'&&!d.istage&&!d.sc);
   return[dec?'an interstage decoupler instead (twice the bending rating, and its shell carries the load around the engine it encloses)':'',`reinforce that joint (right-click the part: joint)`,own?'less thrust low down (it flies through thick air too fast)':''].filter(Boolean).join(', or ').replace(/^./,c=>c.toUpperCase())+'.'}
 // what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
-function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`}
-function airFix(a){return`Separate pointing prograde (it then needs almost nothing), or more steering on it: a reaction wheel, steerable fins, bigger fins (right-click a fin), or a bigger first stage so it separates in thinner air.`}
+function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='store'?`holding 5° off the airflow takes ${k(a.tau)} kN·m, more than its gimbal${a.fin>0?' and fins':''} can carry for long: its reaction wheels fill before the air thins`:`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`}
+function airFix(a){return a.why==='store'?`Separate pointing prograde and keep it there (it then needs almost nothing), or more on it: another reaction wheel stores more, steerable fins or bigger fins (right-click a fin) take a steady load, or a bigger first stage so it separates in thinner air.`:`Separate pointing prograde (it then needs almost nothing), or more steering on it: a reaction wheel, steerable fins, bigger fins (right-click a fin), or a bigger first stage so it separates in thinner air.`}
 function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
     air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
     src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
@@ -931,6 +932,15 @@ function firstSeg(s){return launchSegs(s)[0]??0}
 // service no longer hangs on its core battery's 0.5 kWh (Q27).
 PRESETS.Probe=(()=>{const d=toV2(['ant','cam','sci','core','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross']),h=d.root.k==='t4'?d.root:(f=>f(f,d.root))((f,n)=>n.k==='t4'?n:(n.c||[]).map(c=>f(f,c)).find(Boolean));
   h.c.push({k:'bpanel',at:{y:2.6,a:0,n:3,cy:0.4},c:[]});return d})();
+// a working satellite (vehicle session, 2026-10-13; Caio: "a satellite that doesn't tip over during ascent and is also viable"):
+// a probe core, a battery and a reaction wheel over a long octagonal frame carrying two solar wings, a whip antenna, a camera and
+// an instrument package (the satellite, reconnaissance and imaging contracts), in a fairing on the Orbiter's launcher. 595 kg
+// with its fairing, ~15 W of load against 340 W from the wings. Flown on the probe autopilot it reaches a 100-km orbit with
+// ~520-560 m/s to spare (a 400 km orbit takes ~310 more), prograde, 5° or 10° below prograde, or on the pitch program in
+// attitude hold. Unstable in the air after separating (the fairing up front): the builder says it holds up to ~7° off its path
+// before its wheel may fill (conservative: flown, it held 14° off on the pitch program); a second wheel ~12°, but leaves ~330 m/s
+PRESETS.Satellite=(()=>{const d=toV2(['core','batt','rwheel','octl','fair','t2','petrel','dec','t8','fins','kestrel']),f=(n=>n.k==='octl'?n:null),h=(function g(n){return f(n)||(n.c||[]).map(g).find(Boolean)})(d.root);
+  h.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:1},c:[]},{k:'scam',at:{y:0.3,a:-Math.PI/2,n:1},c:[]},{k:'ssci',at:{y:0.75,a:-Math.PI/2,n:1},c:[]});return d})();
 // the Docking preset (vehicle session, Q78): a docking head on the Orbiter's launcher, so the docking rows can be flown from
 // presets. A port on top, a probe core with an onboard computer (Docking SAS needs one on a probe, v1.68) and a battery,
 // two RCS rings and two gas bottles on the upper tank. Launch it twice, one as the target; or chase a satellite with a port.
