@@ -5895,6 +5895,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   hiss, the splash; the radio blackout's edges (static cut dead, then a squelch and a 2,525 Hz Quindar tone). Not heard in
   a browser here (the headless audio context stays suspended): TESTING 256 is the ear check. Test `sound-2`.
 
+## 2026-10-13 — flow session: Q287, hover terms (v1.175)
+- **Q287 ✓ v1.175** (UI.md rule 9, merged and pushed, `f7096f3`): one glossary (`TERMS`, `app/terms.js`: Δv, TWR, max-q,
+  apoapsis, periapsis, know-how, stability margin) and one tooltip (`#termTip`) for every screen; `term(k)` marks a word.
+  Marked: the HUD's Ap · Pe, Δv, TWR and the Instruments max-q; the node panel's Δv; the builder's stage rows, Total Δv,
+  Stability, Max-q; the rollout's TWR checks; the Program's and Debrief's Know-how. The builder's "(CoM ahead of CoP,
+  calibers)" sub-line folded into the Stability term.
+- **Checks:** test `flow-21`; `--smoke` passes on the merge; robot rows `terms` (builder and live HUD tooltips) and `m1`.
+- **Unblocked:** Q340 (part cards and self-explaining warnings grow from this tooltip).
+- **Files:** `app/terms.js` (new), `app/program-ui.js`, `app/editor.js`, `app/rollout.js`, `app/debrief.js`, `index.html`,
+  `tests/flow.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** Q340, Q293, Q286.
+
 ## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q323 Tellus from above, slice 1 (v1.176)
 
 - **Done:** the far-field cloud filter was lopsided (a blurred pixel ~4× cloudier than the ground) and started too
@@ -5908,4 +5920,3 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/gl.js`, `sim/space.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (258),
   `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next for sky & bodies:** the exposure item (effects, or this beat if free), then Q322.
-
