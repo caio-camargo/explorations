@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.78 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 0.1.79 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -14,7 +14,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 |---|---|---|---|
 | 1 | **W16: your first hour. It's ready** (QA's Q292 ✓ 2026-10-12: PLAYROUTE 0.2.1 sitting 1 walks the rooms; `playtest.mjs m1` passes on `main` at v1.135). You are the player, M1's last finish line: [`PLAYROUTE.md`](PLAYROUTE.md) sitting 1, plain URL, ~60 min; write step 8's answer down | **you** | **M1 done**; M2 becomes current |
 | 2 | **Mission control's consoles** (Q241 R4 ✓ v1.131, Q203 ✓ with it, Q196 ✓ v1.138, Q43 ✓ v1.140, Q167 ✓ v1.143): Q170 network N2; then Q241 R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**idle**: Q170 next, all ready) | M2's flight-from-the-ground loop; the rooms done |
-| 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); the fix is **re-ported onto HDR** on branch `q19-hdr` (world, 2026-10-12; smoke passes). Left: the browser check (pixel-identical, Low and High) and the timing A/B, which need a **quiet machine** (today's try: 35 of 38 GB in use), then the merge | world (**parked**; any world session, at a quiet hour: Caio, close the GPU sessions for ~30 min) | every player's first visit |
+| 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); the fix is **re-ported onto HDR** on branch `q19-hdr` (world, 2026-10-12; smoke passes). Left: the browser check (pixel-identical, Low and High) and the timing A/B, which need a **quiet machine** (today's try: 35 of 38 GB in use), then the merge | **the test bench** (second computer) runs the check and the A/B; world merges |  every player's first visit |
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
 | 5 | **The beauty pass, after its foundations** (D18; B0 ✓: Q312 v1.134, Q313 v1.135, Q314 v1.137 the HDR scene): now ready Q318 re-entry glow and Q319 the flames (effects), Q315 the craft's quick wins (parts & pad), Q322 shrinking `SKY_FS` and Q326 (sky & bodies) | look & sound: effects (claim open), parts & pad and sky & bodies (**no sessions**) | the rest of BEAUTY (Q316, Q317, Q320, Q321, Q323) |
 
@@ -45,12 +45,13 @@ write your session name and the time into it, and delete it when your browser ru
 
 For the **design desk** role: *You are the launchpad design desk session. Follow `docs/session-roles.md` § Design desk;
 start with D1 in QUEUE.md.* For the **playtest intake** role: *You are the launchpad QA session, playtest intake. Read QUEUE.md § QA, Q60, then turn
-the feedback I paste into PLAYTEST items.*
+the feedback I paste into PLAYTEST items.* For the **test bench** (Caio's second computer): *You are the launchpad test bench. Follow `docs/session-roles.md` § Test bench; start with its loop.*
 
 ---
 
 ## Flags (read before merging)
 
+- **A test bench runs on Caio's second computer** (2026-10-12, `docs/session-roles.md` § Test bench): it guards `main` (`--smoke` and `m1` after each version), takes 🖥🖥 and "quiet machine" items (Q19's A/B, Q215, Q233) and walks untried TESTING rows. **Lanes:** leave those to it; your own 🖥 checks stay yours.
 - **THE BEAUTY PASS IS QUEUED (D18, [`BEAUTY.md`](BEAUTY.md), 2026-10-12): Q312–Q324 across the look & sound beats and world.** Order: B0 first (Q312 views → Q313 half-res buffers → Q314 HDR); Q314 changes every shader's output (no more per-shader tone-mapping) and `render()`'s pass order: **every beat, merge main after it lands** and write new shaders for the HDR composite. `SKY_FS` items shrink it or pay for what they add (Q19). Each item: before/after stills and GPU ms on both settings and both GPUs.
 - **A loss keeps its cause (v1.133, Q264): `s.lossWhy`** (a clause) is set at every way a vessel dies; in `sim/flight.js` use `lose(s, why, boom)`. **Every lane** adding a new way to die: set it (`debOutcome` and the on-screen message read it). **Flow/economy (Q293):** the Debrief's *Lost* line already is the cause.
 - **`NOTES.md` IS SPLIT (W37, 2026-10-11 23:26): the build log is `notes/<area>.md`; `NOTES.md` is the index.** Add a section at the bottom of your lane's file and its heading in the index; "NOTES §" pointers still resolve through the index. A branch from before the split: the recipe is the notice at the top of `ACTIVE_WORK.md` § Currently Active (economy's Q188 named there).
