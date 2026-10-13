@@ -536,3 +536,26 @@
   check('flow-25: the Program and the map decluttered: offers one line each (the rest on a click), far epochs a count, no empty photo frame, a letterhead; planets labelled with the trip in days',
     offers && epochs && frame && lh && days, `offers ${offers} · epochs ${epochs} · frame ${frame} · letterhead ${lh} · days ${xd('Enyo')}, ${xd('Hyperion')}, no TU ${!page.includes('.toFixed(2)} TU`')}`);
 }
+
+// flow-26. One tooltip (flow session, QUEUE Q391; UI.md rule 9): the builder's part card (beside the parts list) and the
+// hover over a part on the craft (at the pointer) show in #termTip, like the terms and the self-explaining warnings; each
+// use names itself, so moving off one never closes another's; it stays inside the window. The Rollout's warnings and
+// stops explain themselves (whyMark), and so does the part panel's joint chip.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function tipShow'), page.indexOf("document.addEventListener('mouseover'", page.indexOf('function tipShow')));
+  const el = { dataset: {}, style: {}, innerHTML: '', offsetWidth: 270, offsetHeight: 300, cls: new Set(['hidden']) };
+  el.classList = { toggle: (c, on) => on ? el.cls.add(c) : el.cls.delete(c), remove: c => el.cls.delete(c), add: c => el.cls.add(c), contains: c => el.cls.has(c) };
+  const T = new Function('$', 'innerWidth', 'innerHeight', src + 'return {tipShow, tipHide};')(() => el, 1280, 800);
+  T.tipShow('card', '<b>Card</b>', { r: { left: 10, right: 200, top: 700, bottom: 720 }, side: true });
+  const side = el.style.left === '210px' && el.style.top === '494px' && el.dataset.own === 'card' && el.cls.has('card') && !el.cls.has('hidden');
+  T.tipHide('term'); const kept = !el.cls.has('hidden'); T.tipHide('card'); const gone = el.cls.has('hidden');
+  T.tipShow('craft', 'x', { x: 1200, y: 100 }); const ptr = el.style.left === '916px' && el.style.top === '114px';
+  T.tipShow('term', 't', { r: { left: 1250, right: 1270, top: 780, bottom: 795 } }); const term = el.style.left === '1004px' && el.style.top === '474px' && !el.cls.has('card');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const one = !bsrc.includes("'partcard'") && !bsrc.includes("'bldtip'") && bsrc.includes("tipShow('card',partCardHTML(k)") && bsrc.includes("tipShow('craft',html,") && bsrc.includes("wt:`The joint ${w.p.d.name}");
+  const ro = page.slice(page.indexOf('function rollChecks'), page.indexOf('function renderRollout')), nW = ro.split(',{t:').length - 1 + ro.split('{...tw,t:').length - 1;
+  const roll = nW >= 10 && page.includes("whyMark(k,fold(x),W,'span')");
+  check('flow-26: one tooltip: part cards and the craft hover in #termTip, each use keeps its own, inside the window; the Rollout\'s checks and the joint chip explain themselves',
+    side && kept && gone && ptr && term && one && roll, `beside ${side} (${el.style.left},${el.style.top}) · owners ${kept}/${gone} · pointer ${ptr} · term ${term} · builder ${one} · rollout ${nW} explained, ${roll}`);
+}

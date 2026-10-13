@@ -6033,3 +6033,31 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** every look and sound section passes (58). The full suite not run (memory). Stills: `output/launchpad/beauty/Q250/`.
 - **Next:** idle; overflow candidates Q222 (Steppe rollout sound), Q245/Q330 (pad), Q360 (shake switch, with flow).
 
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): one tooltip (Q391, v1.192)
+- **Done:** the builder's part card and the craft hover show in the one tooltip (`#termTip`, `tipShow`/`tipHide` with an owner per use, clamped to the window); `#partcard` and `#bldtip` are gone; the Rollout's warnings and stops explain themselves (ten of them, `whyMark`); the part panel's joint chip too. On `main` as `60498a9`.
+- **Checks:** flow-26 (new), every flow section and the builder's core sections pass; robot rows `explain` and `m1` pass. The robot caught the Rollout's icon CSS squeezing the wrapped text to one word a line (fixed), and flow-8 caught a comment that broke its source cut (moved).
+- **Next:** the queue's next flow item.
+
+## 2026-10-13 — Caio + Claude (launchpad world session): Q105 each school's pad site has its own ground (v1.193)
+
+- **Done:** `siteShape` (`sim/world.js`) is a height offset from the pad, per school, inside 1.7 km. Arsenal: a hill
+  behind the retaining wall, rising to 42 m north; its mesh hill is gone. Coastal: a cut-grass clearing in dark jungle
+  (colour only). Mountain: a ridge climbing north past the terraces, the ground falling 45 m south and east. Isle: a
+  headland falling away east, south and west. The fall reaches the sea only at a coastal site under 60 m (default
+  taken: pads stand at 66–1,332 m, so a real sea beside them is rare). `terrainH` and the sky shader (`siteShapeG`,
+  uniform `uPadK`) agree. The march's air bound and step length are raised near the shaped pad. The pad's painted apron
+  fades on shaped ground, and relief shading there is halved (the sky's ambient is ~1 %, so the cut bank was black).
+- **Checks:** test `site-1` (new); core 23's "pads levelled" now samples 10 m and 1.8 km; `--smoke` passed except
+  TESTING's next-free counter, then fixed (platform-3, 23 and site-1 rerun). Stills of views 145–151, before and after,
+  in `output/launchpad/q105/` (local); the merged code re-shot for 145–146.
+- **Lesson:** a `//` comment pasted mid-line in a test silently swallowed the rest of the statement. `--only <list index>`
+  didn't run the section (use its id, here 23), so it showed only in smoke.
+- **Courtesy-lock slip:** my wait loop saw `.game-busy` free at 13:04; flow's Q391 robot took it at 13:04:10, and my next
+  command overwrote and then deleted it. Two Chrome runs may have overlapped for ~2 minutes. The lock was restored at
+  13:06. Next time, check and write the lock in the same command as the run, never after a separate wait.
+- **Files:** `sim/world.js`, `app/gl.js`, `app/render.js`, `tests/world.mjs`, `tests/core.mjs`, `test.mjs` (api `SITE_K`),
+  `notes/world.md`, `notes/look.md`, `NOTES.md`, `TESTING.md` (274), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for world:** Q251 / Q365 (mountains from orbit), Q379, Q336, Q324. Three Proposed lines from this one: `padGround`
+  per school, a view of the wet sites, and `q19-hdr` taking these shader changes.
+

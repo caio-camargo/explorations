@@ -1043,8 +1043,9 @@ Mountain's shelter closed at a flight's start; Arsenal 1 s after lift-off. test.
 Stills: `output/launchpad/q231-pads/`.
 
 **Not built yet:**
-- The sites' ground: Arsenal's hillside, Coastal's jungle and sea, Mountain's ridge above the sea, Isle's green
-  peninsula (world's Q105). The meshes here assume flat ground.
+- ~~The sites' ground~~ **built** (world, v1.193, Q105; notes/world.md § v1.193): the ground now carries Arsenal's hill
+  (the mesh hill is gone), Coastal's clearing, Mountain's ridge, Isle's headland. `padGround` (the apron, slabs and road)
+  is still Cape's layout for every school.
 - Rollouts: the truck erector driving in and raising the rocket, the table rolling out, the trailer and strongback
   raising it. Only Steppe's is animated (flow's `rollPhase`).
 - The rail tilting (Q230), and lettering on the hangar and the assembly buildings.
