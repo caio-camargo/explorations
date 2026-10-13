@@ -1138,3 +1138,31 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-26` (placement beside, at the pointer and under, clamped; the owners; no old elements; ten
   explained Rollout checks); robot row `explain` (the stage-2 TWR mark, the camera's card in `#termTip`, the Rollout's
   over-budget check hovered); `m1` passes; every flow section and the builder's core sections pass. TESTING row 273.
+
+## v1.199 — how folded parts deploy (2026-10-13, flow session, QUEUE Q400's remainder; PLAYTEST #97)
+- **Already done by vehicle:** the flight-bar buttons (Unfold wings / antennas (P) v1.184, Legs (Y) and Bay (B) v1.188).
+- **The part panel** (right-click a part) gives a deployable part an *In flight:* line under its deployed toggle: the
+  key, the flight-bar button, and when (wings and booms once the air is thin and the fairing is off, they tear off in
+  thick air; legs before touchdown; the bay once the air is thin). **The part card** gets a *deploys* row (the key and
+  the button). One table, `DEP_HOW` in `builder.js`, next to `DEPW`.
+- **A first-time hint:** the first time a craft is out of the thick air, nothing critical is happening (`cpPhase()`),
+  and it carries folded parts no fairing still covers (or a shut bay), one message says how to deploy them and lights
+  the button for six seconds (`button.hint`). Once per browser (`launchpad-hint-deploy`, a convenience); `depHint()` in
+  `app/cockpit.js`.
+- **Checks:** test `flow-27` (the hint: in space yes; in the air, in a burn, already out, seen before, or still inside a
+  fairing: no; after the fairing drops: yes; a shut bay; the panel's line and the card's row); robot row `deploy` (the
+  Satellite's wing selected: the *In flight:* line; parked in orbit, fairing dropped: the message and the lit button);
+  `m1` passes. TESTING row 280.
+
+## v1.202 — the camera looks straight down (2026-10-13, flow session, QUEUE Q405; PLAYTEST #101)
+- **The pitch reaches ±90°** in flight and in the Assembly (it stopped at ±1.45 rad, `app/screens.js`'s drag).
+- **No flip at the pole:** the view's right-hand vector comes from the yaw (`cross(up, the camera's horizontal
+  direction)`, then square to the view) instead of `Fw × up`, which vanishes looking straight down. At every other angle
+  it is the same vector as before (flow-28 checks three), so nothing else moves; the camera shake uses the same rule.
+  Turning the yaw while looking down turns the picture about the axis, as it should.
+- **T in the Assembly:** a top view, straight down the axis, where the CoM and CoP markers show any offset; T again goes
+  back. It holds the design still while it's on (a turning top view spins) and survives a reframe. It's on the key strip.
+- **Not done:** a Top button next to the CoM readout (the key strip names it; D22's toolbar can carry it, Q237).
+- **Checks:** test `flow-28` (the same basis at other angles; orthonormal and continuous at the pole; the clamp; the T
+  key); robot row `topview` (the Satellite from above in the Assembly; the Satellite climbing, seen from straight above);
+  `m1` passes. TESTING row 283.

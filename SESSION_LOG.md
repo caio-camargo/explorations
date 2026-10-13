@@ -6107,3 +6107,40 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checked:** full suite passed except `qa-2` (go to body), which fails on `main` as well: not this change (flag for QA). Browser: the bench flow end to end.
 - **Coordination:** served my browser checks on the shared port 8799 without the GPU lock before reading the GPU-runs memory; now on 8772 with the lock.
 - **Next:** Q422, propulsion on the bench (kick motors, hydrazine, apogee engine, the adapter as a separation ring).
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): how folded parts deploy (Q400's remainder, v1.199)
+- **Done:** vehicle had built the flight-bar buttons; flow added the part panel's *In flight:* line and the card's *deploys* row (`DEP_HOW`), and a first-time hint in space that names the key and lights the button, once per browser, only once no fairing covers the folded parts. On `main` as `078a2e3` (merged `5ee07f4`).
+- **Checks:** flow-27 (new), flow-8/22/24/26 and the builder's core sections pass; robot rows `deploy` and `m1` pass (the robot showed the first version hinting with the fairing still on; fixed). GPU lock taken with noclobber.
+- **Merge:** one conflict with vehicle's payload-bench change to `depNodes`, both kept.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, 2nd session): planets, stars by day, airglow (Q374, Q395, Q407, v1.200)
+
+- **Done:** Q374, read as the planets in the 3D sky (they were only the map's UI dots): points of light on the stars'
+  scale from each planet's magnitude (Hesper m −5.6, Hyperion −3.4, Enyo −0.4); a moon under 1.5 px is a point with its
+  disc's light instead of flickering out. Q395: stars, planets and the galaxy fade by the sky's contrast (none by day, a
+  few at dusk). Q407: the airglow a quarter as bright.
+- **Views:** 169 (the planets), 170 (Selene as a point), 171 (the pad at dusk).
+- **Tests:** `aerofx-33` (new); all 63 look sections pass after merging main (the other sky session's Q379 and effects'
+  lettering came in; `gl.js` hand-merged); browser check of 169, 171, 1, 158 after the merge. Smoke not run (memory).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (281),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q374-after/`, `q395-before/`, `q395-after/`, `q374-merged/`.
+- **For Caio:** Q374's wording was ambiguous; I left the map's planet dots alone (UI). Say if you meant those.
+- **Next for sky & bodies:** Q392 (the haze's dithering, Caio's ask), Q401, Q403; Q80–Q85 wait on W29.
+- **Addendum 3 (effects):** v1.201 Q330: a display rod under a hanging model on the desk (`deskMesh`: a steel rod from the pin to `S.yBot`, a collar; the key carries the gap). Test aerofx-34 (renumbered past a clash at merge); TESTING 282. One shot overlapped the flow session's GPU lock (its robot run, 13:48) before I saw it; no further runs. Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the camera looks straight down (Q405, v1.202)
+- **Done:** the pitch reaches ±90° in flight and the Assembly; `render.js` takes the view's right-hand vector from the yaw, the same as before at other angles and defined at the pole (no flip, no spin); T in the Assembly toggles a top view (on the key strip, survives a reframe). On `main` as `ae920b3`.
+- **Checks:** flow-28 (new), flow-7/8/26/27 and the builder's core sections pass; robot rows `topview` and `m1` pass.
+- **Not done:** a Top button by the CoM readout (D22's toolbar, Q237).
+- **Addendum 4 (effects):** v1.203 Q360 at Caio's ask (the shake too intense): `camShake` is a 1.5–4 Hz sway at about a quarter the strength (was a 2–13 Hz jitter up to ~0.45°), and Settings › Screens › camera shake (one row in flow's `renderSettings`). Test aerofx-35; TESTING 284. Seen in passing: `.git/objects/d2/8aa2d… (1)`, a stray copy from the 10-07 Drive repair, makes git print "bad sha1 file"; harmless (the object is packed), left in place. Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2): a dry satellite counts as up on its routine (Q414, v1.204)
+
+- **Done:** PLAYTEST #104 (the robot's `m2` gap): `routeSats` now counts by `routeLife(q)` (`sim/program.js`): a low
+  orbit, where holding only fights drag, serves while it holds plus while it decays; a slot the tides move must still be
+  held. Test `econ-26`; NOTES § v1.204 (`notes/economy.md`); TESTING 285. Took v1.204 (v1.202 went to flow meanwhile).
+- **Found:** `qa-2` (go to body, a source scan) fails on `main` independently of this change; QUEUE *Proposed* for QA.
+- **Files:** `sim/program.js`, `test.mjs` (api exports), `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
+  `PLAYTEST.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy's next ready items: Q332 (recovering a spent stage), Q380 (overflight rights), Q386 (scrub odds).
+  The Fleet line clause (what a route's satellite is counted by) waits for Q296's Fleet line (Proposed).

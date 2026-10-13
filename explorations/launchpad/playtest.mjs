@@ -887,6 +887,16 @@ ROWS.cockpit = {title: 'the dark cockpit', steps: [M1_HELPERS, `{go('assembly');
 ROWS.desk = {title: 'the Program decluttered', steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'}, `{go('program'); ({offers: document.querySelectorAll('#deskTrayBox details.ms.of').length, photo: !!document.querySelector('#deskWall .photo'), locks: [...document.querySelectorAll('#program .ms.lock, #progBody .ms.lock, .ms.lock')].map(e => e.innerText).slice(0, 6)})}`, {shot: 'desk'},
   `{const d = document.querySelector('#deskTrayBox details.ms.of'); d.open = true; ({open: d.open, text: d.innerText.slice(0, 300)})}`, {shot: 'offer'}],
   checks: {one: `document.querySelectorAll('#deskTrayBox details.ms.of').length > 0 && !document.querySelector('#deskWall .photo.empty')`}, expect: {one: v => v === true}};
+// deploy: how folded parts deploy (Q400): the Satellite's solar wing selected in the Assembly (the part panel's "In
+// flight:" line); then in orbit, folded, the first-time hint and the lit Unfold button
+ROWS.deploy = {title: 'how folded parts deploy', steps: [DOCK_HELPERS, M1_HELPERS, `{try { localStorage.removeItem('launchpad-hint-deploy') } catch (e) {} go('assembly'); PT.preset('Satellite'); const q = S.parts.find(p => p.on && unfolds(p.d)), n = q && q.dn; BLD.st.sel = n; BLD.panel(); render(); ({part: n && n.k, line: [...document.querySelectorAll('.bsel .sub')].map(e => e.innerText).find(t => /In flight/.test(t))})}`, {shot: 'panel'},
+  `{go('rollout'); PT.launch(); PT.park(S); S.rec.launched = true; for (const p of S.parts) if (p.on && unfolds(p.d)) p.dep = false; const fr = S.parts.find(p => p.on && p.profF); if (fr) fairJettison(S, [S.parts.indexOf(fr)]); updateHUD(); render(); ({msg: PT.text('#msg'), lit: document.getElementById('bWings').classList.contains('hint'), btn: PT.text('#bWings')})}`, {shot: 'hint'}],
+  checks: {hint: `/P unfolds/.test(document.getElementById('msg').innerText) || localStorage.getItem('launchpad-hint-deploy') === '1'`}, expect: {hint: v => v === true}};
+// topview: the camera straight down (Q405, PLAYTEST #101): T in the Assembly on the Satellite (the CoM marker off the
+// axis shows), T again back; then the Sounding rocket climbing, the camera dragged to straight down
+ROWS.topview = {title: 'the top-down camera', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Satellite'); render(); window.dispatchEvent(new KeyboardEvent('keydown', {key: 't'})); render(); window.P405 = cam.pitch; ({pitch: +cam.pitch.toFixed(3), R: HOOK.view.R.map(x => +x.toFixed(3))})}`, {shot: 'assembly_top'},
+  `{window.dispatchEvent(new KeyboardEvent('keydown', {key: 't'})); render(); go('rollout'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => simT > 8, 20); cam.pitch = Math.PI / 2; cam.dist = 40; render(); window.V405 = HOOK.view.R.concat(HOOK.view.U); ({pitch: +cam.pitch.toFixed(3), finite: window.V405.every(Number.isFinite)})}`, {shot: 'flight_top'}],
+  checks: {view: `(window.V405 || []).length === 6 && window.V405.every(Number.isFinite) && Math.abs(window.P405 - Math.PI / 2) < 1e-6`}, expect: {view: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 

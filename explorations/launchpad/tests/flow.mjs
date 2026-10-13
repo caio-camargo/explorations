@@ -559,3 +559,43 @@
   check('flow-26: one tooltip: part cards and the craft hover in #termTip, each use keeps its own, inside the window; the Rollout\'s checks and the joint chip explain themselves',
     side && kept && gone && ptr && term && one && roll, `beside ${side} (${el.style.left},${el.style.top}) · owners ${kept}/${gone} · pointer ${ptr} · term ${term} · builder ${one} · rollout ${nW} explained, ${roll}`);
 }
+
+// flow-27. How folded parts deploy (flow session, QUEUE Q400's remainder, PLAYTEST #97; the buttons are vehicle's v1.184
+// and v1.188): the part panel and the part card say how each deploys (the key and the flight-bar button); the first time
+// a craft with folded parts is out of the thick air and nothing critical is happening, one hint says so (once per browser).
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('const DEP_HINT_KEY'), page.indexOf('function depHint()'));
+  const store = { k: null }, LS = { getItem: () => store.k, setItem: (k, v) => { store.k = v } };
+  const mk = (S, ph = null, seen = null) => { store.k = seen; return new Function('mode', 'S', 'cpPhase', 'unfolds', 'len', 'localStorage', src + 'return depHintDue();')('flight', S, () => ph, d => !!(d.wing || d.fold), v => Math.hypot(...v), LS) };
+  const body = { R: 6e6, atm: 1e5 }, wing = { on: true, d: { wing: true }, dep: false }, ship = o => ({ alive: true, landed: false, rec: { launched: true }, body, r: [0, 0, 6.3e6], parts: [wing], ...o });
+  const space = mk(ship()), air = mk(ship({ r: [0, 0, 6.05e6] })), busy = mk(ship(), 'burn'), out = mk(ship({ parts: [{ ...wing, dep: true }] })), seen = mk(ship(), null, '1'),
+    bay = mk(ship({ parts: [{ on: true, d: { kind: 'bay' }, open: false }] }));
+  const F = { fj: false }, shut = mk(ship({ parts: [{ ...wing, inFair: F }] })); F.fj = true; const dropped = mk(ship({ parts: [{ ...wing, inFair: F }] }));   // inside a fairing: not yet; once it's dropped: yes
+  const hint = space && space.id === 'bWings' && space.t.includes('P unfolds') && !air && !busy && !out && !seen && bay && bay.id === 'bBay' && !shut && dropped && dropped.id === 'bWings';
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const told = bsrc.includes('In flight: ${DEP_HOW[w]}.') && bsrc.includes("L.push(['deploys',DEP_HOW[w].split(':')[0]])") && ['leg:', 'wing:', 'bay:'].every(k => bsrc.slice(bsrc.indexOf('const DEP_HOW='), bsrc.indexOf('const DEP_HOW=') + 500).includes(k));
+  check('flow-27: folded parts say how they deploy (the part panel and its card); one first-time hint once out of the air, quiet, folded, not seen before',
+    hint && told, `space ${space && space.id} · air ${!!air} · busy ${!!busy} · out ${!!out} · seen ${!!seen} · bay ${bay && bay.id} · told ${told}`);
+}
+
+// flow-28. The camera looks straight down (flow session, QUEUE Q405, PLAYTEST #101): the pitch reaches ±90° in flight and
+// in the Assembly; the view's right-hand vector comes from the yaw, so it is the same as before at any other angle and
+// still defined (no flip, no spin) at the pole; T in the Assembly toggles a top view, kept through a reframe.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const i = page.indexOf('const hz='), line = page.slice(i, page.indexOf('\n', i));
+  const { cross, norm, add, mul, dot, sub, len } = api;
+  const f = { n: [1, 0, 0], e: [0, 0, 1], up: [0, 1, 0] };
+  const basis = (yaw, pitch) => { const cam = { yaw, pitch }, cp = Math.cos(pitch), sp = Math.sin(pitch), off = add(add(mul(f.n, -cp * Math.cos(yaw)), mul(f.e, cp * Math.sin(yaw))), mul(f.up, sp));
+    const Fw = norm(mul(off, -1)), r = new Function('f', 'cam', 'cross', 'norm', 'add', 'mul', 'dot', 'sub', line + ';return rgt;')(f, cam, cross, norm, add, mul, dot, sub)(Fw);
+    return { Fw, R: r, U: cross(r, Fw), old: len(cross(Fw, f.up)) > 1e-9 ? norm(cross(Fw, f.up)) : null } };
+  const same = [[0.35, 0.12], [2, -0.8], [-1, 1.2]].every(([y, p]) => { const b = basis(y, p); return len(sub(b.R, b.old)) < 1e-9 });
+  const top = basis(0.35, Math.PI / 2), ortho = Math.abs(len(top.R) - 1) < 1e-9 && Math.abs(dot(top.R, top.Fw)) < 1e-9 && Math.abs(len(top.U) - 1) < 1e-9;
+  const near = basis(0.35, Math.PI / 2 - 1e-4), cont = len(sub(near.R, top.R)) < 1e-3 && len(sub(near.U, top.U)) < 1e-3;   // no flip at the pole
+  const clamp = page.includes('cam.pitch=clamp(cam.pitch+dy*.005,-Math.PI/2,Math.PI/2)');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const tkey = bsrc.includes("else if(k==='t'){topView()}") && bsrc.includes('<b>T</b> top view') && bsrc.includes('cam.pitch=topPrev?Math.PI/2:-0.05');
+  check('flow-28: the camera looks straight down: the same view at other angles, an orthonormal basis with no flip at the pole, the pitch to ±90°, T for a top view in the Assembly',
+    same && ortho && cont && clamp && tkey, `same ${same} · orthonormal at the pole ${ortho} · continuous ${cont} · clamp ${clamp} · T ${tkey}`);
+}

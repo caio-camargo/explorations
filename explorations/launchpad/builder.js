@@ -27,6 +27,10 @@ const dnOf=p=>p&&p.dn?(p.dn.payOf||p.dn):null;   // the design node a part answe
 const DPR=()=>Math.min(devicePixelRatio||1,1.5);
 // deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
 const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':null};
+// how a part deploys in flight (flow, QUEUE Q400): the part panel's line and the part card's row
+const DEP_HOW={leg:'Y, or Legs down on the flight bar (top right): put them down before touchdown',
+  wing:'P, or the Unfold button on the flight bar (top right): once the air is thin, after the fairing drops; open in thick air, it tears off',
+  bay:"B, or Open bay on the flight bar (top right): once the air is thin; shut, it shields what's inside"};
 const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&!p.dn.payOf&&depOf(p.dn.k)).map(p=>p.dn))];   // a payload's are set on the bench
 
 // ---- design access. A preset stays in the old array format (so its saved autopilot tape still matches) until the
@@ -399,6 +403,7 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.kWh)L.push(['stores',`${d.kWh} kWh`]);if(d.W)L.push(['draws',`${d.W} W`]);
   if(d.fm)L.push(['shell',`${d.fls[0]}–${d.fls[d.fls.length-1]} m long, ${n(d.fm,'t',3)} a metre, dropped at its stage`]);
   L.push(['size',`${+(2*d.r).toFixed(2)} m wide · ${+d.h.toFixed(2)} m tall`],['heat limit',`${d.Tmax} K`]);
+  {const w=depOf(d.key);if(w)L.push(['deploys',DEP_HOW[w].split(':')[0]])}   // (Q400) the key and the button
   try{const pr=partPrice({d,jr:0})+((d.res0&&d.res0.fuel)||0)*FUEL_PRICE;if(isFinite(pr))L.push(['price',fmtM(pr)+(d.kind==='tank'?' with its propellant':'')])}catch(e){}
   return L}
 function partCardHTML(k){const d=PARTS[k],lk=typeof partOpen==='function'?partOpen(k):{ok:true};
@@ -418,6 +423,8 @@ function tooltip(){if(!tipOK())return;
     (partInfo(pdef(n.k))?`<div class="pcs">${partInfo(pdef(n.k))}</div>`:'')+(partPairs(pdef(n.k))?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(pdef(n.k))}</div>`:'')+(w?`<div>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span></div>`:'')+
     (ps.length?'':`<div class="warn">parked: not attached</div>`)+`<div class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</div>`;
   const k=V()?V().W/innerWidth:1;tipShow('craft',html,{x:st.mouse[0]/k,y:st.mouse[1]/k})}
+// (flow, Q405; PLAYTEST #101) T: the camera straight down at the design and back (the CoM's offset from the axis shows)
+let topPrev=null;function topView(){if(topPrev==null){topPrev={p:cam.pitch,s:HOOK.edStill};cam.pitch=Math.PI/2;HOOK.edStill=true;note('Top view: straight down the axis (T again: back)')}else{cam.pitch=topPrev.p;HOOK.edStill=topPrev.s;topPrev=null}}   // (still while it's on: a turning top view spins)
 // (Q235, PLAYTEST #42) start from scratch: one undo step; the palette, presets and saved designs are untouched
 function clearDesign(){if(isEmpty(stackDef))return;snapshot();stackDef={v:2,root:null};st.held=null;st.sel=null;st.reframe=true;editorChanged();note('Cleared: pick a part to start (Ctrl+Z brings the design back)')}
 function btn(parent,label,on,fn,tip){const b=document.createElement('button');b.textContent=label;if(on)b.className='on';if(tip)b.title=tip;b.onclick=e=>{e.stopPropagation();fn()};parent.appendChild(b);return b}
@@ -472,7 +479,8 @@ function panel(){
   if(PARTS[n.k].kind==='rfin'){const r=row('size');   // fin sizes (Q348)
     FIN_SZ.forEach((z,i)=>{const d=finDef(PARTS[n.k],i);btn(r,z.n,(n.fz||0)===i,()=>edit(()=>{if(i)n.fz=i;else delete n.fz}),`${z.n} span × ${d.chord.toFixed(2)} m chord, ${(d.m*1000).toFixed(0)} kg each`)})}
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
-  {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it')}}
+  {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it');
+    const h=document.createElement('div');h.className='sub';h.textContent=`In flight: ${DEP_HOW[w]}.`;sel.appendChild(h)}}   // (Q400) how it deploys
   if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
     if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');
@@ -596,7 +604,7 @@ function changed(){
 // the plate the design stands on, in the ship's frame (y from the CoM): its bottom, or lower while parts below were removed
 const foot=()=>S.yBot-(mode==='editor'&&st.gap||0);
 function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
-  let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(st.bench?4:14,S.len*(st.bench?2.5:1.5),w*(st.bench?5:12));cam.pitch=-0.05;cam.edY=0}   // the bench works at satellite scale (Q416)
+  let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(st.bench?4:14,S.len*(st.bench?2.5:1.5),w*(st.bench?5:12));cam.pitch=topPrev?Math.PI/2:-0.05;cam.edY=0}   // the bench works at satellite scale (Q416)
 
 // ---- input. Capture-phase on window, so the main script's camera drag only sees what we let through.
 function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw=draw;HOOK.edOverlay=overlay;
@@ -619,7 +627,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .pcp{margin-top:5px;line-height:1.35}   /* (flow, Q340) what a part pairs with */
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);
-  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
+  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>T</b> top view · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
   el('editor').appendChild(help);
   const cvs=el('gl'),cpos=e=>[e.clientX*cvs.width/cvs.clientWidth,e.clientY*cvs.height/cvs.clientHeight];
   addEventListener('mousedown',e=>{if(mode!=='editor'||e.target!==cvs)return;st.mouse=cpos(e);update();
@@ -647,6 +655,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     if(k==='x'){const i=SYM.indexOf(st.sym);st.sym=SYM[(i+(e.shiftKey?SYM.length-1:1))%SYM.length];st.ghostKey='';refresh()}
     else if(k==='c'){st.snap=!st.snap;refresh()}
     else if(k==='r'){st.dec=!st.dec;refresh()}
+    else if(k==='t'){topView()}   // (flow, Q405) straight down at the design, to see the CoM off the axis
     else if(k==='escape'){if(st.held)drop();else if(st.sel){st.sel=null;refresh()}}
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   el('target').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(!b)return;st.sym=+b.dataset.sym;st.ghostKey='';refresh()});
