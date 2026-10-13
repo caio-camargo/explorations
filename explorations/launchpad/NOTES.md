@@ -86,6 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
+- v1.188 — flight buttons for landing legs (Y) and the cargo bay (B), beside the wings button (2026-10-13, vehicle session, QUEUE Q400)
 - v1.185 — nothing unfolds inside a closed fairing: wings and boom antennas wait for the jettison (2026-10-13, vehicle session, QUEUE Q410)
 - v1.184 — a flight button for the solar wings and boom antennas, "Unfold wings (P)" (2026-10-13, vehicle session, QUEUE Q409)
 - v1.178 — a working Satellite preset (wheel, battery, wings, camera, instruments; orbit with ~550 m/s to spare); the builder's in-air check counts the wheels' storage; side cameras and antennas draw power (2026-10-13, vehicle session, QUEUE Q390)
@@ -96,6 +97,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.180 — the exposure reads the brightest spot, not the blur: a planet on black exposed for its clouds (2026-10-13, sky & bodies, QUEUE Q385)
 - v1.181 — the sunglint at full strength, and a view that shows it (2026-10-13, sky & bodies, QUEUE Q387)
 - v1.183 — Q322 slice 1: the air's transmittance from a table, and airglow on the night limb (2026-10-13, sky & bodies)
+- v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies, QUEUE Q399, PLAYTEST #96)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -1660,3 +1660,13 @@ Test `vehicle-12`. `--smoke` all pass.
   the fairing)" when others did unfold. The Assembly's own deploy toggle is untouched (a part left deployed there already
   doesn't count as inside, and warns).
 - Tests: `vehicle-26`; `vehicle-18` jettisons the shell before unfolding its boom antenna. TESTING 267.
+
+## v1.188 — flight buttons for legs and the cargo bay (2026-10-13, vehicle session, QUEUE Q400's vehicle part)
+
+- **Caio:** "ok good, let's keep going". Q400 (PLAYTEST #97, P1: "no visible way to deploy folded parts") asked for an on-screen
+  control for everything that deploys. With v1.184's wings button (Q409): `#bLegs` "Legs down (Y)" / "Legs up (Y)" and `#bBay`
+  "Open bay (B)" / "Close bay (B)" in the flight bar, shown only when the craft has legs or a bay, lit while deployed; a click
+  does what the key does (recorded on the tape). `updateHUD`, `app/program-ui.js`. Checked in the browser on a probe with a bay
+  and four legs.
+- Left for flow (Q400): the Part tab saying how a part deploys, and a first-time hint in space.
+- TESTING 270.

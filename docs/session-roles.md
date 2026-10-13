@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.4.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 1.4.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -29,7 +29,7 @@ Chrome, Python. Serve with the threaded server (QUEUE Flags, "Flaky page loads")
 Its claim row names the machine (`hostname`). Work in the clone's `main` for docs; a worktree only if it ever builds.
 
 **Loop** (self-paced `/loop`, ~30 min when idle): `git pull`, then the first of these that has work:
-1. **Guard `main`:** for each new `## v1.N` since its last pass, `node test.mjs --smoke` and `node playtest.mjs m1`. A
+1. **Guard `main`:** for each new `## v1.N` since its last pass, `node test.mjs --smoke`, `node playtest.mjs m1`, and after an M2 merge `node playtest.mjs m2` (Q233). A
    failure is a PLAYTEST item (P1 if `m1` broke) naming the version and the commit, and a line under QUEUE *Proposed*.
 2. **QA items marked 🖥🖥 or "quiet machine"** (Q19's timing A/B on its branch, Q215's flake, Q233's M2 robot run): claim
    in QUEUE, run, report. A timing A/B is valid here as a *relative* number; say the machine and GPU beside it.

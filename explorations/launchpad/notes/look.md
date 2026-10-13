@@ -1800,3 +1800,16 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   earthshine, a harsh terminator). Seen in passing: the night side from orbit is fairly bright at the exposure's
   ceiling (E 3.86: the ground's ambient term), not this item's.
 - **Stills:** `output/launchpad/beauty/q322-before/`, `q322-after/`. **Check:** test `aerofx-26`. TESTING 265.
+
+## v1.187 — the bright stars' halo no longer cut at a cell's border (2026-10-13, sky & bodies beat, QUEUE Q399, PLAYTEST #96)
+
+- **Cause** (design desk's reading, confirmed): `starsAt` (Q321) shades each pixel from the star in its own hashed cell;
+  the brightest layer's halo (e-fold 5 px) reached past the cell into cells that never draw it, so it ended in a
+  straight line on one side.
+- **Fix:** the halo is drawn from the 2×2×2 cells nearest the pixel (`floor(d·90 − 0.5)`), each star kept by the band
+  at its own place (one `textureLod` of the baked sky, only for the rare candidate cells), and fades to nothing within
+  half a cell, which those eight cells always cover. The disc is untouched. A first try with 3×3×3 cells and a 1.2-cell
+  fade cost ~0.45 ms in star views (97, 99); the eight-cell form is within noise (A/B in one session, 1.1–1.4 → 1.25–1.3).
+- **Seen** at E 12 (to make halos plain): before, halos cut square on one side; after, round and soft
+  (`output/launchpad/beauty/pt96-before/`, `pt96-after/`; at normal exposure `pt96-normal/`).
+- **Check:** test `aerofx-27`. TESTING 269.
