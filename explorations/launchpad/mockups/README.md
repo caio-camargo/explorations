@@ -506,6 +506,21 @@ from `app/gl.js` for comparison; the rest are the proposal. Real references are 
 | **tellus-mid** | Tellus from 4,000 km: a gibbous disc, a thin blue limb, a soft terminator, cities on the night side, a small sunglint | DSCOVR/EPIC; Galileo's Earth; Apollo 4 |
 | **earthshine** | Selene as a crescent, its night side blue-grey in Tellus's light, maria visible (×12 over reality, to read at play exposure) | "the old moon in the new moon's arms"; Apollo earthshine photos |
 
+**Round 2, spectacular sights** (Caio, 2026-10-13: "a visible nebula or other spectacular cosmic sight, colorized like
+those NASA photos"). Far brighter than anything in the real sky to the eye: these are the photographs, on purpose. In
+the game they would be baked into the sky's cube map once per program (Q321), so they cost nothing per frame, and each
+program could draw its own from its seed, as the galaxy is since Q21.
+
+| View | What it shows | Real references |
+|---|---|---|
+| **nebula** (c) | an emission nebula ~25° across over the limb, natural colour: hydrogen's red shells as ridged filaments, oxygen's teal in the core, a dark dust lane across it with lit edges, the young cluster's glow | the Carina, Orion and Lagoon nebulae (ESO, Hubble) |
+| **nebula-hubble** (d) | the same in the Hubble palette (sulphur → red, hydrogen → gold, oxygen → blue): gold and copper filaments, a blue core | the Pillars of Creation (Hubble 1995/2014, JWST 2022); Carina's "Cosmic Cliffs" |
+| **spiral** (e) | a neighbour spiral galaxy ~16° across, tilted: a golden core, blue arms with dust lanes, pink star-forming knots | Andromeda (M31, 3° in our sky), M81, M101 |
+| **cosmos** (f) | everything in one 80° frame: the showpiece galaxy, the Hubble nebula, the spiral | — |
+
+Not drawn yet: dark pillars proper (the dust is lanes, not columns), a supernova remnant's shell (the Veil), a
+planetary nebula, a globular cluster; any of them is the same recipe if wanted.
+
 **Twinkle** (Caio, 2026-10-12: "the stars currently twinkle, maybe we can preserve that"). The game has no twinkle code:
 what twinkles today is the one-pixel stars shimmering as the view turns or the resolution adapts, plus the composite's
 grain, so Q321's sharp stars would lose it. The proposal makes it deliberate: each star's brightness drifts on its own
@@ -516,5 +531,5 @@ twinkles only near the limb (the real thing); *off*. It animates on the page; th
 path switches from rays that miss the ground to rays that hit it); the land on the day side is a flat tan; Tellus's
 continents are placeholder noise (Q323 owns the real look).
 
-**Pick:** _(Caio; W39. Default if silent: (a) subtle, the proposed sun, twinkle gentle everywhere)_
+**Pick:** _(Caio; W39. Default if silent: (a) subtle, the proposed sun, twinkle gentle everywhere, and one sight: (d) the Hubble-palette nebula)_
 
