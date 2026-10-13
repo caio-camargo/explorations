@@ -6144,3 +6144,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `PLAYTEST.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** economy's next ready items: Q332 (recovering a spent stage), Q380 (overflight rights), Q386 (scrub odds).
   The Fleet line clause (what a route's satellite is counted by) waits for Q296's Fleet line (Proposed).
+- **Addendum 7 (design desk, 2026-10-13):** the bench queued to build: Q416 already with vehicle (round 2's notes
+  appended), Q422 propulsion, Q423 first parts, Q424 instruments and antennas, Q425 ends of life. Then Caio's flight
+  notes: PLAYTEST #109 (rockets go straight up; nothing teaches the gravity turn), #110 (the navball's surface→orbit
+  jump at 50 km: blend it, make the label clickable), #111 (SAS buttons as symbols); each with a QUEUE Proposed line.
