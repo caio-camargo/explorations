@@ -686,3 +686,13 @@
   check('exposure: the highlight is each 1/16 block\'s brightest spot (the chain\'s alpha), so a bright disc on black is exposed for its clouds',
     chain && EXPO.hi === 2 && Math.abs(EXPO.H - 2.2) < 1e-6 && Math.abs(E - 2 / 2.2) < .01, `chain ${chain} · hi ${EXPO.hi} · H ${EXPO.H} · E ${E.toFixed(3)} (want ${(2 / 2.2).toFixed(3)})`);
 }
+
+// aerofx-25. The sunglint at full strength, and a view that shows it (look & sound sky & bodies beat, QUEUE Q387): the
+// sea's Beckmann glint is no longer quartered (BRDF × cos, the same scale as the diffuse sea), and view 162 puts the
+// ship 400 km over clear open sea with the sun ~40° up, looking down toward the sun.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const glint = /col\+=st\*5\.\*gl\*max\(ndl,0\.\)\+Fr\*/.test(pg) && !/gl\*max\(ndl,0\.\)\*\.25/.test(pg);
+  const view = /if \(n === 162\)/.test(vj) && /Math\.sin\(40 \/ 57\.3\)/.test(vj) && /terrainH\(c\) > -1000/.test(vj) && /TELLUS\.R \+ 4e5/.test(vj);
+  check('the sunglint at full strength (no quarter), and view 162 over clear open sea with the sun 40° up', glint && view, `glint ${glint} · view 162 ${view}`);
+}

@@ -92,6 +92,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Q326 — where the sky's time goes at the pad (2026-10-13, sky & bodies; measurement: the ground 4.7 of 7.4 ms, its march ~1.9, the volume cloud shadow 1.4, `scatter` 0.4)
 - v1.176 — Tellus from above, slice 1: clouds you can see through, the sea's sheen, lights without shimmer (2026-10-13, sky & bodies, QUEUE Q323)
 - v1.180 — the exposure reads the brightest spot, not the blur: a planet on black exposed for its clouds (2026-10-13, sky & bodies, QUEUE Q385)
+- v1.181 — the sunglint at full strength, and a view that shows it (2026-10-13, sky & bodies, QUEUE Q387)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

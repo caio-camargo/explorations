@@ -479,4 +479,15 @@ window.refView = async (n) => {
     cam.dist = n === 160 ? 30 : 25; cam.pitch = n === 160 ? 1.1 : 1.35; cam.yaw = n === 160 ? 1.6 : 0.6; render(); await settle(); bare();
     return n === 160 ? 'the terminator from 800 km' : 'the highest range from 1,000 km (' + terrainH(u).toFixed(0) + ' m)';
   }
+  // 162 (sky & bodies beat, QUEUE Q387): the sunglint. The ship 400 km over open sea with the sun ~40° up (a 0.02 rad search
+  // for sea ≥ 1 km deep and the clearest sky), the camera behind and above, looking down toward the sun, where the sea mirrors it
+  if (n === 162) {
+    await refView(157); const sn = norm(SUN), tq = norm(cross(sn, [0, 1, 0])), bq = cross(sn, tq); let u, best = 1e9;
+    for (let a = 0; a < 6.283; a += .02) { const c = norm(add(mul(sn, Math.sin(40 / 57.3)), mul(add(mul(tq, Math.cos(a)), mul(bq, Math.sin(a))), Math.cos(40 / 57.3))));
+      if (terrainH(c) > -1000) continue; const cl = cloudAt(c, simT) + (Math.abs(c[1]) > .7 ? 1 : 0); if (cl < best) { best = cl; u = c } }
+    S.r = mul(u, TELLUS.R + 4e5); S.v = mul(norm(cross(u, [0, 1, 0])), Math.sqrt(TELLUS.mu / len(S.r)));
+    const f = localFrame(S.r), sh = norm(sub(sn, mul(f.up, dot(sn, f.up)))), D = norm(add(mul(f.up, 0.6), mul(sh, -0.8)));
+    cam.pitch = Math.asin(clamp(dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)); cam.dist = 40; render(); await settle(); bare();
+    return 'the sunglint from 400 km, sun ' + (Math.asin(clamp(dot(u, sn), -1, 1)) * 57.3).toFixed(0) + '° up, cover here ' + cloudAt(u, simT).toFixed(2);
+  }
 };
