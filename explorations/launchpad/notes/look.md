@@ -1745,7 +1745,7 @@ and lights, the city texture), `sim/space.js` (`cloudAt`), `views.js` (view 80's
 - **Checks:** test `aerofx-23` (the shader's and `cloudAt`'s formulas alike, the even filter, the sea and the lights);
   core 16's cloud check holds (mean 0.12, clear at 345/400, moving). TESTING 258.
 
-## v1.178 — the exposure reads the brightest spot, not the blur: a planet on black exposed for its clouds (2026-10-13, sky & bodies beat, QUEUE Q385)
+## v1.180 — the exposure reads the brightest spot, not the blur: a planet on black exposed for its clouds (2026-10-13, sky & bodies beat, QUEUE Q385)
 
 Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), taken by this beat while effects was idle.
 
@@ -1764,4 +1764,4 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
   comparison in `q385-E0.5/`, `q385-E0.75/` (0.75 a little deeper still: a taste call if wanted, `EXPO.hi`).
 - **Cost:** four `texelFetch` per bloom texel (sixteen on Low's one pass); within the GPU noise.
 - **Check:** test `aerofx-24` (the chain's alpha, and `expoMean`/`expoTarget` on a synthetic frame: a disc blurred
-  0.9, brightest 2.2, on black → E = 2/2.2). TESTING 260.
+  0.9, brightest 2.2, on black → E = 2/2.2). TESTING 262.
