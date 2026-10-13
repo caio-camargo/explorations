@@ -6253,3 +6253,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Numbers: built as v1.214/TESTING 295, both taken by other sessions meanwhile; renumbered at the merge to v1.216 / TESTING 297 (the first work commit's message still says v1.214).
 - Files: app/model-desk.js, app/terms.js, app/screens.js, tests/flow.mjs, playtest.mjs, NOTES.md, notes/flow.md, TESTING.md.
 - Next: the queue's next flow item (Q384 hover terms + touch, Q397 crew-loss chain, Q192 label merge).
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a docked composite's power counts its passengers (v1.217, Q304)
+- **Done:** while docked, the vessel and its passengers share one battery store. The passengers' batteries, loads, RTGs and cells all count (`powEach` in `sim/power.js`), and a passenger's cells see the sun through that passenger's own attitude. Charge is pooled at `join` and split by battery capacity at `undock`. Shapes carry the solar damage from v1.210 (`o.dmg`). On `main` as `e087496`.
+- **Checks:** test space-26 (new) passes, as do space-23 (Q213's docking recharge) and space-25. The full run was **stopped by Claude Code for low system memory** before its summary; by then 722 checks had passed, and the 2 failures were both known on `main`: Q438 (Help keys) and `qa-2`. A `--smoke` run on the merged branch also failed *atlas is wired*. That check reads only app source, which this branch doesn't touch, so it comes from `main` (for flow or look; not filed by me).
+- **Correction:** Q303's follow-up Q442 (seed debris from the tester menu) was wrong: the menu already has a Debris block. Closed as not needed; TESTING 291 now uses the menu.
+- **Numbering:** `main` moved twice during the merges, so this went v1.215 → v1.217 and TESTING 296 → 298.
+- **Files:** `sim/power.js`, `sim/space.js`, `tests/space.mjs`, `notes/space.md` § v1.217, `NOTES.md`, `TESTING.md` (291 fixed, 298), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for space:** Q331 (the slow world, plan only) is the lane's last ready item; Q440 (damage that does something) is shared with vehicle.
