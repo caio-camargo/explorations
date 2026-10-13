@@ -1910,3 +1910,21 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
 - **Not touched:** whether the rocket reads right lying ~10 m up on the boom's cradle arms (Q222's other half, a look
   at the Q159 boom's geometry): it read fine in the earlier rollout stills; reopen if it looks off in play.
 - **Check:** test `sound-3`.
+
+## v1.196 — lettering on the pads: Coastal's agency over its assembly building's door, Isle's company on its hangar (2026-10-13, effects beat, QUEUE Q245)
+
+`app/gl.js` (`FONT57`, `padText`, `padName`; `coastalPad`, `islePad`, `buildPad`, `padFor`, `padSync`).
+
+- **The font:** 5×7 capitals A–Z and a hyphen (35 bits a letter, base 36), built as geometry: one slim box per run of
+  lit pixels on a row, 2.5 cm proud of the wall, so the letters take the building's light, shadow and night like the
+  wall. Accents are dropped (NFD); anything else is a space; a line break stacks lines (7 pixels tall, 2 apart); the
+  size is the largest that fits the given height and width. (`MESH_FS`'s 3×5 font is digits only, for the serials.)
+- **The names, from the site's owner** (`padName`): Coastal, "CENTRE SPATIAL / <root>" in navy, two lines between
+  the door and the pastel band (~1.6 m letters); Isle, "<root> LAUNCH CO" in white on the hangar's black sign (~1 m),
+  replacing the five placeholder blocks. The other schools carry none yet. A pad is now built and cached per school and
+  owner (`PADX[school:power]`; the current site's rebuilds when its owner changes), so two Coastal sites of different
+  powers each show their own name.
+- **Taste calls, defaults taken:** the wording (French for Coastal's agency, a plain company name for Isle) and the
+  colours. Easy to change in `padName`.
+- **Stills:** `output/launchpad/beauty/Q245/` (`coastal`, `isle`, and crops; views 146 and 149 with the camera
+  turned to the buildings). **Check:** test `aerofx-31` (and the school-pad tests' dispatch patterns amended). TESTING 277.

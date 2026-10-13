@@ -6089,3 +6089,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Lesson:** before claiming, grep ACTIVE_WORK and QUEUE for the item number itself (`Q322`), not just the lanes I expect
   to collide with; with two sessions on one beat, the item row's state is the only reliable signal.
 - **Next for sky & bodies (this session):** nothing claimed; take the next item only after checking the other sky session's row.
+- **Addendum 2 (effects):** v1.196 Q245: lettering on the pads (`FONT57`/`padText`, a 5×7 font as boxes; Coastal "Centre Spatial / <root>" over the door, Isle "<root> Launch Co" on the hangar's sign; pads cached per school and owner). Test aerofx-31; TESTING 277. Claim idle.
