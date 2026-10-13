@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -667,3 +667,39 @@ first due-north try also ran dry: going north cancels the pad's 278 m/s of spin 
   to 4,000 (~90 days a wait).
 
 Also seen: once a route's satellites have all come down, its Fleet line is gone, and with it *Order a run* → PLAYTEST #105.
+
+## Test bench timings: Q19's A/B, Q315 and Q321 on the iGPU (2026-10-13, test bench, QUEUE Q19, Q349, Q373)
+
+Measured on `PC_de_Varginha` (RTX 5050 Laptop and Intel Graphics, 16 GB; no other sessions, Chrome closed, ~6.5 GB free).
+Each comparison is two detached worktrees served side by side, `refset.mjs` alternating A and B, a fresh browser profile
+every run. "Load" is refset's *ready in* (page load to the views being ready); the GPU driver keeps its own shader cache,
+so loads are shorter than the 86–88 s in Q19's notes and only the A/B difference means anything. GPU ms is refset's
+full-resolution figure, the median over the runs. Pixels: A against B judged against A against A (the grain and animated
+flames differ run to run: up to ~17 levels on ~7 % of pixels, much more around plumes).
+
+**Q19, the terrain G-buffer (branch `q19-hdr` `04bc59b` against its base `3eac3f9`, v1.142).** 28 views (1–3, 15–19, 60,
+80–83, 97–100, 116–119, 145–151).
+
+| | load A → B | GPU ms, sum of 28 views | pixels |
+|---|---|---|---|
+| RTX, High (3 rounds) | 28 → **14 s** | 116.2 → 107.9 (−7 %; 24 of 28 faster; pad 3.89 → 3.69) | within noise on every view |
+| RTX, Low (2 rounds) | 28 → **14 s** | 107.2 → 106.0 (even: night −0.7, but sky 97 1.2 → 2.8, orbit 3.0 → 3.6) | within noise on every view |
+| iGPU, High (1 round) | 24 → **13 s** | 789 → 666 (**−16 %**; pad 29.0 → 25.5, night 35.8 → 27.7, Steppe lift-off 38.9 → 31.1) | — |
+
+Q19's own bar (NOTES § "Q19, round 2": "merge if the branch is no slower at the pad and faster to load") is met on both
+GPUs. At Low on the RTX, views with little ground on screen pay for PTERR's own full-resolution pass: Low could run it at
+the half resolution Low already uses elsewhere.
+
+**Q315, the craft's quick wins (v1.150 `5b213d1` against `e6838a1`, the claim before its branch), on the iGPU.** 28 views
+(1–10, 30–36, 97–100, 152–158). High (2 rounds): 562.1 → 563.2 ms (+0.2 %); Low (1 round): 522.2 → 523.9 (+0.3 %); no view
+over +0.4 ms but the desk at Low (+1.3, one round). Load 25 → 24 s. **Q315 costs nothing on the iGPU.** Its after set
+(81 views, RTX High, v1.150) is in `output/launchpad/q315-after-v1150-rtx-high/` on that machine (`output/` isn't in git).
+
+**Q321, the space sky (v1.166 `54d993b` against `43aa7a0`, `main` just before it), on the iGPU.** 14 views (1, 3, 19, 97–100,
+155–161). High (3 rounds): 214.3 → 176.6 ms (**−18 %**): the pad −1.9, every sky view −1.5, night −2.8; Low (1 round):
+204.1 → 167.9. Views 159–160 also moved (−10, −8 ms) but Q321 re-aimed them, so they aren't like for like. **Load 24 → 25 s
+(+1 s, within a second over 3 rounds)**: the three star layers cost about what the galaxy noise saved.
+
+**Seen on the way: Low barely helps on the iGPU.** At full resolution the pad is ~31 ms at High and ~30.5 at Low (~33 fps
+either way), a lift-off ~36 vs ~32: Low saves ~7 % there. Most of what Low saves must come from the resolution scale, so
+this is worth a look on a machine whose only GPU is the Intel one (the platform lane's perf work).

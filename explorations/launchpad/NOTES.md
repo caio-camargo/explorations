@@ -352,3 +352,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 - v1.121 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
 - The satellite-network robot run: M2's finish line (2026-10-13, test bench, QUEUE Q233)
+- Test bench timings: Q19's A/B, Q315 and Q321 on the iGPU (2026-10-13, test bench, QUEUE Q19, Q349, Q373)
