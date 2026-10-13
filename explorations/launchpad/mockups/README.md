@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.15 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.16 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -98,6 +98,26 @@ next to a 1.8 m figure. Four directions, all shown (Caio: "yes, all four"):
 
 **Pick:** _(Caio; if silent: all four go into PROBES as § 6's variety rules and a slice S4 after S2: smaller stacks and
 the kick motor first (cheapest, biggest change), then skins, then bus shapes, then the appendages with their jobs)_
+
+## bench/ — the payload bench (D24 → PROBES § 6.1)
+
+Open `bench/index.html` (real 3D: click a part on the craft or in the palette, drag to turn, paint faces) or the stills in
+`output/launchpad/mockups/bench/` (`checks`, `stowed`, `fairing`, `bus-drum`, `part-wing`, `designs`; 1280×800). Satellites
+are designed apart from the rocket, like the Rover yard, from parts, never ready-made:
+- **Top bar**: the design, its mass and balance; **stowed / deployed / in the fairing** (the deploy animates: the
+  yoke swings, the panels unfold one by one, booms swing and lock); the fairing it must fit (Orbiter or Lunar).
+- **Left, the palette** by job: Power, Talk, See, Point, Move; hover for what a part does; era-locked parts greyed.
+- **The bus is one frame** (Part tab with the bus selected): shape (sphere, faceted ball, drum, many faces, box, open
+  truss), faces, size 0.3–3 m, height, and a **skin per face**: pick a swatch, click faces on the craft (gold, silver,
+  polished, cells that make power, white, thermal checks, black blanket; each runs warmer or cooler).
+- **Checks against the job** (D22's form, D23's aim): *has power in shadow too · talks home · keeps the camera on the
+  ground · stays in its temperatures · balanced on its axis · fits the fairing* (folded), each a verdict and its fix.
+- **Designs**: the program's payloads (a starter to copy, your own, a customer's ready-made one you only fly); on the
+  rocket a payload is one block in the fairing.
+URL: `?view=stowed|deployed|fairing`, `&tab=checks|part|designs`, `&sel=bus|<part>`, `&shape=`, `&n=`, `&d=`, `&h=`,
+`&on=` / `&off=<parts>`, `&open=<check>`, `&still=1`. Numbers are illustrative.
+
+**Pick:** _(Caio; if silent: build from this page: the bench as a screen beside the Rover yard, after the pointing slice S2)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 

@@ -6019,3 +6019,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 4 (design desk, 2026-10-13):** **D24**: satellites are parts, not products (the bus one adjustable frame),
   built on a **payload bench** apart from the rocket like the Rover yard, then one block in the fairing (PROBES 0.1.4
   § 6.1). Next for the desk: a mock-up of the bench.
+- **Addendum 5 (design desk, 2026-10-13):** `mockups/bench/`, the payload bench (D24): palette by job, the bus as one frame with a skin per face, Checks against the job, stowed / deployed (animated) / in the fairing, Designs. Stills in `output/launchpad/mockups/bench/`.

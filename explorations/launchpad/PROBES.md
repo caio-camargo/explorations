@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -182,6 +182,8 @@ parts.
 the gravity boom): each is a part a contract or a law asks for, so a player who takes the job builds the shape.
 
 ### 6.1 The payload bench (D24)
+
+Mock-up: [`mockups/bench/`](mockups/bench/index.html).
 
 Caio: "they're kind of like the rover in that they probably need to be designed separately from the rocket and then
 tucked in somewhere. what's good is this will definitely help stability, since the satellites will end up much smaller."
