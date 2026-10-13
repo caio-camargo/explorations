@@ -254,8 +254,8 @@ const PART_INFO={
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
   rdec:'Holds a side part on and lets it go when its stage fires.',
   fins:'A ring of fixed fins at the tail: it keeps the rocket pointing into the airflow, like an arrow\'s feathers.',
-  rfin:'A single fin for the side of a part; place several around the body to keep the rocket straight in air.',
-  cfin:'A fin that turns: it steers the rocket in air, strongest when it is moving fast low down.',
+  rfin:'A single fin for the side of a part; place several around the body to keep the rocket straight in air. Right-click it for a bigger size.',
+  cfin:'A fin that turns: it steers the rocket in air, strongest when it is moving fast low down. Right-click it for a bigger size.',
   cfins:'A ring of fins that turn: it steers and keeps the rocket straight in air.',
   rcs:'Small cold-gas thrusters for fine turns and nudges in space; they need a gas bottle.',
   gas:'Compressed gas for the RCS thrusters.',
@@ -353,6 +353,8 @@ function panel(){
   if(PARTS[n.k].kind==='fair'){const d=PARTS[n.k],L=n.fl&&d.fls.includes(n.fl)?n.fl:d.fl0,f=ps.find(p=>p.profF),inn=f?S.parts.filter(q=>q.on&&q.inFair===f).length:0,r=row('length');
     for(const v of d.fls)btn(r,v+' m',v===L,()=>edit(()=>{if(v===d.fl0)delete n.fl;else n.fl=v}),`a ${v} m shell (${(d.fm*v).toFixed(2)} t)`);
     const i=document.createElement('span');i.className='dim';i.textContent=` encloses ${inn} part${inn===1?'':'s'}`;r.appendChild(i)}
+  if(PARTS[n.k].kind==='rfin'){const r=row('size');   // fin sizes (Q348)
+    FIN_SZ.forEach((z,i)=>{const d=finDef(PARTS[n.k],i);btn(r,z.n,(n.fz||0)===i,()=>edit(()=>{if(i)n.fz=i;else delete n.fz}),`${z.n} span × ${d.chord.toFixed(2)} m chord, ${(d.m*1000).toFixed(0)} kg each`)})}
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
   {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it')}}
   if(radAt(n.at)){const a=n.at;

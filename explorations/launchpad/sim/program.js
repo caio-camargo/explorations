@@ -41,7 +41,7 @@ function partLaunchWhy(parts){const L=[];for(const p of parts||[]){const o=partO
   return L.length?`Not open yet: ${L.map(x=>`${x.name.toLowerCase()} (${x.why})`).join('; ')}`:''}
 function rvLaunchWhy(parts){for(const p of parts||[]){if(p.d.kind!=='rover'||!p.dn||!p.dn.rvd)continue;const L=rvLocked(p.dn.rvd);
   if(L.length)return`The rover ${p.dn.rvd.name||''} can't fly yet: ${L.map(x=>`${x.name.toLowerCase()} ${x.why}`).join('; ')}`.replace('  ',' ')}return''}
-const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
+const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRICE[p.d.key]??3)*(p.d.pk||1)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
 // its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.

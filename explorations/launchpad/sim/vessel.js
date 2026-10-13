@@ -222,7 +222,7 @@ function layoutDesign(des){
   while(queue.length){const{mem,L}=queue.shift(),lineQ=[...L.byM.values()];
     for(const m of [...mem].sort((a,b)=>b.y-a.y))for(const c of m.nd.c||[]){if(!radAt(c.at))continue;
       if(PARTS[c.k].surf){ // a surface part sits on the host's skin at that height; no line, no children
-        const P=L.byM.get(m),at=c.at,d=PARTS[c.k],n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;
+        const P=L.byM.get(m),at=c.at,d=finDef(PARTS[c.k],c.fz),n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;   // finDef: a sized fin (Q348)
         for(let k=0;k<n;k++){const ph=P.rot+at.a+2*Math.PI*k/n,nx=Math.cos(ph),nz=Math.sin(ph),
           q={nd:c,d,x:P.x+rp*nx,z:P.z+rp*nz,y0:yc-(at.cy??d.h/2),rot:ph,phi:ph,line:-1,surf:true,path:P.path+'/'+k};inst.push(q);
           joints.push({a:P,b:q,axis:[nx,0,nz],P:[q.x,yc,q.z],j:c.j||0})}
@@ -345,6 +345,13 @@ function dryMass(p){return(p.d.kind==='tank'?p.d.dry:p.d.m)+(p.jm||0)+(p.xm||0)}
 // an ogive to a point. A part is inside if all of it is under that outline (its corners against the radius there, less
 // the wall); a deployed leg or wing never is.
 const fairLen=(nd,d)=>{const L=nd&&nd.fl;return d.fls.includes(L)?L:d.fl0};
+// fin sizes (vehicle, QUEUE Q348 / PLAYTEST #85): a radial or steerable fin's node may carry fz, a step up in size. The plate
+// scales by k (span, chord, height); its mass, shear and axial ratings and its price by the area (k²); its root's bending
+// rating by k³, as its own air load times its lever grows, so a bigger fin is no weaker for its size. A sized fin gets its own
+// definition (same key), cached, so everything that reads p.d (aero, steering, loads, drawing) sees the bigger plate.
+const FIN_SZ=[{k:1,n:'0.9 m'},{k:1.5,n:'1.35 m'},{k:2.2,n:'2 m'}],FIN_C={};
+function finDef(d,fz){if(d.kind!=='rfin'||!fz||!FIN_SZ[fz])return d;const id=d.key+':'+fz;if(FIN_C[id])return FIN_C[id];const k=FIN_SZ[fz].k,a=k*k;
+  return FIN_C[id]={...d,fz,span:d.span*k,chord:d.chord*k,h:d.h*k,m:d.m*a,C:d.C*a,T:d.T*a,S:d.S*a,B:d.B*a*k,pk:a,name:`${d.name} ${FIN_SZ[fz].n}`}}
 function fairProf(d,L){const r=d.r,h=d.h;return[[d.rb||r,0],[r,h],[r,h+.6*L],[.86*r,h+.78*L],[.56*r,h+.9*L],[.2*r,h+.98*L],[0,h+L]]}
 function fairFits(f,q){if(q.dep||q.open)return false;const pr=f.profF,y0=q.y0-f.y0,y1=y0+q.h,
     rq=Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])+(q.d.off||0)+q.d.r,
@@ -443,8 +450,8 @@ function trimOf(s){const on=s.parts.map(p=>p.on),ign=new Set();let worst=null,k=
 function jointFix(w,own){if(!w||!w.p)return'';const dec=[w.p.d,w.p.parent.d].find(d=>d.kind==='dec'&&!d.istage&&!d.sc);
   return[dec?'an interstage decoupler instead (twice the bending rating, and its shell carries the load around the engine it encloses)':'',`reinforce that joint (right-click the part: joint)`,own?'less thrust low down (it flies through thick air too fast)':''].filter(Boolean).join(', or ').replace(/^./,c=>c.toUpperCase())+'.'}
 // what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
-function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='auth'?`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`:`it would go over in ${(1/a.lam).toFixed(2)} s, faster than the autopilot can catch it (a reaction wheel doesn't help)`}
-function airFix(a){return`Fins or steerable fins on it, or a bigger first stage so it separates in thinner air (or coast up before staging); separate pointing prograde.`}
+function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='auth'?`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`:`it would go over in ${(1/a.lam).toFixed(2)} s, faster than its nozzles swing (${a.lag.toFixed(1)} s) to catch it (a reaction wheel doesn't help)`}
+function airFix(a){return a.first?`Fins ahead of the centre of mass push it over: bigger fins low on the first stage, or smaller ones up top.`:`Fins or steerable fins on it (right-click a fin for a bigger size), or a bigger first stage so it separates in thinner air (or coast up before staging); separate pointing prograde.`}
 function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
     air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
     src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
@@ -456,7 +463,7 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
-  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} goes end over end when it lights in the air (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa on a standard ascent): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
+  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} goes end over end ${a.first?'at max-q':'when it lights in the air'} (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa on a standard ascent): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
   {const T=trimOf(s);if(T&&T.f>0.6)out.push(['warn',`Stage ${T.k} can't hold its course at full thrust: the thrust misses the centre of mass by ${(T.miss*100).toFixed(0)} cm (balance the other side, a counterweight, or deploy after the burn)`])}   // trim (Q337)
   // a payload fairing (Q337): what stands above its ring but isn't inside its outline meets the air
   for(const f of s.parts.filter(p=>p.profF)){const o=s.parts.filter(q=>q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<f.d.r+.5);

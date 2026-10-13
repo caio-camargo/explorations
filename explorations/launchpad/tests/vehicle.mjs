@@ -289,7 +289,7 @@
   const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
   const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
   check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
-    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(hop[0][1]) && /Tight/.test(tight[0][1])
+    est.join('|') === 'ok|warn|warn,warn|ok' && /Short of orbit/.test(hop[0][1]) && /end over end at max-q/.test(hop[1][1]) && /Tight/.test(tight[0][1])   // the Hopper also flips at max-q (Q348's stage-1 check; flown, it does)
       && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
       && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
     `${est.join(' / ')}; climb to 400 km ${climb.toFixed(0)} m/s; "${best[0][1]}"`);
@@ -626,4 +626,31 @@
   check('a fast rocket\'s own max-q (Q347): four boosters peak near 75 kPa, the decoupler joint near its rating, an interstage suggested and about halving it; the Orbiter\'s estimate ~33 kPa',
     a.own && a.q > 60e3 && a.q < 90e3 && a.cert.frac > 0.75 && /dec/.test(a.cert.p.d.key + a.cert.p.parent.d.key) && /interstage/.test(fix) && b.cert.frac < 0.6 * a.cert.frac && o.qMax > 30e3 && o.qMax < 37e3,
     `four boosters: max-q ${(a.q / 1e3).toFixed(0)} kPa M${a.M.toFixed(1)}, ${(a.cert.frac * 100).toFixed(0)}% ${a.cert.kind} at ${a.cert.p && a.cert.p.d.key + '/' + a.cert.p.parent.d.key}; "${fix}"; with an interstage ${(b.cert.frac * 100).toFixed(0)}%; Orbiter ${(o.qMax / 1e3).toFixed(1)} kPa`);
+}
+
+// vehicle-23. Fin sizes (vehicle session, QUEUE Q348 / PLAYTEST #85): a radial or steerable fin's node may carry fz, a step up
+// (0.9, 1.35, 2 m span). The plate scales; mass, shear and price by area; the root's bending rating by k³. Four 2 m radial fins
+// on the fairing satellite's upper stage (Q342) make it about neutral, so it holds in the air. But fins that big up top move the
+// whole rocket's centre of pressure forward, and with only the fin ring below it goes over at max-q (flown: it snaps there):
+// the builder now says so (stage 1 "at max-q": too fast for its nozzles). With 2 m fins low on the first stage as well, every
+// check holds, and flown it stays on course through max-q and past separation.
+{
+  const f = (x, k) => x.k === k ? x : (x.c || []).map(c => f(c, k)).find(Boolean);
+  const sat = (top, bot) => { const d = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel', 'dec', 't8', ...(bot ? [] : ['fins']), 'kestrel']);
+    const n = { k: 'rfin', at: { y: 0.45, a: Math.PI / 4, n: 4 }, c: [] }; if (top) n.fz = top; f(d.root, 't2').c.push(n);
+    if (bot) f(d.root, 't8').c.push({ k: 'rfin', at: { y: 1.0, a: Math.PI / 4, n: 4 }, fz: bot, c: [] }); return d; };
+  const b = api.PARTS.rfin, z = api.finDef(b, 2), k = api.FIN_SZ[2].k, s0 = api.newShip(sat(0)), s2 = api.newShip(sat(2)), p2 = s2.parts.find(p => p.d.kind === 'rfin');
+  const scale = Math.abs(z.span / b.span - k) < 1e-9 && Math.abs(z.m / b.m - k * k) < 1e-9 && Math.abs(z.B / b.B - k ** 3) < 1e-9 && z.key === 'rfin' && api.finDef(b, 0) === b && p2.d === z;
+  const c0 = api.vesselCost(s0.parts).cost, c2 = api.vesselCost(s2.parts).cost, up = d => api.airSep(d).find(a => !a.first), st1 = d => api.airSep(d).find(a => a.first);
+  const u0 = up(sat(0)), u2 = up(sat(2)), m2 = st1(sat(2)), bal = api.airSep(sat(2, 2)), warned = api.launchWarnings(sat(2)).some(([q, x]) => /at max-q/.test(x));
+  const fly = d => { const AS = api.TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = 2; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
+    let tS = null, mx = 0; for (let i = 0; i < 60000 && s.alive; i++) { const fr = api.localFrame(s.r), h = api.len(s.r) - api.TELLUS.R;
+      if (h > 20000) s.sasMode = 'pro'; else { const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = api.norm(api.add(api.mul(fr.e, Math.cos(r)), api.mul(fr.up, Math.sin(r)))); }
+      if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
+      if (s.qdyn > 500 && (tS == null || api.t > tS + 0.1)) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 10) break; api.advPhys(s); }
+    return { sep: tS != null, aoa: mx * 180 / Math.PI, alive: s.alive }; };
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const fl = fly(sat(2, 2)); api.HOOK.msg = msg0;
+  check('fin sizes (Q348): a 2 m radial fin scales span x2.2, mass by area, root bending by k^3, costs more; 2 m fins on the upper stage hold it in the air but tip the whole rocket over at max-q (warned); with 2 m fins low on stage 1 too, all hold and flown it stays on course',
+    scale && c2 > c0 && !u0.holds && u2.holds && u2.cal > u0.cal && m2 && !m2.holds && m2.why === 'fast' && warned && bal.every(a => a.holds) && fl.sep && fl.alive && fl.aoa < 20,
+    `2 m: span ${z.span.toFixed(2)} m, ${(z.m * 1000).toFixed(0)} kg, B ${z.B.toFixed(0)} kN·m; cost ${c0.toFixed(1)}M → ${c2.toFixed(1)}M; stage 2 ${u0.holds ? 'holds' : 'flips'} (cal ${u0.cal.toFixed(2)}) → ${u2.holds ? 'holds' : 'flips'} (cal ${u2.cal.toFixed(2)}); stage 1 with 2 m fins up top: ${m2 ? (m2.holds ? 'holds' : 'flips (' + m2.why + ', λ·lag ' + (m2.lam * m2.lag).toFixed(2) + ')') : 'not listed'}, warned ${warned}; both stages finned: ${bal.map(a => a.holds ? 'holds' : 'flips').join(', ') || 'nothing listed'}; flown ${fl.aoa.toFixed(0)}° at worst`);
 }
