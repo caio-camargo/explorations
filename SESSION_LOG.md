@@ -6010,3 +6010,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Noticed:** PLAYTEST #102–104 are each used twice on `main` (other sessions); check_numbers stops on them.
 - **Next for sky & bodies:** Q322 slice 2 (Selene out of `SKY_FS`).
 
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): deploy buttons and the fairing rule (v1.184, v1.185, v1.188)
+- **Built:** flight-bar buttons for wings/boom antennas (P), landing legs (Y) and the cargo bay (B), each shown only when fitted (Q409, Q400's vehicle part); nothing unfolds inside a fairing that's still on (Q410). Checked in the browser.
+- **Numbers:** Q397/Q398/Q406 collided with other sessions' items twice; mine are Q409 and Q410. PLAYTEST #102–#104 are filed twice by two other sessions (not mine, left as is).
+- **Files:** `index.html`, `app/program-ui.js`, `sim/power.js`, `tests/vehicle.mjs` (vehicle-26; vehicle-18 jettisons first), `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (266, 267, 270), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** flow's Q400 remainder (Part tab line, first-time hint); vehicle's ready list: Q341 (the folding boom), Q329, Q338.
