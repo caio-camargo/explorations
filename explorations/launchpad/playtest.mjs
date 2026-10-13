@@ -1051,6 +1051,34 @@ ROWS[205] = {title: 'a revert discards the flight', steps: [M1_HELPERS, `{go('as
   `(async () => ({ascent: await PT.ascent()}))()`, `{go('flight'); PT.key('Escape'); true}`, `{const b = document.querySelector('[data-esc="revert"]') || [...document.querySelectorAll('#escm button')].find(x => /Revert/.test(x.textContent)); b.click(); b.click(); true}`, {wait: 1500},
   `{({before: B205, after: ${STATE205}, screen: screenNow(), landed: S && S.landed})}`],
   checks: {same: `JSON.stringify(${STATE205}) === JSON.stringify(B205)`}, expect: {same: v => v === true}};
+// batch 5 (test bench, 2026-10-13): saved designs (211), the desk (214), Graphics Low/High (216), deploying in the Assembly
+// (227), side parts and trim (229), a structural failure (237), mission control's walls (213, 233)
+const LIB = `(document.querySelector('#blName') || {}).closest ? [...document.querySelectorAll('.pcat')].map(e => e.innerText + ': ' + (e.nextElementSibling ? e.nextElementSibling.innerText.replace(/\\s+/g, ' ').slice(0, 160) : '')).filter(t => /designs|Launched/.test(t)) : null`;
+ROWS[211] = {title: "the player's designs", steps: [`{go('assembly'); PT.preset('Orbiter'); render(); PT.clickText('button', '^save design'); const i = document.getElementById('blName'); i.value = 'Robot Orbiter'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); ${LIB}}`,
+  `{PT.click('#bRoll'); PT.launch(); go('assembly'); PT.click('#bRoll'); PT.launch(); go('assembly'); render(); ${LIB}}`, {shot: 'library'}, ...RELOAD, `{go('assembly'); ${LIB}}`],
+  checks: {kept: `JSON.stringify(${LIB})`}, expect: {kept: v => /Robot Orbiter/.test(v)}};
+ROWS[214] = {title: "the desk's polish (refView 152, then the Crewed Lunar)", steps: [...views(152), `{PT.preset('Crewed Lunar'); render(); true}`, {wait: 800}, {shot: 'crewed_lunar'}]};
+ROWS[216] = {title: 'Graphics Low and High', steps: [`{ovOpen('settings'); const t = document.getElementById('settings') || document.querySelector('.ov:not(.hidden)'); ({graphics: (document.body.innerText.match(/Graphics[^]{0,160}/) || [''])[0].replace(/\\s+/g, ' ')})}`, {shot: 'settings'},
+  `{try { localStorage.setItem('launchpad-quality', 'medium') } catch (e) {} applyQuality(typeof loadQuality === 'function' ? loadQuality() : 'medium'); ({quality})}`, ...views(1, 90)]};
+// 227: a pod over a cargo bay, legs on its tank and a solar wing ×2: extend all, one leg row folds all, Rollout warnings
+const LWB = `{const d = toV2(['chute', 'pod', 'bay', 't2', 'petrel']), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({k: 'leg', at: {y: 0.1, a: 0, n: 4}, c: []}, {k: 'wpanel', at: {y: 0.7, a: 0.4, n: 2}, c: []});
+  stackDef = d; editorChanged(); go('assembly'); render(); true}`;
+const DEPS = `({deps: S.parts.filter(p => p.on && (unfolds(p.d) || p.d.kind === 'leg' || p.d.kind === 'bay')).map(p => p.d.key + (p.dep ? '+' : '-')).join(' ')})`;
+ROWS[227] = {title: 'deploy in the Assembly', steps: [LWB, `{PT.clickText('button', '^extend all'); render(); ${DEPS}}`, {shot: 'extended'},
+  `{const D = BLD.design(), f = n => n.k === 'leg' ? n : (n.c || []).map(f).find(Boolean); BLD.st.sel = f(D.root); BLD.panel(); const b = [...document.querySelectorAll('.bsel button')].find(x => /^down$|^up$|^in$|^out$/.test(x.textContent.trim())); if (b) b.click(); render(); ({btn: b && b.textContent, ...${DEPS}})}`,
+  `{PT.click('#bRoll'); render(); (document.getElementById('rollChecks') || {}).innerText}`, {shot: 'rollout'}]};
+// 229: a probe with a whip, a boom antenna and a side camera: extend all, retract all; a 2 t tank on one side of a first stage
+ROWS[229] = {title: 'side antennas, side boxes, trim', steps: [`{const d = toV2(['core', 'batt', 't2', 'petrel']), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({k: 'whip', at: {y: 0.9, a: 0, n: 1}, c: []}, {k: 'bant', at: {y: 0.8, a: 2, n: 1}, c: []}, {k: 'scam', at: {y: 0.5, a: 4, n: 1}, c: []});
+  stackDef = d; editorChanged(); go('assembly'); render(); PT.clickText('button', '^extend all'); render(); ${DEPS}}`, {shot: 'extended'}, `{PT.clickText('button', '^retract all'); render(); ${DEPS}}`,
+  `{const d = toV2(['chute', 'pod', 'dec', 't8', 'kestrel']), f = n => n.k === 't8' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({k: 't2', at: {y: 0.5, a: 0, n: 1}, c: []}); stackDef = d; editorChanged(); render();
+  (document.body.innerText.match(/Trim[^\\n]*/) || [''])[0]}`, {shot: 'trim'}]};
+// 237: the Orbiter pitched hard over at ~10 km: the joint gives, sparks, vent, the structure line in the verbose log
+ROWS[237] = {title: 'a structural failure shows', steps: [`{go('assembly'); PT.preset('Orbiter'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => PT.alt() > 10000, 200, {ascent: true}); const n0 = PT.log.length; let t0 = simT;
+  while (S.alive && simT - t0 < 8 && !PT.log.slice(n0).some(l => /Structural|broke/i.test(l))) { INP.pitch = 1; advPhys(S) } INP.pitch = 0; window.simulate0 = window.simulate0 || window.simulate; PT.look(1.6, 0.1, 30); render(); ({t: +(simT - t0).toFixed(1), alt: Math.round(PT.alt()), log: PT.logSince(n0).slice(0, 6)})}`,
+  {wait: 600}, {shot: 'break'}, `{window.simulate = window.simulate0; true}`, {wait: 1500}, {shot: 'after'}]};
+// 213 and 233: mission control's walls in turn (W), the network page last
+ROWS[233] = {title: "mission control's walls (with 213)", steps: [DOCK_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); go('program'); if (screenNow() === 'debrief') go('program'); true`, {key: 'c'},
+  `{const tabs = [...document.querySelectorAll('[data-mcwall]')].map(b => b.textContent); tabs}`, {shot: 'track'}, `{PT.click('[data-mcwall="pads"]'); true}`, {shot: 'pads'}, `{PT.click('[data-mcwall="net"]'); (document.getElementById('mc') || document.body).innerText.slice(0, 600)}`, {shot: 'network'}]};
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
