@@ -2098,7 +2098,7 @@ Fragments (v1.83) were a density per band that hit registered entries between fl
   hits a year**, about one in 70,000 flight-hours. Strikes come with a cascade or an anti-satellite test, as they should.
 - **Not yet:** a hit that punctures a tank (a leak) or damages instead of breaking; the fragment drawn (HOOK.fragIn).
 
-## v1.203 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
+## v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
 
 v1.127's strike had two outcomes: a part lost, or "dented, no harm done". Now a hit can be in between (`fragStrike`,
 `sim/space.js`):
