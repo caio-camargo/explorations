@@ -11,16 +11,24 @@ Object.assign(PARTS.ant,{W:5});Object.assign(PARTS.cam,{W:10});Object.assign(PAR
 // built from them showed a 0 W load)
 for(const k in PARTS){const d=PARTS[k];if(d.W==null&&(d.kind==='ant'||d.kind==='cam'))d.W=PARTS[d.kind].W}
 const KWH=3.6e6,SOL_BODY=0.32,SOL_WING=0.9;   // cells on a skin average ~a third of full sun; a wing on its own arm loses ~10 %
-const powCap=s=>{let E=0;for(const p of s.parts)if(p.on&&p.d.kWh)E+=p.d.kWh*KWH;return E};
-const powLoad=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.W)W+=p.d.W;return W};
-const powRTG=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.Wg)W+=p.d.Wg;return W};   // RTGs: the same day and night (Q131)
+// a docked composite is one store (space, Q304): the passengers' (s.att, sim/space.js) batteries, loads, RTGs and cells
+// count with the vessel's own. A passenger's parts are its registry shape; its wings are out unless it was left with
+// them folded (its vst.dep), and its cells see the sun through its attitude on the vessel (a.q).
+function powEach(s,f){for(const p of s.parts)if(p.on)f(p.d,p,null);
+  for(const a of s.att||[]){const e=a.e,dep=e.vst&&e.vst.dep;for(const o of e.shape||[]){const d=PARTS[o.k];if(d)f(d,{dep:!dep||dep.includes(o.oi??o.i),phi:o.phi,dmg:o.dmg},a.q)}}}
+const powCap=s=>{let E=0;powEach(s,d=>{if(d.kWh)E+=d.kWh*KWH});return E};
+const powLoad=s=>{let W=0;powEach(s,d=>{if(d.W)W+=d.W});return W};
+const powRTG=s=>{let W=0;powEach(s,d=>{if(d.Wg)W+=d.Wg});return W};   // RTGs: the same day and night (Q131)
 // what the panels give in full sun from direction u (the vessel's own frame): body cells their average share; a deployed wing
 // turns about its arm (the mount's outward normal n) to face the sun as well as that allows, so √(1 − (n·u)²) of its best
-function powSun(s,u){let W=0;for(const p of s.parts){if(!p.on||p.d.kind!=='solar')continue;
-    if(p.d.body)W+=p.d.Wp*SOL_BODY*(1-(p.dmg||0));else if(p.dep){const a=p.phi||0,c=Math.cos(a)*u[0]+Math.sin(a)*u[2];W+=p.d.Wp*(1-(p.dmg||0))*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}}
+function powSun(s,u){let W=0;powEach(s,(d,p,aq)=>{if(d.kind!=='solar')return;const k=d.Wp*(1-(p.dmg||0));
+    if(d.body)W+=k*SOL_BODY;else if(p.dep){const v=aq?qrot(qconj(aq),u):u,a=p.phi||0,c=Math.cos(a)*v[0]+Math.sin(a)*v[2];W+=k*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}});
   return W}
 // the best the panels can give (wings square to the sun): what the steady state assumes
-const powPeak=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.kind==='solar')W+=p.d.Wp*(1-(p.dmg||0))*(p.d.body?SOL_BODY:SOL_WING);return W};
+const powPeak=s=>{let W=0;powEach(s,(d,p)=>{if(d.kind==='solar')W+=d.Wp*(1-(p.dmg||0))*(d.body?SOL_BODY:SOL_WING)});return W};
+// what a passenger brings to the store when it docks, and its share when it leaves (by battery capacity)
+const battCap=e=>(e.shape||[]).reduce((a,o)=>a+((PARTS[o.k]||{}).kWh||0)*KWH,0)+(e.attached||[]).reduce((a,x)=>a+battCap(x.e),0);
+function storeOf(e){const c=battCap(e);return e._v?Math.min(c,e._v.E??c):e.pw&&e.Ewh!=null?Math.min(c,e.Ewh*3600):e.vst&&e.vst.E!=null?Math.min(c,e.vst.E):c}
 // in the body's shadow: a cylinder behind it (the sun is fixed in the absolute frame, SUN_DIR, and far)
 function inShadow(b,r){const d=dot(r,SUN_DIR);return d<0&&len(sub(r,mul(SUN_DIR,d)))<b.R}
 // the share of a circular orbit of radius r spent in that shadow, its plane at beta to the sun: none once the sun is high

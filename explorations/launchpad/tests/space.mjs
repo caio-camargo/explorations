@@ -739,3 +739,34 @@
     `1 cm at 7 km/s on the tank: hole ${(h?.hole * 1000).toFixed(1)} mm, ${rate.toFixed(2)} kg/s, ${lostKg.toFixed(0)} kg in 60 s, Δv ${(dv * 1000).toFixed(1)} mm/s, spin ${spin.toExponential(1)} rad/s; `
     + `gas ${g0.toFixed(2)} → ${g1.toFixed(2)} kg/s; cells ${Math.round(W0)} → ${Math.round(W1)} W · ${JSON.stringify({ holed, leaks, rails, dry, dent, gas, string, dmg1, dmg2 })}`);
 }
+
+// space-26. A docked composite's power counts its passengers (space session, QUEUE Q304; v1.126's limit): docked, the
+// passengers' batteries join the vessel's store with their charge, their loads draw on it, their cells (seen through
+// their attitude on the vessel) and RTGs fill it; undocked, the store is split by battery capacity.
+{
+  const D = new Function(src + 'return {newShip,physStep,contactStep,satRegister,undock,powCap,powLoad,powPeak,powSun,powerBudget,PROG,TELLUS,HOOK,DT,qrot,qmul,qaxis,KWH,get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.msg = () => {}; const T = D.TELLUS, P = D.PROG; Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+  // the core docking scene: a battery on the vessel (full), a camera satellite with a battery, body cells and a wing
+  const s = D.newShip(['port', 'pod', 'batt', 't1', 'kestrel']), r0 = T.R + 300e3; Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+  s.rec.launched = true; s.rec.day0 = 0; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+  const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['port', 'batt', 'cam', 'petrel']); k.landed = false; k.rec.launched = true; k.rec.day0 = 0;
+  k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + 3 * Math.PI / 180), s.q); k.r = add(add(s.r, mul(Y, s.yTop + 0.3 + k.yTop)), [0, 0.04, 0]); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+  const q = P.sats[0]; q.shape.push({ k: 'bpanel', pos: [0, 0, 0], y0: 0, h: 0.8, i: 98, oi: 98 }, { k: 'wpanel', pos: [0, 0, 0], y0: 0, h: 0.6, i: 99, oi: 99, phi: 0 });
+  q.vst.dep = [...(q.vst.dep || []), 99]; q.Ewh = 200; const cap0 = D.powCap(s), load0 = D.powLoad(s), peak0 = D.powPeak(s); s.E = cap0;
+  s.v = add(s.v, mul(Y, 0.2)); for (let i = 0; i < 300 && !(s.att || []).length; i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); }
+  const a = (s.att || [])[0], K = D.KWH;
+  // docked: one store, the passenger's load and cells counted
+  const cap1 = D.powCap(s), E1 = s.E, load1 = D.powLoad(s), peak1 = D.powPeak(s), b = D.powerBudget(s);
+  const store = a && Math.abs(cap1 - cap0 - 1 * K) < 1 && Math.abs(E1 - cap0 - 200 * 3600) < 1;
+  const draws = Math.abs(load1 - load0 - 10) < 1e-9 && Math.abs(peak1 - peak0 - (40 * 0.32 + 300 * 0.9)) < 1e-6 && b.use === load1;
+  // the wing sees the sun through the passenger's attitude: edge-on along its arm, square across it
+  const wEdge = a ? D.powSun(s, D.qrot(a.q, [1, 0, 0])) : NaN, wSquare = a ? D.powSun(s, D.qrot(a.q, [0, 1, 0])) : NaN;
+  const turned = Math.abs(wEdge - 40 * 0.32) < 1e-6 && Math.abs(wSquare - (40 * 0.32 + 270)) < 1e-6;
+  // undocked: split by capacity (1 kWh each side, so half each)
+  const Et = s.E; D.undock(s, q.id); const split = Math.abs(s.E - Et / 2) < 1 && Math.abs(q.Ewh * 3600 - Et / 2) < 1 && D.powCap(s) === cap0;
+  P.sats = []; D.t = 0;
+  check('space Q304: docked, the passengers\' batteries, loads and cells count (cells through their attitude on the vessel); undocked, the store is split by capacity',
+    store && draws && turned && split,
+    `vessel ${(cap0 / K).toFixed(1)} kWh full + passenger 1 kWh at 0.2: ${(cap1 / K).toFixed(1)} kWh, ${(E1 / K).toFixed(2)} kWh stored; load ${load0} → ${load1} W; peak ${peak0.toFixed(0)} → ${peak1.toFixed(0)} W; `
+    + `the wing edge-on ${wEdge.toFixed(0)} W, square ${wSquare.toFixed(0)} W; undocked ${(s.E / K).toFixed(2)} + ${(q.Ewh / 1000).toFixed(2)} kWh · ${JSON.stringify({ docked: !!a, store, draws, turned, split })}`);
+}
