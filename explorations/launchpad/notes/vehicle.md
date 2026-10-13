@@ -1671,7 +1671,7 @@ Test `vehicle-12`. `--smoke` all pass.
 - Left for flow (Q400): the Part tab saying how a part deploys, and a first-time hint in space.
 - TESTING 270.
 
-## v1.196 — the payload bench, slice 1 (2026-10-13, vehicle session, QUEUE Q416, D24, PROBES § 6.1)
+## v1.198 — the payload bench, slice 1 (2026-10-13, vehicle session, QUEUE Q416, D24, PROBES § 6.1)
 
 - **Caio:** "there is a big satellite redesign i just did, let's look at that next", then on the plan: "the 'no prefab satellites'
   rule is about a whole satellite as a unit that is not customizable, presets are fine. ok on defaults, go ahead and begin".
@@ -1706,4 +1706,4 @@ Test `vehicle-12`. `--smoke` all pass.
   launched: 17 parts, 10 inside the fairing, the wings button there.
 - Not yet (slice 2, Q417): the adjustable bus frame, 0.3/0.6 m stacks, a kick motor; the office's way in (flow); the desk's
   dressing of the bench.
-- Test `vehicle-27`. TESTING 277.
+- Test `vehicle-27`. TESTING 279.

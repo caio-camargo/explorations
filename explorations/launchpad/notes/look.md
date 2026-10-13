@@ -1910,3 +1910,38 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
 - **Not touched:** whether the rocket reads right lying ~10 m up on the boom's cradle arms (Q222's other half, a look
   at the Q159 boom's geometry): it read fine in the earlier rollout stills; reopen if it looks off in play.
 - **Check:** test `sound-3`.
+
+## v1.196 — lettering on the pads: Coastal's agency over its assembly building's door, Isle's company on its hangar (2026-10-13, effects beat, QUEUE Q245)
+
+`app/gl.js` (`FONT57`, `padText`, `padName`; `coastalPad`, `islePad`, `buildPad`, `padFor`, `padSync`).
+
+- **The font:** 5×7 capitals A–Z and a hyphen (35 bits a letter, base 36), built as geometry: one slim box per run of
+  lit pixels on a row, 2.5 cm proud of the wall, so the letters take the building's light, shadow and night like the
+  wall. Accents are dropped (NFD); anything else is a space; a line break stacks lines (7 pixels tall, 2 apart); the
+  size is the largest that fits the given height and width. (`MESH_FS`'s 3×5 font is digits only, for the serials.)
+- **The names, from the site's owner** (`padName`): Coastal, "CENTRE SPATIAL / <root>" in navy, two lines between
+  the door and the pastel band (~1.6 m letters); Isle, "<root> LAUNCH CO" in white on the hangar's black sign (~1 m),
+  replacing the five placeholder blocks. The other schools carry none yet. A pad is now built and cached per school and
+  owner (`PADX[school:power]`; the current site's rebuilds when its owner changes), so two Coastal sites of different
+  powers each show their own name.
+- **Taste calls, defaults taken:** the wording (French for Coastal's agency, a plain company name for Isle) and the
+  colours. Easy to change in `padName`.
+- **Stills:** `output/launchpad/beauty/Q245/` (`coastal`, `isle`, and crops; views 146 and 149 with the camera
+  turned to the buildings). **Check:** test `aerofx-31` (and the school-pad tests' dispatch patterns amended). TESTING 277.
+
+## v1.197 — the volume cloud shadow baked, a lookup per ground pixel (2026-10-13, sky & bodies beat, QUEUE Q379)
+
+Q326 found `cloudShadowV` (Q65's shadow of the cloud volume on the ground) the biggest single part of the pad's sky pass
+after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 7.4.
+
+- **Now:** `SHD_FS` bakes, on the coverage bake's own grid (512², ±50 km gnomonic round the point under the camera,
+  planet-fixed), the light reaching the slab's base (2 km) through the slab toward the sun: the same 5 steps, the same
+  extinction and floor. A ground point walks its sun ray up to 2 km and reads the bake there, which is the same integral
+  for any ground below 2 km (above it, inside the slab, the shadow is slightly too deep). Re-baked with the coverage or
+  when the sun has turned 0.1° over the ground (~8 s); texture unit 14.
+- **Sky pass, ms** (RTX 3050, High, full resolution, A/B in one session): pad 7.44 → 6.52, complex 7.37 → 6.83, clouds
+  from the pad (80) 6.85 → 5.15, 3 km (81) 3.60 → 2.37, 8 km (82) 4.23 → 2.93; 25 km (83, above the volume) unchanged.
+  The bake costs ~0.3 ms the frames it runs.
+- **Seen:** views 1, 15, 80–83 before and after alike (no pixel differs by more than grain; `output/launchpad/beauty/
+  q379-before/`, `q379-after/`).
+- **Check:** test `aerofx-32`; the Q65 check in look.mjs now looks for the march in the bake. TESTING 278.
