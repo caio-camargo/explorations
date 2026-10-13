@@ -6192,3 +6192,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/flight.js`, `sim/program.js`, `sim/debrief.js`, `app/state.js`, `tests/economy.mjs`,
   `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** economy's ready items: Q380 (overflight rights; needs flow's decision card), Q282/Q283 (plans).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, 2nd session): farmland and coasts (Q401, Q403, v1.212)
+
+- **Q374 settled:** Caio meant the map's planets and ring, already a toggleable layer; fine as is (QUEUE note).
+- **Done:** farmland from the ground shader round settled land (climate × settlement from the blurred city texture and
+  each pad's town): fields in two orientations, strips, five crops, hedges, crop rows, woods, country roads, villages,
+  all filtered by footprint; a muted scrub range within 6 km of each pad instead of lawn. Coasts blended over the pixel's
+  height change (no staircase from orbit).
+- **Measured:** interleaved A/B ×2: +0.2–0.8 ms on wide aerial views, −0.3 at the pad. First tries recorded in the notes
+  (a desert city, the tropics' wetness over 1, a sheared grid).
+- **Tests:** `aerofx-38`; all 68 look sections pass after merging main; browser check of 175, 177, 17, 157, 173 after it.
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (293), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q401-*`, `q403-before/`.
+- **Numbering:** views 172–174 → 175–177 and test aerofx-35 → 38 after the merge (others took them the same hour).
+- **Next for sky & bodies:** Q80–Q85 wait on W29; Q364 (the sea's swell); *Proposed*: village lights, a land-use map.
+

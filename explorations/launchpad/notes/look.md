@@ -2053,3 +2053,32 @@ each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`
   so the effects beat's 159 (the shield from upstream) and 160 (the terminator) never ran. Renumbered; `refset.mjs`'s
   set takes 172–173.
 - **Check:** test `aerofx-37`; aerofx-18's and Q250's checks updated to the jitter's new form. TESTING 290.
+
+## v1.212 — farmland round settled land, a scrub range round each pad, coasts without the staircase (2026-10-13, sky & bodies beat, QUEUE Q401, Q403; PLAYTEST #95, #99)
+
+- **Q401, farmland** (`farmSettle`, `farmland`, in `tellus()`): the old faint tint of 260 m squares within 4 km of the
+  camera is gone. How much ground is farmed = climate (green, mild, flat, under ~1,800 m, not rugged; the wet tropics
+  about half, as clearings and plantations) × settlement (0.35 everywhere, plus the city texture read at mips 5 and 7, a
+  blur of ~100–400 km, plus each pad's town within 40 km). A ~3–6 km noise against that fraction says which land is farmed.
+  The fields: two grid orientations (300 m and 430 m fields) switching along a wandering line, which is also a road; some
+  fields split into strips; five crops (greens, ripe yellow, ochre, ploughed brown, drier with less rain); hedges on 70 %;
+  crop rows close up; woods in ~3 km patches; country roads on a warped ~3 km grid; villages in some 5 km cells by the
+  settled fraction. Every part fades with the footprint to its mean (`fline`: a filtered line), so from 35 km and orbit
+  farmland is a mottled regional tint. `FARM_FX = false` compiles the old look.
+  - First tries, measured: the largest city (Fenor Falls) is in a desert, so view 175 picks the largest city in
+    farmable climate (Kamar); the Cape pad's wetness is 1.49 (the climate map goes past 1), which a ceiling of .95
+    excluded; a field size varying in place sheared the grid (gx is millions of metres).
+- **The pad's range:** fields stop 2.5–4 km from every pad; within 6 km the ground is cleared scrub (dark brush and dry
+  pale grass in ~20–80 m patches, muted) instead of the flat lawn (views 17, 177).
+- **Q403, coasts:** `tellus()` blends sea and land over ±½ of the height's change across the pixel (`fwidth(hT)` taken in
+  `main`, where control flow is uniform; zero at a silhouette, where the hit distance jumps), and the shallow fringe and
+  the beach widen with it. From 4,000 km an island's single-pixel specks smooth into a line (view 157). The coast's shape
+  is the height's, as before (the detail octaves already fractal it up close).
+- **Cost:** interleaved A/B, two rounds: the sky pass +0.2 to +0.8 ms in wide aerial views (175, 176), +0.2 at 177,
+  −0.3 at the pad (17).
+- **Views:** 175 farmland from 6 km near a city, 176 from 35 km, 177 the Cape pad from 3 km (each searches the weather
+  clock for clear air over the target). They were 172–174 until a merge: the galaxy views took 172–173 the same hour.
+  Stills `output/launchpad/beauty/q401-before1/2`, `q401-after1/2` (A/B), `q401-after/` (final), `q403-before/`,
+  `q401-merged/`. Test `aerofx-38`. TESTING 293.
+- **Not done:** village lights at night; a land-use map texture (the noise and the city blur stand in); fields don't
+  follow terrain contours.
