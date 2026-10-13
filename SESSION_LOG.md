@@ -5832,11 +5832,32 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `explorations/launchpad/notes/economy.md` (new plan section), `NOTES.md`, `QUEUE.md` (Q187 ✓ plan, W41, two Proposed slices), `ACTIVE_WORK.md`.
 - **Next:** W41 (four defaults). Economy's ready list: Q181, Q184, Q296, Q332.
 
-## 2026-10-13 — Caio + Claude (launchpad economy session): W41 answered; Q181 overflight (v1.169)
+
+## 2026-10-13 — flow session: Q262, what the map is centred on (v1.169)
+- **Q262 ✓ v1.169** (PLAYTEST #62, merged and pushed, `7ed2a0c`): a **Focus** list beside Layers (the ship, the known
+  bodies, our satellites and landers, this flight's other vessels); a double-click on a body or craft centres on it;
+  Tab cycles the same list; **Home** returns to the ship. Not Backspace as the item said: in flight it aborts.
+  `mapFocusPos()` (`app/map-layers.js`) is the map camera's centre; a craft that's gone hands focus back to the ship.
+- **Checks:** test `flow-20`; `--smoke` passes on the merge; robot row `focus` (the satellite centred, a double-click
+  on Selene centred with its message, Home back). A satellite's framing was widened after the shots (the ship's rule).
+- **Files:** `app/map-layers.js`, `app/render.js`, `app/input.js`, `app/screens.js`, `index.html`, `tests/flow.mjs`,
+  `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** the rest of the ready list (Q287 hover glossary, Q293 losses explained, Q286 declutter, …).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q326 where the sky's time goes at the pad
+
+- **Done (measurement only):** each part of `SKY_FS`'s main stubbed in turn in the running page, the sky pass timed on
+  the pad views. Of 7.4 ms: the ground 4.7 (its march ~1.9, the volume cloud shadow 1.4, the albedo 1.0, the normal
+  0.4), `scatter` 0.4, the deck 0.3. So Q322's table won't buy back the pad's time; Q19's march and a baked cloud
+  shadow will. Two Proposed lines. The run waited ~3 min for the effects session's lock and for memory.
+- **Files:** `notes/look.md` (§ Q326), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`; data `output/launchpad/beauty/q326/`.
+- **Next for sky & bodies:** Q322 (for the look: the limb, Selene out of `SKY_FS`), Q323.
+
+## 2026-10-13 — Caio + Claude (launchpad economy session): W41 answered; Q181 overflight (v1.170)
 - **W41** (Caio): real rival satellites; suspicion grows with unexplained losses; hacking pays the contract or the service, plus a tap (indefinite) and data theft; radar as layers proposed as the default. Plan amended (NOTES § Q187 amendment), DECISIONS W41.
 - **Built (Q181):** overflight counts only low flight (Caio's point): below 150 km, not in orbit (periapsis in the atmosphere), within 1,000 km of the pad. Any foreign land, scaled by relation (an ally nothing, a rival −3 opinion, a security state ×2), one headline a year, a Debrief line.
 - **Measured:** 1 of 16 default sites has foreign land due east within 1,000 km (a friend, k 0.17).
-- **Files:** `sim/program.js` (`overTick`, `overEnd`), `sim/debrief.js`, `tests/economy.mjs` (econ-24), `notes/economy.md` § v1.169, `NOTES.md`, `QUEUE.md` (Q181 ✓, two Proposed: overflight rights, the picker's warning), `TESTING.md` 251, `ACTIVE_WORK.md`.
+- **Files:** `sim/program.js` (`overTick`, `overEnd`), `sim/debrief.js`, `tests/economy.mjs` (econ-24), `notes/economy.md` § v1.170, `NOTES.md`, `QUEUE.md` (Q181 ✓, two Proposed: overflight rights, the picker's warning), `TESTING.md` 252, `ACTIVE_WORK.md`.
 - **Fixed:** v1.165's missed-deadline check in `tests/core.mjs` failed in a full run when the client's opinion drifted −2 on its own; it now compares with the same 40 days without the contract.
 - **Next:** economy's ready list: Q184 (routines), Q296, Q332.
 

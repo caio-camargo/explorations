@@ -87,6 +87,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
 - v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
+- Q326 — where the sky's time goes at the pad (2026-10-13, sky & bodies; measurement: the ground 4.7 of 7.4 ms, its march ~1.9, the volume cloud shadow 1.4, `scatter` 0.4)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -203,7 +204,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
 - v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 - v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; D17.4)
-- v1.169 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
+- v1.170 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -253,6 +254,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.151 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
 - v1.163 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
 - v1.167 — the map's layers (2026-10-13, flow session, QUEUE Q261; PLAYTEST #61)
+- v1.169 — what the map is centred on (2026-10-13, flow session, QUEUE Q262; PLAYTEST #62)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

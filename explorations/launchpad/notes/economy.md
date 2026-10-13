@@ -2982,7 +2982,7 @@ final burn, and set `SUN_K`/`PLUME_K` so a careful night approach is ~10 % spott
      pays more. Quicker than a tap (the download time at the link's rate, in the hold), so less exposure.
    Choosing among inspect / steal data / tap / take its service for a client happens at the hold (a HUD choice, flow).
 
-## v1.169 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
+## v1.170 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
 
 **Low flight only** (Caio, 2026-10-13: "flying over, we mean low, right? not orbiting?"). `overTick` (from `missionTick`,
 beside `rdvTick`) samples about once a second, while the vessel is **below 150 km**, **not in orbit** (its periapsis

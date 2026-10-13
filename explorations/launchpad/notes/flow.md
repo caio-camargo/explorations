@@ -998,3 +998,19 @@ Caio, 2026-10-10: the map gets too busy; toggles for what it shows.
 - **Not yet:** ground tracks on the map (the plan named them; today they're mission control's wall, not the map);
   Q192's merged planet labels; a key for the panel.
 
+## v1.169 — what the map is centred on (2026-10-13, flow session, QUEUE Q262; PLAYTEST #62)
+Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as Tab, unlabelled, over the bodies.
+- **A Focus list** beside *Layers* (map view only, `#mapFocus`): the ship, each known body, our satellites and landers
+  (registry, not debris or docked), and this flight's other vessels (`FLEET`), each in words. Picking one centres the
+  map on it at a distance that frames its orbit.
+- **Double-click** a body (its disc, at least 14 px) or a craft (within 12 px) on the map centres on it, with a message
+  naming it and how to come back. **Tab** cycles the same list. **Home** returns to the ship.
+- **Not Backspace**, which the item named (KSP's key): in flight Backspace is *abort*, and a slip would end the flight.
+- **How:** `cam.focus` stays the ship (0) or a body (index + 1); `mapFoc` names a craft (`{sat: id}` or `{ves}`);
+  `mapFocusPos()` (`app/map-layers.js`) is the map camera's centre in `render.js`. A craft that's gone (re-entered,
+  docked, junk, lost) hands the focus back to the ship. Entering the map resets to the ship, as before.
+- **Checks:** test `flow-20` (the list; centred on a satellite; Tab; gone → ship); robot row `focus` (the list to the
+  satellite, a double-click on Selene, Home back). TESTING row 251.
+- **Not yet:** focus on a rival's satellite (economy's Q187 makes them targets); remembering the focus when the map is
+  left and reopened.
+

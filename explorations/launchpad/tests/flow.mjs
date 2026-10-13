@@ -391,3 +391,33 @@
   check('flow-19: map layers: every drawMap pass is gated; the era picks the defaults (cities before the first orbit, then satellites, debris and planets); a layer you set stays set; the target always shows',
     wired && early && later && mine, `wired ${wired} · early ${early} (${e1.map(Number).join('')}) · after the beeper ${later} · set by you ${mine}`);
 }
+
+// flow-20. What the map is centred on (flow session, QUEUE Q262, PLAYTEST #62): the Focus list names the ship, the known
+// bodies, our satellites and landers and this flight's other vessels; centring on a satellite puts the camera's centre on
+// it; Tab cycles the list; a craft that's gone hands the focus back to the ship. Home (not Backspace: it aborts) returns.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const wired = /const foc=mapFocusPos\(\);/.test(page) && /k==='tab'&&view==='map'\)mapFocusCycle\(1\)/.test(page) && /k==='home'&&view==='map'\)setMapFocus\('ship'\)/.test(page)
+    && /\{k:\['home'\],l:'Home'/.test(page) && H.includes('id="mapFocus"') && /cv\.addEventListener\('dblclick'/.test(page);
+  const F = page.slice(page.indexOf('let mapFoc=null;'), page.indexOf('function renderMapFocus'));
+  let X, err = '';
+  try {
+    X = new Function(src + 'var cam={focus:0,mDist:1};const knownBody=b=>true,renderMapFocus=()=>{},shipWorld=()=>add(bodyPos(S.body,simT),S.r),tNow=()=>(PROG.day||0)*DAY_S+simT;' + F
+      + 'return {mapFocusList,mapFocusKey,mapFocusPos,setMapFocus,mapFocusCycle,newShip,PRESETS,satRegister,TELLUS,BODIES,PROG,HOOK,cam,setS:s=>{S=s},bodyPos,satAt,tNow,add,len,sub};')();
+  } catch (e) { err = e.message; }
+  let ok = false, info = err;
+  if (X) {
+    X.HOOK.news = () => {}; X.HOOK.msg = () => {}; X.HOOK.save = () => {}; const P = X.PROG, T = X.TELLUS; P.sats = []; P.day = 0;
+    const s = X.newShip(X.PRESETS.Probe), a = T.R + 400e3; Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -Math.sqrt(T.mu / a)], name: 'Probe' });
+    X.satRegister(s, { day0: 0 }); const q = P.sats.at(-1);
+    const me = X.newShip(X.PRESETS.Probe); Object.assign(me, { alive: true, landed: false, body: T, r: [0, 0, a], v: [Math.sqrt(T.mu / a), 0, 0] }); X.setS(me);
+    const L = X.mapFocusList(), keys = L.map(f => f.key);
+    const listed = keys[0] === 'ship' && X.BODIES.every((b, i) => keys.includes(`b:${i}`)) && keys.includes(`s:${q.id}`);
+    X.setMapFocus(`s:${q.id}`); const qp = X.add(X.bodyPos(T, X.tNow()), X.satAt(q, X.tNow())[0]), on = X.len(X.sub(X.mapFocusPos(), qp)) < 1 && X.mapFocusKey() === `s:${q.id}`;
+    X.setMapFocus('ship'); X.mapFocusCycle(1); const cyc = X.mapFocusKey() === keys[1] && X.cam.focus === 1;
+    X.setMapFocus(`s:${q.id}`); q.junk = true; X.mapFocusPos(); const back = X.mapFocusKey() === 'ship';
+    ok = listed && on && cyc && back; info = `listed ${listed} (${keys.join(' ')}) · centred on it ${on} · Tab ${cyc} · gone → ship ${back}`;
+  }
+  check('flow-20: the map centres on the ship, a body or one of our craft (the Focus list, Tab, double-click, Home); a craft that\'s gone hands it back to the ship',
+    wired && ok, `wired ${wired} · ${info}`);
+}

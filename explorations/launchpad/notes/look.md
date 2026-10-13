@@ -1628,3 +1628,36 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
 - **Stills:** `output/launchpad/beauty/pt88/` (`z53b.png` close: before | after; `ab_50_54.png` wide; `after/` is the
   first try, one collar per shoulder with streaks, still two bands).
 - **Checks:** test `aerofx-14` now checks the single streaked sheet, the thinner mist and the shoulder filter. TESTING 250.
+
+## Q326 — where the sky's time goes at the pad (2026-10-13, sky & bodies beat; measurement, no game change)
+
+The question (Q313's profiler): the base sky is ~5–6 ms of a 7–12 ms frame at the pad; which part, so Q322's table and
+Q19's terrain pass aim at the bigger one. **Method:** one part of `SKY_FS`'s main stubbed at a time, the sky program
+rebuilt in the running page (`REF_EVAL`), the sky pass timed by `REF_PROF=1 node refset.mjs` on views 4–7, 63, 80, 101
+(RTX 3050, High, full resolution). The driver and its eleven variants: `output/launchpad/beauty/q326/` (`variants.txt`,
+one log each). Noise between runs ≈ ±0.2 ms.
+
+| Stubbed | Sky pass, mean ms | Saved |
+|---|---|---|
+| nothing (base) | 7.37 | — |
+| **the ground: march + all its shading** (`tP = 1e30`) | 2.70 | **4.68** |
+| the volume cloud shadow on the ground (`cloudShadowV`) | 6.02 | **1.36** |
+| the ground's albedo (`tellus()`) | 6.33 | 1.04 |
+| the terrain normal (two extra `terr` samples) | 6.95 | 0.42 |
+| `scatter` (the air's in-scatter loop) | 7.01 | 0.36 |
+| the cloud deck's shell | 7.09 | 0.29 |
+| scrub and pad, detail, cities, sun transmittance | 7.3–7.6 | ~0 (noise) |
+
+- **The ground is 4.7 of 7.4 ms.** Its shading parts add to ~2.8, so **the march itself is ~1.9 ms**.
+- **`cloudShadowV` is the second biggest single part (1.4 ms):** five steps toward the sun through the cloud volume
+  for every ground pixel (Q65). It changes slowly; baking it into a 2D texture with the coverage (`covBake`) once a
+  frame, or every few, would make it a lookup.
+- **`scatter` is small at the pad (0.4 ms).** Q322's transmittance table is still worth it for the limb, the night side
+  and moving Selene out of `SKY_FS`, but it won't buy the pad's frame time back.
+- The rest of the pass without the ground (~2.7 ms: the air along the whole ray, the sky, the stars, the deck) is the
+  floor a terrain pass can't touch.
+- **Aim:** Q19's terrain pass at the march (it moves the march into its own full-resolution pass; that pays for the
+  link time, not by itself for the frame: the march needs to get cheaper there, e.g. coarser steps far away or half
+  resolution with a depth-aware upsample like the cloud slab's); a new item for the volume shadow's bake; Q322 keeps its
+  place for the look, not the pad's time.
+- Not measured: Low, the iGPU (the shares should hold, the totals won't).

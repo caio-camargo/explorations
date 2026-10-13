@@ -33,7 +33,7 @@ function render(){
   // ---- camera, in float64 world coordinates
   let camW,R,U,Fw,fov;
   if(view==='map'&&mode==='flight'){
-    const foc=cam.focus===0?shipWorld():bodyPos(BODIES[cam.focus-1],simT);
+    const foc=mapFocusPos();   // (Q262) the ship, a body or one of our craft: app/map-layers.js
     const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
     camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
   else{
@@ -276,7 +276,7 @@ function render(){
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
   if(view!=='map'&&document.body.classList.contains('paper'))document.body.classList.remove('paper');
-  {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
+  {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);if(mv)renderMapFocus();hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
