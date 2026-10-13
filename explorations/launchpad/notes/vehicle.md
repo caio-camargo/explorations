@@ -1670,3 +1670,40 @@ Test `vehicle-12`. `--smoke` all pass.
   and four legs.
 - Left for flow (Q400): the Part tab saying how a part deploys, and a first-time hint in space.
 - TESTING 270.
+
+## v1.196 — the payload bench, slice 1 (2026-10-13, vehicle session, QUEUE Q416, D24, PROBES § 6.1)
+
+- **Caio:** "there is a big satellite redesign i just did, let's look at that next", then on the plan: "the 'no prefab satellites'
+  rule is about a whole satellite as a unit that is not customizable, presets are fine. ok on defaults, go ahead and begin".
+- **Built as a mode of the existing builder**, not a separate screen (the queue had it blocked on the desk drawing the bench;
+  the desk can dress it later without the logic moving). Same part tree, same physics and checks.
+- **The block** (`sim/vessel.js`): a rocket design node `{k:'pay', pid, name, pd}` carrying its own copy of the payload's design
+  (pd), so a saved rocket, its procedure and a registered satellite stay whole if the bench copy changes or goes. `payExpand` (in
+  `layoutDesign`) turns it into a **payload adapter** (`padapt`, 30 kg, never in the parts list) with the payload standing on it,
+  re-hung from the bottom of its root's stack line (`payStandOn`); the adapter and the payload's parts are copies with `payOf` →
+  the block (non-enumerable, never saved), every other node is laid out as itself (copies mapped back through `src`). So the
+  aero, power, deploying, fairing fit and registration see ordinary parts. Payload designs: `PROG.payloads` [{id, name, d, m}]
+  (`payDesigns`, `payNew`, `payById`, `payNode`); `paySync` brings a rocket's blocks up to their bench copy whenever the Assembly
+  rebuilds (renamed or rebuilt there).
+- **The builder** (`builder.js`): every node comparison goes through `dnOf(p)` (a payload part answers to its block): hover,
+  select, pick up, copy, delete take the block whole; nothing attaches to a payload's parts; a held block goes on a stack node
+  only. The palette lists **Payloads** (pick one up; ✎ opens it on the bench; **+ New payload**). A selected block says its mass,
+  parts and whether it's inside a fairing, with **open on the bench**. A fairing with something on top offers **make the parts
+  inside a payload** (`makePay`: re-hangs the design from the fairing and lifts its top child into a new payload): that's how a
+  rocket built the old way becomes one with a block.
+- **The bench** (`benchOpen` / `benchClose`): the rocket and its undo are put aside, the payload is edited at satellite scale
+  (closer camera), its name editable, **✓ done** (back to the rocket, blocks follow) or **✓ done, and pick it up** (holding a
+  block to place). Starters instead of presets (`PAY_STARTERS`: the first beacon, the Satellite preset's payload). "Build and
+  launch" reads "On the payload bench" and is off; leaving the Assembly from the bench saves and brings the rocket back.
+- **The bench's Checks** (`payChecks`, `benchHTML` in `app/editor.js`): power in shadow (a battery-only craft warns with its
+  days), can talk home, can turn itself, balanced (centre of mass under 5 cm off the axis; off it warns, fails if it has an
+  engine of its own), fits the fairing of the rocket it was opened from (or "checked on the rocket"). Pointing and temperatures
+  wait for S2 (Q338).
+- **The Satellite preset** now has its instrument package opposite the camera: the bench showed it 14 cm off balance (2 cm now).
+  Flown: prograde 567 m/s spare, 5° below 518, 10° below 551; on the pitch program in attitude hold (~14° off, twice its ~7°
+  limit) it now tumbles once and makes orbit with 189 (the lopsided one happened to hold there). `vehicle-25` checks 10° below.
+- Checked in the browser: the Satellite preset's fairing contents made a payload (560 kg), the bench's Checks all green, Done,
+  launched: 17 parts, 10 inside the fairing, the wings button there.
+- Not yet (slice 2, Q417): the adjustable bus frame, 0.3/0.6 m stacks, a kick motor; the office's way in (flow); the desk's
+  dressing of the bench.
+- Test `vehicle-27`. TESTING 277.

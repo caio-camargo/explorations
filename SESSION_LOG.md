@@ -6089,3 +6089,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Lesson:** before claiming, grep ACTIVE_WORK and QUEUE for the item number itself (`Q322`), not just the lanes I expect
   to collide with; with two sessions on one beat, the item row's state is the only reliable signal.
 - **Next for sky & bodies (this session):** nothing claimed; take the next item only after checking the other sky session's row.
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): the payload bench, slice 1 (v1.196, Q416)
+- **Built:** the bench as a payload mode of the builder: payload designs in `PROG.payloads`, a payload block on the rocket (`{k:'pay', pid, pd}`, laid out as an adapter + the payload's parts, `payExpand`), the bench's Checks (`payChecks`), starters, "make the parts inside a payload" on a fairing; the Satellite preset rebalanced (instrument package opposite the camera). Test vehicle-27; flow-22's source check reads `pdef`.
+- **Checked:** full suite passed except `qa-2` (go to body), which fails on `main` as well: not this change (flag for QA). Browser: the bench flow end to end.
+- **Coordination:** served my browser checks on the shared port 8799 without the GPU lock before reading the GPU-runs memory; now on 8772 with the lock.
+- **Next:** Q422, propulsion on the bench (kick motors, hydrazine, apogee engine, the adapter as a separation ring).
