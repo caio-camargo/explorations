@@ -6229,3 +6229,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   orbit, M3 qualifications), four as QUEUE *Proposed* lines.
 - **For Caio:** W42 (five questions, all with defaults).
 - **Next:** economy's remaining ready item is Q283 (crew skill revision, a plan); Q376 after space's Q375.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q420 the band at the horizon in the deck (v1.214)
+
+- **Done:** reproduced in new views 178–179 (2.4 km, level); the shell past the volume's 20–40 km fade (and far ground)
+  drew a bright line; now fogged in the volume's own colour from inside the slab. Band 26 → 17 and 32 → 9 grey levels
+  (paired renders); 81, 82 unchanged. A sunlit fringe in the volume's own fading ring remains: *Proposed*.
+- **Collisions:** claimed after grepping for Q420; views 175–177 were sky2's, mine are 178–179; test renumbered
+  aerofx-39 (sky2 took 38). Lesson: before/after must come from the same view list, or each view's weather search lands
+  on a different clock.
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (295), `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q420-A/`, `q420-C/`.
+

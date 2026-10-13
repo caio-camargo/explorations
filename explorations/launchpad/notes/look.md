@@ -2082,3 +2082,22 @@ each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`
   `q401-merged/`. Test `aerofx-38`. TESTING 293.
 - **Not done:** village lights at night; a land-use map texture (the noise and the city blur stand in); fields don't
   follow terrain contours.
+
+## v1.214 — no bright band at the horizon from inside the deck (2026-10-13, sky & bodies beat, QUEUE Q420)
+
+Seen in Q250's ascent at 2.4 km under ~60 % cover: inside the deck a cream band ran along the horizon between grey cloud
+above and below, with 2×2 stairs (the half-resolution slab's upsample along it).
+
+- **Cause:** the cloud volume fades out over `uVD`/2–`uVD` (20–40 km). From inside the slab, a level ray outlives it and
+  meets the shell (at 3 km, ~39 km off for a camera at 2.4 km) lit like a sunlit top, or far ground past the volume's
+  reach: a bright line where everything near is fog.
+- **Fix** (`SKY_FS` main, after the shell): with the camera in the slab (2.2–5 km, fading to 1.5 and 6 km), a ray that
+  stays in the slab past `uVD`/2 is fogged, by how far past, in the volume's own mean colour along it (`vAvg`, the
+  half-res slab's colour over its opacity, kept where the volume reached opacity 0.05); through a gap, the far deck at
+  half brightness. Selene's alpha (`vis`) follows.
+- **Measured** (paired renders, the same view list, so the same weather): the band's peak over the rows around it
+  178: 26 → 17, 179: 32 → 9 grey levels; views 81 (3 km), 82 (8 km), 2 unchanged.
+- **Left:** in 178 part of the streak stays: the volume's own sunlit clouds in its fading ring (20–40 km), not the
+  shell. QUEUE *Proposed*.
+- **Views 178, 179** (new): 2.4 km in the deck, the camera level, looking along the horizon two ways.
+- **Check:** test `aerofx-39`. TESTING 295. Stills `output/launchpad/beauty/q420-A/` (before), `q420-C/` (after).
