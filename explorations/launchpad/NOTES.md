@@ -105,6 +105,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
 - v1.196 — lettering on the pads: Coastal's agency over its assembly building's door, Isle's company on its hangar (2026-10-13, effects, QUEUE Q245)
 - v1.201 — a display rod under a hanging model on the desk (2026-10-13, effects, QUEUE Q330)
+- v1.203 — a calmer camera shake (a slow sway, about a quarter as strong), and a switch for it in Settings (2026-10-13, effects, QUEUE Q360)
 - v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 - v1.200 — the planets in the sky as points of light by their magnitudes, a moon under a pixel as a point, stars faded by the sky's contrast (none by day), a fainter airglow (2026-10-13, sky & bodies, QUEUE Q374, Q395, Q407)
 

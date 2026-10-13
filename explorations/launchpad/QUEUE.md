@@ -175,7 +175,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q418 | After Q286 (v1.186, v1.189): **a phase card that changes by phase** (landing: height and descent rate big; burn: Δv to go; UI.md § 3 Flight); the desk's one-line offers wrap in the narrow tray (Take/Pass on a second line): look again when the rooms land (Q239) | M1 | S | 🖥 | ready |
 | Q354 | The network page's **node boxes open a panel** on click: stock and need per good, what it waits for, the honest next action; with N3's routes (Q170, v1.151) | M2 | S | 🖥 | ready |
 | Q355 | A relay node's **coverage bar** on the network page (the N2 plan's line; `N.cover` has it per body) (Q170, v1.151) | M2 | S | 🖥 | ready |
-| Q360 | A **camera shake switch** in Settings for `SHAKE_FX` (Q320 added the max-q buffet and re-entry rumble; some players want it off) | M1 | S | 🖥 | folded into Q402 (the Shake setting) |
+| Q360 | A **camera shake switch** in Settings for `SHAKE_FX` (Q320 added the max-q buffet and re-entry rumble; some players want it off) | M1 | S | 🖥 | ✓ v1.203 (Caio: the shake itself too intense: now a 1.5–4 Hz sway, ~¼ the strength; Settings › Screens › camera shake; notes/look.md § v1.203; test aerofx-35; TESTING 284) |
 | Q369 | **The charter, signed for real**: the director's own name (typed once, saved) and the program's seal (`powerMark`) instead of the red wax; the title in the era's look (Q241 R3, v1.163) | M1 | S | 🖥 | ready |
 | Q377 | The map's layers, after Q261 (v1.167): **ground tracks** as a layer (today only on mission control's wall), and a key for the panel | M2 | S | 🖥 | ready |
 | Q378 | The map's focus, after Q262 (v1.169): rivals' satellites in the Focus list once Q375 makes them targets; keep the focus when the map is left and reopened | M2 | S | 🖥 | after Q375 |
