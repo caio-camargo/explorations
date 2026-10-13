@@ -1566,3 +1566,12 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   shots. A view nit, not touched.
 - **Stills:** `output/launchpad/beauty/q319-lights/v56_ab.png` (main | this, by day; the light matters at night and on the pad).
 - **Checks:** test `aerofx-19`. TESTING 244.
+
+## Reference views 159–161 (2026-10-13, effects beat; no version: tooling)
+- **159** view 46's shield-first entry from upstream: the shield's glowing face (Q318; views 40–47 never showed it).
+- **160** the terminator 800 km up, looking down along the day/night line (Q352's bands).
+- **161** a mountain range from 1,000 km: the ship over Tellus's highest ground, found on a 0.02 rad search (Q351;
+  8,924 m today). Stills `output/launchpad/beauty/views159/`.
+- **Not built: the ascent's leading-edge warmth** (BEAUTY B3.2, Q320's leftover). The skin stays near 400–600 K on a
+  climb, and a blackbody there is invisible even at night (1,000 K is 3e-4 of sunlit paint, `aerofx-11`). Only a stylised
+  tint would show it, against the doc's rule that every effect teaches something true. Left out on purpose.

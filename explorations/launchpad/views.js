@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 152–158 the beauty pass's moments (BEAUTY Q312: the Assembly's desk, liftoff, max-q, staging at 60 km, an orbit sunrise, Tellus from 4,000 km, Selene from 100 km), 159 the shield's glowing face from upstream, 160 the terminator from 800 km, 161 a mountain range from 1,000 km, 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -462,5 +462,17 @@ window.refView = async (n) => {
     S.r = mul(dir, r); S.v = mul(norm(cross([0, 1, 0], dir)), Math.sqrt(TELLUS.mu / r)); S.throttle = 0;
     const Y = norm(S.v), X = norm(cross(Y, dir)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0];
     cam.yaw = 2.4; cam.pitch = 0.32; cam.dist = 16; render(); await settle(); bare(); return 'orbit';
+  }
+  // 159–161 (effects beat, 2026-10-13): 159 view 46's shield-first entry seen from upstream, the shield's glowing face
+  // (Q318); 160 the terminator 800 km up, looking down along the day/night line (Q352's bands); 161 a mountain range from
+  // 1,000 km, the ship over Tellus's highest ground on a 0.02 rad search (Q351)
+  if (n === 159) { const r = await refView(46); cam.yaw = 1.55; cam.pitch = 0.05; cam.dist = 7; render(); await settle(); bare(); return r + ', from upstream'; }
+  if (n === 160 || n === 161) {
+    await refView(157); let u;
+    if (n === 160) u = norm(add(cross(SUN, [0, 1, 0]), mul(SUN, 0.15)));
+    else { let bh = -1e9; for (let la = -1.2; la <= 1.2; la += .02) for (let lo = -3.14; lo < 3.14; lo += .02) { const c = [Math.cos(la) * Math.cos(lo), Math.sin(la), Math.cos(la) * Math.sin(lo)], h = terrainH(c); if (h > bh) { bh = h; u = c } } }
+    S.r = mul(u, TELLUS.R + (n === 160 ? 8e5 : 1e6)); S.v = mul(norm(cross(u, [0, 1, 0])), Math.sqrt(TELLUS.mu / len(S.r)));
+    cam.dist = n === 160 ? 30 : 25; cam.pitch = n === 160 ? 1.1 : 1.35; cam.yaw = n === 160 ? 1.6 : 0.6; render(); await settle(); bare();
+    return n === 160 ? 'the terminator from 800 km' : 'the highest range from 1,000 km (' + terrainH(u).toFixed(0) + ' m)';
   }
 };
