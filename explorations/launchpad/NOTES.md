@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
+**Version**: v2.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -195,6 +195,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
 - v1.104 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
+- v1.151 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 
 ## World: [`notes/world.md`](notes/world.md)
 

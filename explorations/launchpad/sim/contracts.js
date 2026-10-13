@@ -178,6 +178,30 @@ function rivTick(d,R){if(!PROG.riv||PROG.riv.home!==HOME||PROG.riv.day>PROG.day)
 function rivSpur(id){if(!PROG.riv)return;for(const p of POWERS){const r=PROG.riv[p.i];if(!r||r.got[id]||!(rivRate(p.i,r,r.k,true)>0))continue;
   r.spur=PROG.day+RIV_SPUR_D;r.spurK=1+0.5*flav(p.i).pri.prestige}}
 let RIVALS=raceSchedule();
+// ---- the commercial giant (QUEUE Q206, D10, POWERS.md § Commercial giant): a company, not a power, so it has no entry in
+// POWERS, RIVALS or the race. It arrives late, in world year 18–21 (the commercial era; computing centres bring it a
+// little sooner, as they do the eras), based in a power drawn by economy × openness, and answers to that power's law.
+// About a year of prototypes that blow up in public, then orbit: from then on it sells parts to anyone, us included
+// (cheaper than any import: ×1.2 of our own price, falling to ×1.0 as it grows; not while its power sanctions us or is
+// hostile) and takes a growing share of the commercial market (to 40 % over four years), which every commercial offer's
+// pay loses (never under the floor). Not yet: racing for the capstones (Q138's later slices), Foundry's look on the parts
+// it sells (Q205), choosing its part over one we make.
+const GIANT_YR=18,GIANT_PROTO=400,GIANT_SHARE=0.4,GIANT_RAMP=4*YEAR_D,GIANT_ROOTS=['Star','Iron','Far','Bright','Sky','Steel','Nova','Long'],
+  GIANT_FORMS=['# Industries','# Space','#works','#ward'];
+const giantYear=()=>GIANT_YR+3*rng((PROG.wseed^0x6a17)>>>0)();
+function giantMake(R){const w=POWERS.map(p=>p.econ*(0.4+flav(p.i).open));let x=R()*w.reduce((a,b)=>a+b,0),j=0;for(;j<w.length-1;j++){x-=w[j];if(x<=0)break}
+  const name=GIANT_FORMS[R()*GIANT_FORMS.length|0].replace('#',GIANT_ROOTS[R()*GIANT_ROOTS.length|0]);
+  return{i:POWERS[j].i,name,day:Math.round(PROG.day),orbit:Math.round(PROG.day+GIANT_PROTO*(0.8+0.4*R())),rud:0,up:0,yr:0}}
+function giantShare(){const G=PROG.giant;return G&&PROG.day>=G.orbit?GIANT_SHARE*Math.min(1,(PROG.day-G.orbit)/GIANT_RAMP):0}
+// what it charges us for a part, as sourceOf's k (null: not selling to us)
+function giantSells(){const G=PROG.giant;if(!G||PROG.day<G.orbit||sanctioned(G.i)||(G.i!==HOME&&relOf(HOME,G.i)<=-0.2))return null;
+  return{k:Math.round((1.2-0.5*giantShare())*100)/100,from:G.i,name:G.name}}
+function giantTick(d,R){let G=PROG.giant;
+  if(!G){if(worldCompYear()<giantYear())return;G=PROG.giant=giantMake(R);
+    HOOK.news(`${G.name}, a new company in ${POWERS[G.i].root}, rolls out a steel prototype on a live stream. The founder promises orbit within a year`,'warn');return}
+  if(PROG.day<G.orbit){if(G.rud<2&&R()<2*d/Math.max(1,G.orbit-G.day)){G.rud++;HOOK.news(`${G.name}'s prototype ${G.rud} ends in a "rapid unscheduled disassembly". The founder: "lots of good data"`,'dim')}return}
+  if(!G.up){G.up=1;HOOK.news(`${G.name} reaches orbit and posts its launch price before the press does: a fraction of anyone's. It sells parts to anyone, us included`,'warn');return}
+  const y=Math.min(Math.floor((PROG.day-G.orbit)/YEAR_D),GIANT_RAMP/YEAR_D);if(y>G.yr){G.yr=y;HOOK.news(`${G.name} cuts its prices again: commercial work now pays ${Math.round(100*giantShare())} % less than before it came`,'warn')}}
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
 // rivals' news by archetype (QUEUE Q103, POWERS.md § archetypes): the open superpower announces its attempts in advance,
 // the closed one only after success (rumours from the open press first), the others never; each wins in its own tone
@@ -251,7 +275,7 @@ function stPick(f){const L=typeof satsUp==='function'?[...satsUp(),...landedUp()
 function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stOf(q);if(k==='sup')return s?s.sup:0;
   const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
-  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
+  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv)*(1-giantShare()):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.max(payFloor(type),Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10);   // clients pay for what they care about; never under the floor
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,why:CT[type].why?CT[type].why(p):whyOf(type,src,client)}}
@@ -285,7 +309,7 @@ function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();c
     HOOK.news(`Missed deadline: ${cTitle(c)} for ${POWERS[c.client].name}`,'bad')}
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
-  flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);raceTick()}
+  flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);giantTick(d,R);raceTick()}
 // ---- ownership: what the program is. Shares that sum to 1: state stakes by power (st) and private capital (pv).
 // Everything scales with the shares, so a part-privatized agency sits between the archetypes:
 //  · budget day comes from each state shareholder, by its stake and its opinion of us; private capital pays nothing
@@ -320,7 +344,7 @@ function studyLine(s){const E=COMP_ERAS[compEra()];if(!E.err[0])return'';const s
     `unstudied, predictions ±${Math.round(E.err[0]*100)}% <button data-study="1" ${q.ok&&PROG.funds>=q.cost?'':'disabled'}>Study ${fmtM(q.cost)}, ${Math.ceil(q.days)} d → ±${Math.round(q.err*100)}%</button>`)+`</div>`}
 function knowhowLine(parts){const ks=[...new Set(parts.map(p=>p.d.key))].filter(k=>khUse(k)<0.35).sort((a,b)=>khUse(a)-khUse(b));
   return ks.length?`<div class="sub warn">New to us: ${ks.slice(0,4).map(k=>`${PARTS[k].name} (know-how ${(khBar(k)*100).toFixed(0)}%)`).join(', ')}${ks.length>4?'…':''}: riskier ignitions, slower checkout</div>`:''}
-function importsLine(parts){const by={};for(const k of new Set(parts.map(p=>p.d.key))){const x=sourceOf(k);if(x.how==='home'||x.how==='line')continue;const w=x.how==='grey'?'grey market ×3':`${POWERS[x.from].root} ×${IMPORT_K}`;(by[w]=by[w]||[]).push(PARTS[k].name)}
+function importsLine(parts){const by={};for(const k of new Set(parts.map(p=>p.d.key))){const x=sourceOf(k);if(x.how==='home'||x.how==='line')continue;const w=x.how==='grey'?'grey market ×3':x.how==='giant'?`${x.name} ×${x.k}`:`${POWERS[x.from].root} ×${IMPORT_K}`;(by[w]=by[w]||[]).push(PARTS[k].name)}
   const e=Object.entries(by);return e.length?`<div class="sub ${by['grey market ×3']?'bad':'dim'}">Imports: ${e.map(([w,n])=>`${n.join(', ')} (${w})`).join(' · ')}</div>`:''}
 function moneyK(i){const F=flav(i),op=opOf(i)/50,home=i===HOME;let k;
   if(F.money==='commodity')k=(0.6+0.4*op)*(1+0.8*(PROG.comm||0));

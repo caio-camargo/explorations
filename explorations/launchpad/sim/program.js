@@ -449,6 +449,7 @@ function tierOf(k){const d=PARTS[k];if(!d)return 0;
   if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel'||d.kind==='spin'||d.kind==='leg'||d.kind==='solar')return 1;if(d.kind==='comp')return 2;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
+  const g=typeof giantSells==='function'?giantSells():null;if(g)return{how:'giant',k:g.k,from:g.from,name:g.name,t};   // the commercial giant undercuts any import (Q206)
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
 const cert0=k=>{const x=sourceOf(k);return x.how==='home'?CERT0-0.2*(1-indOf(HOME)):x.how==='line'?CERT0-0.2*(1-x.line.m):CERT0};
 const TIER_NAME=['structure and tanks','small engines','big engines and avionics'];
@@ -897,7 +898,7 @@ function flavTick(d,R){PROG.nat=PROG.nat||{};
     if(!PROG.demand&&stateShare()>=0.5&&R()<1-Math.exp(-d/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular by the anniversary, 60 days from now: a first, or a contract worth 40M+','warn')}}
   // regime change can cancel a security state's program
   if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R()<1-Math.exp(-d/600))cancelProgram(R)}
-function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import');
+function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import'||(x[1].how==='giant'&&x[1].from!==HOME));
   if(grey.length)HOOK.news(`Bought through intermediaries at triple the price: ${grey.map(x=>PARTS[x[0]].name).join(', ')}`,'warn');
   if(imp.length||grey.length)opAdd(HOME,-0.4*natK()*(imp.length+grey.length)/Math.max(1,ks.length))}
 function demandMet(why){if(!PROG.demand)return;PROG.demand=null;opAdd(HOME,8);if(flav(HOME).money==='patronage')PROG.funds+=30;
