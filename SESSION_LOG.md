@@ -5813,3 +5813,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `TESTING.md` (247), `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next for sky & bodies:** Q326 then Q322 (shrink `SKY_FS`, Selene out of it); Q323 Tellus from above.
 
+
+## 2026-10-13 — flow session: Q261, the map's layers (v1.167)
+- **Q261 ✓ v1.167** (PLAYTEST #61, merged and pushed, `deda4d8`): *Layers* beside Map [M] opens a panel (cities, ground
+  stations, contract targets, our satellites and landers, debris, links home, moons' orbits and SOI rings, planets and
+  Helios, names). Every `drawMap` pass asks `mapShow(k)` (`app/map-layers.js`); the ship, its orbit, plan, nodes,
+  impacts and the target always show. Untouched layers follow the era (cities before the first orbit; satellites,
+  debris, planets after); a layer you set is kept per browser.
+- **Checks:** test `flow-19`; `--smoke` passes on the merge; robot rows `layers` and `m1` pass.
+- **Seen on main, not mine:** QUEUE's FLAG (two full-suite checks failing at `e42f84b`: node chain flown, Q342), for
+  vehicle/space.
+- **Files:** `app/map-layers.js` (new), `app/render.js` (`drawMap`), `index.html`, `tests/flow.mjs`, `playtest.mjs`,
+  `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** Q262 (centre the map on something else).
