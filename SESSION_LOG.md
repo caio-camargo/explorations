@@ -6107,3 +6107,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checked:** full suite passed except `qa-2` (go to body), which fails on `main` as well: not this change (flag for QA). Browser: the bench flow end to end.
 - **Coordination:** served my browser checks on the shared port 8799 without the GPU lock before reading the GPU-runs memory; now on 8772 with the lock.
 - **Next:** Q422, propulsion on the bench (kick motors, hydrazine, apogee engine, the adapter as a separation ring).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, 2nd session): planets, stars by day, airglow (Q374, Q395, Q407, v1.200)
+
+- **Done:** Q374, read as the planets in the 3D sky (they were only the map's UI dots): points of light on the stars'
+  scale from each planet's magnitude (Hesper m −5.6, Hyperion −3.4, Enyo −0.4); a moon under 1.5 px is a point with its
+  disc's light instead of flickering out. Q395: stars, planets and the galaxy fade by the sky's contrast (none by day, a
+  few at dusk). Q407: the airglow a quarter as bright.
+- **Views:** 169 (the planets), 170 (Selene as a point), 171 (the pad at dusk).
+- **Tests:** `aerofx-33` (new); all 63 look sections pass after merging main (the other sky session's Q379 and effects'
+  lettering came in; `gl.js` hand-merged); browser check of 169, 171, 1, 158 after the merge. Smoke not run (memory).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (281),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q374-after/`, `q395-before/`, `q395-after/`, `q374-merged/`.
+- **For Caio:** Q374's wording was ambiguous; I left the map's planet dots alone (UI). Say if you meant those.
+- **Next for sky & bodies:** Q392 (the haze's dithering, Caio's ask), Q401, Q403; Q80–Q85 wait on W29.
+
