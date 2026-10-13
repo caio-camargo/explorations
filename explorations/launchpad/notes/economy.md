@@ -3044,7 +3044,7 @@ routes (flow).
 Tests: `econ-25` (2 checks: made from a satellite, three hand-ordered runs fly clean and join the route; repeating
 waits for mainframes, then orders exactly one run when short, on the network model and the pad calendar).
 
-## v1.202 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
+## v1.204 — a dry satellite counts as up by its real lifetime (2026-10-13, economy session 2, QUEUE Q414, PLAYTEST #104)
 
 The robot's `m2` run (Q233) made a route from a weather satellite at 293 × 301 km with no station-keeping propellant:
 it would stay up ~1,034 days, but `routeSats` asked for 30 days of holding *and* 30 of decay, so the route read 0 of 1
