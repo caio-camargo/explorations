@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.13 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.14 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -77,6 +77,25 @@ URL: `?lay=grid|radial|now`, `&size=big|town`, `&era=1960|1985|2010`, `&view=low
 
 **Pick:** _(Caio; if silent: **both, by region**: each city takes A or B from the country it's in (the school's region),
 so the world isn't one kind of city; era growth on)_
+
+## satellites/ — satellites that don't look alike (PROBES § 6; Caio 2026-10-13)
+
+Open `satellites/index.html` (click a craft to turn it; `?sat=<id>`; `&env=1` adds reflections on a real GPU) or the
+stills in `output/launchpad/mockups/satellites/` (`lineup.png` and one per craft, software renderer). Caio: "still
+concerned that they will look samey... more shape variety that is not just cylinders. maybe some of the parts just need
+to be smaller?" Thirteen craft after real ones (Sputnik, Explorer 1 and 6, Telstar, TIROS, a KH-7-like telescope,
+Mariner 4, a 1980s comsat, Seasat, GPS, ATS-6, a gravity-gradient satellite, a Cassini-like truss craft), built only
+from proposed parts and skins, against today's (the octagonal frame, the instrument package, side boxes, wings), each
+next to a 1.8 m figure. Four directions, all shown (Caio: "yes, all four"):
+1. **Smaller parts**: 0.3 and 0.6 m stacks and a kick motor; the first satellites were a ball or a pencil.
+2. **Bus shapes from jobs**: sphere, faceted ball, spin drum (spinners must be round), bus with bays, box, open truss.
+3. **Skins**: polished metal, gold and silver foil, cells as skin, white paint, thermal checks and stripes, black
+   blankets; a material per part, by era and school, nearly free to draw.
+4. **Signature appendages**: swept whips, paddles, a sunshade tube, a dish farm, a radar plank, a helix ring, a mesh
+   dish on a truss, a gravity boom, RTG fins.
+
+**Pick:** _(Caio; if silent: all four go into PROBES as § 6's variety rules and a slice S4 after S2: smaller stacks and
+the kick motor first (cheapest, biggest change), then skins, then bus shapes, then the appendages with their jobs)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 
