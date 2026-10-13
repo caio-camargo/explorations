@@ -2830,7 +2830,7 @@ Tests: `econ-21` (5 checks: forecast and worlds differ; an attempt fails then su
 commodity money; old save and defection). `econ-13` and `econ-15` pass unchanged. **Waiting on Caio:** W38 (spur,
 panel by openness, second-place news; defaults built).
 
-## v1.157 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10, POWERS.md § Commercial giant)
+## v1.159 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10, POWERS.md § Commercial giant)
 
 **What it is:** a company, the one rival that isn't a nation (`PROG.giant`, `sim/contracts.js` beside the rivals). It
 has no entry in `POWERS`, `RIVALS` or the race; it is based in a power and answers to its law.

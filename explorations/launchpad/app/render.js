@@ -163,7 +163,7 @@ function render(){
   if(!DF)drawPadGlow(m,camW);   // the pad's floodlights
   gl.depthFunc(gl.LESS);
   profMark('plume pool');if(near)drawPlumePool(VP);profMark('plumes');
-  const PE=near&&S.alive&&mode==='flight'?plumeEngines():[];
+  const PE=near&&S.alive&&mode==='flight'?plumeEngines():[];HAZE.n=0;
   if(PE.length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
@@ -181,7 +181,8 @@ function render(){
       gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
       gl.uniform4f(pu.uIg,ig[0],ig[1],ig[2],ig[3]);
       gl.uniform3fv(pu.uSunL,qrot(qconj(Q),SUN));gl.uniform3fv(pu.uSunC,PSUN);   // (Q319) sunlight on the exhaust, plume-local
-      gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.uniform1f(pu.uPf,P.pf||0);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
+      gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.uniform1f(pu.uPf,P.pf||0);gl.drawArrays(gl.TRIANGLES,0,PLUME.n);
+      if(S.body.atm)hazeAdd(VP,o,qrot(Q,[0,-1,0]),L,e.d.exit,R,thr*Math.min(1,pa*3),W/H,tanY)}   // (Q319) heat haze in air
     if(hits.length&&IMPACT_FX){if(S.body.atm)drawImpact(GF,hits,VP);else drawDust(GF,hits,VP)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   // fin-tip vapor after the plumes: the trails don't write depth, so drawn before they'd vanish behind the exhaust even
