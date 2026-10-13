@@ -25,6 +25,10 @@ const name=k=>PARTS[k].name;
 const DPR=()=>Math.min(devicePixelRatio||1,1.5);
 // deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
 const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':null};
+// how a part deploys in flight (flow, QUEUE Q400): the part panel's line and the part card's row
+const DEP_HOW={leg:'Y, or Legs down on the flight bar (top right): put them down before touchdown',
+  wing:'P, or the Unfold button on the flight bar (top right): once the air is thin, after the fairing drops; open in thick air, it tears off',
+  bay:"B, or Open bay on the flight bar (top right): once the air is thin; shut, it shields what's inside"};
 const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&depOf(p.dn.k)).map(p=>p.dn))];
 
 // ---- design access. A preset stays in the old array format (so its saved autopilot tape still matches) until the
@@ -347,6 +351,7 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.kWh)L.push(['stores',`${d.kWh} kWh`]);if(d.W)L.push(['draws',`${d.W} W`]);
   if(d.fm)L.push(['shell',`${d.fls[0]}–${d.fls[d.fls.length-1]} m long, ${n(d.fm,'t',3)} a metre, dropped at its stage`]);
   L.push(['size',`${+(2*d.r).toFixed(2)} m wide · ${+d.h.toFixed(2)} m tall`],['heat limit',`${d.Tmax} K`]);
+  {const w=depOf(d.key);if(w)L.push(['deploys',DEP_HOW[w].split(':')[0]])}   // (Q400) the key and the button
   try{const pr=partPrice({d,jr:0})+((d.res0&&d.res0.fuel)||0)*FUEL_PRICE;if(isFinite(pr))L.push(['price',fmtM(pr)+(d.kind==='tank'?' with its propellant':'')])}catch(e){}
   return L}
 function partCardHTML(k){const d=PARTS[k],lk=typeof partOpen==='function'?partOpen(k):{ok:true};
@@ -406,7 +411,8 @@ function panel(){
   if(PARTS[n.k].kind==='rfin'){const r=row('size');   // fin sizes (Q348)
     FIN_SZ.forEach((z,i)=>{const d=finDef(PARTS[n.k],i);btn(r,z.n,(n.fz||0)===i,()=>edit(()=>{if(i)n.fz=i;else delete n.fz}),`${z.n} span × ${d.chord.toFixed(2)} m chord, ${(d.m*1000).toFixed(0)} kg each`)})}
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
-  {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it')}}
+  {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it');
+    const h=document.createElement('div');h.className='sub';h.textContent=`In flight: ${DEP_HOW[w]}.`;sel.appendChild(h)}}   // (Q400) how it deploys
   if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
     if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');
