@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-12
+**Version**: v2.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -198,6 +198,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
 - v1.104 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
+- v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -245,7 +246,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
 - v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
 - v1.151 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
-- v1.161 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
+- v1.163 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -292,6 +293,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319)
 - v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352)
 - Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow)
+- v1.162 — a plume light per side of a wide rocket (2026-10-13, effects beat, QUEUE Q319)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

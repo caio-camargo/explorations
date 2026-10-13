@@ -954,7 +954,7 @@ N2 of the network plan (§ "Network screen plan"), built where Q241 R4 put the n
 - **Not yet:** routes (N3, with routines), clicking a node for its panel (N3), the plan's coverage bar on relays
   (Q218 draws coverage on the map), rivals and the era's look (N4).
 
-## v1.161 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
+## v1.163 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
 R3 of the real-screens plan (§ "Plan: real screens"; mock-up `mockups/screens/?s=title`).
 - **The page opens on the title screen**, a room (`title` in `ROOMS`, `go('title')`, `#ttl`, `app/title.js`): a dimmed
   night pad (CSS: stars, a tower's silhouette), the menu at the left, the program's charter on it.
@@ -975,7 +975,7 @@ R3 of the real-screens plan (§ "Plan: real screens"; mock-up `mockups/screens/?
 - **Checks:** test `flow-18` (the wiring; an open charter lists every archetype and start with Found on the ticked one;
   ticking company names it Aerospace; after `chooseStart` the charter is signed, with no buttons). Robot row `charter`
   (sees the charter, ticks a power and the consortium, signs, the desk opens; back on the title it's signed and Enter
-  continues) and `m1` pass. TESTING row 243.
+  continues) and `m1` pass. TESTING row 245.
 - **Every load now stops on the title**, one Enter from the desk (the plan's "Continue skips it": the charter, not the
   screen). If that's a click too many, skipping the title for a save is one line in program-ui's start-up.
 - **Not yet:** the director's own name on the signature (a typed name, saved); the program's real seal (`powerMark`)

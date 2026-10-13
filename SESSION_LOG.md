@@ -5737,3 +5737,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `mockups/sky/index.html`, `mockups/README.md`, `QUEUE.md` (W39, Q253 state, a Proposed line), `ACTIVE_WORK.md`.
 - **Next:** Q321 on W39 (sky & bodies).
 
+## 2026-10-13 — Caio + Claude (launchpad economy session): Q206 the commercial giant (v1.161)
+- **Built:** the commercial giant (D10, POWERS § Commercial giant) as `PROG.giant` in `sim/contracts.js`: arrives in world year 18–21, a year of exploding prototypes, then orbit; sells us any part home can't make at ×1.2 falling to ×1.0 (`sourceOf` → `how:'giant'`, before imports); commercial offers pay × (1 − its share), share to 40 % over four years, floored; its power's sanctions stop its sales. News in its voice.
+- **Measured:** at full share commercial pay falls 19 %, not 40 %: the floor holds the cheap jobs. No effect on `career.mjs` (it arrives ~year 20).
+- **Files:** `sim/contracts.js`, `sim/program.js` (`sourceOf`, `importNews`), `app/editor.js` (source line, line candidates), `tests/economy.mjs` (econ-22), `notes/economy.md` § v1.161, `NOTES.md`, `QUEUE.md` (Q206 ✓, W40, two Proposed), `TESTING.md` 243, `ACTIVE_WORK.md`.
+- **Next:** W40 (three defaults, built). Economy's next ready: Q181 (overflight), Q184 (routines), Q295 (missed deadlines, M1), Q296, Q332.
+

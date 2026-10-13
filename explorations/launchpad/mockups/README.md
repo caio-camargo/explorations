@@ -527,6 +527,13 @@ draws 7.5 %), the **spiral at 3–6 %** (4.5 %); the bar's 1.00× is now these p
 buttons (`?nb=`, `?sb=`). The spiral's arms moved from a strong blue to the band's palette with a slight blue lean
 (its gold core kept), so the two galaxies read as one sky (Caio noticed the hue difference).
 
+**Where the sights sit** (Caio, 2026-10-13: "should the nebula be behind the band or where there won't be overlap"). The
+real sky answers it: emission nebulae are star-forming regions in the galaxy's disc, so they lie along the band (Carina
+in it, Orion ~20° off it); spiral galaxies are seen only far from it, since its dust hides what is behind (the *zone of
+avoidance*). Default: the **nebula at the band's edge**, 22° off its midline, clear of the bright dust so a faint
+veil isn't muddied; the bar's **in the band** shows the other reading (`?nbpos=band`; still `nebula-hubble-band.png`).
+The **spiral sits 40° off the band**. The views aim at their sight.
+
 Not drawn yet: dark pillars proper (the dust is lanes, not columns), a supernova remnant's shell (the Veil), a
 planetary nebula, a globular cluster; any of them is the same recipe if wanted.
 

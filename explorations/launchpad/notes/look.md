@@ -1552,3 +1552,17 @@ BEAUTY B1.1–1.2. All in `app/gl.js` (mesh build and `MESH_FS`'s lighting), plu
   For example, bake a slope-variance channel with the world texture and let `steep` use `max(slope, expected sub-pixel
   steepness)` as the footprint grows, so ridges stay rock and valleys and gentle shelves hold the snow. It grows
   `SKY_FS`, so pay with a cut (Q19) or fold it into Q323 (Tellus from above). QUEUE *Proposed*.
+
+## v1.162 — a plume light per side of a wide rocket (2026-10-13, effects beat, QUEUE Q319 B2.5)
+- **Before:** every burning engine fed one point light at their weighted middle, so a rocket with boosters lit its flanks
+  and the pad as if from its axis.
+- **Now** (`plumeLight`): when the engines spread over 2.5 m (a Heavy's boosters, a broad cluster), they split across
+  their widest spread into two lights, `PLT.p/c` and `PLT.p2/c2`. Engines within 0.35 of the half-spread of the middle
+  (the core) feed both at half weight, so the Heavy splits evenly (67 / 68 in view 54, was all in one). A single-core
+  rocket keeps one light. `MESH_FS` and `SMOKE_VS` take the second light; the ground pool takes the total; an
+  explosion's flash or the re-entry plasma, taking over the light when brighter, clears the second.
+- **Seen on the way:** in the scripted reference views the kerolox igniter's green flash (`ignOf`) is sometimes still on
+  at T+19 s, on `main` too, run to run: its timing there doesn't follow sim time. So the plume light reads green in some
+  shots. A view nit, not touched.
+- **Stills:** `output/launchpad/beauty/q319-lights/v56_ab.png` (main | this, by day; the light matters at night and on the pad).
+- **Checks:** test `aerofx-19`. TESTING 244.
