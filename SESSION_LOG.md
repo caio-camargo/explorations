@@ -5832,3 +5832,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `explorations/launchpad/notes/economy.md` (new plan section), `NOTES.md`, `QUEUE.md` (Q187 ✓ plan, W41, two Proposed slices), `ACTIVE_WORK.md`.
 - **Next:** W41 (four defaults). Economy's ready list: Q181, Q184, Q296, Q332.
 
+
+## 2026-10-13 — flow session: Q262, what the map is centred on (v1.169)
+- **Q262 ✓ v1.169** (PLAYTEST #62, merged and pushed, `7ed2a0c`): a **Focus** list beside Layers (the ship, the known
+  bodies, our satellites and landers, this flight's other vessels); a double-click on a body or craft centres on it;
+  Tab cycles the same list; **Home** returns to the ship. Not Backspace as the item said: in flight it aborts.
+  `mapFocusPos()` (`app/map-layers.js`) is the map camera's centre; a craft that's gone hands focus back to the ship.
+- **Checks:** test `flow-20`; `--smoke` passes on the merge; robot row `focus` (the satellite centred, a double-click
+  on Selene centred with its message, Home back). A satellite's framing was widened after the shots (the ship's rule).
+- **Files:** `app/map-layers.js`, `app/render.js`, `app/input.js`, `app/screens.js`, `index.html`, `tests/flow.mjs`,
+  `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md`, `PLAYTEST.md`, `ACTIVE_WORK.md`.
+- **Next for flow:** the rest of the ready list (Q287 hover glossary, Q293 losses explained, Q286 declutter, …).
