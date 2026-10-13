@@ -243,7 +243,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
 - v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
-- v1.192 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
+- v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 
@@ -274,6 +274,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.182 — losses explained: the Debrief's *What happened*, and every line of money named (2026-10-13, flow session, QUEUE Q293; REVIEW § 3 gap 1)
 - v1.186 — the dark cockpit: news held in the climb, burns and landing; a master caution; only the phase's cards; unflyable hold modes hidden (2026-10-13, flow session, QUEUE Q286 slice 1; UI.md § 3, D16)
 - v1.189 — the Program and the map decluttered: offers one line each, far epochs as a count, no empty photo frame, a letterhead; planets labelled with the trip in days (2026-10-13, flow session, QUEUE Q286 slice 2; UI.md § 3)
+- v1.192 — one tooltip: the part cards and the craft hover in `#termTip`; the Rollout's checks and the joint chip explain themselves (2026-10-13, flow session, QUEUE Q391; UI.md rule 9)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

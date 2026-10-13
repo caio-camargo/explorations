@@ -2067,7 +2067,7 @@ function steppeTable(a,CO,STL,DK){const PIT=[.012,.012,.014,2],GL=[.64,.62,.57,2
 // ---- the other four schools' pads (QUEUE Q231, Q102 step 7; POWERS.md § "School briefs", mock-ups Q227 `mockups/schools/`
 // Pads). Each builds its own complex in place of Cape's; only the floodlight poles are shared (padLights lights them).
 // The moving parts are schoolRig's. The ground stays the sky shader's, and the site's shape (Arsenal's hill, Coastal's
-// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.192): what rises above it here is mesh, inside the sea
+// jungle, Mountain's ridge, Isle's peninsula) is world's (siteShape, Q105, v1.193): what rises above it here is mesh, inside the sea
 // platform's deck (x −256…86, z −194…80).
 // a heightfield patch y = f(x, z) over [x0, x1] × [z0, z1] in n × m cells (earth banks, the Arsenal hall's net); col a
 // colour or a function of the cell's corner

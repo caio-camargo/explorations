@@ -6033,7 +6033,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** every look and sound section passes (58). The full suite not run (memory). Stills: `output/launchpad/beauty/Q250/`.
 - **Next:** idle; overflow candidates Q222 (Steppe rollout sound), Q245/Q330 (pad), Q360 (shake switch, with flow).
 
-## 2026-10-13 — Caio + Claude (launchpad world session): Q105 each school's pad site has its own ground (v1.192)
+## 2026-10-13 — Caio + Claude (launchpad world session): Q105 each school's pad site has its own ground (v1.193)
 
 - **Done:** `siteShape` (`sim/world.js`) is a height offset from the pad, per school, inside 1.7 km. Arsenal: a hill
   behind the retaining wall, rising to 42 m north; its mesh hill is gone. Coastal: a cut-grass clearing in dark jungle
@@ -6051,7 +6051,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   command overwrote and then deleted it. Two Chrome runs may have overlapped for ~2 minutes. The lock was restored at
   13:06. Next time, check and write the lock in the same command as the run, never after a separate wait.
 - **Files:** `sim/world.js`, `app/gl.js`, `app/render.js`, `tests/world.mjs`, `tests/core.mjs`, `test.mjs` (api `SITE_K`),
-  `notes/world.md`, `notes/look.md`, `NOTES.md`, `TESTING.md` (273), `QUEUE.md`, `ACTIVE_WORK.md`.
+  `notes/world.md`, `notes/look.md`, `NOTES.md`, `TESTING.md` (274), `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next for world:** Q251 / Q365 (mountains from orbit), Q379, Q336, Q324. Three Proposed lines from this one: `padGround`
   per school, a view of the wet sites, and `q19-hdr` taking these shader changes.
 
