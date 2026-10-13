@@ -610,3 +610,18 @@
   check('space sky: band, nebula and spiral baked to a cube once per program (unit 12), SKY_FS samples it; sharp stars with a floor and a twinkle; no sun spikes; nebula 22° and spiral 40° off the band for any seed; the old code kept behind SKY_B5',
     placed && sky && bake && newSun, `offsets (nebula, spiral °) ${offs.map(o => o.map(x => x.toFixed(1)).join('/')).join(', ')} · shader ${sky} · bake ${bake} · new stars/sun ${newSun}`);
 }
+
+// aerofx-20. An incoming fragment and its strike (look & sound effects beat, QUEUE Q302): HOOK.fragIn's fragment is drawn
+// as a sunlit streak on its path, at the strike a flash and sparks; and the plasma light can't go NaN when the heat flux
+// is unset (a NaN light turned every smoke puff in vacuum black).
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const draw = /HOOK\.fragIn=\(s,x\)=>\{FRAGS\.push\(\{s,x\}\)\}/.test(page) && /function fragDraw\(VP,camW,lit\)/.test(page) && /fragDraw\(VP,camW,lit\);/.test(page)
+    && /Pf=madd\(s\.r,x\.dir,-x\.vr\*left\),Pt=madd\(Pf,x\.dir,-x\.vr\*\.06\)/.test(page) && /if\(left<-\.5\)\{FRAGS\.splice\(i,1\);continue\}/.test(page);
+  const ph = page.match(/function plasmaHeat\(b,r,v,q\)\{[^\n]*\}/), env = { len: a => Math.hypot(...a), sub: (a, b) => a.map((x, i) => x - b[i]), surfVel: () => [0, 0, 0], clamp: (x, a, b) => Math.min(b, Math.max(a, x)), PLASMA_V: 1000 };
+  const heat = ph && new Function(...Object.keys(env), ph[0] + ';return plasmaHeat')(...Object.values(env));
+  const noNaN = heat && heat({}, [0, 0, 0], [3000, 0, 0], undefined) === 0 && /const qE=plasmaHeat\(S\.body,S\.r,S\.v,S\.qHeat\);if\(!\(qE>1\.5e4\)\)return;/.test(page);
+  const sim = /HOOK\.fragIn&&HOOK\.fragIn\(s,s\.fragIn\)/.test(src);
+  check('incoming fragment: drawn on its path as a sunlit streak, a flash and sparks at the strike; no NaN plasma light when the heat flux is unset',
+    draw && noNaN && sim, `draw ${draw} · no NaN ${noNaN} · sim hands it over ${sim}`);
+}

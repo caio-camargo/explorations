@@ -196,6 +196,7 @@ function render(){
   // the ship and on spent stages falling back (debrisHeat)
   if(PLASMA_FX&&near){const qS=S.alive?plasmaHeat(S.body,S.r,S.v,S.qHeat):0;if(qS>1.5e4)drawPlasma(VP,camW,S,shipWorld(),qS,false);
     for(const d of debris){const g=DEBH.get(d),qd=g?plasmaHeat(d.body,d.r,d.v,g.q):0;if(qd>1.5e4){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<2e4)drawPlasma(VP,camW,g.geo,p,qd,true)}}}
+  if(near&&mode==='flight')fragDraw(VP,camW,lit);   // (Q302) an incoming fragment's glint, and its strike
   // RCS: a puff at each nozzle that fired in the last 80 ms (so a single 20 ms pulse is still seen)
   if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));

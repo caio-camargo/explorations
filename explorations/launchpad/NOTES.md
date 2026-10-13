@@ -204,7 +204,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.130 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
 - v1.161 — the commercial giant (2026-10-13, economy session, QUEUE Q206; D10)
 - v1.165 — a missed deadline costs a wait (2026-10-13, economy session, QUEUE Q295; D17.4)
-- v1.170 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
+- v1.171 — overflight: flying low over a neighbour (2026-10-13, economy session, QUEUE Q181; W23)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -304,6 +304,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.162 — a plume light per side of a wide rocket (2026-10-13, effects beat, QUEUE Q319)
 - Reference views 159–161: the shield's face, the terminator, a range from orbit (2026-10-13, effects beat)
 - v1.168 — the vapor collar, calmer: one thin sheet, not bands (2026-10-13, effects beat, PLAYTEST #88)
+- v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
