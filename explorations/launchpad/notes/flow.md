@@ -1100,3 +1100,22 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
   help bar was already behind the menu. **Slice 2:** the Program (NEXT card, offers one line each, the letterhead, locked
   missions as a count) and the map (labels by importance, days instead of TU). The Assembly's GO/NO-GO board is D22's
   Checks tab, built with Q237 (vehicle).
+
+## v1.189 — the Program and the map decluttered (2026-10-13, flow session, QUEUE Q286 slice 2; UI.md § 3 Program and Map rows)
+- **Offers, one line each:** name, pay, days left, Take and Pass, and ⚠ when taking it risks sanctions. A click on the
+  line opens the rest (client, *Why*, the brief, the risk); a `<details>` row in `contractsHTML` (`app/program-ui.js`).
+  Taken contracts keep their full rows (their Withdraw and dispatch lines are things you act on).
+- **Missions:** an epoch past the next one, with nothing open or done in it, is one line: "🔒 8 missions, once first
+  orbit is under way" (`renderProgram`, `app/editor.js`). The current and next epochs list everything as before.
+- **The wall:** no empty photo frame ("no flights yet") until the first flight's photo exists (`deskWall`); the Debrief
+  still pins its own.
+- **The letterhead:** the program's name 22 px instead of 30: a letterhead, so the NEXT card and the funds lead.
+- **The map:** a planet's label gives the trip, half a transfer orbit from Tellus's, in days ("Enyo · ~280 days there"),
+  not its distance in TU, a unit nobody knows (`xferDays`, `app/render.js`). The label declutter by importance was
+  already there (PLAYTEST #31).
+- **Checks:** test `flow-25`; robot row `desk` (four one-line offers, one opened; the far epochs counted; no empty
+  frame); `m1` passes (its orbit map shows the planets in days; its SAS shows only the modes the probe can fly, slice 1).
+  Every flow and economy section passes. The full smoke run was stopped by Claude Code for low memory and not re-run.
+  TESTING row 271.
+- **Q286 is done** except the Assembly's GO/NO-GO board, which is D22's Checks tab: Q237 (vehicle, with flow). Not done
+  from UI.md's rows: a phase card that changes by phase (landing: height and descent rate; burn: Δv to go).
