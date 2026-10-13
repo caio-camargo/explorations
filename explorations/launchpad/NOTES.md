@@ -303,6 +303,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.162 — a plume light per side of a wide rocket (2026-10-13, effects beat, QUEUE Q319)
 - Reference views 159–161: the shield's face, the terminator, a range from orbit (2026-10-13, effects beat)
 - v1.168 — the vapor collar, calmer: one thin sheet, not bands (2026-10-13, effects beat, PLAYTEST #88)
+- v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

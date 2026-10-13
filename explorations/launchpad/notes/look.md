@@ -1661,3 +1661,20 @@ one log each). Noise between runs ≈ ±0.2 ms.
   resolution with a depth-aware upsample like the cloud slab's); a new item for the volume shadow's bake; Q322 keeps its
   place for the look, not the pad's time.
 - Not measured: Low, the iGPU (the shares should hold, the totals won't).
+
+## v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
+- **The fragment** (`HOOK.fragIn`, `FRAGS`, `fragDraw`): the sim rolls a hit 3 s ahead and hands over its size, crossing
+  speed and direction (space's Q200). A centimetre fragment kilometres off is invisible, so it's drawn as what an eye
+  might catch: a sunlit glint streaking in on its path, a line 0.06 s of its travel long (≈ 500 m at 9 km/s), brighter
+  for a bigger piece (×0.25–2 by size against 4 cm) and as it closes (×0.3 → 3), dark in a planet's shadow, drawn with
+  the line shader in the additive pass after the plasma. At the strike: a flash (a hot puff 0.5–1.1 m, 0.12 s) and
+  20–44 sparks off the face it hit. A strike while nobody's looking (the map) is dropped, not flashed late.
+- **Found on the way: every smoke puff in vacuum rendered black.** Reference views (and any frame before the first physics
+  step, e.g. after a load) have `S.qHeat` unset, so `plasmaHeat` returned NaN, and `plasmaLight`'s `qE <= 1.5e4` let
+  NaN through. That made the shared plume/plasma light (`PLT.c`) NaN. The mesh shader skips it by accident (NaN > 0 is
+  false); the smoke vertex shader doesn't, and the composite's NaN guard painted each puff black (staging sparks, a
+  venting tank, a strike flash in orbit). `plasmaHeat` now treats an unset flux as 0, and `plasmaLight` tests
+  `!(qE > 1.5e4)`.
+- **Stills:** `output/launchpad/beauty/q302/k_row.png` (the streak side-on from 5 km at 0.5 s and 0.2 s out; the flash on
+  the struck face); `alt_ab.png` (the black puffs at 200 km against bright ones at 50 km, before the fix).
+- **Checks:** test `aerofx-20`. TESTING 252.

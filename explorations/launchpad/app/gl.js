@@ -1552,7 +1552,8 @@ function drawFinTips(VP,camW,R,U){if(!FTR.size)return;const th=bodyTheta(TELLUS,
 // the glow's heat level: the stagnation flux, faded in by airspeed around PLASMA_V (terrain's blackout threshold, Q17).
 // Dense air on an ordinary climb reaches the flux at ~1 km/s (Mach 3.5, PLAYTEST #17) but is not hot enough to glow;
 // the shock layer lights up at orbital-class speeds. Fades over .85–1.05 PLASMA_V so the shell grows in, not pops.
-function plasmaHeat(b,r,v,q){const s=len(sub(v,surfVel(b,r))),x=clamp((s-.85*PLASMA_V)/(.2*PLASMA_V),0,1);return q*x*x*(3-2*x)}
+// (Q302) q is unset before the first physics step (reference views, a load): 0, not NaN
+function plasmaHeat(b,r,v,q){const s=len(sub(v,surfVel(b,r))),x=clamp((s-.85*PLASMA_V)/(.2*PLASMA_V),0,1);return (q||0)*x*x*(3-2*x)}
 // the plasma for one body: S needs body, r, v, q, parts, cm, radius, yTop, yBot (the ship, or debrisGeo for a stage)
 function drawPlasma(VP,camW,S,p,qH,all){const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>50){
   const f=mul(va,1/vl),k=clamp(Math.log(qH/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
@@ -1633,7 +1634,7 @@ function boomLight(camW){const now=HOOK.fxT??performance.now();let best=null,bk=
 // pink-white with the heat level k). Lights smoke too (the same PLT); no ground pool (nothing glows near the ground).
 let PLASMA_LIGHT=true;   // false turns it off (A/B)
 function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S.alive||!S.body.atm)return;
-  const qE=plasmaHeat(S.body,S.r,S.v,S.qHeat);if(qE<=1.5e4)return;const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<50)return;
+  const qE=plasmaHeat(S.body,S.r,S.v,S.qHeat);if(!(qE>1.5e4))return;const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<50)return;
   const k=clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),f=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
     rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
     a=clamp((k-.3)/.9,0,1),b=a*a*(3-2*a),c=[1,.45+.41*b,.12+.5*b],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
@@ -1650,6 +1651,25 @@ function camShake(){if(!SHAKE_FX||mode!=='flight'||view==='map'||!S||!S.alive||!
   if(A<1e-5)return null;const t=simT;
   return[A*(Math.sin(t*37.1)*.5+Math.sin(t*71.7+1.3)*.3+Math.sin(t*13.3+2.1)*.2),A*(Math.sin(t*41.9+.7)*.5+Math.sin(t*83.3+2.9)*.3+Math.sin(t*17.9+.4)*.2)]}
 let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
+// (Q302) an incoming debris fragment: the sim rolls a hit FRAG_LEAD (3 s) ahead and hands it over (HOOK.fragIn: size L,
+// crossing speed vr, direction dir). A centimetre fragment kilometres off is invisible, so it's drawn as what an eye
+// might catch: a sunlit glint streaking in along its path, a line 0.06 s of its travel long, brighter for a bigger piece
+// and as it closes, dark in a planet's shadow; at the strike a flash and a spray of sparks off the face it hit.
+const FRAGS=[];HOOK.fragIn=(s,x)=>{FRAGS.push({s,x})};const FRB=new Float32Array(14);
+function fragDraw(VP,camW,lit){if(!FRAGS.length)return;let used=false;
+  for(let i=FRAGS.length-1;i>=0;i--){const F=FRAGS[i],s=F.s,x=F.x,left=x.at-simT;
+    if(left<-.5){FRAGS.splice(i,1);continue}   // struck while nobody was looking (the map): no late flash
+    if(left<=0){FRAGS.splice(i,1);if(s.alive&&s.body===TELLUS){const R=Math.random,P=madd(s.r,x.dir,-(s.radius||1)*.9);   // the strike
+        fxPuff(P,s.v,{s0:.5+2*Math.min(x.L,.3),grow:4,a0:1,life:.12,hot:4});
+        for(let k=0;k<20+Math.round(80*Math.min(x.L,.3));k++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(P,add(s.v,add(mul(x.dir,-60*R()),mul(u,40*R()))),{s0:.03+.04*R(),grow:0,a0:.9,life:.2+.6*R(),hot:2.4})}}
+      continue}
+    if(left>FRAG_LEAD+.5||!s.body)continue;const B=bodyPos(s.body,simT),Pf=madd(s.r,x.dir,-x.vr*left),Pt=madd(Pf,x.dir,-x.vr*.06),W=add(B,Pf);
+    if(len(sub(W,camW))>6e4)continue;const L=lit(W);if(!L)continue;
+    const a=1-left/FRAG_LEAD,b=Math.min(2,Math.max(.25,x.L/.04))*(.3+2.7*a*a)*L;
+    const p=sub(W,camW),q=sub(add(B,Pt),camW);FRB.set([p[0],p[1],p[2],.95,.97,1,1,q[0],q[1],q[2],.6,.7,.9,1]);
+    if(!used){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);used=true}
+    gl.uniform1f(PLINE.u.uLk,b*6);gl.bufferData(gl.ARRAY_BUFFER,FRB,gl.DYNAMIC_DRAW);gl.drawArrays(gl.LINES,0,2)}
+  if(used)gl.useProgram(PMESH.p)}
 const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[0,0,1],[1,0,0]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0],[1,0,0]]],v=[];
   for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}
   const vao=gl.createVertexArray(),buf=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
