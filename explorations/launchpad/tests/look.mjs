@@ -508,3 +508,14 @@
   check('structural failure: the sim calls HOOK.crack at the broken joint and logs it; the page sprays shards, vents a broken tank, bursts a loaded one in air',
     sim && page2 && !!crack, `sim ${sim} · page ${page2} · a broadside Orbiter cracked at ${crack || 'nothing'}`);
 }
+
+// aerofx-15. A splash at splashdown (look & sound effects beat, QUEUE Q267, PLAYTEST #67): the moment the craft hits the
+// sea (s.wet), once, spray thrown up and out and a ring racing across the surface, scaled by touchdown speed and mass.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const fn = page.match(/function splashFx\(s\)\{[\s\S]*?\/\/ the ring/);
+  const once = /if\(S\.wet&&!S\.mkSplash\)\{S\.mkSplash=true;splashFx\(S\)\}/.test(page);
+  const scaled = fn && /k=clamp\(\(s\.touchV\|\|5\)\/8\*Math\.sqrt\(s\.mass\/3000\),\.3,2\.5\)/.test(fn[0]) && /i<90\+110\*k/.test(fn[0]) && /fxPuff\(madd\(madd\(P,h,r0\),up,\.2\)/.test(fn[0]);
+  const wetSet = /if\(!s\.wet\)\{if\(!touchdown\(s\)\)return;s\.wet=true;/.test(src);
+  check('splashdown: spray and a racing ring once, when the sim sets s.wet, scaled by speed and mass', once && scaled && wetSet, `once ${once} · scaled ${!!scaled} · sim sets s.wet ${wetSet}`);
+}

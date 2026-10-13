@@ -134,6 +134,16 @@ function ventTick(dt){for(let i=VENTS.length-1;i>=0;i--){const V=VENTS[i],t=V.t,
     if(!v||!dt){if(!v)VENTS.splice(i,1);continue}const R=Math.random,out=Math.min(V.m,dt*V.m0/6);V.m-=out;if(V.m<1){VENTS.splice(i,1);continue}
     const e=qrot(v.q,[0,V.up,0]),J=add(v.r,qrot(v.q,sub([t.pos[0],t.y0+(V.up>0?t.h:0),t.pos[2]],v.cm))),n=Math.min(12,dt*40*Math.sqrt(V.m/V.m0)+R());
     for(let k=0;k<n;k++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(madd(J,e,.2),add(v.v,add(mul(e,15+25*R()),mul(u,6*R()))),V.air>.02?{s0:.25+.25*R(),grow:2+2*R(),a0:.45,life:4+4*R()}:{s0:.3,grow:9,a0:.35,life:1+R()})}}}
+// (Q267, PLAYTEST #67) a splashdown: spray thrown up and out and a white ring racing across the surface, scaled by the
+// touchdown speed and the mass (k = v/8 · √(t/3), 0.3–2.5; a 3 t capsule at 8 m/s is 1). Inertial puffs (fxPuff: no
+// gravity, so short-lived). A lingering foam patch needs to lie flat on the water: billboard puffs stood up like clouds,
+// so it belongs in the sea's shading with the swell (QUEUE Q267's other half)
+function splashFx(s){const b=s.body;if(b!==TELLUS)return;const R=Math.random,up=norm(s.r),P=mul(up,b.R),v0=surfVel(b,P),
+    k=clamp((s.touchV||5)/8*Math.sqrt(s.mass/3000),.3,2.5),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),r0=(s.radius||1)*1.2;
+  for(let i=0;i<90+110*k;i++){const a=R()*6.2832,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
+    fxPuff(madd(P,h,r0*R()),add(v0,add(mul(up,(3+9*R())*k),mul(h,(2+6*R())*k))),{s0:.06+.1*R()*k,grow:.5+.5*R(),a0:.8,life:.6+.9*R()})}   // spray
+  for(let i=0;i<64;i++){const a=i/64*6.2832+R()*.1,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
+    fxPuff(madd(madd(P,h,r0),up,.2),add(v0,mul(h,(5+3*R())*Math.sqrt(k))),{s0:.15*k+.12,grow:.8,a0:.6,life:1.8+R()})}}   // the ring
 // staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
 // The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
 function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;

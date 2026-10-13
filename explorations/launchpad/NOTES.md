@@ -282,6 +282,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.150 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319)
 - v1.151 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320)
 - v1.152 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294)
+- v1.153 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

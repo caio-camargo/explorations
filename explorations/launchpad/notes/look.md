@@ -1443,3 +1443,17 @@ could only catch near-white. Now the frame is light, and the camera is one place
   0.2, 2 and 5 s; at 300 m/s the fireball is left behind the camera's frame within a fraction of a second).
 - **Checks:** test `aerofx-14` (the sim calls the hook on a real break, core's broadside Orbiter at 600 m/s; the page's
   wiring). TESTING 234.
+
+## v1.153 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267; PLAYTEST #67)
+- **When:** the frame the sim sets `s.wet` (`seaCheck`'s splash verdict), once per flight (`S.mkSplash`), from `marksTick`.
+- **What** (`splashFx`, `app/state.js`): 90–365 spray puffs thrown up at 3–12 m/s·k and out at 2–8 m/s·k, living
+  0.6–1.5 s; and a ring of 64 puffs racing across the water at 5–8 m/s·√k for 2–3 s, half sunk in the sea so they read
+  as surf. k = v/8 · √(m / 3 t) within 0.3–2.5, so a 3 t capsule at 8 m/s is 1. The puffs are inertial `fxPuff`s with
+  no gravity, which is why they're short-lived.
+- **Tried and dropped: a foam patch** of planet-fixed smoke puffs. Billboards can't lie flat: from above, one stood
+  over the capsule like a small cloud. A foam patch and a dye marker belong in the sea's shading, with the swell the SIM
+  heaves craft on (`SEA_SWELL`), which the sea doesn't draw yet. Both grow `SKY_FS` (the Q19 rule: pay with a cut), so
+  they're QUEUE *Proposed* for sky & bodies / world.
+- **Stills:** `output/launchpad/beauty/q267/sq_row.png` (a capsule at 12.5 m/s: 0.3 s, 1.2 s, 10 s); `sp_row.png` is the
+  first, coarser try.
+- **Checks:** test `aerofx-15`. TESTING 235.
