@@ -1547,3 +1547,23 @@ Test `vehicle-12`. `--smoke` all pass.
   names the joint: an interstage decoupler instead (when a plain decoupler is in the joint), reinforce the joint (the part's
   *joint* option), or less thrust low down (when it's the design's own peak).
 - Test `vehicle-22`. TESTING 242.
+
+## v1.164 — bigger fins, and the in-air check recalibrated (2026-10-13, vehicle session, QUEUE Q348; PLAYTEST #85)
+
+- **Fin sizes:** a radial or steerable fin's options have a **size** row: 0.9 m (as before), 1.35 m, 2 m span (`FIN_SZ`; the
+  node's `fz`). `finDef(d, fz)` (`sim/vessel.js`) gives a sized fin its own cached definition, same key: span, chord and height
+  × k; mass, compression, tension, shear and price × k² (`pk`, read by `partPrice`); root bending × k³ (its own air load × its
+  lever). `assemble` uses it for surface parts, so aero, steering, loads, heating and the mesh all see the bigger plate.
+- **What bigger fins do, flown** (the fairing satellite of Q342): four 2 m radial fins at the foot of its upper stage make that
+  stage about neutral (−0.48 → 0.01 calibers), so it holds after separating. But fins that big up top also move the **whole
+  rocket's** centre of pressure forward (−1.18 → −1.95), and with only the fin ring below it goes over at max-q and snaps the
+  decoupler joint, even with a steerable fin ring (whose static check said it holds). With 2 m fins low on the first stage as
+  well, it flies clean (1° at worst). 1.35 m fins up top with a steerable ring below also fly.
+- **The in-air check, recalibrated** (`airSep`): the divergence threshold is now on rate × the slowest lit gimbal's full swing
+  (`gim / gimR`: a Kestrel 0.5 s, a Petrel 0.3 s), past `LAG_MAX` 1.7, which fits every flight (stage 1 and later stages
+  alike); the steering threshold is `AUTH_MAX` 1.5 × what it has (flown prograde, a separated stage sits near 1°, not 5°: up to
+  1.23 flew, 1.98 flipped). **Stage 1 is checked too**, at its own max-q, for going over too fast only ("Stage 1 at max-q
+  flips", with "fins ahead of the centre of mass push it over: bigger fins low on the first stage, or smaller ones up top").
+- **Found:** the **Hopper preset** flips at max-q in flight (straight up: from 3° to 111° in a second at 16 s and 111 kPa, as
+  its tank drains), and the builder now says so. Left as it is: Q371.
+- Test `vehicle-23`. TESTING 246.

@@ -85,6 +85,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.152 — later stages in the air: the fairing satellite's upper stage tumbles after separating; the builder and Rollout say so and what helps (2026-10-12, vehicle session, QUEUE Q342)
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
+- v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
