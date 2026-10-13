@@ -6033,3 +6033,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** every look and sound section passes (58). The full suite not run (memory). Stills: `output/launchpad/beauty/Q250/`.
 - **Next:** idle; overflow candidates Q222 (Steppe rollout sound), Q245/Q330 (pad), Q360 (shake switch, with flow).
 
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): one tooltip (Q391, v1.192)
+- **Done:** the builder's part card and the craft hover show in the one tooltip (`#termTip`, `tipShow`/`tipHide` with an owner per use, clamped to the window); `#partcard` and `#bldtip` are gone; the Rollout's warnings and stops explain themselves (ten of them, `whyMark`); the part panel's joint chip too. On `main` as `60498a9`.
+- **Checks:** flow-26 (new), every flow section and the builder's core sections pass; robot rows `explain` and `m1` pass. The robot caught the Rollout's icon CSS squeezing the wrapped text to one word a line (fixed), and flow-8 caught a comment that broke its source cut (moved).
+- **Next:** the queue's next flow item.
