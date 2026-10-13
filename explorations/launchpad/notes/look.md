@@ -1765,3 +1765,13 @@ Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), t
 - **Cost:** four `texelFetch` per bloom texel (sixteen on Low's one pass); within the GPU noise.
 - **Check:** test `aerofx-24` (the chain's alpha, and `expoMean`/`expoTarget` on a synthetic frame: a disc blurred
   0.9, brightest 2.2, on black → E = 2/2.2). TESTING 262.
+
+## v1.181 — the sunglint at full strength, and a view that shows it (2026-10-13, sky & bodies beat, QUEUE Q387)
+
+- **View 162** (`views.js`): the ship 400 km over open sea (≥ 1 km deep, the clearest sky on a 0.02 rad ring) with the
+  sun 40° up, the camera behind and above looking down toward the sun, where the sea mirrors it.
+- **Found:** v1.176's Beckmann glint carried a stray ×0.25, so the patch rose barely above the air's in-scatter and no
+  still showed it. Without it the glint is the BRDF × cos on the same scale as the diffuse sea (both leave out π): a
+  wide silvery sheen on the open sea, as in photos from orbit. Views 1, 3, 146 unchanged; p2 (157) gains a soft
+  highlight on the disc. Stills `output/launchpad/beauty/q387/`.
+- **Check:** test `aerofx-25`. TESTING 263.

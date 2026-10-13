@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>City mock-up</title>
+<!-- Launchpad mock-up (design desk, 2026-10-13, PLAYTEST #91): how a city looks from the air. Never loaded by the game.
+     Two layouts (a New-World grid, an Old-World radial core) against today's scatter, from three heights, by era and light.
+     The buildings are one instanced draw with windows from the shader (as the game would do); the ground is a painted
+     canvas here (the game would use a coarse land-use map and draw streets and houses in the ground shader).
+     ?lay=grid|radial|now  &size=big|town  &era=1960|1985|2010  &view=low|climb|high  &light=day|dusk|night  &az=<deg>  &still=1 -->
+<style>
+:root{--pane:#0f1822e8;--line:#26384a;--ink:#d6e2ee;--dim:#8a9db0;--acc:#7fd0ff;--ok:#6fdc8c;--warn:#ffb84a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b1118;color:var(--ink);font:13px/1.45 ui-monospace,Consolas,"Cascadia Mono",monospace}
+.app{position:relative;width:1280px;height:800px;margin:0 auto;overflow:hidden}
+#cv{position:absolute;inset:0;width:1280px;height:800px;cursor:grab}
+.pane{position:absolute;left:12px;top:12px;width:290px;background:var(--pane);border:1px solid var(--line);border-radius:8px;padding:12px}
+.pane h1{margin:0 0 8px;font-size:13px;letter-spacing:2px;color:var(--acc)}
+.grp{margin:8px 0}
+.grp .l{color:var(--dim);font-size:11px;letter-spacing:1.5px;margin-bottom:3px}
+.grp button{background:#16273a;border:1px solid #2c4560;color:var(--ink);border-radius:4px;padding:2px 7px;font:inherit;font-size:12px;cursor:pointer;margin:0 3px 3px 0}
+.grp button.on{border-color:var(--acc);color:var(--acc);background:#13283b}
+.desc{margin-top:10px;font-size:12px;color:#c3d0dc}
+.desc b{color:var(--ink)}
+.bud{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;font-size:11.5px;color:var(--dim)}
+.bud b{color:var(--ok);font-weight:normal}
+.bud .w{color:var(--warn)}
+.hint{position:absolute;right:12px;bottom:12px;background:var(--pane);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--dim)}
+.tag{position:absolute;right:12px;top:12px;background:var(--pane);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px}
+</style></head><body>
+<div class="app">
+<canvas id="cv" width="1280" height="800"></canvas>
+<div class="pane">
+  <h1>A CITY FROM THE AIR</h1>
+  <div class="grp"><div class="l">LAYOUT</div><span data-k="lay"><button data-v="grid">A · grid</button><button data-v="radial">B · old core</button><button data-v="now">today</button></span></div>
+  <div class="grp"><div class="l">SIZE</div><span data-k="size"><button data-v="big">city 1.2M</button><button data-v="town">town 150k</button></span></div>
+  <div class="grp"><div class="l">ERA</div><span data-k="era"><button data-v="1960">1960</button><button data-v="1985">1985</button><button data-v="2010">2010</button></span></div>
+  <div class="grp"><div class="l">SEEN FROM</div><span data-k="view"><button data-v="low">2 km</button><button data-v="climb">12 km</button><button data-v="high">40 km</button></span></div>
+  <div class="grp"><div class="l">LIGHT</div><span data-k="light"><button data-v="day">day</button><button data-v="dusk">dusk</button><button data-v="night">night</button></span></div>
+  <div class="desc" id="desc"></div>
+  <div class="bud" id="bud"></div>
+</div>
+<div class="tag" id="tag"></div>
+<div class="hint" id="hint">drag to turn · wheel to zoom · URL: ?lay= &amp;size= &amp;era= &amp;view= &amp;light= &amp;az= &amp;still=1</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const Q=new URLSearchParams(location.search);
+const S={lay:Q.get('lay')||'grid',size:Q.get('size')||'big',era:+(Q.get('era')||1985),view:Q.get('view')||'low',light:Q.get('light')||'day',az:+(Q.get('az')||35),zoom:1};
+if(Q.get('still'))document.getElementById('hint').style.display='none';
+const $=s=>document.querySelector(s);
+
+// ---- noise
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hash2(x,y){let h=Math.imul(x|0,374761393)+Math.imul(y|0,668265263);h=Math.imul(h^h>>>13,1274126177);return((h^h>>>16)>>>0)/4294967296}
+function vn(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),a=hash2(xi,yi),b=hash2(xi+1,yi),c=hash2(xi,yi+1),d=hash2(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+function fbm(x,y){return .5*vn(x,y)+.3*vn(x*2.1+5.3,y*2.1)+.2*vn(x*4.3,y*4.3+9.1)}
+const pick=(R,a)=>a[R()*a.length|0];
+
+// ---- the city: buildings {x,z,w,d,h,a,c} and a painted ground
+const N=4096;
+function build(){
+  const big=S.size==='big',pop=big?1.2e6:1.5e5,rad=2500+5200*Math.sqrt(pop/1e6);   // the game's city radius
+  const E=4.2*rad,R=rng(big?1234:777),B=[];
+  const eraK=S.era===1960?0:S.era===1985?1:2,cap=[110,240,420][eraK]*(big?1:.45),towerK=[.35,1,1.6][eraK],sprawl=[.72,.88,1][eraK];
+  const Ru=rad*sprawl;
+  const cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+  const nv=document.createElement('canvas');nv.width=nv.height=N;const n=nv.getContext('2d');n.fillStyle='#000';n.fillRect(0,0,N,N);
+  const s=N/E;const W=()=>{g.setTransform(s,0,0,s,N/2,N/2);n.setTransform(s,0,0,s,N/2,N/2)};W();
+  const rivX=z=>(big?850:420)*Math.sin(z/(big?2600:1500))+(big?420:220),rivW=big?190:90;
+  const nearRiver=(x,z,m)=>Math.abs(x-rivX(z))<rivW/2+m;
+  const glow=(t)=>`rgba(255,${170+30*t|0},${90+40*t|0},${(.25+.6*t).toFixed(2)})`;
+  const add=(x,z,w,d,h,a,c)=>{if(nearRiver(x,z,Math.max(w,d)/2+10))return;B.push({x,z,w,d,h,a,c})};
+  const now=S.lay==='now';
+  if(now){   // today's cityMesh(): an even scatter, taller toward the middle, on grass
+    const cnt=Math.min(900,Math.round(160+pop/2500));
+    for(let i=0;i<cnt;i++){const rr=Math.sqrt(R())*rad*.9,th=R()*6.2832,x=rr*Math.cos(th),z=rr*Math.sin(th),core=Math.exp(-((rr/rad)**2)*3);
+      const w=12+R()*30,d=12+R()*30,h=6+R()*12+core*(40+R()*120),gg=.62+R()*.28;B.push({x,z,w,d,h,a:0,c:[gg,gg*.97,gg*.95]})}
+  }
+  // land use at a point (both layouts)
+  const lu=(x,z,cbd)=>{const r=Math.hypot(x,z),t=r/Ru+(fbm(x/2500,z/2500)-.5)*.45;
+    if(t>1)return['out',t];if(nearRiver(x,z,25))return['water',t];
+    if(t<cbd)return['cbd',t];
+    if(fbm(x/700+11,z/700)>.7)return['park',t];
+    if(t>.35&&t<.97&&Math.abs(x-rivX(z))<1600&&fbm(x/1800+3,z/1800)>.52)return['ind',t];
+    if(t<.4)return['inner',t];
+    if(t>.82&&R()<(t-.82)/.18)return['out',t];
+    return['sub',t]};
+  const houses=(fn,area)=>{const k=Math.round(area/420);for(let i=0;i<k;i++){const p=fn(R(),R());g.fillStyle=pick(R,['#bcae9c','#a06f5c','#8e8d87','#cbc4b6','#b07d63']);g.fillRect(p[0]-5,p[1]-5,9+R()*4,9+R()*4)}
+    g.fillStyle='#3e5732';for(let i=0;i<k*.9;i++){const p=fn(R(),R());g.fillRect(p[0]-3,p[1]-3,5+R()*5,5+R()*5)}};
+  const trees=(fn,area,dens)=>{g.fillStyle='#38512c';const k=Math.round(area/90*dens);for(let i=0;i<k;i++){const p=fn(R(),R());g.fillRect(p[0]-4,p[1]-4,6+R()*7,6+R()*7)}};
+  const COL={cbd:'#8d8a83',inner:'#7c7469',sub:'#7d8269',park:'#55723e',ind:'#8f8e88'};
+  const glassC=()=>pick(R,eraK===0?['#b9b4a8','#a8a296','#c4bfb3']:eraK===1?['#5d7286','#6f7d74','#8a8f96','#b5afa3','#4f5f70']:['#5d7286','#4c6378','#7d93a6','#6f8a96','#9aa4ac']);
+  const brick=()=>pick(R,['#8f5e4a','#a0705a','#c2b8a4','#b4ab9c','#9d9a92','#b98f72']);
+  if(S.lay==='grid'){
+    const ga=.21,cs=Math.cos(ga),sn=Math.sin(ga),P=125,M=Math.ceil(Ru*1.35/P),toW=(gx,gz)=>[gx*cs-gz*sn,gx*sn+gz*cs];
+    for(let i=-M;i<M;i++)for(let j=-M;j<M;j++){
+      const sx0=(i%6===0?18:7),sz0=(j%6===0?18:7),bx0=i*P+sx0,bz0=j*P+sz0,bw=P-sx0-7,bd=P-sz0-7,cx=bx0+bw/2,cz=bz0+bd/2,[wx,wz]=toW(cx,cz);
+      const [k,t]=lu(wx,wz,.13);if(k==='out'||k==='water')continue;
+      g.setTransform(s*cs,s*sn,-s*sn,s*cs,N/2,N/2);n.setTransform(s*cs,s*sn,-s*sn,s*cs,N/2,N/2);
+      g.fillStyle='#4f4f4c';g.fillRect(i*P,j*P,P,P);
+      g.fillStyle=COL[k];g.fillRect(bx0,bz0,bw,bd);
+      const lt=Math.max(0,1-t*1.3);n.fillStyle=glow(lt);n.fillRect(i*P,j*P,P,sz0*.6);n.fillRect(i*P,j*P,sx0*.6,P);
+      const fn=(u,v)=>[bx0+u*bw,bz0+v*bd];
+      if(k==='sub'){houses(fn,bw*bd);n.fillStyle='rgba(255,200,130,.18)';for(let q=0;q<6;q++)n.fillRect(bx0+R()*bw,bz0+R()*bd,6,6);
+        if(R()<.04){const w=40+R()*40,d=30+R()*30;const[x,z]=toW(bx0+bw/2,bz0+bd/2);add(x,z,w,d,6+R()*7,ga,'#c9c4b8')}}
+      else if(k==='park')trees(fn,bw*bd,.8);
+      else if(k==='cbd'){const L=bw/2;for(let a=0;a<2;a++)for(let b=0;b<2;b++){const lx=bx0+a*L+L/2,lz=bz0+b*(bd/2)+bd/4,[x,z]=toW(lx,lz),r=Math.hypot(x,z);
+          const pt=Math.min(.95,towerK*(.12+.75*Math.exp(-((r/(.13*Ru))**2))));
+          if(R()<pt){const h=60+(cap-60)*Math.pow(R(),1.8)*(.35+.65*Math.exp(-((r/(.09*Ru))**2))),f=24+R()*20;add(x,z,f,f*(.8+R()*.5),Math.max(45,h),ga,glassC());add(x,z,L*.9,bd/2*.9,7+R()*7,ga,'#9c988f')}
+          else add(x,z,L*.85,bd/2*.85,18+R()*30,ga,pick(R,['#b5afa3','#a39d92','#c2b8a4',glassC()]))}}
+      else if(k==='inner'){const L=bw/3;for(let a=0;a<3;a++)for(let b=0;b<2;b++){if(R()>.85)continue;const[x,z]=toW(bx0+a*L+L/2,bz0+b*bd/2+bd/4);
+          const tall=eraK>0&&R()<.05;add(x,z,L*.8,bd/2*.8,tall?40+R()*55:9+R()*20,ga,tall?'#c8c2b6':brick())}}
+      else if(k==='ind'){const c=1+(R()<.5);for(let q=0;q<c;q++){const[x,z]=toW(bx0+bw*(.3+.4*R()),bz0+bd*(.3+.4*R()));add(x,z,50+R()*50,40+R()*45,8+R()*7,ga,pick(R,['#a9adb0','#b7b2a6','#9fa6a8']))}
+        if(eraK<2&&R()<.15){const[x,z]=toW(bx0+bw*.85,bz0+bd*.15);add(x,z,5,5,55+R()*25,ga,'#8a7c70')}}
+    }
+    W();
+    // highways: a ring and six spokes out into the country
+    g.strokeStyle='#5f5f5a';g.lineWidth=36;n.strokeStyle='rgba(255,190,110,.75)';n.lineWidth=22;
+    g.beginPath();g.arc(0,0,Ru*.55,0,6.2832);g.stroke();n.beginPath();n.arc(0,0,Ru*.55,0,6.2832);n.stroke();
+    for(let k=0;k<6;k++){const a=k*1.047+.3;g.beginPath();n.beginPath();for(let r=Ru*.1;r<E*.5;r+=300){const aa=a+.12*Math.sin(r/2500+k),x=r*Math.cos(aa),z=r*Math.sin(aa);r===Ru*.1?(g.moveTo(x,z),n.moveTo(x,z)):(g.lineTo(x,z),n.lineTo(x,z))}g.stroke();n.stroke()}
+  }
+  if(S.lay==='radial'){
+    const sp=150,K=Math.ceil(Ru*1.3/sp),spokes=[...Array(8)].map((_,i)=>i*Math.PI/4+.2),bd=[{r:.13*Ru,w:40},{r:.45*Ru,w:45}];
+    const bizA=.9,bizR=.33*Ru,bx=bizR*Math.cos(bizA),bz=bizR*Math.sin(bizA),bizRad=.075*Ru*(big?1:1.3),biz=S.era>=1975;
+    const onRoad=(x,z,m)=>{const r=Math.hypot(x,z),a=Math.atan2(z,x);for(const p of spokes){let da=Math.abs(((a-p)%6.2832+9.4248)%6.2832-3.1416);if(da*r<18+m&&r>60)return true}for(const b of bd)if(Math.abs(r-b.r)<b.w/2+m)return true;return false};
+    for(let k=1;k<K;k++){const r0=k*sp+6,r1=(k+1)*sp-6,rm=(r0+r1)/2,ns=Math.max(6,Math.round(6.2832*rm/130)),da=6.2832/ns;
+      for(let q=0;q<ns;q++){const a0=q*da+3.5/rm,a1=(q+1)*da-3.5/rm,am=(a0+a1)/2,x=rm*Math.cos(am),z=rm*Math.sin(am);
+        let [kk,t]=lu(x,z,.12);if(kk==='out'||kk==='water')continue;
+        const inBiz=biz&&Math.hypot(x-bx,z-bz)<bizRad;if(inBiz)kk='cbd';else if(kk==='cbd')kk='old';
+        g.fillStyle='#4f4f4c';g.beginPath();g.arc(0,0,r1+6,a0-3.5/rm,a1+3.5/rm);g.arc(0,0,r0-6,a1+3.5/rm,a0-3.5/rm,true);g.fill();
+        g.fillStyle=kk==='old'?'#857b6b':COL[kk];g.beginPath();g.arc(0,0,r1,a0,a1);g.arc(0,0,r0,a1,a0,true);g.closePath();g.fill();
+        const lt=Math.max(0,1-t*1.3);n.strokeStyle=glow(lt);n.lineWidth=5;n.beginPath();n.arc(0,0,r1+6,a0,a1);n.stroke();
+        const fn=(u,v)=>{const rr=r0+u*(r1-r0),aa=a0+v*(a1-a0);return[rr*Math.cos(aa),rr*Math.sin(aa)]},area=(r1-r0)*(a1-a0)*rm,ang=am+Math.PI/2;
+        const put=(rr,aa,w,d,h,c,j=0)=>{const X=rr*Math.cos(aa),Z=rr*Math.sin(aa);if(!onRoad(X,Z,Math.max(w,d)/2))add(X,Z,w,d,h,aa+Math.PI/2+j,c)};
+        const arc=(a1-a0)*rm;
+        if(kk==='old'){if(rm<70)continue;const m=Math.max(2,Math.round(arc/30));for(let i=0;i<m;i++)for(let b=0;b<2;b++)put(r0+(b+.5)*(r1-r0)/2,a0+(i+.5)*(a1-a0)/m,arc/m*.85,(r1-r0)/2*.8,10+R()*12,pick(R,['#b8a88c','#c4b394','#a99a80','#b59f86']),(R()-.5)*.35)}
+        else if(kk==='inner'){const m=Math.max(1,Math.round(arc/90));for(let i=0;i<m;i++){const aa=a0+(i+.5)*(a1-a0)/m,w=arc/m*.92;const c=pick(R,['#d3c7ae','#cbbd9f','#c6b89c']),h=19+R()*4;put(r1-14,aa,w,24,h,c);put(r0+14,aa,w,24,h,c)}}   // perimeter blocks round a courtyard
+        else if(kk==='cbd'){for(let i=0;i<2;i++){const aa=a0+(i+.5)*(a1-a0)/2,rr=rm,d2=Math.hypot(rr*Math.cos(aa)-bx,rr*Math.sin(aa)-bz);if(R()<towerK*.75){put(rr,aa,26+R()*18,26+R()*16,Math.max(50,60+(cap-60)*Math.pow(R(),1.6)*(.4+.6*Math.exp(-((d2/(bizRad*.6))**2)))),glassC())}else put(rr,aa,arc/2*.8,(r1-r0)*.7,14+R()*20,'#b0aba1')}}
+        else if(kk==='sub'){houses(fn,area);n.fillStyle='rgba(255,200,130,.18)';for(let q2=0;q2<5;q2++){const p=fn(R(),R());n.fillRect(p[0],p[1],6,6)}if(R()<.03)put(rm,am,40+R()*30,30+R()*20,6+R()*6,'#c9c4b8')}
+        else if(kk==='park')trees(fn,area,.8);
+        else if(kk==='ind'){put(rm,am,Math.min(arc*.8,90),(r1-r0)*.7,8+R()*7,pick(R,['#a9adb0','#b7b2a6']));if(eraK<2&&R()<.12)put(r0+20,a0+.2*(a1-a0),5,5,55+R()*25,'#8a7c70')}
+      }}
+    // boulevards (drawn over the blocks) and the slab estates (1960 on)
+    g.strokeStyle='#55554f';n.strokeStyle='rgba(255,190,110,.8)';
+    for(const p of spokes){g.lineWidth=n.lineWidth=36;g.beginPath();n.beginPath();g.moveTo(60*Math.cos(p),60*Math.sin(p));n.moveTo(60*Math.cos(p),60*Math.sin(p));g.lineTo(E*.5*Math.cos(p),E*.5*Math.sin(p));n.lineTo(E*.5*Math.cos(p),E*.5*Math.sin(p));g.stroke();n.stroke()}
+    for(const b of bd){g.lineWidth=b.w;n.lineWidth=b.w*.6;g.beginPath();g.arc(0,0,b.r,0,6.2832);g.stroke();n.beginPath();n.arc(0,0,b.r,0,6.2832);n.stroke()}
+    for(let e=0;e<(big?4:2);e++){const a=2.1+e*1.37,r=Ru*(.56+.12*R()),cx=r*Math.cos(a),cz=r*Math.sin(a);if(nearRiver(cx,cz,400))continue;const o=R()*3;
+      g.fillStyle='#8f9184';g.save();g.translate(cx,cz);g.rotate(o);g.fillRect(-330,-260,660,520);g.restore();
+      for(let i=0;i<8;i++){const lx=(i%4-1.5)*150,lz=(i<4?-1:1)*120,x=cx+lx*Math.cos(o)-lz*Math.sin(o),z=cz+lx*Math.sin(o)+lz*Math.cos(o);add(x,z,110,14,eraK?30+R()*20:24+R()*12,o,'#cfcac0')}}
+    add(0,0,62,22,28,.2,'#a39a88');add(22,8,10,10,95,.2,'#a39a88');   // the cathedral and its spire
+  }
+  // the river last (bridges: the highways and boulevards are redrawn over it)
+  if(!now){W();g.strokeStyle='#5f7a4a';g.lineWidth=rivW+50;const riv=(c)=>{c.beginPath();for(let z=-E/2;z<=E/2;z+=150)z===-E/2?c.moveTo(rivX(z),z):c.lineTo(rivX(z),z);c.stroke()};riv(g);g.strokeStyle='#2f4b5c';g.lineWidth=rivW;riv(g);
+    g.strokeStyle='#4f4f4c';g.lineWidth=16;for(let z=-Ru;z<Ru;z+=(big?900:700)){if(Math.abs(z)>Ru*.8)continue;g.beginPath();g.moveTo(rivX(z)-rivW,z);g.lineTo(rivX(z)+rivW,z);g.stroke();n.strokeStyle='rgba(255,190,110,.6)';n.lineWidth=10;n.beginPath();n.moveTo(rivX(z)-rivW,z);n.lineTo(rivX(z)+rivW,z);n.stroke()}}
+  // contact shadow under every building (baked: no shadow maps)
+  W();for(const b of B){g.save();g.translate(b.x,b.z);g.rotate(b.a);const m=Math.min(14,4+b.h*.08);g.fillStyle='rgba(0,0,0,.16)';g.fillRect(-b.w/2-m,-b.d/2-m,b.w+2*m,b.d+2*m);g.fillStyle='rgba(0,0,0,.18)';g.fillRect(-b.w/2-m/2,-b.d/2-m/2,b.w+m,b.d+m);g.restore()}
+  B.sort((a,b)=>b.h-a.h);
+  return{B,E,day:cv,night:nv,rad,Ru,cap}
+}
+
+// ---- three
+const cvs=$('#cv'),ren=new THREE.WebGLRenderer({canvas:cvs,antialias:true,preserveDrawingBuffer:true});ren.setPixelRatio(1);ren.setSize(1280,800,false);
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(42,1280/800,20,900000);
+const lin=(h)=>{const c=new THREE.Color(h);return new THREE.Vector3(Math.pow(c.r,2.2),Math.pow(c.g,2.2),Math.pow(c.b,2.2))};
+const U={sunD:{value:new THREE.Vector3()},sunC:{value:new THREE.Vector3()},ambC:{value:new THREE.Vector3()},fogC:{value:new THREE.Vector3()},fogK:{value:1e-5},night:{value:0},camP:{value:new THREE.Vector3()},
+  dayT:{value:null},nightT:{value:null},E:{value:1}};
+const HDR=`uniform vec3 sunD,sunC,ambC,fogC,camP;uniform float fogK,night;
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+vec3 fogit(vec3 c,vec3 wp){float f=1.-exp(-length(wp-camP)*fogK);return pow(mix(c,fogC,f),vec3(1./2.2));}`;
+const bMat=new THREE.ShaderMaterial({uniforms:U,extensions:{derivatives:true},
+  vertexShader:`varying vec3 vWp,vN,vC;varying vec2 vI;
+  void main(){vec4 w=modelMatrix*instanceMatrix*vec4(position,1.);vWp=w.xyz;vN=normalize(mat3(modelMatrix)*mat3(instanceMatrix)*normal);vC=instanceColor;vI=instanceMatrix[3].xz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+  fragmentShader:HDR+`varying vec3 vWp,vN,vC;varying vec2 vI;
+  void main(){vec3 n=normalize(vN);float dif=max(dot(n,sunD),0.);vec3 col;
+   if(n.y>.5){vec3 rc=mix(vC,vec3(.14),.5);col=mix(rc*(ambC+sunC*dif),rc*.012,night);}
+   else{vec3 t=vec3(-n.z,0.,n.x);float fl=vWp.y/3.4,u=dot(vWp,t)/3.+h21(vI)*7.,fw=max(fwidth(fl),fwidth(u));
+    float m=step(.38,fract(fl))*step(.3,fract(u))*step(1.2,fl),mf=mix(m,.42,smoothstep(.15,.6,fw)),ao=mix(.5,1.,smoothstep(0.,16.,vWp.y));
+    vec3 wall=vC*(ambC+sunC*dif)*ao,glass=vec3(.012,.018,.028)+ambC*.22+sunC*pow(dif,6.)*.12,day=mix(wall,glass,mf*.7);
+    float lp=.08+.4*h21(vI*.013),lit=step(h21(floor(vec2(fl,u))*.137+vI*.001),lp),lf=mix(m*lit*1.6,.1*lp,smoothstep(.15,.6,fw));
+    col=mix(day,vC*.006+vec3(1.,.66,.36)*lf*1.6,night);}
+   gl_FragColor=vec4(fogit(col,vWp),1.);}`});
+const gMat=new THREE.ShaderMaterial({uniforms:U,extensions:{derivatives:true},
+  vertexShader:`varying vec3 vWp;void main(){vec4 w=modelMatrix*vec4(position,1.);vWp=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+  fragmentShader:HDR+`uniform sampler2D dayT,nightT;uniform float E;varying vec3 vWp;
+  vec3 fields(vec2 p){vec2 q=p/430.;vec2 c=floor(q+.3*vec2(sin(q.y*.7),cos(q.x*.6)));float h=h21(c);
+   vec3 a=h<.35?vec3(.42,.52,.28):h<.6?vec3(.55,.58,.33):h<.8?vec3(.66,.6,.42):vec3(.5,.43,.31);
+   a=mix(a,vec3(.5,.53,.37),.45);return a*(.94+.12*h21(c+3.));}
+  void main(){vec2 uv=vWp.xz/E+.5;float inside=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.);
+   vec4 t=texture2D(dayT,uv);vec3 dc=pow(mix(fields(vWp.xz),t.rgb,t.a*inside),vec3(2.2));
+   vec3 day=dc*(ambC+sunC*max(sunD.y,0.));vec3 nt=inside>.5?pow(texture2D(nightT,uv).rgb,vec3(2.2)):vec3(0.);
+   gl_FragColor=vec4(fogit(mix(day,dc*.008+nt*.9,night),vWp),1.);}`});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1,1),gMat);ground.rotation.x=-Math.PI/2;scene.add(ground);
+const box=new THREE.BoxGeometry(1,1,1);box.translate(0,.5,0);
+let city=null,mesh=null;
+const LIGHT={day:{el:40,sun:'#fff4e6',k:1.,amb:'#8d9db3',ak:.5,fog:'#a9bbd0',night:0,bg:'#9fb4cc'},
+  dusk:{el:6,sun:'#ffad6b',k:.95,amb:'#7d7590',ak:.45,fog:'#b9a3a0',night:.18,bg:'#d4a98f'},
+  night:{el:-20,sun:'#000000',k:0,amb:'#1b2233',ak:.15,fog:'#0a0d16',night:1,bg:'#05070d'}};
+const VIEW={low:{d:7000,h:1800,k:1/45000},climb:{d:17000,h:12000,k:1/120000},high:{d:22000,h:40000,k:1/260000}};
+function rebuild(){
+  city=build();if(mesh){scene.remove(mesh);mesh.dispose&&mesh.dispose()}
+  const B=city.B;mesh=new THREE.InstancedMesh(box,bMat,B.length);const m=new THREE.Matrix4(),q=new THREE.Quaternion(),c=new THREE.Color();
+  B.forEach((b,i)=>{q.setFromAxisAngle(new THREE.Vector3(0,1,0),-b.a);m.compose(new THREE.Vector3(b.x,0,b.z),q,new THREE.Vector3(b.w,b.h,b.d));mesh.setMatrixAt(i,m);
+    c.set(Array.isArray(b.c)?new THREE.Color(...b.c):b.c);c.setRGB(c.r**2.2,c.g**2.2,c.b**2.2);mesh.setColorAt(i,c)});
+  mesh.frustumCulled=false;scene.add(mesh);
+  const mk=cv=>{const t=new THREE.CanvasTexture(cv);t.flipY=false;t.anisotropy=ren.capabilities.getMaxAnisotropy();return t};
+  if(U.dayT.value){U.dayT.value.dispose();U.nightT.value.dispose()}
+  U.dayT.value=mk(city.day);U.nightT.value=mk(city.night);U.E.value=city.E;ground.scale.set(city.E*14,city.E*14,1);
+}
+function draw(){
+  const L=LIGHT[S.light],V=VIEW[S.view],sc=city.rad/8196*1.15+.0,el=L.el*Math.PI/180,sa=2.4;
+  U.sunD.value.set(Math.cos(el)*Math.cos(sa),Math.sin(el),Math.cos(el)*Math.sin(sa)).normalize();
+  const sv=lin(L.sun).multiplyScalar(L.k);U.sunC.value.copy(sv);U.ambC.value.copy(lin(L.amb).multiplyScalar(L.ak));U.fogC.value.copy(lin(L.fog));U.night.value=L.night;U.fogK.value=V.k;
+  scene.background=new THREE.Color(L.bg);
+  // the far version (40 km): only the landmark towers; the ground carries the rest
+  const far=S.view==='high'&&S.lay!=='now';const nT=far?city.B.filter(b=>b.h>=70).length:city.B.length;mesh.count=nT;
+  const a=S.az*Math.PI/180,z=S.zoom,d=V.d*sc*z,h=V.h*(S.view==='low'?sc:1)*z;cam.position.set(d*Math.cos(a),h,d*Math.sin(a));cam.lookAt(0,0,0);U.camP.value.copy(cam.position);
+  ren.render(scene,cam);
+  const D={grid:'<b>A · New-World grid.</b> A downtown of towers on a street grid, mid-rise blocks round it, houses out to a ragged edge, a ring road and highways into the country, industry along the river, parks. Height falls off fast from the centre: the skyline reads from 40 km.',
+    radial:'<b>B · Old-World core.</b> A low, dense old town round a cathedral; even six-storey blocks with courtyards on rings and boulevards; a business district of towers <i>outside</i> the centre (from 1975); slab estates in the suburbs.',
+    now:'<b>Today</b> (<code>cityMesh</code>): boxes scattered evenly over the disc, a little taller toward the middle, standing on grass, with no streets or ground of their own.'};
+  $('#desc').innerHTML=D[S.lay]+(S.lay!=='now'?' <br><br>Cities <b>grow with the date</b>: towers to '+(S.size==='big'?'110 m in 1960, 240 m in 1985, 420 m in 2010':'50, 110 and 190 m')+', more of them, in glass from the 1980s; the sprawl wider each era.':'');
+  const tris=nT*10,gl=S.lay==='now'?'none':'2 × 4096² here; <b>in the game: a 512² land-use map (1 MB) + streets and houses drawn by the ground shader</b>';
+  $('#bud').innerHTML=`Buildings drawn: <b>${nT.toLocaleString('en')}</b> boxes (${(tris/1000).toFixed(0)}k triangles) in <b>one draw</b>${far?' · <span class="w">far version: only towers ≥ 70 m; the ground shows the rest</span>':''}<br>Ground: ${gl}<br>Today's city: ≤ 900 boxes, 1 draw. Measure on the iGPU before building.`;
+  $('#tag').textContent=`${{grid:'A · grid',radial:'B · old core',now:'today'}[S.lay]} · ${S.size==='big'?'1.2M':'150k'} · ${S.era} · ${{low:'2 km',climb:'12 km',high:'40 km'}[S.view]} · ${S.light}`;
+  document.querySelectorAll('[data-k]').forEach(sp=>sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S[sp.dataset.k])===b.dataset.v)));
+}
+document.querySelectorAll('[data-k]').forEach(sp=>sp.querySelectorAll('button').forEach(b=>b.onclick=()=>{const k=sp.dataset.k;S[k]=k==='era'?+b.dataset.v:b.dataset.v;if(['lay','size','era'].includes(k))rebuild();draw()}));
+let drag=null;cvs.onpointerdown=e=>{drag=e.clientX;cvs.setPointerCapture(e.pointerId)};cvs.onpointerup=()=>drag=null;
+cvs.onpointermove=e=>{if(drag===null)return;S.az+=(e.clientX-drag)*.3;drag=e.clientX;draw()};
+cvs.onwheel=e=>{e.preventDefault();S.zoom=Math.min(3,Math.max(.25,S.zoom*(e.deltaY>0?1.1:1/1.1)));draw()};
+rebuild();draw();
+</script>
+</body></html>

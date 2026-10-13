@@ -5954,3 +5954,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** test flow-22 and flow-21 pass; `--smoke` passed before merging origin/main; robot rows `explain` and `m1` pass. The post-merge smoke run was stopped by Claude Code for low memory and not rerun (the merge clashed on one line of `airHTML`, resolved; flow tests pass after it).
 - **Files:** `app/terms.js`, `app/editor.js`, `builder.js`, `index.html` (CSS), `tests/flow.mjs`, `playtest.mjs`, NOTES.md, notes/flow.md, TESTING.md (row 261).
 - **Next:** Q293 (losses explained in the Debrief), Q286 (declutter); follow-ups in QUEUE Proposed.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q387 the sunglint (v1.181)
+
+- **Done:** view 162, the sea from 400 km with the sun 40° up, looking toward the sun. The glint didn't show because
+  v1.176 had quartered it; at full strength it reads as a wide silvery sheen. Views 1, 3, 146, 157 checked.
+- **Lesson:** take version and TESTING numbers *after* the final merge of origin/main, and stop on check_numbers'
+  FAIL (Q385 pushed with a collision, renumbered in a follow-up).
+- **Files:** `views.js`, `app/gl.js`, `tests/look.mjs` (aerofx-25), `notes/look.md`, `NOTES.md`, `TESTING.md` (263),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q387/`.
+- **Next for sky & bodies:** Q322 (the transmittance table, Selene out of `SKY_FS`).
+

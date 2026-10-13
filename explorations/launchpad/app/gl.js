@@ -304,7 +304,7 @@ void main(){
   // wind-roughened surface makes it (Beckmann, slope 0.18: a wide smeared patch from orbit, not a pin)
   if(oc>.5){vec3 h2=normalize(uSun-d);float cv=max(dot(-d,n),0.),Fr=.02+.98*pow(1.-cv,5.),ch=max(dot(n,h2),1e-3),c2=ch*ch,m2=.0324;
    float gl=exp(-(1.-c2)/(c2*m2))/(4.*m2*c2*c2*max(cv,.05))*(.02+.98*pow(1.-max(dot(h2,uSun),0.),5.));
-   col+=st*5.*gl*max(ndl,0.)*.25+Fr*vec3(.05,.1,.2)*smoothstep(-.1,.2,ndl);}
+   col+=st*5.*gl*max(ndl,0.)+Fr*vec3(.05,.1,.2)*smoothstep(-.1,.2,ndl);}
   col=col*trans+ins;
  }else if(tM<1e29){
   vec3 p=d*tM-uMc,n=normalize(p);
