@@ -479,3 +479,99 @@
   check('craft quick wins: Rao bells (steep at the throat, θe at the lip), tangent ogive nose, smooth profile normals with hard edges; the planet as a disc of light (the pad unchanged, blue-white and smaller from orbit)',
     bell && nose && smooth && geo && shader && light, `bell ${bell} · nose ${nose} · normals ${smooth} · geometry ${geo} · shader ${shader} · light ${light} (pad gnd ${pad.gnd[0].toFixed(3)} vs ${padO.gnd[0].toFixed(3)}, LEO ${leo.gnd.map(x => x.toFixed(3))} disc ${leo.dsk[0].toFixed(3)})`);
 }
+
+// aerofx-13. The flames, slice 1 (look & sound effects beat, BEAUTY Q319 B2.1–2.6). A plume's gas cools as it expands, so
+// its own glow falls with the widening, (re/rb)^1.6, unless air mixes in; sunlight scattered by the exhaust (forward
+// Henyey–Greenstein, g 0.7) lights it instead, in the planet's shadow not at all. The sea-level core is turbulent; shock
+// diamonds strengthen off design and the first has a Mach disk; a kerolox root wears a dark curtain; a hypergolic start puffs
+// brown. The contrail runs to ~33 km with up to 4,000 puffs, in a wind that turns with height and peaks near 11 km.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = page.slice(page.indexOf('const PLUME_FS=`'), page.indexOf('`;', page.indexOf('const PLUME_FS=`')));
+  const shader = /float cool=mix\(pow\(min\(1\.,re\/b\),1\.6\),1\.,uS\.w\);/.test(fs) && /\*\.18\*cool\)/.test(fs) && /\+sunS\*uI\*prof\*d\*fade/.test(fs)
+    && /ph=\.5\*\(\.51\/pow\(1\.49-1\.4\*cs,1\.5\)\+1\.\)\/12\.566/.test(fs) && /if\(k==1\.\)dm\+=od\*2\.\*exp/.test(fs) && /\(uK\.w\+uPf\)\*rich/.test(fs) && /\(\.65\+\.7\*ne\)/.test(fs);
+  const wired = /gl\.uniform3fv\(pu\.uSunL,qrot\(qconj\(Q\),SUN\)\);gl\.uniform3fv\(pu\.uSunC,PSUN\)/.test(page) && /PSUN=lightEnv\(p\)\.sun\.map\(x=>x\*lit\(p\)\)/.test(page)
+    && /gl\.uniform1f\(pu\.uPf,P\.pf\|\|0\)/.test(page) && /const K=PLUME_LK\*/.test(page);
+  const pr = page.match(/hypergolic:\{[^}]*so:\[([^\]]*)\][^}]*pf:([\d.]+)\}/), so = pr && pr[1].split(',').map(Number);
+  const brown = pr && +pr[2] > 0 && so[2] > so[1] && so[1] > so[0];
+  const hg = cs => .5 * (.51 / Math.pow(1.49 - 1.4 * cs, 1.5) + 1) / 12.566, fwd = hg(1) / hg(-1);
+  const trail = /rho<0\.006\)return;/.test(page) && /smoke\.length>4000\)smoke\.shift\(\);/.test(page) && /life:110\+Math\.random\(\)\*60,/.test(page)
+    && /Math\.exp\(-\(\(\(h-11000\)\/4000\)\*\*2\)\),th=h\/6000/.test(page) && !/q\.wf/.test(page);
+  check('flames slice 1: vacuum glow cools with expansion, sunlight scatters forward (none in shadow), turbulent core, Mach disk, kerolox curtain, a brown hypergolic puff; a longer, sheared contrail',
+    shader && wired && brown && fwd > 10 && trail, `shader ${shader} · wired ${wired} · hypergolic puff ${brown} (so ${so}) · forward/back scattering ${fwd.toFixed(0)}× · contrail ${trail}`);
+}
+
+// aerofx-14. The air and the wake (look & sound effects beat, BEAUTY Q320 B3.1–3.2, B4.3–4.4). Vapor collars are stacked
+// thin rings with sharp trailing edges that flicker; the camera buffets through max-q (worst near Mach 1) and rumbles in
+// re-entry, deterministic on sim time and off in the map; the ship sheds sparks of ablator from its hot face; the plasma
+// wake flickers in ragged streamers and its light flickers with it.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const vfs = page.slice(page.indexOf('const VAPOR_FS=`'), page.indexOf('`;', page.indexOf('const VAPOR_FS=`')));
+  const rings = /fr=fract\(rn\),ring=/.test(vfs) && /\*ring;\}/.test(vfs);
+  const cs = page.match(/function camShake\(\)\{[\s\S]*?\n  return\[[^\n]*\]\}/), env = { SHAKE_FX: true, mode: 'flight', view: 'ship', simT: 12.3,
+    sstep: (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, clamp: (x, a, b) => Math.min(b, Math.max(a, x)), plasmaHeat: () => 0 };
+  const shake = cs && (S => new Function(...Object.keys(env), 'S', cs[0] + ';return camShake()')(...Object.values(env), S));
+  const amp = r => r ? Math.hypot(r[0], r[1]) : 0, ship = (M, q) => ({ alive: true, body: { atm: 1 }, mach: M, qdyn: q, r: [], v: [], qHeat: 0 });
+  const calm = shake && shake(ship(.3, 2e3)), maxq = shake && shake(ship(1, 32e3)), sup = shake && shake(ship(2, 32e3)), again = shake && shake(ship(1, 32e3));
+  const wired = /const sh=camShake\(\);if\(sh\)\{Fw=norm\(add\(Fw/.test(page) && /SPK\.n\+=dt\*kH\*\(abl\?45:12\)/.test(page) && /fxPuff\(madd\(S\.r,u,S\.radius\*\.8\)/.test(page)
+    && /PLT\.c\.set\(c\.map\(x=>x\*K\*fl\)\)/.test(page) && /xe\/\(uEp\*3\.\)-uT\*11\./.test(page);
+  check('the air and the wake: stacked flickering vapor rings; a max-q buffet worst near Mach 1, none in calm air, repeatable; ship sparks, a ragged wake and a flickering plasma light',
+    rings && wired && calm === null && amp(maxq) > 0 && amp(maxq) < 0.01 && Math.abs(amp(maxq) - amp(again)) < 1e-12 && amp(maxq) > amp(sup),
+    `rings ${rings} · wired ${wired} · shake: calm ${calm} · max-q at M 1 ${amp(maxq).toFixed(4)} rad · at M 2 ${amp(sup).toFixed(4)} rad`);
+}
+
+// aerofx-15. A structural failure shows (look & sound effects beat, QUEUE Q294, PLAYTEST #75). The sim calls HOOK.crack at
+// the broken joint and logs the cause; the page sprays sparks and shards there, a broken tank vents until its propellant
+// is gone, and a well-filled one in air bursts into a fireball sized by what it holds.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sim = /logEv\('structure',`\$\{p\.d\.name\} \/ \$\{p\.parent\.d\.name\} failed in/.test(src) && /HOOK\.crack\(s,p\);[^\n]*\n\s*detach\(s,subtree\(p\)/.test(src) && /crack\(\)\{\}/.test(src);
+  const page2 = /HOOK\.crack=\(s,p\)=>/.test(page) && /if\(air>\.05&&m>\.2\*t\.cap\.fuel\)HOOK\.boom\(b,J,simT,clamp\(Math\.cbrt\(m\/500\),\.5,3\)\)/.test(page) && /VENTS\.push\(\{t,up,m0:m,m,air\}\)/.test(page)
+    && /ventTick\(dt\);/.test(page) && /out=Math\.min\(V\.m,dt\*V\.m0\/6\)/.test(page);
+  // and the sim really calls it: an Orbiter broadside at 600 m/s through the air (core's structural test) breaks somewhere
+  let crack = null; api.HOOK.crack = (s, p) => { crack = p.d.name + ' / ' + p.parent.d.name };
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.HOOK.msg = () => {}; s.landed = false; s.r = [TELLUS.R + 3000, 0, 0]; s.v = add(api.surfVel(TELLUS, s.r), [0, 0, -600]);
+  for (let k = 0; k < 500 && !crack; k++) api.advPhys(s);
+  api.HOOK.crack = () => {};
+  check('structural failure: the sim calls HOOK.crack at the broken joint and logs it; the page sprays shards, vents a broken tank, bursts a loaded one in air',
+    sim && page2 && !!crack, `sim ${sim} · page ${page2} · a broadside Orbiter cracked at ${crack || 'nothing'}`);
+}
+
+// aerofx-16. A splash at splashdown (look & sound effects beat, QUEUE Q267, PLAYTEST #67): the moment the craft hits the
+// sea (s.wet), once, spray thrown up and out and a ring racing across the surface, scaled by touchdown speed and mass.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const fn = page.match(/function splashFx\(s\)\{[\s\S]*?\/\/ the ring/);
+  const once = /if\(S\.wet&&!S\.mkSplash\)\{S\.mkSplash=true;splashFx\(S\)\}/.test(page);
+  const scaled = fn && /k=clamp\(\(s\.touchV\|\|5\)\/8\*Math\.sqrt\(s\.mass\/3000\),\.3,2\.5\)/.test(fn[0]) && /i<90\+110\*k/.test(fn[0]) && /fxPuff\(madd\(madd\(P,h,r0\),up,\.2\)/.test(fn[0]);
+  const wetSet = /if\(!s\.wet\)\{if\(!touchdown\(s\)\)return;s\.wet=true;/.test(src);
+  check('splashdown: spray and a racing ring once, when the sim sets s.wet, scaled by speed and mass', once && scaled && wetSet, `once ${once} · scaled ${!!scaled} · sim sets s.wet ${wetSet}`);
+}
+
+// aerofx-17. Heat haze (look & sound effects beat, BEAUTY Q319 B2.6): High only. Each jet firing in air adds a screen
+// segment (up to four) that the composite looks the scene up a little off along, in ripples that scroll down the jet.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const comp = page.slice(page.indexOf('const COMP_FS=`'), page.indexOf('`;', page.indexOf('const COMP_FS=`')));
+  const shader = /if\(uHn>0\)\{/.test(comp) && /uv\+=off\*vec2\(1\.\/as,1\.\)\*\.5;\}\n vec3 c=fin\(texture\(uS,uv\)\.rgb\);/.test(comp);
+  const wired = /HAZE\.n=0;/.test(page) && /if\(S\.body\.atm\)hazeAdd\(VP,o,qrot\(Q,\[0,-1,0\]\),L,e\.d\.exit,R,thr\*Math\.min\(1,pa\*3\),W\/H,tanY\)/.test(page)
+    && /gl\.uniform1i\(c\.uHn,HAZE\.n\)/.test(page) && /high:\{[^}]*HAZE_FX:1\}/.test(page) && /HAZE_FX=!!f\.HAZE_FX;/.test(page) && !/low:\{[^}]*HAZE_FX:1/.test(page);
+  const fn = page.match(/function hazeAdd\([\s\S]*?\n  HAZE\.a\.set[^\n]*\}/), HZ = { n: 0, a: new Float32Array(16), b: new Float32Array(16) };
+  const add2 = fn && new Function('HAZE_FX', 'HAZE', 'madd', fn[0] + ';return hazeAdd')(true, HZ, (a, d, k) => a.map((x, i) => x + d[i] * k));
+  const VP = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1, 0, 0, -.2, 0];   // looking down −z, w = distance
+  if (add2) { for (let i = 0; i < 6; i++) add2(VP, [0, 0, -50], [0, -1, 0], 20, .5, 3, 1, 1.6, 1); add2(VP, [0, 0, 50], [0, -1, 0], 20, .5, 3, 1, 1.6, 1) }
+  const proj = add2 && HZ.n === 4 && Math.abs(HZ.a[0]) < 1e-9 && HZ.a[3] < HZ.a[1] && HZ.b[1] > HZ.b[0];
+  check('heat haze: on High only, up to four jets in air, projected to screen segments that widen down the jet; the composite looks the scene up off them',
+    shader && wired && proj, `shader ${shader} · wired ${wired} · projection ${proj} (n ${HZ.n}, behind the camera skipped)`);
+}
+
+// aerofx-18. No bands at the terminator (look & sound effects beat, QUEUE Q352, PLAYTEST #87): the sky's view-ray march
+// starts each pixel's 12 steps at its own offset (interleaved gradient noise), so the count of steps in the planet's
+// shadow no longer steps in unison across the terminator.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const sc = page.slice(page.indexOf('vec3 scatter(vec3 d,float tMax,out vec3 trans){'), page.indexOf('return SUNI*(sR*BR*pR+sM*BM*pM);}'));
+  const jit = /jt=fract\(52\.9829189\*fract\(dot\(gl_FragCoord\.xy,vec2\(\.06711056,\.00583715\)\)\)\)/.test(sc) && /float t=t0\+\(float\(i\)\+jt\)\*ds;/.test(sc) && !/\(float\(i\)\+\.5\)\*ds;vec3 p=d\*t-uPc/.test(sc);
+  check('the terminator from orbit: scatter\'s view-ray steps are jittered per pixel, so the shadowed-step count no longer draws bands', jit, `jittered ${jit}`);
+}

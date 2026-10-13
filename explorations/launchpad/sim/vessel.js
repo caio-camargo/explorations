@@ -439,6 +439,9 @@ function trimOf(s){const on=s.parts.map(p=>p.on),ign=new Set();let worst=null,k=
     for(const q of E){const d=tdirOf(q),f=q.d.thrust*1000,r=sub(thrustPt(q),C);L=add(L,cross(r,mul(d,f)));F+=f;A+=f*Math.sin((q.d.gim||0)*Math.PI/180)*Math.abs(r[1])}
     const t=Math.hypot(L[0],L[2]),x={k,f:A>0?t/A:t>1?Infinity:0,miss:F?t/F:0,F};if(!worst||x.f>worst.f)worst=x}
   return worst}
+// what helps a joint past its rating (Q347): said where the builder shows the joint, and in the Rollout
+function jointFix(w,own){if(!w||!w.p)return'';const dec=[w.p.d,w.p.parent.d].find(d=>d.kind==='dec'&&!d.istage&&!d.sc);
+  return[dec?'an interstage decoupler instead (twice the bending rating, and its shell carries the load around the engine it encloses)':'',`reinforce that joint (right-click the part: joint)`,own?'less thrust low down (it flies through thick air too fast)':''].filter(Boolean).join(', or ').replace(/^./,c=>c.toUpperCase())+'.'}
 // what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
 function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='auth'?`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`:`it would go over in ${(1/a.lam).toFixed(2)} s, faster than the autopilot can catch it (a reaction wheel doesn't help)`}
 function airFix(a){return`Fins or steerable fins on it, or a bigger first stage so it separates in thinner air (or coast up before staging); separate pointing prograde.`}
@@ -844,6 +847,8 @@ function physStep(s,dt){
   thermal(s,dt,rho*sp*sp*sp>0?Math.sqrt(rho/Math.max(s.radius,.3))*sp*sp*sp*SG*HEAT_GAIN:0,rho,sp);
   if(s.alive&&worst.frac>1){const p=worst.p;PROG.cert[p.sf1>=p.sf2?p.sk1:p.sk2]=1;   // a failure is a measurement too
     HOOK.msg(`Structural failure — ${p.d.name} / ${p.parent.d.name} (${worst.kind}, ${(worst.frac*100).toFixed(0)}%)`);
+    logEv('structure',`${p.d.name} / ${p.parent.d.name} failed in ${worst.kind} at ${(worst.frac*100).toFixed(0)}% of its strength`);
+    HOOK.crack(s,p);   // render-side: shards at the joint, a broken tank venting or a fireball (Q294)
     detach(s,subtree(p),[0,0,0],1.5)}}
 // ---- heat. Each part has a skin temperature: absorbed aero heat in, εσ(T⁴−T∞⁴) radiated out over its whole skin, heat
 // capacity of a 6 kg/m² metal skin. A shield's ablator boils off above 700 K at 2.5 MJ/kg and pins it there until gone.

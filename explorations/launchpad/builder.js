@@ -464,7 +464,7 @@ function pinTo(){const r=!isEmpty(stackDef)&&rootPart(),old=st.pin;
   cam.edY=(cam.edY||0)+p.c-old.c}             // the camera looks at the CoM: follow the shift so the root stays still
 function changed(){
   if(isEmpty(stackDef)){shipMesh&&shipMesh.free();shipMesh=null;if(S)S.ana=null;st.pin=null}   // the plate stays put while it's empty (Q327)
-  else{pinTo();S.pf=mul(S.site.u,TELLUS.R+S.site.h-S.yBot+LIFT+st.gap);syncLanded(S)}   // above the chosen launch site's levelled pad
+  else{pinTo();const up=typeof screenNow==='function'&&screenNow()!=='assembly'?0:LIFT+st.gap;S.pf=mul(S.site.u,TELLUS.R+S.site.h-S.yBot+up);syncLanded(S)}   // above the chosen launch site's levelled pad; it hangs there only in the Assembly: the Rollout, the Program's backdrop and the rest stand it on the pad (Q346, PLAYTEST #83)
   st.hover=null;st.ghostKey='';st.hiKey='';refresh()}
 // the plate the design stands on, in the ship's frame (y from the CoM): its bottom, or lower while parts below were removed
 const foot=()=>S.yBot-(mode==='editor'&&st.gap||0);

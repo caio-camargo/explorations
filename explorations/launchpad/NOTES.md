@@ -83,6 +83,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.147 — side antennas (whip, boom antenna), side boxes, the trim readout and thrust line (2026-10-12, vehicle session, QUEUE Q337 part 2)
 - v1.148 — side boxes fit the fairing (the side camera looks outward), a 0.3 m stack camera, the octagonal frame (2026-10-12, vehicle session, Caio's testing)
 - v1.152 — later stages in the air: the fairing satellite's upper stage tumbles after separating; the builder and Rollout say so and what helps (2026-10-12, vehicle session, QUEUE Q342)
+- v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
+- v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -243,7 +245,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.140 — watch mode for a dispatched flight (2026-10-12, flow session, QUEUE Q43)
 - v1.143 — missions in flight pay along the way (2026-10-12, flow session, QUEUE Q167)
 - v1.151 — the network's nodes on mission control's wall (2026-10-12, flow session, QUEUE Q170, network N2)
-- v1.160 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
+- v1.161 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -283,6 +285,13 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.137 — the HDR scene: AgX, auto-exposure, bloom on real light, a grade (2026-10-12, effects beat, QUEUE Q314)
 - v1.149 — re-entry: the hull glows, the plasma in HDR (2026-10-12, effects beat, QUEUE Q318)
 - v1.150 — the craft's quick wins: Rao bells, ogive noses, smooth normals, the planet's light (2026-10-12, parts & pad beat, QUEUE Q315)
+- v1.153 — the flames, slice 1: vacuum plumes, sunlit exhaust, turbulent cores, Mach disks, a longer contrail (2026-10-12, effects beat, QUEUE Q319)
+- v1.154 — the air and the wake: vapor rings, the buffet, sparks, a ragged wake (2026-10-12, effects beat, QUEUE Q320)
+- v1.155 — a structural failure shows: shards, a venting tank, a fireball (2026-10-12, effects beat, QUEUE Q294)
+- v1.156 — a splash at splashdown (2026-10-13, effects beat, QUEUE Q267)
+- v1.158 — heat haze behind the nozzles (2026-10-13, effects beat, QUEUE Q319)
+- v1.159 — no bands at the terminator (2026-10-13, effects beat, QUEUE Q352)
+- Q351 diagnosed — why mountains look bad from space (2026-10-13, effects beat, overflow)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

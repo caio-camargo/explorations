@@ -5678,3 +5678,62 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `tests/economy.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md` (Q170 ✓, two Proposed
   lines), `ACTIVE_WORK.md`.
 - **Next for flow:** Q241 R3 (the charter), Q261 (map layers), Q262 (map focus).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, second session): Q318, Q319 slice 1, Q320, Q294, Q267
+
+- **Done, on `main`:** v1.149 Q318 (the hull glows by its skin temperature, a blackbody in scene units; the plasma
+  white-yellow at the stagnation point and lavender at the edge); v1.153 Q319 slice 1 (vacuum plumes cool as they
+  expand and show by scattered sunlight; turbulent sea-level cores; Mach disks; the kerolox curtain; a hypergolic brown
+  puff; a brighter plume light; the contrail to ~33 km with a turning wind); v1.154 Q320 (stacked flickering vapor rings,
+  the max-q buffet and re-entry rumble `camShake`, sparks from the ship, a ragged wake); v1.155 Q294 (`HOOK.crack` in the
+  sim; shards, a venting tank, a fireball); v1.156 Q267 (spray and a racing ring at splashdown).
+- **Found by measuring:** the sim's `p.T` is a lumped bulk (shield 700 K, bare pod 922 K) and never glows, so the glow
+  follows the plasma's heat level. The re-entry reference views never ticked the marks. The smoke cap of 2,500 cut a
+  climb's contrail short.
+- **Tests:** `aerofx-11`, `aerofx-13` to `aerofx-16` (new), and every look section pass on the merged tree. **The full suite
+  never finished**: one run was stopped by me for a newer tree, one by low memory, at 381 and 157 passes with no
+  failures. Caio said push.
+- **Renumbered twice** while merging (main took v1.150 to v1.152 and TESTING 232 to 234 meanwhile); my tests are aerofx-13 to 16
+  because Q315 took aerofx-12.
+- **Dropped:** a foam patch at splashdown. Billboard puffs stood up like clouds, so it is proposed with the swell, in the
+  sea's shading.
+- **Seen on `main`, not mine:** views 60–67 shoot the rocket off its pad; views 154–155 never leave the ground (Proposed).
+- **Files:** `explorations/launchpad/app/gl.js`, `app/state.js`, `app/render.js`, `sim/core.js`, `sim/vessel.js` (one hook
+  and one log line), `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (231, 235–238), `QUEUE.md`,
+  `ACTIVE_WORK.md`. Stills in `output/launchpad/beauty/q318`, `q319`, `q320`, `q294`, `q267` (gitignored).
+- **Next:** the full suite on a quiet machine; Q319's heat haze and cluster lights; the Proposed reference views.
+
+## 2026-10-13 — Caio + Claude (launchpad vehicle session): builder notes v1.148, Q342 v1.152, Q346 v1.157
+
+- **v1.148, Caio's builder notes:** the side boxes (`scam`, `ssci`, `sbatt`, `scomp`) stood out past the fairing's bulge;
+  now `off + r` ≤ 0.14 m, with a width `w`. The side camera's lens looks outward. The stack camera is 0.3 m tall (was 0.5).
+  New **octagonal frame** (`oct` 0.5 m, `octl` 1 m, 0.8 m across) in Structure. Test `vehicle-20`. The shorter camera tipped
+  `bodies-1`'s Nyx orbit: measured, that orbit decays at ~98 h whichever way round, so `nyxorb` now captures at 70 km (Q344).
+- **v1.152, Q342 (PLAYTEST #82):** no joint breaks. The satellite's upper stage goes end over end right after separating
+  (~34 km, ~13 kPa), because the fairing puts its centre of pressure ahead and the light stage diverges faster than SAS
+  and one Petrel can catch. A reaction wheel doesn't help (measured). New `airSep` finds where each fresh stage lights and
+  whether it holds. Thresholds come from flying sixteen designs, and every one is classified right. The builder shows "Stage N
+  in the air" with the reason and the fixes that worked in flight; the Rollout warns. Test `vehicle-21` (two real flights).
+- **Found:** the stock **Beeper and Passenger Orbiter** tumble at separation too when flown in attitude hold on the standard
+  profile, and are fine holding prograde: **Q353** (control + space).
+- **v1.157, Q346 (PLAYTEST #83, P1):** the builder's 3 m VAB hang applied on every screen. It now applies only on the
+  Assembly, so the Rollout and the Program's backdrop stand the rocket on the pad. It was not Q327's doing: a preset hung
+  3 m too.
+- **Tests:** the full suite passed after v1.148 and after v1.152 (in four chunks). v1.157 is UI-only, and its flow and platform
+  sections passed. The last merge of `main` (v1.153–156, look and flow) was not run through the whole suite with these.
+- **Renumbered twice** while merging (main took v1.149–151, TESTING 231–233, Q345 and Q349 meanwhile).
+- **Files:** `explorations/launchpad/sim/vessel.js`, `sim/flight.js`, `sim/program.js`, `app/gl.js`, `app/editor.js`,
+  `app/screens.js`, `builder.js`, `fly_ladder.mjs`, `test.mjs`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`,
+  `TESTING.md` (230, 234, 239), `PLAYTEST.md` (#82, #83 done), `QUEUE.md` (Q342 ✓, Q346 ✓, Q344, Q353), `ACTIVE_WORK.md`.
+- **Next for vehicle:** Q347 (four boosters snapped at the first engine), Q348 (bigger fins, which Q342's advice leans on),
+  then Q329, Q341, Q338.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q253 round 2, spectacular sights
+
+- **Done:** four views on `mockups/sky/` at Caio's ask ("a visible nebula ... colorized like those NASA photos"): an
+  emission nebula ~25° across in natural colour and in the Hubble palette (ridged filaments, a teal core, a dust lane), a
+  tilted neighbour spiral ~16° across, and all of them in one frame. Stills in `output/launchpad/mockups/sky/`.
+- **W39 grows** a sights choice; default if silent: the Hubble-palette nebula with (a), the new sun, gentle twinkle.
+- **Files:** `mockups/sky/index.html`, `mockups/README.md`, `QUEUE.md` (W39, Q253 state, a Proposed line), `ACTIVE_WORK.md`.
+- **Next:** Q321 on W39 (sky & bodies).
+

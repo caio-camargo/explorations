@@ -26,12 +26,12 @@ function go(s){const from=screenNow();if(s===from)return;
   atDeb=s==='debrief';atRoll=s==='rollout';atMC=s==='mission';atTitle=s==='title';
   if(from==='program')newsSeen=0;   // (the Inbox's news are "new" until you leave the Program)
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();
-    if(S&&S.rec&&S.rec.launched&&!BLD.isEmpty(stackDef))editorChanged();   // a flown craft behind the Program: back to the design on the pad (Q145; the Debrief keeps the flight's end)
+    if(S&&!BLD.isEmpty(stackDef))editorChanged();   // the design on the pad behind the Program: after a flight (Q145; the Debrief keeps the flight's end), and off the Assembly's hang (Q346)
     renderProgram()}
   else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
-  else if(s==='rollout'){mode='editor';view='flight';atHQ=false;BLD.drop();rollSite=null;renderSites();renderRollout()}
+  else if(s==='rollout'){mode='editor';view='flight';atHQ=false;BLD.drop();rollSite=null;editorChanged();renderSites();renderRollout()}   // editorChanged: off the Assembly's hang, onto the pad (Q346)
   else if(s==='mission'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop()}
   else if(s==='title'){mode='editor';view='flight';atHQ=false;ttlArm=false;if(BLD.st&&BLD.st.held)BLD.drop();renderTitle()}
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}

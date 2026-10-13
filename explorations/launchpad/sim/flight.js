@@ -411,7 +411,7 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
     if(p.pfrac>p.anaFrac){p.anaFrac=p.pfrac;p.anaKind=p.pkind}p.pfrac=0}r.cert=cw;return r};
   s.parts.forEach(p=>p.pfrac=0);
   const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000});s.parts.forEach(p=>p.pfrac=0);
-  const lift=rec(probe(s,{thr:1})),mq=rec(probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1}));
+  const A=ascentEst(s.stack),own=A.qMax>25000,lift=rec(probe(s,{thr:1})),mq=rec(probe(s,own?{M:Math.max(0.8,A.MQ),aoa:5,q:A.qMax,h:A.hQ,thr:1}:{M:1.2,aoa:5,q:25000,h:9000,thr:1}));mq.q=own?A.qMax:25000;mq.M=own?A.MQ:1.2;mq.own=own;   // Q347: a fast rocket's own max-q
   s.parts.forEach(p=>{if(ls.includes(p.seg)&&p.res.fuel!=null)p.res.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=saved[i]});
   geom(s);return{ful,emp,sup,lift,mq,ctl:controlReport(s),air:airSep(s.stack)}}
 // Later stages in the air (vehicle, QUEUE Q342 / PLAYTEST #82): a stage that lights while there's still air must hold its own
@@ -425,16 +425,26 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
 // stage: boosters dropping off a core that's already lit and steering don't count. [{k, h, q, M, holds, why: 'auth'|'fast',
 // tau, auth, cal, lam, load, lp}] for each stage that lights above 1 kPa.
 const LAM_MAX=5.5;
-function airSep(stack){if(!stack)return[];const s0=newShip(stack),P0=dvPlan(s0,0),P1=dvPlan(newShip(stack),1),P=P0.map((x,i)=>({...x,dvA:(P1[i]||x).dv})).filter(x=>x.dv>0.5);if(P.length<2)return[];
+// The standard ascent as a point mass (vehicle, Q342/Q347): vertical to 200 m, flat by 38 km (the procedures' and the
+// hand-flown profile), dvPlan's steps with thrust from each step's vacuum and sea-level exhaust speeds by pressure, the
+// ship's drag table. {qMax, hQ, MQ: the peak dynamic pressure and where, starts: [{ev, h, q, M}] each fresh stage lighting
+// above 1 kPa}. Cached on the design (the Assembly asks on every edit, the Rollout again).
+let ASC_C={key:null,v:null};
+function ascentEst(stack){const key=JSON.stringify(stack);if(ASC_C.key===key)return ASC_C.v;const v=ascentRun(stack);ASC_C={key,v};return v}
+function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)return out;
+  const s0=newShip(stack),P0=dvPlan(s0,0),P1=dvPlan(newShip(stack),1),P=P0.map((x,i)=>({...x,dvA:(P1[i]||x).dv})).filter(x=>x.dv>0.5);if(!P.length)return out;
   const fresh=(a,b)=>s0.events.slice(a,b).some(e=>e.ignite.length);   // a stage newly lit between plan steps a and b
-  const tab=dragTable(s0,0),AS=TELLUS.atm/7e4,mu=TELLUS.mu,R=TELLUS.R,starts=[];let x=0,h=0,vx=0,vh=0;
+  const tab=dragTable(s0,0),AS=TELLUS.atm/7e4,mu=TELLUS.mu,R=TELLUS.R,starts=out.starts;let x=0,h=0,vx=0,vh=0;
   // thrust from each stage's mass flow and its exhaust speed in vacuum and at sea level (from the two plans), by the pressure
-  for(let i=0;i<P.length-1;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
+  for(let i=0;i<P.length;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
     const veV=st.dv/lr,veA=st.dvA/lr,dt=Math.max(0.2,T/600);
     for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),f=clamp((h-200*AS)/(38000*AS-200*AS),0,1),pit=(90*(1-Math.pow(f,0.6)))*Math.PI/180,sp=Math.hypot(vx,vh),
       rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*sp*sp*cda,g=mu/((R+h)*(R+h));
-      vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt}
-    const sp=Math.hypot(vx,vh),q=0.5*density(TELLUS,h)*sp*sp;if(q<1000)break;if(fresh(P[i].ev,P[i+1].ev))starts.push({ev:P[i+1].ev,h,q,M:sp/SND(h)})}
+      vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt;
+      const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}}
+    const sp=Math.hypot(vx,vh),q=0.5*density(TELLUS,h)*sp*sp;if(q<1000||i===P.length-1)break;if(fresh(P[i].ev,P[i+1].ev))starts.push({ev:P[i+1].ev,h,q,M:sp/SND(h)})}
+  return out}
+function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
   if(!starts.length)return[];
   const out=[];for(const S1 of starts){const s=newShip(stack),on=s.parts.map(()=>true),lit=[];let k=0;
     for(const e of s.events.slice(0,S1.ev)){for(const g of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===g)on[i]=false});
