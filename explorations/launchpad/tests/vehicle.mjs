@@ -548,6 +548,7 @@
     return d; };
   const msg0 = D.HOOK.msg; let msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.rebuild = D.HOOK.rebuild || (() => {}); D.HOOK.debris = D.HOOK.debris || (() => {});
   const s = D.newShip(mk()), b = s.parts.find(p => p.d.key === 'bant'), g0 = D.antOf(s.parts).G, fits = !!b.inFair;
+  for (const p of s.parts) if (p.profF) p.fj = true;   // the shell jettisoned: nothing unfolds inside it (Q406)
   D.wingOp(s, 'out'); const g1 = D.antOf(s.parts).G, said = msgs.includes('Antennas out');
   const sd = D.newShip(mk(true)), bd = sd.parts.find(p => p.d.key === 'bant'), w = D.launchWarnings(mk(true)).some(([k, x]) => /^Boom antenna deployed at launch/.test(x));
   const reg = D.antOf([{ k: 'bant' }, { k: 'whip' }]).G;   // a registry entry's shape: unfolded in orbit
@@ -698,4 +699,15 @@
     !W.length && ['sci', 'cam', 'ant', 'batt', 'rwheel', 'solar'].every(k => kinds.includes(k)) && pb.ok && pb.use >= 15 && a.holds && a.lim >= 5 && a.lim <= 12
       && pro.orbit && pro.left > 300 && hold.orbit && hold.left > 300 && hold.aoa < 30 && !b.holds && b.why === 'store' && over.aoa > 60,
     `warnings ${W.length ? W.map(w => w[1]).join(' | ') : 'none'}; power ${pb.use} W of ${pb.avg.toFixed(0)}, ${pb.ok ? 'ok' : 'short'}; in the air ${a.holds ? 'holds' : 'flips'} to ~${a.lim}°; prograde ${pro.orbit ? 'orbit' : 'no orbit'} ${pro.left.toFixed(0)} m/s left; attitude hold ${hold.orbit ? 'orbit' : 'no orbit'} ${hold.left.toFixed(0)} m/s, ${hold.aoa.toFixed(0)}° at worst; 4 t upper stage ${b.holds ? 'holds' : 'flips (' + b.why + ', fills in ' + b.fill.toFixed(0) + ' s)'}, flown 5° off ${over.aoa.toFixed(0)}°`);
+}
+
+// vehicle-26. Nothing unfolds inside a closed fairing (vehicle session, QUEUE Q406): on the pad, P (or its button) unfolded the
+// Satellite preset's wings straight through its fairing. Now they stay folded and the message says why; once the shell is
+// jettisoned they unfold.
+{
+  const msgs = [], m0 = api.HOOK.msg; api.HOOK.msg = m => msgs.push(m); api.t = 0; const s = api.newShip(api.PRESETS.Satellite); api.S = s; api.advPhys(s);
+  const n0 = api.wingOp(s, 'out'), said = msgs.some(m => /Inside the fairing/.test(m));
+  const fe = s.events.findIndex(e => e.fair && e.fair.length); let n1 = -1; if (fe >= 0) { while (s.evIdx <= fe) api.stage(s); n1 = api.wingOp(s, 'out'); } api.HOOK.msg = m0;
+  check('nothing unfolds inside a closed fairing (Q406): the Satellite preset\'s wings stay folded on the pad, saying why; after the fairing is jettisoned both unfold',
+    n0 === 0 && said && n1 === 2 && api.wingsOut(s), `in the fairing: ${n0} unfolded, "${msgs.find(m => /fairing/i.test(m)) || ''}"; after jettison: ${n1}`);
 }

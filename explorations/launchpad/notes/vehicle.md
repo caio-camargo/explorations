@@ -1649,5 +1649,14 @@ Test `vehicle-12`. `--smoke` all pass.
   "Fold wings (P)" ("antennas", "wings and antennas" as fitted), lit while they're out; a click does what P does (recorded on the
   tape). Updated in `updateHUD` (`app/program-ui.js`). Checked in the browser on the Satellite preset.
 - Seen doing it: on the pad the wings unfold straight through the closed fairing; nothing stops deploying inside one (QUEUE
-  398).
+  Q406; first numbered Q398, which collided with a playtest item).
 - TESTING 266.
+
+## v1.185 — nothing unfolds inside a closed fairing (2026-10-13, vehicle session, QUEUE Q406)
+
+- **Caio:** "sure, go ahead" (on Q406: the Satellite preset's wings unfolded through its fairing on the pad).
+- `wingOp` (`sim/power.js`) leaves folded any wing or boom antenna whose fairing (`inFair`, set at assembly) is still on with its
+  shell (`profF`, not `fj`); the message says "Inside the fairing: jettison it first (stage), then unfold", or "(N still inside
+  the fairing)" when others did unfold. The Assembly's own deploy toggle is untouched (a part left deployed there already
+  doesn't count as inside, and warns).
+- Tests: `vehicle-26`; `vehicle-18` jettisons the shell before unfolding its boom antenna. TESTING 267.
