@@ -6127,3 +6127,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **For Caio:** Q374's wording was ambiguous; I left the map's planet dots alone (UI). Say if you meant those.
 - **Next for sky & bodies:** Q392 (the haze's dithering, Caio's ask), Q401, Q403; Q80–Q85 wait on W29.
 - **Addendum 3 (effects):** v1.201 Q330: a display rod under a hanging model on the desk (`deskMesh`: a steel rod from the pin to `S.yBot`, a collar; the key carries the gap). Test aerofx-34 (renumbered past a clash at merge); TESTING 282. One shot overlapped the flow session's GPU lock (its robot run, 13:48) before I saw it; no further runs. Claim idle.
+
+## 2026-10-13 — Caio + Claude (launchpad flow session): the camera looks straight down (Q405, v1.202)
+- **Done:** the pitch reaches ±90° in flight and the Assembly; `render.js` takes the view's right-hand vector from the yaw, the same as before at other angles and defined at the pole (no flip, no spin); T in the Assembly toggles a top view (on the key strip, survives a reframe). On `main` as `ae920b3`.
+- **Checks:** flow-28 (new), flow-7/8/26/27 and the builder's core sections pass; robot rows `topview` and `m1` pass.
+- **Not done:** a Top button by the CoM readout (D22's toolbar, Q237).
