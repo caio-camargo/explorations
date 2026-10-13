@@ -354,7 +354,23 @@ function overTick(s,R,dt){R.overT=(R.overT||0)+(dt||0);if(R.overT<1)return;R.ove
   const pf=toPF(TELLUS,s.r,simT);if(Math.acos(clamp(dot(norm(pf),norm(R.launchPf)),-1,1))*TELLUS.R>OVER_D)return;
   const p=powerAt(pf),host=(SITES.find(t=>t.id===R.site)||{}).power;if(!p||p.i===HOME||p.i===host)return;(R.over||(R.over={}))[p.i]=1}
 const overK=i=>clamp((0.5-relOf(HOME,i))/1.5,0,1)*(archOf(i)==='security'?2:1);
-function overEnd(R){R.overK={};for(const k in R.over||{}){const i=+k,c=R.overK[i]=overK(i);if(!(c>0))continue;opAdd(i,-OVER_OP*c);
+// overflight rights (Q380, W23: a decision from the start, and rivals may refuse): a year's consent from a power that
+// minds (overK > 0), priced by how much it minds: OVER_FEE·(1 + 3c) M: 2M at relation 0, 4M at −1, 7M from a hostile security
+// state. Refused under sanctions (either way), at relation OVER_NO or worse, and by a rival in the race on poor terms
+// (relation < 0). With consent, flying low over it costs nothing (overEnd).
+const OVER_FEE=1,OVER_NO=-0.5;
+const overHave=i=>((PROG.overR||{})[i]??-1)>PROG.day;
+function overQuote(i){const P=POWERS[i],c=overK(i);if(!P||i===HOME)return{ok:false,why:''};
+  if(overHave(i))return{ok:false,have:true,why:`consent until day ${Math.floor(PROG.overR[i])}`};
+  if(!(c>0))return{ok:false,why:`${P.name} doesn't mind: no consent needed`};
+  if(sanctioned(i))return{ok:false,why:`${P.name} has sanctions on the program`};
+  if(sanctioned(HOME))return{ok:false,why:`our own government's sanctions bar a deal with ${P.name}`};
+  const r=relOf(HOME,i);if(r<=OVER_NO)return{ok:false,why:`${P.name} refuses: relations are too poor`};
+  if(r<0&&PROG.riv&&PROG.riv[i])return{ok:false,why:`${P.name} refuses: a rival in the race won't wave our rockets through`};
+  return{ok:true,why:'',fee:Math.round(OVER_FEE*(1+3*c)*10)/10}}
+function buyOver(i){const q=overQuote(i);if(!q.ok||PROG.funds<q.fee)return false;PROG.funds-=q.fee;ledAdd('over',-q.fee);
+  PROG.overR=PROG.overR||{};PROG.overR[i]=PROG.day+YEAR_D;HOOK.news(`${POWERS[i].name} grants a year's overflight rights: −${fmtM(q.fee)}`,'ok');HOOK.save();return true}
+function overEnd(R){R.overK={};for(const k in R.over||{}){const i=+k;if(overHave(i)){R.overK[i]=-1;continue}const c=R.overK[i]=overK(i);if(!(c>0))continue;opAdd(i,-OVER_OP*c);
   const key=pairKey(HOME,i);PROG.rel[key]=clamp(relOf(HOME,i)-OVER_REL*c,-1,1);PROG.overNews=PROG.overNews||{};
   if(!(PROG.day-(PROG.overNews[i]??-1e9)<YEAR_D)){PROG.overNews[i]=PROG.day;HOOK.news(`${POWERS[i].name} protests a rocket flying low over its territory`,'warn')}}}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}

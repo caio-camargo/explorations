@@ -3113,3 +3113,26 @@ Debrief shows the money, not which stage came back.
 
 Tests: `econ-27` (1 check: judged afloat at the drop and the same in view; local ships fetch and refurbish; beyond
 reach lost; a bare stage left to the fleet).
+
+## v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
+
+v1.171 (Q181) charged opinion and relation for flying low over a neighbour that minds (`overK`: none from an ally,
+up to the whole from a hostile power, ×2 for a security state). W23 asked for the way out from the start: buying
+consent, which rivals may refuse.
+
+- **`overQuote(i)`** (`sim/program.js`, beside `overEnd`): `{ok, why, fee, have}`. Not needed when `overK(i)` is 0;
+  refused under sanctions either way, at relation ≤ `OVER_NO` (−0.5), and by a **rival in the race** (`PROG.riv[i]`)
+  at any relation below 0. Fee `OVER_FEE·(1 + 3c)` M for a year: 2M at relation 0, 4M at −1, 7M from a hostile
+  security state (a launch's lease is 6M; the protest it saves is opinion −1 to −6 per flight).
+- **`buyOver(i)`**: pays (ledger `over`, "Overflight rights" in the Debrief), `PROG.overR[i]` = a year from today,
+  a news line. **`overEnd`** skips a power with consent (`R.overK[i] = −1`); the Debrief says "with its consent".
+- **The site picker** (`renderSites`, `app/editor.js`): under the downrange line, for each foreign power under the
+  planned downrange, a *A year's consent · fee* button, or why not (refused, sanctions, consent until day N). Flow:
+  one block, restyle freely, or move it to a decision card.
+
+**Not yet:** consent is offered only for the powers under the site's planned downrange (the cost is judged on the
+track flown); a renewal reminder; the rival's refusal as a news beat. Not checked in the browser (the game lock was
+held); TESTING row.
+
+Tests: `econ-28` (1 check: an ally needs none; 2M at relation 0, on the ledger, free overflight for a year then the
+cost again; refused at −0.6, by a rival at −0.2 but not a non-rival, under sanctions).
