@@ -16,14 +16,14 @@ function applyQuality(q){const Q=QUAL[q]||QUAL.high,f=Q.fx;quality=QUAL[q]?q:'hi
   CLOUD_VOL=!!f.CLOUD_VOL;BLOOM=!!f.BLOOM;PLUME_LIGHT=!!f.PLUME_LIGHT;IMPACT_FX=!!f.IMPACT_FX;VAPOR_FX=!!f.VAPOR_FX;HAZE_FX=!!f.HAZE_FX;   // (the re-entry plasma stays: it tells you something)
   RS_MAX=Q.rs;RS=Math.min(RS,RS_MAX)}
 applyQuality(quality);
-GAUGES=setGet('launchpad-gauges','1')!=='0';
+GAUGES=setGet('launchpad-gauges','1')!=='0';SHAKE_FX=setGet('launchpad-shake','1')!=='0';   // (Q360) the camera shake
 function renderSettings(){const el=$('settings');if(!el)return;const ck=(id,on,l,t='')=>`<label title="${t}"><input type="checkbox" id="${id}"${on?' checked':''}> ${l}</label>`;
   el.innerHTML=`<span class="x" data-ov="settings">✕</span><h2>Settings</h2>`
     +`<h3>Sound</h3>${ck('setSnd',AUD.on,'sound  [F4]')}<div id="setSound"></div>`
     +`<h3>Graphics</h3><div>${Object.entries(QUAL).map(([k,v])=>`<button data-qual="${k}"${k===quality?' class="on"':''}>${v.l}</button>`).join('')}</div>`
     +`<div class="sub">${QUAL[quality].d}. The resolution also drops by itself while frames are slow.</div>`
     +ck('setPerf',perfOn,'performance readout')
-    +`<h3>Screens</h3>${ck('setGauges',GAUGES,'flight gauges (altitude, air, q, Mach, heat)')}${ck('setModern',modernUI(),'modern look for the logbook and the map','instead of the era\'s notebook or terminal')}`
+    +`<h3>Screens</h3>${ck('setGauges',GAUGES,'flight gauges (altitude, air, q, Mach, heat)')}${ck('setShake',SHAKE_FX,'camera shake (the max-q buffet, re-entry)')}${ck('setModern',modernUI(),'modern look for the logbook and the map','instead of the era\'s notebook or terminal')}`
     +`<h3>Tester</h3>`+(TEST.on?`<button data-test-act="leave">Leave tester mode</button><div class="sub">Back to your own career (the sandbox is kept).</div>`
       :`<div class="sub">Off. Add <code>?tester</code> to the address for the tester menu and its sandbox career.</div>`);
   if(typeof sndSettings==='function')sndSettings($('setSound'))}   // the volume slider (sound, Q35)
@@ -32,4 +32,5 @@ document.addEventListener('change',e=>{const id=e.target.id,on=e.target.checked;
   if(id==='setSnd'){AUD.on=on;setPut('launchpad-sound',on?'1':'0');if(on)sndWake()}
   else if(id==='setPerf'){perfOn=on;document.body.classList.toggle('noperf',!perfOn);setPut('launchpad-perf',on?'1':'0')}
   else if(id==='setGauges'){GAUGES=on;setPut('launchpad-gauges',on?'1':'0')}
+  else if(id==='setShake'){SHAKE_FX=on;setPut('launchpad-shake',on?'1':'0')}
   else if(id==='setModern'){setPut('launchpad-modern-ui',on?'1':'0');if(!$('logbook').classList.contains('hidden'))renderLog()}});
