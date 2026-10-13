@@ -5807,7 +5807,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   deliberate twinkle; the sun a small disc with no spikes (toned down from the mock-up for the game's bloom); views
   159–160 for the sights. `SKY_B5 = false` restores the old sky.
 - **Measured:** RTX High and Low, before/after within noise; iGPU and first-load time not measured (Proposed line).
-- **Tests:** `aerofx-20` (new) and the look file pass; smoke passes except two checks that also fail on `main`
+- **Tests:** `aerofx-22` (new) and the look file pass; smoke passes except two checks that also fail on `main`
   (FLAG in QUEUE *Proposed*: *node chain flown*, *later stages in the air*).
 - **Files:** `app/gl.js`, `app/render.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
   `TESTING.md` (247), `QUEUE.md`, `ACTIVE_WORK.md`.
@@ -5891,3 +5891,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (255), `QUEUE.md` (Q382 ✓, Q383, Q371, Q372, Q353), `ACTIVE_WORK.md`.
 - **Next:** Q353's remainder (the procedure executor holding prograde through a separation in air, control + space); Q329, Q341,
   Q338 for vehicle.
+- **Later still (sound overflow):** v1.174 Q363 + Q362: a crack and a metal groan at a structural failure, a venting tank's
+  hiss, the splash; the radio blackout's edges (static cut dead, then a squelch and a 2,525 Hz Quindar tone). Not heard in
+  a browser here (the headless audio context stays suspended): TESTING 256 is the ear check. Test `sound-2`.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q323 Tellus from above, slice 1 (v1.176)
+
+- **Done:** the far-field cloud filter was lopsided (a blurred pixel ~4× cloudier than the ground) and started too
+  early: fixed, so mid orbit shows weather systems with clear sea between; a milder stretch, patchiness and latitude
+  belts in the shader and in `cloudAt` alike (scrub odds moved a little: FLAG for economy); the sea's Fresnel and
+  sunglint; city lights by mip with a sodium tint; view 80's weather search from step 1 (step 0 hits a stale bake).
+- **Found, not fixed:** p2 is ~7× overexposed by the auto-exposure meter (effects' `EXPO`), which keeps the sea pale and
+  the clouds clipped; Proposed line with the numbers. The sunglint isn't in any view yet.
+- **Tests:** `aerofx-23` (new), look, world, core 16 pass. My Q321 test renumbered `aerofx-22` (effects took
+  `aerofx-20` the same hour).
+- **Files:** `app/gl.js`, `sim/space.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (258),
+  `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for sky & bodies:** the exposure item (effects, or this beat if free), then Q322.
+

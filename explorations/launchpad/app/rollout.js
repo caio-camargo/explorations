@@ -21,7 +21,7 @@ function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=t=>out.push(['w
   if(!a.ok)bad(a.why);if(!fz.ok)bad(fz.why);if(a.ok&&fz.ok)ok(`${t.name}: open to us, the stages fit`);
   const dw=downrangeWarning(t);if(dw)warn(dw);
   if(w.scrub)warn(`Weather at ${t.name}: ${w.word}; the launch may wait for a clear day`);
-  const st=stageStats(stackDef).stages[0];if(st)st.twr<1?bad(`Stage 1 can't lift off: TWR ${st.twr.toFixed(2)}`):st.twr<1.15?warn(`Stage 1 is sluggish: TWR ${st.twr.toFixed(2)}`):ok(`Liftoff TWR ${st.twr.toFixed(2)}`);
+  const st=stageStats(stackDef).stages[0];if(st)st.twr<1?bad(`Stage 1 can't lift off: ${term('twr','TWR')} ${st.twr.toFixed(2)}`):st.twr<1.15?warn(`Stage 1 is sluggish: ${term('twr','TWR')} ${st.twr.toFixed(2)}`):ok(`Liftoff TWR ${st.twr.toFixed(2)}`);
   const A=S.ana;if(A){const cal=r=>(r.ycm-r.ycp)/(2*S.radius),m=Math.min(cal(A.ful),cal(A.sup));
     if(m<0)(A.ctl&&A.ctl.steer?warn:bad)(`Aerodynamically unstable (${m.toFixed(2)} calibers)${A.ctl&&A.ctl.steer?': only steering keeps it straight':' and nothing to steer it'}`);
     const j=Math.max(A.lift.cert.frac,A.mq.cert.frac);if(j>1){const w=A.mq.cert.frac>=A.lift.cert.frac?A.mq.cert:A.lift.cert,at=w===A.mq.cert?`max-q, ${(A.mq.q/1000).toFixed(0)} kPa`:'liftoff';warn(`A joint is past its certified rating (${(j*100).toFixed(0)}% at ${at}: ${w.p?`${w.p.d.name} / ${w.p.parent.d.name}, ${w.kind}`:''}). ${jointFix(w,w===A.mq.cert&&A.mq.own)}`)}}

@@ -1609,7 +1609,7 @@ BEAUTY B5, from the mock-ups `mockups/sky/` (Q253) and W39's picks and levels (C
 - **Measured** (full resolution, before → after, ms): 3 5.1 → 3.8, 97 3.2 → 2.3, 98 2.8 → 2.8, 99 3.7 → 3.8, 100
   3.5 → 3.5, 156 3.3 → 4.6, 157 3.4 → 4.2, 158 6.6 → 7.4, pad 12.4 → 11.8: noise on a busy machine, no clear cost or
   gain. **Not measured:** the iGPU; the first-load time (`SKY_FS` lost its galaxy noise but gained three star layers).
-- **Checks:** test `aerofx-20` (the nebula 22° and the spiral 40° off the band for five seeds; the bake, its unit and
+- **Checks:** test `aerofx-22` (the nebula 22° and the spiral 40° off the band for five seeds; the bake, its unit and
   wiring; the new stars and sun; the old code behind `SKY_B5`); the galaxy-per-program test builds `galSights` too.
   TESTING 248.
 
@@ -1692,3 +1692,55 @@ one log each). Noise between runs ≈ ±0.2 ms.
 - **Stills:** `output/launchpad/beauty/q335/c_ab.png` (a 1 t stage under its 600 m² main at 2.2 km; the same stage
   afloat with its surf).
 - **Checks:** test `aerofx-21`. TESTING 254.
+
+## v1.174 — the effects' sounds: a crack and groan, a venting hiss, the splash, the blackout's edges (2026-10-13, effects beat as sound overflow, QUEUE Q363, Q362)
+- **One-shots from the page** (`FXSND`, played by `sndFx` in `sndTick`, heard like booms with `sndBoom`'s law: through our
+  own structure at full, else through the air at the source, late (d/340) and duller with distance):
+  - a **structural failure** (`HOOK.crack`): a 0.18 s high crack with a 90 Hz thump, and a metal **groan** (`sndGroan`: a
+    sawtooth sliding 95 → 48 Hz under a lowpass, a 7 Hz wobble, ~0.9 s). Sized by √(mass / 5 t).
+  - a **splash** (`splashFx`, the capsule's and a stage's): a 1.3 s whoomp of brown noise sweeping down to 120 Hz on a
+    38 Hz thump, sized by the splash's k.
+- **A venting tank** (Q294's `VENTS`) hisses (a 2.6 kHz highpass layer, `AUD.VH`). Its level is `sndVent` in the pure mix
+  block: √(what's left of the first flow), through our structure even in vacuum, from elsewhere only through the air
+  (×250/(250+d)).
+- **The radio blackout (Q362):** the game has no radio bed to fall silent, so the blackout sounds at its edges, from
+  `plasmaOn(S)` (world's link rule). Going in: a 0.45 s burst of band-passed static that cuts dead. Coming out: a short
+  squelch and a 0.25 s **Quindar tone** at 2,525 Hz (the beep that keyed Apollo's voice loop).
+- **Checks:** test `sound-2` (the vent's levels and the wiring); in the browser every path ran without an error with
+  `sndInit()` forced (the headless audio context stays suspended, so nothing was heard there). TESTING 256.
+
+## v1.176 — Tellus from above, slice 1: clouds you can see through, the sea's sheen, lights without shimmer (2026-10-13, sky & bodies beat, QUEUE Q323)
+
+BEAUTY B6.1, 6.3, 6.4 (and Q268's sea from altitude). `app/gl.js` (`cloudCovF`, `tellus()`'s sea, `SKY_FS` main's sea
+and lights, the city texture), `sim/space.js` (`cloudAt`), `views.js` (view 80's search).
+
+- **Why Tellus was a white swirl from mid orbit (p2, view 157).** At full detail the planet is ~87 % clear
+  (`cloudAt`, the CPU copy: mean cover 0.11). The far-field filter in `cloudCovF` widens the threshold window as a
+  pixel's footprint grows, but lopsidedly (its low edge fell 0.3, its high edge rose 0.12), so a blurred pixel came out
+  about 4× cloudier than the ground under it; and it started widening at 60× the footprint, which at 4,000 km
+  flattened weather cells ~30 pixels wide. Now it widens **evenly** about the same centre, starting at 15× (when the
+  finest octave, ~1/220 of the radius, is under a pixel).
+- **The cover itself:** a milder stretch (×1.25 along y, not ×1.8: fewer east–west streaks), a large-scale patchiness
+  term (clear holes between systems), **mild latitude belts** (a wetter equator, clearer subtropics, the storm tracks).
+  **`cloudAt` carries the same formula**, so scrubs and photo windows follow the drawn weather. Measured on 3,000
+  points × 5 times: mean cover 0.11 → 0.12; clear (< 0.35) by |latitude| 0–12° 86 → 81 %, 12–33° 87 → 94 %, 33–58°
+  87 → 81 %, 58–90° 87 → 81 %; **scrub odds** (cover > 0.9) at 5° 5 → 8 %, 15° 3 → 1 %, 28° 3 → 2 %, 45° 5 → 5 %,
+  62° 4 → 10 %. A balance change for high-latitude and equatorial pads (FLAG for economy in QUEUE *Proposed*).
+- **The sea** (Q268's first half): Fresnel sky light (brighter toward the limb) and a Beckmann sunglint (slope 0.18, a
+  wide patch, not a pin); colder seas a little greener. **Not seen in the stills:** no view puts the glint in frame
+  under the current exposure (below); the swell and whitecaps close up stay with Q268.
+- **Night lights:** the city texture has mips now, read at the pixel's footprint (`textureLod`, a texel is ~3.9 km),
+  so they don't shimmer from orbit and have no seam where `atan` wraps; a warmer sodium colour.
+- **View 80** (clouds from the pad): its weather search now starts one step in. At step 0 nothing has moved since
+  setup and the near deck shows a stale coverage bake (clear sky under a 0.72 cover); at the next step it's right.
+- **Seen** (`output/launchpad/beauty/q323-before/`, `q323-after/`): p2 shows separate weather systems with clear sea
+  between them instead of a white veil; from 200 km (view 3) clear gaps and the land at the edge of the deck; the pad
+  and the deck views unchanged in look. GPU ms within noise.
+- **What still stops p2 reading as a planet: the exposure.** Sunlit cloud is ~4.6 in scene units, so the frame wants
+  E ≈ 0.3–0.4; the meter reads the 1/16 bloom level, where a disc on black space is diluted (H ≈ 0.9), and sets
+  E ≈ 2.7. The disc is ~7× overexposed: the sea goes pale, every cloud clips. Tried: halving the air's in-scatter
+  (exposure compensates, E 2.74 → 3.03, no change); lowering the highlight cap (E 1.37, slightly darker, clouds still
+  clipped). The fix is in the meter (effects, Q314's `EXPO`): a highlight reading at full resolution, or the disc's own
+  brightness. QUEUE *Proposed*.
+- **Checks:** test `aerofx-23` (the shader's and `cloudAt`'s formulas alike, the even filter, the sea and the lights);
+  core 16's cloud check holds (mean 0.12, clear at 345/400, moving). TESTING 258.

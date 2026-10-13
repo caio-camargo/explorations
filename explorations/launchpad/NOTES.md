@@ -89,6 +89,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.173 — the SAS cancels the air's torque (aero moment fed forward): upper stages no longer tumble at separation unless really short of steering (2026-10-13, vehicle session, QUEUE Q382)
 - v1.166 — the space sky: the galaxy baked, sharp stars that twinkle, a small sun (2026-10-13, sky & bodies beat, QUEUE Q321)
 - Q326 — where the sky's time goes at the pad (2026-10-13, sky & bodies; measurement: the ground 4.7 of 7.4 ms, its march ~1.9, the volume cloud shadow 1.4, `scatter` 0.4)
+- v1.176 — Tellus from above, slice 1: clouds you can see through, the sea's sheen, lights without shimmer (2026-10-13, sky & bodies, QUEUE Q323)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -256,6 +257,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.163 — the title screen and the founding charter (2026-10-13, flow session, QUEUE Q241 R3)
 - v1.167 — the map's layers (2026-10-13, flow session, QUEUE Q261; PLAYTEST #61)
 - v1.169 — what the map is centred on (2026-10-13, flow session, QUEUE Q262; PLAYTEST #62)
+- v1.175 — hover terms: the glossary (2026-10-13, flow session, QUEUE Q287; UI.md rule 9)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -307,6 +309,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.168 — the vapor collar, calmer: one thin sheet, not bands (2026-10-13, effects beat, PLAYTEST #88)
 - v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
 - v1.172 — a falling stage under its chutes, its splash, and the waterline (2026-10-13, effects beat, QUEUE Q335)
+- v1.174 — the effects' sounds: crack and groan, venting hiss, the splash, the blackout's edges (2026-10-13, effects beat, QUEUE Q363, Q362)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

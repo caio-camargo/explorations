@@ -125,7 +125,10 @@ HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);sepFx(d);d.impact=d.bod
 // still holds over a fifth of its load, in air, bursts into a fireball sized by what it holds. Render-side: the sim keeps
 // the propellant where it was.
 const VENTS=[];
+// one-shot sounds for the sound block (Q363): {k: 'crack' | 'splash', b, r (body-relative), sz, own}; sndTick plays and clears them
+const FXSND=[];
 HOOK.crack=(s,p)=>{const b=s.body,J=add(s.r,qrot(s.q,sub([p.pos[0],p.y0,p.pos[2]],s.cm))),R=Math.random,h=len(s.r)-b.R,air=b.atm&&h<b.atm?density(b,h)/b.rho0:0;
+  FXSND.push({k:'crack',b,r:J,sz:Math.min(2,Math.sqrt(s.mass/5000)),own:s===S});
   for(let i=0;i<45;i++){const u=norm([R()-.5,R()-.5,R()-.5]);fxPuff(J,add(s.v,mul(u,6+24*R())),i<25?{s0:.03+.04*R(),grow:0,a0:.9,life:.3+.9*R(),hot:1.7}:{s0:.06+.1*R(),grow:0,a0:.8,life:1+2*R()})}
   for(const[t,up]of[[p,-1],[p.parent,1]]){if(!t||t.d.kind!=='tank'||!t.cap.fuel)continue;const m=t.res.fuel||0;if(m<1)continue;
     if(air>.05&&m>.2*t.cap.fuel)HOOK.boom(b,J,simT,clamp(Math.cbrt(m/500),.5,3));
@@ -140,6 +143,7 @@ function ventTick(dt){for(let i=VENTS.length-1;i>=0;i--){const V=VENTS[i],t=V.t,
 // so it belongs in the sea's shading with the swell (QUEUE Q267's other half)
 function splashFx(s){const b=s.body;if(b!==TELLUS)return;const R=Math.random,up=norm(s.r),P=mul(up,b.R),v0=surfVel(b,P),
     k=clamp((s.touchV||5)/8*Math.sqrt(s.mass/3000),.3,2.5),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),r0=(s.radius||1)*1.2;
+  FXSND.push({k:'splash',b,r:P,sz:k,own:s===S});
   for(let i=0;i<90+110*k;i++){const a=R()*6.2832,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
     fxPuff(madd(P,h,r0*R()),add(v0,add(mul(up,(3+9*R())*k),mul(h,(2+6*R())*k))),{s0:.06+.1*R()*k,grow:.5+.5*R(),a0:.8,life:.6+.9*R()})}   // spray
   for(let i=0;i<64;i++){const a=i/64*6.2832+R()*.1,h=[X[0]*Math.cos(a)+Z[0]*Math.sin(a),X[1]*Math.cos(a)+Z[1]*Math.sin(a),X[2]*Math.cos(a)+Z[2]*Math.sin(a)];
