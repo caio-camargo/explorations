@@ -2949,3 +2949,35 @@ here destroys anything. The anti-satellite test and its debris stay Q148's.
 5. Hacking: the hold, the era's minutes, the payoff.
 Measure before tuning: fly the stock Docking preset to a rival satellite in shadow and in sunlight, with and without a
 final burn, and set `SUN_K`/`PLUME_K` so a careful night approach is ~10 % spotted and a sunlit one ~70 %.
+
+### Q187 amendment: Caio's answers (W41, 2026-10-13)
+
+1. **Real satellites** (as planned, slice 1).
+2. **Radar, proposed as layers** (Caio: "suggestions?"; this is the default unless he picks otherwise). Each layer of the
+   owner's tracking has its own counter, so the window narrows by era instead of slamming shut:
+   - **Optical** (from the start): sees a sunlit craft. Counter: work in Tellus's shadow.
+   - **Ground radar** (the owner's *Mainframes* era): sees anything inside `STEALTH_D`, lit or not, but **only while the
+     work is above the horizon of the owner's sites** (its pads, cities and ground stations; radar is on the ground).
+     Counter: do the job on the far side of the world from the owner. `stealthTick` tests the owner's sites against the
+     craft's position, as `entryLink` does for ground stations.
+   - **Space surveillance** (once the owner flies an early-warning satellite of its own, a `PROG.rsats` kind, normally
+     its *Onboard computers* era): sees you anywhere. Counter: none by hiding; only a short job and a small burn.
+     Tapping that satellite first (below) is how you'd know where it is looking: a nice reason to hack in order.
+3. **An unspotted retrieval raises suspicion:** the owner knows the satellite is gone; suspicion lands on every power
+   able to dock (a relation dip, shared), and grows with each further unexplained loss (`PROG.susp[i]`, decaying over a
+   year). Enough suspicion makes the next spotting count double.
+4. **Hacking's payoff:** **contract pay if it's a contract; the satellite's service if it's our own initiative.** Caio
+   adds two kinds of hack, and both fit mechanics we already have:
+   - **A tap (indefinite):** it keeps working for its owner and also sends to us. It joins our network as if it were
+     ours, through the existing code: a camera satellite's take fills its recorder and our ground stations drain it into
+     **imagery sales** (`satTick`, `IMG_RATE`, v1.100) and can deliver **image contracts**; a comms satellite becomes a
+     **relay** in `netLinks` and counts for TV and navigation coverage. A flag on the `PROG.rsats` entry (`tap: 'us'`)
+     is the whole change in those functions. It lasts until the owner notices: each month a small chance, higher with
+     its computing era and with our use (bits taken), and then the spotted consequences apply as for a hack (k = 2),
+     with the tap cut.
+   - **A data theft (one-off):** download what its recorder holds. A science or weather satellite's data pays as
+     **science data received** (the same per-bit pay); a **spy or military satellite's** data reveals its owner's
+     program: its race progress and next first become exact on the race panel for a year (Q307's panel shows a closed
+     rival as "soon" or nothing; stolen data shows the forecast day), and the next military offer against that owner
+     pays more. Quicker than a tap (the download time at the link's rate, in the hold), so less exposure.
+   Choosing among inspect / steal data / tap / take its service for a client happens at the hold (a HUD choice, flow).
