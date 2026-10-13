@@ -3,20 +3,28 @@
 // index.html's script: a classic script sharing one global scope with the others; index.html loads them in order. 'use strict';
 'use strict';
 // N1: the fleet strip (everything of ours out there, and what it does next) and the pad calendar (each pad's bookings over
-// the next months, with the program's dated events). The screen draws from economy's netModel() (QUEUE Q154) once it
-// exists; until then netFallback() reads the same things from what the game has today: the registry, the dispatch queue,
-// the pads, the timeline. Nothing here changes the program.
+// the next months, with the program's dated events); N2 (QUEUE Q170): the schematic of the nodes. All of it is drawn from
+// economy's netModel() (QUEUE Q154, sim/program.js), the one SIM function the screen reads. Nothing here changes the program.
 const NET_DAYS=180;   // the calendar's span, from today
 const netOpen=()=>(PROG.sats||[]).some(q=>!q.junk)||(PROG.dispatch||[]).length>0;   // a second node besides the pad (W18's default)
-function netFallback(){const D=PROG.day||0,fleet=[],pads=[];
-  for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus',life=q.landed?Infinity:skLife(q);
-    fleet.push({name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
-      next:q.landed?'on the surface':q.adrift!=null?'adrift: out of propellant':isFinite(life)?`holds its orbit ${Math.floor(life)} more days`:'holds its orbit',t:isFinite(life)?life:null})}
-  for(const x of PROG.dispatch||[])if(x.status==='queued')fleet.push({name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
-  for(let p=0;p<padsN();p++)pads.push({pad:p,bars:(PROG.dispatch||[]).filter(x=>x.status==='queued'&&x.pad===p)
-    .map(x=>({from:Math.max(D,x.ordered??D),to:x.launch,kind:'dispatch',title:`${x.title} · ${designName(x.stack)||'our design'}`}))});
-  return{fleet,pads}}
-const netData=()=>typeof netModel==='function'?netModel():netFallback();
+const netData=()=>netModel();
+// N2, the schematic (NOTES § UI "Network screen plan"): not the orbital map. Bodies as columns, outward to the right (Tellus
+// first, then the others in the order the model lists them); within a column the surface at the bottom and the orbit bands
+// above it (netModel's slots: low, high, stationary). Each node says what it is in words; a crewed one its supplies (stock,
+// what it eats a day, days left); a paused one why. The bottleneck line sits on top. Routes come with routines (N3).
+const NET_SLOTS=[['stationary','Stationary'],['high','High orbit'],['low','Low orbit'],['surface','Surface']];
+function netNodesHTML(N){const nodes=N.nodes||[],bn=N.bottleneck,kg=x=>x>=1e4?`${(x/1e3).toFixed(1)} t`:`${Math.round(x)} kg`;
+  const bodies=[...new Set(['Tellus',...nodes.map(n=>n.body)])].filter(b=>nodes.some(n=>n.body===b)),lk=new Map((N.links||[]).map(l=>[`reg:${l.id}`,l]));
+  const node=n=>{const L=lk.get(n.id),sup=n.stock&&n.stock.supplies,eat=n.need&&n.need.supplies,on=bn&&bn.node===n.id;
+    return`<div class="nn${n.paused?' paused':''}${on?' bn':''}" data-node="${n.id}" title="${n.name}: ${n.kind}"><b>${n.name}</b><div class="dim">${n.kind}</div>`
+      +(sup!=null?`<div>supplies ${kg(sup)}${eat?` · eats ${kg(eat)}/d`:''}</div>`:'')
+      +(n.days!=null?`<div class="${n.days<30?'bad':''}">${Math.floor(n.days)} days left</div>`:'')
+      +(n.paused?`<div class="warn">paused: ${eat&&!(sup>0)?'out of supplies':'adrift'}</div>`:'')
+      +(L&&!L.now?'<div class="dim">no contact now</div>':'')+`</div>`};
+  return`<div class="nbn${bn?' bad':''}">${bn?`Bottleneck: ${bn.text}`:'No bottleneck: no crewed node is short of supplies'}</div>`
+    +`<div class="ngrid" style="grid-template-columns:110px repeat(${bodies.length},minmax(0,1fr))"><span></span>${bodies.map(b=>`<div class="nb">${b}</div>`).join('')}`
+    +NET_SLOTS.map(([k,l])=>`<div class="nl">${l}</div>`+bodies.map(b=>`<div class="nc">${nodes.filter(n=>n.body===b&&n.slot===k).map(node).join('')}</div>`).join('')).join('')+`</div>`
+    +`<div class="dim nfoot">${nodes.length} node${nodes.length===1?'':'s'} · ${(N.routes||[]).length?`${N.routes.length} routes`:'no routes yet: they come with routines'} · not to scale (the map [M] is)</div>`}
 // the pads' calendar: each pad's bookings over the next NET_DAYS, and the program's dated events. Mission control's wall
 // shows it as its second page (Q241 R4); the screen it was drawn on folded into mission control (app/mission.js).
 function netCalHTML(N){const D=PROG.day||0,x=d=>`${(100*Math.max(0,Math.min(NET_DAYS,d-D))/NET_DAYS).toFixed(2)}%`;

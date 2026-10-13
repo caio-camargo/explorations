@@ -5649,3 +5649,32 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for parts & pad:** run the full suite and one game shot on a quiet machine; then Q316 (shadows, surface,
   greebles), Q294, Q330, Q245.
 
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q253 the space-sky mock-ups
+
+- **Done:** `explorations/launchpad/mockups/sky/index.html`, a standalone page with 9 views: today's stars, galaxy and
+  sun ported from `app/gl.js` for comparison; the proposal's subtle and showpiece galaxy, sharp power-law stars, a
+  spike-less sun, the night limb with airglow, Tellus from 4,000 km, Selene's earthshine. Stills in
+  `output/launchpad/mockups/sky/` (gitignored), shot on the software renderer so no game lock was needed.
+- **Twinkle (Caio's ask):** the game has no twinkle code; today's comes from one-pixel stars shimmering plus the
+  composite's grain, so Q321's sharp stars would lose it. The page makes it deliberate with three settings (gentle,
+  through the air only, off); a Proposed line tells Q321 to keep it.
+- **Waiting on Caio:** W39 (subtle or showpiece; the new sun; the twinkle), default if silent: subtle, new sun, gentle.
+- **Known faults of the mock-up:** a faint second airglow arc over the night disc; placeholder continents.
+- **Files:** `mockups/sky/index.html` (new), `mockups/README.md` (§ sky), `QUEUE.md` (Q253 ✓, W39, two Proposed lines),
+  `ACTIVE_WORK.md`.
+- **Next:** Q321 on W39's pick or default (sky & bodies); for parts & pad, the Q315 follow-ups and Q316.
+
+
+## 2026-10-13 — flow session: Q170, the network's nodes in mission control (v1.151)
+- **Q170 ✓ v1.151** (network N2, merged and pushed, `b45488b`): mission control's wall has a third page, *Network ·
+  nodes* (W cycles ground track → pads → nodes). It draws `netModel().nodes` as a schematic: bodies as columns, orbit
+  bands over the surface, every node in words, a crewed node's supplies and days left, the bottleneck line on top with
+  its node framed in red. `netFallback` is deleted; `netData()` is `netModel()`.
+- **Cross-lane:** one line in economy's `econ-14` (`tests/economy.mjs`): its screen check asserted the old fallback switch.
+- **Renumbered on merge:** v1.150 / TESTING 232 → v1.151 / 233 (parts & pad's Q315 took them meanwhile).
+- **Checks:** test `flow-17`; `--smoke` passes; robot `playtest.mjs 233` (both pages fit at 1280×800 on the RTX, the base
+  framed) and `m1` pass.
+- **Files:** `app/network.js`, `app/mission.js`, `app/screens.js`, `index.html` (`#mcNet` + CSS), `tests/flow.mjs`,
+  `tests/economy.mjs`, `playtest.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`; `QUEUE.md` (Q170 ✓, two Proposed
+  lines), `ACTIVE_WORK.md`.
+- **Next for flow:** Q241 R3 (the charter), Q261 (map layers), Q262 (map focus).
