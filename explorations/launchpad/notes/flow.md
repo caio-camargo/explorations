@@ -1166,3 +1166,14 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-28` (the same basis at other angles; orthonormal and continuous at the pole; the clamp; the T
   key); robot row `topview` (the Satellite from above in the Assembly; the Satellite climbing, seen from straight above);
   `m1` passes. TESTING row 283.
+
+## v1.208 — heat and load you notice (2026-10-13, flow session, QUEUE Q271; PLAYTEST #71, W36's default)
+- **Two bars beside the navball**, H (heat: the hottest part against its limit) and L (load: the most loaded joint
+  against its certified rating), in every phase of a flight, not only the Ascent card's climb: re-entry, a burn, a
+  landing. Faint under 50 %, amber from 50 %, red (glowing) from 90 %; ticks at 50 % and 90 %; hovering one names the part
+  and the number. `hlGauges()` in `app/cockpit.js`, `#hlg` in the bottom cluster (between the navball and SAS).
+- **The master caution** (v1.186) now blinks for three seconds when its reasons change (`#mcau.new`), then stays lit.
+- **Look & sound's half** (the hot part glowing on the rocket itself) isn't in this item.
+- **Checks:** test `flow-29` (the fractions, the colour thresholds, the wiring, the blink); robot row `gauges` (a climb:
+  faint; the nose forced to 70 %: amber; to 95 %: red, and the caution blinking with the reason); `m1` passes (its
+  overlap check passes with the bars in the cluster). TESTING row 289.

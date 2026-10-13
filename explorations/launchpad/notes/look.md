@@ -2026,7 +2026,7 @@ after the march: 5 `cloudDens` toward the sun for every ground pixel, 1.4 ms of 
 - Not seen in a browser here (the GPU was another session's); the wiring is the test's. **Check:** test `aerofx-36`
   (and the views test's clock pattern amended). TESTING 287.
 
-## v1.208 — the haze without dither (2026-10-13, sky & bodies beat, QUEUE Q392, PLAYTEST #89)
+## v1.209 — the haze without dither (2026-10-13, sky & bodies beat, QUEUE Q392, PLAYTEST #89)
 
 Caio: "the diffusion effect in atmosphere or whatever it is has visible dithering". **Measured, not bisected:** the
 fine-grain noise in a smooth hazy sky (luminance minus a 7×7 blur, std in grey levels over the flat regions), with
@@ -2052,4 +2052,4 @@ each suspect switched off in the running page (`output/launchpad/beauty/q392/V0`
 - **Views 172, 173:** Q321's nebula and spiral were numbered 159 and 160, and their branch came first in `views.js`,
   so the effects beat's 159 (the shield from upstream) and 160 (the terminator) never ran. Renumbered; `refset.mjs`'s
   set takes 172–173.
-- **Check:** test `aerofx-37`; aerofx-18's and Q250's checks updated to the jitter's new form. TESTING 289.
+- **Check:** test `aerofx-37`; aerofx-18's and Q250's checks updated to the jitter's new form. TESTING 290.

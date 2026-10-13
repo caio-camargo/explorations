@@ -897,6 +897,12 @@ ROWS.deploy = {title: 'how folded parts deploy', steps: [DOCK_HELPERS, M1_HELPER
 ROWS.topview = {title: 'the top-down camera', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Satellite'); render(); window.dispatchEvent(new KeyboardEvent('keydown', {key: 't'})); render(); window.P405 = cam.pitch; ({pitch: +cam.pitch.toFixed(3), R: HOOK.view.R.map(x => +x.toFixed(3))})}`, {shot: 'assembly_top'},
   `{window.dispatchEvent(new KeyboardEvent('keydown', {key: 't'})); render(); go('rollout'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => simT > 8, 20); cam.pitch = Math.PI / 2; cam.dist = 40; render(); window.V405 = HOOK.view.R.concat(HOOK.view.U); ({pitch: +cam.pitch.toFixed(3), finite: window.V405.every(Number.isFinite)})}`, {shot: 'flight_top'}],
   checks: {view: `(window.V405 || []).length === 6 && window.V405.every(Number.isFinite) && Math.abs(window.P405 - Math.PI / 2) < 1e-6`}, expect: {view: v => v === true}};
+// gauges: heat and load you notice (Q271): the Sounding rocket climbing (HEAT and LOAD faint), its nose forced to 70 % of
+// its heat limit (amber), then 95 % (red, and the master caution blinking with the reason)
+ROWS.gauges = {title: 'HEAT and LOAD by the navball', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Sounding'); go('rollout'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => simT > 10, 20); updateHUD(); render(); ({heat: document.getElementById('gHeat').className, load: document.getElementById('gLoad').className, t: document.getElementById('gHeat').title})}`, {shot: 'faint'},
+  `{const p = S.parts.find(q => q.on && q.d.kind === 'cone') || S.parts.find(q => q.on); S.hot = p; p.T = p.d.Tmax * 0.7; updateHUD(); render(); ({heat: document.getElementById('gHeat').className, t: document.getElementById('gHeat').title})}`, {shot: 'amber'},
+  `{const p = S.hot; p.T = p.d.Tmax * 0.95; updateHUD(); render(); window.G271 = [document.getElementById('gHeat').className, PT.text('#mcau'), document.getElementById('mcau').classList.contains('new')]; ({g: window.G271})}`, {shot: 'red'}],
+  checks: {red: `(window.G271 || [])[0] === 'g bad' && /MASTER CAUTION heat/.test(window.G271[1]) && window.G271[2] === true`}, expect: {red: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
