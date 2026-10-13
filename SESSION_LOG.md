@@ -5792,3 +5792,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `builder.js`, `test.mjs`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (242, 246), `PLAYTEST.md`
   (#84, #85 done), `QUEUE.md` (Q347 ✓, Q348 ✓, Q371), `ACTIVE_WORK.md`.
 - **Next for vehicle:** Q371 if Caio wants it retuned; Q329 (action groups), Q341 (folding boom), Q338 (pointing).
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q321 the space sky (v1.165)
+
+- **Done:** the galaxy band, the Hubble-palette nebula and the spiral baked once per program into a cube map (unit 12)
+  at Caio's W39 levels and placements, so `SKY_FS` only samples it; power-law sharp stars with an exposure floor and a
+  deliberate twinkle; the sun a small disc with no spikes (toned down from the mock-up for the game's bloom); views
+  159–160 for the sights. `SKY_B5 = false` restores the old sky.
+- **Measured:** RTX High and Low, before/after within noise; iGPU and first-load time not measured (Proposed line).
+- **Tests:** `aerofx-20` (new) and the look file pass; smoke passes except two checks that also fail on `main`
+  (FLAG in QUEUE *Proposed*: *node chain flown*, *later stages in the air*).
+- **Files:** `app/gl.js`, `app/render.js`, `views.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `TESTING.md` (247), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next for sky & bodies:** Q326 then Q322 (shrink `SKY_FS`, Selene out of it); Q323 Tellus from above.
+

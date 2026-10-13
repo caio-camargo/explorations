@@ -589,7 +589,7 @@
     shaders && split && wired, `shaders ${shaders} · split ${split} · wired ${wired}`);
 }
 
-// aerofx-13. The space sky (look & sound sky & bodies beat, BEAUTY Q321 B5, W39; mockups/sky/). The band, a nebula and a
+// aerofx-20. The space sky (look & sound sky & bodies beat, BEAUTY Q321 B5, W39; mockups/sky/). The band, a nebula and a
 // spiral are baked once per program into a cube map (GAL_FS, galBake on unit 12) and SKY_FS's main only samples it; the
 // stars are three power-law layers with a floor and a twinkle; the sun has no spikes; SKY_B5 keeps the old code for an
 // A/B. Each program's nebula sits 22° off the band's midline and its spiral 40° off, for any seed.

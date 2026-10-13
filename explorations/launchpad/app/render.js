@@ -50,8 +50,8 @@ function render(){
   if(desk)gl.clearColor(...DESK_BG.map(x=>x**2.2),1);bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);if(desk)gl.clearColor(0,0,0,0);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
-  if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   if(!desk&&SKY_B5)galBake();   // (Q321) once per program seed and setting
+  if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
   if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
