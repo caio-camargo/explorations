@@ -1138,3 +1138,18 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-26` (placement beside, at the pointer and under, clamped; the owners; no old elements; ten
   explained Rollout checks); robot row `explain` (the stage-2 TWR mark, the camera's card in `#termTip`, the Rollout's
   over-budget check hovered); `m1` passes; every flow section and the builder's core sections pass. TESTING row 273.
+
+## v1.199 — how folded parts deploy (2026-10-13, flow session, QUEUE Q400's remainder; PLAYTEST #97)
+- **Already done by vehicle:** the flight-bar buttons (Unfold wings / antennas (P) v1.184, Legs (Y) and Bay (B) v1.188).
+- **The part panel** (right-click a part) gives a deployable part an *In flight:* line under its deployed toggle: the
+  key, the flight-bar button, and when (wings and booms once the air is thin and the fairing is off, they tear off in
+  thick air; legs before touchdown; the bay once the air is thin). **The part card** gets a *deploys* row (the key and
+  the button). One table, `DEP_HOW` in `builder.js`, next to `DEPW`.
+- **A first-time hint:** the first time a craft is out of the thick air, nothing critical is happening (`cpPhase()`),
+  and it carries folded parts no fairing still covers (or a shut bay), one message says how to deploy them and lights
+  the button for six seconds (`button.hint`). Once per browser (`launchpad-hint-deploy`, a convenience); `depHint()` in
+  `app/cockpit.js`.
+- **Checks:** test `flow-27` (the hint: in space yes; in the air, in a burn, already out, seen before, or still inside a
+  fairing: no; after the fairing drops: yes; a shut bay; the panel's line and the card's row); robot row `deploy` (the
+  Satellite's wing selected: the *In flight:* line; parked in orbit, fairing dropped: the message and the lit button);
+  `m1` passes. TESTING row 280.
