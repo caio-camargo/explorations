@@ -495,3 +495,26 @@
     lost && named && inc && helps, `chain ${ch ? ch.chain.map(f => `${f.k} T+${f.met.toFixed(0)}s ${(f.h / 1000).toFixed(1)} km`).join(', ') + ' → ' + ch.end.why + ' · help: ' + ch.help.slice(0, 40) : 'none'} · money ${M.map(m => `${m.l} ${m.v.toFixed(1)}`).join(' · ')} = ${E && E.net.toFixed(1)} · incident ${inc} · helps ${helps}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(P0));
 }
+
+// flow-24. The dark cockpit (flow session, QUEUE Q286 slice 1; UI.md § 3 Flight row, D16): the phase (the climb, a burn, a
+// landing, or quiet) holds the news and folds every card that isn't the phase's unless pinned; one MASTER CAUTION names
+// what's red (heat over 90 %, a joint over its rating, the impact point over a town); hold modes the vessel can't fly
+// aren't shown (SAS's title says when they come); Ap · Pe isn't shown landed and reads "under the surface" below it.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function cpPhase'), page.indexOf('function cockpit'));
+  const mk = (S, low) => new Function('mode', 'S', 'ascentOn', 'certOf', 'dot', src + 'return {cpPhase, cautions, CP_CARDS};')('flight', S, () => low, () => 1, (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+  const ship = o => ({ alive: true, landed: false, rec: { launched: true }, thrust: 0, v: [0, 0, 1], r: [0, 0, 7e6], ...o });
+  const ph = [mk(ship({ rec: { launched: false } }), true), mk(ship({ thrust: 1e5 }), true), mk(ship({ thrust: 1e5 }), false), mk(ship({}), false), mk(ship({ v: [0, 0, -50] }), true), mk(ship({ landed: true }), true)].map(x => x.cpPhase());
+  const phases = JSON.stringify(ph) === JSON.stringify([null, 'ascent', 'burn', null, 'landing', null]);
+  const hot = mk(ship({ hot: { T: 950, d: { Tmax: 1000, name: 'Nose cone' } } }), false).cautions(), cool = mk(ship({ hot: { T: 500, d: { Tmax: 1000, name: 'Nose cone' } } }), false).cautions();
+  const load = mk(ship({ maxLoadP: { on: true, sk1: 'a', sk2: 'b', d: { name: 'Kestrel' }, parent: { d: { name: 'Tank 8' } } }, maxLoad: 1.2 }), false).cautions();
+  const range = mk(ship({ rangeWarn: { city: { name: 'Kaos Beach' } } }), false).cautions();
+  const caut = hot.length === 1 && hot[0].includes('95%') && !cool.length && load[0].includes('Kestrel / Tank 8 at 120%') && range[0].includes('Kaos Beach');
+  const wired = page.includes("cpPhase()&&!CP_CARDS.includes(c.id)") && page.includes("if(typeof cockpit==='function')cockpit();") && H.includes('#news.held{display:none}')
+    && page.indexOf('function cpPhase') > page.indexOf('const HUD_CARDS');   // (loaded after hud.js: the page source inlines the scripts in order)
+  const sas = page.slice(page.indexOf('function renderSAS'), page.indexOf('function renderStages')), modes = !sas.includes('b.disabled=true') && sas.includes('continue}') && sas.includes('Not yet: ');
+  const hud = page.slice(page.indexOf('function updateHUD'), page.indexOf('let rangeWarned')), apPe = hud.includes("...(S.landed?[]:[[`${term('ap','Ap')}") && hud.includes('under the surface');
+  check('flow-24: the dark cockpit: the phase (climb, burn, landing, quiet) holds the news and the off-phase cards; a master caution names what is red; unflyable hold modes hidden; Ap · Pe not landed, no underground number',
+    phases && caut && wired && modes && apPe, `phases ${JSON.stringify(ph)} · cautions ${[...hot, ...load, ...range].join(' | ')} · wired ${wired} · modes ${modes} · Ap/Pe ${apPe}`);
+}

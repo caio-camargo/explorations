@@ -305,10 +305,10 @@ function updateHUD(){
   const core=[['MET',`T+${fmtT(simT)} · ${b.name} · ${sit}${link}`],
     radar?['Radar alt',`${fmtD(Math.max(0,groundGap(S)))}${vsTxt} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]:['Altitude',`${fmtD(h)}${vsTxt}`],
     ['Speed',air?`${srf.toFixed(0)} m/s <span class="dim">surface</span>`:`${len(S.v).toFixed(0)} m/s <span class="dim">orbital</span>`],
-    [`${term('ap','Ap')} · ${term('pe','Pe')}`,S.landed?'—':`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
+    ...(S.landed?[]:[[`${term('ap','Ap')} · ${term('pe','Pe')}`,`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${el.pe>b.R?fmtD(el.pe-b.R):'<span class="dim">under the surface</span>'}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`]]),   // (Q286) not landed; a Pe underground isn't a number
     [term('dv','Δv'),`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · ${term('twr','TWR')} ${twr.toFixed(2)}`]];
   $('info').innerHTML=core.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
-  renderCards();gaugeSlot();
+  renderCards();gaugeSlot();if(typeof cockpit==='function')cockpit();   // (Q286) news held, master caution
   const w=WARPS[warpIdx];$('warpN').textContent=`${w}×${w>1&&!railsOK(S)?' (physics)':''}`;$('warp').classList.toggle('on',w>1);
   renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)

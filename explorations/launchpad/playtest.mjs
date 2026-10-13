@@ -778,6 +778,13 @@ ROWS.explain = {title: 'self-explaining warnings, part cards', steps: [DOCK_HELP
 // Debrief's "What happened" (the chain, the end, what would help) and the money named line by line
 ROWS.loss = {title: 'a loss explained in the Debrief', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Sounding'); go('rollout'); window.L293 = {launch: PT.launch(), screen: screenNow()}; S.throttle = 1; stage(S); L293.fly = PT.fly(() => simT > 9, 60); L293.rec = !!S.rec.launched; L293.alive = S.alive; debFail(S, 'structure', 'structural failure: Sparrow / Tank 1 broke in bending, at 131% of its strength'); lose(S, 'destroyed: the nose hit Tellus at 80 m/s', 0); go('program'); ({L293, debrief: PT.debrief(), text: (document.getElementById('debBody') || {}).innerText})}`, {shot: 'debrief'}],
   checks: {chain: `/What happened/i.test(document.getElementById('debBody').innerText) && /What would help/.test(document.getElementById('debBody').innerText) && !/days passing/.test(document.getElementById('debBody').innerText)`}, expect: {chain: v => v === true}};
+// cockpit: the dark cockpit (Q286 slice 1): a Sounding rocket's climb with a headline arriving (held: no ticker, no
+// Payload card), a part forced to 95 % of its heat limit (MASTER CAUTION), then down under the chute (the news back)
+ROWS.cockpit = {title: 'the dark cockpit', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Sounding'); go('rollout'); PT.launch(); S.throttle = 1; stage(S); HOOK.news('Test headline: it arrives during the climb'); PT.fly(() => simT > 12, 30); updateHUD(); render();
+    ({phase: cpPhase(), news: PT.vis('#news'), cards: [...document.querySelectorAll('#cards [data-card]')].map(d => d.dataset.card), sas: [...document.querySelectorAll('#sas button')].map(b => b.textContent)})}`, {shot: 'climb'},
+  `{const p = S.parts.find(q => q.on && q.d.kind === 'cone') || S.parts.find(q => q.on); S.hot = p; p.T = p.d.Tmax * 0.95; updateHUD(); render(); window.MC286 = PT.text('#mcau'); p.T = 300; ({mcau: window.MC286})}`, {shot: 'caution'},
+  `(async () => { await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}); updateHUD(); render(); return {landed: S.landed, phase: cpPhase(), news: PT.vis('#news'), mcau: PT.vis('#mcau')} })()`, {shot: 'landed'}],
+  checks: {dark: `!!window.MC286 && /MASTER CAUTION/.test(window.MC286) && PT.vis('#news') && !PT.vis('#mcau')`}, expect: {dark: v => v === true}};
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-cstart="agency"]'}, {click: '#bFound'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 

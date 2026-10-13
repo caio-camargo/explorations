@@ -174,10 +174,11 @@ const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal',
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   if(rcsJets(S)){const b=document.createElement('button');b.className='wide'+(S.rcs?' on':'');b.textContent='RCS '+(S.rcs?'ON':'OFF')+' [V]';b.onclick=()=>{S.rcs=!S.rcs;renderSAS()};el.appendChild(b)}
-  t.title=avOf(S).name;
+  t.title=avOf(S).name;const no=[];
   for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');
-    if(!sasModeOK(S,k)){const g=avNext(k);b.disabled=true;b.style.opacity=.35;b.title=`${avOf(S).name}: no ${n.toLowerCase()} mode. ${g.name} with ${COMP_ERAS[g.era].name.toLowerCase()}.`}
-    else b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
+    if(!sasModeOK(S,k)){const g=avNext(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()})`);continue}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
+    b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}
+  if(no.length)t.title=`${avOf(S).name}. Not yet: ${no.join(', ')}`}
 function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
   const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];
     if(e.decouple.length)parts.push(e.radial?'drop '+S.segs[e.decouple[0]].label.split(' (')[0]:'decouple');
