@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Builder panel mock-up</title>
+<!-- Launchpad mock-up (design desk, D22, 2026-10-12): the builder's right panel as three tabs (Checks, Stages, Part) and
+     the build tools as a toolbar on the 3D view. Never loaded by the game. The rocket is a flat drawing standing in for
+     the 3D view; the numbers are illustrative. ?tab=checks|stages|part  &part=<id>  &aim=1 (the aim overlay)  &still=1 (no hint bar, for stills). -->
+<style>
+:root{--bg:#0b1118;--pane:#0f1822f2;--line:#26384a;--ink:#d6e2ee;--dim:#7f93a8;--acc:#7fd0ff;--ok:#6fdc8c;--warn:#ffb84a;--bad:#ff6b5b;--chip:#16273a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.45 ui-monospace,Consolas,"Cascadia Mono",monospace}
+.app{position:relative;width:1280px;height:800px;margin:0 auto;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#2a2219 0,#17120d 55%,#0d0a07 100%)}
+.desk{position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(#5a3b26,#3b2618);border-top:2px solid #6d4a30}
+.paper{position:absolute;left:380px;bottom:18px;width:520px;height:110px;background:#e9e2cf;transform:skewX(-8deg);opacity:.9}
+/* side panes */
+.pane{position:absolute;top:12px;bottom:12px;background:var(--pane);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column}
+.left{left:12px;width:250px;padding:14px}
+.right{right:12px;width:340px}
+h1{font-size:15px;letter-spacing:3px;margin:0 0 2px;color:var(--acc)}
+.small{font-size:11px;color:var(--dim)}
+.cat{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;cursor:pointer;color:var(--acc);font-size:11px;letter-spacing:1.5px;display:flex;justify-content:space-between}
+.cat .n{color:var(--dim)}
+.item{display:flex;align-items:center;gap:8px;padding:5px 6px;margin-top:4px;border:1px solid var(--line);border-radius:5px;background:#101e2b;cursor:pointer}
+.item:hover{border-color:var(--acc)}
+.thumb{width:26px;height:26px;border-radius:3px;background:#1c2f42;display:grid;place-items:center}
+.item .m{margin-left:auto;color:var(--dim);font-size:11px}
+/* toolbar on the view */
+.tools{position:absolute;top:12px;left:270px;right:356px;display:flex;gap:4px;flex-wrap:nowrap;align-items:center;justify-content:center;flex-wrap:wrap}
+.tg{display:flex;gap:3px;background:var(--pane);border:1px solid var(--line);border-radius:6px;padding:4px}
+.tb{background:var(--chip);border:1px solid #2c4560;color:var(--ink);border-radius:4px;padding:3px 6px;font:inherit;font-size:11.5px;cursor:pointer}
+.tb.on{background:#2b5a80;border-color:var(--acc)}
+.tb:disabled{opacity:.4;cursor:default}
+.tg .lb{color:var(--dim);font-size:11px;align-self:center;padding:0 4px}
+/* the rocket */
+svg.rk{position:absolute;left:276px;top:56px;width:638px;height:690px}
+.pt{transition:opacity .15s}
+.pt.dim{opacity:.18}
+.pt.hi>*:not(text){stroke:var(--acc);stroke-width:2.5}
+.pt.sel>*:not(text){stroke:#ffc14d;stroke-width:3}
+.pt{cursor:pointer}
+.ring{fill:none;stroke:var(--bad);stroke-width:3;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{stroke-opacity:.25}}
+.mk{font-size:12px;font-weight:bold}
+/* right pane */
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tab{flex:1;text-align:center;padding:10px 0 8px;cursor:pointer;color:var(--dim);letter-spacing:1.5px;font-size:12px;border-bottom:2px solid transparent;position:relative}
+.tab.on{color:var(--ink);border-bottom-color:var(--acc)}
+.tab .badge{display:inline-block;min-width:16px;padding:0 4px;margin-left:5px;border-radius:8px;background:var(--bad);color:#160606;font-size:10px;line-height:15px;font-weight:bold}
+.body{flex:1;overflow:hidden;padding:12px 14px}
+.page{display:none}.page.on{display:block}
+.mission{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.mission b{color:var(--acc)}
+.verdict{font-size:12px;padding:6px 8px;border-radius:5px;margin-bottom:10px;display:flex;justify-content:space-between}
+.verdict.bad{background:#3a1512;color:#ffb3a8;border:1px solid #6b2a22}
+.row{border:1px solid var(--line);border-radius:6px;margin-bottom:6px;background:#0f1d2a}
+.rh{display:flex;gap:8px;padding:6px 9px;cursor:pointer;align-items:flex-start}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.rt{flex:1}
+.rt .t{font-weight:bold}
+.rt .v{color:var(--dim);font-size:12px}
+.row.bad .rt .v,.row.warn .rt .v{color:var(--ink)}
+.fix{color:var(--acc)}
+.chev{color:var(--dim)}
+.nums{display:none;padding:0 10px 8px 26px;font-size:11.5px;color:var(--dim)}
+.row.open .nums{display:block}
+.nums table{width:100%;border-collapse:collapse}
+.nums td{padding:1px 0}.nums td:last-child{text-align:right;color:var(--ink);white-space:nowrap;padding-left:8px}
+.act{margin-top:6px;display:flex;gap:6px}
+.act .tb{font-size:11px}
+/* stages */
+.st{border-left:3px solid var(--line);padding:6px 10px;margin-bottom:8px;border-radius:0 5px 5px 0;background:#0f1d2a;cursor:default}
+.st:hover{border-left-color:var(--acc);background:#14273a}
+.st .hd{display:flex;justify-content:space-between}
+.st .hd b{color:var(--acc)}
+.chips{margin:5px 0 3px;display:flex;flex-wrap:wrap;gap:4px}
+.cp{border:1px solid #3f6a46;color:#9fe3ae;border-radius:4px;padding:1px 6px;font-size:11.5px}
+.cp.d{border-color:#7a5a2c;color:#ffcf8a}.cp.f{border-color:#5a4a7a;color:#cdb8ff}
+.sn{font-size:11.5px;color:var(--dim)}.sn b{color:var(--ink)}
+.tot{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+/* part */
+.pc h3{margin:0;font-size:15px}
+.pc .what{margin:6px 0 10px}
+.opt{margin:8px 0}
+.opt .lb{color:var(--dim);font-size:11px;letter-spacing:1px;margin-bottom:3px}
+.bar{height:8px;border-radius:4px;background:#1b2a39;overflow:hidden;margin:3px 0}
+.bar i{display:block;height:100%}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}
+.kv span:nth-child(odd){color:var(--dim)}
+.pairs{font-size:12px}
+.empty{color:var(--dim);margin-top:30px;text-align:center}
+.foot{padding:10px 14px;border-top:1px solid var(--line)}
+.site{color:var(--dim);font-size:12px;margin-bottom:6px}
+.go{width:100%;padding:12px;border:0;border-radius:6px;background:var(--acc);color:#04121d;font:inherit;font-weight:bold;letter-spacing:4px;cursor:pointer}
+.go small{display:block;letter-spacing:0;font-weight:normal;font-size:11px;color:#3a1a12}
+/* the aim (D23): a line on Checks, an overlay over the view */
+.aim{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px 8px;border:1px dashed #3d5a78;border-radius:6px;cursor:pointer}
+.aim:hover{border-color:var(--acc)}
+.aim b{color:var(--acc)}
+.ov{position:absolute;left:276px;top:56px;width:640px;bottom:20px;background:#0c1520f7;border:1px solid var(--acc);border-radius:10px;padding:16px 18px;display:none;z-index:5}
+.ov.on{display:block}
+.ov h2{margin:0 0 10px;font-size:14px;letter-spacing:2px;color:var(--acc);display:flex;justify-content:space-between}
+.ov h2 span{cursor:pointer;color:var(--dim)}
+.sec{color:var(--dim);font-size:11px;letter-spacing:1.5px;margin:12px 0 6px}
+.job{display:flex;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:5px;margin-bottom:5px;cursor:pointer}
+.job.on{border-color:var(--acc);background:#13283b}
+.job .k{color:var(--dim);font-size:11px;margin-left:auto;text-align:right}
+.leg{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:#0f1d2a}
+.leg .n{color:var(--acc);font-weight:bold;margin-right:6px}
+.sel{background:#16273a;border:1px solid #2c4560;color:var(--ink);border-radius:4px;padding:2px 6px;font:inherit;font-size:12px}
+.fld{width:58px}
+.guess{margin-top:6px;font-size:12px}
+.guess .q{color:var(--warn)}
+.globe{display:inline-block;vertical-align:middle;margin-left:6px}
+.ovfoot{position:absolute;left:18px;right:18px;bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.legtag{display:inline-block;margin-left:6px;border:1px dashed #5d7fa0;color:#a9cdf0;border-radius:4px;padding:0 5px;font-size:11px}
+.hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:#0009;color:#cfe;padding:5px 12px;border-radius:5px;font-size:11.5px}
+.still .hint{display:none}
+</style></head>
+<body><div class="app" id="app">
+<div class="desk"><div class="paper"></div></div>
+
+<!-- left: the catalogue, folded by category (Q238) -->
+<div class="pane left">
+  <h1>LAUNCHPAD</h1>
+  <div class="small">Year 2, day 140 · Funds <b style="color:var(--acc)">80M</b></div>
+  <div class="cat" style="margin-top:14px">COMMAND &amp; PROBES <span class="n">5 ▸</span></div>
+  <div class="cat">PAYLOAD <span class="n">9 ▾</span></div>
+  <div class="item"><span class="thumb"><svg width="18" height="18"><rect x="4" y="5" width="10" height="9" fill="#9ab"/><circle cx="9" cy="9" r="2.5" fill="#123"/></svg></span>Camera (side)<span class="m">0.12 t</span></div>
+  <div class="item"><span class="thumb"><svg width="18" height="18"><path d="M9 2v14" stroke="#9ab" stroke-width="2"/></svg></span>Whip antenna<span class="m">0.02 t</span></div>
+  <div class="item"><span class="thumb"><svg width="18" height="18"><rect x="5" y="3" width="8" height="12" fill="#9ab"/></svg></span>Boom antenna<span class="m">0.04 t</span></div>
+  <div class="item"><span class="thumb"><svg width="18" height="18"><rect x="3" y="5" width="12" height="8" fill="#c9a24a"/></svg></span>Battery (side)<span class="m">0.02 t</span></div>
+  <div class="small" style="margin:4px 0 0 4px">+5 more · 2 locked</div>
+  <div class="cat">TANKS <span class="n">7 ▸</span></div>
+  <div class="cat">ENGINES <span class="n">6 ▸</span></div>
+  <div class="cat">STRUCTURE <span class="n">6 ▸</span></div>
+  <div class="cat">AERO &amp; CONTROL <span class="n">6 ▸</span></div>
+  <div class="cat">POWER <span class="n">4 ▸</span></div>
+  <div class="cat">LANDING &amp; RECOVERY <span class="n">4 ▸</span></div>
+</div>
+
+<!-- the toolbar on the view (D22): tools, not information -->
+<div class="tools">
+  <div class="tg"><span class="lb">sym</span><button class="tb">×1</button><button class="tb on">×2</button><button class="tb">×3</button><button class="tb">×4</button><button class="tb">×6</button><button class="tb">×8</button></div>
+  <div class="tg"><button class="tb on">snap</button><button class="tb">radial dec.</button></div>
+  <div class="tg"><span class="lb">show</span><button class="tb on" id="tCom">balance</button><button class="tb" id="tLoads">loads</button></div>
+  <div class="tg"><button class="tb">↶</button><button class="tb" disabled>↷</button><button class="tb">clear</button></div>
+</div>
+
+<!-- the rocket (stands in for the 3D view) -->
+<svg class="rk" viewBox="0 0 638 690" id="rk">
+  <defs>
+    <linearGradient id="hull" x1="0" x2="1"><stop offset="0" stop-color="#5d6b52"/><stop offset=".45" stop-color="#9aa98a"/><stop offset="1" stop-color="#3f4a38"/></linearGradient>
+    <linearGradient id="white" x1="0" x2="1"><stop offset="0" stop-color="#9aa2aa"/><stop offset=".45" stop-color="#eef1f3"/><stop offset="1" stop-color="#7d858c"/></linearGradient>
+    <linearGradient id="metal" x1="0" x2="1"><stop offset="0" stop-color="#3a3f44"/><stop offset=".5" stop-color="#8b939b"/><stop offset="1" stop-color="#2d3236"/></linearGradient>
+    <linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#8a6a20"/><stop offset=".5" stop-color="#e3c25a"/><stop offset="1" stop-color="#6d5218"/></linearGradient>
+    <marker id="ah" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ff6b5b"/></marker>
+  </defs>
+  <!-- the stand -->
+  <ellipse cx="319" cy="668" rx="120" ry="16" fill="#151515"/><rect x="199" y="652" width="240" height="16" fill="#1d1d1d"/>
+  <!-- boosters (drop in stage 2) -->
+  <g class="pt" data-p="boost">
+    <path d="M214 430 Q228 392 242 430 Z" fill="url(#white)"/><rect x="214" y="430" width="28" height="170" fill="url(#white)"/>
+    <path d="M216 600 L240 600 L246 640 L210 640 Z" fill="url(#metal)"/>
+    <path d="M396 430 Q410 392 424 430 Z" fill="url(#white)"/><rect x="396" y="430" width="28" height="170" fill="url(#white)"/>
+    <path d="M398 600 L422 600 L428 640 L392 640 Z" fill="url(#metal)"/>
+  </g>
+  <!-- radial decouplers: on the core's engine, the joint that fails -->
+  <g class="pt" data-p="rdec"><rect x="242" y="604" width="44" height="10" fill="#b8962e"/><rect x="352" y="604" width="44" height="10" fill="#b8962e"/></g>
+  <!-- core: tank and engine -->
+  <g class="pt" data-p="t4"><rect x="286" y="420" width="66" height="176" fill="url(#hull)"/>
+    <g stroke="#2e3829" stroke-width="1"><line x1="286" y1="464" x2="352" y2="464"/><line x1="286" y1="508" x2="352" y2="508"/><line x1="286" y1="552" x2="352" y2="552"/></g></g>
+  <g class="pt" data-p="kestrel"><rect x="286" y="596" width="66" height="10" fill="#3b4148"/><path d="M296 606 L342 606 L352 652 L286 652 Z" fill="url(#metal)"/></g>
+  <!-- interstage decoupler, upper stage -->
+  <g class="pt" data-p="dec"><rect x="286" y="408" width="66" height="12" fill="#a8892a"/></g>
+  <g class="pt" data-p="petrel"><path d="M303 380 L335 380 L344 408 L294 408 Z" fill="url(#metal)"/></g>
+  <g class="pt" data-p="t1"><rect x="286" y="322" width="66" height="58" fill="url(#hull)"/></g>
+  <!-- the fairing: drawn cut away so the satellite shows -->
+  <g class="pt" data-p="fair">
+    <rect x="283" y="312" width="72" height="10" fill="#cfd5da"/>
+    <path d="M281 312 L281 210 Q281 150 319 120 Q357 150 357 210 L357 312 Z" fill="none" stroke="#e8edf0" stroke-width="3"/>
+    <path d="M281 312 L281 210 Q281 150 319 120 L319 312 Z" fill="#dfe5e9" opacity=".9"/>
+    <line x1="319" y1="120" x2="319" y2="312" stroke="#aab2b8" stroke-width="1" stroke-dasharray="4 3"/>
+  </g>
+  <g class="pt" data-p="sat">
+    <rect x="322" y="236" width="28" height="70" fill="url(#gold)"/>
+    <rect x="324" y="200" width="22" height="36" fill="#d9dde0"/>
+    <path d="M327 200 L343 200 L335 176 Z" fill="#eee"/>
+  </g>
+  <g class="pt" data-p="scam"><rect x="350" y="262" width="5" height="16" fill="#334"/></g>
+  <!-- balance: centre of mass and centre of pressure (D22: show it on the rocket) -->
+  <g id="bal">
+    <line x1="319" y1="372" x2="319" y2="456" stroke="#ff6b5b" stroke-width="2.5" marker-end="url(#ah)"/>
+    <circle cx="319" cy="372" r="9" fill="none" stroke="#7fd0ff" stroke-width="3"/><circle cx="319" cy="372" r="3" fill="#7fd0ff"/>
+    <text x="190" y="376" class="mk" fill="#7fd0ff">air pushes here</text>
+    <circle cx="319" cy="466" r="9" fill="none" stroke="#ffc14d" stroke-width="3"/><circle cx="319" cy="466" r="3" fill="#ffc14d"/>
+    <text x="336" y="470" class="mk" fill="#ffc14d">balance point</text>
+    <text x="440" y="408" class="mk" fill="#ff6b5b" font-size="11">the push is above the balance:</text>
+    <text x="440" y="422" class="mk" fill="#ff6b5b" font-size="11">it wants to turn over</text>
+  </g>
+  <!-- the failing joint, ringed -->
+  <g id="ring"><circle class="ring" cx="264" cy="609" r="16"/><circle class="ring" cx="374" cy="609" r="16"/>
+    <text x="150" y="660" class="mk" fill="#ff6b5b" font-size="11">breaks at max-q</text></g>
+</svg>
+
+<!-- right: three tabs (D22) -->
+<div class="pane right">
+  <div class="tabs">
+    <div class="tab on" data-t="checks">CHECKS<span class="badge">2</span></div>
+    <div class="tab" data-t="stages">STAGES</div>
+    <div class="tab" data-t="part">PART</div>
+  </div>
+  <div class="body">
+    <!-- CHECKS -->
+    <div class="page on" id="p-checks">
+      <div class="aim" id="aimLine"><span>Aim <b>Weather satellite</b> <span class="small">· polar, 300 km</span></span><span class="small">▾</span></div>
+      <div class="verdict bad"><span>NO-GO · two to fix, two to watch</span><span>2 of 6 ok</span></div>
+
+      <div class="row warn" data-hl="t4,kestrel,boost,t1,petrel"><div class="rh"><span class="dot warn"></span><div class="rt"><div class="t">Reaches its target</div><div class="v">Probably: our guess is 3,900 m/s, it carries 4,210, but the guess could be 30 % off. <span class="fix">Fix: study the trajectory, or add margin.</span></div></div><span class="chev">▸</span></div>
+        <div class="nums"><table><tr><td>our guess, polar orbit 300 km</td><td>~3,900 m/s</td></tr><tr><td>how good it is (human computers)</td><td>could be 30 % off</td></tr><tr><td>Δv carried (vacuum)</td><td>4,210 m/s</td></tr><tr><td>stage 1 + boosters · stage 2 · stage 3</td><td>1,980 · 860 · 1,370</td></tr><tr><td>flown there before</td><td>no (low orbit, yes: 3,640)</td></tr></table>
+        <div class="act"><button class="tb">Study it: 3.2M, 26 d → 10 % off</button></div></div></div>
+
+      <div class="row ok" data-hl="kestrel,boost"><div class="rh"><span class="dot ok"></span><div class="rt"><div class="t">Gets off the pad <span class="v" style="font-weight:normal">· 1.4× its weight</span></div></div><span class="chev">▸</span></div>
+        <div class="nums"><table><tr><td>thrust at liftoff</td><td>690 kN</td></tr><tr><td>weight</td><td>49.6 t</td></tr><tr><td>thrust-to-weight</td><td>1.42</td></tr><tr><td>upper stage alone</td><td>0.9 (fine in orbit)</td></tr></table></div></div>
+
+      <div class="row bad" data-hl="rdec,kestrel"><div class="rh"><span class="dot bad"></span><div class="rt"><div class="t">Holds together</div><div class="v">Breaks at max-q: the boosters hang on the core's <b>engine</b>. <span class="fix">Fix: move them onto the tank, or reinforce the joint.</span></div></div><span class="chev">▾</span></div>
+        <div class="nums"><table><tr><td>booster decoupler / Kestrel, at liftoff</td><td>64 %</td></tr><tr><td>at max-q (5° off the air)</td><td style="color:var(--bad)">132 %</td></tr></table>
+        <div class="act"><button class="tb" id="showJ">Show it</button><button class="tb" id="reinf">Reinforce ×2 · +60 kg</button></div></div></div>
+
+      <div class="row bad" data-hl="t4,fair,sat"><div class="rh"><span class="dot bad"></span><div class="rt"><div class="t">Flies straight</div><div class="v">Turns over if it coasts in thick air. <span class="fix">Fix: fins low on the core, or keep an engine burning to 40 km.</span></div></div><span class="chev">▸</span></div>
+        <div class="nums"><table><tr><td>balance point vs air's push</td><td style="color:var(--bad)">0.4 widths behind</td></tr><tr><td>burning (engines steer)</td><td>holds</td></tr><tr><td>coasting at max-q</td><td style="color:var(--bad)">turns over</td></tr><tr><td>steering it has</td><td>wheels 2.0 kN·m</td></tr><tr><td>steering it needs</td><td>38 kN·m</td></tr></table>
+        <div class="act"><button class="tb">Show the balance</button><button class="tb">Add 4 fins at the bottom</button></div></div></div>
+
+      <div class="row warn" data-hl="sat,scam"><div class="rh"><span class="dot warn"></span><div class="rt"><div class="t">The payload works</div><div class="v">Battery runs flat 12 min into each night. <span class="fix">Fix: a second battery, or a solar wing.</span></div></div><span class="chev">▸</span></div>
+        <div class="nums"><table><tr><td>power, average in orbit</td><td>+40 W / −52 W</td></tr><tr><td>battery vs one night</td><td>1.0 / 1.3 kWh</td></tr><tr><td>camera</td><td>2 m from 300 km</td></tr><tr><td>antenna</td><td>whip · ground station 2,100 km</td></tr><tr><td>lifetime at 300 km</td><td>~4 years</td></tr></table></div></div>
+
+      <div class="row ok"><div class="rh"><span class="dot ok"></span><div class="rt"><div class="t">Budget and time <span class="v" style="font-weight:normal">· 46M of 80M, 31 days</span></div></div><span class="chev">▸</span></div>
+        <div class="nums"><table><tr><td>parts</td><td>41M</td></tr><tr><td>pad and range</td><td>5M</td></tr><tr><td>back if it all lands intact</td><td>0 (nothing recovered)</td></tr><tr><td>imports</td><td>none</td></tr><tr><td>new to us</td><td>Payload fairing (riskier, slower checkout)</td></tr></table></div></div>
+    </div>
+
+    <!-- STAGES -->
+    <div class="page" id="p-stages">
+      <div class="small" style="margin-bottom:8px">Hover a stage to see its parts. Drag a chip to move it.</div>
+      <div class="st" data-hl="kestrel,boost"><div class="hd"><b>1 · Liftoff</b><span class="sn">49.6 t → 31.2 t</span></div>
+        <div class="chips"><span class="cp">ignite Kestrel</span><span class="cp">ignite 2 boosters</span></div>
+        <div class="sn">Δv <b>1,980</b> m/s · TWR <b>1.42</b> · burns <b>62 s</b></div></div>
+      <div class="st" data-hl="boost,rdec"><div class="hd"><b>2 · Boosters off</b><span class="sn">27.4 t → 12.9 t</span></div>
+        <div class="chips"><span class="cp d">drop 2 boosters</span></div>
+        <div class="sn">Δv <b>860</b> m/s · TWR <b>0.98</b> · burns <b>48 s</b> <span style="color:var(--warn)">· sags until lighter</span></div></div>
+      <div class="st" data-hl="t4,kestrel,dec,petrel"><div class="hd"><b>3 · Core off, upper on<span class="legtag">→ orbit</span></b><span class="sn">4.9 t → 2.6 t</span></div>
+        <div class="chips"><span class="cp d">drop core</span><span class="cp">ignite Petrel</span></div>
+        <div class="sn">Δv <b>1,370</b> m/s · TWR <b>1.35</b> · burns <b>96 s</b></div></div>
+      <div class="st" data-hl="fair"><div class="hd"><b>4 · Fairing off</b><span class="sn">at 60 km, by default</span></div>
+        <div class="chips"><span class="cp f">drop fairing (two halves)</span></div>
+        <div class="sn">−105 kg once it's gone</div></div>
+      <div class="tot">Total Δv <b style="color:var(--acc)">4,210 m/s</b> · 49.6 t</div>
+    </div>
+
+    <!-- PART -->
+    <div class="page" id="p-part"><div id="pc"></div></div>
+  </div>
+  <div class="foot">
+    <div class="site">Dunnzar Cape · 0.0°N · clear</div>
+    <button class="go">BUILD AND LAUNCH ▶ [L]<small>two checks failing: it will fly, but expect trouble</small></button>
+  </div>
+</div>
+
+
+<!-- the aim overlay (D23): a job, or your own aim in up to three legs; every number is the program's guess -->
+<div class="ov" id="ov">
+  <h2>THE AIM <span id="ovX">✕ close</span></h2>
+  <div class="sec">A JOB (ITS TARGET FILLED IN)</div>
+  <div class="job on" data-aim="Weather satellite|polar orbit, 300 km"><b>Weather satellite</b><span class="small">contract · 80M</span><span class="k">polar orbit, 300 km<br>~3,900 m/s · could be 30 % off</span></div>
+  <div class="job" data-aim="Image Dunnzar|any orbit over it, by day"><b>Image Dunnzar at 3 m</b><span class="small">contract · 21M</span><span class="k">an orbit that passes over it<br>~3,700 m/s · could be 30 % off</span></div>
+  <div class="job" data-aim="Soft landing on Selene|land, near side"><b>Soft landing on Selene</b><span class="small">program</span><span class="k">land on the near side<br>~5,600 m/s · a rough guess: nobody has been</span></div>
+  <div class="sec">OR YOUR OWN (UP TO THREE LEGS)</div>
+  <div class="leg"><span class="n">1</span><select class="sel"><option>orbit</option><option>hop to a height</option><option>flyby</option><option>land</option><option>meet a craft</option></select>
+    around <select class="sel"><option>Tellus</option><option>Selene</option></select>
+    at <input class="sel fld" value="300"> km, tilted <select class="sel"><option>as the pad (0°)</option><option>polar (90°)</option><option>stationary</option><option>…</option></select>
+    <div class="guess">~3,900 m/s from the pad · <span class="q">could be 30 % off</span> · flown nearby: low orbit, 3,640</div></div>
+  <div class="leg"><span class="n">2</span><select class="sel"><option>land</option><option>orbit</option><option>flyby</option></select>
+    on <select class="sel"><option>Selene</option></select>
+    where <select class="sel"><option>anywhere on the near side</option><option>pick on the globe</option></select>
+    <svg class="globe" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#8d8f93"/><circle cx="12" cy="13" r="4" fill="#6c6e72"/><circle cx="21" cy="21" r="5" fill="#707276"/><circle cx="20" cy="11" r="2.5" fill="#ffc14d"/></svg>
+    <div class="guess">+ ~2,700 m/s · <span class="q">a rough guess: nobody has landed there (could be 50 % off)</span></div></div>
+  <div class="leg"><span class="n">3</span><select class="sel"><option>come home</option><option>stay</option></select> to <select class="sel"><option>Tellus, splash down</option><option>Tellus, on land</option></select>
+    <div class="guess">+ ~2,900 m/s · <span class="q">a rough guess (could be 50 % off)</span></div></div>
+  <div class="ovfoot"><span class="small">Saved with the design. Guesses get better with a study, and become known once flown.</span><button class="tb on" id="ovOk">Use this aim</button></div>
+</div>
+<div class="hint">Mock-up (D22). Click a tab, a check, or a part on the rocket; hover a stage or a check to light its parts.</div>
+</div>
+
+<script>
+const PARTS={
+  boost:{name:'Kestrel booster ×2',what:'Extra thrust for the first minute, then dropped. Two of them, mirrored.',kv:[['mass','2 × 5.3 t'],['thrust','2 × 230 kN'],['cost','2 × 6M']],
+    opts:[['Symmetry',['×1','×2','×3','×4'],1],['Joint',['standard','reinforced ×2','heavy ×4'],0]],load:[['at max-q',.71]],pairs:'Hangs on a radial decoupler. Put the decoupler on a <b>tank</b>: an engine\'s joint is weaker.'},
+  rdec:{name:'Radial decoupler ×2',what:'Holds a booster to the core and lets it go on its stage.',kv:[['mass','2 × 80 kg'],['cost','2 × 0.4M']],
+    opts:[['Joint',['standard','reinforced ×2','heavy ×4'],0]],load:[['at liftoff',.64],['at max-q',1.32]],warn:'Breaks at max-q: it carries each booster\'s push into the Kestrel\'s joint. Move it up onto the tank, or reinforce it (+60 kg).'},
+  kestrel:{name:'Kestrel booster engine',what:'The core\'s main engine: strong at sea level, steers by swivelling its nozzle.',kv:[['mass','1.3 t'],['thrust','230 kN'],['steers','±5°'],['know-how','proven']],
+    opts:[['Joint',['standard','reinforced ×2','heavy ×4'],0]],load:[['at max-q',1.32]],warn:'The boosters\' decouplers sit on this engine: its joint takes their push.'},
+  t4:{name:'Tank 4 t',what:'The core\'s propellant.',kv:[['mass','4.0 t full · 0.45 t dry'],['cost','2M']],opts:[['Joint',['standard','reinforced ×2','heavy ×4'],0]],load:[['at max-q',.38]],pairs:'Fins mount on its sides; boosters too.'},
+  dec:{name:'Interstage decoupler',what:'Splits the core from the upper stage, and shields the Petrel\'s bell until then.',kv:[['mass','80 kg']],opts:[['Joint',['standard','reinforced ×2','heavy ×4'],0]],load:[['at max-q',.29]]},
+  petrel:{name:'Petrel vacuum engine',what:'The upper stage: weak in air, efficient in space.',kv:[['mass','0.5 t'],['thrust','65 kN'],['efficiency','345 s in vacuum']],opts:[],load:[['at max-q',.21]]},
+  t1:{name:'Tank 1 t',what:'The upper stage\'s propellant.',kv:[['mass','1.0 t full']],opts:[['Joint',['standard','reinforced ×2','heavy ×4'],0]],load:[['at max-q',.33]]},
+  fair:{name:'Payload fairing',what:'A shell around the satellite: no air and no heat inside until it drops, in two halves.',kv:[['mass','40 kg + 35 kg/m'],['encloses','satellite, camera'],['know-how','new to us']],
+    opts:[['Length',['2 m','3 m','4 m','5 m','6 m'],1]],load:[['at max-q',.41]],pairs:'Drops on its own stage (4). Shorter is lighter and easier to keep straight; it must still cover what\'s inside.'},
+  sat:{name:'Probe core + instruments',what:'The satellite: its computer, battery and whip antenna.',kv:[['mass','0.31 t'],['power','−52 W']],opts:[],load:[],warn:'Runs flat 12 min into each night pass: add a battery or a solar wing.'},
+  scam:{name:'Camera (side)',what:'Pictures from orbit: 2 m detail from 300 km. Must face the ground to take one.',kv:[['mass','0.12 t'],['power','−12 W']],opts:[],load:[],pairs:'Needs an antenna to send pictures down, and pointing at the ground (a horizon sensor and attitude hold).'},
+};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const pts=$$('.pt');
+function light(ids){pts.forEach(g=>{const on=!ids||ids.includes(g.dataset.p);g.classList.toggle('dim',!!ids&&!on);g.classList.toggle('hi',!!ids&&on)})}
+let sel=null;
+function select(id){sel=id;pts.forEach(g=>g.classList.toggle('sel',g.dataset.p===id));showPart(id);tab('part')}
+function showPart(id){const p=PARTS[id];if(!p){$('#pc').innerHTML='<div class="empty">Click a part on the rocket<br>to see what it does and change it.</div>';return}
+  const bar=(l,f)=>`<div style="display:flex;justify-content:space-between;font-size:12px"><span class="small">${l}</span><span style="color:${f>1?'var(--bad)':f>.7?'var(--warn)':'var(--ink)'}">${Math.round(f*100)} % of its rating</span></div><div class="bar"><i style="width:${Math.min(100,f*100)}%;background:${f>1?'var(--bad)':f>.7?'var(--warn)':'var(--ok)'}"></i></div>`;
+  $('#pc').innerHTML=`<div class="pc"><h3>${p.name}</h3><div class="what">${p.what}</div>
+    ${p.warn?`<div class="verdict bad" style="display:block">${p.warn}</div>`:''}
+    <div class="kv">${p.kv.map(([k,v])=>`<span>${k}</span><span>${v}</span>`).join('')}</div>
+    ${p.opts.map(([l,o,i])=>`<div class="opt"><div class="lb">${l.toUpperCase()}</div>${o.map((x,j)=>`<button class="tb${j===i?' on':''}">${x}</button>`).join(' ')}</div>`).join('')}
+    ${p.load.length?`<div class="opt"><div class="lb">LOADS</div>${p.load.map(([l,f])=>bar(l,f)).join('')}</div>`:''}
+    ${p.pairs?`<div class="opt"><div class="lb">GOES WITH</div><div class="pairs">${p.pairs}</div></div>`:''}
+    <div class="act" style="margin-top:12px"><button class="tb">Move</button><button class="tb">Copy</button><button class="tb">Delete</button></div></div>`;
+  $$('.opt .tb').forEach(b=>b.onclick=()=>{[...b.parentNode.querySelectorAll('.tb')].forEach(x=>x.classList.remove('on'));b.classList.add('on')})}
+function tab(t){$$('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t===t));$$('.page').forEach(x=>x.classList.toggle('on',x.id==='p-'+t));if(t==='part'&&!sel)showPart(null)}
+$$('.tab').forEach(x=>x.onclick=()=>tab(x.dataset.t));
+$$('.row .rh').forEach(h=>h.onclick=()=>{const r=h.parentNode,o=r.classList.contains('open');$$('.row').forEach(x=>x.classList.remove('open'));if(!o)r.classList.add('open')});   // one open at a time: the tab never scrolls
+$$('[data-hl]').forEach(r=>{r.onmouseenter=()=>light(r.dataset.hl.split(','));r.onmouseleave=()=>light(null)});
+pts.forEach(g=>g.onclick=e=>{e.stopPropagation();select(g.dataset.p)});
+$('#tCom').onclick=e=>{e.target.classList.toggle('on');$('#bal').style.display=e.target.classList.contains('on')?'':'none'};
+$('#tLoads').onclick=e=>{e.target.classList.toggle('on')};
+$('#showJ').onclick=e=>{e.stopPropagation();const r=$('#ring');r.style.display='';light(['rdec','kestrel'])};
+$('#reinf').onclick=e=>{e.stopPropagation();select('rdec')};
+const Q=new URLSearchParams(location.search);
+if(Q.get('still'))$('#app').classList.add('still');
+if(Q.get('part'))select(Q.get('part'));
+if(Q.get('tab'))tab(Q.get('tab'));
+if(Q.get('hl'))light(Q.get('hl').split(','));
+$('#aimLine').onclick=()=>$('#ov').classList.add('on');$('#ovX').onclick=$('#ovOk').onclick=()=>$('#ov').classList.remove('on');
+$$('.job').forEach(j=>j.onclick=()=>{$$('.job').forEach(x=>x.classList.remove('on'));j.classList.add('on');const[a,b]=j.dataset.aim.split('|');$('#aimLine').innerHTML=`<span>Aim <b>${a}</b></span><span class="small">▾</span>`});
+if(Q.get('open'))$$('.row')[+Q.get('open')].classList.add('open');
+if(Q.get('aim'))$('#ov').classList.add('on');
+
+</script>
+</body></html>

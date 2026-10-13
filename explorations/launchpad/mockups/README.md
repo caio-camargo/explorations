@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
+**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -38,6 +38,23 @@ Open `screens/index.html` (one button per screen) or the stills in `output/launc
 | **assembly** | the assembly hall with blueprint panels (the catalogue by category, the specification in groups; vehicle's Q235–Q238) |
 
 **Pick:** _(Caio; W35's defaults hold if silent)_
+
+## builder/ — the builder's right panel as three tabs, and the aim (D22, D23 → Q237, Q286, Q340)
+
+Open `builder/index.html` (design desk, 2026-10-12) or the stills in `output/launchpad/mockups/builder/`
+(`checks.png`, `stages.png`, `part.png`, `aim.png`, 1280×800). Caio: the panel is "much too long... very confusing, and this is a
+matter for better design, not more explanation". The build tools are a **toolbar on the view**; the panel is three tabs
+that never scroll: **Checks** (the default: six verdicts for the chosen mission, each a plain line and its fix, one
+opened at a time for its numbers; hover a row and its parts light up), **Stages** (hover a stage: its parts lit, the
+rest dimmed, PLAYTEST #81), **Part** (click a part on the rocket: what it's for, a warning if it has one, options as
+buttons, loads as bars, what it goes with). The rocket shows the problems too: the breaking joint ringed in red, an
+arrow from where the air pushes to the balance point. The rocket is Caio's own trouble from 2026-10-12 (boosters on the
+core's engine, no fins, a fairing); a flat drawing stands in for the 3D view; the numbers are illustrative.
+**The aim (D23)**: the Checks tab's first line opens an overlay (`aim.png`): a job with its target, or your own aim in
+up to three legs (orbit, land, come home), each with the program's guess and how far off it could be.
+URL: `?tab=checks|stages|part`, `&part=<id>`, `&hl=<ids>`, `&open=<row>`, `&aim=1`, `&still=1`.
+
+**Pick:** _(Caio; D22's layout holds if silent: the vehicle session builds from this page)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 

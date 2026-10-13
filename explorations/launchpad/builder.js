@@ -243,7 +243,9 @@ const PART_INFO={
   dec:'Splits the rocket in two when its stage fires: everything below it falls away.',
   istage:'A decoupler with a skirt that wraps the engine above it, keeping that engine out of the airflow until it is dropped.',
   fair:'A payload fairing: its shell keeps what stands on it out of the air and its heat on the way up, then drops in two halves at its stage. Set its length to fit.',
-  scam:'The imaging camera as a box on the side: same camera, no stack height; it moves the balance off the axis.',
+  scam:'The imaging camera as a box on the side, looking outward: same camera, no stack height; it moves the balance off the axis.',
+  oct:'A narrow octagonal frame, 0.8 m across, to build a satellite round: side boxes, antennas and panels sit on its faces.',
+  octl:'The octagonal frame, 1 m long.',
   ssci:'The instrument package as a box on the side: same instruments, no stack height.',
   sbatt:'A 1 kWh battery as a box on the side.',
   scomp:'The onboard computer as a box on the side.',
@@ -415,7 +417,7 @@ function staging(box){
     if(i<S0.length-1){const m=btn(r,'⇣',false,()=>go({stage:i+1},{row:i}),`fire stage ${i+2} with this one, in one press`);m.className='smerge'}});
   if(S0.length)gap(S0.length)}
 function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
-  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','fair','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Crew escape',['les']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','fair','frame','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar','rtg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);

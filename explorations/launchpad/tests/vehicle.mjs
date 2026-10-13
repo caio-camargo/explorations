@@ -575,3 +575,16 @@
     sym.f < 0.01 && cam.f > sym.f && tank.f > cam.f && B.f > 0.6 && W(bst) && !W(mk()),
     `symmetric ${(sym.f * 100).toFixed(1)}%, side camera ${(cam.f * 100).toFixed(1)}% (${(cam.miss * 100).toFixed(1)} cm), side tank ${(tank.f * 100).toFixed(0)}%, one booster ${(B.f * 100).toFixed(0)}% (stage ${B.k}, ${(B.miss * 100).toFixed(0)} cm)`);
 }
+
+// vehicle-20. Builder notes from Caio's testing (2026-10-12): the side boxes fit inside a payload fairing on a 1.25 m stack (they
+// used to stick out past its bulge), and on the narrow octagonal frame; the stack camera is a short drum now.
+{
+  const fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean), SIDE = ['scam', 'ssci', 'sbatt', 'scomp'];
+  const d = api.toV2(['core', 'oct', 'sci', 'fair', 't2', 'petrel', 'dec', 't8', 'kestrel']);
+  SIDE.forEach((k, i) => { fd(d.root, 'sci').c.push({ k, at: { y: 0.24, a: i * Math.PI / 2, n: 1 }, c: [] }); fd(d.root, 'oct').c.push({ k, at: { y: 0.25, a: i * Math.PI / 2 + 0.4, n: 1 }, c: [] }); });
+  const s = api.newShip(d), side = s.parts.filter(p => SIDE.includes(p.d.key)), out = side.filter(p => !p.inFair).map(p => p.d.key + (p.host && p.host.d ? '@' + p.host.d.key : ''));
+  const o = s.parts.find(p => p.d.key === 'oct');
+  check('builder notes: side boxes fit a payload fairing on a 1.25 m stack and on the octagonal frame; the frame is 0.8 m across; the camera is 0.3 m tall',
+    side.length === 8 && !out.length && o && o.d.r === 0.4 && api.PARTS.cam.h === 0.3,
+    `side boxes ${side.length}, outside the fairing: ${out.join(', ') || 'none'}; frame r ${o && o.d.r}; camera ${api.PARTS.cam.h} m`);
+}

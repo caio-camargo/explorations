@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.3.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 1.4.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -7,6 +7,7 @@ follow its brief after the normal AGENTS.md startup. Add a section when a new st
 |---|---|---|
 | A launchpad lane (flow, economy, vehicle, space, world, look & sound, QA, platform) | "you are the launchpad **space** session"; look & sound also names a beat: "…**look & sound** session, beat: effects" | [`explorations/launchpad/QUEUE.md`](../explorations/launchpad/QUEUE.md): its kickoff line; lanes in [`ROADMAP.md`](../explorations/launchpad/ROADMAP.md) |
 | Orchestrator | "you are the orchestrator"; ask it "what are the next unblockers?" | Its row in `ACTIVE_WORK.md`, the top of `QUEUE.md`, and ROADMAP § "Keeping the queue full" (incl. *Next unblockers*) |
+| Test bench | "you are the launchpad **test bench**" (Caio's second computer) | [below](#test-bench) |
 | Design desk | "you are the design desk" | [below](#design-desk) |
 | Playtest intake | "you are the playtest feedback session" | [below](#playtest-intake) |
 | Studio | "you are the studio session" | [below](#studio) |
@@ -16,6 +17,30 @@ follow its brief after the normal AGENTS.md startup. Add a section when a new st
 `archive/`; headers and version histories stay true. Answered questions leave QUEUE.
 
 ---
+
+## Test bench
+
+Launchpad, QA lane, on **Caio's second computer**, left running. **No game code.** It runs the browser work that queues up
+on the main machine, where the GPU is shared and two game runs at once hang it: it has its own GPU and its own
+`.game-busy` lock, so it never waits for one.
+
+**Setup, once:** clone from GitHub to `C:/Users/<you>/dev/explorations` on that machine (never into Google Drive), Node 22+,
+Chrome, Python. Serve with the threaded server (QUEUE Flags, "Flaky page loads"); set `PT_OUT` to a folder outside the repo.
+Its claim row names the machine (`hostname`). Work in the clone's `main` for docs; a worktree only if it ever builds.
+
+**Loop** (self-paced `/loop`, ~30 min when idle): `git pull`, then the first of these that has work:
+1. **Guard `main`:** for each new `## v1.N` since its last pass, `node test.mjs --smoke` and `node playtest.mjs m1`. A
+   failure is a PLAYTEST item (P1 if `m1` broke) naming the version and the commit, and a line under QUEUE *Proposed*.
+2. **QA items marked 🖥🖥 or "quiet machine"** (Q19's timing A/B on its branch, Q215's flake, Q233's M2 robot run): claim
+   in QUEUE, run, report. A timing A/B is valid here as a *relative* number; say the machine and GPU beside it.
+3. **The robot pass over untried TESTING rows**, newest first: set each up as `playtest.mjs` rows do, judge what a robot
+   can (layout, text, numbers, timings, a broken scene), mark it `✓ n (robot)`, `✗ n → P#m (robot)` or
+   `~ n (robot): needs a human`. Feel, difficulty and fun stay Caio's.
+4. **Before/after stills** for look & sound merges (`node refset.mjs`), into `output/launchpad/`, linked from the item.
+
+Pull before each edit; commit and push TESTING / PLAYTEST / QUEUE changes in small commits; take numbers from
+`node check_numbers.mjs`. Never merge or push code. If the queue gives it nothing for two passes, say so in its claim row
+and slow down to hourly; the orchestrator refills it.
 
 ## Playtest intake
 

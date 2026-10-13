@@ -5611,3 +5611,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/vessel.js`, `sim/flight.js`, `sim/space.js` (`shielded`, `profOf`, `antOf`, `vstOf`/`vesselOf`, `vesselFrom`), `sim/power.js`, `sim/program.js` (`PRICE`, `PART_GATE`, `kinOf`), `app/gl.js`, `app/render.js`, `app/editor.js`, `app/input.js`, `builder.js`, `test.mjs` (exposes `trimOf`), `tests/vehicle.mjs` (vehicle-17..19), notes/vehicle.md, NOTES.md, TESTING 228–229, QUEUE.
 - **Tests:** full suite passed before each push (678 checks, run in four chunks for memory).
 - **Next for vehicle:** Q329 (action groups), then Q341 (folding boom), Q338 (pointing).
+
+## 2026-10-12 — Caio + Claude (launchpad design desk): probes, pointing, the builder's panel
+- **Done:** `PROBES.md` (new, 0.1.3): payload parts and asymmetry after Voyager (side forms, antennas whip / boom / dish,
+  narrow and wide cameras, radar, scan platform, booms folding and telescoping, the fairing, the CoM and trim as a
+  mechanic), **the attitude law** (any part at any target, power the only cost), the era ladder, beauty rules, builder
+  explainers. D20 (+ amended: no momentum bookkeeping), D21. Then **D22, the builder's right panel**: a toolbar plus three
+  tabs (Checks, Stages, Part), every line a verdict then its fix (UI.md rule 14), and a clickable mock-up
+  `mockups/builder/` with stills. Caio's playtest notes filed as PLAYTEST #81–#85 (stage hover, the fairing snaps when
+  the craft tilts, hovering above the pad until launch, a snap at the engine with four boosters, bigger fins).
+- **Files:** `explorations/launchpad/PROBES.md`, `DECISIONS.md` (D20, D20 amended, D21, D22), `UI.md` (0.1.4),
+  `QUEUE.md` (Proposed S1–S3 and the tooltip line, since ranked as Q337, Q340, Q341; Q237/Q286/Q340 states), `ROADMAP.md`
+  catalog, `PLAYTEST.md`, `mockups/builder/index.html` (new), `mockups/README.md`, `INDEX.md`, `ACTIVE_WORK.md`, this
+  log. Stills (gitignored): `output/launchpad/mockups/builder/`.
+- **Next:** vehicle builds Q237 from the mock-up (with flow for the board) and works PLAYTEST #81–#85; Caio may mark up
+  the mock-up. Open with Caio: W29 (bodies round 2), W33 (face lab).
+- **Addendum (same session): D23, the aim.** The Checks tab's first line and an overlay: a job or your own aim in up to
+  three legs; every Δv need is the program's guess (a hidden, seeded error inside the stated bound; a study redraws it
+  tighter; flown, known). UI.md 0.1.5 § 3.1, the mock-up's aim overlay (`aim.png`), a QUEUE Proposed line.
