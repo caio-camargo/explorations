@@ -1744,3 +1744,24 @@ and lights, the city texture), `sim/space.js` (`cloudAt`), `views.js` (view 80's
   brightness. QUEUE *Proposed*.
 - **Checks:** test `aerofx-23` (the shader's and `cloudAt`'s formulas alike, the even filter, the sea and the lights);
   core 16's cloud check holds (mean 0.12, clear at 345/400, moving). TESTING 258.
+
+## v1.178 — the exposure reads the brightest spot, not the blur: a planet on black exposed for its clouds (2026-10-13, sky & bodies beat, QUEUE Q385)
+
+Effects' Q314 meter (`app/gl.js`: `BLOOM_FS`, `bloomEnd`, `EXPO`, `expoMean`), taken by this beat while effects was idle.
+
+- **The fault (Q323):** the highlight term H (the brightest 2 % of the frame may not pass hi/E) was read from the 1/16
+  bloom level, a blur. A disc of small bright clouds over a dark sea blurs to ~0.9 there, so view 157 (Tellus from
+  4,000 km) was exposed at E 2.74: the sea pale, the clouds clipped.
+- **Now:** the chain's alpha carries the brightest spot down to 1/16 (the first step takes the luminance of the 2×2
+  full-resolution texels under it, each later step the max of its 2×2 alphas; the Low pass's single step a 4×4 grid of
+  its 16×16 block), and H is the 98th percentile of that. **hi 2.4 → 2** with it.
+- **Measured on 29 views** (`output/launchpad/beauty/q385-meas/`, old H and the brightest-spot H at once): the new H only
+  binds where something bright sits on black or fills the frame's top: view 3 (200 km) E 1.38 → 0.78, 156 (orbit
+  sunrise) 1.96 → 1.20, **157 2.74 → 0.93**, 90 (a fireball) 0.70 → 0.48. The pad, the complex, ascent, max-q, fin
+  vapor, the clouds, entry, night, the desk, Selene and the space sky keep their E (their limit is above the E they use).
+- **Seen** (`q385-meas/` before, `q385-after/`): p2's sea is blue and the clouds have shape; from 200 km the limb and
+  the deck no longer wash out; the fireball keeps its core and the sky behind it deepens. Fixed E 0.5 and 0.75 for
+  comparison in `q385-E0.5/`, `q385-E0.75/` (0.75 a little deeper still: a taste call if wanted, `EXPO.hi`).
+- **Cost:** four `texelFetch` per bloom texel (sixteen on Low's one pass); within the GPU noise.
+- **Check:** test `aerofx-24` (the chain's alpha, and `expoMean`/`expoTarget` on a synthetic frame: a disc blurred
+  0.9, brightest 2.2, on black → E = 2/2.2). TESTING 260.

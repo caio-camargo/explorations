@@ -5936,3 +5936,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Built:** `PRESETS.Satellite` (orbit with ~520–565 m/s spare, prograde, 5–10° below, or the pitch program in attitude hold); `airStore` in the builder's in-air check (why 'store', a per-stage hold limit in degrees); every antenna and camera draws power. Test vehicle-25; full suite passed.
 - **Files:** `sim/vessel.js`, `sim/flight.js`, `sim/power.js`, `app/editor.js`, `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md` (260), `QUEUE.md`.
 - **Next:** TESTING 260 in a browser; Q353 (procedures hold prograde through separations) remains control + space.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies): Q385 the exposure's brightest spot (v1.178)
+
+- **Done:** the auto-exposure's highlight term read a blur (the 1/16 bloom level), so a planet of small bright clouds
+  on black read dim and was overexposed (view 157 E 2.74). The bloom chain's alpha now carries each block's brightest
+  spot and H reads that; `EXPO.hi` 2.4 → 2. Measured on 29 views first: only bright-on-black views move (3, 90, 156,
+  157: p2 now E 0.93, blue sea, clouds with shape). Effects was idle, so this beat took its item; heads-up in ACTIVE_WORK.
+- **Tests:** `aerofx-24` (new), the aerofx sections pass; smoke see the merge commit.
+- **Files:** `app/gl.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (260), `QUEUE.md` (Q387 now
+  ready), `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q385-*`.
+- **Next for sky & bodies:** Q387 (the sunglint view), Q322.
+

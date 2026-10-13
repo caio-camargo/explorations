@@ -982,13 +982,19 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
 // blurs). No threshold: a small share of every pixel's light spreads (uK), so only what is far brighter than sunlit
 // paint (the sun, plume cores, fireballs, lamps at night) shows a glow. The first step weights its taps by 1/(1 + exposed
 // luminance) (Karis), so a lone bright pixel doesn't flicker. The 1/16 level also gives the exposure (expoTick).
+// (Q385) Alpha carries the brightest spot down the chain (a max, not a blur): the first step takes the luminance of the
+// full-resolution texels under it (uMx 0; 2 a 4×4 grid of the Low pass's 16×16 block), each later one the max of the
+// 2×2 alphas (uMx 1). So the 1/16 level knows a sunlit cloud is 4.6 even when it is a few pixels in a dark sea.
 const BLOOM_FS=`#version 300 es
-precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uT;uniform vec2 uPx;uniform float uTh;
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uT;uniform vec2 uPx;uniform float uTh;uniform int uMx;
 vec3 fin(vec3 c){bvec3 b=equal(floatBitsToUint(c)&uvec3(0x7f800000u),uvec3(0x7f800000u));return vec3(b.x?0.:c.x,b.y?0.:c.y,b.z?0.:c.z);}   // NaN and ∞ to 0 by their bits (D3D compiles isnan away)
 void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);float ws=0.;
  for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++){vec3 t=fin(texture(uT,uv+vec2(i,j)*uPx*2.).rgb);float w=(i==0?2.:1.)*(j==0?2.:1.);
   if(uTh>0.)w/=1.+dot(t,vec3(.2126,.7152,.0722))*uTh;c+=t*w;ws+=w;}   // a 3×3 tent: no blocks
- o=vec4(c/ws,1.);}`;
+ float m=0.;ivec2 q=ivec2(gl_FragCoord.xy),sz=textureSize(uT,0)-1;
+ if(uMx==1){for(int i=0;i<2;i++)for(int j=0;j<2;j++)m=max(m,texelFetch(uT,min(q*2+ivec2(i,j),sz),0).a);}
+ else{int n=uMx==0?2:4,st=uMx==0?1:4;for(int i=0;i<n;i++)for(int j=0;j<n;j++)m=max(m,dot(fin(texelFetch(uT,min(q*n*st+ivec2(i,j)*st,sz),0).rgb),vec3(.2126,.7152,.0722)));}
+ o=vec4(c/ws,min(m,6e4));}`;
 // the composite: bloom added in linear light, the exposure (uE, one number for the frame: expoTick), a vignette, AgX
 // (Sobotka's curve, the Blender 4 default; Wrensch's fit: fire keeps its colour into white instead of ACES's flat
 // orange), then the grade (a 32³ LUT on the display values: GRADE_LUT) and grain, which also dithers the 8-bit output
@@ -1495,11 +1501,13 @@ const GRADE_LUT=(()=>{const n=32,d=new Uint8Array(n*n*n*4);for(let b=0;b<n;b++)f
 // two late without stalling (a pixel-pack buffer and a fence), turned into one exposure E for the frame, eased in log
 // over ~1 s. Partial adaptation (E ∝ L^−a, a < 1): night stays darker than day, the plume's glare still darkens the
 // sky. Highlight priority: the brightest 2 % of the frame (H) may not pass hi/E, so a sunlit planet in black space or
-// the paper under the desk lamp isn't blown. L and H are the scene's own light (before E), so there is no feedback loop. E.auto false holds E (A/B, refset).
-const EXPO={E:1,t:1,L:null,auto:true,cal:1,Lref:.35,a:.55,floor:.03,hi:2.4,H:null,min:.25,max:4,tau:.35,pbo:null,fence:null,buf:null,w:0,h:0,last:0};
+// the paper under the desk lamp isn't blown. (Q385) H reads each 1/16 texel's brightest spot (the chain's alpha), not
+// its blur: a disc of small bright clouds on black read H ≈ 0.9 through the blur and was exposed ~3× too bright; hi
+// 2.4 → 2 with it (only bright-on-black frames reach the cap: orbit, the planet from afar, a fireball). L and H are the scene's own light (before E), so there is no feedback loop. E.auto false holds E (A/B, refset).
+const EXPO={E:1,t:1,L:null,auto:true,cal:1,Lref:.35,a:.55,floor:.03,hi:2,H:null,min:.25,max:4,tau:.35,pbo:null,fence:null,buf:null,w:0,h:0,last:0};
 function expoTarget(L,Hi){return Math.min(EXPO.max,EXPO.hi/Math.max(Hi??0,1e-6),Math.max(EXPO.min,EXPO.cal*Math.pow(EXPO.Lref/Math.max(L,1e-6),EXPO.a)))}
-function expoMean(a,w,h){let s=0,ws=0;const Ls=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=(y*w+x)*4,L=.2126*a[k]+.7152*a[k+1]+.0722*a[k+2],
-    u=(x+.5)/w*2-1,v=(y+.5)/h*2-1,wt=1-.6*Math.min(1,(u*u+v*v)/2);Ls[y*w+x]=L>=0&&L<1e30?L:0;if(!(L>=0&&L<1e30))continue;s+=wt*Math.log2(Math.min(Math.max(L,EXPO.floor),1e4));ws+=wt}Ls.sort();EXPO.H=Ls[Math.floor(Ls.length*.98)];return ws>0?Math.pow(2,s/ws):null}
+function expoMean(a,w,h){let s=0,ws=0;const Ls=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=(y*w+x)*4,L=.2126*a[k]+.7152*a[k+1]+.0722*a[k+2],m=a[k+3],
+    u=(x+.5)/w*2-1,v=(y+.5)/h*2-1,wt=1-.6*Math.min(1,(u*u+v*v)/2);Ls[y*w+x]=m>=0&&m<1e30?m:0;if(!(L>=0&&L<1e30))continue;s+=wt*Math.log2(Math.min(Math.max(L,EXPO.floor),1e4));ws+=wt}Ls.sort();EXPO.H=Ls[Math.floor(Ls.length*.98)];return ws>0?Math.pow(2,s/ws):null}
 function expoTick(T){const c=T.chain[3],now=performance.now(),dt=Math.min(.25,(now-EXPO.last)/1000);EXPO.last=now;
   if(EXPO.fence&&gl.getSyncParameter(EXPO.fence,gl.SYNC_STATUS)===gl.SIGNALED){gl.deleteSync(EXPO.fence);EXPO.fence=null;
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER,EXPO.pbo);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,EXPO.buf);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
@@ -1517,9 +1525,9 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
   const u=PBLM.u;gl.useProgram(PBLM.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);
   if(BLOOM){let src=T.res;T.chain.forEach((dst,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,src.t);
-    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?EXPO.E:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst})}
+    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?EXPO.E:0);gl.uniform1i(u.uMx,i===0?0:1);gl.drawArrays(gl.TRIANGLES,0,3);src=dst})}
   else{const dst=T.chain[3];gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,T.res.t);   // Low: the 1/16 level in one pass (sparser taps; only the exposure reads it)
-    gl.uniform2f(u.uPx,4/w,4/h);gl.uniform1f(u.uTh,0);gl.drawArrays(gl.TRIANGLES,0,3)}
+    gl.uniform2f(u.uPx,4/w,4/h);gl.uniform1f(u.uTh,0);gl.uniform1i(u.uMx,2);gl.drawArrays(gl.TRIANGLES,0,3)}
   expoTick(T);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);

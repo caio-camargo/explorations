@@ -668,3 +668,21 @@
   check('Tellus from above: even far-field cloud filter, milder stretch, patchiness and belts in the shader and in cloudAt alike; the sea\'s Fresnel and sunglint; city lights by mip',
     shader && cpu && sea, `shader ${shader} · cloudAt ${cpu} · sea and lights ${sea}`);
 }
+
+// aerofx-24. The exposure's highlight reads the brightest spot, not the blur (look & sound sky & bodies beat, QUEUE Q385):
+// the bloom chain's alpha carries each block's max luminance down to 1/16, and expoMean's H is the 98th percentile of
+// it, so a disc of small bright clouds on black space (blurred ~0.9, brightest ~2.2) is exposed for its clouds; hi 2.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const bl = pg.slice(pg.indexOf('const BLOOM_FS='), pg.indexOf('const COMP_FS='));
+  const chain = /uniform int uMx;/.test(bl) && /texelFetch\(uT,min\(q\*2\+ivec2\(i,j\),sz\),0\)\.a/.test(bl) && /o=vec4\(c\/ws,min\(m,6e4\)\);/.test(bl)
+    && /gl\.uniform1i\(u\.uMx,i===0\?0:1\)/.test(pg) && /gl\.uniform1i\(u\.uMx,2\)/.test(pg);
+  const fn = (n, l) => { const i = pg.indexOf('function ' + n + '('); let j = i; for (let k = 0; k < l; k++) j = pg.indexOf('\n', j) + 1; return pg.slice(i, j) };   // its first l lines
+  const ex = pg.slice(pg.indexOf('const EXPO={'), pg.indexOf('\n', pg.indexOf('const EXPO={')));
+  const { EXPO, expoMean, expoTarget } = new Function(ex + '\n' + fn('expoTarget', 1) + fn('expoMean', 2) + ';return {EXPO,expoMean,expoTarget}')();
+  const w = 120, h = 68, a = new Float32Array(w * h * 4);   // black space, a disc 20 blocks across: blurred 0.9, brightest 2.2
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((x - 60) ** 2 + (y - 34) ** 2 < 400) { const k = (y * w + x) * 4; a[k] = a[k + 1] = a[k + 2] = .9; a[k + 3] = 2.2 }
+  const L = expoMean(a, w, h), E = expoTarget(L, EXPO.H);
+  check('exposure: the highlight is each 1/16 block\'s brightest spot (the chain\'s alpha), so a bright disc on black is exposed for its clouds',
+    chain && EXPO.hi === 2 && Math.abs(EXPO.H - 2.2) < 1e-6 && Math.abs(E - 2 / 2.2) < .01, `chain ${chain} · hi ${EXPO.hi} · H ${EXPO.H} · E ${E.toFixed(3)} (want ${(2 / 2.2).toFixed(3)})`);
+}
