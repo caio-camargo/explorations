@@ -297,6 +297,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.199 — how folded parts deploy: the part panel and its card say so; a first-time hint in space (2026-10-13, flow session, QUEUE Q400's remainder, PLAYTEST #97)
 - v1.202 — the camera looks straight down: the pitch to ±90° with no flip, T for a top view in the Assembly (2026-10-13, flow session, QUEUE Q405, PLAYTEST #101)
 - v1.208 — heat and load you notice: H and L bars beside the navball in every phase, amber from 50 %, red from 90 %; the master caution blinks (2026-10-13, flow session, QUEUE Q271, PLAYTEST #71; W36)
+- v1.214 — the model's scale in the Assembly strip: "model 1:48 · 14.5 m" beside the program's line, with a hover term (2026-10-13, flow session, QUEUE Q277, from Q242) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
