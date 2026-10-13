@@ -5743,3 +5743,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/contracts.js`, `sim/program.js` (`sourceOf`, `importNews`), `app/editor.js` (source line, line candidates), `tests/economy.mjs` (econ-22), `notes/economy.md` § v1.161, `NOTES.md`, `QUEUE.md` (Q206 ✓, W40, two Proposed), `TESTING.md` 243, `ACTIVE_WORK.md`.
 - **Next:** W40 (three defaults, built). Economy's next ready: Q181 (overflight), Q184 (routines), Q295 (missed deadlines, M1), Q296, Q332.
 
+## 2026-10-13 — Caio + Claude (launchpad look & sound, effects beat, second session, continued): Q319 finished, Q352, Q351, views
+
+- **Done, on `main`:** v1.158 heat haze (High only: the composite looks the scene up off each jet's screen segment);
+  v1.159 Q352, no bands at the terminator (`scatter`'s 12 fixed view-ray steps were the cause, not `sunTrans` or the output;
+  jittered per pixel, measured at no cost); v1.162 a plume light per side of a wide rocket (Q319 done); views 159–161.
+- **Q351 diagnosed, not fixed:** the snow mask's slope comes from footprint-filtered normals, so from orbit no face is
+  steep and a whole range turns snow. The fix is world's (a sub-pixel steepness term, with Q251); in QUEUE *Proposed*.
+- **Dropped Q361** (ascent leading-edge warmth): invisible as a blackbody at a climb's 400–600 K. Caio can reopen it.
+- **Seen:** the reference views' igniter flash timing doesn't follow sim time (Proposed for QA).
+- **Tests:** `aerofx-17` to `aerofx-19` new; all look sections pass on each merged tree. No full-suite run (memory was short).
+- **Files:** `app/gl.js`, `app/render.js`, `app/settings.js`, `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `TESTING.md` (240, 241, 244), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** a full suite on a quiet machine; the effects lane has nothing ready; overflow candidates are Q250 (cloud
+  aliasing at liftoff, with a `SKY_FS` cut) or Q357's twilight contrail (needs a time-of-day control in the views).
+
