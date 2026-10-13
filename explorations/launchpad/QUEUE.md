@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.83 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 0.1.84 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -13,7 +13,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 | # | Item | Who | What it frees |
 |---|---|---|---|
 | 1 | **W16: your first hour. It's ready** (QA's Q292 ✓ 2026-10-12: PLAYROUTE 0.2.1 sitting 1 walks the rooms; `playtest.mjs m1` passes on `main` at v1.135). You are the player, M1's last finish line: [`PLAYROUTE.md`](PLAYROUTE.md) sitting 1, plain URL, ~60 min; write step 8's answer down | **you** | **M1 done**; M2 becomes current |
-| 2 | **Mission control's consoles** (Q241 R4 ✓ v1.131, Q203 ✓ with it, Q196 ✓ v1.138, Q43 ✓ v1.140, Q167 ✓ v1.143): Q170 network N2; then Q241 R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**idle**: Q170 next, all ready) | M2's flight-from-the-ground loop; the rooms done |
+| 2 | **Mission control's consoles** (Q241 R4 ✓ v1.131, Q203 ✓ with it, Q196 ✓ v1.138, Q43 ✓ v1.140, Q167 ✓ v1.143, Q170 ✓ v1.151): Q241 R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**idle**: Q241 R3 next) | M2's flight-from-the-ground loop; the rooms done |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); the fix is **re-ported onto HDR** on branch `q19-hdr` (world, 2026-10-12; smoke passes). Left: the browser check (pixel-identical, Low and High) and the timing A/B, which need a **quiet machine** (today's try: 35 of 38 GB in use), then the merge | **the test bench** (second computer) runs the check and the A/B; world merges |  every player's first visit |
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
 | 5 | **The beauty pass, after its foundations** (D18; B0 ✓: Q312 v1.134, Q313 v1.135, Q314 v1.137 the HDR scene): now ready Q318 re-entry glow and Q319 the flames (effects), Q315 the craft's quick wins (parts & pad), Q322 shrinking `SKY_FS` and Q326 (sky & bodies) | look & sound: effects (claim open), parts & pad and sky & bodies (**no sessions**) | the rest of BEAUTY (Q316, Q317, Q320, Q321, Q323) |
@@ -123,7 +123,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | ✓ `d35e9bf` |
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ✓ `3f2d857` (v1.103: every node drawn; a click selects it, its handles edit it) |
-| Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | → flow 2026-10-12 (mission control, a third page on the wall) |
+| Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ✓ v1.151 `c2d1d3c` (mission control's wall, *Network · nodes* (W); NOTES § v1.151; test flow-17; TESTING 233) |
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
 | Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ✓ `e05b426` (v1.107: home safe / aboard / lost and why) |
 | Q192 | The map's planet labels: two planets close on the ring lose one label to the overlap rule; merge them (`Hesper, Astraea`) (NOTES § v1.99) | M2 | S | 🖥 | ready |
@@ -601,3 +601,5 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - ✓ ranked as Q350 (orchestrator 2026-10-13): look & sound (parts & pad) — picking (`hitPart`) and the vapor shoulders read `PARTS.prof`'s straight bell; the drawn Rao bell bulges a few cm past it: give the sim's prof the curve, or leave it (vehicle owns PARTS) — Q315
 - sky & bodies — **Q321 keeps the twinkle** (Caio 2026-10-12): today's twinkle is an accident of one-pixel stars and grain, and sharp stars would lose it; build it on purpose as `mockups/sky/` does (each star's brightness drifts on its own seed, ~±35 %, W39 picks everywhere or through the air only) — Q253
 - sky & bodies — W39's default holds unless Caio answers: Q321 can start on (a) subtle, the proposed sun, gentle twinkle — Q253
+- flow — the network page's node boxes open a panel on click (stock and need per good, what it waits for, the honest next action), with N3's routes — Q170 v1.151
+- flow — a relay node's coverage bar on the network page (the plan's N2 line; `N.cover` has it per body) — Q170 v1.151
