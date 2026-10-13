@@ -283,6 +283,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.189 — the Program and the map decluttered: offers one line each, far epochs as a count, no empty photo frame, a letterhead; planets labelled with the trip in days (2026-10-13, flow session, QUEUE Q286 slice 2; UI.md § 3)
 - v1.192 — one tooltip: the part cards and the craft hover in `#termTip`; the Rollout's checks and the joint chip explain themselves (2026-10-13, flow session, QUEUE Q391; UI.md rule 9)
 - v1.199 — how folded parts deploy: the part panel and its card say so; a first-time hint in space (2026-10-13, flow session, QUEUE Q400's remainder, PLAYTEST #97)
+- v1.202 — the camera looks straight down: the pitch to ±90° with no flip, T for a top view in the Assembly (2026-10-13, flow session, QUEUE Q405, PLAYTEST #101)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
