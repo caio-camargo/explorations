@@ -1032,3 +1032,26 @@ Caio, 2026-10-10: centre the map on something else, like KSP. It existed only as
   TESTING row 257.
 - **Not yet:** more terms as screens need them (SOI, prograde, inclination, specific impulse); touch (a tap shows it).
 
+## v1.179 — warnings that explain themselves; part cards (2026-10-13, flow session, QUEUE Q340; PROBES § 8, D21, D22)
+- **Warnings explain themselves:** every amber or red mark in the Assembly's readout is now hoverable (dotted, like a
+  term). The one tooltip (`#termTip`) says what's wrong (in the mark's colour), why it matters, and the fixes, in the
+  shape of D22's Checks rows (a verdict, then *Fix:*). Marks that are fine stay plain.
+- **The marks:** each stage's TWR (stage 1 can't lift / climbs slowly; an upper stage under 1), the cost when over budget,
+  power (panels can't keep up; the battery can't last the night), lifetime under a year, no reaction wheels / no control,
+  stability (full, stage-1 dry, M1.6), the liftoff and max-q joints (fixes from `jointFix`), trim (PROBES' example),
+  touchdown, the Control block's burning and coasting rows, and each later stage lit in the air (`airWhy`/`airFix`).
+- **New check, fit:** a part standing on a fairing's ring, under its nose, but not inside the shell gives *Fairing: N parts
+  outside the shell* (red), naming them; fixes: fold it for launch (if deployed), a longer fairing, a narrower part.
+- **New term:** *Trim* (the share of steering spent holding an off-centre thrust).
+- **Part cards:** the parts list's card and the hover over a part on the craft end with *Pairs with* (`PART_PAIRS` in
+  `builder.js`, by key, base or kind: "a camera: an antenna to send the pictures, and power..."); the card shows a part's
+  computing era when it has one.
+- **How:** `whyMark(cls, html, {t, d, fix}, tag)` in `app/terms.js` (plain text only, escaped; `fix` a sentence or a list,
+  joined "a; b; or c."). **For everyone:** a new amber or red mark in the builder goes through `whyMark`, a new part gets a
+  `PART_PAIRS` line (flow-22 fails otherwise).
+- **Checks:** test `flow-22` (the helper and its escaping; no unexplained mark left in the readout; the fairing fit; every
+  part has a pairs line, shown on the card and the craft); robot row `explain` (over budget hovered: the tooltip; the
+  camera's card ends with *Pairs with*); `m1` passes. TESTING row 261.
+- **Not yet:** the palette card and the craft hover are still their own elements (`#partcard`, `#bldtip`), not `#termTip`;
+  a missing-sensor warning (PROBES S2) and a boom's load (S1's folding boom) when those parts land; the Rollout's
+  warnings and the builder's joint chips in the part panel.
