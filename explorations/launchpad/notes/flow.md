@@ -1189,3 +1189,19 @@ function rollChecks`; a comment line above it broke the
 - **Not done:** the Assembly panels as paperwork on the desk stay with R5 (Q241) and vehicle's Q237/Q238.
 - **Checks:** test `flow-30` (the text at 14.5 m and 120 m, empty without the desk, the wiring); robot row `scale`
   (the Orbiter, then Crewed Lunar, hovering the term). TESTING row 297.
+
+## v1.224 — more hover terms, and a tap on touch (2026-10-13, flow session, QUEUE Q384; from Q287 v1.175)
+- **Seven new terms** in `TERMS` (app/terms.js): `soi` (sphere of influence), `pro`, `retro`, `nrm` (normal and
+  anti-normal), `rad` (radial out and in), `inc` (inclination), `spin` (the ground's free speed east).
+- **Where they're marked:** the SAS mode buttons (Prograde, Retro, Normal, Anti-nrm, Rad out, Rad in: `SASM_TERM` in
+  app/editor.js sets `data-term`); the readout's "escaping" and "escape" (SOI); the site picker's "free … m/s east" and
+  "lowest inclination".
+- **Isp is a gloss, not a term:** the part card is itself the tooltip, and a term inside a tooltip can't be hovered
+  (one level deep), so the engine card's Isp line says "(higher: more Δv from a tank)". flow-21's rule that every term
+  is used on screen now also counts the SAS map.
+- **Touch:** a tap on a term shows it; a tap on it again, or anywhere else, closes it (`pointerdown` with a non-mouse
+  pointer; the mouseover a tap fires just after is ignored for 0.9 s). A button that is a term (the SAS modes) keeps its
+  tap for its job and shows the term on hover only. `termTipHTML(el)` is the one place a tooltip's text is made.
+- **Checks:** test `flow-31` (the terms, where they're marked, the tap handler, the gloss); `flow-21` still passes;
+  robot row `terms` (the site picker's inclination on hover, Prograde on the SAS hover in a climb, a touch tap on Ap
+  opening then closing). TESTING row 304.
