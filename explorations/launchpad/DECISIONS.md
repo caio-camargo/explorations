@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.9 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-13
+**Version**: 1.0.10 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-13
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -116,3 +116,4 @@ The full text of every question as it was asked (options, reasons) is in
 | W40 | 2026-10-13 | The commercial giant on the defaults: arrives world year 18–21; takes 40 % of the commercial market over four years; sells us only parts we can't make, automatically, cheaper than imports | Q206 (v1.161) |
 | W41 | 2026-10-13 | Rivals' satellites as targets: real objects; an unspotted retrieval raises suspicion; hacking pays the contract if a contract, the service if our own; hacks include a **tap** (indefinite, until the owner notices: our imagery, relay, TV and nav count it) and a **data theft** (science pays per bit; a spy satellite's data reveals its owner's program). Radar as layers (optical → ground radar → space surveillance) is the default, Caio unsure | Q187, NOTES § Q187 amendment |
 | W42 | 2026-10-13 | The simulator on the defaults: a day per simulated hour (at least half a day a run, warp free); each run draws its own believed world; ignition failures on at the believed rate; revert gone from real flights; the same simulator every era | Q282, Q449–Q451 |
+| W44 | 2026-10-13 | The slow world on the defaults: eccentricity Mercury's real 0.2056 (the sun backs up 1.1° near perihelion); a rover on an airless body's night with no heat sleeps and wakes at dawn, each unheated night costing a third of its battery (the cold does the damage, not the empty battery); drive orders between flights abstract; Selene's fixed sun left at 6.8° until Q177 | Q331 (notes space § "Plan: the slow world") |

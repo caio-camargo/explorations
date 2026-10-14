@@ -6275,3 +6275,25 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Test change:** flow-15 scans the liftoff line for `R.watch?0`; it now also accepts `R.watch||R.sim?0`. Smoke otherwise fails only on the 3 failures already on `main` (Help key `t`, qa-2 go to body, 37e atlas wiring).
 - **Files:** `sim/core.js`, `sim/program.js`, `sim/vessel.js`, `tests/economy.mjs`, `notes/economy.md` § v1.220, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`, `DECISIONS.md`.
 - **Next:** Q450 (flow, the simulator screen) is ready. Economy's ready item is Q283 (crew-skill plan revision).
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2): crew by qualification, the plan (Q283)
+- **Q283 ✓ plan** (no code): NOTES economy § "Plan revision: crew by qualification" replaces the rank parts of the roster plan (Q133–Q137) and of vehicle's SAS-by-rank plan (Q134).
+  - Qualifications are earned by doing it, twice in the simulator or once for real. Simulator credits go in at `simEnd` (Q449).
+  - A type is the capsule. A pilot's modes come from qualifications; time in type tightens the pilot loop.
+  - Seniority decides the commander. The Debrief names the crew, and there's a `PROG.memorial` (the 2026-10-11 review's gap 2, in slice 1 = Q182).
+  - The simulator can't requalify after a loss.
+  - 7 slices.
+- **W43** (five questions with defaults), one Proposed line (crew slice 2, qualifications), QUEUE rows Q133–Q137, Q134 and Q182 pointed at the plan.
+- **Files:** `notes/economy.md`, `notes/vehicle.md` (banner), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy has no ready item left. Q376 waits on space's Q375; crew work starts in M3 (Q182).
+
+## 2026-10-13 — Caio + Claude (launchpad space session): the slow world, the plan (Q331)
+- **Q331 ✓ plan** (no code): notes space § "Plan: the slow world"; SYSTEM 1.1.4 points to it.
+  - What exists: spin is Tellus, locked or none; the sun is fixed (`SUN_DIR`); R3's freeze is final; bases have no night state; rovers don't drive off-screen; plane windows search one day from Tellus only.
+  - The numbers: solar day 194.8 days (97 sun, 97 night); about 5.2 km/s from low orbit; the terminator 0.55 m/s. On Selene a rover follows the dawn only above 47–70° latitude.
+  - The double sunrise is marginal at e 0.2 (the sun backs up 0.54°). Mercury's real 0.2056 gives 1.1° (scratch script).
+  - Slices: SW1–SW4 on Selene first (sleep instead of death, a base's night, drive orders between flights, cold traps); SW5–SW8 the body at M5 (any body turns, the body, heat at dawn after Q34b, missions).
+- **W44**: four questions with defaults. Eight Proposed lines.
+- **Files:** `notes/space.md`, `NOTES.md`, `SYSTEM.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** SW1 and SW2 are the cheapest Selene slices once M3 opens. Space has Q440 (shared with vehicle) ready.
+- **W44 answered** (Caio: "ok if so, and others ok", after confirming the sleep rule is for the cold of an airless night): all four defaults → DECISIONS.

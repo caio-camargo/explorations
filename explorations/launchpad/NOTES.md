@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -165,6 +165,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
 - v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
 - v1.217 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
+- Plan: the slow world (2026-10-13, space session, QUEUE Q331; SYSTEM § "The slow world", D19)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -243,6 +244,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.213 — overflight rights (2026-10-13, economy session 2, QUEUE Q380; W23)
 - Plan: the simulator replaces revert (2026-10-13, economy session 2, QUEUE Q282; D15.5, D17.2; nothing built)
 - v1.220 — the simulator core (2026-10-13, economy session 2, QUEUE Q449; Q282 slice 1, W42 on its defaults)
+- Plan revision: crew by qualification (2026-10-13, economy session 2, QUEUE Q283; D15.4, CREW.md § Skill; nothing built)
 
 ## World: [`notes/world.md`](notes/world.md)
 
