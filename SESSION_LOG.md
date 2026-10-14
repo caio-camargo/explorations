@@ -6342,3 +6342,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Slip: an edit briefly emptied app/terms.js in the worktree; restored from git before commit.
 - Files: app/terms.js, app/editor.js, app/program-ui.js, builder.js, tests/flow.mjs, playtest.mjs, NOTES.md, notes/flow.md, TESTING.md.
 - Next: Q397 (crew-loss chain), Q192 (planet label merge), Q212, Q218, Q389.
+
+## 2026-10-14 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q428 earthshine on meshes, Q429 a view of Selene behind clouds (v1.225)
+
+- **Done:** `airlessFill` gives meshes Tellus's light as the moon pass gives the ground; the lander at Selene's night
+  (new view 182) went from 10 to 116 grey levels against a ground of 36. New view 183: Selene behind 62 % cover.
+- **Collisions:** claimed both after grepping (Q429 was the test bench's, stale); waited ~4 min on the vehicle
+  session's GPU lock; views 182–183 because sky2's unmerged branch holds 180–181 (and will renumber its aerofx-42).
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs` (aerofx-44, -45), `notes/look.md`, `NOTES.md`, `TESTING.md` (305),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q428-*`.
+- **Next:** claim cleared.
