@@ -447,9 +447,13 @@ void main(){
   float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){float fm=fw*uCR;dn=.5+(vn(cu*2600.+uCT*3.)-.5)*.6*(1.-smoothstep(800.,3200.,fm))+(vn(cu*7800.)-.5)*.4*(1.-smoothstep(250.,1000.,fm));cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
   if(cov>.002){float ndl=dot(cn,uSun),below=uCcc<0.?1.:0.,lit=clamp(ndl*.6+.4,0.,1.)*smoothstep(-.15,.1,ndl);
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
+   // (Q453) seen from below, where the volume has cloud on this ray, the far deck's underside takes the volume's own mean colour
+   // (its formula lit it at .45 of a sunlit top: a cream streak at the horizon under the deck); from inside the deck it is
+   // that colour without the air too (100–200 km of haze drew a pale line where rays leave through the slab's base)
+   if(below>.5&&vAvg.x>=0.)cc=mix(cc,vAvg,uVk);float hk=length(uPc)-uPR,iD=below*step(0.,vAvg.x)*uVk*smoothstep(1500.,2200.,hk)*smoothstep(6000.,5000.,hk);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
+   col=mix(col,mix(cc*tr+ic,vAvg,iD),cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
  // (Q420) from inside the deck (the camera in the 2–5.5 km slab), a ray that stays in the slab past the volume's reach
  // (it fades out over uVD/2–uVD) showed the shell lit like a top, or far ground, as a bright line at the horizon. It goes
  // on through cloud: fog it in the volume's own mean colour along this ray, by how far past uVD/2 it stays in the slab

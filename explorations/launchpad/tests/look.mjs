@@ -966,3 +966,14 @@
   const ok = /return m>1e29\?-1\.:m\*\.985-1\.;\}/.test(pg) && /float march\(vec3 d,out float hh,float tS\)\{hh=0\.;if\(tS<0\.\)return 1e30;/.test(pg);
   check('no far ground in the sky: a pixel whose coarse neighbours all missed the terrain is sky, not a march that ran out of steps', ok, `sentinel ${ok}`);
 }
+
+// aerofx-43. No pale streak at the horizon from inside the deck (look & sound sky & bodies beat, QUEUE Q453, after Q420):
+// seen from below, where the volume has cloud on the ray, the far deck's underside (the shell) takes the volume's mean
+// colour, and from inside the deck that colour without the air; rays leaving through the slab's base had drawn the
+// shell's underside lit at .45 of a sunlit top, plus 100–200 km of haze, as a cream line (views 178–179).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const ok = /if\(below>\.5&&vAvg\.x>=0\.\)cc=mix\(cc,vAvg,uVk\);float hk=length\(uPc\)-uPR,iD=below\*step\(0\.,vAvg\.x\)\*uVk\*/.test(pg)
+    && /col=mix\(col,mix\(cc\*tr\+ic,vAvg,iD\),cov\*\.95\*shW\*\(1\.-\.85\*uAtl\)\);/.test(pg);
+  check('under and inside the deck: the far deck\'s underside in the volume\'s own colour (no pale streak at the horizon; views 178–179)', ok, `underside ${ok}`);
+}
