@@ -6334,3 +6334,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q453-*`.
 - **Next:** claim cleared. Free in the lane: Q428 (lander on Selene's night side, XS), Q429 (clouds in front of Selene,
   a view).
+
+## 2026-10-14 — Caio + Claude (launchpad vehicle, `launchpad-builder`): when to start the transfer burn (v1.224, Q454)
+
+- **Asked:** "q454 is fine" (queued from Q412: nothing told the player when to start the transfer to a stationary orbit).
+- **Done:** `statXfer(s)` (`sim/program.js`) finds where on a low equatorial orbit a transfer burn lands over the capital's
+  longitude, with its Δv; the **Stationary orbit** HUD card (`statRows`, `app/program-ui.js`; `HUD_CARDS` in `app/hud.js`, also on
+  the Map) says "prograde 988 m/s · in 20m 15s" and **plan it** places the node there; the Map draws the stationary ring, the
+  capital's slot and the burn's place (`drawMap`). Test `vehicle-30` now flies on it: 26.3 min from the Cape, ends over 48.4°E
+  (Kamar 48.0°E), TV counts. Checked in the browser (port 8772, the GPU lock): card, button, node, Map marks.
+- **Flow:** `renderCards` lets the `stat` card through on the Map (it allowed only Target).
+- **Tests:** vehicle and flow sections pass; the full suite not run (the machine had ~0.6–1 GB free; a background wait was killed
+  for memory overnight). The stale-claim mark on Q454 (02:05) was this branch waiting on the GPU lock.
+- **Files:** sim/program.js, app/program-ui.js, app/hud.js, app/render.js, test.mjs (exports `statXfer`), tests/vehicle.mjs,
+  notes/vehicle.md, NOTES.md, TESTING.md (304), QUEUE.md.
+- **Next:** Q423 (bench parts) or Q416's slice 2 (bus frame, small stacks), Caio's pick.

@@ -1756,3 +1756,24 @@ Test `vehicle-12`. `--smoke` all pass.
   mission's own check), 378 m/s left to hold the slot. Without the wait it ends at 110°W, where Kamar can't see it.
 - **Not in the game yet:** anything that tells the player when to start that burn; QUEUE Q454.
 - TESTING 296.
+
+## v1.224 — when to start the transfer burn (2026-10-13, vehicle session, QUEUE Q454)
+
+- **Caio:** "q454 is fine" (from Q412: a stationary satellite ends over the longitude its transfer burn aims at, and nothing
+  told the player when to burn).
+- **`statXfer(s)`** (`sim/program.js`, by `capSees`): from a low (far point under 0.6 of the stationary radius), nearly circular
+  (e < 0.05), nearly equatorial (under 10°) orbit of Tellus, samples the next two orbits for the place where a transfer begun
+  there arrives (opposite, half a transfer later, the planet turned meanwhile) over the capital's longitude: `{dt, r, dv,
+  city}`, dt to the burn's middle, dv the first burn, prograde. One orbit sweeps 360° less the planet's turn, so two always hold
+  an answer.
+- **The Stationary orbit card** (`statRows` in `app/program-ui.js`, registered in `HUD_CARDS`, `app/hud.js`; shown on the Map
+  too): "prograde 991 m/s · in 26 min (the burn's middle)" (checked in the browser: card, button, node, the Map marks; a node on the burn's place hides that label), "over Kamar, 5,668 km up", and **plan it**, which places the node
+  there with that Δv (or moves the node), so the node panel's burn timing and warp do the rest. Shown while the craft carries an
+  antenna, or TV for the capital is open and not flown; recomputed once a second (`statX`).
+- **The Map** (`drawMap`, `app/render.js`): the stationary ring, the capital's slot on it turning with the planet, and the burn's
+  place on the current orbit ("transfer burn · in 26 min").
+- **Measured** (scratch flights of the TV Satellite, then test `vehicle-30`, which now flies on `statXfer`'s timing): it says
+  26.3 min from the Cape (the test's own search had found 26); a burn **started** there ends over 46.4°E, one **centred** there
+  (as a node is) over 48.4°E, the capital 48.0°E. TV for the capital counts; 378 m/s left.
+- **Flow:** the Map view showed only the Target card; it shows `stat` too (one condition in `renderCards`).
+- TESTING 304.
