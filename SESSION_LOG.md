@@ -6275,3 +6275,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Test change:** flow-15 scans the liftoff line for `R.watch?0`; it now also accepts `R.watch||R.sim?0`. Smoke otherwise fails only on the 3 failures already on `main` (Help key `t`, qa-2 go to body, 37e atlas wiring).
 - **Files:** `sim/core.js`, `sim/program.js`, `sim/vessel.js`, `tests/economy.mjs`, `notes/economy.md` § v1.220, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`, `DECISIONS.md`.
 - **Next:** Q450 (flow, the simulator screen) is ready. Economy's ready item is Q283 (crew-skill plan revision).
+
+## 2026-10-13 — Caio + Claude (launchpad economy session 2): crew by qualification, the plan (Q283)
+- **Q283 ✓ plan** (no code): NOTES economy § "Plan revision: crew by qualification" replaces the rank parts of the roster plan (Q133–Q137) and of vehicle's SAS-by-rank plan (Q134).
+  - Qualifications are earned by doing it, twice in the simulator or once for real. Simulator credits go in at `simEnd` (Q449).
+  - A type is the capsule. A pilot's modes come from qualifications; time in type tightens the pilot loop.
+  - Seniority decides the commander. The Debrief names the crew, and there's a `PROG.memorial` (the 2026-10-11 review's gap 2, in slice 1 = Q182).
+  - The simulator can't requalify after a loss.
+  - 7 slices.
+- **W43** (five questions with defaults), one Proposed line (crew slice 2, qualifications), QUEUE rows Q133–Q137, Q134 and Q182 pointed at the plan.
+- **Files:** `notes/economy.md`, `notes/vehicle.md` (banner), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** economy has no ready item left. Q376 waits on space's Q375; crew work starts in M3 (Q182).
