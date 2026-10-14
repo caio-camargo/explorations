@@ -171,7 +171,7 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
   const own=SITES.filter(t=>t.power===HOME),abroad=SITES.filter(t=>t.power!==HOME),dr=cur.downrange,forn=dr.over.filter(i=>i!==cur.power);
   const a=siteAccessOf(cur),fz=S&&S.parts?siteFits(cur,S.parts):{ok:true};
   el.innerHTML=`<select id="siteSel" style="width:100%">${own.length?`<optgroup label="ours">${own.map(opt).join('')}</optgroup>`:''}<optgroup label="abroad">${abroad.map(opt).join('')}</optgroup></select>
-    <div class="dim" style="margin:4px 0 8px">${fmtLat(cur.lat)} · free ${cur.rot.toFixed(0)} m/s east · lowest inclination ${cur.minInc.toFixed(1)}° · pad at ${cur.h.toFixed(0)} m<br>
+    <div class="dim" style="margin:4px 0 8px">${fmtLat(cur.lat)} · ${term('spin','free')} ${cur.rot.toFixed(0)} m/s east · ${term('inc','lowest inclination')} ${cur.minInc.toFixed(1)}° · pad at ${cur.h.toFixed(0)} m<br>
     downrange ${dr.az}°: ${(dr.sea*100).toFixed(0)}% water${forn.length?`, over ${forn.map(pn).join(', ')}`:''} · polar corridor ${cur.polar||'none'}<br>
     ${cur.kind==='sea'?'a floating platform: stages of any size come by ship':cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}<br>
     weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${forn.filter(i=>i!=null&&i!==HOME).map(i=>{const q=overQuote(i);   // (economy, Q380) overflight rights; flow: restyle freely
@@ -184,12 +184,13 @@ $('bEditor').onclick=()=>go('assembly');
 $('bRevert').onclick=revertFlight;
 $('bMap').onclick=()=>toggleMap();
 $('bHelp').onclick=()=>toggleHelp();$('bMenu').onclick=()=>ovToggle('escm');
+const SASM_TERM={pro:'pro',retro:'retro',normal:'nrm',anti:'nrm',radout:'rad',radin:'rad'};   // (Q384) hover a mode for what it points at
 const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver'],['tgt','Target'],['antitgt','Anti-tgt'],['rpro','Rel pro'],['rretro','Rel ret'],['dock','Docking']];
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   if(rcsJets(S)){const b=document.createElement('button');b.className='wide'+(S.rcs?' on':'');b.textContent='RCS '+(S.rcs?'ON':'OFF')+' [V]';b.onclick=()=>{S.rcs=!S.rcs;renderSAS()};el.appendChild(b)}
   t.title=avOf(S).name;const no=[];
-  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');
+  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(SASM_TERM[k])b.dataset.term=SASM_TERM[k];if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');
     if(!sasModeOK(S,k)){const g=avNext(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()})`);continue}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
     b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}
   if(no.length)t.title=`${avOf(S).name}. Not yet: ${no.join(', ')}`}

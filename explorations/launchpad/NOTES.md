@@ -86,7 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
-- v1.224 — when to start the transfer burn: the Stationary orbit card and Map marks, plan it as a node (2026-10-13, vehicle session, QUEUE Q454)
+- v1.225 — when to start the transfer burn: the Stationary orbit card and Map marks, plan it as a node (2026-10-13, vehicle session, QUEUE Q454)
 - v1.215 — the TV Satellite preset: a stationary orbit over the capital, flown to TV for the capital (2026-10-13, vehicle session, QUEUE Q412)
 - v1.207 — propulsion on the bench: kick motors (solid, burn to the end), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is the separation ring (2026-10-13, vehicle session, QUEUE Q422)
 - v1.198 — the payload bench, slice 1: satellites designed apart from the rocket and carried as one block; the bench's Checks; "make the parts inside a payload" (2026-10-13, vehicle session, QUEUE Q416)
@@ -310,6 +310,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.202 — the camera looks straight down: the pitch to ±90° with no flip, T for a top view in the Assembly (2026-10-13, flow session, QUEUE Q405, PLAYTEST #101)
 - v1.208 — heat and load you notice: H and L bars beside the navball in every phase, amber from 50 %, red from 90 %; the master caution blinks (2026-10-13, flow session, QUEUE Q271, PLAYTEST #71; W36)
 - v1.216 — the model's scale in the Assembly strip: "model 1:48 · 14.5 m" beside the program's line, with a hover term (2026-10-13, flow session, QUEUE Q277, from Q242) → [notes/flow.md](notes/flow.md)
+- v1.224 — more hover terms (SOI, prograde, retrograde, normal, radial, inclination, the ground's free speed) on the SAS modes, the readout and the site picker; a tap shows a term on touch (2026-10-13, flow session, QUEUE Q384, from Q287) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

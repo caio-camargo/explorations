@@ -6335,7 +6335,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** claim cleared. Free in the lane: Q428 (lander on Selene's night side, XS), Q429 (clouds in front of Selene,
   a view).
 
-## 2026-10-14 — Caio + Claude (launchpad vehicle, `launchpad-builder`): when to start the transfer burn (v1.224, Q454)
+## 2026-10-14 — flow session: Q384, more hover terms and a tap on touch (v1.224)
+- Terms soi, pro, retro, nrm, rad, inc, spin in app/terms.js; marked on the SAS mode buttons (`SASM_TERM`, editor.js), the readout's "escaping"/"escape", the site picker's free speed and lowest inclination. Isp is a gloss on the part card (the card is itself the tooltip; terms are one level deep).
+- Touch: a tap shows a term, a second tap or a tap elsewhere closes it; SAS buttons keep their tap. `termTipHTML(el)` makes every tooltip's text.
+- Checks: flow-31 (flow-21 now counts the SAS map), robot row `terms` passes; full smoke not run (memory). Overnight the robot wait was stopped for low memory (the orchestrator marked the claim stale); resumed and finished today.
+- Slip: an edit briefly emptied app/terms.js in the worktree; restored from git before commit.
+- Files: app/terms.js, app/editor.js, app/program-ui.js, builder.js, tests/flow.mjs, playtest.mjs, NOTES.md, notes/flow.md, TESTING.md.
+- Next: Q397 (crew-loss chain), Q192 (planet label merge), Q212, Q218, Q389.
+## 2026-10-14 — Caio + Claude (launchpad vehicle, `launchpad-builder`): when to start the transfer burn (v1.225, Q454)
 
 - **Asked:** "q454 is fine" (queued from Q412: nothing told the player when to start the transfer to a stationary orbit).
 - **Done:** `statXfer(s)` (`sim/program.js`) finds where on a low equatorial orbit a transfer burn lands over the capital's
@@ -6347,5 +6354,5 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Tests:** vehicle and flow sections pass; the full suite not run (the machine had ~0.6–1 GB free; a background wait was killed
   for memory overnight). The stale-claim mark on Q454 (02:05) was this branch waiting on the GPU lock.
 - **Files:** sim/program.js, app/program-ui.js, app/hud.js, app/render.js, test.mjs (exports `statXfer`), tests/vehicle.mjs,
-  notes/vehicle.md, NOTES.md, TESTING.md (304), QUEUE.md.
+  notes/vehicle.md, NOTES.md, TESTING.md (305), QUEUE.md.
 - **Next:** Q423 (bench parts) or Q416's slice 2 (bus frame, small stacks), Caio's pick.

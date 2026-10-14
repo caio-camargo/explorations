@@ -429,7 +429,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const X = new Function(page.slice(page.indexOf('const TERMS='), page.indexOf('// the tooltip:')) + 'return {TERMS,term};')();
-  const keys = Object.keys(X.TERMS), rest = page.replace(page.slice(page.indexOf('const TERMS='), page.indexOf('// the tooltip:')), ''), used = keys.filter(k => rest.includes("term('" + k + "'"));
+  const keys = Object.keys(X.TERMS), rest = page.replace(page.slice(page.indexOf('const TERMS='), page.indexOf('// the tooltip:')), ''), sas = rest.slice(rest.indexOf('const SASM_TERM='), rest.indexOf('const SASM=')), used = keys.filter(k => rest.includes("term('" + k + "'") || sas.includes(":'" + k + "'"));   // (Q384) the SAS modes carry theirs as data-term
   const flat = keys.every(k => !/[<>]/.test(X.TERMS[k].d) && X.TERMS[k].d.length > 40);
   const mark = /^<span class="term" data-term="dv">Δv<\/span>$/.test(X.term('dv', 'Δv')) && X.term('nope', 'x') === 'x';
   const sites = [/\[`\$\{term\('ap','Ap'\)\} · \$\{term\('pe','Pe'\)\}`/, /\[term\('dv','Δv'\),/, /\$\{term\('stab','Stability'\)\}/, /\$\{term\('maxq','Max-q'\)\}/, /can't lift off: \$\{term\('twr','TWR'\)\}/, /sec\(term\('kh','Know-how'\)/]
@@ -629,4 +629,20 @@
   const wired = H.includes("typeof modelScaleHTML==='function'?modelScaleHTML():''") && H.includes("scale:{t:") && H.includes("term('scale',");
   check('flow-30: the Assembly strip names the model\'s scale (model 1:48 · 14.5 m; 1:288 for a 120 m rocket) with a hover term; nothing without the desk',
     txt && off && wired, `text ${txt} (${orb.replace(/<[^>]+>/g, '')}) · off ${off} · wired ${wired}`);
+}
+
+// flow-31. More hover terms and a tap on touch (flow session, QUEUE Q384, from Q287): SOI, prograde, retrograde,
+// normal, radial, inclination, the ground's free speed (Isp is a gloss on the part card, which is a tooltip itself); marked on the SAS modes, the readout's escape, the site
+// picker; a tap shows a term on touch (again or elsewhere closes it; a button keeps its tap).
+{
+  const H = html.replace(/\r\n/g, '\n');
+  const tsrc = readFileSync(new URL('./app/terms.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const T = new Function(tsrc.slice(tsrc.indexOf('const TERMS='), tsrc.indexOf('const term=')) + 'return TERMS;')();
+  const keys = ['soi', 'pro', 'retro', 'nrm', 'rad', 'inc', 'spin'], have = keys.every(k => T[k] && T[k].t && T[k].d.length > 60 && !T[k].d.includes('<'));
+  const marked = H.includes("SASM_TERM={pro:'pro',retro:'retro',normal:'nrm',anti:'nrm',radout:'rad',radin:'rad'}") && H.includes('b.dataset.term=SASM_TERM[k]')
+    && H.includes("sit=term('soi','escaping')") && H.includes(":term('soi','escape')}") && H.includes("${term('inc','lowest inclination')}") && H.includes("${term('spin','free')}");
+  const tap = tsrc.includes("document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;") && tsrc.includes("el===tipTap.el||el.closest('button')") && tsrc.includes('performance.now()-tipTap.t<900') && tsrc.includes('function termTipHTML(el)');
+  const gloss = readFileSync(new URL('./builder.js', import.meta.url), 'utf8').includes('(higher: more Δv from a tank)') && !T.isp;   // the part card is the tooltip itself: Isp glossed there, not a term
+  check('flow-31: more hover terms (SOI, prograde, retrograde, normal, radial, inclination, free speed; Isp glossed on the part card) on the SAS modes, the readout and the site picker; a tap shows a term on touch',
+    have && marked && tap && gloss, `terms ${have} · marked ${marked} · tap ${tap} · Isp gloss ${gloss}`);
 }

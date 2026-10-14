@@ -310,7 +310,7 @@ document.addEventListener('click',e=>{if(!(e.target.dataset&&e.target.dataset.st
 function updateHUD(){
   const b=S.body,rl=len(S.r),h=rl-b.R,el=elements(S.r,S.v,b.mu),vs=dot(S.v,S.r)/rl,srf=len(sub(S.v,surfVel(b,S.r)));
   let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit='landed';else if(b.atm&&h<b.atm)sit='flying';
-  else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>soiAt(b,simT))sit='escaping';else sit='<span class="ok">orbiting</span>';
+  else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>soiAt(b,simT))sit=term('soi','escaping');else sit='<span class="ok">orbiting</span>';
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
   // (flow, slice 4a) the core: never more than 6 lines; everything else is a card (app/hud.js, HUD_CARDS)
@@ -319,7 +319,7 @@ function updateHUD(){
   const core=[['MET',`T+${fmtT(simT)} · ${b.name} · ${sit}${link}`],
     radar?['Radar alt',`${fmtD(Math.max(0,groundGap(S)))}${vsTxt} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]:['Altitude',`${fmtD(h)}${vsTxt}`],
     ['Speed',air?`${srf.toFixed(0)} m/s <span class="dim">surface</span>`:`${len(S.v).toFixed(0)} m/s <span class="dim">orbital</span>`],
-    ...(S.landed?[]:[[`${term('ap','Ap')} · ${term('pe','Pe')}`,`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${el.pe>b.R?fmtD(el.pe-b.R):'<span class="dim">under the surface</span>'}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`]]),   // (Q286) not landed; a Pe underground isn't a number
+    ...(S.landed?[]:[[`${term('ap','Ap')} · ${term('pe','Pe')}`,`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:term('soi','escape')} · ${el.pe>b.R?fmtD(el.pe-b.R):'<span class="dim">under the surface</span>'}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`]]),   // (Q286) not landed; a Pe underground isn't a number
     [term('dv','Δv'),`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · ${term('twr','TWR')} ${twr.toFixed(2)}`]];
   $('info').innerHTML=core.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   renderCards();gaugeSlot();if(typeof cockpit==='function')cockpit();   // (Q286) news held, master caution

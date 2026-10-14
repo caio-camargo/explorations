@@ -1757,7 +1757,7 @@ Test `vehicle-12`. `--smoke` all pass.
 - **Not in the game yet:** anything that tells the player when to start that burn; QUEUE Q454.
 - TESTING 296.
 
-## v1.224 — when to start the transfer burn (2026-10-13, vehicle session, QUEUE Q454)
+## v1.225 — when to start the transfer burn (2026-10-13, vehicle session, QUEUE Q454)
 
 - **Caio:** "q454 is fine" (from Q412: a stationary satellite ends over the longitude its transfer burn aims at, and nothing
   told the player when to burn).
@@ -1776,4 +1776,4 @@ Test `vehicle-12`. `--smoke` all pass.
   26.3 min from the Cape (the test's own search had found 26); a burn **started** there ends over 46.4°E, one **centred** there
   (as a node is) over 48.4°E, the capital 48.0°E. TV for the capital counts; 378 m/s left.
 - **Flow:** the Map view showed only the Target card; it shows `stat` too (one condition in `renderCards`).
-- TESTING 304.
+- TESTING 305.
