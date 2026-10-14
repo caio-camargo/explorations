@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2137,3 +2137,124 @@ Docked, only the host's own parts counted for power: a satellite brought to a st
 - **Solar damage** (v1.210 `p.dmg`) is kept in the shape (`o.dmg`) and restored by `vesselOf`.
 - **Not yet:** a passenger's computer for the composite's avionics (`hasComputer` is still the host's), and its crew.
 - Test `space-26`.
+
+## Plan: the slow world (2026-10-13, space session, QUEUE Q331; SYSTEM § "The slow world", D19)
+
+Plan only, no code. The body is M5. Before that, its rules (the long night, the twilight band, polar ice) are tried on
+Selene, where most of the machinery already half-exists.
+
+### What exists (code survey 2026-10-13)
+
+- **Spin is a three-way switch.** `bodyTheta`/`bodyOmega` (`sim/core.js` ~104) know Tellus (`th0+rot·t`), a locked body
+  (`lockTh`, Selene) and everything else (doesn't turn). There is no axial tilt field. The planets in `sim/system.js`
+  (`SYSTEM_BODIES`) are positions only; joining the body tree is Q87 (Q176–Q178, M5).
+- **The sun is fixed:** `SUN_DIR` (`sim/space.js` ~131) doesn't move with the year (Q176 makes it `SUN_DIR(t)`). Ground
+  daylight is the body turning under it: `rvSunPF`, `landLit`. Selene's sun sits 6.8° above its equator, so south of
+  83.2°S is night forever (GROUND.md § the fixed sun).
+- **The freeze rule (R3) is final.** `rvPowerStep`/`rvFieldTick` (`sim/rovers.js` ~238–246): airless, night, no RTG and a
+  flat battery → `R.dead`, "froze in the night"; nothing clears it. Rover: 4 kWh per 40 kg battery, 10 W asleep, 25 W
+  heater, 30 W awake, 60 W RTG.
+- **Bases have no night state.** `landPowInit` samples one day of the body (48 points; a locked body's day is its orbit,
+  otherwise `DAY_S`) and `satDuty` runs the base partly off. Crew eat supplies whatever the power (`crewTick`).
+- **Rovers drive only by hand**, one at a time. Off-screen rovers stay put (`rvFieldTick` does power, `rvFieldSci`
+  data). R5 "drive plans" (the rover plan above) was never queued.
+- **Plane windows** (`sim/program.js` ~711–730, rule `'plane'`) search one day and only from Tellus's sites.
+- **Ice:** Enyo has a "polar ice" unit in `sim/ground.js` (not live); the cold-trap test is a GROUND.md plan (per
+  crater, the rim against the sun's highest elevation); ISRU is M4 ("Selene ISRU", ROADMAP).
+
+### The numbers (scaling rules; star μ 1.17e18, the year 400 days of 8 h)
+
+| | Slow world | Selene (today) |
+|---|---|---|
+| Orbit | 0.39 TU (6.16 Gm), e 0.2, year 97.4 days | 38,440 km about Tellus, 13 days (104 h) |
+| Spin | 64.9 days (3:2) | locked |
+| Solar day: sun / night | 194.8 days: ~97 / ~97 | 104 h: 52 / 52 h (6.5 days) |
+| R, g | 488 km, 3.70 m/s² (μ 8.8e11) | 348 km, 1.62 m/s² |
+| Terminator at the equator | 0.55 m/s (2.0 km/h) | 5.8 m/s (21 km/h) |
+| Low orbit speed, SOI | 1.34 km/s, ~22,000 km | |
+| Night for a sleeping rover (35 W) | 27 kWh = 7 batteries, 270 kg | 1.8 kWh, under one battery |
+
+**Getting there**, Hohmann, coplanar: depart from 150 km at Tellus 1,850 m/s, capture into 100 km 2,030 m/s, land
+~1.3 km/s: **about 5.2 km/s from low orbit**, more than any other inner target (Mercury's reputation, kept). Transfer
+116 days, a window every 129 days.
+
+**Following the twilight band on Selene** works only where the terminator is slower than the rover: it moves at
+21·cos(lat) km/h, so a 4 m/s rover keeps up above 47° of latitude, a 3 m/s one above 59°, a 2 m/s one above 70°.
+Selene teaches that you follow the dawn near the poles. On the slow world, any rover keeps up anywhere.
+
+**The double sunrise is marginal at e 0.2.** Near perihelion the orbit outruns the spin (the orbit's angular rate is
+1.53× the mean rate, the spin 1.5×), and the sun runs backwards by **0.54°** over 7 days, less than its own disc
+(a scratch script). At Mercury's real e 0.2056 it is 1.1° over 9 days; at e 0.22 it is 3.0° over 12 days. Question 1.
+
+### Slices
+
+Selene first (M3–M4, as each lane's milestone allows):
+
+- **SW1, sleep, not death (space, M3, S).** A cold rover with a flat battery goes to sleep instead of dying. At dawn its
+  panels wake it; each unheated night costs a third of its battery's capacity (`p.dmg`, v1.210's mechanism), so the
+  third unheated night kills it. A heater kept on battery, or an RTG, keeps it whole. Its fleet line says "asleep, wakes
+  in 31 h". Precedent: Yutu-2 and SLIM woke after lunar nights; most landers never did. Question 2.
+- **SW2, the night in a base's numbers (space + economy, M3, S).** A base gets the same sleep: its labs stop, its line
+  says "night in 3 days: needs 9 kWh, has 4". A crewed base going dark is an emergency (crew need heat): it warns a
+  night ahead, and the supply-run quote (`baseRunQuote`) offers batteries or an RTG.
+- **SW3, drive orders between flights (space, M3, M; after Q91's G3 for real ground).** R5 built: a rover takes "drive
+  to" (a waypoint) and **"follow the dawn"** (stay N km behind the terminator), carried out in `rvFieldTick`,
+  abstracted: a great-circle path at half the rover's top speed, stopping at slopes over its climb or at loss of
+  contact, results as news. No physics off-screen. Question 3.
+- **SW4, cold traps and lit ridges on Selene (world, with G3–G4; M3 to find, M4 to mine).** GROUND.md's cold-trap test
+  as a mask; the spectrometer finds ice there (a science volume, v1.125); ISRU mines it at M4. Lit ridges: the points
+  whose horizon the sun clears for most of the turn; a panel there runs almost always. With the fixed sun at 6.8°,
+  Selene's south polar cap is all night and the north all day, which makes the ridges trivial. Question 4.
+
+The body (M5, after Q176's moving sun):
+
+- **SW5, any body can turn (space, M5, S; with Q176).** A fourth spin rule: `spin:{P,th0}` for any body (Tellus becomes
+  one case of it); `thAbs` and `rvSunPF` follow. `landPowInit` samples the body's **solar** day (194.8 days here), not
+  `DAY_S`. The `'plane'` window search spans the body's sidereal day (a site passes under a plane every ~32 days). This
+  also serves Hesper's slow spin and Enyo.
+- **SW6, the body (space + look + world + QA, M5, L).** Its `SYSTEM_BODIES` row (with μ) and a place in the body tree
+  (Q176); `th0` set so the subsolar points at perihelion are 0° and 180° longitude (the hot poles); the go-to-body
+  catalog entry (`app/bodyview.js` `BODY_CAT`); look (grey, cratered, lobate scarps, bright hollows); ground (craters
+  and scarps; polar cold traps by SW4's test). Needs Helios's light by distance (Q177): 6.6× Tellus's sunlight here,
+  so solar panels are strong and hot.
+- **SW7, heat at dawn (vehicle, after Q34b's steady-state temperature, M4).** Without radiators or shade, hardware
+  overheats in the day; the terminator becomes a deadline from both sides. Not before Q34b; until then no heat rule.
+- **SW8, missions (economy, M5).** Survey, ice prospecting at the poles, a base through a night, a dawn rover. Priced
+  from presets once it lands (SYSTEM: a body is expensive to change once missions are priced on it), so question 1 is
+  cheap only until then.
+
+Also `study_slow.mjs` (space, S) once SW5 exists: the numbers above on the rails (the solar day, the double sunrise by
+longitude, the plane windows, the terminator speed by latitude).
+
+### Questions for Caio (silence keeps the default)
+
+1. **Eccentricity:** *default Mercury's real 0.2056* (the sun stops and backs up 1.1° over 9 days near
+   perihelion, as on Mercury). 0.2 makes it barely visible; 0.22 makes a 3° show.
+2. **A cold rover:** *default sleep, wake at dawn, each unheated night costs a third of its battery*. Alternative: keep
+   R3's final freeze.
+3. **Drive orders off-screen:** *default abstract* (path × speed, slope and contact checks, no physics).
+4. **Selene's fixed sun at 6.8°** (until Q177 moves it): *default leave it*: SW4 finds ice in the dark south cap now,
+   and the ridges and traps come once the sun moves with the year. Alternative: set Selene's sun to the real 1.5° now
+   (world's call, GROUND.md).
+
+## v1.222 — a damaged part does something (2026-10-13, space session, QUEUE Q440; v1.210's "Not yet")
+
+v1.210 left `p.dmg` on a part a debris piece damaged, but only solar cells read it. Now the rest do (`sim/vessel.js`,
+`engK`, `gimOK`, `GIM_JAM`, `AIR_LEAK`):
+
+- **An engine** keeps 1−dmg of its flow and its thrust, at the same Isp (a hurt turbopump, not a worse nozzle): the
+  physics step (`thr`, the fuel drawn), the planned burn (`nodeBurnTime`), the procedures' estimates (`engAcc`, the
+  circularisation), the steering authority and the engine sound all read it. A burn at 50 % takes twice as long and
+  costs the same fuel.
+- **Its gimbal jams from 30 % damage**, stuck where the hit left it: no column in the gimbal solve (`gimSteer`), no
+  authority (`ctrlAuthority`, `ctrlAuthRoll`). A nozzle jammed off-centre keeps pushing sideways, so the wheels or RCS
+  have to hold against it.
+- **A reaction wheel** (or a pod's, or a probe core's) keeps 1−dmg of its torque and of its storage (`geom`).
+- **A crew cabin or a biocapsule leaks its air:** at damage d it uses air (1 + 10·d) times as fast, so at 50 % the crew's
+  10 days of air last 1⅔ days. The leak is time added to the mission clock in the air checks (`R.airX`, `R.bioAirX`), so
+  an undamaged flight runs out exactly as before.
+- **The strike's message says what the damage does:** "struck the Kestrel booster: damaged (50 %), 50 % of its thrust left, its
+  gimbal jammed"; a pod "… % of its wheel's torque left, its cabin leaking (the air lasts 17 % as long)".
+- **Not here:** rover wheels (debris doesn't reach a rover); repair (a crew or a servicing visit putting `dmg` back to 0);
+  damage on the screen besides the message (the part list, the Debrief).
+- Test `space-27`.

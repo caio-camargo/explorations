@@ -2148,3 +2148,44 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Stills:** `output/launchpad/beauty/Q411/deploy_sequence.png` (0.6, 1.4, 2.2, 3.0, 4.2 s; the Satellite on the pad,
   its fairing off, a boom antenna swapped in) and the frames `dq_*`. **Check:** test `aerofx-41` (and aerofx-3's leg
   pattern amended). TESTING 300.
+
+## v1.221 — no far ground drawn in the sky: the black lines at the night horizon (2026-10-13, sky & bodies, QUEUE Q445, PLAYTEST #117; Q419)
+
+`app/gl.js` (`coarseStart`, `march`): two tokens.
+
+- **The test bench (#117):** at night from the pad, hard 1-px black lines over the horizon, the whole width of the frame
+  (views 19, 65). **Not clouds:** they stayed with the shell off, and with the volume off. **The terrain march:** a
+  full-resolution pixel starts its march from the nearest hit among its 3×3 quarter-resolution neighbours
+  (`coarseStart`); where none of them hit (sky), it marched from 0, and a ray grazing the horizon ran out of its 64
+  steps and was "called a hit" (the march's fallback for a ray that ends right above the ground). Ground at night is
+  black: a line of it in the sky. By day the same pixels are hazy ground: Q419's grey lenses that pop frame to frame.
+- **Now:** `coarseStart` returns −1 when no neighbour hit, and `march` returns sky at once for it. The fallback stays
+  for rays the pre-pass did see ground near (removing it altogether darkened a lit far hill: those rays run out too).
+- **Measured** (paired renders, the same view list; `output/launchpad/beauty/q445-A2/` before, `q445-C/` after,
+  `q445-C/ab_v065_horizon.png`): the lines gone in 65 and 19; daylight horizons (18, 153) and the decks (80–82)
+  unchanged but for the clock's own motion (gantry, sea, plume). **The sky pass is cheaper,** sky pixels no longer
+  march: 19 7.19 → 5.66 ms, 65 6.35 → 5.04, 171 6.34 → 5.00, 80 5.57 → 4.01, 81 3.21 → 2.79.
+- **Left:** a feature thinner than a quarter-resolution texel that none of the 3×3 neighbours caught is now sky
+  (before, sometimes a sliver). Q419's daytime frames at 1.5 km were not re-shot (the cause is the same). **Check:**
+  test `aerofx-42`. TESTING 301.
+
+## v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453, after Q420)
+
+`app/gl.js` (`SKY_FS` main, the shell's colour): two lines.
+
+- **What it was (not what Q453 guessed):** the streak in view 178 went away with the shell off, not with the volume off: the
+  volume's "fading ring" was innocent. Rays a degree or so below level leave the 2–5.5 km slab through its base 20–40 km
+  out (so Q420's fog only half covers them), pass under the deck, and meet the shell (3 km) from below 100–200 km away.
+  The shell lit its underside at .45 of a sunlit top: cream against grey cloud, plus 100–200 km of bright haze in front.
+- **Now:** seen from below, where the volume has cloud on the ray (`vAvg`), the shell's underside takes the volume's own
+  mean colour; from inside the deck, that colour without the air (`iD`). Where the volume has a gap on the ray, as before.
+- **Measured** (pinned clock, see below; `output/launchpad/beauty/q453-p-base/` before, `q453-p-fix2/` after,
+  `q453-C/ab_178_179.png`): the streak gone in 178 and 179; a first try with the colour alone left a pale line (the
+  haze). Regression (`q453-B/` before, `q453-C/` after, same scenes): 81, 82, 2, 18 unchanged but for animation; from the
+  pad (80) the far deck's underside near the horizon is a grey like the near bellies instead of a bright cream band
+  (up to 47 grey levels).
+- **Reference views are reproducible with a pinned clock:** the weather views (80–83, 178–179) search for cover from
+  `tNow()`, and `simT` runs in real time while the page loads (90–170 s, varying), so the same view list gave different
+  scenes from run to run (Q420's "same list" rule held only by luck). `REF_EVAL='simT=0;PROG.day=Math.ceil(PROG.day)'`
+  gives the same `CLOUD_DT` every run (still per list: a view's state follows the views before it).
+- **Check:** test `aerofx-43`. TESTING 303.

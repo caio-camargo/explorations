@@ -109,7 +109,7 @@ function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;if(X.noReligh
     if(dry())stage(s);else if(X.ei<p.early.length&&h>=p.early[X.ei]){X.ei++;stage(s)}
     if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);
     else procCorridor(s,X,p,h,up);return}
-  const thrust=activeEngines(s).reduce((a,q)=>a+q.d.thrust*1000,0)||1,vAp=Math.sqrt(TELLUS.mu*(2/el.ap-1/el.a)),tb=(Math.sqrt(TELLUS.mu/el.ap)-vAp)*s.mass/thrust,tAp=timeToNu(el,Math.PI);
+  const thrust=activeEngines(s).reduce((a,q)=>a+q.d.thrust*1000*engK(q),0)||1,vAp=Math.sqrt(TELLUS.mu*(2/el.ap-1/el.a)),tb=(Math.sqrt(TELLUS.mu/el.ap)-vAp)*s.mass/thrust,tAp=timeToNu(el,Math.PI);
   if(X.phase==='coast'){s.sasMode='pro';
     if(!X.chk&&h>TELLUS.atm){X.chk=1;const need=Math.sqrt(TELLUS.mu/el.ap)-vAp,have=dvRemaining(s).tot;
       if(have<need-5){procDev(s,'short',`running short of propellant: ${Math.round(need-have)} m/s short of circularising`);return}}
@@ -130,7 +130,7 @@ function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;if(X.noReligh
 // nose is on the burn direction. Coasts set X.wake, so the game warps to them and a headless runner rails to them.
 const bodyNamed=n=>BODIES.find(b=>b.name===n),ALIGN=600;   // wake this long before a burn: on rails a SAS hold doesn't turn the craft, and a heavy stack turns slowly
 function aimAt(s,dir,tol){s.sas=true;s.sasMode='stab';s.hold=norm(dir);return dot(qrot(s.q,[0,1,0]),s.hold)>=Math.cos(tol*Math.PI/180)}
-const engAcc=s=>activeEngines(s).reduce((a,p)=>a+p.d.thrust*1000,0)/s.mass;   // m/s² at full throttle, the stage burning now
+const engAcc=s=>activeEngines(s).reduce((a,p)=>a+p.d.thrust*1000*engK(p),0)/s.mass;   // m/s² at full throttle, the stage burning now
 const horiz=s=>{const up=norm(s.r);return sub(s.v,mul(up,dot(s.v,up)))};
 // an impulse (prograde, normal, radial) that minimises score(Δv): coordinate search, halving the step
 function solveDv(s,score,step0=4,maxDv=200){const pro=norm(s.v),nrm=norm(cross(s.r,s.v)),rad=norm(cross(s.v,nrm)),W=d=>add(add(mul(pro,d[0]),mul(nrm,d[1])),mul(rad,d[2]));

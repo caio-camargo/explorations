@@ -1,5 +1,5 @@
 # SYSTEM — the star system catalog
-**Version**: 1.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-12
+**Version**: 1.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-13
 **Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
 revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
@@ -273,6 +273,10 @@ reserved innermost slot with an airless world where the day and night drive play
 4. **When?** *Default: built with the planets (M5).* Its rules can be prototyped on Selene now: the long night, the
    twilight band (Selene's terminator moves at 21 km/h at the equator) and polar ice.
 
+**Plan:** [`notes/space.md`](notes/space.md) § "Plan: the slow world" (Q331, 2026-10-13): slices SW1–SW8, Selene first;
+four questions with defaults (one is the eccentricity: Mercury's real 0.2056, so the sun visibly backs up near
+perihelion).
+
 ---
 
 ## Decisions (round 2, Caio, 2026-10-08)
@@ -293,6 +297,7 @@ adds them to QUEUE.md. Look and ground may start before M5.
 ---
 
 ## Version history
+- **1.1.4 (2026-10-13):** a pointer to the slow world's plan (Q331).
 - **1.1.3 (2026-10-12):** the slow world approved with all four defaults (D19).
 - **1.1.2 (2026-10-12):** proposed, not approved: the slow world in the innermost slot (Caio's idea; D19).
 - **1.1.1 (2026-10-11):** KSP's names ("Kerbol", "Jool") dropped; the star's mass kept, for play length (D15.6).

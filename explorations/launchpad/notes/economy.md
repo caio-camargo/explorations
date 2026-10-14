@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2371,7 +2371,7 @@ sites → the runner's capacity report; revenue items with their systems (Q110 g
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
 
-> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182.
+> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182. **Re-planned:** § "Plan revision: crew by qualification" (Q283, 2026-10-13); its slices replace the five below.
 
 CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
 (`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
@@ -3241,3 +3241,106 @@ button, the banner and the simulator debrief are flow's Q450, so there's no TEST
 For space and flow: `R.sim` and `SIM` are the switches. Anything a flight writes outside `PROG` (FLEET, debris, the
 registry's live objects) is reset the same way revert resets it (`resetShip`). A leg simulated from orbit (Q452) must
 take its snapshot through `simStart` before `R.launched` is set, as `app/program-ui.js` does now for `REVERT0`.
+
+## Plan revision: crew by qualification (2026-10-13, economy session 2, QUEUE Q283; D15.4, CREW.md § Skill; nothing built)
+
+This replaces the rank parts of § "Plan: the roster, …" (Q133–Q137) and of vehicle's § "The pilot's SAS modes by rank"
+(Q134). Everything else in those plans stands: the classes (W24), names in the home school's style, requalification by an
+uncrewed flight, the closed power's hushed skip, rotation by two linked dispatches. It also covers the review's gap 2
+(REVIEW-2026-10-11 § 3): crew named in the Debrief and in a memorial. **What it builds on:** the simulator core (Q449,
+v1.220): `simEnd` restores the program and then applies what a run keeps, so crew training goes in at that point.
+
+### The astronaut record (replaces `rank`)
+`PROG.crew = [{id, name, spec: 'fly'|'sci'|'eng', cls, joined, status, where, quals: {}, type: {}, sen: [], rec}]`:
+- **`spec`** is what they do (flying, science, engineering). The **title** isn't stored: `titleOf(a)` reads the era
+  and the home school (CREW § Every astronaut). Early (until the first rendezvous epoch), everyone is a *pilot*.
+  Middle: *commander* (the senior flier aboard), *pilot*, *flight engineer* (Steppe *bortinzhener*), *scientist-
+  astronaut* (Steppe *research cosmonaut*). Late (the outposts): *mission specialist* and *payload specialist* for
+  `eng` and `sci`. A title change is a news line, not a promotion.
+- **`quals`**: `{type:<capsule key>, rdv, dock, land, geo, sys:<capsule key>}` → the day earned. A **type** is the
+  crewed part (the capsule's key), not the whole design. A pilot qualified on the Pod flies any rocket with a Pod on
+  top: legible, and a new capsule means retraining, as Gemini → Apollo did.
+- **`type[capsule] = {h, flights}`**: time in type in hours, simulator and real (real counts double).
+- **`sen`**: seniority, the firsts they flew (a first flight, a first orbit, a first EVA, a first landing on a body,
+  60 days in space). It decides who commands and who the press names. It changes no numbers.
+- **`rec`**: flights, days in space, bodies walked on (as before).
+
+### Qualifications: earned by doing it, in the simulator or for real
+- **On the type:** 2 simulator hours on that capsule, or one real flight in it as crew.
+- **Rendezvous, docking, landing:** **two clean completions in the simulator**, or one real one, on any type. Space
+  flags the moment during a run in `R.simDid`: rendezvous within 1 km and 5 m/s, a docking, a landing under 4 m/s
+  touching down upright. `simEnd` credits everyone aboard (`R.crew`) after the restore. Doing it is the qualification,
+  not hours: legible, and the simulator's believed world (Q449) makes the practice honest.
+- **Field geology (`geo`):** a course the astronaut office orders (30 days, the astronaut unavailable, 0.2 M). It's
+  ground training, not a flight, and it's how a scientist (or a pilot) gets the surface multiplier.
+- **Engineer's systems (`sys`):** an engineer's type qualification on that capsule (as for a pilot).
+- **The price is the calendar** (D17.2, W42): simulator days pass for the whole program, and an astronaut on a course
+  isn't on the roster for flights.
+- **Nothing expires** for now (level 3's fatigue and recency can add that later; CREW § "Room for careers").
+
+### What qualifications do (the hooks, re-planned from ranks)
+- **Pilot (Q134, vehicle's side).** `modesOf(s)` is still the union of the computer's modes and the pilot's (vehicle's
+  plan), but the pilot's modes come from the best pilot aboard by qualification:
+
+  | Qualification | The pilot provides |
+  |---|---|
+  | not on this type | rate damping only (they can hold it steady, not fly it) |
+  | type | the analog autopilot's modes: stability, pro/retrograde, normal, anti-normal, radial |
+  | + rendezvous | + manoeuvre, target, anti-target, relative pro/retrograde |
+  | + docking | + docking |
+  | + landing | + the manual landing hold (when control builds it; size M) |
+
+  The pilot loop stays the vehicle plan's (k 2.5/s, 0.35 rad/s, 0.5° deadband). **Time in type** tightens it toward a
+  floor: deadband 0.5° → 0.3° and turn rate 0.35 → 0.45 rad/s over the first 20 hours in type. The pilot never reaches
+  the guidance computer, which still wins when it arrives (pillar 8).
+- **Engineer (Q136):** one retry of a failed ignition per burn (in `igniteOK`'s roll), two when qualified on the
+  capsule's systems (`sys`). Production modules at outposts need an engineer (LATE_GAME, later).
+- **Scientist (Q136):** surface science in person ×1.25; ×1.5 with field geology; ×2 with field geology and a walk on
+  that body before. The same `sciGot` weight, read from the astronaut on the surface. A pilot with field geology
+  gets ×1.25 and no more (the Schmitt model is the scientist).
+- **Commander:** the most senior aboard (most firsts, then flights, then the earlier class). Named in the news and the
+  Debrief. No numbers.
+
+### Picking a crew (Q133, unchanged in shape)
+At liftoff, seats = the capsules' `d.crew`. The best pilot comes first, by what this flight needs (the type, plus
+rendezvous or docking when the mission has a target, landing when it lands), then a scientist for a landing, an
+engineer for a station. With no qualified pilot, the best one flies anyway, and the briefing and news say so ("Vela
+Marisk flies the Pod unqualified for docking"). It's a choice with a cost, not a block (pillar 5). By hand, the player
+can swap crew in Assembly (flow). **A simulator run picks the same way**, so the same people train. A run can also be
+given a crew, so a program can train its next crew while the current one flies.
+
+### Named in the Debrief and the memorial (REVIEW gap 2; with Q182)
+- **The Debrief's crew line** names them by title, commander first: "Commander Vela Marisk and Ilo Tovvera home safe
+  after 3.2 days". A loss: "Vela Marisk and Ilo Tovvera were lost: 11.4 g at re-entry". New qualifications and firsts
+  get a line each ("Ilo Tovvera: first person to dock").
+- **`PROG.memorial = [{id, name, title, day, flight, vessel, cause, hushed}]`**, written when an astronaut is lost.
+  Shown in the Program panel and the Archive (flow). A closed power's hushed loss has `hushed: true` and appears only
+  when it leaks (the leak system). "The crew of 2" disappears from the game once the roster lands.
+- **Firsts are named** in the race and the news, the race's rival crews too (CREW § hooks).
+
+### Requalification and rotation (Q135, Q137): what changes
+- **Requalification:** unchanged, but **a simulator run doesn't requalify**: the qualification flight has to be real
+  and uncrewed. The simulator flies the believed numbers, and what was wrong was the truth.
+- **Rotation:** a crewed docking before onboard computers needs a **docking-qualified** pilot (was rank 2). The
+  rotation dispatch picks one, and if none is qualified the routine is refused with the reason ("no docking-qualified
+  pilot: train one in the simulator").
+
+### Slices (⚙, in order; replaces the old five)
+1. **The roster** (Q182, economy + flow): data, names, the first class, automatic picking, the record, seniority and
+   the commander, the loss named, **the named Debrief line and the memorial**. No qualifications yet: until slice 2,
+   every pilot counts as qualified on every type, which is today's behaviour.
+2. **Qualifications** (economy + space; needs Q449): `R.crew` on simulator runs; space's `R.simDid` flags;
+   credits in `simEnd` and `missionEnd`; time in type; the field geology course; crew cards with badges (flow).
+3. **The pilot's modes by qualification** (Q134 re-planned, vehicle): `modesOf`, the pilot loop, time in type.
+4. **Requalification** (Q135).
+5. **Classes over time** and the archetype mixes (Q133's rest).
+6. **The scientist's and engineer's hooks** (Q136).
+7. **Crew rotation by dispatch** (Q137), with space's docking and deorbit procedures.
+
+### Questions for Caio (W43; defaults if silent)
+1. A **type** is the capsule (**default**) or the whole design.
+2. A rendezvous, docking or landing qualification is **two clean completions in the simulator or one real** (**default**),
+   or simulator hours alone.
+3. A pilot **not qualified on the type** gives rate damping only (**default**), or the analog modes anyway.
+4. **Field geology** is a 30-day course from the astronaut office (**default**), or simulator time on a landing.
+5. The **commander** is picked by seniority automatically (**default**), or chosen by hand on hand-flown flights.
