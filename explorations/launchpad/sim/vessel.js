@@ -387,6 +387,10 @@ function stageAtoms(auto,keys,sPar,segs,parts,stg){
     const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;const f=g.flatMap(a=>a.f||[]);if(f.length)e.fair=f;return e});
   return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.kind==='f'?[]:a.g})))}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
+// a debris-damaged part (v1.210 p.dmg, Q440): an engine keeps 1−dmg of its flow and thrust (same Isp), and from GIM_JAM
+// its gimbal is stuck where it was; a reaction wheel (or a pod's) keeps 1−dmg of its torque and storage; a crew cabin
+// leaks its air (AIR_LEAK, in the mission's air checks)
+const GIM_JAM=0.3,AIR_LEAK=10,engK=p=>1-(p.dmg||0),gimOK=p=>!((p.dmg||0)>=GIM_JAM);
 // ---- resources: each part holds res {name: amount} up to cap; mass = dry + Σ amount × density. Only propellant exists
 // today (tonnes, so density 1); power or life support would be new entries here plus producers/consumers with rates.
 const RES={fuel:{density:1,unit:'t'},ablator:{density:1,unit:'t'},gas:{density:1,unit:'t'},sup:{density:1,unit:'t'}};
@@ -567,7 +571,7 @@ function newShip(stack,site=curSite()){
   syncLanded(s);
   return s}
 function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;s.hmax=0;
-  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque){s.torque+=p.d.torque;s.hmax+=p.d.hmax??p.d.torque*WHEEL_S}}
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque){const k=engK(p);s.torque+=p.d.torque*k;s.hmax+=(p.d.hmax??p.d.torque*WHEEL_S)*k}}
   if(s.wH&&len(s.wH)>s.hmax)s.wH=s.hmax>0?mul(s.wH,s.hmax/len(s.wH)):[0,0,0];   // wheels lost with their parts
   s.mOwn=m*1000;s.cmOwn=mul(c,1/m);
   for(const a of s.att||[]){const pm=a.e.mass/1000;m+=pm;c=madd(c,a.p,pm)}   // docked bodies: their own mass at their own centre of mass
@@ -637,9 +641,9 @@ function sasTarget(s){
   return{pro,retro:mul(pro,-1),normal:nrm,anti:mul(nrm,-1),radout:rad,radin:mul(rad,-1)}[s.sasMode]}
 let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
 // control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM
-function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)tau+=p.d.thrust*1000*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
+function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
 // ... and about roll: a gimbal only rolls the vessel from off its axis (side boosters, clusters), so one central engine adds nothing
-function ctrlAuthRoll(s,engs,thr){let tau=s.torque;for(const p of engs){const r=sub(thrustPt(p),s.cm);tau+=p.d.thrust*1000*thr*Math.sin(p.d.gim*Math.PI/180)*Math.hypot(r[0],r[2])}return tau}
+function ctrlAuthRoll(s,engs,thr){let tau=s.torque;for(const p of engs){if(!gimOK(p))continue;const r=sub(thrustPt(p),s.cm);tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*Math.hypot(r[0],r[2])}return tau}
 // Control: reaction wheels in the pod plus engine gimbal (plus RCS when asked). Returns the commanded angular acceleration
 // (world frame); physStep gives the wheels' share as a torque and turns the nozzles for the rest (gimSteer).
 function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel you fly
@@ -823,7 +827,7 @@ function detach(s,list,kick,spin,asVessel){
 // (finCols, linearised: dN/dδ ≈ 3.5·q·A along the plate's normal); a plate is clipped to ±ctl and slews at ctlR.
 function gimSteer(s,eng,th,tauB,dt,fc=[]){
   const cols=[],need=len(tauB)>1e-9;
-  if(need)eng.forEach((p,i)=>{const d=tdirOf(p),a=Math.abs(d[0])<0.9?[1,0,0]:[0,0,1],u1=norm(cross(d,a)),u2=cross(d,u1),r=sub(thrustPt(p),s.cm),
+  if(need)eng.forEach((p,i)=>{if(!gimOK(p))return;const d=tdirOf(p),a=Math.abs(d[0])<0.9?[1,0,0]:[0,0,1],u1=norm(cross(d,a)),u2=cross(d,u1),r=sub(thrustPt(p),s.cm),
     sm=Math.sin(p.d.gim*Math.PI/180)*th[i];cols.push({p,u:[u1,u2],c:[mul(cross(r,u1),sm),mul(cross(r,u2),sm)]})});
   if(need)for(const F of fc)cols.push({F,c:[F.c]});
   const want=new Map(),fin=new Map();
@@ -834,7 +838,7 @@ function gimSteer(s,eng,th,tauB,dt,fc=[]){
     for(const C of cols){if(C.F){fin.set(C.F,clamp(dot(C.c[0],y),-1,1)*C.F.dm);continue}
       let a1=dot(C.c[0],y),a2=dot(C.c[1],y);const m=Math.hypot(a1,a2);if(m>1){a1/=m;a2/=m}
       const k=Math.sin(C.p.d.gim*Math.PI/180);want.set(C.p,add(mul(C.u[0],a1*k),mul(C.u[1],a2*k)))}}
-  for(const p of s.parts){if(!p.on||p.d.kind!=='engine')continue;const g=p.gv||[0,0,0],w=want.get(p)||[0,0,0],dg=sub(w,g),dl=len(dg),
+  for(const p of s.parts){if(!p.on||p.d.kind!=='engine'||!gimOK(p))continue;const g=p.gv||[0,0,0],w=want.get(p)||[0,0,0],dg=sub(w,g),dl=len(dg),
     st=p.d.gimR*Math.PI/180*dt;p.gv=dl>st?madd(g,dg,st/dl):w}   // slew toward the command (or back to centre when not steering)
   const cmd=new Map();for(const[F,v]of fin){if(!cmd.has(F.p))cmd.set(F.p,[]);cmd.get(F.p)[F.j]=v}
   for(const p of s.fins){if(!p.d.ctl)continue;const n=p.d.kind==='rfin'?1:4,st=p.d.ctlR*Math.PI/180*dt,w=cmd.get(p)||[],fd=p.fd||new Array(n).fill(0);
@@ -863,7 +867,7 @@ function physStep(s,dt){
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
-  const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle):[];
+  const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle):[];
   // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
   const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
   // free channels (gimbal, fins) unload from 2 %; RCS costs gas, so it only keeps them usable: past 80 % down to 60 %
@@ -872,7 +876,7 @@ function physStep(s,dt){
   const tauW=wheelGive(s,add(tauC,dump),dt),rest=sub(tauC,tauW);   // rest = the law's torque the wheels didn't give, minus the unloading
   gimSteer(s,s.throttle>0?eng:[],thr,steer>0?rest:[0,0,0],dt,FC?FC.out:[]);
   if(s.sasE){const I=madd(s.sasI||[0,0,0],s.sasE,dt),m=len(I);s.sasI=m>s.sasA?mul(I,s.sasA/m):I}   // SAS rate integral (ctrlAccel)
-  if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*1000,t=thr[i],pt=thrustPt(p);
+  if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*engK(p)*1000,t=thr[i],pt=thrustPt(p);
     const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
     const on=onArr(s),fuel=fuelArr(s),rank=dropRank(s,s.evIdx);for(const g in want)drawFuel(s,on,fuel,s.grp,rank,+g,want[g]);
     s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=fuel[i]})}

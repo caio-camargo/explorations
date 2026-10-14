@@ -216,10 +216,10 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
   {const cap=s.parts.find(p=>p.on&&p.d.crew);
     if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)}   // crewN: seats, for the Debrief (flow, Q191)
-    if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/(cap.d.ins||600));
+    if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/(cap.d.ins||600));if(cap.dmg)R.airX=(R.airX||0)+dt*AIR_LEAK*cap.dmg;   // a damaged cabin leaks: air lost beyond the clock's (Q440)
       if(s.alive&&s.landed&&b===TELLUS)R.capHome=true;
       if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
-    if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT>CREW_AIR&&!R.capHome?'ran out of air':'';
+    if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT+(R.airX||0)>CREW_AIR&&!R.capHome?'ran out of air':'';
       if(why){R.crewOK=false;R.crewWhy=why;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
@@ -291,9 +291,9 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.sim&&R.
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
   if(R.bio&&R.bioOK){let why='';
     if(!bio)why=s.alive?'was lost with its stage':'was lost with the vessel';
-    else{if(phys){R.g+=(s.gload-R.g)*Math.min(1,dt/1);R.gMax=Math.max(R.gMax,R.g)}R.cabin+=(bio.T-R.cabin)*Math.min(1,dt/600);   // insulated: the cabin lags the skin by ~10 min
+    else{if(phys){R.g+=(s.gload-R.g)*Math.min(1,dt/1);R.gMax=Math.max(R.gMax,R.g)}R.cabin+=(bio.T-R.cabin)*Math.min(1,dt/600);if(bio.dmg)R.bioAirX=(R.bioAirX||0)+dt*AIR_LEAK*bio.dmg;   // insulated: the cabin lags the skin by ~10 min
       if(h>b.atm)R.bioSpace=true;
-      if(R.gMax>G_LIM)why=`was hurt by ${R.gMax.toFixed(1)} g`;else if(R.cabin>CABIN_MAX)why=`overheated (cabin ${R.cabin.toFixed(0)} K)`;else if(simT>AIR_S&&!s.landed)why='ran out of air'}
+      if(R.gMax>G_LIM)why=`was hurt by ${R.gMax.toFixed(1)} g`;else if(R.cabin>CABIN_MAX)why=`overheated (cabin ${R.cabin.toFixed(0)} K)`;else if(simT+(R.bioAirX||0)>AIR_S&&!s.landed)why='ran out of air'}
     if(why){R.bioOK=false;R.bioWhy=why;HOOK.news(`${R.pet} ${why}. The program pauses to reflect`,'bad');HOOK.msg(`Passenger ${why}`)}}
   if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landBiome=s.water?0:biomeAt(s.pf).id;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
     if(R.logSpace){if(R.vEntry>0)logNote(s,'entry',R.vEntry);logNote(s,'pad',R.landDist)}if(R.hotT>350)logNote(s,'heat',{T:R.hotT,part:R.hotPart});if(R.bio&&R.bioOK&&R.gMax>0)logNote(s,'paxg',R.gMax);
