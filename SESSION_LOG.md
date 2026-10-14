@@ -6286,3 +6286,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **W43** (five questions with defaults), one Proposed line (crew slice 2, qualifications), QUEUE rows Q133–Q137, Q134 and Q182 pointed at the plan.
 - **Files:** `notes/economy.md`, `notes/vehicle.md` (banner), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** economy has no ready item left. Q376 waits on space's Q375; crew work starts in M3 (Q182).
+
+## 2026-10-13 — Caio + Claude (launchpad space session): the slow world, the plan (Q331)
+- **Q331 ✓ plan** (no code): notes space § "Plan: the slow world"; SYSTEM 1.1.4 points to it.
+  - What exists: spin is Tellus, locked or none; the sun is fixed (`SUN_DIR`); R3's freeze is final; bases have no night state; rovers don't drive off-screen; plane windows search one day from Tellus only.
+  - The numbers: solar day 194.8 days (97 sun, 97 night); about 5.2 km/s from low orbit; the terminator 0.55 m/s. On Selene a rover follows the dawn only above 47–70° latitude.
+  - The double sunrise is marginal at e 0.2 (the sun backs up 0.54°). Mercury's real 0.2056 gives 1.1° (scratch script).
+  - Slices: SW1–SW4 on Selene first (sleep instead of death, a base's night, drive orders between flights, cold traps); SW5–SW8 the body at M5 (any body turns, the body, heat at dawn after Q34b, missions).
+- **W44**: four questions with defaults. Eight Proposed lines.
+- **Files:** `notes/space.md`, `NOTES.md`, `SYSTEM.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** SW1 and SW2 are the cheapest Selene slices once M3 opens. Space has Q440 (shared with vehicle) ready.
