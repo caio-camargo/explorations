@@ -6319,3 +6319,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Proposed: repairing damage; damage on screen.
 - **Files:** `sim/vessel.js`, `sim/space.js`, `sim/program.js`, `sim/flight.js`, `sim/procedures.js`, `app/sound.js`, `tests/space.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** the space lane has no ready item; the slow world's slices wait on M3/M5.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q453 the streak at the horizon in the deck (v1.223)
+
+- **Done:** the streak was the cloud shell's underside seen under the deck (rays leaving the slab through its base),
+  lit at .45 of a sunlit top plus 100–200 km of haze; not the volume's fading ring Q453 guessed. The underside now takes
+  the volume's mean colour from below, and from inside the deck without the air. Gone in 178–179; from the pad the far
+  underside is grey instead of a cream band.
+- **Method fix:** reference views with weather are reproducible only with a pinned clock
+  (`REF_EVAL='simT=0;PROG.day=Math.ceil(PROG.day)'`): `simT` runs during the variable page load. In notes/look.md § v1.223.
+- **Collisions:** v1.222 and TESTING 302 went to space (Q440) meanwhile: mine are v1.223, TESTING 303 (TESTING's
+  counter was left at 302 by that row: set to 304).
+- **Files:** `app/gl.js`, `tests/look.mjs` (aerofx-43), `notes/look.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q453-*`.
+- **Next:** claim cleared. Free in the lane: Q428 (lander on Selene's night side, XS), Q429 (clouds in front of Selene,
+  a view).
