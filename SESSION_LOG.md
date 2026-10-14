@@ -6296,3 +6296,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **W44**: four questions with defaults. Eight Proposed lines.
 - **Files:** `notes/space.md`, `NOTES.md`, `SYSTEM.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** SW1 and SW2 are the cheapest Selene slices once M3 opens. Space has Q440 (shared with vehicle) ready.
+- **W44 answered** (Caio: "ok if so, and others ok", after confirming the sleep rule is for the cold of an airless night): all four defaults → DECISIONS.
