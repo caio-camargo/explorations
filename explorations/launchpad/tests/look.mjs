@@ -977,3 +977,21 @@
     && /col=mix\(col,mix\(cc\*tr\+ic,vAvg,iD\),cov\*\.95\*shW\*\(1\.-\.85\*uAtl\)\);/.test(pg);
   check('under and inside the deck: the far deck\'s underside in the volume\'s own colour (no pale streak at the horizon; views 178–179)', ok, `underside ${ok}`);
 }
+
+// aerofx-44. Earthshine on meshes (look & sound sky & bodies beat, QUEUE Q428): near an airless body, lightEnv's sky term
+// carries Tellus's lit face as the moon pass lights the ground (albedo .35, a Lambert sphere's phase, ×100), so a lander on
+// Selene's night side under a full Tellus is lit like its ground (view 182), and fades as Tellus sets or wanes.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const ok = /const es=5\*100\*\.35\*\.6667\*\(TELLUS\.R\/dT\)\*\*2\*Ph\*Math\.max\(0,Math\.min\(1,\.35\+\.65\*eu\)\)\*k\*k\*\(3-2\*k\);/.test(pg)
+    && /sky:\[\.006,\.007,\.01\]\.map\(\(x,i\)=>x\+es\*/.test(pg) && /if \(n === 182\) \{/.test(vj);
+  check('earthshine on meshes near an airless body: a lander on Selene\'s night side lit by a full Tellus (view 182)', ok, `earthshine ${ok}`);
+}
+
+// aerofx-45. Clouds in front of Selene have a reference view (look & sound sky & bodies beat, QUEUE Q429): 183 searches the
+// weather for 50–85 % cover where Selene's ray crosses 3.5 km, from 1.5 km over the night side (view 168 found clear air).
+{
+  const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const ok = /if \(n === 183\) \{/.test(vj) && /const cv = cloudAt\(cu, tNow\(\) \+ k \* 300\); if \(cv > 0\.5 && cv < 0\.85\)/.test(vj);
+  check('a reference view of clouds in front of Selene (view 183: cover searched on its ray)', ok, `view ${ok}`);
+}

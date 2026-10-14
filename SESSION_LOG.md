@@ -6342,7 +6342,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Slip: an edit briefly emptied app/terms.js in the worktree; restored from git before commit.
 - Files: app/terms.js, app/editor.js, app/program-ui.js, builder.js, tests/flow.mjs, playtest.mjs, NOTES.md, notes/flow.md, TESTING.md.
 - Next: Q397 (crew-loss chain), Q192 (planet label merge), Q212, Q218, Q389.
-## 2026-10-14 — Caio + Claude (launchpad vehicle, `launchpad-builder`): when to start the transfer burn (v1.225, Q454)
+
+## 2026-10-14 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q428 earthshine on meshes, Q429 a view of Selene behind clouds (v1.225)
+
+- **Done:** `airlessFill` gives meshes Tellus's light as the moon pass gives the ground; the lander at Selene's night
+  (new view 182) went from 10 to 116 grey levels against a ground of 36. New view 183: Selene behind 62 % cover.
+- **Collisions:** claimed both after grepping (Q429 was the test bench's, stale); waited ~4 min on the vehicle
+  session's GPU lock; views 182–183 because sky2's unmerged branch holds 180–181 (and will renumber its aerofx-42).
+- **Files:** `app/gl.js`, `views.js`, `tests/look.mjs` (aerofx-44, -45), `notes/look.md`, `NOTES.md`, `TESTING.md` (305),
+  `QUEUE.md`, `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q428-*`.
+- **Next:** claim cleared.
+## 2026-10-14 — Caio + Claude (launchpad vehicle, `launchpad-builder`): when to start the transfer burn (v1.226, Q454)
 
 - **Asked:** "q454 is fine" (queued from Q412: nothing told the player when to start the transfer to a stationary orbit).
 - **Done:** `statXfer(s)` (`sim/program.js`) finds where on a low equatorial orbit a transfer burn lands over the capital's
@@ -6354,5 +6364,5 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Tests:** vehicle and flow sections pass; the full suite not run (the machine had ~0.6–1 GB free; a background wait was killed
   for memory overnight). The stale-claim mark on Q454 (02:05) was this branch waiting on the GPU lock.
 - **Files:** sim/program.js, app/program-ui.js, app/hud.js, app/render.js, test.mjs (exports `statXfer`), tests/vehicle.mjs,
-  notes/vehicle.md, NOTES.md, TESTING.md (305), QUEUE.md.
+  notes/vehicle.md, NOTES.md, TESTING.md (306), QUEUE.md.
 - **Next:** Q423 (bench parts) or Q416's slice 2 (bus frame, small stacks), Caio's pick.

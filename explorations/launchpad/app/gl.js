@@ -2609,13 +2609,18 @@ function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=
 // shader), plus hemispheric sky/ground ambient that fades with altitude and night. ×5 matches the ground's sun term.
 // near an airless body (QUEUE Q116, PLAYTEST #32) the fill comes from its own sunlit ground: light bounced up off the
 // regolith (albedo ~0.12) as the hemisphere's ground term, about that body's up, fading with height; no sky. Without it a
-// lander with the sun behind it was a black silhouette (this function only knew Tellus's air). Earthshine (~1e-4 of the
-// sun) is left out. FILL_FX = false turns it off (A/B).
+// lander with the sun behind it was a black silhouette (this function only knew Tellus's air). Earthshine (Q428): the
+// sky term carries Tellus's lit face as the moon pass lights the ground with it (albedo .35, a Lambert sphere's phase,
+// ×100 so a night side under a full Tellus reads), on the mesh's sun scale (5 to the ground's 2.2) and by how high
+// Tellus stands; without it a lander on Selene's night side was darker than its ground. FILL_FX = false turns it off (A/B).
 let FILL_FX=true;
 function airlessFill(p){let nb=null;if(!FILL_FX)return null;for(const b of BODIES){if(b===TELLUS||b.atm)continue;const q=sub(p,bodyPos(b,simT)),d=len(q);
     if(d<b.R*4&&(!nb||d-b.R<nb.h))nb={b,q,h:d-b.R}}
   if(!nb)return null;const up=norm(nb.q),g=5*(nb.b.albedo??.12)*Math.max(0,dot(up,SUN))*Math.exp(-Math.max(nb.h,0)/(nb.b.R*.6));
-  const sa=Math.min(nb.b.R/(nb.b.R+Math.max(nb.h,0)),1);return{sun:[5,5,5],up,sky:[.006,.007,.01],gnd:[.95,.92,.88].map(x=>x*g),dsk:diskOf(sa),limb:[0,0,0]}}
+  const sa=Math.min(nb.b.R/(nb.b.R+Math.max(nb.h,0)),1),wT=sub(bodyPos(TELLUS,simT),p),dT=len(wT),tu=norm(wT);
+  const al=Math.acos(Math.max(-1,Math.min(1,-dot(SUN,tu)))),Ph=(Math.sin(al)+(Math.PI-al)*Math.cos(al))/Math.PI,eu=dot(up,tu),k=Math.max(0,Math.min(1,(eu+.1)/.2));
+  const es=5*100*.35*.6667*(TELLUS.R/dT)**2*Ph*Math.max(0,Math.min(1,.35+.65*eu))*k*k*(3-2*k);
+  return{sun:[5,5,5],up,sky:[.006,.007,.01].map((x,i)=>x+es*[.92,.97,1.08][i]),gnd:[.95,.92,.88].map(x=>x*g),dsk:diskOf(sa),limb:[0,0,0]}}
 // the body below as a disc (BEAUTY B1.2, Q315): sin and cos of its angular radius and the width of its rim in the hull's
 // reflection (soft at the pad, where the disc is the whole lower hemisphere, sharp from orbit)
 function diskOf(sa){const ca=Math.sqrt(Math.max(1-sa*sa,0));return[sa,ca,.03+.17*sa**8,0]}

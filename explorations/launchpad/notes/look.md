@@ -2189,3 +2189,19 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   scenes from run to run (Q420's "same list" rule held only by luck). `REF_EVAL='simT=0;PROG.day=Math.ceil(PROG.day)'`
   gives the same `CLOUD_DT` every run (still per list: a view's state follows the views before it).
 - **Check:** test `aerofx-43`. TESTING 303.
+
+## v1.225 — earthshine on a lander at Selene's night; clouds in front of Selene have a view (2026-10-14, sky & bodies, QUEUE Q428, Q429)
+
+`app/gl.js` (`airlessFill`), `views.js` (182, 183).
+
+- **Q428:** the moon pass lights Selene's night side with earthshine (×100 so it reads), but meshes near an airless body
+  had a constant .006 sky: a lander was darker than its ground. `airlessFill`'s sky term now carries the same light:
+  Tellus's lit face by its phase and distance, ×100, on the mesh's sun scale (5 to the ground's 2.2), by Tellus's height
+  (none once it sets). **View 182:** the lander of 112 at new moon, Tellus full and 61° up, the sun 55° down. Grey levels
+  before → after: white tank 10 → 116, dark nose 2 → 22, ground 36 (unchanged); `output/launchpad/beauty/q428-A/`,
+  `q428-C/`, `q428-C/ab_v182.png`. 112, 166, 168 unchanged but for the craft speck in 166 (now lit by Tellus).
+- **Q429: view 183:** Selene full and 34° up from 1.5 km over the night side, the weather searched for 50–85 % cover
+  where its ray crosses 3.5 km (168 had found clear air). Selene shows dimmed through the deck, stars in a gap. Its
+  weather still moved between two pinned runs (CLOUD_DT 900 and 5400): judge it on its own, not as an A/B.
+- **Collisions:** the 2nd sky & bodies session's unmerged Q364 (`sky2`) holds views 180–181; its `aerofx-42` is taken
+  (v1.221), so it renumbers at its merge. **Check:** tests `aerofx-44`, `aerofx-45`. TESTING 305.
