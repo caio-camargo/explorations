@@ -355,6 +355,33 @@ window.refView = async (n) => {
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return 'Selene, sun ' + (Math.asin(dot(u, SUN)) * 57.3).toFixed(0) + '° up';
   }
+  // 182 (sky & bodies beat, QUEUE Q428): the lander of 112 on Selene's near side at new moon, Tellus full and ~60° up,
+  // the sun below the horizon: lit by earthshine only, as its ground is (the label gives the elevations)
+  // 183 (QUEUE Q429): Selene full and ~35° up, from 1.5 km over Tellus's night side, with cloud on its ray: the first
+  // 5-minute weather offset with 50–85 % cover where the ray crosses 3.5 km (the clouds in front of Selene)
+  if (n === 182) {
+    stackDef = ['pod', 't1', 'wren']; editorChanged(); document.getElementById('launch').click(); S.mkLift = true;
+    const sn = norm(SUN); let bt = 0, be = 9; for (let tt = 0; tt < 2 * Math.PI / SELENE.n; tt += 600) { const e = Math.abs(dot(norm(moonPos(tt)), sn) - 1); if (e < be) { be = e; bt = tt } } simT = bt;
+    const tT = norm(mul(moonPos(simT), -1)), w = norm(cross(tT, [0, 0, 1])), u = norm(add(mul(tT, Math.cos(0.5)), mul(w, Math.sin(0.5))));
+    const pf = mul(u, groundR(SELENE, mul(u, SELENE.R)) - S.yBot + 0.02);
+    S.body = SELENE; S.r = pf; const X = norm(cross(u, [0, 0, 1])); S.q = qFromBasis(X, u, cross(X, u)); S.w = [0, 0, 0]; S.v = surfVel(SELENE, S.r);
+    S.throttle = 0; S.landed = true; window.simulate = () => {};
+    cam.yaw = 0.6; cam.pitch = 0.25; cam.dist = 14; render(); await settle(); bare();
+    return 'Selene at night, Tellus ' + (Math.asin(clamp(dot(u, tT), -1, 1)) * 57.3).toFixed(0) + '° up, sun ' + (Math.asin(clamp(dot(u, sn), -1, 1)) * 57.3).toFixed(0) + '°';
+  }
+  if (n === 183) {
+    stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0]; const sn = norm(SUN);
+    let bt = 0, be = 9; for (let tt = 0; tt < 2 * Math.PI / SELENE.n; tt += 600) { const e = Math.abs(dot(norm(moonPos(tt)), sn) + 1); if (e < be) { be = e; bt = tt } } simT = bt;
+    const m = norm(moonPos(simT)), b = norm(cross(m, [0, 1, 0])), u = norm(add(mul(m, Math.cos(0.95)), mul(b, Math.sin(0.95))));
+    const P = mul(u, TELLUS.R + Math.max(0, terrainH(toPF(TELLUS, u, simT))) + 1500), mD = norm(sub(moonPos(simT), P)), el = Math.asin(clamp(dot(mD, u), -1, 1));
+    const c = madd(P, mD, 2000 / Math.max(Math.sin(el), 0.05)), cu = toPF(TELLUS, norm(c), simT);
+    pinWx = false; CLOUD_DT = 0; for (let k = 1; k < 6000; k++) { const cv = cloudAt(cu, tNow() + k * 300); if (cv > 0.5 && cv < 0.85) { CLOUD_DT = k * 300; break } }
+    S.r = P; S.v = [0, 0, 0]; const up = norm(P), side = norm(cross(mD, up)), D = norm(add(mD, mul(side, 0.08)));
+    const f = localFrame(S.r); cam.pitch = Math.asin(clamp(-dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(D, f.e), dot(D, f.n)); cam.dist = 250;
+    render(); await settle(); bare();
+    return 'Selene behind clouds, ' + (el * 57.3).toFixed(0) + '° up, cover on its ray ' + cloudAt(cu, tNow() + CLOUD_DT).toFixed(2) + ' (CLOUD_DT ' + CLOUD_DT + ')';
+  }
   // 114–115 (Q102): the Orbiter on the pad in the builder as Cape (114, today's look) and as Steppe (115): same parts
   // and outline, a different paint and finish; 123–126 (Q228) the same as Arsenal, Coastal, Mountain, Isle
   if (n === 114 || n === 115 || n >= 123 && n <= 126) {
