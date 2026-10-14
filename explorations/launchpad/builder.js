@@ -395,7 +395,7 @@ const PART_PAIRS={
 const partPairs=d=>PART_PAIRS[d.key]||d.base&&PART_PAIRS[d.base]||PART_PAIRS[d.kind]||'';
 function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.kind==='tank')L.push(['propellant',n(d.wet-d.dry,'t')],['mass',`${n(d.wet,'t')} full, ${n(d.dry,'t')} empty`]);else L.push(['mass',n(d.m,'t',3)]);
-  if(d.kind==='engine')L.push(['thrust',`${d.thrust} kN`],['Isp',`${d.ispA} s sea level · ${d.ispV} s vacuum`]);
+  if(d.kind==='engine')L.push(['thrust',`${d.thrust} kN`],['Isp',`${d.ispA} s sea level · ${d.ispV} s vacuum <span class="dim">(higher: more Δv from a tank)</span>`]   /* (Q384) the card is itself the tooltip: a gloss, not a term */);
   if(d.thrust&&d.kind!=='engine')L.push(['thrust',`${d.thrust} kN for ${d.burn} s`]);
   if(d.crew)L.push(['seats',d.crew]);if(d.berths)L.push(['berths',d.berths]);
   if(d.torque)L.push(['turning',`${d.torque/1000} kN·m`]);if(d.Wp)L.push(['power',`${d.Wp} W in full sun`]);if(d.Wg)L.push(['power',`${d.Wg} W always`]);

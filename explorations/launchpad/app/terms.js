@@ -14,6 +14,14 @@ const TERMS={
   kh:{t:'Know-how',d:'What the team has learned about a part by building and flying it, in one bar. Low know-how means engines that fail to light, slower stacking and science that pays less; flights, the test stand and development projects raise it.'},
   trim:{t:'Trim',d:'An engine whose thrust misses the centre of mass turns the craft, so the steering spends part of what it has holding it straight. The share it spends is the trim: under 20% is fine, near 100% leaves nothing for flying.'},
   scale:{t:'The model\'s scale',d:'The rocket on the table is a scale model, like a kit: at 1:48, 1 cm of the model is 48 cm of the real rocket. The scale is the smallest kit scale that keeps the model under 45 cm, so a bigger design sits at a smaller scale. The table, the lamp and the little figure on the base plate (a real 1.8 m person) are drawn at the same scale.'},   // (flow, Q277)
+  // (flow, Q384) the words the flight, the map and the site picker use
+  soi:{t:'Sphere of influence (SOI)',d:'The region where one body\'s gravity rules the path. Leaving it is an escape: the craft goes on around that body\'s parent instead, a moon\'s sphere into the planet\'s, the planet\'s into the sun\'s. Entering a moon\'s is an encounter.'},
+  pro:{t:'Prograde',d:'The way the craft is moving along its orbit. Burning prograde speeds it up and raises the far side of the orbit; it is how you climb to a higher orbit or leave for another world.'},
+  retro:{t:'Retrograde',d:'Straight against the way the craft is moving. Burning retrograde slows it and lowers the far side of the orbit: how you come home, land, or are caught by another world.'},
+  nrm:{t:'Normal and anti-normal',d:'Square to the orbit\'s plane, one way or the other (like the axle of a wheel). A burn there tilts the orbit: it changes the inclination, best done where the orbit crosses the equator.'},
+  rad:{t:'Radial out and in',d:'Away from the body\'s centre, or towards it. A burn there swings the orbit around without changing its size much: mostly for small corrections.'},
+  inc:{t:'Inclination',d:'How far the orbit is tilted from the equator, in degrees: 0° flies over the equator, 90° over the poles. A launch due east from a site at latitude L gives an inclination of L, the lowest it can reach without paying for a turn.'},
+  spin:{t:'The ground\'s free speed',d:'The ground already moves east with the planet\'s turning, fastest at the equator. A rocket launched east keeps that speed for free; launched west it must undo it first.'},
   stab:{t:'Stability margin',d:'How far the centre of mass sits ahead of the centre of pressure, in body widths (calibers). Positive: it flies nose-first like an arrow (0.5 and up is comfortable); negative: it wants to fly backwards and flips.'},
 };
 const term=(k,txt)=>TERMS[k]?`<span class="term" data-term="${k}">${txt||TERMS[k].t}</span>`:(txt||k);
@@ -28,6 +36,9 @@ function fixText(f){if(!f)return'';if(!Array.isArray(f))return lc1(f.trim());con
 function whyMark(cls,html,W,tag='b'){if(!W||!cls||cls==='ok')return`<${tag}${cls?` class="${cls}"`:''}>${html}</${tag}>`;
   return`<${tag} class="${cls} term" data-wt="${attrEsc(W.t||'')}" data-wd="${attrEsc(W.d||'')}" data-wf="${attrEsc(fixText(W.fix))}">${html}</${tag}>`}
 const tipEsc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+// what a [data-term] or [data-wt] element's tooltip says ('' for an unknown term)
+function termTipHTML(el){const D=el.dataset;if(D.wt!=null)return`<b class="${el.classList.contains('bad')?'bad':'warn'}">${tipEsc(D.wt)}</b>${D.wd?`<div>${tipEsc(D.wd)}</div>`:''}${D.wf?`<div class="fix">Fix: ${tipEsc(D.wf)}</div>`:''}`;
+  const T=TERMS[D.term];return T?`<b>${T.t}</b><div>${T.d}</div>`:''}
 // the tooltip: one for every screen (#termTip). Terms and self-explaining marks show on hover of a [data-term] or
 // [data-wt], under it (above when there's no room); the builder's part cards (beside the parts list) and the hover over a
 // part on the craft (at the pointer) show through tipShow too (QUEUE Q391). Each use names itself (own: 'term', 'card',
@@ -39,8 +50,13 @@ function tipShow(own,html,at){const tip=$('termTip');if(!tip)return;tip.dataset.
   else{x=at.r.left;y=at.r.bottom+6+h<innerHeight?at.r.bottom+6:at.r.top-h-6}                            // under it
   tip.style.left=`${Math.round(Math.max(6,Math.min(innerWidth-w-6,x)))}px`;tip.style.top=`${Math.round(Math.max(6,Math.min(innerHeight-h-6,y)))}px`}
 function tipHide(own){const tip=$('termTip');if(tip&&(!own||tip.dataset.own===own))tip.classList.add('hidden')}
-document.addEventListener('mouseover',e=>{const el=e.target.closest&&e.target.closest('[data-term],[data-wt]');
-  if(!el){tipHide('term');return}let html;
-  if(el.dataset.wt!=null){const D=el.dataset;html=`<b class="${el.classList.contains('bad')?'bad':'warn'}">${tipEsc(D.wt)}</b>${D.wd?`<div>${tipEsc(D.wd)}</div>`:''}${D.wf?`<div class="fix">Fix: ${tipEsc(D.wf)}</div>`:''}`}
-  else{const T=TERMS[el.dataset.term];if(!T)return;html=`<b>${T.t}</b><div>${T.d}</div>`}
+let tipTap={el:null,t:-1e9};   // (Q384) the term a tap opened, and when (a tap also fires a mouseover just after)
+document.addEventListener('mouseover',e=>{if(performance.now()-tipTap.t<900)return;const el=e.target.closest&&e.target.closest('[data-term],[data-wt]');
+  if(!el){tipHide('term');return}const html=termTipHTML(el);if(!html)return;
   tipShow('term',html,{r:el.getBoundingClientRect()})});
+// (flow, QUEUE Q384) touch has no hover: a tap on a term shows it, a tap on it again or anywhere else closes it. A
+// button that is a term (the SAS modes) does its job on a tap and doesn't show the term: hover only
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;tipTap.t=performance.now();
+  const el=e.target.closest&&e.target.closest('[data-term],[data-wt]');
+  if(!el||el===tipTap.el||el.closest('button')){tipTap.el=null;tipHide('term');return}
+  const html=termTipHTML(el);if(!html)return;tipTap.el=el;tipShow('term',html,{r:el.getBoundingClientRect()})},true);
