@@ -167,6 +167,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
 - v1.217 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
 - Plan: the slow world (2026-10-13, space session, QUEUE Q331; SYSTEM § "The slow world", D19)
+- v1.222 — a damaged part does something (2026-10-13, space session, QUEUE Q440; v1.210's "Not yet")
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

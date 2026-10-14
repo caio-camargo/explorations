@@ -380,7 +380,7 @@ function nodeInfo(s){const n=s.node;if(!n)return null;
   return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
 function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
   let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&groupFuel(s,s.grp[p.i])>0)}
-  if(!E.length)return NaN;const Fv=[0,0,0];let md=0;for(const p of E){const d=tdirOf(p),f=p.d.thrust*1000;Fv[0]+=f*d[0];Fv[1]+=f*d[1];Fv[2]+=f*d[2];md+=engineMdot(p.d)*1000}const F=len(Fv);
+  if(!E.length)return NaN;const Fv=[0,0,0];let md=0;for(const p of E){const d=tdirOf(p),f=p.d.thrust*1000*engK(p);Fv[0]+=f*d[0];Fv[1]+=f*d[1];Fv[2]+=f*d[2];md+=engineMdot(p.d)*engK(p)*1000}const F=len(Fv);
   return s.mass*(1-Math.exp(-dv/(F/md)))/md}
 function nodeBurn(s,Y,T,dt){const n=s.node;
   if(!n.burning){if(simT<n.t-(n.est||0)-60)return;n.dvW=nodeInfo(s).dvW;n.applied=[0,0,0];n.burning=true}

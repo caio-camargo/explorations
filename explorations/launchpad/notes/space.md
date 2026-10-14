@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2236,3 +2236,25 @@ longitude, the plane windows, the terminator speed by latitude).
 4. **Selene's fixed sun at 6.8°** (until Q177 moves it): *default leave it*: SW4 finds ice in the dark south cap now,
    and the ridges and traps come once the sun moves with the year. Alternative: set Selene's sun to the real 1.5° now
    (world's call, GROUND.md).
+
+## v1.222 — a damaged part does something (2026-10-13, space session, QUEUE Q440; v1.210's "Not yet")
+
+v1.210 left `p.dmg` on a part a debris piece damaged, but only solar cells read it. Now the rest do (`sim/vessel.js`,
+`engK`, `gimOK`, `GIM_JAM`, `AIR_LEAK`):
+
+- **An engine** keeps 1−dmg of its flow and its thrust, at the same Isp (a hurt turbopump, not a worse nozzle): the
+  physics step (`thr`, the fuel drawn), the planned burn (`nodeBurnTime`), the procedures' estimates (`engAcc`, the
+  circularisation), the steering authority and the engine sound all read it. A burn at 50 % takes twice as long and
+  costs the same fuel.
+- **Its gimbal jams from 30 % damage**, stuck where the hit left it: no column in the gimbal solve (`gimSteer`), no
+  authority (`ctrlAuthority`, `ctrlAuthRoll`). A nozzle jammed off-centre keeps pushing sideways, so the wheels or RCS
+  have to hold against it.
+- **A reaction wheel** (or a pod's, or a probe core's) keeps 1−dmg of its torque and of its storage (`geom`).
+- **A crew cabin or a biocapsule leaks its air:** at damage d it uses air (1 + 10·d) times as fast, so at 50 % the crew's
+  10 days of air last 1⅔ days. The leak is time added to the mission clock in the air checks (`R.airX`, `R.bioAirX`), so
+  an undamaged flight runs out exactly as before.
+- **The strike's message says what the damage does:** "struck the Kestrel booster: damaged (50 %), 50 % of its thrust left, its
+  gimbal jammed"; a pod "… % of its wheel's torque left, its cabin leaking (the air lasts 17 % as long)".
+- **Not here:** rover wheels (debris doesn't reach a rover); repair (a crew or a servicing visit putting `dmg` back to 0);
+  damage on the screen besides the message (the part list, the Debrief).
+- Test `space-27`.
