@@ -798,7 +798,7 @@
   const T = TELLUS, ATM = T.atm, AS = ATM / 7e4, DAY = 2 * Math.PI / T.rot, rg = api.STAT_R, d = api.PRESETS['TV Satellite'], W = api.launchWarnings(d);
   const c = api.capital(), capLon = Math.atan2(c.u[2], c.u[0]) * 180 / Math.PI, msg0 = api.HOOK.msg; api.HOOK.msg = () => {};
   api.t = 0; const s = api.newShip(d); api.S = s; s.av = 1; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
-  let phase = 'up', k = 0, waited = 0, t0 = 0;
+  let phase = 'up', k = 0, waited = 0, t0 = 0, X = null;
   const step = () => { const nx = s.events[s.evIdx]; if (nx && nx.fair && len(s.r) - T.R > 40000 && s.qdyn < 300) api.stage(s);
     if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s); api.advPhys(s); };
   while (s.alive && k++ < 3e6) { const el = elements(s.r, s.v, T.mu), h = len(s.r) - T.R, f = api.localFrame(s.r);
@@ -808,8 +808,8 @@
       const dvC = Math.sqrt(T.mu / el.ap) - Math.sqrt(T.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && api.timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(api.engAcc(s), 0.1))) phase = 'circ'; }
     else if (phase === 'circ') { const hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(T.mu / len(s.r))), s.v); s.sasMode = 'stab'; s.hold = norm(need); s.throttle = 1;
       if (el.pe - T.R > ATM + 2000 || len(need) < 3) { s.throttle = 0; t0 = api.t; phase = 'wait'; } }
-    else if (phase === 'wait') { s.sasMode = 'pro'; s.throttle = 0; const a = (len(s.r) + rg) / 2, Ta = api.progT(s) + Math.PI * Math.sqrt(a ** 3 / T.mu), pf = api.rotY(mul(norm(s.r), -1), -api.absTh(Ta));
-      if (Math.abs(((Math.atan2(pf[2], pf[0]) * 180 / Math.PI - capLon) % 360 + 540) % 360 - 180) < 1.5) { waited = api.t - t0; phase = 'gto'; } }
+    else if (phase === 'wait') { s.sasMode = 'pro'; s.throttle = 0; X = X || api.statXfer(s); if (!X) break;   // Q454: the game's own timing, the burn centred on it
+      if (api.t >= t0 + X.dt - 0.5 * X.dv / Math.max(api.engAcc(s), 0.1)) { waited = api.t - t0; phase = 'gto'; } }
     else if (phase === 'gto') { s.sasMode = 'pro'; s.throttle = el.ap < rg - 2e5 ? 1 : el.ap < rg ? 0.2 : 0; if (el.ap >= rg) { s.throttle = 0; phase = 'rel'; } }
     else if (phase === 'rel') { let g = 0; while (s.parts.some(p => p.on && p.d.key === 'padapt') && s.evIdx < s.events.length && g++ < 6) api.stage(s); phase = 'toAp'; }
     else if (phase === 'toAp') { s.sasMode = 'pro'; const dvC = Math.sqrt(T.mu / el.ap) - Math.sqrt(T.mu * (2 / el.ap - 1 / el.a)), lead = 0.5 * dvC / Math.max(api.engAcc(s) || 0.5, 0.05), tA = api.timeToNu(el, Math.PI);
@@ -819,7 +819,7 @@
     step(); }
   for (let i = 0; i < 20; i++) api.advPhys(s); api.HOOK.msg = msg0;
   const el = elements(s.r, s.v, T.mu), P = 2 * Math.PI * Math.sqrt(el.a ** 3 / T.mu) / DAY, inc = Math.acos(Math.abs(el.h[1] / len(el.h))) * 180 / Math.PI;
-  check('a stationary satellite (Q412): the TV Satellite preset, timed over the capital, reaches a day-long circular equatorial orbit the capital sees; TV for the capital counts; Δv left to hold it; no warnings',
-    !W.length && s.alive && Math.abs(P - 1) < 0.002 && el.e < 0.01 && inc < 2 && api.capSees(s.r, api.progT(s)) && s.rec.tv && api.dvRemaining(s).tot > 150,
-    `warnings ${W.length}; waited ${(waited / 60).toFixed(0)} min in the low orbit; period ${P.toFixed(4)} day, e ${el.e.toFixed(4)}, ${inc.toFixed(2)}°; capital sees it ${api.capSees(s.r, api.progT(s))}; TV ${!!s.rec.tv}; ${api.dvRemaining(s).tot.toFixed(0)} m/s left`);
+  check('a stationary satellite (Q412): the TV Satellite preset, timed over the capital by statXfer (Q454), reaches a day-long circular equatorial orbit the capital sees; TV for the capital counts; Δv left to hold it; no warnings',
+    !W.length && !!X && s.alive && Math.abs(P - 1) < 0.002 && el.e < 0.01 && inc < 2 && api.capSees(s.r, api.progT(s)) && s.rec.tv && api.dvRemaining(s).tot > 150 && !api.statXfer(s),
+    `warnings ${W.length}; statXfer said ${X ? (X.dt / 60).toFixed(1) : '—'} min, waited ${(waited / 60).toFixed(1)} (the burn centred); ends over ${(pfLon => pfLon.toFixed(1))(Math.atan2(api.rotY(s.r, -api.absTh(api.progT(s)))[2], api.rotY(s.r, -api.absTh(api.progT(s)))[0]) * 180 / Math.PI)}° (capital ${capLon.toFixed(1)}°); period ${P.toFixed(4)} day, e ${el.e.toFixed(4)}, ${inc.toFixed(2)}°; capital sees it ${api.capSees(s.r, api.progT(s))}; TV ${!!s.rec.tv}; ${api.dvRemaining(s).tot.toFixed(0)} m/s left`);
 }

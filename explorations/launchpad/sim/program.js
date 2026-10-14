@@ -178,6 +178,19 @@ const nearSide=(b,r)=>dot(norm(r),norm(mul(bodyRel(b,simT)[0],-1)))>0;   // a po
 // the capital: the home power's biggest city; does a satellite at r (absolute frame, program time T) sit 15° up in its sky?
 const capital=()=>CITIES.filter(c=>c.power&&c.power.i===HOME).sort((a,b)=>b.pop-a.pop)[0]||CITIES[0];
 function capSees(r,T,minEl=15){const c=capital(),pf=rotY(r,-absTh(T)),d=sub(pf,mul(c.u,TELLUS.R));return dot(norm(d),c.u)>=Math.sin(minEl*Math.PI/180)}
+// (vehicle, Q454) when to burn for a stationary orbit over the capital: the far point of a transfer begun at r is opposite r,
+// half a transfer later, and the planet turns meanwhile, so the burn's place picks the longitude. From a low, nearly circular,
+// nearly equatorial orbit of Tellus: {dt (s from now to the burn's middle), r (where, Tellus frame), dv (prograde, the first
+// burn), city}; else null. Sampled along the next two orbits (one orbit sweeps 360° less the planet's turn).
+function statXfer(s){if(!s.alive||s.landed||s.body!==TELLUS)return null;const B=TELLUS,el=elements(s.r,s.v,B.mu);
+  if(!(el.e<0.05)||el.pe<B.R+B.atm||el.ap>0.6*STAT_R||Math.acos(clamp(el.h[1]/el.hl,-1,1))>10*Math.PI/180)return null;
+  const c=capital(),cl=Math.atan2(c.u[2],c.u[0]),T0=progT(s),N=360,at=(t,nu)=>{const rr=el.p/(1+el.e*Math.cos(nu)),r=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))),a=(rr+STAT_R)/2,
+      pf=rotY(mul(r,-1),-absTh(T0+t+Math.PI*Math.sqrt(a**3/B.mu)));return{r,rr,a,e:((Math.atan2(pf[2],pf[0])-cl)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI}};
+  let pv=null;for(let i=0;i<=2*N;i++){const nu=el.nu+2*Math.PI*i/N,t=i%N?timeToNu(el,nu%(2*Math.PI))+Math.floor(i/N)*el.period:i/N*el.period,x=at(t,nu);
+    if(pv&&(pv.x.e<0)!==(x.e<0)&&Math.abs(x.e-pv.x.e)<1){const f=-pv.x.e/(x.e-pv.x.e),nuB=pv.nu+f*(nu-pv.nu),tB=pv.t+f*(t-pv.t),y=at(tB,nuB);
+      return{dt:tB,r:y.r,dv:Math.sqrt(B.mu*(2/y.rr-1/y.a))-Math.sqrt(B.mu*(2/y.rr-1/el.a)),city:c}}
+    pv={x,nu,t}}
+  return null}
 // TV pays while the capital sees it 15° up all day round (six times through the day); its tilt may wander as long as that
 // holds (space, MIDGAME § Satellites: station-keeping holds the orbit's size and phase, not its tilt). The mission that
 // sets it up still asks for under 2° (outThere).

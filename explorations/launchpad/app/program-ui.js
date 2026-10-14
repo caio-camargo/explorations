@@ -296,6 +296,17 @@ document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.datase
 function tgtRows(){const T=tgtOf(S);if(!T)return[];const d=len(T.dr),cl=dot(T.dv,T.dr)/Math.max(d,1e-9),ca=tgtCA();
   return[['Target',`${T.q.name} · ${fmtD(d)} · <span class="dim">rel</span> ${len(T.dv).toFixed(1)} m/s${Math.abs(cl)>0.05?` <span class="dim">${cl>0?'closing':'opening'}</span> ${Math.abs(cl).toFixed(1)}`:''}`],
     ['Closest',ca&&ca.now?`${fmtD(ca.now.d)} <span class="dim">in ${fmtT(ca.now.t-progT(S))} at ${ca.now.vrel.toFixed(0)} m/s</span>${ca.plan?` · plan ${fmtD(ca.plan.d)}`:''}`:'—']]}
+// (vehicle, Q454) the transfer to a stationary orbit over the capital: when to burn, how much, and a button that plans it as a
+// node (the burn's middle at statXfer's place: measured, that lands within a degree; starting there lands ~2° short). Shown
+// while the craft carries an antenna or TV for the capital is open and not flown; recomputed once a second (two orbits sampled)
+let statXc={t:-9,s:null,x:null};
+function statX(){if(!S)return null;if(statXc.s!==S||Math.abs(simT-statXc.t)>=1){const M=MISSIONS.find(m=>m.id==='tv'),want=S.parts.some(p=>p.on&&p.d.kind==='ant')||!!M&&!PROG.done.tv&&missionOpen(M);
+    statXc={t:simT,s:S,x:want&&!(S.throttle>0)?statXfer(S):null}}const X=statXc.x;return X&&X.dt>simT-statXc.t?{...X,dt:X.dt-(simT-statXc.t)}:null}
+function statRows(){const X=statX();if(!X)return[];
+  return[['Transfer',`prograde ${X.dv.toFixed(0)} m/s · <b>in ${fmtT(X.dt)}</b> <span class="dim">(the burn's middle)</span>`],
+    ['Arrives',`over ${X.city.name}, ${fmtD(STAT_R-TELLUS.R)} up · <button data-statx="1">${S.node?'move the node here':'plan it'}</button>`]]}
+document.addEventListener('click',e=>{if(!(e.target.dataset&&e.target.dataset.statx)||mode!=='flight'||!S)return;const X=statX();if(!X||S.node&&S.node.burning)return;
+  S.node={t:simT+X.dt,dv:[X.dv,0,0]};HOOK.msg(`Transfer planned: the far point comes round over ${X.city.name}`)});
 function updateHUD(){
   const b=S.body,rl=len(S.r),h=rl-b.R,el=elements(S.r,S.v,b.mu),vs=dot(S.v,S.r)/rl,srf=len(sub(S.v,surfVel(b,S.r)));
   let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit='landed';else if(b.atm&&h<b.atm)sit='flying';

@@ -26,6 +26,7 @@ const HUD_CARDS=[
   // Descent: coming down with an impact predicted; or, any time, the range safety warning (impact point over a city)
   {id:'descent',title:'Descent',when:()=>S.alive&&!S.landed&&(!!S.rangeWarn||dot(S.v,S.r)<0&&(!!impact||!toolOK('impact'))),rows:()=>[impactRow()]},
   {id:'target',title:'Target',rows:()=>[...tgtRows(),...dockRows()]},
+  {id:'stat',title:'Stationary orbit',rows:statRows},   // (vehicle, Q454) when to start the transfer, app/program-ui.js; on the Map too
   {id:'payload',title:'Payload',rows:payloadRows},
   {id:'fleet',title:'Fleet',rows:fleetRows},
   {id:'vehicle',title:'Vehicle',when:()=>spinRows().length+wheelRows().length>0||!!S.rcs,
@@ -39,7 +40,7 @@ function cardFolds(cards,avail){const fold=new Set();let tot=cards.reduce((a,c)=
   return fold}
 const hudPins=new Set((()=>{try{return JSON.parse(localStorage.getItem('launchpad-hud-pins')||'[]')}catch(e){return[]}})()),hudShut=new Set(),hudSince=new Map();
 function renderCards(){const el=$('cards');if(!el)return;const now=performance.now();
-  const on=mode==='flight'&&!!S?HUD_CARDS.filter(c=>view!=='map'||c.id==='target').map(c=>{const pin=hudPins.has(c.id);if(!pin&&c.when&&!c.when())return null;if(!pin&&typeof cpPhase==='function'&&cpPhase()&&!CP_CARDS.includes(c.id))return null;   // (Q286) the dark cockpit
+  const on=mode==='flight'&&!!S?HUD_CARDS.filter(c=>view!=='map'||c.id==='target'||c.id==='stat').map(c=>{const pin=hudPins.has(c.id);if(!pin&&c.when&&!c.when())return null;if(!pin&&typeof cpPhase==='function'&&cpPhase()&&!CP_CARDS.includes(c.id))return null;   // (Q286) the dark cockpit
      const rows=c.rows();return rows.length?{c,rows,pin}:null}).filter(Boolean):[];
   for(const id of[...hudSince.keys()])if(!on.some(x=>x.c.id===id))hudSince.delete(id);
   for(const x of on)if(!hudSince.has(x.c.id))hudSince.set(x.c.id,now);

@@ -374,6 +374,11 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
   // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
   {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
+  // (vehicle, Q454) the transfer to a stationary orbit over the capital: the stationary ring, the capital's slot on it (turning
+  // with the planet) and where the burn's middle falls on this orbit
+  {const X=statX();if(X){const o=bodyPos(TELLUS,simT),c=X.city.u,u=norm([c[0],0,c[2]]);let pv=null;
+    for(let i=0;i<=128;i++){const f=i/128*6.2832,p=add(o,[STAT_R*Math.cos(f),0,STAT_R*Math.sin(f)]);if(pv&&i%2)seg(pv,p,[1,.85,.45,.35]);pv=p}
+    labels.push({p:add(o,fromPF(TELLUS,mul(u,STAT_R),simT)),mark:'ca',t:nm?`${X.city.name}'s slot`:'',c:'#ffd27a'},{p:add(o,X.r),mark:'ca',t:`transfer burn · in ${fmtT(X.dt)}`,c:'#ffd27a'})}}
   // (Q286, UI.md § 3: no TU) a planet's label says how long the trip takes, half a transfer orbit from Tellus's, in days
   const xferDays=nm=>{const B=SYSTEM_BODIES.find(b=>b.name===nm);if(!B)return'';const t=0.5*YEAR_D*((1+B.a)/2)**1.5;return`~${t<1000?Math.round(t/10)*10:Math.round(t/100)*100} days there`};
   // (flow, Q175) Helios and the planets, from epoch 1: on a ring in the ecliptic around the map's centre, at their ecliptic
