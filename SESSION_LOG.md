@@ -6309,3 +6309,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/gl.js`, `tests/look.mjs` (aerofx-42), `notes/look.md`, `NOTES.md`, `TESTING.md` (301), `QUEUE.md`,
   `PLAYTEST.md`; stills `output/launchpad/beauty/q445-A2/`, `q445-C/` (worktree).
 - **Next:** Q453 (the volume's fading ring), still claimed.
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a damaged part does something (v1.222, Q440)
+- **Q440 ✓ v1.222** (`a8e18ea`): v1.210's `p.dmg` now matters beyond solar cells.
+  - An engine keeps 1−dmg of its flow and thrust (same Isp), so a burn at 50 % takes twice as long. From 30 % damage its gimbal jams where it was.
+  - A reaction wheel (a pod's, a core's) keeps 1−dmg of its torque.
+  - A damaged crew cabin or biocapsule uses air (1+10·dmg)× as fast. The strike's message says all of this.
+- **Test space-27**; TESTING 302. space, vehicle and control sections all pass; smoke fails only the 3 known on `main` (Help key `t`, atlas is wired, go to body).
+- Proposed: repairing damage; damage on screen.
+- **Files:** `sim/vessel.js`, `sim/space.js`, `sim/program.js`, `sim/flight.js`, `sim/procedures.js`, `app/sound.js`, `tests/space.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** the space lane has no ready item; the slow world's slices wait on M3/M5.
