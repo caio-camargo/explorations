@@ -6297,3 +6297,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `notes/space.md`, `NOTES.md`, `SYSTEM.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** SW1 and SW2 are the cheapest Selene slices once M3 opens. Space has Q440 (shared with vehicle) ready.
 - **W44 answered** (Caio: "ok if so, and others ok", after confirming the sleep rule is for the cold of an airless night): all four defaults → DECISIONS.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q445 the night horizon's black lines (v1.221), Q419 with it
+
+- **Done:** PLAYTEST #117's "stepped cloud edges" were not clouds (they stayed with the shell and the volume off): the
+  terrain march, where no coarse neighbour hit, marched from 0, ran out of steps on grazing rays and called it ground.
+  Such pixels are now sky. Same cause as Q419's daytime slivers (marked done with it; the 1.5 km frames not re-shot).
+  Sky pass 1.3–1.6 ms cheaper in five views. #117 → Done.
+- **Collisions:** claimed Q445 + Q453 after grepping both; Q419 is world's row (no live world claim, Q251/Q365 stale):
+  the change is two tokens in `coarseStart`/`march`, noted for `q19-hdr`.
+- **Files:** `app/gl.js`, `tests/look.mjs` (aerofx-42), `notes/look.md`, `NOTES.md`, `TESTING.md` (301), `QUEUE.md`,
+  `PLAYTEST.md`; stills `output/launchpad/beauty/q445-A2/`, `q445-C/` (worktree).
+- **Next:** Q453 (the volume's fading ring), still claimed.

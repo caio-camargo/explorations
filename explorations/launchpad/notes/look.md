@@ -2148,3 +2148,23 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Stills:** `output/launchpad/beauty/Q411/deploy_sequence.png` (0.6, 1.4, 2.2, 3.0, 4.2 s; the Satellite on the pad,
   its fairing off, a boom antenna swapped in) and the frames `dq_*`. **Check:** test `aerofx-41` (and aerofx-3's leg
   pattern amended). TESTING 300.
+
+## v1.221 — no far ground drawn in the sky: the black lines at the night horizon (2026-10-13, sky & bodies, QUEUE Q445, PLAYTEST #117; Q419)
+
+`app/gl.js` (`coarseStart`, `march`): two tokens.
+
+- **The test bench (#117):** at night from the pad, hard 1-px black lines over the horizon, the whole width of the frame
+  (views 19, 65). **Not clouds:** they stayed with the shell off, and with the volume off. **The terrain march:** a
+  full-resolution pixel starts its march from the nearest hit among its 3×3 quarter-resolution neighbours
+  (`coarseStart`); where none of them hit (sky), it marched from 0, and a ray grazing the horizon ran out of its 64
+  steps and was "called a hit" (the march's fallback for a ray that ends right above the ground). Ground at night is
+  black: a line of it in the sky. By day the same pixels are hazy ground: Q419's grey lenses that pop frame to frame.
+- **Now:** `coarseStart` returns −1 when no neighbour hit, and `march` returns sky at once for it. The fallback stays
+  for rays the pre-pass did see ground near (removing it altogether darkened a lit far hill: those rays run out too).
+- **Measured** (paired renders, the same view list; `output/launchpad/beauty/q445-A2/` before, `q445-C/` after,
+  `q445-C/ab_v065_horizon.png`): the lines gone in 65 and 19; daylight horizons (18, 153) and the decks (80–82)
+  unchanged but for the clock's own motion (gantry, sea, plume). **The sky pass is cheaper,** sky pixels no longer
+  march: 19 7.19 → 5.66 ms, 65 6.35 → 5.04, 171 6.34 → 5.00, 80 5.57 → 4.01, 81 3.21 → 2.79.
+- **Left:** a feature thinner than a quarter-resolution texel that none of the 3×3 neighbours caught is now sky
+  (before, sometimes a sliver). Q419's daytime frames at 1.5 km were not re-shot (the cause is the same). **Check:**
+  test `aerofx-42`. TESTING 301.

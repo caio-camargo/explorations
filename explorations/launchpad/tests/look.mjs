@@ -956,3 +956,13 @@
   check('deploying animates: stamped by the sim, followed in sim time (at once without a stamp), panel by panel; the mesh rebuilt while it moves', fr && stamp && draw,
     `fractions ${vals.join(', ')} · stamps ${stamp} · drawing ${draw}`);
 }
+
+// aerofx-42. No far ground drawn in the sky (look & sound sky & bodies beat, QUEUE Q445, PLAYTEST #117; Q419): where none
+// of the quarter-resolution pre-pass's 3×3 neighbours hit the terrain, coarseStart says so (−1) and the full-resolution
+// march returns sky at once. Marching from 0 there, a ray grazing the horizon ran out of its 64 steps and was called a
+// hit: 1-px lines of ground above the horizon, black at night (views 19, 65), grey lenses by day.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const ok = /return m>1e29\?-1\.:m\*\.985-1\.;\}/.test(pg) && /float march\(vec3 d,out float hh,float tS\)\{hh=0\.;if\(tS<0\.\)return 1e30;/.test(pg);
+  check('no far ground in the sky: a pixel whose coarse neighbours all missed the terrain is sky, not a march that ran out of steps', ok, `sentinel ${ok}`);
+}
