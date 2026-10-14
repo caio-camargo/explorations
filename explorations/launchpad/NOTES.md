@@ -104,6 +104,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.197 — the volume cloud shadow baked, a lookup per ground pixel (2026-10-13, sky & bodies, QUEUE Q379)
 - v1.209 — the haze without dither (2026-10-13, sky & bodies, QUEUE Q392, PLAYTEST #89)
 - v1.214 — no bright band at the horizon from inside the deck (2026-10-13, sky & bodies, QUEUE Q420)
+- v1.221 — no far ground drawn in the sky: the night horizon's black lines (2026-10-13, sky & bodies, QUEUE Q445, PLAYTEST #117; Q419)
+- v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -165,6 +167,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
 - v1.210 — a debris hit holes a tank or damages a part (2026-10-13, space session, QUEUE Q303; v1.127's "Not yet")
 - v1.217 — a docked composite's power counts its passengers (2026-10-13, space session, QUEUE Q304; v1.126's limit)
+- Plan: the slow world (2026-10-13, space session, QUEUE Q331; SYSTEM § "The slow world", D19)
+- v1.222 — a damaged part does something (2026-10-13, space session, QUEUE Q440; v1.210's "Not yet")
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

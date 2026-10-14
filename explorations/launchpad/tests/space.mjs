@@ -770,3 +770,38 @@
     `vessel ${(cap0 / K).toFixed(1)} kWh full + passenger 1 kWh at 0.2: ${(cap1 / K).toFixed(1)} kWh, ${(E1 / K).toFixed(2)} kWh stored; load ${load0} → ${load1} W; peak ${peak0.toFixed(0)} → ${peak1.toFixed(0)} W; `
     + `the wing edge-on ${wEdge.toFixed(0)} W, square ${wSquare.toFixed(0)} W; undocked ${(s.E / K).toFixed(2)} + ${(q.Ewh / 1000).toFixed(2)} kWh · ${JSON.stringify({ docked: !!a, store, draws, turned, split })}`);
 }
+
+// space-27. A damaged part does something (space session, QUEUE Q440; v1.210's "Not yet"): a damaged engine keeps 1−dmg of
+// its thrust and flow (a burn takes longer by as much), and from 30 % its gimbal is stuck where it was; a reaction wheel
+// keeps 1−dmg of its torque; a damaged crew cabin leaks its air, so the crew run out sooner.
+{
+  const D = new Function(src + 'return {newShip,fragStrike,physStep,nodeBurnTime,ctrlAuthority,geom,missionTick,partMass,PROG,TELLUS,HOOK,DT,CAT_E,CREW_AIR,get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.boom = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.news = () => {};
+  const T = D.TELLUS, orbit = s => { const r = T.R + 400e3; Object.assign(s, { body: T, landed: false, alive: true, r: [r, 0, 0], v: [0, 0, Math.sqrt(T.mu / r)], w: [0, 0, 0] }); return s; };
+  const piece = (L, vr) => ({ L, m: 1000 * Math.PI / 6 * L ** 3, vr, dir: [0, 0, 1] });
+  const aim = (s, p) => { const on = s.parts.filter(q => q.on), w = on.map(q => Math.cbrt(D.partMass(q)) ** 2), W = w.reduce((a, c) => a + c, 0), i = on.indexOf(p);
+    const u = (w.slice(0, i).reduce((a, c) => a + c, 0) + w[i] / 2) / W; return () => u; };
+  // the engine takes half its shattering energy: 50 % damage
+  const ship = () => orbit(D.newShip(['t8', 'kestrel'])), s0 = ship(), s1 = ship(), e0 = s0.parts.find(p => p.d.kind === 'engine'), e1 = s1.parts.find(p => p.d.kind === 'engine');
+  const Es = D.CAT_E * D.partMass(e1) * 1000, L = Math.cbrt(Es * 0.5 * 2 / (7000 * 7000) / (1000 * Math.PI / 6));
+  e1.gv = [0.03, 0, 0]; D.fragStrike(s1, piece(L, 7000), aim(s1, e1)); const said = /50 % of its thrust left, its gimbal jammed/.test(msgs.at(-1));
+  // thrust in a physics step, and the planned burn
+  for (const s of [s0, s1]) { for (const g of s.segs) g.ignited = true; s.throttle = 1; s.sas = true; s.w = [0.05, 0, 0.02]; D.physStep(s, D.DT); }
+  const thrust = Math.abs(s1.thrust / s0.thrust - 0.5) < 1e-3,   // the jammed nozzle tilts it a hair
+  bt = D.nodeBurnTime(s1, 100) / D.nodeBurnTime(s0, 100), burn = Math.abs(bt - 2) < 0.02;
+  // the gimbal: no authority from it, and it stays where the hit left it while the SAS steers
+  for (let i = 0; i < 30; i++) D.physStep(s1, D.DT);
+  const jam = D.ctrlAuthority(s1, [e1], 1) === s1.torque && D.ctrlAuthority(s0, [e0], 1) > s0.torque && e1.gv[0] === 0.03 && e1.gv[1] === 0 && e1.gv[2] === 0;
+  // a pod's wheel at 40 % damage
+  const p = D.newShip(['pod', 't1', 'kestrel']), pod = p.root; D.geom(p); const tq0 = p.torque; pod.dmg = 0.4; D.geom(p); const wheel = Math.abs(p.torque - 0.6 * tq0) < 1e-6;
+  // the crew cabin at 50 %: air 6× as fast, so 10 days of air last a day and two-thirds
+  const P = D.PROG; P.done = { ...(P.done || {}), maxqabort: 1 };
+  const crew = dmg => { const c = orbit(D.newShip(['crew', 't1', 'kestrel'])); c.rec.launched = true; c.parts.find(q => q.d.crew).dmg = dmg; D.t = 0;
+    for (let d = 0; d < 3; d++) { D.t += 86400 / 2; D.missionTick(c, 86400 / 2, false); D.t += 86400 / 2; D.missionTick(c, 86400 / 2, false); if (!c.rec.crewOK) return { day: d + 1, why: c.rec.crewWhy } } return { day: 0 } };
+  const ok = crew(0), hit = crew(0.5), air = ok.day === 0 && hit.day === 2 && hit.why === 'ran out of air';
+  D.t = 0;
+  check('space Q440: a damaged engine loses thrust and flow (a burn takes longer) and from 30 % its gimbal jams; a wheel loses torque; a damaged cabin leaks its air',
+    said && thrust && burn && jam && wheel && air,
+    `engine at 50 %: thrust ${(s1.thrust / s0.thrust).toFixed(3)}×, burn time ${bt.toFixed(3)}×, gimbal ${JSON.stringify(e1.gv)}; pod wheel ${tq0} → ${p.torque} N·m; `
+    + `crew air: whole ${ok.day ? 'out on day ' + ok.day : 'fine for 3 days'}, cabin at 50 % ${hit.day ? 'out on day ' + hit.day : 'fine'} · ${JSON.stringify({ said, thrust, burn, jam, wheel, air })}`);
+}

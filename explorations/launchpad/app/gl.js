@@ -90,9 +90,11 @@ float tn(vec3 x){vec3 fl=floor(x),f=x-fl;ivec3 i=ivec3(fl);f=f*f*(3.-2.*f);
  float a=ih(i),b=ih(i+ivec3(1,0,0)),c=ih(i+ivec3(0,1,0)),d=ih(i+ivec3(1,1,0)),e=ih(i+ivec3(0,0,1)),g=ih(i+ivec3(1,0,1)),h=ih(i+ivec3(0,1,1)),k=ih(i+ivec3(1,1,1));
  float x1=a+(b-a)*f.x,x2=c+(d-c)*f.x,x3=e+(g-e)*f.x,x4=h+(k-h)*f.x,y1=x1+(x2-x1)*f.y;return y1+(x3+(x4-x3)*f.y-y1)*f.z;}
 // the quarter-resolution pre-pass marched the terrain already: start just short of the nearest hit among this pixel's
-// coarse neighbours (3×3 covers a silhouette edge), so the full-resolution march only has the last few metres to do
+// coarse neighbours (3×3 covers a silhouette edge), so the full-resolution march only has the last few metres to do.
+// (Q445, Q419) none of them hit: −1, and the march returns sky at once. Marching from 0 there, a ray grazing the horizon
+// ran out of steps and was called a hit: 1-px lines of far ground in the sky (black at night, grey lenses by day)
 float coarseStart(){if(uUseDepth<.5)return 0.;ivec2 c=ivec2(gl_FragCoord.xy)/2,sz=textureSize(uDepth,0);float m=1e30;
- for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)m=min(m,texelFetch(uDepth,clamp(c+ivec2(x,y),ivec2(0),sz-ivec2(1)),0).x);return m>1e29?0.:m*.985-1.;}
+ for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)m=min(m,texelFetch(uDepth,clamp(c+ivec2(x,y),ivec2(0),sz-ivec2(1)),0).x);return m>1e29?-1.:m*.985-1.;}
 // atan2 to ~1e-7 rad: the built-in is an approximation good to ~1e-5, which moves the texel lookup enough to put the GPU's
 // ground tens of centimetres (metres, on steep slopes) off the CPU's. Range-reduced to |a| ≤ tan(π/8), then the series.
 float patan(float y,float x){float ax=abs(x),ay=abs(y),a=min(ax,ay)/max(max(ax,ay),1e-30),off=0.;if(a>.41421356){a=(a-1.)/(a+1.);off=.78539816;}
@@ -145,7 +147,7 @@ float octT(float t,float fw){return min(octF(fw),clamp(9.-1.2*log2(max(t,1.)/200
 // march the ray through the shell of possible terrain (sea level to R+uTop). Returns the hit distance (1e30 = none)
 // and the height there (negative: the sea surface over that depth). Altitude along the ray uses cc from the CPU in
 // float64, (t²−2tb+cc)/(|p|+R), so it stays centimetre-accurate even a few metres above the ground.
-float march(vec3 d,out float hh,float tS){hh=0.;vec2 sh=sph(uPc,uTcc,d);if(sh.y<0.||sh.x>sh.y||(uTcc>0.&&sh.x<0.))return 1e30;
+float march(vec3 d,out float hh,float tS){hh=0.;if(tS<0.)return 1e30;vec2 sh=sph(uPc,uTcc,d);if(sh.y<0.||sh.x>sh.y||(uTcc>0.&&sh.x<0.))return 1e30;
  float b=dot(d,uPc),t=max(max(sh.x,0.),tS),t1=sh.y,tp=t,k=2.;vec2 sea=sph(uPc,uPcc,d);float ts=(uPcc>0.&&sea.x>0.)?sea.x:1e30;t1=min(t1,ts);
  bool hit=false;
  float ub=0.,m=0.;
@@ -445,9 +447,13 @@ void main(){
   float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){float fm=fw*uCR;dn=.5+(vn(cu*2600.+uCT*3.)-.5)*.6*(1.-smoothstep(800.,3200.,fm))+(vn(cu*7800.)-.5)*.4*(1.-smoothstep(250.,1000.,fm));cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
   if(cov>.002){float ndl=dot(cn,uSun),below=uCcc<0.?1.:0.,lit=clamp(ndl*.6+.4,0.,1.)*smoothstep(-.15,.1,ndl);
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
+   // (Q453) seen from below, where the volume has cloud on this ray, the far deck's underside takes the volume's own mean colour
+   // (its formula lit it at .45 of a sunlit top: a cream streak at the horizon under the deck); from inside the deck it is
+   // that colour without the air too (100–200 km of haze drew a pale line where rays leave through the slab's base)
+   if(below>.5&&vAvg.x>=0.)cc=mix(cc,vAvg,uVk);float hk=length(uPc)-uPR,iD=below*step(0.,vAvg.x)*uVk*smoothstep(1500.,2200.,hk)*smoothstep(6000.,5000.,hk);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
+   col=mix(col,mix(cc*tr+ic,vAvg,iD),cov*.95*shW*(1.-.85*uAtl));vis*=1.-cov*.95*shW*(1.-.85*uAtl);if(cov*shW>.5)tD=min(tD,tC);}}
  // (Q420) from inside the deck (the camera in the 2–5.5 km slab), a ray that stays in the slab past the volume's reach
  // (it fades out over uVD/2–uVD) showed the shell lit like a top, or far ground, as a bright line at the horizon. It goes
  // on through cloud: fog it in the volume's own mean colour along this ray, by how far past uVD/2 it stays in the slab

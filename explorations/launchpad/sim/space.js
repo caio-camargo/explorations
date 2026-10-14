@@ -256,12 +256,18 @@ function fragPass(s,dt,roll){const R=s.rec;if(!roll)roll=R?R.fragRng||(R.fragRng
 //   joins the registry empty;
 // - a solar wing loses a string (a quarter of its output, more for a big piece) and is lost once nothing is left;
 // - anything else takes damage as its share of the shattering energy (below a tenth: a dent) and is lost once that adds
-//   to one. Damage has no other effect yet (an engine still burns as new: QUEUE Proposed).
+//   to one. What damage does (Q440, `engK` in sim/vessel.js): an engine loses thrust and from 30 % its gimbal, a wheel
+//   its torque, a crew cabin its air.
 const HOLE_WALL=3e-3,HOLE_P={fuel:3e5,gas:2e7},HOLE_JET={fuel:24.5,gas:400},GAS_CHOKE=0.002333,DMG_MIN=0.1,SOL_STRING=0.25;
 function holeOf(x,cosT){const vn=x.vr*cosT,P=0.91*x.L*Math.pow(vn/7000,2/3);return P>=1.8*HOLE_WALL?Math.max(0.5*x.L,x.L*Math.cbrt(vn/7000)):0}
 // kg/s out of a hole of area A in part p's resource k (gas pressure falls with what's left: isothermal)
 function leakRate(p,k,A){const left=p.res[k]||0;if(!(left>0))return 0;
   return k==='gas'?0.6*A*HOLE_P.gas*(left/(p.cap.gas||left))*GAS_CHOKE:0.6*A*Math.sqrt(2*1000*HOLE_P.fuel)}
+// what the damage does, for the strike's message
+function dmgSays(p){const left=Math.round(engK(p)*100),k=p.d.kind;
+  if(k==='engine')return `, ${left} % of its thrust left${gimOK(p)?'':', its gimbal jammed'}`;
+  const air=p.d.crew||k==='bio'?`, its cabin leaking (the air lasts ${Math.round(100/(1+AIR_LEAK*p.dmg))} % as long)`:'';
+  return (p.d.torque?`, ${left} % of its wheel's torque left`:'')+air}
 function fragStrike(s,x,roll=Math.random){const on=s.parts.filter(p=>p.on);if(!on.length||!s.alive)return null;
   const w=on.map(p=>Math.cbrt(partMass(p))**2),W=w.reduce((a,c)=>a+c,0);let u=roll()*W,i=0;while(i<on.length-1&&(u-=w[i])>0)i++;const p=on[i];
   const E=0.5*x.m*x.vr*x.vr,Es=CAT_E*partMass(p)*1000,cm=(x.L*100).toFixed(x.L<0.1?1:0),kind=p.d.kind,k=['fuel','gas'].find(k=>p.res[k]>0);
@@ -270,7 +276,7 @@ function fragStrike(s,x,roll=Math.random){const on=s.parts.filter(p=>p.on);if(!o
       let n=[din[0],0,din[2]];n=len(n)>1e-6?norm(n):[1,0,0];(s.leaks=s.leaks||[]).push({p,k,A,n});
       const t=(p.res[k]*1000)/rate;what=`, holed: ${k==='gas'?'gas':'fuel'} leaking at ${rate.toFixed(1)} kg/s (${t<90?`${Math.round(t)} s`:`${Math.round(t/60)} min`} to empty at that rate)`}}
   else if(!lost&&kind==='solar'){p.dmg=(p.dmg||0)+Math.max(SOL_STRING,E/Es);lost=p.dmg>=1-1e-9;if(!lost)what=`: a string cut, ${Math.round((1-p.dmg)*100)} % of its output left`}
-  else if(!lost&&E>=DMG_MIN*Es){p.dmg=(p.dmg||0)+E/Es;lost=p.dmg>=1;if(!lost)what=`: damaged (${Math.round(p.dmg*100)} %)`}
+  else if(!lost&&E>=DMG_MIN*Es){p.dmg=(p.dmg||0)+E/Es;lost=p.dmg>=1;if(!lost){what=`: damaged (${Math.round(p.dmg*100)} %)${dmgSays(p)}`;geom(s)}}
   HOOK.msg(`Debris: a ${cm} cm fragment at ${(x.vr/1000).toFixed(1)} km/s struck the ${p.d.name}${lost?', which is lost':what}`);
   if(lost)partLost(s,p);return{p,lost,E,hole,dmg:p.dmg||0}}
 // a holed tank each step: what leaks, and in physics steps the jet's push and turn (outward through the hole's normal, so

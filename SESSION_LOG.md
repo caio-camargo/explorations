@@ -6286,3 +6286,51 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **W43** (five questions with defaults), one Proposed line (crew slice 2, qualifications), QUEUE rows Q133–Q137, Q134 and Q182 pointed at the plan.
 - **Files:** `notes/economy.md`, `notes/vehicle.md` (banner), `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** economy has no ready item left. Q376 waits on space's Q375; crew work starts in M3 (Q182).
+
+## 2026-10-13 — Caio + Claude (launchpad space session): the slow world, the plan (Q331)
+- **Q331 ✓ plan** (no code): notes space § "Plan: the slow world"; SYSTEM 1.1.4 points to it.
+  - What exists: spin is Tellus, locked or none; the sun is fixed (`SUN_DIR`); R3's freeze is final; bases have no night state; rovers don't drive off-screen; plane windows search one day from Tellus only.
+  - The numbers: solar day 194.8 days (97 sun, 97 night); about 5.2 km/s from low orbit; the terminator 0.55 m/s. On Selene a rover follows the dawn only above 47–70° latitude.
+  - The double sunrise is marginal at e 0.2 (the sun backs up 0.54°). Mercury's real 0.2056 gives 1.1° (scratch script).
+  - Slices: SW1–SW4 on Selene first (sleep instead of death, a base's night, drive orders between flights, cold traps); SW5–SW8 the body at M5 (any body turns, the body, heat at dawn after Q34b, missions).
+- **W44**: four questions with defaults. Eight Proposed lines.
+- **Files:** `notes/space.md`, `NOTES.md`, `SYSTEM.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** SW1 and SW2 are the cheapest Selene slices once M3 opens. Space has Q440 (shared with vehicle) ready.
+- **W44 answered** (Caio: "ok if so, and others ok", after confirming the sleep rule is for the cold of an airless night): all four defaults → DECISIONS.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q445 the night horizon's black lines (v1.221), Q419 with it
+
+- **Done:** PLAYTEST #117's "stepped cloud edges" were not clouds (they stayed with the shell and the volume off): the
+  terrain march, where no coarse neighbour hit, marched from 0, ran out of steps on grazing rays and called it ground.
+  Such pixels are now sky. Same cause as Q419's daytime slivers (marked done with it; the 1.5 km frames not re-shot).
+  Sky pass 1.3–1.6 ms cheaper in five views. #117 → Done.
+- **Collisions:** claimed Q445 + Q453 after grepping both; Q419 is world's row (no live world claim, Q251/Q365 stale):
+  the change is two tokens in `coarseStart`/`march`, noted for `q19-hdr`.
+- **Files:** `app/gl.js`, `tests/look.mjs` (aerofx-42), `notes/look.md`, `NOTES.md`, `TESTING.md` (301), `QUEUE.md`,
+  `PLAYTEST.md`; stills `output/launchpad/beauty/q445-A2/`, `q445-C/` (worktree).
+- **Next:** Q453 (the volume's fading ring), still claimed.
+
+## 2026-10-13 — Caio + Claude (launchpad space session): a damaged part does something (v1.222, Q440)
+- **Q440 ✓ v1.222** (`a8e18ea`): v1.210's `p.dmg` now matters beyond solar cells.
+  - An engine keeps 1−dmg of its flow and thrust (same Isp), so a burn at 50 % takes twice as long. From 30 % damage its gimbal jams where it was.
+  - A reaction wheel (a pod's, a core's) keeps 1−dmg of its torque.
+  - A damaged crew cabin or biocapsule uses air (1+10·dmg)× as fast. The strike's message says all of this.
+- **Test space-27**; TESTING 302. space, vehicle and control sections all pass; smoke fails only the 3 known on `main` (Help key `t`, atlas is wired, go to body).
+- Proposed: repairing damage; damage on screen.
+- **Files:** `sim/vessel.js`, `sim/space.js`, `sim/program.js`, `sim/flight.js`, `sim/procedures.js`, `app/sound.js`, `tests/space.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** the space lane has no ready item; the slow world's slices wait on M3/M5.
+
+## 2026-10-13 — Caio + Claude (launchpad look & sound, sky & bodies, `launchpad-sky`): Q453 the streak at the horizon in the deck (v1.223)
+
+- **Done:** the streak was the cloud shell's underside seen under the deck (rays leaving the slab through its base),
+  lit at .45 of a sunlit top plus 100–200 km of haze; not the volume's fading ring Q453 guessed. The underside now takes
+  the volume's mean colour from below, and from inside the deck without the air. Gone in 178–179; from the pad the far
+  underside is grey instead of a cream band.
+- **Method fix:** reference views with weather are reproducible only with a pinned clock
+  (`REF_EVAL='simT=0;PROG.day=Math.ceil(PROG.day)'`): `simT` runs during the variable page load. In notes/look.md § v1.223.
+- **Collisions:** v1.222 and TESTING 302 went to space (Q440) meanwhile: mine are v1.223, TESTING 303 (TESTING's
+  counter was left at 302 by that row: set to 304).
+- **Files:** `app/gl.js`, `tests/look.mjs` (aerofx-43), `notes/look.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`,
+  `ACTIVE_WORK.md`; stills `output/launchpad/beauty/q453-*`.
+- **Next:** claim cleared. Free in the lane: Q428 (lander on Selene's night side, XS), Q429 (clouds in front of Selene,
+  a view).

@@ -116,10 +116,10 @@ function sndGroan(b){const c=AUD.ctx,t=c.currentTime+(b.delay||0)+0.05,o=c.creat
 function sndBeep(f,dur,gain,delay=0){const c=AUD.ctx,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();o.frequency.value=f;
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+0.01);g.gain.setValueAtTime(gain,t+dur-0.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+dur+0.02)}
 function sndState(){const b=S.body,h=len(S.r)-b.R,inAir=b.atm&&h<b.atm,E=S.alive?activeEngines(S):[];let T=0,Ts=0;
-  for(const e of E){const t=e.d.thrust*1000*S.throttle;T+=t;if(pfxOf(e.d).prop==='solid')Ts+=t}
+  for(const e of E){const t=e.d.thrust*1000*engK(e)*S.throttle;T+=t;if(pfxOf(e.d).prop==='solid')Ts+=t}
   if(S.lesT>0){const les=S.parts.find(p=>p.on&&p.d.kind==='les');if(les){T+=les.d.thrust*1000;Ts+=les.d.thrust*1000}}
   let hot=0;for(const p of S.parts)if(p.on&&p.d.Tmax&&p.T)hot=Math.max(hot,p.T/p.d.Tmax);
-  const eng=E.map(e=>({key:e.d.key,T:e.d.thrust*1000*S.throttle,exit:e.d.exit}));
+  const eng=E.map(e=>({key:e.d.key,T:e.d.thrust*1000*engK(e)*S.throttle,exit:e.d.exit}));
   // elsewhere: other vessels burning and debris falling through the air, within 30 km, as heard from here (Q67)
   const me=shipWorld(),rt=qrot(S.q,[1,0,0]),aMe=inAir?density(b,h)/b.rho0:0,others=[],airAt=(bb,r)=>{const hh=len(r)-bb.R;return bb.atm&&hh<bb.atm?density(bb,hh)/bb.rho0:0};
   if(aMe>0){for(const v of FLEET){if(v===S||!v.alive||!v.parts)continue;const w=add(bodyPos(v.body,simT),v.r),dv=sub(w,me),d=len(dv);if(d>3e4)continue;
