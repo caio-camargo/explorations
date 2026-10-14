@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -805,7 +805,7 @@ at Selene). Each needs a rover or crew set up on another body, and is the next d
 
 ## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
 
-> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this.
+> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this. **Re-planned:** economy § "Plan revision: crew by qualification" (Q283, 2026-10-13): the table by qualification and time in type; the pilot loop and `modesOf` below stand.
 
 **The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
 modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole
