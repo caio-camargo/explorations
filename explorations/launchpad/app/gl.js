@@ -6,7 +6,7 @@ const cv=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.
 const gl=cv.getContext('webgl2',{antialias:true,depth:true,stencil:true,powerPreference:'high-performance'});
 if(!gl){document.body.innerHTML='<p style="padding:2em">WebGL2 is required.</p>'}
 const SUN=norm([1,0.12,0.05]),FAR=1e12,FC=2/Math.log2(FAR+1);
-// The terrain G-buffer (world session, QUEUE Q19; notes/world.md § v1.227). With float render
+// The terrain G-buffer (world session, QUEUE Q19; notes/world.md § v1.228). With float render
 // targets, the march, the height and the ground normal run at full resolution in a pass of their own (PTERR), and the sky
 // shader reads them (uTerr) instead of marching. With no terr() inlined into its long main, the sky shader links several
 // times faster under ANGLE/D3D11 (first load 28 → 14 s on the test bench) and runs faster at low views. Without float

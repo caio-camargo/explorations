@@ -438,7 +438,7 @@
     `${flatBad} footprint points off flat, ${farBad} far points changed; Arsenal ±${hill.toFixed(2)} m of the mesh hill, ${ars.toFixed(0)} m at 300 m N; Mountain ${mtnN.toFixed(0)} N, ${mtnS.toFixed(0)} S, ${mtnE.toFixed(0)} E; Isle ${isl.map(h => h.toFixed(0)).join('/')} E/W/S, ${islN.toFixed(1)} N; wet: Isle ${wet}, Coastal ${cwet}, Mountain ${mwet}`);
 }
 
-// terr-1. The terrain in its own pass (world session, QUEUE Q19; notes/world.md § v1.227): with float targets the sky
+// terr-1. The terrain in its own pass (world session, QUEUE Q19; notes/world.md § v1.228): with float targets the sky
 // shader doesn't march; PTERR runs the sky's own march (from the pre-pass's start) and normal at full resolution into a
 // float G-buffer on unit 9, after the depth pre-pass and the slab, before the sky, which reads hit, height and normal there.
 {
