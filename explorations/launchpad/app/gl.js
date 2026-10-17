@@ -171,24 +171,82 @@ float detailF(vec3 l,float fw){return .4*pn(l/25.,40.)+.3*mix(.5,pn(l/5.,200.),s
  +.2*mix(.5,pn(l,1000.),smoothstep(2.,.5,fw))+.1*mix(.5,pn(l*4.,4000.),smoothstep(.5,.12,fw));}
 float sdSeg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;return length(pa-ba*clamp(dot(pa,ba)/dot(ba,ba),0.,1.));}
 float gline(vec2 x,float per,float w,float fw){vec2 g=abs(fract(x/per)-.5)*per;float e=max(w,fw*.7);return (1.-smoothstep(e*.5,e,min(g.x,g.y)))*min(1.,w/e*1.6);}
-// the launch complex, painted onto the ground in the pad's own frame (x east, y north, metres): a concrete apron with
-// expansion joints and stains, soot around the pad, slabs under the tanks, an access road with a gravel shoulder
+// (Q426, Q404) the launch complex, painted onto the ground in the pad's own frame (x east, y south, metres), each school
+// its own ground plan under its own buildings (gl.js buildPad): Cape's concrete apron with expansion joints and slabs
+// under the tanks (Steppe shares it, with a slab under the assembly hall and its spur); Arsenal's packed-earth yard and
+// concrete-slab roads; Coastal's white plaza, the paved rail corridor and the assembly building's forecourt; Mountain's
+// asphalt yard below the terraces; Isle's gravel. Then the road out (uRd, uRdN: the site's drive, then the route
+// siteRoad found over the ground, out through the fence uGate.z m from the pad to the town that serves the site, uTown:
+// x, y, radius, the street grid's angle) and the town itself. Shaped ground (siteShapeG) takes no apron, but the road
+// may climb it. Lines filter by the footprint fw, so from the air a road thins to its share of the pixel.
+float sdBoxR(vec2 p,vec2 c,vec2 h,float r){vec2 d=abs(p-c)-h+r;return length(max(d,0.))+min(max(d.x,d.y),0.)-r;}
+float fln(float d,float w,float fw){float e=max(w,.5*fw);return (1.-sst(e,e+max(.5*fw,.15),d))*min(1.,w/e);}   // a line of half-width w at distance d, box-filtered
+uniform vec2 uRd[32];uniform int uRdN;uniform vec4 uTown;uniform vec3 uGate;
+// the road: distance, and the coordinate along it (m) for its markings
+float roadD(vec2 x,out float al,out vec2 dir){float d=1e9,acc=0.;al=0.;dir=vec2(1,0);
+ for(int i=0;i<31;i++){if(i+1>=uRdN)break;vec2 a=uRd[i],b=uRd[i+1],ba=b-a;float L=length(ba),t=clamp(dot(x-a,ba)/(L*L),0.,1.),e=length(x-a-ba*t);
+  if(e<d){d=e;al=acc+t*L;dir=ba/L;}acc+=L;}
+ return d;}
+vec3 townG(vec2 x,vec3 alb,float fw,int k,out float tm){tm=0.;vec2 d=x-uTown.xy;float R=uTown.z;if(R<=0.||dot(d,d)>2.3*R*R)return alb;
+ float ca=cos(uTown.w),sa=sin(uTown.w);vec2 g=vec2(ca*d.x+sa*d.y,-sa*d.x+ca*d.y);
+ float rr=length(d)+.5*R*(vn(vec3(x/(.45*R),11.))-.5);tm=sst(1.05*R,.85*R,rr);if(tm<=0.)return alb;
+ float B=k==1?110.:k==3?55.:k==5?45.:70.;vec2 c=floor(g/B),f=g-c*B;float hs=fract(sin(dot(c,vec2(12.9898,78.233)))*43758.55);
+ float sd=min(min(f.x,B-f.x),min(f.y,B-f.y)),st=fln(sd,4.,fw);   // the streets, 8 m between the blocks
+ vec3 r0=k==0?vec3(.09,.085,.08):k==1?vec3(.1,.1,.095):k==2?vec3(.085,.08,.065):k==3?vec3(.14,.06,.04):k==4?vec3(.06,.06,.065):vec3(.15,.15,.145),
+  r1=k==0?vec3(.12,.115,.11):k==1?vec3(.085,.09,.085):k==2?vec3(.08,.095,.065):k==3?vec3(.2,.2,.19):k==4?vec3(.14,.065,.045):vec3(.06,.06,.065),gdn=vec3(.06,.09,.035)*(.8+.4*vn(vec3(x/9.,13.)));
+ vec3 c2=gdn;float roof=0.,rc=0.;
+ if(k==1){vec2 q=f-B*.5;float sl=hs<.5?step(abs(q.y)-8.,0.)*step(abs(q.x),B*.38):step(abs(q.x)-8.,0.)*step(abs(q.y),B*.38);   // Steppe: long apartment slabs
+  float sl2=step(abs(abs(hs<.5?q.y:q.x)-30.),6.)*step(abs(hs<.5?q.x:q.y),B*.3);roof=max(sl,sl2);rc=fract(hs*7.);}
+ else{vec2 lc=floor(f/(B/3.)),lf=f-lc*(B/3.);float lh=fract(sin(dot(c*3.+lc,vec2(4.1,1.3)))*475.5),hw=B/3.*(.22+.12*lh);   // houses: a roof on most of 3×3 lots
+  roof=step(abs(lf.x-B/6.),hw)*step(abs(lf.y-B/6.),hw*1.3)*step(.2,lh);rc=lh;}
+ float dens=sst(R,.35*R,rr);if(hs<.1||length(c+.5)<.8||fract(hs*53.7)>dens)roof=0.;   // a park here and there, the square in the middle, fewer houses toward the edge
+ c2=mix(gdn,rc<.5?r0:r1,roof);if(length(c+.5)<.8)c2=vec3(.1,.095,.09);
+ c2=mix(c2,mix(gdn,mix(r0,r1,hs),k==1?.3:.45)*(.75+.5*hs),sst(.15*B,.5*B,fw));   // from afar: each block's mean (roofs and gardens), so the town is a mottle, not a disc
+ c2=mix(c2,vec3(.075,.075,.08),st*mix(.6,1.,dens));return mix(alb,c2,tm);}
 vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
- float r=length(x),n=vn(vec3(x/7.,1.)),n2=vn(vec3(x*.9,3.));
- float apron=1.-smoothstep(40.,42.+3.*n,r);
- apron=max(apron,1.-smoothstep(14.,15.,length(x-vec2(36.,18.))));
- apron=max(apron,1.-smoothstep(16.,17.,length(x-vec2(-45.,-25.))));
- apron=max(apron,1.-smoothstep(6.,6.5,length(x-vec2(20.,-30.))));
- float rd=sdSeg(x,vec2(-20.,-36.),vec2(-1500.,-1150.));rd=min(rd,sdSeg(x,vec2(-20.,-36.),vec2(-45.,-25.)));
- float road=1.-smoothstep(3.5,3.5+max(.15,fw),rd),shoulder=(1.-smoothstep(6.,7.5+n*2.,rd))*(1.-road);
- vec3 conc=vec3(.19,.185,.175)*(.82+.3*n+.1*n2)*(1.-.3*gline(x,6.,.06,fw)*smoothstep(1.5,.3,fw));
- vec3 asph=vec3(.055,.055,.06)*(.85+.3*n2);
- float dash=(1.-smoothstep(.12,.12+fw,abs(dot(x-vec2(-20.,-36.),normalize(vec2(-1150.,1480.))))))*step(.5,fract(dot(x,normalize(vec2(-1480.,-1150.)))/9.))*road;
- asph=mix(asph,vec3(.5,.45,.2),dash*smoothstep(2.,.5,fw));
- vec3 gravel=vec3(.17,.16,.14)*(.8+.4*n2);
- vec3 c=mix(alb,gravel,shoulder*.9);c=mix(c,conc,apron);c=mix(c,asph,road*(1.-apron));
- float soot=exp(-max(r-6.,0.)/11.)*(.5+.5*vn(vec3(x/2.5,7.)))+.3*exp(-r/28.)*n;
- paved=max(apron,road);return c*(1.-.85*min(soot,1.));}
+ int k=int(uPadK.x+.5);float r=length(x),n=vn(vec3(x/7.,1.)),n2=vn(vec3(x*.9,3.)),un=sst(.3,1.5,abs(siteShapeG(x)));
+ vec3 conc=vec3(.19,.185,.175)*(.82+.3*n+.1*n2),asph=vec3(.055,.055,.06)*(.85+.3*n2),gravel=vec3(.17,.16,.14)*(.8+.4*n2),earth=vec3(.16,.135,.1)*(.8+.35*n+.15*n2);
+ float apron=0.,yard=0.,joint=6.,soot=0.;
+ if(k<=1){   // Cape (Steppe shares its buildings): the apron r 40, slabs under the tanks, the gas racks and the compressor
+  apron=1.-sst(40.,42.+3.*n,r);apron=max(apron,1.-sst(14.,15.,length(x-vec2(36.,18.))));apron=max(apron,1.-sst(16.,17.,length(x-vec2(-45.,-25.))));apron=max(apron,1.-sst(6.,6.5,length(x-vec2(20.,-30.))));
+  if(k==1)apron=max(apron,1.-sst(0.,1.,sdBoxR(x,vec2(0.,-152.),vec2(18.,34.),3.)));   // Steppe: the slab round the assembly hall
+  soot=exp(-max(r-6.,0.)/11.)*(.5+.5*vn(vec3(x/2.5,7.)))+.3*exp(-r/28.)*n;}
+ else if(k==2){   // Arsenal: a packed-earth yard below the hill, concrete under the tanks' revetment and the hall
+  yard=1.-sst(0.,4.+3.*n,sdBoxR(x,vec2(-10.,10.),vec2(58.,23.),12.));conc*=.95;
+  apron=max(1.-sst(0.,1.,sdBoxR(x,vec2(36.,17.),vec2(11.,9.),2.)),1.-sst(0.,1.,sdBoxR(x,vec2(-45.,-25.),vec2(10.,12.),2.)));
+  soot=.6*exp(-max(length(x-vec2(0.,30.))-4.,0.)/9.)*(.5+.5*vn(vec3(x/2.5,7.)));}   // where the chute spits
+ else if(k==3){   // Coastal: a white plaza round the slab, the rail corridor paved, the assembly building's forecourt
+  conc=vec3(.3,.295,.28)*(.9+.15*n+.05*n2);joint=8.;
+  apron=1.-sst(0.,1.,sdBoxR(x,vec2(0.,-4.),vec2(52.,37.),12.));apron=max(apron,1.-sst(0.,1.,sdBoxR(x,vec2(0.,-84.),vec2(9.,47.),1.)));apron=max(apron,1.-sst(0.,1.,sdBoxR(x,vec2(0.,-140.),vec2(26.,20.),4.)));
+  soot=.7*exp(-max(length(x-vec2(0.,22.))-3.,0.)/10.)*(.5+.5*vn(vec3(x/2.5,7.)));}
+ else if(k==4){   // Mountain: an asphalt yard below the terraces, out to the control house and the motor stores
+  apron=1.-sst(0.,1.,sdBoxR(x,vec2(-20.,4.),vec2(52.,14.),6.));conc=asph*1.4;joint=0.;soot=.5*exp(-max(length(x-vec2(0.,15.))-3.,0.)/8.);}
+ else{   // Isle: gravel round the pad, before the hangar, by the shed
+  yard=max(1.-sst(12.,14.+2.*n,r),1.-sst(0.,2.,sdBoxR(x,vec2(0.,-68.),vec2(16.,6.),3.)));yard=max(yard,1.-sst(0.,1.5,sdBoxR(x,vec2(14.,-20.),vec2(5.,4.5),1.)));earth=gravel;
+  soot=.4*exp(-max(length(x-vec2(0.,4.))-2.,0.)/5.);}
+ apron*=1.-un;yard*=1.-un;
+ if(joint>0.)conc*=1.-.3*gline(x,joint,.06,fw)*smoothstep(1.5,.3,fw);
+ // the drives inside the complex (besides the main road): Cape's spur to the gas racks, Steppe's to the hall, Arsenal's
+ // to the hall, Coastal's service loop round the plaza
+ float sp=1e9;
+ if(k<=1)sp=sdSeg(x,vec2(-20.,-36.),vec2(-45.,-25.));if(k==1)sp=min(sp,sdSeg(x,vec2(-19.,-165.),vec2(-191.,-165.)));
+ if(k==2)sp=sdSeg(x,vec2(-45.,-13.),vec2(-45.,2.));if(k==3)sp=abs(sdBoxR(x,vec2(0.,-4.),vec2(58.,43.),16.))+(x.y<-46.&&abs(x.x)<12.?1e9:0.);
+ // the road (the drive, then out through the gate to the town), in each school's style: Cape's asphalt with a yellow
+ // centre dash; Steppe's and Arsenal's concrete slabs with their joints; Coastal's with white edge lines and dashes;
+ // Mountain's narrow, white-edged; Isle's gravel lane inside the fence, a single-track tarmac beyond
+ float al;vec2 dir;float rd=uRdN>1?roadD(x,al,dir):1e9,W=k==4?2.6:k==5?(r<uGate.z?1.8:2.1):k==3?3.6:3.5;
+ float road=fln(rd,W,fw),spr=fln(sp,3.,fw),shoulder=(1.-sst(W+2.5,W+4.+n*2.,min(rd,sp)))*(1.-max(road,spr))*sst(30.,8.,fw);
+ vec3 rc=k==1||k==2?conc*.95:k==5&&r<uGate.z?gravel:asph;
+ if(k==1||k==2)rc*=1.-.35*fln(abs(fract(al/6.)-.5)*6.,.05,fw)*sst(1.5,.4,fw);   // the slabs' joints across
+ float mk=sst(2.,.5,fw);
+ if(k==0)rc=mix(rc,vec3(.5,.45,.2),fln(rd,.12,fw)*step(.5,fract(al/9.))*mk);
+ if(k==3){rc=mix(rc,vec3(.6),fln(abs(rd-W+.4),.1,fw)*mk);rc=mix(rc,vec3(.6),fln(rd,.1,fw)*step(.6,fract(al/8.))*mk);}
+ if(k==4)rc=mix(rc,vec3(.6),fln(abs(rd-W+.3),.09,fw)*mk);
+ float fen=uGate.z>0.?.3*fln(abs(r-uGate.z),1.5,fw)*sst(20.,4.,fw)*(1.-max(road,shoulder)):0.;   // the fence's mown strip
+ vec3 c=mix(alb,gravel,shoulder*.9+.35*fen);c=mix(c,earth,yard);c=mix(c,conc,apron);
+ c=mix(c,k==3?asph:rc,spr*(1.-apron));c=mix(c,rc,road*(1.-max(apron,yard*.5)));
+ float tm;c=townG(x,c,fw,k,tm);
+ paved=max(max(apron,yard),max(road,spr));paved=max(paved,.9*tm);return c*(1.-.85*min(soot,1.));}
 // biome colours from the climate map (temperature with a 6.5 K/km lapse, wetness), blended across the same thresholds
 // biomeAt uses on the CPU; then rock on steep slopes, snow where it's cold and not too steep, salt pans, basalt,
 // wetlands, beaches. Albedos roughly physical (forest ~.1, grass ~.2, desert ~.35).
@@ -383,16 +441,18 @@ void main(){
   // mottled canopy round it (the rails and the assembly building kept clear, down to the beach when wet; the contrast
   // makes the treeline, since an equatorial site's own colour is already rainforest), Isle's pasture on its headland
   if(oc<.5&&(abs(uPadK.x-3.)<.5||uPadK.x>4.5)){vec3 pv=loc-uPadL;vec2 q=vec2(dot(pv,uPadE),dot(pv,uPadS));float far=1.-sst(1100.,1600.,length(q));
-   if(far>0.&&uPadK.x<3.5){float jm=sst(66.,82.,length(q*vec2(1.,.9))+8.*vn(vec3(q/23.,5.)))*(1.-(1.-sst(14.,20.,abs(q.x)))*sst(-178.,-166.,q.y)*step(q.y,0.))
-     *(1.-uPadK.z*sst(340.,372.,q.y+10.*sin(q.x*.019)));float cn=vn(vec3(q/6.,9.))+.5*vn(vec3(q/2.3,4.));
+   if(far>0.&&uPadK.x<3.5){float al_;vec2 dr_;float jm=sst(66.,82.,length(q*vec2(1.,.9))+8.*vn(vec3(q/23.,5.)))*(1.-(1.-sst(14.,20.,abs(q.x)))*sst(-178.,-166.,q.y)*step(q.y,0.))
+     *(1.-uPadK.z*sst(340.,372.,q.y+10.*sin(q.x*.019)))
+     *(uRdN>1?sst(6.,11.,roadD(q,al_,dr_)):1.)*(uGate.z>0.?sst(1.2,2.6,abs(length(q)-uGate.z)):1.);float cn=vn(vec3(q/6.,9.))+.5*vn(vec3(q/2.3,4.));
      alb=mix(alb,mix(vec3(.11,.15,.05)*(.9+.2*vn(vec3(q/13.,2.))),vec3(.011,.03,.011)*(.35+1.1*cn),jm),far);}
    else if(far>0.){float pm=1.-sst(.05,.3,siteShapeG(q)/min(uPadK.y,-1.));alb=mix(alb,vec3(.075,.15,.04)*(.85+.3*vn(vec3(q/31.,3.))),pm*far*.85);}}
+  // the nearest pad's own frame (east, south): its ground plan, the road out and the town (Q426, Q404), out to 12 km
+  float paved=0.;if(oc<.5&&uPadK.x>-.5){vec3 pv=loc-uPadL;if(dot(pv,pv)<1.44e8){vec2 q=vec2(dot(pv,uPadE),dot(pv,uPadS));alb=padGround(q,alb,fw,paved);}}
   if(fade>0.&&oc<.5){
    // scrub: dark bushes on a 3 m grid, thinning in deserts and fading before they'd alias
    vec2 cb=floor(gx/3.),fb=gx/3.-cb;cb=mod(cb,4096.);float hb=h3(vec3(cb,5.)),grn=alb.g/max(alb.r,.01);
    vec2 ob=vec2(h3(vec3(cb,6.)),h3(vec3(cb,8.)))*.6+.2;float clump=vn(vec3(gx/45.,2.))+.5*vn(vec3(gx/11.,4.))-.75,bs=.05+.25*h3(vec3(cb,9.));
    float bush=step(1.1-.35*clamp(grn,0.,1.5)-.9*clump,hb)*(1.-smoothstep(bs*.5,bs,length(fb-ob)))*smoothstep(1.2,.4,fw);
-   vec3 pv=loc-uPadL;float paved=0.;if(dot(pv,pv)<4e6){vec2 q=vec2(dot(pv,uPadE),dot(pv,uPadS));float un=sst(.3,1.5,abs(siteShapeG(q)));alb=mix(padGround(q,alb,fw,paved),alb,un);paved*=1.-un;}   // the nearest pad's own frame (east, south); none of the paint on its shaped ground (Q105)
    alb=mix(alb,alb*vec3(.35,.45,.3),bush*(1.-paved)*fade);npf=normalize(mix(npf,pf,paved));}
   vec3 st=sunTrans(p+n*20.);vec3 nb=oc>.5?n:normalize(transpose(uProt)*npf);   // npf is planet-fixed; n is inertial
   float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
@@ -2380,6 +2440,70 @@ function islePad(a,TH,CO,STL,DK,name){const GV=[.5,.48,.44,2],WO=[.88,.86,.8,2],
 const padSchoolOf=t=>SCHOOL_FORCE!=null?SCHOOL_FORCE:schoolOf(t&&t.power!=null?t.power:HOME);
 SITE_SCHOOL=t=>padSchoolOf(t);   // the ground under a site is its drawn pad's (sim/world.js siteShape, Q105)
 const PADX={};function padFor(t){const k=padSchoolOf(t),pw=t&&t.power!=null?t.power:null,x=k+':'+pw;return k===padSch&&pw===padPw?PAD:PADX[x]||(PADX[x]=buildPad(32,k,pw))}   // (Q245) per power too: the lettering
+// ---- (Q404, PLAYTEST #100; Q426) the road out of a site. Each school's complex has its own drive (SITE_PLAN[k].d, pad
+// frame: x east, z south, m) to a junction inside its fence (radius rf); from there the road is found over the ground to
+// the town that serves the site: up-range 4–7 km, on the flattest, lowest dry land (tr: the town's radius). The route is
+// A* on 50 m cells, the sea shut out, grades priced by their square and over 15 % all but shut, the fenced site kept
+// clear; then smoothed and thinned to the sky shader's 32 points. siteRoad(t) caches per site and school: the polyline,
+// the town (x, z, radius, the street grid's angle), the gate (where the road crosses the fence). The sky shader paints
+// road and town (padGround, townG); the fence, the gate and the site office are siteMesh's. No dry town within reach (a
+// small island): the road runs 600 m out from the gate and stops at the shore
+const SITE_PLAN=[{d:[[-20,-36],[-230,-194]],rf:360,tr:600},{d:[[-20,-36],[-230,-194]],rf:360,tr:550},
+  {d:[[-21,10],[-60,22],[-100,24],[-120,24]],rf:170,tr:450},{d:[[-26,-148],[-40,-165],[-60,-200]],rf:250,tr:700},
+  {d:[[-34,14],[-70,16],[-100,18],[-130,20]],rf:180,tr:350},{d:[[-16,-68],[-24,-100],[-5,-130]],rf:170,tr:250}];
+const ROADS=new Map();
+function siteRoad(t){if(!t||t.kind!=='pad')return null;const k=padSchoolOf(t),c=ROADS.get(t);if(c&&c.k===k)return c;
+  const P=SITE_PLAN[k]||SITE_PLAN[0],f=siteFrame(t.u),R=TELLUS.R,H=(x,z)=>terrainH(norm([0,1,2].map(i=>t.u[i]+(f.e[i]*x+f.s[i]*z)/R)));
+  const J=P.d[P.d.length-1];let T=null;
+  for(const r of[5500,4200,7000])for(let a=-120;a<=120;a+=15){const th=Math.PI+a*Math.PI/180,x=r*Math.cos(th),z=r*Math.sin(th);let lo=1e9,hi=-1e9,dry=true;
+    for(let i=0;i<9;i++){const u=i/8*2*Math.PI,q=i?P.tr*.8:0,h=H(x+q*Math.cos(u),z+q*Math.sin(u));if(h<3){dry=false;break}lo=Math.min(lo,h);hi=Math.max(hi,h)}
+    if(!dry)continue;const sc=(hi-lo)/P.tr*12+Math.abs(a)/50+Math.max(0,lo-600)/300+Math.abs(r-5500)/2500;if(!T||sc<T.sc)T={x,z,sc}}
+  let path=null;
+  if(T){const C=50,x0=Math.min(J[0],T.x)-1500,z0=Math.min(J[1],T.z)-1500,nx=Math.ceil((Math.max(J[0],T.x)+1500-x0)/C)+1,nz=Math.ceil((Math.max(J[1],T.z)+1500-z0)/C)+1,N=nx*nz;
+    const h=new Float32Array(N),shut=new Uint8Array(N),X=i=>x0+(i%nx)*C,Z=i=>z0+Math.floor(i/nx)*C;
+    for(let i=0;i<N;i++){const x=X(i),z=Z(i);h[i]=H(x,z);shut[i]=h[i]<2||(Math.hypot(x,z)<P.rf-20&&Math.hypot(x-J[0],z-J[1])>110)?1:0}
+    const at=(x,z)=>Math.round((z-z0)/C)*nx+Math.round((x-x0)/C),s0=at(J[0],J[1]),g0=at(T.x,T.z),G=new Float64Array(N).fill(Infinity),from=new Int32Array(N).fill(-1),done=new Uint8Array(N);
+    const hp=[],push=(i,p)=>{hp.push([p,i]);let j=hp.length-1;while(j>0){const q=(j-1)>>1;if(hp[q][0]<=hp[j][0])break;[hp[q],hp[j]]=[hp[j],hp[q]];j=q}},
+      pop=()=>{const top=hp[0],l=hp.pop();if(hp.length){hp[0]=l;let j=0;for(;;){const a=2*j+1,b=a+1;let m=j;if(a<hp.length&&hp[a][0]<hp[m][0])m=a;if(b<hp.length&&hp[b][0]<hp[m][0])m=b;if(m===j)break;[hp[m],hp[j]]=[hp[j],hp[m]];j=m}}return top};
+    shut[s0]=0;shut[g0]=0;G[s0]=0;push(s0,0);
+    while(hp.length){const[,i]=pop();if(done[i])continue;done[i]=1;if(i===g0)break;const ix=i%nx,iz=(i-ix)/nx;
+      for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dz)continue;const jx=ix+dx,jz=iz+dz;if(jx<0||jz<0||jx>=nx||jz>=nz)continue;const j=jz*nx+jx;if(shut[j]||done[j])continue;
+        const L=C*Math.hypot(dx,dz),gr=Math.abs(h[j]-h[i])/L,c=G[i]+L*(1+(gr/.05)**2)+(gr>.15?L*50:0);
+        if(c<G[j]){G[j]=c;from[j]=i;push(j,c+Math.hypot(X(j)-T.x,Z(j)-T.z))}}}
+    if(from[g0]>=0){path=[];for(let i=g0;i>=0&&i!==s0;i=from[i])path.push([X(i),Z(i)]);path.reverse();path[path.length-1]=[T.x,T.z]}}
+  let pts;
+  if(path){let q=[J,...path];for(let it=0;it<2;it++){const o=[q[0]];for(let i=0;i+1<q.length;i++){const a=q[i],b=q[i+1];o.push([.75*a[0]+.25*b[0],.75*a[1]+.25*b[1]],[.25*a[0]+.75*b[0],.25*a[1]+.75*b[1]])}o.push(q[q.length-1]);q=o}   // Chaikin, twice
+    const dp=(q,tol)=>{const keep=new Uint8Array(q.length);keep[0]=keep[q.length-1]=1;const st=[[0,q.length-1]];
+      while(st.length){const[a,b]=st.pop();let m=-1,dm=tol;for(let i=a+1;i<b;i++){const d=segD(q[i],q[a],q[b]);if(d>dm){dm=d;m=i}}if(m>0){keep[m]=1;st.push([a,m],[m,b])}}return q.filter((_,i)=>keep[i])};
+    const segD=(p,a,b)=>{const bx=b[0]-a[0],bz=b[1]-a[1],L2=bx*bx+bz*bz||1,u=clamp(((p[0]-a[0])*bx+(p[1]-a[1])*bz)/L2,0,1);return Math.hypot(p[0]-a[0]-bx*u,p[1]-a[1]-bz*u)};
+    let tol=6,r;do{r=dp(q,tol);tol*=1.5}while(r.length>32-P.d.length+1);pts=[...P.d.slice(0,-1),...r]}
+  else{const a=Math.atan2(J[1],J[0]);pts=[...P.d,[(P.rf+600)*Math.cos(a),(P.rf+600)*Math.sin(a)]];T=null}
+  // the gate: where the road first passes the fence on the way out
+  let gate=null;for(let i=0;i+1<pts.length&&!gate;i++){const a=pts[i],b=pts[i+1],ra=Math.hypot(a[0],a[1]),rb=Math.hypot(b[0],b[1]);
+    if(ra<P.rf&&rb>=P.rf){let lo=0,hi=1;for(let n=0;n<30;n++){const m=(lo+hi)/2;Math.hypot(a[0]+(b[0]-a[0])*m,a[1]+(b[1]-a[1])*m)<P.rf?lo=m:hi=m}
+      gate={x:a[0]+(b[0]-a[0])*lo,z:a[1]+(b[1]-a[1])*lo,a:Math.atan2(b[1]-a[1],b[0]-a[0])}}}
+  const e=pts[pts.length-1],e0=pts[pts.length-2];
+  const out={k,pts,rf:P.rf,gate,town:T?[T.x,T.z,P.tr,Math.atan2(e[1]-e0[1],e[0]-e0[0])]:null};ROADS.set(t,out);return out}
+// the fence round the site (posts every 4 m, two wires; none in the sea, an opening for the road), and at the gate a
+// barrier, a gatehouse and, inside, the site office by its car park, in the school's colours. Built per site (the
+// ground beyond the pad isn't flat: every piece stands on terrainH), drawn with the pad (render.js)
+const SMESH=new Map();
+function siteMesh(t){const rd=siteRoad(t);if(!rd)return null;const c=SMESH.get(t);if(c&&c.rd===rd)return c.mesh;if(c)c.mesh.free();
+  const a=[],k=rd.k,f=siteFrame(t.u),R=TELLUS.R,Y=(x,z)=>terrainH(norm([0,1,2].map(i=>t.u[i]+(f.e[i]*x+f.s[i]*z)/R)))-t.h,STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],
+    WALL=[[.66,.64,.58,2],[.6,.6,.56,2],[.31,.34,.21,2],[.9,.9,.88,2],[.9,.9,.88,2],[.55,.5,.42,2]][k]||[.66,.64,.58,2],ROOF=[[.3,.31,.32,1],[.3,.31,.32,1],[.36,.37,.24,2],[.62,.75,.86,2],[.22,.32,.46,2],[.3,.29,.28,1]][k]||[.3,.31,.32,1];
+  const N=Math.round(2*Math.PI*rd.rf/4),g=rd.gate;let prev=null;
+  for(let i=0;i<=N;i++){const th=i/N*2*Math.PI,x=rd.rf*Math.cos(th),z=rd.rf*Math.sin(th),y=Y(x,z);
+    if(y+t.h<1||(g&&Math.hypot(x-g.x,z-g.z)<8)){prev=null;continue}
+    if(i<N)tube(a,[x,y,z],[x,y+2.2,z],.045,STL,4);if(prev)for(const hh of[1.05,2.1])tube(a,[prev[0],prev[1]+hh,prev[2]],[x,y+hh,z],.01,STL,3);prev=[x,y,z]}
+  if(g){const u=[Math.cos(g.a),Math.sin(g.a)],v=[-u[1],u[0]],W=k===4?2.6:k===5?2.1:k===3?3.6:3.5,at=(s,w)=>[g.x+u[0]*s+v[0]*w,g.z+u[1]*s+v[1]*w],
+      B=(s,w,y,hx,hy,hz,col)=>{const[x,z]=at(s,w);rbox(a,[x,Y(x,z)+y,z],hx,hy,hz,col,g.a)};
+    // the barrier: a post beside the road, a red and white arm across it
+    {const[x,z]=at(-1,W+1.2),y=Y(x,z);tube(a,[x,y,z],[x,y+1.1,z],.12,DK,6);for(let i=0;i<5;i++){const[x0,z0]=at(-1,W+1.2-i*(2*W+1)/5),[x1,z1]=at(-1,W+1.2-(i+1)*(2*W+1)/5);tube(a,[x0,y+1,z0],[x1,y+1,z1],.05,i%2?[.9,.9,.88,2]:[.7,.12,.08,2],5)}}
+    B(-5,W+4.5,1.4,2,1.4,1.6,WALL);B(-5,W+4.5,2.9,2.3,.1,1.9,ROOF);B(-5+2.02,W+4.5,1.7,.02,.55,1.1,C.GL);   // the gatehouse, its window on the road
+    B(-38,W+16,3.2,11,3.2,6,WALL);B(-38,W+16,6.5,11.3,.12,6.3,ROOF);B(-38,W+16-6.02,3.4,9,.5,.02,C.GL);B(-38,W+16-6.02,1.2,1.2,1.2,.02,[.25,.26,.28,1]);   // the site office, windows and door to the road
+    B(-38,-(W+12),.02,12,.02,7,[.2,.2,.21,2]);   // its car park, across the road
+    const R2=rng(77+k);for(let i=0;i<6;i++)if(R2()<.7)B(-46.5+i*3.4,-(W+12)+(R2()<.5?3.5:-3.5),.7,.9,.7,2.1,[[.6,.1,.08,1],[.15,.2,.4,1],[.8,.8,.78,1],[.12,.12,.12,1],[.5,.5,.52,1]][Math.floor(R2()*5)])}   // a few cars
+  const mesh=makeMesh(a);SMESH.set(t,{rd,mesh});return mesh}
 const PAD_GX=10.5,PAD_LIGHTS=[0,1,2,3].map(i=>{const t=.9+i*Math.PI/2;return[34*Math.cos(t),34*Math.sin(t)]});
 // what glows at night: the lamp faces, and the pools of light they throw on the ground around the pad (the ground is the
 // sky shader's, so the pools are additive discs just above it, drawn in the glow pass)

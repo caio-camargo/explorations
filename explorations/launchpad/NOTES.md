@@ -118,6 +118,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.206 — effects stop with the pause: one effects clock for every effect shader, explosion and the twinkle (2026-10-13, effects, QUEUE Q393, PLAYTEST #90)
 - v1.218 — the new parts' look: the octagonal bus, side boxes, antennas, fairing rails, fins by size (2026-10-13, effects for parts & pad, QUEUE Q396)
 - v1.219 — deploying animates: wings unfold panel by panel, the boom antenna swings out and extends, legs swing down (2026-10-13, effects, QUEUE Q411)
+- v1.227 — each school's ground plan; the road out through a gate to the site's town (2026-10-17, effects, QUEUE Q426, Q404, PLAYTEST #100)
 - v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 - v1.200 — the planets in the sky as points of light by their magnitudes, a moon under a pixel as a point, stars faded by the sky's contrast (none by day), a fainter airglow (2026-10-13, sky & bodies, QUEUE Q374, Q395, Q407)
 - v1.212 — farmland round settled land (fields, hedges, roads, woods, villages, filtered by footprint), a scrub range round each pad, coasts blended over the pixel (2026-10-13, sky & bodies, QUEUE Q401, Q403)
