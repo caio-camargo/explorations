@@ -6,6 +6,12 @@ const cv=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.
 const gl=cv.getContext('webgl2',{antialias:true,depth:true,stencil:true,powerPreference:'high-performance'});
 if(!gl){document.body.innerHTML='<p style="padding:2em">WebGL2 is required.</p>'}
 const SUN=norm([1,0.12,0.05]),FAR=1e12,FC=2/Math.log2(FAR+1);
+// The terrain G-buffer (world session, QUEUE Q19; notes/world.md § "Q19: the terrain in its own pass"). With float render
+// targets, the march, the height and the ground normal run at full resolution in a pass of their own (PTERR), and the sky
+// shader reads them (uTerr) instead of marching. With no terr() inlined into its long main, the sky shader links several
+// times faster under ANGLE/D3D11 (first load 28 → 14 s on the test bench) and runs faster at low views. Without float
+// targets, the sky shader marches as before.
+const TERR_GB=!!gl.getExtension('EXT_color_buffer_float');
 const QUAD_VS=`#version 300 es
 layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4(aV,0.,1.);}`;
 // The space sky (QUEUE Q321, BEAUTY B5, W39; mock-up mockups/sky/): the galaxy, a nebula and a neighbour spiral are baked
@@ -22,7 +28,7 @@ precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
-uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
+uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;uniform highp sampler2D uTerr;
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov,uShd;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
@@ -165,6 +171,12 @@ float march(vec3 d,out float hh,float tS){hh=0.;if(tS<0.)return 1e30;vec2 sh=sph
  float lo=tp,hi=t;for(int i=0;i<5;i++){float tm=.5*(lo+hi);vec3 p=d*tm-uPc;float rl=length(p),alt=(tm*tm-2.*tm*b+uPcc)/(rl+uPR),h=terr(uProt*(p/rl),octT(tm,tm*uPix));
   if(alt<h){hi=tm;hh=h;}else lo=tm;}
  if(hi<ts&&hh<0.)hh=0.;return hi;}
+// a unit vector in two floats (octahedral), for the terrain G-buffer's normal (Q19)
+vec2 octEnc(vec3 n){n/=abs(n.x)+abs(n.y)+abs(n.z);vec2 e=n.xz;if(n.y<0.)e=(1.-abs(e.yx))*vec2(e.x>=0.?1.:-1.,e.y>=0.?1.:-1.);return e;}
+vec3 octDec(vec2 e){vec3 n=vec3(e.x,1.-abs(e.x)-abs(e.y),e.y);if(n.y<0.)n.xz=(1.-abs(n.zx))*vec2(n.x>=0.?1.:-1.,n.z>=0.?1.:-1.);return normalize(n);}
+// the terrain normal from the height field (planet-fixed), over about a pixel and a half: PTERR's, or the sky's own without it
+vec3 terrN(vec3 pf,float hT,float tP,float fw){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
+ return normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);}
 // near field, filtered by the pixel footprint fw (metres): octaves finer than a pixel fade to their mean instead of
 // aliasing into streaks at grazing angles
 float detailF(vec3 l,float fw){return .4*pn(l/25.,40.)+.3*mix(.5,pn(l/5.,200.),smoothstep(10.,2.5,fw))
@@ -367,7 +379,7 @@ float cloudShadowV(vec3 p){float sh=cloudShadow(p);if(uVk*uVs<=0.)return sh;vec3
  return mix(sh,texture(uShd,uq).r,w);}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
- float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;float hwT=fwidth(tP)<.3*tP?min(fwidth(hT),2000.):0.;   // (Q403) the height's change across the pixel, here where control flow is uniform; none at a silhouette
+ ${TERR_GB?'vec4 tg=texelFetch(uTerr,ivec2(gl_FragCoord.xy),0);float hT=tg.y,tP=tg.x,tM=1e30;':'float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;'}float hwT=fwidth(tP)<.3*tP?min(fwidth(hT),2000.):0.;   // (Q403) the height's change across the pixel, here where control flow is uniform; none at a silhouette
  vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
  float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.,vis=0.;
  if(tP<tM){
@@ -375,8 +387,7 @@ void main(){
   float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
   float fade=sst(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
   // the terrain normal from the height field (planet-fixed), over about a pixel and a half
-  vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
-   npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);
+  vec3 npf=pf;if(hT>=0.){npf=${TERR_GB?'octDec(tg.zw)':'terrN(pf,hT,tP,fw)'};
    if(uPadK.x>1.5){vec2 q=padXZ(pf);if(dot(q,q)<${SHAPE_R*SHAPE_R}.&&abs(siteShapeG(q))>.05)npf=normalize(mix(npf,pf,.5));}}   // (Q105) the pad's own ground: relief shading halved, so a cut bank facing away from the sun isn't black (the sky's ambient is ~1 %)
   vec3 alb=tellus(pf,npf,hT,gx,det,fade,fw,hwT,oc);
   // (Q105) the site's own ground cover, in the nearest pad's frame: Coastal's clearing of cut grass, the jungle's dark,
@@ -842,6 +853,17 @@ void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(v
 // terrain depth pre-pass: the sky shader's functions with a main that only marches and writes the hit distance
 const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
   'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh;o=vec4(march(d,hh,0.),0.,0.,1.);}'):null;
+// (Q19) the terrain G-buffer pass: the sky shader's own march (from the pre-pass's start) and normal at full resolution,
+// written as (hit distance, height there, the planet-fixed ground normal, octahedral). The same code the sky shader ran
+// inline, so the picture doesn't change. The sky reads it on unit 9
+const PTERR=TERR_GB?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
+  'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hT=0.,tP=march(d,hT,coarseStart());vec2 nz=vec2(0.);'+
+  'if(tP<1e29&&hT>=0.){vec3 n=normalize(d*tP-uPc);nz=octEnc(terrN(uProt*n,hT,tP,tP*uPix/max(-dot(d,n),.06)));}o=vec4(tP,hT,nz);}'):null;
+const TERR_RT={tex:null,fb:null,w:0,h:0};
+function terrTarget(w,h){const D=TERR_RT;if(D.w===w&&D.h===h)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
+  gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,null);   // on its own unit, as depthTarget (PLAYTEST #7)
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);D.w=w;D.h=h;return D}
 const DEPTH_RT={tex:null,fb:null,w:0,h:0};
 // (Q313, BEAUTY B0.1) the cloud deck with depth at half resolution, after the depth pre-pass and before the sky: the sky's
 // functions with a main that marches only the slab (its 72 steps × 3 density lookups were most of the sky's cost under
