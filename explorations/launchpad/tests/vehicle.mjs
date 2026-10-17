@@ -721,7 +721,7 @@
 // runs on its battery alone (a warning with its days); a lopsided payload warns, and with an engine of its own it fails.
 {
   const cl = x => JSON.parse(JSON.stringify(x)), P0 = api.PROG.payloads; api.PROG.payloads = [];
-  const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't8', 'fins', 'kestrel']);
+  const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't8', 'fins', 'fins', 'kestrel']);   // the Satellite's launcher (two fin rings, Q439)
   // the fairing on top of the upper tank, the block on the fairing
   const e = api.payNew('Sat', api.PAY_STARTERS.Satellite); fair.at = 'u'; rocket.root.c.push(fair); fair.c.push({ ...api.payNode(e), at: 'u' });
   const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.key === 'padapt');
@@ -822,4 +822,28 @@
   check('a stationary satellite (Q412): the TV Satellite preset, timed over the capital by statXfer (Q454), reaches a day-long circular equatorial orbit the capital sees; TV for the capital counts; Δv left to hold it; no warnings',
     !W.length && !!X && s.alive && Math.abs(P - 1) < 0.002 && el.e < 0.01 && inc < 2 && api.capSees(s.r, api.progT(s)) && s.rec.tv && api.dvRemaining(s).tot > 150 && !api.statXfer(s),
     `warnings ${W.length}; statXfer said ${X ? (X.dt / 60).toFixed(1) : '—'} min, waited ${(waited / 60).toFixed(1)} (the burn centred); ends over ${(pfLon => pfLon.toFixed(1))(Math.atan2(api.rotY(s.r, -api.absTh(api.progT(s)))[2], api.rotY(s.r, -api.absTh(api.progT(s)))[0]) * 180 / Math.PI)}° (capital ${capLon.toFixed(1)}°); period ${P.toFixed(4)} day, e ${el.e.toFixed(4)}, ${inc.toFixed(2)}°; capital sees it ${api.capSees(s.r, api.progT(s))}; TV ${!!s.rec.tv}; ${api.dvRemaining(s).tot.toFixed(0)} m/s left`);
+}
+
+// vehicle-31. The Satellite reads stable, and a stable stage in the air doesn't flip (vehicle session, QUEUE Q439, PLAYTEST #114).
+// The preset's wide fairing up front put the centre of pressure ahead of the centre of mass (−0.28 calibers full, −0.56 at M1.6,
+// since it shipped in v1.178); a second fin ring, as the Passenger Orbiter got, puts it back. And the in-air check called any
+// stage short of the steering to hold 5° off the airflow "flips", though a stable one only turns into the wind: four 2 m radial
+// fins low on the fairing satellite's Tank 2 t (TESTING 246's robot) read "flips" at +0.16 calibers; flown in attitude hold on
+// the pitch program it stays ~4° off after separating. Now it holds (vane); the same fins higher (−0.19) still flip, and do.
+{
+  const f = (x, k) => x.k === k ? x : (x.c || []).map(c => f(c, k)).find(Boolean);
+  const s = api.newShip(api.PRESETS.Satellite), A = api.analyze(s), cal = r => (r.ycm - r.ycp) / (2 * s.radius), ca = [A.ful, A.emp, A.sup].map(cal);
+  const sat = y => { const d = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']); f(d.root, 't2').c.push({ k: 'rfin', at: { y, a: 0, n: 4 }, fz: 2, c: [] }); return d; };
+  const lo = api.airSep(sat(0.05))[0], hi = api.airSep(sat(1))[0];
+  const fly = d => { const AS = TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = 2; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
+    let tS = null, mx = 0; for (let i = 0; i < 80000 && s.alive; i++) { const fr = api.localFrame(s.r), h = len(s.r) - TELLUS.R;
+      const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180; s.hold = norm(add(mul(fr.e, Math.cos(r)), mul(fr.up, Math.sin(r))));
+      { const nx = s.events[s.evIdx]; if (nx && nx.fair && h > 40000 && s.qdyn < 300) api.stage(s); }
+      if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length && !s.events[s.evIdx].fair) { const dec = s.events[s.evIdx].decouple.length; api.stage(s); if (dec && tS == null) tS = api.t; }
+      if (tS != null && s.qdyn > 300 && api.t > tS + 0.1) mx = Math.max(mx, s.aoa); if (tS != null && api.t > tS + 40) break; api.advPhys(s); }
+    return mx * 180 / Math.PI; };
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; const fLo = fly(sat(0.05)), fHi = fly(sat(1)); api.HOOK.msg = msg0;
+  check('stable in the air (Q439): the Satellite preset reads stable full, dry and at M1.6, no warnings; a stable stage short of steering holds (it turns into the wind) and flies on course, an unstable one flips and goes over',
+    ca.every(c => c > 0.5) && !api.launchWarnings(api.PRESETS.Satellite).length && lo.cal > 0 && lo.holds && lo.vane && lo.tau > 1.5 * lo.auth && fLo < 15 && hi.cal < 0 && !hi.holds && fHi > 90,
+    `Satellite ${ca.map(c => c.toFixed(2)).join(' / ')} calibers; fins low ${lo.cal.toFixed(2)} cal, need ${(lo.tau / 1000).toFixed(0)} of ${(lo.auth / 1000).toFixed(0)} kN·m, ${lo.holds ? 'holds' : 'flips'}${lo.vane ? ' (vane)' : ''}, flown ${fLo.toFixed(0)}° at worst; fins high ${hi.cal.toFixed(2)} cal, ${hi.holds ? 'holds' : 'flips'}, flown ${fHi.toFixed(0)}°`);
 }

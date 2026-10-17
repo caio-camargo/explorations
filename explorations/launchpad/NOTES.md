@@ -86,6 +86,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.157 — the rocket stands on the pad on the Rollout and behind the Program, not 3 m up (2026-10-13, vehicle session, QUEUE Q346)
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
+- v1.228 — the Satellite reads stable (a second fin ring); a stable stage in the air holds, it turns into the wind (2026-10-17, vehicle session, QUEUE Q439, PLAYTEST #114)
 - v1.226 — when to start the transfer burn: the Stationary orbit card and Map marks, plan it as a node (2026-10-13, vehicle session, QUEUE Q454)
 - v1.215 — the TV Satellite preset: a stationary orbit over the capital, flown to TV for the capital (2026-10-13, vehicle session, QUEUE Q412)
 - v1.207 — propulsion on the bench: kick motors (solid, burn to the end), hydrazine thrusters, an apogee engine, propellant spheres; the payload adapter is the separation ring (2026-10-13, vehicle session, QUEUE Q422)

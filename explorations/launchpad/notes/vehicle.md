@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1777,3 +1777,28 @@ Test `vehicle-12`. `--smoke` all pass.
   (as a node is) over 48.4°E, the capital 48.0°E. TV for the capital counts; 378 m/s left.
 - **Flow:** the Map view showed only the Target card; it shows `stat` too (one condition in `renderCards`).
 - TESTING 306.
+
+## v1.228 — the Satellite reads stable; a stable stage in the air holds (2026-10-17, vehicle session, QUEUE Q439, PLAYTEST #114)
+
+- **The report** (test bench, TESTING 260): the Satellite preset reads unstable in the Assembly (−0.28 calibers full, −0.56 at
+  M1.6, Control *coasting flips*), though v1.178 "had no warnings". **Nothing changed since:** measured headless at every vehicle
+  commit from v1.178 on, the same −0.28 / +0.48 / −0.56. v1.178's "no warnings" was `launchWarnings` (the Rollout's list); the
+  calibers row was red from the start. The fairing (1.6 m, at the nose) sits the centre of pressure ahead of the centre of mass;
+  the bare Orbiter launcher reads +0.88.
+- **Fix: a second fin ring** (as the Passenger Orbiter got for its nose cone, v1.73.1). Candidates, full / M1.6 calibers and the
+  first stage's Δv (was 2,498 m/s): a second ring **+1.01 / +0.74, 2,425**; 3 × 0.9 m radial fins +1.11 / +0.88, 2,382; 4 × 2 m
+  +1.74 / +1.59, 2,193. Flown (test `vehicle-25`): prograde 479 m/s left in a 100 km orbit (was ~565), 10° below 461, the pitch
+  program in attitude hold 418 (13° at worst).
+- **The in-air check was wrong for stable stages** (TESTING 246's half of #114): four 2 m radial fins low on the fairing
+  satellite's Tank 2 t (the robot's `y 0.05`) read "Stage 2 in the air flips" (12 kN·m needed, 5.3 there), where the same fins at
+  `y 0.45` (v1.164's test) read "holds". Lower fins made stage 2 *more* stable (+0.16 against +0.01 calibers), and a stable
+  stage needs torque to hold 5° off the airflow too: the air pushes its nose back along its path. `airSep` counted that
+  shortfall as a flip. Flown in attitude hold on the pitch program (av2): `y 0.05` 4° off after separating, `y 0.45` 3°, `y 1.0`
+  (−0.19) end over end. **Now** a stage stable there (`cal ≥ 0`) short of steering or with its wheels full gets `holds` and
+  `vane` (it turns into the airflow), and the readout says "stable: it turns into the airflow" (`airHTML`); an unstable one
+  flips as before. The Control block already said *weathervanes* for a stable rocket at max-q.
+- **A leak in the tests:** `fixes-1` (`tests/core.mjs`) set `PROG.site` and reset a dozen `PROG` fields and left them so; every
+  later section in its shard flew that program (costs 79M where 61M, every Satellite flight short of orbit). It was why
+  `--smoke` failed *presets*, *fin sizes* and *node chain flown* (Q372's "not reproduced": they pass alone) on `main`. It now
+  snapshots `PROG` (`structuredClone`) and puts it back. Found by bisecting `--smoke --only` ranges by `--list` position.
+- Test `vehicle-31`; TESTING 308. `--smoke` fails only the three known (Help `t`, atlas is wired, go to body).
