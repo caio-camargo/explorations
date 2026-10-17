@@ -437,3 +437,19 @@
     flatBad === 0 && farBad === 0 && hill < 0.8 && n(-300) && ars > 40 && mtnN > 35 && mtnS < drop + 0.5 && mtnE < drop + 0.5 && isl.every(h => h < drop + 0.5) && Math.abs(islN) < 0.01 && wet && cwet && mwet,
     `${flatBad} footprint points off flat, ${farBad} far points changed; Arsenal ±${hill.toFixed(2)} m of the mesh hill, ${ars.toFixed(0)} m at 300 m N; Mountain ${mtnN.toFixed(0)} N, ${mtnS.toFixed(0)} S, ${mtnE.toFixed(0)} E; Isle ${isl.map(h => h.toFixed(0)).join('/')} E/W/S, ${islN.toFixed(1)} N; wet: Isle ${wet}, Coastal ${cwet}, Mountain ${mwet}`);
 }
+
+// terr-1. The terrain in its own pass (world session, QUEUE Q19; notes/world.md § v1.227): with float targets the sky
+// shader doesn't march; PTERR runs the sky's own march (from the pre-pass's start) and normal at full resolution into a
+// float G-buffer on unit 9, after the depth pre-pass and the slab, before the sky, which reads hit, height and normal there.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const own = /const TERR_GB=!!gl\.getExtension\('EXT_color_buffer_float'\);/.test(pg)
+    && pg.includes("${TERR_GB?'vec4 tg=texelFetch(uTerr,ivec2(gl_FragCoord.xy),0);float hT=tg.y,tP=tg.x,tM=1e30;':'float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;'}")
+    && pg.includes("npf=${TERR_GB?'octDec(tg.zw)':'terrN(pf,hT,tP,fw)'}");
+  const pass = /const PTERR=TERR_GB\?mkProg\(QUAD_VS,SKY_FS\.slice\(0,SKY_FS\.indexOf\('void main\(\)\{'\)\)\+/.test(pg)
+    && pg.includes('float hT=0.,tP=march(d,hT,coarseStart());') && pg.includes('nz=octEnc(terrN(uProt*n,hT,tP,tP*uPix/max(-dot(d,n),.06)));');
+  const wired = pg.includes('...(PTERR?[PTERR]:[]),PSKY]') && /if\(PTERR\)\{profMark\('terrain'\);const G=terrTarget\(W,H\);[^]{0,900}gl\.uniform1i\(PSKY\.u\.uTerr,9\)/.test(pg)
+    && pg.indexOf("if(PTERR){profMark('terrain')") > pg.indexOf("profMark('cloud slab')") && pg.indexOf("if(PTERR){profMark('terrain')") < pg.indexOf("profMark('sky');gl.useProgram(PSKY.p)");
+  check('terr-1: the terrain in its own pass: the sky shader reads hit, height and normal from PTERR\'s G-buffer (the same march and normal), wired between the slab and the sky', own && pass && wired,
+    `sky reads it ${own} · pass ${pass} · wired ${wired}`);
+}

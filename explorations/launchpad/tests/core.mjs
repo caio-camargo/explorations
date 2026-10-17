@@ -2706,7 +2706,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const P = html.replace(/\r\n/g, '\n'), pg = P.slice(P.indexOf('// ==== SIM END')), km = pg.slice(pg.indexOf('  map:['), pg.indexOf('  program:['));
   check('atlas is wired: C in KEYS.map and the key handler, the bake before the sky pass, the tint after the clouds, overlay and ink called',
     km.includes("{k:['c'],l:'C'") && pg.includes("k==='c'&&view==='map')cycleAtlas()") && pg.includes("atlasTick();\n  // ---- sky / planets") &&
-    /cov\*\.95\*shW\*\(1\.-\.85\*uAtl\)[^]{0,200}\n if\(atl\.a>0\.\)col=mix/.test(pg) && pg.includes('atlasOverlay(era,camW,') && pg.includes('if(atlasMode)atlasInk(era,'));
+    /cov\*\.95\*shW\*\(1\.-\.85\*uAtl\)[^]{0,1200}\n if\(atl\.a>0\.\)col=mix/.test(pg) && pg.includes('atlasOverlay(era,camW,') && pg.includes('if(atlasMode)atlasInk(era,'));
 }
 
 // 37f. Plasma blackout needs speed, not just heat (terrain session, QUEUE Q17 / PLAYTEST #17): an ordinary climb through
