@@ -64,7 +64,9 @@ function render(){spoolFrame();
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
    {const ns=sitesNear(norm(cpf),4),t=ns[0],f=siteFrame(t.u),a=new Float32Array(16);ns.forEach((x,i)=>a.set([x.u[0],x.u[1],x.u[2],x.h],i*4));
     gl.uniform4fv(u['uSites[0]'],a);gl.uniform1i(u.uNS,ns.length);gl.uniform3fv(u.uPadE,f.e);gl.uniform3fv(u.uPadS,f.s);gl.uniform3f(u.uPadK,t.kind==='pad'?padSchoolOf(t):0,shapeLo(t),siteWet(t)?1:0);   // (Q105) the nearest pad's own ground
-    gl.uniform3fv(u.uPadL,mul(t.u,TELLUS.R+t.h).map((x,i)=>x-Math.round(cpf[i]/1000)*1000))}   // the nearest pad, in the same re-centred frame as loc
+    gl.uniform3fv(u.uPadL,mul(t.u,TELLUS.R+t.h).map((x,i)=>x-Math.round(cpf[i]/1000)*1000));
+    if(u.uRdN){const rd=siteRoad(t),A=new Float32Array(64);if(rd)rd.pts.forEach((p,i)=>A.set(p,i*2));gl.uniform2fv(u['uRd[0]'],A);gl.uniform1i(u.uRdN,rd?rd.pts.length:0);   // (Q404) the road out, the town, the fence
+     gl.uniform4fv(u.uTown,rd&&rd.town?rd.town:[0,0,0,0]);gl.uniform3f(u.uGate,0,0,rd?rd.rf:0)}}   // the nearest pad, in the same re-centred frame as loc
    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.w);gl.uniform1i(u.uWorld,1);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.c);gl.uniform1i(u.uClim,2);gl.activeTexture(gl.TEXTURE0);
    {const RT=TELLUS.R+TERR_TOP;gl.uniform2f(u.uGen,Math.cos(-WORLD.lon0),Math.sin(-WORLD.lon0));gl.uniform1f(u.uTcc,(d-RT)*(d+RT))}
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
@@ -106,7 +108,7 @@ function render(){spoolFrame();
   const near=view!=='map'||mode==='editor';
   profMark('pads');if(DF)deskDraw(drawMesh,m,DF);
   if(!DF){const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
-   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);gl.uniform1f(m.uPadM,1);drawMesh(padFor(t),M,site);gl.uniform1f(m.uPadM,0)}}   // (each site in its owner's school, Q159)
+   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);gl.uniform1f(m.uPadM,1);drawMesh(padFor(t),M,site);const sm=siteMesh(t);if(sm)drawMesh(sm,M,site);gl.uniform1f(m.uPadM,0)}}   // (each site in its owner's school, Q159)
   profMark('rig');if(!DF){gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);drawPadCrew(drawMesh,camW);}   // (Q242) not on the desk: the crew wait at the arm in the Rollout   // the pad's moving parts, at the current site (visuals session)
   profMark('cities');const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)

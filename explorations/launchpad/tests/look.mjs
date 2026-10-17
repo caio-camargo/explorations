@@ -995,3 +995,25 @@
   const ok = /if \(n === 183\) \{/.test(vj) && /const cv = cloudAt\(cu, tNow\(\) \+ k \* 300\); if \(cv > 0\.5 && cv < 0\.85\)/.test(vj);
   check('a reference view of clouds in front of Selene (view 183: cover searched on its ray)', ok, `view ${ok}`);
 }
+
+// aerofx-46. Each school's ground plan and the road out (look & sound effects beat, QUEUE Q426, Q404; PLAYTEST #100):
+// padGround branches per school (Steppe's hall slab, Arsenal's earth yard, Coastal's white plaza and rail corridor,
+// Mountain's asphalt yard, Isle's gravel); the road is the site's drive then a route found over the ground (siteRoad: A*,
+// the sea shut out, grades priced) through the fence to a town up-range, passed to the sky shader (uRd, uRdN, uTown,
+// uGate) and painted out to 12 km, outside the camera's 4 km detail fade; the fence, gate and site office are siteMesh's,
+// drawn with the pad; Coastal's jungle is cleared along the road and the fence.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const pg = page.slice(page.indexOf('vec3 padGround(vec2 x,'), page.indexOf('return c*(1.-.85*min(soot,1.));}', page.indexOf('vec3 padGround(vec2 x,')));
+  const has = {
+    schools: /if\(k<=1\)/.test(pg) && /else if\(k==2\)/.test(pg) && /else if\(k==3\)/.test(pg) && /else if\(k==4\)/.test(pg) && /vec2\(0\.,-152\.\),vec2\(18\.,34\.\)/.test(pg),
+    road: /uniform vec2 uRd\[32\];uniform int uRdN;uniform vec4 uTown;uniform vec3 uGate;/.test(page) && /float rd=uRdN>1\?roadD\(x,al,dir\)/.test(pg) && /c=townG\(x,c,fw,k,tm\)/.test(pg),
+    reach: /if\(dot\(pv,pv\)<1\.44e8\)\{vec2 q=vec2\(dot\(pv,uPadE\),dot\(pv,uPadS\)\);alb=padGround\(q,alb,fw,paved\);\}\}\n  if\(fade>0\.&&oc<\.5\)\{/.test(page),
+    astar: /function siteRoad\(t\)\{/.test(page) && /shut\[i\]=h\[i\]<2\|\|/.test(page) && /L\*\(1\+\(gr\/\.05\)\*\*2\)/.test(page) && /while\(r\.length>32-P\.d\.length\+1\)/.test(page),
+    mesh: /function siteMesh\(t\)\{/.test(page) && /drawMesh\(padFor\(t\),M,site\);const sm=siteMesh\(t\);if\(sm\)drawMesh\(sm,M,site\)/.test(page),
+    uniforms: /gl\.uniform2fv\(u\['uRd\[0\]'\],A\);gl\.uniform1i\(u\.uRdN/.test(page),
+    jungle: /\*\(uRdN>1\?sst\(6\.,11\.,roadD\(q,al_,dr_\)\):1\.\)/.test(page)
+  };
+  check('each school\'s ground plan, and the road found over the ground through a gate to the site\'s town, painted to 12 km',
+    Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
