@@ -2205,3 +2205,36 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   weather still moved between two pinned runs (CLOUD_DT 900 and 5400): judge it on its own, not as an A/B.
 - **Collisions:** the 2nd sky & bodies session's unmerged Q364 (`sky2`) holds views 180–181; its `aerofx-42` is taken
   (v1.221), so it renumbers at its merge. **Check:** tests `aerofx-44`, `aerofx-45`. TESTING 305.
+
+## v1.227 — each school's ground plan; the road out through a gate to the site's town (2026-10-17, effects beat, QUEUE Q426, Q404; PLAYTEST #100)
+
+- **Asked:** Caio: "go ahead with pad grounds and roads" (Q426: `padGround` painted Cape's apron, slabs and road at every
+  site; Q404 / PLAYTEST #100: the road to the pad went nowhere, ending where the paint faded at 2 km).
+- **Each school's ground** (`padGround`, `app/gl.js`), under its own buildings (`buildPad`): Cape as before; Steppe adds a
+  slab round the assembly hall and a spur to it; Arsenal a packed-earth yard, concrete under the tank revetment and the
+  hall, a spur to the hall; Coastal a white plaza, the rail corridor paved, the assembly building's forecourt and a service
+  loop; Mountain an asphalt yard below the terraces; Isle gravel round the pad, before the hangar and by the shed. Shaped
+  ground (`siteShapeG`) still takes no apron.
+- **The road out** (`siteRoad(t)`, CPU, cached per site and school): each school's drive (`SITE_PLAN[k].d`) to a junction
+  inside its fence, then a route found over the ground (A* on 50 m cells: the sea shut out, grades priced by their
+  square, over 15 % all but shut, the fenced site kept clear; Chaikin-smoothed, Douglas–Peucker-thinned to ≤ 32 points) to
+  a town 4–7 km up-range on the flattest, lowest dry land. Passed to the sky shader as `uRd`/`uRdN`, `uTown` (x, z,
+  radius, grid angle) and `uGate` (the fence radius). Styles: Cape's asphalt with the yellow dash, Steppe's and Arsenal's
+  concrete slabs with joints, Coastal's white edge lines and dashes, Mountain's narrow white-edged lane, Isle's gravel
+  inside the fence and a single-track tarmac beyond. No dry town in reach: the road runs 600 m out of the gate.
+- **The paint now reaches 12 km** from the pad: the call moved out of the camera's 4 km detail fade (`fade`), lines
+  filtered by the footprint (`fln`), so from the air the road thins to its share of a pixel.
+- **The town** (`townG`): a street grid along the road's arrival, blocks per school (Steppe's long apartment slabs, Coastal's
+  terracotta and white, Mountain's slate and red, Isle's white and black), a square in the middle, parks, fewer houses
+  toward a ragged edge; from afar each block's mean, so it reads as a mottle, not a disc. No lights at night yet (proposed,
+  with Q447).
+- **The fence, the gate, the site office** (`siteMesh(t)`, drawn with the pad in `render.js`): posts every 4 m round the
+  site (none in the sea), two wires, a mown strip under it; at the gate a red-and-white barrier, a gatehouse, and inside
+  the site office by its car park with a few cars, in the school's colours. Every piece stands on `terrainH`. Coastal's
+  jungle is cleared along the road and the fence.
+- **Measured:** frame time at the gate and from 3 km, road on vs `siteRoad` off: 5.32 vs 5.25 ms, 5.87 vs 6.63, 5.69 vs
+  6.54 (noise; the RTX). The route's A* runs once per site (a few tens of thousands of `terrainH`).
+- **Stills:** `output/launchpad/beauty/Q426/` (each school's site from ~450 m, the gate, the town from 1.5 and 2.5 km). All
+  six schools shot at Dunnzar Cape under `SCHOOL_FORCE`, so the routes are that site's; other sites not looked at.
+- **Not done:** the town has no night lights; the A*'s town choice doesn't read the land-use map (Q448) or the city
+  texture; the rig in the stills is the flight's (a harness artefact, not this change).
