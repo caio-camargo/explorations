@@ -19,7 +19,7 @@ in vec2 vNdc;layout(location=0) out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
-uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform float uIv,uSg;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;
@@ -182,6 +182,22 @@ vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
 // biome colours from the climate map (temperature with a 6.5 K/km lapse, wetness), blended across the same thresholds
 // biomeAt uses on the CPU; then rock on steep slopes, snow where it's cold and not too steep, salt pans, basalt,
 // wetlands, beaches. Albedos roughly physical (forest ~.1, grass ~.2, desert ~.35).
+// (Q251, PLAYTEST #50) the ground's colour noise filtered by the pixel's footprint: from orbit a pixel spans ~1 km, and
+// an octave finer than about two pixels fades to its mean instead of shimmering as the view moves. gFW: the footprint
+// (m), set by main before tellus. fr: the noise's frequency on the unit sphere (wavelength uPR/fr metres)
+float gFW=0.,gKF=9.;
+float vnW(vec3 p,float fr){return mix(.5,vn(p),1.-sst(.25,.6,gFW*fr/uPR));}
+float fbmW(vec3 p,float fr){float a=.5,s=0.,w=gFW*fr/uPR;for(int i=0;i<6;i++){s+=a*mix(.5,vn(p),1.-sst(.25,.6,w));p=p*2.03+vec3(1.7,9.2,3.1);w*=2.03;a*=.5;}return s;}
+// (Q365, PLAYTEST #86) the slope the heightfield doesn't show. The normal sees only the octaves kept (gKF of HOCT), and in
+// this relief each octave adds about the same slope, ~5e-5 of the ridge amplitude A (measured on the CPU's hgtGen,
+// notes/world.md § "Mountains from orbit"). Below the finest octave (87 m) real ranges go on getting steeper (cliffs,
+// rock bands): uSg (SUBG) more octaves' worth, which is what lets the highest ranges show rock where snow can't hold.
+// Returns the fraction of the ground steeper than tan t, for a hidden slope with that RMS (a Rayleigh tail)
+float subSteep(float m,float sf,float t){float l2=pow(5e-5*(m*${RIDGE_A}.+120.)*1.3*(1.-.9*sf),2.)*(max(${HOCT}.-gKF,0.)+uSg);return exp(-t*t/max(l2,1e-8));}
+// rock showing on the snowfield: the resolved steepness st, plus fraction fr of hidden steep ground, as patches on a
+// ~400 m and ~100 m noise up close and as a share of the pixel once those are under a pixel
+float rockShare(float st,float fr,vec3 pf){float n=.6*vn(pf*3000.)+.4*vn(pf*12000.+3.),wd=1.-sst(.25,.6,gFW*3000./uPR);
+ return 1.-(1.-st)*(1.-mix(fr,sst(fr,fr-.12,n),wd));}
 vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocean){
  ocean=0.;
  if(h<0.){ocean=1.;float dp=-h;vec3 col=mix(vec3(.007,.04,.11),vec3(.003,.016,.06),sst(200.,3000.,dp));col=mix(col,vec3(.006,.03,.045),.45*sst(.55,.85,abs(pf.y)));   // (Q323) greener cold seas
@@ -193,20 +209,20 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
  vec3 hot=mix(mix(hdes,sav,sst(.3,.42,W)),rainf,sst(.64,.8,W)),tmp=mix(mix(cdes,grass,sst(.24,.36,W)),tfor,sst(.5,.62,W)),cld=mix(stp,taiga,sst(.3,.42,W));
  vec3 col=mix(cld,tmp,sst(4.,10.,T));col=mix(col,hot,sst(15.,21.,T));col=mix(tund,col,sst(-4.,1.,T));
  col=mix(col,vec3(.045,.07,.035),sst(.7,.85,W)*sst(80.,20.,h)*sst(.15,.05,m)*sst(3.,8.,T));   // wetlands
- float mid=fbm(pf*90.+2.);col*=.72+.56*mid;col=mix(col,tfor,sst(.56,.7,fbm(pf*420.))*.4*sst(.3,.5,W)*sst(0.,6.,T));
+ float mid=fbmW(pf*90.+2.,90.);col*=.72+.56*mid;col=mix(col,tfor,sst(.56,.7,fbmW(pf*420.,420.))*.4*sst(.3,.5,W)*sst(0.,6.,T));
  col=mix(col,vec3(.62,.6,.55)*(.9+.2*mid),sst(.3,.7,sf));                                    // salt pans
  col=mix(col,vec3(.06,.055,.05),sst(.3,.6,v)*sst(200.,700.,h));                              // basalt on the volcanic arcs
  col=mix(col,vec3(.17,.15,.10),sst(12.,3.,h)*.8);                                            // beaches
- col=mix(col,rock*(.8+.4*mid),max(sst(.06,.2,slope),sst(1.,-3.,T)*.55));                    // cliffs, and bare ground above the trees
+ col=mix(col,rock*(.8+.4*mid),max(rockShare(sst(.06,.2,slope),subSteep(m,sf,.5),pf),sst(1.,-3.,T)*.55));   // cliffs (with those the heightfield can't show, Q365), and bare ground above the trees
  // close up: a patchwork of fields where it's green, mild and flat
  if(fade>0.){vec2 cl2=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl2,vec2(12.9898,78.233)))*43758.55),farm=fade*sst(.25,.4,W)*sst(.8,.6,W)*sst(.04,.01,slope)*sst(6.,11.,T)*sst(25.,21.,T)*(1.-sf);
   col=mix(col,col*mix(vec3(.85,.92,.75),vec3(1.18,1.1,.85),hsh),farm*.45);col*=mix(1.,.85+.3*det,fade);}   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
  // snow and ice hold on gentle ground only: faces steeper than ~35° stay bare rock, which is what gives a range its relief
- float steep=sst(.12,.3,slope),sn=sst(-.5,-5.,T)*(1.-steep)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T)*(1.-.85*steep);
+ float steep=rockShare(sst(.12,.3,slope),subSteep(m,sf,.6),pf),sn=sst(-.5,-5.,T)*(1.-steep)*sst(.35,.7,vnW(pf*220.,220.)+.3),ice=sst(-11.,-15.,T)*(1.-.85*steep);
  // (Q52) the high ranges were one white cap: wind-scoured rock shows through where the ice is thin (outcrops on a ~4 km
  // and ~1.2 km noise, more on steeper slopes, none on flat ice sheets), old blue glacier ice in the hollows, and the snow's tone varies
- if(uIv>0.){float ex=vn(pf*300.)*.6+vn(pf*1100.)*.4,bare=sst(.55,.68,ex+.25*sst(.05,.12,slope))*sst(.003,.02,slope);ice*=1.-.85*bare*uIv;sn*=1.-.85*bare*uIv;
-  snow=mix(snow,vec3(.42,.52,.62),sst(.6,.78,vn(pf*640.+5.))*.45*uIv*sst(.02,.0,slope))*(1.-.1*uIv+.2*uIv*mid);}
+ if(uIv>0.){float ex=vnW(pf*300.,300.)*.6+vnW(pf*1100.,1100.)*.4,bare=sst(.55,.68,ex+.25*sst(.05,.12,slope))*sst(.003,.02,slope);ice*=1.-.85*bare*uIv;sn*=1.-.85*bare*uIv;
+  snow=mix(snow,vec3(.42,.52,.62),sst(.6,.78,vnW(pf*640.+5.,640.))*.45*uIv*sst(.02,.0,slope))*(1.-.1*uIv+.2*uIv*mid);}
  return mix(col,snow,max(sn,ice));}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
 // planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
@@ -315,7 +331,7 @@ void main(){
   vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
    npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);
    if(uPadK.x>1.5){vec2 q=padXZ(pf);if(dot(q,q)<${SHAPE_R*SHAPE_R}.&&abs(siteShapeG(q))>.05)npf=normalize(mix(npf,pf,.5));}}   // (Q105) the pad's own ground: relief shading halved, so a cut bank facing away from the sun isn't black (the sky's ambient is ~1 %)
-  vec3 alb=tellus(pf,npf,hT,gx,det,fade,oc);
+  gFW=fw;gKF=octT(tP,tP*uPix);vec3 alb=tellus(pf,npf,hT,gx,det,fade,oc);
   // (Q105) the site's own ground cover, in the nearest pad's frame: Coastal's clearing of cut grass, the jungle's dark,
   // mottled canopy round it (the rails and the assembly building kept clear, down to the beach when wet; the contrast
   // makes the treeline, since an equatorial site's own colour is already rainforest), Isle's pasture on its headland
@@ -1535,7 +1551,8 @@ function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
 // lower when the jet reaches the ground), coloured from the propellant's core and mantle, strength ∝ exit area × spool,
 // with the plume's flicker. PLT = {p: [camera-relative position, core radius], c: colour × strength, g: ground info}.
 let CLOUD_VOL=true;   // false: the flat shell everywhere (A/B)
-let ICE_VARY=true;   // false: the old uniform ice caps on the high ranges (A/B, Q52)
+let ICE_VARY=true,SUBG=4;   // SUBG: octaves' worth of steepness below the heightfield's finest (87 m), for the snow and rock masks (Q365)
+   // false: the old uniform ice caps on the high ranges (A/B, Q52)
 let CLOUD_VARY=true;   // false: no 9 km swell in the deck's top heights (A/B, Q65: a more varied deck seen from 8 km)
 let CLOUD_SHADOW_V=true;   // false: the ground keeps the shell's cloud shadow under the volume too (A/B, Q65)
 let CLOUD_DT=0;   // debug/reference views only: shifts the drawn weather in time (s). cloudAt (satellites) ignores it

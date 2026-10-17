@@ -72,7 +72,7 @@ function render(){spoolFrame();
     gl.uniform1f(u.uStT,((HOOK.fxT??performance.now())/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
    {const on=view==='map'&&mode==='flight'&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);
     if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
-   gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
+   gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uSg,SUBG);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
   profMark('sky depth');if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
