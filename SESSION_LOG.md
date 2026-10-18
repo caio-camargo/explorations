@@ -6376,3 +6376,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** `node test.mjs --smoke`: all passed, before and after merging v1.227. No version (no behaviour change beyond one Help row).
 - **Files:** `app/screens.js`, `tests/core.mjs`, `tests/qa.mjs`; QUEUE (Q438, Q432, the smoke flag struck), ACTIVE_WORK.
 - **Next for flow:** Q415 (M2 finish line: a route with nothing up keeps its controls), then Q444 (Cape range safety), Q434/Q435.
+
+## 2026-10-17 — vehicle session: Q439 + Q413, the Satellite (M2 finish line)
+
+- **Q439 → v1.228** (PLAYTEST #114): the Satellite had read unstable since v1.178 (−0.28 / −0.56 calibers; nothing regressed): a second fin ring (+1.01 / +0.74). `airSep`: a stable stage short of steering holds (`vane`, it turns into the wind), flown 4° off; an unstable one still flips. `fixes-1` leaked `PROG` into its shard: it was behind *presets*, *fin sizes* and *node chain flown* (Q372) failing in `--smoke`. LESSONS #49.
+- **Q413 → v1.229** (PLAYTEST #103): the quote counted the 82° spin loss twice (239 m/s) and took its margin from paper Δv; now from the procedure's inclination and its recorded leftover (`proc.left`): quoted 217, flown 227 m/s left at 300 km polar. The Satellite was really ~100 m/s short there: a Tank 2 t over its 8 t. The break-up in the climb is the certification roll (~0.79 a run, three clean ~0.49): Proposed for economy.
+- **Checks:** `node test.mjs --smoke --jobs 1` all passed on each merged tree (an earlier `--jobs 2` run was killed for memory). Tests vehicle-31, vehicle-32; TESTING 308, 309.
+- **Files:** sim/vessel.js, sim/flight.js, sim/program.js, sim/procedures.js, app/editor.js, fly_ladder.mjs, tests/core.mjs, tests/vehicle.mjs, notes/vehicle.md, NOTES.md, TESTING.md, PLAYTEST.md, QUEUE.md, LESSONS_LEARNED.md, ACTIVE_WORK.md.
+- **Note:** the merge resolve of QUEUE.md first took this branch's whole file and dropped main's rows (Q415, Q438, Q432, Q19); caught in the diff against origin/main and restored before merging.
+- **Next:** QA re-runs the robot's `m2` (Q415, flow's, is its last gap) and TESTING 246, 260, 308, 309; economy weighs the run roll.
+
