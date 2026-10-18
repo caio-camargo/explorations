@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1205,3 +1205,16 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-31` (the terms, where they're marked, the tap handler, the gloss); `flow-21` still passes;
   robot row `terms` (the site picker's inclination on hover, Prograde on the SAS hover in a climb, a touch tap on Ap
   opening then closing). TESTING row 304.
+
+## v1.230 — a routine with nothing up keeps its controls (2026-10-17, flow session, QUEUE Q415; PLAYTEST #105)
+- **The gap:** a route's controls (*n of N up*, *keep N*, *Order a run*, *Repeat by itself*, *End*) were only the Fleet
+  line under one of its satellites (`routeLine(q)`). Once its satellites had all come down (a failed first run, a
+  re-entry) the route still lived in `PROG.routes` but nothing on screen could order a run or end it: the robot's `m2`
+  stopped there (Q233).
+- **Now:** `routeCtl(r)` (sim/program.js, split out of `routeLine`, same output) draws a route's state and controls, and
+  the Fleet tab ends with **Routines with nothing up**: a line per route no listed satellite carries
+  (`routesBareHTML(L)`, app/program-ui.js; `data-route-line`). `progTabOf` sorts the heading into Fleet (it fell into
+  More first, which the robot probe caught).
+- **Checks:** test `flow-32` (the bare lines with their buttons, none for a route with a satellite up, the wiring);
+  `econ-25` still passes; a probe on the GPU (a route, nothing up: the line in the Fleet tab, *Order a run* answering).
+  TESTING row 310.
