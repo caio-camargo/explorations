@@ -6367,3 +6367,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   notes/vehicle.md, NOTES.md, TESTING.md (306), QUEUE.md.
 - **Next:** Q423 (bench parts) or Q416's slice 2 (bus frame, small stacks), Caio's pick.
 - **Addendum 8 (effects, 2026-10-17):** v1.227 Q426 + Q404 (PLAYTEST #100 ✓): each school's ground plan under its own buildings; the road out is the site's drive then a route found over the ground (`siteRoad`: A* on 50 m cells, sea shut out, grades priced) through a fence and gate (barrier, gatehouse, site office, car park: `siteMesh`) to a town 4–7 km up-range (`townG`), painted to 12 km (out of the 4 km detail fade). Measured: frame time unchanged within noise. Stills `output/launchpad/beauty/Q426/`. Test aerofx-46; TESTING 307. Proposed: the town's night lights (with Q447). The 10-13 background wait for the GPU was killed for memory; resumed 10-17 on Caio's "go ahead". Claim idle.
+
+## 2026-10-17 — flow session: Q438 + Q432, `--smoke` green on `main`
+
+- **Q438** (flow's top): the Design table's top-view key T (Q405, v1.202) had no Help row; added to `KEYS.assembly` (`app/screens.js`).
+- **Q432** (QA, taken as overflow, unclaimed): `qa-2`'s scan wanted `render()` to open with the body-view hand-off; Q368's `spoolFrame();` (frame-time bookkeeping) now comes first. The check allows it (`tests/qa.mjs`).
+- **Also:** *atlas is wired* (`tests/core.mjs`) failed since Q420/Q453 put the deck fog between the cloud mix and the atlas tint; its window widened 200 → 1500 chars (the check only means "tint after the clouds").
+- **Checks:** `node test.mjs --smoke`: all passed, before and after merging v1.227. No version (no behaviour change beyond one Help row).
+- **Files:** `app/screens.js`, `tests/core.mjs`, `tests/qa.mjs`; QUEUE (Q438, Q432, the smoke flag struck), ACTIVE_WORK.
+- **Next for flow:** Q415 (M2 finish line: a route with nothing up keeps its controls), then Q444 (Cape range safety), Q434/Q435.

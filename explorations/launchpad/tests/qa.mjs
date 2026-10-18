@@ -43,7 +43,7 @@
     `${Object.keys(want).length} in SYSTEM.md (${Object.keys(want).join(', ')}), ${CAT.length} in the catalogue; mismatched: ${bad.join(', ') || 'none'}`);
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   check('go to body: render() hands over the frame first; the tester menu and refView(200 + 3·i + k) open it',
-    /function render\(\)\{\n\s*if\(self\.bodyViewDraw&&self\.bodyViewDraw\(\)\)return;/.test(pg) && /data-test-body=/.test(pg) && /bodyViewOpen\(d\.testBody/.test(pg) && /n >= 200 && typeof BODY_CAT/.test(vj) && /bodyViewClose\(\)/.test(vj));
+    /function render\(\)\{(?:spoolFrame\(\);)?\n\s*if\(self\.bodyViewDraw&&self\.bodyViewDraw\(\)\)return;/.test(pg) && /data-test-body=/.test(pg) && /bodyViewOpen\(d\.testBody/.test(pg) && /n >= 200 && typeof BODY_CAT/.test(vj) && /bodyViewClose\(\)/.test(vj));   // (Q432) spoolFrame (Q368) only books the frame's time
 }
 
 // qa-3. TESTING.md's row numbers (QA session, LESSONS #37): sessions number rows at once and collide (131, 133, 134 and
