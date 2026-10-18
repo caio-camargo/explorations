@@ -6386,3 +6386,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Note:** the merge resolve of QUEUE.md first took this branch's whole file and dropped main's rows (Q415, Q438, Q432, Q19); caught in the diff against origin/main and restored before merging.
 - **Next:** QA re-runs the robot's `m2` (Q415, flow's, is its last gap) and TESTING 246, 260, 308, 309; economy weighs the run roll.
 
+
+## 2026-10-17 — flow session: Q415, a routine with nothing up keeps its controls (v1.230)
+
+- **Q415** (PLAYTEST #105, M2 finish line): a route's controls lived only on its satellites' Fleet lines, so with all of them down there was no *Order a run* or *End*. `routeCtl(r)` split out of `routeLine` (sim/program.js, same output); the Fleet tab ends with *Routines with nothing up* (`routesBareHTML`, app/program-ui.js); `progTabOf` sorts the heading into Fleet: the GPU probe caught it landing in More first.
+- **Checks:** test `flow-32`; `--smoke` all passed after merging v1.228/v1.229; flow lane + econ-25/26 pass. TESTING 310; PLAYTEST #105 closed; NOTES (flow) v1.230.
+- **Files:** `sim/program.js`, `app/program-ui.js`, `app/screens.js`, `tests/flow.mjs`, `notes/flow.md`, TESTING, PLAYTEST; QUEUE, ACTIVE_WORK.
+- **Next:** QA reruns `playtest.mjs m2`, since every gap it listed is now closed (line under *Proposed*). Flow next: Q444 (Cape range safety), Q434 (teach the gravity turn), Q435 (navball reference blend).
