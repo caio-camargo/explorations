@@ -355,3 +355,7 @@ function nearestCity(pf){const u=norm(pf);let best=null,bd=Infinity;for(const c 
 // where a falling thing comes down: in a city, near one, at sea or in open country
 function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{city,dist}=nearestCity(pf);
   if(dist<city.rad)return{kind:'city',city,dist,power:city.power};if(dist<city.rad+15e3)return{kind:'near',city,dist,power:city.power};const pw=powerAt(pf);return{kind:pw?'land':'sea',city,dist,power:pw}}
+// range safety's verdict on a launch from site: the site's own support town is 15–60 km off, so its 15 km margin can
+// reach the pad, and a climb's impact point (the pad itself at first) would read as near it. Only over that town counts
+// (flow, Q444, PLAYTEST #116: every Cape launch alarmed over Kaos Beach)
+function rangeVerdict(site,b,pf){const v=dropVerdict(b,pf);return v.kind==='near'&&site&&v.city.town===site.id?{...v,kind:powerAt(pf)?'land':'sea',own:true}:v}

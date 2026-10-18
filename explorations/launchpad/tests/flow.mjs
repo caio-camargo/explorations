@@ -667,3 +667,20 @@
   check('flow-32: a routine whose satellites have all come down keeps a Fleet line with Order a run and End; with one up, only its satellite\'s line carries them',
     ok0 && ok1 && ok2, `nothing up ${ok0} (${bare.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}) · one up ${ok1} · wired ${ok2}`);
 }
+
+// flow-33. Range safety and the site's own town (flow session, QUEUE Q444, PLAYTEST #116): Dunnzar Cape's support town
+// Kaos Beach is 15 km off, inside its own 15 km "near" margin of the pad, so a climb's first impact points alarmed on every
+// Cape launch. From its own site a town counts only when the impact is over it; any other town keeps its margin.
+{
+  const T = api.TELLUS, D = Math.PI / 180, pads = api.SITES.filter(t => t.kind === 'pad' && api.CITIES.some(c => c.town === t.id));
+  const own = t => api.CITIES.find(c => c.town === t.id), cape = pads.find(t => own(t).km <= 18) || pads[0], k = own(cape);
+  const was = api.dropVerdict(T, cape.u).kind;   // the old reading at the pad
+  const quiet = pads.filter(t => ['city', 'near'].includes(api.rangeVerdict(t, T, t.u).kind)).map(t => t.name);
+  const over = api.rangeVerdict(cape, T, k.u).kind;   // right over the town: still a city
+  const other = pads.find(t => t !== cape), nearOther = api.alongAz(own(other).u, 0, (own(other).rad + 5e3) / T.R);
+  const elsewhere = api.rangeVerdict(cape, T, nearOther).kind;   // another site's town keeps its margin
+  const wired = html.includes('.map(x=>rangeVerdict(S.site,TELLUS,x.pf))');
+  check('flow-33: range safety: no pad reads as near its own support town (Kaos Beach was, 15 km from Dunnzar Cape); an impact over the town still alarms; other towns keep their 15 km margin',
+    !quiet.length && over === 'city' && elsewhere === 'near' && wired,
+    `${cape.name} → ${k.name} ${k.km} km: was "${was}" at the pad · pads near their own town now: ${quiet.join(', ') || 'none'} · over it: ${over} · near ${own(other).name}: ${elsewhere} · wired ${wired}`);
+}

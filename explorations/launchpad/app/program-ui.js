@@ -345,7 +345,7 @@ function updateHUD(){
     else if(simT-impST>1||simT<impST){impST=simT;const lo=predictImpact(S,-1),hi=predictImpact(S,1),gc=(a,b)=>Math.acos(clamp(dot(norm(a),norm(b)),-1,1))*TELLUS.R/1000;
       impSpread=lo&&hi?{lo,hi,km:Math.max(gc(lo.pf,impact.pf),gc(hi.pf,impact.pf))}:null}
     // range safety: while climbing under power, the impact point (the whole spread of it) must stay clear of cities
-    const vs=impact&&S.thrust>0&&impact.b===TELLUS?[impact,...(impSpread?[impSpread.lo,impSpread.hi]:[])].map(x=>dropVerdict(TELLUS,x.pf)):[],
+    const vs=impact&&S.thrust>0&&impact.b===TELLUS?[impact,...(impSpread?[impSpread.lo,impSpread.hi]:[])].map(x=>rangeVerdict(S.site,TELLUS,x.pf)):[],
       rs=vs.find(v=>v.kind==='city')||vs.find(v=>v.kind==='near')||null,warn=!!rs;
     if(warn&&!rangeWarned){rangeWarned=true;HOOK.msg(`RANGE SAFETY: impact point over ${rs.city.name}`);HOOK.news(`Range safety officer spills coffee as flight path crosses ${rs.city.name}`,'warn')}
     if(!warn)rangeWarned=false;S.rangeWarn=warn?rs:null}}
