@@ -6367,6 +6367,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   notes/vehicle.md, NOTES.md, TESTING.md (306), QUEUE.md.
 - **Next:** Q423 (bench parts) or Q416's slice 2 (bus frame, small stacks), Caio's pick.
 - **Addendum 8 (effects, 2026-10-17):** v1.227 Q426 + Q404 (PLAYTEST #100 ✓): each school's ground plan under its own buildings; the road out is the site's drive then a route found over the ground (`siteRoad`: A* on 50 m cells, sea shut out, grades priced) through a fence and gate (barrier, gatehouse, site office, car park: `siteMesh`) to a town 4–7 km up-range (`townG`), painted to 12 km (out of the 4 km detail fade). Measured: frame time unchanged within noise. Stills `output/launchpad/beauty/Q426/`. Test aerofx-46; TESTING 307. Proposed: the town's night lights (with Q447). The 10-13 background wait for the GPU was killed for memory; resumed 10-17 on Caio's "go ahead". Claim idle.
+- **Addendum 9 (effects, 2026-10-18):** v1.231 Q447 ✓: villages and the site's town lit at night (shader global `gLit`, lamp pools filtered to their mean, `NIGHT_VIL` = 3 beside the city texture's lights). Measured: frame time unchanged within noise. Stills `output/launchpad/beauty/Q447/`. Test aerofx-47; TESTING 311. Proposed: a small city's lights cover the land round it (Kaos Beach by Dunnzar Cape). Claim idle.
 
 ## 2026-10-17 — flow session: Q438 + Q432, `--smoke` green on `main`
 
