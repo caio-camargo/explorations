@@ -17,6 +17,8 @@ const SKY_B5=true;
 const SKY_CK=30;
 // (Q401) farmland in tellus(); false compiles the old look (an A/B)
 const FARM_FX=true;
+// (Q447) how bright the villages' and the site town's lamps are at night, against the city texture's (0 = dark, the old look)
+const NIGHT_VIL=3.0;
 const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
@@ -181,6 +183,11 @@ float gline(vec2 x,float per,float w,float fw){vec2 g=abs(fract(x/per)-.5)*per;f
 // may climb it. Lines filter by the footprint fw, so from the air a road thins to its share of the pixel.
 float sdBoxR(vec2 p,vec2 c,vec2 h,float r){vec2 d=abs(p-c)-h+r;return length(max(d,0.))+min(max(d.x,d.y),0.)-r;}
 float fln(float d,float w,float fw){float e=max(w,.5*fw);return (1.-sst(e,e+max(.5*fw,.15),d))*min(1.,w/e);}   // a line of half-width w at distance d, box-filtered
+// (Q447) what's lit at night besides the city texture: the villages (farmland) and the site's town (townG) add their
+// lamps here, as pools ~5 m across on the streets up close and their mean (~.2 of a lit village) from afar; the night
+// term in main adds it with the city lights' warm colour. Reset in main before tellus
+float gLit=0.;
+float lampPools(vec2 x,float sp,float fw){vec2 f=fract(x/sp)-.5;float p=exp(-dot(f,f)*sp*sp/50.);return mix(p,157./(sp*sp),sst(.15*sp,.6*sp,fw));}
 uniform vec2 uRd[32];uniform int uRdN;uniform vec4 uTown;uniform vec3 uGate;
 // the road: distance, and the coordinate along it (m) for its markings
 float roadD(vec2 x,out float al,out vec2 dir){float d=1e9,acc=0.;al=0.;dir=vec2(1,0);
@@ -202,7 +209,9 @@ vec3 townG(vec2 x,vec3 alb,float fw,int k,out float tm){tm=0.;vec2 d=x-uTown.xy;
  float dens=sst(R,.35*R,rr);if(hs<.1||length(c+.5)<.8||fract(hs*53.7)>dens)roof=0.;   // a park here and there, the square in the middle, fewer houses toward the edge
  c2=mix(gdn,rc<.5?r0:r1,roof);if(length(c+.5)<.8)c2=vec3(.1,.095,.09);
  c2=mix(c2,mix(gdn,mix(r0,r1,hs),k==1?.3:.45)*(.75+.5*hs),sst(.15*B,.5*B,fw));   // from afar: each block's mean (roofs and gardens), so the town is a mottle, not a disc
- c2=mix(c2,vec3(.075,.075,.08),st*mix(.6,1.,dens));return mix(alb,c2,tm);}
+ c2=mix(c2,vec3(.075,.075,.08),st*mix(.6,1.,dens));
+ gLit+=tm*dens*(length(c+.5)<.8?1.6:hs<.1?.15:.4+1.2*fract(hs*31.3))*mix(st,1.,sst(.1*B,.4*B,fw))*lampPools(g,25.,fw)*.2;   // (Q447) street lamps: dim in the parks, brighter on the square, a little brighter or dimmer by block
+ return mix(alb,c2,tm);}
 vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
  int k=int(uPadK.x+.5);float r=length(x),n=vn(vec3(x/7.,1.)),n2=vn(vec3(x*.9,3.)),un=sst(.3,1.5,abs(siteShapeG(x)));
  vec3 conc=vec3(.19,.185,.175)*(.82+.3*n+.1*n2),asph=vec3(.055,.055,.06)*(.85+.3*n2),gravel=vec3(.17,.16,.14)*(.8+.4*n2),earth=vec3(.16,.135,.1)*(.8+.35*n+.15*n2);
@@ -280,7 +289,8 @@ vec3 farmland(vec3 pf,vec2 gx,float W,float fw,float frac,vec3 nat,float det,flo
  vec2 vc=floor(gx/5000.),vo=(vec2(fract(sin(dot(vc,vec2(3.1,7.7)))*4375.5),fract(sin(dot(vc,vec2(5.3,1.9)))*3758.5))*.6+.2)*5000.;
  float vr=180.+200.*fract(sin(dot(vc,vec2(9.1,2.3)))*1375.5),vd=length(gx-vc*5000.-vo),vil=sst(vr,vr*.6,vd)*step(fract(sin(dot(vc,vec2(1.7,4.1)))*2375.5),frac*.9);
  if(vil>0.){vec2 rg=fract(gx/14.);float roof=1.-sst(.35,.45,max(abs(rg.x-.5),abs(rg.y-.5)));vec3 rc=fract(sin(dot(floor(gx/14.),vec2(4.1,1.3)))*475.5)<.5?vec3(.2,.085,.05):vec3(.14,.13,.12);
-  col=mix(col,mix(mix(vec3(.09,.1,.06),rc,roof),vec3(.12,.115,.1),sst(5.,20.,fw)),vil*.75);}
+  col=mix(col,mix(mix(vec3(.09,.1,.06),rc,roof),vec3(.12,.115,.1),sst(5.,20.,fw)),vil*.75);
+  gLit+=vil*mix(1.-roof,1.,sst(5.,20.,fw))*lampPools(gx+7.,28.,fw);}   // (Q447) the village's lamps, between the roofs
  return col;}
 // (Q403, PLAYTEST #99) hw: how much the height changes across this pixel (fwidth in main). The coast was a hard h < 0
 // per pixel, a staircase from afar; now sea and land blend over ±hw/2 (sharp close up, soft from orbit), and the
@@ -307,7 +317,7 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,float fw,float
   if(suit>.01){float frac=suit*farmSettle(pf),k=clamp(fw/4000.,0.,.3),fm=sst(1.-frac-.06-k,1.-frac+.06+k,vn(pf*220.)*.65+vn(pf*700.)*.35);
    float dS=1e9;for(int i=0;i<4;i++){if(i>=uNS)break;dS=min(dS,length(uSites[i].xyz-pf)*uPR);}
    fm*=sst(2500.,4000.,dS);   // a cleared range round each pad, no fields
-   if(fm>.001)col=mix(col,farmland(pf,gx,W,fw,frac,col,det,fade),fm);}}
+   if(fm>.001){col=mix(col,farmland(pf,gx,W,fw,frac,col,det,fade),fm);gLit*=fm;}}}
  // (Q401) the range round a pad is cleared scrub, not lawn: dark brush and dry pale grass in patches (~20–80 m),
  // their contrast fading with the footprint
  {float dS=1e9;for(int i=0;i<4;i++){if(i>=uNS)break;dS=min(dS,length(uSites[i].xyz-pf)*uPR);}
@@ -436,7 +446,7 @@ void main(){
   vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
    npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);
    if(uPadK.x>1.5){vec2 q=padXZ(pf);if(dot(q,q)<${SHAPE_R*SHAPE_R}.&&abs(siteShapeG(q))>.05)npf=normalize(mix(npf,pf,.5));}}   // (Q105) the pad's own ground: relief shading halved, so a cut bank facing away from the sun isn't black (the sky's ambient is ~1 %)
-  vec3 alb=tellus(pf,npf,hT,gx,det,fade,fw,hwT,oc);
+  gLit=0.;vec3 alb=tellus(pf,npf,hT,gx,det,fade,fw,hwT,oc);
   // (Q105) the site's own ground cover, in the nearest pad's frame: Coastal's clearing of cut grass, the jungle's dark,
   // mottled canopy round it (the rails and the assembly building kept clear, down to the beach when wet; the contrast
   // makes the treeline, since an equatorial site's own colour is already rainforest), Isle's pasture on its headland
@@ -462,7 +472,7 @@ void main(){
   float street=0.;if(urb>.01){vec2 g=abs(fract(gx/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
   col=alb*(ndb*st*5.*cloudShadowV(p)+vec3(.01,.016,.03));
   // night lights: a soft glow from orbit; up close they gather onto the streets
-  col+=vec3(1.,.6,.25)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
+  col+=vec3(1.,.6,.25)*(ct.g*mix(1.,.08+1.6*street,fade)+${NIGHT_VIL.toFixed(2)}*gLit)*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl));   // (Q447) + villages and the site's town
   // (Q323, BEAUTY B6.3, Q268) the sea: the sky reflected by Fresnel (it brightens toward the limb), and a sunglint as a
   // wind-roughened surface makes it (Beckmann, slope 0.18: a wide smeared patch from orbit, not a pin)
   if(oc>.5){vec3 h2=normalize(uSun-d);float cv=max(dot(-d,n),0.),Fr=.02+.98*pow(1.-cv,5.),ch=max(dot(n,h2),1e-3),c2=ch*ch,m2=.0324;

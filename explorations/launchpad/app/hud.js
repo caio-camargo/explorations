@@ -19,6 +19,11 @@ function ascentNow(){if(!S||!S.alive||S.landed)return false;const b=S.body,h=len
 let ascentT=-1e9;function ascentOn(){const now=performance.now();if(ascentNow())ascentT=now;return now-ascentT<3000}
 // the gauges' slot (#gslot, read by gl.js's gaugeRect): shown in flight while the Ascent condition holds and the gauges are on
 function gaugeSlot(){const g=$('gslot');if(!g)return;const on=GAUGES&&mode==='flight'&&view!=='map'&&!!S&&ascentOn();if(g.classList.contains('hidden')===on)g.classList.toggle('hidden',!on)}
+// the design's action groups (Q329): a button each (its key), what it moves and whether that is out now
+function agRows(){if(!S.alive)return[];const O={out:'extend',in:'retract',tog:'toggle'};
+  return(S.ag||[]).map(g=>{const P=agParts(S,g),n=P.filter(p=>agOut(S,p)).length;
+    return[`<button data-agfire="${g.id}" title="${O[g.op]} (${g.key.toUpperCase()})"${P.length?'':' disabled'}>${g.key.toUpperCase()}</button>`,`${tipEsc(g.name)} <span class="dim">${P.length?`${n} of ${P.length} out`:'nothing left'}</span>`]})}
+document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.agfire;if(id==null||mode!=='flight'||!S)return;e.target.blur();tapeAg(recTape,S,id)});
 const aoaRow=()=>['AoA',inAir()?`${(S.aoa*57.3).toFixed(1)}°`:'—'];
 const HUD_CARDS=[
   // Ascent: shown with the gauges (ascentOn)
@@ -32,6 +37,7 @@ const HUD_CARDS=[
   {id:'vehicle',title:'Vehicle',when:()=>spinRows().length+wheelRows().length>0||!!S.rcs,
     rows:()=>[['Mass',`${(S.mass/1000).toFixed(2)} t · ${S.gload.toFixed(1)} g`],...spinRows(),...wheelRows(),...rcsRows()]},
   {id:'hardware',title:'Hardware',rows:()=>[...bayRows(),...armRows()]},
+  {id:'groups',title:'Action groups',when:()=>S.alive&&(S.ag||[]).some(g=>!g.stock),rows:agRows},   // (vehicle, Q329) one button each, its key on it
   {id:'rover',title:'Rover',rows:rvRows}];
 // Which cards fold, so the column fits `avail` px: the oldest unpinned (smallest `since`) first, down to its title bar.
 // cards: [{id, h (open height), ht (title bar height), pinned, since}]. Pure, for test.mjs.

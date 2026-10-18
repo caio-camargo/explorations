@@ -1219,7 +1219,7 @@ function rollChecks`; a comment line above it broke the
   `econ-25` still passes; a probe on the GPU (a route, nothing up: the line in the Fleet tab, *Order a run* answering).
   TESTING row 310.
 
-## v1.231 — range safety and the site's own town (2026-10-18, flow session, QUEUE Q444; PLAYTEST #116)
+## v1.233 — range safety and the site's own town (2026-10-18, flow session, QUEUE Q444; PLAYTEST #116)
 - **The cause:** range safety warns when the predicted impact point is in a city or within 15 km of one (`dropVerdict`'s
   *near*). Dunnzar Cape's support town Kaos Beach (Q270, v1.144) is 15 km from the pad, so the pad itself read as near it,
   and a climb's first impact points (the pad, then just downrange) set off RANGE SAFETY and the master caution on every
@@ -1229,4 +1229,4 @@ function rollChecks`; a comment line above it broke the
   stays where it is (the road out to it is v1.227's). Drops of spent stages still use `dropVerdict` unchanged.
 - **Checks:** test `flow-33` (no pad near its own town; over Kaos Beach still a city; near another site's town still
   near; the wiring); a scan of every pad's first 30 km downrange: clear; on the GPU, a Sounding from the Cape to 3.4 km:
-  no warning in 20 s, where the old reading said "near Kaos Beach" from T+1 s. TESTING row 311.
+  no warning in 20 s, where the old reading said "near Kaos Beach" from T+1 s. TESTING row 313.

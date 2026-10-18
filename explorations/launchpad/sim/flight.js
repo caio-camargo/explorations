@@ -52,6 +52,34 @@ function lose(s,why,boom){s.alive=false;s.lossWhy=why;if(boom)HOOK.boom(s.body,s
 function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;p.depT=simT;n++}
   if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
 const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);
+// ---- action groups (vehicle, QUEUE Q329, PLAYTEST #80). A design carries ag: [{id, name, op, n: [node ids]}]: the
+// deployable parts it moves (legs, folding wings and antennas, bay doors, the chute; every copy of each node) and how:
+// 'out' (legs down, unfold, open, arm the chute), 'in' (put away) or 'tog' (away if any of them is out, else out, as P and Y
+// do). Two stock groups come with the parts: Solar panels ('sol', all that unfolds: P) and Landing legs ('legs': Y). Fired by
+// a key (1–9, the design's groups in order), the flight's Action groups card, or a stage (a 'g:<id>' atom in the design's
+// staging order); on the tape as ['K', id]. A payload's own parts answer to the stock groups only (their node ids are the bench's).
+const AG_MAX=9,agKind=d=>d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':d.kind==='chute'?'chute':null;
+function agList(des,parts){const out=[];
+  if(parts.some(p=>unfolds(p.d)))out.push({id:'sol',name:'Solar panels',op:'tog',stock:true,key:'p'});
+  if(parts.some(p=>p.d.kind==='leg'))out.push({id:'legs',name:'Landing legs',op:'tog',stock:true,key:'y'});
+  ((des&&des.ag)||[]).slice(0,AG_MAX).forEach((g,i)=>out.push({id:String(g.id),name:g.name||`Group ${i+1}`,op:g.op||'tog',n:(g.n||[]).slice(),key:String(i+1)}));
+  return out}
+function agParts(s,g){return s.parts.filter(p=>p.on&&agKind(p.d)&&(g.id==='sol'?unfolds(p.d):g.id==='legs'?p.d.kind==='leg':!!p.dn&&!p.dn.payOf&&g.n.includes(p.dn.id)))}
+const agOut=(s,p)=>p.d.kind==='bay'?!!p.open:p.d.kind==='chute'?!!s.chute:!!p.dep;
+function agFire(s,id){const g=(s.ag||[]).find(x=>x.id===String(id));if(!g||!s.alive)return 0;
+  if(g.stock&&g.op==='tog')return g.id==='sol'?wingOp(s,wingsOut(s)?'in':'out'):legOp(s,legsDown(s)?'up':'down');   // exactly P and Y
+  const P=agParts(s,g);if(!P.length){HOOK.msg(`${g.name}: nothing on board to move`);return 0}
+  const out=g.op==='out'?true:g.op==='in'?false:!P.some(p=>agOut(s,p));let n=0,k=0,leg=false,shape=false;const bays=[];
+  for(const p of P){if(agOut(s,p)===out)continue;
+    if(p.d.kind==='chute'){if(out){s.chute=true;s.chuteA=0;n++}continue}   // armed, as by its stage; it isn't packed again
+    if(p.d.kind==='bay'){bays.push(p);continue}
+    if(out&&unfolds(p.d)&&encased(s,p)){k++;continue}
+    p.dep=out;p.depT=simT;n++;if(p.d.kind==='leg')leg=true;else shape=true}
+  if(bays.length&&bayDoors(s,out,bays))n+=bays.length;
+  if(leg)s.foot=null;if(n||shape)HOOK.rebuild();
+  logEv('stage',`action group ${g.name}: ${n} part(s) ${out?'out':'in'}`);
+  if(n)HOOK.msg(`${g.name}: ${out?'out':'in'}${k?` (${k} still inside the fairing)`:''}`);else if(k)HOOK.msg(`${g.name}: inside the fairing: jettison it first (stage), then unfold`);
+  return n}
 // a procedure puts the legs down by itself (vehicle, Q121): descending within 1.5 km of the ground
 function autoLegs(s){if(!s.proc||s.landed||!s.alive||!s.parts.some(p=>p.on&&p.d.kind==='leg'&&!p.dep))return;
   if(dot(sub(s.v,surfVel(s.body,s.r)),norm(s.r))<0&&aglAt(s.body,s.r,simT)<1500)legOp(s,'down')}
@@ -223,6 +251,7 @@ function stage(s){
   spinFire(s,ev);
   if(ev.fair)fairJettison(s,ev.fair);   // the payload fairing's shell (Q337)
   if(ev.chute){s.chute=true;s.chuteA=0;HOOK.msg(s.body.atm?'Chute armed — drogue below 20 km and 400 m/s, main below 3 km':'Chute deployed (no air here)')}
+  for(const id of ev.ag||[])agFire(s,id);   // action groups put in this stage (Q329)
   HOOK.rebuild()}
 // spin-up motors fire with the event that lights their stage, or that releases it when it has no engines: whichever leaves
 // it the bottom stage. SAS then leaves the roll alone (s.spun, ctrlAccel).

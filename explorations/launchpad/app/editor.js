@@ -201,6 +201,7 @@ function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="m
     if(e.ignite.length){const nm={};S.parts.filter(p=>p.on&&e.ignite.includes(p.seg)&&p.d.kind==='engine').forEach(p=>{const n=p.d.name.split(' ')[0];nm[n]=(nm[n]||0)+1});
       parts.push('ignite '+Object.entries(nm).map(([n,c])=>c>1?`${n}×${c}`:n).join(' + '))}
     if(e.chute)parts.push('chute');
+    for(const id of e.ag||[]){const g=(S.ag||[]).find(x=>x.id===id);if(g)parts.push(tipEsc(g.name))}   // action groups (Q329)
     html+=`<div class="stg${i===S.evIdx?' cur':''}"><b>${i===S.evIdx?'▶ ':''}${i+1}</b> ${parts.join(' · ')}</div>`}
   if(S.evIdx>=ev.length)html+='<div class="dim">no stages left</div>';
   const agg={};for(let k=0;k<S.segs.length;k++){const fm=S.parts.filter(p=>p.on&&p.seg===k).reduce((a,p)=>a+(p.cap.fuel||0),0);

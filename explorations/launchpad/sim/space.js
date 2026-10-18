@@ -703,7 +703,8 @@ const DOOR_S=2,BAY_PUSH=0.3;
 const doorF=p=>{if(p.doorT==null)return p.open?1:0;const f=clamp((simT-p.doorT)/DOOR_S,0,1);return p.open?f:1-f};   // 0 shut … 1 open
 const shielded=p=>!!(p.inBay&&p.inBay.on&&!p.inBay.open&&doorF(p.inBay)===0)||!!(p.inFair&&p.inFair.on&&!p.inFair.fj);   // or inside a payload fairing with its shell on (vehicle, Q337)   // exposed from the moment the doors are told to open until they're shut again
 const profOf=p=>p.d.kind==='bay'&&(p.open||doorF(p)>0)?p.d.profOpen:p.profF&&!p.fj?p.profF:p.d.prof;   // a fairing's shell (vehicle, Q337)   // an open bay's outline has no roof
-function bayDoors(s,open){let n=0;for(const p of s.parts){if(!p.on||p.d.kind!=='bay'||!!p.open===open)continue;const f=doorF(p);
+// only: just these bays (an action group, Q329)
+function bayDoors(s,open,only){let n=0;for(const p of s.parts){if(!p.on||p.d.kind!=='bay'||!!p.open===open||only&&!only.includes(p))continue;const f=doorF(p);
     p.open=open;p.doorT=simT-(open?f:1-f)*DOOR_S;n++;if(!open)s.bayShut=Math.max(s.bayShut||0,simT+f*DOOR_S)}   // mid-swing reversals keep their place
   if(!n)return false;if(open)rebuildShape(s);HOOK.msg(open?'Bay doors opening':'Bay doors closing');return true}
 // the doors finishing shut make the payload shielded again (the outline changes back)

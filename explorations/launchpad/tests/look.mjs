@@ -1017,3 +1017,19 @@
   check('each school\'s ground plan, and the road found over the ground through a gate to the site\'s town, painted to 12 km',
     Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
+
+// aerofx-47. Village and farm lights at night, and the site's town (look & sound effects beat, QUEUE Q447): a shader
+// global gLit, reset in main before tellus, that farmland's villages (times the farmed fraction) and townG add lamp
+// pools to (lampPools, filtered to their mean); the night term adds NIGHT_VIL × gLit beside the city texture's lights
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const has = {
+    knob: /const NIGHT_VIL=[1-9][\d.]*;/.test(page),
+    pools: /float gLit=0\.;\nfloat lampPools\(vec2 x,float sp,float fw\)\{/.test(page) && /return mix\(p,157\.\/\(sp\*sp\),/.test(page),
+    village: /gLit\+=vil\*mix\(1\.-roof,1\.,sst\(5\.,20\.,fw\)\)\*lampPools\(gx\+7\.,28\.,fw\);/.test(page) && /farmland\(pf,gx,W,fw,frac,col,det,fade\),fm\);gLit\*=fm;/.test(page),
+    town: /gLit\+=tm\*dens\*.*lampPools\(g,25\.,fw\)/.test(page),
+    night: /gLit=0\.;vec3 alb=tellus\(/.test(page) && /\+\$\{NIGHT_VIL\.toFixed\(2\)\}\*gLit\)\*\(1\.-oc\)\*\.55\*\(1\.-smoothstep\(-\.12,\.05,ndl\)\)/.test(page)
+  };
+  check('villages and the site\'s town lit at night (lamp pools into gLit, added by the night term)',
+    Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}

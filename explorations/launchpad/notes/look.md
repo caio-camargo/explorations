@@ -2238,3 +2238,24 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   six schools shot at Dunnzar Cape under `SCHOOL_FORCE`, so the routes are that site's; other sites not looked at.
 - **Not done:** the town has no night lights; the A*'s town choice doesn't read the land-use map (Q448) or the city
   texture; the rig in the stills is the flight's (a harness artefact, not this change).
+
+## v1.232 — village and farm lights at night, and the site's town (2026-10-18, effects beat, QUEUE Q447)
+
+- **Asked:** Caio: "go ahead" (Q447: the villages `farmland()` draws had no lights; the site's town from v1.227 neither;
+  the night term in `SKY_FS` main read only the city texture).
+- **How:** a shader global `gLit`, reset in main before `tellus`, that the villages (`farmland`, times the farmed
+  fraction `fm`) and the site's town (`townG`) add their lamps to; the night term adds `NIGHT_VIL × gLit` beside the
+  city texture's `ct.g`, in the same warm colour and the same night ramp. Lamps are `lampPools(x, spacing, fw)`:
+  pools ~5 m across on a grid (28 m in a village, between the roofs; 25 m on the town's streets), filtered by the
+  footprint to their mean (157 / spacing²) from afar, so a village is a point of light from 8 km, not a shimmer. The
+  town's lamps follow its density (fewer toward the edge), dim in the parks, brighter on the square, a little brighter
+  or dimmer by block, so from 3 km it's a mottled glow about as bright as a small city's, not a disc.
+- **`NIGHT_VIL` = 3** (in `app/gl.js` beside `FARM_FX`; 0 compiles the old look, an A/B). At 1 the villages vanished
+  next to a city's glow; the town's own factor (×.2) keeps it where it looked right at 1 × .6.
+- **Measured:** frame time on the RTX at two night views over farmland, lights on vs off: 6.07/5.24 and 7.03/6.29 ms
+  vs 7.75/7.63 and 5.62/5.59 (noise). By day nothing changes (the term is under the night ramp).
+- **Stills:** `output/launchpad/beauty/Q447/`: the Cape town at night from 3 and 1 km and with the lights off; farmland
+  25 km from Kari (594,000) at night from 3 km with the villages and with them off.
+- **Seen, not mine:** at Dunnzar Cape the city texture's lights cover the whole ground near the pad with a lit 90 m
+  street grid (Kaos Beach, 34,000 people, 15 km away; its glow reaches well past the 3.5 km radius `CITIES` gives it).
+  Filed (Proposed).

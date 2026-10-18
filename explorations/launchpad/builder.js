@@ -481,6 +481,9 @@ function panel(){
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
   {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it');
     const h=document.createElement('div');h.className='sub';h.textContent=`In flight: ${DEP_HOW[w]}.`;sel.appendChild(h)}}   // (Q400) how it deploys
+  if(agKind(PARTS[n.k])&&!st.bench){const r=row('groups'),L=D.ag||[];   // its action groups (Q329): in or out of each
+    L.forEach((g,i)=>btn(r,`${i+1} ${g.name}`,(g.n||[]).includes(n.id),()=>edit(()=>{const x=design().ag[i],k=x.n||(x.n=[]),j=k.indexOf(n.id);if(j<0)k.push(n.id);else k.splice(j,1)}),'in this action group or not (its key in flight)'));
+    if(L.length<AG_MAX)btn(r,'+ new group',false,()=>agNew(n),'a new action group with this part in it')}
   if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
     if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');
@@ -516,9 +519,13 @@ function panel(){
 // again. Parts added later slot in where the automatic order would put them.
 // stgEdit: the pure move on a list of stages (atom ids). from {atom:[i,j]} or {stage:i}; to {row:k} (into stage k) or
 // {gap:k} (a new place before stage k; k = L.length: after the last). Returns the new list, empty stages removed.
+// An action group (Q329) comes as {group: id} (it leaves any stage it was in: one place at a time); to {out: true} takes a
+// chip out of the order (a group's: it no longer fires with a stage).
 function stgEdit(L,from,to){L=L.map(s=>s.slice());if(from.stage!=null&&to.row===from.stage)return L;let moved;   // indices stay put until the end
-  if(from.atom){const[i,j]=from.atom;moved=[L[i][j]];L[i].splice(j,1)}else{moved=L[from.stage];L[from.stage]=[]}
-  if(to.row!=null)L[to.row].push(...moved)
+  if(from.group!=null){const id='g:'+from.group;L=L.map(s=>s.filter(a=>a!==id));moved=[id]}
+  else if(from.atom){const[i,j]=from.atom;moved=[L[i][j]];L[i].splice(j,1)}else{moved=L[from.stage];L[from.stage]=[]}
+  if(to.out);
+  else if(to.row!=null)L[to.row].push(...moved)
   else L.splice(to.gap,0,moved.slice());
   return L.filter(s=>s.length)}
 function staging(box){
@@ -537,11 +544,32 @@ function staging(box){
     el.addEventListener('dragend',()=>{drag=null;wrap.classList.remove('dragging');wrap.querySelectorAll('.over').forEach(x=>x.classList.remove('over'))})};
   S0.forEach((s,i)=>{gap(i);const r=document.createElement('div');r.className='srow';wrap.appendChild(r);zone(r,{row:i});
     const h=document.createElement('b');h.className='snum';h.textContent=i+1;h.title='drag onto another stage to merge, or between stages to move it';start(h,{stage:i});r.appendChild(h);
-    s.forEach((a,j)=>{const c=document.createElement('span');c.className='schip '+a.kind;c.innerHTML=`<span>${a.label}</span>`;c.title='drag to another stage, or between stages for a stage of its own';start(c,{atom:[i,j]});
+    s.forEach((a,j)=>{const c=document.createElement('span');c.className='schip '+a.kind;c.innerHTML=`<span>${esc(a.label)}</span>`;c.title='drag to another stage, or between stages for a stage of its own';start(c,{atom:[i,j]});
       c.onmouseenter=()=>{st.hiAtom=a;st.hiKey=''};c.onmouseleave=()=>{if(st.hiAtom===a){st.hiAtom=null;st.hiKey=''}};
-      if(s.length>1)btn(c,'⤵',false,()=>go({atom:[i,j]},{gap:i+1}),'a stage of its own, right after this one');r.appendChild(c)});
+      if(s.length>1)btn(c,'⤵',false,()=>go({atom:[i,j]},{gap:i+1}),'a stage of its own, right after this one');
+      if(a.kind==='g')btn(c,'✕',false,()=>go({atom:[i,j]},{out:true}),'take the group out of this stage (it still has its key)');r.appendChild(c)});
     if(i<S0.length-1){const m=btn(r,'⇣',false,()=>go({stage:i+1},{row:i}),`fire stage ${i+2} with this one, in one press`);m.className='smerge'}});
-  if(S0.length)gap(S0.length)}
+  if(S0.length)gap(S0.length);
+  if(st.bench)return;
+  // action groups (vehicle, Q329, PLAYTEST #80): the design's own (keys 1–9 in flight, in this order) and the stock two;
+  // a part joins one from its options (right-click it); drag a group onto a stage and it fires with that stage too
+  const AG=A.ag||[],gw=document.createElement('div');gw.className='bstg';box.appendChild(gw);
+  gw.innerHTML=`<div class="bhd2"><span>action groups</span></div>`;
+  btn(gw.firstChild,'+ group',false,()=>agNew(st.sel),'a new action group, with the selected part if it deploys; parts join from their options (right-click a part)').disabled=(design().ag||[]).length>=AG_MAX;
+  const O={tog:'toggle',out:'extend',in:'retract'},NX={tog:'out',out:'in',in:'tog'};
+  for(const g of AG){const r=document.createElement('div');r.className='agrow';gw.appendChild(r);
+    const c=document.createElement('span');c.className='schip g';c.innerHTML=`<span>${g.key.toUpperCase()}${g.stock?' · '+esc(g.name):' ⠿'}</span>`;c.title=`${g.name}: its key in flight; drag onto a stage and it fires with that stage too`;start(c,{group:g.id});r.appendChild(c);
+    const np=S.parts.filter(p=>p.on&&agKind(p.d)&&(g.id==='sol'?unfolds(p.d):g.id==='legs'?p.d.kind==='leg':!!p.dn&&!p.dn.payOf&&g.n.includes(p.dn.id))).length,cnt=document.createElement('span');
+    cnt.className=np?'dim':'warn';cnt.textContent=` ${np} part${np===1?'':'s'}${g.stock?' · stock':''}`;
+    if(g.stock){r.appendChild(cnt);continue}
+    const G=()=>(design().ag||[]).find(x=>String(x.id)===g.id),inp=document.createElement('input');
+    inp.value=g.name;inp.maxLength=24;inp.title='its name';inp.onkeydown=e=>e.stopPropagation();inp.onchange=()=>edit(()=>{const x=G();if(x)x.name=inp.value.trim()||x.name});r.appendChild(inp);
+    btn(r,O[g.op],false,()=>edit(()=>{const x=G();if(x)x.op=NX[x.op||'tog']}),'toggle (away if any is out, else out) · extend · retract: click to change');r.appendChild(cnt);
+    btn(r,'✕',false,()=>edit(()=>{const D=design();D.ag=(D.ag||[]).filter(x=>String(x.id)!==g.id);if(!D.ag.length)delete D.ag;if(D.stg)D.stg=D.stg.map(s=>s.filter(a=>a!=='g:'+g.id)).filter(s=>s.length)}),'delete the group (and take it out of its stage)')}
+  if(!AG.some(g=>!g.stock)){const h=document.createElement('div');h.className='dim shint';h.textContent='Parts that deploy (legs, wings, antennas, bay doors, chutes) can be grouped: one key, one button, or a stage moves them all.';gw.appendChild(h)}}
+// a new action group (Q329), with the node n in it if it deploys
+function agNew(n){edit(()=>{const D=design(),L=D.ag||(D.ag=[]),id=L.reduce((m,g)=>Math.max(m,+g.id||0),0)+1;
+  L.push({id,name:`Group ${L.length+1}`,op:'tog',n:n&&!isPay(n)&&agKind(pdef(n.k))?[n.id]:[]})})}
 function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
   if(!st.bench){const h=document.createElement('div');h.className='pcat';h.textContent='Payloads';pal.appendChild(h);
     for(const e of payDesigns()){const r=document.createElement('div'),b=document.createElement('button'),ed=document.createElement('button');r.className='blrow';
@@ -620,7 +648,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .bstg{border-top:1px solid var(--line);padding:6px 0 4px;margin-bottom:4px}.bhd2{display:flex;gap:6px;align-items:center;color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}.bhd2 button{margin-left:auto;text-transform:none;letter-spacing:0;padding:0 6px;font-size:10.5px}
 .shint{font-size:10.5px;margin-bottom:3px}.snum{cursor:grab}.schip{cursor:grab}.srow.over{background:rgba(127,209,255,.14)}.sgap{height:3px;border-radius:3px}.bstg.dragging .sgap{height:8px}.sgap.over{height:16px;border:1px dashed var(--acc);background:rgba(127,209,255,.1)}.smerge{margin-left:auto;padding:0 5px;font-size:10.5px}
 .srow{display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}.srow>b{color:var(--warn);min-width:16px}
-.schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip.f{border-color:rgba(230,230,230,.55)}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
+.schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip.f{border-color:rgba(230,230,230,.55)}.schip.g{border-color:rgba(214,160,255,.6)}.agrow{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin:2px 0}.agrow input{width:90px;font:inherit;font-size:11px;background:rgba(0,0,0,.3);color:inherit;border:1px solid var(--line);padding:0 3px}.agrow button{padding:0 5px;font-size:10.5px}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
 #termTip.card{width:270px}#termTip.card b{color:var(--fg)}   /* (flow, Q391) the part cards and the craft hover in the one tooltip */
 #termTip table{border-collapse:collapse;margin-top:4px;width:100%}#termTip td{padding:1px 0;vertical-align:top;text-align:left}#termTip td:first-child{color:var(--dim);padding-right:8px;white-space:nowrap}
 .pcs{color:var(--fg);margin:2px 0;line-height:1.35}
