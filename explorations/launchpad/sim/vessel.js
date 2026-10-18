@@ -353,14 +353,14 @@ function assemble(stack){
   // the fairing drops with the first stage separation's next press (out of the thick air by then), or last, before the chute
   {const F=parts.filter(p=>p.profF).map(p=>p.i);if(F.length){const i=events.findIndex(e=>e.decouple.length&&!e.radial);events.splice(i<0?events.length:i+1,0,{decouple:[],ignite:[],fair:F})}}
   if(parts.some(p=>p.d.kind==='chute'))events.push({decouple:[],ignite:[],chute:true});
-  const st=stageAtoms(events,keys,sPar,segs,parts,des.stg);
-  return{parts,segs,events:st.events,root,height:ymax-ymin,groups,layout:L,shift:-ymin,stages:st.stages,custom:st.custom}}
+  const ag=agList(des,parts),st=stageAtoms(events,keys,sPar,segs,parts,des.stg,ag);
+  return{parts,segs,events:st.events,root,height:ymax-ymin,groups,layout:L,shift:-ymin,stages:st.stages,custom:st.custom,ag}}
 // Staging. The automatic events split into atoms: one per decoupling placement (all its symmetric copies), one per ignited
 // segment group, and the chute. An atom is named by its decoupler's design-node id ('d:7', 'i:7', 'i:root', 'c'), so a
 // design can carry its own order: stg = [[atom ids fired together], …] in firing order. Atoms it doesn't mention yet (parts
 // added since) keep their automatic place relative to the rest. In a custom order a drop takes everything hanging from the
 // segment with it — the core can go before its boosters, and the boosters must not stay behind as orphans.
-function stageAtoms(auto,keys,sPar,segs,parts,stg){
+function stageAtoms(auto,keys,sPar,segs,parts,stg,ag=[]){
   // a design that was never edited has no node ids yet: name its atoms by segment so they stay distinct (display only —
   // a custom order needs real ids, and the builder assigns them on the first edit)
   const tmp=new Map(),nn=n=>{if(n.id!=null)return n.id;if(!tmp.has(n))tmp.set(n,'#'+tmp.size);return tmp.get(n)},nid=k=>keys[k]?nn(keys[k].dn):'root';
@@ -369,23 +369,24 @@ function stageAtoms(auto,keys,sPar,segs,parts,stg){
   auto.forEach((e,i)=>{if(e.decouple.length)add('d:'+nid(e.decouple[0]),i,a=>{a.d.push(...e.decouple);a.radial=!!e.radial});
     for(const k of e.ignite)add('i:'+nid(k),i,a=>a.g.push(k));if(e.chute)add('c',i,a=>{a.c=true});
     for(const pi of e.fair||[])add('f:'+nn(parts[pi].dn),i,a=>{(a.f=a.f||[]).push(pi)})});
+  for(const g of ag)add('g:'+g.id,Infinity,a=>{a.ag=g.id;a.gname=g.name});   // action groups (Q329): in a stage only where the order puts one
   const eng=ks=>{const nm={};for(const p of parts)if(ks.includes(p.seg)&&p.d.kind==='engine'){const n=p.d.name.split(' ')[0];nm[n]=(nm[n]||0)+1}
     return Object.entries(nm).map(([n,c])=>c>1?`${n}×${c}`:n).join(' + ')};
-  for(const a of atoms){a.label=a.c?'chute':a.f?'fairing':a.d.length?'drop '+segs[a.d[0]].label.split(' (')[0]:'ignite '+(eng(a.g)||'—');a.kind=a.c?'c':a.f?'f':a.d.length?'d':'i'}
+  for(const a of atoms){a.label=a.ag?a.gname:a.c?'chute':a.f?'fairing':a.d.length?'drop '+segs[a.d[0]].label.split(' (')[0]:'ignite '+(eng(a.g)||'—');a.kind=a.ag?'g':a.c?'c':a.f?'f':a.d.length?'d':'i'}
   const ok=Array.isArray(stg)&&atoms.every(a=>!a.id.includes('#'));
   let out;
   if(!ok)out=auto.map((e,i)=>atoms.filter(a=>a.i===i));
   else{const used=new Set();out=[];
     for(const s of stg){const g=(s||[]).map(id=>byId.get(id)).filter(a=>a&&!used.has(a.id));g.forEach(a=>used.add(a.id));if(g.length)out.push(g)}
-    const miss=atoms.filter(a=>!used.has(a.id)),ev=[...new Set(miss.map(a=>a.i))].sort((x,y)=>x-y);
+    const miss=atoms.filter(a=>!used.has(a.id)&&!a.ag),ev=[...new Set(miss.map(a=>a.i))].sort((x,y)=>x-y);
     for(const i of ev){const g=miss.filter(a=>a.i===i),at=out.findIndex(s=>s.some(a=>a.i>i));at<0?out.push(g):out.splice(at,0,g)}}
   const desc=k=>{const r=[k];for(let s=0;s<sPar.length;s++){let q=s;while(q>=0&&q!==k)q=sPar[q];if(q===k&&s!==k)r.push(s)}return r};
   const gone=new Set();   // segments already dropped by an earlier stage aren't dropped again
   const events=!ok?auto:out.map(g=>{const dd=[...new Set(g.flatMap(a=>a.d.flatMap(desc)))].filter(k=>!gone.has(k));dd.forEach(k=>gone.add(k));
     const e={decouple:dd,ignite:g.flatMap(a=>a.g)};
     // "Booster separation" only when every drop in the stage is radial; core + boosters together is a stage separation
-    const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;const f=g.flatMap(a=>a.f||[]);if(f.length)e.fair=f;return e});
-  return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.kind==='f'?[]:a.g})))}}
+    const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;const f=g.flatMap(a=>a.f||[]);if(f.length)e.fair=f;const gs=g.filter(a=>a.ag).map(a=>a.ag);if(gs.length)e.ag=gs;return e});
+  return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.kind==='f'||a.kind==='g'?[]:a.g})))}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
 // a debris-damaged part (v1.210 p.dmg, Q440): an engine keeps 1−dmg of its flow and thrust (same Isp), and from GIM_JAM
 // its gimbal is stuck where it was; a reaction wheel (or a pod's) keeps 1−dmg of its torque and storage; a crew cabin
@@ -562,7 +563,7 @@ let S=null,simT=0;
 const debris=[];
 function newShip(stack,site=curSite()){
   const A=assemble(stack);
-  const s={stack:JSON.parse(JSON.stringify(stack)),parts:A.parts,segs:A.segs,events:A.events,root:A.root,groups:A.groups,evIdx:0,body:TELLUS,alive:true,landed:true,
+  const s={stack:JSON.parse(JSON.stringify(stack)),parts:A.parts,segs:A.segs,events:A.events,root:A.root,groups:A.groups,ag:A.ag,evIdx:0,body:TELLUS,alive:true,landed:true,
     av:avNow(),throttle:0,sas:true,sasMode:'stab',hold:null,w:[0,0,0],chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:[0,0,0],v:[0,0,0],q:[0,0,0,1],att:[]};
   geom(s);rebuildShape(s);s.rec=recNew();
   s.site=site;const f=siteFrame(site.u);                  // on the levelled pad of the chosen launch site

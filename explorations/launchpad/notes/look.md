@@ -2239,7 +2239,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Not done:** the town has no night lights; the A*'s town choice doesn't read the land-use map (Q448) or the city
   texture; the rig in the stills is the flight's (a harness artefact, not this change).
 
-## v1.231 — village and farm lights at night, and the site's town (2026-10-18, effects beat, QUEUE Q447)
+## v1.232 — village and farm lights at night, and the site's town (2026-10-18, effects beat, QUEUE Q447)
 
 - **Asked:** Caio: "go ahead" (Q447: the villages `farmland()` draws had no lights; the site's town from v1.227 neither;
   the night term in `SKY_FS` main read only the city texture).

@@ -865,3 +865,35 @@
     !!proc && proc.target.inc > 80 && e.ok && f.ok && left > 150 && Math.abs(e.margin - left) < 60,
     proc ? `recorded ${(proc.target.pe / 1e3).toFixed(0)} km at ${proc.target.inc.toFixed(1)}°, ${proc.left.toFixed(0)} m/s left; 300 km: quoted margin ${e.margin.toFixed(0)} m/s, ${f.ok ? `flown ${(f.orb.pe / 1e3).toFixed(0)}×${(f.orb.ap / 1e3).toFixed(0)} km, ${left.toFixed(0)} m/s left` : JSON.stringify(f.dev ? f.dev.why : f.why)}` : 'no procedure recorded');
 }
+
+// vehicle-33. Action groups (vehicle session, QUEUE Q329, PLAYTEST #80): a design's groups (ag) of deployable parts, each
+// extend, retract or toggle, with keys 1–9; the stock Solar panels and Landing legs (P, Y) when it has the parts. A group put
+// in a stage (a 'g:' atom in stg) fires with it; one on the tape (['K', id]) fires on replay; stgEdit moves a group into a
+// stage (out of any other) and takes it out; the bay's doors open alone; the chute arms; groups keep the design's procedures.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const B = new Function(src + 'let stackDef=null;' + bsrc + ';return {BLD};')().BLD, J = x => JSON.stringify(x);
+  const fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  const d = api.toV2(['core', 'chute', 'bay', 'batt', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']); B.ensureIds(d);
+  const t2 = fd(d.root, 't2'); t2.c.push({ k: 'leg', at: { y: 0.1, a: 0, n: 4 }, c: [] }, { k: 'wpanel', at: { y: 1.2, a: 0, n: 2 }, c: [] }); B.ensureIds(d);
+  const leg = t2.c.find(c => c.k === 'leg'), bay = fd(d.root, 'bay'), chute = fd(d.root, 'chute');
+  const key0 = api.procKey(d);
+  d.ag = [{ id: 1, name: 'Touchdown', op: 'out', n: [leg.id] }, { id: 2, name: 'Doors', op: 'tog', n: [bay.id] }, { id: 3, name: 'Chute', op: 'out', n: [chute.id] }];
+  const keyAg = api.procKey(d), A0 = api.assemble(d), ids = A0.stages.map(s => s.map(a => a.id));
+  d.stg = B.stgEdit(B.stgEdit(ids, { group: '1' }, { row: ids.length - 1 }), { group: 'sol' }, { gap: ids.length });
+  const moved = B.stgEdit(d.stg, { group: '1' }, { row: 0 }), out = B.stgEdit(d.stg, { atom: [ids.length, 0] }, { out: true });
+  const A = api.assemble(d), msgs = [], m0 = api.HOOK.msg; api.HOOK.msg = m => msgs.push(m);
+  const s = api.newShip(d), n = (k, f) => s.parts.filter(p => p.d.kind === k && f(p)).length;
+  const legs4 = n('leg', () => true), legsOut = () => n('leg', p => p.dep), wings = () => n('solar', p => p.d.wing && p.dep);
+  while (s.evIdx < s.events.length) api.stage(s);
+  const staged = { legs: legsOut(), wings: wings(), chute: s.chute };
+  const again = api.agFire(s, 1), doors = api.agFire(s, 2), bayOpen = s.parts.some(p => p.d.kind === 'bay' && p.open), doors2 = api.agFire(s, 2), shut = !s.parts.some(p => p.d.kind === 'bay' && p.open);
+  const T = api.tapeNew(d, null), s2 = api.newShip(d); api.tapeAg(T, s2, 1); const s3 = api.newShip(d); api.tapePlay({ tape: T, i: 0, n: 0 }, s3, 10);
+  const c3 = api.newShip(d); api.agFire(c3, 3); api.HOOK.msg = m0;
+  check('action groups (Q329): stock Solar panels and Landing legs plus the design\'s own (keys 1–9); a group in a stage fires with it; extend is idempotent, toggle opens and shuts the bay alone; the chute arms; the tape replays a group; stgEdit moves and removes one; groups keep the procedures',
+    J(A.ag.map(g => g.id + g.key)) === J(['solp', 'legsy', '11', '22', '33']) && A.custom && J(A.events.at(-1).ag) === J(['sol']) && (A.events.at(-2).ag || []).includes('1')
+      && staged.legs === legs4 && legs4 === 4 && staged.wings === 2 && again === 0 && doors === 1 && bayOpen && doors2 === 1 && shut
+      && J(T.ops.filter(o => o[0] === 'K')) === J([['K', 1]]) && s3.parts.filter(p => p.d.kind === 'leg' && p.dep).length === 4 && c3.chute
+      && J(moved[0].slice(-1)) === J(['g:1']) && !moved.slice(1).some(x => x.includes('g:1')) && !out.flat().includes('g:sol') && keyAg === key0,
+    `groups ${A.ag.map(g => g.key + ' ' + g.name).join(', ')}; last stages ${A.stages.slice(-2).map(x => x.map(a => a.label).join(' + ')).join(' | ')}; staged: legs ${staged.legs}/${legs4}, wings ${staged.wings}; bay ${doors}/${doors2}; chute ${c3.chute}; tape ${J(T.ops.filter(o => o[0] === 'K'))}, replayed legs ${s3.parts.filter(p => p.d.kind === 'leg' && p.dep).length}; procKey kept ${keyAg === key0}`);
+}

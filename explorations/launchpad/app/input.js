@@ -26,6 +26,7 @@ addEventListener('keydown',e=>{
   else if(k==='y'&&S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'))tapeLegs(recTape,S,legsDown(S)?'up':'down');
   else if(k==='p'&&S.alive&&S.parts.some(p=>p.on&&unfolds(p.d)))tapeWings(recTape,S,wingsOut(S)?'in':'out');
   else if(k==='['||k===']')cycleVessel(k===']'?1:-1);
+  else if(/^[1-9]$/.test(k)&&S.alive){const g=(S.ag||[]).find(x=>!x.stock&&x.key===k);if(g)tapeAg(recTape,S,g.id)}   // action groups (Q329)
   else if(k==='v'&&S.alive&&rcsJets(S)){S.rcs=!S.rcs;renderSAS();HOOK.msg(S.rcs?'RCS on':'RCS off')}
   else if(k==='n')nodeAtApoapsis();
   else if(k==='delete'&&S.node)nodeDelSel();   // the selected node (Q255)

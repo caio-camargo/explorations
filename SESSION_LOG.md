@@ -6367,7 +6367,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   notes/vehicle.md, NOTES.md, TESTING.md (306), QUEUE.md.
 - **Next:** Q423 (bench parts) or Q416's slice 2 (bus frame, small stacks), Caio's pick.
 - **Addendum 8 (effects, 2026-10-17):** v1.227 Q426 + Q404 (PLAYTEST #100 ✓): each school's ground plan under its own buildings; the road out is the site's drive then a route found over the ground (`siteRoad`: A* on 50 m cells, sea shut out, grades priced) through a fence and gate (barrier, gatehouse, site office, car park: `siteMesh`) to a town 4–7 km up-range (`townG`), painted to 12 km (out of the 4 km detail fade). Measured: frame time unchanged within noise. Stills `output/launchpad/beauty/Q426/`. Test aerofx-46; TESTING 307. Proposed: the town's night lights (with Q447). The 10-13 background wait for the GPU was killed for memory; resumed 10-17 on Caio's "go ahead". Claim idle.
-- **Addendum 9 (effects, 2026-10-18):** v1.231 Q447 ✓: villages and the site's town lit at night (shader global `gLit`, lamp pools filtered to their mean, `NIGHT_VIL` = 3 beside the city texture's lights). Measured: frame time unchanged within noise. Stills `output/launchpad/beauty/Q447/`. Test aerofx-47; TESTING 311. Proposed: a small city's lights cover the land round it (Kaos Beach by Dunnzar Cape). Claim idle.
+- **Addendum 9 (effects, 2026-10-18):** v1.232 Q447 ✓: villages and the site's town lit at night (shader global `gLit`, lamp pools filtered to their mean, `NIGHT_VIL` = 3 beside the city texture's lights). Measured: frame time unchanged within noise. Stills `output/launchpad/beauty/Q447/`. Test aerofx-47; TESTING 312. Proposed: a small city's lights cover the land round it (Kaos Beach by Dunnzar Cape). Claim idle.
 
 ## 2026-10-17 — flow session: Q438 + Q432, `--smoke` green on `main`
 
@@ -6394,3 +6394,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** test `flow-32`; `--smoke` all passed after merging v1.228/v1.229; flow lane + econ-25/26 pass. TESTING 310; PLAYTEST #105 closed; NOTES (flow) v1.230.
 - **Files:** `sim/program.js`, `app/program-ui.js`, `app/screens.js`, `tests/flow.mjs`, `notes/flow.md`, TESTING, PLAYTEST; QUEUE, ACTIVE_WORK.
 - **Next:** QA reruns `playtest.mjs m2`, since every gap it listed is now closed (line under *Proposed*). Flow next: Q444 (Cape range safety), Q434 (teach the gravity turn), Q435 (navball reference blend).
+
+## 2026-10-18 — vehicle session: Q329, action groups (PLAYTEST #80)
+
+- **v1.231**: a design's action groups (`ag`): legs, folding wings and antennas, bay doors and chutes, each extend / retract / toggle. Made under staging on the design table (*+ group*, name, mode, ✕) and from a deployable part's options (*groups*: in or out); a group's chip drags onto a stage and fires with it (atom `g:<id>`, `stgEdit` `{group}` / `{out}`). Stock *Solar panels* and *Landing legs* are P and Y and can go into stages too. In flight: keys 1–9, an *Action groups* card (a button each, n of m out), the stage list names them. Tape op `K`. `procKey` ignores `ag`.
+- **Checks:** test vehicle-33; `node test.mjs --smoke --jobs 1` all passed; in Chrome (port 8772, the GPU lock): a group made, a leg added from its options, dragged into stage 2 and Solar panels into a stage of its own (dispatched drag events), launched: the card, key 1 and its button move the legs, no console errors. After that check: the group box header shortened and a custom group's chip shows its key and a grip (tests rerun, not looked at again).
+- **Caught:** a `//` comment inserted mid-line in a one-line function (`bayDoors`) silently ate the rest of the line; the new test found it.
+- **Files:** sim/flight.js, sim/vessel.js, sim/procedures.js, sim/space.js, builder.js, app/hud.js, app/input.js, app/screens.js, app/editor.js, test.mjs, tests/vehicle.mjs, notes/vehicle.md, NOTES.md, TESTING.md (311), PLAYTEST.md (#80), QUEUE.md.
+- **Next for vehicle:** Q341 the folding boom (after Q329), then Q338 pointing; Proposed: groups for those, rover deploy, engine toggles.
+
