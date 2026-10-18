@@ -913,7 +913,9 @@ function dropRoute(id){const r=routeOf(id);if(!r)return false;PROG.routes=PROG.r
 // the line under a satellite in the Fleet tab: make a routine from it, or its routine's state and controls
 function routeLine(q){const r=q.route!=null&&routeOf(q.route);
   if(!r){const f=routeFrom(q);return f.ok?` · <button data-mkroute="${q.id}" title="keep satellites like this one up in this orbit: order the runs yourself, and after ${ROUTE_CLEAN} clean ones, let it repeat">Make a routine</button>`:''}
-  const B=routeBusy(r),w=routeAutoWhy(r),up=routeSats(r).length;
+  return routeCtl(r)}
+// a routine's state and controls (also the Fleet's own line for a route with nothing up, flow Q415)
+function routeCtl(r){const B=routeBusy(r),w=routeAutoWhy(r),up=routeSats(r).length;
   return` · <span class="dim">routine: ${up} of ${r.keep} up${B?`, run ${r.runs+1} ${B.status==='deviated'?'needs you':`launches in ${Math.ceil(B.launch-PROG.day)} d`}`:''}</span>`+
     ` <button data-rkeep="${r.id}" data-k="${r.keep+1}">keep ${r.keep+1}</button>${r.keep>1?` <button data-rkeep="${r.id}" data-k="${r.keep-1}">keep ${r.keep-1}</button>`:''}`+
     `${B?'':` <button data-rorder="${r.id}">Order a run</button>`} <button data-rauto="${r.id}" ${!r.auto&&w?`disabled title="${w}"`:''}>${r.auto?'Stop repeating':'Repeat by itself'}</button> <button data-rdrop="${r.id}">End</button>`}

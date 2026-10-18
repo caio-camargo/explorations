@@ -646,3 +646,24 @@
   check('flow-31: more hover terms (SOI, prograde, retrograde, normal, radial, inclination, free speed; Isp glossed on the part card) on the SAS modes, the readout and the site picker; a tap shows a term on touch',
     have && marked && tap && gloss, `terms ${have} · marked ${marked} · tap ${tap} · Isp gloss ${gloss}`);
 }
+
+// flow-32. A routine with nothing up keeps its controls (flow session, QUEUE Q415, PLAYTEST #105; test bench's `m2`):
+// a route's controls were only the Fleet line under one of its satellites, so once they all came down there was no
+// *Order a run* or *End* left. Now such a route has its own line under "Routines with nothing up"; one with a satellite
+// up stays on that satellite's line only.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('function routesBareHTML'), page.indexOf('function gsHTML'));
+  const routes = [{ id: 7, name: 'Beepers at 300 km, 0°' }, { id: 8, name: 'Beepers at 900 km, 60°' }];
+  const X = L => new Function('PROG', 'routeCtl', src + 'return routesBareHTML;')({ routes }, r => ` · routine ${r.id} <button data-rorder="${r.id}">Order a run</button> <button data-rdrop="${r.id}">End</button>`)(L);
+  const bare = X([]), one = X([{ route: 7 }, { route: undefined }]), none = new Function('PROG', 'routeCtl', src + 'return routesBareHTML;')({}, () => '')([]);
+  const ok0 = bare.includes('Routines with nothing up') && /data-route-line="7"[^]*data-rorder="7"[^]*data-route-line="8"[^]*data-rdrop="8"/.test(bare);
+  const ok1 = !one.includes('data-route-line="7"') && one.includes('data-route-line="8"') && none === '';
+  // the satellite's own line still goes through routeCtl (same controls), and the Fleet tab adds the bare routes
+  const P = api.PROG, saved = JSON.stringify(P); api.HOOK.save = () => {}; P.dispatch = []; P.routes = [{ id: 7, name: 'x', keep: 1, auto: false, paused: false, runs: 1, clean: 0 }]; P.sats = [];
+  const line = api.routeLine({ id: 901, route: 7 });
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+  const ok2 = /routine: 0 of 1 up/.test(line) && line.includes('data-rorder="7"') && line.includes('data-rdrop="7"') && H.includes("${routeLine(q)}</div>`}).join('')+routesBareHTML(L)}") && H.includes('function routeCtl(r){') && H.includes("Rovers in the field|Routines)/.test(h)?'fleet'");   // its heading sorts into the Fleet tab, not More
+  check('flow-32: a routine whose satellites have all come down keeps a Fleet line with Order a run and End; with one up, only its satellite\'s line carries them',
+    ok0 && ok1 && ok2, `nothing up ${ok0} (${bare.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}) · one up ${ok1} · wired ${ok2}`);
+}
