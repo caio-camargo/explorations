@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-18
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1218,3 +1218,15 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-32` (the bare lines with their buttons, none for a route with a satellite up, the wiring);
   `econ-25` still passes; a probe on the GPU (a route, nothing up: the line in the Fleet tab, *Order a run* answering).
   TESTING row 310.
+
+## v1.231 — range safety and the site's own town (2026-10-18, flow session, QUEUE Q444; PLAYTEST #116)
+- **The cause:** range safety warns when the predicted impact point is in a city or within 15 km of one (`dropVerdict`'s
+  *near*). Dunnzar Cape's support town Kaos Beach (Q270, v1.144) is 15 km from the pad, so the pad itself read as near it,
+  and a climb's first impact points (the pad, then just downrange) set off RANGE SAFETY and the master caution on every
+  Cape launch. No other pad: their towns are 25–35 km off.
+- **Now:** `rangeVerdict(site, b, pf)` (sim/world.js, beside `dropVerdict`) is the range check's verdict: from its own
+  site, a support town counts only when the impact is over it (*city*); any other town keeps its 15 km margin. The town
+  stays where it is (the road out to it is v1.227's). Drops of spent stages still use `dropVerdict` unchanged.
+- **Checks:** test `flow-33` (no pad near its own town; over Kaos Beach still a city; near another site's town still
+  near; the wiring); a scan of every pad's first 30 km downrange: clear; on the GPU, a Sounding from the Cape to 3.4 km:
+  no warning in 20 s, where the old reading said "near Kaos Beach" from T+1 s. TESTING row 311.
