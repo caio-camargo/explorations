@@ -1000,7 +1000,10 @@ PRESETS.Probe=(()=>{const d=toV2(['ant','cam','sci','core','t4','t4','petrel','i
 // before its wheel may fill (conservative: flown, it held 14° off on the pitch program); a second wheel ~12°, but leaves ~330 m/s
 // A second fin ring (Q439, PLAYTEST #114): the fairing up front had the whole rocket at −0.28 calibers on the pad and −0.56 at
 // M1.6 (since v1.178); with it +1.01 and +0.74, for ~70 m/s of the first stage
-PRESETS.Satellite=(()=>{const d=toV2(['core','batt','rwheel','octl','fair','t2','petrel','dec','t8','fins','fins','kestrel']),f=(n=>n.k==='octl'?n:null),h=(function g(n){return f(n)||(n.c||[]).map(g).find(Boolean)})(d.root);
+// A Tank 2 t over the first stage's 8 t (Q413, PLAYTEST #103): the weather satellite's 300 km polar orbit (82°, 3° east of
+// north) took ~100 m/s more than it had; with it, flown by its procedure there, 227 m/s left (+1.27 / +0.95 calibers, 2.8 dearer;
+// on the probe autopilot to a 100-km orbit east it now has ~770-820 m/s to spare)
+PRESETS.Satellite=(()=>{const d=toV2(['core','batt','rwheel','octl','fair','t2','petrel','dec','t2','t8','fins','fins','kestrel']),f=(n=>n.k==='octl'?n:null),h=(function g(n){return f(n)||(n.c||[]).map(g).find(Boolean)})(d.root);
   h.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:1},c:[]},{k:'scam',at:{y:0.3,a:-Math.PI/2,n:1},c:[]},{k:'ssci',at:{y:0.75,a:Math.PI/2,n:1},c:[]});return d})();
 // the payload bench's starters (Q416, D24: "example designs only as a copy-and-change starter on the bench"): the first beacon
 // (a probe core, a battery and a whip) and the Satellite preset's payload, everything above its fairing

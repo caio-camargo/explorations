@@ -721,7 +721,7 @@
 // runs on its battery alone (a warning with its days); a lopsided payload warns, and with an engine of its own it fails.
 {
   const cl = x => JSON.parse(JSON.stringify(x)), P0 = api.PROG.payloads; api.PROG.payloads = [];
-  const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't8', 'fins', 'fins', 'kestrel']);   // the Satellite's launcher (two fin rings, Q439)
+  const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't2', 't8', 'fins', 'fins', 'kestrel']);   // the Satellite's launcher (two fin rings, Q439; a 2 t tank over the 8 t, Q413)
   // the fairing on top of the upper tank, the block on the fairing
   const e = api.payNew('Sat', api.PAY_STARTERS.Satellite); fair.at = 'u'; rocket.root.c.push(fair); fair.c.push({ ...api.payNode(e), at: 'u' });
   const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.key === 'padapt');
@@ -846,4 +846,22 @@
   check('stable in the air (Q439): the Satellite preset reads stable full, dry and at M1.6, no warnings; a stable stage short of steering holds (it turns into the wind) and flies on course, an unstable one flips and goes over',
     ca.every(c => c > 0.5) && !api.launchWarnings(api.PRESETS.Satellite).length && lo.cal > 0 && lo.holds && lo.vane && lo.tau > 1.5 * lo.auth && fLo < 15 && hi.cal < 0 && !hi.holds && fHi > 90,
     `Satellite ${ca.map(c => c.toFixed(2)).join(' / ')} calibers; fins low ${lo.cal.toFixed(2)} cal, need ${(lo.tau / 1000).toFixed(0)} of ${(lo.auth / 1000).toFixed(0)} kN·m, ${lo.holds ? 'holds' : 'flips'}${lo.vane ? ' (vane)' : ''}, flown ${fLo.toFixed(0)}° at worst; fins high ${hi.cal.toFixed(2)} cal, ${hi.holds ? 'holds' : 'flips'}, flown ${fHi.toFixed(0)}°`);
+}
+
+// vehicle-32. The Satellite's routine runs (vehicle session, QUEUE Q413, PLAYTEST #103): the weather satellite's 300 km polar
+// orbit (82°: 3° east of north) was beyond it, and the dispatch quote said so twice over: it charged the planet's spin lost to
+// 82° (239 m/s) though the procedure had flown 82° and paid it already, and it took the margin from the vacuum Δv on paper, not
+// what the flight had left. A Tank 2 t over the first stage's 8 t gives it the margin; the quote measures from the flight's own
+// inclination and its recorded leftover, so it says what flying it leaves.
+{
+  const P = api.PROG, P0 = structuredClone(P), st = api.PRESETS.Satellite, key = api.procKey(st), msg0 = api.HOOK.msg, news0 = api.HOOK.news, save0 = api.HOOK.save;
+  api.HOOK.msg = () => {}; api.HOOK.news = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; handAscent(api, st, 3); const proc = P.procs[key];
+  const c = { type: 'route', p: { alt: 300, inc: proc ? proc.target.inc : 82 } }, e = proc && api.dispatchEstimate(st, c), f = proc && api.procFly(st, proc, { pe: 300e3, ap: 300e3, inc: c.p.inc });
+  const left = f && f.ok ? api.dvRemaining(f.s).tot : null;
+  api.HOOK.msg = msg0; api.HOOK.news = news0; api.HOOK.save = save0;
+  for (const k of Object.keys(P)) if (!(k in P0)) delete P[k]; Object.assign(P, P0);
+  check('the Satellite\'s routine runs (Q413): flown near-polar and recorded, its procedure flies it to 300 km at that inclination with Δv to spare, and the quote agrees with the flight to within 60 m/s',
+    !!proc && proc.target.inc > 80 && e.ok && f.ok && left > 150 && Math.abs(e.margin - left) < 60,
+    proc ? `recorded ${(proc.target.pe / 1e3).toFixed(0)} km at ${proc.target.inc.toFixed(1)}°, ${proc.left.toFixed(0)} m/s left; 300 km: quoted margin ${e.margin.toFixed(0)} m/s, ${f.ok ? `flown ${(f.orb.pe / 1e3).toFixed(0)}×${(f.orb.ap / 1e3).toFixed(0)} km, ${left.toFixed(0)} m/s left` : JSON.stringify(f.dev ? f.dev.why : f.why)}` : 'no procedure recorded');
 }

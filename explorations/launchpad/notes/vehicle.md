@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1802,3 +1802,35 @@ Test `vehicle-12`. `--smoke` all pass.
   `--smoke` failed *presets*, *fin sizes* and *node chain flown* (Q372's "not reproduced": they pass alone) on `main`. It now
   snapshots `PROG` (`structuredClone`) and puts it back. Found by bisecting `--smoke --only` ranges by `--list` position.
 - Test `vehicle-31`; TESTING 308. `--smoke` fails only the three known (Help `t`, atlas is wired, go to body).
+
+## v1.229 — the Satellite's routine runs: the margin for 300 km polar, and a quote that says what flying it leaves (2026-10-17, vehicle session, QUEUE Q413, PLAYTEST #103)
+
+- **The report** (test bench, robot `m2`, v1.184): a routine from the weather satellite (297 km, 82°, hand-flown there dry)
+  refused *Order a run*: "153 m/s short for this orbit"; a run from a raised orbit broke up in the climb.
+- **Measured headless** (the Satellite hand-flown to orbit 3° east of north, recorded as its procedure, then `dispatchEstimate`
+  against `procFly` to the contract's orbit). v1.228's Satellite, recorded at 102 km, 82°, 107 m/s left:
+
+  | orbit asked | quote said | flown |
+  |---|---|---|
+  | 102 km, 82° (the one it flew) | 53 short | 120 m/s left |
+  | 300 km, 82° | 265 short | 101 m/s short of circularising |
+
+  **Two faults in the quote, one in the design.** (1) It charged the planet's spin lost to the contract's inclination, vRot ·
+  (1 − cos 82°) = 239 m/s, though the procedure had flown 82° and paid for it: now vRot · (cos i₀ − cos i), i₀ the inclination
+  the margin was measured on (the procedure's, or a dry run's `mT`). (2) Its margin was the vacuum Δv on paper less the flight's
+  spent Δv (5,167 − 4,976 = 191), but the flight ended with 107: the first stage burns at sea-level Isp. A procedure now records
+  **`left`** (`dvRemaining` when it reaches orbit; `procSample`/`procAscent`) and the quote starts from it (an old one without
+  it as before). (3) Even quoted right, v1.228's Satellite is ~100 m/s short of 300 km polar (the second fin ring, Q439, took 70).
+- **Fix for the design: a Tank 2 t over the first stage's 8 t.** Candidates (full / M1.6 calibers; flown to 300 km at 82°):
+  2 t **+1.27 / +0.95, 227 m/s left**, 2.8 dearer; 4 t +1.53 / +1.17, 434 left, 4.7 dearer; a 4 t upper stage (t2 → t4) lights
+  stage 2 at 23 km, 20 kPa and goes over (and its wheel fills, flagged); one fin ring and the 2 t: −0.19 / −0.51 (Q439 again).
+  The 2 t: enough for the job with ~200 m/s of margin, not a TV satellite (that is the TV Satellite's boosters). To a 100-km
+  orbit east on the probe autopilot: ~770-820 m/s to spare (was 418-479).
+- **The quote now**, the same flight: 300 km 82° quoted 217, flown 227; 300 km equatorial quoted 457, flown 493; its own orbit
+  quoted 430, flown 458.
+- **"It broke up in the climb" is a roll, not physics:** `pS = Π (1 − 0.02 (1 − cert))` over the parts (18 on the Satellite);
+  with the rest, a fresh program's run is p ≈ 0.79, so three clean runs in a row (the finish line) are ~0.49. Economy's balance
+  call (QUEUE Proposed).
+- One fin ring, for the record (Q439's point, flown): `procFly` loses control of the climb, the nose 120° off.
+- `handAscent` (`fly_ladder.mjs`) takes a heading (`az`, degrees from north; east by default, flown as before). Test
+  `vehicle-32`; TESTING 309.
