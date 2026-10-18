@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-18
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1834,3 +1834,31 @@ Test `vehicle-12`. `--smoke` all pass.
 - One fin ring, for the record (Q439's point, flown): `procFly` loses control of the climb, the nose 120° off.
 - `handAscent` (`fly_ladder.mjs`) takes a heading (`az`, degrees from north; east by default, flown as before). Test
   `vehicle-32`; TESTING 309.
+
+## v1.231 — action groups (2026-10-18, vehicle session, QUEUE Q329, PLAYTEST #80)
+
+- **What Caio asked** (PLAYTEST #80): action groups, like KSP. Make a group from deployments in the builder, name it,
+  fire it in flight from its own button and a key, and drop it into a stage.
+- **The design carries `ag`**: `[{id, name, op, n: [node ids]}]`. `op` is `out` (legs down, unfold, open the doors, arm
+  the chute), `in` (put away) or `tog` (away if any of them is out, else out, as P and Y do). Every copy of a node moves
+  with it. The deployable kinds: legs, what unfolds (solar wings, boom antennas), cargo bays, chutes (armed only: a
+  chute isn't packed again). A rover's deploy stays its own button (it makes a new vessel).
+- **Stock groups** come with the parts: *Solar panels* (`sol`, P) and *Landing legs* (`legs`, Y). Fired as a toggle
+  they are exactly P and Y (`wingOp` / `legOp`), so they can go into a stage too: the wings out with the stage that
+  drops the fairing.
+- **Keys 1–9**: the design's groups in their order (`agList`, up to `AG_MAX` = 9). Deleting one renumbers the rest.
+- **Staging**: a group is a staging atom `g:<id>` (`stageAtoms` takes the group list). It has no automatic place: it
+  fires with a stage only where the design's `stg` puts it, and an event carries `ag: [ids]`, fired by `stage()` after
+  its drops, ignitions and chute. `stgEdit` takes `{group: id}` (out of any stage it was in, into the target) and
+  `{out: true}` (a chip out of the order).
+- **The tape**: `['K', id]` (`tapeAg`; G was the legs' already). Procedures fire groups through their stages.
+- **`procKey` ignores `ag`** as it does `dep`: groups don't change the ascent. One put in a stage changes `stg`, which
+  stays in the key.
+- **Builder**: an *action groups* box under staging. Each group is a chip (key · name) to drag onto a stage, with a name
+  field, its mode (toggle / extend / retract, click to change), the number of parts and ✕. *+ group* starts one with the
+  selected part if it deploys. A deployable part's options have a *groups* row: in or out of each group, and *+ new
+  group*. A group's chip in a stage has ✕ to take it out. Chip labels are escaped now (group names are typed).
+- **Flight**: keys 1–9; an *Action groups* HUD card (shown when the design has its own groups) with a button per group,
+  its key on it, and how many of its parts are out; the stage list names the groups a stage fires.
+- `bayDoors(s, open, only)` opens just the listed bays. Not here: Caio's other KSP groups (lights, abort, custom engine
+  toggles): nothing else deploys yet. Test `vehicle-33`; TESTING 311.
