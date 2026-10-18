@@ -709,8 +709,11 @@ function dispatchTarget(c){const p=c.p;return{pe:p.alt*1e3,ap:p.alt*1e3,inc:p.in
 function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];if(!proc||proc.kind!=='orbit')return{ok:false,why:'no procedure for this design: fly it to orbit by hand first'};
   const v=newShip(stack),T=dispatchTarget(c),R0={orb:{...T,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},cdone:[]};
   if(CT[c.type]&&!CT[c.type].ok(R0,c.p,{rec:R0,parts:v.parts}))return{ok:false,why:'this design cannot do this contract (its payload)'};   // a route (Q184) has no contract to check
-  const a0=(proc.target?(proc.target.pe+proc.target.ap)/2:T.pe),vc=h=>Math.sqrt(TELLUS.mu/(TELLUS.R+h)),
-    extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(1-Math.cos(T.inc*Math.PI/180)),margin=(proc.margin!=null?proc.margin:dvRemaining(v).tot-proc.dv)-extra;   // a dry run's measured margin when there is one
+  // what this orbit costs beyond the one the margin was measured on (Q413, PLAYTEST #103): the height, and the planet's spin
+  // lost to a steeper inclination than that flight's own (it had paid for its own: an 82° flight asked for 82° again was
+  // charged 239 m/s twice). The margin: a dry run's, or what the recorded flight had left (left; an old one's from its Δv)
+  const B=proc.margin!=null&&proc.mT||proc.target,a0=(B?(B.pe+B.ap)/2:T.pe),i0=B&&B.inc!=null?B.inc:0,vc=h=>Math.sqrt(TELLUS.mu/(TELLUS.R+h)),rad=Math.PI/180,
+    extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(Math.cos(i0*rad)-Math.cos(T.inc*rad)),margin=(proc.margin!=null?proc.margin:proc.left!=null?proc.left:dvRemaining(v).tot-proc.dv)-extra;
   const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
   const eng=v.parts.filter(p=>p.on&&p.d.kind==='engine'),last=Math.max(...eng.map(p=>p.seg??0));
   let pT=1;for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)

@@ -46,9 +46,9 @@ function procSample(s){if(s.noRec)return;if(s.procRec&&s.procRec.done){procMissi
   if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle,len(s.v)]);
     if(s.throttle===0&&h>1000&&P.pts.length>5)P.cut={h,ap:el.ap-TELLUS.R}}   // the first cut-off: the ascent is over
   else if(s.throttle===0&&el.e<1&&el.pe>TELLUS.R+TELLUS.atm){P.done=true;P.target={pe:el.pe-TELLUS.R,ap:el.ap-TELLUS.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578};
-    P.dv=s.rec?s.rec.dv:null;procKeep(s)}}
+    P.dv=s.rec?s.rec.dv:null;P.left=dvRemaining(s).tot;procKeep(s)}}
 function procAscent(s,P){const pitch=[],thr=[],vel=[];let hm=-1;for(const[h,q,t,v]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)]);if(v!=null)vel.push([Math.round(h),Math.round(v)])}   // powered samples only: the cut-off isn't a throttle setting
-  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,vel,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
+  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,vel,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,left:P.left,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
 function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<5)return null;
   const key=procKey(s.stack),old=(PROG.procs=PROG.procs||{})[key],proc=procAscent(s,P);
   if(old&&!old.prov&&old.dv<=proc.dv+0.5)return null;PROG.procs[key]=proc;   // a provisional one (borrowed by a dry run) gives way to the design's own first flight

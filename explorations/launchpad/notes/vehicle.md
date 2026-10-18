@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-17
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1777,3 +1777,60 @@ Test `vehicle-12`. `--smoke` all pass.
   (as a node is) over 48.4°E, the capital 48.0°E. TV for the capital counts; 378 m/s left.
 - **Flow:** the Map view showed only the Target card; it shows `stat` too (one condition in `renderCards`).
 - TESTING 306.
+
+## v1.228 — the Satellite reads stable; a stable stage in the air holds (2026-10-17, vehicle session, QUEUE Q439, PLAYTEST #114)
+
+- **The report** (test bench, TESTING 260): the Satellite preset reads unstable in the Assembly (−0.28 calibers full, −0.56 at
+  M1.6, Control *coasting flips*), though v1.178 "had no warnings". **Nothing changed since:** measured headless at every vehicle
+  commit from v1.178 on, the same −0.28 / +0.48 / −0.56. v1.178's "no warnings" was `launchWarnings` (the Rollout's list); the
+  calibers row was red from the start. The fairing (1.6 m, at the nose) sits the centre of pressure ahead of the centre of mass;
+  the bare Orbiter launcher reads +0.88.
+- **Fix: a second fin ring** (as the Passenger Orbiter got for its nose cone, v1.73.1). Candidates, full / M1.6 calibers and the
+  first stage's Δv (was 2,498 m/s): a second ring **+1.01 / +0.74, 2,425**; 3 × 0.9 m radial fins +1.11 / +0.88, 2,382; 4 × 2 m
+  +1.74 / +1.59, 2,193. Flown (test `vehicle-25`): prograde 479 m/s left in a 100 km orbit (was ~565), 10° below 461, the pitch
+  program in attitude hold 418 (13° at worst).
+- **The in-air check was wrong for stable stages** (TESTING 246's half of #114): four 2 m radial fins low on the fairing
+  satellite's Tank 2 t (the robot's `y 0.05`) read "Stage 2 in the air flips" (12 kN·m needed, 5.3 there), where the same fins at
+  `y 0.45` (v1.164's test) read "holds". Lower fins made stage 2 *more* stable (+0.16 against +0.01 calibers), and a stable
+  stage needs torque to hold 5° off the airflow too: the air pushes its nose back along its path. `airSep` counted that
+  shortfall as a flip. Flown in attitude hold on the pitch program (av2): `y 0.05` 4° off after separating, `y 0.45` 3°, `y 1.0`
+  (−0.19) end over end. **Now** a stage stable there (`cal ≥ 0`) short of steering or with its wheels full gets `holds` and
+  `vane` (it turns into the airflow), and the readout says "stable: it turns into the airflow" (`airHTML`); an unstable one
+  flips as before. The Control block already said *weathervanes* for a stable rocket at max-q.
+- **A leak in the tests:** `fixes-1` (`tests/core.mjs`) set `PROG.site` and reset a dozen `PROG` fields and left them so; every
+  later section in its shard flew that program (costs 79M where 61M, every Satellite flight short of orbit). It was why
+  `--smoke` failed *presets*, *fin sizes* and *node chain flown* (Q372's "not reproduced": they pass alone) on `main`. It now
+  snapshots `PROG` (`structuredClone`) and puts it back. Found by bisecting `--smoke --only` ranges by `--list` position.
+- Test `vehicle-31`; TESTING 308. `--smoke` fails only the three known (Help `t`, atlas is wired, go to body).
+
+## v1.229 — the Satellite's routine runs: the margin for 300 km polar, and a quote that says what flying it leaves (2026-10-17, vehicle session, QUEUE Q413, PLAYTEST #103)
+
+- **The report** (test bench, robot `m2`, v1.184): a routine from the weather satellite (297 km, 82°, hand-flown there dry)
+  refused *Order a run*: "153 m/s short for this orbit"; a run from a raised orbit broke up in the climb.
+- **Measured headless** (the Satellite hand-flown to orbit 3° east of north, recorded as its procedure, then `dispatchEstimate`
+  against `procFly` to the contract's orbit). v1.228's Satellite, recorded at 102 km, 82°, 107 m/s left:
+
+  | orbit asked | quote said | flown |
+  |---|---|---|
+  | 102 km, 82° (the one it flew) | 53 short | 120 m/s left |
+  | 300 km, 82° | 265 short | 101 m/s short of circularising |
+
+  **Two faults in the quote, one in the design.** (1) It charged the planet's spin lost to the contract's inclination, vRot ·
+  (1 − cos 82°) = 239 m/s, though the procedure had flown 82° and paid for it: now vRot · (cos i₀ − cos i), i₀ the inclination
+  the margin was measured on (the procedure's, or a dry run's `mT`). (2) Its margin was the vacuum Δv on paper less the flight's
+  spent Δv (5,167 − 4,976 = 191), but the flight ended with 107: the first stage burns at sea-level Isp. A procedure now records
+  **`left`** (`dvRemaining` when it reaches orbit; `procSample`/`procAscent`) and the quote starts from it (an old one without
+  it as before). (3) Even quoted right, v1.228's Satellite is ~100 m/s short of 300 km polar (the second fin ring, Q439, took 70).
+- **Fix for the design: a Tank 2 t over the first stage's 8 t.** Candidates (full / M1.6 calibers; flown to 300 km at 82°):
+  2 t **+1.27 / +0.95, 227 m/s left**, 2.8 dearer; 4 t +1.53 / +1.17, 434 left, 4.7 dearer; a 4 t upper stage (t2 → t4) lights
+  stage 2 at 23 km, 20 kPa and goes over (and its wheel fills, flagged); one fin ring and the 2 t: −0.19 / −0.51 (Q439 again).
+  The 2 t: enough for the job with ~200 m/s of margin, not a TV satellite (that is the TV Satellite's boosters). To a 100-km
+  orbit east on the probe autopilot: ~770-820 m/s to spare (was 418-479).
+- **The quote now**, the same flight: 300 km 82° quoted 217, flown 227; 300 km equatorial quoted 457, flown 493; its own orbit
+  quoted 430, flown 458.
+- **"It broke up in the climb" is a roll, not physics:** `pS = Π (1 − 0.02 (1 − cert))` over the parts (18 on the Satellite);
+  with the rest, a fresh program's run is p ≈ 0.79, so three clean runs in a row (the finish line) are ~0.49. Economy's balance
+  call (QUEUE Proposed).
+- One fin ring, for the record (Q439's point, flown): `procFly` loses control of the climb, the nose 120° off.
+- `handAscent` (`fly_ladder.mjs`) takes a heading (`az`, degrees from north; east by default, flown as before). Test
+  `vehicle-32`; TESTING 309.

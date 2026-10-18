@@ -22,12 +22,13 @@ export const LADDER = SR => [
   ['nyxland', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 100e3 }, { k: 'capture', ap: 300e3, pe: 40e3 }, { k: 'land' }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
 ];
 // a hand-flown ascent to a low orbit (vertical to 200 m, flat by 38 km, circularised toward circular-orbit velocity); the
-// game records it as the design's procedure
-export function handAscent(api, st) {
+// game records it as the design's procedure; az: the heading in degrees from north (east by default; 3 for the weather
+// satellite's near-polar orbit, Q413)
+export function handAscent(api, st, az = 90) {
   const { TELLUS, len, norm, add, sub, mul, dot, cross, elements } = api, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000;
   api.t = 0; const s = api.newShip(st); api.S = s; api.advPhys(s); s.sas = false; s.throttle = 1; api.stage(s); let k = 0, phase = 'up';
   const point = Y => { const f = api.localFrame(s.r), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
-  const pitch = d => { const f = api.localFrame(s.r), r = d * Math.PI / 180; point(norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r))))); };
+  const pitch = d => { const f = api.localFrame(s.r), r = d * Math.PI / 180, A = az * Math.PI / 180, hz = az === 90 ? f.e : norm(add(mul(f.n, Math.cos(A)), mul(f.e, Math.sin(A)))); point(norm(add(mul(hz, Math.cos(r)), mul(f.up, Math.sin(r))))); };
   while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
     if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; } }
     else if (phase === 'coast') { pitch(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;

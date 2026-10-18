@@ -2652,7 +2652,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // flight is settled when the player leaves it (refund, flight count, know-how), once: Revert or the next launch then pay
 // nothing more. Also: go() settles a flight it leaves (a page check, as §32 does for screens).
 {
-  const P = api.PROG;
+  const P = api.PROG, P0 = structuredClone(P);   // put back at the end (Q439): later sections in a shard fly the program as it was
   // #19: an Orbiter lifting off from the home pad, its link every step of the first 20 s
   Object.assign(P, { site: api.homeSite ? api.homeSite().id : P.site, stations: [] });
   api.t = 0; let s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.throttle = 1; api.stage(s);
@@ -2677,6 +2677,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     again.every(x => x === null) && P.funds === f1 && P.flights === fl1 && api.khUse('sparrow') === kh1, `funds ${P.funds.toFixed(2)}, flights ${P.flights}`);
   const H = html.replace(/\r\n/g, '\n'), gi = H.indexOf('function go(s){'), goSrc = gi < 0 ? '' : H.slice(gi, H.indexOf('\n// ', gi));   // (up to the next comment line)
   check('fixes-1 #21: go() settles the flight it leaves (flight or map → any other screen)', /from==='flight'\|\|from==='map'[^\n]*flightLeave\(S\)/.test(goSrc));
+  for (const k of Object.keys(P)) if (!(k in P0)) delete P[k]; Object.assign(P, P0);
 }
 
 // 37e. The atlas (terrain session): the map's grid of biomes and powers, its coasts and borders, the powers' names, the

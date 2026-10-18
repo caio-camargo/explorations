@@ -437,7 +437,8 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
 // pointing prograde it sits near 0° and almost anything holds; held 6–11° off its path (the pitch program in attitude hold)
 // the steering decides. Since the SAS cancels the air's torque as it comes (v1.165), going over "too fast to catch" is gone.
 // Only a fresh stage: boosters dropping off a core that's already lit and steering don't count. It also flips if holding 5°
-// off fills its wheels before the air thins (airStore). [{k, h, q, M, holds, why: 'auth' | 'store', tau, auth, cal, lam, load,
+// off fills its wheels before the air thins (airStore), unless it's stable there (vane: it turns into the airflow instead).
+// [{k, h, q, M, holds, vane, why: 'auth' | 'store', tau, auth, cal, lam, load,
 // lp, hmax, need, fill, lim}].
 const AUTH_MAX=1.5;
 // The standard ascent as a point mass (vehicle, Q342/Q347): vertical to 200 m, flat by 38 km (the procedures' and the
@@ -484,8 +485,11 @@ function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
     const c=probe(s,{M:S1.M,aoa:4,q:5000,h:S1.h});
     // how fast it would go over if nothing steered: an unstable airframe's divergence rate, √(dM/dα / I) (1/s)
     const cal=(c.ycm-c.ycp)/(2*s.radius),lam=cal<0?Math.sqrt(r.tau/(5*Math.PI/180)/Math.max(s.I[0],s.I[2])):0;
-    const st=airStore(r,S1,s.hmax),short=r.tau>AUTH_MAX*r.auth,full=!short&&st.need(5)>s.hmax;
-    out.push({...S1,holds:!short&&!full,why:short?'auth':full?'store':'',tau:r.tau,auth:r.auth,cal,lam,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque,
+    // a stable stage there (Q439) can't go over: short of steering, or its wheels full, the air turns it back along its path
+    // (it weathervanes, as the Control block says). Flown: 2 m fins low on the fairing satellite's 2 t stage, +0.16 calibers,
+    // holding 5° off needs 12 kN·m, has 5.3: 4° off after separating; the same fins higher, −0.19, end over end
+    const st=airStore(r,S1,s.hmax),over=r.tau>AUTH_MAX*r.auth||st.need(5)>s.hmax,vane=cal>=0&&over,short=!vane&&r.tau>AUTH_MAX*r.auth,full=!vane&&!short&&over;
+    out.push({...S1,holds:!short&&!full,vane,why:short?'auth':full?'store':'',tau:r.tau,auth:r.auth,cal,lam,load,lp:lp&&`${lp.d.name} / ${lp.parent.d.name}`,fair:s.parts.some(p=>p.on&&p.profF&&!p.fj),wheel:s.torque,
       hmax:s.hmax,need:st.need(5),fill:st.fill,lim:st.lim,fin:r.fin})}
   return out}
 
