@@ -6403,3 +6403,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** sim/flight.js, sim/vessel.js, sim/procedures.js, sim/space.js, builder.js, app/hud.js, app/input.js, app/screens.js, app/editor.js, test.mjs, tests/vehicle.mjs, notes/vehicle.md, NOTES.md, TESTING.md (311), PLAYTEST.md (#80), QUEUE.md.
 - **Next for vehicle:** Q341 the folding boom (after Q329), then Q338 pointing; Proposed: groups for those, rover deploy, engine toggles.
 
+
+## 2026-10-18 — flow session: Q444, no range safety alarm on every Cape launch (v1.233)
+
+- **Q444** (PLAYTEST #116, first hour): Kaos Beach, Dunnzar Cape's support town, is 15 km from the pad, inside the 15 km "near" margin range safety applies to towns, so the pad itself read as near it and every Cape launch alarmed from T+1 s. The only pad affected (other towns 25–35 km). `rangeVerdict(site,b,pf)` (sim/world.js): from its own site a support town counts only when the impact is over it; other towns keep their margin; the town stays put (v1.227's road).
+- **Checks:** test `flow-33`; a scan of every pad's first 30 km downrange: clear; on the GPU, a Sounding from the Cape to 3.4 km: no warning in 20 s (the old reading warned from T+1 s); `--smoke` all passed after merging v1.231/v1.232. Waited out aerofx's stale-looking lock while its headless Chrome was still running.
+- **Renumbered** v1.231 → v1.233, TESTING 311 → 313 at merge (vehicle and aerofx took them).
+- **Files:** `sim/world.js`, `app/program-ui.js`, `test.mjs` (export), `tests/flow.mjs`, `notes/flow.md`, TESTING, PLAYTEST; QUEUE, ACTIVE_WORK.
+- **Next for flow:** Q434 (teach the gravity turn; Caio: build), Q435 (navball reference blend; Caio: build), Q436 (SAS symbols).
