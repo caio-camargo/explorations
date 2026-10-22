@@ -6411,3 +6411,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Renumbered** v1.231 → v1.233, TESTING 311 → 313 at merge (vehicle and aerofx took them).
 - **Files:** `sim/world.js`, `app/program-ui.js`, `test.mjs` (export), `tests/flow.mjs`, `notes/flow.md`, TESTING, PLAYTEST; QUEUE, ACTIVE_WORK.
 - **Next for flow:** Q434 (teach the gravity turn; Caio: build), Q435 (navball reference blend; Caio: build), Q436 (SAS symbols).
+
+## 2026-10-21 — studio session: Ur Plan repo created (outside this workspace)
+
+- Caio wants a new game (ancient city builder: Cities: Skylines meets Caesar, deep logistics) in its own folder, using
+  Launchpad's process only. Created **`C:/Users/caioa/dev/urplan`**, private GitHub **`caio-camargo/urplan`**
+  (`811e4cd`): AGENTS/ROADMAP/QUEUE/DECISIONS/PLAYTEST/TESTING/NOTES templates, session roles (lanes, orchestrator,
+  design desk, playtest intake, test bench), coordination, architecture principles, the project-review playbook, and 19
+  lessons from LESSONS_LEARNED renumbered there. Draft pillars from Caio's taste; M0 "find the game".
+- **Files here:** `docs/session-roles.md` (Studio: first use note, 1.4.2), SESSION_LOG.
+- **Next:** in `urplan`, the design desk's D1 round with Caio; platform Q1 (skeleton). Studio's template folder is still
+  open; Ur Plan is its first copy.

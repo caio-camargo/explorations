@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.4.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: live
+**Version**: 1.4.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-21 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -80,6 +80,11 @@ catalog it touches, and flag the orchestrator to unblock the items waiting on it
 Pull before editing, push as you go.
 
 ## Studio
+
+**First use (2026-10-21):** rather than a template folder, Caio started a new game directly: **Ur Plan**, an ancient
+city builder, at `C:/Users/caioa/dev/urplan` (private GitHub `caio-camargo/urplan`), seeded with Launchpad's process
+and lessons. The template-and-playbook goal below still stands; Ur Plan is its first copy, so diff against it when
+building the template.
 
 The process that builds games, not any one game. **No game code.**
 
