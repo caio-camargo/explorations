@@ -6422,3 +6422,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files here:** `docs/session-roles.md` (Studio: first use note, 1.4.2), SESSION_LOG.
 - **Next:** in `urplan`, the design desk's D1 round with Caio; platform Q1 (skeleton). Studio's template folder is still
   open; Ur Plan is its first copy.
+- **Addendum 8 (design desk, 2026-10-26):** Caio: hand-flown margins too thin, the robot flies the optimal profile;
+  difficulty levels? → PLAYTEST #119 (P1): measure the hand-flown loss first, give Normal a pilot's margin, then
+  Easy / Normal / Hard (Easy: Isp ×1.15, air ×0.75, no ignition failures), the level keyed into tapes and records;
+  QUEUE Proposed line.
