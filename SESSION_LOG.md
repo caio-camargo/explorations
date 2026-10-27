@@ -6426,3 +6426,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   difficulty levels? → PLAYTEST #119 (P1): measure the hand-flown loss first, give Normal a pilot's margin, then
   Easy / Normal / Hard (Easy: Isp ×1.15, air ×0.75, no ignition failures), the level keyed into tapes and records;
   QUEUE Proposed line.
+- **Addendum 9 (design desk, 2026-10-27):** Caio took #119's defaults → **D25** (difficulty levels, Normal's pilot margin, Hard = today's margins); Q474–Q476 marked.
