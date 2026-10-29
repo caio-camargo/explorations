@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-12
+**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-29
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -126,6 +126,49 @@ follows: *Reaches it* (known, with spare), *Probably* (the guess says yes, the b
   at once): the Program's one-line offers and NEXT card, the Assembly's GO/NO-GO board, the flight's dark cockpit
   (phase card, news held during critical phases, master caution, hidden modes), the colour code, the map's labels.
 - **The hover-term glossary** (rule 9), shared by every screen.
+
+## 4.1 The identity: what's built, what's left (Q53 plan, 2026-10-29)
+
+W14's mix (rule 13): the office is paperwork, the cockpit an instrument panel, the map a pencil chart, big moments
+poster headings; each shifts by era. Audited against `index.html` and `app/` at v1.233.
+
+**Built**
+- **Fonts**, bundled with their licences (`fonts/`): Special Elite and Courier Prime (paper), VT323 (CRT), Bebas Neue
+  (posters).
+- **The office**: the Program as the director's desk (Q240), the Debrief as the typed report (Q241 R2), the title and
+  charter (R3): `#prog,#deb` set paper tokens (ink `#2a2620`, ruled `#9c8f78`, navy `#1d4f8f`).
+- **Mission control** (R4): amber CRT consoles in VT323, the calendar in green phosphor.
+- **The map and the logbook by era**: notebook (era 1) → terminal → modern (`mapEra`, `renderLog`); the HUD turns to
+  ink over the notebook (`body.paper`).
+- **Poster type** on the title menu, the charter and the desk's letterhead.
+
+**Left** (the gaps, in build order)
+1. **The flight HUD as the instrument panel** (the biggest gap: the screen you spend most time on still wears the
+   original cool-blue panels and system font, `#hud`, `--acc #7fd1ff`). As `mockups/identity/` (b) *Flight HUD*
+   (stills `output/launchpad/mockups/identity/panel-flight-era1.png`, `-era3.png`): gunmetal bezels round the
+   readout, cards and stages; amber VT323 readouts on dark glass; the toolbar as backlit legend buttons, lit when on;
+   the navball in a bezel with the throttle as a lit column. The SAS buttons become the navball's symbols on lit
+   keys (Q436): build them together. The dark cockpit rules (Q286) stay: the bezel is the frame, not more on screen.
+   Rollout and the rover yard take the same panel.
+2. **One era class on `body`** (`era1`…`era4`, from the computing era the program is in, `COMP_ERAS` in
+   `sim/program.js`: today's `eraOf()` only splits before and after the first satellite; the modern-UI setting forces
+   the last) that sets
+   each place's tokens, so every screen moves together, not just the map:
+   | Place | Epochs 1–2 (50s–60s) | Epoch 3 (70s) | Epoch 4+ (80s on) |
+   |---|---|---|---|
+   | office | typed forms, cream paper, stamps | green-bar printout, line-printer type | laser print, clean sans |
+   | cockpit | amber phosphor, legend buttons | green phosphor (the terminal map's) | colour glass LCDs |
+   | map | the pencil notebook | the terminal plot | the modern map |
+   | posters | flat cream, navy, red, Bebas | rounder type, browns and oranges | photo and bold sans |
+   Columns map to human computers · mainframes · onboard computers and after, so the screens change when the hardware does.
+3. **Poster headlines for big moments**: a first in the Debrief, a rival's first in the news, a new epoch: one
+   full-width Bebas headline with the era's poster palette, then the paper underneath. Not for routine flights.
+4. **The Assembly as the model on a desk** (Q241 R5, already queued): its blueprint panels take the office's tokens.
+5. **One token sheet**: each place's colours as one block at the top of `index.html` (`--office-*`, `--panel-*`,
+   `--chart-*`, `--poster-*`, per era), and panels pick a place, not hex values. Today hexes are copied per screen
+   (`#prog,#deb`, `#mcCal`, `body.paper #hud button`...): a new panel should inherit by saying where it is.
+
+Owners: flow (1, 2, 3, 5), with look & sound for the bezels and the poster art; vehicle's builder for 4.
 
 ## 5. Decided (D16: the defaults, 2026-10-11)
 

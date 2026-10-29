@@ -638,7 +638,7 @@ Open design questions get a D row here (**next: D21**); answered ones go to [`DE
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready on **W14's default** (paperwork office, instrument-panel cockpit, poster headings; Caio may override): plan first, with flow |
+| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready on **W14's default** (paperwork office, instrument-panel cockpit, poster headings; Caio may override): plan first, with flow · **plan done 2026-10-29 (design desk): UI.md § 4.1**: what's built (office, mission control, map and logbook by era, fonts) and five slices left, proposed below |
 
 ---
 
@@ -852,3 +852,7 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - ✓ ranked as Q472 (orchestrator 2026-10-18): vehicle — action groups for what comes next: Q341's folding boom and Q338's pointing modes as group actions, a rover's deploy, an engine on/off (KSP's custom toggles); and whether deleting a group should renumber the keys (today it does) — vehicle, Q329
 - ✓ ranked as Q473 (orchestrator 2026-10-18): look & sound + world (2026-10-18, from Q447 v1.232): **a small city's lights cover the land round it**: at Dunnzar Cape the city texture's night lights (Kaos Beach, 34,000, 15 km off; `rad` 3.5 km) light the whole ground by the pad with the 90 m street grid. Measure how far `ct.g` reaches past a city's `rad` at mip 0 (the 1024×512 texture is ~3.9 km a texel) and tighten it: the falloff where the texture is built, or a sharper read up close
 - ✓ ranked as Q474–Q476 (orchestrator 2026-10-26): QA → vehicle + economy + flow — PLAYTEST **#119** (**P1**, Caio 2026-10-26): **margins too thin by hand; difficulty levels**. Slice 1 (QA, S): the robot flies sloppy "pilot" ascents on each preset and reports the Δv lost against the scripted one. Slice 2 (vehicle, S): presets and the Assembly's budget carry that pilot margin. Slice 3 (M): Easy / Normal / Hard at a new program (Easy: Isp ×1.15, air ×0.75, no ignition failures, loose deadlines; Hard: today's exact margins, no revert), the level in saves, tapes, studies and records. Teaching first: Q434, Q435
+- flow (+ look & sound) — **Q53 slice 1: the flight HUD as the instrument panel** (UI.md § 4.1 item 1): bezels, amber VT323 readouts, backlit legend buttons, the navball in a bezel; with Q436's symbol keys; rollout and rover yard too. M
+- flow — **Q53 slice 2: one era class on `body`** (UI.md § 4.1 item 2): every place's tokens by computing era (office typed → printout → laser; cockpit amber → green → glass), not only the map. S–M
+- flow (+ look & sound) — **Q53 slice 3: poster headlines for big moments** (a first, a rival's first, a new epoch). S
+- flow — **Q53 slice 5: one token sheet by place** (`--office-*`, `--panel-*`, `--chart-*`, `--poster-*` per era), replacing copied hexes; do with slice 2. S

@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.17 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.18 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -21,7 +21,7 @@ hardware's look, NOTES § "Part visuals"); "later era" shows how the same direct
 HUD and map (the cockpit), with a shared palette. Fonts: the game uses system fonts only today; the chosen direction
 either bundles its font files (a few hundred KB, no build step needed) or falls back to the system face named after it.
 
-**Pick:** _(Caio)_
+**Pick:** _(Caio)_ · W14's default (the mix) stands. **Plan 2026-10-29: UI.md § 4.1**: the office, mission control and the map are built; the flight HUD as the instrument panel is next (stills `panel-flight-era1.png`, `panel-flight-era3.png`).
 
 ## screens/ — the screens as places, not panels over the pad (QUEUE Q239 → W35, PLAYTEST #6)
 
