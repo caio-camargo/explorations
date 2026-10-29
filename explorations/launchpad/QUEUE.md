@@ -642,7 +642,7 @@ Open design questions get a D row here (**next: D21**); answered ones go to [`DE
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready on **W14's default** (paperwork office, instrument-panel cockpit, poster headings; Caio may override): plan first, with flow · **plan done 2026-10-29 (design desk): UI.md § 4.1**: what's built (office, mission control, map and logbook by era, fonts) and five slices left, proposed below |
+| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ✓ plan `b3bccec` (design desk 2026-10-29: UI.md 0.2.0 § 4.1, on W14's default); slices Q477–Q480 |
 
 ---
 
