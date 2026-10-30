@@ -11,7 +11,7 @@ const CHUTE_G=3;   // chutes are reefed: the canopy opens in stages so its own d
 // to them retires old tapes, and procedures (below) are what survive a physics change.
 const hashStr=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)};
 const TAPE_V='lp-'+hashStr([physStep,rails,coastPlan,coastStep,pertAcc,pertNear,checkSOI,groundCheck,stage,detach,abort,lesJettison,aeroPass,thermal,structLoads,
-  integrateRot,attStep,ctrlAccel,spinFire,rcsStep,contactStep,fleetPhysAll,armStep,bayTick,kepler,bodyRel,advPhys,advRails,igniteOK,procStep].map(f=>f.toString()).join('')
+  integrateRot,attStep,ctrlAccel,spinFire,rcsStep,contactStep,fleetPhysAll,armStep,bayTick,kepler,bodyRel,advPhys,advRails,igniteOK,procStep,speedRef,sasTarget,velFrame].map(f=>f.toString()).join('')
   +JSON.stringify(PARTS)+JSON.stringify(BODIES.map(b=>[b.R,b.mu,b.orb||null,!!b.pert])));
 function advPhys(s){if(s.proc){procStep(s);autoLegs(s)}fleetPhysAll(DT);physStep(s,DT);powerStep(s,DT);armStep(s);FLEET.forEach(armStep);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true);procSample(s)}   // sampled after the step: it sees a landing in the step that made it
 function advRails(s,dt,warp){procSample(s);   // in orbit with the engines off a craft goes straight onto rails: that's where an ascent is recognised as done
@@ -21,11 +21,12 @@ function advRails(s,dt,warp){procSample(s);   // in orbit with the engines off a
   const t0=simT,ok=rails(s,dt),el=simT-t0;powerRails(s,el);if(FLEET.length){simT=t0;for(const v of FLEET)if(v.alive)fleetRails(v,el);simT=t0+el}missionTick(s,dt,false);bayTick(s);FLEET.forEach(bayTick);
   if(warp>4){for(const d of debris)d.mesh&&d.mesh.free&&d.mesh.free();debris.length=0}else stepDebris(dt);
   return ok}
-function controls(s){return{th:s.throttle,p:INP.pitch,y:INP.yaw,r:INP.roll,tx:INP.tx,ty:INP.ty,tz:INP.tz,rcs:!!s.rcs,tg:s.tgtV?'v:'+s.tgtV.name:s.target??null,sas:s.sas,mode:s.sasMode,
+function controls(s){return{th:s.throttle,p:INP.pitch,y:INP.yaw,r:INP.roll,tx:INP.tx,ty:INP.ty,tz:INP.tz,rcs:!!s.rcs,tg:s.tgtV?'v:'+s.tgtV.name:s.target??null,sas:s.sas,mode:s.sasMode,...(s.navRef?{ref:s.navRef}:{}),   // the navball's frame when held (Q435; old tapes: auto)
   node:s.node?(s.node.burning?'burning':JSON.stringify({t:s.node.t,dv:s.node.dv,b:s.node.b,q:(s.nodeQ||[]).map(n=>({t:n.t,dv:n.dv,b:n.b}))})):null}}
 function setControls(s,c){s.throttle=c.th;INP.pitch=c.p;INP.yaw=c.y;INP.roll=c.r;INP.tx=c.tx||0;INP.ty=c.ty||0;INP.tz=c.tz||0;s.rcs=!!c.rcs;
   if('tg' in c){const v=typeof c.tg==='string'&&FLEET.find(x=>'v:'+x.name===c.tg);s.tgtV=v||null;s.target=v?null:c.tg}
   if(s.sas!==c.sas||s.sasMode!==c.mode){s.sas=c.sas;s.sasMode=c.mode;s.hold=null}
+  s.navRef=c.ref||null;
   if(c.node!=='burning'){const cur=s.node&&!s.node.burning?JSON.stringify({t:s.node.t,dv:s.node.dv,b:s.node.b,q:(s.nodeQ||[]).map(n=>({t:n.t,dv:n.dv,b:n.b}))}):null;
     if(cur!==c.node){const o=c.node?JSON.parse(c.node):null;s.nodeQ=o&&o.q?o.q:[];if(o)delete o.q;s.node=o}}}   // a chain's later nodes ride along (vehicle, Q33; old tapes: none)
 // ---- procedures (bodies session, 2026-10-08): a flight's intent kept as a guidance plan instead of keypresses, so it still flies

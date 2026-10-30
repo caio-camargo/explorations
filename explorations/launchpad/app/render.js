@@ -412,6 +412,25 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:!nm?'':knownBody(b)?b.name:'?',c:'#9ab'})))}
 
+// (flow, Q435; PLAYTEST #110) the navball's frame in words: SURFACE, ORBIT, SURFACE ▸ ORBIT through the blend; "held" when
+// the player chose one (a click: auto → surface → orbit)
+function navRefLabel(s,sr){return s.navRef?`${s.navRef==='srf'?'SURFACE':'ORBIT'} (held)`:sr.w<=0?'SURFACE':sr.w>=1?'ORBIT':'SURFACE ▸ ORBIT'}
+function navRefNext(){if(!S)return;S.navRef=S.navRef==null?'srf':S.navRef==='srf'?'orb':null;
+  HOOK.msg(S.navRef?`Navball: ${S.navRef==='srf'?'speed against the ground':'orbital speed'}, held`:'Navball: surface speed low down, orbital higher up (auto)')}
+// (flow, Q436; PLAYTEST #111) the navball's marks, one drawing for the ball (Path2D) and the SAS buttons (SVG, sasIcon):
+// SVG path data in a ±14 box, stroked. Prograde and retrograde are aviation's flight-path vector; the rest are KSP's, which
+// players know. Target marks are prograde's and retrograde's shapes in orange, relative velocity's in pink.
+const MK_O=r=>`M${r},0A${r},${r} 0 1 1 -${r},0A${r},${r} 0 1 1 ${r},0`,MK_PRO=MK_O(7)+'M-12,0H-7M7,0H12M0,-7V-12',MK_RET=MK_O(7)+'M-5,-5L5,5M5,-5L-5,5',
+  MK_DOT=MK_O(1.2),MK_D=(a,b)=>[[1,1],[1,-1],[-1,1],[-1,-1]].map(([x,y])=>`M${x*a},${y*a}L${x*b},${y*b}`).join('');
+const SAS_MARK={stab:{c:'#d8dde8',d:MK_O(8)+'M8,0A8,3.5 0 1 1 -8,0A8,3.5 0 1 1 8,0'+MK_DOT},
+  pro:{c:'#d8f05a',d:MK_PRO},retro:{c:'#d8f05a',d:MK_RET},
+  normal:{c:'#c88cff',d:'M0,-9L8.5,6H-8.5Z'+MK_DOT},anti:{c:'#c88cff',d:'M0,9L8.5,-6H-8.5Z'+MK_DOT},
+  radout:{c:'#5fe0f0',d:MK_O(5)+MK_D(3.6,8.5)},radin:{c:'#5fe0f0',d:MK_O(9)+MK_D(6.4,2.5)},
+  node:{c:'#5f9dff',d:MK_O(8)+'M-13,0H13M0,-13V13'},
+  tgt:{c:'#ffb347',d:MK_PRO},antitgt:{c:'#ffb347',d:MK_RET},rpro:{c:'#ff7ad9',d:MK_PRO},rretro:{c:'#ff7ad9',d:MK_RET},
+  dock:{c:'#7dffa8',d:MK_O(8)+'M-4,-4H4V4H-4Z'}};
+const MK_P={};const mkPath=k=>MK_P[k]||(MK_P[k]=new Path2D(SAS_MARK[k].d));
+function sasIcon(k){const m=SAS_MARK[k];return m?`<svg viewBox="-14 -14 28 28" width="18" height="18" aria-hidden="true"><path d="${m.d}" fill="none" stroke="${m.c}" stroke-width="2.2" stroke-linecap="round"/></svg>`:''}
 // ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
 const NBc=$('nav'),nctx=NBc.getContext('2d'),NS=180,nimg=nctx.createImageData(NS,NS),D32=new Uint32Array(nimg.data.buffer);
 function drawNavball(){
@@ -430,22 +449,28 @@ function drawNavball(){
       else if(ab<.97){const hd=(Math.atan2(de,dn)*R2D+360)%30,hm=hd<15?hd:30-hd;if(hm/R2D*ce<w){const q=Math.round((Math.atan2(de,dn)*R2D+360)/30)%3===0;k=q?1.4:1.22}}}
     const sh=k*(.45+.55*Math.sqrt(y));D32[i>>2]=(255<<24)|(Math.min(255,b*sh)<<16)|(Math.min(255,g*sh)<<8)|Math.min(255,r*sh)}
   nctx.putImageData(nimg,0,0);
-  const mark=(dir,c,kind)=>{const sy=dot(dir,Y);if(sy<0)return;const sx=NS/2+dot(dir,Z)*Rr,syy=NS/2+dot(dir,X)*Rr;
-    nctx.strokeStyle=c;nctx.lineWidth=2;nctx.beginPath();nctx.arc(sx,syy,7,0,7);nctx.stroke();
-    if(kind==='pro'){nctx.beginPath();nctx.moveTo(sx-12,syy);nctx.lineTo(sx-7,syy);nctx.moveTo(sx+7,syy);nctx.lineTo(sx+12,syy);nctx.moveTo(sx,syy-7);nctx.lineTo(sx,syy-12);nctx.stroke()}
-    else{nctx.beginPath();nctx.moveTo(sx-5,syy-5);nctx.lineTo(sx+5,syy+5);nctx.moveTo(sx+5,syy-5);nctx.lineTo(sx-5,syy+5);nctx.stroke()}};
-  const sr=speedRef(S);if(len(sr.v)>0.5){const p=norm(sr.v);mark(p,'#d8f05a','pro');mark(mul(p,-1),'#d8f05a','retro')}
-  {const T=tgtOf(S);if(T){const u=norm(T.dr);mark(u,'#ffb347','pro');mark(mul(u,-1),'#ffb347','retro');   // the target, and our velocity relative to it
-    if(len(T.dv)>0.05){const w=norm(T.dv);mark(w,'#ff7ad9','pro');mark(mul(w,-1),'#ff7ad9','retro')}}}
-  if(S.node){const I=nodeInfo(S);if(len(I.rem)>1e-3){const d=norm(I.rem);if(dot(d,Y)>0){const sx=NS/2+dot(d,Z)*Rr,sy=NS/2+dot(d,X)*Rr;
-    nctx.strokeStyle='#5f9dff';nctx.lineWidth=3;nctx.beginPath();nctx.arc(sx,sy,8,0,7);nctx.stroke();nctx.beginPath();nctx.moveTo(sx-13,sy);nctx.lineTo(sx+13,sy);nctx.moveTo(sx,sy-13);nctx.lineTo(sx,sy+13);nctx.stroke()}}}
+  // each mark from SAS_MARK (Q436): the same drawing as its SAS button; normal and radial ones thinner and only once the frame
+  // turns orbital (speedRef's w > 0): they come from the orbit, so low down they aren't square to the surface prograde shown
+  const mark=(dir,k,lw=2)=>{if(dot(dir,Y)<0)return;nctx.save();nctx.translate(NS/2+dot(dir,Z)*Rr,NS/2+dot(dir,X)*Rr);nctx.strokeStyle=SAS_MARK[k].c;nctx.lineWidth=lw;nctx.lineCap='round';nctx.stroke(mkPath(k));nctx.restore()};
+  const sr=speedRef(S),V=velFrame(S);
+  if(V){if(V.nrm&&sr.w>0){mark(V.nrm,'normal',1.6);mark(mul(V.nrm,-1),'anti',1.6);mark(V.rad,'radout',1.6);mark(mul(V.rad,-1),'radin',1.6)}mark(V.pro,'pro');mark(mul(V.pro,-1),'retro')}
+  {const T=tgtOf(S);if(T){const u=norm(T.dr);mark(u,'tgt');mark(mul(u,-1),'antitgt');   // the target, and our velocity relative to it
+    if(len(T.dv)>0.05){const w=norm(T.dv);mark(w,'rpro');mark(mul(w,-1),'rretro')}}}
+  if(S.node){const I=nodeInfo(S);if(len(I.rem)>1e-3)mark(norm(I.rem),'node',3)}
+  // (flow, Q434; PLAYTEST #109) the turn marker: an open diamond where the nose should be on the standard ascent, until the
+  // apoapsis is out of the air (turnGuide, sim/flight.js); the heading line says its pitch
+  const tg=S.rec&&S.rec.launched?turnGuide(S):null;
+  if(tg&&dot(tg.u,Y)>0){const sx=NS/2+dot(tg.u,Z)*Rr,sy=NS/2+dot(tg.u,X)*Rr;nctx.lineWidth=2;
+    for(const[c,w]of[['rgba(0,0,0,.6)',4],['#fff1c8',2]]){nctx.strokeStyle=c;nctx.lineWidth=w;nctx.beginPath();nctx.moveTo(sx,sy-9);nctx.lineTo(sx+9,sy);nctx.lineTo(sx,sy+9);nctx.lineTo(sx-9,sy);nctx.closePath();nctx.stroke()}
+    nctx.fillStyle='#fff1c8';nctx.fillRect(sx-1.5,sy-1.5,3,3)}
   // the compass points on the horizon: N marked in red (Q254)
   nctx.font='bold 13px ui-monospace,Consolas,monospace';nctx.textAlign='center';nctx.textBaseline='middle';
   for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const sy=dot(d,Y);if(sy<-0.02)continue;
     const x=NS/2+dot(d,Z)*Rr,y=NS/2+dot(d,X)*Rr;nctx.lineWidth=3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
-  $('navtxt').textContent=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${pit.toFixed(0)}°  ${sr.srf?'SURFACE':'ORBIT'}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`;
+  const ht=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${Math.round(pit)+0}°${tg?` ◇${tg.p.toFixed(0)}°`:''}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`,rt=navRefLabel(S,sr);
+  if($('navhdg').textContent!==ht)$('navhdg').textContent=ht;if($('navref').textContent!==rt)$('navref').textContent=rt;
   $('thrf').style.height=(S.throttle*100)+'%'}
 
 // ---- HUD text

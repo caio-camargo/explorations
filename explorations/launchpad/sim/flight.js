@@ -474,16 +474,27 @@ const AUTH_MAX=1.5;
 // hand-flown profile), dvPlan's steps with thrust from each step's vacuum and sea-level exhaust speeds by pressure, the
 // ship's drag table. {qMax, hQ, MQ: the peak dynamic pressure and where, starts: [{ev, h, q, M}] each fresh stage lighting
 // above 1 kPa}. Cached on the design (the Assembly asks on every edit, the Rollout again).
+// (flow, Q434; PLAYTEST #109) its pitch, degrees above the horizon at height h: the 200 m and 38 km scale with the air
+// (Tellus's 100 km: 286 m and 54 km)
+function ascentPitch(b,h){const AS=(b.atm||7e4)/7e4,f=clamp((h-200*AS)/(38000*AS-200*AS),0,1);return 90*(1-Math.pow(f,0.6))}
+// The navball's turn marker: where the nose should be now on the standard ascent, while climbing through the air until the
+// apoapsis is out of it. Toward where the craft already goes over the ground (from 20 m/s across), else where the nose
+// leans, else east. null when there's no turn to fly. {p: pitch (deg), u: the direction, nose: the nose's pitch now (deg)}
+function turnGuide(s){const b=s.body;if(!b.atm||s.landed||!s.alive)return null;const h=len(s.r)-b.R,f=localFrame(s.r);
+  if(dot(s.v,f.up)<=0||elements(s.r,s.v,b.mu).ap-b.R>b.atm)return null;   // past the profile's end, level until then
+  const flat=x=>sub(x,mul(f.up,dot(x,f.up))),vs=flat(sub(s.v,surfVel(b,s.r))),Y=qrot(s.q,[0,1,0]),ny=flat(Y),
+    hd=len(vs)>20?norm(vs):len(ny)>0.02?norm(ny):f.e,p=ascentPitch(b,h),r=p*Math.PI/180;
+  return{p,u:add(mul(hd,Math.cos(r)),mul(f.up,Math.sin(r))),nose:Math.asin(clamp(dot(Y,f.up),-1,1))*180/Math.PI}}
 let ASC_C={key:null,v:null};
 function ascentEst(stack){const key=JSON.stringify(stack);if(ASC_C.key===key)return ASC_C.v;const v=ascentRun(stack);ASC_C={key,v};return v}
 function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)return out;
   const s0=newShip(stack),P0=dvPlan(s0,0),P1=dvPlan(newShip(stack),1),P=P0.map((x,i)=>({...x,dvA:(P1[i]||x).dv})).filter(x=>x.dv>0.5);if(!P.length)return out;
   const fresh=(a,b)=>s0.events.slice(a,b).some(e=>e.ignite.length);   // a stage newly lit between plan steps a and b
-  const tab=dragTable(s0,0),AS=TELLUS.atm/7e4,mu=TELLUS.mu,R=TELLUS.R,starts=out.starts;let x=0,h=0,vx=0,vh=0,cur=null,tq=0;
+  const tab=dragTable(s0,0),mu=TELLUS.mu,R=TELLUS.R,starts=out.starts;let x=0,h=0,vx=0,vh=0,cur=null,tq=0;
   // thrust from each stage's mass flow and its exhaust speed in vacuum and at sea level (from the two plans), by the pressure
   for(let i=0;i<P.length;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
     const veV=st.dv/lr,veA=st.dvA/lr,dt=Math.max(0.2,T/600);
-    for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),f=clamp((h-200*AS)/(38000*AS-200*AS),0,1),pit=(90*(1-Math.pow(f,0.6)))*Math.PI/180,sp=Math.hypot(vx,vh),
+    for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),pit=ascentPitch(TELLUS,h)*Math.PI/180,sp=Math.hypot(vx,vh),
       rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*sp*sp*cda,g=mu/((R+h)*(R+h));
       vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt;
       const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}

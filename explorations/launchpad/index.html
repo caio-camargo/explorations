@@ -47,10 +47,12 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #gslot{width:318px;height:150px;flex:none}   /* (flow, slice 4b) the gauges' place in the cluster; aerofx's drawGauges draws into it */
 #thr{width:14px;height:150px;border:1px solid var(--line);border-radius:3px;position:relative;background:var(--panel)}
 #thrf{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#ffcf6b,#ff7a2e)}
-#sas{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:118px}
+#sas{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;width:118px}
 #sas button{padding:2px 3px;font-size:11px}
-#sas .wide{grid-column:span 2}
-#navtxt{position:absolute;left:0;right:0;top:-22px;text-align:center;color:var(--acc);text-shadow:0 0 3px #000,0 1px 2px #000}   /* (Q273) readable on a bright sky */
+#sas .wide{grid-column:1/-1}
+#sas button.mk{padding:2px 0;line-height:0}.mkl{white-space:nowrap;margin-right:6px}.mkl svg{vertical-align:middle;width:16px;height:16px}#sas button.mk svg{width:18px;height:18px}   /* (Q436) a mark per mode, as on the navball */
+#navtxt{position:absolute;left:0;right:0;bottom:calc(100% + 4px);text-align:center;color:var(--acc);text-shadow:0 0 3px #000,0 1px 2px #000}
+#navref{margin-left:.3em;cursor:pointer;border-bottom:1px dotted currentColor}#navref:hover{color:#fff}   /* (Q435) the frame: click auto / surface / orbit */   /* (Q273) readable on a bright sky */
 #bLay,#mapFocus{display:none}body.mapv #bLay,body.mapv #mapFocus{display:inline-block}#mapFocus{max-width:220px;background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:4px;padding:3px 4px;font:inherit;font-size:12px}   /* (flow, Q261) the map's layers */
 #mapLay{position:absolute;right:12px;top:52px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px 12px;display:flex;flex-direction:column;gap:3px;font-size:12px;width:290px;box-sizing:border-box}#mapLay.hidden,body:not(.mapv) #mapLay{display:none}#mapLay label{cursor:pointer;white-space:nowrap}#mapLay .mlh{font-weight:bold;margin-bottom:3px;display:flex;justify-content:space-between}#mapLay .x{cursor:pointer}#mapLay button{align-self:flex-start;margin-top:4px}
 body.mapv #nav{width:130px;height:130px}body.mapv #thr{height:110px}   /* (flow, Q254; PLAYTEST #53) the navball on the map too, smaller; its heading line (#navtxt) beside it, as in slice 4c */
@@ -272,7 +274,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 #target{color:var(--warn);font-size:11px;margin:-2px 0 6px}
 .jrow{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:0 4px 0 10px;margin:-1px 0;color:var(--dim)}.jrow .jl{color:#5a6574}.jrow button{margin-left:auto;padding:0 5px;font-size:10px}.jrow button.on{background:rgba(255,180,84,.3);color:#fff}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
 @media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#gslot{width:254px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
- .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#edFoot{bottom:-8px;margin:6px -8px -8px;padding:6px 8px 8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
+ .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#edFoot{bottom:-8px;margin:6px -8px -8px;padding:6px 8px 8px}#navtxt{font-size:9.5px;bottom:calc(100% + 2px)}h2{margin:6px 0 3px}}
 /* the logbook, by era: a handwritten notebook on graph paper; a monochrome phosphor terminal; or plain (modern) */
 #logbook{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:84vh;overflow:auto;z-index:5;padding:18px 22px;border-radius:4px;box-shadow:0 10px 40px #000a}
 #logbook .x{position:absolute;right:10px;top:8px;cursor:pointer;opacity:.7}#logbook .lbrow{margin:10px 0}#logbook .lbv{font-size:1.25em}#logbook s{opacity:.55;margin-right:8px}
@@ -344,7 +346,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div id="navwrap">
     <div id="gslot" class="hidden"></div>
     <div id="thr"><div id="thrf"></div></div>
-    <div style="position:relative"><div id="navtxt"></div><canvas id="nav" width="180" height="180"></canvas></div>
+    <div style="position:relative"><div id="navtxt"><span id="navhdg"></span> <span id="navref" title="the navball's speed: against the ground or in orbit. Auto blends them from 40 to 60 km; click to hold one (auto · surface · orbit)"></span></div><canvas id="nav" width="180" height="180"></canvas></div>
     <div id="hlg"><div class="g" id="gHeat"><div class="f"></div><i></i><i class="r"></i><b>H</b></div><div class="g" id="gLoad"><div class="f"></div><i></i><i class="r"></i><b>L</b></div></div>
     <div id="sas"></div>
   </div>

@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-13
+**Version**: v2.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-30
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -317,6 +317,11 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.208 — heat and load you notice: H and L bars beside the navball in every phase, amber from 50 %, red from 90 %; the master caution blinks (2026-10-13, flow session, QUEUE Q271, PLAYTEST #71; W36)
 - v1.216 — the model's scale in the Assembly strip: "model 1:48 · 14.5 m" beside the program's line, with a hover term (2026-10-13, flow session, QUEUE Q277, from Q242) → [notes/flow.md](notes/flow.md)
 - v1.224 — more hover terms (SOI, prograde, retrograde, normal, radial, inclination, the ground's free speed) on the SAS modes, the readout and the site picker; a tap shows a term on touch (2026-10-13, flow session, QUEUE Q384, from Q287) → [notes/flow.md](notes/flow.md)
+- v1.230 — a routine with nothing up keeps its controls in the Fleet tab (2026-10-17, flow session, QUEUE Q415, PLAYTEST #105)
+- v1.233 — range safety and the site's own town: no alarm on every Cape launch (2026-10-18, flow session, QUEUE Q444, PLAYTEST #116)
+- v1.234 — teach the gravity turn: the standard ascent's marker on the navball, a first-flight hint (2026-10-30, flow session, QUEUE Q434, PLAYTEST #109)
+- v1.235 — the navball blends surface → orbit speed over 40–60 km; its label holds either (2026-10-30, flow session, QUEUE Q435, PLAYTEST #110)
+- v1.236 — SAS buttons as the navball's marks; normal and radial drawn on the ball (2026-10-30, flow session, QUEUE Q436, PLAYTEST #111)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

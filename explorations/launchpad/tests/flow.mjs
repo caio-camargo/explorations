@@ -611,7 +611,7 @@
   const f = X(S).hlFracs(), c = X(S).hlCls, none = X({ alive: true }).hlFracs();
   const fr = Math.abs(f.heat - 0.7) < 1e-9 && Math.abs(f.load - 0.95) < 1e-9 && f.hp === 'Nose cone' && f.lp === 'Kestrel / Tank 8' && none.heat === 0 && none.load === 0;
   const cls = c(0.3) === '' && c(0.5) === 'warn' && c(0.89) === 'warn' && c(0.9) === 'bad';
-  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
+  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();turnHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
   check('flow-29: heat and load you notice: HEAT and LOAD by the navball in every phase (part vs limit, joint vs rating), faint, amber from 50 %, red from 90 %; the master caution blinks on a new reason',
     fr && cls && wired, `fracs ${fr} (${f.heat.toFixed(2)}, ${f.load.toFixed(2)}) · classes ${cls} · wired ${wired}`);
 }
@@ -683,4 +683,78 @@
   check('flow-33: range safety: no pad reads as near its own support town (Kaos Beach was, 15 km from Dunnzar Cape); an impact over the town still alarms; other towns keep their 15 km margin',
     !quiet.length && over === 'city' && elsewhere === 'near' && wired,
     `${cape.name} → ${k.name} ${k.km} km: was "${was}" at the pad · pads near their own town now: ${quiet.join(', ') || 'none'} · over it: ${over} · near ${own(other).name}: ${elsewhere} · wired ${wired}`);
+}
+
+// flow-34. Teach the gravity turn (flow session, QUEUE Q434, PLAYTEST #109: "the rocket mostly goes straight up"). The
+// standard ascent (vertical to 286 m, flat by 54 km on Tellus) is one function now, ascentPitch, and the navball draws it:
+// turnGuide is where the nose should be while the climb is in the air, until the apoapsis is out of it. Flown on that profile
+// the marker sits on the nose; flown straight up it stays east of it; a first-flight hint says how to turn.
+{
+  const T = api.TELLUS, AS = T.atm / 7e4, D = 180 / Math.PI;
+  const same = [0, 100, 286, 1000, 5000, 20000, 40000, 54000, 80000].every(h => Math.abs(api.ascentPitch(T, h) - 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6))) < 1e-9);
+  const ends = api.ascentPitch(T, 0) === 90 && api.ascentPitch(T, 38000 * AS) === 0;
+  const point = (s, p) => { const f = api.localFrame(s.r), r = p / D, Y = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+  const run = (prof) => { api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+    let off = 0, first = null, gone = null, n = 0, pre = null;
+    while (s.alive && n++ < 60000) { const h = len(s.r) - T.R; point(s, prof(h)); const g = api.turnGuide(s);
+      if (g && h > 300) { first = first || { h, p: g.p }; off = Math.max(off, Math.acos(Math.min(1, dot(g.u, api.qrot(s.q, [0, 1, 0])))) * D); pre = g; }
+      if (!g && first && dot(s.v, s.r) > 0 && !gone) { gone = { h, ap: elements(s.r, s.v, T.mu).ap - T.R }; break; }
+      if (!s.landed && dot(s.v, s.r) < 0) break;
+      if (s.evIdx < s.events.length && api.activeEngines(s).length === 0) api.stage(s);
+      api.advPhys(s); }
+    return { off, first, gone, last: pre }; };
+  const prof = run(h => api.ascentPitch(T, h)), up = run(() => 90);
+  const onNose = prof.off < 2 && prof.gone && prof.gone.ap > T.atm && prof.gone.h > 38000 * AS;   // level past 54 km until the apoapsis is out
+  const east = up.last && up.last.nose > 89 && up.last.p < 60 && dot(up.last.u, api.localFrame(api.S.r).e) > 0.5;
+  const wired = html.includes('turnGuide(S):null') && html.includes('function turnHint(){') && html.includes('depHint();turnHint();') && html.includes("localStorage.getItem(TURN_HINT_KEY)");
+  check('flow-34: the gravity turn: one standard profile (ascentPitch), its marker on the navball sits on the nose when flown and east of it when flown straight up, gone once the apoapsis is out of the air; a first-flight hint',
+    same && ends && onNose && east && wired,
+    `profile ${same && ends} · flown: marker ≤ ${prof.off.toFixed(2)}° off the nose, gone at ${prof.gone ? `${(prof.gone.h / 1e3).toFixed(1)} km (Ap ${(prof.gone.ap / 1e3).toFixed(0)} km)` : 'never'} · straight up: last marker ${up.last ? `${up.last.p.toFixed(0)}° vs nose ${up.last.nose.toFixed(0)}°` : 'none'} · wired ${wired}`);
+}
+
+// flow-35. The navball's surface→orbit blend (flow session, QUEUE Q435, PLAYTEST #110: "like it's switching its frame of
+// reference"). speedRef switched from the ground's speed to the orbit's at 50 km, and prograde (and a SAS holding it) jumped
+// by the ground's spin. Now it blends through 40–60 km, so the marker slides; a click on the label holds either frame, and
+// the tape carries that choice with the controls.
+{
+  const T = api.TELLUS, D = 180 / Math.PI, s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.t = 0;
+  const up = [Math.cos(0.3), 0, Math.sin(0.3)], east = norm(cross([0, 1, 0], up));
+  const at = h => { s.landed = false; s.r = mul(up, T.R + h); s.v = add(mul(up, 900), mul(east, 1400)); return api.speedRef(s); };
+  const ang = (a, b) => Math.acos(Math.min(1, dot(norm(a), norm(b)))) * D;
+  let step = 0, prev = at(39000).v, mono = true, w0 = 0;
+  for (let h = 39100; h <= 61000; h += 100) { const r = at(h); step = Math.max(step, ang(prev, r.v)); prev = r.v; if (r.w < w0 - 1e-12) mono = false; w0 = r.w; }
+  const old = ang(sub(s.v, api.surfVel(T, s.r)), s.v);   // what the switch jumped by at 50 km, this climb
+  const ends = at(39000).w === 0 && at(30000).srf && at(61000).w === 1 && !at(61000).srf && Math.abs(at(50000).w - 0.5) < 1e-6;
+  s.sas = true; s.sasMode = 'pro'; at(50000); const sasOK = ang(api.sasTarget(s), api.speedRef(s).v) < 1e-6;
+  s.navRef = 'srf'; const hs = at(80000), hsOK = ang(hs.v, sub(s.v, api.surfVel(T, s.r))) < 1e-9 && hs.srf;
+  s.navRef = 'orb'; const ho = at(10000), hoOK = ang(ho.v, s.v) < 1e-9 && !ho.srf;
+  const c = api.controls(s); s.navRef = null; api.setControls(s, c); const back = s.navRef === 'orb';
+  s.navRef = null; const c0 = api.controls(s), plain = !('ref' in c0); s.navRef = 'srf'; api.setControls(s, c0); const cleared = s.navRef === null;
+  const tapeV = html.includes('procStep,speedRef,sasTarget,velFrame].map');
+  const ui = html.includes('<span id="navref"') && html.includes("$('navref').onclick=()=>navRefNext()") && html.includes('rt=navRefLabel(S,sr)');
+  check('flow-35: the navball blends surface → orbit speed over 40–60 km (prograde slides, SAS follows), the label holds either frame, the tape carries it',
+    step < 0.6 && mono && ends && sasOK && hsOK && hoOK && back && plain && cleared && tapeV && ui,
+    `largest step per 100 m ${step.toFixed(2)}° (the old switch: ${old.toFixed(1)}° at once) · w monotonic ${mono} · ends ${ends} · SAS on the blend ${sasOK} · held surface ${hsOK} / orbit ${hoOK} · tape ${back} ${plain} ${cleared} ${tapeV} · UI ${ui}`);
+}
+
+// flow-36. SAS buttons as symbols (flow session, QUEUE Q436, PLAYTEST #111: "can they be symbols, some visual shorthand?").
+// Each mode's button is the mark the navball draws for it (SAS_MARK: one path for the ball's Path2D and the button's SVG), its
+// word on hover and in Help; the navball now draws normal and radial marks too, from velFrame, the directions the SAS holds.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('const MK_O='), page.indexOf('// ---- navball: per-pixel'));
+  const M = new Function('Path2D', src + 'return {SAS_MARK, sasIcon};')(function () {});
+  const sasm = page.slice(page.indexOf('const SASM=['), page.indexOf('];', page.indexOf('const SASM=[')) + 2);
+  const modes = new Function(sasm + 'return SASM;')().map(x => x[0]);
+  const every = modes.every(k => M.SAS_MARK[k] && /^<svg[^]*<path d="M[^"]+" fill="none" stroke="#[0-9a-f]{6}"/.test(M.sasIcon(k)));
+  const paths = new Set(modes.map(k => M.SAS_MARK[k].d + M.SAS_MARK[k].c)).size === modes.length;   // no two modes look alike
+  const pair = (a, b) => M.SAS_MARK[a].c === M.SAS_MARK[b].c;
+  const kin = pair('pro', 'retro') && pair('normal', 'anti') && pair('radout', 'radin') && pair('tgt', 'antitgt') && pair('rpro', 'rretro') && !pair('pro', 'normal') && !pair('normal', 'radout');
+  const T = api.TELLUS, s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.r = [T.R + 2e5, 0, 0]; s.v = [0, 0, Math.sqrt(T.mu / (T.R + 2e5))];
+  const V = api.velFrame(s); let held = true;
+  for (const [m, u] of [['pro', V.pro], ['normal', V.nrm], ['anti', mul(V.nrm, -1)], ['radout', V.rad], ['radin', mul(V.rad, -1)]]) { s.sasMode = m; held = held && len(sub(api.sasTarget(s), u)) < 1e-12; }
+  const radOut = dot(V.rad, norm(s.r)) > 0.99;
+  const ui = H.includes("b.innerHTML=sasIcon(k);b.className='mk';b.setAttribute('aria-label',n);") && H.includes("if(V.nrm&&sr.w>0){mark(V.nrm,'normal',1.6)") && H.includes('r.marks?sasLegend():r.d') && H.includes('nctx.stroke(mkPath(k))');
+  check('flow-36: SAS buttons are the navball\'s marks (one drawing each, distinct, paired colours), the word on hover and in Help; the ball draws normal and radial, where the SAS points',
+    every && paths && kin && held && radOut && ui, `${modes.length} modes drawn ${every} · distinct ${paths} · colours ${kin} · SAS = marks ${held} · radial out is up ${radOut} · wired ${ui}`);
 }

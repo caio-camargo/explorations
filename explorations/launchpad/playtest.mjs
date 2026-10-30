@@ -878,7 +878,7 @@ ROWS.loss = {title: 'a loss explained in the Debrief', steps: [M1_HELPERS, `{go(
 // cockpit: the dark cockpit (Q286 slice 1): a Sounding rocket's climb with a headline arriving (held: no ticker, no
 // Payload card), a part forced to 95 % of its heat limit (MASTER CAUTION), then down under the chute (the news back)
 ROWS.cockpit = {title: 'the dark cockpit', steps: [M1_HELPERS, `{go('assembly'); PT.preset('Sounding'); go('rollout'); PT.launch(); S.throttle = 1; stage(S); HOOK.news('Test headline: it arrives during the climb'); PT.fly(() => simT > 12, 30); updateHUD(); render();
-    ({phase: cpPhase(), news: PT.vis('#news'), cards: [...document.querySelectorAll('#cards [data-card]')].map(d => d.dataset.card), sas: [...document.querySelectorAll('#sas button')].map(b => b.textContent)})}`, {shot: 'climb'},
+    ({phase: cpPhase(), news: PT.vis('#news'), cards: [...document.querySelectorAll('#cards [data-card]')].map(d => d.dataset.card), sas: [...document.querySelectorAll('#sas button')].map(b => b.getAttribute('aria-label') || b.textContent)})}`, {shot: 'climb'},
   `{const p = S.parts.find(q => q.on && q.d.kind === 'cone') || S.parts.find(q => q.on); S.hot = p; p.T = p.d.Tmax * 0.95; updateHUD(); render(); window.MC286 = PT.text('#mcau'); p.T = 300; ({mcau: window.MC286})}`, {shot: 'caution'},
   `(async () => { await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}); updateHUD(); render(); return {landed: S.landed, phase: cpPhase(), news: PT.vis('#news'), mcau: PT.vis('#mcau')} })()`, {shot: 'landed'}],
   checks: {dark: `!!window.MC286 && /MASTER CAUTION/.test(window.MC286) && PT.vis('#news') && !PT.vis('#mcau')`}, expect: {dark: v => v === true}};

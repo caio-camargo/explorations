@@ -184,14 +184,17 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
 $('bEditor').onclick=()=>go('assembly');
 $('bRevert').onclick=revertFlight;
 $('bMap').onclick=()=>toggleMap();
+$('navref').onclick=()=>navRefNext();   // (Q435) the navball's frame: auto / surface / orbit
 $('bHelp').onclick=()=>toggleHelp();$('bMenu').onclick=()=>ovToggle('escm');
 const SASM_TERM={pro:'pro',retro:'retro',normal:'nrm',anti:'nrm',radout:'rad',radin:'rad'};   // (Q384) hover a mode for what it points at
-const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver'],['tgt','Target'],['antitgt','Anti-tgt'],['rpro','Rel pro'],['rretro','Rel ret'],['dock','Docking']];
+const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retrograde'],['node','Maneuver'],['normal','Normal'],['anti','Anti-normal'],['radout','Radial out'],['radin','Radial in'],['tgt','Target'],['antitgt','Anti-target'],['rpro','Relative prograde'],['rretro','Relative retrograde'],['dock','Docking']];
+// (Q436) the marks and their names, for Help (H): the buttons show only the mark
+const sasLegend=()=>SASM.map(([k,n])=>`<span class="mkl">${sasIcon(k)} ${n}</span>`).join(' ');
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   if(rcsJets(S)){const b=document.createElement('button');b.className='wide'+(S.rcs?' on':'');b.textContent='RCS '+(S.rcs?'ON':'OFF')+' [V]';b.onclick=()=>{S.rcs=!S.rcs;renderSAS()};el.appendChild(b)}
   t.title=avOf(S).name;const no=[];
-  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(SASM_TERM[k])b.dataset.term=SASM_TERM[k];if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');
+  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.innerHTML=sasIcon(k);b.className='mk';b.setAttribute('aria-label',n);if(SASM_TERM[k])b.dataset.term=SASM_TERM[k];else b.title=n;   // (Q436) the navball's mark; the word on hoverif(S.sas&&S.sasMode===k)b.classList.add('on');
     if(!sasModeOK(S,k)){const g=avNext(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()})`);continue}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
     b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}
   if(no.length)t.title=`${avOf(S).name}. Not yet: ${no.join(', ')}`}

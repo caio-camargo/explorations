@@ -47,7 +47,7 @@ const KEYS={
   all:[{k:['h'],l:'H',d:'this list'},{k:['f2'],l:'F2',d:'tester menu',tester:true},{k:['f'],l:'F',d:'logbook'},{k:['escape'],l:'Esc',d:'close the top panel · menu'},{k:['f4'],l:'F4',d:'sound on/off'}],
   flight:[{k:[' '],l:'Space',d:'next stage (ignite / decouple / chute) · driving a rover: brake'},{k:['backspace'],l:'Backspace',d:'abort'},
     {k:['shift','control'],l:'Shift / Ctrl',d:'throttle up / down (hold)'},{k:['z','x'],l:'Z / X',d:'full / cut throttle'},
-    {k:['w','s','a','d'],l:'W S A D',d:'pitch / yaw · driving a rover: drive and steer'},{k:['q','e'],l:'Q E',d:'roll'},{k:['t'],l:'T',d:'SAS on/off (modes: buttons)'},
+    {k:['w','s','a','d'],l:'W S A D',d:'pitch / yaw · driving a rover: drive and steer'},{k:['q','e'],l:'Q E',d:'roll'},{k:['t'],l:'T',d:'SAS on/off (modes: buttons)'},{l:'SAS marks',d:'',marks:1},
     {k:['v'],l:'V',d:'RCS on/off'},{k:['i','k','j','l','u','o'],l:'I K · J L · U O',d:'RCS translate: along the nose · sideways · sideways'},
     {k:[',','.','/'],l:', . /',d:'warp down / up / 1×'},{k:['m'],l:'M',d:'map'},{k:['g'],l:'G',d:'cycle the target'},
     {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['p'],l:'P',d:'solar wings out/folded'},{k:['1','2','3','4','5','6','7','8','9'],l:'1–9',d:'action groups: the ones made on the design table (the Action groups card)'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
@@ -70,7 +70,7 @@ const KEYS={
   rover:[{k:['w','s'],l:'W / S',d:'drive forward / back'},{k:['a','d'],l:'A / D',d:'steer (front and rear wheels, opposite ways)'},{k:[' '],l:'Space',d:'brake (stopped, it holds itself)'},
     {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom (it swings back behind the rover as it drives)'}]};
 const SCREEN_NAME={title:'Title',program:'Program',assembly:'Design table',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout',mission:'Mission control'};
-function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
+function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.marks?sasLegend():r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.filter(r=>!r.tester||TEST.on).map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
     +sec('Everywhere',KEYS.all)+`<div class="sub" style="margin-top:6px">Careful: Ctrl+W closes the tab in most browsers — the page will ask first during a flight.</div>`}

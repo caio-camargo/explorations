@@ -613,7 +613,13 @@ function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.
 function syncLanded(s){if(s.float)seaPose(s);s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
 // speeds against the surface low in the air, or near an airless body's ground (it turns: Selene's equator moves at 6 m/s)
-function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm?h<b.atm*0.5:h<0.03*b.R)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
+// (flow, Q435; PLAYTEST #110) not a switch at one height but a blend through a band (40–60 % of the air, 40–60 km on Tellus;
+// 2–4 % of an airless body's radius), so prograde slides there and a SAS holding it turns with it. s.navRef 'srf' / 'orb'
+// holds one frame (the navball's label, a click; on the tape with the controls). w: 0 the surface's … 1 the orbit's.
+const navBand=b=>b.atm?[0.4*b.atm,0.6*b.atm]:[0.02*b.R,0.04*b.R];
+function speedRef(s){const b=s.body,h=len(s.r)-b.R,[h0,h1]=navBand(b),x=clamp((h-h0)/(h1-h0),0,1),
+  w=s.navRef==='srf'?0:s.navRef==='orb'?1:x*x*(3-2*x);
+  return{srf:w<0.5,w,v:w>=1?s.v:sub(s.v,mul(surfVel(b,s.r),1-w))}}
 const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
 // ---- avionics generations (control session). SAS grows with the computing eras (COMP_ERAS): a gyro autopilot that only
 // holds an attitude, then an analog autopilot that can also follow the velocity vector (mainframes), then a guidance
@@ -636,10 +642,14 @@ function sasTarget(s){
     if(s.sasMode==='dock'){const P=dockPair(s,T.q,tgtBody(s,T));return P&&P.a.body===0?{q:qnorm(qmul(qFromTo(P.Aa,mul(P.Ab,-1)),s.q))}:s.hold}   // an attitude: our port's axis onto the target port's (roll too, for a side port)
     if(s.sasMode==='tgt'||s.sasMode==='antitgt'){const u=norm(T.dr);return s.sasMode==='tgt'?u:mul(u,-1)}
     if(len(T.dv)<0.05)return s.hold;const u=norm(T.dv);return s.sasMode==='rpro'?u:mul(u,-1)}
-  const vr=speedRef(s).v;if(len(vr)<0.5)return s.hold;
-  const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return s.sasMode==='pro'?pro:s.sasMode==='retro'?mul(pro,-1):s.hold;
-  const nrm=norm(h),rad=norm(cross(s.v,nrm));
-  return{pro,retro:mul(pro,-1),normal:nrm,anti:mul(nrm,-1),radout:rad,radin:mul(rad,-1)}[s.sasMode]}
+  const V=velFrame(s);if(!V)return s.hold;
+  if(!V.nrm)return s.sasMode==='pro'?V.pro:s.sasMode==='retro'?mul(V.pro,-1):s.hold;
+  return{pro:V.pro,retro:mul(V.pro,-1),normal:V.nrm,anti:mul(V.nrm,-1),radout:V.rad,radin:mul(V.rad,-1)}[s.sasMode]}
+// the directions the SAS's velocity modes hold (and the navball marks, Q436): prograde in speedRef's frame, normal and radial
+// from the orbit. null when barely moving; nrm and rad null when the orbit has no plane (straight up or down)
+function velFrame(s){const vr=speedRef(s).v;if(len(vr)<0.5)return null;
+  const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return{pro,nrm:null,rad:null};
+  const nrm=norm(h);return{pro,nrm,rad:norm(cross(s.v,nrm))}}
 let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
 // control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM
 function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}

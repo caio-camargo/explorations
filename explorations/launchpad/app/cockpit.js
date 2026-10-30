@@ -29,7 +29,7 @@ function hlGauges(){const F=hlFracs();for(const[id,x,who,what]of[['gHeat',F.heat
   const h=`${Math.round(Math.min(1,Math.max(0,x))*100)}%`,c=hlCls(x);if(g.firstChild.style.height!==h)g.firstChild.style.height=h;if(g.className!==`g ${c}`.trim())g.className=`g ${c}`.trim();
   const t=`${id==='gHeat'?'HEAT':'LOAD'}: ${who?`${who}, ${Math.round(x*100)}% ${what}`:'nothing yet'}`;if(g.title!==t)g.title=t}}
 let mcPrev='';
-function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();hlGauges();
+function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();turnHint();hlGauges();
   let m=$('mcau');if(!m){m=document.createElement('div');m.id='mcau';m.className='hidden';(document.getElementById('hud')||document.body).appendChild(m)}
   const L=cautions(),txt=L.length?`<b>MASTER CAUTION</b> ${L.join(' · ')}`:'';
   if(m.innerHTML!==txt){m.innerHTML=txt;if(txt&&L.join()!==mcPrev){m.classList.remove('new');void m.offsetWidth;m.classList.add('new')}mcPrev=L.join()}m.classList.toggle('hidden',!L.length);
@@ -43,3 +43,18 @@ function depHintDue(){if(depHinted||mode!=='flight'||!S||!S.alive||S.landed||!S.
   return fold?{id:'bWings',t:'Folded parts aboard: P unfolds them, or the Unfold button at the top right.'}:bay?{id:'bBay',t:'The bay is shut: B opens it, or the Open bay button at the top right.'}:null}
 function depHint(){const H=depHintDue();if(H){depHinted=true;try{localStorage.setItem(DEP_HINT_KEY,'1')}catch(e){}HOOK.msg(H.t);const b=$(H.id);if(b){b.classList.add('hint');depHintT=performance.now()}}
   if(depHintT&&performance.now()-depHintT>6000){depHintT=0;for(const id of['bWings','bBay']){const b=$(id);if(b)b.classList.remove('hint')}}}
+// (QUEUE Q434, PLAYTEST #109) teach the gravity turn. On a hand-flown climb through the air by a rocket that could make orbit
+// (2.5 km/s or more in vacuum), once it's moving: how to turn; if the nose is still straight up when the profile is past 75°,
+// once more. Until a flight from this browser has flown it (apoapsis out of the air with 1 km/s across the ground).
+const TURN_HINT_KEY='launchpad-hint-turn';let turnLearnt=(()=>{try{return localStorage.getItem(TURN_HINT_KEY)==='1'}catch(e){return false}})(),turnHintS=null,turnHintN=0;
+function turnHintDue(){if(turnLearnt||mode!=='flight'||!S||!S.alive||S.proc||!S.rec||!S.rec.launched)return null;
+  if(turnHintS!==S){turnHintS=S;turnHintN=dvPlan(S,0).reduce((a,x)=>a+x.dv,0)<2500?2:0}   // a sounding rocket: no turn to teach
+  const b=S.body,f=localFrame(S.r),vs=sub(S.v,surfVel(b,S.r)),across=len(sub(vs,mul(f.up,dot(vs,f.up))));
+  if(b.atm&&elements(S.r,S.v,b.mu).ap-b.R>b.atm&&across>1000){turnLearnt=true;try{localStorage.setItem(TURN_HINT_KEY,'1')}catch(e){}return null}
+  const g=turnGuide(S);if(!g||turnHintN>=2)return null;
+  const pro=sasModeOK(S,'pro');   // the gyro autopilot (a new program's) has no Prograde: the player flies the ◇ with W
+  if(turnHintN===0&&len(vs)>30)return pro?'To reach orbit, turn: by about 100 m/s tap W to lean the nose a few degrees east, then pick SAS Prograde and let it fall over. Keep the nose near the ◇ on the navball.'
+    :'To reach orbit, turn: by about 100 m/s tap W to lean the nose a few degrees east, and keep tapping W to keep it on the ◇ on the navball (the autopilot holds wherever you leave it).';
+  if(turnHintN===1&&g.nose>85&&g.p<75)return pro?'Still straight up: that falls back down. Tap W to lean toward the ◇ on the navball, then Prograde.':'Still straight up: that falls back down. Tap W to bring the nose down to the ◇ on the navball.';
+  return null}
+function turnHint(){const t=turnHintDue();if(t){turnHintN++;HOOK.msg(t);msgTimer=10}}   // ten seconds to read it

@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-18
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1230,3 +1230,54 @@ function rollChecks`; a comment line above it broke the
 - **Checks:** test `flow-33` (no pad near its own town; over Kaos Beach still a city; near another site's town still
   near; the wiring); a scan of every pad's first 30 km downrange: clear; on the GPU, a Sounding from the Cape to 3.4 km:
   no warning in 20 s, where the old reading said "near Kaos Beach" from T+1 s. TESTING row 313.
+
+## v1.234 — teach the gravity turn (2026-10-30, flow session, QUEUE Q434; PLAYTEST #109)
+- **The gap:** "the rocket mostly goes straight up, is this correct?" Nothing taught the turn, and SAS Prograde from the pad
+  holds it vertical forever (prograde *is* up). The robot, the tests and `ascentRun` all fly one profile (vertical to 286 m,
+  flat by 54 km on Tellus: `200·AS` and `38000·AS`, AS = air/70 km), each with its own copy of the formula.
+- **Now:** `ascentPitch(b, h)` (sim/flight.js) is that profile, and `ascentRun` uses it (same numbers). `turnGuide(s)` is where
+  the nose should be now: that pitch, toward where the craft already goes over the ground (from 20 m/s across), else where the
+  nose leans, else east; only while climbing, until the apoapsis is out of the air (past 54 km it stays level: the probe
+  flew the ◇ by hand to 54 km with the apoapsis still at 81 km, and the ◇ used to vanish there). The navball draws it as an open
+  diamond ◇ and the heading line adds its pitch (`PITCH 84° ◇71°`). Not gated by a logbook tool: it teaches.
+- **The hint** (app/cockpit.js `turnHint`, like v1.199's deploy hint): on a hand-flown climb by a rocket with 2.5 km/s or more
+  in vacuum (no hint for a sounding rocket), once past 30 m/s: "To reach orbit, turn: by about 100 m/s tap W to lean the nose a
+  few degrees east, then pick SAS Prograde…" (with the gyro autopilot, a new program's, there is no Prograde: "…keep tapping W
+to keep it on the ◇"; the GPU probe caught the first wording asking for a mode the player doesn't have); once more if the nose is still above 85° when the profile is under 75°. Ten
+  seconds each. It stops for good (localStorage `launchpad-hint-turn`) after a flight from this browser gets its apoapsis out
+  of the air with 1 km/s across the ground. W leans east from the pad's attitude (belly east), as the robot's kick does.
+- **Not done:** the pitch programmer part (gyro era, notes/vehicle.md 717) is vehicle's: a Proposed line. Whether the presets'
+  tapes fly this profile: the procedures already do (`fly_ladder`), not re-checked here.
+- **Checks:** test `flow-34` (the profile equals the old formula at nine heights; flown on it the marker is on the nose and
+  goes once the apoapsis is out of the air; flown straight up it sits 21° above the horizon, east, under a 90° nose; the wiring). TESTING row 314.
+  On the GPU (headless Chrome, `?tester`, a new program, the Orbiter): the hint at 110 m/s / 1 km, `PITCH 90° ◇83°`; the
+  heading line now grows upward (`bottom:`), since the ◇ figure wrapped it onto the ball.
+
+## v1.235 — the navball's surface → orbit blend (2026-10-30, flow session, QUEUE Q435; PLAYTEST #110)
+- **The cause:** `speedRef` switched from the ground's speed to the orbit's at half the air (50 km), and the orbit's adds the
+  ground's spin, so prograde, and a SAS holding it, jumped: 6.3° at once on flow-35's climb (900 m/s up, 1400 across).
+- **Now:** a blend through `navBand(b)` (40–60 % of the air; 2–4 % of an airless body's radius, which used to switch at 3 %):
+  `v − (1 − w)·surfVel`, w a smoothstep, so the marker slides (0.05° per 100 m on the same climb) and the SAS follows it.
+  `speedRef` returns `w`; `srf` is w < ½. `s.navRef` ('srf' / 'orb', null = auto) holds one frame: the label under the
+  heading line (`#navref`) cycles auto → surface → orbit on a click and reads SURFACE, SURFACE ▸ ORBIT, ORBIT, or
+  "… (held)". The choice rides on the tape in `controls()` as `ref` (only when held, so old control records are unchanged).
+- **Tapes:** `speedRef`, `sasTarget` and v1.236's `velFrame` joined TAPE_V's hash: the SAS now steers differently in the
+  band, so tapes recorded before replay as stale (procedures survive, as with every physics change).
+- **Checks:** test `flow-35` (the step per 100 m, w monotonic, 0 below 40 km and 1 above 60, the SAS on the blend, both held
+  frames, the controls round trip, the wiring). TESTING row 315.
+
+## v1.236 — SAS buttons as symbols (2026-10-30, flow session, QUEUE Q436; PLAYTEST #111)
+- **Now:** `SAS_MARK` (app/render.js) holds each mode's mark as SVG path data in a ±14 box: one drawing for the navball
+  (`Path2D`, `mkPath`) and the buttons (`sasIcon`, inline SVG). Prograde: circle and three ticks; retrograde: circle and X
+  (yellow-green); normal / anti-normal: a triangle up / down with a dot (violet); radial out / in: a ring with spokes out / in
+  (cyan); maneuver: the blue cross ring; target / anti-target and relative pro / retro: prograde's and retrograde's shapes
+  in orange and pink, as the ball drew them; stability: a gyro ring; docking: ring and square (green).
+- **The buttons:** four to a row (`#sas` grid, `button.mk`), SAS and RCS still full width; the word as `aria-label` and on hover
+  (the v1.224 hover term where there is one, else `title`); Help (H) in flight has a *SAS marks* row with every mark and its
+  name (`sasLegend`). Names lengthened (Retrograde, Anti-normal, Radial out…) now that they don't take the button's room.
+- **The ball** draws normal, anti-normal and radial marks too (thinner), from `velFrame(s)` (sim/vessel.js, split out of
+  `sasTarget`: the same directions the SAS holds), once the frame turns orbital (w > 0): they come from the orbit, and at
+  liftoff radial out sat beside the surface prograde (the GPU probe).
+- **Checks:** test `flow-36` (every mode has a distinct mark, paired colours, the SAS holds where the marks are, the wiring);
+  `playtest.mjs`'s cockpit probe reads the buttons' `aria-label`. TESTING row 316. Next: Q477 (the HUD as the instrument
+  panel) builds on these keys.
