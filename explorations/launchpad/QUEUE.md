@@ -180,10 +180,10 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q434 | PLAYTEST **#109** (Caio 2026-10-13: "the rocket mostly goes straight up, is this correct?"): **teach the gravity turn** (with vehicle): a first-flight hint (lean east at ~100 m/s, then hold prograde), a pitch-over marker on the navball for the standard profile, later a pitch programmer part (gyro era) | M1 | M | 🖥 | ready (first hour) · **Caio 2026-10-13: build** |
 | Q435 | PLAYTEST **#110**: **the navball's surface→orbit jump** (`speedRef`, `sim/vessel.js` ~593): blend the reference over 40–60 km so prograde slides and SAS follows smoothly; the SURFACE/ORBIT label clickable (auto / surface / orbit) | M1 | S | 🖥 | ready · **Caio 2026-10-13: build** |
 | Q436 | PLAYTEST **#111** (P3): **SAS buttons as symbols** (the navball's own marks, words as tooltips; `SASM`, `app/editor.js` ~185); normal and radial marks drawn on the navball too. With Q281 (our own navball look) | M1 | S | 🖥 | ready · **Caio 2026-10-13: build**; the prograde mark is aviation's flight-path vector, the rest are KSP's and players know them, so keep them |
-| Q477 | **Q53 slice 1: the flight HUD as the instrument panel** (UI.md 0.2.0 § 4.1 item 1; with look & sound): bezels, amber VT323 readouts, backlit legend buttons, the navball in a bezel; with Q436's symbol keys; the rollout and rover yard too | M1 | M | 🖥 | ready (after Q436) |
-| Q478 | **Q53 slice 2: one era class on `body`** (UI.md § 4.1 item 2): every place's tokens by computing era (office typed → printout → laser; cockpit amber → green → glass), not only the map. With Q480 | M1 | S | 🖥 | ready |
-| Q480 | **Q53 slice 5: one token sheet by place** (`--office-*`, `--panel-*`, `--chart-*`, `--poster-*` per era), replacing copied hexes; do with Q478 | M1 | S | 🖥 | ready (with Q478) |
-| Q479 | **Q53 slice 3: poster headlines for big moments** (a first, a rival's first, a new epoch; with look & sound) | M1 | S | 🖥 | ready |
+| Q477 | **Q53 slice 1: the flight HUD as the instrument panel** (UI.md 0.2.0 § 4.1 item 1; with look & sound): bezels, amber VT323 readouts, backlit legend buttons, the navball in a bezel; with Q436's symbol keys; the rollout and rover yard too | M1 | M | 🖥 | ready (after Q436) | · Caio approved 2026-10-29
+| Q478 | **Q53 slice 2: one era class on `body`** (UI.md § 4.1 item 2): every place's tokens by computing era (office typed → printout → laser; cockpit amber → green → glass), not only the map. With Q480 | M1 | S | 🖥 | ready | · Caio approved 2026-10-29
+| Q480 | **Q53 slice 5: one token sheet by place** (`--office-*`, `--panel-*`, `--chart-*`, `--poster-*` per era), replacing copied hexes; do with Q478 | M1 | S | 🖥 | ready (with Q478) | · Caio approved 2026-10-29
+| Q479 | **Q53 slice 3: poster headlines for big moments** (a first, a rival's first, a new epoch; with look & sound) | M1 | S | 🖥 | ready | · Caio approved 2026-10-29
 | Q418 | After Q286 (v1.186, v1.189): **a phase card that changes by phase** (landing: height and descent rate big; burn: Δv to go; UI.md § 3 Flight); the desk's one-line offers wrap in the narrow tray (Take/Pass on a second line): look again when the rooms land (Q239) Also PLAYTEST **#112** (test bench, TESTING 271): at 1280×800 three of four offers wrap and Aurora sounding's buttons hang below its card | M1 | S | 🖥 | ready |
 | Q354 | The network page's **node boxes open a panel** on click: stock and need per good, what it waits for, the honest next action; with N3's routes (Q170, v1.151) | M2 | S | 🖥 | ready |
 | Q355 | A relay node's **coverage bar** on the network page (the N2 plan's line; `N.cover` has it per body) (Q170, v1.151) | M2 | S | 🖥 | ready |
@@ -642,7 +642,7 @@ Open design questions get a D row here (**next: D21**); answered ones go to [`DE
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ✓ plan `b3bccec` (design desk 2026-10-29: UI.md 0.2.0 § 4.1, on W14's default); slices Q477–Q480 |
+| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ✓ plan `b3bccec` (design desk 2026-10-29: UI.md 0.2.0 § 4.1, on W14's default); slices Q477–Q480 · **Caio 2026-10-29: "yes ok"**: build the slices |
 
 ---
 
