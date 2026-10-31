@@ -6572,3 +6572,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Checks: vehicle-35 (new), vehicle-30, `--smoke` all passed.
 - Files: sim/vessel.js, tests/vehicle.mjs, NOTES.md, notes/vehicle.md, PLAYTEST (#137), QUEUE (Q504 ✓, Q505 claimed),
   TESTING (321), ACTIVE_WORK. Next: Q505 (small satellite parts), Q506.
+- **Addendum 18 (design desk, 2026-10-31):** PLAYTEST #145 (P1): contracts visible in the Assembly (*This flight is for*) and in flight (a *Mission* card, a live checklist); manual instruments stay with Q338 (after S2).
