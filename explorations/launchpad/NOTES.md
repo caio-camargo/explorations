@@ -284,7 +284,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
 - v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
-- v1.250 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
+- v1.251 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 
@@ -335,6 +335,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.244 — the payload bench lists a satellite's parts only (2026-10-31, vehicle session, QUEUE Q506, PLAYTEST #139) → [notes/vehicle.md](notes/vehicle.md)
 - v1.245 — opening the Assembly leaves a preset a preset (its name, its tape): the panel reads the design without converting it (2026-10-31, vehicle session, QUEUE Q498, PLAYTEST #132) → [notes/vehicle.md](notes/vehicle.md)
 - v1.246 — hide the payload fairing while building: V or a button, and by itself while a part is held (2026-10-31, vehicle session, QUEUE Q512, PLAYTEST #147) → [notes/vehicle.md](notes/vehicle.md)
+- v1.250 — the ◇ keeps q·α under 36 kPa·° from Mach 3: the Passenger Orbiter stops flipping at staging (2026-10-31, flow session, QUEUE Q482, PLAYTEST #120) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

@@ -698,7 +698,7 @@
     let off = 0, first = null, gone = null, n = 0, pre = null;
     while (s.alive && n++ < 60000) { const h = len(s.r) - T.R; point(s, prof(h)); let g = api.turnGuide(s);
       if (g && g.ph !== 'climb') g = null;   // flow-37 tests the coast and the burn
-      if (g && h > 300) { first = first || { h, p: g.p }; off = Math.max(off, Math.acos(Math.min(1, dot(g.u, api.qrot(s.q, [0, 1, 0])))) * D); pre = g; }
+      if (g && h > 300) { first = first || { h, p: g.p }; if (s.mach < 2.5) off = Math.max(off, Math.acos(Math.min(1, dot(g.u, api.qrot(s.q, [0, 1, 0])))) * D); pre = g; }   // past Mach 2.5 the ◇ leans toward prograde (Q482, flow-39)
       if (!g && first && dot(s.v, s.r) > 0 && !gone) { gone = { h, ap: elements(s.r, s.v, T.mu).ap - T.R }; break; }
       if (!s.landed && dot(s.v, s.r) < 0) break;
       if (s.evIdx < s.events.length && api.activeEngines(s).length === 0) api.stage(s);
@@ -706,7 +706,8 @@
     return { off, first, gone, last: pre }; };
   const prof = run(h => api.ascentPitch(T, h)), up = run(() => 90);
   const onNose = prof.off < 2 && prof.gone && prof.gone.ap > T.atm && prof.gone.h > 38000 * AS;   // level past 54 km until the apoapsis is out
-  const east = up.last && up.last.nose > 89 && up.last.p < 60 && dot(up.last.u, api.localFrame(api.S.r).e) > 0.5;
+  const east = up.last && up.last.nose > 89 && up.last.p < 85 &&   // (Q482: at speed the ◇ leans only q·α allows off a vertical climb; was < 60)
+    (f => { const hz = sub(up.last.u, mul(f.up, dot(up.last.u, f.up))); return dot(norm(hz), f.e) > 0.9; })(api.localFrame(api.S.r));   // its heading is east
   const wired = html.includes('turnGuide(S):null') && html.includes('function turnHint(){') && html.includes('depHint();turnHint();') && html.includes("localStorage.getItem(TURN_HINT_KEY)");
   check('flow-34: the gravity turn: one standard profile (ascentPitch), its marker on the navball sits on the nose when flown and east of it when flown straight up, gone once the apoapsis is out of the air; a first-flight hint',
     same && ends && onNose && east && wired,
@@ -829,4 +830,29 @@
   check('flow-38: Easy / Normal / Hard: Easy\'s Isp ×1.15 on the same thrust, body air ×0.75, no ignition failures, deadlines ×1.5; Hard has no pilot\'s margin and no revert; tapes, studies and records carry the level',
     isp && flow && air && margin && noFail && loose && carried && ui,
     `Δv ×${(dE[0] / dN[0]).toFixed(3)} (Hard = Normal ${dH.every((x, i) => x === dN[i])}) · a step's propellant ×${(bE.used / bN.used).toFixed(3)}, thrust ×${(bE.T / bN.T).toFixed(3)} · body air ×${(aE / aN).toFixed(3)} · margin Normal ${mN} / Hard ${mH} · ignition fails of 200: Normal ${fN}, Easy ${fE} · deadlines ${loose} · tape/study/record ${carried} · wired ${ui}`);
+}
+
+// flow-39. The ◇ keeps the angle of attack small at speed (flow session, QUEUE Q482, PLAYTEST #120). The profile ran ~7°
+// below the surface prograde at 35 km (Mach 4.7, 12 kPa); the Passenger Orbiter staged there, and its finless upper stage
+// flipped and ran dry. Past Mach 3 turnGuide keeps q·α under 36 kPa·°. Flown here as the gyro autopilot flies it: the
+// hold set onto the ◇ every step, staging when the engines run out, until the apoapsis is 10 km out of the air.
+{
+  const T = api.TELLUS, D = 180 / Math.PI, s = api.newShip(api.PRESETS['Passenger Orbiter']); api.S = s; api.t = 0;
+  const msg = api.HOOK.msg; api.HOOK.msg = () => {};
+  api.advPhys(s); s.throttle = 1; api.stage(s); s.av = 0; s.sas = true; s.sasMode = 'stab';
+  let maxA = 0, worst = 0, fast = 0, done = false, at = '', jump = 0, g0 = null;
+  for (let k = 0; k < 200000 && s.alive; k++) {
+    const h = len(s.r) - T.R, f = api.localFrame(s.r), el = api.elements(s.r, s.v, T.mu), g = api.turnGuide(s);
+    if (el.ap - T.R > T.atm + 10000) { done = true; break; }
+    if (g && g0 && g.ph === 'climb') jump = Math.max(jump, Math.acos(Math.min(1, dot(g.u, g0))) * D); g0 = g && g.ph === 'climb' ? g.u : null;
+    s.hold = g ? g.u : s.landed || el.ap - T.R < T.atm ? f.up : norm(sub(s.v, mul(f.up, dot(s.v, f.up))));
+    if (g && g.ph === 'climb' && s.mach > 3.2 && s.qdyn > 1000) {   // the ◇ itself within budget (a step's lag aside)
+      const va = sub(s.v, api.surfVel(T, s.r)), a = Math.acos(Math.min(1, dot(g.u, norm(va)))) * D; worst = Math.max(worst, a * s.qdyn / 36000); fast++; }
+    if (s.evIdx < s.events.length && api.activeEngines(s).length === 0) api.stage(s);
+    api.advPhys(s); const qa = s.qdyn * s.aoa * D / 1000; if (h > 3000 && s.mach > 3 && qa > maxA) { maxA = qa; at = `${(h / 1e3).toFixed(1)} km, Mach ${s.mach.toFixed(1)}, ${(s.aoa * D).toFixed(1)}°, stage ${s.evIdx}`; }
+  }
+  api.HOOK.msg = msg;
+  check('flow-39: from Mach 3 (faded in from 2.5, no jump) the ◇ keeps q·α under 36 kPa·°: the Passenger Orbiter flown on it stages at 35 km without flipping (q·α under 60 kPa·° past Mach 3) and climbs out of the air',
+    s.alive && done && maxA < 60 && fast > 50 && worst < 1.05 && jump < 0.3,
+    `alive ${s.alive} · apoapsis out ${done} · largest q·α past Mach 3 ${maxA.toFixed(0)} kPa·° at ${at} (the flip: ~1,500) · the ◇ at ${(worst * 100).toFixed(0)} % of its budget over ${fast} fast steps · its largest step ${jump.toFixed(2)}°`);
 }

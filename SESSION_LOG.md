@@ -6602,3 +6602,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   of fix as Q493 if sky & bodies takes it. The plume-clipping screenshot in `explorations/launchpad/intake/` is not this
   beat's (left for the playtest intake).
 
+## 2026-10-31 — flow session: Q482, the ◇ at speed (v1.250)
+
+- **Cause** (PLAYTEST #120): the ◇'s profile ran ~7° below the surface prograde at 35 km (Mach 4.7, 12 kPa); the Passenger
+  Orbiter staged there and its finless upper stage flipped, then ran dry. The scripted study ascents set attitude directly
+  and never saw it.
+- **Fix:** `turnGuide` keeps the ◇ within 36 kPa·° / q of the surface prograde, faded in over Mach 2.5–3. **Negative
+  result:** the same cap without the Mach gate stops the turn on the Heavy, TV Satellite and Beeper (pinned to a vertical
+  prograde). Swept 5 budgets × 3 gates on ten presets; final: 20 of 20 ◇ flights orbit (Passenger Orbiter 533 / 467 spare,
+  was ✗−361 / ✗−172).
+- **Checks:** new `flow-39`; `flow-34` adjusted (the ◇ follows the raw profile below Mach 2.5 only); `--smoke` all passed.
+  No GPU run (only the ◇'s direction changed).
+- **Also this session:** TESTING 320 ✓ ("this plays well", Caio).
+- **Files:** sim/flight.js, tests/flow.mjs, notes/flow.md, NOTES.md, TESTING (327), PLAYTEST (#120 fixed), QUEUE (Q482 ✓),
+  ACTIVE_WORK.
+- **Next for flow:** Q483 (warn before the turn goes flat into the heat) is the last first-hour item in the flow lane.
+

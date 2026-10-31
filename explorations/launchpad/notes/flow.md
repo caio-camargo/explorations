@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1334,4 +1334,24 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
 - **Checks:** test `flow-38` (Δv ×1.15 on Easy and = Normal on Hard; a step's propellant ×1/1.15 at the same thrust; the
   body's aero ×0.75 exactly; the margin 150 / 0; 0 ignition failures in 200 rolls on Easy against 9 on Normal; deadlines
   ×1.5; tape, study and record tagged; the wiring). TESTING row 320.
+
+## v1.250 — the ◇ keeps the angle of attack small at speed (2026-10-31, flow session, QUEUE Q482; PLAYTEST #120)
+- **Why:** flown on the ◇ (every step, the gyro autopilot's hold), the Passenger Orbiter ran dry 361 m/s short. The profile
+  (`ascentPitch`, a fixed schedule in altitude) ran ~7° below the surface prograde at 35 km (Mach 4.7, q 12 kPa); the stack
+  staged there, and its finless upper stage flipped (148° of angle of attack, `w` 3.2 rad/s) and spent the climb tumbling.
+  The scripted ascents never saw it: the study sets their attitude directly.
+- **Now:** `turnGuide`'s climb ◇ stays within `GUIDE_QA / q` degrees of the surface prograde, `GUIDE_QA` = 36 kPa·° (3° at 12
+  kPa, 24° at 1.5), faded in over Mach 2.5–3 (`GUIDE_M` = 3) so the ◇ never jumps (largest step 0.1° on the Passenger
+  Orbiter). The heading line's `◇NN°` reads the capped pitch.
+- **Swept** (`study_pilot.mjs`, `guide` and `guide10`, ten orbital presets): the cap everywhere (12–60 kPa·°) fixes the
+  Passenger Orbiter but **breaks** the Heavy (short ~2,500), the TV Satellite (into the sea) and the Beeper (guide10): low in
+  thick air it pins the ◇ to a near-vertical prograde and the turn never starts. Gated by Mach (2, 3, 4 × 18, 36), every
+  preset orbits on both; Mach 4 is ~20 m/s cheaper but the flip came at 4.7, so Mach 3. **Final, 20 of 20 flights orbit**:
+  Passenger Orbiter ✗−361 / ✗−172 → 533 / 467 spare; the Orbiter 791 / 756 → 771 / 701; the Heavy, Lunar class, TV
+  Satellite, Asparagus within ~30–120 m/s of the uncapped ◇.
+- **The TV Satellite's flip** (the other half of #120) was the vehicle lane's Q504 (v1.241, two fin rings).
+- **Checks:** test `flow-39` (the Passenger Orbiter flown on the ◇: alive, out of the air, q·α past Mach 3 at most 46
+  kPa·° against ~1,500 in the flip, the ◇ at its budget, its largest step 0.1°). `flow-34` now compares the ◇ to the nose
+  below Mach 2.5 only, and flown straight up wants it east and below the nose (it leans 10°, not 30°+, at Mach 5). No GPU
+  run: only the ◇'s direction changed, the drawing didn't. TESTING row 327.
 
