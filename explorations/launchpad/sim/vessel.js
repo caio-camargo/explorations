@@ -485,6 +485,17 @@ function stageStats(stack){const s=newShip(stack),v=dvPlan(s,0).filter(x=>x.dv>0
 // passenger aboard with no parachute can't come home. Returns [[level, text], …], level 'ok' or 'warn' (never blocks: the
 // player may know better, and the flight is how they find out).
 const DV_ORBIT_EST=4500,ORBIT_MISSIONS=['beeper','orbiter','lift1','lift2'];
+// the pilot's margin (vehicle, Q475; PLAYTEST #119, D25; notes/vehicle.md § "Pilot margin"): a hand-flown ascent spends more
+// than a well-flown one, +150 m/s, or +350 when the stage that finishes the climb pushes under 0.3 g (the Lunar class: a
+// weak upper stage can't add the sideways speed in time after a steep climb). Q476's Hard is meant to read 0 here
+const PILOT_DV=150,PILOT_DV_WEAK=350;
+function pilotMargin(st,need){let c=0;for(const x of st){c+=x.dvV;if(c>=need)return x.twr<0.3?PILOT_DV_WEAK:PILOT_DV}return PILOT_DV}
+// what the flight it's aimed at needs to orbit (the most demanding aim; aimed nowhere, low orbit), flown well and by hand,
+// against the stages' Δv (vac; air: the first stage at sea level); launchWarnings and the Assembly's budget line read it
+function orbitNeed(stack,aims=flightAims()){const st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
+    air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
+    goal=aims.map(a=>({...a,need:base+dvToAlt(TELLUS,a.alt||0)})).sort((a,b)=>b.need-a.need)[0]||null,need=goal?goal.need:base,margin=pilotMargin(st,need);
+  return{vac,air,goal,need,margin,hand:need+margin,best:L?L.v:0}}
 function dvToAlt(b,alt){const r0=b.R+(b.atm||0)+10000,r1=Math.max(r0,b.R+alt*1000),mu=b.mu;if(r1<=r0)return 0;
   return Math.sqrt(mu/r0)*(Math.sqrt(2*r1/(r0+r1))-1)+Math.sqrt(mu/r1)*(1-Math.sqrt(2*r0/(r0+r1)))}
 // what the next flight is aimed at: accepted orbit contracts, and the suggested mission if it's an orbit one
@@ -508,13 +519,11 @@ function jointFix(w,own){if(!w||!w.p)return'';const dec=[w.p.d,w.p.parent.d].fin
 // what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
 function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='store'?`holding 5° off the airflow takes ${k(a.tau)} kN·m, more than its gimbal${a.fin>0?' and fins':''} can carry for long: its reaction wheels fill before the air thins`:`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`}
 function airFix(a){return a.why==='store'?`Separate pointing prograde and keep it there (it then needs almost nothing), or more on it: another reaction wheel stores more, steerable fins or bigger fins (right-click a fin) take a steady load, or a bigger first stage so it separates in thinner air.`:`Separate pointing prograde (it then needs almost nothing), or more steering on it: a reaction wheel, steerable fins, bigger fins (right-click a fin), or a bigger first stage so it separates in thinner air.`}
-function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
-    air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
-    src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
-  const goal=aims.map(a=>({...a,need:base+dvToAlt(TELLUS,a.alt||0)})).sort((a,b)=>b.need-a.need)[0];
+function launchWarnings(stack,aims=flightAims()){const out=[],{vac,air,goal,hand,best}=orbitNeed(stack,aims),
+    src=best?`your best flight to orbit took ${Math.round(best).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
   if(goal){if(vac<goal.need)out.push(['warn',`Short of orbit for ${goal.name}: ${f(vac)} of Δv against ${f(goal.need)} needed (${src})`]);
-    else if(air<goal.need)out.push(['warn',`Tight for ${goal.name}: ${f(vac)} of Δv in vacuum, less in the air, against ${f(goal.need)} needed (${src})`]);
-    else out.push(['ok',`Δv for ${goal.name}: ${f(air)} against ${f(goal.need)} (${src})`])}
+    else if(air<hand)out.push(['warn',`Tight for ${goal.name}: ${f(vac)} of Δv in vacuum, ${f(air)} in the air, against ${f(goal.need)} flown well and ${f(hand)} by hand (${src})`]);
+    else out.push(['ok',`Δv for ${goal.name}: ${f(air)} against ${f(goal.need)} flown well, ${f(hand)} by hand (${src})`])}
   const s=newShip(stack),who=s.parts.some(p=>p.d.crew)?'the crew':s.parts.some(p=>p.d.kind==='bio')?'the passenger':null;
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly

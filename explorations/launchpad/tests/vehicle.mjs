@@ -897,3 +897,20 @@
       && J(moved[0].slice(-1)) === J(['g:1']) && !moved.slice(1).some(x => x.includes('g:1')) && !out.flat().includes('g:sol') && keyAg === key0,
     `groups ${A.ag.map(g => g.key + ' ' + g.name).join(', ')}; last stages ${A.stages.slice(-2).map(x => x.map(a => a.label).join(' + ')).join(' | ')}; staged: legs ${staged.legs}/${legs4}, wings ${staged.wings}; bay ${doors}/${doors2}; chute ${c3.chute}; tape ${J(T.ops.filter(o => o[0] === 'K'))}, replayed legs ${s3.parts.filter(p => p.d.kind === 'leg' && p.dep).length}; procKey kept ${keyAg === key0}`);
 }
+
+// vehicle-34. The pilot's margin (vehicle session, QUEUE Q475, PLAYTEST #119, D25): orbitNeed adds +150 m/s to the well-flown
+// need, +350 when the stage that finishes the climb pushes under 0.3 g (the Lunar class); a design with enough flown well but
+// not by hand reads Tight; every orbital preset carries the margin to low orbit (Q474: all have ≥ 425 m/s spare).
+{
+  const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], log0 = PR.log; PR.log = {};
+  const orb = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Satellite', 'TV Satellite', 'Heavy', 'Asparagus', 'Lunar', 'Big Lunar', 'Probe', 'Sample Return', 'Crewed Lunar', 'Docking'];
+  const N = orb.map(n => [n, api.orbitNeed(P[n], [])]), weak = N.filter(([, o]) => o.margin === 350).map(([n]) => n).sort();
+  const short = N.filter(([, o]) => o.air < o.hand).map(([n]) => n), lo = api.orbitNeed(P.Sounding, []);
+  PR.log = { orbit: { v: 4600 } }; const tight = api.launchWarnings(P.Orbiter, B)[0], hl = api.orbitNeed(P.Orbiter, B); PR.log = {};
+  const ok = api.launchWarnings(P.Orbiter, B)[0]; PR.log = log0;
+  check('vehicle-34 the pilot\'s margin: +150 on one-core and booster rockets, +350 on the Lunar class; enough flown well but not by hand reads Tight; every orbital preset carries it',
+    N[0][1].need === 4500 && N[0][1].hand === 4650 && weak.join() === ['Big Lunar', 'Crewed Lunar', 'Lunar', 'Probe', 'Sample Return'].sort().join() && !short.length
+      && !lo.goal && lo.air < lo.need && hl.need === 4600 && hl.hand === 4750 && tight[0] === 'warn' && /^Tight/.test(tight[1]) && /4,750 m\/s by hand/.test(tight[1])
+      && ok[0] === 'ok' && /4,650 m\/s by hand/.test(ok[1]),
+    `weak: ${weak.join(', ')}; air − by hand: ${N.map(([n, o]) => `${n} ${Math.round(o.air - o.hand)}`).join(', ')}; "${tight[1]}"`);
+}

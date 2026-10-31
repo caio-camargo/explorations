@@ -323,6 +323,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.234 — teach the gravity turn: the standard ascent's marker on the navball, a first-flight hint (2026-10-30, flow session, QUEUE Q434, PLAYTEST #109)
 - v1.235 — the navball blends surface → orbit speed over 40–60 km; its label holds either (2026-10-30, flow session, QUEUE Q435, PLAYTEST #110)
 - v1.236 — SAS buttons as the navball's marks; normal and radial drawn on the ball (2026-10-30, flow session, QUEUE Q436, PLAYTEST #111)
+- v1.237 — the pilot's margin: the Assembly says Δv to orbit flown well and by hand; the Rollout reads Tight below it (2026-10-30, vehicle session, QUEUE Q475, PLAYTEST #119) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

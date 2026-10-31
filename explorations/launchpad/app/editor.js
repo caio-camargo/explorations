@@ -114,6 +114,14 @@ function lifeLine(s){if(!s.parts.some(p=>['ant','cam','sci'].includes(p.d.kind))
   const c=L.days<YEAR_D&&L.rate>0||!(L.rate>0)&&fall&&L.fall<YEAR_D?'warn':'dim';
   const W={t:`Short-lived at ${alt} km: under a year`,d:'Its service ends when it comes down or drifts off its slot, and a contract that wants it up for longer counts it as lost.',fix:['a higher orbit: the air thins fast with height','more propellant left once it\'s there: a bigger last stage or a lighter payload']};
   return`<div style="margin-top:4px">Lifetime at ${alt} km ${c==='warn'?whyMark('warn',t,W,'span'):`<span class="${c}">${t}</span>`}</div>`}
+// the Δv budget to orbit (vehicle session, Q475; PLAYTEST #119): what the flight it's aimed at needs flown well and with a
+// pilot's margin (orbitNeed), against the stages' Δv in the air. Aimed nowhere it reads low orbit, and dim when it can't get
+// there (a sounding rocket isn't short of anything)
+function orbitLine(){const O=orbitNeed(stackDef),f=x=>Math.round(x).toLocaleString('en-US'),to=O.goal?O.goal.name:'low orbit',
+    c=O.air>=O.hand?'ok':O.vac>=O.need?'warn':O.goal?'bad':'dim',has=`${f(O.air)} m/s in the air`;
+  const W=c==='warn'?{t:`Enough for ${to} flown well, not by hand`,d:`A perfect ascent gets there on ~${f(O.need)} m/s; a hand-flown one, a late or steep turn, a wobble, spends ~${f(O.margin)} more. ${f(O.air)} m/s leaves little room for that.`,fix:['a bigger tank on the upper stage','a lighter payload','fly the ◇ on the navball: it is the well-flown turn']}
+    :c==='bad'?{t:`Short of ${to}: ${has} against ~${f(O.need)}`,d:'Even flown perfectly it falls back before it reaches orbital speed.',fix:['more propellant, or another stage','boosters on the side','a lighter payload']}:null;
+  return`<div style="margin-top:4px">To ${to} ~${f(O.need)} m/s flown well, ~${f(O.hand)} by hand · ${W?whyMark(c,has,W,'span'):`<span class="${c}">${has}</span>`}</div>`}
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef),bench=BLD.bench();
   if(!bench&&isV2(stackDef))paySync(stackDef);   // blocks follow their payload's bench copy (Q416)
@@ -132,6 +140,7 @@ function editorChanged(){
   {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`+studyLine(S);$('launch').textContent=ok?'LAUNCH [L]':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
    html+=`<div style="margin-top:6px">Cost ${ok?`<b class="acc">${fmtM(c.cost)}</b>`:whyMark('bad',fmtM(c.cost),{t:`Over budget: ${fmtM(c.cost)} with ${fmtM(PROG.funds)} in the account`,d:'The launch is refused until the program can pay for it.',fix:['cheaper parts: fewer or smaller engines and tanks','parts that come home on a chute cost less the second time','wait for money: contracts and the budget fill the account']})} <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
   html+=`<div style="margin-top:6px">Total ${term('dv','Δv')} <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
+    ${orbitLine()}
     ${powerLine(S)}
     ${lifeLine(S)}
     <div class="sub">${logHintHTML()}</div>`;

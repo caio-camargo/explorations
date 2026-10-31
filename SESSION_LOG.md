@@ -6461,3 +6461,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (#119 lead, #120), QUEUE.md (Q474 ✓, Q475 ready, two *Proposed* lines), INDEX.md, ACTIVE_WORK.md.
 - **Next:** Q475 (vehicle) has its numbers; the orchestrator ranks #120 and the heat-warning line. Not measured:
   suborbital first-hour flights, throttle and staging errors, other sites.
+
+## 2026-10-30 — vehicle session: Q475, the pilot's margin in the Δv budget (v1.237)
+
+- **What:** `orbitNeed`/`pilotMargin` (sim/vessel.js): the Δv to orbit, flown well (as before: the logbook's best or
+  4,500, plus the climb to the aim) and by hand (+150 m/s; +350 when the stage that finishes the climb pushes under
+  0.3 g, the Lunar class), from Q474's numbers. The Assembly shows it under Total Δv (`orbitLine`, app/editor.js:
+  "To low orbit ~4,500 m/s flown well, ~4,650 by hand · 4,663 m/s in the air", green / amber with a why-mark / red /
+  dim); the Rollout's *Tight* now fires below the hand-flown need.
+- **No preset changed:** every orbital preset clears the hand-flown need (Orbiter by 13 m/s in the budget's terms, ≥ 425
+  in flight per Q474). Contracts aren't sized on Δv; the Satellite's polar routine is flown by its procedure (no margin).
+- **Checks:** `vehicle-34`; `--smoke` all passed; GPU shot of the Assembly (Lunar, Sounding) reads right.
+- **Files:** sim/vessel.js, app/editor.js, test.mjs (exports), tests/vehicle.mjs, NOTES.md, notes/vehicle.md (1.0.7),
+  TESTING (317), PLAYTEST (#119 slice 2 done), QUEUE (Q475 ✓), ACTIVE_WORK.
+- **Next:** Q476 (Easy / Normal / Hard) can start: Hard zeroes `pilotMargin`. Caio: TESTING 317, does "by hand" read
+  as advice? The intake/ folder holds face/eye/lip reference images (face lab's, not this lane's), left untouched.

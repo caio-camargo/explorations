@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1923,3 +1923,26 @@ already above that (all of today's orbital ones) need no tank; contracts and stu
 matter more than the tank:** a heat warning before turning flat costs the pod, and the Passenger Orbiter's departure
 (PLAYTEST #120). Not measured: the suborbital first-hour flights (Hopper, Sounding, Passenger), throttle errors, staging
 late or early, crosswind, flights from other sites.
+
+## v1.237 — the pilot's margin in the Δv budget (2026-10-30, vehicle session, QUEUE Q475, PLAYTEST #119, D25)
+
+**What:** the Δv to orbit is now quoted twice, flown well and by hand. `orbitNeed(stack, aims)` (sim/vessel.js) is the one
+place it's worked out: the need as before (the logbook's best flight to orbit, else 4,500 m/s, plus a Hohmann climb to the
+most demanding aim's altitude), plus `pilotMargin`: **+150 m/s**, or **+350** when the stage whose Δv finishes the climb
+pushes under 0.3 g (the Lunar class: Lunar, Big Lunar, Probe, Sample Return, Crewed Lunar, whose second stages light at
+0.10–0.20 g). Numbers from Q474 (§ "Pilot margin" above). `PILOT_DV`, `PILOT_DV_WEAK`.
+- **The Assembly** (app/editor.js `orbitLine`, under Total Δv): "To low orbit ~4,500 m/s flown well, ~4,650 by hand ·
+  4,663 m/s in the air", or the aimed contract's name instead of low orbit. Green when the air Δv covers the hand-flown
+  need; amber (a why-mark: a bigger upper tank, a lighter payload, fly the ◇) when only the well-flown one; red when it's
+  short even flown well and the flight is aimed at orbit; dim when it's aimed nowhere (a sounding rocket isn't short).
+- **The Rollout** (`launchWarnings`): *Tight* now means the air Δv is under the hand-flown need (was: under the well-flown
+  one), and the ok line quotes both.
+- **Presets: no tank changes.** In the budget's own terms (air Δv against 4,500 + margin) every orbital preset clears the
+  hand-flown need; the Orbiter by 13 m/s, the Passenger Orbiter by 157, the rest by 580–3,800. In flight the margin is
+  wider (Q474 measured ≥ 425 m/s spare after the script; the estimate's 4,500 is above the script's ~4,400).
+- **Contracts:** none are sized on Δv (they ask for an orbit; the player picks the rocket). The Satellite's 300 km polar
+  routine (v1.229) is flown by its procedure, i.e. well, so it keeps the script's margin: no change. `satLife`'s spare
+  stays the well-flown one.
+- **Hard (Q476):** meant to read 0 in `pilotMargin`; nothing else to change.
+- **Checks:** `vehicle-34` (margins per preset, the weak-stage list, Tight between the two needs, the ok line's wording);
+  `--smoke` all passed. GPU look (shot.mjs, Assembly with Lunar and Sounding): the line reads as above.
