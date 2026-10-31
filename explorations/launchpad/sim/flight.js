@@ -492,7 +492,7 @@ const GUIDE_BURN=new WeakSet(),GUIDE_COAST=new WeakSet();   // craft past the cl
 const GUIDE_M=3,GUIDE_QA=36000;
 function turnGuide(s){const b=s.body;if(!b.atm||s.landed||!s.alive)return null;const h=len(s.r)-b.R,f=localFrame(s.r),el=elements(s.r,s.v,b.mu),
   flat=x=>sub(x,mul(f.up,dot(x,f.up))),Y=qrot(s.q,[0,1,0]),nose=Math.asin(clamp(dot(Y,f.up),-1,1))*180/Math.PI;
-  if(el.ap-b.R<=b.atm*(GUIDE_COAST.has(s)?1:1.1)){GUIDE_COAST.delete(s);if(dot(s.v,f.up)<=0)return null;   // past the profile's end, level until then
+  if(el.ap-b.R<=b.atm*(GUIDE_COAST.has(s)?1:1.1)){GUIDE_COAST.delete(s);if(dot(s.v,f.up)<=0&&!(s.thrust>0))return null;   // past the profile's end, level until then; sinking under power (a turn too flat, Q483) it stays
     const va=sub(s.v,surfVel(b,s.r)),vs=flat(va),ny=flat(Y),hd=len(vs)>20?norm(vs):len(ny)>0.02?norm(ny):f.e,r=ascentPitch(b,h)*Math.PI/180;
     let u=add(mul(hd,Math.cos(r)),mul(f.up,Math.sin(r)));
     // (Q482, PLAYTEST #120) past Mach 3 the ◇ stays within GUIDE_QA / q degrees of the surface prograde: the profile ran ~7°
@@ -506,6 +506,24 @@ function turnGuide(s){const b=s.body;if(!b.atm||s.landed||!s.alive)return null;c
     hz=norm(flat(s.v)),d=sub(mul(hz,Math.sqrt(b.mu/len(s.r))),s.v);
   if(dot(s.v,f.up)>0&&tAp>tb/2&&!GUIDE_BURN.has(s))return{ph:'coast',p:0,u:hz,nose,dv:need,tAp,tb};
   GUIDE_BURN.add(s);const u=norm(d);return{ph:'burn',p:Math.asin(clamp(dot(u,f.up),-1,1))*180/Math.PI,u,nose,dv:len(d),tAp,tb}}
+// (flow, Q483; PLAYTEST #119, Q474's sweep) too flat, too low: a hand climb that levels off inside the air builds orbital
+// speed there and the pod cooks (flat by 43 km instead of 54 the Orbiter and the Lunar burn up at 45–60 km, Mach 9), or it
+// sinks back. Two signs, burning, fast (Mach 1.5+) and below 65 % of the air, not yet in orbit: 'turn', the path's pitch
+// more than TURN_FLAT° under the standard profile's (ascentPitch) at this height (the turn itself too flat, seen from ~10
+// km); 'level', the apoapsis still in the air and under FLAT_TAP s away from Mach 3 (levelling off in it: what a slower
+// upper stage shows instead). On the standard climb of the Orbiter, Lunar, Satellite and Heavy the path stays within 0.1°
+// and the apoapsis in the air never comes nearer than 52 s; every climb that fell or burned up passed under 25 s with the
+// pod at 58–84 %. Each clears under half its threshold (the time: over 45 s). null, or {why, def: degrees under the
+// profile, tAp: s to an apoapsis in the air}
+const TURN_FLAT=4,FLAT_TAP=35,FLAT_ON=new WeakMap();
+function turnFlat(s){const b=s.body;if(!b||!b.atm||s.landed||!s.alive||!(s.thrust>0)){if(s)FLAT_ON.delete(s);return null}
+  const h=len(s.r)-b.R,f=localFrame(s.r),va=sub(s.v,surfVel(b,s.r)),sp=len(va),M=sp/SND(h),el=elements(s.r,s.v,b.mu);
+  if(h>0.65*b.atm||M<1.5||el.pe-b.R>b.atm){FLAT_ON.delete(s);return null}
+  const def=ascentPitch(b,h)-Math.asin(clamp(dot(va,f.up)/sp,-1,1))*180/Math.PI,
+    tAp=el.e<1&&el.ap-b.R<b.atm&&M>=3?(dot(s.v,s.r)>0?timeToNu(el,Math.PI):0):Infinity;
+  const was=FLAT_ON.get(s),why=def>TURN_FLAT?'turn':tAp<FLAT_TAP?'level':was==='turn'&&def>TURN_FLAT/2||was==='level'&&tAp<45?was:null;
+  if(why)FLAT_ON.set(s,why);else FLAT_ON.delete(s);
+  return why?{why,def,tAp}:null}
 let ASC_C={key:null,v:null};
 function ascentEst(stack){const key=JSON.stringify(stack);if(ASC_C.key===key)return ASC_C.v;const v=ascentRun(stack);ASC_C={key,v};return v}
 function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)return out;

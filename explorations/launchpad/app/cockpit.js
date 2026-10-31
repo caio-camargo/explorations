@@ -17,6 +17,7 @@ const CP_CARDS=['ascent','descent','target','dv'];   // the phase's cards: every
 function cautions(){const L=[];if(mode!=='flight'||!S||!S.alive)return L;const pc=x=>`${(x*100).toFixed(0)}%`;
   if(S.hot&&S.hot.T>S.hot.d.Tmax*.9)L.push(`heat: the ${S.hot.d.name} at ${pc(S.hot.T/S.hot.d.Tmax)} of its limit`);
   const p=S.maxLoadP;if(p&&p.on&&p.sk1&&p.parent){const c=S.maxLoad/Math.min(certOf(p.sk1),certOf(p.sk2));if(c>1)L.push(`structure: ${p.d.name} / ${p.parent.d.name} at ${pc(c)} of its rating`)}
+  {const F=S.proc?null:turnFlat(S);if(F)L.push(F.why==='turn'?`too flat this low: lift the nose to the ◇ before the air cooks the craft (${F.def.toFixed(0)}° under the climb)`:`levelling off in the air (apoapsis ${F.tAp>0?`in ${F.tAp.toFixed(0)} s`:'now'}): lift the nose to the ◇ before the air cooks the craft`)}   // (Q483) before the heat, not at it
   if(S.rangeWarn&&S.rangeWarn.city)L.push(`range safety: the impact point is over ${S.rangeWarn.city.name}`);
   return L}
 // (QUEUE Q271, PLAYTEST #71; W36's default) HEAT and LOAD beside the navball, in every phase: the hottest part against its

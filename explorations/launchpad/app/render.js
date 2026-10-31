@@ -461,17 +461,20 @@ function drawNavball(){
   // (flow, Q434; PLAYTEST #109) the turn marker: an open diamond where the nose should be on the standard ascent, until the
   // apoapsis is out of the air (turnGuide, sim/flight.js); the heading line says its pitch. (Q485, PLAYTEST #121) Then dashed
   // on the horizon while coasting to the apoapsis, solid again for the burn there: the heading line says when and how much
-  const tg=S.rec&&S.rec.launched?turnGuide(S):null;
+  // (Q483) red, with a chevron toward the sky, while the climb is too flat this low (turnFlat; the master caution says why)
+  const tg=S.rec&&S.rec.launched?turnGuide(S):null,fl=tg&&!S.proc&&turnFlat(S),gc=fl?'#ff5a3a':'#fff1c8';
   if(tg&&dot(tg.u,Y)>0){const sx=NS/2+dot(tg.u,Z)*Rr,sy=NS/2+dot(tg.u,X)*Rr;nctx.lineWidth=2;
-    for(const[c,w]of[['rgba(0,0,0,.6)',4],['#fff1c8',2]]){nctx.strokeStyle=c;nctx.lineWidth=w;nctx.setLineDash(tg.ph==='coast'?[4,3]:[]);nctx.beginPath();nctx.moveTo(sx,sy-9);nctx.lineTo(sx+9,sy);nctx.lineTo(sx,sy+9);nctx.lineTo(sx-9,sy);nctx.closePath();nctx.stroke()}
-    nctx.setLineDash([]);if(tg.ph!=='coast'){nctx.fillStyle='#fff1c8';nctx.fillRect(sx-1.5,sy-1.5,3,3)}}
+    for(const[c,w]of[['rgba(0,0,0,.6)',4],[gc,2]]){nctx.strokeStyle=c;nctx.lineWidth=w;nctx.setLineDash(tg.ph==='coast'?[4,3]:[]);nctx.beginPath();nctx.moveTo(sx,sy-9);nctx.lineTo(sx+9,sy);nctx.lineTo(sx,sy+9);nctx.lineTo(sx-9,sy);nctx.closePath();nctx.stroke()}
+    nctx.setLineDash([]);if(tg.ph!=='coast'){nctx.fillStyle=gc;nctx.fillRect(sx-1.5,sy-1.5,3,3)}
+    if(fl){const ux=dot(f.up,Z),uy=dot(f.up,X),ul=Math.hypot(ux,uy)||1,a=ux/ul,c=uy/ul,cx=sx+a*17,cy=sy+c*17,P=(k,l)=>[cx+a*k-c*l,cy+c*k+a*l];   // a chevron pointing skyward
+      for(const[cl,w]of[['rgba(0,0,0,.6)',5],[gc,2.5]]){nctx.strokeStyle=cl;nctx.lineWidth=w;nctx.beginPath();nctx.moveTo(...P(-4,-7));nctx.lineTo(...P(3,0));nctx.lineTo(...P(-4,7));nctx.stroke()}}}
   // the compass points on the horizon: N marked in red (Q254)
   nctx.font='bold 13px ui-monospace,Consolas,monospace';nctx.textAlign='center';nctx.textBaseline='middle';
   for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const sy=dot(d,Y);if(sy<-0.02)continue;
     const x=NS/2+dot(d,Z)*Rr,y=NS/2+dot(d,X)*Rr;nctx.lineWidth=3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
-  const ht=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${Math.round(pit)+0}°${tg?` ${guideTxt(tg)}`:''}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`,rt=navRefLabel(S,sr);
+  const ht=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${Math.round(pit)+0}°${tg?` ${guideTxt(tg)}${fl?' ▲':''}`:''}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`,rt=navRefLabel(S,sr);
   if($('navhdg').textContent!==ht)$('navhdg').textContent=ht;if($('navref').textContent!==rt)$('navref').textContent=rt;
   $('thrf').style.height=(S.throttle*100)+'%'}
 
