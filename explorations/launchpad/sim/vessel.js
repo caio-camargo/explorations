@@ -162,6 +162,12 @@ small('octl6','octl',0.75,{name:'Octagonal frame, long, 0.6 m'});   // the bus a
 PARTS.padapt6={...PARTS.padapt,key:'padapt6',name:'Payload adapter 0.6 m',h:0.2,prof:[[.625,0],[.625,.05],[.3,.2]]};
 PARTS.padapt3={...PARTS.padapt,key:'padapt3',name:'Payload adapter 0.3 m',h:0.25,prof:[[.625,0],[.625,.05],[.15,.25]]};
 const isAdapter=d=>!!(d&&d.payOnly&&d.kind==='dec');
+// what the payload bench lists (vehicle session, Q506, PLAYTEST #139: "the payload section of the builder seems to include all
+// parts"): a satellite's parts, and chutes and heat shields for a capsule that comes home; tanks and engines only up to 0.7 m
+// (the spheres, kick motors, thrusters, the apogee engine). Not pods, the escape tower, nose cones, fairings, fins,
+// decouplers, the 2.5 m adapter, the mass simulator, station modules, rovers
+const BENCH_NO=new Set(['pod','les','cone','fair','fins','rfin','dec','adapt','ballast','hab','lab','bay','port','claw','arm','rover']);
+const benchPart=d=>!!d&&!BENCH_NO.has(d.kind)&&(!['tank','engine'].includes(d.kind)||d.r<=0.35);
 const payAdapter=r=>r<=0.2?'padapt3':r<=0.35?'padapt6':'padapt';
 // joint reinforcement: strength multiplier and added mass (t) at a 1.25 m joint, scaled by (joint radius / 0.625)²
 const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy',k:4,m:0.18}];

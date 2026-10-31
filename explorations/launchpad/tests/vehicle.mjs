@@ -940,3 +940,14 @@
     parts && charge && wide <= 0.7 + 1e-9 && ad.join() === 'padapt3' && api.payAdapter(0.3) === 'padapt6' && api.payAdapter(0.625) === 'padapt' && !P.padapt6.sc,
     `TV bus ${wide.toFixed(2)} m wide, ${(tv.mass).toFixed(0)} kg; its adapter ${ad.join()}; beacon: ${wh ? wh.t : '?'}`);
 }
+
+// vehicle-37. The payload bench lists a satellite's parts (vehicle session, QUEUE Q506, PLAYTEST #139): cores, batteries,
+// wheels, frames, instruments, power, small tanks and satellite engines, chutes and shields; not pods, rocket tanks and
+// engines, fins, fairings, decouplers or station modules.
+{
+  const P = api.PARTS, on = k => api.benchPart(P[k]);
+  const yes = ['core', 'core3', 'batt6', 'rwheel', 'octl6', 'sph7', 'kick80', 'apogee', 'hthr', 'whip', 'scam', 'wpanel', 'rtg', 'chute', 'shield', 'bwt', 'rcs', 'gas', 'leg'];
+  const no = ['pod', 'crew', 'les', 't2', 'T16', 'petrel', 'wren', 'fins', 'fair', 'dec', 'istage', 'cone', 'hab', 'lab', 'port', 'arm', 'rvfold', 'ballast'];
+  const bad = [...yes.filter(k => !on(k)), ...no.filter(on)];
+  check('vehicle-37 the payload bench lists a satellite\'s parts only', !bad.length, bad.length ? `wrong: ${bad.join(', ')}` : `${Object.keys(P).filter(on).length} of ${Object.keys(P).length} parts`);
+}

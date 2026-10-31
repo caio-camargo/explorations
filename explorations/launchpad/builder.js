@@ -581,8 +581,9 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!d.payOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
-  for(const[cat,kinds]of CAT){const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
-    for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||d.payOnly||!kinds.includes(d.kind))continue;
+  const listed=d=>!d.radialOnly&&!d.payOnly&&(!st.bench||benchPart(d));   // the bench lists a satellite's parts only (Q506)
+  for(const[cat,kinds]of CAT){if(!Object.values(PARTS).some(d=>listed(d)&&kinds.includes(d.kind)))continue;const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
+    for(const k in PARTS){const d=PARTS[k];if(!listed(d)||!kinds.includes(d.kind))continue;
       const b=document.createElement('button'),lk=typeof partOpen==='function'?partOpen(k):{ok:true};   // Q190: a part not open yet is listed, dimmed, with its reason
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
       b.innerHTML=`${d.name}<span>${lk.ok?spec:'🔒 '+lk.short}</span>`;if(!lk.ok)b.classList.add('lock');

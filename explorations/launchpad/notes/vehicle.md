@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2024,3 +2024,13 @@ small". The probe core, the battery and the reaction wheel came only at 1.25 m, 
   one at 0.6 m; Q417's bus shapes and kick motor.
 - **Checks:** `vehicle-36`. **Not yet run** (the machine was out of memory; Caio playtesting): `--smoke`, and
   vehicle-30 (the TV Satellite to its stationary slot: its payload got lighter).
+
+## v1.244 — the payload bench lists a satellite's parts only (2026-10-31, vehicle session, QUEUE Q506, PLAYTEST #139)
+
+`benchPart(d)` (sim/vessel.js): not the kinds in `BENCH_NO` (pods, the escape tower, nose cones, fairings, fins and fin
+blades, decouplers, the 2.5 m adapter, the mass simulator, hab, lab, bay, ports, the claw, the arm, rovers), and tanks and
+engines only up to 0.7 m (the propellant spheres; kick motors, thrusters, the apogee engine). Everything else stays:
+cores, batteries, wheels, spin motors, frames, the balance weight, instruments, cameras, antennas, computers, solar,
+RTGs, RCS and gas, legs, the landing beacon, chutes and heat shields (a capsule that comes home), the biocapsule. The
+builder's palette (`listed`) applies it on the bench and skips a category left empty. 42 of 84 parts. `vehicle-37`.
+Not checked in the browser yet.
