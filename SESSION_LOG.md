@@ -6654,3 +6654,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** app/hud.js, app/cockpit.js (`CP_CARDS`), app/terms.js, tests/flow.mjs, notes/flow.md (1.0.10), NOTES.md, TESTING
   (329), PLAYTEST (#130), QUEUE (Q495 ✓, Q492 ✓), ACTIVE_WORK.
 - **Next:** a full smoke on a quiet machine; Caio: TESTING 319 and 329.
+
+## 2026-10-31 — flow session 2: Q483, warn before the turn goes flat into the heat (v1.253; PLAYTEST #119)
+
+- **What:** `turnFlat(s)` (sim/flight.js): burning, Mach 1.5+, below 65 % of the air, not in orbit, and either the path 4°
+  under the standard profile ('turn') or the apoapsis still in the air under 35 s away ('level'). A master caution names it
+  (`cautions()`), the ◇ turns red with a chevron skyward, `▲` on the heading line. The climb ◇ now stays while sinking under
+  power.
+- **Measured** (Orbiter, Lunar, Satellite, Heavy, climbs flat by 40–54 km then the ◇'s coast and burn): the standard climb
+  never comes within 52 s of an apoapsis in the air; every lost climb passed under 25 s. Obeyed, the Orbiter, Satellite and
+  Heavy make orbit from every flat climb; the Lunar doesn't (a *Proposed* line: the ◇ for a weak upper stage).
+- **Checks:** flow-41; flow-29's harness; all 41 flow sections and platform-3 pass. **Full smoke not run** (memory). GPU:
+  headless `shot.mjs`, the red ◇ and both caution texts.
+- **Files:** sim/flight.js, app/cockpit.js, app/render.js, test.mjs (export), tests/flow.mjs, notes/flow.md (1.0.11),
+  NOTES.md, TESTING (330), QUEUE (Q483 ✓, a Proposed line), ACTIVE_WORK.
+- **Next:** a full smoke on a quiet machine; Caio: TESTING 319, 329, 330.
