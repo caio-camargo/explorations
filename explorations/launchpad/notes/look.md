@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-12
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2259,3 +2259,57 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Seen, not mine:** at Dunnzar Cape the city texture's lights cover the whole ground near the pad with a lit 90 m
   street grid (Kaos Beach, 34,000 people, 15 km away; its glow reaches well past the 3.5 km radius `CITIES` gives it).
   Filed (Proposed).
+
+## v1.240 — Selene without the flashing grain (2026-10-30, sky & bodies beat, QUEUE Q493, PLAYTEST #128)
+
+- **Asked:** Caio, PLAYTEST #128: "Selene's surface has a weird flashing grain".
+- **How it was found:** a harness (scratchpad, not kept) renders a view, moves the ship (and so the camera) a fraction
+  of a pixel sideways, renders again and takes the mean change per lit pixel; then the same with one `MOON_FS` term
+  switched off (`PMOON` rebuilt from `MOON_FS.split(a).join(b)`). A second count: isolated dark dots (a pixel 25 levels
+  under its 8 neighbours) per 10k lit pixels. Two frames with no move are identical: nothing jitters per frame.
+- **Two causes:**
+  - **From orbit, the craters.** With the crater relief off the change fell from 0.71 to 0.01 at 100 km (view 158); the
+    albedo fbm and the detail made no difference. `cratF` kept an octave whole until its cells were 4 px (craters
+    .5–1.4 px in radius) and faded it only by 1.7 px cells, and each octave's slope is 1.35× the last (×3 finer, ×.45
+    deep), so the finest visible octave, the sub-pixel one, set the shading: its rims clamped pixels to black, the black
+    pepper in the stills, and they flashed as the craters slid between pixel centres.
+  - **Below 3 km, the near detail.** `MOON_FS` called `detail()` (octaves down to 0.25 m) where `SKY_FS` has the
+    filtered `detailF`; at 800 m it was 0.49 of the 0.53.
+- **The fix:** the octave fade `smoothstep(.25,.6,w·f)` → `smoothstep(.06,.2,w·f)` (whole while craters are ≥ 2 px
+  across, gone by ~1 px; (.1,.3) and (.08,.25) were tried: 31 and 26 dots at 100 km against 22), and `detailF(…, w·uNR)`
+  (the footprint in metres).
+
+  | where | change, before → after | dark dots, before → after (floor, craters off) |
+  |---|---|---|
+  | 100 km (view 158) | 0.71 → 0.21 | 82 → 20 (15) |
+  | 20 km | 0.56 → 0.24 | 87 → 14 (3) |
+  | 800 m | 0.53 → 0.17 | — |
+  | 150 m | 0.23 → 0.11 | — |
+
+  What's left at 20 km and below is the craters' edges moving, as any edge does (the floor with craters off is ~0).
+- **Stills:** `output/launchpad/beauty/Q493/` (100 km and 20 km, before and after). Craters 2 px and wider are all there.
+- **And at the horizon:** the footprint's foreshortening stopped at `max(mu,.2)`, so toward the horizon (mu ~.003 from
+  2 m up) the filter thought pixels were ~60× smaller than they are: craters aliased into thin bright dashes along the
+  horizon at the lander (views 112–113). The cap is now .005: dark dots there 34 → 30, the floor with craters off 29.5
+  (.02 gave 32). Selene's position is the same in the sky pass and the moon pass (`moonPos` = `bodyPos`), so the two
+  passes' limbs agree; it wasn't that.
+- **Test:** `aerofx-48`. TESTING 320.
+
+## Q324 — why Selene's ground at the lander is a flat plane (2026-10-30, sky & bodies beat, BEAUTY B6.6; no version)
+
+- **Asked:** QUEUE Q324 (BEAUTY B6.6): views 112–113 show the lander on a flat plane; GROUND's relief should show;
+  find why.
+- **Why:** GROUND G3 isn't built. Selene's recipe (G2, v1.58, `sim/ground.js`) is on the CPU but not live:
+  `SELENE.ground` is unset, so `groundR(SELENE, ·)` is `R` and nothing draws relief. What draws Selene at every distance
+  is the moon pass (`MOON_FS`), a ray-cast sphere whose craters are shading only (a normal from `cratF`), in
+  `MOON_OCT`'s 5 octaves: the finest has 341 m cells (craters 40–115 m in radius). Within a few hundred metres of the
+  lander there's nothing but `detailF`'s ±.035 albedo, hence the plane. The horizon is the sphere's.
+- **Tried and rejected, an interim in the moon pass:** 7 octaves (cells down to 38 m, craters 4–13 m), first as they
+  are (each octave's slope 1.35× the last: flat black-and-white cut-outs), then self-similar past the 3rd octave (each
+  1/3 as deep as it is 3× finer). Both read as rings painted on a flat floor at a 20° sun, with a big one under the
+  lander; without relief, cast shadows and a broken horizon, shading alone doesn't make ground up close. Stills
+  `output/launchpad/beauty/Q324/` (`113-lander-flat`, `113-rejected-7oct-shading-only`, the same pair from 1.5 km).
+- **The fix is G3** (GROUND.md § G3, world): the march on Selene (G3.1 the map, G3.2 the bands, G3.3 `selCol`, G3.4
+  live with the CPU). BEAUTY B6.6 now points there.
+- **Seen on the way:** from 1–3 km the moon pass's finest octave clamps crater walls black and rims white at a low sun
+  (the 1.35× slope per octave): QUEUE *Proposed*. Moot once G3 lands.

@@ -112,6 +112,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.221 — no far ground drawn in the sky: the night horizon's black lines (2026-10-13, sky & bodies, QUEUE Q445, PLAYTEST #117; Q419)
 - v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453)
 - v1.225 — earthshine on a lander at Selene's night; a view of clouds in front of Selene (2026-10-14, sky & bodies, QUEUE Q428, Q429)
+- v1.240 — Selene without the flashing grain: crater octaves and near detail filtered by the footprint (2026-10-30, sky & bodies, QUEUE Q493, PLAYTEST #128)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
