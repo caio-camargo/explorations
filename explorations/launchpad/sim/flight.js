@@ -486,11 +486,20 @@ function ascentPitch(b,h){const AS=(b.atm||7e4)/7e4,f=clamp((h-200*AS)/(38000*AS
 // the apoapsis, tb: the burn's length (s)}
 const GUIDE_BURN=new WeakSet(),GUIDE_COAST=new WeakSet();   // craft past the climb (until the apoapsis sinks back into the air,
 // drag low in it) and craft whose burn has begun (it stays a burn: the apoapsis wanders as the orbit rounds out)
+// the ◇'s angle-of-attack budget (flow, Q482): from Mach GUIDE_M (faded in from half a Mach below) it keeps q·α under GUIDE_QA (Pa·degrees: 36 kPa·°, 3° at
+// 12 kPa). Swept on every orbital preset (notes/flow.md § v1.241): gated lower, it pins the ◇ to a near-vertical prograde and
+// the turn never starts (the Heavy, TV Satellite, Beeper); from Mach 3 it costs ~15–30 m/s and keeps every stage pointed
+const GUIDE_M=3,GUIDE_QA=36000;
 function turnGuide(s){const b=s.body;if(!b.atm||s.landed||!s.alive)return null;const h=len(s.r)-b.R,f=localFrame(s.r),el=elements(s.r,s.v,b.mu),
   flat=x=>sub(x,mul(f.up,dot(x,f.up))),Y=qrot(s.q,[0,1,0]),nose=Math.asin(clamp(dot(Y,f.up),-1,1))*180/Math.PI;
   if(el.ap-b.R<=b.atm*(GUIDE_COAST.has(s)?1:1.1)){GUIDE_COAST.delete(s);if(dot(s.v,f.up)<=0)return null;   // past the profile's end, level until then
-    const vs=flat(sub(s.v,surfVel(b,s.r))),ny=flat(Y),hd=len(vs)>20?norm(vs):len(ny)>0.02?norm(ny):f.e,p=ascentPitch(b,h),r=p*Math.PI/180;
-    return{ph:'climb',p,u:add(mul(hd,Math.cos(r)),mul(f.up,Math.sin(r))),nose}}
+    const va=sub(s.v,surfVel(b,s.r)),vs=flat(va),ny=flat(Y),hd=len(vs)>20?norm(vs):len(ny)>0.02?norm(ny):f.e,r=ascentPitch(b,h)*Math.PI/180;
+    let u=add(mul(hd,Math.cos(r)),mul(f.up,Math.sin(r)));
+    // (Q482, PLAYTEST #120) past Mach 3 the ◇ stays within GUIDE_QA / q degrees of the surface prograde: the profile ran ~7°
+    // below it at 35 km, and a stage lit there (the Passenger Orbiter's, no fins) flipped. q·α is what turns a craft
+    const q=0.5*density(b,h)*dot(va,va),sp=len(va),w=clamp((sp/SND(h)-GUIDE_M+0.5)/0.5,0,1),lim=q>0&&w>0?GUIDE_QA/(q*w)*Math.PI/180:Infinity;   // faded in over Mach 2.5–3: the ◇ never jumps
+    if(lim<Math.PI){const pr=mul(va,1/sp),a=Math.acos(clamp(dot(u,pr),-1,1));if(a>lim)u=norm(add(mul(pr,Math.sin(a-lim)),mul(u,Math.sin(lim))))}
+    return{ph:'climb',p:Math.asin(clamp(dot(u,f.up),-1,1))*180/Math.PI,u,nose}}
   if(el.e>=1||el.pe-b.R>b.atm||!(len(flat(s.v))>1))return null;   // in orbit, or not going round
   GUIDE_COAST.add(s);
   const vAp=Math.sqrt(b.mu*(2/el.ap-1/el.a)),need=Math.sqrt(b.mu/el.ap)-vAp,tb=nodeBurnTime(s,need)||0,tAp=timeToNu(el,Math.PI),
