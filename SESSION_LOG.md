@@ -6541,3 +6541,25 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   pulled forward), #139 (the bench lists every part); three QUEUE Proposed lines.
 - **Addendum 16 (design desk, 2026-10-30):** PLAYTEST #140: east at the top of the navball at launch; the catch (an upside-down climb on the ball) and options, default keep it at the bottom with E bold; QUEUE Proposed line.
 - **Addendum 17 (design desk, 2026-10-30):** Caio picked #140 (a): east stays at the bottom of the navball, E bold at launch.
+
+## 2026-10-30 — flow session: Q476, Easy / Normal / Hard (v1.240)
+
+- **What:** D25's three levels. `LEVELS` / `lvl()` (sim/core.js), kept as `PROG.lvl` (absent = Normal: old saves unchanged).
+  Picked on the charter's new **Article 3 · How hard?**; changeable in **Settings → Difficulty** off a flight. Easy: Isp ×1.15
+  at the same thrust, the body's air ×0.75 for drag and heating (fins and chutes at the true air), no ignition failures,
+  deadlines ×1.5. Hard: no pilot's margin in the budget, no revert after liftoff (the simulator still resets). Tapes,
+  studies and logbook records carry their level. Normal is bit-identical, but TAPE_V's fingerprint moved: older tapes go stale.
+- **Measured** (`study_pilot.mjs Orbiter -l=easy`, new flag; the Orbiter before Q486's tank): spare after the script 425 → 1,213
+  m/s; the late kick that ran dry on Normal reaches orbit. **Negative:** flat by 36 km still burns the pod up on Easy.
+- **Caio:** defaults kept on both follow-ups (Easy's heating stays ×0.75; Q486 drops "Hard keeps today's tank"); he'll judge it
+  in play (TESTING 320).
+- **Checks:** `flow-38`; full `node test.mjs` all passed (before the last merges); `--smoke` all passed after them; GPU shots of
+  the charter's Article 3 and Settings. Renumbered twice while merging (vehicle took v1.238, flow 2 took v1.239 and flow-37);
+  one merge dropped flow-37's closing brace, caught by smoke and fixed.
+- **Files:** sim/core.js, sim/vessel.js, sim/space.js, sim/flight.js, sim/program.js, sim/contracts.js, sim/procedures.js,
+  sim/logbook.js, app/state.js, app/screens.js, app/title.js, app/settings.js, app/program-ui.js, test.mjs, tests/flow.mjs,
+  study_pilot.mjs, notes/flow.md (1.0.8), NOTES.md, TESTING (320), PLAYTEST (#119 slice 3), QUEUE (Q476 ✓, two Proposed),
+  ACTIVE_WORK.
+- **Next for flow:** Caio plays TESTING 320. Untouched: the main clone has another session's uncommitted edits (vessel.js,
+  tests/core.mjs: an earlier draft of Q486); this session pushed from its worktree and left them alone.
+
