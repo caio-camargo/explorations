@@ -14,7 +14,7 @@
 const BLD=(()=>{
 const SYM=[1,2,3,4,6,8],SNAP_A=Math.PI/12,SNAP_Y=0.35,NODE_PX=34;
 const st={held:null,heldRoot:false,sym:2,snap:true,dec:true,loads:true,hover:null,slot:null,sel:null,undo:[],redo:[],
-  mouse:null,press:null,pan:false,ghost:null,ghostKey:'',hi:null,hiKey:'',inited:false,reframe:true,msg:''};
+  fairHide:false,mouse:null,press:null,pan:false,ghost:null,ghostKey:'',hi:null,hiKey:'',inited:false,reframe:true,msg:''};
 const el=id=>document.getElementById(id);
 const cl=x=>JSON.parse(JSON.stringify(x));
 const kids=n=>n.c||(n.c=[]);
@@ -445,6 +445,7 @@ function panel(){
   const t2=document.createElement('div');t2.className='bgrp';bar.appendChild(t2);
   btn(t2,'snap',st.snap,()=>{st.snap=!st.snap;refresh()},'snap radial angles to 15° and line ends to the host\'s part boundaries [C]');
   btn(t2,'radial decoupler',st.dec,()=>{st.dec=!st.dec;refresh()},'radial parts go on through a decoupler, so they become a stage you can drop [R]');
+  if(!st.bench&&S.parts.some(p=>p.on&&p.profF))btn(t2,'hide fairing',st.fairHide,()=>{st.fairHide=!st.fairHide;refresh()},'hide the shell of the payload fairing to see and place what rides inside; it hides by itself while you hold a part [V]');   // Q512
   btn(t2,'loads',st.loads,()=>{st.loads=!st.loads;refresh()},'joint loads (worst of liftoff and max-q, against certified ratings) at every joint');
   const t3=document.createElement('div');t3.className='bgrp';bar.appendChild(t3);
   btn(t3,'↶ undo',false,()=>restore(st.undo,st.redo),'Ctrl+Z').disabled=!st.undo.length;
@@ -687,10 +688,14 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     if(k==='x'){const i=SYM.indexOf(st.sym);st.sym=SYM[(i+(e.shiftKey?SYM.length-1:1))%SYM.length];st.ghostKey='';refresh()}
     else if(k==='c'){st.snap=!st.snap;refresh()}
     else if(k==='r'){st.dec=!st.dec;refresh()}
+    else if(k==='v'){st.fairHide=!st.fairHide;refresh()}   // the payload fairing's shell hidden (Q512)
     else if(k==='t'){topView()}   // (flow, Q405) straight down at the design, to see the CoM off the axis
     else if(k==='escape'){if(st.held)drop();else if(st.sel){st.sel=null;refresh()}}
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   el('target').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(!b)return;st.sym=+b.dataset.sym;st.ghostKey='';refresh()});
   palette()}
-return{addBalance,bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
+// the payload fairing's shell at the design table (vehicle, Q512, PLAYTEST #147): hidden while a part is held, or by the
+// player's toggle (V); the ring stays. The Rollout and flight draw it whole
+const fairHidden=()=>!st.bench&&(st.fairHide||!!st.held);
+return{fairHidden,addBalance,bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
 })();

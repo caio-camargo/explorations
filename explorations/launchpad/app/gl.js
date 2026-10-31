@@ -1544,8 +1544,9 @@ function partBody(out,p){
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     // payload fairing (Q337): the ring, and its shell while on; cut away on one side at the design table so the payload shows
     case'fair':{if(p.half){const pr=fairProf(d,p.fll??d.fl0).slice(1);latheArc(out,pr,o,p.half>0?0:Math.PI,p.half>0?Math.PI:2*Math.PI,C.W,C.G,14);fairSeams(out,pr,o);break}
-      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1);
-      if(typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll))latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
+      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1),ed=typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll);
+      if(ed&&typeof BLD!=='undefined'&&BLD.fairHidden&&BLD.fairHidden())break;   // hidden to build inside (Q512): the ring only
+      if(ed)latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
       fairSeams(out,pr,o)}break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
     case'wren':engine(out,p,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o);break;

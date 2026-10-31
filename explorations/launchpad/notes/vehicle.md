@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2050,3 +2050,15 @@ already ran only inside `edit()`.
 
 **Checks:** none headless (builder.js needs the page). **To run:** the robot's `m1` (`playtest.mjs m1`), the Beeper step,
 and the news line naming the Beeper, not "Design …".
+
+## v1.246 — hide the payload fairing while building (2026-10-31, vehicle session, QUEUE Q512, PLAYTEST #147)
+
+Caio: "needs an option to hide the fairing to place things inside". Since Q337 the Assembly drew the shell with a fixed
+quarter cut away (`latheArc` from 90° round to 360°), which needn't face the camera; clicks already passed through it
+(picking uses the fairing's ring profile, nodes are picked by screen distance), so the trouble was seeing.
+
+**What:** `BLD.fairHidden()` (builder.js): true at the rocket's design table (not the bench) while a part is held, or
+when the player's toggle is on (`st.fairHide`: key **V**, Help's Assembly keys; a *hide fairing* button in the build
+bar, shown only when the design has a payload fairing). gl.js's `fair` case then draws the ring alone; render.js's
+`S._cutK` now reads 'hid' / 'cut' so the ship's mesh rebuilds when it flips. The Rollout and flight draw the shell whole,
+as before. **Not looked at in the browser yet** (Caio playtesting; GPU); no headless check (all page code).
