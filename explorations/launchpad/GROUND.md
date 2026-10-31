@@ -133,7 +133,7 @@ Selene can hold (its circumference is 2,187 km). So: a total range of about ±5 
   - Complex craters: shallower relative to their width, with a flat floor, a terrace ring, and a central peak above
     ~25 km.
   - Fresh against degraded: a per-crater age softens rims and fills floors. Fresh ones are few, sharp and bouldery.
-  - Not circles (built v1.247, Q494): squashed up to 1.3× along a hashed direction, rims higher on one side; the rim is
+  - Not circles (built v1.250, Q494): squashed up to 1.3× along a hashed direction, rims higher on one side; the rim is
     a smooth minimum of bowl and ejecta, sharp when fresh and rounded when old. One profile (`craterProf`) for the CPU
     and the moon pass (`crProf`), checked against each other (test ground-10).
 - **Overlap.** Bands add, and within a band the deeper bowl wins. Old craters are softened by younger ones landing on
@@ -326,7 +326,7 @@ orbit.
 ---
 
 ## Version history
-- **0.1.12 (2026-10-31):** crater shapes vary (Q494, PLAYTEST #129, v1.247): see Shapes.
+- **0.1.12 (2026-10-31):** crater shapes vary (Q494, PLAYTEST #129, v1.250): see Shapes.
 - **0.1.11 (2026-10-11):** status header brought up to date (docs sweep).
 - **0.1.10 (2026-10-09):** G3.0 built (v1.78): `ptan` turned out good to 1.9e-13, so heights moved by 2.7e-8 m.
 - **0.1.9 (2026-10-09):** the seeded small bodies' ground, a recipe factory (v1.75). G7 is complete on the CPU; nothing is live until the space lane's bodies (Q87) and the shader (G3).

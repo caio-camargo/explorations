@@ -113,6 +113,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453)
 - v1.225 — earthshine on a lander at Selene's night; a view of clouds in front of Selene (2026-10-14, sky & bodies, QUEUE Q428, Q429)
 - v1.242 — Selene without the flashing grain: crater octaves and near detail filtered by the footprint (2026-10-30, sky & bodies, QUEUE Q493, PLAYTEST #128)
+- v1.249 — Selene up close isn't plain grey: mottled regolith and boulders with long shadows (2026-10-31, sky & bodies, QUEUE Q324, PLAYTEST #143)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -283,7 +284,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
 - v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
-- v1.247 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
+- v1.250 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 
