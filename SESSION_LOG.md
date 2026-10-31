@@ -6481,3 +6481,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   from kept hardware, crew held and ransomed softly, classified payloads leak), #125 (a Guided switch: lessons as early
   contracts with a cockpit checklist); three QUEUE Proposed lines.
 - **Addendum 13 (design desk, 2026-10-30):** SAS tooltips cut to half (Caio): the new texts in a QUEUE Proposed line for flow (`app/terms.js` 19–22).
+- **Addendum 14 (design desk, 2026-10-30):** Caio approved #123's fix; PLAYTEST #126 (P1): a falling orbit draws two
+  paths because the impact predictor's red is kept in the planet's rotating frame and repeats the vacuum arc; one line
+  proposed, with a repro for "neither reaches the ground".
