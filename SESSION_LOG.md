@@ -6563,3 +6563,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next for flow:** Caio plays TESTING 320. Untouched: the main clone has another session's uncommitted edits (vessel.js,
   tests/core.mjs: an earlier draft of Q486); this session pushed from its worktree and left them alone.
 
+## 2026-10-30 — vehicle session: Q504, the TV Satellite breaks up at launch (v1.241; PLAYTEST #137)
+
+- Reproduced headless (study_pilot, the ◇ followed every 10 s): Tank 8 t / Decoupler bends past 100 % at 4 km, 48 kPa.
+  Cause: barely stable (0.14 / −0.05 calibers, the fairing up front); stronger joints only move the break. Two fin rings
+  on the core and each booster: 0.95 / 0.78, every hand profile reaches orbit intact, 115.2M. Q482's TV Satellite flip
+  is the same thing. The Rollout's amber "unstable" line had fired but reads as boilerplate (Hopper/Beeper, Q202).
+- Checks: vehicle-35 (new), vehicle-30, `--smoke` all passed.
+- Files: sim/vessel.js, tests/vehicle.mjs, NOTES.md, notes/vehicle.md, PLAYTEST (#137), QUEUE (Q504 ✓, Q505 claimed),
+  TESTING (321), ACTIVE_WORK. Next: Q505 (small satellite parts), Q506.

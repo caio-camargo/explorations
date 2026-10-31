@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1975,3 +1975,28 @@ Q481's pitch programmer is the real answer to the narrow kick.
 **Hard (Q476)** can keep today's Orbiter (the v1.237 stack) if Caio wants Hard's exact margins to include the presets.
 **Tests:** core's Orbiter Δv (5,288), launch warnings' tight case moves to the Passenger Orbiter (the Orbiter now carries
 400 km), vehicle-3's Orbiter length 9, vehicle-34's tight case at a 5,000 m/s logbook.
+
+## v1.241 — the TV Satellite holds together on a hand-flown climb (2026-10-30, vehicle session, QUEUE Q504, PLAYTEST #137)
+
+**Reproduced** (study_pilot.mjs, the TV Satellite, with structural messages logged): flown smoothly (the script, the ◇
+every step, a kick-then-Prograde, the typical pilot) it reached orbit; with the hold moved onto the ◇ every 10 s (a player
+tapping toward it) it broke at **4 km, 48 kPa**: *Tank 8 t / Decoupler (bending, 100 %)*, then the payload adapter.
+
+**Cause: it was barely stable.** Its stability margin was **0.14 calibers on the pad and −0.05 supersonic** (the Heavy,
+the same lower stack with a pod on top: 0.79 / 0.62). The 1.6 m fairing up front puts the air's push ahead; a step of the
+hold at max-q lets it swing broadside, and at 48 kPa no joint survives that: an interstage decoupler or a reinforced joint
+only moved the break (to Petrel / Tank 2 t at 23 km).
+
+**Fix:** a second fin ring on the core and on each booster (`…'t8','fins','fins',{k:'kestrel',rad:{…stack:['cone','t4',
+'fins','fins','kestrel']}}`), as the Satellite got in Q439: **0.95 / 0.78 calibers**, 115.2M (was 110.7M), Δv 6,842
+(was 6,962). Flown again: script, wobble, over-steer, the kick at 12° and 8°, the ◇ every step and **every 10 s**, the
+typical pilot: all reach orbit, no structural failure. A core-only second ring gives 0.55 / 0.36 (not flown).
+
+**Why the checks didn't warn loudly:** the Rollout did say "Aerodynamically unstable (−0.05 calibers): only steering keeps
+it straight", amber, the same line the stock Hopper and Beeper show on every launch (Q202), so it reads as boilerplate.
+Between 0 and ~0.3 calibers nothing is said at all. Not changed here: max-q doesn't separate the dangerous case (the
+Hopper's estimate is 119 kPa, the Asparagus sits at 0.04 calibers and survives every profile); Q202 (making the stock
+rockets stable) is what makes the amber line mean something.
+
+**Checks:** `vehicle-35` (≥ 0.5 calibers, no stability warning); vehicle-30 (the TV Satellite to its stationary slot over
+the capital) passes; `--smoke` all passed.

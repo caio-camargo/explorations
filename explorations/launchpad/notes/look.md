@@ -2260,7 +2260,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   street grid (Kaos Beach, 34,000 people, 15 km away; its glow reaches well past the 3.5 km radius `CITIES` gives it).
   Filed (Proposed).
 
-## v1.241 — Selene without the flashing grain (2026-10-30, sky & bodies beat, QUEUE Q493, PLAYTEST #128)
+## v1.242 — Selene without the flashing grain (2026-10-30, sky & bodies beat, QUEUE Q493, PLAYTEST #128)
 
 - **Asked:** Caio, PLAYTEST #128: "Selene's surface has a weird flashing grain".
 - **How it was found:** a harness (scratchpad, not kept) renders a view, moves the ship (and so the camera) a fraction
@@ -2293,7 +2293,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   horizon at the lander (views 112–113). The cap is now .005: dark dots there 34 → 30, the floor with craters off 29.5
   (.02 gave 32). Selene's position is the same in the sky pass and the moon pass (`moonPos` = `bodyPos`), so the two
   passes' limbs agree; it wasn't that.
-- **Test:** `aerofx-48`. TESTING 321.
+- **Test:** `aerofx-48`. TESTING 322.
 
 ## Q324 — why Selene's ground at the lander is a flat plane (2026-10-30, sky & bodies beat, BEAUTY B6.6; no version)
 
