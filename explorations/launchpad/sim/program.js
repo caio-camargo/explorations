@@ -640,7 +640,7 @@ const worldCompYear=()=>PROG.day/YEAR_D+COMP_NUDGE*facLv('centre');
 const compYear=()=>worldCompYear()-compLag()+FAC.centre.ahead[facLv('centre')];
 const eraAt=y=>{let e=0;for(let j=0;j<COMP_ERAS.length;j++)if(y>=COMP_ERAS[j].yr)e=j;return e};
 const compEra=()=>eraAt(compYear()),worldEra=()=>eraAt(worldCompYear());
-const studyKey=s=>{const c={};for(const p of s.parts)c[p.d.key]=(c[p.d.key]||0)+1;return Object.keys(c).sort().map(k=>k+'×'+c[k]).join(',')};
+const studyKey=s=>{const c={};for(const p of s.parts)c[p.d.key]=(c[p.d.key]||0)+1;return Object.keys(c).sort().map(k=>k+'×'+c[k]).join(',')+(lvlKey()==='normal'?'':'@'+lvlKey())};   // a study models its level's physics (Q476)
 const studyOf=s=>(PROG.studies||{})[studyKey(s)],studyJob=s=>(PROG.studyQ||[]).find(j=>j.key===studyKey(s));
 // the prediction error a design flies with (0 = exact)
 function predErr(s){const E=COMP_ERAS[compEra()],st=studyOf(s);return st?Math.min(st.err,E.err[1]):E.err[0]}
@@ -973,7 +973,7 @@ function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q
   HOOK.news(mode==='lic'?`License signed: ${POWERS[Q.from].root}'s ${PARTS[k].name} will be built under license (${Q.days} days to tool up)`:`A production line for the ${PARTS[k].name}: ${Q.days} days to tool up`,'ok');HOOK.save();return true}
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
-function igniteOK(s,k){if(TEST.nofail||!khOn()||!s.rec)return true;
+function igniteOK(s,k){if(TEST.nofail||!lvl().fail||!khOn()||!s.rec)return true;   // (Easy: engines always light, Q476)
   for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719+(SIM?SIM.seed*0.0137:0))*43758.5453)%1+1)%1;   // a simulator run rolls on its own seed
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;

@@ -495,7 +495,7 @@ function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)retur
   for(let i=0;i<P.length;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
     const veV=st.dv/lr,veA=st.dvA/lr,dt=Math.max(0.2,T/600);
     for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),pit=ascentPitch(TELLUS,h)*Math.PI/180,sp=Math.hypot(vx,vh),
-      rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*sp*sp*cda,g=mu/((R+h)*(R+h));
+      rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*lvl().air*sp*sp*cda,g=mu/((R+h)*(R+h));
       vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt;
       const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}
       if(cur){tq+=dt;if(tq>=1){tq-=1;if(qq<300)cur=null;else cur.qs.push(qq)}}}   // a fresh stage's q, each second until the air thins (airStore)

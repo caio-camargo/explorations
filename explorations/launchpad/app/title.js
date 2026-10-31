@@ -17,10 +17,12 @@ function charterHTML(signed){const o=own(),kinds=Object.keys(START),pick=signed?
   const a1=[['',`Random world`,`whatever the launch site's power was generated as: a ${ARCH[POWERS[0].arch].name.toLowerCase()} this time.`],...Object.entries(ARCH).map(([k,v])=>[k,v.name,v.blurb])]
     .map(([k,n,b])=>opt(arch===k,`data-arch="${k}"`,n,b)).join('');
   const a2=kinds.map(k=>opt(pick===k,`data-cstart="${k}"`,`${START[k].name} · ${fmtM(START[k].funds)}`,START[k].blurb)).join('');
+  const a3=Object.entries(LEVELS).map(([k,v])=>opt(lvlKey()===k,`data-lvl="${k}"`,v.name,v.d)).join('');   // (Q476, D25)
   const name=signed?progName():charterName(pick);
   return`<div class="t1">LAUNCHPAD</div><div class="t2">Charter of a space program</div><div class="rule"></div>`
     +`<div class="q">Article 1 · Whose program?</div><div class="why">The country behind the launch site: how the money arrives, what the public wants from you, and what a failure costs.</div>${a1}`
     +`<div class="q">Article 2 · How does it start?</div><div class="why">Who owns it: where the money comes from, and who you answer to.</div>${a2}`
+    +`<div class="q">Article 3 · How hard?</div><div class="why">How much the engines and the air forgive. Changeable later in Settings; a record or an autopilot keeps the level it was flown on.</div>${a3}`
     +`<div class="sign"><div>Signed, for the program:<br><span class="sig">${name}</span><br><span class="dim">Director · ${signed?'day 1':'today'}</span></div>`
     +(signed?`<span class="inforce">In force · ${fmtDate(PROG.day||0)}</span>`:`<button id="bFound" data-start="${pick}">Found the program ▶</button>`)+`</div>`
     +`<div class="seal">${name.replace(/ /g,'<br>')}</div>`}
@@ -29,8 +31,9 @@ function renderTitle(){if(!$('ttl'))return;const fresh=needCharter(),b=(a,t,on)=
     +b('new',fresh?'New program':ttlArm?'Click again: forget this program':'New program',fresh||ttlArm)+b('settings','Settings')+(TEST.on?b('tester','Tester [F2]'):'');
   $('ttlCharter').innerHTML=charterHTML(!fresh);$('ttlCharter').classList.toggle('signed',!fresh)}
 function ttlFound(k){chooseStart(k||ttlPick||Object.keys(START)[0]);ttlPick=null;renderProgram();editorChanged();go('program')}
-document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-arch],[data-cstart],[data-start],[data-ttl]');if(!t||!t.closest('#ttl'))return;const ds=t.dataset;
-  if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderTitle()}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-arch],[data-cstart],[data-lvl],[data-start],[data-ttl]');if(!t||!t.closest('#ttl'))return;const ds=t.dataset;
+  if(ds.lvl){setLevel(ds.lvl);renderTitle()}
+  else if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderTitle()}
   else if(ds.cstart){ttlPick=ds.cstart;renderTitle()}
   else if(ds.start){ttlFound(ds.start)}
   else if(ds.ttl==='continue')go('program');

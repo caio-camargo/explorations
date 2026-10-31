@@ -364,7 +364,10 @@ function watchPlan(D,c){if(D.base!=null)return{ok:false,why:'a supply run flies 
   const W=rng((D.seed^0x5a7c4)>>>0),brk=R()>=e.pS,eng=!brk&&R()>=e.pLow,noRelight=!brk&&!eng&&R()>=e.pRelight;
   const doom=brk?{t:35+40*W(),why:'it broke up in the climb'}:eng?{t:60+90*W(),why:'an engine failed to light in the ascent; range safety ended the flight'}:null;
   return{ok:true,proc:e.proc,target:dispatchTarget(c),site:procSiteOf(D.stack),noRelight,doom}}
-function tapeNew(stack,site){return{v:TAPE_V,stack:JSON.parse(JSON.stringify(stack)),ops:[],lastK:null,site:site?site.id:null}}   // a tape flies from the site it was recorded at
+// a tape replays only on the level it was flown on (Q476, D25: Easy's engines and air differ; Hard's are Normal's, but its
+// records are its own). Normal keeps the bare fingerprint, so tapes from before levels still play there
+const tapeV=()=>TAPE_V+(lvlKey()==='normal'?'':':'+lvlKey());
+function tapeNew(stack,site){return{v:tapeV(),stack:JSON.parse(JSON.stringify(stack)),ops:[],lastK:null,site:site?site.id:null}}   // a tape flies from the site it was recorded at
 function tapeCtl(T,s){const c=controls(s),k=JSON.stringify(c);if(k!==T.lastK){T.ops.push(['C',c]);T.lastK=k}}
 function tapePhys(T,s){tapeCtl(T,s);const o=T.ops[T.ops.length-1];if(o&&o[0]==='P')o[1]++;else T.ops.push(['P',1]);advPhys(s)}
 function tapeRails(T,s,dt,warp){tapeCtl(T,s);T.ops.push(['R',dt,warp]);return advRails(s,dt,warp)}

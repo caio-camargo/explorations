@@ -119,7 +119,7 @@ function renderLog(){const el=$('logbook'),era=modernUI()?0:eraOf(),cls=['lb-mod
   let lastSec='';const rows=LOGF.map(F=>{const sh=F.sec!==lastSec?(lastSec=F.sec,`<div class="lbsec">${U(F.sec)}</div>`):'',e=logF(F.id);const ul=unlocksOf(F.id),un=ul.length?`<div class="lbby">${U(e?'→ unlocked: ':'→ will unlock: ')}${U(ul.join(', '))}</div>`:'';
     if(!e)return sh+`<div class="lbrow">${U(F.label)}<br><span class="lbv lbu">${era===1?'???':'— NO DATA —'}</span> <span class="lbby">${U(F.hint)}</span>${un}</div>`;
     const hist=(e.hist||[]).map(v=>`<s>${F.fmt(v)}</s>`).join('');
-    return sh+`<div class="lbrow">${U(F.label)}<br>${hist}<span class="lbv">${F.fmt(e.v)}</span> <span class="lbby">— ${e.by}, flight ${e.flight}, ${fmtDate(e.day)}</span>`+
+    return sh+`<div class="lbrow">${U(F.label)}<br>${hist}<span class="lbv">${F.fmt(e.v)}</span> <span class="lbby">— ${e.by}, flight ${e.flight}, ${fmtDate(e.day)}${e.lvl?U(` · on ${LEVELS[e.lvl].name}`):''}</span>`+
       (e.stack?` <button data-lbload="${F.id}">${era===1?'copy this design':U('load design')}${e.tape?era===1?' + its flight':' + TAPE':''}</button>`:'')+un+`</div>`}).join('');
   el.innerHTML=`<span class="x" id="lbClose">✕</span><h3>${title}</h3>${rows}<div class="lbopt"><label><input type="checkbox" id="lbModern" ${modernUI()?'checked':''}> modern look</label></div>`;
   $('lbClose').onclick=()=>el.classList.add('hidden');
@@ -130,7 +130,7 @@ document.addEventListener('click',e=>{if(e.target.id==='lbHint')toggleLog();cons
   go('assembly');BLD.load(JSON.parse(JSON.stringify(ent.stack)));
   // the record flight becomes this design's autopilot, unless the design already has one
   if(ent.tape)try{if(!localStorage.getItem(tapeKey()))localStorage.setItem(tapeKey(),JSON.stringify({v:ent.tape.v,stack:ent.stack,ops:ent.tape.ops,site:ent.tape.site}))}catch(x){}
-  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?ent.tape.v===TAPE_V?' with its record flight as the autopilot':' (its record flight was flown on older physics and can\'t replay exactly; its procedure, if any, still can)':''}`)});
+  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?ent.tape.v===tapeV()?' with its record flight as the autopilot':' (its record flight was flown on older physics and can\'t replay exactly; its procedure, if any, still can)':''}`)});
 // a record set by a flight keeps that flight's tape (from the pad), so the record can be flown again
 HOOK.logged=ids=>{const T=player?tapeCut(player):recTape;if(!T||!T.ops||T.ops.length>40000)return;
   for(const id of ids){const e=(PROG.log||{})[id];if(e&&e.stack)e.tape={v:T.v,ops:JSON.parse(JSON.stringify(T.ops)),site:T.site}}HOOK.save()};
@@ -352,8 +352,8 @@ function updateHUD(){
 let rangeWarned=false,impSpread=null,impST=-1;const heard=new Set();
 
 // ---- autopilot tapes in browser storage, one per exact design (and sim version: a tape only replays on the sim that made it)
-const tapeKey=()=>'launchpad-tape:'+TAPE_V+':'+JSON.stringify(stackDef);
-function loadTape(){try{const t=JSON.parse(localStorage.getItem(tapeKey())||'null');return t&&t.v===TAPE_V?t:null}catch(e){return null}}
+const tapeKey=()=>'launchpad-tape:'+tapeV()+':'+JSON.stringify(stackDef);
+function loadTape(){try{const t=JSON.parse(localStorage.getItem(tapeKey())||'null');return t&&t.v===tapeV()?t:null}catch(e){return null}}
 const procsOf=stack=>{const k=procKey(stack),P=PROG.procs||{};return Object.keys(P).filter(x=>x===k||x.startsWith(k+'|')).map(x=>P[x])};
 // (flow, Q62) the start buttons stay while the craft still sits on the pad unlaunched (time runs there; it used to be simT===0 only,
 // gone a few frames after LAUNCH, before a landing site could be picked on the map)

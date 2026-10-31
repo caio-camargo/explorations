@@ -758,3 +758,46 @@
   check('flow-36: SAS buttons are the navball\'s marks (one drawing each, distinct, paired colours), the word on hover and in Help; the ball draws normal and radial, where the SAS points',
     every && paths && kin && held && radOut && ui, `${modes.length} modes drawn ${every} · distinct ${paths} · colours ${kin} · SAS = marks ${held} · radial out is up ${radOut} · wired ${ui}`);
 }
+
+// flow-37. Easy / Normal / Hard (flow session, QUEUE Q476, DECISIONS D25; PLAYTEST #119). PROG.lvl picks a row of LEVELS:
+// Easy burns less propellant for the same thrust (Isp ×1.15), the body's air pushes and heats at ×0.75 (fins and chutes at
+// the true air), engines always light and deadlines stretch ×1.5; Hard's budget has no pilot's margin and no revert. Normal
+// is the game as it was. Tapes, studies and logbook records carry their level.
+{
+  const P0 = structuredClone(api.PROG), at = k => { if (k === 'normal') delete api.PROG.lvl; else api.PROG.lvl = k; };
+  const dv = k => { at(k); return api.stageStats(api.PRESETS.Orbiter).stages.map(x => x.dvV); };
+  const dN = dv('normal'), dE = dv('easy'), dH = dv('hard');
+  const isp = dE.every((x, i) => Math.abs(x / dN[i] - 1.15) < 1e-6) && dH.every((x, i) => Math.abs(x - dN[i]) < 1e-9);
+  // one step at full throttle: the same push, less propellant
+  const burn = k => { at(k); const s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.t = 0; s.throttle = 1; api.stage(s);
+    const f0 = s.parts.reduce((a, p) => a + (p.res.fuel || 0), 0); api.physStep(s, api.DT);
+    return { used: f0 - s.parts.reduce((a, p) => a + (p.res.fuel || 0), 0), T: s.thrust }; };
+  const bN = burn('normal'), bE = burn('easy'), flow = bN.used > 0 && Math.abs(bE.used / bN.used - 1 / 1.15) < 1e-6 && Math.abs(bE.T / bN.T - 1) < 1e-9;
+  // the body's air at ×0.75 (the Orbiter without its fins and chute: every aero force left is the body's)
+  const aero = k => { at(k); const s = api.newShip(api.PRESETS.Orbiter); api.geom(s); s.fins = []; s.chute = false; for (const p of s.parts) { p.F = [0, 0, 0]; p.L = [0, 0, 0]; p.Q = 0; }
+    api.aeroPass(s, [30, 600, 0], [0, 0, 0], 0.4, 1.8, false); return s.parts.reduce((a, p) => a + len(p.F), 0); };
+  const aN = aero('normal'), aE = aero('easy'), air = aN > 0 && Math.abs(aE / aN - 0.75) < 1e-9;
+  // the margin: Normal carries the pilot's, Hard none
+  at('normal'); const mN = api.orbitNeed(api.PRESETS.Orbiter, []).margin; at('hard'); const mH = api.orbitNeed(api.PRESETS.Orbiter, []).margin;
+  const margin = mN > 0 && mH === 0;
+  // ignition never fails on Easy: an engine the program has never flown, rolled over many flights
+  const ign = k => { at(k); const s = api.newShip(api.PRESETS.Orbiter); s.rec = api.recNew(); s.rec.khSeen = {}; let fails = 0; const f0 = api.PROG.flights, msg = api.HOOK.msg; api.HOOK.msg = () => {};
+    for (let n = 0; n < 200; n++) { api.PROG.flights = n; if (!api.igniteOK(s, s.parts.find(p => p.d.kind === 'engine').seg)) fails++; } api.HOOK.msg = msg; api.PROG.flights = f0; return fails; };
+  api.PROG.flights = 3; const fN = api.khOn() ? ign('normal') : -1, fE = ign('easy'), noFail = fE === 0 && fN !== 0;
+  // deadlines
+  const due = k => { at(k); api.PROG.offers = null; api.PROG.active = []; api.ensureBoard(); const o = api.PROG.offers[0]; api.acceptOffer(o.id); const c = api.PROG.active.find(x => x.id === o.id); return c ? (c.deadline - api.PROG.day) / o.p.dur : NaN; };
+  const loose = Math.abs(due('easy') - 1.5) < 1e-9 && Math.abs(due('normal') - 1) < 1e-9;
+  // what carries the level
+  at('normal'); const tn = api.tapeNew(api.PRESETS.Orbiter, null).v, sn = api.studyKey(api.newShip(api.PRESETS.Orbiter));
+  at('easy'); const te = api.tapeNew(api.PRESETS.Orbiter, null).v, se = api.studyKey(api.newShip(api.PRESETS.Orbiter));
+  const s = api.newShip(api.PRESETS.Orbiter); s.rec = api.recNew(); s.rec.dv = 100; s.rec.newLog = []; api.PROG.log = {}; const news = api.HOOK.news; api.HOOK.news = () => {};
+  api.logNote(s, 'apex', 5e5); api.HOOK.news = news; const rec = api.PROG.log.apex && api.PROG.log.apex.lvl === 'easy';
+  const carried = tn === api.TAPE_V && te === api.TAPE_V + ':easy' && sn !== se && se.endsWith('@easy') && rec;
+  const H = html.replace(/\r\n/g, '\n');
+  const ui = H.includes('Article 3 · How hard?') && H.includes("if(ds.lvl){setLevel(ds.lvl);renderTitle()}") && H.includes('<h3>Difficulty</h3>')
+    && H.includes("if(!revertOK()){HOOK.msg('No revert on Hard") && H.includes("+(fl?(revertOK()?b('revert'");
+  for (const k of Object.keys(api.PROG)) delete api.PROG[k]; Object.assign(api.PROG, P0);
+  check('flow-37: Easy / Normal / Hard: Easy\'s Isp ×1.15 on the same thrust, body air ×0.75, no ignition failures, deadlines ×1.5; Hard has no pilot\'s margin and no revert; tapes, studies and records carry the level',
+    isp && flow && air && margin && noFail && loose && carried && ui,
+    `Δv ×${(dE[0] / dN[0]).toFixed(3)} (Hard = Normal ${dH.every((x, i) => x === dN[i])}) · a step's propellant ×${(bE.used / bN.used).toFixed(3)}, thrust ×${(bE.T / bN.T).toFixed(3)} · body air ×${(aE / aN).toFixed(3)} · margin Normal ${mN} / Hard ${mH} · ignition fails of 200: Normal ${fN}, Easy ${fE} · deadlines ${loose} · tape/study/record ${carried} · wired ${ui}`);
+}

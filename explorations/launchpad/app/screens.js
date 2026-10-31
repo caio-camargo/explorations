@@ -91,7 +91,7 @@ let perfOn=false;try{perfOn=localStorage.getItem('launchpad-perf')==='1'}catch(e
 document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}${['flight','map','rover'].includes(screenNow())?' · paused':''}</h2>`+b('close','Resume  [Esc]')
-    +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here').replace('End flight',debRecover()?'Recover vessel':'End flight')+b('assembly','Back to the design table','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
+    +(fl?(revertOK()?b('revert','Revert to launch','Click again: this flight is lost'):'')+b('end','End flight: debrief','Click again: this flight ends here').replace('End flight',debRecover()?'Recover vessel':'End flight')+b('assembly','Back to the design table','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
     +(['assembly','rover','debrief','rollout','mission'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+b('title','Title screen')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.ov){ovClose(d.ov);return}
