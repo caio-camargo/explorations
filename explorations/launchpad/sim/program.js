@@ -16,7 +16,7 @@
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
+PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.padapt6=0.5;PRICE.padapt3=0.5;PRICE.core6=5;PRICE.core3=4;PRICE.rwheel6=3.5;PRICE.rwheel3=2.5;PRICE.batt6=1;PRICE.batt3=0.8;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
 PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity

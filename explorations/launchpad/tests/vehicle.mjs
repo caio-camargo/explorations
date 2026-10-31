@@ -724,10 +724,10 @@
   const fair = { k: 'fair', c: [] }, rocket = api.toV2(['t2', 'petrel', 'dec', 't2', 't8', 'fins', 'fins', 'kestrel']);   // the Satellite's launcher (two fin rings, Q439; a 2 t tank over the 8 t, Q413)
   // the fairing on top of the upper tank, the block on the fairing
   const e = api.payNew('Sat', api.PAY_STARTERS.Satellite); fair.at = 'u'; rocket.root.c.push(fair); fair.c.push({ ...api.payNode(e), at: 'u' });
-  const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.key === 'padapt');
+  const A = api.newShip(api.PRESETS.Satellite), B = api.newShip(rocket), pay = B.parts.filter(p => p.dn.payOf), padapt = B.parts.filter(p => p.d.payOnly);
   const dA = api.stageStats(api.PRESETS.Satellite).stages.map(s => s.dvV), dB = api.stageStats(rocket).stages.map(s => s.dvV);
   const same = dA.length === dB.length && dA.every((v, i) => Math.abs(dB[i] - v) / v < 0.02), clean = !/payOf|"src"/.test(JSON.stringify(rocket));
-  const inside = pay.filter(p => p.d.key !== 'padapt').every(p => p.inFair);
+  const inside = pay.filter(p => !p.d.payOnly).every(p => p.inFair);
   e.name = 'Renamed'; e.d.root.c.push({ k: 'batt', at: 'u', c: [] }); const synced = api.paySync(rocket), blk = rocket.root.c.find(c => c.k === 'fair').c[0];
   const C = api.payChecks(api.PAY_STARTERS.Satellite, rocket, e.id).rows, cls = Object.fromEntries(C.map(r => [r.k, r.cl]));
   const short = cl(rocket); short.root.c.find(c => c.k === 'fair').fl = 2; const fitShort = api.payChecks(api.PAY_STARTERS.Satellite, short, e.id).rows.find(r => r.k === 'fit');
@@ -811,7 +811,7 @@
     else if (phase === 'wait') { s.sasMode = 'pro'; s.throttle = 0; X = X || api.statXfer(s); if (!X) break;   // Q454: the game's own timing, the burn centred on it
       if (api.t >= t0 + X.dt - 0.5 * X.dv / Math.max(api.engAcc(s), 0.1)) { waited = api.t - t0; phase = 'gto'; } }
     else if (phase === 'gto') { s.sasMode = 'pro'; s.throttle = el.ap < rg - 2e5 ? 1 : el.ap < rg ? 0.2 : 0; if (el.ap >= rg) { s.throttle = 0; phase = 'rel'; } }
-    else if (phase === 'rel') { let g = 0; while (s.parts.some(p => p.on && p.d.key === 'padapt') && s.evIdx < s.events.length && g++ < 6) api.stage(s); phase = 'toAp'; }
+    else if (phase === 'rel') { let g = 0; while (s.parts.some(p => p.on && p.d.payOnly) && s.evIdx < s.events.length && g++ < 6) api.stage(s); phase = 'toAp'; }
     else if (phase === 'toAp') { s.sasMode = 'pro'; const dvC = Math.sqrt(T.mu / el.ap) - Math.sqrt(T.mu * (2 / el.ap - 1 / el.a)), lead = 0.5 * dvC / Math.max(api.engAcc(s) || 0.5, 0.05), tA = api.timeToNu(el, Math.PI);
       if (tA > lead + 120 && api.railsOK(s)) { api.advRails(s, Math.min(600, tA - lead - 60), 1000); continue; } if (tA <= lead) phase = 'circ2'; }
     else { const hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(T.mu / len(s.r))), s.v); s.sasMode = 'stab'; s.hold = norm(need);
@@ -924,4 +924,19 @@
   const W = api.launchWarnings(d, []).filter(([k, x]) => /unstable|end over end/i.test(x));
   check('vehicle-35 the TV Satellite is stable through the air (two fin rings): past half a caliber at liftoff and supersonic',
     m > 0.5 && !W.length, `${cal(a.ful).toFixed(2)} / ${cal(a.sup).toFixed(2)} calibers; ${W.length} stability warnings`);
+}
+
+// vehicle-36. Small satellites (vehicle session, QUEUE Q505, PLAYTEST #138): the probe core, battery and reaction wheel at
+// 0.6 and 0.3 m (the 1.25 m part drawn smaller; mass, torque, momentum and charge with its face, sc²); a payload block's
+// adapter narrows to what stands on it; the TV satellite starter's bus is 0.6 m across (its 0.7 m propellant sphere the widest; wings and whips aside), and its
+// rocket still carries it (vehicle-30 flies it to the stationary slot).
+{
+  const P = api.PARTS, sz = k => 2 * P[k].r, ok = (k, b, sc) => Math.abs(sz(k) - 2 * P[b].r * sc) < 1e-9 && Math.abs(P[k].m - P[b].m * sc * sc) < 1e-3 && P[k].kind === P[b].kind && P[k].base === b;
+  const parts = [['core6', 'core', .48], ['core3', 'core', .24], ['batt6', 'batt', .48], ['batt3', 'batt', .24], ['rwheel6', 'rwheel', .48], ['rwheel3', 'rwheel', .24]].every(([k, b, sc]) => ok(k, b, sc));
+  const tv = api.newShip(api.PAY_STARTERS['TV satellite']), bus = tv.parts.filter(p => !['solar', 'ant'].includes(p.d.kind)), wide = Math.max(...bus.map(p => 2 * p.d.r));
+  const rk = api.newShip(api.PRESETS['TV Satellite']), ad = rk.parts.filter(p => api.isAdapter(p.d)).map(p => p.d.key), sat = api.newShip(api.PRESETS.Satellite).parts.filter(p => api.isAdapter(p.d)).map(p => p.d.key);
+  const charge = P.core6.kWh > 0 && P.batt6.kWh < P.batt.kWh, wh = api.payChecks(api.PAY_STARTERS['First beacon']).rows.find(r => r.k === 'power');
+  check('vehicle-36 small satellites: 0.6 and 0.3 m cores, batteries and wheels; the adapter narrows to the payload; the TV satellite no wider than its 0.7 m sphere (was 1.25 m)',
+    parts && charge && wide <= 0.7 + 1e-9 && ad.join() === 'padapt3' && api.payAdapter(0.3) === 'padapt6' && api.payAdapter(0.625) === 'padapt' && !P.padapt6.sc,
+    `TV bus ${wide.toFixed(2)} m wide, ${(tv.mass).toFixed(0)} kg; its adapter ${ad.join()}; beacon: ${wh ? wh.t : '?'}`);
 }

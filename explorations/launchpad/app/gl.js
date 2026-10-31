@@ -1623,6 +1623,7 @@ function partBody(out,p){
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
     // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
     case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
+    case'padapt6':case'padapt3':{const t=d.prof[d.prof.length-1];lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[t[0],t[1],C.ST]],o,32)}break;   // narrowing to a small payload (Q505)
     case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
     case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
     case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;

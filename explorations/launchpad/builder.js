@@ -188,7 +188,7 @@ function makePay(f){const D=design(),path=rootPath(D.root,f);if(!path||!path.sli
   const top0=kids(f).find(c=>c.at==='u')||(path.length>1&&path[path.length-1]===f&&f.at==='d'?path[path.length-2]:null);if(!top0||isPay(top0)){note('Nothing on top of the fairing to lift');return}
   snapshot();if(path.length>1)reroot(path);const top=kids(f).find(c=>c.at==='u');if(!top){note('Nothing on top of the fairing to lift');return}
   const sub=noIds(cl(top));delete sub.at;const e=payNew(null,{v:2,root:sub});e.m=0;const blk={...payNode(e),at:'u'};if(top.j)blk.j=top.j;f.c[f.c.indexOf(top)]=blk;
-  ensureIds(D);st.sel=blk;editorChanged();e.m=S.parts.filter(p=>p.on&&p.dn.payOf===blk&&p.d.key!=='padapt').reduce((a,p)=>a+partMass(p),0);HOOK.save&&HOOK.save();palette();note(`Made ${e.name}: open it on the bench to change it`)}
+  ensureIds(D);st.sel=blk;editorChanged();e.m=S.parts.filter(p=>p.on&&p.dn.payOf===blk&&!isAdapter(p.d)).reduce((a,p)=>a+partMass(p),0);HOOK.save&&HOOK.save();palette();note(`Made ${e.name}: open it on the bench to change it`)}
 function drop(){if(!st.held)return;st.held=null;if(isEmpty(stackDef)&&stackDef&&stackDef.park)delete stackDef.park;st.ghostKey='';refresh()}
 function del(n){if(!n)return;snapshot();detachNode(n);if(st.sel&&nodes(n).includes(st.sel))st.sel=null;editorChanged()}
 let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target');if(e)e.innerHTML=statusHTML()}
@@ -460,7 +460,7 @@ function panel(){
   const sub=nodes(n).length-1;
   sel.innerHTML=`<div class="bhd"><b>${name(n.k)}</b>${copies>1?` <span class="dim">×${copies}</span>`:''}</div><div class="sub">${where}${sub?` · carries ${sub} part${sub>1?'s':''}`:''}</div>`;
   const row=(label)=>{const r=document.createElement('div');r.className='brow';r.innerHTML=`<span class="dim">${label}</span>`;sel.appendChild(r);return r};
-  if(isPay(n)){const e=payById(n.pid),m=ps.filter(p=>p.d.key!=='padapt').reduce((a,p)=>a+partMass(p),0),fair=S.parts.some(f=>f.on&&f.profF),out=fair?ps.filter(p=>p.d.key!=='padapt'&&!p.inFair).length:0;
+  if(isPay(n)){const e=payById(n.pid),m=ps.filter(p=>!isAdapter(p.d)).reduce((a,p)=>a+partMass(p),0),fair=S.parts.some(f=>f.on&&f.profF),out=fair?ps.filter(p=>!isAdapter(p.d)&&!p.inFair).length:0;
     sel.querySelector('.bhd').innerHTML=`<b>Payload: ${esc(n.name||'')}</b>`;
     {const r=row('carries'),i=document.createElement('span');i.className=out||!fair?'warn':'dim';i.textContent=` ${Math.round(m*1000)} kg in ${ps.length-1} parts, on its adapter${!fair?' · no fairing over it':out?` · ${out} outside the fairing`:''}`;r.appendChild(i)}
     {const r=row('');btn(r,'open on the bench',false,()=>benchOpen(e||payFromBlock(n)),e?'change it on the payload bench: every block of it follows':'its bench copy is gone: opening makes a new one from this block')}
