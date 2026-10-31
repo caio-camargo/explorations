@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.146 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 0.1.147 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -474,7 +474,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | Q300 | **Floating spent stages**: debris that falls in the sea (`stepDebris`) sinks with a boom at the seabed; give it Q274's buoyancy (`seaPts` on its parts), so a floating stage is a sight and a recovery option | M2 | S | ⚙ | ✓ v1.142 `3eac3f9` (NOTES § v1.142; test `sea-2`; TESTING 224) |
 | Q301 | **The seabed holds a craft up in shallow water** (today 2 m of water floats it as in deep water), and a **hard splash can hole the hull** (flooding is by part kind only) (Q274) | M1 | S | ⚙ | ✓ v1.142 `3eac3f9` (NOTES § v1.142; test `sea-2`; TESTING 224) |
 | Q336 | **The support towns grow with the era** (with look & sound): v1.144 fixes them at 12–35 k (Leninsk was a camp first); grow them by epoch, and make them look like a space town (a causeway, crowds on launch day) (Q270) | M2 | S | 🖥 | ready |
-| Q324 | **BEAUTY B6.6: Selene's ground at the lander is a flat plane** (views 112–113): GROUND's relief should show there; find why the lander scene lacks it | M3 | S | 🖥 | ready (look first) |
+| Q324 | **BEAUTY B6.6: Selene's ground at the lander is a flat plane** (views 112–113): GROUND's relief should show there; find why the lander scene lacks it **Also PLAYTEST #143** (Caio 2026-10-30): **up close Selene is plain grey, no texture**: albedo by terrain (mare dark, highland bright, fresh ejecta brighter), regolith and rocks and small craters that grow in as you descend, relief readable under a low sun; with Q494 (craters) and Q493 (grain) | M3 | S | 🖥 | ready (look first; **Caio's ask**, #143) |
 | Q493 | PLAYTEST **#128** (Caio 2026-10-30): **Selene's surface has a flashing grain**: find the term that sparkles (an unfiltered regolith/detail term in the moon pass of Q322 s2, v1.194, or a per-frame jitter reaching an airless body), filter it by footprint or drop it with distance; stills at two frames from orbit and low | M2 | S | 🖥 | ready (Caio's ask) |
 | Q501 | PLAYTEST **#135** (Caio 2026-10-30): **twinkling lights on Tellus's night ground from above**: Q447's lamp pools (~5 m, `lampPools`, `app/gl.js` ~213) and per-house hashes alias from altitude; filter them by footprint (their mean from afar), and keep Q321's star twinkle off ground pixels | M1 | S | 🖥 | ready (Caio's ask) |
 
