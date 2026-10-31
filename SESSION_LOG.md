@@ -6618,3 +6618,24 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   ACTIVE_WORK.
 - **Next for flow:** Q483 (warn before the turn goes flat into the heat) is the last first-hour item in the flow lane.
 
+## 2026-10-31 — world session (machine `Charlinho`): Q494, Selene's craters vary (v1.251)
+
+- **What:** PLAYTEST #129 ("every one a perfect circle with a perfect ramp"). The look came from the moon pass's `cratG`
+  (a parabola in a cone, one depth per octave, every cell full). Now one profile, `craterProf` (sim/ground.js) =
+  `crProf` (app/gl.js MOON_FS): steep inside and gentle outside, the rim a smooth minimum rounded by age; flat floors and
+  peaks past the body's simple → complex size (new uniform `uNdt`); squashed up to 1.3×; rims higher on one side; depth
+  ∝ size. CPU band craters get the same squash and lean (no trigonometry, G3.0's rule). Shader gains calibrated on a JS
+  port so the mean slope and height spread match the old field.
+- **Checks:** test `ground-10` (the GLSL read as JS against the CPU, 4e-16; fresh/old rims, a complex crater's floor and
+  peak, 40 band craters measured); `--smoke` all passed after each of four merges. GPU stills, new views 184–185 plus
+  164–165, before/after in `output/launchpad/q494-craters/` (local). Tuned twice on them (the plains were bare).
+- **Numbering race:** v1.243 → v1.247 → v1.250 → **v1.251**, TESTING 323 → **328**: four other merges landed in the hour.
+  Merged around Q493 (`cratF`) and Q324 (`rocksL`) from sky & bodies by hand.
+- **Not done:** re-shooting 184–185 after Q493's filter merged (memory ran low; Caio chose to merge first). Rays and
+  terraces left (rays are albedo, sky & bodies' code).
+- **Files:** sim/ground.js, app/gl.js, views.js, tests/world.mjs, notes/world.md (1.0.3), GROUND.md (0.1.12), NOTES.md,
+  TESTING (328), PLAYTEST (#129 ✓), QUEUE (Q494 ✓), ACTIVE_WORK.
+- **Next for world:** re-shoot views 184–185 on main; Q19 (parked on `terrain`, 🖥🖥 A/B), then Q251/Q365. PARKED: Q19
+  at "ported on `terrain`, same-base A/B of the pad views pending". The launchpad intake screenshot (a plume cut at the
+  limb, 2026-10-30 22:22) is not this lane's, left untouched.
+
