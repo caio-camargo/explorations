@@ -1440,8 +1440,7 @@ function fairSeams(out,pr,o){for(const a of[0,Math.PI]){const c=Math.cos(a),sn=M
 // doorT for bay doors), and the drawing follows its fraction in sim time, so it pauses and warps with the game: a wing's
 // boom slides out and its panels unfold one after another (4 s), a boom antenna swings up and out, then extends (3 s), a
 // leg swings down (1.6 s). No stamp (set in the Assembly, a loaded save): at once. 0 stowed … 1 out
-const DEP_S={wing:4,ant:3,leg:1.6};
-function depF(p){const on=!!p.dep;if(p.depT==null)return on?1:0;const T=p.d.kind==='leg'?DEP_S.leg:p.d.wing?DEP_S.wing:DEP_S.ant,f=clamp((simT-p.depT)/T,0,1);return on?f:1-f}
+// (DEP_S and depF moved into the sim, sim/flight.js, Q457: power, gain, feet and tear-off read them too)
 const depKey=s=>s?s.parts.filter(p=>p.on&&p.depT!=null).map(p=>Math.round(depF(p)*40)).join():'';
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;

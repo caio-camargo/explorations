@@ -22,7 +22,7 @@ const powRTG=s=>{let W=0;powEach(s,d=>{if(d.Wg)W+=d.Wg});return W};   // RTGs: t
 // what the panels give in full sun from direction u (the vessel's own frame): body cells their average share; a deployed wing
 // turns about its arm (the mount's outward normal n) to face the sun as well as that allows, so √(1 − (n·u)²) of its best
 function powSun(s,u){let W=0;powEach(s,(d,p,aq)=>{if(d.kind!=='solar')return;const k=d.Wp*(1-(p.dmg||0));
-    if(d.body)W+=k*SOL_BODY;else if(p.dep){const v=aq?qrot(qconj(aq),u):u,a=p.phi||0,c=Math.cos(a)*v[0]+Math.sin(a)*v[2];W+=k*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}});
+    if(d.body)W+=k*SOL_BODY;else if(p.d?depOut(p):p.dep){const v=aq?qrot(qconj(aq),u):u,a=p.phi||0,c=Math.cos(a)*v[0]+Math.sin(a)*v[2];W+=k*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}});
   return W}
 // the best the panels can give (wings square to the sun): what the steady state assumes
 const powPeak=s=>{let W=0;powEach(s,(d,p)=>{if(d.kind==='solar')W+=d.Wp*(1-(p.dmg||0))*(d.body?SOL_BODY:SOL_WING)});return W};
@@ -43,7 +43,8 @@ function powFlat(s,out){if(out===!!s.pwrOut)return;s.pwrOut=out;const comp=s.par
   HOOK.msg(out?`Power flat${comp?': the onboard computer is off, analog autopilot only, until the panels catch up':''}`:'Power back')}
 // one physics step: the store, from the sun right now; a deployed wing in thick air tears off
 function powerStep(s,dt){if(!s.alive)return;
-  for(const p of s.parts.filter(p=>p.on&&p.dep&&p.d.qMax&&s.qdyn>p.d.qMax)){if(!p.on)continue;HOOK.msg(`${p.d.name} torn off at ${(s.qdyn/1000).toFixed(1)} kPa`);partLost(s,p)}
+  for(const p of s.parts.filter(p=>p.on&&depF(p)>0&&p.d.qMax&&s.qdyn>p.d.qMax)){   // any of it out, opening or folding (Q457)
+   if(!p.on)continue;HOOK.msg(`${p.d.name} torn off at ${(s.qdyn/1000).toFixed(1)} kPa`);partLost(s,p)}
   s.Emax=powCap(s);if(s.E==null)s.E=s.Emax;const use=powLoad(s);
   const gen=(inShadow(s.body,s.r)?0:powSun(s,qrot(qconj(s.q),SUN_DIR)))+powRTG(s);s.pGen=gen;s.pUse=use;
   s.E=clamp(s.E+(gen-use)*dt,0,s.Emax);powFlat(s,s.E<=0&&gen<use)}

@@ -946,7 +946,7 @@
 // mesh is rebuilt while a fraction moves.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const src = page.slice(page.indexOf('const DEP_S='), page.indexOf('const depKey='));
+  const src = H.slice(H.indexOf('const DEP_S='), H.indexOf('// (depF end)'));   // in the sim since Q457
   const F = (simT, p) => new Function('simT', 'clamp', src + 'return depF')(simT, (x, a, b) => Math.min(b, Math.max(a, x)))(p);
   const W = { d: { kind: 'solar', wing: true } }, L = { d: { kind: 'leg' } };
   const vals = [F(5, { ...W, dep: true }), F(2, { ...W, dep: true, depT: 0 }), F(4, { ...W, dep: true, depT: 0 }), F(0.8, { ...L, dep: true, depT: 0 }), F(0.8, { ...L, dep: false, depT: 0 }), F(9, { ...L, dep: false, depT: 0 })];

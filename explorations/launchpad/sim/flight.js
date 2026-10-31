@@ -22,9 +22,9 @@ const C_DEFL=0.02,C_ZETA=0.6,C_REST=0.5,C_TOPPLE=1.05,C_GREF=9.81;
 // Landing legs (vehicle session, Q31): a deployed leg is one point, at its foot; a stowed one lies on the skin and is none.
 // The lowest point counts the feet too, so with legs down (their feet a metre below the rims) the stack stands on its feet.
 const legFoot=p=>{const a=p.phi||0;return[p.pos[0]+p.d.reach*Math.cos(a),p.y0-p.d.drop,p.pos[2]+p.d.reach*Math.sin(a)]};
-function footPoints(s){const key=s.parts.map(p=>p.on?(p.dep?2:1):0).join('');if(s.foot&&s.foot.key===key)return s.foot.pts;
-  let yb=Infinity;for(const p of s.parts)if(p.on&&(p.d.kind!=='leg'||p.dep))yb=Math.min(yb,p.d.kind==='leg'?legFoot(p)[1]:p.y0);const pts=[];
-  for(const p of s.parts){if(!p.on)continue;if(p.d.kind==='leg'){if(p.dep){const f=legFoot(p);if(f[1]<=yb+0.5)pts.push({p,pt:f})}continue}
+function footPoints(s){const key=s.parts.map(p=>p.on?(depOut(p)?2:1):0).join('');if(s.foot&&s.foot.key===key)return s.foot.pts;
+  let yb=Infinity;for(const p of s.parts)if(p.on&&(p.d.kind!=='leg'||depOut(p)))yb=Math.min(yb,p.d.kind==='leg'?legFoot(p)[1]:p.y0);const pts=[];
+  for(const p of s.parts){if(!p.on)continue;if(p.d.kind==='leg'){if(depOut(p)){const f=legFoot(p);if(f[1]<=yb+0.5)pts.push({p,pt:f})}continue}
     if(p.y0>yb+0.5)continue;const r=Math.max(p.d.r*0.95,0.05);
     for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;pts.push({p,pt:[p.pos[0]+r*Math.cos(a),p.y0,p.pos[2]+r*Math.sin(a)]})}}
   s.foot={key,pts:pts.slice(0,32)};return s.foot.pts}
@@ -49,6 +49,14 @@ function landStance(s,g,nev){const on0=s.parts.map(p=>p.on),fu0=s.parts.map(p=>p
 // a lost vessel keeps its cause (Q264): s.lossWhy, a clause for the Debrief's outcome and the message that stays on screen
 function lose(s,why,boom){s.alive=false;s.lossWhy=why;if(boom)HOOK.boom(s.body,s.r,simT,boom);logEv('loss',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
 // legs down (op 'down') or up ('up'): instant for now (the look beat can animate the swing); returns how many moved
+// how far a folding part is out (moved from app/gl.js, vehicle Q457): it starts out or back when wingOp / legOp / agFire stamp
+// p.depT, and follows in sim time (a wing 4 s, a boom antenna 3 s, a leg 1.6 s); no stamp (the Assembly, a load): at once.
+// 0 stowed … 1 out. What a part does once out (a wing's power, a dish's gain, a leg's foot) waits for depOut; the air tears
+// at it while any of it is out (depF > 0)
+const DEP_S={wing:4,ant:3,leg:1.6};
+function depF(p){const on=!!p.dep;if(p.depT==null)return on?1:0;const T=p.d.kind==='leg'?DEP_S.leg:p.d.wing?DEP_S.wing:DEP_S.ant,f=clamp((simT-p.depT)/T,0,1);return on?f:1-f}
+// (depF end)
+const depOut=p=>depF(p)>=1;
 function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;p.depT=simT;n++}
   if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
 const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);

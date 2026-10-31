@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2073,3 +2073,15 @@ down), or "it came in side-on and" when the axis is more than 60° off the veloc
 engine bell hit Selene at 150 m/s". The Debrief and the robot's `loss` row carry their own text; nothing parses it.
 **Checks:** `vehicle-38` (engine first, nose first, side-on), written, **not yet run** (Caio playtesting; no memory).
 Held on branch `vehicle`, not on `main`, until the joint test.
+
+## v1.248 — a folding part counts as out only once it is out (2026-10-31, vehicle session, QUEUE Q457)
+
+Since v1.219 (Q411) wings, boom antennas and legs draw their move over 1.6–4 s of sim time (`depF`), but the sim read
+`p.dep`, the switch, at once. `DEP_S` and `depF` move from app/gl.js into sim/flight.js (the drawing still uses them),
+with `depOut(p)` (fully out). **Solar wing power** (`powSun`) and **a folding antenna's gain** (space.js `linkOf`) wait
+for `depOut`; **the legs' feet** (`footPoints`, and its cache key) too; **the tear-off in thick air** (`qMax`, power.js)
+now catches any of it out (`depF > 0`), so a wing being folded at speed still tears. Commands and checks keep `p.dep`
+(the intent): `legsDown`, `wingsOut`, `autoLegs`, `agOut`, `standSpeed`, the Rollout's "deployed at launch". Registered
+satellites' shapes have no part definition and keep `dep`. tests/look.mjs's depF check now reads the sim's copy (its end
+marker `// (depF end)`). **No check run yet** (Caio playtesting): `--smoke`, look's depF test, vehicle's legs and power.
+Held on branch `vehicle`.
