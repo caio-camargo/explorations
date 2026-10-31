@@ -113,7 +113,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453)
 - v1.225 — earthshine on a lander at Selene's night; a view of clouds in front of Selene (2026-10-14, sky & bodies, QUEUE Q428, Q429)
 - v1.242 — Selene without the flashing grain: crater octaves and near detail filtered by the footprint (2026-10-30, sky & bodies, QUEUE Q493, PLAYTEST #128)
-- v1.243 — Selene up close isn't plain grey: mottled regolith and boulders with long shadows (2026-10-31, sky & bodies, QUEUE Q324, PLAYTEST #143)
+- v1.248 — Selene up close isn't plain grey: mottled regolith and boulders with long shadows (2026-10-31, sky & bodies, QUEUE Q324, PLAYTEST #143)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -330,6 +330,10 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.239 — the ◇ through the coast and the burn: BURN IN countdown on the horizon, then a burn to orbit (2026-10-30, flow session 2, QUEUE Q485, PLAYTEST #121)
 - v1.240 — Easy / Normal / Hard: the charter's Article 3 and Settings; Easy's engines and air, Hard's no-margin budget and no revert; tapes, studies and records keep their level (2026-10-30, flow session, QUEUE Q476, D25, PLAYTEST #119) → [notes/flow.md](notes/flow.md)
 - v1.241 — the TV Satellite holds together on a hand-flown climb: two fin rings (2026-10-30, vehicle session, QUEUE Q504, PLAYTEST #137) → [notes/vehicle.md](notes/vehicle.md)
+- v1.243 — small satellites: 0.6 and 0.3 m cores, batteries and wheels; the adapter narrows to the payload; the starters rebuilt small (2026-10-31, vehicle session, QUEUE Q505, PLAYTEST #138) → [notes/vehicle.md](notes/vehicle.md)
+- v1.244 — the payload bench lists a satellite's parts only (2026-10-31, vehicle session, QUEUE Q506, PLAYTEST #139) → [notes/vehicle.md](notes/vehicle.md)
+- v1.245 — opening the Assembly leaves a preset a preset (its name, its tape): the panel reads the design without converting it (2026-10-31, vehicle session, QUEUE Q498, PLAYTEST #132) → [notes/vehicle.md](notes/vehicle.md)
+- v1.246 — hide the payload fairing while building: V or a button, and by itself while a part is held (2026-10-31, vehicle session, QUEUE Q512, PLAYTEST #147) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
