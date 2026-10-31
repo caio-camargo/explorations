@@ -2312,11 +2312,11 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **The fix is G3** (GROUND.md § G3, world): the march on Selene (G3.1 the map, G3.2 the bands, G3.3 `selCol`, G3.4
   live with the CPU). BEAUTY B6.6 now points there.
 - **Still open in Q324: PLAYTEST #143** (Caio, filed while this ran): up close Selene is plain grey. The albedo half
-  the moon pass can do before G3: v1.248 below.
+  the moon pass can do before G3: v1.249 below.
 - **Seen on the way:** from 1–3 km the moon pass's finest octave clamps crater walls black and rims white at a low sun
   (the 1.35× slope per octave): QUEUE *Proposed*. Moot once G3 lands.
 
-## v1.248 — Selene up close isn't plain grey (2026-10-31, sky & bodies beat, QUEUE Q324, PLAYTEST #143)
+## v1.249 — Selene up close isn't plain grey (2026-10-31, sky & bodies beat, QUEUE Q324, PLAYTEST #143)
 
 - **Asked:** Caio, PLAYTEST #143: "up close Selene is plain grey, no texture": albedo by terrain, regolith, rocks and
   small craters growing in as you descend, relief readable under a low sun. The relief is GROUND G3 (§ Q324 above);
