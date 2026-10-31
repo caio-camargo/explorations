@@ -334,6 +334,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.244 — the payload bench lists a satellite's parts only (2026-10-31, vehicle session, QUEUE Q506, PLAYTEST #139) → [notes/vehicle.md](notes/vehicle.md)
 - v1.245 — opening the Assembly leaves a preset a preset (its name, its tape): the panel reads the design without converting it (2026-10-31, vehicle session, QUEUE Q498, PLAYTEST #132) → [notes/vehicle.md](notes/vehicle.md)
 - v1.246 — hide the payload fairing while building: V or a button, and by itself while a part is held (2026-10-31, vehicle session, QUEUE Q512, PLAYTEST #147) → [notes/vehicle.md](notes/vehicle.md)
+- v1.250 — the ◇ keeps q·α under 36 kPa·° from Mach 3: the Passenger Orbiter stops flipping at staging (2026-10-31, flow session, QUEUE Q482, PLAYTEST #120) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
