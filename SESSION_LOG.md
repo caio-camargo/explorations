@@ -6669,3 +6669,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** sim/flight.js, app/cockpit.js, app/render.js, test.mjs (export), tests/flow.mjs, notes/flow.md (1.0.11),
   NOTES.md, TESTING (330), QUEUE (Q483 ✓, a Proposed line), ACTIVE_WORK.
 - **Next:** a full smoke on a quiet machine; Caio: TESTING 319, 329, 330.
+
+## 2026-10-31 — flow session 2: Q497, a crash on Selene gets landing-burn advice (v1.254; PLAYTEST #133)
+
+- **What:** `debFail` records `air` where it went wrong; `debHelp(k, why, air)` answers a hit without air with a landing burn
+  started high, legs down, and drops the heat shield / nose cone line. Old records read as before.
+- **Checks:** flow-42; all flow sections and platform-3 pass. No GPU look (text only). **Full smoke not run** (memory).
+- **Files:** sim/debrief.js, tests/flow.mjs, notes/flow.md (1.0.12), NOTES.md, TESTING (331), PLAYTEST (#133), QUEUE (Q497 ✓),
+  ACTIVE_WORK.
+- **Next for flow:** Q513 (P1, contracts in the Assembly and in flight; plan with Q345). Caio: TESTING 319, 329, 330, 331.
