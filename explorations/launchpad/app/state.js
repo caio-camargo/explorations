@@ -195,7 +195,9 @@ function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pending
   else if(v.kind==='near')HOOK.news(`${stg} lands ${(v.dist/1000-v.city.rad/1000).toFixed(0)} km outside ${v.city.name}; mayor "would like a word"`,'warn');
   else if(v.kind==='sea')HOOK.news(`${stg} splashes down safely at sea`,'ok');
   else if(v.kind==='land')HOOK.news(`${stg} lands in open country, ${(v.dist/1000).toFixed(0)} km from ${v.city.name}`,'ok')}}
+const revertOK=()=>!(S&&S.rec&&(S.rec.noRevert||S.rec.launched&&!S.rec.sim&&!lvl().revert));   // Hard (Q476): a flight that lifted off is flown to its end; the simulator still resets
 function revertFlight(){if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}
+  if(!revertOK()){HOOK.msg('No revert on Hard: end the flight (Enter) for its debrief');return}
   if(S)missionDiscard(S);resetShip();HOOK.save();go('flight');HOOK.msg('Reverted to launch')}   // the flight is discarded, not settled (Q257)
 // the tape of the flight in progress: the autopilot's played part while it flies, else the pilot's (Q275, the recorder)
 const recTapeNow=()=>player?tapeCut(player):recTape;

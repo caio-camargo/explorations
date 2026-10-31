@@ -1305,3 +1305,33 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   101 × 109 km with 427 m/s left, the procedure's own 425; the wiring); flow-34 reads only the climb phase. TESTING row 319.
   On the GPU (headless Chrome, `?tester`, v1.237's Orbiter flown on the guide with Stability): the three messages, the heading line,
   and the orbit as in the test; the coast text was shortened to two lines (`◇` and its words in one unbroken piece).
+
+## v1.240 — Easy / Normal / Hard (2026-10-30, flow session, QUEUE Q476; DECISIONS D25, PLAYTEST #119 slice 3)
+- **Now:** `LEVELS` and `lvl()` / `lvlKey()` (sim/core.js) are the three rows; the career keeps its level in `PROG.lvl`
+  (absent = Normal, so every save from before plays as it did). Picked on the charter's **Article 3 · How hard?** (title
+  screen, a new program; the signed charter shows it ticked) and changeable in **Settings → Difficulty** off a flight
+  (`setLevel`, app/settings.js: a news line once the career has flown, and the Assembly's budget redrawn). A flight flies the
+  level it lifted off with: Settings greys the buttons in the flight screen.
+- **Easy:** `engineMdot` divides the flow by 1.15 and every thrust line multiplies the exhaust speed by it (`physStep`, `dvPlan`,
+  `probe`; `skProp`'s station-keeping gas too), so the push is the same and the Δv ×1.15. `aeroPass` takes the body's panels
+  (drag, lift, heating) at ×0.75 of the air; fins and the chute feel the true air, so steering and landings are unchanged.
+  `thermal`'s stagnation readout and `ascentRun`'s drag follow. `igniteOK` never fails. `acceptOffer` sets deadlines at
+  ×1.5 the contract's duration.
+- **Hard:** `pilotMargin` returns 0 (the budget is "flown well" only; v1.237's line reads the same number twice), and
+  `revertOK()` (app/state.js) refuses a revert once a flight has lifted off: R, the hidden HUD button and the Esc menu's
+  item (gone from the menu). A simulator run still resets, and a flight not yet launched still goes back to the pad.
+- **What carries the level:** a tape's `v` is `tapeV()`, TAPE_V plus `:easy` or `:hard` (Normal keeps the bare fingerprint),
+  so an autopilot replays only on its level and the stored tape key splits by level; `studyKey` gains `@easy` / `@hard`; a
+  logbook entry set on Easy or Hard has `lvl`, shown as "· on Easy" after who set it. Saves carry `PROG.lvl`; `resetProgram`
+  keeps it, as it keeps the archetype, so the next charter starts on the last choice.
+- **Tapes:** `physStep`, `aeroPass` and `thermal` changed text, so TAPE_V's fingerprint moved: tapes saved before v1.240 replay
+  as stale on every level (procedures survive). On Normal the numbers are bit-identical (×1 everywhere).
+- **Measured** (`study_pilot.mjs Orbiter -l=easy`, a new `-l=` flag; the Orbiter as on `main` before #121's tank): Normal
+  4,894 m/s, the script spends 4,390, 425 spare; **Easy 5,628, the script 4,337, 1,213 spare**. The typical pilot +93 → +111
+  and fits easily; the late kick (`srflate`) ran dry 96 m/s short on Normal and reaches orbit on Easy (+573). **Negative:**
+  turning flat by 36 km (`shallow`) still burns the pod up on Easy (1,250 K at 39 km, 109×39 km): the extra push makes the
+  flat climb faster low in the air, which outruns ×0.75 heating. Easy doesn't forgive the heat cliff; Q483's warning does.
+- **Checks:** test `flow-38` (Δv ×1.15 on Easy and = Normal on Hard; a step's propellant ×1/1.15 at the same thrust; the
+  body's aero ×0.75 exactly; the margin 150 / 0; 0 ignition failures in 200 rolls on Easy against 9 on Normal; deadlines
+  ×1.5; tape, study and record tagged; the wiring). TESTING row 320.
+

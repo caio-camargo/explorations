@@ -40,7 +40,7 @@ function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)
 function logNote(s,id,v,by){const F=LOGF.find(f=>f.id===id),L=(PROG.log=PROG.log||{}),cur=L[id],K=x=>F.key?F.key(x):x;
   if(s&&s.rec&&!(s.rec.dv>=1))return;   // a vessel that spent no Δv was placed, not flown: it measures nothing
   if(cur){if(F.best==='first')return;if(F.best==='min'&&!(K(v)<K(cur.v)-0.5))return;if(F.best==='max'&&!(K(v)>K(cur.v)*1.001+(K(v)>100?1:0.01)))return}
-  const e={v,day:PROG.day,flight:PROG.flights+1,by:by||designName(s.stack),hist:cur?[...(cur.hist||[]),cur.v].slice(-3):[]};
+  const e={v,day:PROG.day,flight:PROG.flights+1,by:by||designName(s.stack),hist:cur?[...(cur.hist||[]),cur.v].slice(-3):[]};if(lvlKey()!=='normal')e.lvl=lvlKey();   // (Q476) set on Easy or Hard
   if(F.design&&s)e.stack=JSON.parse(JSON.stringify(s.stack));L[id]=e;if(s&&s.rec)s.rec.newLog.push(id);
   if(F.best!=='max'||!cur)HOOK.news(cur?`Logbook: new best ${F.label.toLowerCase()}, ${F.fmt(v)} (was ${F.fmt(cur.v)})`:`Logbook: first measured ${F.label.toLowerCase()}, ${F.fmt(v)}`,'ok');HOOK.save()}
 // Tools unlock with knowledge: the program can only compute what it has measured. Impact prediction needs one flight's

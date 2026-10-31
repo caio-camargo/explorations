@@ -767,7 +767,7 @@
 // drawMoons) shades it on top (blend DST_ALPHA, ONE), with every crater and fbm octave faded by the pixel's footprint, the
 // relief's slope taken over the footprint, lunar-Lambert photometry, an opposition surge and earthshine. Nyx shares it.
 // Views 164–168 look at it. The fade is checked numerically: from low Tellus orbit (a 13 px disc) no crater octave is left.
-// (Q493, v1.240: the fade moved from w·f .25 → .6 to .06 → .2, see aerofx-48)
+// (Q493, v1.241: the fade moved from w·f .25 → .6 to .06 → .2, see aerofx-48)
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   const sky = pg.slice(pg.indexOf('const SKY_FS='), pg.indexOf('const SKY_FS=') + pg.slice(pg.indexOf('const SKY_FS=')).indexOf('}`;'));

@@ -2260,7 +2260,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   street grid (Kaos Beach, 34,000 people, 15 km away; its glow reaches well past the 3.5 km radius `CITIES` gives it).
   Filed (Proposed).
 
-## v1.240 — Selene without the flashing grain (2026-10-30, sky & bodies beat, QUEUE Q493, PLAYTEST #128)
+## v1.241 — Selene without the flashing grain (2026-10-30, sky & bodies beat, QUEUE Q493, PLAYTEST #128)
 
 - **Asked:** Caio, PLAYTEST #128: "Selene's surface has a weird flashing grain".
 - **How it was found:** a harness (scratchpad, not kept) renders a view, moves the ship (and so the camera) a fraction
@@ -2293,7 +2293,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   horizon at the lander (views 112–113). The cap is now .005: dark dots there 34 → 30, the floor with craters off 29.5
   (.02 gave 32). Selene's position is the same in the sky pass and the moon pass (`moonPos` = `bodyPos`), so the two
   passes' limbs agree; it wasn't that.
-- **Test:** `aerofx-48`. TESTING 320.
+- **Test:** `aerofx-48`. TESTING 321.
 
 ## Q324 — why Selene's ground at the lander is a flat plane (2026-10-30, sky & bodies beat, BEAUTY B6.6; no version)
 
@@ -2311,5 +2311,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   `output/launchpad/beauty/Q324/` (`113-lander-flat`, `113-rejected-7oct-shading-only`, the same pair from 1.5 km).
 - **The fix is G3** (GROUND.md § G3, world): the march on Selene (G3.1 the map, G3.2 the bands, G3.3 `selCol`, G3.4
   live with the CPU). BEAUTY B6.6 now points there.
+- **Still open in Q324: PLAYTEST #143** (Caio, filed while this ran): up close Selene is plain grey. The albedo half
+  (mare and highland, regolith and small fresh craters growing in as you descend) the moon pass can do before G3; next.
 - **Seen on the way:** from 1–3 km the moon pass's finest octave clamps crater walls black and rims white at a low sun
   (the 1.35× slope per octave): QUEUE *Proposed*. Moot once G3 lands.

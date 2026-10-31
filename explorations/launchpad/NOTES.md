@@ -112,7 +112,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.221 — no far ground drawn in the sky: the night horizon's black lines (2026-10-13, sky & bodies, QUEUE Q445, PLAYTEST #117; Q419)
 - v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453)
 - v1.225 — earthshine on a lander at Selene's night; a view of clouds in front of Selene (2026-10-14, sky & bodies, QUEUE Q428, Q429)
-- v1.240 — Selene without the flashing grain: crater octaves and near detail filtered by the footprint (2026-10-30, sky & bodies, QUEUE Q493, PLAYTEST #128)
+- v1.241 — Selene without the flashing grain: crater octaves and near detail filtered by the footprint (2026-10-30, sky & bodies, QUEUE Q493, PLAYTEST #128)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -327,6 +327,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.237 — the pilot's margin: the Assembly says Δv to orbit flown well and by hand; the Rollout reads Tight below it (2026-10-30, vehicle session, QUEUE Q475, PLAYTEST #119) → [notes/vehicle.md](notes/vehicle.md)
 - v1.238 — the Orbiter's upper stage carries a Tank 1 t more: ~794 m/s left in orbit, not ~425 (2026-10-30, vehicle session, QUEUE Q486, PLAYTEST #121) → [notes/vehicle.md](notes/vehicle.md)
 - v1.239 — the ◇ through the coast and the burn: BURN IN countdown on the horizon, then a burn to orbit (2026-10-30, flow session 2, QUEUE Q485, PLAYTEST #121)
+- v1.240 — Easy / Normal / Hard: the charter's Article 3 and Settings; Easy's engines and air, Hard's no-margin budget and no revert; tapes, studies and records keep their level (2026-10-30, flow session, QUEUE Q476, D25, PLAYTEST #119) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

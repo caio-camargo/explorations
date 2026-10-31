@@ -917,7 +917,7 @@ function tiltStep(q,T1){const B=orbBody(q),o=ORB_T0;ORB_T0=0;let r=q.r,v=q.v,t=q
   ORB_T0=o;Object.assign(q,{r,v,epoch:t})}
 // what it can burn: tank fuel through its best engine (vacuum Isp), then RCS gas through its thrusters
 const SK_GAS_ISP=PARTS.rcs.isp;
-function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV);if(d.kind==='rcs')rcs=true}
+function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV*lvl().isp);if(d.kind==='rcs')rcs=true}
   return[isp&&{k:'fuel',isp},rcs&&{k:'gas',isp:SK_GAS_ISP}].filter(Boolean)}
 // tonnes (entries keep their mass in kg; tanks hold tonnes)
 const skMass=q=>((q.mass||0)+(q.attached||[]).reduce((a,x)=>a+(x.e.mass||0),0))/1000,skAmt=(q,k)=>(q.shape||[]).reduce((a,o)=>a+(o.res&&o.res[k]||0),0);
