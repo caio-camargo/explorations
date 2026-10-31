@@ -116,13 +116,13 @@ function fly(preset, { turnStart = 1000 * AS, turnEnd = 45000 * AS, target = (AT
   const lift = api.probe(api.newShip(P.Lunar), { thr: 1 }).worst;
   check('liftoff loads well inside limits', lift.frac < 0.5, `Lunar worst joint ${(lift.frac * 100).toFixed(0)}% (${lift.kind})`);
 
-  function flySAS(stack, { yank = null } = {}) {
+  function flySAS(stack, { yank = null, kick = 8 } = {}) {   // kick: when W is tapped (s); the window differs per rocket (Q474)
     api.t = 0; const s = api.newShip(stack); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
     s.throttle = 1; api.stage(s); let maxLoad = 0, maxQ = 0, yankLoad = 0;
     while (api.t < 600 && s.alive) {
-      api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0;
+      api.INP.pitch = (api.t >= kick && api.t < kick + 0.8) ? 1 : 0;
       if (yank && s.qdyn > 15000 && !yank.done) { yank.t0 = yank.t0 ?? api.t; api.INP.pitch = 1; if (api.t > yank.t0 + yank.dur) yank.done = true; }
-      if (api.t > 9.8) s.sasMode = 'pro';
+      if (api.t > kick + 1.8) s.sasMode = 'pro';
       const el = elements(s.r, s.v, TELLUS.mu); if (el.ap - TELLUS.R > (ATM + 10000)) s.throttle = 0;
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s);
       api.physStep(s, api.DT); maxLoad = Math.max(maxLoad, s.maxLoad); maxQ = Math.max(maxQ, s.qdyn);
@@ -132,7 +132,7 @@ function fly(preset, { turnStart = 1000 * AS, turnEnd = 45000 * AS, target = (AT
     api.INP.pitch = 0;
     return { ok: s.alive && len(s.r) - TELLUS.R > ATM, maxLoad, maxQ, yankLoad, broke: msgs.find(m => /Structural/.test(m)) };
   }
-  for (const k of ['Orbiter', 'Lunar']) { const r = flySAS(P[k]);
+  for (const k of ['Orbiter', 'Lunar']) { const r = flySAS(P[k], { kick: k === 'Orbiter' ? 9 : 8 });   // the Orbiter's +Tank 1 t (PLAYTEST #121) lifts off slower: 8 s turns it flat into the heat
     check(`${k}: W-tap + prograde hold reaches space intact`, r.ok && !r.broke, `max q ${(r.maxQ / 1000).toFixed(1)} kPa, worst joint ${(r.maxLoad * 100).toFixed(0)}%`); }
   const y = flySAS(P.Lunar, { yank: { dur: 4 } });
   // it snapped at exactly 100 % while the gimbal was an instant torque; a real nozzle (slew, sea-level thrust) takes ~10 % off
@@ -250,7 +250,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.t = 0; let s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.HOOK.msg = () => {}; const T = api.tapeNew(api.PRESETS.Orbiter);
   s.throttle = 1; api.tapeStage(T, s); let phase = 'asc', frames = 0;
   while (api.t < 3000 && s.alive && phase !== 'done') { frames++;
-    api.INP.pitch = (api.t >= 8 && api.t < 9.2) ? 1 : 0; if (api.t > 10.2 && s.sasMode !== 'pro') s.sasMode = 'pro';   // kick retuned for the bigger planet, then for SAS's exact prograde tracking (control session)
+    api.INP.pitch = (api.t >= 9 && api.t < 9.8) ? 1 : 0; if (api.t > 10.8 && s.sasMode !== 'pro') s.sasMode = 'pro';   // kick retuned for the bigger planet, then for SAS's exact prograde tracking (control session), then for the Orbiter's +Tank 1 t (PLAYTEST #121)
     const el = elements(s.r, s.v, mu), h = len(s.r) - R;
     if (phase === 'asc' && el.ap - R > (ATM + 10000)) { s.throttle = 0; phase = 'coast'; }
     if (phase === 'coast' && h > ATM && api.timeToNu(el, Math.PI) < 20) { s.throttle = 1; phase = 'circ'; }
@@ -282,7 +282,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('re-entry: with a heat shield the Selene return lands, using about half the ablator', lunS.landed && lunS.hot < 0.5 && lunS.abl > 0.2 && lunS.abl < 0.8,
     `pod peaks at ${(lunS.hot * 100).toFixed(0)}%, ${(lunS.abl * 100).toFixed(0)}% ablator left`);
   const asc = k => { api.t = 0; const s = api.newShip(api.PRESETS[k]); api.S = s; api.HOOK.msg = () => {}; s.throttle = 1; api.stage(s); let mx = 0;
-    while (api.t < 300 && s.alive) { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, mu); if (el.ap - R > (ATM + 10000)) s.throttle = 0;
+    const kk = k === 'Orbiter' ? 9 : 8;   // the Orbiter's +Tank 1 t (PLAYTEST #121) needs a later kick
+    while (api.t < 300 && s.alive) { api.INP.pitch = (api.t >= kk && api.t < kk + 0.8) ? 1 : 0; if (api.t > kk + 1.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, mu); if (el.ap - R > (ATM + 10000)) s.throttle = 0;
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s); api.physStep(s, api.DT);
       for (const p of s.parts) if (p.on) mx = Math.max(mx, p.T / p.d.Tmax); if (len(s.r) - R > ATM && s.throttle === 0) break; }
     api.INP.pitch = 0; return mx; };
@@ -296,7 +297,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const noX = st => J(st).map(e => typeof e === 'string' ? e : { ...e, rad: { ...e.rad, x: false } }), withX = st => J(st).map(e => typeof e === 'string' ? e : { ...e, rad: { ...e.rad, x: true } });
   const t8 = api.newShip(['t8']).parts[0];
   check('resource mass: a full Tank 8 t weighs dry + propellant', Math.abs(api.partMass(t8) - 8) < 1e-9, `${api.partMass(t8)} t (res ${JSON.stringify(t8.res)})`);
-  check('without crossfeed the flow model reproduces the old per-stage numbers', Math.round(tot(P.Orbiter)) === 4894 && Math.round(tot(P.Heavy)) === 5671 && Math.round(tot(P.Lunar)) === 8495,   // Lunar resized for the 2026-10-07 rescale
+  check('without crossfeed the flow model reproduces the old per-stage numbers', Math.round(tot(P.Orbiter)) === 5288 && Math.round(tot(P.Heavy)) === 5671 && Math.round(tot(P.Lunar)) === 8495,   // Lunar resized for the 2026-10-07 rescale; the Orbiter +Tank 1 t (PLAYTEST #121)
     `Orbiter ${tot(P.Orbiter).toFixed(0)}, Heavy ${tot(P.Heavy).toFixed(0)}, Lunar ${tot(P.Lunar).toFixed(0)} m/s`);
   const h0 = tot(P.Heavy), h1 = tot(withX(P.Heavy)), a0 = tot(noX(P.Asparagus)), a1 = tot(P.Asparagus);
   check('crossfeed adds Δv: boosters feed the core and drop before it is touched', h1 > h0 + 200 && a1 > a0 + 500,

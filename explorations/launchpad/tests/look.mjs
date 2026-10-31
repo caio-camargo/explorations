@@ -767,16 +767,17 @@
 // drawMoons) shades it on top (blend DST_ALPHA, ONE), with every crater and fbm octave faded by the pixel's footprint, the
 // relief's slope taken over the footprint, lunar-Lambert photometry, an opposition surge and earthshine. Nyx shares it.
 // Views 164–168 look at it. The fade is checked numerically: from low Tellus orbit (a 13 px disc) no crater octave is left.
+// (Q493, v1.242: the fade moved from w·f .25 → .6 to .06 → .2, see aerofx-48)
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   const sky = pg.slice(pg.indexOf('const SKY_FS='), pg.indexOf('const SKY_FS=') + pg.slice(pg.indexOf('const SKY_FS=')).indexOf('}`;'));
   const mainSky = sky.slice(sky.lastIndexOf('void main(){')), moon = pg.slice(pg.indexOf('const MOON_FS='), pg.indexOf('const PMOON='));
   const out = !/crat\(/.test(mainSky) && /col=ins;vis=1\.;/.test(mainSky) && /o=vec4\(col,vis\);/.test(mainSky);
   const pass = /uSel>0\./.test(moon) && /blendFuncSeparate\(gl\.DST_ALPHA,gl\.ONE,gl\.ZERO,gl\.ONE\)/.test(pg) && /for\(const b of BODIES\)\{if\(!b\.parent\)continue;/.test(pg);
-  const photo = /2\.42e-4\*g\*g/.test(moon) && /\.6\/\(1\.\+/.test(moon) && /es=100\.\*\.35\*/.test(moon) && /smoothstep\(\.25,\.6,w\*f\)/.test(moon) && /fbmF\(/.test(moon);
+  const photo = /2\.42e-4\*g\*g/.test(moon) && /\.6\/\(1\.\+/.test(moon) && /es=100\.\*\.35\*/.test(moon) && /smoothstep\(\.06,\.2,w\*f\)/.test(moon) && /fbmF\(/.test(moon);
   // the footprint in Selene radii from 200 km over Tellus (fov 1 rad, 800 px) and the finest crater octave left
-  const w = (3.844e7 - 1.274e6 - 2e5) * 2 * Math.tan(0.5) / 800 / 3.48e5, left = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w * f < 0.6).length;
-  const w100 = 1e5 * 2 * Math.tan(0.5) / 800 / 3.48e5, left100 = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w100 * f < 0.6).length;
+  const w = (3.844e7 - 1.274e6 - 2e5) * 2 * Math.tan(0.5) / 800 / 3.48e5, left = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w * f < 0.2).length;
+  const w100 = 1e5 * 2 * Math.tan(0.5) / 800 / 3.48e5, left100 = [12.6, 37.8, 113.4, 340.2, 1020.6].filter(f => w100 * f < 0.2).length;
   check('Selene drawn by the moon pass, filtered by footprint, with lunar photometry and earthshine (views 164–168)', out && pass && photo && left === 0 && left100 >= 4 && /if \(n >= 164 && n <= 168\)/.test(vj),
     `out of SKY_FS ${out} · pass ${pass} · photometry ${photo} · crater octaves from low orbit ${left}, from 100 km ${left100}`);
 }
@@ -1032,4 +1033,18 @@
   };
   check('villages and the site\'s town lit at night (lamp pools into gLit, added by the night term)',
     Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
+// aerofx-48. Selene without the flashing grain (look & sound sky & bodies beat, QUEUE Q493, PLAYTEST #128): the moon
+// pass's crater octaves are whole only while their craters are 2 px across or more and gone by ~1 px (w·f .06 → .2), and
+// its near-field detail is detailF, filtered by the footprint; the footprint grows toward the horizon (1/mu down to .005;
+// it stopped at .2 and craters aliased into bright dashes along the horizon at the lander, views 112–113). Sub-pixel
+// crater rims had turned pixels black and flashed as the camera moved (82 dark dots per 10k pixels from 100 km → 20,
+// floor 15; frame-to-frame change 0.71 → 0.21).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const ok = /float mu=max\(dot\(n,V\),0\.\),w=tN\*uPix\/uNR\/max\(mu,\.005\);/.test(pg)
+    && /float k=1\.-smoothstep\(\.06,\.2,w\*f\);if\(k<=0\.\)break;\n vec4 c=cratG\(/.test(pg)
+    && /det=fade>0\.\?detailF\(MB\(d\*tN\)\+uNdet,w\*uNR\):\.5;/.test(pg);
+  check('Selene\'s craters and near detail filtered by the footprint (no flashing grain)', ok, `filtered ${ok}`);
 }

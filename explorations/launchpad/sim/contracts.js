@@ -295,7 +295,7 @@ function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.include
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
-  const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;if(CT[c.type].sel)c.base=CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN();PROG.active.push(c);
+  const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur*lvl().due;if(CT[c.type].sel)c.base=CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN();PROG.active.push(c);
   if(offerRisk(c).now.includes(HOME))sanction(HOME,c.src==='mil'?250:120,c.src==='mil'?`for military work for ${POWERS[c.client].name}`:`under export controls on ${POWERS[c.client].name}`);
   if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*natK()*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
   HOOK.save();return true}

@@ -155,7 +155,9 @@ const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy'
 // radial group beside it: n copies of a side stack (top→bottom), bottoms level with that part's bottom.
 const PRESETS={
   Hopper:['chute','pod','t2','fins','kestrel'],
-  Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
+  // the Orbiter's upper stage carries a Tank 1 t besides its Tank 2 t (vehicle, PLAYTEST #121, 2026-10-30): flown by hand it
+  // ran dry for Caio, the ◇ followed; a scripted ascent now leaves ~794 m/s in orbit, not ~425 (study_pilot.mjs), 57.5M not 55.8M
+  Orbiter:['chute','pod','t2','t1','petrel','dec','t8','fins','kestrel'],
   // the first orbit missions on presets (vehicle session, Q74 / PLAYTEST #24): the Orbiter's launcher with the payload in the
   // pod's place and a reaction wheel to steer it, lighter than the pod. Beeper: an instrument package in orbit (1,550 m/s
   // to spare there). Passenger Orbiter: a biocapsule round the world and home on the upper stage, as the Orbiter's pod comes
@@ -387,7 +389,7 @@ function stageAtoms(auto,keys,sPar,segs,parts,stg,ag=[]){
     // "Booster separation" only when every drop in the stage is radial; core + boosters together is a stage separation
     const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;const f=g.flatMap(a=>a.f||[]);if(f.length)e.fair=f;const gs=g.filter(a=>a.ag).map(a=>a.ag);if(gs.length)e.ag=gs;return e});
   return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.kind==='f'||a.kind==='g'?[]:a.g})))}}
-function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
+function engineMdot(d){return d.thrust/(d.ispV*G0*lvl().isp)}   // t/s at full throttle (Easy's Isp: the same thrust on less flow)
 // a debris-damaged part (v1.210 p.dmg, Q440): an engine keeps 1−dmg of its flow and thrust (same Isp), and from GIM_JAM
 // its gimbal is stuck where it was; a reaction wheel (or a pod's) keeps 1−dmg of its torque and storage; a crew cabin
 // leaks its air (AIR_LEAK, in the mission's air checks)
@@ -461,14 +463,14 @@ function dvPlan(s,pr){
   const segDry=k=>{const T=s.parts.filter((p,i)=>on[i]&&p.seg===k&&p.cap.fuel);return T.length?T.every(p=>fuel[p.i]<=1e-9):!s.parts.some((p,i)=>on[i]&&p.seg===k&&p.d.kind==='engine'&&ign[k]&&gF(grp[i])>1e-9)};
   if(s.evIdx===0&&!engs().length&&s.events[ev]&&s.events[ev].ignite.length&&!s.events[ev].decouple.length)fire();
   let st={dv:0,burn:0,m0:mass(),twr:0,ev},guard=0,first=true;   // ev: events fired when this step starts (Q342)
-  const tw=()=>{const T=[0,0,0];for(const p of engs()){const d=tdirOf(p),f=engineMdot(p.d)*p.d.ispA*G0;T[0]+=f*d[0];T[1]+=f*d[1];T[2]+=f*d[2]}return len(T)/(mass()*G0)};st.twr=tw();
+  const tw=()=>{const T=[0,0,0];for(const p of engs()){const d=tdirOf(p),f=engineMdot(p.d)*p.d.ispA*lvl().isp*G0;T[0]+=f*d[0];T[1]+=f*d[1];T[2]+=f*d[2]}return len(T)/(mass()*G0)};st.twr=tw();
   while(guard++<400){
     const E=engs(),next=s.events[ev],dry=next&&next.decouple.length&&next.decouple.every(segDry);
     if(!E.length||dry){if(!next||next.chute)break;
       if(st.dv>0.5||first){st.m1=mass();out.push(st)}first=false;fire();st={dv:0,burn:0,m0:mass(),twr:0,ev};st.twr=tw();continue}
     // each flow group burns its lowest-rank tier of tanks; the step ends when the first tier empties (proportional draining
     // empties a whole tier at once), so the plan is exact piecewise — no time step
-    const md={},Tv=[0,0,0];let M=0;for(const p of E){const g=grp[p.i],m=engineMdot(p.d),d=tdirOf(p),f=m*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0;md[g]=(md[g]||0)+m;M+=m;Tv[0]+=f*d[0];Tv[1]+=f*d[1];Tv[2]+=f*d[2]}
+    const md={},Tv=[0,0,0];let M=0;for(const p of E){const g=grp[p.i],m=engineMdot(p.d),d=tdirOf(p),f=m*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0;md[g]=(md[g]||0)+m;M+=m;Tv[0]+=f*d[0];Tv[1]+=f*d[1];Tv[2]+=f*d[2]}
     const T=len(Tv);
     let dt=Infinity;for(const g in md){let r=Infinity,tf=0;for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]==g&&fuel[i]>1e-9&&rank[p.seg]<r)r=rank[p.seg]}
       for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]==g&&fuel[i]>1e-9&&rank[p.seg]===r)tf+=fuel[i]}dt=Math.min(dt,tf/md[g])}
@@ -487,9 +489,9 @@ function stageStats(stack){const s=newShip(stack),v=dvPlan(s,0).filter(x=>x.dv>0
 const DV_ORBIT_EST=4500,ORBIT_MISSIONS=['beeper','orbiter','lift1','lift2'];
 // the pilot's margin (vehicle, Q475; PLAYTEST #119, D25; notes/vehicle.md § "Pilot margin"): a hand-flown ascent spends more
 // than a well-flown one, +150 m/s, or +350 when the stage that finishes the climb pushes under 0.3 g (the Lunar class: a
-// weak upper stage can't add the sideways speed in time after a steep climb). Q476's Hard is meant to read 0 here
+// weak upper stage can't add the sideways speed in time after a steep climb). Hard (Q476) has none
 const PILOT_DV=150,PILOT_DV_WEAK=350;
-function pilotMargin(st,need){let c=0;for(const x of st){c+=x.dvV;if(c>=need)return x.twr<0.3?PILOT_DV_WEAK:PILOT_DV}return PILOT_DV}
+function pilotMargin(st,need){if(!lvl().pilot)return 0;let c=0;for(const x of st){c+=x.dvV;if(c>=need)return x.twr<0.3?PILOT_DV_WEAK:PILOT_DV}return PILOT_DV}
 // what the flight it's aimed at needs to orbit (the most demanding aim; aimed nowhere, low orbit), flown well and by hand,
 // against the stages' Δv (vac; air: the first stage at sea level); launchWarnings and the Assembly's budget line read it
 function orbitNeed(stack,aims=flightAims()){const st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
@@ -759,8 +761,8 @@ const SG=1.83e-4;let HEAT_GAIN=1;   // plain Sutton–Graves since the rescale (
 const FIN4=[[1,0],[0,1],[-1,0],[0,-1]];
 const NA=8,CA=[],SA=[];for(let k=0;k<NA;k++){CA.push(Math.cos((k+.5)/NA*6.283185307));SA.push(Math.sin((k+.5)/NA*6.283185307))}
 function addF(p,fx,fy,fz,px,py,pz){const F=p.F,L=p.L;F[0]+=fx;F[1]+=fy;F[2]+=fz;L[0]+=py*fz-pz*fy;L[1]+=pz*fx-px*fz;L[2]+=px*fy-py*fx}
-function aeroPass(s,vb,wb,rho,M,thrusting){
-  const c=s.cm,sp=len(vb);if(sp<0.05)return;
+function aeroPass(s,vb,wb,rho0,M,thrusting){
+  const c=s.cm,sp=len(vb);if(sp<0.05)return;let rho=rho0*lvl().air;   // the body's drag and heating at the level's air (Q476); fins and chute below at the true air
   const cp=cpMax(M)*waveBump(M),fy0=-vb[1]/sp,fromTop=fy0<0;
   const ex=(rmx,rmn,rs)=>rmx<=rs?0:(rmx*rmx-rmn*rmn<1e-9?1:clamp((rmx*rmx-Math.max(rs,rmn)**2)/(rmx*rmx-rmn*rmn),0,1));
   const cbase=(M<0.8?0.12:M<1.2?0.12+0.3*(M-0.8):Math.max(0.08,0.24/M)),multi=AERO_SHADOW&&s.lines.length>1;let nShadow=0;
@@ -780,6 +782,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
         if(fc>1e-6){const rLo=e.y0<e.y1?e.r0:e.r1,rHi=e.y0<e.y1?e.r1:e.r0,dS=Math.PI*(fy<0?rLo*rLo-rHi*rHi:rHi*rHi-rLo*rLo);
           const N=0.5*rho*f2*2*(fc/Math.sqrt(f2))*(Math.abs(fy)/Math.sqrt(f2))*dS*slender;   // q·sin2α·dS
           addF(p,fx/fc*N,0,fz/fc*N,ox,e.ym,oz)}}}}
+  rho=rho0;
   // a fin ring is four plates around its own axis; a radial fin is one plate, its root on the host's skin at angle phi
   for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,one=d.kind==='rfin',rr=one?d.span/2:d.r+d.span/2;
     let j=0;for(const[ax,az]of one?[[Math.cos(p.phi),Math.sin(p.phi)]]:FIN4){const dl=p.fd?p.fd[j]:0;j++;   // a steerable plate's deflection (rad)
@@ -887,7 +890,7 @@ function physStep(s,dt){
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
-  const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle):[];
+  const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0*s.throttle):[];
   // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
   const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
   // free channels (gimbal, fins) unload from 2 %; RCS costs gas, so it only keeps them usable: past 80 % down to 60 %
@@ -945,7 +948,7 @@ function physStep(s,dt){
   s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
   integrateRot(s,qrot(s.q,alB),dt);
   simT+=dt;checkSOI(s);groundCheck(s);
-  thermal(s,dt,rho*sp*sp*sp>0?Math.sqrt(rho/Math.max(s.radius,.3))*sp*sp*sp*SG*HEAT_GAIN:0,rho,sp);
+  thermal(s,dt,rho*sp*sp*sp>0?Math.sqrt(rho*lvl().air/Math.max(s.radius,.3))*sp*sp*sp*SG*HEAT_GAIN:0,rho,sp);
   if(s.alive&&worst.frac>1){const p=worst.p;PROG.cert[p.sf1>=p.sf2?p.sk1:p.sk2]=1;   // a failure is a measurement too
     HOOK.msg(`Structural failure — ${p.d.name} / ${p.parent.d.name} (${worst.kind}, ${(worst.frac*100).toFixed(0)}%)`);
     logEv('structure',`${p.d.name} / ${p.parent.d.name} failed in ${worst.kind} at ${(worst.frac*100).toFixed(0)}% of its strength`);
@@ -976,7 +979,7 @@ function launchSegs(s){const e=s.events[0];return e&&!e.decouple.length?e.ignite
 function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0,segs=null}){   // segs: the segments burning (a later stage's, Q342); default the launch's
   for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}geom(s);
   const pr=Math.exp(-h/TELLUS.H),ls=segs||launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
-  if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p),d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2])}
+  if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0*thr,pt=thrustPt(p),d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2])}
   let Fx=0,Lz=0,fin=0;
   if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];fin=finCols(s,vb,[0,0,0],rho).auth[2];   // pitch about z
     const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());aeroPass(s,vb,[0,0,0],rho,M,T>0);
@@ -1040,7 +1043,10 @@ const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core','batt']);d.root.c.
 // over the capital's longitude: 26 min of coasting in the low orbit, from the Cape, for Kamar
 PAY_STARTERS['TV satellite']=(()=>{const d=toV2(['core','batt','rwheel','octl','sph7','apogee']),o=(function g(n){return n.k==='octl'?n:(n.c||[]).map(g).find(Boolean)})(d.root);
   o.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:2},c:[]});return d})();
-PRESETS['TV Satellite']=(()=>{const d=toV2(['fair','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}]);d.root.fl=4;
+// two fin rings on the core and on each booster (vehicle, Q504, PLAYTEST #137): with one, the fairing up front left it at
+// 0.14 calibers on the pad and −0.05 supersonic, and a step of the hold at ~48 kPa swung it broadside and broke the Tank 8 t /
+// Decoupler joint; now 0.95 / 0.78, every study_pilot profile reaches orbit intact, 115.2M (was 110.7M)
+PRESETS['TV Satellite']=(()=>{const d=toV2(['fair','t2','petrel','dec','t8','fins','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','fins','kestrel']}}]);d.root.fl=4;
   d.root.c.push({k:'pay',pid:null,name:'TV satellite',pd:JSON.parse(JSON.stringify(PAY_STARTERS['TV satellite'])),at:'u',c:[]});return d})();
 // the payload bench's Checks (PROBES § 6.1, D22's form): has power in shadow · can talk home · can turn · balanced · fits the
 // fairing it rides in (when the bench was opened from a rocket carrying it: rocket, the rocket's design, and pid, the block's

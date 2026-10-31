@@ -155,7 +155,8 @@ plumes 4–13 · pad plume 11–23 · ignition 11–13 · vapor 9–15 (side boo
    not repeated (rotated, sized and placed per cell); **opposition surge** (bright, flat at full phase); earthshine
    from Tellus's lit fraction; a harsh terminator. Shrinks `SKY_FS`.
 6. **Selene's ground up close** (v112–113 is a flat plane): GROUND's relief should show; check why the lander scene
-   lacks it (world).
+   lacks it (world). *Answered (Q324, 2026-10-30): GROUND G3 isn't built, so Selene is still the moon pass's sphere;
+   the fix is G3 (notes/look.md § Q324).*
 
 ## 5. Cost table (estimates until measured)
 

@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1281,3 +1281,57 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
 - **Checks:** test `flow-36` (every mode has a distinct mark, paired colours, the SAS holds where the marks are, the wiring);
   `playtest.mjs`'s cockpit probe reads the buttons' `aria-label`. TESTING row 316. Next: Q477 (the HUD as the instrument
   panel) builds on these keys.
+
+## v1.239 — the ◇ through the coast and the burn (2026-10-30, flow session 2, QUEUE Q485; PLAYTEST #121)
+- **The gap:** Caio flew the Orbiter on the ◇ and ran dry short of orbit: "maybe I should have coasted to apoapsis". The ◇
+  vanished once the apoapsis cleared the air and nothing in flight said to cut the engine, coast, and burn level at the top.
+- **Now:** `turnGuide(s)` carries on past the climb and says which phase it's in (`ph`). **climb:** as v1.234, now until the
+  apoapsis is 10 % above the air (110 km on Tellus), so a coast starts with room. **coast:** the marker waits on the horizon
+  along the orbit's way (pitch 0), dashed and without its centre dot; the heading line reads `◇ BURN IN 2m 50s` (the time to
+  the apoapsis less half the burn, `nodeBurnTime` on the dv to a circular orbit there). **burn:** from half the burn before
+  the apoapsis (or once past it), solid, aimed toward a circular orbit right here (the procedure's `circ` aim, robust to a late
+  start), `◇ BURN 240 m/s`; gone once the periapsis is out of the air. Two sticky flags (WeakSets) keep it from flickering:
+  coasting low in the air, drag pulled the apoapsis back under 110 km and the guide flipped climb/coast every few frames
+  (flow-37's first run); a coast stays a coast until the apoapsis is back in the air, a begun burn stays a burn.
+- **The hints** (app/cockpit.js `circHint`, beside `turnHint`, which now speaks only in the climb): once a flight, "The
+  apoapsis is out of the air: X cuts the engine. Coast up to it…", then "Burn now: full throttle (Z) on the ◇…, about N m/s",
+  then "In orbit… X cuts the engine." It stops for good (localStorage `launchpad-hint-circ`) after a hand-flown flight from
+  this browser makes orbit.
+- **Not done:** airless bodies (no air: no climb to teach); a "not enough to circularise" warning (the procedure has one);
+  the Orbiter's own thin tank is vehicle's Q486.
+- **Checks:** test `flow-37` (flown on the guide alone, nose on the ◇, the engine off only while coasting: climb > coast >
+  burn > none; on v1.238's Orbiter (vehicle's bigger upper tank, Q486) the coast from 68.6 km with the apoapsis ≥ 103.6 km,
+  the burn 1.2 s before the apoapsis for a 2.4 s burn, orbit 100 × 104 km with 799 m/s left (vehicle's ~794); before that tank,
+  101 × 109 km with 427 m/s left, the procedure's own 425; the wiring); flow-34 reads only the climb phase. TESTING row 319.
+  On the GPU (headless Chrome, `?tester`, v1.237's Orbiter flown on the guide with Stability): the three messages, the heading line,
+  and the orbit as in the test; the coast text was shortened to two lines (`◇` and its words in one unbroken piece).
+
+## v1.240 — Easy / Normal / Hard (2026-10-30, flow session, QUEUE Q476; DECISIONS D25, PLAYTEST #119 slice 3)
+- **Now:** `LEVELS` and `lvl()` / `lvlKey()` (sim/core.js) are the three rows; the career keeps its level in `PROG.lvl`
+  (absent = Normal, so every save from before plays as it did). Picked on the charter's **Article 3 · How hard?** (title
+  screen, a new program; the signed charter shows it ticked) and changeable in **Settings → Difficulty** off a flight
+  (`setLevel`, app/settings.js: a news line once the career has flown, and the Assembly's budget redrawn). A flight flies the
+  level it lifted off with: Settings greys the buttons in the flight screen.
+- **Easy:** `engineMdot` divides the flow by 1.15 and every thrust line multiplies the exhaust speed by it (`physStep`, `dvPlan`,
+  `probe`; `skProp`'s station-keeping gas too), so the push is the same and the Δv ×1.15. `aeroPass` takes the body's panels
+  (drag, lift, heating) at ×0.75 of the air; fins and the chute feel the true air, so steering and landings are unchanged.
+  `thermal`'s stagnation readout and `ascentRun`'s drag follow. `igniteOK` never fails. `acceptOffer` sets deadlines at
+  ×1.5 the contract's duration.
+- **Hard:** `pilotMargin` returns 0 (the budget is "flown well" only; v1.237's line reads the same number twice), and
+  `revertOK()` (app/state.js) refuses a revert once a flight has lifted off: R, the hidden HUD button and the Esc menu's
+  item (gone from the menu). A simulator run still resets, and a flight not yet launched still goes back to the pad.
+- **What carries the level:** a tape's `v` is `tapeV()`, TAPE_V plus `:easy` or `:hard` (Normal keeps the bare fingerprint),
+  so an autopilot replays only on its level and the stored tape key splits by level; `studyKey` gains `@easy` / `@hard`; a
+  logbook entry set on Easy or Hard has `lvl`, shown as "· on Easy" after who set it. Saves carry `PROG.lvl`; `resetProgram`
+  keeps it, as it keeps the archetype, so the next charter starts on the last choice.
+- **Tapes:** `physStep`, `aeroPass` and `thermal` changed text, so TAPE_V's fingerprint moved: tapes saved before v1.240 replay
+  as stale on every level (procedures survive). On Normal the numbers are bit-identical (×1 everywhere).
+- **Measured** (`study_pilot.mjs Orbiter -l=easy`, a new `-l=` flag; the Orbiter as on `main` before #121's tank): Normal
+  4,894 m/s, the script spends 4,390, 425 spare; **Easy 5,628, the script 4,337, 1,213 spare**. The typical pilot +93 → +111
+  and fits easily; the late kick (`srflate`) ran dry 96 m/s short on Normal and reaches orbit on Easy (+573). **Negative:**
+  turning flat by 36 km (`shallow`) still burns the pod up on Easy (1,250 K at 39 km, 109×39 km): the extra push makes the
+  flat climb faster low in the air, which outruns ×0.75 heating. Easy doesn't forgive the heat cliff; Q483's warning does.
+- **Checks:** test `flow-38` (Δv ×1.15 on Easy and = Normal on Hard; a step's propellant ×1/1.15 at the same thrust; the
+  body's aero ×0.75 exactly; the margin 150 / 0; 0 ignition failures in 200 rolls on Easy against 9 on Normal; deadlines
+  ×1.5; tape, study and record tagged; the wiring). TESTING row 320.
+

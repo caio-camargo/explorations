@@ -611,7 +611,7 @@
   const f = X(S).hlFracs(), c = X(S).hlCls, none = X({ alive: true }).hlFracs();
   const fr = Math.abs(f.heat - 0.7) < 1e-9 && Math.abs(f.load - 0.95) < 1e-9 && f.hp === 'Nose cone' && f.lp === 'Kestrel / Tank 8' && none.heat === 0 && none.load === 0;
   const cls = c(0.3) === '' && c(0.5) === 'warn' && c(0.89) === 'warn' && c(0.9) === 'bad';
-  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();turnHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
+  const wired = H.includes('<div id="hlg"><div class="g" id="gHeat">') && H.includes('<b>H</b>') && H.includes('id="gLoad"') && page.includes('depHint();turnHint();circHint();hlGauges();') && H.includes('#mcau.new{animation') && page.includes("m.classList.add('new')");
   check('flow-29: heat and load you notice: HEAT and LOAD by the navball in every phase (part vs limit, joint vs rating), faint, amber from 50 %, red from 90 %; the master caution blinks on a new reason',
     fr && cls && wired, `fracs ${fr} (${f.heat.toFixed(2)}, ${f.load.toFixed(2)}) · classes ${cls} · wired ${wired}`);
 }
@@ -696,7 +696,8 @@
   const point = (s, p) => { const f = api.localFrame(s.r), r = p / D, Y = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
   const run = (prof) => { api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
     let off = 0, first = null, gone = null, n = 0, pre = null;
-    while (s.alive && n++ < 60000) { const h = len(s.r) - T.R; point(s, prof(h)); const g = api.turnGuide(s);
+    while (s.alive && n++ < 60000) { const h = len(s.r) - T.R; point(s, prof(h)); let g = api.turnGuide(s);
+      if (g && g.ph !== 'climb') g = null;   // flow-37 tests the coast and the burn
       if (g && h > 300) { first = first || { h, p: g.p }; off = Math.max(off, Math.acos(Math.min(1, dot(g.u, api.qrot(s.q, [0, 1, 0])))) * D); pre = g; }
       if (!g && first && dot(s.v, s.r) > 0 && !gone) { gone = { h, ap: elements(s.r, s.v, T.mu).ap - T.R }; break; }
       if (!s.landed && dot(s.v, s.r) < 0) break;
@@ -757,4 +758,75 @@
   const ui = H.includes("b.innerHTML=sasIcon(k);b.className='mk';b.setAttribute('aria-label',n);") && H.includes("if(V.nrm&&sr.w>0){mark(V.nrm,'normal',1.6)") && H.includes('r.marks?sasLegend():r.d') && H.includes('nctx.stroke(mkPath(k))');
   check('flow-36: SAS buttons are the navball\'s marks (one drawing each, distinct, paired colours), the word on hover and in Help; the ball draws normal and radial, where the SAS points',
     every && paths && kin && held && radOut && ui, `${modes.length} modes drawn ${every} · distinct ${paths} · colours ${kin} · SAS = marks ${held} · radial out is up ${radOut} · wired ${ui}`);
+}
+
+// flow-37. The ◇ through the coast and the burn (flow session 2, QUEUE Q485, PLAYTEST #121: "maybe I should have coasted to
+// apoapsis… I ran out of fuel"). Past the climb the guide doesn't vanish: it coasts, dashed on the horizon, then from half the
+// burn before the apoapsis it is a burn toward a circular orbit, until the periapsis is out of the air. Flown by hand on the
+// guide alone (the nose on the ◇, full throttle except while coasting), the Orbiter reaches orbit with propellant left.
+{
+  const T = api.TELLUS;
+  const aim = (s, u) => { const f = api.localFrame(s.r), Y = norm(u), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+  const seen = []; let n = 0, coast = null, burn = null, end = null;
+  while (s.alive && n++ < 200000) { const g = api.turnGuide(s), ph = g ? g.ph : (seen.length ? 'none' : null);
+    if (ph && seen[seen.length - 1] !== ph) seen.push(ph);
+    if (g && g.ph === 'coast' && !coast) coast = { h: len(s.r) - T.R, tAp: g.tAp, tb: g.tb, p: g.p, ap: 1e9 };
+    if (g && g.ph === 'coast') coast.ap = Math.min(coast.ap, elements(s.r, s.v, T.mu).ap - T.R);
+    if (g && g.ph === 'burn' && !burn) burn = { tAp: g.tAp, tb: g.tb, dv: g.dv };
+    if (!g && seen.includes('burn')) { const el = elements(s.r, s.v, T.mu); end = { pe: el.pe - T.R, ap: el.ap - T.R, left: api.dvRemaining(s).tot }; break; }
+    if (g) aim(s, g.u); s.throttle = g && g.ph === 'coast' ? 0 : 1;
+    if (!s.landed && dot(s.v, s.r) < 0 && !g) break;
+    if (s.evIdx < s.events.length && api.activeEngines(s).length === 0 && s.throttle > 0) api.stage(s);
+    api.advPhys(s); }
+  const order = seen.join('>') === 'climb>coast>burn>none';
+  const timely = burn && Math.abs(burn.tAp - burn.tb / 2) < 3;   // the burn starts half its length before the apoapsis
+  const orbit = end && end.pe > T.atm && end.left > 0;
+  const H = html, ui = H.includes("setLineDash(tg.ph==='coast'?[4,3]:[])") && H.includes('function guideTxt(g)') && H.includes('circHint();') && H.includes("g.ph!=='climb'||turnHintN>=2");
+  check('flow-37: the ◇ guides the end of the climb: coast (dashed, on the horizon) to half a burn before the apoapsis, then burn on it until the periapsis is out of the air; flown on it alone, the Orbiter makes orbit',
+    order && coast && Math.abs(coast.p) < 1e-9 && timely && orbit && ui,
+    `phases ${seen.join(' > ')} · coast from ${coast ? `${(coast.h / 1e3).toFixed(1)} km, Ap ≥ ${(coast.ap / 1e3).toFixed(1)}` : '—'} km · burn ${burn ? `${burn.tAp.toFixed(1)} s before Ap (half of ${burn.tb.toFixed(1)} s), ${burn.dv.toFixed(0)} m/s` : 'never'} · ${end ? `orbit ${(end.pe / 1e3).toFixed(0)} × ${(end.ap / 1e3).toFixed(0)} km, ${end.left.toFixed(0)} m/s left` : 'no orbit'} · wired ${ui}`);
+}
+
+// flow-38. Easy / Normal / Hard (flow session, QUEUE Q476, DECISIONS D25; PLAYTEST #119). PROG.lvl picks a row of LEVELS:
+// Easy burns less propellant for the same thrust (Isp ×1.15), the body's air pushes and heats at ×0.75 (fins and chutes at
+// the true air), engines always light and deadlines stretch ×1.5; Hard's budget has no pilot's margin and no revert. Normal
+// is the game as it was. Tapes, studies and logbook records carry their level.
+{
+  const P0 = structuredClone(api.PROG), at = k => { if (k === 'normal') delete api.PROG.lvl; else api.PROG.lvl = k; };
+  const dv = k => { at(k); return api.stageStats(api.PRESETS.Orbiter).stages.map(x => x.dvV); };
+  const dN = dv('normal'), dE = dv('easy'), dH = dv('hard');
+  const isp = dE.every((x, i) => Math.abs(x / dN[i] - 1.15) < 1e-6) && dH.every((x, i) => Math.abs(x - dN[i]) < 1e-9);
+  // one step at full throttle: the same push, less propellant
+  const burn = k => { at(k); const s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.t = 0; s.throttle = 1; api.stage(s);
+    const f0 = s.parts.reduce((a, p) => a + (p.res.fuel || 0), 0); api.physStep(s, api.DT);
+    return { used: f0 - s.parts.reduce((a, p) => a + (p.res.fuel || 0), 0), T: s.thrust }; };
+  const bN = burn('normal'), bE = burn('easy'), flow = bN.used > 0 && Math.abs(bE.used / bN.used - 1 / 1.15) < 1e-6 && Math.abs(bE.T / bN.T - 1) < 1e-9;
+  // the body's air at ×0.75 (the Orbiter without its fins and chute: every aero force left is the body's)
+  const aero = k => { at(k); const s = api.newShip(api.PRESETS.Orbiter); api.geom(s); s.fins = []; s.chute = false; for (const p of s.parts) { p.F = [0, 0, 0]; p.L = [0, 0, 0]; p.Q = 0; }
+    api.aeroPass(s, [30, 600, 0], [0, 0, 0], 0.4, 1.8, false); return s.parts.reduce((a, p) => a + len(p.F), 0); };
+  const aN = aero('normal'), aE = aero('easy'), air = aN > 0 && Math.abs(aE / aN - 0.75) < 1e-9;
+  // the margin: Normal carries the pilot's, Hard none
+  at('normal'); const mN = api.orbitNeed(api.PRESETS.Orbiter, []).margin; at('hard'); const mH = api.orbitNeed(api.PRESETS.Orbiter, []).margin;
+  const margin = mN > 0 && mH === 0;
+  // ignition never fails on Easy: an engine the program has never flown, rolled over many flights
+  const ign = k => { at(k); const s = api.newShip(api.PRESETS.Orbiter); s.rec = api.recNew(); s.rec.khSeen = {}; let fails = 0; const f0 = api.PROG.flights, msg = api.HOOK.msg; api.HOOK.msg = () => {};
+    for (let n = 0; n < 200; n++) { api.PROG.flights = n; if (!api.igniteOK(s, s.parts.find(p => p.d.kind === 'engine').seg)) fails++; } api.HOOK.msg = msg; api.PROG.flights = f0; return fails; };
+  api.PROG.flights = 3; const fN = api.khOn() ? ign('normal') : -1, fE = ign('easy'), noFail = fE === 0 && fN !== 0;
+  // deadlines
+  const due = k => { at(k); api.PROG.offers = null; api.PROG.active = []; api.ensureBoard(); const o = api.PROG.offers[0]; api.acceptOffer(o.id); const c = api.PROG.active.find(x => x.id === o.id); return c ? (c.deadline - api.PROG.day) / o.p.dur : NaN; };
+  const loose = Math.abs(due('easy') - 1.5) < 1e-9 && Math.abs(due('normal') - 1) < 1e-9;
+  // what carries the level
+  at('normal'); const tn = api.tapeNew(api.PRESETS.Orbiter, null).v, sn = api.studyKey(api.newShip(api.PRESETS.Orbiter));
+  at('easy'); const te = api.tapeNew(api.PRESETS.Orbiter, null).v, se = api.studyKey(api.newShip(api.PRESETS.Orbiter));
+  const s = api.newShip(api.PRESETS.Orbiter); s.rec = api.recNew(); s.rec.dv = 100; s.rec.newLog = []; api.PROG.log = {}; const news = api.HOOK.news; api.HOOK.news = () => {};
+  api.logNote(s, 'apex', 5e5); api.HOOK.news = news; const rec = api.PROG.log.apex && api.PROG.log.apex.lvl === 'easy';
+  const carried = tn === api.TAPE_V && te === api.TAPE_V + ':easy' && sn !== se && se.endsWith('@easy') && rec;
+  const H = html.replace(/\r\n/g, '\n');
+  const ui = H.includes('Article 3 · How hard?') && H.includes("if(ds.lvl){setLevel(ds.lvl);renderTitle()}") && H.includes('<h3>Difficulty</h3>')
+    && H.includes("if(!revertOK()){HOOK.msg('No revert on Hard") && H.includes("+(fl?(revertOK()?b('revert'");
+  for (const k of Object.keys(api.PROG)) delete api.PROG[k]; Object.assign(api.PROG, P0);
+  check('flow-38: Easy / Normal / Hard: Easy\'s Isp ×1.15 on the same thrust, body air ×0.75, no ignition failures, deadlines ×1.5; Hard has no pilot\'s margin and no revert; tapes, studies and records carry the level',
+    isp && flow && air && margin && noFail && loose && carried && ui,
+    `Δv ×${(dE[0] / dN[0]).toFixed(3)} (Hard = Normal ${dH.every((x, i) => x === dN[i])}) · a step's propellant ×${(bE.used / bN.used).toFixed(3)}, thrust ×${(bE.T / bN.T).toFixed(3)} · body air ×${(aE / aN).toFixed(3)} · margin Normal ${mN} / Hard ${mH} · ignition fails of 200: Normal ${fN}, Easy ${fE} · deadlines ${loose} · tape/study/record ${carried} · wired ${ui}`);
 }

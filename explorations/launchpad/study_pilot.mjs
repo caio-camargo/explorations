@@ -5,6 +5,7 @@
 // (as handAscent does), except `srfpro`, which flies on the game's own SAS after a kick.
 //   node study_pilot.mjs                  every orbital preset, every profile
 //   node study_pilot.mjs Orbiter Lunar    just those presets   (-v: a line per flight; -p=steep,guide: just those profiles)
+//   -l=easy|hard: fly at that difficulty (flow, Q476: PROG.lvl; Easy's engines and air differ, Hard's don't)
 // Reports per preset: Δv spent to orbit (s.rec.dv), the loss against the script, and Δv left; a flight that runs dry
 // reports what it was short (circular speed at apoapsis minus the speed it had there).   NOTES: notes/qa.md § "Pilot margin"
 import { pageSource } from './page.mjs';
@@ -44,7 +45,7 @@ const PROFILES = [
 ];
 
 function fly(st, o) {
-  o = { ...P0, ...o }; api.PROG.procs = {}; api.PROG.funds = 1e6;
+  o = { ...P0, ...o }; api.PROG.procs = {}; api.PROG.funds = 1e6; if (LVL) api.PROG.lvl = LVL;
   api.t = 0; const s = api.newShip(st); api.S = s; api.advPhys(s); s.sas = false; s.throttle = 1; api.stage(s);
   const dv0 = api.dvRemaining(s).tot; let k = 0, phase = 'up', kicked = false, nextG = 0, horizon = false, runaway = false, burns = 0;
   const point = Y => { const f = api.localFrame(s.r), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
@@ -86,6 +87,7 @@ function fly(st, o) {
     ap: (el.ap - R) / 1e3, pe: (el.pe - R) / 1e3, t: api.t };
 }
 
+const LVL = (process.argv.find(a => a.startsWith('-l=')) || '').slice(3) || null;
 const want = process.argv.slice(2).filter(a => !a.startsWith('-')), V = process.argv.includes('-v'), only = (process.argv.find(a => a.startsWith('-p=')) || '').slice(3).split(',').filter(Boolean);
 const names = Object.keys(api.PRESETS).filter(n => !want.length || want.includes(n)), rows = [];
 for (const n of names) {

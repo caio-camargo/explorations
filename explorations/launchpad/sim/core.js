@@ -110,6 +110,14 @@ const qBody=(b,t)=>qaxis([0,1,0],bodyTheta(b,t));
 // the simulator (economy Q449): a run flies the program's believed world, drawn per run; null outside a run, so real
 // flights and tapes fly the true numbers. SIM.air: each 10 km band of Tellus's air the program hasn't sampled, ±25 %.
 let SIM=null;
+// difficulty (flow, Q476; DECISIONS D25), picked on the charter and kept in PROG.lvl (absent: Normal). Easy pads the
+// physics: engines' Isp ×1.15 (the same thrust on less flow), the air's drag and heating on the body ×0.75 (fins and
+// chutes feel the true air), no ignition failures, contract deadlines ×1.5. Hard takes the pilot's margin out of the Δv
+// budget (Q475) and the revert away. Read at run time only: PROG is declared later
+const LEVELS={easy:{name:'Easy',isp:1.15,air:0.75,fail:false,due:1.5,pilot:true,revert:true,d:'forgiving engines and air, no ignition failures, loose deadlines'},
+  normal:{name:'Normal',isp:1,air:1,fail:true,due:1,pilot:true,revert:true,d:'the game as tuned: budgets carry a hand-flying margin'},
+  hard:{name:'Hard',isp:1,air:1,fail:true,due:1,pilot:false,revert:false,d:'budgets with no margin for a sloppy ascent, and no revert'}};
+const lvlKey=()=>LEVELS[PROG.lvl]?PROG.lvl:'normal',lvl=()=>LEVELS[lvlKey()];
 const density=(b,h)=>b.atm&&h<b.atm?b.rho0*Math.exp(-h/b.H)*(SIM&&b===TELLUS?SIM.air[Math.floor(h/1e4)]??1:1):0;
 const pressure=(b,h)=>b.atm&&h<b.atm?Math.exp(-h/b.H):0;
 const physAlt=b=>b.atm?b.atm:5000;   // below this, coasting is simulated, not on rails

@@ -1267,8 +1267,10 @@ vec4 cratG(vec3 p,float s){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
   vec2 h=crProf(k,d,rim,cx?2.:1.6,cx?.35:0.,Dr>1.4?.5*d:0.,rim*(.1+1.4*(1.-fr)));
   r+=vec4(3.2*h.x,-25.*h.y*(m+e*ua*dot(ua,m))/max(l,1e-6));}return r;}
 // craters at uNoct.w octaves from uNoct.x cells per radius, each uNoct.y finer and uNoct.z as deep; w = the footprint in
-// radii. x = height, yzw = its gradient on the unit sphere
-vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;i++){if(float(i)>=uNoct.w)break;float k=1.-smoothstep(.25,.6,w*f);if(k<=0.)break;
+// radii. x = height, yzw = its gradient on the unit sphere. (Q493, PLAYTEST #128) An octave is whole while its craters
+// are 2 px across or more and gone by ~1 px (w·f .06 → .2; it was .25 → .6, which kept sub-pixel craters at full weight:
+// their rims, steeper each octave (×3 finer, ×.45 deep), turned pixels black and flashed as the camera moved)
+vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;i++){if(float(i)>=uNoct.w)break;float k=1.-smoothstep(.06,.2,w*f);if(k<=0.)break;
  vec4 c=cratG(n*f+float(i)*7.31,uNR/(f*uNdt));s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
@@ -1289,9 +1291,9 @@ void main(){
  vec3 p=d*tN-uNc,n=normalize(p);
  // the body's own frame (it turns: uNrot = cos, sin of its angle)
  #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
- vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.2);
+ vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.005);   // (Q493) the footprint along the view: at .2 craters aliased into dashes toward the horizon
  vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w);
- float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(3000.,150.,tN),det=fade>0.?detail(MB(d*tN)+uNdet):.5;
+ float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(3000.,150.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
  vec3 alb;
  if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
   alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.07*fade*(det-.5))*vec3(1.,.98,.95);}

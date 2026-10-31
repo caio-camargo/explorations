@@ -272,7 +272,7 @@
     api.advPhys(p); cab = Math.max(cab, PR.cabin);
     if (!armed && h < 20e3) { armed = true; while (p.evIdx < p.events.length) api.stage(p); } }
   check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K (the flight record, from liftoff), coming home on the retrograde hold of the first hour (the Gyro autopilot)',
-    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && PR.bio && PR.bioOK && PR.bioOrbits >= 1 && PR.gMax < 8 && cab < 330 && cal >= 0 && gyro.name === 'Gyro autopilot' && gyro.modes.includes('retro') && !gyro.modes.includes('pro') && O.length === 8,
+    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && PR.bio && PR.bioOK && PR.bioOrbits >= 1 && PR.gMax < 8 && cab < 330 && cal >= 0 && gyro.name === 'Gyro autopilot' && gyro.modes.includes('retro') && !gyro.modes.includes('pro') && O.length === 9,
     `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${PR.gMax.toFixed(1)} g, cabin ${cabUp.toFixed(0)} K in orbit, peak ${cab.toFixed(0)} K (${PR.bioOK ? 'passenger fine' : PR.pet + ' ' + PR.bioWhy}), ${PR.bioOrbits.toFixed(2)} orbits, ${p.landed ? 'landed' : 'not landed'}; stability at roll out ${cal.toFixed(2)} calibers`);
 }
 
@@ -281,14 +281,14 @@
 // contract's altitude), and when a crew or a passenger rides with no parachute.
 {
   const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], H = [{ name: 'Satellite to 400 km', alt: 400 }], lv = (st, a) => api.launchWarnings(st, a).map(x => x[0]).join();
-  const log0 = PR.log; PR.log = {}; const est = [lv(P.Beeper, B), lv(P.Orbiter, H), lv(P.Hopper, B), lv(P['Passenger Orbiter'], B)];
+  const log0 = PR.log; PR.log = {}; const est = [lv(P.Beeper, B), lv(P['Passenger Orbiter'], H), lv(P.Hopper, B), lv(P['Passenger Orbiter'], B)];
   // every reading with an empty logbook is taken before log0 is back: earlier sections leave a best orbit in it (5,000 m/s
   // inside --smoke), which reads the Orbiter short of 400 km instead of tight (Q204)
-  const hop = api.launchWarnings(P.Hopper, B), tight = api.launchWarnings(P.Orbiter, H);
+  const hop = api.launchWarnings(P.Hopper, B), tight = api.launchWarnings(P['Passenger Orbiter'], H);   // the Orbiter carries 400 km since PLAYTEST #121
   PR.log = { orbit: { v: 5600 } }; const best = api.launchWarnings(P.Orbiter, B); PR.log = log0;
   const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
   const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
-  check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
+  check('launch warnings: the Beeper is fine for the beeper, the Passenger Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
     est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(hop[0][1]) && /Tight/.test(tight[0][1])
       && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
       && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
@@ -906,11 +906,22 @@
   const orb = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Satellite', 'TV Satellite', 'Heavy', 'Asparagus', 'Lunar', 'Big Lunar', 'Probe', 'Sample Return', 'Crewed Lunar', 'Docking'];
   const N = orb.map(n => [n, api.orbitNeed(P[n], [])]), weak = N.filter(([, o]) => o.margin === 350).map(([n]) => n).sort();
   const short = N.filter(([, o]) => o.air < o.hand).map(([n]) => n), lo = api.orbitNeed(P.Sounding, []);
-  PR.log = { orbit: { v: 4600 } }; const tight = api.launchWarnings(P.Orbiter, B)[0], hl = api.orbitNeed(P.Orbiter, B); PR.log = {};
+  PR.log = { orbit: { v: 5000 } }; const tight = api.launchWarnings(P.Orbiter, B)[0], hl = api.orbitNeed(P.Orbiter, B); PR.log = {};
   const ok = api.launchWarnings(P.Orbiter, B)[0]; PR.log = log0;
   check('vehicle-34 the pilot\'s margin: +150 on one-core and booster rockets, +350 on the Lunar class; enough flown well but not by hand reads Tight; every orbital preset carries it',
     N[0][1].need === 4500 && N[0][1].hand === 4650 && weak.join() === ['Big Lunar', 'Crewed Lunar', 'Lunar', 'Probe', 'Sample Return'].sort().join() && !short.length
-      && !lo.goal && lo.air < lo.need && hl.need === 4600 && hl.hand === 4750 && tight[0] === 'warn' && /^Tight/.test(tight[1]) && /4,750 m\/s by hand/.test(tight[1])
+      && !lo.goal && lo.air < lo.need && hl.need === 5000 && hl.hand === 5150 && tight[0] === 'warn' && /^Tight/.test(tight[1]) && /5,150 m\/s by hand/.test(tight[1])
       && ok[0] === 'ok' && /4,650 m\/s by hand/.test(ok[1]),
     `weak: ${weak.join(', ')}; air − by hand: ${N.map(([n, o]) => `${n} ${Math.round(o.air - o.hand)}`).join(', ')}; "${tight[1]}"`);
+}
+
+// vehicle-35. The TV Satellite holds together on a hand-flown climb (vehicle session, QUEUE Q504, PLAYTEST #137): with one fin
+// ring its fairing left it at 0.14 calibers on the pad and −0.05 supersonic, and a ~11° step of the hold at ~48 kPa swung it
+// broadside and broke the Tank 8 t / Decoupler joint (study_pilot.mjs guide10). Two rings on the core and each booster: stable
+// past half a caliber, as the Satellite (Q439). The flight itself is in notes/vehicle.md § v1.241 (minutes, not a smoke check).
+{
+  const d = api.PRESETS['TV Satellite'], s = api.newShip(d), a = api.analyze(s), cal = r => (r.ycm - r.ycp) / (2 * s.radius), m = Math.min(cal(a.ful), cal(a.sup));
+  const W = api.launchWarnings(d, []).filter(([k, x]) => /unstable|end over end/i.test(x));
+  check('vehicle-35 the TV Satellite is stable through the air (two fin rings): past half a caliber at liftoff and supersonic',
+    m > 0.5 && !W.length, `${cal(a.ful).toFixed(2)} / ${cal(a.sup).toFixed(2)} calibers; ${W.length} stability warnings`);
 }
