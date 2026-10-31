@@ -151,6 +151,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Caio + Claude (look & sound, sky & bodies, `launchpad-sky`) | 2026-10-30 | Launchpad **Q493** (PLAYTEST #128, Selene's flashing grain), then **Q324** (Selene's ground flat at the lander, views 112–113). Branch `sky`, port 8802 | `app/gl.js` (`MOON_FS`, SKY_FS's airless ground), `app/render.js`, `tests/look.mjs` |
 | Caio + Claude (launchpad vehicle session) | 2026-10-30 | Launchpad PLAYTEST **#121** (b): the Orbiter preset +Tank 1 t on its upper stage (Caio ran it dry by hand) | `sim/vessel.js` (PRESETS.Orbiter), `tests/core.mjs` |
 | Caio + Claude (launchpad test bench, machine `Charlinho`, shared with the lanes) | 2026-10-30 | QA lane, **test bench** loop: guard `main` at v1.237 (`--smoke --jobs 1`, `playtest.mjs m1`), then **Q470** (`m2`). No game code; takes `.game-busy` for browser runs | `TESTING.md`, `PLAYTEST.md`, QUEUE item states and *Proposed* lines |
 > Cleared 2026-10-30: vehicle session, **v1.237 Q475** on `main` (pushed): the pilot's margin. **Everyone:** `orbitNeed(stack, aims)` (sim/vessel.js) returns `{vac, air, goal, need, margin, hand, best}`, the Δv to orbit flown well and by hand (`pilotMargin`: +150, +350 when the stage finishing the climb is under 0.3 g); `launchWarnings` and the Assembly's new `orbitLine` read it. **Q476 (Hard):** zero `pilotMargin` there.
