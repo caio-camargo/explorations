@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1396,3 +1396,16 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   it fires with the pod at 55 % and 28 %, and obeyed the Orbiter makes orbit; the wiring); flow-29's harness gets `turnFlat`.
   Every flow section and platform-3 pass; **the full smoke not run** (memory). GPU (headless `shot.mjs`): the red ◇ and its
   chevron at 11 km on a climb flat by 40, the caution's two texts (it blinks for 3 s when it appears). TESTING row 330.
+
+## v1.254 — a crash on Selene gets landing-burn advice (2026-10-31, flow session 2, QUEUE Q497; PLAYTEST #133)
+- **The cause:** `debHelp` (sim/debrief.js) answered any "hit" with "a parachute opened low and slow, or a landing burn",
+  whatever the body.
+- **Now:** `debFail` records `air` (whether the body where it went wrong has any), and the Debrief passes the first
+  failure's to `debHelp(k, why, air)` (the craft's body when nothing was recorded). Without air a hit reads "Come down
+  slower: with no air, only a landing burn does it. Start it high enough to kill the speed before the ground (the stage
+  needs about the speed you fall at), legs down."; the heat line (heat shield, nose cone) is dropped. Records saved before
+  this have no `air` and read as before.
+- **Not done:** whether the landing stage had the Δv (PLAYTEST #133's aside, with v1.252's Δv card): the Debrief has no
+  stage plan at the loss.
+- **Checks:** test `flow-42` (Selene's line, Tellus's unchanged, no heat line without air, the wiring); all flow sections and
+  platform-3 pass. No GPU look (text only). TESTING row 331.

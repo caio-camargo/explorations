@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-31
+**Version**: v2.0.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-31
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -338,6 +338,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.250 — the ◇ keeps q·α under 36 kPa·° from Mach 3: the Passenger Orbiter stops flipping at staging (2026-10-31, flow session, QUEUE Q482, PLAYTEST #120) → [notes/flow.md](notes/flow.md)
 - v1.252 — the stage's Δv in flight (a Δv card: this stage here and in vacuum, its burn, the stages after, the burn to orbit); the SAS tooltips cut to half (2026-10-31, flow session 2, QUEUE Q495, Q492, PLAYTEST #130)
 - v1.253 — warn before the turn goes flat into the heat: a master caution and a red ◇ when the climb runs under the profile or levels off in the air (2026-10-31, flow session 2, QUEUE Q483, PLAYTEST #119)
+- v1.254 — a crash on Selene gets landing-burn advice, not a parachute (2026-10-31, flow session 2, QUEUE Q497, PLAYTEST #133)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

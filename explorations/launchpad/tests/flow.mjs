@@ -919,3 +919,17 @@
     quiet && early && ui,
     Object.entries(R).map(([k, r]) => `${k}: ${r.out}, ${r.w ? `${r.w.why} at ${(r.w.h / 1e3).toFixed(0)} km, pod ${(r.w.heat * 100).toFixed(0)} %` : 'quiet'} (peak ${(r.peak * 100).toFixed(0)} %)`).join(' · ') + ` · wired ${ui}`);
 }
+
+// flow-42. A crash on Selene gets landing-burn advice, not a parachute (flow session 2, QUEUE Q497, PLAYTEST #133). debFail
+// notes whether there was air where it went wrong; debHelp answers a hit there with a landing burn started high enough, legs
+// down, and drops the air-only lines (heat shield, nose cone).
+{
+  const sel = { rec: { launched: true }, r: [0, 1738e3 + 5, 0], body: { R: 1738e3, atm: 0, name: 'Selene' } };
+  api.debFail(sel, 'hit', 'hit Selene at 38 m/s'); const rec = sel.rec.fails[0];
+  const noAir = api.debHelp(null, 'hit Selene at 38 m/s', rec.air), air = api.debHelp(null, 'hit Tellus at 38 m/s');
+  const ok = rec.air === false && /landing burn/.test(noAir) && !/parachute opened/.test(noAir) && /legs/.test(noAir) && /parachute/.test(air)
+    && api.debHelp('heat', 'burned up', false) === '' && /heat shield/.test(api.debHelp('heat', 'burned up'));
+  const wired = html.includes('F.length&&F[0].air!=null?F[0].air:!!s.body.atm)');
+  check('flow-42: a crash on an airless body is told to burn for the landing (start high, legs down), not to open a parachute; no heat shield advice there',
+    ok && wired, `Selene: "${noAir}" · Tellus: "${air}" · wired ${wired}`);
+}
