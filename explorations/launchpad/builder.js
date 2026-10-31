@@ -38,6 +38,9 @@ const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.i
 function design(){
   if(!isV2(stackDef)){if(isEmpty(stackDef))stackDef={v:2,root:null};else{const r=S.parts.map(p=>p.dn).find(n=>!n.at);stackDef={v:2,root:r}}}
   ensureIds(stackDef);return stackDef}
+// the design to read without making it one (Q498, PLAYTEST #132): a preset's nodes as the ship was assembled from them, the
+// array left alone, so drawing the panel doesn't turn a preset into a custom design (its name, its tape); design() in edit()s
+function dView(){return isV2(stackDef)?stackDef:isEmpty(stackDef)?{v:2,root:null}:{v:2,root:S.parts.map(p=>p.dn).find(n=>!n.at)}}
 // every node gets a small id, unique in the design: a custom staging order refers to decouplers by it
 function ensureIds(D){const all=nodes(D.root);let m=0;const seen=new Set();for(const n of all)if(n.id!=null){if(seen.has(n.id))delete n.id;else{seen.add(n.id);m=Math.max(m,n.id)}}
   for(const n of all)if(n.id==null)n.id=++m}
@@ -454,8 +457,8 @@ function panel(){
     btn(t4,'retract all',!dn.some(n=>n.dep),()=>all(false),'everything stowed for launch')}
   if(!isEmpty(stackDef))staging(box);
   const n=st.sel;const sel=document.createElement('div');sel.className='bsel';box.appendChild(sel);
-  if(!n||isEmpty(stackDef)||!nodes(design().root).includes(n)){st.sel=null;sel.innerHTML='<div class="sub">Right-click a part for its options.</div>';return}
-  const D=design(),par=parentOf(D.root,n),ps=S.parts.filter(p=>p.on&&dnOf(p)===n),copies=ps.filter(p=>!p.inst.rdec).length;
+  if(!n||isEmpty(stackDef)||!nodes(dView().root).includes(n)){st.sel=null;sel.innerHTML='<div class="sub">Right-click a part for its options.</div>';return}
+  const D=dView(),par=parentOf(D.root,n),ps=S.parts.filter(p=>p.on&&dnOf(p)===n),copies=ps.filter(p=>!p.inst.rdec).length;
   const where=!par?'root part':n.at==='u'?`on top of ${name(par.k)}`:n.at==='d'?`under ${name(par.k)}`:`radial on ${name(par.k)}, ${n.at.y.toFixed(2)} m up, ${(n.at.a*180/Math.PI).toFixed(0)}°`;
   const sub=nodes(n).length-1;
   sel.innerHTML=`<div class="bhd"><b>${name(n.k)}</b>${copies>1?` <span class="dim">×${copies}</span>`:''}</div><div class="sub">${where}${sub?` · carries ${sub} part${sub>1?'s':''}`:''}</div>`;
@@ -555,7 +558,7 @@ function staging(box){
   // a part joins one from its options (right-click it); drag a group onto a stage and it fires with that stage too
   const AG=A.ag||[],gw=document.createElement('div');gw.className='bstg';box.appendChild(gw);
   gw.innerHTML=`<div class="bhd2"><span>action groups</span></div>`;
-  btn(gw.firstChild,'+ group',false,()=>agNew(st.sel),'a new action group, with the selected part if it deploys; parts join from their options (right-click a part)').disabled=(design().ag||[]).length>=AG_MAX;
+  btn(gw.firstChild,'+ group',false,()=>agNew(st.sel),'a new action group, with the selected part if it deploys; parts join from their options (right-click a part)').disabled=(dView().ag||[]).length>=AG_MAX;
   const O={tog:'toggle',out:'extend',in:'retract'},NX={tog:'out',out:'in',in:'tog'};
   for(const g of AG){const r=document.createElement('div');r.className='agrow';gw.appendChild(r);
     const c=document.createElement('span');c.className='schip g';c.innerHTML=`<span>${g.key.toUpperCase()}${g.stock?' · '+esc(g.name):' ⠿'}</span>`;c.title=`${g.name}: its key in flight; drag onto a stage and it fires with that stage too`;start(c,{group:g.id});r.appendChild(c);

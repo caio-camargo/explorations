@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2034,3 +2034,19 @@ cores, batteries, wheels, spin motors, frames, the balance weight, instruments, 
 RTGs, RCS and gas, legs, the landing beacon, chutes and heat shields (a capsule that comes home), the biocapsule. The
 builder's palette (`listed`) applies it on the bench and skips a category left empty. 42 of 84 parts. `vehicle-37`.
 Not checked in the browser yet.
+
+## v1.245 — opening the Assembly leaves a preset a preset (2026-10-31, vehicle session, QUEUE Q498, PLAYTEST #132)
+
+**Cause** (the test bench's, confirmed in the code): `design()` (builder.js) turns a preset still in the array format into
+a v2 tree, which builder.js says must wait for the first edit (so the preset keeps its name and its tape). Since v1.231
+(Q329) `BLD.panel()` called it on every draw: the *+ group* button's count (`design().ag`), and the selected part's
+options (`nodes(design().root)`, `const D=design()`). So opening the Assembly made every preset a custom design ("Design
+9J06"), and the robot's `m1` threw at `stackDef.join`.
+
+**Fix:** `dView()`, the design to read: `stackDef` when it's already a tree, else a view over the nodes the ship was
+assembled from (the same objects `design()` would adopt), the array left alone. The panel's three read-only uses take it;
+`design()` stays inside `edit()` and the actions (place, pick up, balance, make a payload, save). The group rows' `G()`
+already ran only inside `edit()`.
+
+**Checks:** none headless (builder.js needs the page). **To run:** the robot's `m1` (`playtest.mjs m1`), the Beeper step,
+and the news line naming the Beeper, not "Design …".
