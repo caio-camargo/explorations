@@ -1238,20 +1238,38 @@ const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LIN
 // lunar-Lambert (a full Selene is a flat disc, not a ball), an opposition surge, a terminator where only the rims catch
 // light, and earthshine: the light of Tellus's lit face, by its phase seen from the ground.
 const MOON_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
-uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs;uniform vec2 uNrot;uniform vec4 uNoct;
-const float CM=.0042;   // cratG()'s mean
+uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs,uNdt;uniform vec2 uNrot;uniform vec4 uNoct;
+const float CM=-.0022;   // cratG()'s mean
 float fbmF(vec3 p,float w){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*mix(.5,vn(p),1.-smoothstep(.25,.6,w));p=p*2.03+vec3(1.7,9.2,3.1);w*=2.03;a*=.5;}return s;}
-// craters with their gradient (xyz) in one pass, so the relief needs no second evaluation. crat()'s profile, with radii
-// .12–.34 of a cell (rim to 1.4×, under half a cell), so only the 2×2×2 nearest cells can reach a point: 8 cells, not 27
-// (the cells are 1.43× larger than crat's, uNoct.x 1/1.43 of what it would be, so the craters keep their size on the ground)
-vec4 cratG(vec3 p){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
- for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;
-  vec3 q=o+vec3(h3(c),h3(c+17.3),h3(c+41.9))-f;float rad=.12+.22*h3(c+5.1),l=length(q),k=l/rad;if(k>=1.4)continue;
-  vec3 dk=-q/max(l*rad,1e-6);r+=k<1.?vec4(dk*1.2*k,(k*k-.75)*.6):vec4(-.5*dk,(1.4-k)*.5);}return vec4(r.w,r.xyz);}
+// (Q494, PLAYTEST #129) one crater's profile, craterProf in sim/ground.js: (height, dh/dk) at k = distance / radius. The
+// bowl -d+(d+rim)·kk^p from the floor's edge kf, a central peak pk, the ejecta rim·k⁻³ out to 1.75, the two joined by a
+// smooth minimum w wide (a fresh rim sharp, an old one rounded; its slope is the blend's, exactly)
+vec2 crProf(float k,float d,float rim,float p,float kf,float pk,float w){
+ float kk=max(k-kf,0.)/(1.-kf),pw=pow(max(kk,1e-6),p-1.),a=-d+(d+rim)*pw*kk,da=(d+rim)*p*pw/(1.-kf);
+ if(k<.18&&pk>0.){float q=1.-k*k/.0324;a+=pk*q*q;da-=pk*q*k*(4./.0324);}
+ float kc=max(k,.3),k3=kc*kc*kc,t=clamp((k-1.3)/.45,0.,1.),fo=1.-t*t*(3.-2.*t),b=rim/k3*fo,db=(k<.3?-0.:-3.*b/kc)-rim/k3*6.*t*(1.-t)/.45;
+ float m=clamp(.5+.5*(b-a)/w,0.,1.);return vec2(b+(a-b)*m-w*m*(1.-m),db+(da-db)*m);}
+// craters with their gradient (xyz) in one pass, so the relief needs no second evaluation. Radii .1–.28 of a cell (the
+// octaves make the power law: many small) (reach 1.75×, under half a cell), so only the 2×2×2 nearest cells can reach a point: 8 cells, not 27; 5 % of
+// cells empty. Each crater as the CPU's (craterH): depth and rim by size (complex past uNdt: flat floor, peak past 1.4×)
+// and freshness (hash³: most old and soft), squashed up to 1.3× along a hashed axis, its rim higher on one side. The
+// slope is size-free, as real craters' (it was steeper the smaller the crater); the rim's lean is left out of it. Gains:
+// the height (only the albedo reads it) ×3.2 and the slope ×25 keep the old field's
+// spread and mean slope (views 184–185 at a low sun).
+// s = a cell in uNdt (the body's simple → complex size)
+vec4 cratG(vec3 p,float s){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
+ for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;float hv=h3(c+29.3);if(fract(hv*97.1)>.95)continue;
+  vec3 j=vec3(h3(c),h3(c+17.3),h3(c+41.9)),q=o+j-f,ua=normalize(fract(j*7.37+hv)-.5+1e-4);float hr=h3(c+5.1),rad=.1+.18*hr,e=.3*hv*hv;
+  vec3 m=q+e*ua*dot(ua,q);float l=length(m),k=l/rad;if(k>=1.75)continue;
+  float fr=fract(hv*41.3),Dr=2.*rad*s;fr*=fr*fr;bool cx=Dr>=1.;
+  vec3 lv=normalize(fract(j*13.1+hv*3.)-.5+1e-4);float xl=dot(m,lv)/max(l,1e-6);
+  float d=(cx?.276*pow(Dr,-.699):.4)*(.5+.5*fr),rim=(cx?.084*pow(Dr,-.601):.072)*(.35+.65*fr)*(1.+.35*xl+.2*(2.*xl*xl-1.));
+  vec2 h=crProf(k,d,rim,cx?2.:1.6,cx?.35:0.,Dr>1.4?.5*d:0.,rim*(.1+1.4*(1.-fr)));
+  r+=vec4(3.2*h.x,-25.*h.y*(m+e*ua*dot(ua,m))/max(l,1e-6));}return r;}
 // craters at uNoct.w octaves from uNoct.x cells per radius, each uNoct.y finer and uNoct.z as deep; w = the footprint in
 // radii. x = height, yzw = its gradient on the unit sphere
 vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;i++){if(float(i)>=uNoct.w)break;float k=1.-smoothstep(.25,.6,w*f);if(k<=0.)break;
- vec4 c=cratG(n*f+float(i)*7.31);s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
+ vec4 c=cratG(n*f+float(i)*7.31,uNR/(f*uNdt));s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  vec2 hn=sph(uNc,uNcc,d);float dc=length(uNc),aR=uNR/dc;bool pt=!(uNcc>0.&&hn.x>0.);
@@ -1300,7 +1318,7 @@ function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
       const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)}
     const sel=b===SELENE,th=b.lock||sel?bodyTheta(b,simT):0,mo=MOON_OCT.get(b)||MOON_OCT.get(NYX);
     gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform1f(u.uNR,b.R);gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);gl.uniform1f(u.uSel,sel?1:0);
-    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);
+    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);gl.uniform1f(u.uNdt,GR_DT/(b.mu/(b.R*b.R)));
     gl.uniform3fv(u.uNdet,rotY(mul(C,-1),-th).map(x=>x-Math.round(x/1000)*1000));
     // Selene: added where the sky pass found it (its alpha), depth untouched; Nyx: opaque, depth-tested
     if(sel){gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.DST_ALPHA,gl.ONE,gl.ZERO,gl.ONE);gl.depthFunc(gl.ALWAYS);gl.depthMask(false)}

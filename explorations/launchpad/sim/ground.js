@@ -13,15 +13,19 @@ const GR_MARE_THIN=0.85;   // procedural craters on mare: the plains are younger
 const GR_EXP=1.6;   // a simple bowl is -d + (d+rim)·r^GR_EXP inside: 37° at a fresh rim, about the angle of repose
 // (a paraboloid, 2, gave 43° at the rim and up to 58° where craters overlap; study_ground.mjs)
 // a crater's height at r = distance / its radius (metres; D its diameter in m, Dt the simple → complex size, fr its
-// freshness 0–1). Inside: a bowl, or for complex craters a flat floor, a steeper wall and a central peak. Outside:
-// the ejecta blanket, rim·r⁻³, faded out by r = 2 (so a crater reaches D from its centre: the band cells rely on it).
-function craterH(r,D,Dt,fr){if(r>=2)return 0;
-  const simple=D<Dt,d=(simple?.2*D:.138*Dt*(D/Dt)**.301)*(.3+.7*fr),rim=(simple?.036*D:.042*Dt*(D/Dt)**.399)*(.2+.8*fr);
-  if(r>=1)return rim/(r*r*r)*(1-sstep(1.4,2,r));
-  if(simple)return-d+(d+rim)*r**GR_EXP;
-  const f=.35,w=r<f?0:(r-f)/(1-f);let h=-d+(d+rim)*w*w;
-  if(D>1.4*Dt&&r<.18){const q=1-(r/.18)**2;h+=.5*d*q*q}   // central peak
-  return h}
+// freshness 0–1, lob how high its rim stands here, 1 on average). Inside: a bowl, or for complex craters a flat floor, a
+// steeper wall and a central peak. Outside: the ejecta blanket, rim·r⁻³, faded out by r = GR_REACH (so a crater reaches
+// D from its centre: the band cells rely on it, and the moon pass's cratG on its own cells reaching half a cell).
+// (Q494, PLAYTEST #129) The two meet in a smooth minimum `w` wide: a fresh rim is a sharp crest, steep inside and gentle
+// outside; an old one is rounded off and lower, its bowl shallower. cratG (app/gl.js) draws the same profile.
+const GR_REACH=1.75;
+function craterProf(k,d,rim,p,kf,pk,w){const kk=k<=kf?0:(k-kf)/(1-kf);let a=-d+(d+rim)*kk**p;
+  if(pk&&k<.18){const q=1-(k/.18)**2;a+=pk*q*q}   // central peak
+  const b=rim/Math.max(k,.3)**3*(1-sstep(1.3,GR_REACH,k));if(w<=0)return Math.min(a,b);
+  const t=clamp(.5+.5*(b-a)/w,0,1);return b+(a-b)*t-w*t*(1-t)}
+function craterH(r,D,Dt,fr,lob=1){if(r>=GR_REACH)return 0;
+  const simple=D<Dt,d=(simple?.2*D:.138*Dt*(D/Dt)**.301)*(.5+.5*fr),rim=(simple?.036*D:.042*Dt*(D/Dt)**.399)*(.35+.65*fr)*lob;
+  return craterProf(r,d,rim,simple?GR_EXP:2,simple?0:.35,D>1.4*Dt?.5*d:0,rim*(.1+1.4*(1-fr)))}
 // the baked map: equirectangular W×H (Selene: ~2.1 km a texel at 1024×512), read like Tellus's (wBil / wSpl's B-spline)
 function mapBil(A,W,H,u){const x=(Math.atan2(u[2],u[0])/(2*Math.PI)+.5)*W-.5,y=(Math.asin(clamp(u[1],-1,1))/Math.PI+.5)*H-.5,ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
   const i0=(ix+W)%W,i1=(ix+1)%W,j0=Math.max(iy,0)*W,j1=Math.min(iy+1,H-1)*W,a=A[j0+i0]+(A[j0+i1]-A[j0+i0])*fx;return a+(A[j1+i0]+(A[j1+i1]-A[j1+i0])*fx-a)*fy}
@@ -80,9 +84,13 @@ function craterBands(u,R,Dt,thin,bands=GR_BANDS.length,c=GR_C,salt=0,frPow=3,b0=
       for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++){const i=ci+di,j=cj+dj;if(i<0||j<0||i>=n||j>=n)continue;
         const key=f*65536+i,zz=j*8+b*131072;if(ih3(key,zz,s0)>=lam)continue;
         const a=ptan(((i+ih3(key,zz,s0+1))/n*2-1)*Math.PI/4),c2=ptan(((j+ih3(key,zz,s0+2))/n*2-1)*Math.PI/4),cv=[0,0,0];cv[ax]=sg;cv[p1]=a;cv[p2]=c2;const cu=norm(cv);
-        const dx=u[0]-cu[0],dy=u[1]-cu[1],dz=u[2]-cu[2],D=1/Math.sqrt(1/(Dlo*Dlo)-ih3(key,zz,s0+3)*(1/(Dlo*Dlo)-1/(Dhi*Dhi))),r=Math.sqrt(dx*dx+dy*dy+dz*dz)*R/(D/2);
-        if(r>=2)continue;if(thin&&ih3(key,zz,s0+4)<thin(cu))continue;
-        h+=craterH(r,D,Dt,ih3(key,zz,s0+5)**frPow)}}}
+        const dv=[u[0]-cu[0],u[1]-cu[1],u[2]-cu[2]],D=1/Math.sqrt(1/(Dlo*Dlo)-ih3(key,zz,s0+3)*(1/(Dlo*Dlo)-1/(Dhi*Dhi))),l2=dv[0]*dv[0]+dv[1]*dv[1]+dv[2]*dv[2];
+        if(l2*R*R>=(GR_REACH*D/2)**2)continue;if(thin&&ih3(key,zz,s0+4)<thin(cu))continue;
+        // (Q494) not a perfect circle: squashed up to 1.3× across a hashed direction on the face (oblique impacts), and its
+        // rim higher on one side than the other (lob, from its own hashed direction); no trigonometry, as for the cells (G3)
+        const e=ih3(key,zz,s0+6),ea=ih3(key,zz,s0+7)-.5,eb=ih3(key,zz,s0+8)-.5,en=Math.hypot(ea,eb)||1,sq=(dv[p1]*ea+dv[p2]*eb)/en,
+          r=Math.sqrt(l2+.69*e*e*sq*sq)*R/(D/2),la=ih3(key,zz,s0+9)-.5,lb=ih3(key,zz,s0+10)-.5,x=(dv[p1]*la+dv[p2]*lb)/((Math.hypot(la,lb)||1)*(Math.sqrt(l2)||1));
+        h+=craterH(r,D,Dt,ih3(key,zz,s0+5)**frPow,1+.35*x+.2*(2*x*x-1))}}}
   return h}
 // Selene's height above R at a planet-fixed point (any length)
 const selThin=m=>cu=>GR_MARE_THIN*sstep(.05,.5,mapBil(m.M,m.W,m.H,cu));   // fewer craters on the young plains (as flooded)
