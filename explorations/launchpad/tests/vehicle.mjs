@@ -951,3 +951,15 @@
   const bad = [...yes.filter(k => !on(k)), ...no.filter(on)];
   check('vehicle-37 the payload bench lists a satellite\'s parts only', !bad.length, bad.length ? `wrong: ${bad.join(', ')}` : `${Object.keys(P).filter(on).length} of ${Object.keys(P).length} parts`);
 }
+
+// vehicle-38. What hit first (vehicle session, QUEUE Q502, PLAYTEST #136: "engine-first into Selene, the message says the nose
+// hit"): a stage dropped onto Selene at 150 m/s engine first, nose first, and side-on; the loss names the end that led.
+{
+  const S0 = api.S, drop = (ax, legs) => { api.t = 0; const s = api.newShip(['core', 't1', 'wren']); api.S = s; s.landed = false; s.body = SELENE;
+    if (legs) for (const p of s.parts) if (p.d.kind === 'leg') p.dep = true;
+    const up = [1, 0, 0], r = SELENE.R + 300; s.r = mul(up, r); s.v = mul(up, -150); const Y = ax === 'eng' ? up : ax === 'nose' ? mul(up, -1) : [0, 1, 0], X = norm(cross(Y, [0, 0, 1])); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; s.sas = false;
+    for (let i = 0; i < 2000 && s.alive; i++) api.advPhys(s); return s.lossWhy || '' };
+  const W = { eng: drop('eng'), nose: drop('nose'), side: drop('side') }; api.S = S0;
+  check('vehicle-38 a crash names what hit first: the engine bell engine-first, the nose nose-first, side-on broadside',
+    /the engine bell hit Selene/.test(W.eng) && /the nose hit Selene/.test(W.nose) && /side-on/.test(W.side), `${W.eng} · ${W.nose} · ${W.side}`);
+}

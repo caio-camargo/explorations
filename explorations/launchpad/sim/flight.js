@@ -125,13 +125,20 @@ function groundCheck(s){
   const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len)return;   // well above the highest ground: nothing to hit
   const pT=madd(s.r,Y,s.yTop),hT=len(pT)-groundR(b,toPF(b,pT,simT)),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),pf0=toPF(b,s.r,simT);
   if(seaAt(b,pf0)){seaCheck(s);return}   // the sea: a fluid since Q274 (seaForces pushes; seaCheck judges the splash, the rest and a sinking)
-  if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.crashSpeed=sp;lose(s,`destroyed: the nose hit ${b.name} at ${sp.toFixed(0)} m/s`,3);return}
+  if(hT<0){const vr=sub(s.v,surfVel(b,s.r)),sp=len(vr);s.crashSpeed=sp;lose(s,`destroyed: ${hitFirst(s,vr)} hit ${b.name} at ${sp.toFixed(0)} m/s`,3);return}
   if(!s.inContact)return;
   if(tilt>C_TOPPLE){s.crashSpeed=len(sub(s.v,surfVel(b,s.r)));lose(s,toppleWhy(s,pf0),2);return}
   const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
   if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
   if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
     const ls=s.landSurface||{name:'?',hit:0};HOOK.msg(`Landed on ${b.name} (${ls.name}) at ${s.touchV.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(s.touchV+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`)}}
+// what met the ground first (vehicle, Q502, PLAYTEST #136): only the top point is tested, and a fast impact passes the whole
+// craft through the ground in one step, so name the end that led along the velocity: the nose, the bottom part (its engine
+// bell, or the legs when they're down), or the side when it came in broadside
+function hitFirst(s,vr){const c=sp=>sp>0.5?dot(qrot(s.q,[0,1,0]),norm(vr)):0,k=c(len(vr));
+  if(Math.abs(k)<0.5)return'it came in side-on and';if(k>0)return'the nose';
+  const on=s.parts.filter(p=>p.on),lo=on.length?on.reduce((a,p)=>p.y0<a.y0?p:a):null;
+  if(on.some(p=>p.d.kind==='leg'&&p.dep))return'the legs';return lo?`the ${lo.d.kind==='engine'?'engine bell':lo.d.name.toLowerCase()}`:'it'}
 // why it fell over (Q264): the drift or the lean it came down with, against what this stack can stand; legs if it has none
 function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0),vt=tipSpeed(s,b.mu/(b.R*b.R)),dr=s.touchDrift||0,ti=(s.touchTilt||0)*57.3;
   const how=dr>0.6*vt?`it touched down drifting ${dr.toFixed(1)} m/s sideways, and it tips over past ${vt.toFixed(1)} m/s`

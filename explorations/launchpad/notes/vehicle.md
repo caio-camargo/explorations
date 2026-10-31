@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2062,3 +2062,14 @@ when the player's toggle is on (`st.fairHide`: key **V**, Help's Assembly keys; 
 bar, shown only when the design has a payload fairing). gl.js's `fair` case then draws the ring alone; render.js's
 `S._cutK` now reads 'hid' / 'cut' so the ship's mesh rebuilds when it flips. The Rollout and flight draw the shell whole,
 as before. **Not looked at in the browser yet** (Caio playtesting; GPU); no headless check (all page code).
+
+## v1.247 — a crash names what hit first (2026-10-31, vehicle session, QUEUE Q502, PLAYTEST #136)
+
+Caio flew engine-first (retrograde) into Selene and the loss read "the nose hit Selene". `groundCheck` (sim/flight.js)
+tests only the top point, and a fast impact passes the whole craft through the ground in one step, so the top is always
+what's found underground. `hitFirst(s, vr)` names the end that led along the velocity relative to the ground: the nose
+(the axis along it), the bottom part (an engine reads "the engine bell", else the part's name; "the legs" when they're
+down), or "it came in side-on and" when the axis is more than 60° off the velocity. The loss reads e.g. "destroyed: the
+engine bell hit Selene at 150 m/s". The Debrief and the robot's `loss` row carry their own text; nothing parses it.
+**Checks:** `vehicle-38` (engine first, nose first, side-on), written, **not yet run** (Caio playtesting; no memory).
+Held on branch `vehicle`, not on `main`, until the joint test.
