@@ -6518,3 +6518,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** sim/vessel.js, tests/core.mjs, tests/vehicle.mjs, NOTES.md, notes/vehicle.md (1.0.8), PLAYTEST (#121),
   QUEUE (Q486 ✓), TESTING (318), ACTIVE_WORK.
 - **Next:** a full `node test.mjs` on a quiet machine; Caio: TESTING 318; Q485 (flow) for the coast-and-burn guidance.
+
+## 2026-10-30 — flow session 2: Q485, the ◇ through the coast and the burn (v1.239; PLAYTEST #121)
+
+- **Why:** PLAYTEST #121 (P1): the ◇ vanished once the apoapsis cleared the air and nothing said to coast and burn level at
+  the top; Caio ran the Orbiter dry. Started beside flow's Q476 session (worktree `launchpad-ui2`, branch `ui2`).
+- **What:** `turnGuide(s)` (sim/flight.js) returns `ph`: climb (until the apoapsis is 10 % above the air), coast (dashed on
+  the horizon, heading line `◇ BURN IN 2m 50s`), burn (from half the burn before the apoapsis, toward a circular orbit,
+  `◇ BURN 240 m/s`) until the periapsis clears the air. WeakSets keep a coast a coast and a burn a burn: without them the
+  guide flipped climb/coast every few frames as drag ate the apoapsis. `circHint` (app/cockpit.js): three one-per-flight
+  messages, learnt after one hand-made orbit (`launchpad-hint-circ`).
+- **Checks:** flow-37 (flown on the guide alone: orbit 100 × 104 km, 799 m/s left on v1.238's Orbiter; 427 before its
+  tank); flow-29's wiring string updated. GPU (headless `shot.mjs`, port 8803): the three messages, the heading line; the
+  coast text was cut to two lines. Smoke before merging main: only flow-29 (fixed) and TESTING's counter (main's fix).
+  **The smoke rerun on the merged tree was killed for low memory; not rerun** (platform-3, flow-29/34/37 pass on it).
+- **Renumbered:** vehicle's Q486 took v1.238 and TESTING 318 meanwhile; this is v1.239, TESTING 319.
+- **Files:** sim/flight.js, app/render.js, app/cockpit.js, tests/flow.mjs, notes/flow.md (1.0.8), NOTES.md, TESTING, PLAYTEST,
+  QUEUE (Q485 ✓), ACTIVE_WORK.
+- **Next:** a full smoke on a quiet machine; Caio: TESTING 319. Flow's next: Q482 / Q483 (the ◇'s tumble, the flat-turn warning).
