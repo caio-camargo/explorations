@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1355,3 +1355,20 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   below Mach 2.5 only, and flown straight up wants it east and below the nose (it leans 10°, not 30°+, at Mach 5). No GPU
   run: only the ◇'s direction changed, the drawing didn't. TESTING row 327.
 
+## v1.252 — the stage's Δv in flight; the SAS tooltips cut to half (2026-10-31, flow session 2, QUEUE Q495, Q492; PLAYTEST #130)
+- **The ask:** "the current stage's Δv in flight would be nice to have." The readout's core already had `Δv stage · total`,
+  but in vacuum, with no burn time, and nothing to weigh against the burn Q485's ◇ asks for.
+- **Now:** a **Δv** card (`dvRows`, app/hud.js): *This stage* at this air's exhaust speed (`dvPlan(S, ρ/ρ0)`, as
+  `ascentRun` blends it) with the vacuum figure beside it while in the air (`1974 m/s (2177 vac)`); *Full burn*, the
+  stage's burn at full throttle; *Then*, the stages after it in vacuum (they burn high; at sea-level pressure the Orbiter's
+  Petrel read 862 m/s instead of 3,112); and past the climb *To orbit*: the ◇'s burn (`turnGuide`'s `dv` and `tb`) and what's
+  left after it, `+792` green or `−120` red. An empty stage reads "empty: stage (Space)". It is one of the dark cockpit's
+  cards (`CP_CARDS`): a burn is when it matters. The title keeps its lower-case v (the card titles are upper-case by CSS).
+- **On the GPU** (headless Chrome, `?tester`, the Orbiter): the burn time first sat on the stage's line and wrapped in the
+  card's column, and `white-space:nowrap` ran it off the card, so it has its own row.
+- **Q492:** `TERMS` pro, retro, nrm, rad (app/terms.js) take the design desk's half-length texts (Caio: "let's have those cut
+  down").
+- **Checks:** test `flow-40` (on the pad: the stage at sea level under its vacuum figure and the stages after; at 1 km the
+  stage below vacuum with its full burn; coasting, *To orbit* with what's spare; the wiring); flow-21 and flow-31 (the terms)
+  pass. Every flow section and platform-3 pass; **the full smoke was not run** (3 GB free; the last one was killed for
+  memory). TESTING row 329.
