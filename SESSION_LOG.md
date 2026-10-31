@@ -6536,3 +6536,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** sim/flight.js, app/render.js, app/cockpit.js, tests/flow.mjs, notes/flow.md (1.0.8), NOTES.md, TESTING, PLAYTEST,
   QUEUE (Q485 ✓), ACTIVE_WORK.
 - **Next:** a full smoke on a quiet machine; Caio: TESTING 319. Flow's next: Q482 / Q483 (the ◇'s tumble, the flat-turn warning).
+- **Addendum 15 (design desk, 2026-10-30):** PLAYTEST #137 (P1: the TV Satellite preset breaks up in the climb, likely
+  #120's flip), #138 (P1: satellites can't be small: core, battery and wheel take the 1.25 m default; Q417's small stacks
+  pulled forward), #139 (the bench lists every part); three QUEUE Proposed lines.
+- **Addendum 16 (design desk, 2026-10-30):** PLAYTEST #140: east at the top of the navball at launch; the catch (an upside-down climb on the ball) and options, default keep it at the bottom with E bold; QUEUE Proposed line.
+- **Addendum 17 (design desk, 2026-10-30):** Caio picked #140 (a): east stays at the bottom of the navball, E bold at launch.
