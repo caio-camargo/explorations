@@ -914,3 +914,14 @@
       && ok[0] === 'ok' && /4,650 m\/s by hand/.test(ok[1]),
     `weak: ${weak.join(', ')}; air − by hand: ${N.map(([n, o]) => `${n} ${Math.round(o.air - o.hand)}`).join(', ')}; "${tight[1]}"`);
 }
+
+// vehicle-35. The TV Satellite holds together on a hand-flown climb (vehicle session, QUEUE Q504, PLAYTEST #137): with one fin
+// ring its fairing left it at 0.14 calibers on the pad and −0.05 supersonic, and a ~11° step of the hold at ~48 kPa swung it
+// broadside and broke the Tank 8 t / Decoupler joint (study_pilot.mjs guide10). Two rings on the core and each booster: stable
+// past half a caliber, as the Satellite (Q439). The flight itself is in notes/vehicle.md § v1.241 (minutes, not a smoke check).
+{
+  const d = api.PRESETS['TV Satellite'], s = api.newShip(d), a = api.analyze(s), cal = r => (r.ycm - r.ycp) / (2 * s.radius), m = Math.min(cal(a.ful), cal(a.sup));
+  const W = api.launchWarnings(d, []).filter(([k, x]) => /unstable|end over end/i.test(x));
+  check('vehicle-35 the TV Satellite is stable through the air (two fin rings): past half a caliber at liftoff and supersonic',
+    m > 0.5 && !W.length, `${cal(a.ful).toFixed(2)} / ${cal(a.sup).toFixed(2)} calibers; ${W.length} stability warnings`);
+}

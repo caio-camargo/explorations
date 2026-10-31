@@ -1043,7 +1043,10 @@ const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core','batt']);d.root.c.
 // over the capital's longitude: 26 min of coasting in the low orbit, from the Cape, for Kamar
 PAY_STARTERS['TV satellite']=(()=>{const d=toV2(['core','batt','rwheel','octl','sph7','apogee']),o=(function g(n){return n.k==='octl'?n:(n.c||[]).map(g).find(Boolean)})(d.root);
   o.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:2},c:[]});return d})();
-PRESETS['TV Satellite']=(()=>{const d=toV2(['fair','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}]);d.root.fl=4;
+// two fin rings on the core and on each booster (vehicle, Q504, PLAYTEST #137): with one, the fairing up front left it at
+// 0.14 calibers on the pad and −0.05 supersonic, and a step of the hold at ~48 kPa swung it broadside and broke the Tank 8 t /
+// Decoupler joint; now 0.95 / 0.78, every study_pilot profile reaches orbit intact, 115.2M (was 110.7M)
+PRESETS['TV Satellite']=(()=>{const d=toV2(['fair','t2','petrel','dec','t8','fins','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','fins','kestrel']}}]);d.root.fl=4;
   d.root.c.push({k:'pay',pid:null,name:'TV satellite',pd:JSON.parse(JSON.stringify(PAY_STARTERS['TV satellite'])),at:'u',c:[]});return d})();
 // the payload bench's Checks (PROBES § 6.1, D22's form): has power in shadow · can talk home · can turn · balanced · fits the
 // fairing it rides in (when the bench was opened from a rocket carrying it: rocket, the rocket's design, and pid, the block's
