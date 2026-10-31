@@ -786,6 +786,7 @@
   check('flow-37: the ◇ guides the end of the climb: coast (dashed, on the horizon) to half a burn before the apoapsis, then burn on it until the periapsis is out of the air; flown on it alone, the Orbiter makes orbit',
     order && coast && Math.abs(coast.p) < 1e-9 && timely && orbit && ui,
     `phases ${seen.join(' > ')} · coast from ${coast ? `${(coast.h / 1e3).toFixed(1)} km, Ap ≥ ${(coast.ap / 1e3).toFixed(1)}` : '—'} km · burn ${burn ? `${burn.tAp.toFixed(1)} s before Ap (half of ${burn.tb.toFixed(1)} s), ${burn.dv.toFixed(0)} m/s` : 'never'} · ${end ? `orbit ${(end.pe / 1e3).toFixed(0)} × ${(end.ap / 1e3).toFixed(0)} km, ${end.left.toFixed(0)} m/s left` : 'no orbit'} · wired ${ui}`);
+}
 
 // flow-38. Easy / Normal / Hard (flow session, QUEUE Q476, DECISIONS D25; PLAYTEST #119). PROG.lvl picks a row of LEVELS:
 // Easy burns less propellant for the same thrust (Isp ×1.15), the body's air pushes and heats at ×0.75 (fins and chutes at
