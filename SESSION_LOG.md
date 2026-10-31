@@ -6481,3 +6481,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   from kept hardware, crew held and ransomed softly, classified payloads leak), #125 (a Guided switch: lessons as early
   contracts with a cockpit checklist); three QUEUE Proposed lines.
 - **Addendum 13 (design desk, 2026-10-30):** SAS tooltips cut to half (Caio): the new texts in a QUEUE Proposed line for flow (`app/terms.js` 19–22).
+- **Addendum 14 (design desk, 2026-10-30):** Caio approved #123's fix; PLAYTEST #126 (P1): a falling orbit draws two
+  paths because the impact predictor's red is kept in the planet's rotating frame and repeats the vacuum arc; one line
+  proposed, with a repro for "neither reaches the ground".
+
+## 2026-10-30 — test bench (`Charlinho`): guarding v1.237, Q470's `m2` rerun
+
+- **`--smoke --jobs 1`** (625 s): 284 of 285 passed; qa-3 failed on TESTING's "Next free number" (317, v1.237 took
+  row 317) → 318, `7dfd288`.
+- **`m1`** (GPU, `.game-busy` waited for flow2's Q485 run): the first hour's goals pass (weather, beeper), but the Beeper
+  step throws `stackDef.join is not a function`. Cause, probed in the page: since v1.231 `BLD.panel()` reads
+  `design().ag` on every draw, and `design()` converts a preset to a v2 tree; the news names the Beeper "Design 9J06".
+  **PLAYTEST #132** (P1, vehicle).
+- **Q470, `m2`** ✗: (1) #132; (2) the row flies the TV mission on the plain `Satellite` preset, which runs dry raising to
+  stationary (a QA *Proposed* line: use `TV Satellite`); (3) the routine's ordered runs reach 295×298 km but never count
+  clean, so it never repeats (**PLAYTEST #134**, economy: `routeRun`'s plane check or `D.satId`). TESTING 246, 260, 309,
+  310 not run.
+- **Caveat:** the main clone held vehicle's uncommitted Q486 edit (Orbiter + Tank 1 t, `sim/vessel.js`, 22:57) while
+  `m1`/`m2` ran from it; untouched and not committed by me.
+- **Files:** TESTING.md, PLAYTEST.md (#132, #134), QUEUE.md (Q470 state, three *Proposed* lines), ACTIVE_WORK.md.
+- **Next for the test bench:** rerun `m1`/`m2` after #132, the row fix and #134; TESTING 246, 260, 309, 310.
