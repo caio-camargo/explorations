@@ -87,6 +87,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.160 — the builder's max-q case at the rocket's own peak (four boosters: ~75 kPa), naming the joint and what helps (2026-10-13, vehicle session, QUEUE Q347)
 - v1.164 — fin sizes (0.9 / 1.35 / 2 m); the in-air check recalibrated and stage 1 checked at max-q (2026-10-13, vehicle session, QUEUE Q348)
 - v1.231 — action groups: legs, wings, bay doors and chutes grouped on the design table; keys 1–9, a HUD card, a stage (2026-10-18, vehicle session, QUEUE Q329, PLAYTEST #80)
+- Pilot margin: what a hand-flown ascent loses, per preset and profile; turning flat is a cliff, the ◇ works (2026-10-30, test bench, QUEUE Q474, PLAYTEST #119; `study_pilot.mjs`)
 - v1.229 — the Satellite's routine runs: a 2 t tank for 300 km polar; the dispatch quote counts the inclination once and starts from what the flight had left (2026-10-17, vehicle session, QUEUE Q413, PLAYTEST #103)
 - v1.228 — the Satellite reads stable (a second fin ring); a stable stage in the air holds, it turns into the wind (2026-10-17, vehicle session, QUEUE Q439, PLAYTEST #114)
 - v1.226 — when to start the transfer burn: the Stationary orbit card and Map marks, plan it as a node (2026-10-13, vehicle session, QUEUE Q454)

@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-18
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1862,3 +1862,64 @@ Test `vehicle-12`. `--smoke` all pass.
   its key on it, and how many of its parts are out; the stage list names the groups a stage fires.
 - `bayDoors(s, open, only)` opens just the listed bays. Not here: Caio's other KSP groups (lights, abort, custom engine
   toggles): nothing else deploys yet. Test `vehicle-33`; TESTING 311.
+
+## Pilot margin: what a hand-flown ascent loses (2026-10-30, test bench, QUEUE Q474, PLAYTEST #119, D25)
+
+**Question:** the presets, studies and contracts are sized to the scripted ascent (fly_ladder's `handAscent`: vertical to
+286 m, flat by 54 km, the ideal circularisation; Tellus's air is 100 km). How much more does a sloppy pilot spend?
+`study_pilot.mjs` flies each orbital preset on the script, then on profiles that each get one thing wrong, then a
+"typical pilot" who gets several a little wrong. Attitude is set directly each step (as `handAscent` does), except the
+SAS profiles, which fly the game's own autopilot (Prograde after a kick; or Stability on the gyro autopilot, the hold put
+on the navball's ◇, `turnGuide`, v1.234). Hopper, Sounding and Passenger don't orbit and are skipped. ~1–2 min a preset;
+run them one at a time on a busy machine (the whole list in one process was killed for memory on `Charlinho`).
+
+**Δv spent beyond the script, m/s** (✗−n: ran dry n short; LOST: burned up or crashed; ESC: still under the line after
+three circularisation burns):
+
+| Preset | script | spare | late (2.9 km) | steep (flat 86 km) | shallow (flat 36 km) | wobble ±4° | over-steer ±6° | apoapsis +40 km | circ. by horizon | circ. late | SAS 12°@30 | SAS 8°@30 | SAS 15°@60 | ◇ gyro | ◇ every 10 s | typical pilot |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Orbiter | 4390 | 425 | +33 | +138 | LOST | +9 | +15 | +24 | −1 | −1 | +1 | +175 | ✗−96 | +8 | +50 | +93 |
+| Beeper | 4359 | 1556 | +34 | +147 | ✗−1714 | +11 | +14 | +26 | −2 | −1 | +71 | +181 | +505 | +6 | +53 | +97 |
+| Passenger Orbiter | 4376 | 580 | +27 | +136 | ✗−17 | +14 | +26 | +24 | −1 | −1 | +33 | +179 | +518 | **✗−361** | **✗−172** | +89 |
+| Satellite | 4697 | 714 | −2 | +53 | ✗−722 | +13 | +20 | +25 | −1 | −1 | ✗−2684 | ✗−2121 | +145 | −2 | −10 | +18 |
+| TV Satellite | 4416 | 2462 | +17 | +124 | LOST | +8 | +20 | +26 | −1 | 0 | +421 | +490 | +569 | 0 | **LOST** | +78 |
+| Heavy | 4306 | 1281 | +29 | +151 | LOST | +6 | +8 | +26 | −1 | +2 | +469 | +563 | +613 | +15 | +88 | +101 |
+| Asparagus | 4234 | 2323 | +38 | +144 | LOST | +8 | −3 | +24 | −1 | −1 | +497 | +583 | +645 | +12 | +82 | +105 |
+| Lunar | 4356 | 4074 | +43 | +334 | LOST | +9 | +59 | +24 | −1 | +1 | LOST | +260 | ESC | +13 | +121 | +255 |
+| Big Lunar | 4335 | 4109 | +40 | +239 | LOST | +8 | +55 | +12 | −12 | +42 | +59 | +401 | +588 | +37 | +128 | +168 |
+| Probe | 4427 | 4286 | +34 | +222 | ✗−1679 | +9 | +37 | +21 | −3 | +10 | +160 | +290 | +503 | +14 | +78 | +172 |
+| Sample Return | 4329 | 4489 | +39 | ESC | LOST | +9 | +184 | +22 | −1 | +4 | −48 | ESC | LOST | +28 | +296 | ESC |
+| Crewed Lunar | 4358 | 4650 | +44 | +291 | LOST | +5 | +14 | +24 | 0 | 0 | LOST | LOST | +252 | +12 | +85 | +195 |
+
+*Typical pilot:* vertical to 1.4 km, flat by 71 km, ±2° wobble, apoapsis 15 km high, circularised along the horizon
+(nose lifted 0.5° per m/s of fall). *Circ. late:* the same from apoapsis instead of half the burn before it.
+
+**What it says:**
+- **Steady errors are cheap.** A late turn +30–45, wobble +5–15, an apoapsis 40 km high ~+25, a circularisation
+  along the horizon instead of the ideal vector ±0. Turning too little is the expensive steady one: +50–150 on one-core
+  and booster rockets, **+220–335 on the Lunar class**, whose ~0.6 g upper stages can't add the sideways speed in time
+  after a steep climb and need a second circularisation burn (Sample Return can't finish it at all).
+- **Turning too flat is a cliff, not a cost** (swept on Orbiter and Lunar, flat by): 51 km −4/−15, 49 km +2/−27,
+  46 km +39/−23, **43 km +312/+501, 40 km burned up** (the pod passes 1,250 K) on both. The script's 54 km sits ~10 km
+  above the edge; the cheapest point (49–51 km) is just above it.
+- **The SAS gravity turn (kick, then Prograde) has a narrow window that doesn't carry across rockets.** On the Orbiter
+  12–15° at 30 m/s matches the script, 8° costs +175, 20° turns flat into the sea, and kicking at 60 m/s needs ~25°. The
+  Orbiter's 12° flips the Satellite and burns up the Lunar and Crewed Lunar; the heavy boosters (Heavy, Asparagus, TV
+  Satellite) lose +420–500 on it.
+- **The ◇ works** (v1.234): flown on the gyro autopilot with the hold on the ◇ every step it costs +0–37; moved every
+  10 s, +50–130 (Sample Return +296). Two exceptions, both control, not Δv: the **Passenger Orbiter departs** at ~35 km
+  following the ◇ (AoA 5° → 100°, ~500 m/s lost tumbling) on every autopilot generation, and the **TV Satellite flips at
+  5 km** when the hold steps ~11° at once (PLAYTEST #120).
+- **Δv is not what's thin on these presets.** Every one of them has ≥ 425 m/s spare after the script, more than any
+  steady pilot error here costs one-core rockets. What ends a hand flight is a cliff: turning flat into the heat, a kick
+  that's wrong for this rocket, a stack that departs off the airflow. That matches Caio's "I don't precalculate the
+  optimal path" better than a thin tank does.
+
+**For Q475 (the pilot margin):** carry **+150 m/s** on one-core and booster presets (covers turning too little, the ◇
+moved every 10 s, and the typical pilot) and **+350 m/s** on the Lunar class (weak upper stages: turning too little
++334). The Assembly's line: "to orbit ~4.4 km/s flown well, ~4.55 by hand" (~4.7 on a Lunar-class stack). Presets
+already above that (all of today's orbital ones) need no tank; contracts and studies whose spare was sized to the script
+(the Satellite's 300 km polar routine, v1.229) should be checked against it. **For Normal's forgiveness, the cliffs
+matter more than the tank:** a heat warning before turning flat costs the pod, and the Passenger Orbiter's departure
+(PLAYTEST #120). Not measured: the suborbital first-hour flights (Hopper, Sounding, Passenger), throttle errors, staging
+late or early, crosswind, flights from other sites.

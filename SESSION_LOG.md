@@ -6441,3 +6441,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** tests `flow-34`, `flow-35`, `flow-36`; `--smoke` all passed (flow-29's wiring string updated for `turnHint`). Headless Chrome on the GPU (the Claude-in-Chrome extension wasn't connected; `shot.mjs`): a new program, the Orbiter flown by hand on the ◇ in Stability reaches a 100 km apoapsis by 70 km; band label, held frames, Help legend and the full SAS grid looked at. Fixes from the probe: the gyro-era hint, the ◇ staying level until the apoapsis clears the air, the heading line growing upward, no orbit marks at liftoff, `PITCH -0°`.
 - **Files:** sim/flight.js, sim/vessel.js, sim/procedures.js, app/render.js, app/cockpit.js, app/editor.js, app/screens.js, index.html, playtest.mjs (reads the SAS buttons' aria-label), test.mjs (exports), tests/flow.mjs, notes/flow.md, NOTES.md (index, plus the missing v1.230/v1.233 lines), TESTING (314–316), PLAYTEST (#109–#111), QUEUE (+2 Proposed: vehicle's pitch programmer, QA's robot flying the ◇); ACTIVE_WORK.
 - **Next for flow:** Q477 (the flight HUD as the instrument panel, builds on these marks); Caio: TESTING 314–316 — is the ◇ readable, is the hint too chatty?
+
+## 2026-10-30 — test bench (`Charlinho`): Q474, the pilot margin (PLAYTEST #119)
+
+- **`study_pilot.mjs`** (new, headless): each orbital preset flies the scripted ascent, then 15 sloppy profiles (late,
+  steep, shallow, wobble, over-steer, high apoapsis, circularising by the horizon or late, the kick-then-Prograde
+  gravity turn at three kicks, the ◇ on the gyro autopilot every step and every 10 s, a typical pilot). Table in
+  notes/vehicle.md § "Pilot margin".
+- **Findings:** steady errors cost +5–150 m/s (Lunar class to +335: weak upper stages after a steep climb); every orbital
+  preset already has ≥ 425 spare. What ends a hand flight is a cliff: flat by 43 km instead of 54 costs +300–500, by
+  40 km burns the pod up; the Prograde gravity turn's kick window is narrow and differs per rocket; the ◇ (v1.234) works
+  (+0–37), except the Passenger Orbiter departs on it at ~35 km on every autopilot (PLAYTEST #120). For Q475: +150 m/s
+  one-core/boosters, +350 Lunar class.
+- **Harness lessons:** `len(s.v)` includes Tellus's spin (278 m/s on the pad), so surface-speed triggers need
+  `speedRef`; burning along the velocity past apoapsis runs away to escape; a `//` comment appended mid-line ate the rest
+  of a one-line block again (as on 2026-10-18). The whole preset list in one process was killed for memory on this
+  machine; one preset per process works (~1–2 min each).
+- **Files:** `explorations/launchpad/study_pilot.mjs` (new), notes/vehicle.md (1.0.6), NOTES.md (index line), PLAYTEST.md
+  (#119 lead, #120), QUEUE.md (Q474 ✓, Q475 ready, two *Proposed* lines), INDEX.md, ACTIVE_WORK.md.
+- **Next:** Q475 (vehicle) has its numbers; the orchestrator ranks #120 and the heat-warning line. Not measured:
+  suborbital first-hour flights, throttle and staging errors, other sites.
