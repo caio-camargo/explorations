@@ -151,6 +151,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Caio + Claude (launchpad vehicle session) | 2026-10-30 | Launchpad PLAYTEST **#121** (b): the Orbiter preset +Tank 1 t on its upper stage (Caio ran it dry by hand) | `sim/vessel.js` (PRESETS.Orbiter), `tests/core.mjs` |
 | Caio + Claude (launchpad test bench, machine `Charlinho`, shared with the lanes) | 2026-10-30 | QA lane, **test bench** loop: guard `main` at v1.237 (`--smoke --jobs 1`, `playtest.mjs m1`), then **Q470** (`m2`). No game code; takes `.game-busy` for browser runs | `TESTING.md`, `PLAYTEST.md`, QUEUE item states and *Proposed* lines |
 > Cleared 2026-10-30: vehicle session, **v1.237 Q475** on `main` (pushed): the pilot's margin. **Everyone:** `orbitNeed(stack, aims)` (sim/vessel.js) returns `{vac, air, goal, need, margin, hand, best}`, the Δv to orbit flown well and by hand (`pilotMargin`: +150, +350 when the stage finishing the climb is under 0.3 g); `launchWarnings` and the Assembly's new `orbitLine` read it. **Q476 (Hard):** zero `pilotMargin` there.
 > Cleared 2026-10-30: test bench (`Charlinho`), **Q474 ✓** (docs + a study on `main`, no game code): `study_pilot.mjs`, notes/vehicle.md § "Pilot margin". **Vehicle (Q475):** carry +150 m/s on one-core/booster presets, +350 on the Lunar class; every orbital preset already has ≥ 425 spare. **Flow:** PLAYTEST #120 (the Passenger Orbiter departs following the ◇) and a *Proposed* line for a too-flat heat warning.
