@@ -6484,3 +6484,37 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 14 (design desk, 2026-10-30):** Caio approved #123's fix; PLAYTEST #126 (P1): a falling orbit draws two
   paths because the impact predictor's red is kept in the planet's rotating frame and repeats the vacuum arc; one line
   proposed, with a repro for "neither reaches the ground".
+
+## 2026-10-30 — test bench (`Charlinho`): guarding v1.237, Q470's `m2` rerun
+
+- **`--smoke --jobs 1`** (625 s): 284 of 285 passed; qa-3 failed on TESTING's "Next free number" (317, v1.237 took
+  row 317) → 318, `7dfd288`.
+- **`m1`** (GPU, `.game-busy` waited for flow2's Q485 run): the first hour's goals pass (weather, beeper), but the Beeper
+  step throws `stackDef.join is not a function`. Cause, probed in the page: since v1.231 `BLD.panel()` reads
+  `design().ag` on every draw, and `design()` converts a preset to a v2 tree; the news names the Beeper "Design 9J06".
+  **PLAYTEST #132** (P1, vehicle).
+- **Q470, `m2`** ✗: (1) #132; (2) the row flies the TV mission on the plain `Satellite` preset, which runs dry raising to
+  stationary (a QA *Proposed* line: use `TV Satellite`); (3) the routine's ordered runs reach 295×298 km but never count
+  clean, so it never repeats (**PLAYTEST #134**, economy: `routeRun`'s plane check or `D.satId`). TESTING 246, 260, 309,
+  310 not run.
+- **Caveat:** the main clone held vehicle's uncommitted Q486 edit (Orbiter + Tank 1 t, `sim/vessel.js`, 22:57) while
+  `m1`/`m2` ran from it; untouched and not committed by me.
+- **Files:** TESTING.md, PLAYTEST.md (#132, #134), QUEUE.md (Q470 state, three *Proposed* lines), ACTIVE_WORK.md.
+- **Next for the test bench:** rerun `m1`/`m2` after #132, the row fix and #134; TESTING 246, 260, 309, 310.
+
+## 2026-10-30 — vehicle session: Q486, the Orbiter's tank (v1.238; PLAYTEST #121)
+
+- **Why:** Caio flew the Orbiter by hand on the live v1.237, following the ◇, and ran dry ("it was tight regardless").
+  Filed PLAYTEST #121 (P1): (a) nothing guides the coast and the burn at apoapsis once the ◇ ends → Q485 (flow); (b) the
+  Orbiter is the thinnest preset → Q486, done here. Also answered: Easy (Q476) spans vehicle (Isp, air, failures),
+  economy (deadlines) and flow (the new-program screen).
+- **What:** the Orbiter's upper stage +Tank 1 t: ~794 m/s left after a perfect climb (was ~425), 57.5M (was 55.8M),
+  stage TWRs 1.51 / 0.39. Compared with the tank on the first stage (572 left) in notes/vehicle.md § v1.238.
+- **Side effect:** the kick-then-Prograde climb's window moved: 8 s turns the heavier Orbiter flat into the heat; tests
+  kick it at 9 s (window ~±0.1 s of tap, as Q474 found; Q481's pitch programmer is the fix). The ◇ is unaffected.
+- **Checks:** the first full run after the change failed 6 checks, all the Orbiter's pinned numbers or kick; fixed, and
+  sections 5, 10, 12, vehicle-3, vehicle-34 and the launch-warnings section pass. **The full rerun was killed for low
+  memory; not rerun.** No GPU check.
+- **Files:** sim/vessel.js, tests/core.mjs, tests/vehicle.mjs, NOTES.md, notes/vehicle.md (1.0.8), PLAYTEST (#121),
+  QUEUE (Q486 ✓), TESTING (318), ACTIVE_WORK.
+- **Next:** a full `node test.mjs` on a quiet machine; Caio: TESTING 318; Q485 (flow) for the coast-and-burn guidance.
