@@ -6476,3 +6476,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   TESTING (317), PLAYTEST (#119 slice 2 done), QUEUE (Q475 ✓), ACTIVE_WORK.
 - **Next:** Q476 (Easy / Normal / Hard) can start: Hard zeroes `pilotMargin`. Caio: TESTING 317, does "by hand" read
   as advice? The intake/ folder holds face/eye/lip reference images (face lab's, not this lane's), left untouched.
+- **Addendum 12 (design desk, 2026-10-30):** Caio on recovery and complexity → PLAYTEST #123 (P1: recovery zones and
+  the predicted landing on the map; `recoveryOf` rules exist but are never shown), #124 (landing abroad: rivals learn
+  from kept hardware, crew held and ransomed softly, classified payloads leak), #125 (a Guided switch: lessons as early
+  contracts with a cockpit checklist); three QUEUE Proposed lines.
+- **Addendum 13 (design desk, 2026-10-30):** SAS tooltips cut to half (Caio): the new texts in a QUEUE Proposed line for flow (`app/terms.js` 19–22).
