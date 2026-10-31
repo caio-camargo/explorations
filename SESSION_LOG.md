@@ -6501,3 +6501,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `m1`/`m2` ran from it; untouched and not committed by me.
 - **Files:** TESTING.md, PLAYTEST.md (#132, #134), QUEUE.md (Q470 state, three *Proposed* lines), ACTIVE_WORK.md.
 - **Next for the test bench:** rerun `m1`/`m2` after #132, the row fix and #134; TESTING 246, 260, 309, 310.
+
+## 2026-10-30 — vehicle session: Q486, the Orbiter's tank (v1.238; PLAYTEST #121)
+
+- **Why:** Caio flew the Orbiter by hand on the live v1.237, following the ◇, and ran dry ("it was tight regardless").
+  Filed PLAYTEST #121 (P1): (a) nothing guides the coast and the burn at apoapsis once the ◇ ends → Q485 (flow); (b) the
+  Orbiter is the thinnest preset → Q486, done here. Also answered: Easy (Q476) spans vehicle (Isp, air, failures),
+  economy (deadlines) and flow (the new-program screen).
+- **What:** the Orbiter's upper stage +Tank 1 t: ~794 m/s left after a perfect climb (was ~425), 57.5M (was 55.8M),
+  stage TWRs 1.51 / 0.39. Compared with the tank on the first stage (572 left) in notes/vehicle.md § v1.238.
+- **Side effect:** the kick-then-Prograde climb's window moved: 8 s turns the heavier Orbiter flat into the heat; tests
+  kick it at 9 s (window ~±0.1 s of tap, as Q474 found; Q481's pitch programmer is the fix). The ◇ is unaffected.
+- **Checks:** the first full run after the change failed 6 checks, all the Orbiter's pinned numbers or kick; fixed, and
+  sections 5, 10, 12, vehicle-3, vehicle-34 and the launch-warnings section pass. **The full rerun was killed for low
+  memory; not rerun.** No GPU check.
+- **Files:** sim/vessel.js, tests/core.mjs, tests/vehicle.mjs, NOTES.md, notes/vehicle.md (1.0.8), PLAYTEST (#121),
+  QUEUE (Q486 ✓), TESTING (318), ACTIVE_WORK.
+- **Next:** a full `node test.mjs` on a quiet machine; Caio: TESTING 318; Q485 (flow) for the coast-and-burn guidance.

@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1946,3 +1946,32 @@ pushes under 0.3 g (the Lunar class: Lunar, Big Lunar, Probe, Sample Return, Cre
 - **Hard (Q476):** meant to read 0 in `pilotMargin`; nothing else to change.
 - **Checks:** `vehicle-34` (margins per preset, the weak-stage list, Tight between the two needs, the ok line's wording);
   `--smoke` all passed. GPU look (shot.mjs, Assembly with Lunar and Sounding): the line reads as above.
+
+## v1.238 — the Orbiter carries a pilot's margin you can feel (2026-10-30, vehicle session, QUEUE Q486, PLAYTEST #121)
+
+**Why:** Caio flew the Orbiter by hand on v1.237, following the ◇, and ran dry short of orbit ("it was tight
+regardless"). It was the thinnest preset: ~425 m/s left after a perfect climb, 13 m/s over the hand-flown need in the
+Assembly's budget.
+
+**What:** `PRESETS.Orbiter` gets a **Tank 1 t** under the Tank 2 t on its upper stage (`chute pod t2 t1 petrel dec t8
+fins kestrel`). Compared (study_pilot.mjs with the preset swapped; `orbitNeed`):
+
+| Orbiter | vac Δv | budget over by-hand | left after the script | steep | ◇ | cost | TWR 1 / 2 |
+|---|---|---|---|---|---|---|---|
+| today (v1.237) | 4,894 | +13 | 425 | +138 | +8 | 55.8M | 1.63 / 0.50 |
+| +Tank 1 t, first stage | 5,066 | +168 | 572 | +144 | +7 | — | 1.51 / 0.50 |
+| **+Tank 1 t, upper stage** (taken) | 5,288 | +431 | **794** | +127 | +3 | 57.5M | 1.51 / 0.39 |
+
+The upper stage doubles what's left for ~1.7M (a new program starts with 60M); it stays above the 0.3 g line, so it's
+not Lunar class; no new Rollout warning; its stage still holds in the air (`airSep`).
+
+**What it changes for a kick-then-Prograde climb:** lifting off at 1.51 g, not 1.63, the W-tap at 8 s that suited the
+old Orbiter now turns it flat into the heat (100 % of a part's limit, falls back). The window is narrow (Q474): 9 s +
+0.8 s works (heat 53 %, 745 m/s left), 8.5 + 0.8 and 9 + 0.9 also, 9 + 0.7 and 9.5 + 0.8 run dry circularising. The tests
+that fly that way (core § 5 flySAS, § 12 the tape, § 10 ascent heating) now kick the Orbiter at 9 s. A player meets this
+only once Prograde exists (the analog autopilot); in the first hour the ◇ is what's flown, and it's insensitive (+3).
+Q481's pitch programmer is the real answer to the narrow kick.
+
+**Hard (Q476)** can keep today's Orbiter (the v1.237 stack) if Caio wants Hard's exact margins to include the presets.
+**Tests:** core's Orbiter Δv (5,288), launch warnings' tight case moves to the Passenger Orbiter (the Orbiter now carries
+400 km), vehicle-3's Orbiter length 9, vehicle-34's tight case at a 5,000 m/s logbook.
