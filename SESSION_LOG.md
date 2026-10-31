@@ -6639,3 +6639,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   at "ported on `terrain`, same-base A/B of the pad views pending". The launchpad intake screenshot (a plume cut at the
   limb, 2026-10-30 22:22) is not this lane's, left untouched.
 
+
+## 2026-10-31 — flow session 2: Q495 the Δv card, Q492 the SAS tooltips (v1.252; PLAYTEST #130)
+
+- **What:** a **Δv** card in flight (`dvRows`, app/hud.js; in `CP_CARDS`, so it stays through the climb and burns): this
+  stage at this air's exhaust speed with its vacuum figure, its full burn, the stages after it in vacuum, and past the climb
+  *To orbit* (the ◇'s burn, Q485, against what's left: `+792`). Q492: `TERMS` pro / retro / nrm / rad take the design desk's
+  half-length texts.
+- **Found:** with the air's pressure the later stages read low (the Orbiter's Petrel 862 m/s for 3,112): they're vacuum now.
+  On the GPU the burn time wrapped in the card and nowrap ran it off: it has its own row.
+- **Checks:** flow-40 (renumbered: Q482 took flow-39 meanwhile; merged beside it), all 39 flow sections and platform-3 pass.
+  **Full smoke not run** (3 GB free; the previous run was killed for memory). GPU: headless `shot.mjs` on 8803, pad / 20 km /
+  coasting.
+- **Files:** app/hud.js, app/cockpit.js (`CP_CARDS`), app/terms.js, tests/flow.mjs, notes/flow.md (1.0.10), NOTES.md, TESTING
+  (329), PLAYTEST (#130), QUEUE (Q495 ✓, Q492 ✓), ACTIVE_WORK.
+- **Next:** a full smoke on a quiet machine; Caio: TESTING 319 and 329.
