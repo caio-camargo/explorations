@@ -1282,7 +1282,7 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   `playtest.mjs`'s cockpit probe reads the buttons' `aria-label`. TESTING row 316. Next: Q477 (the HUD as the instrument
   panel) builds on these keys.
 
-## v1.238 — Easy / Normal / Hard (2026-10-30, flow session, QUEUE Q476; DECISIONS D25, PLAYTEST #119 slice 3)
+## v1.239 — Easy / Normal / Hard (2026-10-30, flow session, QUEUE Q476; DECISIONS D25, PLAYTEST #119 slice 3)
 - **Now:** `LEVELS` and `lvl()` / `lvlKey()` (sim/core.js) are the three rows; the career keeps its level in `PROG.lvl`
   (absent = Normal, so every save from before plays as it did). Picked on the charter's **Article 3 · How hard?** (title
   screen, a new program; the signed charter shows it ticked) and changeable in **Settings → Difficulty** off a flight
@@ -1300,7 +1300,7 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   so an autopilot replays only on its level and the stored tape key splits by level; `studyKey` gains `@easy` / `@hard`; a
   logbook entry set on Easy or Hard has `lvl`, shown as "· on Easy" after who set it. Saves carry `PROG.lvl`; `resetProgram`
   keeps it, as it keeps the archetype, so the next charter starts on the last choice.
-- **Tapes:** `physStep`, `aeroPass` and `thermal` changed text, so TAPE_V's fingerprint moved: tapes saved before v1.238 replay
+- **Tapes:** `physStep`, `aeroPass` and `thermal` changed text, so TAPE_V's fingerprint moved: tapes saved before v1.239 replay
   as stale on every level (procedures survive). On Normal the numbers are bit-identical (×1 everywhere).
 - **Measured** (`study_pilot.mjs Orbiter -l=easy`, a new `-l=` flag; the Orbiter as on `main` before #121's tank): Normal
   4,894 m/s, the script spends 4,390, 425 spare; **Easy 5,628, the script 4,337, 1,213 spare**. The typical pilot +93 → +111
@@ -1309,5 +1309,5 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   flat climb faster low in the air, which outruns ×0.75 heating. Easy doesn't forgive the heat cliff; Q483's warning does.
 - **Checks:** test `flow-37` (Δv ×1.15 on Easy and = Normal on Hard; a step's propellant ×1/1.15 at the same thrust; the
   body's aero ×0.75 exactly; the margin 150 / 0; 0 ignition failures in 200 rolls on Easy against 9 on Normal; deadlines
-  ×1.5; tape, study and record tagged; the wiring). TESTING row 318.
+  ×1.5; tape, study and record tagged; the wiring). TESTING row 319.
 

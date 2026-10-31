@@ -155,7 +155,9 @@ const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy'
 // radial group beside it: n copies of a side stack (top→bottom), bottoms level with that part's bottom.
 const PRESETS={
   Hopper:['chute','pod','t2','fins','kestrel'],
-  Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
+  // the Orbiter's upper stage carries a Tank 1 t besides its Tank 2 t (vehicle, PLAYTEST #121, 2026-10-30): flown by hand it
+  // ran dry for Caio, the ◇ followed; a scripted ascent now leaves ~794 m/s in orbit, not ~425 (study_pilot.mjs), 57.5M not 55.8M
+  Orbiter:['chute','pod','t2','t1','petrel','dec','t8','fins','kestrel'],
   // the first orbit missions on presets (vehicle session, Q74 / PLAYTEST #24): the Orbiter's launcher with the payload in the
   // pod's place and a reaction wheel to steer it, lighter than the pod. Beeper: an instrument package in orbit (1,550 m/s
   // to spare there). Passenger Orbiter: a biocapsule round the world and home on the upper stage, as the Orbiter's pod comes
