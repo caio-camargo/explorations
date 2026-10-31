@@ -696,7 +696,8 @@
   const point = (s, p) => { const f = api.localFrame(s.r), r = p / D, Y = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
   const run = (prof) => { api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
     let off = 0, first = null, gone = null, n = 0, pre = null;
-    while (s.alive && n++ < 60000) { const h = len(s.r) - T.R; point(s, prof(h)); const g = api.turnGuide(s);
+    while (s.alive && n++ < 60000) { const h = len(s.r) - T.R; point(s, prof(h)); let g = api.turnGuide(s);
+      if (g && g.ph !== 'climb') g = null;   // flow-37 tests the coast and the burn
       if (g && h > 300) { first = first || { h, p: g.p }; off = Math.max(off, Math.acos(Math.min(1, dot(g.u, api.qrot(s.q, [0, 1, 0])))) * D); pre = g; }
       if (!g && first && dot(s.v, s.r) > 0 && !gone) { gone = { h, ap: elements(s.r, s.v, T.mu).ap - T.R }; break; }
       if (!s.landed && dot(s.v, s.r) < 0) break;
@@ -757,4 +758,32 @@
   const ui = H.includes("b.innerHTML=sasIcon(k);b.className='mk';b.setAttribute('aria-label',n);") && H.includes("if(V.nrm&&sr.w>0){mark(V.nrm,'normal',1.6)") && H.includes('r.marks?sasLegend():r.d') && H.includes('nctx.stroke(mkPath(k))');
   check('flow-36: SAS buttons are the navball\'s marks (one drawing each, distinct, paired colours), the word on hover and in Help; the ball draws normal and radial, where the SAS points',
     every && paths && kin && held && radOut && ui, `${modes.length} modes drawn ${every} · distinct ${paths} · colours ${kin} · SAS = marks ${held} · radial out is up ${radOut} · wired ${ui}`);
+}
+
+// flow-37. The ◇ through the coast and the burn (flow session 2, QUEUE Q485, PLAYTEST #121: "maybe I should have coasted to
+// apoapsis… I ran out of fuel"). Past the climb the guide doesn't vanish: it coasts, dashed on the horizon, then from half the
+// burn before the apoapsis it is a burn toward a circular orbit, until the periapsis is out of the air. Flown by hand on the
+// guide alone (the nose on the ◇, full throttle except while coasting), the Orbiter reaches orbit with propellant left.
+{
+  const T = api.TELLUS;
+  const aim = (s, u) => { const f = api.localFrame(s.r), Y = norm(u), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+  const seen = []; let n = 0, coast = null, burn = null, end = null;
+  while (s.alive && n++ < 200000) { const g = api.turnGuide(s), ph = g ? g.ph : (seen.length ? 'none' : null);
+    if (ph && seen[seen.length - 1] !== ph) seen.push(ph);
+    if (g && g.ph === 'coast' && !coast) coast = { h: len(s.r) - T.R, tAp: g.tAp, tb: g.tb, p: g.p, ap: 1e9 };
+    if (g && g.ph === 'coast') coast.ap = Math.min(coast.ap, elements(s.r, s.v, T.mu).ap - T.R);
+    if (g && g.ph === 'burn' && !burn) burn = { tAp: g.tAp, tb: g.tb, dv: g.dv };
+    if (!g && seen.includes('burn')) { const el = elements(s.r, s.v, T.mu); end = { pe: el.pe - T.R, ap: el.ap - T.R, left: api.dvRemaining(s).tot }; break; }
+    if (g) aim(s, g.u); s.throttle = g && g.ph === 'coast' ? 0 : 1;
+    if (!s.landed && dot(s.v, s.r) < 0 && !g) break;
+    if (s.evIdx < s.events.length && api.activeEngines(s).length === 0 && s.throttle > 0) api.stage(s);
+    api.advPhys(s); }
+  const order = seen.join('>') === 'climb>coast>burn>none';
+  const timely = burn && Math.abs(burn.tAp - burn.tb / 2) < 3;   // the burn starts half its length before the apoapsis
+  const orbit = end && end.pe > T.atm && end.left > 0;
+  const H = html, ui = H.includes("setLineDash(tg.ph==='coast'?[4,3]:[])") && H.includes('function guideTxt(g)') && H.includes('circHint();') && H.includes("g.ph!=='climb'||turnHintN>=2");
+  check('flow-37: the ◇ guides the end of the climb: coast (dashed, on the horizon) to half a burn before the apoapsis, then burn on it until the periapsis is out of the air; flown on it alone, the Orbiter makes orbit',
+    order && coast && Math.abs(coast.p) < 1e-9 && timely && orbit && ui,
+    `phases ${seen.join(' > ')} · coast from ${coast ? `${(coast.h / 1e3).toFixed(1)} km, Ap ≥ ${(coast.ap / 1e3).toFixed(1)}` : '—'} km · burn ${burn ? `${burn.tAp.toFixed(1)} s before Ap (half of ${burn.tb.toFixed(1)} s), ${burn.dv.toFixed(0)} m/s` : 'never'} · ${end ? `orbit ${(end.pe / 1e3).toFixed(0)} × ${(end.ap / 1e3).toFixed(0)} km, ${end.left.toFixed(0)} m/s left` : 'no orbit'} · wired ${ui}`);
 }
