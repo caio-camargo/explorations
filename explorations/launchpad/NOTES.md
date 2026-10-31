@@ -324,6 +324,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.235 — the navball blends surface → orbit speed over 40–60 km; its label holds either (2026-10-30, flow session, QUEUE Q435, PLAYTEST #110)
 - v1.236 — SAS buttons as the navball's marks; normal and radial drawn on the ball (2026-10-30, flow session, QUEUE Q436, PLAYTEST #111)
 - v1.237 — the pilot's margin: the Assembly says Δv to orbit flown well and by hand; the Rollout reads Tight below it (2026-10-30, vehicle session, QUEUE Q475, PLAYTEST #119) → [notes/vehicle.md](notes/vehicle.md)
+- v1.238 — Easy / Normal / Hard: the charter's Article 3 and Settings; Easy's engines and air, Hard's no-margin budget and no revert; tapes, studies and records keep their level (2026-10-30, flow session, QUEUE Q476, D25, PLAYTEST #119) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
