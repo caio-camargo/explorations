@@ -12,7 +12,7 @@ function cpPhase(){if(mode!=='flight'||!S||!S.alive||S.landed||!S.rec||!S.rec.la
   const low=ascentOn(),down=dot(S.v,S.r)<0;
   if(S.thrust>0)return low&&!down?'ascent':low?'landing':'burn';
   return low?(down?'landing':'ascent'):null}
-const CP_CARDS=['ascent','descent','target'];   // the phase's cards: everything else folds away in a critical phase unless pinned
+const CP_CARDS=['ascent','descent','target','dv'];   // the phase's cards: everything else folds away in a critical phase unless pinned
 // what's red right now, in words: the master caution's reasons
 function cautions(){const L=[];if(mode!=='flight'||!S||!S.alive)return L;const pc=x=>`${(x*100).toFixed(0)}%`;
   if(S.hot&&S.hot.T>S.hot.d.Tmax*.9)L.push(`heat: the ${S.hot.d.name} at ${pc(S.hot.T/S.hot.d.Tmax)} of its limit`);

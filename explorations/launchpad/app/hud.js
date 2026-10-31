@@ -24,12 +24,23 @@ function agRows(){if(!S.alive)return[];const O={out:'extend',in:'retract',tog:'t
   return(S.ag||[]).map(g=>{const P=agParts(S,g),n=P.filter(p=>agOut(S,p)).length;
     return[`<button data-agfire="${g.id}" title="${O[g.op]} (${g.key.toUpperCase()})"${P.length?'':' disabled'}>${g.key.toUpperCase()}</button>`,`${tipEsc(g.name)} <span class="dim">${P.length?`${n} of ${P.length} out`:'nothing left'}</span>`]})}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.agfire;if(id==null||mode!=='flight'||!S)return;e.target.blur();tapeAg(recTape,S,id)});
+// (flow, Q495; PLAYTEST #130) the Δv card: the stage burning now, from what's left in its tanks at this air's exhaust speed
+// (the core's line is vacuum), with its burn at full throttle; the stages after it (in vacuum: they burn high); and, past the climb, what the ◇'s burn to
+// orbit needs (Q485's turnGuide), against all that's left
+function dvRows(){if(!S.alive)return[];const b=S.body,pr=b.atm&&b.rho0?density(b,len(S.r)-b.R)/b.rho0:0,P=dvPlan(S,pr);
+  const V=pr>0.01?dvPlan(S,0):P,c=P[0],rest=V.slice(1).filter(x=>x.dv>0.5),tot=(c?c.dv:0)+rest.reduce((a,x)=>a+x.dv,0);if(!c||tot<0.5)return[];
+  const R=c.dv>0.5?[['This stage',`<span title="at this air's exhaust speed">${c.dv.toFixed(0)} m/s</span>${V!==P&&V[0]?` <span class="dim">(${V[0].dv.toFixed(0)} vac)</span>`:''}`],['Full burn',fmtT(c.burn)]]:[['This stage','<span class="dim">empty: stage (Space)</span>']];
+  if(rest.length)R.push(['Then',`<span title="the stages after this one, in vacuum">${rest.map(x=>x.dv.toFixed(0)).join(' · ')} m/s</span>`]);
+  const g=S.rec&&S.rec.launched?turnGuide(S):null;
+  if(g&&g.ph!=='climb')R.push(['To orbit',`${g.dv.toFixed(0)} m/s · ${fmtT(g.tb)} <span class="dim">burn</span> · <span class="${tot>=g.dv?'ok':'bad'}" title="${tot>=g.dv?'left over after it':'short of it'}">${tot>=g.dv?'+':'−'}${Math.abs(tot-g.dv).toFixed(0)}</span>`]);
+  return R}
 const aoaRow=()=>['AoA',inAir()?`${(S.aoa*57.3).toFixed(1)}°`:'—'];
 const HUD_CARDS=[
   // Ascent: shown with the gauges (ascentOn)
   {id:'ascent',title:'Ascent',when:ascentOn,rows:()=>[GAUGES?aoaRow():aeroRow(),heatRow(),structRow()]},   // with the gauges on, only what they don't draw (Mach and q are on the dials)
   // Descent: coming down with an impact predicted; or, any time, the range safety warning (impact point over a city)
   {id:'descent',title:'Descent',when:()=>S.alive&&!S.landed&&(!!S.rangeWarn||dot(S.v,S.r)<0&&(!!impact||!toolOK('impact'))),rows:()=>[impactRow()]},
+  {id:'dv',title:'<span style="text-transform:none">Δv</span>',rows:dvRows},   // (Q495) shown in the dark cockpit too: a burn is when it matters
   {id:'target',title:'Target',rows:()=>[...tgtRows(),...dockRows()]},
   {id:'stat',title:'Stationary orbit',rows:statRows},   // (vehicle, Q454) when to start the transfer, app/program-ui.js; on the Map too
   {id:'payload',title:'Payload',rows:payloadRows},

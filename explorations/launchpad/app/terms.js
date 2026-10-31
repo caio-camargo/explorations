@@ -16,10 +16,11 @@ const TERMS={
   scale:{t:'The model\'s scale',d:'The rocket on the table is a scale model, like a kit: at 1:48, 1 cm of the model is 48 cm of the real rocket. The scale is the smallest kit scale that keeps the model under 45 cm, so a bigger design sits at a smaller scale. The table, the lamp and the little figure on the base plate (a real 1.8 m person) are drawn at the same scale.'},   // (flow, Q277)
   // (flow, Q384) the words the flight, the map and the site picker use
   soi:{t:'Sphere of influence (SOI)',d:'The region where one body\'s gravity rules the path. Leaving it is an escape: the craft goes on around that body\'s parent instead, a moon\'s sphere into the planet\'s, the planet\'s into the sun\'s. Entering a moon\'s is an encounter.'},
-  pro:{t:'Prograde',d:'The way the craft is moving along its orbit. Burning prograde speeds it up and raises the far side of the orbit; it is how you climb to a higher orbit or leave for another world.'},
-  retro:{t:'Retrograde',d:'Straight against the way the craft is moving. Burning retrograde slows it and lowers the far side of the orbit: how you come home, land, or are caught by another world.'},
-  nrm:{t:'Normal and anti-normal',d:'Square to the orbit\'s plane, one way or the other (like the axle of a wheel). A burn there tilts the orbit: it changes the inclination, best done where the orbit crosses the equator.'},
-  rad:{t:'Radial out and in',d:'Away from the body\'s centre, or towards it. A burn there swings the orbit around without changing its size much: mostly for small corrections.'},
+  // the SAS modes' four cut to half (Q492, Caio 2026-10-30: "let's have those cut down"; the design desk's texts)
+  pro:{t:'Prograde',d:'The way you\'re moving. Burn here to speed up and raise the far side of the orbit.'},
+  retro:{t:'Retrograde',d:'Against the way you\'re moving. Burn here to slow down and lower the far side: coming home, landing.'},
+  nrm:{t:'Normal and anti-normal',d:'Square to the orbit\'s plane. Burn here to tilt the orbit; best where it crosses the equator.'},
+  rad:{t:'Radial out and in',d:'Away from the centre, or towards it. Swings the orbit round; for small corrections.'},
   inc:{t:'Inclination',d:'How far the orbit is tilted from the equator, in degrees: 0° flies over the equator, 90° over the poles. A launch due east from a site at latitude L gives an inclination of L, the lowest it can reach without paying for a turn.'},
   spin:{t:'The ground\'s free speed',d:'The ground already moves east with the planet\'s turning, fastest at the equator. A rocket launched east keeps that speed for free; launched west it must undo it first.'},
   stab:{t:'Stability margin',d:'How far the centre of mass sits ahead of the centre of pressure, in body widths (calibers). Positive: it flies nose-first like an arrow (0.5 and up is comfortable); negative: it wants to fly backwards and flips.'},

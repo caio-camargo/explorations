@@ -830,3 +830,34 @@
     isp && flow && air && margin && noFail && loose && carried && ui,
     `Δv ×${(dE[0] / dN[0]).toFixed(3)} (Hard = Normal ${dH.every((x, i) => x === dN[i])}) · a step's propellant ×${(bE.used / bN.used).toFixed(3)}, thrust ×${(bE.T / bN.T).toFixed(3)} · body air ×${(aE / aN).toFixed(3)} · margin Normal ${mN} / Hard ${mH} · ignition fails of 200: Normal ${fN}, Easy ${fE} · deadlines ${loose} · tape/study/record ${carried} · wired ${ui}`);
 }
+
+// flow-39. The current stage's Δv in flight (flow session 2, QUEUE Q495, PLAYTEST #130: "it would be nice to have"). A Δv
+// card: the stage burning now at this air's exhaust speed (the core's line is vacuum) with its burn at full throttle, the
+// stages after it, and past the climb what the ◇'s burn to orbit needs against all that's left. Kept in the dark cockpit.
+{
+  const T = api.TELLUS;
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const fmtT = new Function(cut(page, 'function fmtT(', "+x+'s'}") + "+x+'s'};return fmtT")();
+  const mk = new Function('S', 'density', 'dvPlan', 'len', 'fmtT', 'turnGuide', cut(page, 'function dvRows(', '\nconst aoaRow') + ';return dvRows()');
+  const rows = s => { s.rec = { launched: true }; try { return mk(s, api.density, api.dvPlan, len, fmtT, api.turnGuide); } finally { delete s.rec; } };   // a recorded flight makes advPhys tick a mission
+  const txt = R => R.map(r => `${r[0]}: ${r[1].replace(/<[^>]+>/g, '')}`).join(' | ');
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s;
+  const pad = rows(s);
+  s.sas = false; s.throttle = 1; api.stage(s);
+  const aim = u => { const f = api.localFrame(s.r), Y = norm(u), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+  let low = null, coast = null, n = 0;
+  while (s.alive && n++ < 200000) { const g = api.turnGuide(s), h = len(s.r) - T.R;
+    if (!low && h > 1000) low = rows(s);
+    if (g && g.ph === 'coast' && !coast) { coast = rows(s); break; }
+    if (g) aim(g.u); s.throttle = 1;
+    if (s.evIdx < s.events.length && api.activeEngines(s).length === 0) api.stage(s);
+    api.advPhys(s); }
+  const num = (R, k, re) => { const r = R && R.find(x => x[0] === k); const m = r && r[1].replace(/<[^>]+>/g, '').match(re); return m ? m.slice(1).map(Number) : null; };
+  const padOK = pad.length >= 2 && num(pad, 'This stage', /^(\d+) m\/s \((\d+) vac\)/) && pad.some(r => r[0] === 'Then');
+  const hv = num(low, 'This stage', /^(\d+) m\/s \((\d+) vac\)/), lowOK = hv && hv[0] < hv[1] && low.some(r => r[0] === 'Full burn');
+  const orb = num(coast, 'To orbit', /^(\d+) m\/s · .* burn · \+(\d+)$/), orbOK = !!orb && orb[0] > 0;
+  const wired = page.includes("title:'<span style=\"text-transform:none\">Δv</span>',rows:dvRows}") && page.includes("CP_CARDS=['ascent','descent','target','dv']");
+  check('flow-39: a Δv card in flight: this stage at this air\'s exhaust speed with its burn time, the stages after it, and the burn to orbit against what\'s left; kept in the dark cockpit',
+    padOK && lowOK && orbOK && wired, `pad: ${txt(pad)} · 1 km: ${low ? txt(low) : '—'} · coasting: ${coast ? txt(coast) : '—'} · wired ${wired}`);
+}
