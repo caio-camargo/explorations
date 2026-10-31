@@ -503,7 +503,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const src = page.slice(page.indexOf('function cpPhase'), page.indexOf('function cockpit'));
-  const mk = (S, low) => new Function('mode', 'S', 'ascentOn', 'certOf', 'dot', src + 'return {cpPhase, cautions, CP_CARDS};')('flight', S, () => low, () => 1, (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+  const mk = (S, low) => new Function('mode', 'S', 'ascentOn', 'certOf', 'dot', 'turnFlat', src + 'return {cpPhase, cautions, CP_CARDS};')('flight', S, () => low, () => 1, (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], () => null);   // (Q483's flat warning: flow-41)
   const ship = o => ({ alive: true, landed: false, rec: { launched: true }, thrust: 0, v: [0, 0, 1], r: [0, 0, 7e6], ...o });
   const ph = [mk(ship({ rec: { launched: false } }), true), mk(ship({ thrust: 1e5 }), true), mk(ship({ thrust: 1e5 }), false), mk(ship({}), false), mk(ship({ v: [0, 0, -50] }), true), mk(ship({ landed: true }), true)].map(x => x.cpPhase());
   const phases = JSON.stringify(ph) === JSON.stringify([null, 'ascent', 'burn', null, 'landing', null]);
@@ -886,4 +886,36 @@
   const wired = page.includes("title:'<span style=\"text-transform:none\">Δv</span>',rows:dvRows}") && page.includes("CP_CARDS=['ascent','descent','target','dv']");
   check('flow-40: a Δv card in flight: this stage at this air\'s exhaust speed with its burn time, the stages after it, and the burn to orbit against what\'s left; kept in the dark cockpit',
     padOK && lowOK && orbOK && wired, `pad: ${txt(pad)} · 1 km: ${low ? txt(low) : '—'} · coasting: ${coast ? txt(coast) : '—'} · wired ${wired}`);
+}
+
+// flow-41. Warn before the turn goes flat into the heat (flow session 2, QUEUE Q483; PLAYTEST #119, Q474's sweep: flat by
+// 43 km instead of 54 the Orbiter's pod burns up). turnFlat: burning, fast and low, the path more than 4° under the standard
+// profile ('turn'), or the apoapsis still in the air and under 35 s away ('level'); the master caution names it and the ◇
+// turns red with a chevron skyward. Flown here with the nose on a profile flat by X km until the ◇ leaves the climb, then on
+// the ◇'s coast and burn (Q485), or, obeying, on the ◇ from the warning on: quiet on the standard climb and flat by 51 km;
+// flat by 46 and 40 km it fires with the pod under 90 % of its limit, and the pilot who obeys it makes orbit.
+{
+  const T = api.TELLUS, D = 180 / Math.PI;
+  const fly = (P, fk, obey) => { api.t = 0; const s = api.newShip(api.PRESETS[P]); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+    let n = 0, w = null, peak = 0, out = 'lost';
+    while (s.alive && n++ < 300000) { const h = len(s.r) - T.R, f = api.localFrame(s.r), G = api.turnGuide(s), low = h < 2000 && !G;
+      const own = !(obey && w) && (G ? G.ph === 'climb' : h < T.atm), x = Math.min(1, Math.max(0, (h - 286) / (fk * 1000 - 286))), p = 90 * (1 - Math.pow(x, 0.6)) / D;
+      const Y = own ? norm(add(mul(f.e, Math.cos(p)), mul(f.up, Math.sin(p)))) : G ? G.u : norm(sub(s.v, api.surfVel(T, s.r))), X = norm(cross(Y, f.n));
+      s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; s.throttle = G && G.ph === 'coast' ? 0 : G || low || h < T.atm && !(obey && w) ? 1 : 0;
+      const F = api.turnFlat(s), heat = s.hot ? s.hot.T / s.hot.d.Tmax : 0; peak = Math.max(peak, heat); if (F && !w) w = { h, heat, why: F.why };
+      const el = elements(s.r, s.v, T.mu); if (!G && el.pe - T.R > T.atm) { out = 'orbit'; break; }
+      if (!G && !low && dot(s.v, s.r) < 0 && h < T.atm * 0.9) { out = 'fell'; break; }
+      if (s.evIdx < s.events.length && api.activeEngines(s).length === 0 && s.throttle > 0) api.stage(s);
+      api.advPhys(s); }
+    return { out: s.alive ? out : 'burned up', w, peak }; };
+  const R = {};
+  for (const P of ['Orbiter', 'Lunar', 'Heavy']) R[`${P} 54`] = fly(P, 54);
+  R['Orbiter 51'] = fly('Orbiter', 51);
+  for (const k of [46, 40]) { R[`Orbiter ${k}`] = fly('Orbiter', k); R[`Orbiter ${k}, obeyed`] = fly('Orbiter', k, true); }
+  const quiet = ['Orbiter 54', 'Lunar 54', 'Heavy 54', 'Orbiter 51'].every(k => !R[k].w && R[k].out === 'orbit');
+  const early = [46, 40].every(k => R[`Orbiter ${k}`].w && R[`Orbiter ${k}`].w.heat < 0.9 && R[`Orbiter ${k}`].out !== 'orbit' && R[`Orbiter ${k}, obeyed`].out === 'orbit');
+  const H = html, ui = H.includes('const F=S.proc?null:turnFlat(S);if(F)L.push(') && H.includes("fl=tg&&!S.proc&&turnFlat(S),gc=fl?'#ff5a3a':'#fff1c8'") && H.includes("${fl?' ▲':''}");
+  check('flow-41: too flat, too low: quiet on the standard climb (Orbiter, Lunar, Heavy) and flat by 51 km; flat by 46 and 40 km the master caution and a red ◇ fire with the pod under 90 % of its limit, and obeyed the Orbiter makes orbit',
+    quiet && early && ui,
+    Object.entries(R).map(([k, r]) => `${k}: ${r.out}, ${r.w ? `${r.w.why} at ${(r.w.h / 1e3).toFixed(0)} km, pod ${(r.w.heat * 100).toFixed(0)} %` : 'quiet'} (peak ${(r.peak * 100).toFixed(0)} %)`).join(' · ') + ` · wired ${ui}`);
 }

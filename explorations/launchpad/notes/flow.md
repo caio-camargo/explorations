@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1372,3 +1372,27 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   stage below vacuum with its full burn; coasting, *To orbit* with what's spare; the wiring); flow-21 and flow-31 (the terms)
   pass. Every flow section and platform-3 pass; **the full smoke was not run** (3 GB free; the last one was killed for
   memory). TESTING row 329.
+
+## v1.253 — warn before the turn goes flat into the heat (2026-10-31, flow session 2, QUEUE Q483; PLAYTEST #119)
+- **The cliff** (Q474's sweep): a hand climb that levels off inside the air builds orbital speed there, and the pod cooks or
+  the craft sinks back. Flown here with the nose on a profile flat by X km and then on the ◇'s coast and burn (Q485), the
+  Orbiter, the Lunar and the Heavy reach orbit from 54 and 51 km; from 46 km and lower they fall or burn up, at 45–65 km and
+  Mach 8–10, the pod passing 90 % within seconds.
+- **Two signs, measured on the Orbiter, Lunar, Satellite and Heavy** (`turnFlat(s)`, sim/flight.js; only burning, Mach 1.5+,
+  below 65 % of the air, not yet in orbit): **'turn'**, the path's pitch more than 4° under the standard profile's at this
+  height: the turn itself too flat, seen from ~10 km on a climb flat by 40–43 km (the standard climb stays within 0.1°; flat by
+  46 km within 2.7°, so it can't tell those); **'level'**, the apoapsis still in the air and under 35 s away (from Mach 3):
+  levelling off in it. On the standard climb that time never comes nearer than 52 s on any of the four; every climb that fell or
+  burned up passed under 25 s, the pod at 58–84 %. Each clears under half its threshold (the time: over 45 s).
+- **On screen:** a master caution ("too flat this low: lift the nose to the ◇ before the air cooks the craft (5° under the
+  climb)", or "levelling off in the air (apoapsis in 35 s): …"), the ◇ red with a chevron toward the sky, `▲` on the heading
+  line. Hand flights only. The climb ◇ now stays while the craft sinks under power (it vanished on the way down, when the
+  pilot needed it most); it still goes once the engine is off.
+- **Obeyed** (the ◇ followed from the warning on): the Orbiter, Satellite and Heavy reach orbit from every flat climb tried
+  (40–46 km). **The Lunar doesn't:** warned at 60 km it can't climb out on its 0.4 g upper stage, and warned early (9 km) it
+  climbs steep, coasts to ~104 km with little speed across, and its long circularising burn sinks it to 62 km while the ◇
+  flips between climb and burn (a *Proposed* line).
+- **Checks:** test `flow-41` (quiet on the Orbiter, Lunar and Heavy's standard climbs and flat by 51 km; flat by 46 and 40 km
+  it fires with the pod at 55 % and 28 %, and obeyed the Orbiter makes orbit; the wiring); flow-29's harness gets `turnFlat`.
+  Every flow section and platform-3 pass; **the full smoke not run** (memory). GPU (headless `shot.mjs`): the red ◇ and its
+  chevron at 11 km on a climb flat by 40, the caution's two texts (it blinks for 3 s when it appears). TESTING row 330.
