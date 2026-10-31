@@ -1048,3 +1048,18 @@
     && /det=fade>0\.\?detailF\(MB\(d\*tN\)\+uNdet,w\*uNR\):\.5;/.test(pg);
   check('Selene\'s craters and near detail filtered by the footprint (no flashing grain)', ok, `filtered ${ok}`);
 }
+
+// aerofx-49. Selene up close isn't plain grey (look & sound sky & bodies beat, QUEUE Q324, PLAYTEST #143): the moon
+// pass's albedo is mottled from 12 km down to the regolith's 25 cm (two more filtered fbm scales, detailF stronger and out
+// to 8 km), and within a few hundred metres boulders stand on the ground (rocksL: half ellipsoids hit by the view ray, lit,
+// lumpy, shadows cast down-sun up to 3 heights long, faded by their footprint). The relief itself waits for GROUND G3.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const moon = pg.slice(pg.indexOf('const MOON_FS='), pg.indexOf('const PMOON='));
+  const has = {
+    mottle: /\+\.16\*fade\*\(det-\.5\)\+\.09\*\(fbmF\(nb\*300\.,w\*300\.\)-\.5\)\+\.06\*\(fbmF\(nb\*30\.,w\*30\.\)-\.5\)\)/.test(moon) && /fade=smoothstep\(8000\.,300\.,tN\)/.test(moon),
+    rocks: /float rocksL\(vec3 l,vec3 up,vec3 sb,vec3 V,float fw\)\{/.test(moon) && /k=1\.-smoothstep\(\.6\*r,1\.5\*r,fw\);if\(k<=0\.\)continue;/.test(moon),
+    used: /if\(uSel>0\.&&w\*uNR<\.5\)refl\*=rocksL\(MB\(d\*tN\)\+uNdet,nb,MB\(uSun\),MB\(V\),w\*uNR\);/.test(moon)
+  };
+  check('Selene up close: mottled regolith and boulders with long shadows (views 112–113)', Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}

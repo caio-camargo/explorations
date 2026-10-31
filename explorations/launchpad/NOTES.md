@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-30
+**Version**: v2.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-10-31
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -17,7 +17,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 26 |
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 43 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 64 |
-| [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 20 |
+| [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 14 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
@@ -113,6 +113,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.223 — no pale streak at the horizon from inside the deck: the far deck's underside (2026-10-13, sky & bodies, QUEUE Q453)
 - v1.225 — earthshine on a lander at Selene's night; a view of clouds in front of Selene (2026-10-14, sky & bodies, QUEUE Q428, Q429)
 - v1.242 — Selene without the flashing grain: crater octaves and near detail filtered by the footprint (2026-10-30, sky & bodies, QUEUE Q493, PLAYTEST #128)
+- v1.249 — Selene up close isn't plain grey: mottled regolith and boulders with long shadows (2026-10-31, sky & bodies, QUEUE Q324, PLAYTEST #143)
 - v1.190 — clouds at liftoff without the crawl: the day sky's hatch gone, cloud detail filtered by size (2026-10-13, effects, QUEUE Q250, PLAYTEST #48)
 - v1.191 — the igniter flashes when the engine lights, not when it is first drawn: reference views' plume colours steady (2026-10-13, effects, QUEUE Q368)
 - v1.195 — the Steppe rollout's sound: the erector's rumble, rail joints, the boom's pump, the clunks (2026-10-13, effects as sound overflow, QUEUE Q222)
@@ -283,6 +284,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.142 — spent stages at sea, the seabed, holed hulls (2026-10-12, world session, QUEUE Q300 + Q301)
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
 - v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
+- v1.251 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 
@@ -333,6 +335,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.244 — the payload bench lists a satellite's parts only (2026-10-31, vehicle session, QUEUE Q506, PLAYTEST #139) → [notes/vehicle.md](notes/vehicle.md)
 - v1.245 — opening the Assembly leaves a preset a preset (its name, its tape): the panel reads the design without converting it (2026-10-31, vehicle session, QUEUE Q498, PLAYTEST #132) → [notes/vehicle.md](notes/vehicle.md)
 - v1.246 — hide the payload fairing while building: V or a button, and by itself while a part is held (2026-10-31, vehicle session, QUEUE Q512, PLAYTEST #147) → [notes/vehicle.md](notes/vehicle.md)
+- v1.250 — the ◇ keeps q·α under 36 kPa·° from Mach 3: the Passenger Orbiter stops flipping at staging (2026-10-31, flow session, QUEUE Q482, PLAYTEST #120) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

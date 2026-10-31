@@ -324,6 +324,43 @@
     et < 1e-12 && ea < 5e-8 && !/Math\.(tan|atan)\(/.test(srcB) && lam === Math.fround(lam), `ptan ${et.toExponential(1)}, patanJ ${ea.toExponential(1)} rad`);
 }
 
+// ground-10. Craters that vary (world session, QUEUE Q494, PLAYTEST #129: "every one a perfect circle with a perfect
+// ramp"). One profile, craterProf (sim/ground.js), drawn by the moon pass's crProf (app/gl.js): the GLSL is read as JS here
+// and must give the CPU's numbers. A fresh rim drops steeply inside and gently outside; an old one is lower and rounded;
+// complex craters have flat floors and peaks; band craters are squashed and their rims uneven.
+{
+  const G = new Function(src + 'return {craterProf,craterH,craterBands,GR_REACH,GR_EXP,SELENE};')();
+  const gl = html.slice(html.indexOf('vec2 crProf('), html.indexOf('// craters with their gradient (xyz) in one pass'));
+  const body = gl.slice(gl.indexOf('{') + 1, gl.lastIndexOf('}')).replace(/\bfloat\b/g, 'let').replace(/vec2\(/g, 'V(');
+  const crProf = new Function('max', 'pow', 'clamp', 'V', `return (k,d,rim,p,kf,pk,w)=>{${body}}`)(Math.max, Math.pow, (x, a, b) => Math.min(b, Math.max(a, x)), (a, b) => [a, b]);
+  let worst = 0, dworst = 0;
+  for (const [d, rim, p, kf, pk, w] of [[.4, .072, G.GR_EXP, 0, 0, .007], [.12, .02, G.GR_EXP, 0, 0, .03], [.2, .05, 2, .35, .1, .02], [.3, .06, 2, .35, 0, .08]])
+    for (let k = 0.001; k < 1.9; k += 0.013) { const c = G.craterProf(k, d, rim, p, kf, pk, w), g = crProf(k, d, rim, p, kf, pk, w), e = 1e-6, s = (G.craterProf(k + e, d, rim, p, kf, pk, w) - G.craterProf(k - e, d, rim, p, kf, pk, w)) / (2 * e);
+      worst = Math.max(worst, Math.abs(c - g[0])); if (Math.abs(k - .18) > .01 && Math.abs(k - .3) > .01) dworst = Math.max(dworst, Math.abs(s - g[1])) }
+  check('ground-10: the moon pass draws the CPU crater profile (crProf = craterProf to 1e-9, its slope the profile slope)', worst < 1e-9 && dworst < 1e-4, `height ${worst.toExponential(1)}, slope ${dworst.toExponential(1)}`);
+  // slopes in m/m at one 2 km simple crater, fresh and old: inside the rim, outside it, and the rim's crest
+  const D = 2000, Dt = 18e3, sl = (fr, r) => (G.craterH(r + 1e-4, D, Dt, fr) - G.craterH(r - 1e-4, D, Dt, fr)) / 2e-4 / (D / 2);
+  const crest = fr => { let m = -1e9; for (let r = .8; r < 1.3; r += .002) m = Math.max(m, G.craterH(r, D, Dt, fr)); return m };
+  const inF = sl(1, .97), outF = -sl(1, 1.03), inO = sl(0, .97), steepO = Math.max(...Array.from({length: 60}, (_, i) => Math.abs(sl(0, .7 + i * .01))));
+  check('ground-10: a fresh rim is sharp, 3+× steeper inside than out; an old one is half as high or less and rounded (its steepest wall under half the fresh)',
+    inF > 3 * outF && crest(0) < .5 * crest(1) && steepO < .5 * Math.max(inF, outF), `fresh ${(Math.atan(inF) * 57.3).toFixed(0)}° in, ${(Math.atan(outF) * 57.3).toFixed(0)}° out, crest ${crest(1).toFixed(0)} m · old crest ${crest(0).toFixed(0)} m, steepest ${(Math.atan(steepO) * 57.3).toFixed(0)}°`);
+  const Dc = 60e3, fl = [.05, .15, .25, .3].map(r => G.craterH(r, Dc, Dt, 1)), pk = G.craterH(0, Dc, Dt, 1) - G.craterH(.3, Dc, Dt, 1);
+  check('ground-10: a 60 km complex crater: a central peak 500+ m over a flat floor (under 200 m over 0.2–0.3 radii)', pk > 500 && Math.abs(fl[2] - fl[3]) < 200, `peak ${pk.toFixed(0)} m, floor ${fl.map(x => x.toFixed(0)).join(' ')} m`);
+  // band craters on Selene: walk round 40 single craters of the 1.3–3.2 km band (the finest bands off) and measure how
+  // far each reaches its rim's crest in 16 directions: not circles (max/min radius), and crests of uneven height
+  const R = G.SELENE.R, out = []; let tries = 0;
+  for (let i = 0; out.length < 40 && i < 4000; i++) { tries++;
+    const u = norm([Math.sin(i * 1.7), Math.cos(i * 2.3) * .4, Math.cos(i * 1.7)]), h0 = G.craterBands(u, R, Dt, null, 3) - G.craterBands(u, R, Dt, null, 2);
+    if (h0 > -60) continue;   // a bowl of band 3 somewhere under u: find its deepest point nearby
+    let c = u, hc = h0; for (let it = 0; it < 60; it++) { let best = c; for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const e1 = norm(cross(c, [0, 1, 0])), e2 = cross(c, e1), v = norm(add(c, add(mul(e1, a * 60 / R), mul(e2, b * 60 / R)))), h = G.craterBands(v, R, Dt, null, 3) - G.craterBands(v, R, Dt, null, 2); if (h < hc) { hc = h; best = v } } if (best === c) break; c = best }
+    const e1 = norm(cross(c, [0, 1, 0])), e2 = cross(c, e1), rr = [], hh = [];
+    for (let q = 0; q < 16; q++) { const a = q / 16 * 2 * Math.PI; let bm = -1e9, br = 0; for (let x = 100; x < 2500; x += 20) { const v = norm(add(c, add(mul(e1, Math.cos(a) * x / R), mul(e2, Math.sin(a) * x / R)))), h = G.craterBands(v, R, Dt, null, 3) - G.craterBands(v, R, Dt, null, 2); if (h > bm) { bm = h; br = x } } rr.push(br); hh.push(bm) }
+    if (Math.min(...hh) > hc + 20) out.push([Math.max(...rr) / Math.min(...rr), Math.max(...hh) - Math.min(...hh), hh.reduce((a, b) => a + b) / 16 - hc]) }
+  const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], asp = out.map(o => o[0]), un = out.map(o => o[1] / o[2]);
+  check('ground-10: band craters are not circles: of 40 on Selene, a quarter 1.1+× longer one way; their crests uneven by 5+ % of the depth (median; a rim is ~15 % of it)',
+    out.length === 40 && asp.filter(a => a >= 1.1).length >= 10 && med(un) > .05, `${asp.filter(a => a >= 1.1).length} of ${out.length} 1.1+× long (max ${Math.max(...asp).toFixed(2)}); crest unevenness median ${(med(un) * 100).toFixed(0)} % of the depth`);
+}
+
 // sea-1. The sea is a fluid (world session, QUEUE Q274, PLAYTEST #74; NOTES § v1.122): a splashdown floats on its own
 // buoyancy (study_sea.mjs drops every preset). The Orbiter's returning piece, dropped upright with SAS off, settles on
 // its side, partly dry; a capsule with flotation bags floats upright; a piece too dense sinks at once. Afloat, it heaves on

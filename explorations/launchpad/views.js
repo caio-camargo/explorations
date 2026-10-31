@@ -585,6 +585,19 @@ window.refView = async (n) => {
     const v = HOOK.view, z = dot(mD, v.Fw), px = [v.W / 2 * (1 + dot(mD, v.R) / (z * v.tanX)), v.H / 2 * (1 - dot(mD, v.U) / (z * v.tanY))];
     return txt + `; target at ${px[0].toFixed(0)},${px[1].toFixed(0)} px`;
   }
+  // 184–185 (world, QUEUE Q494, PLAYTEST #129): Selene's craters at a low sun, where their shapes show. 184 from 150 km,
+  // the sun 8° up, looking 50° down across the sun's line (the shadows sideways); 185 from 40 km, the sun 15° up, 25° down
+  if (n === 184 || n === 185) {
+    stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0];
+    const [alt, el, dn] = n === 184 ? [1.5e5, 8, 50] : [4e4, 15, 25], sn = norm(SUN), w0 = norm(cross(sn, [0, 1, 0])), e = el / 57.2958, a = dn / 57.2958;
+    const u = norm(add(mul(sn, Math.sin(e)), mul(norm(cross(w0, sn)), Math.cos(e)))), w = norm(cross(sn, u));
+    S.body = SELENE; S.r = mul(u, SELENE.R + alt); S.v = surfVel(SELENE, S.r);
+    const D = norm(sub(mul(w, Math.cos(a)), mul(u, Math.sin(a)))), f = localFrame(S.r);
+    cam.pitch = Math.asin(clamp(-dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(D, f.e), dot(D, f.n)); cam.dist = 250;
+    render(); await settle(); bare();
+    return `Selene's craters from ${(alt / 1e3).toFixed(0)} km, sun ${(Math.asin(dot(u, sn)) * 57.3).toFixed(0)}° up, ${dn}° down`;
+  }
   if (n >= 164 && n <= 168) {
     stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
     window.simulate = () => {}; S.throttle = 0; S.w = [0, 0, 0]; const sn = norm(SUN);

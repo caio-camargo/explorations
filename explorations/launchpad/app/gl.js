@@ -1238,22 +1238,56 @@ const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LIN
 // lunar-Lambert (a full Selene is a flat disc, not a ball), an opposition surge, a terminator where only the rims catch
 // light, and earthshine: the light of Tellus's lit face, by its phase seen from the ground.
 const MOON_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
-uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs;uniform vec2 uNrot;uniform vec4 uNoct;
-const float CM=.0042;   // cratG()'s mean
+uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs,uNdt;uniform vec2 uNrot;uniform vec4 uNoct;
+const float CM=-.0022;   // cratG()'s mean
 float fbmF(vec3 p,float w){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*mix(.5,vn(p),1.-smoothstep(.25,.6,w));p=p*2.03+vec3(1.7,9.2,3.1);w*=2.03;a*=.5;}return s;}
-// craters with their gradient (xyz) in one pass, so the relief needs no second evaluation. crat()'s profile, with radii
-// .12–.34 of a cell (rim to 1.4×, under half a cell), so only the 2×2×2 nearest cells can reach a point: 8 cells, not 27
-// (the cells are 1.43× larger than crat's, uNoct.x 1/1.43 of what it would be, so the craters keep their size on the ground)
-vec4 cratG(vec3 p){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
- for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;
-  vec3 q=o+vec3(h3(c),h3(c+17.3),h3(c+41.9))-f;float rad=.12+.22*h3(c+5.1),l=length(q),k=l/rad;if(k>=1.4)continue;
-  vec3 dk=-q/max(l*rad,1e-6);r+=k<1.?vec4(dk*1.2*k,(k*k-.75)*.6):vec4(-.5*dk,(1.4-k)*.5);}return vec4(r.w,r.xyz);}
+// (Q494, PLAYTEST #129) one crater's profile, craterProf in sim/ground.js: (height, dh/dk) at k = distance / radius. The
+// bowl -d+(d+rim)·kk^p from the floor's edge kf, a central peak pk, the ejecta rim·k⁻³ out to 1.75, the two joined by a
+// smooth minimum w wide (a fresh rim sharp, an old one rounded; its slope is the blend's, exactly)
+vec2 crProf(float k,float d,float rim,float p,float kf,float pk,float w){
+ float kk=max(k-kf,0.)/(1.-kf),pw=pow(max(kk,1e-6),p-1.),a=-d+(d+rim)*pw*kk,da=(d+rim)*p*pw/(1.-kf);
+ if(k<.18&&pk>0.){float q=1.-k*k/.0324;a+=pk*q*q;da-=pk*q*k*(4./.0324);}
+ float kc=max(k,.3),k3=kc*kc*kc,t=clamp((k-1.3)/.45,0.,1.),fo=1.-t*t*(3.-2.*t),b=rim/k3*fo,db=(k<.3?-0.:-3.*b/kc)-rim/k3*6.*t*(1.-t)/.45;
+ float m=clamp(.5+.5*(b-a)/w,0.,1.);return vec2(b+(a-b)*m-w*m*(1.-m),db+(da-db)*m);}
+// craters with their gradient (xyz) in one pass, so the relief needs no second evaluation. Radii .1–.28 of a cell (the
+// octaves make the power law: many small) (reach 1.75×, under half a cell), so only the 2×2×2 nearest cells can reach a point: 8 cells, not 27; 5 % of
+// cells empty. Each crater as the CPU's (craterH): depth and rim by size (complex past uNdt: flat floor, peak past 1.4×)
+// and freshness (hash³: most old and soft), squashed up to 1.3× along a hashed axis, its rim higher on one side. The
+// slope is size-free, as real craters' (it was steeper the smaller the crater); the rim's lean is left out of it. Gains:
+// the height (only the albedo reads it) ×3.2 and the slope ×25 keep the old field's
+// spread and mean slope (views 184–185 at a low sun).
+// s = a cell in uNdt (the body's simple → complex size)
+vec4 cratG(vec3 p,float s){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
+ for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;float hv=h3(c+29.3);if(fract(hv*97.1)>.95)continue;
+  vec3 j=vec3(h3(c),h3(c+17.3),h3(c+41.9)),q=o+j-f,ua=normalize(fract(j*7.37+hv)-.5+1e-4);float hr=h3(c+5.1),rad=.1+.18*hr,e=.3*hv*hv;
+  vec3 m=q+e*ua*dot(ua,q);float l=length(m),k=l/rad;if(k>=1.75)continue;
+  float fr=fract(hv*41.3),Dr=2.*rad*s;fr*=fr*fr;bool cx=Dr>=1.;
+  vec3 lv=normalize(fract(j*13.1+hv*3.)-.5+1e-4);float xl=dot(m,lv)/max(l,1e-6);
+  float d=(cx?.276*pow(Dr,-.699):.4)*(.5+.5*fr),rim=(cx?.084*pow(Dr,-.601):.072)*(.35+.65*fr)*(1.+.35*xl+.2*(2.*xl*xl-1.));
+  vec2 h=crProf(k,d,rim,cx?2.:1.6,cx?.35:0.,Dr>1.4?.5*d:0.,rim*(.1+1.4*(1.-fr)));
+  r+=vec4(3.2*h.x,-25.*h.y*(m+e*ua*dot(ua,m))/max(l,1e-6));}return r;}
+// (Q324, PLAYTEST #143) rocks near the camera: one in ~7 of the 1 m cells (camera-relative metres in the body's frame,
+// periods dividing 1000) holds a boulder 6–70 cm across, most of them small: half an ellipsoid on the ground (.45–.95 as high as wide), hit by the view
+// ray (V, toward the camera) so it stands up and hides what's behind it, lit as one (a lumpy normal), its shadow cast down-sun (to 3
+// heights' length: long at a low sun). Returns the sun's light here relative to the flat ground (1 = none); each rock fades
+// out by its footprint (gone under ~1.5 px), so none shimmer. The cells searched are centred part way up the ray, where
+// a rock that covers this pixel stands
+float rocksL(vec3 l,vec3 up,vec3 sb,vec3 V,float fw){float vu=max(dot(V,up),.1);vec3 off=V*min(.18/vu,1.),c=floor(l+off),f=l+off-c;
+ float m=1.,e=dot(up,sb),ct=min(sqrt(max(1.-e*e,0.))/max(e,.05),3.),tb=-1.,sh=1.;vec3 st=normalize(sb-up*e+1e-6);
+ for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)for(int z=-1;z<=1;z++){vec3 o=vec3(x,y,z),cc=mod(c+o,1000.);float h=h3(cc);if(h<.86)continue;
+  float r=.03+.32*pow(h3(cc+11.),4.),k=1.-smoothstep(.6*r,1.5*r,fw);if(k<=0.)continue;
+  vec3 q=f-off-o-.5-(vec3(h3(cc+3.1),h3(cc+5.7),h3(cc+9.3))-.5)*.6,qt=q-up*dot(q,up);   // the ground point from the rock's foot
+  float hf=.45+.5*h3(cc+17.),iu=1./hf-1.;vec3 Vs=V+up*dot(V,up)*iu;   // squashed to hf of its radius: the ray in the rock's round space
+  float A=dot(Vs,Vs),b=-dot(Vs,qt),D=b*b-A*(dot(qt,qt)-r*r);
+  if(D>0.){float t=(b+sqrt(D))/A;if(t>tb){tb=t;vec3 n=Vs*t+qt,N=normalize(n+up*dot(n,up)*iu),pl=n*(2.5/r)+cc;N=normalize(N+.7*(vec3(vn(pl),vn(pl+5.2),vn(pl+9.7))-.5));m=mix(1.,1.15*max(dot(N,sb),0.)/max(e,.05),k);}}
+  float a=-dot(qt,st),L=r*hf*ct;if(a>0.&&a<L){float bb=length(qt+st*a),wd=r*sqrt(1.-a/L);sh*=1.-.75*k*(1.-smoothstep(.8*wd,wd,bb));}}
+ return tb>0.?m:sh;}
 // craters at uNoct.w octaves from uNoct.x cells per radius, each uNoct.y finer and uNoct.z as deep; w = the footprint in
 // radii. x = height, yzw = its gradient on the unit sphere. (Q493, PLAYTEST #128) An octave is whole while its craters
 // are 2 px across or more and gone by ~1 px (w·f .06 → .2; it was .25 → .6, which kept sub-pixel craters at full weight:
 // their rims, steeper each octave (×3 finer, ×.45 deep), turned pixels black and flashed as the camera moved)
 vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;i++){if(float(i)>=uNoct.w)break;float k=1.-smoothstep(.06,.2,w*f);if(k<=0.)break;
- vec4 c=cratG(n*f+float(i)*7.31);s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
+ vec4 c=cratG(n*f+float(i)*7.31,uNR/(f*uNdt));s+=a*k*vec4(c.x-CM,c.yzw*f);f*=uNoct.y;a*=uNoct.z;}return s;}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  vec2 hn=sph(uNc,uNcc,d);float dc=length(uNc),aR=uNR/dc;bool pt=!(uNcc>0.&&hn.x>0.);
@@ -1275,15 +1309,16 @@ void main(){
  #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
  vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.005);   // (Q493) the footprint along the view: at .2 craters aliased into dashes toward the horizon
  vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w);
- float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(3000.,150.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
+ float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(8000.,300.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
  vec3 alb;
  if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
-  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.07*fade*(det-.5))*vec3(1.,.98,.95);}
+  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.16*fade*(det-.5)+.09*(fbmF(nb*300.,w*300.)-.5)+.06*(fbmF(nb*30.,w*30.)-.5))*vec3(1.,.98,.95);}   // (Q324, #143) mottled from 12 km down to the regolith's 25 cm
  else alb=uNalb*(.75+.5*fbmF(n*2.5,w*2.5)-.3*smoothstep(.45,.7,fbmF(n*1.2+7.,w*1.2))+.12*cr+.25*fade*(det-.5));
  float e=dot(n,uSun),mu0=clamp(e+slope*sqrt(max(1.-e*e,0.))*.8*smoothstep(-.12,.05,e),0.,1.6);   // past the terminator only the rims catch the sun
  float cg=dot(uSun,V),g=acos(clamp(cg,-1.,1.))*57.29578,L=clamp(1.-.019*g+2.42e-4*g*g-1.46e-6*g*g*g,0.,1.);
  float B=1.+.6/(1.+sqrt(max(1.-cg*cg,0.))/max(1.+cg,1e-3)/.05);   // the opposition surge (tan g/2 over a width of .05)
  float refl=(2.*L*mu0/max(mu0+mu,1e-3)+(1.-L)*mu0)*B;
+ if(uSel>0.&&w*uNR<.5)refl*=rocksL(MB(d*tN)+uNdet,nb,MB(uSun),MB(V),w*uNR);   // (Q324) boulders within a few hundred metres
  // earthshine: Tellus's lit face (albedo .35, a Lambert sphere's phase). Real, it's ~1/4000 of the sun, far under what
  // the exposure (×4 at most) can show; ×100 so a night side under a full Tellus reads as a dim grey (3 % of the sunlit side)
  vec3 wT=uPc-d*tN;float dT=length(wT);wT/=dT;float al=acos(clamp(dot(uSun,-wT),-1.,1.)),Ph=(sin(al)+(3.14159265-al)*cos(al))/3.14159265;
@@ -1302,7 +1337,7 @@ function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
       const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)}
     const sel=b===SELENE,th=b.lock||sel?bodyTheta(b,simT):0,mo=MOON_OCT.get(b)||MOON_OCT.get(NYX);
     gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform1f(u.uNR,b.R);gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);gl.uniform1f(u.uSel,sel?1:0);
-    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);
+    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);gl.uniform1f(u.uNdt,GR_DT/(b.mu/(b.R*b.R)));
     gl.uniform3fv(u.uNdet,rotY(mul(C,-1),-th).map(x=>x-Math.round(x/1000)*1000));
     // Selene: added where the sky pass found it (its alpha), depth untouched; Nyx: opaque, depth-tested
     if(sel){gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.DST_ALPHA,gl.ONE,gl.ZERO,gl.ONE);gl.depthFunc(gl.ALWAYS);gl.depthMask(false)}

@@ -1,5 +1,5 @@
 # Launchpad notes — World
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-31
 **Purpose**: The build log for terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1610,3 +1610,38 @@ The kept form peaks at 1.3 in the two cut corners by the wall's ends, and is ≤
 - The wet case isn't in any view: the home pad is 157 m up.
 - Branch `q19-hdr` (Q19) has its own copy of the terrain march (`PTERR`). Merging it needs `uPadK` and the `ub`/`m`
   changes above.
+
+## v1.251 — Selene's craters vary (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
+
+**Caio:** "every one a perfect circle with a perfect ramp up from the surrounding ground". **What he saw was the moon
+pass** (`cratG` in `MOON_FS`, app/gl.js): every crater a parabola inside and a straight cone outside (`(1.4−k)·.5`), all of
+one octave the same depth whatever their size, small ones steeper (the slope went as 1/radius), and every cell full. The
+CPU recipe (`craterBands`, GROUND.md G2) isn't live (G3), but it had the same circles.
+
+**One profile, both sides.** `craterProf(k,d,rim,p,kf,pk,w)` (sim/ground.js) is the height at k = distance / radius: the
+bowl `−d + (d+rim)·kk^p` from the floor's edge `kf`, a central peak `pk`, the ejecta `rim·k⁻³` faded out by
+`GR_REACH` = 1.75 (was 2), joined by a polynomial smooth minimum `w` wide. Its slope is the blend of the two slopes exactly,
+so the shader gets the gradient in the same pass. `crProf` in MOON_FS is the same lines in GLSL; **test ground-10 reads
+the GLSL as JS** and compares: 4e-16 in height.
+- **Age** (freshness = hash³, most craters old): depth ×(.5 + .5 fr), rim ×(.35 + .65 fr), the crest rounded by
+  w = rim·(.1 + 1.4 (1 − fr)). A fresh 2 km crater: 37° inside the rim, 11° outside, crest 71 m; an old one: crest 20 m,
+  steepest 19°.
+- **Complex** past the body's simple → complex size (`GR_DT/g`, the moon pass's new uniform `uNdt`): a flat floor from
+  .35 radii, a central peak past 1.4×. A 60 km crater on Selene: a 1.8 km peak over a flat floor.
+- **Not circles:** squashed up to 1.3× along a hashed direction (×e², so most nearly round); the rim's height leans with
+  direction, `1 + .35x + .2(2x² − 1)` (0.7–1.55×). On the CPU both use the face's two axes and hashes, no trigonometry
+  (G3.0's rule); 27 of 40 band craters measured are 1.1× or more longer one way.
+- **The moon pass only:** radii .1–.28 of a cell (was .12–.34, so the 1.75 reach stays within the 2×2×2 cells), 5 % of
+  cells empty, slope size-free (height ∝ size). Gains: slope ×25 and height ×3.2 (the height only tints the albedo) keep
+  the old field's mean slope and height spread, measured on 400,000 random points with a JS port of `cratG`; `CM` −.0022.
+  The rim's lean is left out of the gradient (the height has it).
+
+**Tuning, measured on views 184–185** (new: Selene's ground at a low sun from 150 and 40 km): the first cut (15 % empty
+cells, sizes skewed small, old craters at depth ×.3) left the plains bare between crisp young craters. The octaves
+already make the power law, so the radius is uniform within one, and old craters keep half their depth. GPU time: views
+164, 165, 184, 185 at 2.7, 1.7, 3.1, 3.1 ms (before 2.7, 4.6, 4.9, 4.0 ms; noisy, no cost seen). Stills (local, not in
+git): `output/launchpad/q494-craters/` before-/after-.
+
+**Left:** terraced walls; rays and bright ejecta on the young (an albedo term: look & sound's `main`); the rim's lean in
+the gradient. Merged with Q493 (sky & bodies) the same night: its `cratF` window, my `cratG` cell size; TESTING 328.
+

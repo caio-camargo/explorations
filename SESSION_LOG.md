@@ -6574,3 +6574,68 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   TESTING (321), ACTIVE_WORK. Next: Q505 (small satellite parts), Q506.
 - **Addendum 18 (design desk, 2026-10-31):** PLAYTEST #145 (P1): contracts visible in the Assembly (*This flight is for*) and in flight (a *Mission* card, a live checklist); manual instruments stay with Q338 (after S2).
 - **Addendum 19 (design desk, 2026-10-31):** PLAYTEST #146: the engine sounds like static: the voices' Strouhal number is a cold jet's 0.2, rockets peak near 0.03; fix proposed for the sound beat.
+
+## 2026-10-30/31 — look & sound (sky & bodies): Q493 Selene's flashing grain (v1.242), Q324 Selene up close (v1.249)
+
+- **Q493 / PLAYTEST #128 (v1.242):** found by a harness that moves the camera a fraction of a pixel and diffs frames,
+  per `MOON_FS` term. Nothing jitters per frame. From orbit the grain was the moon pass's sub-pixel crater octaves at
+  full weight (each octave's slope 1.35× the last: their rims clamped pixels black); below 3 km the unfiltered
+  `detail()`; at the horizon the footprint's 1/mu stopped at .2 (craters aliased into dashes at the lander). Fixed all
+  three: octave fade .06→.2 (was .25→.6), `detailF`, 1/mu to .005. 100 km: 82 → 20 dark dots / 10k px (floor 15),
+  frame change 0.71 → 0.21.
+- **Q324 (v1.249):** why the ground at the lander is flat: GROUND G3 isn't built (Selene's G2 recipe isn't live; the
+  moon pass is a sphere with 5 shading-only crater octaves). More octaves as shading only were rejected (painted rings).
+  Caio filed #143 (plain grey up close) mid-session, folded into Q324: albedo mottled from 12 km to 25 cm, and
+  boulders near the camera (`rocksL`: half ellipsoids hit by the view ray, lit, lumpy, long shadows, footprint-faded;
+  GPU within noise). Relief stays G3 (world); fresh craters brighter wait on world's Q494 (`cratG`).
+- **Proposed:** Selene from 1–3 km is cut-out black and white (the 1.35× slope per octave; a taste call, moot after G3).
+- **Slips (repeats of LESSONS #39 and #41):** a merge-resolution script opened QUEUE.md for writing before reading it
+  and committed it empty (caught by `check_numbers` reporting 0 items, restored before any push); a `//` comment
+  appended mid-line swallowed a shader's closing braces (caught by the page's compile error). Numbers raced twice
+  (v1.240, v1.241, v1.243, v1.248 taken by flow and vehicle while merging): renumbered, pushed as v1.242 and v1.249.
+- **Files:** `app/gl.js` (MOON_FS), `tests/look.mjs` (aerofx-48, -49; aerofx-30 updated), notes/look.md (1.0.4:
+  § v1.242, § Q324, § v1.243), NOTES.md, TESTING (322, 326), PLAYTEST (#128, #143), QUEUE (Q493 ✓, Q324 ✓ slice,
+  a Proposed line), BEAUTY.md (B6.6 points at G3). Stills (gitignored) in the sky worktree:
+  `output/launchpad/beauty/Q493/`, `output/launchpad/beauty/Q324/`.
+- **Next:** Caio: TESTING 322 and 326 (does Selene up close read right? rocks too many, too round?). World: G3 for the
+  relief; with Q494's ages, fresh craters brighter in the moon pass. Q501 (twinkling lamps on Tellus) is the same kind
+  of fix as Q493 if sky & bodies takes it. The plume-clipping screenshot in `explorations/launchpad/intake/` is not this
+  beat's (left for the playtest intake).
+
+## 2026-10-31 — flow session: Q482, the ◇ at speed (v1.250)
+
+- **Cause** (PLAYTEST #120): the ◇'s profile ran ~7° below the surface prograde at 35 km (Mach 4.7, 12 kPa); the Passenger
+  Orbiter staged there and its finless upper stage flipped, then ran dry. The scripted study ascents set attitude directly
+  and never saw it.
+- **Fix:** `turnGuide` keeps the ◇ within 36 kPa·° / q of the surface prograde, faded in over Mach 2.5–3. **Negative
+  result:** the same cap without the Mach gate stops the turn on the Heavy, TV Satellite and Beeper (pinned to a vertical
+  prograde). Swept 5 budgets × 3 gates on ten presets; final: 20 of 20 ◇ flights orbit (Passenger Orbiter 533 / 467 spare,
+  was ✗−361 / ✗−172).
+- **Checks:** new `flow-39`; `flow-34` adjusted (the ◇ follows the raw profile below Mach 2.5 only); `--smoke` all passed.
+  No GPU run (only the ◇'s direction changed).
+- **Also this session:** TESTING 320 ✓ ("this plays well", Caio).
+- **Files:** sim/flight.js, tests/flow.mjs, notes/flow.md, NOTES.md, TESTING (327), PLAYTEST (#120 fixed), QUEUE (Q482 ✓),
+  ACTIVE_WORK.
+- **Next for flow:** Q483 (warn before the turn goes flat into the heat) is the last first-hour item in the flow lane.
+
+## 2026-10-31 — world session (machine `Charlinho`): Q494, Selene's craters vary (v1.251)
+
+- **What:** PLAYTEST #129 ("every one a perfect circle with a perfect ramp"). The look came from the moon pass's `cratG`
+  (a parabola in a cone, one depth per octave, every cell full). Now one profile, `craterProf` (sim/ground.js) =
+  `crProf` (app/gl.js MOON_FS): steep inside and gentle outside, the rim a smooth minimum rounded by age; flat floors and
+  peaks past the body's simple → complex size (new uniform `uNdt`); squashed up to 1.3×; rims higher on one side; depth
+  ∝ size. CPU band craters get the same squash and lean (no trigonometry, G3.0's rule). Shader gains calibrated on a JS
+  port so the mean slope and height spread match the old field.
+- **Checks:** test `ground-10` (the GLSL read as JS against the CPU, 4e-16; fresh/old rims, a complex crater's floor and
+  peak, 40 band craters measured); `--smoke` all passed after each of four merges. GPU stills, new views 184–185 plus
+  164–165, before/after in `output/launchpad/q494-craters/` (local). Tuned twice on them (the plains were bare).
+- **Numbering race:** v1.243 → v1.247 → v1.250 → **v1.251**, TESTING 323 → **328**: four other merges landed in the hour.
+  Merged around Q493 (`cratF`) and Q324 (`rocksL`) from sky & bodies by hand.
+- **Not done:** re-shooting 184–185 after Q493's filter merged (memory ran low; Caio chose to merge first). Rays and
+  terraces left (rays are albedo, sky & bodies' code).
+- **Files:** sim/ground.js, app/gl.js, views.js, tests/world.mjs, notes/world.md (1.0.3), GROUND.md (0.1.12), NOTES.md,
+  TESTING (328), PLAYTEST (#129 ✓), QUEUE (Q494 ✓), ACTIVE_WORK.
+- **Next for world:** re-shoot views 184–185 on main; Q19 (parked on `terrain`, 🖥🖥 A/B), then Q251/Q365. PARKED: Q19
+  at "ported on `terrain`, same-base A/B of the pad views pending". The launchpad intake screenshot (a plume cut at the
+  limb, 2026-10-30 22:22) is not this lane's, left untouched.
+
