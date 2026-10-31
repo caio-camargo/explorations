@@ -1562,8 +1562,9 @@ function partBody(out,p){
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     // payload fairing (Q337): the ring, and its shell while on; cut away on one side at the design table so the payload shows
     case'fair':{if(p.half){const pr=fairProf(d,p.fll??d.fl0).slice(1);latheArc(out,pr,o,p.half>0?0:Math.PI,p.half>0?Math.PI:2*Math.PI,C.W,C.G,14);fairSeams(out,pr,o);break}
-      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1);
-      if(typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll))latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
+      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1),ed=typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll);
+      if(ed&&typeof BLD!=='undefined'&&BLD.fairHidden&&BLD.fairHidden())break;   // hidden to build inside (Q512): the ring only
+      if(ed)latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
       fairSeams(out,pr,o)}break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
     case'wren':engine(out,p,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o);break;
@@ -1641,6 +1642,7 @@ function partBody(out,p){
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
     // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
     case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
+    case'padapt6':case'padapt3':{const t=d.prof[d.prof.length-1];lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[t[0],t[1],C.ST]],o,32)}break;   // narrowing to a small payload (Q505)
     case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
     case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
     case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;

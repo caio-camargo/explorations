@@ -6,7 +6,7 @@
 // cells, so they draw nothing here. Running flat never kills (ROADMAP pillar 5): the onboard computer goes off, so the SAS falls
 // back to the analog autopilot, until the panels catch up. The antenna and camera loads count in the budget; what a flat
 // battery does to their service is the space lane's (Q27, Q50), not done here.
-Object.assign(PARTS.ant,{W:5});Object.assign(PARTS.cam,{W:10});Object.assign(PARTS.core,{kWh:0.5});
+Object.assign(PARTS.ant,{W:5});Object.assign(PARTS.cam,{W:10});Object.assign(PARTS.core,{kWh:0.5});for(const k of['core6','core3'])if(PARTS[k])PARTS[k].kWh=+(0.5*PARTS[k].sc**2).toPrecision(3);   // the small cores' own (Q505)
 // every antenna and camera draws, the side forms and the boom antenna too (vehicle, 2026-10-13: they drew nothing, so a satellite
 // built from them showed a 0 W load)
 for(const k in PARTS){const d=PARTS[k];if(d.W==null&&(d.kind==='ant'||d.kind==='cam'))d.W=PARTS[d.kind].W}

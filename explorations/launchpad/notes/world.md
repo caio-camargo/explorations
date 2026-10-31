@@ -1611,7 +1611,7 @@ The kept form peaks at 1.3 in the two cut corners by the wall's ends, and is ≤
 - Branch `q19-hdr` (Q19) has its own copy of the terrain march (`PTERR`). Merging it needs `uPadK` and the `ub`/`m`
   changes above.
 
-## v1.243 — Selene's craters vary (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
+## v1.247 — Selene's craters vary (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
 
 **Caio:** "every one a perfect circle with a perfect ramp up from the surrounding ground". **What he saw was the moon
 pass** (`cratG` in `MOON_FS`, app/gl.js): every crater a parabola inside and a straight cone outside (`(1.4−k)·.5`), all of
@@ -1643,5 +1643,5 @@ already make the power law, so the radius is uniform within one, and old craters
 git): `output/launchpad/q494-craters/` before-/after-.
 
 **Left:** terraced walls; rays and bright ejecta on the young (an albedo term: look & sound's `main`); the rim's lean in
-the gradient. Merged with Q493 (sky & bodies) the same night: its `cratF` window, my `cratG` cell size; TESTING 323.
+the gradient. Merged with Q493 (sky & bodies) the same night: its `cratF` window, my `cratG` cell size; TESTING 326.
 
