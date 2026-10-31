@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2000,3 +2000,65 @@ rockets stable) is what makes the amber line mean something.
 
 **Checks:** `vehicle-35` (≥ 0.5 calibers, no stability warning); vehicle-30 (the TV Satellite to its stationary slot over
 the capital) passes; `--smoke` all passed.
+
+## v1.243 — small satellites (2026-10-31, vehicle session, QUEUE Q505, PLAYTEST #138)
+
+**Why:** Caio: "satellites still seem to require some full-sized cylindrical elements which keep them from being really
+small". The probe core, the battery and the reaction wheel came only at 1.25 m, and every bench starter stood on them.
+
+**What:**
+- `small(key, base, sc, o)` (sim/vessel.js, beside `big`): the 1.25 m part drawn smaller through the same `sc`/`base`
+  path the 2.5 m parts use (`partShape` scales the base's shape; no new drawing). What a part holds or makes goes with
+  its face, sc²: mass, torque, momentum, charge; strength as `big`'s (C, T, S × sc², B × sc³).
+  **core6 / core3** (Probe core 0.6 / 0.3 m: 18 / 4.6 kg, 461 / 115 N·m, 0.115 / 0.029 kWh of its own, sim/power.js),
+  **batt6 / batt3** (0.23 / 0.058 kWh), **rwheel6 / rwheel3** (3.46 / 0.86 kN·m), **octl6** (the long octagonal frame
+  at 0.6 m). Prices 5 / 4, 1 / 0.8, 3.5 / 2.5M. Ungated, as their full-size parts; tier 1 by `tierOf` (d.sc).
+- **The adapter narrows** (`payAdapter(r)`, `padapt6`, `padapt3`): a payload block's ring is picked by the radius of the
+  part it stands on, 1.25 m below it either way. `isAdapter(d)` replaces the `key === 'padapt'` tests (builder, the
+  fairing check, tests).
+- **Starters:** the *TV satellite* on core6, batt6, rwheel6, octl6 (its 0.7 m sphere is now the widest part; 345 kg,
+  was 545; 1,825 m/s of its own, was 1,024; wheels 3.9 kN·m); the *First beacon* at 0.6 m (Sputnik's 0.58) on core6 and
+  four batt6 (~1 kWh: 9 days on its battery, was 13; 47 kg, was 110). The *Satellite* starter (the Satellite preset's
+  payload) is unchanged.
+- **Not done:** a GPU look at the small parts (they're the big ones scaled); the frame family (`oct`) only has the long
+  one at 0.6 m; Q417's bus shapes and kick motor.
+- **Checks:** `vehicle-36`. **Not yet run** (the machine was out of memory; Caio playtesting): `--smoke`, and
+  vehicle-30 (the TV Satellite to its stationary slot: its payload got lighter).
+
+## v1.244 — the payload bench lists a satellite's parts only (2026-10-31, vehicle session, QUEUE Q506, PLAYTEST #139)
+
+`benchPart(d)` (sim/vessel.js): not the kinds in `BENCH_NO` (pods, the escape tower, nose cones, fairings, fins and fin
+blades, decouplers, the 2.5 m adapter, the mass simulator, hab, lab, bay, ports, the claw, the arm, rovers), and tanks and
+engines only up to 0.7 m (the propellant spheres; kick motors, thrusters, the apogee engine). Everything else stays:
+cores, batteries, wheels, spin motors, frames, the balance weight, instruments, cameras, antennas, computers, solar,
+RTGs, RCS and gas, legs, the landing beacon, chutes and heat shields (a capsule that comes home), the biocapsule. The
+builder's palette (`listed`) applies it on the bench and skips a category left empty. 42 of 84 parts. `vehicle-37`.
+Not checked in the browser yet.
+
+## v1.245 — opening the Assembly leaves a preset a preset (2026-10-31, vehicle session, QUEUE Q498, PLAYTEST #132)
+
+**Cause** (the test bench's, confirmed in the code): `design()` (builder.js) turns a preset still in the array format into
+a v2 tree, which builder.js says must wait for the first edit (so the preset keeps its name and its tape). Since v1.231
+(Q329) `BLD.panel()` called it on every draw: the *+ group* button's count (`design().ag`), and the selected part's
+options (`nodes(design().root)`, `const D=design()`). So opening the Assembly made every preset a custom design ("Design
+9J06"), and the robot's `m1` threw at `stackDef.join`.
+
+**Fix:** `dView()`, the design to read: `stackDef` when it's already a tree, else a view over the nodes the ship was
+assembled from (the same objects `design()` would adopt), the array left alone. The panel's three read-only uses take it;
+`design()` stays inside `edit()` and the actions (place, pick up, balance, make a payload, save). The group rows' `G()`
+already ran only inside `edit()`.
+
+**Checks:** none headless (builder.js needs the page). **To run:** the robot's `m1` (`playtest.mjs m1`), the Beeper step,
+and the news line naming the Beeper, not "Design …".
+
+## v1.246 — hide the payload fairing while building (2026-10-31, vehicle session, QUEUE Q512, PLAYTEST #147)
+
+Caio: "needs an option to hide the fairing to place things inside". Since Q337 the Assembly drew the shell with a fixed
+quarter cut away (`latheArc` from 90° round to 360°), which needn't face the camera; clicks already passed through it
+(picking uses the fairing's ring profile, nodes are picked by screen distance), so the trouble was seeing.
+
+**What:** `BLD.fairHidden()` (builder.js): true at the rocket's design table (not the bench) while a part is held, or
+when the player's toggle is on (`st.fairHide`: key **V**, Help's Assembly keys; a *hide fairing* button in the build
+bar, shown only when the design has a payload fairing). gl.js's `fair` case then draws the ring alone; render.js's
+`S._cutK` now reads 'hid' / 'cut' so the ship's mesh rebuilds when it flips. The Rollout and flight draw the shell whole,
+as before. **Not looked at in the browser yet** (Caio playtesting; GPU); no headless check (all page code).

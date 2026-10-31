@@ -1248,6 +1248,22 @@ vec4 cratG(vec3 p){vec3 i=floor(p-.5),f=p-i;vec4 r=vec4(0.);
  for(int x=0;x<=1;x++)for(int y=0;y<=1;y++)for(int z=0;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;
   vec3 q=o+vec3(h3(c),h3(c+17.3),h3(c+41.9))-f;float rad=.12+.22*h3(c+5.1),l=length(q),k=l/rad;if(k>=1.4)continue;
   vec3 dk=-q/max(l*rad,1e-6);r+=k<1.?vec4(dk*1.2*k,(k*k-.75)*.6):vec4(-.5*dk,(1.4-k)*.5);}return vec4(r.w,r.xyz);}
+// (Q324, PLAYTEST #143) rocks near the camera: one in ~7 of the 1 m cells (camera-relative metres in the body's frame,
+// periods dividing 1000) holds a boulder 6–70 cm across, most of them small: half an ellipsoid on the ground (.45–.95 as high as wide), hit by the view
+// ray (V, toward the camera) so it stands up and hides what's behind it, lit as one (a lumpy normal), its shadow cast down-sun (to 3
+// heights' length: long at a low sun). Returns the sun's light here relative to the flat ground (1 = none); each rock fades
+// out by its footprint (gone under ~1.5 px), so none shimmer. The cells searched are centred part way up the ray, where
+// a rock that covers this pixel stands
+float rocksL(vec3 l,vec3 up,vec3 sb,vec3 V,float fw){float vu=max(dot(V,up),.1);vec3 off=V*min(.18/vu,1.),c=floor(l+off),f=l+off-c;
+ float m=1.,e=dot(up,sb),ct=min(sqrt(max(1.-e*e,0.))/max(e,.05),3.),tb=-1.,sh=1.;vec3 st=normalize(sb-up*e+1e-6);
+ for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)for(int z=-1;z<=1;z++){vec3 o=vec3(x,y,z),cc=mod(c+o,1000.);float h=h3(cc);if(h<.86)continue;
+  float r=.03+.32*pow(h3(cc+11.),4.),k=1.-smoothstep(.6*r,1.5*r,fw);if(k<=0.)continue;
+  vec3 q=f-off-o-.5-(vec3(h3(cc+3.1),h3(cc+5.7),h3(cc+9.3))-.5)*.6,qt=q-up*dot(q,up);   // the ground point from the rock's foot
+  float hf=.45+.5*h3(cc+17.),iu=1./hf-1.;vec3 Vs=V+up*dot(V,up)*iu;   // squashed to hf of its radius: the ray in the rock's round space
+  float A=dot(Vs,Vs),b=-dot(Vs,qt),D=b*b-A*(dot(qt,qt)-r*r);
+  if(D>0.){float t=(b+sqrt(D))/A;if(t>tb){tb=t;vec3 n=Vs*t+qt,N=normalize(n+up*dot(n,up)*iu),pl=n*(2.5/r)+cc;N=normalize(N+.7*(vec3(vn(pl),vn(pl+5.2),vn(pl+9.7))-.5));m=mix(1.,1.15*max(dot(N,sb),0.)/max(e,.05),k);}}
+  float a=-dot(qt,st),L=r*hf*ct;if(a>0.&&a<L){float bb=length(qt+st*a),wd=r*sqrt(1.-a/L);sh*=1.-.75*k*(1.-smoothstep(.8*wd,wd,bb));}}
+ return tb>0.?m:sh;}
 // craters at uNoct.w octaves from uNoct.x cells per radius, each uNoct.y finer and uNoct.z as deep; w = the footprint in
 // radii. x = height, yzw = its gradient on the unit sphere. (Q493, PLAYTEST #128) An octave is whole while its craters
 // are 2 px across or more and gone by ~1 px (w·f .06 → .2; it was .25 → .6, which kept sub-pixel craters at full weight:
@@ -1275,15 +1291,16 @@ void main(){
  #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
  vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.005);   // (Q493) the footprint along the view: at .2 craters aliased into dashes toward the horizon
  vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w);
- float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(3000.,150.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
+ float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(8000.,300.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
  vec3 alb;
  if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
-  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.07*fade*(det-.5))*vec3(1.,.98,.95);}
+  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.16*fade*(det-.5)+.09*(fbmF(nb*300.,w*300.)-.5)+.06*(fbmF(nb*30.,w*30.)-.5))*vec3(1.,.98,.95);}   // (Q324, #143) mottled from 12 km down to the regolith's 25 cm
  else alb=uNalb*(.75+.5*fbmF(n*2.5,w*2.5)-.3*smoothstep(.45,.7,fbmF(n*1.2+7.,w*1.2))+.12*cr+.25*fade*(det-.5));
  float e=dot(n,uSun),mu0=clamp(e+slope*sqrt(max(1.-e*e,0.))*.8*smoothstep(-.12,.05,e),0.,1.6);   // past the terminator only the rims catch the sun
  float cg=dot(uSun,V),g=acos(clamp(cg,-1.,1.))*57.29578,L=clamp(1.-.019*g+2.42e-4*g*g-1.46e-6*g*g*g,0.,1.);
  float B=1.+.6/(1.+sqrt(max(1.-cg*cg,0.))/max(1.+cg,1e-3)/.05);   // the opposition surge (tan g/2 over a width of .05)
  float refl=(2.*L*mu0/max(mu0+mu,1e-3)+(1.-L)*mu0)*B;
+ if(uSel>0.&&w*uNR<.5)refl*=rocksL(MB(d*tN)+uNdet,nb,MB(uSun),MB(V),w*uNR);   // (Q324) boulders within a few hundred metres
  // earthshine: Tellus's lit face (albedo .35, a Lambert sphere's phase). Real, it's ~1/4000 of the sun, far under what
  // the exposure (×4 at most) can show; ×100 so a night side under a full Tellus reads as a dim grey (3 % of the sunlit side)
  vec3 wT=uPc-d*tN;float dT=length(wT);wT/=dT;float al=acos(clamp(dot(uSun,-wT),-1.,1.)),Ph=(sin(al)+(3.14159265-al)*cos(al))/3.14159265;
@@ -1544,8 +1561,9 @@ function partBody(out,p){
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     // payload fairing (Q337): the ring, and its shell while on; cut away on one side at the design table so the payload shows
     case'fair':{if(p.half){const pr=fairProf(d,p.fll??d.fl0).slice(1);latheArc(out,pr,o,p.half>0?0:Math.PI,p.half>0?Math.PI:2*Math.PI,C.W,C.G,14);fairSeams(out,pr,o);break}
-      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1);
-      if(typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll))latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
+      lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.69,.06,C.Y],[.8,h,C.Y]],o);if(p.fj)break;const pr=fairProf(d,p.fll??d.fl0).slice(1),ed=typeof mode!=='undefined'&&mode==='editor'&&!(typeof atRoll!=='undefined'&&atRoll);
+      if(ed&&typeof BLD!=='undefined'&&BLD.fairHidden&&BLD.fairHidden())break;   // hidden to build inside (Q512): the ring only
+      if(ed)latheArc(out,pr,o,.5*Math.PI,2*Math.PI,C.W,C.G,24);else lathe(out,pr.map(([r,yy])=>[r,yy,C.W]),o,28,[false,false]);
       fairSeams(out,pr,o)}break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
     case'wren':engine(out,p,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o);break;
@@ -1623,6 +1641,7 @@ function partBody(out,p){
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
     // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
     case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
+    case'padapt6':case'padapt3':{const t=d.prof[d.prof.length-1];lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[t[0],t[1],C.ST]],o,32)}break;   // narrowing to a small payload (Q505)
     case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
     case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
     case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;

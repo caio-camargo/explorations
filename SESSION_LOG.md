@@ -6573,3 +6573,32 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: sim/vessel.js, tests/vehicle.mjs, NOTES.md, notes/vehicle.md, PLAYTEST (#137), QUEUE (Q504 ✓, Q505 claimed),
   TESTING (321), ACTIVE_WORK. Next: Q505 (small satellite parts), Q506.
 - **Addendum 18 (design desk, 2026-10-31):** PLAYTEST #145 (P1): contracts visible in the Assembly (*This flight is for*) and in flight (a *Mission* card, a live checklist); manual instruments stay with Q338 (after S2).
+- **Addendum 19 (design desk, 2026-10-31):** PLAYTEST #146: the engine sounds like static: the voices' Strouhal number is a cold jet's 0.2, rockets peak near 0.03; fix proposed for the sound beat.
+
+## 2026-10-30/31 — look & sound (sky & bodies): Q493 Selene's flashing grain (v1.242), Q324 Selene up close (v1.249)
+
+- **Q493 / PLAYTEST #128 (v1.242):** found by a harness that moves the camera a fraction of a pixel and diffs frames,
+  per `MOON_FS` term. Nothing jitters per frame. From orbit the grain was the moon pass's sub-pixel crater octaves at
+  full weight (each octave's slope 1.35× the last: their rims clamped pixels black); below 3 km the unfiltered
+  `detail()`; at the horizon the footprint's 1/mu stopped at .2 (craters aliased into dashes at the lander). Fixed all
+  three: octave fade .06→.2 (was .25→.6), `detailF`, 1/mu to .005. 100 km: 82 → 20 dark dots / 10k px (floor 15),
+  frame change 0.71 → 0.21.
+- **Q324 (v1.249):** why the ground at the lander is flat: GROUND G3 isn't built (Selene's G2 recipe isn't live; the
+  moon pass is a sphere with 5 shading-only crater octaves). More octaves as shading only were rejected (painted rings).
+  Caio filed #143 (plain grey up close) mid-session, folded into Q324: albedo mottled from 12 km to 25 cm, and
+  boulders near the camera (`rocksL`: half ellipsoids hit by the view ray, lit, lumpy, long shadows, footprint-faded;
+  GPU within noise). Relief stays G3 (world); fresh craters brighter wait on world's Q494 (`cratG`).
+- **Proposed:** Selene from 1–3 km is cut-out black and white (the 1.35× slope per octave; a taste call, moot after G3).
+- **Slips (repeats of LESSONS #39 and #41):** a merge-resolution script opened QUEUE.md for writing before reading it
+  and committed it empty (caught by `check_numbers` reporting 0 items, restored before any push); a `//` comment
+  appended mid-line swallowed a shader's closing braces (caught by the page's compile error). Numbers raced twice
+  (v1.240, v1.241, v1.243, v1.248 taken by flow and vehicle while merging): renumbered, pushed as v1.242 and v1.249.
+- **Files:** `app/gl.js` (MOON_FS), `tests/look.mjs` (aerofx-48, -49; aerofx-30 updated), notes/look.md (1.0.4:
+  § v1.242, § Q324, § v1.243), NOTES.md, TESTING (322, 326), PLAYTEST (#128, #143), QUEUE (Q493 ✓, Q324 ✓ slice,
+  a Proposed line), BEAUTY.md (B6.6 points at G3). Stills (gitignored) in the sky worktree:
+  `output/launchpad/beauty/Q493/`, `output/launchpad/beauty/Q324/`.
+- **Next:** Caio: TESTING 322 and 326 (does Selene up close read right? rocks too many, too round?). World: G3 for the
+  relief; with Q494's ages, fresh craters brighter in the moon pass. Q501 (twinkling lamps on Tellus) is the same kind
+  of fix as Q493 if sky & bodies takes it. The plume-clipping screenshot in `explorations/launchpad/intake/` is not this
+  beat's (left for the playtest intake).
+

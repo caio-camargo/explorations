@@ -149,6 +149,26 @@ big('cfins25','cfins',{name:'Steerable fin ring 2.5 m',m:1.4,span:1.8,chord:1.8}
 big('cone25','cone',{name:'Nose cone 2.5 m',m:0.45});
 big('fair25','fair',{name:'Payload fairing 2.5 m',m:0.12,rb:1.25,fm:0.11,fls:[4,6,8,10,12],fl0:6});
 big('albatross','kestrel',{name:'Albatross (2.5 m)',m:6,thrust:1100,gim:4,gimR:8,ispA:285,ispV:310,exit:1.1});
+// small satellite stacks (vehicle session, Q505, PLAYTEST #138: "satellites still seem to require some full-sized cylindrical
+// elements"): the probe core, the battery and the reaction wheel at 0.6 m and 0.3 m, the 1.25 m part drawn smaller (sc, as
+// big's). What a part holds or makes goes with its face (sc²): mass, torque, momentum, charge; strength as big's
+const small=(key,base,sc,o)=>{const b=PARTS[base],a=sc*sc,f=x=>x==null?x:+(x*a).toPrecision(3);
+  PARTS[key]={...b,key,base,sc,h:b.h*sc,r:b.r*sc,prof:b.prof.map(([r,y])=>[r*sc,y*sc]),m:f(b.m),torque:f(b.torque),hmax:f(b.hmax),kWh:f(b.kWh),
+    C:b.C*a,T:b.T*a,S:b.S*a,B:b.B*a*sc,...o}};
+for(const[sz,sc]of[['0.6',0.48],['0.3',0.24]]){const s=sz==='0.6'?'6':'3';
+  small('core'+s,'core',sc,{name:`Probe core ${sz} m`});small('batt'+s,'batt',sc,{name:`Battery ${+(sc*sc).toPrecision(2)} kWh (${sz} m)`});small('rwheel'+s,'rwheel',sc,{name:`Reaction wheel ${sz} m`})}
+small('octl6','octl',0.75,{name:'Octagonal frame, long, 0.6 m'});   // the bus a 0.6 m stack hangs its wings on
+// the payload adapter for a small payload: the 1.25 m ring narrowing to the payload's own size (payAdapter picks it)
+PARTS.padapt6={...PARTS.padapt,key:'padapt6',name:'Payload adapter 0.6 m',h:0.2,prof:[[.625,0],[.625,.05],[.3,.2]]};
+PARTS.padapt3={...PARTS.padapt,key:'padapt3',name:'Payload adapter 0.3 m',h:0.25,prof:[[.625,0],[.625,.05],[.15,.25]]};
+const isAdapter=d=>!!(d&&d.payOnly&&d.kind==='dec');
+// what the payload bench lists (vehicle session, Q506, PLAYTEST #139: "the payload section of the builder seems to include all
+// parts"): a satellite's parts, and chutes and heat shields for a capsule that comes home; tanks and engines only up to 0.7 m
+// (the spheres, kick motors, thrusters, the apogee engine). Not pods, the escape tower, nose cones, fairings, fins,
+// decouplers, the 2.5 m adapter, the mass simulator, station modules, rovers
+const BENCH_NO=new Set(['pod','les','cone','fair','fins','rfin','dec','adapt','ballast','hab','lab','bay','port','claw','arm','rover']);
+const benchPart=d=>!!d&&!BENCH_NO.has(d.kind)&&(!['tank','engine'].includes(d.kind)||d.r<=0.35);
+const payAdapter=r=>r<=0.2?'padapt3':r<=0.35?'padapt6':'padapt';
 // joint reinforcement: strength multiplier and added mass (t) at a 1.25 m joint, scaled by (joint radius / 0.625)²
 const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy',k:4,m:0.18}];
 // A design is the core stack top→bottom; an entry is a part key, or {k, rad:{n, dec, stack}} for a part with a
@@ -248,7 +268,7 @@ function payStandOn(root){const chain=[root];for(let n=root;;){const d=(n.c||[])
 function payExpand(des){if(!payHas(des.root))return des;
   const mark=(n,blk)=>{const c={...n,c:(n.c||[]).map(x=>mark(x,blk))};delete c.id;Object.defineProperty(c,'payOf',{value:blk});return c};
   const walk=n=>{if(isPay(n)){const pr=n.pd&&n.pd.root,ad={k:'padapt',at:n.at,c:(n.c||[]).map(walk)};if(n.j)ad.j=n.j;Object.defineProperty(ad,'payOf',{value:n});
-      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top)}return ad}
+      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top);const b=PARTS[top.k];ad.k=payAdapter(b?b.r:R0)}return ad}   // the ring narrows to what stands on it (Q505)
     const c={...n,c:(n.c||[]).map(walk)};Object.defineProperty(c,'src',{value:n});return c};
   return{...des,root:walk(des.root)}}
 const payDesigns=()=>{if(typeof PROG==='undefined')return[];if(!Array.isArray(PROG.payloads))PROG.payloads=[];return PROG.payloads};
@@ -1030,7 +1050,8 @@ PRESETS.Satellite=(()=>{const d=toV2(['core','batt','rwheel','octl','fair','t2',
   h.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:1},c:[]},{k:'scam',at:{y:0.3,a:-Math.PI/2,n:1},c:[]},{k:'ssci',at:{y:0.75,a:Math.PI/2,n:1},c:[]});return d})();
 // the payload bench's starters (Q416, D24: "example designs only as a copy-and-change starter on the bench"): the first beacon
 // (a probe core, a battery and a whip) and the Satellite preset's payload, everything above its fairing
-const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core','batt']);d.root.c.push({k:'whip',at:{y:0.12,a:0,n:1},c:[]});return d})(),
+const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core6','batt6','batt6','batt6','batt6']);   // 0.6 m, Sputnik's size, ~1 kWh as before (Q505)
+  d.root.c.push({k:'whip',at:{y:0.06,a:0,n:1},c:[]});return d})(),
   Satellite:(()=>{const d=JSON.parse(JSON.stringify(PRESETS.Satellite)),par=(n,t)=>{for(const c of n.c||[]){if(c===t)return n;const r=par(c,t);if(r)return r}return null},
     f=(function g(n){return n.k==='fair'?n:(n.c||[]).map(g).find(Boolean)})(d.root),h=par(d.root,f);h.c=h.c.filter(c=>c!==f);return{v:2,root:d.root}})()};
 // a stationary satellite (vehicle session, QUEUE Q412, PLAYTEST #102: "no preset reaches the stationary orbit", so TV for the
@@ -1041,7 +1062,7 @@ const PAY_STARTERS={'First beacon':(()=>{const d=toV2(['core','batt']);d.root.c.
 // part-way; staging releases the satellite and its engine goes on); at the top the apogee engine circularises to a day's
 // period: 0.9995 day, e 0.0004, 0.001°, ~380 m/s left to hold it. For TV the transfer burn must start so the satellite arrives
 // over the capital's longitude: 26 min of coasting in the low orbit, from the Cape, for Kamar
-PAY_STARTERS['TV satellite']=(()=>{const d=toV2(['core','batt','rwheel','octl','sph7','apogee']),o=(function g(n){return n.k==='octl'?n:(n.c||[]).map(g).find(Boolean)})(d.root);
+PAY_STARTERS['TV satellite']=(()=>{const d=toV2(['core6','batt6','rwheel6','octl6','sph7','apogee']),o=(function g(n){return n.k==='octl6'?n:(n.c||[]).map(g).find(Boolean)})(d.root);   // 0.6 m across (Q505)
   o.c.push({k:'wpanel',at:{y:0.5,a:0,n:2},c:[]},{k:'whip',at:{y:0.3,a:Math.PI/2,n:2},c:[]});return d})();
 // two fin rings on the core and on each booster (vehicle, Q504, PLAYTEST #137): with one, the fairing up front left it at
 // 0.14 calibers on the pad and −0.05 supersonic, and a step of the hold at ~48 kPa swung it broadside and broke the Tank 8 t /
@@ -1068,7 +1089,7 @@ function payChecks(d,rocket=null,pid=null){if(!d||!d.root)return{rows:[],mass:0,
       gto=Math.sqrt(mu/rg)-Math.sqrt(mu*(2/rg-2/(r0+rg))),solid=s.parts.some(p=>p.on&&p.d.solid);
     out.push({k:'dv',cl:'ok',t:`Its own Δv: ${f(dv)} m/s${solid?' (a kick motor fires once, all of it)':''}; a stationary orbit from a transfer orbit takes ${f(gto)} m/s at the top (${f((rg-b.R)/1000)} km)`})}}
   if(rocket&&pid!=null){const R=JSON.parse(JSON.stringify(rocket));let blk=null;const w=n=>{if(isPay(n)&&n.pid===pid&&!blk){blk=n;n.pd=JSON.parse(JSON.stringify(d))}(n.c||[]).forEach(w)};if(R.root)w(R.root);
-    if(blk){const r=newShip(R),F=r.parts.find(p=>p.on&&p.profF),P=r.parts.filter(p=>p.on&&p.dn.payOf&&p.d.key!=='padapt'),o=P.filter(p=>!p.inFair);
+    if(blk){const r=newShip(R),F=r.parts.find(p=>p.on&&p.profF),P=r.parts.filter(p=>p.on&&p.dn.payOf&&!isAdapter(p.d)),o=P.filter(p=>!p.inFair);
       out.push(!F?{k:'fit',cl:'warn',t:'Rides in the open: no fairing over it on the rocket',fix:'a payload fairing under it'}
         :o.length?{k:'fit',cl:'bad',t:`${o.length} part${o.length>1?'s stick':' sticks'} out of the ${F.fl} m fairing`,fix:'a longer fairing (on the rocket), or fold it (wings and booms fold for launch)'}
         :{k:'fit',cl:'ok',t:`Fits the ${F.fl} m fairing, folded`})}}
