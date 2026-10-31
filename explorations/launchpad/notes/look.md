@@ -2312,6 +2312,35 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **The fix is G3** (GROUND.md § G3, world): the march on Selene (G3.1 the map, G3.2 the bands, G3.3 `selCol`, G3.4
   live with the CPU). BEAUTY B6.6 now points there.
 - **Still open in Q324: PLAYTEST #143** (Caio, filed while this ran): up close Selene is plain grey. The albedo half
-  (mare and highland, regolith and small fresh craters growing in as you descend) the moon pass can do before G3; next.
+  the moon pass can do before G3: v1.243 below.
 - **Seen on the way:** from 1–3 km the moon pass's finest octave clamps crater walls black and rims white at a low sun
   (the 1.35× slope per octave): QUEUE *Proposed*. Moot once G3 lands.
+
+## v1.243 — Selene up close isn't plain grey (2026-10-31, sky & bodies beat, QUEUE Q324, PLAYTEST #143)
+
+- **Asked:** Caio, PLAYTEST #143: "up close Selene is plain grey, no texture": albedo by terrain, regolith, rocks and
+  small craters growing in as you descend, relief readable under a low sun. The relief is GROUND G3 (§ Q324 above);
+  this is what the moon pass can add on a flat sphere.
+- **Mottling:** the albedo gains two footprint-filtered fbm scales (`nb·300`, 1.2 km → 17 m cells, ±.045; `nb·30`,
+  12 km → 170 m, ±.03) and `detailF` goes ±.035 → ±.08, out to 8 km (was 3). At the lander and at night under
+  earthshine (view 182) the ground is patchy grey, not one tone.
+- **Boulders, `rocksL`:** in 1 m cells (camera-relative metres in the body's frame, so periods divide 1000), one in ~7
+  holds a rock 6–70 cm across (radius .03 + .32·h⁴: mostly pebbles). Each is half an ellipsoid (.45–.95 as high as
+  wide) **hit by the view ray** from the ground point back to the camera, so it stands up, has a silhouette and hides
+  the ground behind it; lit by its normal (lumpy: three `vn`), relative to the flat ground; its shadow is cast down-sun,
+  tapered, up to 3 heights long (long at a 20° sun). Each fades out by its footprint (`1−smoothstep(.6r, 1.5r, fw)`),
+  so none shimmer; the cells searched are centred part way up the view ray, where a rock covering the pixel stands.
+  Called only where the footprint is under .5 m (a few hundred metres). It multiplies the sun's term only, so at night
+  rocks don't show (later: earthshine).
+- **Tried on the way:** flat albedo discs (read as painted spots, `113-flat-spots-rejected`), one rock in 2 cells (a
+  carpet, `113-too-dense-rejected`), hemispheres drawn flat on the ground (their far half showed: "shark fins" with
+  the sun behind), true hemispheres (eggs; squashed and lumpy now).
+- **Measured:** GPU at view 113 on the RTX, with / without / with: 4.85 / 4.90 / 4.98 ms (noise). No new dark dots from
+  orbit (100 km: 21, as v1.242) or at 40 m; the frame-to-frame change at the lander 0.03 → 0.35, the rocks' edges
+  moving (a 2 cm step is ~1 px there); at 100 km 0.21 → 0.26, the mottling's own texture moving.
+- **Stills:** `output/launchpad/beauty/Q324/` (`113-lander-rocks`, `112-lander-rocks`, `20m-rocks`,
+  `182-night-mottled`, and the rejected tries).
+- **Not done:** fresh craters brighter (their age comes with world's Q494 in `cratG`); mare/highland contrast is
+  unchanged (.16 vs .09 lower in the seas); rocks have no light from earthshine or the ground; relief and the horizon
+  are G3's.
+- **Test:** `aerofx-49`. TESTING 323.
