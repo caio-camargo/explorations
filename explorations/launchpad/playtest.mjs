@@ -539,6 +539,13 @@ PT.raise = (R, eq = false) => { const s = S, mu = TELLUS.mu; let k = 0, phase = 
     advPhys(s) };
   PT.loop(body, Infinity, {}); const el = elements(s.r, s.v, mu);
   return {alive: s.alive, dry, pe: Math.round((el.pe - TELLUS.R) / 1e3), ap: Math.round((el.ap - TELLUS.R) / 1e3), statKm: Math.round((R - TELLUS.R) / 1e3), periodH: +(2 * Math.PI * Math.sqrt(Math.abs(el.a) ** 3 / mu) / 3600).toFixed(2), dayH: +(DAY_S / 3600).toFixed(2), inc: PT.incl()} };
+// (Q516) a stationary satellite ends over the longitude its transfer burn aims at: coast in the low orbit until the game's own
+// statXfer moment (what the Stationary orbit card's *plan it* uses: dt to the burn's middle), less half the burn, as a node would
+PT.statWait = () => { const X = statXfer(S); if (!X) return {statXfer: null}; const t0 = simT, lead = 0.5 * X.dv / Math.max(engAcc(S), 0.1); S.throttle = 0;
+  const f = PT.fly(() => simT >= t0 + X.dt - lead, X.dt + 60); return {city: X.city.name, saidMin: +(X.dt / 60).toFixed(1), dv: Math.round(X.dv), leadS: Math.round(lead), waitedMin: +((simT - t0) / 60).toFixed(1), alive: f.alive} };
+// where the craft sits over the planet against the capital: longitudes, and how high the capital sees it (TV wants 15°)
+PT.overCap = () => { const c = capital(), T = progT(S), pf = rotY(S.r, -absTh(T)), d = sub(pf, mul(c.u, TELLUS.R)), dg = 57.29578;
+  return {lon: +(Math.atan2(pf[2], pf[0]) * dg).toFixed(1), capLon: +(Math.atan2(c.u[2], c.u[0]) * dg).toFixed(1), capElev: +(Math.asin(Math.max(-1, Math.min(1, dot(norm(d), c.u)))) * dg).toFixed(1), capSees: capSees(S.r, T)} };
 PT.route = () => (PROG.routes || [])[0] || null;
 PT.runs = () => { const r = PT.route(); return r ? (PROG.dispatch || []).filter(D => D.route === r.id).map(D => [D.status, +(D.launch || 0).toFixed(0), D.why || '', D.orb ? Math.round(D.orb.pe / 1e3) + '×' + Math.round(D.orb.ap / 1e3) + ' km' : '', D.auto ? 'auto' : 'ordered']) : [] };
 PT.netNow = () => { const r = PT.route(); return {day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), sats: (PROG.sats || []).filter(q => !q.junk).length, route: r && {name: r.name, keep: r.keep, up: routeSats(r).length, runs: r.runs, clean: r.clean, auto: r.auto, why: routeAutoWhy(r)}, led: PROG.led && {sats: +(PROG.led.sats || 0).toFixed(1)}, runs: PT.runs()} };
@@ -572,8 +579,9 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   {say: 'A routine from the Fleet tab: keep the weather satellite up'},
   `(()=>{ go('program'); PT.click('[data-ptab="fleet"]'); const bs = [...document.querySelectorAll('[data-mkroute]')]; if (bs[0]) bs[0].click();
      return {buttons: bs.length, why: (PROG.sats || []).filter(q => !q.junk).map(q => q.name + ': ' + (routeFrom(q).why || 'ok') + ', holds ' + Math.round(skLife(q)) + ' d, decays in ' + Math.round(decayLife(q)) + ' d'), route: PT.netNow().route} })()`, {shot: 'fleet_route'},
-  // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, then up to the stationary orbit
-  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), raise: PT.raise(STAT_R, true)}))()`),
+  // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, a coast until the
+  // transfer burn arrives over the capital (statXfer, the card's *plan it*; Q516: burning at once ends where the capital can't see it), then up
+  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap()}))()`),
   // three runs ordered by hand, each waited out with [N]
   ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
      b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,
