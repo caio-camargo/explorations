@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-04
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3344,3 +3344,28 @@ given a crew, so a program can train its next crew while the current one flies.
 3. A pilot **not qualified on the type** gives rate damping only (**default**), or the analog modes anyway.
 4. **Field geology** is a 30-day course from the astronaut office (**default**), or simulator time on a landing.
 5. The **commander** is picked by seniority automatically (**default**), or chosen by hand on hand-flown flights.
+
+## v1.255 — routines count clean runs (2026-11-04, economy worker, QUEUE Q500, PLAYTEST #134)
+
+**The bug.** The robot's `m2` made a routine from its weather satellite (the Satellite preset flown 3° east of north,
+82°, raised to 298 km) and ordered three runs. All three flew and finished at 295×298 km, yet `clean` stayed 0, so
+Repeat never unlocked ("3 more clean runs by order first"; the Fleet read "4 of 1 up", since each run's satellite did
+join the route). `D.satId` was fine: the satellites were linked. The plane check was what failed, and honestly: the
+runs reached **77.6°** on an 82° route, 4.4° off, over `routeRun`'s 2°.
+
+**The cause** was in the procedure, not the routine. `procStart` turns a target inclination into a launch heading with
+`sin az = cos i / cos lat`, which is the heading of the *orbit's* velocity, the inertial one. The pad already carries
+the planet's spin eastward (278 m/s at the equator, against ~3.2 km/s of orbit speed at 300 km), so aiming the engines
+there adds the spin on top and bends the plane east: about 5° low near polar. The hand-flown recording reached 82°
+because the pilot aimed by eye; a dispatched run given "82°" aimed by the formula. Every inclined target was affected
+(a contract's too); equatorial ones and targets below the pad's latitude clamp to due east as before.
+
+**The fix** (`sim/procedures.js`, `procStart`): aim where the orbit's velocity minus the spin points,
+`az = atan2(v·sin aᵢ − v_spin·cos lat, v·cos aᵢ)`, with `v` the circular speed at the target's height. The runs now
+reach 82.5° on the 82° route, clean. `routeRun` is unchanged: a run counts clean when it reaches the route's height
+(15 %) and plane (2°) and leaves a satellite up; a failed or off-plane run still resets the count. With the heading
+right the 2° stays honest, so no loosening was needed. Q413's quote (vehicle-32) still agrees with the flight.
+
+**Test:** econ-30, "routine (Q500)": a polar weather satellite's route at ~300 km, three runs ordered by hand and
+flown headless by the dispatch; each counts clean and Repeat is no longer held for clean runs. It failed before the
+fix (77.6°, clean 0).

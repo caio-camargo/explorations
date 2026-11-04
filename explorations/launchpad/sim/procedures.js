@@ -85,7 +85,11 @@ function procMissionKeep(s,P,M){const E=M.ev,enc=E.find(e=>e.k==='enc');if(!enc|
   if(old&&old.dv<=dv+0.5)return null;PROG.procs[key]=proc;
   HOOK.news(old?`Procedure improved: ${proc.by}, ${sig.replace(':',' ')}, for ${fmtDv(dv)} in all (was ${fmtDv(old.dv)})`:`New procedure: ${proc.by} can fly "${sig.replace(':',' ')}" by itself from now on (${fmtDv(dv)} in all)`,'ok');HOOK.save();return proc}
 function procStart(s,proc,target){const T={...proc.target,...(target||{})};let az=proc.az;const cutAp=target&&target.ap!=null?target.ap:proc.cutAp??proc.target.ap;   // where the ascent's engines go off
-  if(target&&target.inc!=null){const lat=Math.asin(clamp(norm(s.r)[1],-1,1)),c=Math.cos(T.inc*Math.PI/180)/Math.cos(lat);az=Math.asin(clamp(c,-1,1));if(Math.cos(proc.az)<0)az=Math.PI-az}
+  if(target&&target.inc!=null){const lat=Math.asin(clamp(norm(s.r)[1],-1,1)),c=Math.cos(T.inc*Math.PI/180)/Math.cos(lat);let ai=Math.asin(clamp(c,-1,1));if(Math.cos(proc.az)<0)ai=Math.PI-ai;
+    // ai is the heading of the orbit's own (inertial) velocity; the pad already carries the planet's spin eastward, so the
+    // engines aim where that orbit velocity less the spin points (economy Q500, PLAYTEST #134: without it an 82° route's
+    // runs reached 77.6° and never counted clean)
+    const vo=Math.sqrt(TELLUS.mu/(TELLUS.R+((T.pe??0)+(T.ap??T.pe??0))/2)),vs=bodyOmega(TELLUS)*TELLUS.R*Math.cos(lat);az=Math.atan2(vo*Math.sin(ai)-vs,vo*Math.cos(ai))}
   s.proc={p:proc,T,az,cutAp,phase:'ascent',ei:0,lit:true,done:false};s.sas=true;s.sasMode='stab';s.hold=norm(s.r);s.throttle=Math.max(0.1,tabAt(proc.thr,0));stage(s)}   // light it now: a landed craft with its engines off would sit on rails
 // A deviation: the procedure can't meet its goal from here. It stops and says why; the craft is yours (in a dispatched
 // flight, the dispatch hands it to you). s.procDev keeps what happened, for whoever runs the flight.

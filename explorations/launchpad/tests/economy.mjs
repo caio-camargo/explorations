@@ -693,3 +693,23 @@
   check('simulator: a joint at 80–95 % of its true rating breaks at the believed (certified) edge and not in a real flight',
     real > 0.8 && real < 1 && sim > 1 && Math.abs(realAgain - real) < 1e-9, `${p && p.d.name}: real ${(real * 100).toFixed(0)} %, simulator ${(sim * 100).toFixed(0)} % at q ${q.toFixed(0)} Pa`);
 }
+
+// econ-30. A routine's runs count clean (economy session, QUEUE Q500, PLAYTEST #134): the robot's m2 made a route from a
+// weather satellite (the Satellite preset flown north into a polar orbit, then raised to ~300 km) and ordered three runs;
+// each flew and finished on the route's orbit, yet none counted clean, so Repeat never unlocked.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = api.PRESETS.Satellite, news = [], mu = api.TELLUS.mu;
+  api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; P.day = 0; P.dispatch = []; P.dispN = 0; P.routes = []; P.wseed = 4242; P.fac = {}; P.sanc = {}; P.lines = {}; P.dev = {};
+  P.kh = {}; P.cert = {}; for (const p of api.newShip(st).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
+  const s = handAscent(api, st, 3), r1 = api.TELLUS.R + 298e3, up = api.norm(s.r), h = api.norm(api.cross(s.r, s.v)), along = api.norm(api.cross(h, up));
+  const q0 = { id: 950, name: 'Weather satellite 1', stack: st, r: up.map(x => x * r1), v: along.map(x => x * Math.sqrt(mu / r1)), epoch: api.t, mass: s.mass, born: 0, imgs: 0, pending: [], cam: 1 };
+  P.sats = [q0]; P.satN = 950;
+  const mk = api.makeRoute(q0, 1), r = mk.route;
+  const fly = () => { const o = api.orderRoute(r.id); const D = P.dispatch[P.dispatch.length - 1]; for (let k = 0; k < 8 && D.status === 'queued'; k++) { P.day = D.launch; api.dispatchTick(); } return { o, D }; };
+  const runs = [fly(), fly(), fly()], why = api.routeAutoWhy(r);
+  check('routine (Q500): a polar weather satellite\'s route at ~300 km; three runs ordered by hand fly and finish on its orbit, each counts clean, and Repeat is no longer held for clean runs',
+    mk.ok && runs.every(x => x.o.ok && x.D.status === 'done') && r.runs === 3 && r.clean === 3 && !/clean run/.test(why),
+    `${r.name}; runs ${runs.map(x => `${x.D.status}${x.D.orb ? ` ${x.D.orb.pe / 1e3 | 0}×${x.D.orb.ap / 1e3 | 0} km ${x.D.orb.inc != null ? x.D.orb.inc.toFixed(1) + '°' : ''}` : ''}${x.D.why ? ` (${x.D.why})` : ''}`).join(', ')}; clean ${r.clean}; "${why}"; ${news.filter(t => /run \d/.test(t)).slice(-3).join(' | ')}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
