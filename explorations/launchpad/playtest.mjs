@@ -557,7 +557,7 @@ PT.waitN = (until, max = 150) => { let n = 0; const M = PT.m2;
   return {waits: M.adv, ...PT.netNow()} };
 true`;
 // a flight as a player makes it: the preset in the Assembly, [N] until the program can pay for it, rolled out and launched
-const M2_FLIGHT = (name, preset, fly) => [{say: name + ': the Satellite preset in the Assembly, rolled out and launched'},
+const M2_FLIGHT = (name, preset, fly) => [{say: name + ': the ' + preset + ' preset in the Assembly, rolled out and launched'},
   `go('assembly'); PT.preset(${JSON.stringify(preset)}); PT.m2.cost = vesselCost(S.parts).cost; ({cost: +PT.m2.cost.toFixed(1), funds: +PROG.funds.toFixed(1)})`,
   `({wait: PT.waitN(() => PROG.funds >= PT.m2.cost * 1.1, 40)})`,
   `go('assembly'); PT.preset(${JSON.stringify(preset)}); true`, {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), launched: mode === 'flight' && !!S.rec, funds: +PROG.funds.toFixed(1)})`, fly, `PT.showUI(); true`, {shot: name.toLowerCase().replace(/\W+/g, '_')},
@@ -572,8 +572,8 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   {say: 'A routine from the Fleet tab: keep the weather satellite up'},
   `(()=>{ go('program'); PT.click('[data-ptab="fleet"]'); const bs = [...document.querySelectorAll('[data-mkroute]')]; if (bs[0]) bs[0].click();
      return {buttons: bs.length, why: (PROG.sats || []).filter(q => !q.junk).map(q => q.name + ': ' + (routeFrom(q).why || 'ok') + ', holds ' + Math.round(skLife(q)) + ' d, decays in ' + Math.round(decayLife(q)) + ' d'), route: PT.netNow().route} })()`, {shot: 'fleet_route'},
-  // TV: east to a low orbit, then up to the stationary orbit
-  ...M2_FLIGHT('TV satellite', 'Satellite', `(()=>({low: PT.ascentAz(90), raise: PT.raise(STAT_R, true)}))()`),
+  // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, then up to the stationary orbit
+  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), raise: PT.raise(STAT_R, true)}))()`),
   // three runs ordered by hand, each waited out with [N]
   ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
      b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,
