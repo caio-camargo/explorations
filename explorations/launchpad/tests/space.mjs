@@ -805,3 +805,28 @@
     `engine at 50 %: thrust ${(s1.thrust / s0.thrust).toFixed(3)}×, burn time ${bt.toFixed(3)}×, gimbal ${JSON.stringify(e1.gv)}; pod wheel ${tq0} → ${p.torque} N·m; `
     + `crew air: whole ${ok.day ? 'out on day ' + ok.day : 'fine for 3 days'}, cabin at 50 % ${hit.day ? 'out on day ' + hit.day : 'fine'} · ${JSON.stringify({ said, thrust, burn, jam, wheel, air })}`);
 }
+
+// space-28. A TV satellite stays in the capital's sky until its tanks run dry (space, QUEUE Q517; MIDGAME § Satellites:
+// running dry ends it). Held, a stationary orbit's tilt is let go, and Nyx's 30° orbit turns it ~3.5° a year: past ~25° the
+// capital loses it for part of the day. The TV Satellite preset's payload (1,181 m/s left on station, vehicle-30) went grey
+// on day ~2,430 with ~560 m/s still aboard; now it trims its tilt back toward the equator once it passes 20°, sized to its
+// remaining propellant, and earns to ~day 3,650, when the tanks are dry.
+{
+  const D = new Function(src + 'return {newShip,stage,PRESETS,satRegister,advanceDays,elements,skDv,isTV,capital,rotY,absTh,TELLUS,PROG,HOOK,DAY_S,STAT_R};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, saved = JSON.stringify(P); P.sats = []; P.day = 0;
+  const s = D.newShip(D.PRESETS['TV Satellite']); for (let i = 0; i < 5; i++) D.stage(s);   // the payload alone, as released
+  const c = D.capital(), u = D.rotY(c.u, D.absTh(0)), lon = Math.atan2(u[2], u[0]), a = D.STAT_R, vc = Math.sqrt(T.mu / a);
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a * Math.cos(lon), 0, a * Math.sin(lon)], v: [vc * Math.sin(lon), 0, -vc * Math.cos(lon)] });
+  for (const p of s.parts) if (p.on && (p.d.wing || p.d.fold)) p.dep = true;
+  D.satRegister(s, { day0: 0 }); const q = P.sats.at(-1);
+  { const tk = q.shape.find(o => o.res && o.res.fuel > 0), f0 = tk.res.fuel; q.mass -= f0 * 1000; tk.res.fuel = 0; const m0 = q.mass; let lo = 0, hi = f0;   // 1,181 m/s aboard
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; tk.res.fuel = mid; q.mass = m0 + mid * 1000; if (D.skDv(q) < 1181) lo = mid; else hi = mid; } }
+  const tiltOf = () => { const e = D.elements(q.r, q.v, T.mu); return Math.acos(Math.min(1, e.h[1] / e.hl)) * 180 / Math.PI; }, at = {};
+  let first = null; for (let d = 10; d <= 3400; d += 10) { D.advanceDays(10); if (first == null && !D.isTV(q, P.day * D.DAY_S)) first = P.day; if (d % 800 === 0) at[d] = { dv: Math.round(D.skDv(q)), tilt: +tiltOf().toFixed(1) }; }
+  const trims = news.filter(m => /trimmed its tilt/.test(m));
+  check('a TV satellite (Q517): the TV Satellite payload held over the capital trims its tilt back toward the equator and earns past day 3,400, its tanks nearly spent (it went grey on day ~2,430 with ~560 m/s aboard)',
+    first == null && trims.length >= 1 && D.skDv(q) < 150 && P.sats.includes(q),
+    `first day without TV ${first ?? 'none by day 3,400'}; ${JSON.stringify(at)}; ${trims.join(' / ')}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}

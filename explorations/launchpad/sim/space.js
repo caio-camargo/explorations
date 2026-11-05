@@ -915,6 +915,19 @@ function tiltStep(q,T1){const B=orbBody(q),o=ORB_T0;ORB_T0=0;let r=q.r,v=q.v,t=q
     for(let i=0;i<N;i++){const ti=t+P*i/N,ri=kepler(r,v,ti-t,B.mu)[0],a=pertAcc(B,ri,ti,false);if(a)tq=add(tq,cross(ri,a))}
     const h=cross(r,v),Q=qFromTo(norm(h),norm(add(h,mul(tq,dt/N))));[r,v]=kepler(r,v,dt,B.mu);r=qrot(Q,r);v=qrot(Q,v);t+=dt}
   ORB_T0=o;Object.assign(q,{r,v,epoch:t})}
+// ---- a TV satellite trims its tilt (QUEUE Q517). Let go (tiltStep), a stationary orbit's plane is turned by Nyx's 30°
+// orbit ~3.5° a year (to ~37° after ten years), and past ~25° the capital loses it for part of each day: the TV Satellite
+// preset went grey ~6 years up with ~560 m/s still in its tanks (study_slot.mjs C). So a held satellite earning TV over the
+// capital trims when its tilt passes TV_TRIM: a plane change back toward the equator (at the node, its slot's longitude
+// kept), sized so the tilt comes back to TV_TRIM about when its tanks run dry (its own tilt rate since the last trim, its
+// hold rate): what's left is spent on staying in the capital's sky, not stranded. MIDGAME § Satellites: running dry ends it.
+const TV_TRIM=20*Math.PI/180,TRIM_MIN=Math.PI/180;
+function tvTrim(q,T){if(!q.tvOn||q.bodyName)return;const el=elements(q.r,q.v,TELLUS.mu),n=norm(el.h),i=Math.acos(clamp(n[1],-1,1));if(i<TV_TRIM)return;
+  const t0=q.trimT??q.born*DAY_S,i0=q.trimI??0,w=(i-i0)/Math.max(DAY_S,T-t0)*DAY_S,vc=Math.sqrt(TELLUS.mu/el.a),F=skDv(q)-1;   // tilt (rad) a day since the last trim
+  const di=Math.min(i,w>0?F/(vc+holdRate(q)/w):i);if(!(di>=TRIM_MIN))return;
+  const n2=qrot(qaxis(norm(cross(n,[0,1,0])),di),n),u=norm(sub(q.r,mul(n2,dot(n2,q.r))));   // the new plane, and the slot's direction in it
+  skSpend(q,vc*di);Object.assign(q,{r:mul(u,el.a),v:mul(norm(cross(n2,u)),vc),trimT:T,trimI:i-di});   // its hold rate stays as measured (as while the tilt wanders)
+  HOOK.news(`${q.name} trimmed its tilt from ${Math.round(i*180/Math.PI)}° to ${Math.round((i-di)*180/Math.PI)}° (${Math.round(vc*di)} m/s) to stay in the capital's sky`,'ok')}
 // what it can burn: tank fuel through its best engine (vacuum Isp), then RCS gas through its thrusters
 const SK_GAS_ISP=PARTS.rcs.isp;
 function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV*lvl().isp);if(d.kind==='rcs')rcs=true}
@@ -987,7 +1000,7 @@ function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.lande
     if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(left){
       const tDry=had?T1-left/k*DAY_S:t0,[r,v]=satAt(q,tDry);Object.assign(q,{r,v,epoch:tDry,adrift:tDry/DAY_S});
       if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it ${slotRate(q)>0?'drifts':'sinks'}`,'warn')}}   // (one that never had any just drifts)
-    if(q.adrift==null){if(q.epoch<T1&&slotTilt(q)>TILT_MIN)tiltStep(q,T1);continue}}   // held (or nothing to hold): only the tilt moves
+    if(q.adrift==null){if(q.epoch<T1&&slotTilt(q)>TILT_MIN){tiltStep(q,T1);if(k>0)tvTrim(q,T1)}continue}}   // held (or nothing to hold): only the tilt moves (a TV satellite trims it once, Q517)
   if(!(q.epoch<T1))continue;
   if(q.bodyName||tideMatters(q))moonOrbStep(q,T1);else decayStep(q,T1)}
   conjTick(T0,T1);fragTick(T0,T1)}   // debris, slices 2 and 3
