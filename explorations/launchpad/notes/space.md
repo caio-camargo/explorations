@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-05
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2258,3 +2258,43 @@ v1.210 left `p.dmg` on a part a debris piece damaged, but only solar cells read 
 - **Not here:** rover wheels (debris doesn't reach a rover); repair (a crew or a servicing visit putting `dmg` back to 0);
   damage on the screen besides the message (the part list, the Debrief).
 - Test `space-27`.
+
+## v1.256 — a TV satellite trims its tilt to stay in the capital's sky (2026-11-05, space worker, QUEUE Q517)
+
+**The report** (robot `m2`, Q516/Q518): the TV satellite reached its slot over Kamar and earned (`satsIncome` 228), but
+`earning` read 0 at day 4,000. The guess was that its station-keeping propellant ran out.
+
+**Measured** (headless: the TV Satellite preset's payload as released, 280 kg, held over the capital with the 1,181 m/s
+`vehicle-30` leaves it on station; `study_slot.mjs` C does the same with a Probe): **the propellant wasn't the cause.**
+Holding size and shape costs 0.221 m/s a day, so the tanks last ~5,340 days. The tilt was the cause. Since v1.71 a held
+orbit lets its tilt go, and Nyx's 30° orbit turns a stationary plane ~3.5° a year (3.6° after year 1, 18.9° after year 5,
+27° after year 7, peaking at ~37.6° in year 10). Past ~25° the capital (42°S) loses it for part of each day. TV went grey
+on **day 2,433 with ~560 m/s still aboard** and had earned 862 by then (launched on day 0).
+
+**Rejected: the frozen plane.** A plane the tide hardly turns does exist for the stationary orbit, but only measured over
+a long window (400 days: ~22.8° tilt, node ~52°, 0.02° a year; a 40-day window's minimum wanders from 18° to 25° with
+the epoch). It sits right at TV's edge, and moving there costs ~600 m/s, which leaves less time than doing nothing.
+
+**Fix (`tvTrim`, `sim/space.js`, called after `tiltStep` in `orbTick` for held orbits):** a held satellite earning TV over
+the capital (`q.tvOn`, a Tellus orbit) whose tilt passes **20°** makes a plane change back toward the equator, keeping
+its slot's longitude (the slot's direction projected into the new plane, circular at the same size), paid from its tanks
+at vc·Δi. The size of the change uses what's left. With its own tilt rate since the last trim (`q.trimT`/`q.trimI`, from
+`born` at first) and its hold rate, Δi = fuel / (vc + holdRate/rate), capped at the tilt itself. The tilt then gets back
+to 20° about when the tanks run dry, so no propellant is stranded. News: "… trimmed its tilt from 20° to 6° (380 m/s) to
+stay in the capital's sky". The hold rate stays as measured (a re-measure at the new plane is noisy: 0.13 to 0.25 m/s a
+day by epoch).
+
+**After:** one trim on day 2,108 (20° → 6°, 380 m/s). The tanks ran dry on day 3,619 just as the tilt was back at 19.9°,
+and TV ran to **day 3,656** (was 2,433; +50 %), earning 1,181 (was 862). Dry, it drifts off as before.
+
+**Not here / for other lanes:**
+- `skLife` (the Fleet's "holds its orbit N days", the builder readout) still reads fuel / size-and-shape rate: 5,337 days
+  for this payload, against ~3,650 of TV now (~2,430 before). A readout that counts the trims is the space lane's
+  follow-up.
+- The robot's `m2` row: a TV satellite launched after day ~350 with the full 1,181 m/s on station is now still
+  earning at day 4,000. But `satsIncome` 228 in the Q518 run implies only ~770 earning days at the obsolete era's 74 %, much
+  shorter than the ~2,430 this measure gives. That run's satellite likely reached its slot with far less propellant
+  (PT.raise's circularisation, or a late launch), so the run's news ("last of its propellant", "drifted out") should
+  be read before trusting `earning`.
+- Balance: one TV satellite now earns ~37 % more over its life (~1,181 against 862 at TV_RATE 0.4, before obsolescence).
+- Test `space-28` (failed before: TV lost on day 2,434).
