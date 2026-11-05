@@ -131,12 +131,12 @@ function cloudAt(u,T){const t=(T*2e-4)%500,a=4,ss=(e0,e1,v)=>{const y=clamp((v-e
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
-function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
+function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':q.ant&&q.r&&statSlot(q)?'TV':'Object'}   // TV: an antenna in a stationary slot (Q522)
 function satRegister(s,R){leakDry(s);if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
   const B=s.body,el=elements(s.r,s.v,B.mu);let cruise=0;
   if(!settled(B,el)){if(!(len(s.r)-B.R>(B.atm||0)))return;cruise=1}   // not a lasting orbit but above the air: in flight (Q49); in the air at flight end: dropped, as before
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
-  PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
+  PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind({...q,r:s.r,v:s.v}),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.T??R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
@@ -905,7 +905,7 @@ function slotRate(q){if(q.skRate!=null)return q.skRate;const B=orbBody(q),el0=el
   // eccentricity: NOTES § "Station-keeping, re-tuned")
   const m0=mean(),T1=q.epoch+SK_D*DAY_S;while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}const m1=mean();
   ORB_T0=o;const vc=Math.sqrt(B.mu/el0.a),ang=Math.acos(clamp(dot(m0.hv,m1.hv)/(len(m0.hv)*len(m1.hv)),-1,1)),k=(vc/2*Math.abs(m1.a-m0.a)/el0.a+vc/2*Math.abs(m1.e-m0.e))/SK_D;
-  q.skTilt=ang/SK_D;return q.skRate=k<SK_MIN?0:k}   // size + shape are held (paid); the tilt is let go (tiltStep); phase is free
+  q.skTilt=ang/SK_D;return q.skRate=k<SK_MIN?0:k}   // size + shape are held (paid); the tilt is let go (tiltStep); phase is free, except in a stationary slot (statHold)
 const slotTilt=q=>(slotRate(q),q.skTilt||0),tideMatters=q=>slotRate(q)>0||slotTilt(q)>TILT_MIN;
 // a held orbit's plane under the tide (MIDGAME § Satellites: a good design outlasts its era, so holding the tilt, ~70 % of
 // the cost, is left out, as real geostationary satellites do late in life): the torque of the tide averaged over one orbit
@@ -928,6 +928,17 @@ function tvTrim(q,T){if(!q.tvOn||q.bodyName)return;const el=elements(q.r,q.v,TEL
   const n2=qrot(qaxis(norm(cross(n,[0,1,0])),di),n),u=norm(sub(q.r,mul(n2,dot(n2,q.r))));   // the new plane, and the slot's direction in it
   skSpend(q,vc*di);Object.assign(q,{r:mul(u,el.a),v:mul(norm(cross(n2,u)),vc),trimT:T,trimI:i-di});   // its hold rate stays as measured (as while the tilt wanders)
   HOOK.news(`${q.name} trimmed its tilt from ${Math.round(i*180/Math.PI)}° to ${Math.round((i-di)*180/Math.PI)}° (${Math.round(vc*di)} m/s) to stay in the capital's sky`,'ok')}
+// ---- a stationary slot keeps its longitude (QUEUE Q521). Held, an orbit keeps its size and shape but its phase is free, so
+// a stationary satellite a hair off the day walks round the sky for good: the TV Satellite preset as its autopilot leaves it
+// (0.9995 d) drifts 0.18° a day and the capital lost it on day ~295. So a held satellite whose period is within STAT_TOL of
+// the day (the same 1 % isTV allows) is set to the day exactly at the longitude it was settled at: a burn along its path
+// paid from its tanks (~0.25 m/s for 0.9995 d, ~5 m/s for 1 %), then, as real geostationary satellites do, east-west
+// station-keeping at STAT_EW m/s a year on top of its hold rate (holdRate). Dry, it drifts as before.
+const STAT_TOL=0.01,STAT_EW=2/YEAR_D;
+const statSlot=q=>{if(q.bodyName||q.junk)return false;const el=elements(q.r,q.v,TELLUS.mu);return el.e<0.02&&Math.abs(el.period/DAY_S-1)<STAT_TOL};
+function statHold(q){if(q.adrift!=null||!statSlot(q))return;const r=len(q.r),v=len(q.v),a=1/(2/r-dot(q.v,q.v)/TELLUS.mu);if(Math.abs(a/STAT_R-1)<1e-7)return;
+  const v2=Math.sqrt(TELLUS.mu*(2/r-1/STAT_R)),dv=Math.abs(v2-v);if(skDv(q)<dv)return;   // can't pay: left to drift
+  skSpend(q,dv);q.v=mul(q.v,v2/v)}   // at its epoch: where it was settled (SAT_C cleared by skSpend)
 // what it can burn: tank fuel through its best engine (vacuum Isp), then RCS gas through its thrusters
 const SK_GAS_ISP=PARTS.rcs.isp;
 function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV*lvl().isp);if(d.kind==='rcs')rcs=true}
@@ -965,7 +976,7 @@ function dragRates(a,e,K){const mu=TELLUS.mu,N=36;let da=0,de=0,ad=0;
 const DECAY_FLOOR=()=>TELLUS.R+TELLUS.atm;
 // the m/s a day it costs to hold this orbit against drag (0 above the table, around a moon, or with no outline)
 function dragRate(q){if(q.bodyName)return 0;const el=elements(q.r,q.v,TELLUS.mu);if(!(el.e<1)||el.pe-TELLUS.R>2000e3)return 0;const K=dragK(q);return K>0?dragRates(el.a,el.e,K).ad*DAY_S:0}
-const holdRate=q=>slotRate(q)+dragRate(q);   // tides + drag: what holding its orbit costs a day
+const holdRate=q=>slotRate(q)+dragRate(q)+(statSlot(q)?STAT_EW:0);   // tides + drag (+ a stationary slot's longitude): what holding its orbit costs a day
 // let drag work on a Tellus orbit from q.epoch to T1, on its rails: (a, e) by the averaged rates in steps that keep the
 // periapsis change small, the mean anomaly carried along, the apsides fixed. Below the air's top it's gone. Returns the
 // re-entry time, or null.
@@ -996,7 +1007,7 @@ function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.lande
   if(q.cruise){if(q.halt){if(q.epoch<T1)q.epoch=T1}else if(q.epoch<T1)cruiseStep(q,T1);continue}   // in flight (Q49); one waiting at an atmosphere
   // keeps its place while time passes (a stopgap until slice 2 stops the clock before it), so Fly starts it there
   if(q.junk){if(q.epoch<T1)(q.bodyName?moonOrbStep:decayStep)(q,T1);continue}   // debris: rails + decay only (Q26)
-  if(q.adrift==null){const k=holdRate(q);
+  if(q.adrift==null){statHold(q);const k=holdRate(q);   // a stationary slot: set to the day where it was settled (Q521)
     if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(left){
       const tDry=had?T1-left/k*DAY_S:t0,[r,v]=satAt(q,tDry);Object.assign(q,{r,v,epoch:tDry,adrift:tDry/DAY_S});
       if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it ${slotRate(q)>0?'drifts':'sinks'}`,'warn')}}   // (one that never had any just drifts)
