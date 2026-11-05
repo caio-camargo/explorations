@@ -507,9 +507,9 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
 // M2's finish line (QUEUE Q233, ROADMAP § M2, DECISIONS D17.1), written first like Q55 for M1: it FAILS until M2 lands, and
 // each failed check names what's missing. A new career plays m1's two flights (no tester flags, nothing seeded), then the
 // two epoch-3 satellites a player would: a Weather satellite (the Satellite preset flown north into a polar orbit) and TV
-// for the capital (the same preset, east, then raised to the stationary orbit and circularised over the equator: the robot's
-// own burns, attitude set directly as in PT.ascent). It makes a routine from the weather satellite in the Fleet tab, orders
-// three runs by hand, turns on *Repeat by itself* as soon as it's allowed, and from then on lets time pass only by mission
+// for the capital (the same preset, east, then raised to the stationary orbit and circularised over the equator, its spent stage let go and its period trimmed to
+// the day: the robot's own burns, attitude set directly as in PT.ascent). It makes a routine from the weather satellite in the Fleet tab, orders
+// three runs by hand, turns on *Repeat by itself* as soon as it's allowed (its keep first raised past what's up), and from then on lets time pass only by mission
 // control's [N] Wait (a decision is declined, a deviation let go; both listed). Finish: the network still earns and the
 // routine keeps it up. ~4 program years (the mainframes allow repeating from day ~1455), in steps of at most 150 waits.
 const M2_HELPERS = String.raw`
@@ -546,6 +546,25 @@ PT.statWait = () => { const X = statXfer(S); if (!X) return {statXfer: null}; co
 // where the craft sits over the planet against the capital: longitudes, and how high the capital sees it (TV wants 15°)
 PT.overCap = () => { const c = capital(), T = progT(S), pf = rotY(S.r, -absTh(T)), d = sub(pf, mul(c.u, TELLUS.R)), dg = 57.29578;
   return {lon: +(Math.atan2(pf[2], pf[0]) * dg).toFixed(1), capLon: +(Math.atan2(c.u[2], c.u[0]) * dg).toFixed(1), capElev: +(Math.asin(Math.max(-1, Math.min(1, dot(norm(d), c.u)))) * dg).toFixed(1), capSees: capSees(S.r, T)} };
+// (Q519) what the craft has left to hold its slot with: the flight's Δv readout, its stages, and its propellant by kind
+PT.dvLeft = () => { const d = dvRemaining(S), res = {}; for (const p of S.parts) if (p.on && p.res) for (const [k, v] of Object.entries(p.res)) res[k] = +((res[k] || 0) + v).toFixed(3);
+  return {dv: Math.round(d.tot), cur: Math.round(d.cur), stage: S.evIdx + ' of ' + S.events.length, res} };
+// (Q519) once in its slot, the spent upper stage let go (the next staging event: the satellite's own engine lights), as a
+// player would: kept on, its dead mass rode along and the satellite's propellant held a far heavier craft (Q519: 1,840 m/s on
+// the flight's readout, but held as one heavy object it had 32 m/s left by day 4,000, too little to trim; released, 1,404)
+PT.release = () => { const on = () => S.parts.filter(p => p.on).length, n = on(), evs = S.events.slice(S.evIdx).map(e => ({dec: e.decouple.length, ign: e.ignite.length}));
+  for (let i = 0; i < 3 && on() === n && S.evIdx < S.events.length && dvRemaining(S).cur < 50; i++) stage(S);
+  return {evs, dropped: n - on(), parts: S.parts.filter(p => p.on).map(p => p.d.key).join(' '), ...PT.dvLeft()} };
+// (Q519) then its period trimmed to the day, as a GEO operator would: station-keeping holds a slot's size and shape, not its
+// longitude, so an orbit a little short of a day walks west for good (Q519: 0.99968 d after PT.raise drifted 0.114°/day and
+// left the capital's sky ~450 days up, at 4.7° of tilt). A gentle burn along or against the motion until the orbit's size is
+// within 30 m of the stationary one (period within ~1e-5 day: < 10° of drift in ten years)
+PT.trimDay = (R = STAT_R, tol = 30) => { const s = S, mu = TELLUS.mu, P = () => +(elements(s.r, s.v, mu).period / DAY_S).toFixed(6), p0 = P(), dv0 = dvRemaining(s).tot, t0 = simT; let k = 0;
+  const body = () => { if (!(s.alive && k++ < 2e5)) return false; const d = elements(s.r, s.v, mu).a - R; if (Math.abs(d) < tol) { s.throttle = 0; return false }
+    PT.point(norm(d < 0 ? s.v : mul(s.v, -1))); s.throttle = Math.min(1, Math.max(0.005, Math.abs(d) / 3e4)); advPhys(s) };
+  PT.loop(body, Infinity, {}); s.throttle = 0; return {from: p0, to: P(), da: Math.round(elements(s.r, s.v, mu).a - R), dv: +(dv0 - dvRemaining(s).tot).toFixed(2), s: Math.round(simT - t0), steps: k} };
+// the network's satellites at the end: how long each can still hold, and whether it's TV
+PT.satsNow = () => (PROG.sats || []).filter(q => !q.junk).map(q => ({name: q.name, born: q.born != null ? Math.round(q.born) : null, dv: Math.round(skDv(q)), holds: Math.round(skLife(q)), adrift: q.adrift != null ? Math.round(q.adrift) : null, tv: !!q.tvOn, ant: !!q.ant, inc: +(Math.acos(Math.max(-1, Math.min(1, norm(elements(q.r, q.v, TELLUS.mu).h)[1]))) * 57.29578).toFixed(1)}));
 PT.route = () => (PROG.routes || [])[0] || null;
 PT.runs = () => { const r = PT.route(); return r ? (PROG.dispatch || []).filter(D => D.route === r.id).map(D => [D.status, +(D.launch || 0).toFixed(0), D.why || '', D.orb ? Math.round(D.orb.pe / 1e3) + '×' + Math.round(D.orb.ap / 1e3) + ' km' : '', D.auto ? 'auto' : 'ordered']) : [] };
 PT.netNow = () => { const r = PT.route(); return {day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), sats: (PROG.sats || []).filter(q => !q.junk).length, route: r && {name: r.name, keep: r.keep, up: routeSats(r).length, runs: r.runs, clean: r.clean, auto: r.auto, why: routeAutoWhy(r)}, led: PROG.led && {sats: +(PROG.led.sats || 0).toFixed(1)}, runs: PT.runs()} };
@@ -555,10 +574,15 @@ PT.waitN = (until, max = 150) => { let n = 0; const M = PT.m2;
   while (n++ < max && !until()) {
     for (const d of [...(PROG.decisions || [])]) { const o = (d.opts || []).at(-1); if (o) { resolveDecision(d.id, o[0]); M.declined.push(d.title || d.kind) } }
     for (const D of PROG.dispatch || []) if (D.status === 'deviated') { loseDeviation(D.id, 'let go'); M.letGo++ }
-    const r = PT.route(); if (r && !r.auto && !routeAutoWhy(r)) { go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rauto="' + r.id + '"]'); if (b) { b.click(); if (r.auto) M.autoOn = +PROG.day.toFixed(1) } }
+    // (Q519) first the keep raised one past what's up (the Fleet's *keep n+1*), as a player would: the routine was made from
+    // one satellite (keep 1), but it and the three ordered runs are all still up and holding, so at keep 1 it never needs to repeat
+    const r = PT.route(); if (r && !r.auto && !routeAutoWhy(r)) { go('program'); PT.click('[data-ptab="fleet"]');
+      for (let i = 0; i < 8 && r.keep <= routeSats(r).length; i++) { const k = document.querySelector('[data-rkeep="' + r.id + '"][data-k="' + (r.keep + 1) + '"]'); if (!k) break; k.click() } M.keepTo = r.keep;
+      const b = document.querySelector('[data-rauto="' + r.id + '"]'); if (b) { b.click(); if (r.auto) M.autoOn = +PROG.day.toFixed(1) } }
     if (screenNow() !== 'mission') go('mission'); renderMission(); const b = document.querySelector('#mcNext [data-adv]'); if (!b) { M.stops.push('day ' + PROG.day.toFixed(0) + ': nothing dated to wait for'); break }
     const d0 = PROG.day; b.click(); M.adv++; renderMission();
     if (r) { const up = routeSats(r).length; if (r.auto && (M.upMin == null || up < M.upMin)) M.upMin = up }
+    for (const q of PROG.sats || []) if (q.ant && !q.cam && !q.junk) (M.tvTrace = M.tvTrace || []).push([Math.round(PROG.day), +(Math.acos(Math.max(-1, Math.min(1, norm(elements(q.r, q.v, TELLUS.mu).h)[1]))) * 57.29578).toFixed(1), q.tvOn ? 1 : 0, Math.round(skDv(q)), q.trimT != null ? 1 : 0, (() => { const T = PROG.day * DAY_S, pf = rotY(satAt(q, T)[0], -absTh(T)), el = elements(q.r, q.v, TELLUS.mu); return [+(Math.atan2(pf[2], pf[0]) * 57.29578).toFixed(1), +(el.period / DAY_S).toFixed(5), +el.e.toFixed(4)] })()])
     if (PROG.day <= d0 + 1e-9) { M.stops.push('day ' + PROG.day.toFixed(0) + ': the wait did not move the calendar (' + (document.getElementById('msg') || {}).innerText + ')'); break } }
   M.autoRuns = (PROG.dispatch || []).filter(D => D.auto && D.status === 'done').length;
   return {waits: M.adv, ...PT.netNow()} };
@@ -581,7 +605,7 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
      return {buttons: bs.length, why: (PROG.sats || []).filter(q => !q.junk).map(q => q.name + ': ' + (routeFrom(q).why || 'ok') + ', holds ' + Math.round(skLife(q)) + ' d, decays in ' + Math.round(decayLife(q)) + ' d'), route: PT.netNow().route} })()`, {shot: 'fleet_route'},
   // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, a coast until the
   // transfer burn arrives over the capital (statXfer, the card's *plan it*; Q516: burning at once ends where the capital can't see it), then up
-  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap()}))()`),
+  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap(), left: PT.dvLeft(), release: PT.release(), trim: PT.trimDay()}))()`),
   // three runs ordered by hand, each waited out with [N]
   ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
      b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,
@@ -589,7 +613,7 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   {shot: 'after_runs'},
   // years at [N]: until the routine has repeated by itself for a year, or ~4,000 days
   ...Array.from({length: 12}, () => `PT.waitN(() => PROG.day > 4000 || (PT.m2.autoOn != null && PROG.day > PT.m2.autoOn + 400 && PT.m2.autoRuns > 0), 150)`),
-  `go('program'); PT.click('[data-ptab="fleet"]'); ({...PT.netNow(), m2: PT.m2, news: PT.logSince(0).slice(-12)})`, {shot: 'fleet_end'},
+  `go('program'); PT.click('[data-ptab="fleet"]'); ({...PT.netNow(), m2: PT.m2, sats: PT.satsNow(), tvNews: PT.logSince(0).filter(l => /propellant|capital's sky|trimmed|TV/.test(l)).slice(-12), news: PT.logSince(0).slice(-12)})`, {shot: 'fleet_end'},
   `go('mission'); renderMission(); true`, {shot: 'mission_end'}],
   checks: {m1: `!!PROG.done.weather && !!PROG.done.beeper`, wxsat: `!!PROG.done.wxsat`, tv: `!!PROG.done.tv`, route: `!!PT.route()`,
     clean3: `PT.route() ? PT.route().clean : 0`, repeating: `PT.route() ? PT.route().auto : false`, autoRuns: `PT.m2.autoRuns`,
