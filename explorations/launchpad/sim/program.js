@@ -192,7 +192,8 @@ function statXfer(s){if(!s.alive||s.landed||s.body!==TELLUS)return null;const B=
     pv={x,nu,t}}
   return null}
 // TV pays while the capital sees it 15° up all day round (six times through the day); its tilt may wander as long as that
-// holds (space, MIDGAME § Satellites: station-keeping holds the orbit's size and phase, not its tilt). The mission that
+// holds (space, MIDGAME § Satellites: station-keeping holds the orbit's size and shape, and in a stationary slot its
+// longitude (statHold, Q521), not its tilt; tvTrim pulls the tilt back once). The mission that
 // sets it up still asks for under 2° (outThere).
 const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu);
   return el.e<0.02&&Math.abs(el.period/DAY_S-1)<0.01&&[0,1,2,3,4,5].every(k=>{const t=T+k*DAY_S/6;return capSees(satAt(q,t)[0],t)})};

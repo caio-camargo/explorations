@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-05
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-05
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2298,3 +2298,36 @@ and TV ran to **day 3,656** (was 2,433; +50 %), earning 1,181 (was 862). Dry, it
   be read before trusting `earning`.
 - Balance: one TV satellite now earns ~37 % more over its life (~1,181 against 862 at TV_RATE 0.4, before obsolescence).
 - Test `space-28` (failed before: TV lost on day 2,434).
+
+## v1.257 — a stationary slot keeps its longitude; a TV satellite is named "TV" (2026-11-05, space worker, QUEUE Q521, Q522)
+
+**The report** (Q519 worker): the robot's `m2` only kept TV because `PT.trimDay` hand-trimmed the period. Held, an orbit
+kept its size and shape (`slotRate`) but its phase was free, so any period error walked the satellite round the sky for
+good. The comment above `isTV` said station-keeping held "size and phase"; it didn't.
+
+**Measured** (headless, the TV Satellite payload as released over the capital, the ~380 m/s its autopilot leaves on
+station, 10-day steps): at **0.9995 d** (where the preset's autopilot stops) it drifted 0.18° a day west and TV was lost
+on **day ~295** (54° off the capital by day 300); at the robot's **0.99968 d**, 0.115° a day, lost on day ~450.
+
+**Fix (`statHold`, `sim/space.js`, first thing for a held orbit in `orbTick`):** a held Tellus orbit with e < 0.02 and a
+period within **1 %** of the day (`STAT_TOL`, the same band `isTV` allows; `statSlot`) is set to the day exactly, at the
+longitude it was settled at: its speed at its epoch is rescaled to the stationary semi-major axis (an along-track burn,
+|Δv| paid by `skSpend`: ~0.25 m/s for 0.9995 d, ~5 m/s at the 1 % edge; if it can't pay, it's left to drift). On top, a
+stationary slot pays east-west station-keeping, **2 m/s a year** (`STAT_EW`, 0.005 m/s a day, real GEO's 1–2 m/s/yr), in
+`holdRate`, so `skLife`, the Fleet line and the builder's forecast include it. Tilt is still let go (`tiltStep`) and
+trimmed (`tvTrim`, which already kept the longitude). Nothing else changes for orbits outside the band.
+
+**After:** 0.9995 d holds within 0.6° of the capital's longitude (the residue is `tiltStep`'s plane rotation) and earns
+TV until its tanks run dry: **day ~1,660** on 380 m/s (was ~295); 0.99968 d: day ~1,650 (was ~450); 0.995 d: day
+~1,860. Dry, it drifts as before. MIDGAME § Satellites holds: running dry ends it.
+
+**Q522:** `satKind` names an antenna in a stationary slot around Tellus **"TV"** ("TV 1", routes "TVs at …"); the kind is
+taken from the orbit at registration (`satRegister` passes the flight's r, v). Other Tellus antennas stay "Object".
+
+**For other lanes:**
+- Balance: a TV satellite flown by a player now earns for its tanks' life (~1,650 days on the preset's 380 m/s), not
+  ~300 days. With `TV_RATE` 0.4 that's ~660 at full quality, against ~120 before.
+- The robot flies like a player again: `m2` with `PT.trimDay` taken out of its TV step passes every check (GPU run,
+  2026-11-05: earning 1, satsIncome 1,254, autoRuns 1, the satellite named "TV 1"). `PT.trimDay` stays defined, unused.
+- `space-1`'s stationary checks now read `holdRate` (the tides plus the 2 m/s a year), not `slotRate`.
+- Test `space-29` (failed before: TV lost on day ~300, named "Object 1").

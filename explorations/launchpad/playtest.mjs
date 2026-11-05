@@ -507,8 +507,8 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
 // M2's finish line (QUEUE Q233, ROADMAP § M2, DECISIONS D17.1), written first like Q55 for M1: it FAILS until M2 lands, and
 // each failed check names what's missing. A new career plays m1's two flights (no tester flags, nothing seeded), then the
 // two epoch-3 satellites a player would: a Weather satellite (the Satellite preset flown north into a polar orbit) and TV
-// for the capital (the same preset, east, then raised to the stationary orbit and circularised over the equator, its spent stage let go and its period trimmed to
-// the day: the robot's own burns, attitude set directly as in PT.ascent). It makes a routine from the weather satellite in the Fleet tab, orders
+// for the capital (the same preset, east, then raised to the stationary orbit and circularised over the equator, its spent stage let go (since Q521 the game
+// holds the slot's longitude itself, so no period trim): the robot's own burns, attitude set directly as in PT.ascent). It makes a routine from the weather satellite in the Fleet tab, orders
 // three runs by hand, turns on *Repeat by itself* as soon as it's allowed (its keep first raised past what's up), and from then on lets time pass only by mission
 // control's [N] Wait (a decision is declined, a deviation let go; both listed). Finish: the network still earns and the
 // routine keeps it up. ~4 program years (the mainframes allow repeating from day ~1455), in steps of at most 150 waits.
@@ -555,7 +555,7 @@ PT.dvLeft = () => { const d = dvRemaining(S), res = {}; for (const p of S.parts)
 PT.release = () => { const on = () => S.parts.filter(p => p.on).length, n = on(), evs = S.events.slice(S.evIdx).map(e => ({dec: e.decouple.length, ign: e.ignite.length}));
   for (let i = 0; i < 3 && on() === n && S.evIdx < S.events.length && dvRemaining(S).cur < 50; i++) stage(S);
   return {evs, dropped: n - on(), parts: S.parts.filter(p => p.on).map(p => p.d.key).join(' '), ...PT.dvLeft()} };
-// (Q519) then its period trimmed to the day, as a GEO operator would: station-keeping holds a slot's size and shape, not its
+// (Q519; unused since Q521, v1.257: a held stationary slot now keeps its longitude in the game, statHold) its period trimmed to the day, as a GEO operator would: station-keeping holds a slot's size and shape, not its
 // longitude, so an orbit a little short of a day walks west for good (Q519: 0.99968 d after PT.raise drifted 0.114°/day and
 // left the capital's sky ~450 days up, at 4.7° of tilt). A gentle burn along or against the motion until the orbit's size is
 // within 30 m of the stationary one (period within ~1e-5 day: < 10° of drift in ten years)
@@ -605,7 +605,7 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
      return {buttons: bs.length, why: (PROG.sats || []).filter(q => !q.junk).map(q => q.name + ': ' + (routeFrom(q).why || 'ok') + ', holds ' + Math.round(skLife(q)) + ' d, decays in ' + Math.round(decayLife(q)) + ' d'), route: PT.netNow().route} })()`, {shot: 'fleet_route'},
   // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, a coast until the
   // transfer burn arrives over the capital (statXfer, the card's *plan it*; Q516: burning at once ends where the capital can't see it), then up
-  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap(), left: PT.dvLeft(), release: PT.release(), trim: PT.trimDay()}))()`),
+  ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap(), left: PT.dvLeft(), release: PT.release()}))()`),
   // three runs ordered by hand, each waited out with [N]
   ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
      b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,

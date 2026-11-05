@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-05
+**Version**: v2.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-05
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -15,7 +15,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 |---|---|---|
 | [`notes/foundations.md`](notes/foundations.md) | The idea, the first prototype (v1.0–v1.11), measurements, negative results, precision tricks, picking this up cold, open threads | 19 |
 | [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 26 |
-| [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 44 |
+| [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 45 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 64 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 14 |
@@ -180,6 +180,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: the slow world (2026-10-13, space session, QUEUE Q331; SYSTEM § "The slow world", D19)
 - v1.222 — a damaged part does something (2026-10-13, space session, QUEUE Q440; v1.210's "Not yet")
 - v1.256 — a TV satellite trims its tilt to stay in the capital's sky (2026-11-05, space worker, QUEUE Q517)
+- v1.257 — a stationary slot keeps its longitude; a TV satellite is named "TV" (2026-11-05, space worker, QUEUE Q521, Q522)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
