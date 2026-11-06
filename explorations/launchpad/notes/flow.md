@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1434,3 +1434,19 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
 - **Checks:** test `flow-43` (four falls: the red starts within 50 m of where the blue stops, or at the ship in the air;
   never above the air; steps under 30 km; times in order; the last point is the X, on the ground within 20 m; drawn before
   the GPU draw); failed before (no `fallLine`; the old drawing was up to 248 km off). TESTING row 332.
+
+## v1.263 — the warp readout drops "(physics)"; locked levels are dimmed, with why (2026-11-06, flow worker, QUEUE Q511)
+- **Caio (2026-10-31):** "the time adjustor doesn't need to say 'physics' i think, bc physics should hold throughout, levels
+  at which it doesnt at any given time are locked, right?" Right: up to 100× off rails the loop takes the same fixed step
+  more times a frame (results identical), and past 100× needs rails, which the loop already refuses when they don't hold.
+- **Now:** the readout is just `N×`. Beside it, nine small bars (one per level, rising) light up to the current level;
+  the levels the loop won't take now are faint, and hovering the bars says why ("past 100×: locked (in the air)"). The ▶
+  button dims at the cap with the same reason, and stepping up into a locked level (▶ or `.`) says so in the message line.
+- **The reasons come from the existing tests, no new rules:** `railsWhy(s)` (sim/flight.js) is `railsOK`'s tests with a
+  reason each (engines running; in the air, or near the ground on an airless body; near another craft; RCS working; the
+  arm moving), and `railsOK` is now `!railsWhy`. `warpCap()` (app/loop.js) adds the loop's own caps (the autopilot and a
+  flying procedure at 100×; another craft of ours off rails; under 15 s from the ground 4×, under 4 s or a heavy load 1×),
+  and the loop clamps with it, so the bars and the loop can't disagree. `warpStep(d)` serves the buttons and `,` `.`.
+- **Checks:** test `flow-44` (five cases: the pad lit, orbit, climbing in the air, falling near the ground, low over Selene;
+  railsWhy agrees with railsOK; no "physics" in the readout or the control; the loop and keys go through warpCap/warpStep).
+  TESTING row 334.

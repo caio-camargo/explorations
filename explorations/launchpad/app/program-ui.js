@@ -335,7 +335,11 @@ function updateHUD(){
   {const tog=(id,has,on,txt)=>{const e=$(id);e.classList.toggle('hidden',!has);if(has){const t=txt(on);if(e.textContent!==t)e.textContent=t;e.classList.toggle('on',on)}};
     tog('bLegs',S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'),S.alive&&legsDown(S),on=>on?'Legs up (Y)':'Legs down (Y)');
     tog('bBay',S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'),S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open),on=>on?'Close bay (B)':'Open bay (B)')}
-  const w=WARPS[warpIdx];$('warpN').textContent=`${w}×${w>1&&!railsOK(S)?' (physics)':''}`;$('warp').classList.toggle('on',w>1);
+  // the warp readout (Q511): physics holds at every level, so the readout is just N×; the levels the loop won't take now are dimmed, and why
+  {const w=WARPS[warpIdx],c=warpCap(),L=$('warpL'),k=`${warpIdx}/${c.max}/${c.why}`;$('warpN').textContent=`${w}×`;$('warp').classList.toggle('on',w>1);
+    if(L.dataset.k!==k){L.dataset.k=k;const lock=c.max<WARPS.length-1,t=lock?`past ${WARPS[c.max]}×: locked (${c.why})`:'every level open';
+      L.innerHTML=WARPS.map((x,i)=>`<i class="${i>c.max?'lock':i<=warpIdx?'at':''}" style="height:${4+i}px"></i>`).join('');L.title=t;
+      const up=$('warpUp');up.classList.toggle('lock',lock&&warpIdx>=c.max);up.title=lock&&warpIdx>=c.max?`faster: locked (${c.why})`:'faster (.)'}}
   renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)
   if(S.alive&&S.rec.orbitSci&&!S.landed&&S.body===TELLUS){const{city,dist}=nearestCity(toPF(TELLUS,S.r,simT));

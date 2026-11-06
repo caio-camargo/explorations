@@ -21,9 +21,7 @@ function simulate(dtR){
   if(warpTo!==null){const rem=warpTo-simT;if(rem<=0.05||!S.alive){warpTo=null;warpIdx=0}
     else{let i=WARPS.length-1;while(i>0&&WARPS[i]*dtR*4>rem)i--;warpIdx=i}}
   if(S.proc&&!S.proc.done&&S.proc.wake>simT+2&&!(S.throttle>0)&&warpTo===null)warpTo=S.proc.wake;   // a procedure coasting to its next step: warp there
-  if(!onRails&&warpIdx>5)warpIdx=5;   // physics warp: same fixed step, more steps per frame — results are identical
-  if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=groundGap(S),tg=vs<0?hb/-vs:Infinity;   // time to the ground under the ship, not the sea
-    if(tg<4||S.maxLoad>0.7)warpIdx=0;else if(tg<15&&warpIdx>2)warpIdx=2}
+  if(!onRails&&warpIdx>0)warpIdx=Math.min(warpIdx,warpCap(false).max);
   const warp=WARPS[warpIdx],dt=dtR*warp;stepsN=0;
   if(onRails){
     if(!tapeRails(recTape,S,warpTo!==null?Math.min(dt,warpTo-simT):dt,warp)){warpIdx=0;warpTo=null;HOOK.msg('Warp stopped')}
@@ -31,6 +29,22 @@ function simulate(dtR){
     physAcc+=dt;evt=false;while(physAcc>=DT&&stepsN<800){tapePhys(recTape,S);physAcc-=DT;stepsN++;if(!S.alive)break;if(evt&&warpIdx>0){warpIdx=0;physAcc=0;break}}
     if(stepsN>=800)physAcc=0}
   rvFlightTick(dt,dtR)}
+// (Q511) the fastest warp allowed now, and why the levels above it are locked. Off rails (up to 100×) the loop takes the same
+// fixed step more times a frame, so the results are identical; past 100× needs rails (railsWhy). Close to the ground or
+// under heavy load it drops further. rails: whether the loop's on-rails test passed (null: work it out).
+function warpCap(rails=null){
+  const top=WARPS.length-1;if(!S||!S.alive)return{max:0,why:'the flight is over'};
+  if(player)return{max:5,why:'the autopilot is flying'};
+  const proc=S.proc&&!S.proc.done&&!(S.proc.wake>simT+1);   // a procedure flies on physics, except while it waits for a wake time
+  if(rails===null)rails=flightRailsOK()&&!proc;if(rails)return{max:top,why:''};
+  const v=FLEET.find(v=>v.alive&&!railsOK(v)),why=proc?'a procedure is flying':railsWhy(S)||(v?`another craft: ${railsWhy(v)}`:'');   // physics warp: same fixed step, more steps per frame
+  if(!S.landed){const vs=dot(S.v,norm(S.r)),hb=groundGap(S),tg=vs<0?hb/-vs:Infinity;   // time to the ground under the ship, not the sea
+    if(tg<4)return{max:0,why:'about to reach the ground'};if(S.maxLoad>0.7)return{max:0,why:'under heavy load'};
+    if(tg<15)return{max:2,why:'close to the ground'}}
+  return{max:5,why}}
+// a step of the warp control (the ◀ ▶ buttons, , and .); a step into a locked level says why
+function warpStep(d){warpTo=null;const c=warpCap(),i=clamp(warpIdx+d,0,WARPS.length-1);
+  if(d>0&&i>c.max){warpIdx=c.max;HOOK.msg(`Faster than ${WARPS[c.max]}× is locked: ${c.why}`)}else warpIdx=i}
 function frame(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();if(!gamePaused())FXT+=dtR*1000;   // (Q393) the effects' clock
   testTopUp();const t0s=simT;if(!gamePaused())simulate(dtR);watchTick();emitSmoke(simT-t0s);sndTick(dtR);
