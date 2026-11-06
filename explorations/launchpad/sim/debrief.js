@@ -37,8 +37,10 @@ function debHelp(k,why,air=true){why=why||'';
 const debPaid=(R,k,l,pay,x)=>{if(R)(R.paid||(R.paid=[])).push({k,l,pay,...x});logEv('pay',`${k}: ${l}, ${pay.toFixed(1)} M`)};
 function debOutcome(s,R){const B=s.body,km=v=>fmtKm(Math.max(0,v));
   if(!s.alive)return{k:'lost',t:'Lost',d:`${s.lossWhy||(s.sunk?'sank at sea':'destroyed')}${R.apex>0?` (it reached ${km(R.apex)})`:''}`};   // the cause since Q264
-  if(s.landed)return B===TELLUS?{k:'landed',t:'Landed',d:`${R.launchPf&&isFinite(R.landDist)?`${km(R.landDist)} from the pad`:'home'}${s.water?', in the sea':''}${R.recovery?` · recovery: ${R.recovery}`:''}`}
-    :{k:'away',t:`Landed on ${B.name}`,d:'stays there'};
+  // toppled over but whole (Q508): landed, on its side, with what the fall broke
+  const T=s.tipped,tip=T?`lying on its side${T.broke&&T.broke.length?`; the ${T.broke.join(', ').toLowerCase()} broken`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`:'';
+  if(s.landed)return B===TELLUS?{k:'landed',t:T?'Toppled over':'Landed',d:`${R.launchPf&&isFinite(R.landDist)?`${km(R.landDist)} from the pad`:'home'}${s.water?", in the sea":""}${T?` · ${tip}`:""}${R.recovery?` · recovery: ${R.recovery}`:''}`}
+    :{k:'away',t:T?`Toppled over on ${B.name}`:`Landed on ${B.name}`,d:T?`${tip}; it stays there`:'stays there'};
   const el=elements(s.r,s.v,B.mu);
   if(el.e>=1)return{k:'escape',t:`Escaping ${B.name}`,d:'on its way out'};
   if(el.pe>B.R+(B.atm||0))return{k:'orbit',t:B===TELLUS?'In orbit':`In orbit of ${B.name}`,d:`${km(el.pe-B.R)} × ${km(el.ap-B.R)}`};

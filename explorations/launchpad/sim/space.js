@@ -29,7 +29,7 @@ const linkRate=(P,Gt,Gr,d)=>LINK_K*P*Gt*Gr/(d*d);
 const CAM_BPS=1e5,REC_CAP=3.6e8,IMG_FRAME=1.5e6,FAR_BITS=2e4,TLM_BITS=1e3;
 // a vessel's (or a registry entry's) radio: its antennas' power at whip gain; none aboard: a 1 W beacon
 // (vehicle, Q337) the best antenna sets the gain: a boom antenna's `gain` once unfolded (a registry entry's always is), else the whip's
-const antOf=parts=>{const A=(parts||[]).filter(p=>(p.on!==false)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant'),n=A.length;
+const antOf=parts=>{const A=(parts||[]).filter(p=>(p.on!==false)&&!p.buried&&!(p.dmg>=1)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant'),n=A.length;
   const g=A.reduce((m,p)=>{const d=p.d||PARTS[p.k];return Math.max(m,d.gain&&(!p.d||!d.fold||p.dep)?d.gain:1)},1);return n?{P:P_RADIO*n,G:G_WHIP*g}:{P:1,G:G_WHIP}};
 const satRadio=q=>q.ant?{P:P_RADIO*q.ant,G:G_WHIP}:antOf(q.shape);   // a registry entry's radio, from its antenna count
 // a registry entry's link home at program time T (space Q186): r is its position in its body's frame then (default: on
@@ -740,7 +740,7 @@ const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi
   return{face:[o.pos[0],o.y0+o.h,o.pos[2]],ax:[0,1,0]}};
 // a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
 // carried a real crew (dummies don't count)
-function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
+function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.buried)o.buried=1;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
   if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day}return o})}   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
 // a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
 function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
@@ -774,7 +774,7 @@ const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loa
 const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),fj:s.parts.filter(p=>p.on&&p.fj).map(p=>p.i),E:s.E});   // fj: fairings jettisoned (vehicle, Q337)   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
-  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}if(o.dmg)p.dmg=o.dmg}
+  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}if(o.dmg)p.dmg=o.dmg;if(o.buried)p.buried=true}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}
   for(const i of st.fj||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on){p.fj=true;p.xm=0}}   // a fairing already dropped (Q337)   // legs and wings as they were left (vehicle, Q121)
   if(q.pw&&q.Ewh!=null)s.E=q.Ewh*3600;else if(st.E!=null)s.E=st.E;   // the battery as it is now (Q213: between flights' drain), or as it was left (Q131); powerStep caps it
@@ -785,7 +785,7 @@ function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,
   s.evIdx=s.events.findIndex(e=>e.decouple.some(has)||e.ignite.some(k=>has(k)&&!ign.has(k))||(e.chute&&!st.chute&&s.parts.some(p=>p.on&&p.d.kind==='chute')));if(s.evIdx<0)s.evIdx=s.events.length;
   s.att=(q.attached||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));geom(s);rebuildShape(s);
   if(q.landed){HOOK.unshape&&HOOK.unshape(s.parts,by);   // on the surface: in its body's frame
-    Object.assign(s,{body:landedBody(q),pf:q.pf.slice(),qLocal:q.ql.slice(),landed:true,alive:true,name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,throttle:0,reg:q});syncLanded(s);return s}
+    Object.assign(s,{body:landedBody(q),pf:q.pf.slice(),qLocal:q.ql.slice(),landed:true,alive:true,name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,throttle:0,reg:q});if(q.tipped)s.tipped={v:0,t:0,broke:[],hurt:0,buried:0};syncLanded(s);return s}   // (Q508) one left on its side stays on it
   const[r,v]=satAt(q,T),sp=satSpin(q,T,r,v);HOOK.unshape&&HOOK.unshape(s.parts,by);
   Object.assign(s,{r,v,q:sp.q,w:sp.w.slice(),landed:false,alive:true,body:orbBody(q),name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,chute:!!st.chute,throttle:0,reg:q});
   return s}
@@ -1043,8 +1043,9 @@ function landRegister(s,R){const on=s.parts.filter(p=>p.on),b=s.body,beacon=on.s
   q.shape=shapeOf(on,R.crewed&&R.crewOK);q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,labDays:o.labDays})}
+  if(s.tipped)q.tipped=1;   // on its side (Q508): it stays, its buried antennas and wings out of use (antOf, powPeak read o.buried)
   kitSet(q);landPowInit(s,q,ORB_T0+simT);PROG.sats.push(q);R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
-  const base=!beacon&&baseOfMember(q);HOOK.news(beacon?`${q.name} is set up on ${b.name}`:base?`${q.name} sets down at ${base.name}`:`${q.name} stays on ${b.name}`,'ok')}
+  const base=!beacon&&baseOfMember(q);HOOK.news(beacon?`${q.name} is set up on ${b.name}`:base?`${q.name} sets down at ${base.name}`:`${q.name} stays on ${b.name}${q.tipped?", lying on its side":""}`,q.tipped?"warn":"ok")}
 // the base a landed object belongs to (a beacon on the same body within BASE_R), and a base's members and state
 function baseOfMember(q){const b=landedBody(q);return b?landedUp().find(x=>x.beacon&&x.bodyName===q.bodyName&&pfDist(b,x.pf,q.pf)<=BASE_R)||null:null}
 function baseMembers(a){const b=landedBody(a);return b?landedUp().filter(x=>x.bodyName===a.bodyName&&pfDist(b,x.pf,a.pf)<=BASE_R):[]}

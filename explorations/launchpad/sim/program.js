@@ -225,7 +225,8 @@ function utilTick(d){const T=PROG.day*DAY_S;obsTick();
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
-function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&p.d.kind===k),cam=on('cam'),ant=on('ant'),sci=on('sci'),toT=b.parent?norm(mul(bodyRel(b,simT)[0],-1)):null;
+function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&p.d.kind===k&&!(p.dmg>=1)&&!(p.buried&&(k==='ant'||k==='cam'))),   // broken, or (Q508) an antenna or camera under a toppled hull: not working
+    cam=on('cam'),ant=on('ant'),sci=on('sci'),toT=b.parent?norm(mul(bodyRel(b,simT)[0],-1)):null;
   // crew (epoch 4): people fly once the escape tower is qualified (the max-q abort); until then the capsule carries dummies,
   // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
   {const cap=s.parts.find(p=>p.on&&p.d.crew);
@@ -464,7 +465,7 @@ function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);i
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
   if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0),rc=recoveryOf(s,R);let back=0,full=0,worst=null;R.recovery=rc.kind;   // recovery by geography (terrain session)
     if(rc.why)HOOK.news(`Recovery: ${rc.why}`,rc.factor>=1?'ok':rc.factor>0?'warn':'bad');
-    for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
+    for(const p of ps){const w=wearOf(p,tv)*rc.factor*(1-(p.dmg||0)),q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
   coverLoss(s,R);   // a failed attempt at the next step is mostly covered (W12)

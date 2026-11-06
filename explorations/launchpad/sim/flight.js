@@ -127,7 +127,7 @@ function groundCheck(s){
   if(seaAt(b,pf0)){seaCheck(s);return}   // the sea: a fluid since Q274 (seaForces pushes; seaCheck judges the splash, the rest and a sinking)
   if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.crashSpeed=sp;lose(s,`destroyed: the nose hit ${b.name} at ${sp.toFixed(0)} m/s`,3);return}
   if(!s.inContact)return;
-  if(tilt>C_TOPPLE){s.crashSpeed=len(sub(s.v,surfVel(b,s.r)));lose(s,toppleWhy(s,pf0),2);return}
+  if(tilt>C_TOPPLE){const F=tipFall(s,tilt,pf0);if(F.lost){s.crashSpeed=F.v;lose(s,`${toppleWhy(s,pf0)}; its ${F.root} hit the ground at ${F.v.toFixed(0)} m/s`,2)}else tipOver(s,F,pf0);return}   // a slow fall lies on its side (Q508)
   const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
   if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
   if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
@@ -138,6 +138,32 @@ function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},s
     :ti>3?`it touched down leaning ${ti.toFixed(0)}° at ${(s.touchV||0).toFixed(1)} m/s`:sl>0.03?'':`it came down at ${(s.touchV||0).toFixed(1)} m/s, drifting ${dr.toFixed(1)} sideways`;
   const legs=!s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep)&&vt<2?'; landing legs widen its stance':'';
   return`toppled over on ${sl>0.03?`a ${(sl*57.3).toFixed(0)}° slope of `:''}${su.name}${how?`: ${how}`:''}${legs}`}
+// ---- a slow topple lies on its side (vehicle, QUEUE Q508; PLAYTEST #142). Past C_TOPPLE the stack swings down about its
+// stance's edge; energy gives its turn rate when it lands flat (from the rate it has and its centre of mass dropping
+// h·cos(tilt)), and each part hits at that rate times its height over the base. A part takes damage from TIP_SAFE m/s and
+// breaks (dmg 1: no thrust, no signal, no power) at TIP_BREAK plus the ground's softness; the craft is lost only when its
+// root (the pod, the probe core) breaks. Otherwise it is landed, s.tipped, pinned on its side: the parts mounted round the
+// side that now faces down are p.buried, so a buried antenna has no sky and a buried wing no sun. Liftoff and staging are
+// blocked (TIP_NO), and so is a rover's deploy. Righting it (a crew, a visit) waits for M3.
+const TIP_SAFE=2,TIP_BREAK=6,TIP_NO="It lies on its side: it can't lift off or stage (righting it waits for a crew or a visit)";
+function tipFall(s,tilt,pf0){const b=s.body,g=b.mu/dot(s.r,s.r),up=norm(s.r),Y=qrot(s.q,[0,1,0]),su=surfaceAt(b,pf0),lim=TIP_BREAK+(su.soft||0);
+  let yb=Infinity;for(const f of footPoints(s))yb=Math.min(yb,f.pt[1]);if(!isFinite(yb))yb=Math.min(...s.parts.filter(p=>p.on).map(p=>p.y0));
+  const h=Math.max(0.05,s.cm[1]-yb),k=norm(cross(up,Y)),w0=Math.max(0,dot(sub(s.w,[0,bodyOmega(b),0]),k)),Ip=Math.min(s.I[0],s.I[2])+s.mass*h*h;
+  let rl=0.3;for(const p of s.parts)if(p.on&&p.d.kind!=='leg'&&!unfolds(p.d))rl=Math.max(rl,Math.min(p.d.r||0,3));   // what it lies on: its widest body
+  const w1=Math.sqrt(w0*w0+2*s.mass*g*h*Math.cos(tilt)/Ip),hit=new Map();for(const p of s.parts)if(p.on)hit.set(p,w1*Math.max(0,partC(p)[1]-yb));
+  const top=Math.max(0,...hit.values()),root=s.root&&s.root.on?s.root:null,vr=root?hit.get(root):top;
+  return{yb,rl,w1,hit,lim,v:vr,top,root:(root?root.d.name:'top').toLowerCase(),lost:vr>=lim}}
+function tipOver(s,F,pf0){const b=s.body,up=norm(s.r),Y=qrot(s.q,[0,1,0]);let H=sub(Y,mul(up,dot(Y,up)));H=len(H)>1e-6?norm(H):norm(cross(up,Math.abs(up[1])<0.9?[0,1,0]:[1,0,0]));
+  const B=add(s.r,qrot(s.q,sub([0,F.yb,0],s.cm)));s.q=qnorm(qmul(qFromTo(Y,H),s.q));
+  const P=add(B,qrot(s.q,sub(s.cm,[0,F.yb,0]))),pf=toPF(b,P,simT);s.r=fromPF(b,mul(norm(pf),groundR(b,pf)+F.rl),simT);
+  const broke=[],hurt=[];
+  for(const[p,v]of F.hit){const d=clamp((v-TIP_SAFE)/(F.lim-TIP_SAFE),0,1);if(d>0){p.dmg=Math.max(p.dmg||0,d);(p.dmg>=1?broke:hurt).push(p)}
+    const o=Math.hypot(p.pos[0],p.pos[2]),u=o>0.05?[p.pos[0]/o,0,p.pos[2]/o]:p.inst&&p.inst.surf&&p.phi!=null?[Math.cos(p.phi),0,Math.sin(p.phi)]:null;
+    p.buried=!!u&&dot(qrot(s.q,u),up)<-0.5}
+  s.tipped={v:F.top,t:simT,broke:[...new Set(broke.map(p=>p.d.name))],hurt:hurt.length,buried:s.parts.filter(p=>p.on&&p.buried).length};s.throttle=0;s.inContact=false;s.restT=0;
+  s.landed=true;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;s.foot=null;
+  const T=s.tipped,why=`toppled over on ${b.name}, its top hitting at ${F.top.toFixed(1)} m/s: it lies on its side${T.broke.length?`; broken: the ${T.broke.join(', ').toLowerCase()}`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`;
+  s.tipWhy=why;logEv('contact',why);debFail(s,'topple',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
 // ---- the sea (world session, Q274; NOTES § v1.122). Water is a fluid. Every stack line's outer profile (s.lines, the
 // aero's) is cut into slices up to SEA_DY tall; each slice is a disc sampled at SEA_N points on the ring of radius r/√2,
 // which keeps the disc's waterplane moment, so the righting moment comes out right. A point under the water pushes up
@@ -240,7 +266,7 @@ function lesJettison(s,chute){const les=s.parts.find(p=>p.on&&p.d.kind==='les');
   if(chute&&s.chutePart){s.chute=true;s.chuteA=0}HOOK.msg(chute?'Tower jettisoned, chute armed':'Escape tower jettisoned')}
 function stage(s){
   // a procedure being recorded notes staging done before the tank ran dry
-  if(!s.alive)return;if(s.procRec&&!s.procRec.cut&&!s.landed&&dvRemaining(s).cur>0.5)s.procRec.early.push(len(s.r)-s.body.R);if(s.procRec&&s.procRec.m&&s.landed)s.procRec.m.surfStage++;{const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les&&!(s.lesT>0)&&len(s.r)-s.body.R>LES_JET_ALT)lesJettison(s,false)}s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
+  if(!s.alive)return;if(s.procRec&&!s.procRec.cut&&!s.landed&&dvRemaining(s).cur>0.5)s.procRec.early.push(len(s.r)-s.body.R);if(s.procRec&&s.procRec.m&&s.landed)s.procRec.m.surfStage++;{const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les&&!(s.lesT>0)&&len(s.r)-s.body.R>LES_JET_ALT)lesJettison(s,false)}s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;if(s.tipped&&s.landed&&ev.decouple.length){HOOK.msg(TIP_NO);return}s.evIdx++;
   for(const k of ev.decouple){const list=s.parts.filter(p=>p.on&&p.seg===k);if(!list.length)continue;
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}

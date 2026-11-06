@@ -934,7 +934,8 @@ function physStep(s,dt){
   s.thrust=T;
   const Y=qrot(s.q,[0,1,0]);
   if(s.landed){const W=s.mass*b.mu/(rl*rl);
-    if(T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
+    if(s.tipped&&T>0){s.throttle=0;HOOK.msg(TIP_NO)}   // on its side (Q508): the engines can't lift it
+    if(!s.tipped&&T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
     else{simT+=dt;syncLanded(s);s.gload=1;s.maxLoad=0;return}}
   if(s.node&&T>0)nodeBurn(s,Y,T,dt);
   const vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);

@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
+**Version**: v2.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -129,6 +129,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.194 — Q322 slice 2: Selene out of the sky shader into the moon pass: craters filtered by footprint (no shimmer from Tellus), a harsh terminator (the night side's lit rims gone), regolith light and earthshine; ~0.5–1.5 ms off where Selene fills the view (2026-10-13, sky & bodies, QUEUE Q322, Q250)
 - v1.200 — the planets in the sky as points of light by their magnitudes, a moon under a pixel as a point, stars faded by the sky's contrast (none by day), a fainter airglow (2026-10-13, sky & bodies, QUEUE Q374, Q395, Q407)
 - v1.212 — farmland round settled land (fields, hedges, roads, woods, villages, filtered by footprint), a scrub range round each pad, coasts blended over the pixel (2026-10-13, sky & bodies, QUEUE Q401, Q403)
+- v1.259 — a slow topple lies on its side: alive, damaged by the hit, buried antennas and wings out, no liftoff (2026-11-06, vehicle worker, QUEUE Q508, PLAYTEST #142)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

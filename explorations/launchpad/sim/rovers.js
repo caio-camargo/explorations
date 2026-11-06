@@ -173,6 +173,7 @@ function rvFootR(s){let r=1;for(const f of footPoints(s))r=Math.max(r,Math.hypot
 // where the rover would end up and whether it may: {ok, why, spot (pf, on the ground), head, p0/q0 (its stowed pose), T}
 function rvDeployCheck(s,p){const d=p.dn&&p.dn.rvd;if(!rvPacked(p)||!d)return{ok:false,why:'nothing packed there'};
   if(!s.alive||!s.landed)return{ok:false,why:'only once landed and still'};
+  if(s.tipped)return{ok:false,why:'the lander lies on its side (righting it waits for a crew or a visit)'};   // Q508
   const mw=rvMountWhy(p,d);if(mw)return{ok:false,why:mw};
   const G=rvGeom(d);if(G.crew&&!crewOn(s))return{ok:false,why:'nobody aboard to drive it (a crewed rover needs a crewed lander)'};
   const b=s.body,u=norm(s.pf),Ul=qrot(s.qLocal,[0,1,0]),tilt=Math.acos(clamp(dot(Ul,u),-1,1))*180/Math.PI;
