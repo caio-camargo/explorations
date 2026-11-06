@@ -6712,3 +6712,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   CREW.md (0.3.2), TESTING (335), QUEUE (Q532 ✓, Q455 lead, a Proposed line), ACTIVE_WORK.
 - **Next:** Caio's look at TESTING 335 / the studio sheet; Q455 (the crew views) to see the head in the game's light;
   clean faceplate openings (Proposed); CREW.md says it goes to 1.0.0 when the head is built: Caio's call.
+
+## 2026-11-06 — space session: EVA E0a feel pass (Q531, v1.265)
+
+- **Caio's feedback:** turning inverted; a jerk at foot strike; jump legs walked; Shift lope skipped oddly; no fall/get-up.
+- **Done:** right-handed heading fix (`EVA.rt`); `EVA.next` predicts each foot's landing (within 1 cm) so the swing meets
+  it; smoothed torso; jump and lope flight legs; falls as a toppling pendulum, lying, getting up (hands-and-knees or
+  sitting); *Knock over [F]*. Found and fixed: stop-from-lope on Selene fell 37/40, hard turns while loping fell 20/20.
+- **Checks:** space-33 now 9 checks; headless pose continuity script (scratch); `--smoke` all passed; GPU screenshots of
+  lope, jump, topple, lie, rise. v1.264 was taken by look (Q532) meanwhile: renumbered.
+- **Next:** Caio's second look (TESTING 334); then E0b.
