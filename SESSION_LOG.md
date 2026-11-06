@@ -6695,3 +6695,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   TESTING (334), QUEUE (Q531), ACTIVE_WORK.
 - **Next:** Caio's feel pass on E0a (TESTING 334; Selene's walk may be too slow, the lope too low: `frWalk`, `hopV`); then
   E0b, E0c, E0d.
+
+## 2026-11-06 — look & sound, astronauts: the ligne-claire head (Q532, v1.264)
+
+- **What:** Caio asked for astronaut work and picked the ligne-claire head (D26) from four options. Claimed it as Q532
+  (Q531 went to the EVA lab the same minute). `app/crew-look.js`'s carved head became the head mock-up's option (a): a
+  round head, a small chin and nose, ears; hair built from the hairline up with an inked edge (seven styles); the face
+  drawn on as strokes and fills (brows, dot eyes, a hook under the nose, a one-line or open mouth, a moustache); eight
+  people (`CREW_PEOPLE`) and the five flight-portrait expressions (`CREW_EX`). New bench `mockups/crew-studio/` draws the
+  game's `crewFigure` close up (sheet, heads, helmets, suits).
+- **Checks:** `aerofx-5` gains the head check (fails with a 25 % bigger head); `--smoke` all passed after merging main.
+  Stills in `output/launchpad/mockups/crew-studio/` (machine-local).
+- **Not verified:** the head under the game's own mesh shader: the crew views (120–122, 127–144) don't show the crew
+  reliably (Q455; a lead added to it).
+- **Files:** app/crew-look.js, tests/look.mjs, mockups/crew-studio/index.html (new), mockups/README.md, notes/look.md,
+  CREW.md (0.3.2), TESTING (335), QUEUE (Q532 ✓, Q455 lead, a Proposed line), ACTIVE_WORK.
+- **Next:** Caio's look at TESTING 335 / the studio sheet; Q455 (the crew views) to see the head in the game's light;
+  clean faceplate openings (Proposed); CREW.md says it goes to 1.0.0 when the head is built: Caio's call.
