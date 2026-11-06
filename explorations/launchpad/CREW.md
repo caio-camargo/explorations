@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.3.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-06
+**Version**: 0.3.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-06
 **Status**: Part 2 (who crew are) approved 2026-10-08, skill by qualification 2026-10-11 (D15.4); Part 1 (the look)
 decided: the ligne-claire head (D26, 2026-11-06; replaced the carved puppet, D17.6), suits for all seven schools (D9, D13; building as Q229). Decisions: [`DECISIONS.md`](DECISIONS.md) § Crew.
 The file goes to 1.0.0 when the head is built.
@@ -130,8 +130,8 @@ EVA (walking, spacewalks) is scoped in [`EVA.md`](EVA.md).
 was dropped with the face engine). Not KSP's cartoon crew, not realistic: the head mock-up's option (a)
 (`mockups/heads/`, `output/launchpad/mockups/heads/sheet-a.png`): a slightly big round head, dot eyes, brows and a
 one-line mouth carrying the expression, hair as a flat silhouette, human proportions. It reads best at 48 px. The
-roster varies by hair, skin, brows, nose and moustache, a small kit of parts. `app/crew-look.js` already draws a head
-close to it. The rules:
+roster varies by hair, skin, brows, nose and moustache, a small kit of parts. **Built** (Q532, v1.263): `app/crew-look.js`
+(`crewHead`, `CREW_PEOPLE`, the five expressions in `CREW_EX`), judged in `mockups/crew-studio/`. The rules:
 - **Faces don't age with the eras.** The people are the game's lens (Tintin stayed Tintin); suits, screens and hardware
   carry pillar 8. No lane "modernises" the faces.
 - **A varied roster is a pass/fail check** before any head is approved: every skin tone and the six schools' name

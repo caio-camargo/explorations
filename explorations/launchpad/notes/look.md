@@ -2344,3 +2344,38 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   unchanged (.16 vs .09 lower in the seas); rocks have no light from earthshine or the ground; relief and the horizon
   are G3's.
 - **Test:** `aerofx-49`. TESTING 326.
+
+## v1.263 — The ligne-claire head (2026-11-06, look & sound, astronauts, QUEUE Q532, D26)
+
+- **Asked:** D26 (Caio, design desk 2026-11-06): the face creator "proved too thorny"; the head is the head mock-up's
+  option (a), Tintin's school (`mockups/heads/`, `output/launchpad/mockups/heads/sheet-a.png`). Replaces the carved head
+  (round 4–5) in `app/crew-look.js`; the face engine (FACES.md, F2–F9) stays parked.
+- **The head, `crewHead`:** the mock-up's ligne-claire shapes as a mesh: a round skull (R·.93, 1, .95), a small round
+  chin, a small nose set into the face, ears. Head radius `CREW_C.head` .13 → .14 ("slightly big"), capped at .8 of
+  the helmet's radius so the smallest helmets (Mercury's .17) still hold it.
+- **Hair, `hairShell`:** a shell over the skull, built column by column from the style's hairline (bisected per
+  column), so its edge is a smooth line; the band along each edge is ink (the mock-up's inked hairline). Smooth normals
+  except curls (faceted on purpose). Styles: crew cut, side part (a wave), bob (flares), bun, curls, receding (a band
+  round the back), bald. Apollo's Snoopy cap replaces the hair as before.
+  *Tried first:* the old `blob` with a per-quad keep: the hairline stair-stepped and the ink came out as dark squares at
+  the temples.
+- **The face, `crewFace`:** drawn on, not modelled (the mock-up paints it in head space; the game's mesh shader has no
+  per-head texture): dots, strokes and fills in face coordinates (head radii) laid on the skull, chin and nose a hair's
+  breadth out (fills at .012 R, ink at .02 R). Brows (three points, the inner end up in worry and down in anger; hair
+  colour mixed 65 % to ink), dot eyes (whites and a pupil when wide open, a line when squinting), a hook of ink under
+  the nose, a one-line mouth or an open one (a top row of teeth for the grin, clenched for grit), a moustache.
+  `CREW_EX` holds the mock-up's five flight-portrait expressions (neutral, grin, grit, alarm, wonder); `crewFigure`
+  takes the expression as a 4th argument (default neutral).
+- **The people, `CREW_PEOPLE`:** the mock-up's six plus two (a bald man with a moustache, the darkest skin; a crew cut
+  with a moustache, a medium skin): skin luminance .21–.87, seven hair styles, three moustaches. `crewFigure`'s person
+  is an index or a person object (for the roster, Q182). The pad's two are 0 and 1.
+- **Judged in** `mockups/crew-studio/` (new): the game's own `crewFigure` in a plain studio light (`?view=sheet`: the
+  five expressions, the roster, the 48 px row and ×3; `heads`: the head alone, front, profile, back; `helmets`: all 18
+  launch suits; `suits`: full figures). At 48 px the five expressions tell apart (grit, alarm and wonder at once; grin
+  vs neutral by the mouth); the roster reads as eight people. Stills: `output/launchpad/mockups/crew-studio/`.
+- **Not done / noticed:** Cape's first suit (Mercury) has a small porthole: the mouth sits below it, so its portraits
+  show eyes and brows only (portraits want an open faceplate). The faceplate openings of several helmets are cut
+  quad by quad (`keep` on the shell and its liner), so their edges are jagged and the liner shows as squares round the
+  face: a follow-up (QUEUE *Proposed*). Nothing shows portraits in the game yet (the roster screen is economy's, Q182).
+- **Test:** `aerofx-5` (a new check: dot eyes, five distinct faces, the roster's spread, every launch helmet holding the
+  head and hair of every person; it fails when the head is 25 % bigger). TESTING 334.
