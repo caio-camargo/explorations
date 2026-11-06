@@ -130,7 +130,7 @@ EVA (walking, spacewalks) is scoped in [`EVA.md`](EVA.md).
 was dropped with the face engine). Not KSP's cartoon crew, not realistic: the head mock-up's option (a)
 (`mockups/heads/`, `output/launchpad/mockups/heads/sheet-a.png`): a slightly big round head, dot eyes, brows and a
 one-line mouth carrying the expression, hair as a flat silhouette, human proportions. It reads best at 48 px. The
-roster varies by hair, skin, brows, nose and moustache, a small kit of parts. **Built** (Q532, v1.263): `app/crew-look.js`
+roster varies by hair, skin, brows, nose and moustache, a small kit of parts. **Built** (Q532, v1.264): `app/crew-look.js`
 (`crewHead`, `CREW_PEOPLE`, the five expressions in `CREW_EX`), judged in `mockups/crew-studio/`. The rules:
 - **Faces don't age with the eras.** The people are the game's lens (Tintin stayed Tintin); suits, screens and hardware
   carry pillar 8. No lane "modernises" the faces.

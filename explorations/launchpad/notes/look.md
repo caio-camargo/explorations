@@ -2345,7 +2345,7 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   are G3's.
 - **Test:** `aerofx-49`. TESTING 326.
 
-## v1.263 — The ligne-claire head (2026-11-06, look & sound, astronauts, QUEUE Q532, D26)
+## v1.264 — The ligne-claire head (2026-11-06, look & sound, astronauts, QUEUE Q532, D26)
 
 - **Asked:** D26 (Caio, design desk 2026-11-06): the face creator "proved too thorny"; the head is the head mock-up's
   option (a), Tintin's school (`mockups/heads/`, `output/launchpad/mockups/heads/sheet-a.png`). Replaces the carved head
@@ -2378,4 +2378,4 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   quad by quad (`keep` on the shell and its liner), so their edges are jagged and the liner shows as squares round the
   face: a follow-up (QUEUE *Proposed*). Nothing shows portraits in the game yet (the roster screen is economy's, Q182).
 - **Test:** `aerofx-5` (a new check: dot eyes, five distinct faces, the roster's spread, every launch helmet holding the
-  head and hair of every person; it fails when the head is 25 % bigger). TESTING 334.
+  head and hair of every person; it fails when the head is 25 % bigger). TESTING 335.
