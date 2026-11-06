@@ -131,7 +131,7 @@ function cloudAt(u,T){const t=(T*2e-4)%500,a=4,ss=(e0,e1,v)=>{const y=clamp((v-e
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
-function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':q.ant&&q.r&&statSlot(q)?'TV':'Object'}   // TV: an antenna in a stationary slot (Q522)
+function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':q.ant&&q.r&&statSlot(q)?'TV':q.ant?'Navsat':'Object'}   // TV: an antenna in a stationary slot (Q522); any other antenna round Tellus counts toward navigation (navCover): "Navsat 1", routes "Navsats at …" (Q523)
 function satRegister(s,R){leakDry(s);if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
   const B=s.body,el=elements(s.r,s.v,B.mu);let cruise=0;
   if(!settled(B,el)){if(!(len(s.r)-B.R>(B.atm||0)))return;cruise=1}   // not a lasting orbit but above the air: in flight (Q49); in the air at flight end: dropped, as before
@@ -928,6 +928,24 @@ function tvTrim(q,T){if(!q.tvOn||q.bodyName)return;const el=elements(q.r,q.v,TEL
   const n2=qrot(qaxis(norm(cross(n,[0,1,0])),di),n),u=norm(sub(q.r,mul(n2,dot(n2,q.r))));   // the new plane, and the slot's direction in it
   skSpend(q,vc*di);Object.assign(q,{r:mul(u,el.a),v:mul(norm(cross(n2,u)),vc),trimT:T,trimI:i-di});   // its hold rate stays as measured (as while the tilt wanders)
   HOOK.news(`${q.name} trimmed its tilt from ${Math.round(i*180/Math.PI)}° to ${Math.round((i-di)*180/Math.PI)}° (${Math.round(vc*di)} m/s) to stay in the capital's sky`,'ok')}
+// how long a TV satellite stays on the capital's screens (QUEUE Q520): its propellant pays the hold (k m/s a day) and the
+// trims, so dividing it by k alone overstated it (the preset: 5,219 days read, ~3,610 flown). In closed form, no tide run:
+// the tilt grows at TV_W (the moons' torque on a stationary orbit, averaged over its day and over a year of the moons'
+// motion, once: ~0.0093° a day), a trim comes at TV_TRIM sized as tvTrim sizes it, and the tanks run dry when the tilt is
+// back at TV_TRIM (or, too poor to trim, it greys at TV_LOSE: ~22.5°, where Q517's untrimmed preset lost the capital).
+// F m/s left, k m/s a day, i its tilt now (rad): days on the air, counted to dry (a headless run: within ~2 %, and dry it
+// keeps the capital in view another ~50 days; test space-30, NOTES v1.258).
+let TV_W=null;const TV_LOSE=22.5*Math.PI/180;
+function tvTiltRate(){if(TV_W!=null)return TV_W;const r0=[STAT_R,0,0],v0=[0,0,-Math.sqrt(TELLUS.mu/STAT_R)],P=DAY_S,J=500,N=12,o=ORB_T0;ORB_T0=0;let tq=[0,0,0];
+  for(let j=0;j<J;j++){const t=YEAR_D*DAY_S*j/J;for(let n=0;n<N;n++){const ri=kepler(r0,v0,P*n/N,TELLUS.mu)[0],a=pertAcc(TELLUS,ri,t+P*n/N,false);if(a)tq=add(tq,cross(ri,a))}}
+  ORB_T0=o;return TV_W=len(tq)/(J*N)/len(cross(r0,v0))*DAY_S}   // radians a day
+function tvLife(F,k,i){if(!(k>0))return Infinity;const w=tvTiltRate(),vc=Math.sqrt(TELLUS.mu/STAT_R);let d=0;
+  for(let n=0;n<8;n++){const t1=Math.max(0,(TV_TRIM-i)/w);if(F<=k*t1+1)return d+F/k;   // dry before the tilt needs a trim
+    d+=t1;F-=k*t1;i=Math.max(i,TV_TRIM);const di=Math.min(i,(F-1)/(vc+k/w));
+    if(!(di>=TRIM_MIN))return d+Math.min(F/k,Math.max(0,TV_LOSE-i)/w);   // too little to trim: on until the tilt greys it or the tanks dry
+    F-=vc*di;i-=di}   // trimmed: the next leg (trimmed all the way to the equator, propellant to spare: another trim)
+  return d+F/k}
+const tiltOf=q=>{const el=elements(q.r,q.v,TELLUS.mu);return Math.acos(clamp(el.h[1]/el.hl,-1,1))};
 // ---- a stationary slot keeps its longitude (QUEUE Q521). Held, an orbit keeps its size and shape but its phase is free, so
 // a stationary satellite a hair off the day walks round the sky for good: the TV Satellite preset as its autopilot leaves it
 // (0.9995 d) drifts 0.18° a day and the capital lost it on day ~295. So a held satellite whose period is within STAT_TOL of
@@ -951,7 +969,7 @@ function skSpend(q,dv){for(const p of skProp(q)){if(!(dv>0))break;const m=skMass
   const can=p.isp*G0*Math.log(m/(m-Math.min(have,m*0.999))),use=Math.min(dv,can),dm=use>=can?have:m*(1-Math.exp(-use/(p.isp*G0)));
   for(const o of q.shape)if(o.res&&o.res[p.k]>0)o.res[p.k]=Math.max(0,o.res[p.k]-dm*o.res[p.k]/have);q.mass-=dm*1000;dv-=use}
   SAT_C.delete(q);return dv>1e-9?dv:0}
-const skLife=q=>{const k=holdRate(q);return q.adrift!=null?0:k>0?skDv(q)/k:Infinity};   // (holdRate: below, with decay)   // days it can still hold its orbit
+const skLife=q=>{const k=holdRate(q);return q.adrift!=null?0:!(k>0)?Infinity:q.tvOn&&!q.bodyName?tvLife(skDv(q),k,tiltOf(q)):skDv(q)/k};   // (holdRate: below, with decay)   // days it can still hold its orbit (a TV satellite: till its trims and hold dry its tanks, Q520)
 // ---- orbital decay (space session, QUEUE Q25). Above the flight's air (cut at TELLUS.atm = 100 km) a thin upper
 // atmosphere still drags on low orbits between flights. The flight itself ignores it: over a few hours it changes nothing.
 // Density: Vallado's exponential model (CIRA-72, moderate sun): rows of [km, kg/m³, scale height km]. The planet is a fifth

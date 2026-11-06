@@ -110,8 +110,9 @@ function lifeLine(s){if(!s.parts.some(p=>['ant','cam','sci'].includes(p.d.kind))
     alt=a?a.alt:Math.round((TELLUS.atm+10000)/1000),L=satLife(stackDef,alt),fall=L.fall<Infinity?`the air brings it down in ${daysS(L.fall)}`:null;
   let t;if(!(L.rate>0))t=fall?`nothing worth burning against but the air: it comes down in ${daysS(L.fall)}`:'holds its orbit for good';
   else if(!(L.spare>0))t=`holding it costs ${L.rate.toFixed(2)} m/s a day and it has none to spare: ${fall||'it drifts off its slot (its service pauses)'}`;
+  else if(L.tv!=null)t=`holding it costs ${L.rate.toFixed(2)} m/s a day, and its tilt a trim; ~${Math.round(L.spare)} m/s left there keeps it on the capital's screens ${daysS(L.tv)}, then its tanks are dry`;   // Q520
   else t=`holding it costs ${L.rate.toFixed(2)} m/s a day; ~${Math.round(L.spare)} m/s left there holds it ${L.days>=20*YEAR_D?'past 20 years':daysS(L.days)}, then ${fall||'it drifts off its slot (its service pauses)'}`;
-  const c=L.days<YEAR_D&&L.rate>0||!(L.rate>0)&&fall&&L.fall<YEAR_D?'warn':'dim';
+  const c=(L.tv??L.days)<YEAR_D&&L.rate>0||!(L.rate>0)&&fall&&L.fall<YEAR_D?'warn':'dim';
   const W={t:`Short-lived at ${alt} km: under a year`,d:'Its service ends when it comes down or drifts off its slot, and a contract that wants it up for longer counts it as lost.',fix:['a higher orbit: the air thins fast with height','more propellant left once it\'s there: a bigger last stage or a lighter payload']};
   return`<div style="margin-top:4px">Lifetime at ${alt} km ${c==='warn'?whyMark('warn',t,W,'span'):`<span class="${c}">${t}</span>`}</div>`}
 // the Δv budget to orbit (vehicle session, Q475; PLAYTEST #119): what the flight it's aimed at needs flown well and with a

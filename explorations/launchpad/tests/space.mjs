@@ -855,3 +855,47 @@
     `first day without TV ${first ?? 'none by day 1,500'}; ${o.toFixed(2)}° from the capital's longitude; period ${per.toFixed(7)} d; ${dv.toFixed(0)} m/s left; "${q.name}"`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// space-30. "Holds its orbit N days" is honest for a TV satellite (space, QUEUE Q520). Its propellant pays the hold and the
+// tilt trims (tvTrim), so the fuel over the hold rate alone overstated its life (the preset: 5,219 days read, ~3,610 flown).
+// skLife now reads tvLife for a satellite on the air: a closed form from the tilt rate (the moons' torque, averaged once)
+// and the trim's cost. Here the TV Satellite payload with 700 m/s aboard (one trim, from 20° to ~16°): the readout a day up
+// is within 10 % of the first day the headless forward run loses TV (the old one was ~18 % long), and the builder's
+// forecast for the preset at the stationary altitude gives the TV life, shorter than its plain hold.
+{
+  const D = new Function(src + 'return {newShip,stage,PRESETS,satRegister,advanceDays,elements,skDv,skLife,holdRate,tvLife,satLife,isTV,capital,rotY,absTh,TELLUS,PROG,HOOK,DAY_S,STAT_R};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, saved = JSON.stringify(P); P.sats = []; P.day = 0;
+  const s = D.newShip(D.PRESETS['TV Satellite']); for (let i = 0; i < 5; i++) D.stage(s);
+  const c = D.capital(), u = D.rotY(c.u, D.absTh(0)), lon = Math.atan2(u[2], u[0]), a = D.STAT_R, vc = Math.sqrt(T.mu / a);
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a * Math.cos(lon), 0, a * Math.sin(lon)], v: [vc * Math.sin(lon), 0, -vc * Math.cos(lon)] });
+  for (const p of s.parts) if (p.on && (p.d.wing || p.d.fold)) p.dep = true;
+  D.satRegister(s, { day0: 0 }); const q = P.sats.at(-1);
+  { const tk = q.shape.find(o => o.res && o.res.fuel > 0), f0 = tk.res.fuel; q.mass -= f0 * 1000; tk.res.fuel = 0; const m0 = q.mass; let lo = 0, hi = f0;   // 700 m/s aboard
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; tk.res.fuel = mid; q.mass = m0 + mid * 1000; if (D.skDv(q) < 700) lo = mid; else hi = mid; } }
+  D.advanceDays(1); const said = D.skLife(q) + P.day, plain = D.skDv(q) / D.holdRate(q) + P.day, on = !!q.tvOn;
+  let first = null; for (let d = 10; d <= 3200 && first == null; d += 10) { D.advanceDays(10); if (!D.isTV(q, P.day * D.DAY_S)) first = P.day; }
+  const alt = Math.round((D.STAT_R - T.R) / 1e3), L = D.satLife(D.PRESETS['TV Satellite'], alt);
+  check('a TV satellite\'s life readout (Q520): the TV Satellite payload with 700 m/s says how long it stays on the capital\'s screens, trims included, within 10 % of a forward run; the builder forecasts its TV life, shorter than the plain hold',
+    on && first != null && Math.abs(said / first - 1) < 0.1 && plain / first - 1 > 0.1 && L.tv > 0 && L.tv < L.days && Math.abs(L.tv - D.tvLife(L.spare, L.rate, 0)) < 1,
+    `readout ${Math.round(said)} d (fuel ÷ hold rate alone: ${Math.round(plain)}); TV lost day ${first ?? 'none by 3,200'}; builder at ${alt} km: ${Math.round(L.spare)} m/s spare, TV ${Math.round(L.tv)} d vs hold ${Math.round(L.days)} d`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
+
+// space-31. An antenna satellite round Tellus outside a stationary slot is a "Navsat" (space, QUEUE Q523): it counts toward
+// navigation (navCover), and it registered as "Object N". Its routine reads "Navsats at …"; a TV and a relay keep their names.
+{
+  const D = new Function(src + 'return {newShip,stage,PRESETS,satRegister,satKind,makeRoute,procKey,TELLUS,PROG,HOOK,STAT_R};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, saved = JSON.stringify(P); P.sats = []; P.day = 0; P.routes = [];
+  const s = D.newShip(D.PRESETS['TV Satellite']); for (let i = 0; i < 5; i++) D.stage(s);
+  const a = T.R + 1000e3, vc = Math.sqrt(T.mu / a);
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, vc * Math.sin(1.4), -vc * Math.cos(1.4)] });
+  D.satRegister(s, { day0: 0 }); const q = P.sats.at(-1);
+  P.procs = { [D.procKey(q.stack)]: { kind: 'orbit' } }; const mk = D.makeRoute(q, 2);
+  const tv = D.satKind({ ant: 1, r: [D.STAT_R, 0, 0], v: [0, 0, -Math.sqrt(T.mu / D.STAT_R)] }), relay = D.satKind({ ant: 1, bodyName: 'Selene' });
+  check('an antenna satellite in low Tellus orbit is a Navsat (Q523): "Navsat 1", its routine "Navsats at 1000 km, 80°"; TV and Relay unchanged',
+    q.name === 'Navsat 1' && mk.ok && mk.route.name === 'Navsats at 1000 km, 80°' && tv === 'TV' && relay === 'Relay',
+    `"${q.name}"; route ${mk.ok ? '"' + mk.route.name + '"' : mk.why}; stationary "${tv}", round Selene "${relay}"`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}

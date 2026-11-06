@@ -83,7 +83,8 @@ document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.datase
 // re-enters; nothing if no tide or air pulls on it
 function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
   if(q.adrift!=null){if(fall)return` · <span class="dim">nothing to hold it up: ${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`:''}
-  if(!(k>0))return'';return` · holds its orbit ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day)${fall?`, then ${fall}`:''}`}
+  if(!(k>0))return'';if(q.tvOn&&!q.bodyName)return` · on the capital's screens ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day to hold, and a tilt trim), then its tanks are dry`;   // Q520
+  return` · holds its orbit ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day)${fall?`, then ${fall}`:''}`}
 function moonSatsHTML(){const L=moonSats().filter(q=>!q.junk),T=tNow();if(!L.length)return'';
   return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.ant&&'antenna: a relay for rovers',q.cam&&'camera',q.sci&&'instruments'].filter(Boolean).join(' + ');

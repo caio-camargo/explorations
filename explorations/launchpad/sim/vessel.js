@@ -588,6 +588,7 @@ function satLife(stack,alt){const key=JSON.stringify(stack)+'@'+alt+'@'+(PROG.lo
   const sl=SLOT_ALT.get(alt);if(sl)Object.assign(q,sl);   // the tide's rate depends only on the orbit: once per altitude
   const rate=holdRate(q);if(!sl)SLOT_ALT.set(alt,{skRate:q.skRate,skTilt:q.skTilt});const spare=up.some(p=>p.d.kind==='engine')?Math.max(0,vac-need):0,days=rate>0?spare/rate:Infinity;
   const o={alt,rate,spare,days,fall:days<20*YEAR_D?decayLife(q):Infinity};   // the fall only matters if holding ends within 20 years (decayLife is the slow part)
+  if(up.some(p=>p.d.kind==='ant')&&rate>0&&statSlot(q))o.tv=tvLife(spare,rate,0);   // TV over the capital: the tilt trims spend propellant too (space, Q520)
   if(SAT_LIFE.size>64)SAT_LIFE.clear();SAT_LIFE.set(key,o);return o}
 // ---- the vessel: one rigid body. State is (body, r, v) relative to the body it orbits (patched conics).
 let S=null,simT=0;
