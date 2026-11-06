@@ -183,7 +183,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.256 — a TV satellite trims its tilt to stay in the capital's sky (2026-11-05, space worker, QUEUE Q517)
 - v1.257 — a stationary slot keeps its longitude; a TV satellite is named "TV" (2026-11-05, space worker, QUEUE Q521, Q522)
 - v1.258 — a TV satellite's life reads true; other Tellus antennas are "Navsats" (2026-11-06, space worker, QUEUE Q520, Q523)
-- v1.261 — a moon orbit on the map is one revolution, not two months of them; a late impact or escape keeps the first and last turns (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
+- v1.262 — a moon orbit on the map is one revolution, not two months of them; a late impact or escape keeps the first and last turns (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

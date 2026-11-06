@@ -2373,7 +2373,7 @@ moon "Relay". Existing saves keep their names ("Object N"); new registrations ge
   arbitrary longitude and epoch 0) both differ from the flight. Not touched here; worth a vehicle/space look.
 - Test `space-30` (failed before: read 3,093 against TV lost day 2,601, +19 %), `space-31` (failed before: "Object 1").
 
-## v1.261 — a moon orbit on the map is one revolution (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
+## v1.262 — a moon orbit on the map is one revolution (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
 
 Caio, in orbit of Selene: "the map is a mess of orbits". **Cause:** a leg round a perturbed moon (Selene, Nyx) is integrated
 (`numLeg`, 6b) to a horizon of two of the *moon's* orbits, 8.6 days at Selene (2.8 at Nyx), and the whole of it was the
