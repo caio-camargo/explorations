@@ -966,6 +966,21 @@
   const dT = drop(9.81), dS = drop(sel);
   check('EVA: a 3 m drop is a fall at Tellus (7.7 m/s) and gets up again; at Selene (3.1 m/s) it lands on its feet',
     dT.A.rec.falls === 1 && dT.down > 1 && dT.A.st === 'stand' && dS.A.rec.falls === 0 && dS.A.st === 'stand', `Tellus: down ${dT.down.toFixed(1)} s`);
+  // Caio's first feel pass (2026-11-06): turning was mirrored, a stop out of a lope on Selene fell
+  const tr = run(9.81, null, straight, { turn: 1 }, 1);
+  check('EVA: D (turn +1) turns right: facing +z, the heading swings toward −x, which is on the right in a right-handed frame with y up',
+    EVA.fw(tr.A.psi)[0] < -.5 && EVA.rt(0)[0] === -1, `heading after 1 s: (${EVA.fw(tr.A.psi).map(x => x.toFixed(2)).join(', ')})`);
+  let stopF = 0, turnF = 0;
+  for (const g of [9.81, sel, .4]) for (let k = 0; k < 10; k++) {
+    const W = EVA.world(g, null), A = EVA.new(W, 0, -2, 0), B = EVA.new(W, 0, -2, 0), T0 = 4 + k * .37; Object.assign(A.in, { fwd: 1, hurry: true }); Object.assign(B.in, { fwd: 1, hurry: true });
+    for (let t = 0; t < T0 + 10; t += EVA.DT) { if (t > T0) Object.assign(A.in, { fwd: 0, hurry: false }); B.in.turn = t > T0 ? 1 : 0; EVA.step(A); EVA.step(B); }
+    stopF += A.rec.falls; turnF += B.rec.falls; }
+  check('EVA: letting go out of a lope, or turning hard while loping, never falls (30 tries each at Tellus, Selene, Nyx): it slows into turns, keeps loping until it has slowed to a walk, and steps no farther than the grip leaves room for the ankle',
+    stopF === 0 && turnF === 0, `falls: stopping ${stopF}, turning ${turnF}`);
+  const kn = run(sel, null, straight, {}, 1); EVA.knock(kn.A); let tt = 0, topT = 0, ph = '';
+  while (kn.A.st === 'down' && tt < 60) { EVA.step(kn.A); tt += EVA.DT; if (kn.A.dn && kn.A.dn.ph === 'topple') topT = tt; ph = kn.A.dn ? kn.A.dn.ph : ph; }
+  check('EVA: a fall topples, lies and gets up on its own (knocked over on Selene: the topple takes over a second, getting up a few)', kn.A.st === 'stand' && topT > 1 && tt < 30,
+    `topple ${topT.toFixed(1)} s, up after ${tt.toFixed(1)} s`);
   const z = run(0, null, straight, { fwd: 1 }, 5);
   check('EVA: at 0 g there is nothing to push against: the keys do nothing, it floats where it was (rails and tethers come with E0c)',
     z.A.st === 'float' && len(z.A.v) < 1e-9 && Math.abs(z.A.p[2] - straight.z) < 1e-9, z.A.tel.why);

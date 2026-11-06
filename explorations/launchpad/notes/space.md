@@ -2479,3 +2479,30 @@ first thing for Caio's feel pass (`frWalk`, `kStep`).
 **Not yet:** walking off a ledge sideways reads as "refused" (the look-ahead sees the 45° side) rather than a stumble;
 falls only come from drops, slips and leans, and the walk is careful enough that keys rarely cause one (a hard turn while
 loping on Selene may). No stumble on rocks until E0b's rough ground.
+
+## v1.264 — EVA E0a after Caio's first feel pass (2026-11-06, space session, QUEUE Q531)
+
+Caio: "turning left and right are inverted … when the foot hits the ground there is a jerk. when the character jumps, his
+legs move like he's walking. shift-hurrying causes him to do a weird skipping motion. there is no falling down or getting
+up animation."
+
+- **Turning was mirrored.** The frame is right-handed with y up, so facing +z, +x is on the *left*; v1.263's "right" was
+  (cos ψ, 0, −sin ψ), the left. Now `EVA.rt(ψ)` = (−cos ψ, 0, sin ψ) and D lowers ψ. A test pins it.
+- **The jerk at foot strike** had two causes: the torso was leaned by the pendulum's offset (which flips sign at every
+  step), and the swinging foot aimed at a guess. Now the torso takes a third of the lean, smoothed, and the swing aims at
+  **`EVA.next(A)`**: the pendulum carried analytically to the step's end (or the flight to its landing) and the same
+  placement the physics will make. It lands within 1 cm of where the foot is put. The hips sink when the planted feet are
+  spread (eased, so take-off doesn't pop them). Headless pose check, metres a foot moves in one 60 Hz frame: walk Tellus
+  0.064, Selene 0.027; lope 0.145 / 0.069; jump 0.053 (was 0.09–0.30 with snaps).
+- **Jumps and lopes have their own legs**: in a jump both feet tuck to the top and reach for the landing; in a lope's flight
+  the foot that pushed trails and tucks, the other reaches for where `EVA.next` says it lands (tuck and reach scale with
+  the flight, so Selene's are slow).
+- **Falls are physics now**: the body topples about its feet as an inverted pendulum (θ'' = (g/h) sin θ, from the lean it
+  had: 0.7 s at Tellus, 1.4–1.8 s on Selene), lies and slides to rest, then gets up over 1.6–5 s by g: from the front
+  onto hands and knees, from the back sitting up; then a crouch; then standing, facing the way the body lay. *Knock over
+  [F]* in the lab tests it.
+- **Found on the way (each a fall that shouldn't be):** letting go out of a lope on Selene fell 37 times in 40 (the
+  touchdown placed the foot at the grip's limit and the ankle pushed 10 cm more); a hard turn while loping fell every time
+  once the turn slowed the wanted speed (the gait switched to a walk at 3 m/s, whose slow steps can't catch it). Now the
+  ankle uses only the grip the lean leaves, the gait follows the faster of wanted and actual speed, and turning slows to
+  v·ω ≤ μg/2. 0 falls in 30 tries each (test space-33).

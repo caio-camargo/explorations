@@ -186,6 +186,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.262 — a moon orbit on the map is one revolution, not two months of them; a late impact or escape keeps the first and last turns (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
 - Plan: EVA E0, the movement test ground (2026-11-06, space session, QUEUE Q531; nothing built)
 - v1.263 — EVA E0a: the test ground's flat and slopes; `sim/eva.js`, `eva-lab.html` (2026-11-06, space session, QUEUE Q531)
+- v1.264 — EVA E0a after Caio's feel pass: turning un-mirrored, feet land where the physics puts them (`EVA.next`), jump and lope legs, falls topple and get up (2026-11-06, space session, QUEUE Q531)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

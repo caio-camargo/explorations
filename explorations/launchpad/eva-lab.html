@@ -21,7 +21,7 @@ select,input[type=range]{width:100%;font:inherit;background:rgba(0,0,0,.3);color
 <canvas id="gl"></canvas><canvas id="ov"></canvas>
 <div id="panel"></div><div id="read"></div><div id="tm"></div>
 <div id="help"><span class="k">W/S</span> walk · <span class="k">A/D</span> turn · <span class="k">Q/E</span> sidestep · <span class="k">Shift</span> hurry · <span class="k">Space</span> jump · <span class="k">click</span> walk to ·
-  <span class="k">right-drag</span> look · <span class="k">wheel</span> zoom · <span class="k">P</span> pause · <span class="k">,</span> slow · <span class="k">.</span> step · <span class="k">R</span> reset · <span class="k">C</span> camera · <span class="k">G</span> debug · <span class="k">1–5</span> stations</div>
+  <span class="k">right-drag</span> look · <span class="k">wheel</span> zoom · <span class="k">P</span> pause · <span class="k">,</span> slow · <span class="k">.</span> step · <span class="k">R</span> reset · <span class="k">F</span> knock over · <span class="k">C</span> camera · <span class="k">G</span> debug · <span class="k">1–5</span> stations</div>
 <script src="sim/core.js"></script>
 <script src="sim/system.js"></script>
 <script src="sim/eva.js"></script>
@@ -34,7 +34,7 @@ const BOD=EVA.bodies();
 let bodyI=Math.max(0,BOD.findIndex(b=>b.name===(Q.get('body')||'Selene'))),gNow=BOD[bodyI].g,muNow=.6,stI=clamp(+(Q.get('station')||1)-1,0,EVA.stations.length-1);
 let W=EVA.world(gNow,BOD[bodyI].R,muNow),A=null,paused=false,slow=false,stepOnce=0,camMode='follow',dbg=true,target=null;
 const cam={yaw:0,pitch:.3,dist:6,user:0,p:[0,1,0]};
-function spawn(){const s=EVA.stations[stI];A=EVA.new(W,s.x,s.z,s.psi);cam.yaw=s.psi;cam.user=0;target=null;cam.p=A.p.slice()}
+function spawn(){const s=EVA.stations[stI];A=EVA.new(W,s.x,s.z,s.psi);if(typeof VIS!=='undefined'){VIS.feet=null;VIS.swing=null;VIS.sf=-1}cam.yaw=s.psi;cam.user=0;target=null;cam.p=A.p.slice()}
 function setG(g,R,re=true){gNow=g;W.g=g;if(R!==undefined)W.R=R;if(re)panel();else{const l=$('glab');if(l)l.textContent=`${f(gNow)} m/s² · ${f(gNow/9.81)} g`}}
 spawn();
 
@@ -85,28 +85,64 @@ buildGround();
 const SUIT=[.9,.9,.88],PACK=[.72,.73,.74],BOOT=[.4,.4,.42],VISOR=[.85,.62,.2],GLOVE=[.55,.55,.58];
 function legIK(hip,foot,bend,L1=.45,L2=.45){let d=sub(foot,hip),D=len(d);if(D>L1+L2-.01){foot=add(hip,mul(d,(L1+L2-.01)/D));d=sub(foot,hip);D=len(d)}
   const u=mul(d,1/D),b=norm(sub(bend,mul(u,dot(bend,u)))),a=(L1*L1-L2*L2+D*D)/(2*D),hgt=Math.sqrt(Math.max(0,L1*L1-a*a));return[add(add(hip,mul(u,a)),mul(b,hgt)),foot]}
-function figure(o,A){const T=A.T,fw=[Math.sin(A.psi),0,Math.cos(A.psi)],rt=[Math.cos(A.psi),0,-Math.sin(A.psi)],up=[0,1,0];
-  let tu,F=fw,hip,feet;
-  if(A.st==='down'){tu=fw;F=up;hip=add(A.p,mul(fw,-.25));feet=[add(add(hip,mul(fw,-.9)),mul(rt,-.13)),add(add(hip,mul(fw,-.9)),mul(rt,.13))]}
-  else{const e=A.st==='stand'?[(A.p[0]-A.c[0])/T.h,0,(A.p[2]-A.c[2])/T.h]:[A.v[0]*.06,0,A.v[2]*.06];tu=norm(add(up,e));hip=sub(A.p,[0,.1,0]);
-    const side=k=>mul(rt,k?.11:-.11);
-    if(A.st==='stand'){const s=clamp(A.stepT/Math.max(.05,A.stepP),0,1),moving=Math.hypot(A.v[0],A.v[2])>.05||Math.hypot(A.tel.vd[0],A.tel.vd[2])>.02;
-      const st=add(A.feet[A.sf],side(A.sf)),old=add(A.feet[1-A.sf],side(1-A.sf));
-      let sw=old;if(moving){const tgt=add(add([A.p[0]+A.v[0]*A.stepP*.5,A.f[1],A.p[2]+A.v[2]*A.stepP*.5],side(1-A.sf)),[0,0,0]),k=s*s*(3-2*s);
-        sw=add(add(mul(old,1-k),mul(tgt,k)),[0,Math.sin(Math.PI*s)*.12,0])}
-      feet=[];feet[A.sf]=st;feet[1-A.sf]=sw}
-    else{const ph=Math.sin(A.t*3);feet=[add(add(add(hip,[0,-.82,0]),mul(fw,.18*ph)),side(0)),add(add(add(hip,[0,-.82,0]),mul(fw,-.18*ph)),side(1))]}}
-  const sh=add(hip,mul(tu,.58)),head=add(sh,mul(tu,.26)),R=norm(cross(F,tu)).map(x=>-x);
-  // legs and boots
-  for(let k=0;k<2;k++){const hp=add(hip,mul(R,k?.11:-.11)),[knee,ft]=legIK(hp,feet[k],F);seg(o,hp,knee,.17,SUIT,R);seg(o,knee,ft,.15,SUIT,R);
-    obox(o,add(ft,mul(F,.06)),R,A.st==='down'?F:up,A.st==='down'?mul(tu,-1):F,.065,.05,.15,BOOT)}
-  // torso, pack, helmet
-  seg(o,hip,sh,.44,SUIT,R);obox(o,add(add(hip,mul(tu,.36)),mul(F,-.27)),R,tu,F,.22,.32,.1,PACK);
-  ball(o,head,.18,SUIT);obox(o,add(head,mul(F,.12)),R,tu,F,.12,.08,.06,VISOR);
-  // arms swing against the legs
-  const sw=A.st==='stand'?dot(sub(feet[0],feet[1]),F):0;
-  for(let k=0;k<2;k++){const s=add(sh,add(mul(R,k?.27:-.27),mul(tu,-.04))),hand=add(add(s,mul(tu,-.58)),add(mul(F,.12+(k?.25:-.25)*sw),mul(R,k?.06:-.06))),[el,h2]=legIK(s,hand,mul(F,-1),.3,.3);
-    seg(o,s,el,.13,SUIT,R);seg(o,el,h2,.12,SUIT,R);ball(o,h2,.06,GLOVE,4)}}
+const UP=[0,1,0],DOWN=[0,-1,0],smooth=u=>{u=clamp(u,0,1);return u*u*(3-2*u)},lerp=(a,b,k)=>add(mul(a,1-k),mul(b,k));
+// a pose: hips, torso axis tu, right R, feet and hands; knees and elbows by two-bone IK (bend = which way the knee goes)
+function joints(hip,tu,R,feet,hands,bendL,bendA){const F=norm(cross(tu,R)),sh=add(hip,mul(tu,.58)),head=add(sh,mul(tu,.26)),J={hip,tu,R,F,sh,head,hips:[],shs:[],knees:[],feet:[],elb:[],hands:[]};
+  for(let k=0;k<2;k++){const s=k?1:-1,hp=add(hip,mul(R,.11*s)),sp=add(sh,add(mul(R,.27*s),mul(tu,-.04))),[kn,ft]=legIK(hp,feet[k],bendL||F),[el,hd]=legIK(sp,hands[k],bendA||mul(F,-1),.3,.3);
+    J.hips.push(hp);J.shs.push(sp);J.knees.push(kn);J.feet.push(ft);J.elb.push(el);J.hands.push(hd)}return J}
+const shoulderAt=(hip,tu,R,k)=>add(add(hip,mul(tu,.54)),mul(R,k?.27:-.27));
+function lerpJ(a,b,k){const o={};for(const n of['hip','sh','head'])o[n]=lerp(a[n],b[n],k);for(const n of['hips','shs','knees','feet','elb','hands'])o[n]=[lerp(a[n][0],b[n][0],k),lerp(a[n][1],b[n][1],k)];
+  o.tu=norm(lerp(a.tu,b.tu,k));o.R=norm(lerp(a.R,b.R,k));o.F=norm(cross(o.tu,o.R));return o}
+function rotJ(J,piv,ax,th){const c=Math.cos(th),s=Math.sin(th),rv=r=>add(add(mul(r,c),mul(cross(ax,r),s)),mul(ax,dot(ax,r)*(1-c))),rp=p=>add(piv,rv(sub(p,piv))),o={};
+  for(const n of['hip','sh','head'])o[n]=rp(J[n]);for(const n of['hips','shs','knees','feet','elb','hands'])o[n]=J[n].map(rp);o.tu=rv(J.tu);o.R=rv(J.R);o.F=rv(J.F);return o}
+function drawJ(o,J){const{R,F,tu}=J;
+  for(let k=0;k<2;k++){seg(o,J.hips[k],J.knees[k],.17,SUIT,R);seg(o,J.knees[k],J.feet[k],.15,SUIT,R);
+    const Y=norm(sub(J.knees[k],J.feet[k])),Z0=sub(F,mul(Y,dot(F,Y))),Z=len(Z0)>1e-3?norm(Z0):norm(cross(R,Y));obox(o,add(add(J.feet[k],mul(Z,.05)),mul(Y,.02)),norm(cross(Y,Z)),Y,Z,.065,.05,.15,BOOT);
+    seg(o,J.shs[k],J.elb[k],.13,SUIT,R);seg(o,J.elb[k],J.hands[k],.12,SUIT,R);ball(o,J.hands[k],.06,GLOVE,4)}
+  seg(o,J.hip,J.sh,.44,SUIT,R);obox(o,add(add(J.hip,mul(tu,.36)),mul(F,-.27)),R,tu,F,.22,.32,.1,PACK);ball(o,J.head,.18,SUIT);obox(o,add(J.head,mul(F,.12)),R,tu,F,.12,.08,.06,VISOR)}
+// standing / walking / in the air. VIS holds what is only for drawing: the smoothed torso lean, and where each foot was
+// drawn, so a foot never jumps (the swinging foot starts from where it was and ends where EVA.next says it lands).
+var VIS={sf:-1,st:'',feet:null,swing:null,air0:null,lean:[0,0,0],drop:0,lastJ:null};
+function poseUpright(A,dt){const T=A.T,fw=EVA.fw(A.psi),R=EVA.rt(A.psi),side=k=>mul(R,k?.11:-.11),sfI=A.sf,swI=1-A.sf,nx=EVA.next(A);
+  const want=A.st==='stand'?mul([A.p[0]-A.c[0],0,A.p[2]-A.c[2]],.35/T.h):mul([A.v[0],0,A.v[2]],.04);VIS.lean=lerp(VIS.lean,want,1-Math.exp(-dt*5));const tu=norm(add(UP,VIS.lean));
+  if(!VIS.feet){VIS.feet=[add(A.feet[0],side(0)),add(A.feet[1],side(1))];VIS.sf=A.sf}
+  if(VIS.sf!==A.sf){VIS.swing=VIS.feet[swI];VIS.sf=A.sf}if(!VIS.swing)VIS.swing=VIS.feet[swI];
+  if(A.st==='air'&&VIS.st!=='air')VIS.air0=VIS.feet.map(x=>x.slice());VIS.st=A.st;
+  let hip=sub(A.p,[0,.1,0]);const feet=[],planted=[];
+  if(A.st==='stand'){feet[sfI]=add(A.f,side(sfI));planted.push(sfI);
+    const el=A.tdT,tot=el+nx.t,s=tot>1e-6?clamp(el/tot,0,1):1,lift=nx.still?.03:A.lope?.22:.12;
+    feet[swI]=add(lerp(VIS.swing,add(nx.f,side(swI)),smooth(s)),[0,Math.sin(Math.PI*s)*lift,0]);if(s<.06||s>.94)planted.push(swI)}
+  else{const el=A.t-A.toT,rem=nx.t,s=clamp(el/Math.max(1e-6,el+rem),0,1),fl=el+rem,w0=smooth(el/Math.max(.15,.4*fl)),w1=smooth(1-rem/Math.max(.2,.3*fl)),a0=VIS.air0||VIS.feet;
+    if(A.jumpK==='jump'){const tuck=.3*Math.sin(Math.PI*s);for(const k of[0,1]){const rel=add(add(hip,[0,-(.84-tuck),0]),add(side(k),mul(fw,k?.06:-.06)));feet[k]=lerp(lerp(a0[k],rel,w0),add(nx.f,side(k)),w1)}}
+    else{// a lope's flight: the foot that pushed trails and tucks; the other reaches for where it lands
+      const tr=add(add(hip,[0,-.68,0]),add(mul(fw,-.32),side(sfI)));feet[sfI]=lerp(a0[sfI],tr,w0);
+      feet[swI]=add(lerp(a0[swI],add(nx.f,side(swI)),smooth(s)),[0,Math.sin(Math.PI*s)*.15,0])}}
+  // the hips sink when the planted feet are spread (the legs are 0.9 m), eased so leaving the ground doesn't pop them up
+  let drop=0;for(const k of planted){const dh=Math.hypot(hip[0]-feet[k][0],hip[2]-feet[k][2]);drop=Math.max(drop,hip[1]-feet[k][1]-Math.sqrt(Math.max(.04,.885**2-dh*dh)))}
+  VIS.drop+=(drop-VIS.drop)*(1-Math.exp(-dt*10));hip=sub(hip,[0,VIS.drop,0]);
+  const sw=dot(sub(feet[0],feet[1]),fw),up=A.st==='air'&&A.jumpK==='jump'?.25*Math.sin(Math.PI*clamp((A.t-A.toT)/Math.max(.1,A.t-A.toT+nx.t),0,1)):0,
+    hands=[0,1].map(k=>add(shoulderAt(hip,tu,R,k),add(mul(tu,-.56+up),add(mul(fw,.1+(k?.3:-.3)*sw),mul(R,k?.05:-.05)))));
+  const J=joints(hip,tu,R,feet,hands,fw);VIS.feet=J.feet.map(x=>x.slice());VIS.lastJ=J;return J}
+// a fall: the standing pose turned about the feet by the topple's angle; lying is its last angle; getting up runs through
+// keyframes (hands and knees from the front, sitting from the back; then a crouch; then standing)
+function poseUprightAt(G,psi,crouch=0){const R=EVA.rt(psi),fw=EVA.fw(psi),hip=add(G,[0,.88-crouch,0]),feet=[add(G,mul(R,-.11)),add(G,mul(R,.11))],hands=[0,1].map(k=>add(shoulderAt(hip,UP,R,k),add([0,-.5,0],mul(fw,.15))));
+  return joints(hip,UP,R,feet,hands,fw)}
+function poseDown(A){const T=A.T,D=A.dn,ax=norm(cross(UP,D.dir)),te=EVA.thEnd(T);VIS.feet=null;VIS.swing=null;VIS.lean=[0,0,0];VIS.drop=0;
+  const lieAt=(p,th)=>{const piv=sub(p,add(mul(D.dir,T.h*Math.sin(th)),[0,T.h*Math.cos(th),0]));return rotJ(poseUprightAt(piv,A.psi),piv,ax,th)};
+  if(D.ph==='topple'){const J=lieAt(A.p,Math.min(D.th,te));return VIS.lastJ&&D.t<.3?lerpJ(VIS.lastJ,J,smooth(D.t/.3)):J}
+  VIS.lastJ=null;
+  if(D.ph==='lie')return lieAt(A.p,te);
+  const K0=lieAt(D.L,te),S=D.S,Fr=D.face?D.dir:mul(D.dir,-1),psiR=Math.atan2(Fr[0],Fr[2]),R=EVA.rt(psiR),sd=k=>mul(R,k?.12:-.12),u=clamp(D.t/D.dur,0,1);
+  let K1;
+  if(D.face){const hip=add(S,add([0,.55,0],mul(Fr,-.05))),tu=norm(add(Fr,[0,.3,0]));
+    K1=joints(hip,tu,R,[0,1].map(k=>add(add(S,mul(Fr,-.5)),add(sd(k),[0,.05,0]))),[0,1].map(k=>add(add(S,mul(Fr,.62)),mul(R,k?.25:-.25))),norm(add(Fr,[0,-1,0])),mul(Fr,-1))}
+  else{const hip=add(S,add([0,.16,0],mul(Fr,-.35))),tu=norm(add([0,1,0],mul(Fr,-.35)));
+    K1=joints(hip,tu,R,[0,1].map(k=>add(add(S,mul(Fr,.45)),sd(k))),[0,1].map(k=>add(add(hip,mul(Fr,-.28)),mul(R,k?.3:-.3))).map(h=>[h[0],S[1]+.03,h[2]]),UP,mul(Fr,-1))}
+  const hip2=add(S,add([0,.55,0],mul(Fr,-.12))),tu2=norm(add(UP,mul(Fr,.55)));
+  const K2=joints(hip2,tu2,R,[0,1].map(k=>add(S,sd(k))),[0,1].map(k=>add(add(S,mul(Fr,.4)),add(mul(R,k?.25:-.25),[0,.2,0]))),Fr);
+  const K3=poseUprightAt(S,psiR);
+  return u<.4?lerpJ(K0,K1,smooth(u/.4)):u<.75?lerpJ(K1,K2,smooth((u-.4)/.35)):lerpJ(K2,K3,smooth((u-.75)/.25))}
+function figure(o,A,dt){drawJ(o,A.st==='down'?poseDown(A):poseUpright(A,dt))}
 // footprints: dark marks where the feet came down
 function prints(o){for(const[x,y,z,psi]of A.prints){const F=[Math.sin(psi),0,Math.cos(psi)],R=[Math.cos(psi),0,-Math.sin(psi)],n=EVA.normal(W,x,z);obox(o,[x,y+.006,z],R,n,F,.06,.003,.13,[.3,.3,.29])}}
 
@@ -119,7 +155,7 @@ function camera(dt){const k=1-Math.exp(-dt*6);cam.p=add(cam.p,mul(sub(A.p,cam.p)
   if(camMode==='follow'&&!cam.user){let d=A.psi-cam.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));cam.yaw+=d*(1-Math.exp(-dt*1.5))}
   const at=cam.p;let eye;
   if(camMode==='top')eye=add(at,[0,cam.dist*2.4,-.01]);
-  else if(camMode==='side'){const R=[Math.cos(A.psi),0,-Math.sin(A.psi)];eye=add(at,add(mul(R,cam.dist*1.3),[0,.4,0]))}
+  else if(camMode==='side'){const R=EVA.rt(A.psi);eye=add(at,add(mul(R,cam.dist*1.3),[0,.4,0]))}
   else eye=add(at,[-Math.sin(cam.yaw)*Math.cos(cam.pitch)*cam.dist,Math.sin(cam.pitch)*cam.dist,-Math.cos(cam.yaw)*Math.cos(cam.pitch)*cam.dist]);
   const gy=W.ground(eye[0],eye[2])+.3;if(eye[1]<gy)eye[1]=gy;camW=eye;return mat(.9,cv.width/cv.height,.05,500,eye,at)}
 function project(p){const x=VP[0]*p[0]+VP[4]*p[1]+VP[8]*p[2]+VP[12],y=VP[1]*p[0]+VP[5]*p[1]+VP[9]*p[2]+VP[13],w=VP[3]*p[0]+VP[7]*p[1]+VP[11]*p[2]+VP[15];
@@ -132,7 +168,7 @@ function pick(mx,my){const B=camB,nx=(mx/innerWidth)*2-1,ny=1-(my/innerHeight)*2
 const keys=new Set();
 addEventListener('keydown',e=>{if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();keys.add(k);if(k===' ')e.preventDefault();if(e.repeat)return;
   if(k==='p')paused=!paused;else if(k===',')slow=!slow;else if(k==='.'){paused=true;stepOnce++}else if(k==='r')spawn();
-  else if(k==='c')camMode={follow:'side',side:'top',top:'follow'}[camMode];else if(k==='g')dbg=!dbg;
+  else if(k==='c')camMode={follow:'side',side:'top',top:'follow'}[camMode];else if(k==='g')dbg=!dbg;else if(k==='f')EVA.knock(A);
   else if(/^[1-9]$/.test(k)&&+k<=EVA.stations.length){stI=+k-1;spawn()}panel()});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));addEventListener('blur',()=>keys.clear());
 let drag=null;cv.addEventListener('contextmenu',e=>e.preventDefault());
@@ -152,7 +188,7 @@ function panel(){const on=b=>b?' class="on"':'';
     +`<div><button id="g0"${on(gNow===0)}>0 g</button><button id="gT">Tellus</button><button id="gS">Selene</button><button id="gN">Nyx</button></div>`
     +`<h2>Ground</h2><div class="row"><span>friction μ</span><span class="k" id="mul">${f(muNow)} (${f(Math.atan(muNow)*180/Math.PI,0)}°)</span></div><input id="mu" type="range" min=".1" max="1.2" step=".05" value="${muNow}">`;
   h+=`<h2>Stations</h2>`+EVA.stations.map((s,i)=>`<div><button data-st="${i}"${on(i===stI)}>${i+1}</button> ${s.name}</div>`).join('');
-  h+=`<h2>Time</h2><button id="tp"${on(paused)}>Pause [P]</button><button id="ts"${on(slow)}>×0.25 [,]</button><button id="t1">Step [.]</button><button id="tr">Reset [R]</button>`;
+  h+=`<h2>Time</h2><button id="tp"${on(paused)}>Pause [P]</button><button id="ts"${on(slow)}>×0.25 [,]</button><button id="t1">Step [.]</button><button id="tr">Reset [R]</button><button id="kn">Knock over [F]</button>`;
   h+=`<h2>View</h2>`+['follow','side','top'].map(m=>`<button data-cam="${m}"${on(camMode===m)}>${m}</button>`).join('')+`<button id="dbg"${on(dbg)}>debug [G]</button>`;
   h+=`<div class="sub" style="margin-top:6px">${dbg?'<span style="color:#ff0">+</span> centre of mass · <span style="color:#4f4">+</span> centre of pressure (the line to the body is the leg, red as grip runs out) · <span style="color:#f4f">+</span> capture point · <span style="color:#4ef">|</span> foot force (1 m = the weight) · <span style="color:#fff">→</span> wanted velocity · <span style="color:#fa4">—</span> trail':''}</div>`;
   h+=`<h2>Coming</h2><div class="sub">E0b stairs, ladder, gaps, rough ground, the lander and rover mocks · E0c the 0 g hall and a spinning hull · E0d tweak panel, record and replay</div>`;
@@ -165,7 +201,7 @@ function panel(){const on=b=>b?' class="on"':'';
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{stI=+b.dataset.st;spawn();panel()});
   document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>{camMode=b.dataset.cam;panel()});
   $('tp').onclick=()=>{paused=!paused;panel()};$('ts').onclick=()=>{slow=!slow;panel()};$('t1').onclick=()=>{paused=true;stepOnce++;panel()};$('tr').onclick=()=>{spawn();panel()};
-  $('dbg').onclick=()=>{dbg=!dbg;panel()};
+  $('dbg').onclick=()=>{dbg=!dbg;panel()};$('kn').onclick=()=>EVA.knock(A);
   document.querySelectorAll('#panel button').forEach(b=>b.addEventListener('mouseup',()=>b.blur()))}
 panel();
 function readout(){const T=A.T,g=gNow,v=Math.hypot(A.v[0],A.v[2]),vd=Math.hypot(A.tel.vd[0],A.tel.vd[2]),fr=EVA.froude(A),vL=Math.sqrt(T.frLope*g*T.L),jv=EVA.jumpV(T,g),esc=EVA.escV(W);
@@ -195,7 +231,7 @@ function frame(now){const dtR=Math.min(.1,(now-last)/1000);last=now;
   gl.viewport(0,0,cv.width,cv.height);const sky=gNow<.05?[0,0,0]:[.02,.02,.03];gl.clearColor(sky[0],sky[1],sky[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
   gl.uniformMatrix4fv(U.vp,false,VP);gl.uniform3fv(U.cam,camW);gl.uniform3fv(U.sky,sky);
   gl.bindVertexArray(GROUND.vao);gl.drawArrays(gl.TRIANGLES,0,GROUND.n);
-  const o=[];figure(o,A);prints(o);if(target)for(let i=0;i<16;i++){const a=i/16*6.283,b=(i+1)/16*6.283,r=.35,y=W.ground(target[0],target[2])+.02;
+  const o=[];figure(o,A,dtR);prints(o);if(target)for(let i=0;i<16;i++){const a=i/16*6.283,b=(i+1)/16*6.283,r=.35,y=W.ground(target[0],target[2])+.02;
     quad(o,[target[0]+r*Math.cos(a),y,target[2]+r*Math.sin(a)],[target[0]+r*Math.cos(b),y,target[2]+r*Math.sin(b)],[target[0]+(r-.07)*Math.cos(b),y,target[2]+(r-.07)*Math.sin(b)],[target[0]+(r-.07)*Math.cos(a),y,target[2]+(r-.07)*Math.sin(a)],[1,.75,.2])}
   upload(DYN,o);gl.bindVertexArray(DYN.vao);gl.drawArrays(gl.TRIANGLES,0,DYN.n);
   if(dbg){const L=[],X=(p,s,c)=>{line(L,add(p,[-s,0,0]),add(p,[s,0,0]),c);line(L,add(p,[0,-s,0]),add(p,[0,s,0]),c);line(L,add(p,[0,0,-s]),add(p,[0,0,s]),c)};
