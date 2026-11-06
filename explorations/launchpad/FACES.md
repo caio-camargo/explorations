@@ -1,6 +1,7 @@
 # FACES — the face engine
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-11
-**Status**: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-06
+**Status**: **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
+(CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
 Parent: [`CREW.md`](CREW.md) § Part 1 (the look). The style itself is decided in the head mock-ups

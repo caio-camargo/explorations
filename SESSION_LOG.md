@@ -6574,6 +6574,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   TESTING (321), ACTIVE_WORK. Next: Q505 (small satellite parts), Q506.
 - **Addendum 18 (design desk, 2026-10-31):** PLAYTEST #145 (P1): contracts visible in the Assembly (*This flight is for*) and in flight (a *Mission* card, a live checklist); manual instruments stay with Q338 (after S2).
 - **Addendum 19 (design desk, 2026-10-31):** PLAYTEST #146: the engine sounds like static: the voices' Strouhal number is a cold jet's 0.2, rockets peak near 0.03; fix proposed for the sound beat.
+- **Addendum 20 (design desk, 2026-11-06):** Caio dropped the face creator ("too thorny"): **D26** the head is ligne claire (heads sheet a); FACES.md parked, W33 closed; Q531 the head build proposed. EVA had no design or code: **EVA.md 0.1.0** scopes it (uses from history; movement as one physical body fed by clicks or keys; Froude gaits, tethers, walkback; slices E1–E4); W45 asks three questions with defaults; Q532 (E1) proposed.
 
 ## 2026-10-30/31 — look & sound (sky & bodies): Q493 Selene's flashing grain (v1.242), Q324 Selene up close (v1.249)
 

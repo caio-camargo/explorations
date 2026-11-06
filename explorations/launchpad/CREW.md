@@ -1,7 +1,7 @@
 # CREW — astronauts
-**Version**: 0.3.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
+**Version**: 0.3.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-06
 **Status**: Part 2 (who crew are) approved 2026-10-08, skill by qualification 2026-10-11 (D15.4); Part 1 (the look)
-decided: the carved puppet (D17.6), suits for all seven schools (D9, D13; building as Q229). Decisions: [`DECISIONS.md`](DECISIONS.md) § Crew.
+decided: the ligne-claire head (D26, 2026-11-06; replaced the carved puppet, D17.6), suits for all seven schools (D9, D13; building as Q229). Decisions: [`DECISIONS.md`](DECISIONS.md) § Crew.
 The file goes to 1.0.0 when the head is built.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
 
@@ -123,18 +123,22 @@ crew tell the era's history).
 
 ## Part 1 — how crew look
 
-**Faces are built by an engine**, not one by one: [`FACES.md`](FACES.md) (D12).
+**The face engine is parked** (D26): [`FACES.md`](FACES.md) (D12) stays as it was left, for a later return to the face question.
+EVA (walking, spacewalks) is scoped in [`EVA.md`](EVA.md).
 
-**The look: stylised humans as carved puppets** (W19, then D17.6, 2026-10-11). Not KSP's cartoon crew, not realistic:
-**carved, lacquered puppet heads lit like sculpture** (Thunderbirds played straight, art deco relief), human proportions,
-heads a little big for the body. Lit 3D like the rest of the game; no flat colour or ink outlines (that was the
-round-1 ligne-claire option, archived). `app/crew-look.js` follows. The rules:
+**The look: stylised humans with ligne-claire heads** (W19, then D26, 2026-11-06; D17.6's carved puppet came first and
+was dropped with the face engine). Not KSP's cartoon crew, not realistic: the head mock-up's option (a)
+(`mockups/heads/`, `output/launchpad/mockups/heads/sheet-a.png`): a slightly big round head, dot eyes, brows and a
+one-line mouth carrying the expression, hair as a flat silhouette, human proportions. It reads best at 48 px. The
+roster varies by hair, skin, brows, nose and moustache, a small kit of parts. `app/crew-look.js` already draws a head
+close to it. The rules:
 - **Faces don't age with the eras.** The people are the game's lens (Tintin stayed Tintin); suits, screens and hardware
   carry pillar 8. No lane "modernises" the faces.
 - **A varied roster is a pass/fail check** before any head is approved: every skin tone and the six schools' name
   styles, carved with respect. Carved stylisation of non-European features has a history of caricature; the sheet
   shows it doesn't happen here.
-- Crew mostly **stand and sit** (the hatch, portraits); a walkout is a cut or a short pose, never a long walk cycle.
+- Crew mostly **stand and sit** (the hatch, portraits). Walking outside is EVA's, done procedurally, not with
+  hand-animated cycles ([`EVA.md`](EVA.md) § 4).
 
 **Suits by school and by era** (D9, D13): each school dresses its crew in its own suit line, changing with the eras:
 three launch-suit generations (early ≈ the first flights, middle ≈ the Selene era, late ≈ after Selene) plus a
@@ -275,6 +279,8 @@ arms (D9 3).
 ---
 
 ## Version history
+- **0.3.1 (2026-11-06):** D26: the head is ligne claire (sheet a), the face engine parked; the walk rule points to
+  EVA.md.
 - **0.3.0 (2026-10-11):** the docs sweep: Part 1 rewritten to the carved puppet (D17.6); the first suits table archived;
   status header brought up to date. 0.2.6–0.2.8 (10-10/11): FACES pointer, the five-school suit briefs (D13), skill by
   qualification (D15.4).

@@ -98,6 +98,7 @@ The full text of every question as it was asked (options, reasons) is in
 | D13 | 2026-10-11 | Suit briefs for Arsenal, Coastal, Mountain, Isle, Foundry; Isle early a surplus suit; crew always wear their home school's suits | CREW § the other five schools, Q226, Q229 |
 | D15.4 | 2026-10-11 | Crew titles by era and school; skill from simulator qualifications and time in type, not ranks; seniority from firsts | CREW § Skill, Q133–Q137, Q134, Q182, NOTES § roster plan |
 | D17.6 | 2026-10-11 | **The head is the carved puppet** (closes D11 and W31) | CREW Part 1, FACES |
+| D26 | 2026-11-06 | **The head is ligne claire after all** (Caio: the face creator "proved too thorny"; "a tintin-like design that was good enough", the face question maybe later): the head mock-up's option (a) (`output/launchpad/mockups/heads/sheet-a.png`): a slightly big round head, dot eyes, brows and a one-line mouth for the expressions, hair as a silhouette, variety from hair, skin, brows, nose and moustache. Replaces D17.6; the face engine (D12) and W33 are parked, not deleted | CREW Part 1, FACES, QUEUE Proposed "the ligne-claire head" |
 
 ## Look, screens, UI
 

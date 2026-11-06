@@ -150,7 +150,8 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`SYSTEM.md`](SYSTEM.md) | the star system: bodies, orbits, looks, roles |
 | [`POWERS.md`](POWERS.md) | national flavours: schools (hardware, pads), archetypes, rivals, the commercial giant |
 | [`CREW.md`](CREW.md) | astronauts: who they are, skill and qualifications, the office, how they look, suits |
-| [`FACES.md`](FACES.md) | the face engine behind the crew's heads |
+| [`FACES.md`](FACES.md) | the face engine (parked, D26) |
+| [`EVA.md`](EVA.md) | astronauts outside: what EVA is for, how crew move, slices E1–E4 |
 | [`MIDGAME.md`](MIDGAME.md) | from single flights to routines: the automation ladder, the launch rail, windows, satellites |
 | [`LATE_GAME.md`](LATE_GAME.md) | the network, outposts, the tech ceiling, capstones, debris |
 | [`GROUND.md`](GROUND.md) | every body's ground: generators, recipes, slices |
