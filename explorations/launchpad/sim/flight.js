@@ -583,14 +583,15 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
 // generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
-  const mu=b.mu,top=b.R+(b.atm||0),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0;   // pathT: each point's time (Q266)
+  const mu=b.mu,top=b.R+(b.atm||0),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0,tAir=null;   // pathT: each point's time (Q266); tAir: when it enters the air, falling (Q489)
   const el=elements(r,v,mu);if(el.pe>top)return null;
   if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));dt0=dt;
-    for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}
-  if(!b.atm&&pertNear(b,el)){const tEnd=t+2*(dt0>0?dt0:0)+600;r=r0.slice();v=v0.slice();t=t0;path.length=0;let k=0;   // perturbed: the same stepper as rails
+    for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt;tAir=t}
+  else keep(r,t);   // (Q489) already in the air: the path starts at the ship
+  if(!b.atm&&pertNear(b,el)){const tEnd=t+2*(dt0>0?dt0:0)+600;r=r0.slice();v=v0.slice();t=t0;path.length=0;pathT.length=0;let k=0;   // perturbed: the same stepper as rails
     while(t<tEnd&&len(r)>b.R){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,mu),b.R),h=Math.min(Math.max(0.05,0.25*lim/sp),hP,tEnd-t);[r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(++k%8===0)keep(r,t)}
-    if(len(r)>b.R)return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b}}
-  if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b};
+    if(len(r)>b.R)return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t}}   // (Q489) no air: the map's orbit line goes to the ground itself
+  if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
     if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho,r,t);a=madd(a,va,-kd)}return a};
@@ -599,14 +600,23 @@ function fall(b,r,v,t,kdrag){
     if(i%8===0)keep(r,t);
     if(len(r)>top+10&&dot(r,v)>0){ // climbing out of the air: coast the vacuum arc exactly and come back in (or never)
       const e2=elements(r,v,mu);if(e2.pe>top)return null;const c=(e2.p/(top-1)-1)/e2.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(e2,-Math.acos(c));
-      for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}}
-  return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,capped:i>=40000}}   // capped: still up when the steps ran out (a slow decay), not an impact
+      for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt;if(tAir==null)tAir=t}}
+  return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:tAir??t0,capped:i>=40000}}   // capped: still up when the steps ran out (a slow decay), not an impact
 function predictImpact(s,sg=0){
   if(s.landed||!s.alive)return null;const b=s.body;
   const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=b.atm?dragTable(s,aoa):[0,0],m=s.mass;
   const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)},pe=sg&&b===TELLUS?predErr(s):0;
   const f=fall(b,s.r,s.v,simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*(atmU(h)+pe):1)});
   return f&&f.capped?null:f}   // (flow, Q266) a slow decay that outlasts the steps isn't an impact: no X, no path round the planet   // pe: the compute era's prediction error (economy)
+// (flow, Q489; PLAYTEST #126) the fall as the map draws it: one line on from where the orbit line stops (the top of the air,
+// falling; or the ship, already falling in it) to the ground, each point where it will be at its own time (pathT), in the
+// planet's non-rotating frame like the orbit line, not "over the ground as it is now" (toPF), which repeated the vacuum arc
+// and bent away from it as the planet turned. Ends at the impact point on the ground as the ground will be then. Points are
+// relative to the body's centre. tMin: drop what comes before (a slow decay's earlier turns). end/tEnd/pf: where Q488's
+// landing verdict goes.
+function fallLine(f,tMin=-Infinity){if(!f||!f.path)return null;const b=f.b,T=f.pathT,t0=Math.max(f.tAir??-Infinity,tMin),pts=[],ts=[];
+  for(let i=0;i<f.path.length;i++)if(T[i]>=t0-1e-6&&T[i]<f.t){pts.push(fromPF(b,f.path[i],T[i]));ts.push(T[i])}
+  const end=fromPF(b,f.pf,f.t);pts.push(end);ts.push(f.t);return{b,pts,ts,end,tEnd:f.t,pf:f.pf}}
 // debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
 const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
