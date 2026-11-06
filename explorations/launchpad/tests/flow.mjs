@@ -214,7 +214,7 @@
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const del = /if\(\/\^d\[012\]\[\+-\]\$\/\.test\(a\)\)/.test(page) && /else if\(a==='del'\)nodeDelSel\(\)/.test(page) && /k==='delete'&&S\.node\)nodeDelSel\(\)/.test(page) && /else S\.nodeQ\.splice\(k-1,1\)/.test(page);
   const rec = /const debRecover=\(\)=>!!\(S&&S\.alive&&S\.landed&&S\.body===TELLUS\)/.test(page) && /'Recover vessel ▸ \[Enter\]'/.test(page);
-  const arcs = /fallIn=k===0&&!dash&&pt\.b\.atm&&impact/.test(page) && /if\(fallIn&&t>=simT&&rl<top&&up\)/.test(page) && /return f&&f\.capped\?null:f\}/.test(H) && /capped:i>=40000/.test(H) && /if\(T&&T\[i\]<t0\)continue/.test(page);
+  const arcs = /fallIn=k===0&&!dash&&pt\.b\.atm&&impact/.test(page) && /if\(fallIn&&t>=simT&&rl<top&&up\)/.test(page) && /return f&&f\.capped\?null:f\}/.test(H) && /capped:i>=40000/.test(H) && /fallLine\(impact,impact\.t-1\.05\*P\)/.test(page);   // (Q489) the last revolution: fallLine's tMin
   const ring = /rr=moons<2\.5\*cam\.mDist\?Math\.max\(cam\.mDist\*\.3,moons\)/.test(page) && /not to scale/.test(page);
   const named = /assembly:'Design table'/.test(page) && /<button id="bEditor">Design table<\/button>/.test(H) && !/>Assembly \[B\]</.test(H) && /TO THE DESIGN TABLE/.test(H);
   const crisp = /octx\.setTransform\(OV_K,0,0,ov\.height\/H,0,0\)/.test(page) && /shadowBlur=6\*k\*OV_K/.test(page);
@@ -932,4 +932,33 @@
   const wired = html.includes('F.length&&F[0].air!=null?F[0].air:!!s.body.atm)');
   check('flow-42: a crash on an airless body is told to burn for the landing (start high, legs down), not to open a parachute; no heat shield advice there',
     ok && wired, `Selene: "${noAir}" · Tellus: "${air}" · wired ${wired}`);
+}
+
+// flow-43. A falling orbit is one line to the ground (flow, QUEUE Q489; PLAYTEST #126, P1). The map's blue orbit stops at the
+// top of the air; the predictor's red (fallLine) must go on from that very point, in the same non-rotating frame (each point
+// where it will be at its own time), and end on the ground at the X. It used to be drawn "over the ground as it is now" (the
+// path in the rotating frame, placed at simT): it repeated the vacuum arc and started tens of km off the blue; and it was
+// pushed after the map's lines went to the GPU, so only the notebook map drew it at all.
+{
+  const top = TELLUS.R + TELLUS.atm, cases = [[150e3, 2000, 0], [300e3, 3000, 0], [120e3, 2500, -300], [60e3, 2000, -300]], rows = [];
+  let ok = typeof api.fallLine === 'function', oldOff = 0;
+  for (const [h, vh, vv] of cases) {
+    if (!ok) break;
+    api.t = 1000; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.r = [TELLUS.R + h, 0, 0]; s.v = [vv, 0, -vh]; s.throttle = 0;
+    const f = api.predictImpact(s), L = f && api.fallLine(f);
+    if (!L) { ok = false; rows.push(`${h / 1e3} km: no line`); break; }
+    let start = s.r;   // already in the air: from the ship; above it: from where the orbit (the blue) meets the top of the air
+    if (len(s.r) > top + 1) { const el = elements(s.r, s.v, TELLUS.mu), c = (el.p / top - 1) / el.e; start = kepler(s.r, s.v, api.timeToNu(el, -Math.acos(c)), TELLUS.mu)[0]; }
+    const d0 = len(sub(L.pts[0], start)), hi = Math.max(...L.pts.map(p => len(p))) - top;
+    let gap = 0; for (let i = 1; i < L.pts.length; i++) gap = Math.max(gap, len(sub(L.pts[i], L.pts[i - 1])));
+    const gEnd = len(L.end) - TELLUS.R - api.groundAlt(TELLUS, f.pf), last = L.pts[L.pts.length - 1];
+    const own = L.ts.every((t, i) => !i || t >= L.ts[i - 1]) && L.ts[L.ts.length - 1] === f.t && len(sub(last, L.end)) < 1e-6 && len(sub(L.end, api.fromPF(TELLUS, f.pf, f.t))) < 1e-6;
+    const k = f.pathT.findIndex(t => t >= (f.tAir ?? 0)); oldOff = Math.max(oldOff, k >= 0 ? len(sub(api.fromPF(TELLUS, f.path[k], api.t), L.pts[0])) : 0);
+    ok = ok && d0 < 50 && hi < Math.max(0, len(s.r) - top) + 1 && gap < 30e3 && Math.abs(gEnd) < 20 && own;
+    rows.push(`${h / 1e3} km: start ${d0.toFixed(1)} m off, top ${(hi / 1e3).toFixed(1)} km over the air, steps ≤ ${(gap / 1e3).toFixed(0)} km, end ${gEnd.toFixed(1)} m off the ground`);
+  }
+  const R = html.slice(html.indexOf('function drawMap('), html.indexOf('function drawMap(') + 40000), iL = R.indexOf('fallLine('), iG = R.indexOf('gl.drawArrays(gl.LINES,0,out.length/7)');
+  const drawn = iL > 0 && iG > 0 && iL < iG;
+  check('flow-43: a falling orbit is one line: the red starts where the blue stops (top of the air, or the ship in it), same frame, and ends on the ground at the X; drawn before the map lines go to the GPU',
+    ok && drawn, `${rows.join(' · ')} · the old drawing was up to ${(oldOff / 1e3).toFixed(0)} km off · drawn in time ${drawn}`);
 }

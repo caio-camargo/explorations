@@ -317,7 +317,8 @@ function drawPatches(list,camW,out,labels,cols,dash,tag){
     const top=pt.b.R+(pt.b.atm||0),fallIn=k===0&&!dash&&impact&&toolOK('impact')&&impact.b===pt.b&&el.pe<top&&!pt.end;
     if(fallIn&&len(S.r)<=top+1&&dot(S.r,S.v)<0)return;
     let[n0,n1]=patchRange(pt);if(fallIn){const c=(el.p/top-1)/el.e;if(c>=-1&&c<=1){n0=el.nu;n1=-Math.acos(c);while(n1<=n0)n1+=6.2832}}
-    const N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
+    // (Q489) climbing inside the air to an apoapsis still in it: the predictor's line is the whole flight; no arc through the planet
+    const N=fallIn&&el.e<1&&el.ap<top&&len(S.r)<=top+1?-1:Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
     for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
       const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p}
     const inArc=nu=>{if(!pt.end&&el.e<1&&!fallIn)return true;let a=nu;while(a<n0)a+=6.2832;return a<=n1};
@@ -392,21 +393,24 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
       if(tc>0&&tc<dq&&dot(camW,camW)-tc*tc<TELLUS.R*TELLUS.R)continue;
       labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:!nm?'':m.name==='Helios'?'Helios':`${m.name} · ${xferDays(m.name)}`,c:m.color})}
     labels.push({p:add(c0,mul(E.Y,-rr)),mark:'txt',t:'the planets: direction only, not to scale',c:'rgba(214,206,170,.75)'})}
+  // (flow, Q489; PLAYTEST #126) the fall: one line on from where the orbit line stops, through the air to the X on the ground,
+  // each point where it will be then (fallLine), in the orbit line's frame; drawn before the lines go to the GPU (it was pushed
+  // after, so only the notebook map ever showed it)
+  if(impact&&toolOK('impact')){const b=impact.b,bp=bodyPos(b,simT),top=b.R+(b.atm||0),P=2*Math.PI*Math.sqrt(top**3/b.mu),FL=fallLine(impact,impact.t-1.05*P);
+    // (flow, Q266; PLAYTEST #66) a slow decay goes round many times inside the air: draw only the last revolution, and say how many
+    let pv=null;for(const r of FL.pts){const q=add(bp,r);if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
+    const ip=add(bp,FL.end),revs=(impact.t-simT)/P;
+    labels.push({p:ip,mark:'impact',t:`impact in ${fmtT(impact.t-simT)}${revs>1.5?` · after ~${Math.round(revs)} orbits`:''}`,c:'#ff6b5a'})}   // Q488: the landing verdict goes on this X (FL.pf, FL.tEnd)
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.uniform1f(PLINE.u.uLk,1/EXPO.E);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
-  if(impact&&toolOK('impact')){const b=impact.b,bp=bodyPos(b,simT),top=b.R+(b.atm||0),P=2*Math.PI*Math.sqrt(top**3/b.mu),T=impact.pathT,t0=impact.t-1.05*P;let pv=null;
-    // (flow, Q266; PLAYTEST #66) a slow decay goes round many times inside the air: draw only the last revolution, and say how many
-    for(let i=0;i<impact.path.length;i++){if(T&&T[i]<t0)continue;const q=add(bp,fromPF(b,impact.path[i],simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
-    const ip=add(bp,fromPF(b,impact.pf,simT)),revs=(impact.t-simT)/P;if(pv)seg(pv,ip,[1,.35,.25,.9]);
-    labels.push({p:ip,mark:'impact',t:`impact in ${fmtT(impact.t-simT)}${revs>1.5?` · after ~${Math.round(revs)} orbits`:''}`,c:'#ff6b5a'})}
   if(mapShow('cities'))for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
     labels.push({p:cp,mark:'city',t:nm&&len(camW)<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   if(mapShow('targets'))for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
   if(mapShow('stations'))for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
   for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;if(!tg&&!mapShow(q.junk?'debris':'sats'))continue;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||nm&&len(sub(camW,bodyPos(orbBody(q),simT)))<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
-  if(impSpread&&impact&&toolOK('impact'))for(const[i,x]of[impSpread.lo,impSpread.hi].entries())labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'ca',t:i?'':`spread ±${impSpread.km.toFixed(0)} km`,c:'rgba(255,107,90,.55)'});   // (Q260) circles, not more X's
+  if(impSpread&&impact&&toolOK('impact'))for(const[i,x]of[impSpread.lo,impSpread.hi].entries())labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,x.t)),mark:'ca',t:i?'':`spread ±${impSpread.km.toFixed(0)} km`,c:'rgba(255,107,90,.55)'});   // (Q260) circles, not more X's
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:`${d.name} falls`,c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   for(const q of landedUp()){const b=landedBody(q);if(!b||q.id!==S.target&&!mapShow('sats'))continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.id===S.target||nm&&q.beacon?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
   if(landPick){const b=BODIES.find(x=>x.name===landPick.body),u=b&&fromPF(b,landPick.pf,simT);if(u&&dot(sub(camW,add(bodyPos(b,simT),u)),u)>0)labels.push({p:add(bodyPos(b,simT),u),mark:'impact',t:'landing site',c:'#ffb347'})}   // (Q62)

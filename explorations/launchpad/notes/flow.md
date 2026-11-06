@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1409,3 +1409,28 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   stage plan at the loss.
 - **Checks:** test `flow-42` (Selene's line, Tellus's unchanged, no heat line without air, the wiring); all flow sections and
   platform-3 pass. No GPU look (text only). TESTING row 331.
+
+## v1.259 — a falling orbit is one line to the ground (2026-11-06, flow worker, QUEUE Q489; PLAYTEST #126, P1)
+- **The repro** (headless, Tellus, the Orbiter falling from 120–300 km): the blue orbit stops at the top of the air by design
+  (Q260). The predictor's red was `impact.path` (kept in the rotating frame, `toPF` at each point's time) put back at *now*
+  (`fromPF(…, simT)`): the ground track lifted by its height. It began at the ship and repeated the vacuum arc, and where the
+  blue stops it was 15–250 km off it, bent away by the 8 h day. The X sat on the ground as it is now (60–320 km from where
+  the line ends in space). The data did reach the ground (last point within 3 m of it): **why neither line seemed to**: in
+  the modern map the red segments were pushed into the line buffer *after* `drawMap` had sent it to the GPU, so they were
+  never drawn (only the X was); only the notebook map (era 1, which reads `MAPSEGS` later, by reference) showed the red,
+  and there the ground is just the limb circle: a path landing on the near face ends inside the disc, "in the air". Also,
+  climbing inside the air to an apoapsis still in it (a sounding rocket), the blue drew the whole ellipse through the planet.
+- **Now:** `fall` records `tAir`, when the fall enters the air (the first descending crossing of its top; the start, if
+  already falling in it; the impact, with no air), and keeps the ship's point when it starts in the air. `fallLine(f, tMin)`
+  (sim/flight.js) gives the map's line: from `tAir` (and `tMin`: a slow decay's last turn, Q266) each point at its own
+  `pathT` in the non-rotating frame, ending at `end` = the impact point as the ground will be then (`fromPF(pf, f.t)`).
+  `drawMap` draws it (and its X at `end`) *before* the lines go to the GPU; the spread circles sit at their own times too.
+  `drawPatches` draws no arc when the apoapsis is inside the air and the ship is too. The airless perturbed fall cleared
+  `path` but not `pathT` (misaligned times): fixed.
+- **For Q488:** the landing verdict goes on the X: `fallLine(impact)` gives `end`, `tEnd`, `pf` (render.js, the impact block
+  in `drawMap`).
+- **Not done:** the ground track (where the fall passes over the ground) as its own layer; the notebook map still shows a
+  near-face landing inside the disc (it is where it lands).
+- **Checks:** test `flow-43` (four falls: the red starts within 50 m of where the blue stops, or at the ship in the air;
+  never above the air; steps under 30 km; times in order; the last point is the X, on the ground within 20 m; drawn before
+  the GPU draw); failed before (no `fallLine`; the old drawing was up to 248 km off). TESTING row 332.
