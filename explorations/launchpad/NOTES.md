@@ -184,6 +184,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.257 — a stationary slot keeps its longitude; a TV satellite is named "TV" (2026-11-05, space worker, QUEUE Q521, Q522)
 - v1.258 — a TV satellite's life reads true; other Tellus antennas are "Navsats" (2026-11-06, space worker, QUEUE Q520, Q523)
 - v1.262 — a moon orbit on the map is one revolution, not two months of them; a late impact or escape keeps the first and last turns (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
+- Plan: EVA E0, the movement test ground (2026-11-06, space session, QUEUE Q531; nothing built)
+- v1.263 — EVA E0a: the test ground's flat and slopes; `sim/eva.js`, `eva-lab.html` (2026-11-06, space session, QUEUE Q531)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
