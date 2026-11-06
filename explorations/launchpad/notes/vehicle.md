@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2062,3 +2062,41 @@ when the player's toggle is on (`st.fairHide`: key **V**, Help's Assembly keys; 
 bar, shown only when the design has a payload fairing). gl.js's `fair` case then draws the ring alone; render.js's
 `S._cutK` now reads 'hid' / 'cut' so the ship's mesh rebuilds when it flips. The Rollout and flight draw the shell whole,
 as before. **Not looked at in the browser yet** (Caio playtesting; GPU); no headless check (all page code).
+
+## v1.260 — a slow topple lies on its side (2026-11-06, vehicle worker, QUEUE Q508, PLAYTEST #142)
+
+**The report** (Caio, 2026-10-30): "the lander toppled over on the moon's surface, and it disappeared. there's no reason
+for it to do that, instruments could still be viably used". Since Q264 (v1.133) `groundCheck` lost any craft tilted past
+`C_TOPPLE` (60°) while touching.
+
+**Now** (`tipFall`, `tipOver` in `sim/flight.js`, on the default in the Q508 row): past 60° the fall is judged. The stack
+swings about its stance's edge. Energy gives its turn rate when it lands flat: the rate it has, plus its centre of mass
+dropping h·cos(tilt), over its inertia about the edge. Each part hits at that rate times its height over the base.
+**A part takes damage from `TIP_SAFE` 2 m/s, linearly to broken at `TIP_BREAK` 6 m/s plus the ground's softness** (Q440's
+`p.dmg`; dmg 1 is broken: no thrust, no signal, no power, no instrument). **The craft is lost only if its root (the pod, the
+probe core, the instruments) breaks.** The loss message then adds "its command pod hit the ground at N m/s". Otherwise it is
+landed and `s.tipped`, pinned lying on its side on the ground. The parts mounted round the side now facing down (off-axis,
+outward direction within 60° of straight down) are `p.buried`.
+
+- **What still works:** instruments (`sci`) count for the mission as on any landing (`outThere`'s `on()` skips broken
+  parts, and buried antennas and cameras). An antenna under the hull has no sky (`antOf` skips buried and broken ones). A
+  wing under it has no sun (`powSun`, `powPeak`, so `landPowInit`'s registry power too). Body cells keep their average share.
+- **Blocked, with "It lies on its side: it can't lift off or stage (righting it waits for a crew or a visit)":** liftoff
+  (`physStep`'s landed branch cuts the throttle) and any staging event that decouples (`stage`). A rover's deploy says "the
+  lander lies on its side" (`rvDeployCheck`). The lander has no drill (the drill is a rover item).
+- **The Debrief:** "Toppled over on Selene: lying on its side; the X broken; N parts damaged; it stays there". On Tellus
+  the title is "Toppled over", with recovery as before. The topple is also an incident (`debFail` 'topple'). The flight
+  readout says "on its side".
+- **The registry:** `landRegister` keeps it as a landed object with `q.tipped`, and the news reads "Selene lander 1 stays on
+  Selene, lying on its side". `shapeOf` carries `o.buried`, and `vesselOf` restores `p.buried` and `s.tipped`, so a reload
+  can't lift off.
+- **Tellus refurbishment** now scales each part by 1 − dmg (a debris hit's damage too, not only a topple's).
+
+**Measured** (headless, SAS off, 1 m/s down, drifting 1.5× its tip speed, flat ground): on Selene, sci-core-t1-Wren's
+top hits at 2.8–3.3 m/s (2–3 parts lightly damaged); pod-t1-Wren at 2.4 m/s; the Hopper at 5.0 m/s (pod 41 %, chute 61 %);
+a lander with its Petrel stage at 5.4 m/s. The whole Lunar stack on Selene still breaks (pod at 7 m/s). On Tellus the
+Hopper still breaks (pod at 10 m/s). **A small pod-t1-Wren that topples on Tellus now survives** (top at 5.3–5.9 m/s, the
+pod at up to 98 %). `vehicle-1`'s bare-slope check accepts lost or tipped.
+
+**Not here:** righting it (a crew, a visit: M3); legs or wings changing how it lies (it rests on its widest body); a
+topple in the sea (`seaCheck`'s own path); the camera's view of the ground. Test `vehicle-38`.

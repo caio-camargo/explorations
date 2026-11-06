@@ -196,7 +196,7 @@
     `stowed ${stowed} rim points; deployed ${F.length} feet at r ${Math.hypot(F[0].pt[0], F[0].pt[2]).toFixed(2)} m`);
   const b13 = drop(spots.s13, 1, L0, false), l13 = drop(spots.s13, 1, legs(), true), b20 = drop(spots.s20, 1, L0, false), l20 = drop(spots.s20, 1, legs(), true), lf = drop(spots.flat, 1, legs(), true);
   check('legs: a pod-tank-Wren lander topples on 12–14° and 19–21° slopes bare, and stands on both with legs, leaning with the slope',
-    !b13.s.alive && /Toppled/.test(b13.last) && !b20.s.alive && l13.s.landed && l20.s.landed && lf.s.landed && l13.lost + l20.lost === 0,
+    (!b13.s.alive || b13.s.tipped) && /Toppled/.test(b13.last) && (!b20.s.alive || b20.s.tipped) && l13.s.landed && l20.s.landed && lf.s.landed && l13.lost + l20.lost === 0,
     `${(spots.s13.sl / D).toFixed(0)}°: bare "${b13.last}", legs "${l13.last}" · ${(spots.s20.sl / D).toFixed(0)}°: bare "${b20.last}", legs "${l20.last}"`);
   const v8 = drop(spots.flat, 8, legs(), true), v11 = drop(spots.flat, 11, legs(), true);
   check('legs: the lander takes 8 m/s on its legs; at 11 m/s (under the ground\'s 12) the landing loads snap legs and it goes over',
@@ -950,4 +950,38 @@
   const no = ['pod', 'crew', 'les', 't2', 'T16', 'petrel', 'wren', 'fins', 'fair', 'dec', 'istage', 'cone', 'hab', 'lab', 'port', 'arm', 'rvfold', 'ballast'];
   const bad = [...yes.filter(k => !on(k)), ...no.filter(on)];
   check('vehicle-37 the payload bench lists a satellite\'s parts only', !bad.length, bad.length ? `wrong: ${bad.join(', ')}` : `${Object.keys(P).filter(on).length} of ${Object.keys(P).length} parts`);
+}
+
+// vehicle-38. A slow topple lies on its side (vehicle, QUEUE Q508; PLAYTEST #142): a lander that tips over on Selene's
+// low gravity lands on its side (s.tipped), alive, its parts damaged by the speed they hit at; the antenna pressed under
+// the hull has no sky, the other still talks, the instruments count; liftoff is blocked; the Debrief says it toppled, and
+// it stays in the registry as a landed object. A tall stack that falls hard (the Lunar preset on Selene, the Hopper on
+// Tellus) still breaks.
+{
+  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,TELLUS,PRESETS,PROG,fromPF,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,DT,footPoints,tipSpeed,debOutcome,antOf,outThere,recNew,landRegister,stage,len,norm,add,mul,cross,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; Object.assign(D.HOOK, { msg: m => msgs.push(m), boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
+  const DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)];
+  const flat = B => { for (let la = -30; la <= 30; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const u = U(la, lo); if (B === D.TELLUS && D.groundAlt(B, u) < 5) continue;
+    const su = D.surfaceAt(B, u); if (D.surfaceHit(su, u, B) > 0) continue; if (D.terrainSlope(B, u) < 0.02) return u; } };
+  // set it down upright 0.2 m up, falling at 1 m/s and drifting k× the speed it tips over at, SAS off
+  const drop = (B, stack, k) => { D.t = 0; const u = flat(B), s = D.newShip(stack); D.S = s; Object.assign(s, { landed: false, body: B, sas: false, throttle: 0 }); msgs.length = 0;
+    s.rec = D.recNew(); s.rec.launched = true; const vt = D.tipSpeed(s, B.mu / B.R ** 2), fy = Math.min(...D.footPoints(s).map(f => f.pt[1])) - s.cm[1];
+    s.r = D.fromPF(B, D.mul(u, B.R + D.groundAlt(B, u) - fy + 0.2), 0); const up = D.norm(s.r), e = D.norm(D.cross([0, 1, 0], up));
+    s.v = D.add(D.surfVel(B, s.r), D.add(D.mul(up, -1), D.mul(e, k * vt))); s.q = D.qFromBasis(e, up, D.cross(e, up)); s.w = [0, B === D.TELLUS ? B.rot : 0, 0];
+    for (let i = 0; i < 40 / D.DT && s.alive && !s.landed; i++) D.physStep(s, D.DT); return s; };
+  const des = D.toV2(['sci', 'core', 't1', 'wren']), fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  fd(des.root, 't1').c.push({ k: 'whip', at: { y: 0.5, a: 0, n: 1 }, c: [] }, { k: 'whip', at: { y: 0.5, a: Math.PI, n: 1 }, c: [] });
+  const s = drop(D.SELENE, des, 1.5), whips = s.parts.filter(p => p.on && p.d.key === 'whip'), ant = D.antOf(s.parts), ant0 = D.antOf(D.newShip(des).parts);
+  const dm = s.parts.filter(p => p.on && p.dmg > 0).length, out = s.alive ? D.debOutcome(s, s.rec) : { t: '', d: s.lossWhy };
+  D.outThere(s, 1, false); const sampled = !!s.rec.selSampled, talks = !!(s.rec.selLand || s.rec.farLandNews);
+  msgs.length = 0; D.stage(s); s.throttle = 1; for (let i = 0; i < 50; i++) D.physStep(s, D.DT); const held = s.landed && !!s.tipped && msgs.some(m => /on its side/.test(m));
+  D.PROG.sats = []; D.landRegister(s, s.rec); const q = D.PROG.sats[0];
+  check('topple (Q508): a lander tipping over on Selene lies on its side, alive and damaged; one whip under the hull, the other talks; instruments count; no liftoff; registered landed; the Debrief says toppled',
+    s.alive && s.landed && !!s.tipped && dm > 0 && whips.filter(p => p.buried).length === 1 && ant.P * 2 === ant0.P && sampled && talks && held
+      && /^Toppled over on Selene/.test(out.t) && /side/.test(out.d) && !/destroyed/.test(out.d) && !!q && q.landed && !!q.tipped,
+    `${s.alive ? `tipped, top hit at ${s.tipped ? s.tipped.v.toFixed(1) : '?'} m/s, ${dm} parts damaged, ${whips.filter(p => p.buried).length} of 2 whips buried` : s.lossWhy}; sampled ${sampled}, link ${talks}, liftoff held ${held}; "${out.t}: ${out.d}"; registry ${q ? `${q.name} landed ${q.landed} tipped ${q.tipped}` : 'none'}`);
+  const lun = drop(D.SELENE, D.PRESETS.Lunar, 3), hop = drop(D.TELLUS, D.PRESETS.Hopper, 1.15);
+  check('topple (Q508): a hard fall still breaks: the Lunar stack over on Selene, the Hopper over on Tellus, each lost with its pod\'s hit speed',
+    !lun.alive && /hit the ground at \d+ m\/s/.test(lun.lossWhy || '') && !hop.alive && /toppled over.*hit the ground at \d+ m\/s/.test(hop.lossWhy || ''),
+    `Lunar on Selene: ${lun.alive ? 'survived' : lun.lossWhy}; Hopper on Tellus: ${hop.alive ? 'survived' : hop.lossWhy}`);
 }

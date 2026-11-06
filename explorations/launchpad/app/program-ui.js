@@ -313,7 +313,7 @@ document.addEventListener('click',e=>{if(!(e.target.dataset&&e.target.dataset.st
   S.node={t:simT+X.dt,dv:[X.dv,0,0]};HOOK.msg(`Transfer planned: the far point comes round over ${X.city.name}`)});
 function updateHUD(){
   const b=S.body,rl=len(S.r),h=rl-b.R,el=elements(S.r,S.v,b.mu),vs=dot(S.v,S.r)/rl,srf=len(sub(S.v,surfVel(b,S.r)));
-  let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit='landed';else if(b.atm&&h<b.atm)sit='flying';
+  let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit=S.tipped?'<span class="warn">on its side</span>':'landed';else if(b.atm&&h<b.atm)sit='flying';
   else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>soiAt(b,simT))sit=term('soi','escaping');else sit='<span class="ok">orbiting</span>';
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;

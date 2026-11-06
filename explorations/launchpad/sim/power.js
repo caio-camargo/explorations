@@ -21,11 +21,11 @@ const powLoad=s=>{let W=0;powEach(s,d=>{if(d.W)W+=d.W});return W};
 const powRTG=s=>{let W=0;powEach(s,d=>{if(d.Wg)W+=d.Wg});return W};   // RTGs: the same day and night (Q131)
 // what the panels give in full sun from direction u (the vessel's own frame): body cells their average share; a deployed wing
 // turns about its arm (the mount's outward normal n) to face the sun as well as that allows, so √(1 − (n·u)²) of its best
-function powSun(s,u){let W=0;powEach(s,(d,p,aq)=>{if(d.kind!=='solar')return;const k=d.Wp*(1-(p.dmg||0));
+function powSun(s,u){let W=0;powEach(s,(d,p,aq)=>{if(d.kind!=='solar'||p.buried)return;const k=d.Wp*(1-(p.dmg||0));
     if(d.body)W+=k*SOL_BODY;else if(p.dep){const v=aq?qrot(qconj(aq),u):u,a=p.phi||0,c=Math.cos(a)*v[0]+Math.sin(a)*v[2];W+=k*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}});
   return W}
 // the best the panels can give (wings square to the sun): what the steady state assumes
-const powPeak=s=>{let W=0;powEach(s,(d,p)=>{if(d.kind==='solar')W+=d.Wp*(1-(p.dmg||0))*(d.body?SOL_BODY:SOL_WING)});return W};
+const powPeak=s=>{let W=0;powEach(s,(d,p)=>{if(d.kind==='solar'&&!p.buried)W+=d.Wp*(1-(p.dmg||0))*(d.body?SOL_BODY:SOL_WING)});return W};
 // what a passenger brings to the store when it docks, and its share when it leaves (by battery capacity)
 const battCap=e=>(e.shape||[]).reduce((a,o)=>a+((PARTS[o.k]||{}).kWh||0)*KWH,0)+(e.attached||[]).reduce((a,x)=>a+battCap(x.e),0);
 function storeOf(e){const c=battCap(e);return e._v?Math.min(c,e._v.E??c):e.pw&&e.Ewh!=null?Math.min(c,e.Ewh*3600):e.vst&&e.vst.E!=null?Math.min(c,e.vst.E):c}
