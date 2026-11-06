@@ -1,6 +1,6 @@
 # EVA — astronauts outside
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-06 · **Updated**: 2026-11-06
-**Status**: draft for Caio (W45: three questions with defaults; the defaults stand if he's silent).
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-06 · **Updated**: 2026-11-06
+**Status**: approved 2026-11-06 (D27: W45's defaults, and a test ground first, as E0).
 **Purpose**: Scope EVA, which has not been designed or built: what crew do outside, how they move, and in what order to build it.
 Parent: [`CREW.md`](CREW.md) (who crew are, the roles, the suits). Decisions go to [`DECISIONS.md`](DECISIONS.md).
 
@@ -111,10 +111,58 @@ Early-era events, all from history, each costing time:
 | **E3** | **Hull work** | paths over the parts, the tether, drifting off, repair (Q467), fetching a canister, crossing to a vessel within tether reach | M | space + vehicle |
 | **E4** | **Free flight** | a jet pack with a Δv budget, flown with the docking keys (MMU era) | M | space |
 
-**Default order:** E1 first, because it is the cheapest and gives the 1965 race moment. E2 comes next, because it is
+**Order:** **E0, the test ground** (§ 6a), before anything ships. Then E1, because it is the cheapest and gives the 1965 race moment. E2 comes next, because it is
 M3's finish line (crew on Selene). E3 follows, and it unblocks Q467. E4 waits for the late eras.
 
-## 7. Open (W45)
+## 6a. E0: the test ground (Caio, 2026-11-06)
+
+Caio: "i've never worked with this. we need testing grounds for astronaut movement, which includes different gravity
+conditions and room for things like climbing stairs and zero-g simulation. this doesn't have to be realistic in terms
+of a simulator, i just need to be able to easily test astronaut movement."
+
+So movement gets a test ground before any slice ships. It is a **developer's tool, not a training simulator**. It
+needs to be quick to open, quick to reset, and to show why the astronaut did what it did.
+
+**What it is:** a screen built from the real movement code (`sim/eva.js`, the same code the slices use), opened
+straight from a URL flag (`?eva-lab`) and from the Rover yard's menu. It works the way the Rover yard does for rovers,
+and later it can become the program's astronaut training ground.
+
+**Gravity:**
+- every body in the game, read from the body table, plus a slider from 0 to 1.5 g;
+- **0 g**;
+- a **spinning hull** (slow to fast) to test grabbing on a tumbling vessel.
+
+The gravity can be switched mid-walk.
+
+**The course**, stations in a row, each reached by a key:
+
+| Station | What it tests |
+|---|---|
+| flat pad, a 50 m straight with distance marks | gait, speed, the walk-to-lope change, stopping, turning |
+| slopes at 5°, 10°, 20°, 30°, up and down | push-off, sliding, falls downhill |
+| rough ground: rocks, a crater rim, loose soil | stumbles, tipping, picking a path for click-to-go |
+| **stairs** (risers of 15, 25 and 40 cm) and a **ladder** (a lander leg's) | stepping up, climbing, coming down in low g |
+| a gap and a ledge (0.5, 1 and 2 m) | jumps; on small bodies, floating off |
+| a lander mock with a hatch and porch, a rover with a seat | getting out, down and back in; boarding a rover |
+| **a 0 g hall**: a capsule and a station module with handrails, a hatch, tether points, a second vessel a few metres away | hand over hand, the tether, drifting off, crossing, the jet pack later |
+
+**The tools:**
+- **time:** pause, ×0.25 slow motion, step one frame, reset to the station;
+- **camera:** follow, side, top;
+- **debug drawing** (on and off): contact points, centre of mass, push-off forces, the tip angle, footprints and a trail;
+- **readout:** speed, Froude number, gait, contact, tether tension, backpack time;
+- **a tweak panel:** push force, leg length, height of the centre of mass, turn rate, grip, with *Copy values* to paste
+  them into a note;
+- **record and replay:** saves the inputs, so a bad moment can be replayed and sent as a file.
+
+**Feel over accuracy:** the constants are tuned until it feels right in play. § 3's physics is where the tuning
+starts, not something to defend.
+
+**A headless twin**, so sessions can tune without Caio: scripted runs on the same course at each gravity (walk 50 m,
+climb the stairs and the ladder, cross the 0 g hall by rail, let go and drift), with times, falls and failures logged as
+a test section and a `study_eva.mjs` table.
+
+## 7. Decided (D27, Caio 2026-11-06: "yes on defaults")
 
 1. **Controls:** (a) click a target **and** keys, as with rovers (**default**); (b) click only; (c) keys only.
 2. **Can EVA lose a crew member?** Only by the player's own action, free and out of reach (**default**); never; or
@@ -122,5 +170,6 @@ M3's finish line (crew on Selene). E3 follows, and it unblocks Q467. E4 waits fo
 3. **Order:** E1 → E2 → E3 → E4 (**default**); or surface first (E2 before E1).
 
 ## Version history
+- **0.1.1 (2026-11-06):** approved (D27): W45's defaults; E0 the test ground (§ 6a), at Caio's request.
 - **0.1.0 (2026-11-06):** first draft (design desk, Caio: "EVA needs to be scoped; how can we approach astronaut
   movement?"). Approaches A/B/C, recommending C; physics; the figure; risk; slices E1–E4; W45.
