@@ -262,6 +262,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.220 — the simulator core (2026-10-13, economy session 2, QUEUE Q449; Q282 slice 1, W42 on its defaults)
 - Plan revision: crew by qualification (2026-10-13, economy session 2, QUEUE Q283; D15.4, CREW.md § Skill; nothing built)
 - v1.255 — routines count clean runs (2026-11-04, economy worker, QUEUE Q500, PLAYTEST #134)
+- Q446: a missed deadline's opinion drift — the world's dice, not the miss (2026-11-06, economy worker, TESTING 247; nothing built)
 
 ## World: [`notes/world.md`](notes/world.md)
 

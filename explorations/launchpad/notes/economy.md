@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-04
+**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3369,3 +3369,31 @@ right the 2° stays honest, so no loosening was needed. Q413's quote (vehicle-32
 **Test:** econ-30, "routine (Q500)": a polar weather satellite's route at ~300 km, three runs ordered by hand and
 flown headless by the dispatch; each counts clean and Repeat is no longer held for clean runs. It failed before the
 fix (77.6°, clean 0).
+
+## Q446: a missed deadline's opinion drift (2026-11-06, economy worker, QUEUE Q446, TESTING 247; D17.4; nothing built)
+
+**The report.** The robot's row 247 took the first offer, let it lapse and waited to day ~200; its control (247c, a fresh
+career with no contract) waited too. At the miss the client's opinion matched the control (53.60); by day ~200 it was
+3.9 lower (48.3 against 52.2).
+
+**Measured** (headless twin runs, `opAdd` instrumented to log every change with its caller): the miss changes nothing.
+The run's one opinion change is on day 160.8, *Mirtov's "the hop", a first in the world*: `raceTick` costs home
+−4 × natK = **−4.67** when the rival is unfriendly (`relOf(HOME, r) < 0`; § "the race": "costs home opinion if that
+rival is unfriendly"). In the control Mirtov wins the hop on day 142 while the relation sits just above zero (+0.05
+against −0.07 at the end), so it costs nothing. Everything else is the fade toward 50, the same in both.
+
+**Why the two worlds differ:** `worldTick` seeds its dice with the tick's length (`wseed·… + floor(d·1000)`), and
+`advanceTo` stops at calendar events, so a taken contract (its "one day left" stop) or waiting in other steps (the
+control waits to day 82 then in 10s; the row waits to the deadline, then in 10s from there) gives a different world:
+relation drift, treaties, rivals' progress (`rivTick`), leadership demands. Contract taken but the control's steps:
+**52.229 = 52.229**, the control to the digit (luck: its relations still drifted). Row 247's steps with no contract:
+44.0, two race hits, lower than with the miss.
+
+**No bias** over 260 seeded worlds (the first offer missed vs a no-contract twin waiting to the same days): mean gap at
+day ~200 **−0.13 ± 0.17**; 221 of 260 exactly 0, the rest both ways (rival firsts ±4.6, a closed home's missed
+leadership demand −10). So D17.4 holds and nothing in the rule changes. The tick-length dice are a chaos source, not a
+cost; but two waits in different steps give different worlds, which matters for A/B robot rows and seeded comparisons.
+
+**Test:** econ-31, "missed deadline (Q446)": twin worlds, one misses the first offer, both wait to the same days up to
+~200 with the chance movers held still (no rival races, an open home); the client's opinion matches the twin's at every
+stop. It passes as built and fails if a miss costs opinion again (checked with −3 in `contractLost`: gap 3.0).
