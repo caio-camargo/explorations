@@ -899,3 +899,38 @@
     `"${q.name}"; route ${mk.ok ? '"' + mk.route.name + '"' : mk.why}; stationary "${tv}", round Selene "${relay}"`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// space-32. A moon orbit on the map is one revolution, not two months of them (space, QUEUE Q487; PLAYTEST #127). numLeg
+// integrates a bound orbit round a moon for two of the moon's own orbits (to find a decay, a stripping, an encounter) but keeps
+// the path for one of the craft's revolutions; an ending within three revolutions is drawn through, a later one as the first
+// revolution and the last one before it, with a break (pt.gap). Escapes and encounters are found as before.
+{
+  const { SELENE: Sl, NYX: Nx, TELLUS: T, predictFrom, elements } = api;
+  const circ = (B, alt, vf = 1) => ({ b: B, r: [B.R + alt, 0, 0], v: [0, 0, Math.sqrt(B.mu / (B.R + alt)) * vf], t: 0 });
+  const span = L => { const P = L.path, g = L.gap; return g ? (P[g - 1][1] - P[0][1]) + (P.at(-1)[1] - P[g][1]) : P.at(-1)[1] - P[0][1]; };
+  const legs = p => p.map(x => x.b.name + (x.path ? '~' : '') + (x.endKind ? '→' + x.endKind : '')).join(' ');
+  const lo = predictFrom(circ(Sl, 30e3)), L = lo[0], per = elements(L.r, L.v, Sl.mu).period, ny = predictFrom(circ(Nx, 50e3))[0], perN = elements(ny.r, ny.v, Nx.mu).period;
+  check('a low Selene orbit on the map is one revolution (Q487): the 30 km orbit\'s path covers one period, 100–600 points, nothing after; Nyx\'s 50 km orbit too',
+    lo.length === 1 && !L.endKind && span(L) >= 0.9 * per && span(L) <= 1.1 * per && L.path.length >= 100 && L.path.length <= 600 && L.tEnd <= L.t + 1.1 * per
+      && !ny.endKind && span(ny) >= 0.9 * perN && span(ny) <= 1.1 * perN && ny.path.length <= 600,
+    `Selene: ${(span(L) / per).toFixed(2)} periods (${(span(L) / 86400).toFixed(2)} d), ${L.path.length} points; Nyx: ${(span(ny) / perN).toFixed(2)} periods, ${ny.path.length} points`);
+  // escape from Selene: a 30 km orbit given 45 % more than circular speed leaves the SOI on to Tellus
+  const es = predictFrom(circ(Sl, 30e3, 1.45));
+  check('a Selene escape is still predicted (Q487): the leg ends at the SOI and a Tellus leg follows', es[0].endKind === 'esc' && es[1] && es[1].b === T && es[0].path.at(-1)[0] === es[0].end,
+    `${legs(es)}; escape in ${(es[0].endT / 3600).toFixed(1)} h`);
+  // decaying: a 3,000 × 20 km equatorial orbit Tellus's tide brings down after ~14 revolutions; a 4,500 × 5 km one after ~2.7
+  const ell = (apA, peA, ang) => { const ra = Sl.R + apA, rp = Sl.R + peA, a = (ra + rp) / 2, va = Math.sqrt(Sl.mu * (2 / ra - 1 / a));
+    return { b: Sl, r: [ra * Math.cos(ang), 0, ra * Math.sin(ang)], v: [-va * Math.sin(ang), 0, va * Math.cos(ang)], t: 0 }; };
+  const far = predictFrom(ell(3000e3, 20e3, 0))[0], pf = elements(far.r, far.v, Sl.mu).period, near = predictFrom(ell(4500e3, 5e3, 3))[0], pn = elements(near.r, near.v, Sl.mu).period;
+  check('a decaying Selene orbit still reaches its impact (Q487): many revolutions on, the first and the last are drawn with a break and the line ends at the impact; within three, drawn through',
+    far.endKind === 'impact' && far.endT > 10 * pf && far.gap > 0 && span(far) <= 2.1 * pf && far.path.at(-1)[0] === far.end && far.tDrawn <= 1.12 * pf
+      && near.endKind === 'impact' && near.endT > 2 * pn && near.endT < 3 * pn && !near.gap && near.path.at(-1)[0] === near.end,
+    `far: impact after ${(far.endT / pf).toFixed(1)} revolutions, ${far.path.length} points, ${(span(far) / pf).toFixed(2)} periods drawn, break at ${far.gap}; near: impact after ${(near.endT / pn).toFixed(1)}, ${near.path.length} points, ${near.gap ? 'broken' : 'unbroken'}`);
+  // Tellus → Selene: a Hohmann-like transfer from 110 km finds the encounter, and the Selene leg after it
+  const muT = T.mu, r0 = T.R + 110e3, at = (r0 + Sl.orb.a) / 2, tof = Math.PI * Math.sqrt(at ** 3 / muT), f0 = Sl.n * tof + Sl.orb.M0, ph = Math.atan2(Math.sin(f0), Math.cos(f0)) + Math.PI - 0.06;
+  const vp = Math.sqrt(muT * (2 / r0 - 2 / (r0 + Sl.orb.a))); let tr = null;
+  for (let k = 0; k < 40 && !tr; k++) { const q = ph - 0.01 * k, p = predictFrom({ b: T, r: [r0 * Math.cos(q), 0, -r0 * Math.sin(q)], v: [-vp * Math.sin(q), 30, -vp * Math.cos(q)], t: 0 });
+    if (p[0].endKind === 'enc' && p[1] && p[1].b === Sl) tr = p; }
+  check('a Tellus → Selene transfer still finds the encounter (Q487), and the Selene leg after it', !!tr && !!tr[1].path && tr[1].path.length > 2,
+    tr ? `${legs(tr)}; encounter in ${(tr[0].endT / 86400).toFixed(2)} d, pass ${((tr[1].minR - Sl.R) / 1e3).toFixed(0)} km up` : 'no encounter found');
+}
