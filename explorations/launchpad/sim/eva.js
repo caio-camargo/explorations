@@ -33,9 +33,12 @@ const EVA_TUNE={
   kStance:.8,   // a lope's contact time = kStance·√(L/g), between .15 and 1.5 s
   turn:2,       // rad/s, the fastest turn
   fallDeg:38,   // a lean past this is a fall
-  slipFall:.3,  // s of slipping that ends in a fall
+  slipFall:.3,  // s of slipping before a slide can become a fall…
+  slideFall:2.5,  // m/s: …once it slides faster than this (slower, it slides on its feet: scree, a steep bank)
+  creep:.25,    // share of the walking speed it keeps on ground too steep to walk (it always tries; the grip decides)
   landMax:4,    // m/s, coming down faster than this is a fall
-  stepUp:.35,   // m, the highest ground a step can rise onto (higher is a wall)
+  stepUp:.45,   // m, the highest ground a step can rise onto (higher is a wall): knee-high
+  stepDown:.6,  // m, the deepest a foothold can be below the last one without jumping down
   getUp:2,      // s to get up at 1 g; slower in low g (getUpLow more at 0 g)
   getUpLow:4};
 const evaUp=[0,1,0];
@@ -59,17 +62,20 @@ const evaEscV=W=>W.R?Math.sqrt(2*evaG(W)*W.R):Infinity;
 // the wanted horizontal velocity, from the keys (in: fwd forward +, side right +, turn right +) or a target to walk to.
 // On a slope the walk slows to what keeps each stride's push inside the friction cone: a stride at speed v leans the force
 // by about atan(v·tanh(ωP/2)/(ωh)), and that plus the slope must stay under 90 % of the friction angle.
-// It looks a stride or two ahead (the steepest ground within 2 m the way it's going), as a walker would.
-function evaSlopeV(A,g){const T=A.T,vh=[A.v[0],0,A.v[2]],vl=len(vh),dir=vl>.1?mul(vh,1/vl):[Math.sin(A.psi),0,Math.cos(A.psi)];let th=0;
-  for(const k of[0,.5,1,1.5,2]){const n=evaNormal(A.W,A.p[0]+dir[0]*k,A.p[2]+dir[2]*k);th=Math.max(th,Math.atan(Math.hypot(n[0],n[2])/n[1]))}
-  const room=Math.atan(.9*A.W.mu)-th;
-  if(room<=0)return 0;const w=Math.sqrt(g/T.h),P=A.in.hurry?evaStanceP(T,g):evaStepP(T,g);return T.h*Math.tan(room)*w/Math.tanh(w*P/2)}
+// It looks a stride or two ahead (the steepest grade within 2 m *along the way it's going*: a drop-off beside the path
+// doesn't slow it), as a walker would. Ground too steep for the grip doesn't stop it: it creeps on, and the friction cone
+// decides (it slips back on a climb, slides on a descent; v1.263's "refuse" was an invisible wall, Caio 2026-11-06).
+function evaSlopeV(A,g,dir){const T=A.T;let th=0;
+  for(const k of[0,.5,1,1.5,2]){const n=evaNormal(A.W,A.p[0]+dir[0]*k,A.p[2]+dir[2]*k);th=Math.max(th,Math.atan(Math.abs(n[0]*dir[0]+n[2]*dir[2])/n[1]))}
+  const room=Math.atan(.9*A.W.mu)-th,vc=T.creep*evaWalkV(T,g);
+  if(room<=0)return vc;const w=Math.sqrt(g/T.h),P=A.in.hurry?evaStanceP(T,g):evaStepP(T,g);return Math.max(vc,T.h*Math.tan(room)*w/Math.tanh(w*P/2))}
 // Turning, it slows to what the grip can hold round the turn (v·ω within half of μg), as anyone does.
-function evaWanted(A){const T=A.T,g=evaG(A.W),I=A.in,sp=Math.min(I.hurry?evaRunV(T,g):evaWalkV(T,g),evaSlopeV(A,g),I.turn?.5*A.W.mu*g/T.turn:Infinity),fw=evaFw(A.psi),rt=evaRt(A.psi);
-  if(I.target){const d=[I.target[0]-A.p[0],0,I.target[1]-A.p[2]],dl=len(d);if(dl<.3){I.target=null;return[0,0,0]}
+function evaWanted(A){const T=A.T,g=evaG(A.W),I=A.in,fw=evaFw(A.psi),rt=evaRt(A.psi),base=Math.min(I.hurry?evaRunV(T,g):evaWalkV(T,g),I.turn?.5*A.W.mu*g/T.turn:Infinity);
+  const spAlong=dir=>Math.min(base,evaSlopeV(A,g,dir));
+  if(I.target){const d=[I.target[0]-A.p[0],0,I.target[1]-A.p[2]],dl=len(d);if(dl<.3){I.target=null;return[0,0,0]}const sp=spAlong(mul(d,1/dl));
     // slow down in time: the stopping distance at the friction's grip (half of it, to keep a margin)
     const vs=Math.min(sp,Math.sqrt(2*.5*A.W.mu*g*Math.max(0,dl-.2)));return mul(d,vs/dl)}
-  const w=add(mul(fw,I.fwd),mul(rt,I.side)),wl=len(w);return wl>1e-6?mul(w,sp/Math.max(1,wl)):[0,0,0]}
+  const w=add(mul(fw,I.fwd),mul(rt,I.side)),wl=len(w);return wl>1e-6?mul(w,spAlong(mul(w,1/wl))/Math.max(1,wl)):[0,0,0]}
 // where the next foot goes: the deadbeat placement of the inverted pendulum (velocity v0 now, vd after a step of period P),
 // d = (v0·cosh ωP − vd)/(ω sinh ωP), held within the leg's reach
 // A walker asks a step only for the change of velocity its grip allows (70 % of μ less the slope, over the step), so it
@@ -78,7 +84,18 @@ function evaPlaceAt(A,x,v,vd,P){const g=evaG(A.W),w=Math.sqrt(g/A.T.h),ch=Math.c
   const mE=Math.max(.03,A.W.mu-Math.hypot(n[0],n[2])/n[1]),dv=sub(vd,v0),dvl=len(dv),dm=.7*mE*g*P;if(dvl>dm)vd=add(v0,mul(dv,dm/dvl));
   // and no farther than leans the push past 85 % of the grip at the start of the step
   let d=sh>1e-9?mul(sub(mul(v0,ch),vd),1/sh):[0,0,0];const dl=len(d),dM=Math.min(A.T.reach,.85*mE*A.T.h);if(dl>dM)d=mul(d,dM/dl);
-  const fx=x[0]+d[0],fz=x[2]+d[2];return[fx,A.W.ground(fx,fz),fz]}
+  return evaFoothold(A,x[0]+d[0],x[2]+d[2],v)}
+// A foothold: where the step would land, unless that ground is steeper than the grip holds; then the flattest spot along
+// the stride (back to under the body, on to the leg's reach, a hand's width either side) that a step can rise onto. A
+// knee-high bank is a step onto its top, not a slope to slip on; a 2.5 m face stays a slope.
+const evaSteep=(W,x,z)=>{const n=evaNormal(W,x,z);return Math.atan(Math.hypot(n[0],n[2])/n[1])};
+function evaFoothold(A,fx,fz,v){const W=A.W,T=A.T,lim=.8*Math.atan(W.mu);if(evaSteep(W,fx,fz)<=lim)return[fx,W.ground(fx,fz),fz];
+  const vh=[v[0],0,v[2]],vl=len(vh),dir=vl>.05?mul(vh,1/vl):evaFw(A.psi),rt=[-dir[2],0,dir[0]],y0=A.f[1],ax=fx-A.p[0],az=fz-A.p[2],along=ax*dir[0]+az*dir[2];
+  let best=null;
+  for(let k=-.6;k<=T.reach+1e-9;k+=.05){const a=Math.max(-.1,along)+k;if(a<-.1||a>T.reach+.05)continue;
+    for(const l of[0,-.1,.1]){const cx=A.p[0]+dir[0]*a+rt[0]*l,cz=A.p[2]+dir[2]*a+rt[2]*l,gy=W.ground(cx,cz),st=evaSteep(W,cx,cz);
+      if(gy-y0>T.stepUp||y0-gy>T.stepDown)continue;const sc=st+.4*Math.abs(a-along)+.2*Math.abs(l);if(st<=lim&&(!best||sc<best.sc))best={sc,p:[cx,gy,cz]}}}
+  return best?best.p:[fx,W.ground(fx,fz),fz]}
 const evaPlace=(A,vd,P)=>evaPlaceAt(A,A.p,A.v,vd,P);
 // Where and when the next foot comes down if the inputs hold ({f, t: seconds from now, still}), for drawing the swinging
 // leg so it lands where the physics will put it: the pendulum carried to the step's end (or the flight to its landing),
@@ -141,7 +158,8 @@ function evaStep(A,dt=EVA_DT){const T=A.T,W=A.W,g=evaG(W),I=A.in;A.t+=dt;
     if(yT<yB-1e-4){A.st='air';A.toT=A.t;A.jumpK='drop';A.hopTop=-1e9;A.p=[nx,A.p[1]+A.v[1]*dt,nz];evaTrail(A,dt);return}
     A.p=[nx,yT,nz];A.v[1]=dot([A.v[0],0,A.v[2]],evaSlope(A))}
   const lean=Math.hypot(A.p[0]-A.c[0],A.p[2]-A.c[2])/T.h;A.tel.lean=Math.atan(lean)*180/Math.PI;
-  if(A.tel.lean>T.fallDeg)evaFall(A,'leaned past catching');else if(A.slipT>T.slipFall)evaFall(A,'slipped');
+  if(A.tel.lean>T.fallDeg)evaFall(A,'leaned past catching');else if(A.slipT>T.slipFall&&Math.hypot(A.v[0],A.v[1],A.v[2])>T.slideFall)evaFall(A,'slid and fell');
+  A.tel.slide=A.slipT>T.slipFall;
   evaTrail(A,dt)}
 const evaSlope=A=>{const n=evaNormal(A.W,A.p[0],A.p[2]);return[-n[0]/n[1],0,-n[2]/n[1]]};
 // A fall is the body toppling about its feet as an inverted pendulum, θ'' = (g/h)·sin θ, from the lean it had (slow in low
@@ -172,7 +190,7 @@ function evaPrint(A){A.sf^=1;A.tdT=0;A.feet[A.sf]=A.f.slice();A.prints.push([A.f
 function evaTrail(A,dt){const s=Math.hypot(A.v[0],A.v[2]);A.rec.dist+=s*dt;A.rec.vmax=Math.max(A.rec.vmax,s);
   const L=A.trail,q=L[L.length-1];if(!q||Math.hypot(q[0]-A.p[0],q[1]-A.p[1],q[2]-A.p[2])>.1){L.push(A.p.slice());if(L.length>1500)L.shift()}}
 function evaRun(A,dt){A.acc=Math.min((A.acc||0)+dt,.25);while(A.acc>=EVA_DT){evaStep(A,EVA_DT);A.acc-=EVA_DT}}
-const evaGait=A=>A.st==='down'?'down':A.st==='float'?'floating':A.st==='air'?(A.lope?'lope (in the air)':'in the air'):A.lope?'lope (on the ground)':Math.hypot(A.v[0],A.v[2])>.05||A.stepT<.3?'walk':'stand';
+const evaGait=A=>A.st==='down'?'down':A.st==='float'?'floating':A.st==='air'?(A.lope?'lope (in the air)':'in the air'):A.tel.slide?'sliding on its feet':A.lope?'lope (on the ground)':Math.hypot(A.v[0],A.v[2])>.05||A.stepT<.3?'walk':'stand';
 
 // ---- the course (EVA.md § 6a): the lab draws it and the headless twin walks it. E0a: the flat pad (a 50 m straight from
 // the origin north along x = 0) and four ridges (5°, 10°, 20°, 30°) in lanes 5 m wide east of it, each rising north from

@@ -187,6 +187,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: EVA E0, the movement test ground (2026-11-06, space session, QUEUE Q531; nothing built)
 - v1.263 — EVA E0a: the test ground's flat and slopes; `sim/eva.js`, `eva-lab.html` (2026-11-06, space session, QUEUE Q531)
 - v1.265 — EVA E0a after Caio's feel pass: turning un-mirrored, feet land where the physics puts them (`EVA.next`), jump and lope legs, falls topple and get up (2026-11-06, space session, QUEUE Q531)
+- v1.266 — EVA: no invisible walls (slope look-ahead along the path, a creep, slides on its feet), footholds for knee-high banks (2026-11-06, space session, QUEUE Q531)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

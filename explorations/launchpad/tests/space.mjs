@@ -953,9 +953,17 @@
     hT.A.rec.falls === 0 && hS.A.rec.falls === 0 && hT.air / hT.t > .1 && hS.air / hS.t > .35 && hT.t < walks[0].t && hS.t < walks[1].t,
     `Tellus ${(50 / hT.t).toFixed(2)} m/s, ${(100 * hT.air / hT.t).toFixed(0)} % in the air; Selene ${(50 / hS.t).toFixed(2)} m/s, ${(100 * hS.air / hS.t).toFixed(0)} % in the air`);
   const r20 = [9.81, sel].map(g => run(g, null, ridge(20), { fwd: 1 }, 300, A => A.p[2] >= 40)), r30 = run(sel, null, ridge(30), { fwd: 1 }, 60);
-  check('EVA: the 20° ridge is walked over without a fall (slowing on the slope), and the 30° one is refused at its foot, standing (past 90 % of the friction angle)',
-    r20.every(r => r.A.p[2] >= 40 && r.A.rec.falls === 0) && r30.A.rec.falls === 0 && r30.A.p[2] < 6 && r30.A.st === 'stand',
-    `20°: Tellus ${r20[0].t.toFixed(0)} s, Selene ${r20[1].t.toFixed(0)} s; 30°: stopped at z ${r30.A.p[2].toFixed(1)} m`);
+  let slid = 0; const slideRun = run(sel, null, ridge(30), { fwd: 1 }, 60, A => { if (A.tel.slide) slid += EVA.DT; return false; });
+  check('EVA: the 20° ridge is walked over without a fall (slowing on the slope); the 30° one, at the friction angle, is still tried, not refused: on Selene it gets up it slowly, slipping',
+    r20.every(r => r.A.p[2] >= 40 && r.A.rec.falls === 0) && r30.A.rec.falls === 0 && r30.A.p[2] > 9 && slid > 5,
+    `20°: Tellus ${r20[0].t.toFixed(0)} s, Selene ${r20[1].t.toFixed(0)} s; 30° on Selene: z ${r30.A.p[2].toFixed(1)} m after 60 s, ${slid.toFixed(0)} s of it slipping`);
+  // no invisible walls (Caio 2026-11-06): straight across all four ridges sideways, over their 45° sides; knee-high banks
+  // are stepped onto (a foothold), the big faces slid down; on Selene off the side of a ridge top on its feet
+  const across = [9.81, sel].map(g => run(g, null, { x: 8, z: 8, psi: Math.PI / 2 }, { fwd: 1 }, 200, A => A.p[0] > 50));
+  const off = run(sel, null, { x: 16, z: 25, psi: 0 }, { side: 1 }, 40, A => A.p[0] < 11.5 && A.st === 'stand' && A.p[1] < 1.05);
+  check('EVA: no invisible walls: walked sideways across all four ridges (up and down their 45° sides) at Tellus and Selene; on Selene, sidestepped off a ridge top, sliding down the 45° side on its feet',
+    across.every(r => r.A.p[0] > 50 && r.A.rec.falls <= 1) && across[1].A.rec.falls === 0 && off.A.p[0] < 11.5 && off.A.rec.falls === 0,
+    `across: Tellus ${across[0].t.toFixed(0)} s (${across[0].A.rec.falls} fall), Selene ${across[1].t.toFixed(0)} s; off the side: ${off.t.toFixed(0)} s`);
   const jump = (g, R) => { const r = run(g, R, straight, { jump: true }, 120, A => A.st === 'stand' && A.rec.airT > 0); return r.A; };
   const jT = jump(9.81, B('Tellus').R), jS = jump(sel, B('Selene').R), small = run(.005, 500, straight, { jump: true }, 30);
   check('EVA: a jump is the leg\'s push over a crouch: a few cm in a suit at Tellus, over 1.5 m on Selene, faster than escape on a 500 m rock',

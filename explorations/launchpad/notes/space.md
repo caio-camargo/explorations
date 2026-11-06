@@ -2506,3 +2506,25 @@ up animation."
   once the turn slowed the wanted speed (the gait switched to a walk at 3 m/s, whose slow steps can't catch it). Now the
   ankle uses only the grip the lean leaves, the gait follows the faster of wanted and actual speed, and turning slows to
   v·ω ≤ μg/2. 0 falls in 30 tries each (test space-33).
+
+## v1.266 — EVA: no invisible walls; footholds and sliding (2026-11-06, space session, QUEUE Q531)
+
+Caio: "my character got stuck on the edge of a lateral dropoff on one of the inclines. it looks like there's an invisible
+wall there? being able to navigate uneven terrain is important in this game."
+
+- **The wall was the walker's own caution.** v1.263's slope limit looked 2 m ahead, took the steepest ground in *any*
+  direction, and set the wanted speed to **0** past 90 % of the friction angle: beside a 45° drop-off it refused to move.
+  Now the look-ahead reads the grade **along the way it's going** (a drop beside the path doesn't slow it), and on
+  ground too steep it keeps a creep (`creep` 0.25 of the walking speed): it always tries, and the friction cone decides.
+- **A slip is a slide, not a fall.** A fall needs a slip lasting `slipFall` *and* sliding faster than `slideFall`
+  (2.5 m/s). Slower, it slides on its feet ("sliding on its feet" in the readout), as on scree. Low gravity slides slowly,
+  so on Selene it goes down a 45° bank standing; at Tellus the same 2.5 m bank usually tumbles it.
+- **Footholds.** Where the step would land on ground steeper than 80 % of the friction angle, the walker picks the
+  flattest spot along the stride (from under its body to the leg's reach, ±0.1 m to the side) that it can step onto:
+  `stepUp` 0.45 m (knee-high; was 0.35), `stepDown` 0.6 m. A knee-high 45° bank is a step onto its top; a 2.5 m face
+  stays a slope. This is also what E0b's stairs and rocks will use. `EVA.next` goes through it, so the drawn foot still
+  lands where the physics puts it.
+- **Measured** (straight east across all four ridges at z = 8, over their 45° sides): Tellus 36 s with one fall (the 2 m
+  slide down the 30° ridge's side), Selene 57 s with none; sidestepping off the 5° ridge's top on Selene slides down
+  standing. The 30° ridge (at the 31° friction angle) is climbed, slipping: Tellus crosses it in 26 s, Selene reaches its
+  top in 60 s. test space-33 now 10 checks (the "30° refused" check became "30° tried, slipping" and "no invisible walls").
