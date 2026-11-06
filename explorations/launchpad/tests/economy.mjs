@@ -713,3 +713,24 @@
     `${r.name}; runs ${runs.map(x => `${x.D.status}${x.D.orb ? ` ${x.D.orb.pe / 1e3 | 0}×${x.D.orb.ap / 1e3 | 0} km ${x.D.orb.inc != null ? x.D.orb.inc.toFixed(1) + '°' : ''}` : ''}${x.D.why ? ` (${x.D.why})` : ''}`).join(', ')}; clean ${r.clean}; "${why}"; ${news.filter(t => /run \d/.test(t)).slice(-3).join(' | ')}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
+
+// econ-31. A missed deadline leaves no opinion behind, then or later (economy worker, QUEUE Q446, TESTING 247; DECISIONS
+// D17.4): two copies of a fresh world, one takes the first offer and lets it lapse, both wait to the same days up to ~200;
+// the client's opinion matches the twin's at every one. The robot's 4-point gap was the world's own dice: each tick is
+// seeded by its length, and a taken contract adds calendar stops (its deadline), so the two worlds drift apart; there the
+// relation to a rival fell below zero in one run only and that rival's first cost home −4.6. So the chance movers of
+// opinion are held still here: no rival races and home is open (no leadership demands). notes/economy.md § "Q446".
+{
+  const mk = () => { const D = new Function(src + 'return {PROG,HOOK,opOf,acceptOffer,advanceTo,ensureBoard,cTitle,noRace:()=>{HOME=0;PROG.riv={home:0,day:0};RIVALS=raceSchedule()}};')();
+    D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {}; D.noRace(); D.PROG.homeArch = 'openSuper'; D.ensureBoard(); D.PROG.funds = 1e5; return D; };
+  const A = mk(), B = mk(), o = A.PROG.offers[0], took = A.acceptOffer(o.id), c = A.PROG.active.at(-1), op0 = A.opOf(c.client);
+  const days = [];
+  for (let d = 30; d < c.deadline + 2; d += 30) days.push(d);
+  days.push(c.deadline + 2); for (let d = c.deadline + 12; d <= 202; d += 10) days.push(d);
+  const trail = [], to = (X, d) => { for (let k = 0; X.PROG.day < d - 1e-6 && k < 20; k++) X.advanceTo(d); };   // advanceTo stops at the deadline's warnings
+  for (const d of days) { to(A, d); to(B, d); trail.push(A.opOf(c.client) - B.opOf(c.client)); }
+  const missed = !A.PROG.active.some(x => x.id === c.id), back = (A.PROG.back || []).some(b => b.c.id === c.id) || (A.PROG.offers || []).some(x => A.cTitle(x) === A.cTitle(c));
+  check('missed deadline (Q446): to day ~200 the client\'s opinion stays equal to a no-contract twin\'s waiting to the same days',
+    took && missed && back && trail.every(x => Math.abs(x) < 1e-6),
+    `${A.cTitle(c)} for power ${c.client}, deadline day ${c.deadline.toFixed(0)}; opinion ${op0.toFixed(2)} → ${A.opOf(c.client).toFixed(2)} (twin ${B.opOf(c.client).toFixed(2)}), largest gap ${Math.max(...trail.map(Math.abs)).toExponential(1)}`);
+}

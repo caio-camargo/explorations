@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-05
+**Version**: v2.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -261,6 +261,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.220 — the simulator core (2026-10-13, economy session 2, QUEUE Q449; Q282 slice 1, W42 on its defaults)
 - Plan revision: crew by qualification (2026-10-13, economy session 2, QUEUE Q283; D15.4, CREW.md § Skill; nothing built)
 - v1.255 — routines count clean runs (2026-11-04, economy worker, QUEUE Q500, PLAYTEST #134)
+- Q446: a missed deadline's opinion drift — the world's dice, not the miss (2026-11-06, economy worker, TESTING 247; nothing built)
 
 ## World: [`notes/world.md`](notes/world.md)
 
