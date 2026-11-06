@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-05
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2331,3 +2331,44 @@ taken from the orbit at registration (`satRegister` passes the flight's r, v). O
   2026-11-05: earning 1, satsIncome 1,254, autoRuns 1, the satellite named "TV 1"). `PT.trimDay` stays defined, unused.
 - `space-1`'s stationary checks now read `holdRate` (the tides plus the 2 m/s a year), not `slotRate`.
 - Test `space-29` (failed before: TV lost on day ~300, named "Object 1").
+
+## v1.258 — a TV satellite's life reads true; other Tellus antennas are "Navsats" (2026-11-06, space worker, QUEUE Q520, Q523)
+
+**The report** (Q517 worker): `skLife`, behind "holds its orbit N days more" in the Fleet and the builder's lifetime line,
+divided the propellant by the hold rate alone. Since v1.256 a TV satellite also spends it trimming its tilt (`tvTrim`), so
+the line overstated its life.
+
+**Measured** (headless, the TV Satellite payload released over the capital at the stationary radius, 10-day steps; the
+hold rate is 0.226 m/s a day there): with **1,181 m/s** aboard the old line read **5,219 days**; TV was lost on **day
+3,610** (tanks dry on 3,590, one trim 20° → 6°, 370 m/s). 700 m/s: read 3,093, lost 2,610. 1,800 m/s: read 7,955,
+lost 4,900 (two trims). With **380 m/s** (the preset as flown, v1.257) the tanks dry on day 1,680 before the tilt
+reaches 20°: no trim, and the old line (1,679) was already right. The tilt grows ~0.0093° a day (3.4° a year of 365
+days) whether from the equator or after a trim. The registry's `skTilt` (the plane's turn between two one-orbit means 20
+days apart) reads half that (1.67° a year): the moons' 13- and 4-day pulls don't average out over 20 days, so it's not
+usable here.
+
+**Fix (`tvLife`, `sim/space.js`):** in closed form, no tide run. The tilt rate `TV_W` is the moons' torque on an
+equatorial stationary orbit, averaged over its day (12 points) and over a year of the moons' motion (500 instants),
+computed once (~6,000 `pertAcc` calls): 0.0093° a day. From its tilt now, the satellite holds (k m/s a day) until the tilt
+reaches `TV_TRIM` (20°), trims as `tvTrim` sizes it (Δi = F / (v + k/w)), and runs dry as the tilt comes back to 20°;
+trimmed right down to the equator with propellant left, another leg follows; too poor to trim (under 1°), it greys at
+`TV_LOSE` (22.5°, where Q517's untrimmed preset lost the capital) or when dry. `skLife` uses it for a satellite on the air
+(`q.tvOn`, Tellus): so the Fleet line, the routine's `routeLife` and the robot's `holds` all read it. The Fleet now says
+"on the capital's screens N more (…), then its tanks are dry". The builder (`satLife`) adds `tv` for a design with an
+antenna at the stationary altitude, from the spare it forecasts there and a tilt of 0, and `lifeLine` shows it.
+
+**After** (the readout on day 1 + 1, against the forward run's first day without TV): 1,181 m/s 3,654 vs 3,610 (+1.2 %);
+700 m/s 2,627 vs 2,610; 1,800 m/s 4,977 vs 4,900; 380 m/s 1,679 vs 1,730; 150 m/s 663 vs 740 (−10 %: once dry it keeps
+the capital in view another ~50–70 days while it drifts; the line counts to dry). Read mid-life, it stays within ~1 % of
+the same end day (1,181 m/s: 3,655 on day 100, 3,640 on day 2,000, 3,582 after the trim).
+
+**Q523:** `satKind` names any other antenna satellite round Tellus (outside a stationary slot) a **"Navsat"**: it counts
+toward navigation (`navCover`). "Navsat 1", routines "Navsats at 1000 km, 80°"; a stationary one stays "TV", one round a
+moon "Relay". Existing saves keep their names ("Object N"); new registrations get the new kind.
+
+**For other lanes:**
+- The builder's forecast for the TV Satellite preset at the stationary altitude reads 1,850 m/s spare there (TV 6,932
+  days, plain hold 18,208 at 0.10 m/s a day), but the preset as flown arrives with ~380 m/s (v1.257) and holds at 0.226
+  m/s a day: the builder's spare (stage Δv minus a fixed ascent need) and its tide rate (an equatorial orbit at an
+  arbitrary longitude and epoch 0) both differ from the flight. Not touched here; worth a vehicle/space look.
+- Test `space-30` (failed before: read 3,093 against TV lost day 2,601, +19 %), `space-31` (failed before: "Object 1").

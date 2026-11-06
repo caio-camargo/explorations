@@ -790,7 +790,7 @@ function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],T=D*DAY_S;
   for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus',life=q.landed?Infinity:skLife(q);
     const fall=q.landed?Infinity:decayLife(q),then=isFinite(fall)?`, then re-enters`:'';   // (flow, Q203) what Fleet says: decay, not "0 more days"
     fleet.push({id:q.id,name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
-      next:q.landed?'on the surface':q.adrift!=null?(isFinite(fall)?`adrift: re-enters in about ${daysS(fall)}`:'adrift: out of propellant'):life>=1&&isFinite(life)?`holds its orbit ${daysS(life)} more${then}`:isFinite(fall)?`re-enters in about ${daysS(fall)}`:'holds its orbit',
+      next:q.landed?'on the surface':q.adrift!=null?(isFinite(fall)?`adrift: re-enters in about ${daysS(fall)}`:'adrift: out of propellant'):life>=1&&isFinite(life)?q.tvOn?`on the capital's screens ${daysS(life)} more (holding and trimming its tilt), then its tanks are dry`:`holds its orbit ${daysS(life)} more${then}`:isFinite(fall)?`re-enters in about ${daysS(fall)}`:'holds its orbit',
       t:isFinite(life)&&life>=1?life:isFinite(fall)?fall:null})}
   for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({dev:x.id,name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
     else if(x.status==='deviated')fleet.push({dev:x.id,name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
