@@ -6722,3 +6722,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checks:** space-33 now 9 checks; headless pose continuity script (scratch); `--smoke` all passed; GPU screenshots of
   lope, jump, topple, lie, rise. v1.264 was taken by look (Q532) meanwhile: renumbered.
 - **Next:** Caio's second look (TESTING 334); then E0b.
+
+## 2026-11-06 — space session: EVA, no invisible walls (Q531, v1.266)
+
+- **Caio:** stuck at a lateral drop-off on an incline, "an invisible wall"; uneven terrain matters.
+- **Done:** slope look-ahead along the path with a creep (never 0); slips slide on the feet below 2.5 m/s; footholds onto
+  knee-high banks (stepUp 0.45, stepDown 0.6). Crossing all four ridges sideways now works at Tellus and Selene.
+- **Checks:** space-33 10 checks, `--smoke` all passed. **Next:** E0b's rough ground first (Caio: uneven terrain matters).
