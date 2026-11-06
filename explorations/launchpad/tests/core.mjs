@@ -741,7 +741,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   // (platform) every PROG key cleared first: fields earlier sections left (the cycle's phase, recent bailouts…) changed the outcome
   const fresh = () => { api.resetHome(); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [] }); };
-  const careerOffers = setup => { fresh(); setup(); P.wseed = 31; for (let d = 0; d < 400 && !P.decisions.some(x => x.kind === 'defect' || x.kind === 'hire'); d += 10) api.advanceDays(10);
+  // a seeded world (Q526: the dice are now per calendar day; 31 had no offer in trouble any more. Over 60 seeds: trouble
+  // 48, excelling 15 have one in 400 days (52, 12 before); 14 has both, before and after)
+  const careerOffers = setup => { fresh(); setup(); P.wseed = 14; for (let d = 0; d < 400 && !P.decisions.some(x => x.kind === 'defect' || x.kind === 'hire'); d += 10) api.advanceDays(10);
     return P.decisions.filter(x => x.kind === 'defect' || x.kind === 'hire').map(x => x.kind); };
   const whenBad = careerOffers(() => { P.bailouts = 2; P.op[0] = 20; }), whenFine = careerOffers(() => { P.op[0] = 50; }), whenGreat = careerOffers(() => { P.op[0] = 80; for (const k of ['weather', 'air', 'loads', 'range', 'beeper']) P.done[k] = {}; });
   check('career offers come when the program is in trouble (or excelling), not in ordinary times', whenBad.length === 1 && whenFine.length === 0 && whenGreat.length === 1,
@@ -1315,7 +1317,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `period ${P.log.sorbit && (P.log.sorbit.v.p / 60).toFixed(1)} min at 50 km; g ${P.log.sg && P.log.sg.v.toFixed(3)} m/s²`);
   // contact: a camera satellite's share of time in view of a ground station, reported between flights
   fresh(); const r0 = TELLUS.R + 300e3, v0 = Math.sqrt(TELLUS.mu / r0);
-  P.sats.push({ id: 1, name: 'Lookout 9', epoch: 0, r: [r0, 0, 0], v: [0, v0, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 }); api.advanceDays(3);
+  P.sats.push({ id: 1, name: 'Lookout 9', epoch: 0, r: [r0, 0, 0], v: [0, v0, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 }); api.advanceDays(1);   // one day: the world's pieces are days now (Q526), the logbook keeps the best day's share
   check('a camera satellite reports its ground-station contact to the logbook, named after itself', P.log.contact && P.log.contact.by === 'Lookout 9' && Math.abs(P.log.contact.v - P.sats[0].contact * 100) < 1e-9 && !P.log.contact.stack,
     `${P.log.contact && P.log.contact.v.toFixed(0)}% by ${P.log.contact && P.log.contact.by}`);
   fresh();

@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3397,3 +3397,66 @@ cost; but two waits in different steps give different worlds, which matters for 
 **Test:** econ-31, "missed deadline (Q446)": twin worlds, one misses the first offer, both wait to the same days up to
 ~200 with the chance movers held still (no rival races, an open home); the client's opinion matches the twin's at every
 stop. It passes as built and fails if a miss costs opinion again (checked with −3 in `contractLost`: gap 3.0).
+
+## v1.261 — the world's dice are the calendar's (2026-11-06, economy worker, QUEUE Q526, from Q446)
+
+**The flaw.** `worldTick(d)` reseeded its dice every tick from the tick's length (`wseed = wseed·1103515245 + 12345 +
+floor(d·1000)`), and every chance in the world drew from that one stream: relation drift and treaties, the business and
+commodity cycles, offer arrivals, disasters, decisions, elections and leadership demands, rivals' attempts, the giant.
+`advanceTo` stops at calendar events, so how you waited (1-day steps, 10-day steps, a contract's deadline warnings)
+gave a different world. The debris rolls (`conjTick`, `fragTick`) had the same shape: one roll per tick, seeded by the
+tick's last day, with the tick's length in the odds. And since `wseed` kept changing, everything else keyed on it
+(`giantYear`, `rivInit`, a lost contract's return day) changed with every tick too: `giantYear()` was a fresh draw each
+tick, so the giant came at the first tick any draw allowed (~year 18, not 18–21).
+
+**Now.** `advanceDays` cuts time into pieces that end on whole days; the piece that reaches day n (to 1e-9) rolls that
+day's dice once, `wDice(n, salt) = rng(wseed ^ (n+1)·0x9E3779B1 ^ salt·0x85EBCA77)`, a stream per subsystem (relations
+1, economy 2, disasters 3, flavour 4, decisions 5, rivals 6, the giant 7: an offer taken can't shift a rival's roll). The
+pieces in between pass `R = null`: only the smooth parts move, over the real span (relaxation toward the base relation,
+opinion fading, the cycles' phase, money, rivals' progress; all exact or near-exact under splitting). Each subsystem
+takes `(d, R, dd = d)`, the odds use `dd` (a day from `worldTick`; a test's direct call keeps the old meaning).
+Rival attempts wait for a day's dice (progress builds in between; the first's day is still back-dated by the overshoot).
+The cycle's jitter is a day's (`PROG.cycJ`). `wseed` no longer changes: it is the save's seed (Reset program draws a
+fresh one). `conjTick`/`fragTick` roll each whole day the span reaches (`dayMarks`) on that day's seed, with a day's
+odds (a passed `roll` keeps the old single roll). The orbits still move once over the whole span after the world's
+pieces (`orbTick` and the rovers, as before): cut in day pieces, a Selene transfer's encounter search misses (two
+space "in flight" checks and flow-16 failed; the old code fails the same if you stop it mid-transfer: a predictor
+fragility, not this).
+`advanceDays(d, halt)` can end a wait after a world piece; `advanceTo` halts on a new decision or a deviation, so a
+decision the world rolls stops you on its day (before, it was rolled at the end of the tick; rolled mid-wait and not
+halted, a 50-day wait would swallow a 30-day decision whole).
+Satellite contact (`satTick`) is now read per day piece: the logbook's "best ground contact" is the best day's share.
+
+**Measured** (headless, scratch `steps.mjs`: 4 seeds × 5 archetypes, 400 days; 1-day steps against 10-day steps and
+against 7.3-day steps, then against a taken contract waited with `advanceTo` in 10s):
+
+| | Δrelation (max) | Δopinion (max) | Δrival progress | firsts lost the same |
+|---|---|---|---|---|
+| before, step sizes | 0.56 | 12.6 | 0.77 | 38/40 |
+| before, a contract taken | 0.65 | 18.4 | 0.82 | 39/40 |
+| after, step sizes | 3e-16 | 1.7e-4 | 4.4e-4 | 40/40 |
+| after, a contract taken | 4e-12 | 2.1e-4 | 2.2e-4 | 40/40 |
+
+The residue is the smooth parts integrated in different pieces (a rival's pace read at an extra stop); the test's
+tolerance is 1e-3.
+
+**Balance** (`node career.mjs 3 6`, before → after, final funds): the runner's careers get richer, mean over the 18
+rows 649 → 1110 (+71 %; openSuper agency 812 → 1025, closedSuper agency 1077 → 1644, frugal agency 344 → 1127, resource
+company 271 → 655; bailouts and career offers fall: frugal agency 6.3 → 2.7 bailouts). Not the dice: the old ticks
+themselves. A flight's preparation passes as one long tick (~20+ days), and the old econ tick drew offers before
+dropping expired ones and capped arrivals at 4 per tick, sources in order (science first), so long ticks starved the
+board, of tourism and military work most (the runner saw tourism offers 3.5 + 2 → 9.3 + 7.7 per career). The old code
+with `advanceDays` cut into 1-day pieces (`SPLIT=1` in a scratch copy) gives the new numbers (mean 1129; openSuper
+agency 1367, offers 518 against 527 now), so day-sized time is what the rates always meant; a player waiting in short
+steps already got them. Not retuned: a balance pass should look (offer rates, the cap of 4, `BOARD_MAX`) against these
+numbers. Firsts, race results and first-orbit days hardly move (beeper/orbiter days identical in most rows).
+
+**Old saves:** their world shifts from the next tick (the saved `wseed` becomes the seed; a missing `cycJ` reads 0 until
+the next day's roll). A new save starts on 12345 as before, so every fresh first career shares a world until Reset.
+
+**Test:** econ-32, "the world doesn't care how you wait": one closed-home save to day 200 in 1-day steps, 10-day steps
+and with a contract taken (`advanceTo` in 7s), relations, opinions, rival progress and race the same to 1e-3. Failed
+before (gaps 0.44 and 4.6), passes now. econ-31's comment points here. Changed for the new dice: core §18 (career
+offers) pins seed 14, not 31 (31 has no offer in trouble now; over 60 seeds trouble/excelling offers come in 48/15,
+52/12 before; 14 passes before and after); core §19's contact check waits 1 day, not 3 (the logbook keeps the best
+day, the satellite's `contact` is the last day's).

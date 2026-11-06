@@ -166,9 +166,10 @@ function rivForecast(){const out={};for(const id of RACE)out[id]=null;if(!PROG.r
       const day=Math.max(Math.floor(PROG.day)+1,Math.ceil(t)),id=RACE[k];if(rivCounts(p.i,k)&&(!out[id]||day<out[id].day))out[id]={i:p.i,day}}}
   return out}
 function raceSchedule(){if(!PROG.riv||PROG.riv.home!==HOME||PROG.riv.day>PROG.day)PROG.riv=rivInit();return rivForecast()}
+// attempts are rolled on a day's dice (Q526): with R null (between a day's rolls) progress only builds
 function rivTick(d,R){if(!PROG.riv||PROG.riv.home!==HOME||PROG.riv.day>PROG.day)PROG.riv=rivInit();
   for(const p of POWERS){const r=PROG.riv[p.i];if(!r)continue;const rt=rivRate(p.i,r);if(!(rt>0))continue;r.p+=rt*d;
-    while(r.k<RACE.length&&r.p>=r.w){const id=RACE[r.k],M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,''),F=flav(p.i);
+    while(R&&r.k<RACE.length&&r.p>=r.w){const id=RACE[r.k],M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,''),F=flav(p.i);
       if(R()<Math.min(0.95,0.55+0.35*p.tech)){const day=Math.max(0,Math.round(PROG.day-(r.p-r.w)/Math.max(rt,1e-9)));r.p-=r.w;r.w=0.75+0.5*R();
         if(rivCounts(p.i,r.k)){r.got[id]=Math.min(day,Math.round(PROG.day));if(PROG.done[id])HOOK.news(`${POWERS[p.i].name} gets there too: ${nm}`,'dim')}r.k++}
       else{r.p=r.w*2/3;if(F.open>=0.6)HOOK.news(`${POWERS[p.i].name}'s attempt at ${nm} fails`,'ok');
@@ -196,10 +197,10 @@ function giantShare(){const G=PROG.giant;return G&&PROG.day>=G.orbit?GIANT_SHARE
 // what it charges us for a part, as sourceOf's k (null: not selling to us)
 function giantSells(){const G=PROG.giant;if(!G||PROG.day<G.orbit||sanctioned(G.i)||(G.i!==HOME&&relOf(HOME,G.i)<=-0.2))return null;
   return{k:Math.round((1.2-0.5*giantShare())*100)/100,from:G.i,name:G.name}}
-function giantTick(d,R){let G=PROG.giant;
-  if(!G){if(worldCompYear()<giantYear())return;G=PROG.giant=giantMake(R);
+function giantTick(d,R,dd=d){let G=PROG.giant;
+  if(!G){if(!R||worldCompYear()<giantYear())return;G=PROG.giant=giantMake(R);
     HOOK.news(`${G.name}, a new company in ${POWERS[G.i].root}, rolls out a steel prototype on a live stream. The founder promises orbit within a year`,'warn');return}
-  if(PROG.day<G.orbit){if(G.rud<2&&R()<2*d/Math.max(1,G.orbit-G.day)){G.rud++;HOOK.news(`${G.name}'s prototype ${G.rud} ends in a "rapid unscheduled disassembly". The founder: "lots of good data"`,'dim')}return}
+  if(PROG.day<G.orbit){if(G.rud<2&&R&&R()<2*dd/Math.max(1,G.orbit-G.day)){G.rud++;HOOK.news(`${G.name}'s prototype ${G.rud} ends in a "rapid unscheduled disassembly". The founder: "lots of good data"`,'dim')}return}
   if(!G.up){G.up=1;HOOK.news(`${G.name} reaches orbit and posts its launch price before the press does: a fraction of anyone's. It sells parts to anyone, us included`,'warn');return}
   const y=Math.min(Math.floor((PROG.day-G.orbit)/YEAR_D),GIANT_RAMP/YEAR_D);if(y>G.yr){G.yr=y;HOOK.news(`${G.name} cuts its prices again: commercial work now pays ${Math.round(100*giantShare())} % less than before it came`,'warn')}}
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
@@ -308,14 +309,17 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
-function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();compTick();dispatchTick();
+// R: this tick's dice, or null between a day's rolls (Q526: then only the smooth parts move); dd: the days the dice stand
+// for (1 from worldTick); S(salt): a stream per subsystem (worldTick's), else they share R (tests call these with one R)
+function econTick(d,R,dd=d,S=null){const Rs=salt=>S?S(salt):R;ensureBoard();selTick();standTick();devTick();facTick();compTick();dispatchTick();
   if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;ledAdd('upkeep',-(OVERHEAD+OVERHEAD_CAP*capOf())*d);   // running the program, from its first launch on (more as it grows)
     floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
-  const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
+  const c0=PROG.cycle||0;if(R||PROG.cyc!=null){PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R?(R()-.5)*0.15*Math.sqrt(dd/10):0);if(R)PROG.cycJ=(R()-.5)*0.1;   // the jitter is a day's
+    PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(PROG.cycJ||0),-1,1)}
   if(c0<0.45&&PROG.cycle>=0.45)HOOK.news('Boom times: satellite operators are hiring launches again','ok');
   if(c0>-0.45&&PROG.cycle<=-0.45)HOOK.news('Recession bites: commercial launch orders dry up','warn');
-  for(const k in SRC){const rate=SRC[k].rate*(0.4+2.4*flav(HOME).pri[PRI_OF[k]])*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=Math.min(4,Math.floor(rate*d+R()));
+  for(const k in SRC){const rate=SRC[k].rate*(0.4+2.4*flav(HOME).pri[PRI_OF[k]])*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=R?Math.min(4,Math.floor(rate*dd+R())):0;
     for(let j=0;j<n&&PROG.offers.length<BOARD_MAX;j++){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
   PROG.offers=PROG.offers.filter(o=>o.expires>PROG.day);
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(c.deadline>PROG.day)continue;PROG.active.splice(i,1);contractLost(c);
@@ -323,7 +327,7 @@ function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();c
   backTick();
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
-  flavTick(d,R);decisionTick(d,R);cancelTick();rivTick(d,R);giantTick(d,R);raceTick();routeTick()}
+  flavTick(d,Rs(4),dd);decisionTick(d,Rs(5),dd);cancelTick();rivTick(d,Rs(6));giantTick(d,Rs(7),dd);raceTick();routeTick()}
 // ---- ownership: what the program is. Shares that sum to 1: state stakes by power (st) and private capital (pv).
 // Everything scales with the shares, so a part-privatized agency sits between the archetypes:
 //  · budget day comes from each state shareholder, by its stake and its opinion of us; private capital pays nothing
@@ -384,20 +388,20 @@ function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relO
   return{kind:'rescue',power:fr.i,life:60,title:`${fr.name} offers a rescue`,
     text:`Funds are below ${fmtM(FUNDS_FLOOR)}. ${fr.name} will put in ${fmtM(need+30)} for a 30% stake and a board seat. Or investors lend ${fmtM(need)}, to be repaid ×1.3 from half of all future income.`,
     opts:[['stake','Take the stake'],['loan','Take the loan']]}}
-function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);
+function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
   const has=k=>PROG.decisions.some(x=>x.kind===k),firsts=Object.keys(PROG.done).length,V=valuation();
   // investors circle an established public program
-  if(!has('ipo')&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-d/350)){const amt=Math.round(V*0.25);
+  if(!has('ipo')&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
     offerDecision({kind:'ipo',amt,title:`Investors offer ${fmtM(amt)} for a 25% stake`,text:`A privatization: cash now, more commercial work and freedom, a smaller budget day. ${POWERS[HOME].align[0]>0?'The market-minded public would approve.':'Many at home will call it selling the family silver.'}`,
       opts:[['yes','Sell the stake'],['no','Decline']]})}
   // a friendly power wants in
   const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3);
-  if(!has('stake')&&fr.length&&firsts>=1&&R()<1-Math.exp(-d/500)){const p=fr[R()*fr.length|0],amt=Math.round(V*0.15);
+  if(!has('stake')&&fr.length&&firsts>=1&&R()<1-Math.exp(-dd/500)){const p=fr[R()*fr.length|0],amt=Math.round(V*0.15);
     offerDecision({kind:'stake',power:p.i,amt,title:`${p.name} offers ${fmtM(amt)} for a 15% stake`,text:`Their money and a share of their budget days, plus their contracts. Their rivals will notice, and so will opinion at home.`,
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
   // career moves: when things go badly (a hail mary) or very well (a step up), the team itself gets offers
   const bad=badness(),good=firsts>=5&&opOf(HOME)>60&&!bad;
-  if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/900))){
+  if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-dd*(bad?bad/150:1/900))){
     if(R()<0.5){const sc=p=>p.econ*p.tech*opOf(p.i)*(flav(p.i).money==='commodity'?1.6:1),c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>sc(b)-sc(a))[0];
       if(c){const amt=Math.round(40+V*(good?0.5:0.3));
         offerDecision({kind:'defect',power:c.i,amt,life:30,title:`${c.name} wants your whole team`,

@@ -55,7 +55,12 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);orbTick(T0,PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S);rvFieldSci(T0,PROG.day*DAY_S);seisTick(T0,PROG.day*DAY_S)}
+// the world moves in pieces that end on whole days (Q526): the piece that reaches day n rolls that day's dice (worldTick).
+// halt() (advanceTo's) can end the wait after a piece: on the day a decision came. The orbits then move once over the
+// whole span, as before (their steppers and a cruise's encounter search don't give the same answer cut in pieces)
+function advanceDays(d,halt){if(!(d>0))return;const t0=PROG.day,t1=t0+d;
+  while(PROG.day<t1){const a=PROG.day,n=Math.floor(a+1e-9)+1,b=t1<n?t1:n;PROG.day=b;worldTick(b-a,b>=n-1e-9?n:null);if(halt&&b<t1&&halt())break}
+  const T0=t0*DAY_S,T1=PROG.day*DAY_S;orbTick(T0,T1);rvFieldTick(T0,T1);rvFieldSci(T0,T1);seisTick(T0,T1)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -686,7 +691,8 @@ function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(da
 const nextEvent=()=>upcoming()[0]||null;
 // advance the calendar to a day (or the next event), stopping early at an event that needs you or a new decision
 function advanceTo(day){if(devWaiting().length)return{kind:'deviation',text:'A dispatched flight needs you'};const n0=(PROG.decisions||[]).length;let stopped=null,guard=0;if(day==null){const e=nextEvent();if(!e)return null;day=e.day}
-  while(PROG.day<day-1e-9&&guard++<500){const e=nextEvent(),to=e&&e.day<day?e.day:day;advanceDays(to-PROG.day+1e-9);   // (a hair past, so the event's own tick fires)
+  const halt=()=>(PROG.decisions||[]).length>n0||devWaiting().length>0;   // a decision the world rolls stops you on its day (Q526)
+  while(PROG.day<day-1e-9&&guard++<500){const e=nextEvent(),to=e&&e.day<day?e.day:day;advanceDays(to-PROG.day+1e-9,halt);   // (a hair past, so the event's own tick fires)
     if((PROG.decisions||[]).length>n0){stopped={kind:'decision',text:'A decision is waiting'};break}
     if(devWaiting().length){stopped={kind:'deviation',text:'A dispatched flight needs you'};break}
     if(e&&e.day<day&&e.stop){stopped=e;if(e.cruise)cruiseSeen(e.cruise);break}}
@@ -1018,25 +1024,25 @@ const natWord=n=>n>.7?'fervent':n>.5?'high':n>.3?'moderate':'low';
 // failures at home: open programs take the whole hit now; closed ones a part, the rest piles up as leak risk
 function failHit(x,what){const o=flav(HOME).open;opAdd(HOME,x*(0.4+0.6*o));
   if(o<0.5){PROG.hush=(PROG.hush||0)+1;PROG.hushPen=(PROG.hushPen||0)+x*0.6*(1-o)*1.5;HOOK.news(`Officially, nothing happened (${what})`,'warn')}}
-function flavTick(d,R){PROG.nat=PROG.nat||{};
+function flavTick(d,R,dd=d){PROG.nat=PROG.nat||{};
   for(const p of POWERS){const n=natOf(p.i),tgt=clamp(flav(p.i).nat+0.3*tensionOf(p.i),0,1);PROG.nat[p.i]=n+(tgt-n)*(1-Math.exp(-d/200))}
   // the commodity cycle (its own clock, ~500 days)
-  const c0=PROG.comm||0;PROG.commPh=(PROG.commPh??R()*6.28)+d*6.2832/500+(R()-.5)*0.2*Math.sqrt(d/10);PROG.comm=clamp(0.8*Math.sin(PROG.commPh),-1,1);
+  const c0=PROG.comm||0;if(R||PROG.commPh!=null){PROG.commPh=(PROG.commPh??R()*6.28)+d*6.2832/500+(R?(R()-.5)*0.2*Math.sqrt(dd/10):0);PROG.comm=clamp(0.8*Math.sin(PROG.commPh),-1,1)}
   if(flav(HOME).money==='commodity'){if(c0<0.5&&PROG.comm>=0.5)HOOK.news('Commodity boom: the treasury is overflowing','ok');if(c0>-0.5&&PROG.comm<=-0.5)HOOK.news('Commodity bust: belts tighten everywhere, rockets included','bad')}
   const F=flav(HOME);
   // leaks of hushed-up failures: likelier the more there are
-  if(PROG.hush&&R()<1-Math.exp(-d*0.002*PROG.hush)){opAdd(HOME,PROG.hushPen);   // hushPen is the (negative) deferred hit
+  if(PROG.hush&&R&&R()<1-Math.exp(-dd*0.002*PROG.hush)){opAdd(HOME,PROG.hushPen);   // hushPen is the (negative) deferred hit
     HOOK.news(`Leaked: the program quietly lost ${PROG.hush} flight${PROG.hush>1?'s':''} it never admitted to`,'bad');PROG.hush=0;PROG.hushPen=0}
   // elections (open programs): budget mood for the next term
-  if(F.open>=0.6){if(PROG.nextElection==null)PROG.nextElection=300+R()*200;
+  if(F.open>=0.6&&(PROG.nextElection!=null||R)){if(PROG.nextElection==null)PROG.nextElection=300+R()*200;
     if(PROG.day>=PROG.nextElection-50&&!PROG.electionWarned){PROG.electionWarned=true;HOOK.news('Election in 50 days: a success now would not hurt','warn')}
     if(PROG.day>=PROG.nextElection){const o=opOf(HOME);PROG.bmult=o>55?1.25:o<40?0.7:1;PROG.nextElection+=400;PROG.electionWarned=false;
       HOOK.news(o>55?'Re-elected: the government doubles down on space':o<40?'New government trims the space budget':'Election: the space budget survives, unchanged',o>55?'ok':o<40?'bad':'')}}
   // the leadership's demand for a spectacular (closed programs)
   if(F.open<0.5){if(PROG.demand&&PROG.day>PROG.demand.by){opAdd(HOME,-10);HOOK.news('The leadership is displeased: no spectacular by the anniversary','bad');PROG.demand=null}
-    if(!PROG.demand&&stateShare()>=0.5&&R()<1-Math.exp(-d/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular by the anniversary, 60 days from now: a first, or a contract worth 40M+','warn')}}
+    if(!PROG.demand&&stateShare()>=0.5&&R&&R()<1-Math.exp(-dd/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular by the anniversary, 60 days from now: a first, or a contract worth 40M+','warn')}}
   // regime change can cancel a security state's program
-  if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R()<1-Math.exp(-d/600))cancelProgram(R)}
+  if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R&&R()<1-Math.exp(-dd/600))cancelProgram(R)}
 function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import'||(x[1].how==='giant'&&x[1].from!==HOME));
   if(grey.length)HOOK.news(`Bought through intermediaries at triple the price: ${grey.map(x=>PARTS[x[0]].name).join(', ')}`,'warn');
   if(imp.length||grey.length)opAdd(HOME,-0.4*natK()*(imp.length+grey.length)/Math.max(1,ks.length))}

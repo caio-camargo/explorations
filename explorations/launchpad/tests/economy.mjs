@@ -716,8 +716,8 @@
 
 // econ-31. A missed deadline leaves no opinion behind, then or later (economy worker, QUEUE Q446, TESTING 247; DECISIONS
 // D17.4): two copies of a fresh world, one takes the first offer and lets it lapse, both wait to the same days up to ~200;
-// the client's opinion matches the twin's at every one. The robot's 4-point gap was the world's own dice: each tick is
-// seeded by its length, and a taken contract adds calendar stops (its deadline), so the two worlds drift apart; there the
+// the client's opinion matches the twin's at every one. The robot's 4-point gap was the world's own dice: each tick was
+// seeded by its length (until Q526, v1.261: econ-32), and a taken contract adds calendar stops (its deadline), so the two worlds drift apart; there the
 // relation to a rival fell below zero in one run only and that rival's first cost home −4.6. So the chance movers of
 // opinion are held still here: no rival races and home is open (no leadership demands). notes/economy.md § "Q446".
 {
@@ -733,4 +733,26 @@
   check('missed deadline (Q446): to day ~200 the client\'s opinion stays equal to a no-contract twin\'s waiting to the same days',
     took && missed && back && trail.every(x => Math.abs(x) < 1e-6),
     `${A.cTitle(c)} for power ${c.client}, deadline day ${c.deadline.toFixed(0)}; opinion ${op0.toFixed(2)} → ${A.opOf(c.client).toFixed(2)} (twin ${B.opOf(c.client).toFixed(2)}), largest gap ${Math.max(...trail.map(Math.abs)).toExponential(1)}`);
+}
+
+// econ-32. The world doesn't care how you wait (economy worker, QUEUE Q526, from Q446): the world's dice are the
+// calendar's, one roll a whole day from the save's seed and the day (wDice), so one save waited to day 200 in 1-day steps,
+// in 10-day steps, or with a contract taken (its deadline stops, advanceTo's uneven steps) gets the same relations,
+// opinions, rival progress and race. A closed home (leadership demands on), rivals racing. Before Q526 each tick was
+// seeded by its length and these drifted apart (Δrelation ~0.6, Δopinion ~10). notes/economy.md § "Q526".
+{
+  const mk = () => { const D = new Function(src + 'return {PROG,HOOK,POWERS,opOf,acceptOffer,advanceDays,advanceTo,ensureBoard,chooseStart,home:()=>{HOME=0;PROG.riv=null;RIVALS=raceSchedule()}};')();
+    D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+    Object.assign(D.PROG, { homeArch: 'closedSuper', wseed: 1077, flights: 1, done: { beeper: { day: 0 } } }); D.home(); D.chooseStart('agency'); D.ensureBoard(); D.PROG.funds = 1e5; return D; };
+  const A = mk(), B = mk(), C = mk(), END = 200;
+  while (A.PROG.day < END - 1e-9) A.advanceDays(1);
+  while (B.PROG.day < END - 1e-9) B.advanceDays(10);
+  const took = C.acceptOffer(C.PROG.offers[0].id);
+  for (let k = 0; C.PROG.day < END - 1e-9 && k < 200; k++) C.advanceTo(Math.min(END, C.PROG.day + 7));   // stops at its deadline's warnings, and at decisions
+  const W = X => ({ rel: X.PROG.rel, op: X.POWERS.map(p => X.opOf(p.i)), riv: X.POWERS.map(p => X.PROG.riv[p.i] ? X.PROG.riv[p.i].k + X.PROG.riv[p.i].p : 0), lost: JSON.stringify(X.PROG.raceLost) });
+  const gap = (x, y) => Math.max(...Object.keys(x.rel).map(k => Math.abs(x.rel[k] - y.rel[k])), ...x.op.map((v, i) => Math.abs(v - y.op[i])), ...x.riv.map((v, i) => Math.abs(v - y.riv[i])));
+  const a = W(A), b = W(B), c = W(C), gb = gap(a, b), gc = gap(a, c);
+  check('the world doesn\'t care how you wait (Q526): one save to day 200 in 1-day steps, 10-day steps, or with a contract taken (uneven stops) has the same relations, opinions, rival progress and race (to 1e-3)',
+    took && gb < 1e-3 && gc < 1e-3 && a.lost === b.lost && a.lost === c.lost && Object.keys(a.rel).length > 0,
+    `largest gap: 10-day ${gb.toExponential(1)}, contract ${gc.toExponential(1)}; home opinion ${a.op[0].toFixed(2)}/${b.op[0].toFixed(2)}/${c.op[0].toFixed(2)}; race ${a.lost}`);
 }

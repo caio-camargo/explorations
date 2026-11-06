@@ -33,11 +33,19 @@ const relOf=(i,j)=>i===j?1:PROG.rel[pairKey(i,j)]??relBase(i,j);
 const relWord=r=>r>.55?'allied':r>.2?'friendly':r>-.2?'neutral':r>-.55?'tense':'hostile';
 const opOf=i=>PROG.op[i]??(i===HOME?55:clamp(48+12*relOf(HOME,i),20,80));
 function opAdd(i,d){PROG.op[i]=clamp(opOf(i)+d,0,100)}
-function worldTick(d){const R=rng(PROG.wseed=(PROG.wseed*1103515245+12345+Math.floor(d*1000))>>>0),k=1-Math.exp(-d/150);
+// the world's dice are the calendar's (QUEUE Q526): advanceDays splits time at whole days, and day n rolls once, when the
+// clock reaches it, from the save's seed and n (wDice; a stream per subsystem, so an offer taken can't shift a rival's
+// rolls). Between rolls (n null) only the smooth parts move, over the real span (relaxation, fades, money). So the same
+// save waited in 1-day or 10-day steps, or stopped by a deadline, gets the same world. (Before, the dice were seeded by
+// the tick's length, and how you waited changed the world: Q446.)
+const wDice=(n,salt)=>rng((PROG.wseed^Math.imul(n+1,0x9E3779B1)^Math.imul(salt,0x85EBCA77))>>>0);
+function worldTick(d,n=null){const R=n!=null?wDice(n,1):null,k=1-Math.exp(-d/150);
   for(let i=0;i<POWERS.length;i++)for(let j=i+1;j<POWERS.length;j++){const key=pairKey(i,j);let r=relOf(i,j);
-    r+=(relBase(i,j)-r)*k+(R()-.5)*0.12*Math.sqrt(d/20);
-    if(R()<1-Math.exp(-d*0.0015*(1.2-r))){r-=.35;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name}: talks collapse, embassies recalled`,'warn')}
-    else if(R()<1-Math.exp(-d*0.002)){r+=.25;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name} sign a surprise friendship treaty`,'ok')}
+    r+=(relBase(i,j)-r)*k;
+    if(R){r+=(R()-.5)*0.12*Math.sqrt(1/20);   // a day's worth of drift and chance, once a day
+      if(R()<1-Math.exp(-0.0015*(1.2-r))){r-=.35;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name}: talks collapse, embassies recalled`,'warn')}
+      else if(R()<1-Math.exp(-0.002)){r+=.25;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name} sign a surprise friendship treaty`,'ok')}}
     PROG.rel[key]=clamp(r,-1,1)}
   for(const p of POWERS)PROG.op[p.i]=opOf(p.i)+(50-opOf(p.i))*(1-Math.exp(-d/250));   // memory fades
-  econTick(d,R);satTick(d,R);utilTick(d)}
+  const S=n!=null?salt=>wDice(n,salt):null;
+  econTick(d,S&&S(2),1,S);satTick(d,S&&S(3),1);utilTick(d)}
