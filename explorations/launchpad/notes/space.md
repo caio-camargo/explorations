@@ -2406,3 +2406,76 @@ label, as before. Q488's drawMap block is untouched.
 
 Test `space-32` (the one-revolution and the decaying-orbit checks failed before: 226.28 periods, 1,461 points; 13.93
 periods drawn, no break). TESTING row 333.
+
+## Plan: EVA E0, the movement test ground (2026-11-06, space session, QUEUE Q531; EVA.md § 3, § 6a)
+
+**Where it lives.** `sim/eva.js` is the movement: no DOM, inside the SIM block (after `sim/rovers.js`), one global
+`EVA` so tests reach it with one name. It works in a **local flat frame** (x east, y up, z north, metres) against a
+*world* object: a gravity vector, `ground(x, z) → height`, a friction μ, and later boxes, rails and tether points. E2 will
+hand it a tangent plane at the landing site (rovers' `rvGroundR` under it); at walking scale the curvature is nothing.
+The lab is its own page, **`eva-lab.html`**, loading `sim/core.js` and `sim/eva.js` and nothing else: it opens in a
+second, needs no save, no planet and no GPU passes. `index.html?eva-lab` sends you there, and the Rover yard links to it.
+Its drawing is a small WebGL of its own (boxes, lines, a depth buffer), not `app/gl.js`.
+
+**The walker** (EVA.md § 3, as a model you can reason about):
+- **Standing and walking is an inverted pendulum on the stance foot** (the linear inverted pendulum, LIPM): the centre of
+  mass at height h over the ground, accelerating horizontally by ω²(x − foot), ω = √(g/h). Walking is *where the next foot
+  goes*: each step puts it at the capture point plus a Raibert correction toward the wanted velocity, no farther than the
+  leg reaches. The step's period scales with √(L/g) (dynamic similarity), so the Moon's walk is slow by itself, and at 0 g
+  there is no walk.
+- **The foot's force goes through the friction cone** of the ground under it: on a slope, uphill, braking or turning,
+  more than μN slips. A slip, or a lean the next step can't catch, is a **fall**.
+- **The lope** begins when the wanted speed's Froude number v²/(gL) passes 0.5 (Kram 1997): each stance ends in a push off
+  the ground, then ballistic flight; foot placement only happens at touchdown, so in low g a correction waits for the
+  ground. **The jump** is the leg's push (a force over a crouch): a few cm in a suit at Tellus, ~2 m on Selene, more than
+  escape speed on a small body (the lab reads escape speed as √(2gR) for the chosen body).
+- **Falls:** the body lies down, slides to rest, and gets up after a time (slower in low g). Tunable.
+- **States:** `stand` (stance), `air`, `down`; E0c adds `grab` (rails) and `float`.
+
+**Slices** (each one is something Caio can open):
+- **E0a — the flat pad and slopes, at any gravity.** Bodies from `BODIES` and `SYSTEM_BODIES`, a slider 0–1.5 g; the 50 m
+  straight with marks, ridges at 5/10/20/30°; keys (W/S, A/D turn, Q/E sidestep, Shift hurry, Space jump) and click to go;
+  pause, ×0.25, step, reset; camera follow / side / top; debug drawing (CoM, foot, capture point, contact force, friction
+  cone use, footprints, trail); the readout (speed, Froude, gait, contact, lean, step period). A test section: walk 50 m
+  at three gravities, the walk → lope change near Fr 0.5, a 30° slope on Selene.
+- **E0b —** stairs (15/25/40 cm), a ladder, gaps and ledges, rough ground (rocks, a crater rim, loose soil), a lander mock
+  with a hatch and a porch, a rover seat.
+- **E0c — the 0 g hall:** handrails (hand over hand), tether points (a spring of the era's length), drifting off, a
+  second vessel; and the spinning hull.
+- **E0d —** the tweak panel with *Copy values*, record and replay of inputs, `study_eva.mjs`.
+
+**The figure** is ~10 shaded boxes posed from the state: feet where the model put them, knees by two-bone IK, the torso
+leaning by (x − foot)/h, arms swinging opposite. No suits until E1.
+
+## v1.263 — EVA E0a: the test ground's flat and slopes (2026-11-06, space session, QUEUE Q531)
+
+Built from the plan above: `sim/eva.js` (the walker, the course, the bodies; `EVA` is its one global for tests) and
+`eva-lab.html` (the page). `index.html?eva-lab` redirects; the Rover yard has *EVA lab ↗* (a new tab).
+
+**Three things the first runs taught** (each one was a bug, then a rule):
+- **The ankle must not fight the walk.** Steering the centre of pressure to the capture point on every frame is a
+  standing-balance reflex: while walking it braked every stride (Tellus walked at 0.18 m/s for a wanted 1.4). Now the
+  ankle balances only when nothing is asked; walking, the steps do the work.
+- **Ask a step only for the change the grip allows.** The pendulum's exact placement asks for the whole velocity change
+  in one step; at Selene's μg ≈ 1 m/s² that slipped, and lopes fell 14 times in 2 minutes. Capping the change to 70 % of
+  (μ − slope)·g·P fixed it with no new constant worth tuning.
+- **Look ahead on slopes.** A stride at speed v leans the foot's force by ~atan(v·tanh(ωP/2)/(ωh)); with the slope's angle
+  that must stay inside the friction angle, so the walk slows on steep ground. Reading only the ground underfoot, it
+  sped up on the 20° ridge's flat top and slipped off its far edge; reading 2 m ahead, it doesn't.
+
+**Measured** (tests/space.mjs § space-33, μ 0.6, the default tune):
+
+| | walk 50 m | hurried (lope) | time in the air, lope | 20° ridge, 40 m | jump |
+|---|---|---|---|---|---|
+| Tellus 9.81 | 45 s, 1.10 m/s | 2.67 m/s | 26 % | 51 s | 0.06 m |
+| Selene 1.62 | 108 s, 0.46 m/s | 1.14 m/s | 47 % | 126 s | 1.87 m |
+| Nyx 0.40 | 218 s, 0.23 m/s | — | — | — | — |
+
+The 30° ridge is refused at its foot (past 90 % of the 31° friction angle), standing. A 3 m drop is a fall at Tellus
+(7.7 m/s, down 2 s) and a landing at Selene. At 0.005 m/s² on a 500 m rock the jump (2.66 m/s) beats escape (2.24).
+Selene's lope at 1.1 m/s sits near the Apollo crews' ~1 m/s; the walk at 0.46 is slower than theirs, and that is the
+first thing for Caio's feel pass (`frWalk`, `kStep`).
+
+**Not yet:** walking off a ledge sideways reads as "refused" (the look-ahead sees the 45° side) rather than a stumble;
+falls only come from drops, slips and leans, and the walk is careful enough that keys rarely cause one (a hard turn while
+loping on Selene may). No stumble on rocks until E0b's rough ground.

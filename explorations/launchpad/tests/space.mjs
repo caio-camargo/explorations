@@ -934,3 +934,39 @@
   check('a Tellus → Selene transfer still finds the encounter (Q487), and the Selene leg after it', !!tr && !!tr[1].path && tr[1].path.length > 2,
     tr ? `${legs(tr)}; encounter in ${(tr[0].endT / 86400).toFixed(2)} d, pass ${((tr[1].minR - Sl.R) / 1e3).toFixed(0)} km up` : 'no encounter found');
 }
+
+// space-33. EVA E0a: astronauts on foot (space, QUEUE Q531; EVA.md § 3, § 6a; notes/space.md § "Plan: EVA E0"). The
+// lab's headless twin: the same walker on the same course. Walk the 50 m straight at three gravities; lope when hurried;
+// climb the 20° ridge and refuse the 30° one (μ 0.6 is a 31° friction angle); jump; a drop that is a fall at Tellus and
+// not at Selene; nothing to push against at 0 g.
+{
+  const { EVA } = api, B = n => api.BODIES.find(b => b.name === n), gOf = b => b.mu / b.R ** 2;
+  const run = (g, R, st, inp, secs, stop) => { const W = EVA.world(g, R), A = EVA.new(W, st.x, st.z, st.psi); Object.assign(A.in, inp); let t = 0, air = 0;
+    while (t < secs && !(stop && stop(A))) { EVA.step(A); t += EVA.DT; if (A.st === 'air') air += EVA.DT; } return { A, t, air }; };
+  const S = EVA.stations, straight = S[0], ridge = a => S.find(s => s.k === 'slope' + a), past50 = A => A.p[2] >= 50;
+  const walks = ['Tellus', 'Selene', 'Nyx'].map(n => ({ n, ...run(gOf(B(n)), B(n).R, straight, { fwd: 1 }, 400, past50) }));
+  check('EVA: the 50 m straight walked at Tellus, Selene and Nyx without a fall, slower as gravity falls (the step\'s period goes as √(L/g))',
+    walks.every(w => past50(w.A) && w.A.rec.falls === 0) && walks[0].t < walks[1].t && walks[1].t < walks[2].t,
+    walks.map(w => `${w.n} ${w.t.toFixed(0)} s (${(50 / w.t).toFixed(2)} m/s, ${w.A.rec.steps} steps)`).join('; '));
+  const sel = gOf(B('Selene')), hT = run(9.81, B('Tellus').R, straight, { fwd: 1, hurry: true }, 400, past50), hS = run(sel, B('Selene').R, straight, { fwd: 1, hurry: true }, 400, past50);
+  check('EVA: hurried, it lopes (Froude past 0.5): off the ground part of each stride, about half the time on Selene; faster than walking',
+    hT.A.rec.falls === 0 && hS.A.rec.falls === 0 && hT.air / hT.t > .1 && hS.air / hS.t > .35 && hT.t < walks[0].t && hS.t < walks[1].t,
+    `Tellus ${(50 / hT.t).toFixed(2)} m/s, ${(100 * hT.air / hT.t).toFixed(0)} % in the air; Selene ${(50 / hS.t).toFixed(2)} m/s, ${(100 * hS.air / hS.t).toFixed(0)} % in the air`);
+  const r20 = [9.81, sel].map(g => run(g, null, ridge(20), { fwd: 1 }, 300, A => A.p[2] >= 40)), r30 = run(sel, null, ridge(30), { fwd: 1 }, 60);
+  check('EVA: the 20° ridge is walked over without a fall (slowing on the slope), and the 30° one is refused at its foot, standing (past 90 % of the friction angle)',
+    r20.every(r => r.A.p[2] >= 40 && r.A.rec.falls === 0) && r30.A.rec.falls === 0 && r30.A.p[2] < 6 && r30.A.st === 'stand',
+    `20°: Tellus ${r20[0].t.toFixed(0)} s, Selene ${r20[1].t.toFixed(0)} s; 30°: stopped at z ${r30.A.p[2].toFixed(1)} m`);
+  const jump = (g, R) => { const r = run(g, R, straight, { jump: true }, 120, A => A.st === 'stand' && A.rec.airT > 0); return r.A; };
+  const jT = jump(9.81, B('Tellus').R), jS = jump(sel, B('Selene').R), small = run(.005, 500, straight, { jump: true }, 30);
+  check('EVA: a jump is the leg\'s push over a crouch: a few cm in a suit at Tellus, over 1.5 m on Selene, faster than escape on a 500 m rock',
+    jT.rec.top < .15 && jS.rec.top > 1.5 && small.A.rec.escaped && small.A.st === 'air',
+    `Tellus ${jT.rec.top.toFixed(2)} m, Selene ${jS.rec.top.toFixed(2)} m; 500 m rock at 0.005 m/s²: ${EVA.jumpV(EVA.TUNE, .005).toFixed(2)} m/s vs escape ${EVA.escV({ g: .005, R: 500 }).toFixed(2)}`);
+  const drop = g => { const W = EVA.world(g, null), A = EVA.new(W, 0, 10, 0); A.st = 'air'; A.p[1] += 3; let t = 0, down = 0;
+    while (t < 30) { EVA.step(A); t += EVA.DT; if (A.st === 'down') down += EVA.DT; } return { A, down }; };
+  const dT = drop(9.81), dS = drop(sel);
+  check('EVA: a 3 m drop is a fall at Tellus (7.7 m/s) and gets up again; at Selene (3.1 m/s) it lands on its feet',
+    dT.A.rec.falls === 1 && dT.down > 1 && dT.A.st === 'stand' && dS.A.rec.falls === 0 && dS.A.st === 'stand', `Tellus: down ${dT.down.toFixed(1)} s`);
+  const z = run(0, null, straight, { fwd: 1 }, 5);
+  check('EVA: at 0 g there is nothing to push against: the keys do nothing, it floats where it was (rails and tethers come with E0c)',
+    z.A.st === 'float' && len(z.A.v) < 1e-9 && Math.abs(z.A.p[2] - straight.z) < 1e-9, z.A.tel.why);
+}

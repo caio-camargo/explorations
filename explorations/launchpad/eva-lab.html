@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>EVA lab — Launchpad</title>
+<!-- eva-lab.html — the EVA movement test ground (space session, QUEUE Q531; EVA.md § 6a; notes/space.md § "Plan: EVA E0").
+     A developer's tool, not a training simulator: it loads only the simulation's math and bodies (sim/core.js,
+     sim/system.js) and the movement (sim/eva.js), and draws with a small WebGL of its own. index.html?eva-lab opens it. -->
+<style>
+:root{--fg:#d8dde4;--dim:#8a93a0;--acc:#f0b84a;--line:#3a4250;--bg:rgba(14,17,22,.86)}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--fg);font:12px/1.45 ui-monospace,Consolas,monospace}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}#ov{pointer-events:none}
+#panel{position:fixed;left:8px;top:8px;bottom:8px;width:250px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+#read{position:fixed;right:8px;top:8px;width:330px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;white-space:pre}
+#help{position:fixed;left:276px;bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 9px;color:var(--dim)}
+#tm{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:15px;color:var(--acc);text-shadow:0 1px 3px #000}
+h1{font-size:15px;margin:0;color:var(--acc);letter-spacing:.08em}h2{font-size:11px;margin:12px 0 4px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.sub{color:var(--dim)}a{color:var(--acc)}
+button{font:inherit;background:rgba(255,255,255,.06);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:2px 6px;margin:1px 2px 1px 0;cursor:pointer}
+button:hover{border-color:var(--dim)}button.on{border-color:var(--acc);color:var(--acc)}
+select,input[type=range]{width:100%;font:inherit;background:rgba(0,0,0,.3);color:var(--fg);border:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:6px}.k{color:var(--acc)}.warn{color:#f08a4a}
+</style></head><body>
+<canvas id="gl"></canvas><canvas id="ov"></canvas>
+<div id="panel"></div><div id="read"></div><div id="tm"></div>
+<div id="help"><span class="k">W/S</span> walk · <span class="k">A/D</span> turn · <span class="k">Q/E</span> sidestep · <span class="k">Shift</span> hurry · <span class="k">Space</span> jump · <span class="k">click</span> walk to ·
+  <span class="k">right-drag</span> look · <span class="k">wheel</span> zoom · <span class="k">P</span> pause · <span class="k">,</span> slow · <span class="k">.</span> step · <span class="k">R</span> reset · <span class="k">C</span> camera · <span class="k">G</span> debug · <span class="k">1–5</span> stations</div>
+<script src="sim/core.js"></script>
+<script src="sim/system.js"></script>
+<script src="sim/eva.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+// ---------------------------------------------------------------- state
+const Q=new URLSearchParams(location.search);
+const BOD=EVA.bodies();
+let bodyI=Math.max(0,BOD.findIndex(b=>b.name===(Q.get('body')||'Selene'))),gNow=BOD[bodyI].g,muNow=.6,stI=clamp(+(Q.get('station')||1)-1,0,EVA.stations.length-1);
+let W=EVA.world(gNow,BOD[bodyI].R,muNow),A=null,paused=false,slow=false,stepOnce=0,camMode='follow',dbg=true,target=null;
+const cam={yaw:0,pitch:.3,dist:6,user:0,p:[0,1,0]};
+function spawn(){const s=EVA.stations[stI];A=EVA.new(W,s.x,s.z,s.psi);cam.yaw=s.psi;cam.user=0;target=null;cam.p=A.p.slice()}
+function setG(g,R,re=true){gNow=g;W.g=g;if(R!==undefined)W.R=R;if(re)panel();else{const l=$('glab');if(l)l.textContent=`${f(gNow)} m/s² · ${f(gNow/9.81)} g`}}
+spawn();
+
+// ---------------------------------------------------------------- GL
+const cv=$('gl'),gl=cv.getContext('webgl2',{antialias:true}),ov=$('ov'),ox=ov.getContext('2d');
+const VS=`#version 300 es
+in vec3 aP;in vec3 aN;in vec3 aC;uniform mat4 uVP;out vec3 vN;out vec3 vC;out vec3 vW;
+void main(){vN=aN;vC=aC;vW=aP;gl_Position=uVP*vec4(aP,1.);}`;
+const FS=`#version 300 es
+precision highp float;in vec3 vN;in vec3 vC;in vec3 vW;uniform vec3 uCam;uniform vec3 uSky;out vec4 o;
+void main(){vec3 c=vC;if(length(vN)>.5){vec3 n=normalize(vN),L=normalize(vec3(.45,.8,.35));c*=.32+.68*max(0.,dot(n,L));}
+  float f=1.-exp(-length(vW-uCam)/160.);o=vec4(mix(c,uSky,f*.85),1.);}`;
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(x);return x}
+const prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);gl.useProgram(prog);
+const U={vp:gl.getUniformLocation(prog,'uVP'),cam:gl.getUniformLocation(prog,'uCam'),sky:gl.getUniformLocation(prog,'uSky')};
+function mkBuf(){const vao=gl.createVertexArray(),b=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  [['aP',0],['aN',12],['aC',24]].forEach(([n,o])=>{const l=gl.getAttribLocation(prog,n);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,3,gl.FLOAT,false,36,o)});return{vao,b,n:0}}
+function upload(B,arr,usage=gl.DYNAMIC_DRAW){gl.bindBuffer(gl.ARRAY_BUFFER,B.b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(arr),usage);B.n=arr.length/9}
+const GROUND=mkBuf(),DYN=mkBuf(),LINES=mkBuf();
+// geometry helpers: triangles with normals, unlit lines (normal 0)
+const tri=(o,a,b,c,col)=>{const n=norm(cross(sub(b,a),sub(c,a)));for(const p of[a,b,c])o.push(p[0],p[1],p[2],n[0],n[1],n[2],col[0],col[1],col[2])};
+const quad=(o,a,b,c,d,col)=>{tri(o,a,b,c,col);tri(o,a,c,d,col)};
+const line=(o,a,b,col)=>{o.push(a[0],a[1],a[2],0,0,0,col[0],col[1],col[2],b[0],b[1],b[2],0,0,0,col[0],col[1],col[2])};
+// a box at c with axes X, Y, Z (unit) and half sizes
+function obox(o,c,X,Y,Z,hx,hy,hz,col){const P=(sx,sy,sz)=>add(c,add(mul(X,sx*hx),add(mul(Y,sy*hy),mul(Z,sz*hz))));
+  quad(o,P(1,-1,-1),P(1,1,-1),P(1,1,1),P(1,-1,1),col);quad(o,P(-1,-1,1),P(-1,1,1),P(-1,1,-1),P(-1,-1,-1),col);
+  quad(o,P(-1,1,-1),P(-1,1,1),P(1,1,1),P(1,1,-1),col);quad(o,P(-1,-1,1),P(-1,-1,-1),P(1,-1,-1),P(1,-1,1),col);
+  quad(o,P(-1,-1,1),P(1,-1,1),P(1,1,1),P(-1,1,1),col);quad(o,P(1,-1,-1),P(-1,-1,-1),P(-1,1,-1),P(1,1,-1),col)}
+// a limb: a box from a to b, width w, facing `side`
+function seg(o,a,b,w,col,side=[1,0,0]){const Y=norm(sub(b,a)),l=len(sub(b,a));let X=sub(side,mul(Y,dot(side,Y)));X=len(X)<1e-4?norm(cross(Y,[0,0,1])):norm(X);const Z=cross(X,Y);obox(o,mul(add(a,b),.5),X,Y,Z,w/2,l/2+w*.3,w/2,col)}
+function ball(o,c,r,col,n=10){for(let i=0;i<n;i++)for(let j=0;j<2*n;j++){const P=(a,b)=>{const t=Math.PI*a/n,f=Math.PI*b/n;return add(c,[r*Math.sin(t)*Math.cos(f),r*Math.cos(t),r*Math.sin(t)*Math.sin(f)])};
+  const a=P(i,j),b=P(i+1,j),cc=P(i+1,j+1),d=P(i,j+1);tri(o,a,cc,b,col);tri(o,a,d,cc,col)}}
+
+// ---------------------------------------------------------------- the course mesh (static)
+const GX0=-12,GX1=52,GZ0=-14,GZ1=72,GS=.5;
+function buildGround(){const o=[],h=(x,z)=>W.ground(x,z);
+  for(let x=GX0;x<GX1;x+=GS)for(let z=GZ0;z<GZ1;z+=GS){const a=[x,h(x,z),z],b=[x,h(x,z+GS),z+GS],c=[x+GS,h(x+GS,z+GS),z+GS],d=[x+GS,h(x+GS,z),z];
+    const n=EVA.normal(W,x+GS/2,z+GS/2),sl=Math.acos(clamp(n[1],-1,1))*180/Math.PI,chk=(Math.floor(x)+Math.floor(z))&1?1:.93;
+    let col=[.47*chk,.46*chk,.44*chk];if(sl>1)col=[.5*chk+sl*.006,.45*chk,.4*chk-sl*.004];
+    if(Math.abs(x)<1.2&&z>=0&&z<=50)col=[.56*chk,.56*chk,.54*chk];   // the straight's lane
+    quad(o,a,b,c,d,col)}
+  // the straight's marks: every metre a tick, every 5 m a bar, every 10 m a wide bar
+  for(let z=0;z<=50;z++){const w=z%10===0?1.2:z%5===0?.9:.25,t=z%5===0?.08:.03;obox(o,[0,.004,z],[1,0,0],[0,1,0],[0,0,1],w,.004,t,[.92,.92,.88])}
+  upload(GROUND,o,gl.STATIC_DRAW)}
+buildGround();
+
+// ---------------------------------------------------------------- the figure (EVA.md § 4: rigid pieces, procedural joints)
+const SUIT=[.9,.9,.88],PACK=[.72,.73,.74],BOOT=[.4,.4,.42],VISOR=[.85,.62,.2],GLOVE=[.55,.55,.58];
+function legIK(hip,foot,bend,L1=.45,L2=.45){let d=sub(foot,hip),D=len(d);if(D>L1+L2-.01){foot=add(hip,mul(d,(L1+L2-.01)/D));d=sub(foot,hip);D=len(d)}
+  const u=mul(d,1/D),b=norm(sub(bend,mul(u,dot(bend,u)))),a=(L1*L1-L2*L2+D*D)/(2*D),hgt=Math.sqrt(Math.max(0,L1*L1-a*a));return[add(add(hip,mul(u,a)),mul(b,hgt)),foot]}
+function figure(o,A){const T=A.T,fw=[Math.sin(A.psi),0,Math.cos(A.psi)],rt=[Math.cos(A.psi),0,-Math.sin(A.psi)],up=[0,1,0];
+  let tu,F=fw,hip,feet;
+  if(A.st==='down'){tu=fw;F=up;hip=add(A.p,mul(fw,-.25));feet=[add(add(hip,mul(fw,-.9)),mul(rt,-.13)),add(add(hip,mul(fw,-.9)),mul(rt,.13))]}
+  else{const e=A.st==='stand'?[(A.p[0]-A.c[0])/T.h,0,(A.p[2]-A.c[2])/T.h]:[A.v[0]*.06,0,A.v[2]*.06];tu=norm(add(up,e));hip=sub(A.p,[0,.1,0]);
+    const side=k=>mul(rt,k?.11:-.11);
+    if(A.st==='stand'){const s=clamp(A.stepT/Math.max(.05,A.stepP),0,1),moving=Math.hypot(A.v[0],A.v[2])>.05||Math.hypot(A.tel.vd[0],A.tel.vd[2])>.02;
+      const st=add(A.feet[A.sf],side(A.sf)),old=add(A.feet[1-A.sf],side(1-A.sf));
+      let sw=old;if(moving){const tgt=add(add([A.p[0]+A.v[0]*A.stepP*.5,A.f[1],A.p[2]+A.v[2]*A.stepP*.5],side(1-A.sf)),[0,0,0]),k=s*s*(3-2*s);
+        sw=add(add(mul(old,1-k),mul(tgt,k)),[0,Math.sin(Math.PI*s)*.12,0])}
+      feet=[];feet[A.sf]=st;feet[1-A.sf]=sw}
+    else{const ph=Math.sin(A.t*3);feet=[add(add(add(hip,[0,-.82,0]),mul(fw,.18*ph)),side(0)),add(add(add(hip,[0,-.82,0]),mul(fw,-.18*ph)),side(1))]}}
+  const sh=add(hip,mul(tu,.58)),head=add(sh,mul(tu,.26)),R=norm(cross(F,tu)).map(x=>-x);
+  // legs and boots
+  for(let k=0;k<2;k++){const hp=add(hip,mul(R,k?.11:-.11)),[knee,ft]=legIK(hp,feet[k],F);seg(o,hp,knee,.17,SUIT,R);seg(o,knee,ft,.15,SUIT,R);
+    obox(o,add(ft,mul(F,.06)),R,A.st==='down'?F:up,A.st==='down'?mul(tu,-1):F,.065,.05,.15,BOOT)}
+  // torso, pack, helmet
+  seg(o,hip,sh,.44,SUIT,R);obox(o,add(add(hip,mul(tu,.36)),mul(F,-.27)),R,tu,F,.22,.32,.1,PACK);
+  ball(o,head,.18,SUIT);obox(o,add(head,mul(F,.12)),R,tu,F,.12,.08,.06,VISOR);
+  // arms swing against the legs
+  const sw=A.st==='stand'?dot(sub(feet[0],feet[1]),F):0;
+  for(let k=0;k<2;k++){const s=add(sh,add(mul(R,k?.27:-.27),mul(tu,-.04))),hand=add(add(s,mul(tu,-.58)),add(mul(F,.12+(k?.25:-.25)*sw),mul(R,k?.06:-.06))),[el,h2]=legIK(s,hand,mul(F,-1),.3,.3);
+    seg(o,s,el,.13,SUIT,R);seg(o,el,h2,.12,SUIT,R);ball(o,h2,.06,GLOVE,4)}}
+// footprints: dark marks where the feet came down
+function prints(o){for(const[x,y,z,psi]of A.prints){const F=[Math.sin(psi),0,Math.cos(psi)],R=[Math.cos(psi),0,-Math.sin(psi)],n=EVA.normal(W,x,z);obox(o,[x,y+.006,z],R,n,F,.06,.003,.13,[.3,.3,.29])}}
+
+// ---------------------------------------------------------------- camera
+let VP=null,camW=[0,0,0],camB=null;
+function mat(fov,asp,n,f,eye,at){const Z=norm(sub(eye,at)),X=norm(cross([0,1,0],Z)),Y=cross(Z,X),t=1/Math.tan(fov/2);
+  const V=[X[0],Y[0],Z[0],0,X[1],Y[1],Z[1],0,X[2],Y[2],Z[2],0,-dot(X,eye),-dot(Y,eye),-dot(Z,eye),1],P=[t/asp,0,0,0,0,t,0,0,0,0,(f+n)/(n-f),-1,0,0,2*f*n/(n-f),0];
+  const M=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=P[k*4+r]*V[c*4+k];M[c*4+r]=s}camB={X,Y,Z,t,asp};return M}
+function camera(dt){const k=1-Math.exp(-dt*6);cam.p=add(cam.p,mul(sub(A.p,cam.p),k));
+  if(camMode==='follow'&&!cam.user){let d=A.psi-cam.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));cam.yaw+=d*(1-Math.exp(-dt*1.5))}
+  const at=cam.p;let eye;
+  if(camMode==='top')eye=add(at,[0,cam.dist*2.4,-.01]);
+  else if(camMode==='side'){const R=[Math.cos(A.psi),0,-Math.sin(A.psi)];eye=add(at,add(mul(R,cam.dist*1.3),[0,.4,0]))}
+  else eye=add(at,[-Math.sin(cam.yaw)*Math.cos(cam.pitch)*cam.dist,Math.sin(cam.pitch)*cam.dist,-Math.cos(cam.yaw)*Math.cos(cam.pitch)*cam.dist]);
+  const gy=W.ground(eye[0],eye[2])+.3;if(eye[1]<gy)eye[1]=gy;camW=eye;return mat(.9,cv.width/cv.height,.05,500,eye,at)}
+function project(p){const x=VP[0]*p[0]+VP[4]*p[1]+VP[8]*p[2]+VP[12],y=VP[1]*p[0]+VP[5]*p[1]+VP[9]*p[2]+VP[13],w=VP[3]*p[0]+VP[7]*p[1]+VP[11]*p[2]+VP[15];
+  if(w<.05)return null;return[(x/w*.5+.5)*ov.width,(.5-y/w*.5)*ov.height]}
+// a click on the ground: march the ray until it goes under
+function pick(mx,my){const B=camB,nx=(mx/innerWidth)*2-1,ny=1-(my/innerHeight)*2,d=norm(add(mul(B.Z,-1),add(mul(B.X,nx*B.asp/B.t),mul(B.Y,ny/B.t))));
+  let p=camW;for(let s=0;s<400;s++){const q=add(p,mul(d,.25));if(q[1]<=W.ground(q[0],q[2])){let a=p,b=q;for(let i=0;i<12;i++){const m=mul(add(a,b),.5);if(m[1]<=W.ground(m[0],m[2]))b=m;else a=m}return b}p=q}return null}
+
+// ---------------------------------------------------------------- input
+const keys=new Set();
+addEventListener('keydown',e=>{if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();keys.add(k);if(k===' ')e.preventDefault();if(e.repeat)return;
+  if(k==='p')paused=!paused;else if(k===',')slow=!slow;else if(k==='.'){paused=true;stepOnce++}else if(k==='r')spawn();
+  else if(k==='c')camMode={follow:'side',side:'top',top:'follow'}[camMode];else if(k==='g')dbg=!dbg;
+  else if(/^[1-9]$/.test(k)&&+k<=EVA.stations.length){stI=+k-1;spawn()}panel()});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));addEventListener('blur',()=>keys.clear());
+let drag=null;cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{if(e.button===2){drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)}else if(e.button===0){const p=pick(e.clientX,e.clientY);if(p){target=p;A.in.target=[p[0],p[2]]}}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;cam.yaw-=(e.clientX-drag[0])*.006;cam.pitch=clamp(cam.pitch+(e.clientY-drag[1])*.004,-.2,1.45);cam.user=1;drag=[e.clientX,e.clientY]});
+cv.addEventListener('pointerup',()=>drag=null);
+cv.addEventListener('wheel',e=>{cam.dist=clamp(cam.dist*Math.exp(e.deltaY*.001),1.5,60);e.preventDefault()},{passive:false});
+function readKeys(){const I=A.in,h=k=>keys.has(k)?1:0;I.fwd=h('w')-h('s');I.side=h('e')-h('q');I.turn=h('d')-h('a');I.hurry=keys.has('shift');I.jump=keys.has(' ');
+  if(I.fwd||I.side||I.turn){if(I.target){I.target=null;target=null}}if(I.fwd||I.turn)cam.user=0;if(!I.target)target=null}
+
+// ---------------------------------------------------------------- the panel and the readout
+const f=(x,n=2)=>Number.isFinite(x)?x.toFixed(n):'∞';
+function panel(){const on=b=>b?' class="on"':'';
+  let h=`<h1>EVA LAB</h1><div class="sub">the movement test ground · E0a: flat and slopes</div><div style="margin-top:4px"><a href="index.html">← Launchpad</a></div>`;
+  h+=`<h2>Gravity</h2><select id="body">`+BOD.map((b,i)=>`<option value="${i}"${i===bodyI?' selected':''}>${b.name} — ${f(b.g)} m/s²${b.gas?' (no surface)':''}</option>`).join('')+`</select>`
+    +`<div class="row" style="margin-top:4px"><span>slider</span><span class="k" id="glab">${f(gNow)} m/s² · ${f(gNow/9.81)} g</span></div><input id="gs" type="range" min="0" max="1.5" step=".005" value="${gNow/9.81}">`
+    +`<div><button id="g0"${on(gNow===0)}>0 g</button><button id="gT">Tellus</button><button id="gS">Selene</button><button id="gN">Nyx</button></div>`
+    +`<h2>Ground</h2><div class="row"><span>friction μ</span><span class="k" id="mul">${f(muNow)} (${f(Math.atan(muNow)*180/Math.PI,0)}°)</span></div><input id="mu" type="range" min=".1" max="1.2" step=".05" value="${muNow}">`;
+  h+=`<h2>Stations</h2>`+EVA.stations.map((s,i)=>`<div><button data-st="${i}"${on(i===stI)}>${i+1}</button> ${s.name}</div>`).join('');
+  h+=`<h2>Time</h2><button id="tp"${on(paused)}>Pause [P]</button><button id="ts"${on(slow)}>×0.25 [,]</button><button id="t1">Step [.]</button><button id="tr">Reset [R]</button>`;
+  h+=`<h2>View</h2>`+['follow','side','top'].map(m=>`<button data-cam="${m}"${on(camMode===m)}>${m}</button>`).join('')+`<button id="dbg"${on(dbg)}>debug [G]</button>`;
+  h+=`<div class="sub" style="margin-top:6px">${dbg?'<span style="color:#ff0">+</span> centre of mass · <span style="color:#4f4">+</span> centre of pressure (the line to the body is the leg, red as grip runs out) · <span style="color:#f4f">+</span> capture point · <span style="color:#4ef">|</span> foot force (1 m = the weight) · <span style="color:#fff">→</span> wanted velocity · <span style="color:#fa4">—</span> trail':''}</div>`;
+  h+=`<h2>Coming</h2><div class="sub">E0b stairs, ladder, gaps, rough ground, the lander and rover mocks · E0c the 0 g hall and a spinning hull · E0d tweak panel, record and replay</div>`;
+  $('panel').innerHTML=h;
+  $('body').onchange=e=>{bodyI=+e.target.value;setG(BOD[bodyI].g,BOD[bodyI].R)};
+  $('gs').oninput=e=>setG(+e.target.value*9.81,undefined,false);$('gs').onchange=()=>panel();
+  const pick=n=>{const i=BOD.findIndex(b=>b.name===n);if(i>=0){bodyI=i;setG(BOD[i].g,BOD[i].R)}};
+  $('g0').onclick=()=>setG(0);$('gT').onclick=()=>pick('Tellus');$('gS').onclick=()=>pick('Selene');$('gN').onclick=()=>pick('Nyx');
+  $('mu').oninput=e=>{muNow=+e.target.value;W.mu=muNow;$('mul').textContent=`${f(muNow)} (${f(Math.atan(muNow)*180/Math.PI,0)}°)`};
+  document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{stI=+b.dataset.st;spawn();panel()});
+  document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>{camMode=b.dataset.cam;panel()});
+  $('tp').onclick=()=>{paused=!paused;panel()};$('ts').onclick=()=>{slow=!slow;panel()};$('t1').onclick=()=>{paused=true;stepOnce++;panel()};$('tr').onclick=()=>{spawn();panel()};
+  $('dbg').onclick=()=>{dbg=!dbg;panel()};
+  document.querySelectorAll('#panel button').forEach(b=>b.addEventListener('mouseup',()=>b.blur()))}
+panel();
+function readout(){const T=A.T,g=gNow,v=Math.hypot(A.v[0],A.v[2]),vd=Math.hypot(A.tel.vd[0],A.tel.vd[2]),fr=EVA.froude(A),vL=Math.sqrt(T.frLope*g*T.L),jv=EVA.jumpV(T,g),esc=EVA.escV(W);
+  const b=BOD[bodyI],name=Math.abs(b.g-g)<1e-6?b.name:'custom',onG=A.st==='stand';
+  const lines=[`${name} · g ${f(g)} m/s² (${f(g/9.81)} g) · μ ${f(W.mu)}`,
+    `state   ${EVA.gait(A)}`,
+    `speed   ${f(v)} m/s · wanted ${f(vd)}`,
+    `Froude  ${g>0?f(fr):'—'} · lope past ${f(T.frLope)} (${f(vL)} m/s here)`,
+    `step    ${f(EVA.stepP(T,g))} s · lope contact ${f(g>0?clamp(T.kStance*Math.sqrt(T.L/g),.15,1.5):0)} s`,
+    `lean    ${onG?f(A.tel.lean,0)+'°':'—'} · falls at ${T.fallDeg}°`,
+    `grip    ${onG?(Number.isFinite(A.tel.cone)?f(100*A.tel.cone,0)+' % used':'none'):'—'}${onG&&A.tel.slip?'  SLIPPING':''}`,
+    `height  ${f(A.p[1]-T.h-W.ground(A.p[0],A.p[2]))} m off the ground${A.st==='air'?'':''}`,
+    `jump    ${jv>.05?f(jv)+' m/s → '+f(g>0?jv*jv/(2*g):Infinity,1)+' m up':'too heavy to jump'}`,
+    `escape  ${W.R?(esc<1e4?f(esc,1):f(esc,0))+' m/s':'—'}${A.rec.escaped?'  ESCAPED':''}`,
+    `record  ${f(A.rec.dist,1)} m · top ${f(A.rec.vmax)} m/s · ${A.rec.steps} steps`,
+    `        falls ${A.rec.falls} · air ${f(A.rec.airT,1)} s · highest ${f(A.rec.top)} m`,
+    A.tel.why?`note    ${A.tel.why}`:''];
+  $('read').textContent=lines.filter(Boolean).join('\n');$('tm').textContent=paused?'PAUSED':slow?'×0.25':''}
+
+// ---------------------------------------------------------------- the frame
+let last=performance.now(),rdAt=0;
+function frame(now){const dtR=Math.min(.1,(now-last)/1000);last=now;
+  if(innerWidth!==ov.width||innerHeight!==ov.height){const dpr=Math.min(2,devicePixelRatio||1);cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;ov.width=innerWidth;ov.height=innerHeight}
+  readKeys();
+  if(!paused)EVA.run(A,dtR*(slow?.25:1));else while(stepOnce>0){for(let i=0;i<4;i++)EVA.step(A);stepOnce--}
+  VP=camera(dtR);
+  gl.viewport(0,0,cv.width,cv.height);const sky=gNow<.05?[0,0,0]:[.02,.02,.03];gl.clearColor(sky[0],sky[1],sky[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+  gl.uniformMatrix4fv(U.vp,false,VP);gl.uniform3fv(U.cam,camW);gl.uniform3fv(U.sky,sky);
+  gl.bindVertexArray(GROUND.vao);gl.drawArrays(gl.TRIANGLES,0,GROUND.n);
+  const o=[];figure(o,A);prints(o);if(target)for(let i=0;i<16;i++){const a=i/16*6.283,b=(i+1)/16*6.283,r=.35,y=W.ground(target[0],target[2])+.02;
+    quad(o,[target[0]+r*Math.cos(a),y,target[2]+r*Math.sin(a)],[target[0]+r*Math.cos(b),y,target[2]+r*Math.sin(b)],[target[0]+(r-.07)*Math.cos(b),y,target[2]+(r-.07)*Math.sin(b)],[target[0]+(r-.07)*Math.cos(a),y,target[2]+(r-.07)*Math.sin(a)],[1,.75,.2])}
+  upload(DYN,o);gl.bindVertexArray(DYN.vao);gl.drawArrays(gl.TRIANGLES,0,DYN.n);
+  if(dbg){const L=[],X=(p,s,c)=>{line(L,add(p,[-s,0,0]),add(p,[s,0,0]),c);line(L,add(p,[0,-s,0]),add(p,[0,s,0]),c);line(L,add(p,[0,0,-s]),add(p,[0,0,s]),c)};
+    const tr=A.trail;for(let i=1;i<tr.length;i++)line(L,tr[i-1],tr[i],[1,.6,.2]);
+    X(A.p,.15,[1,1,0]);
+    if(A.st==='stand'){const cu=Math.min(1,A.tel.cone||0);X(A.c,.12,[.3,1,.3]);line(L,A.c,A.p,[cu,1-cu*.8,.2]);X(A.tel.cp,.1,[1,.3,1]);
+      line(L,A.c,add(A.c,mul(A.tel.F,1/(A.T.m*Math.max(gNow,.1)))),[.3,.9,1]);
+      const vd=A.tel.vd;if(len(vd)>.01)line(L,add(A.c,[0,.03,0]),add(A.c,add(vd,[0,.03,0])),[1,1,1])}
+    gl.disable(gl.DEPTH_TEST);upload(LINES,L);gl.bindVertexArray(LINES.vao);gl.drawArrays(gl.LINES,0,LINES.n);gl.enable(gl.DEPTH_TEST)}
+  // labels
+  ox.clearRect(0,0,ov.width,ov.height);ox.font='12px ui-monospace,Consolas,monospace';ox.textAlign='center';
+  const lab=(p,t,c='#dde')=>{const q=project(p);if(q){ox.fillStyle='rgba(0,0,0,.6)';ox.fillText(t,q[0]+1,q[1]+1);ox.fillStyle=c;ox.fillText(t,q[0],q[1])}};
+  for(let z=10;z<=50;z+=10)lab([-1.6,.05,z],z+' m');lab([0,.05,0],'start');
+  for(const r of EVA.ridges)lab([r.x,.3,4],r.a+'°','#fc8');
+  if(now-rdAt>100){rdAt=now;readout()}
+  requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script>
+</body></html>
