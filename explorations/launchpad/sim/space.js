@@ -192,11 +192,16 @@ function pairRate(A,B){const a=resid(A),b=resid(B),ci=Math.cos(Math.acos(clamp(d
   return s?Rs*Rs*s/(2*Math.PI*BAND_W*Math.max(ci,0.05))*DAY_S:0}
 const entryCrewed=q=>[q,...(q.attached||[]).map(x=>x.e)].some(e=>(e.shape||[]).some(o=>o.crew));
 const debrisTracked=()=>compEra()>=1;
+// the whole days a span reaches (Q526): each rolls once, on its own seed, so waiting in any steps gives the same hits
+// (advanceDays's rule: day n is reached at n − 1e-9). A test's roll keeps the old one roll for the span
+function dayMarks(T0,T1){const out=[];for(let n=Math.floor(T0/DAY_S+1e-9)+1;n<=Math.floor(T1/DAY_S+1e-9);n++)out.push(n);return out}
 function conjTick(T0,T1,roll){const K=PRESSURE_K[pressureOf('debris')]||0,days=(T1-T0)/DAY_S;if(!(K>0)||!(days>0))return;
   const up=satsUp(),J=up.filter(q=>q.junk),A=up.filter(q=>!q.junk);if(!J.length||!A.length)return;
   for(const a of A){if(!PROG.sats.includes(a))continue;const rates=J.filter(o=>PROG.sats.includes(o)).map(o=>[o,pairRate(a,o)]).filter(x=>x[1]>0);
-    const L=K*days*rates.reduce((s,x)=>s+x[1],0);if(!(L>0))continue;
-    const u=(roll||rng((Math.floor(T1/DAY_S)*104729+a.id*7919)|0))();if(u>=1-Math.exp(-L))continue;
+    const L1=K*rates.reduce((s,x)=>s+x[1],0);if(!(L1>0))continue;let u=null,L=0;
+    if(roll){L=L1*days;u=roll();if(u>=1-Math.exp(-L))u=null}
+    else for(const n of dayMarks(T0,T1)){const x=rng((n*104729+a.id*7919)|0)();if(x<1-Math.exp(-L1)){u=x;L=L1;break}}
+    if(u==null)continue;
     let w=u/(1-Math.exp(-L))*rates.reduce((s,x)=>s+x[1],0),o=rates[0][0];for(const[x,r]of rates){if(w<r){o=x;break}w-=r}
     if(entryCrewed(a)){skSpend(a,DODGE_DV);HOOK.news(`${a.name} was warned of ${o.name} on a collision course and moved out of its way`,'warn');continue}
     if(debrisTracked()&&skDv(a)>=DODGE_DV){skSpend(a,DODGE_DV);HOOK.news(`${a.name} dodged ${o.name}: tracked, warned, a ${DODGE_DV} m/s burn`,'ok');continue}
@@ -301,7 +306,10 @@ function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0
     const cf=catFrac(q.mass||0,Math.sqrt(TELLUS.mu/(TELLUS.R+TELLUS.atm+BAND_W*c.f.indexOf(Math.max(...c.f)))));
     if(q.junk)for(let b=0;b<BAND_N;b++)if(c.f[b]){rho[b]+=c.f[b]*4*c.R*c.R*Math.sqrt(TELLUS.mu/bandR(b))/bandV(b)*cf;mJ[b]+=c.f[b]*(q.mass||0);wJ[b]+=c.f[b]}   // per fragment a second
     if(entryCrewed(q)){if(r*K*YEAR_D>=CREW_WARN&&!q.fragWarn){q.fragWarn=T;HOOK.news(`${q.name}'s crew are warned: the fragment cloud in their orbit is thick enough to matter (about one hit in ${Math.round(1/(r*K*YEAR_D))} years); shielding and a higher orbit are the answers`,'warn')}continue}
-    const L=r*K*days*(q.junk?cf:1),u=(roll||rng((T*130363+q.id*15485863)|0))();if(u>=1-Math.exp(-L))continue;
+    const L1=r*K*(q.junk?cf:1);let u=null,L=0;
+    if(roll){L=L1*days;u=roll();if(u>=1-Math.exp(-L))u=null}
+    else for(const n of dayMarks(T0,T1)){const x=rng((n*130363+q.id*15485863)|0)();if(x<1-Math.exp(-L1)){u=x;L=L1;break}}   // a roll a day (Q526)
+    if(u==null)continue;
     const h=len(satAt(q,T1)[0])-TELLUS.R;
     if(q.junk||u<(1-Math.exp(-L))*cf){PROG.sats=PROG.sats.filter(x=>x!==q);const n=breakup(h,q.mass||0);   // shattered
       HOOK.news(q.junk?`${q.name} was shattered by a large fragment: about ${Math.round(n/1e3)},000 more pieces at ${Math.round(h/1e3)} km`:`${q.name} was shattered by a large fragment nobody could track: about ${Math.round(n/1e3)},000 more pieces`,'bad');continue}
@@ -1130,7 +1138,7 @@ const HAZ={Floods:g=>g.coast||g.has[14]||g.wet>0.7,Wildfire:g=>g.has[3]||g.has[5
 function cityGround(c){const b0=biomeAt(c.u),g={has:{},coast:false,T:b0.T,wet:b0.wet};g.has[b0.id]=1;
   for(const km of[25,60,120])for(let a=0;a<8;a++){const id=biomeAt(alongAz(c.u,a*Math.PI/4,km*1e3/TELLUS.R)).id;g.has[id]=1;if(!id&&km<=60)g.coast=true}return g}
 function disCities(dis){if(!hazMemo){hazMemo={};const gs=CITIES.map(cityGround);for(const k in HAZ)hazMemo[k]=gs.map((g,i)=>HAZ[k](g)?i:-1).filter(i=>i>=0)}return hazMemo[dis]||[]}
-function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
+function satTick(d,R,dd=d){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
@@ -1141,7 +1149,7 @@ function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
      income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1),'sats');if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
-  if(R()<1-Math.exp(-d/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
+  if(R&&R()<1-Math.exp(-dd/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');
     if(can&&PROG.offers.length<BOARD_MAX+2){PROG.cseq=(PROG.cseq||0)+1;const res=[3,5,8][R()*3|0];
       PROG.offers.push({id:PROG.cseq,type:'image',src:'gov',client:c.power?c.power.i:HOME,p:{ci,res,dis,pay:Math.round(25+60/res),dur:4+R()*3},posted:PROG.day,expires:PROG.day+2})}}
