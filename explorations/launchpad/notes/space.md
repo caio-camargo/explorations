@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2439,7 +2439,7 @@ Its drawing is a small WebGL of its own (boxes, lines, a depth buffer), not `app
   cone use, footprints, trail); the readout (speed, Froude, gait, contact, lean, step period). A test section: walk 50 m
   at three gravities, the walk → lope change near Fr 0.5, a 30° slope on Selene.
 - **E0b —** stairs (15/25/40 cm), a ladder, gaps and ledges, rough ground (rocks, a crater rim, loose soil), a lander mock
-  with a hatch and a porch, a rover seat.
+  with a hatch and a porch, a rover seat. Rough ground ✓ v1.267 (§ v1.267).
 - **E0c — the 0 g hall:** handrails (hand over hand), tether points (a spring of the era's length), drifting off, a
   second vessel; and the spinning hull.
 - **E0d —** the tweak panel with *Copy values*, record and replay of inputs, `study_eva.mjs`.
@@ -2528,3 +2528,56 @@ wall there? being able to navigate uneven terrain is important in this game."
   slide down the 30° ridge's side), Selene 57 s with none; sidestepping off the 5° ridge's top on Selene slides down
   standing. The 30° ridge (at the 31° friction angle) is climbed, slipping: Tellus crosses it in 26 s, Selene reaches its
   top in 60 s. test space-33 now 10 checks (the "30° refused" check became "30° tried, slipping" and "no invisible walls").
+
+## v1.267 — EVA E0b, rough ground: rubble, boulders, a crater, loose soil; scrambling (2026-11-06, space session, QUEUE Q531)
+
+Rough ground first of E0b, at Caio's "being able to navigate uneven terrain is important in this game". Stations 6–9 in
+the lab, west of the straight (`EVA.lane`, `EVA.crater`, `EVA.banks`, `EVA.rocks`; fixed seed, so the lab and the
+headless twin walk the same field):
+
+- **The rubble lane** (x −26…−8, z 0…44): hummocks all along (0.15 m over 2.5 m, 0.05 m over 0.8 m); from z 12, 90
+  stones 0.1–0.3 m high; from z 27, 15 boulders 0.3–1.3 m. Rocks are blocky: past 50° up to ~90 % of their height, a
+  top rounded 30 % at its edge, so stones are steps and boulders are walls.
+- **A crater** at (−36, 12): 7 m to the rim, floor 1.2 m under the plain, rim 0.8 m over it; the inner wall steepens to
+  30° at the rim, the edge of the grip.
+- **Two 15° banks side by side** from z 30: loose soil (x −41…−36, half the grip: `W.grip`, `EVA.mu`) beside firm
+  ground. Same slope, different ground.
+
+What the walker learned (each found by walking the course headless and tracing where it went wrong):
+
+- **The body rides the ground averaged over a stride's width** (`EVA.hb`, 0.3 m round), not the ground under one point,
+  so it doesn't bob over pebbles. It rides **no higher than 0.35 m over its higher foot**, and only 0.15 m where the
+  ground under it is still low: otherwise the averaging, reaching ahead onto a rock, lifted it up the rock before any
+  foot was there, and the feet followed (the ladder it climbed boulders by).
+- **A face (steeper than 50°) is a wall**: the body can't go over one more than 0.15 m above its feet, no foot stands on
+  one, a slipping foot doesn't slide up one, and in flight the body doesn't go into one. At a wall it **slides along**
+  (the part of its velocity into the rock goes); a lean past catching within half a second of touching rock is **braced**
+  (a hand on the rock: it stops, the foot goes to the nearest ground it can stand on) instead of a fall. Against a riser
+  it steps **up onto the top** if there's a foothold within a step (the start of what stairs need).
+- **Scrambling** (`A.scram`; "scrambling (hands and feet)"): up a bank too steep to stand on (past 90 % of the friction
+  angle, checked 0.25/0.5/0.75 m ahead too, so a rock's skirt doesn't count) and no steeper than a face, pushing up it, it
+  goes on hands and feet: 0.3 m/s at 1 g (as √g lower), no slipping back. Not physics, a gait: the climb by slipping
+  over a 45° bank went or didn't by luck (bisecting it, half a dozen unrelated changes each flipped it). The lab draws it
+  bent over the bank, hands ahead, feet behind.
+- **The slope's speed limit reads the grade over a stride** (1 m baselines on the averaged ground): a stone's steep
+  little side no longer drops the walk to a creep.
+- **Off the ground only when it is**: the "ground falls away faster than gravity" test now looks 0.1 s ahead and wants
+  3 cm under the arc. The one-tick test sent it into the air 769 times on the stones.
+- **Footholds** look only where the foot would slip just standing (95 % of the friction angle; it was 80 %, and on the
+  crater's smooth 26° wall it hopped the foot 0.35 m on to slightly flatter ground, braking the walk into a rocking).
+  Deeper than a step down is still a foothold if nothing nearer is (stepping off a boulder is a drop).
+- **Braking takes quick steps**: slowing by 0.5 m/s or more, the next step comes as soon as the body passes the foot,
+  without a lope's flight. A long stance let the pendulum speed it up again past the foot (it sledded backwards across
+  the crater floor at 1.4 m/s). And on ground at the grip's edge a foot still goes out at least 0.15 m to catch the body.
+- **Setting off from standing**, the ankle pushes (the pressure goes back toward the heel): with no foothold behind (the
+  crater's rim) it had stood frozen, wanting 1 m/s.
+
+**Measured** (test space-33, now 13 checks): the rubble lane straight north: hummocks at the flat pace (Tellus 1.13 m/s,
+flat 1.12; Selene 0.47, flat 0.47), stones with no air; in the boulders, Tellus stopped at a wall at z 30.6, Selene
+through at 107 s, highest foot 0.18 m, no falls. Walked head-on into a 1.06 m boulder: stops at it, highest foot 0.05 m.
+The crater straight in and out: Tellus 39 s, Selene 50 s, no falls. The 15° bank: firm 32 s (Tellus) / 80 s (Selene)
+with no slip; loose 88 s (32 s slipping) / 119 s (48 s slipping). Earlier checks hold: across the ridges Tellus 72 s
+(1 fall), Selene 123 s; the 30° ridge on Selene to z 13.2 in 60 s (33 s of it scrambling).
+
+**Not yet:** walking round a boulder is the player's job (the click-to-go walks straight at the target and slides along
+whatever is in the way: no path-finding). The rest of E0b (stairs, ladder, gaps, lander and rover mocks) is next.

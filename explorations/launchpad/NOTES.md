@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
+**Version**: v2.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -187,6 +187,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: EVA E0, the movement test ground (2026-11-06, space session, QUEUE Q531; nothing built)
 - v1.263 — EVA E0a: the test ground's flat and slopes; `sim/eva.js`, `eva-lab.html` (2026-11-06, space session, QUEUE Q531)
 - v1.265 — EVA E0a after Caio's feel pass: turning un-mirrored, feet land where the physics puts them (`EVA.next`), jump and lope legs, falls topple and get up (2026-11-06, space session, QUEUE Q531)
+- v1.267 — EVA E0b rough ground: rubble lane (hummocks, stones, boulders), a crater, loose vs firm 15° banks; rocks are walls slid along, banks are scrambled up on hands and feet (2026-11-06, space session, QUEUE Q531)
 - v1.266 — EVA: no invisible walls (slope look-ahead along the path, a creep, slides on its feet), footholds for knee-high banks (2026-11-06, space session, QUEUE Q531)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
