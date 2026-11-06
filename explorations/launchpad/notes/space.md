@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2372,3 +2372,37 @@ moon "Relay". Existing saves keep their names ("Object N"); new registrations ge
   m/s a day: the builder's spare (stage Δv minus a fixed ascent need) and its tide rate (an equatorial orbit at an
   arbitrary longitude and epoch 0) both differ from the flight. Not touched here; worth a vehicle/space look.
 - Test `space-30` (failed before: read 3,093 against TV lost day 2,601, +19 %), `space-31` (failed before: "Object 1").
+
+## v1.262 — a moon orbit on the map is one revolution (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
+
+Caio, in orbit of Selene: "the map is a mess of orbits". **Cause:** a leg round a perturbed moon (Selene, Nyx) is integrated
+(`numLeg`, 6b) to a horizon of two of the *moon's* orbits, 8.6 days at Selene (2.8 at Nyx), and the whole of it was the
+path the map drew: a 30 km Selene orbit (55 min) went round 226 times, 1,461 points, ~6 a turn, every turn a little
+precessed, all on top of each other. Round Tellus a bound orbit stops at one period.
+
+**Fix (`numLeg`, `sim/flight.js`):** the horizon stays (it is what finds a decay, a stripping by the tide, an escape, an
+encounter, and `minR`/`maxR` still cover all of it); what the path *keeps* changes, for a bound orbit (e < 1) round a
+perturbed body only:
+- no ending within the horizon: one of the craft's own revolutions, sampled at up to 360 points a turn (the stepper gives
+  ~200), ending at the point closest to its start between 0.9 and 1.1 periods: the tide moves the ring, so a fixed period
+  left a 300–600 km gap on a 2,000 km Selene orbit; it now comes back within 39 km (a 30 km orbit closes). `pt.tDrawn` and `pt.tEnd` are where it stops, so `predStill` redoes the
+  prediction once the craft has flown round it;
+- an ending (impact, escape, encounter) within three revolutions: drawn through to it, as before;
+- an ending later than that: the first revolution and the last one before the end, with a break between (`pt.gap`, the
+  index the second piece starts at; `drawPath` lifts the pen there). The "Impact in …" label adds "after ~N orbits".
+Hyperbolic legs and every leg round Tellus are untouched. The cost is the same (the integration was already done; ~80 ms
+for a 30 km Selene orbit, cached by `predStill`). No fading tail for the precession: one ring, nearly closed; worth adding only
+if a look says the drift is missed.
+
+**Horizon drawn, before → after:** Selene 30 km: 8.63 d, 226 turns, 1,461 points → 0.04 d, 1 turn, 201 points. Selene
+2,000 km: 14.6 turns, 1,390 → 1 turn, 202. Nyx 50 km: 40.6 turns, 1,369 → 1 turn, 204. A 3,000 × 20 km Selene orbit the tide
+brings down after 13.9 turns: 768 points over all 13.9 → 306 over the first and the last, ending on the impact. Escapes,
+impacts and encounters end at the same times as before (a Tellus → Selene transfer, a Selene escape, every impact in a
+72-orbit scan).
+
+**Not touched:** the impact predictor (`fall`, the red X) has its own horizon; on an airless perturbed body it only runs
+when the osculating periapsis is already under the ground, so a slow tidal decay is shown by this leg's "Impact in …"
+label, as before. Q488's drawMap block is untouched.
+
+Test `space-32` (the one-revolution and the decaying-orbit checks failed before: 226.28 periods, 1,461 points; 13.93
+periods drawn, no break). TESTING row 333.

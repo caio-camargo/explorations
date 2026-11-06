@@ -106,8 +106,8 @@ Early-era events, all from history, each costing time:
 
 | # | Slice | What it contains | Size | Lane |
 |---|---|---|---|---|
-| **E1** | **Out of the hatch** | an EVA button on a crewed vessel in orbit with a hatch (`gl.js` already draws one); the spacewalk suit, tethered beside the hatch; a backpack or umbilical timer; the first spacewalk as a world first; the era events in § 5. No hull path yet. | S–M | space + look |
-| **E2** | **On the ground** | down the ladder (a short pose), the push-off body in § 3, click-to-go and keys, the flag, a sample or a package at a spot, boarding a rover seat, the walkback circle, falls | M–L | ground/rovers + look |
+| **E1** | **Out of the hatch** | an EVA button on a crewed vessel in orbit with a hatch (`gl.js` already draws one); the spacewalk suit, tethered beside the hatch; a backpack or umbilical timer; the first spacewalk as a world first; the era events in § 5. No hull path yet. | S–M | space + look (parts & pad) |
+| **E2** | **On the ground** | down the ladder (a short pose), the push-off body in § 3, click-to-go and keys, the flag, a sample or a package at a spot, boarding a rover seat, the walkback circle, falls | M–L | space (rovers are its code) + look |
 | **E3** | **Hull work** | paths over the parts, the tether, drifting off, repair (Q467), fetching a canister, crossing to a vessel within tether reach | M | space + vehicle |
 | **E4** | **Free flight** | a jet pack with a Δv budget, flown with the docking keys (MMU era) | M | space |
 

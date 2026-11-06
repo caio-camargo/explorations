@@ -299,11 +299,12 @@ function drawPath(pt,k,off,col,dash,tag,seg,labels,list){const P=pt.path,bR=pt.b
   // (climbing through the air, the arc is drawn; falling inside it, only the predictor's path is)
   const top=bR+(pt.b.atm||0),fallIn=k===0&&!dash&&pt.b.atm&&impact&&toolOK('impact')&&impact.b===pt.b;if(fallIn&&len(S.r)<top&&dot(S.r,S.v)<0)return;let up=false;
   for(let i=0;i<P.length;i++){const[r,t]=P[i];if(t<simT&&i<P.length-1&&P[i+1][1]<=simT)continue;const p=add(off,r),rl=len(r);
+    if(i===pt.gap)pv=null;   // (space, Q487) the break between a moon orbit's first revolution and its last one before the end
     if(fallIn&&t>=simT&&rl<top&&up){cut=true;if(pv)seg(pv,p,col);break}if(rl>=top)up=true;
     if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p;
     if(t>=simT&&(!lo||rl<lo.rl))lo={rl,p}}
   if(lo&&pt.endKind!=='impact'&&!cut)labels.push({p:lo.p,t:'Pe '+fmtD(lo.rl-bR)+tag,c:hc});
-  if(pt.endKind==='impact'&&!fallIn)labels.push({p:add(off,pt.end),t:`Impact in ${fmtT(pt.endT-simT)}${pt.b.pert?' (perturbed)':''}`+tag,c:'#ff6b5a'});   // (Q260) the predictor's X says it
+  if(pt.endKind==='impact'&&!fallIn)labels.push({p:add(off,pt.end),t:`Impact in ${fmtT(pt.endT-simT)}${pt.gap&&pt.el.e<1?` · after ~${Math.round((pt.endT-simT)/pt.el.period)} orbits`:''}${pt.b.pert?' (perturbed)':''}`+tag,c:'#ff6b5a'});   // (Q260) the predictor's X says it
   if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`${nx.b.name} encounter in ${fmtT(pt.endT-simT)}${tag}`,c:'#ffb454'});
     labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[soiAt(nx.b,pt.endT),0,0]),c:'rgba(255,180,84,.6)'})}
   if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:`${pt.b.name} escape in ${fmtT(pt.endT-simT)}`+tag,c:'#cc8cff'})}
@@ -332,7 +333,7 @@ function drawPatches(list,camW,out,labels,cols,dash,tag){
 // said the craft would be (within a km or 0.1 % of the radius); while thrusting, it's redone at most four times a second.
 function predStill(){const c=predCache,p0=c&&c.p[0];if(!p0||!p0.path||c.body!==S.body||S.landed)return false;
   const P=p0.path,thr=S.throttle>0&&activeEngines(S).length>0;if(thr)return performance.now()-c.wall<250;
-  if(simT>(p0.endT||p0.tEnd||-Infinity))return false;let i=1;while(i<P.length-1&&P[i][1]<simT)i++;
+  if(simT>(p0.tDrawn||p0.endT||p0.tEnd||-Infinity))return false;let i=1;while(i<P.length-1&&P[i][1]<simT)i++;   // (Q487) tDrawn: past the revolution it drew, a new one
   const[a,ta]=P[i-1],[b,tb]=P[i],f=tb>ta?clamp((simT-ta)/(tb-ta),0,1):0,q=add(a,mul(sub(b,a),f));
   return len(sub(q,S.r))<Math.max(1000,1e-3*len(S.r))*(1+len(sub(b,a))/2e4)}
 // the map's link lines (space session, QUEUE Q173): from each satellite with a link home right now, green to the station
