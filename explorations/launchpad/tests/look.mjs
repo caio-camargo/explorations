@@ -278,15 +278,36 @@
   const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
   const C = new Function(src + `const P=[];const pv=(o,p,n,c)=>{o.push(p);P.push({p,c})},tube=(o,A,B)=>{o.push(A,B)},lathe=(o,prof)=>{for(const[r,y]of prof)o.push([r,y,0])};
     ${cut('const SUIT_DEFAULT=', '\n// The crew on the access arm')}
-    return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,P};`)();
+    return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,CREW_PEOPLE,CREW_EX,P};`)();
   const lines = [0, 1, 2, 3, 4, 5].map(k => C.SUITS[k]), key = c => c.slice(0, 3).map(x => x.toFixed(2)).join(),
     suitsOk = lines.every(L => L && L.length === 3 && new Set(L.map(x => key(x.c1))).size === 3) && C.suitOf(9, 0) === C.SUIT_DEFAULT && C.suitOf(1, 2) !== C.SUIT_DEFAULT;
   const pts = a => a.filter(Array.isArray), st = pts(C.crewFigure(C.suitOf(0, 0), 'stand', 0)), wv = pts(C.crewFigure(C.suitOf(1, 2), 'wave', 1));
   const ys = st.map(p => p[1]), top = Math.max(...ys), foot = Math.min(...ys), wTop = Math.max(...wv.map(p => p[1]));
-  const skin = C.P.filter(v => Math.abs(v.c[0] - 0.95) < 1e-9 && Math.abs(v.c[1] - 0.76) < 1e-9).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
+  const sk0 = C.CREW_PEOPLE[0].skin, skin = C.P.filter(v => v.c[0] === sk0[0] && v.c[1] === sk0[1] && v.c[2] === sk0[2]).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
   check('crew look: a stylised astronaut ~1.78 m tall on its own feet; the waving glove rises above the helmet; the face shows; six schools × three suits, each generation its own colour',
     top > 1.74 && top < 1.82 && Math.abs(foot) < 0.02 && wTop > top && faceFwd > 20 && suitsOk,
     `height ${top.toFixed(3)} m, feet at ${foot.toFixed(3)}, waving hand to ${wTop.toFixed(2)} m; ${faceFwd} face vertices forward`);
+  // Q532 (D26): the ligne-claire head. Dot eyes (no whites) in the neutral face, whites when wide open; each of the five
+  // expressions draws a different face; the roster spans every skin tone (darkest under a third of the lightest's
+  // luminance) with several hair styles and moustaches; and every launch suit's helmet holds the whole head and hair.
+  {
+    const lum = c => .2126 * c[0] + .7152 * c[1] + .0722 * c[2], white = v => v.c[0] > .95 && v.c[1] > .95 && v.c[2] > .95 && v.c[3] === 0;
+    const faceOf = (k, ex) => { C.P.length = 0; C.crewFigure(C.SUIT_DEFAULT, 'stand', k, ex); return C.P.filter(v => v.c[3] === 2 && v.c[0] < .06 || white(v) || v.c[0] === .38).map(v => v.p.map(x => x.toFixed(4)).join()).sort().join('|') };
+    const ex = Object.keys(C.CREW_EX), faces = new Set(ex.map(e => faceOf(0, e)));
+    C.P.length = 0; C.crewFigure(C.SUIT_DEFAULT, 'stand', 0, 'neutral'); const neutralWhites = C.P.filter(white).length;
+    C.P.length = 0; C.crewFigure(C.SUIT_DEFAULT, 'stand', 0, 'alarm'); const alarmWhites = C.P.filter(white).length;
+    const L = C.CREW_PEOPLE.map(p => lum(p.skin)), styles = new Set(C.CREW_PEOPLE.map(p => p.style)), mous = C.CREW_PEOPLE.filter(p => p.mous).length;
+    const s = C.CREW_C, hip = s.legL + s.boot[1] * 1.2, neck = hip + s.tH + s.head * .25, HC = [0, neck + s.head * 1.05, s.head * .05], misfit = [];
+    for (let sc = 0; sc < 6; sc++) for (let g = 0; g < 3; g++) for (let k = 0; k < C.CREW_PEOPLE.length; k++) {
+      const su = C.suitOf(sc, g), HR = (su.helm && su.helm.R) || s.helmR, pe = C.CREW_PEOPLE[k], cols = [pe.skin, pe.hair].map(c => c.join());
+      C.P.length = 0; C.crewFigure(su, 'stand', k, 'neutral');
+      const far = Math.max(...C.P.filter(v => cols.includes(v.c.slice(0, 3).join())).map(v => Math.hypot(v.p[0] - HC[0], v.p[1] - HC[1], v.p[2] - HC[2])));
+      if (far > HR * (su.helm && su.helm.egg ? 1.2 : 1)) misfit.push(`${sc}·${g} person ${k}: ${far.toFixed(3)} > ${HR}`);
+    }
+    check('crew look: the ligne-claire head (Q532): dot eyes, five expressions each its own face, a roster across every skin tone with several hair styles and moustaches, every launch helmet holds the head',
+      neutralWhites === 0 && alarmWhites > 0 && faces.size === ex.length && ex.length === 5 && Math.min(...L) < Math.max(...L) / 3 && styles.size >= 6 && mous >= 2 && !misfit.length,
+      misfit.slice(0, 3).join(' | ') || `${faces.size} faces; skin luminance ${Math.min(...L).toFixed(2)}–${Math.max(...L).toFixed(2)}; ${styles.size} hair styles, ${mous} moustaches; whites ${neutralWhites}/${alarmWhites}`);
+  }
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}}),
       crewMeshes=(n,sch)=>Array.from({length:Math.min(n,2)},(_,k)=>({mesh:{free(){}},k}));

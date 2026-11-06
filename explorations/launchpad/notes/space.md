@@ -2480,7 +2480,7 @@ first thing for Caio's feel pass (`frWalk`, `kStep`).
 falls only come from drops, slips and leans, and the walk is careful enough that keys rarely cause one (a hard turn while
 loping on Selene may). No stumble on rocks until E0b's rough ground.
 
-## v1.264 — EVA E0a after Caio's first feel pass (2026-11-06, space session, QUEUE Q531)
+## v1.265 — EVA E0a after Caio's first feel pass (2026-11-06, space session, QUEUE Q531)
 
 Caio: "turning left and right are inverted … when the foot hits the ground there is a jerk. when the character jumps, his
 legs move like he's walking. shift-hurrying causes him to do a weird skipping motion. there is no falling down or getting

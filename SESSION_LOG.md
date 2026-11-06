@@ -6680,3 +6680,35 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** sim/debrief.js, tests/flow.mjs, notes/flow.md (1.0.12), NOTES.md, TESTING (331), PLAYTEST (#133), QUEUE (Q497 ✓),
   ACTIVE_WORK.
 - **Next for flow:** Q513 (P1, contracts in the Assembly and in flight; plan with Q345). Caio: TESTING 319, 329, 330, 331.
+
+## 2026-11-06 — space session: EVA E0a, the movement test ground (Q531, v1.263)
+
+- **What:** Ranked EVA.md's E0 as Q531 at Caio's go, planned it (notes/space.md § "Plan: EVA E0") and built slice E0a:
+  `sim/eva.js` (a walker as an inverted pendulum on its stance foot; steps placed to reach the wanted velocity within the
+  leg's reach and the grip; friction cone; lope past Froude 0.5; jump; falls and getting up) and `eva-lab.html` (any
+  body's gravity or a slider, μ, the 50 m straight and 5–30° ridges, keys and click-to-go, pause / slow / step / reset,
+  three cameras, debug lines, a readout). `index.html?eva-lab` redirects; the Rover yard links it.
+- **Measured:** walk 50 m: Tellus 1.10 m/s, Selene 0.46, Nyx 0.23; lope Tellus 2.67, Selene 1.14 (47 % airborne); 20°
+  ridge climbed slowly, 30° refused; jump 0.06 m Tellus, 1.87 m Selene. Three first-run bugs became rules (notes § v1.263).
+- **Checks:** space-33 (6 checks), `--smoke` all passed; screenshots on the GPU (lope on Selene, 20° ridge at Tellus).
+- **Files:** sim/eva.js, eva-lab.html, index.html, test.mjs, app/rover-yard.js, tests/space.mjs, notes/space.md, NOTES.md,
+  TESTING (334), QUEUE (Q531), ACTIVE_WORK.
+- **Next:** Caio's feel pass on E0a (TESTING 334; Selene's walk may be too slow, the lope too low: `frWalk`, `hopV`); then
+  E0b, E0c, E0d.
+
+## 2026-11-06 — look & sound, astronauts: the ligne-claire head (Q532, v1.264)
+
+- **What:** Caio asked for astronaut work and picked the ligne-claire head (D26) from four options. Claimed it as Q532
+  (Q531 went to the EVA lab the same minute). `app/crew-look.js`'s carved head became the head mock-up's option (a): a
+  round head, a small chin and nose, ears; hair built from the hairline up with an inked edge (seven styles); the face
+  drawn on as strokes and fills (brows, dot eyes, a hook under the nose, a one-line or open mouth, a moustache); eight
+  people (`CREW_PEOPLE`) and the five flight-portrait expressions (`CREW_EX`). New bench `mockups/crew-studio/` draws the
+  game's `crewFigure` close up (sheet, heads, helmets, suits).
+- **Checks:** `aerofx-5` gains the head check (fails with a 25 % bigger head); `--smoke` all passed after merging main.
+  Stills in `output/launchpad/mockups/crew-studio/` (machine-local).
+- **Not verified:** the head under the game's own mesh shader: the crew views (120–122, 127–144) don't show the crew
+  reliably (Q455; a lead added to it).
+- **Files:** app/crew-look.js, tests/look.mjs, mockups/crew-studio/index.html (new), mockups/README.md, notes/look.md,
+  CREW.md (0.3.2), TESTING (335), QUEUE (Q532 ✓, Q455 lead, a Proposed line), ACTIVE_WORK.
+- **Next:** Caio's look at TESTING 335 / the studio sheet; Q455 (the crew views) to see the head in the game's light;
+  clean faceplate openings (Proposed); CREW.md says it goes to 1.0.0 when the head is built: Caio's call.

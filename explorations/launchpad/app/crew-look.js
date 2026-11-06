@@ -60,9 +60,30 @@ const SUITS={
       helm:{R:.195,face:[.6,.38,.05],ring:MT,dark:1,decal:1},f:{sidePanels:1,decals:1,cuffs:1,thighHose:1}}]};
 const suitOf=(sch,gen)=>SUITS[sch]&&SUITS[sch][gen]||SUIT_DEFAULT;
 // the person inside: a few skin and hair tones, so a crew of two aren't twins
-const CREW_SKIN=[[.95,.76,.6],[.7,.5,.36],[.5,.33,.23],[.88,.68,.52]],CREW_HAIR=[[.36,.2,.09],[.1,.08,.07],[.62,.5,.3],[.2,.12,.07]];
+// The people (D26, the head mock-up's option (a), mockups/heads/ PEOPLE): the ligne-claire head varies by a small kit,
+// skin, hair colour and style, nose, brow weight and a moustache; faces don't age with the eras (CREW Part 1). Styles:
+// 0 crew cut, 1 side part, 2 bob, 3 bun, 4 curls, 5 receding, 6 bald. nose: size, length, droop. The roster (economy)
+// picks a person by index; the pad's two are 0 and 1. Every skin tone is in the first eight (the pass/fail check).
+const CREW_PEOPLE=[
+  {skin:[.97,.8,.67],hair:[.32,.18,.09],style:1,nose:[1,1,0],brow:1,mous:0},
+  {skin:[.42,.27,.18],hair:[.06,.05,.05],style:4,nose:[1.35,.85,.1],brow:1.1,mous:0},
+  {skin:[.9,.73,.56],hair:[.07,.06,.07],style:3,nose:[.8,.8,0],brow:.8,mous:0},
+  {skin:[.99,.85,.77],hair:[.78,.36,.13],style:2,nose:[.85,.75,-.3],brow:.85,mous:0},
+  {skin:[.72,.5,.35],hair:[.72,.72,.7],style:5,nose:[1.4,1.45,.4],brow:1.3,mous:1},
+  {skin:[.94,.77,.62],hair:[.93,.8,.45],style:0,nose:[.85,1.45,.1],brow:1.45,mous:0},
+  {skin:[.3,.19,.13],hair:[.05,.04,.04],style:6,nose:[1.2,1,.2],brow:1.2,mous:1},
+  {skin:[.82,.62,.45],hair:[.16,.1,.06],style:0,nose:[1.1,1.15,.15],brow:1.15,mous:1}];
+// The expressions (the mock-up's flight portraits): brow (height, inner end up +, arch), eye opening, gaze, mouth (width,
+// smile, opening, teeth: 0 none, 1 top row, 2 clenched), g (features pulled down under load). All in head radii.
+const CREW_EX={
+  neutral:{brow:[0,0,.2],eye:1,look:[.25,0],mouth:[.13,.25,0,0],g:0},
+  grin:{brow:[.05,.2,.6],eye:.95,look:[.3,.05],mouth:[.24,1,.1,1],g:0},
+  grit:{brow:[-.07,-1,0],eye:.3,look:[0,0],mouth:[.25,-.25,.085,2],g:1},
+  alarm:{brow:[.11,1,.3],eye:1.45,look:[.7,-.1],mouth:[.075,0,.16,0],g:0},
+  wonder:{brow:[.13,.45,.7],eye:1.3,look:[.1,.75],mouth:[.06,.4,.065,0],g:0}};
+const INK=[.045,.04,.045,2];
 // style (c)'s proportions (mockups/crew STYLES.c); the suit scales the limbs, torso and arms (its body)
-const CREW_C={head:.13,helmR:.19,open:.25,tw:.22,td:.14,tH:.55,legL:.8,legR:.072,armL:.58,armR:.055,boot:[.07,.06,.15],glove:.058,eye:.018};
+const CREW_C={head:.14,helmR:.19,open:.25,tw:.22,td:.14,tH:.55,legL:.8,legR:.072,armL:.58,armR:.055,boot:[.07,.06,.15],glove:.058,eye:.018};
 
 // a superellipsoid centred at c with radii r (e = 1 an ellipsoid; smaller, a rounded box); keep(P) may drop quads
 // (the hair's hairline, the helmet's faceplate)
@@ -83,10 +104,11 @@ function band(out,A,B,h0,h1,r,col){const P=t=>add(A,mul(sub(B,A),t));tube(out,P(
 // a box-ish piece (a rounded superellipsoid) centred at c: packs, pockets, plates, patches
 const slab=(out,c,r,col)=>blob(out,c,r,col,.3,8,6);
 
-// One astronaut, pose 'stand' or 'wave' (the right arm up), person k (skin, hair). Returns the vertex array.
-function crewFigure(suit,pose,k=0){const s=CREW_C,o=[],b=suit.body||[1,1,1,1],F=suit.f||{},hm=suit.helm||{},skin=[...CREW_SKIN[k%4],0],hair=[...CREW_HAIR[k%4],2];
+// One astronaut, pose 'stand' or 'wave' (the right arm up), person k (an index into CREW_PEOPLE, or a person), expression
+// ex (CREW_EX). Returns the vertex array.
+function crewFigure(suit,pose,k=0,ex='neutral'){const s=CREW_C,o=[],b=suit.body||[1,1,1,1],F=suit.f||{},hm=suit.helm||{},who=typeof k==='object'?k:CREW_PEOPLE[k%CREW_PEOPLE.length];
   const S=suit.c1,T=suit.c2,B=suit.boot,G=suit.glove||B,SH=suit.shell,AC=suit.acc||T;
-  const LR=s.legR*b[0],AR=s.armR*b[0],TW=s.tw*b[1],TD=s.td*b[2],AL=s.armL*b[3],GR=s.glove*(1+(b[0]-1)*.6),HR=hm.R||s.helmR;
+  const LR=s.legR*b[0],AR=s.armR*b[0],TW=s.tw*b[1],TD=s.td*b[2],AL=s.armL*b[3],GR=s.glove*(1+(b[0]-1)*.6),HR=hm.R||s.helmR,hd=Math.min(s.head,HR*.8);   // the head fits the smallest helmet
   const hip=s.legL+s.boot[1]*1.2,sh=hip+s.tH,neck=sh+s.head*.25,HC=[0,neck+s.head*1.05,s.head*.05],tc=hip+s.tH*.5;
   // legs, boots
   const legs=[];for(const sx of[-1,1]){const h=[sx*TW*.48,hip,0],kn=[sx*TW*.52,hip*.5,.02],an=[sx*TW*.5,s.boot[1]*1.5,0];legs.push([h,kn,an,sx]);
@@ -197,20 +219,83 @@ function crewFigure(suit,pose,k=0){const s=CREW_C,o=[],b=suit.body||[1,1,1,1],F=
     if(hm.pivots)for(const sx of[-1,1])tube(o,add(HC,[sx*(HR-.02),0,-.01]),add(HC,[sx*(HR+.03),0,-.01]),.06,MT,10,true);   // the clamshell's pivots
     if(hm.sun)lathe(o,[[0,HR+.019,SAF],[HR*.36,HR+.019,SAF],[HR*.36,HR+.005,SAF]],HCe,16,[false,false]);   // Mountain: the sun disc on the crown
     if(hm.decal)blob(o,HCe,ER.map(x=>x+.004),suit.c2,1,20,12,P=>{const d=dir(P);return d[0]>.55&&Math.abs(d[1])<.25})}   // Isle late: a decal on the side
-  // the head: skull, a squarish jaw, nose, ears, hair over the top (or Apollo's Snoopy cap), eyes with pupils, a mouth
-  const hq=add(HC,[0,-s.head*.12,0]),hd=s.head;
-  blob(o,hq,[hd*.86,hd,hd*.9],skin,1,14,10);blob(o,add(hq,[0,-hd*.5,hd*.12]),[hd*.58,hd*.42,hd*.56],skin,.6,12,8);
-  blob(o,add(hq,[0,-hd*.05,hd*.86]),[hd*.13,hd*.18,hd*.16],skin,1,8,5);
-  for(const sx of[-1,1])blob(o,add(hq,[sx*hd*.86,-hd*.05,0]),[hd*.1,hd*.2,hd*.14],skin,1,8,5);
-  if(F.snoopy){const cq=add(hq,[0,hd*.05,-hd*.04]),cap=P=>{const q=sub(P,hq);return!(q[2]>hd*.25&&q[1]<hd*.5)&&q[1]>-hd*.55};
-    blob(o,cq,[hd*.95,hd*1.08,hd],[.96,.96,.94,2],1,14,10,P=>cap(P)&&sub(P,hq)[1]>-hd*.05&&Math.abs(sub(P,hq)[0])<hd*.52);blob(o,cq,[hd*.95,hd*1.08,hd],[.17,.12,.09,2],1,14,10,P=>cap(P)&&!(sub(P,hq)[1]>-hd*.05&&Math.abs(sub(P,hq)[0])<hd*.52));
-    for(const sx of[-1,1]){blob(o,add(hq,[sx*hd*.95,-hd*.08,0]),[hd*.13,hd*.26,hd*.22],[.17,.12,.09,2],1,8,5);tube(o,add(hq,[sx*hd*.95,-hd*.3,hd*.12]),add(hq,[sx*hd*.3,-hd*.52,hd*.88]),.006,DK,4)}}
-  else blob(o,add(hq,[0,hd*.04,-hd*.03]),[hd*.91,hd*1.04,hd*.95],hair,1,14,10,P=>{const q=sub(P,hq),z=clamp(q[2]/hd,-1,1);return q[1]-hd*(-.15+.57*sstep(-.4,.7,z))>0});
-  for(const sx of[-1,1]){const ec=add(hq,[sx*hd*.36,hd*.16,hd*.8-s.eye*.4]);blob(o,ec,[s.eye,s.eye,s.eye],[.96,.96,.96,0],1,8,5);
-    blob(o,add(ec,[-sx*s.eye*.1,0,s.eye*.72]),[s.eye*.45,s.eye*.45,s.eye*.45],[.03,.04,.06,0],1,6,4);
-    tube(o,add(hq,[sx*hd*.22,hd*.38,hd*.84]),add(hq,[sx*hd*.5,hd*.36,hd*.72]),hd*.035,hair,4,true)}   // brows
-  tube(o,add(hq,[-hd*.24,-hd*.36,hd*.84]),add(hq,[hd*.24,-hd*.36,hd*.84]),hd*.04,[.35,.08,.07,0],5,true);   // the mouth
+  // the head, ligne claire (D26; mockups/heads/ option (a)): a slightly big round skull with a small round chin, a small
+  // nose and ears; hair a flat shell with an inked hairline (or Apollo's Snoopy cap); the face drawn on, not modelled
+  crewHead(o,add(HC,[0,-hd*.12,0]),hd,who,CREW_EX[ex]||CREW_EX.neutral,F.snoopy);
   return o}
+// hair: a shell round c (P(d) the point for a unit direction d) where hk(d) > 0, built column by column from the hairline
+// up, so its edge is a smooth line, not a row of quads; the band along each edge is ink (ligne claire's inked hairline);
+// sm: smooth normals (the skull's), else each quad's own (curls)
+function hairShell(out,c,P,hk,col,ink,sm=true,seg=40,rows=12){const D=(t,f)=>[Math.cos(t)*Math.sin(f),Math.sin(t),Math.cos(t)*Math.cos(f)],H=Math.PI/2,n=64,dI=.06;
+  const edge=(f,a,b)=>{for(let k=0;k<20;k++){const m=(a+b)/2;(hk(D(m,f))>0)===(hk(D(a,f))>0)?a=m:b=m}return(a+b)/2};
+  const cols=[];for(let j=0;j<=seg;j++){const f=2*Math.PI*j/seg,T=Array.from({length:n+1},(_,i)=>-H+Math.PI*i/n),on=T.map(t=>hk(D(t,f))>0);
+    const a=on.indexOf(true),b=on.lastIndexOf(true);if(a<0){cols.push(null);continue}
+    const t0=a>0?edge(f,T[a-1],T[a]):-H,t1=b<n?edge(f,T[b+1],T[b]):H,i0=a>0,i1=b<n,ts=[t0];
+    if(i0)ts.push(Math.min(t0+dI,(t0+t1)/2));const lo=ts[ts.length-1],hi=i1?Math.max(t1-dI,lo):t1;
+    for(let r=1;r<=rows;r++)ts.push(lo+(hi-lo)*r/rows);if(i1)ts.push(t1);
+    // a fixed row count per column (rows + 2), the ink bands collapsed where an edge is the pole
+    while(ts.length<rows+3)ts.splice(i0?2:1,0,ts[i0?1:0]);
+    cols.push({ts,i0,i1,G:ts.map(t=>add(c,P(D(t,f))))})}
+  const R=rows+2;
+  for(let j=0;j<seg;j++){const A=cols[j],B=cols[j+1];if(!A||!B)continue;
+    for(let r=0;r<R;r++){const q=[A.G[r],A.G[r+1],B.G[r+1],B.G[r]],nn=cross(sub(q[3],q[0]),sub(q[1],q[0]));if(len(nn)<1e-12)continue;
+      const N=norm(nn),inkRow=(r===0&&A.i0&&B.i0)||(r===R-1&&A.i1&&B.i1),cc=inkRow?ink:col;
+      for(const k of[0,1,2,0,2,3]){const v=sub(q[k],c),sn=norm([v[0]/.86,v[1],v[2]/.9]);pv(out,q[k],sm?sn:dot(N,v)<0?mul(N,-1):N,cc)}}}}
+// One ligne-claire head centred at hq, radius R, person who (CREW_PEOPLE), expression E (CREW_EX)
+function crewHead(o,hq,R,who,E,snoopy){const skin=[...who.skin,0],hairC=[...who.hair,2],nz=who.nose,st=who.style;
+  const H=(x,y,z)=>add(hq,[x*R,y*R,z*R]);
+  blob(o,hq,[R*.93,R,R*.95],skin,1,16,12);blob(o,H(0,-.38,.1),[R*.68,R*.58,R*.7],skin,1,12,8);   // skull, chin
+  blob(o,H(0,-.12-.07*nz[2],.86+.03*nz[1]),[R*.08*nz[0],R*.075*nz[0],R*(.07+.05*nz[1])*nz[0]],skin,1,10,6);   // the nose
+  for(const sx of[-1,1])blob(o,H(sx*.9,-.06,0),[R*.1,R*.19,R*.13],skin,1,8,5);   // ears
+  // hair: a shell over the skull where the style's hairline lets it grow; curls are a bumpy shell; the bob flares
+  const hk=d=>{const y=d[1],z=d[2];if(st===5)return Math.min(.42-y,y+.32,.12-z);
+    const k=[[-.22,.5,-.3,.62],[-.25,.44,-.3,.62],[-.82,.36,.32,.72],[-.3,.48,-.3,.62],[-.4,.5,-.3,.6]][st];return y-(k[0]+(k[1]-k[0])*sstep(k[2],k[3],z))};
+  if(snoopy){const cq=H(0,.05,-.04),cap=P=>{const q=sub(P,hq);return!(q[2]>R*.25&&q[1]<R*.5)&&q[1]>-R*.55},W=[.96,.96,.94,2],BR=[.17,.12,.09,2],top=P=>{const q=sub(P,hq);return q[1]>-R*.05&&Math.abs(q[0])<R*.52};
+    blob(o,cq,[R*.98,R*1.1,R*1.02],W,1,14,10,P=>cap(P)&&top(P));blob(o,cq,[R*.98,R*1.1,R*1.02],BR,1,14,10,P=>cap(P)&&!top(P));
+    for(const sx of[-1,1]){blob(o,H(sx*.97,-.08,0),[R*.13,R*.26,R*.22],BR,1,8,5);tube(o,H(sx*.97,-.3,.12),H(sx*.3,-.52,.88),.006,DK,4)}}
+  else if(st<6){const ink=[...who.hair.map((v,i)=>v+(INK[i]-v)*.8),2];
+    hairShell(o,hq,d=>{let th=.055;if(st===4)th=.12+.035*Math.sin(d[0]*15)*Math.sin(d[1]*15+1)*Math.sin(d[2]*15+2);if(st===2)th+=.07*sstep(.2,-.75,d[1]);
+      return[d[0]*R*(.93+th),d[1]*R*(1+th),d[2]*R*(.95+th)]},hk,hairC,ink,st!==4);
+    if(st===1)blob(o,H(-.28,.8,.5),[R*.42,R*.17,R*.3],hairC,1,12,8);   // the side part's wave
+    if(st===3)blob(o,H(0,.4,-.86),[R*.25,R*.25,R*.25],hairC,1,10,6)}   // a bun
+  crewFace(o,hq,R,who,E)}
+// The face, drawn on (ligne claire): dots for eyes, brows and a one-line mouth carry the expression; a hook of ink under
+// the nose; a moustache. Shapes are laid on the head's front a hair's breadth out, in face coordinates (x, y) in head
+// radii, as flat strokes and fills that follow the skull, the chin and the nose.
+function crewFace(o,hq,R,who,E){const nz=who.nose,g=.045*E.g;
+  const ell=(x,y,cx,cy,rx,ry,cz,rz)=>{const u=1-((x-cx)/rx)**2-((y-cy)/ry)**2;return u>0?cz+rz*Math.sqrt(u):-9};
+  const zs=(x,y)=>Math.max(ell(x,y,0,0,.93,1,0,.95),ell(x,y,0,-.38,.68,.58,.1,.7),ell(x,y,0,-.12-.07*nz[2],.08*nz[0],.075*nz[0],.86+.03*nz[1],(.07+.05*nz[1])*nz[0]));
+  const fp=(x,y,lift)=>{y-=g;const e=.01,z=zs(x,y),n=norm([-(zs(x+e,y)-zs(x-e,y))/(2*e),-(zs(x,y+e)-zs(x,y-e))/(2*e),1]);return[add(hq,[x*R+n[0]*lift,y*R+n[1]*lift,z*R+n[2]*lift]),n]};
+  const L1=R*.012,L2=R*.02;   // fills, then ink over them
+  const tri=(a,b,c,col,lift)=>{for(const p of[a,b,c]){const[P,n]=fp(p[0],p[1],lift);pv(o,P,n,col)}};
+  const fill=(poly,col,lift=L1)=>{const c=poly.reduce((s,p)=>[s[0]+p[0]/poly.length,s[1]+p[1]/poly.length],[0,0]);for(let i=0;i<poly.length;i++)tri(c,poly[i],poly[(i+1)%poly.length],col,lift)};
+  const ring=(cx,cy,rx,ry,n=14)=>Array.from({length:n},(_,i)=>{const a=i/n*6.2832;return[cx+rx*Math.cos(a),cy+ry*Math.sin(a)]});
+  const dot=(c,r,col,lift=L2)=>fill(ring(c[0],c[1],r,r,8),col,lift);
+  const stroke=(pts,w,col,closed=false,lift=L2)=>{const n=pts.length;for(let i=0;i<(closed?n:n-1);i++){const a=pts[i],b=pts[(i+1)%n],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,px=-dy/l*w,py=dx/l*w;
+    tri([a[0]+px,a[1]+py],[a[0]-px,a[1]-py],[b[0]-px,b[1]-py],col,lift);tri([a[0]+px,a[1]+py],[b[0]-px,b[1]-py],[b[0]+px,b[1]+py],col,lift)}
+    for(const p of pts)dot(p,w,col,lift)};
+  const hair=[...who.hair,2],brow=[...who.hair.map((v,i)=>v+(INK[i]-v)*.65),2],ex=.3,ey=.1,by=.34,my=-.45;
+  for(const sx of[-1,1]){const X=p=>[sx*p[0],p[1]];
+    // brows: an inner, a middle and an outer point; the inner end lifts in worry, drops in anger
+    const[h,iu,ar]=E.brow;stroke([[.08,by+h+iu*.09],[.24,by+h+ar*.045+iu*.02],[.42,by+h-.03-iu*.03]].map(X),.034*who.brow,brow);
+    // eyes: dots; wide open, whites and a pupil; a squint, a line
+    const e=[sx*ex,ey],lk=[E.look[0]*.035,E.look[1]*.03];
+    if(E.eye<.45)stroke([[ex-.08,ey+iu*.04],[ex+.08,ey-iu*.02]].map(X),.022,INK);
+    else if(E.eye>1.15){const rh=.1+.03*(E.eye-1.15);fill(ring(e[0],e[1],.1,rh),[.98,.98,.98,0]);stroke(ring(e[0],e[1],.1,rh),.016,INK,true);dot([e[0]+lk[0]*1.6,e[1]+lk[1]*1.6],.042,INK,L2*1.3)}
+    else fill(ring(e[0]+lk[0],e[1]+lk[1],.06,.08*E.eye,10),INK,L2);
+    // a moustache, drooping outward
+    if(who.mous){const m=Array.from({length:24},(_,i)=>{const a=i/24*6.2832,x=.17*Math.cos(a);return[Math.max(.01,.12+x),my+.13+.075*Math.sin(a)-.25*x*x/.04]}).map(X);fill(m,hair,L1*1.4);stroke(m,.012,INK,true)}}
+  // a hook of ink under the nose
+  const nb=-.12-.07*nz[2]-.075*nz[0];stroke([[-.05,nb],[.04,nb-.01],[.08*nz[0],nb+.04]],.014,INK);
+  // the mouth: a line, or an open shape between an upper and a lower curve (teeth: a top row, or clenched)
+  const[mw,mc,mo,te]=E.mouth,base=s=>my+mc*.085*(s*s-.35),S=Array.from({length:11},(_,i)=>-1+i/5);
+  if(mo<.02)stroke(S.map(s=>[s*mw,base(s)]),.019,INK);
+  else{const k=s=>te>1.5?Math.sqrt(Math.max(1-s**4,0)):Math.sqrt(Math.max(1-s*s,0)),up=mo*(.25+.5*sstep(.12,.06,mw)),U=s=>base(s)+up*k(s),D=s=>base(s)-mo*k(s);
+    const poly=[...S.map(s=>[s*mw,U(s)]),...S.slice(1,-1).reverse().map(s=>[s*mw,D(s)])];
+    fill(poly,te>1.5?[.96,.96,.96,0]:[.38,.07,.07,0]);
+    if(te===1)fill([...S.map(s=>[s*mw*.92,U(s)-.004]),...S.slice().reverse().map(s=>[s*mw*.92,Math.max(D(s),U(s)-.05)])],[.97,.97,.97,0],L1*1.4);
+    if(te>1.5){stroke(S.map(s=>[s*mw*.97,(U(s)+D(s))/2]),.008,INK,false,L1*1.6);for(let x=-mw+.07;x<mw-.03;x+=.07){const s=x/mw;stroke([[x,U(s)],[x,D(s)]],.006,INK,false,L1*1.6)}}
+    stroke(poly,.02,INK,true)}}
 const mix3=(A,B,t)=>add(A,mul(sub(B,A),t));
 // Coastal's one big round connector, facing forward at c: a teal disc, a metal boss
 function roundConn(o,c,col){for(const[r,z0,z1,cl]of[[.055,0,.02,col],[.03,.02,.035,MT]]){const n=16;for(let j=0;j<n;j++){const a0=j/n*6.2832,a1=(j+1)/n*6.2832,P=(a,rr,z)=>add(c,[rr*Math.cos(a),rr*Math.sin(a),z]);
