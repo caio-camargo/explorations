@@ -370,19 +370,35 @@ const absOff=(b,t)=>b.parent?bodyPos(b,t):null;
 // with times) for the map. It ends at an SOI change, at the ground ('impact'), or at a horizon: two of the moon's orbits when
 // inside its SOI (long enough to see an orbit wrecked or stripped), one revolution or the way out otherwise. Returns the next
 // leg's start, or null.
-function numLeg(st,el,pt){const b=st.b;let r=st.r,v=st.v,t=st.t;
+// (space, Q487; PLAYTEST #127) The long horizon is for finding how the orbit ends; it is not what the map draws. Around a
+// moon that horizon is hundreds of a low orbit's revolutions, which the old path drew on top of each other at ~6 points a
+// turn: a mess. A bound orbit around a moon now keeps its path for one of its own revolutions (as a bound orbit round
+// Tellus draws one), at 360 points a turn. If it ends (impact, stripped, an encounter) within three revolutions the path runs
+// on to the end unbroken; later than that it keeps the first revolution and the last one before the end, with a break
+// between (pt.gap: the index where the second piece starts), so the X or the escape still sits on a line.
+// pt.tDrawn: the time up to which the path follows the craft unbroken. minR/maxR still cover the whole integration.
+function numLeg(st,el,pt){const b=st.b;let r=st.r,v=st.v,t=st.t;const t0=t;
   const H=b.pert?2*2*Math.PI/b.n:el.e<1?Math.min(el.period,40*86400):(timeToR(el,Math.max(...b.children.map(c=>c.rMax))*1.6)||40*86400);
-  const tEnd=t+H,path=[[r,t]],every=H/1500;let tLast=t,minR=len(r),maxR=minR,guard=0;pt.path=path;
+  const P=b.pert&&el.e<1&&el.period>0?el.period:0,tEnd=t+H,every=P?Math.min(P/360,H/1500):H/1500;
+  let path=[[r,t]],head=null,i0=0,tLast=t,minR=len(r),maxR=minR,guard=0;
+  const ring=()=>{let k=-1,d=Infinity;for(let i=1;i<path.length;i++){const ti=path[i][1]-t0;if(ti<0.9*P)continue;if(ti>1.1*P)break;   // one revolution: it ends where it comes
+      const di=len(sub(path[i][0],path[0][0]));if(di<d){d=di;k=i}}return k<0?path:path.slice(0,k+1)};   // closest to its start (the tide moves the ring a little)
+  const fin=(kind)=>{if(head){const tail=path.slice(i0).filter(x=>x[1]>head[head.length-1][1]);
+      if(kind){pt.gap=head.length;path=head.concat(tail)}else path=head;pt.tDrawn=head[head.length-1][1]}
+    else if(P&&!kind){path=ring();pt.tDrawn=path[path.length-1][1]}
+    pt.path=path;pt.minR=minR;pt.maxR=maxR};
   while(t<tEnd-1e-6&&guard++<60000){
     const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,b.mu),b.R),h=Math.min(tEnd-t,Math.max(0.5,0.25*lim/sp),hP);
     [r,v]=coastStep(b,r,v,t,h,pa);t+=h;const rl=len(r);minR=Math.min(minR,rl);maxR=Math.max(maxR,rl);
-    if(t-tLast>=every){path.push([r,t]);tLast=t}
+    if(t-tLast>=every){path.push([r,t]);tLast=t;
+      if(P){if(!head&&t>t0+3*P)head=ring();   // the first revolution
+        if(head){while(path[i0][1]<t-P)i0++;if(i0>4096){path=path.slice(i0);i0=0}}}}   // and a rolling last one
     if(rl<b.R){path.push([r,t]);pt.end=r;pt.endV=v;pt.endKind='impact';pt.endT=t;break}
-    if(b.parent&&rl>soiAt(b,t)){path.push([r,t]);const[bp,bv]=bodyRel(b,t);pt.end=r;pt.endKind='esc';pt.endT=t;pt.minR=minR;pt.maxR=maxR;
+    if(b.parent&&rl>soiAt(b,t)){path.push([r,t]);const[bp,bv]=bodyRel(b,t);pt.end=r;pt.endKind='esc';pt.endT=t;fin('esc');
       return{b:b.parent,r:add(r,bp),v:add(v,bv),t,off:absOff(b.parent,t)}}
-    for(const c of b.children){const[cp,cv]=bodyRel(c,t);if(len(sub(r,cp))<soiAt(c,t)){path.push([r,t]);pt.end=r;pt.endKind='enc';pt.endT=t;pt.minR=minR;pt.maxR=maxR;
+    for(const c of b.children){const[cp,cv]=bodyRel(c,t);if(len(sub(r,cp))<soiAt(c,t)){path.push([r,t]);pt.end=r;pt.endKind='enc';pt.endT=t;fin('enc');
       return{b:c,r:sub(r,cp),v:sub(v,cv),t,off:absOff(c,t)}}}}
-  if(!pt.endKind)path.push([r,t]);pt.minR=minR;pt.maxR=maxR;pt.tEnd=t;return null}
+  if(!pt.endKind)path.push([r,t]);fin(pt.endKind);pt.tEnd=pt.endKind?t:pt.tDrawn??t;return null}
 // When does this leg leave its body's SOI? A fixed SOI is a radius crossing (exact). A breathing one is scanned, then
 // bisected: an outbound leg up to where it crosses the largest SOI; a bound orbit that reaches past the smallest SOI over
 // three of the moon's orbits (it is stripped when the moon swings in and its SOI shrinks below the apoapsis).
