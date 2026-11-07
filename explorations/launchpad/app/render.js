@@ -7,6 +7,10 @@ let W=1,H=1;
 // whatever the adaptive resolution RS does. Every overlay mark and text is sized by it: min(dpr,1.5) alone grew them by 1/RS
 // on a slow GPU (x2.9 at RS 0.35). At RS 1 it is min(dpr,1.5), as before
 function ovPx(w=W,iw=innerWidth){return w/iw}
+// (flow, Q541) a body's limb radius on the view, in drawing units: its angular radius seen from d away, on a view h tall whose
+// half-height is tanY at unit depth (0 from inside). The map's body names sit just over it, their dot on the centre; the
+// notebook's and terminal's limb circles use it too
+function bodyRadPx(R,d,h,tanY){return d>R?(h/2)*Math.tan(Math.asin(R/d))/tanY:0}
 // ---- adaptive resolution: GPU timer queries (async, never stall) drive a render-scale multiplier
 const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0,RS_MAX=1;   // RS_MAX: the graphics quality's resolution cap (Settings, flow)
 const GPU_NAME=(()=>{const e=gl.getExtension('WEBGL_debug_renderer_info');const r=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
@@ -259,7 +263,7 @@ function render(){spoolFrame();
       else if(L.mark==='txt'){}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.lineWidth=k;octx.setLineDash([4*k,4*k]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3*k,0,7);octx.fill()}
-      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10)*k,c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?(L.px*1.6+8)*k:L.mark==='body'?bodyRadPx(L.R,len(sub(L.p,camW)),H,tanY)+8*k:10*k),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
       if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*k,c:L.c2||L.c,o:0,plate:1})}   // (Q488) a second line under the mark: the landing verdict
     // (flow, Q536) the Recovery legend's box is taken first, so labels keep off it (and the powers' names keep off the marks'
     // own labels, MAP_PUT); the landing verdict (plate) is never skipped: it takes the first free spot (under the X, lower,
@@ -438,7 +442,7 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
   for(const q of landedUp()){const b=landedBody(q);if(!b||q.id!==S.target&&!mapShow('sats'))continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.id===S.target||nm&&q.beacon?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
   if(landPick){const b=BODIES.find(x=>x.name===landPick.body),u=b&&fromPF(b,landPick.pf,simT);if(u&&dot(sub(camW,add(bodyPos(b,simT),u)),u)>0)labels.push({p:add(bodyPos(b,simT),u),mark:'impact',t:'landing site',c:'#ffb347'})}   // (Q62)
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
-  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:!nm?'':knownBody(b)?b.name:'?',c:'#9ab'})))}
+  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:bodyPos(b,simT),mark:'body',R:b.R,t:!nm?'':knownBody(b)?b.name:'?',c:'#9ab'})))}   // (Q541) at the centre; the name over the limb (was 1.3 R above in world y: off the disc when zoomed in)
 
 // (flow, Q435; PLAYTEST #110) the navball's frame in words: SURFACE, ORBIT, SURFACE ▸ ORBIT through the blend; "held" when
 // the player chose one (a click: auto → surface → orbit)

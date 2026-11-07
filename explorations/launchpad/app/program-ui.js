@@ -264,7 +264,7 @@ function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
   const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
   // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
   for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
-    const rp=(H/2)*Math.tan(Math.asin(b.R/d))/tanY;if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
+    const rp=bodyRadPx(b.R,d,H,tanY);if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
     o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k*OV_K}   // shadowBlur ignores the transform (Q258)
     o.beginPath();for(let i=0;i<=72;i++){const t=i/72*6.2832,[x,y]=era===1?wob(c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t),i):[c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t)];i?o.lineTo(x,y):o.moveTo(x,y)}o.stroke();
     const th=bodyTheta(b,simT),vis=p=>dot(sub(p,cen),sub(camW,p))>0,P=(lat,lon)=>add(cen,rotY([b.R*Math.cos(lat)*Math.cos(lon),b.R*Math.sin(lat),b.R*Math.cos(lat)*Math.sin(lon)],th));
@@ -393,8 +393,9 @@ function updateHUD(){
   renderCards();gaugeSlot();if(typeof cockpit==='function')cockpit();   // (Q286) news held, master caution
   // the unfolding parts' button (vehicle, Caio 2026-10-13: "a button with P in parentheses"): what P does, shown when the craft has any
   {const u=S.alive&&S.parts.filter(p=>p.on&&unfolds(p.d)),bw=$('bWings');bw.classList.toggle('hidden',!(u&&u.length));
-    if(u&&u.length){const wg=u.some(p=>p.d.wing),an=u.some(p=>!p.d.wing),nm=wg&&an?'Wings and antennas':wg?'Wings':'Antennas',out=wingsOut(S),t=`${out?'Fold':'Unfold'} ${nm.toLowerCase()} (P)`;
-      if(bw.textContent!==t)bw.textContent=t;bw.classList.toggle('on',out)}}
+    if(u&&u.length){const wg=u.some(p=>p.d.wing),an=u.some(p=>!p.d.wing),nm=wg&&an?'Wings and antennas':wg?'Wings':'Antennas',out=wingsOut(S),f=u.filter(p=>!p.dep),
+        pin=!out&&f.length&&f.every(p=>pinned(S,p)),t=pin?`${nm} pinned under it`:`${out?'Fold':'Unfold'} ${nm.toLowerCase()} (P)`;   // (Q540) all it could unfold lies under a toppled hull
+      if(bw.textContent!==t)bw.textContent=t;bw.classList.toggle('on',out);bw.classList.toggle('no',!!pin)}}
   // legs and the cargo bay the same way (vehicle, Q400: PLAYTEST #97, "no visible way to deploy folded parts")
   {const tog=(id,has,on,txt)=>{const e=$(id);e.classList.toggle('hidden',!has);if(has){const t=txt(on);if(e.textContent!==t)e.textContent=t;e.classList.toggle('on',on)}};
     tog('bLegs',S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'),S.alive&&legsDown(S),on=>on?'Legs up (Y)':'Legs down (Y)');

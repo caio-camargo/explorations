@@ -1245,3 +1245,60 @@
       && H.includes("${q.bodyName}${q.tipped?' · <span class=\"warn\">on its side</span>':''}") && H.includes('if(!S.landed)drawPatches(gateLegs(predCache.p,labels)')
       && H.includes("TIP_NO=\"It lies on its side: it can't lift off or drop a stage"));
 }
+
+// flow-51. A wing under a toppled lander stays folded; the map's body names sit on their bodies (flow, QUEUE Q540, Q541;
+// from Q527). On its side, P unfolded a wing lying under the hull (drawn into the ground). Now a deployable pressed under it
+// (p.buried) stays folded and says why ("the solar wing is pinned under it"); the others unfold, by P, a group or a stage.
+// (Staging and thrust on its side are left to the simulation: Q545.) The map put a body's dot and name at bodyPos + 1.3 R in
+// world y: zoomed in, off the disc; now the dot is the centre and the name sits over the limb (bodyRadPx, app/render.js).
+// The same drop as flow-50, its own sim.
+{
+  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,fromPF,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,DT,footPoints,tipSpeed,recNew,len,norm,add,mul,cross,wingOp,legOp,agFire,stage,pinned,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const M = []; Object.assign(D.HOOK, { msg: m => M.push(m), boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
+  const B = D.SELENE, DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)];
+  let u = null; for (let la = -30; la <= 30 && !u; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const w = U(la, lo); if (D.surfaceHit(D.surfaceAt(B, w), w, B) > 0) continue; if (D.terrainSlope(B, w) < 0.02) { u = w; break; } }
+  const des = D.toV2(['sci', 'core', 't1', 'wren']), fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  fd(des.root, 't1').c.push({ k: 'whip', at: { y: 0.5, a: 0, n: 1 }, c: [] }, { k: 'whip', at: { y: 0.5, a: Math.PI, n: 1 }, c: [] }, { k: 'wpanel', at: { y: 0.3, a: 0, n: 1 }, c: [] }, { k: 'wpanel', at: { y: 0.3, a: Math.PI, n: 1 }, c: [] });
+  D.t = 0; const s = D.newShip(des); D.S = s; Object.assign(s, { landed: false, body: B, sas: false, throttle: 0 }); s.rec = D.recNew(); s.rec.launched = true;
+  const vt = D.tipSpeed(s, B.mu / B.R ** 2), fy = Math.min(...D.footPoints(s).map(f => f.pt[1])) - s.cm[1];
+  s.r = D.fromPF(B, D.mul(u, B.R + D.groundAlt(B, u) - fy + 0.2), 0); const up = D.norm(s.r), e = D.norm(D.cross([0, 1, 0], up));
+  s.v = D.add(D.surfVel(B, s.r), D.add(D.mul(up, -1), D.mul(e, 1.5 * vt))); s.q = D.qFromBasis(e, up, D.cross(e, up)); s.w = [0, 0, 0];
+  for (let i = 0; i < 40 / D.DT && s.alive && !s.landed; i++) D.physStep(s, D.DT);
+  const W = s.parts.filter(p => p.on && p.d.key === 'wpanel'), Wb = W.find(p => p.buried), Wu = W.find(p => !p.buried);
+  // P: the free wing unfolds, the buried one stays folded and the message says why; folded again; then both pinned: nothing moves
+  M.length = 0; const n1 = D.wingOp(s, 'out'), m1 = M.join(' | '), ok1 = n1 === 1 && !!Wu && !!Wu.dep && !!Wb && !Wb.dep && /the solar wing is pinned under it/.test(m1);
+  let n2 = -1, m2 = '', n3 = -1, ok2 = false, ok3 = false;
+  if (Wu && Wb) { D.wingOp(s, 'in'); Wu.buried = true; M.length = 0; n2 = D.wingOp(s, 'out'); m2 = M.join(' | '); ok2 = n2 === 0 && W.every(p => !p.dep) && /^2 solar wings are pinned under it: they stay folded$/.test(m2);
+    M.length = 0; n3 = D.agFire(s, 'sol'); ok3 = n3 === 0 && W.every(p => !p.dep) && /pinned under it/.test(M.join());   // the stock group (P's) and the Unfold button take the same path
+    Wu.buried = false; }
+  check('flow-51: on its side, a wing pressed under the hull stays folded and says why ("the solar wing is pinned under it"); the free one unfolds; with both under it, P and the Solar panels group move nothing',
+    s.alive && !!s.tipped && ok1 && ok2 && ok3, `${s.alive ? `P: ${n1} out, "${m1}"; both under: "${m2}"; group: ${n3}` : s.lossWhy}`);
+  // a stage of action groups only (Solar panels): the free wing unfolds, the buried one doesn't; an upright craft pins nothing
+  const i0 = s.evIdx, harm = { decouple: [], ignite: [], ag: ['sol'] };
+  s.events.splice(i0, 0, harm); M.length = 0; D.stage(s); const okH = s.evIdx === i0 + 1 && !!Wu && !!Wu.dep && !!Wb && !Wb.dep && /pinned under it/.test(M.join());
+  s.events.splice(i0, 1); s.evIdx = i0; D.wingOp(s, 'in');
+  const s2 = D.newShip(des); s2.landed = true; s2.parts.forEach(p => { p.buried = true; }); const okU = !s2.parts.some(p => D.pinned(s2, p));
+  check('flow-51: a staged action group on its side unfolds the free wing and leaves the pinned one; a buried flag without s.tipped pins nothing',
+    okH && okU, `stage ${okH} · upright ${okU}`);
+  const H = html.replace(/\r\n/g, '\n');
+  check('flow-51: wired: the Unfold button says when all it could unfold is pinned; legs and action groups leave pinned parts folded',
+    H.includes("pin=!out&&f.length&&f.every(p=>pinned(S,p)),t=pin?`${nm} pinned under it`") && H.includes("if(dn&&pinned(s,p))pin.push(p);else{p.dep=dn;p.depT=simT;n++}")
+      && H.includes("if(out&&(unfolds(p.d)||p.d.kind==='leg')&&pinned(s,p)){pin.push(p);continue}"));
+  // Q541, computed: a body seen close and off-axis from a tilted camera, projected as render() does. The dot is the projected
+  // centre; the name sits 8 px over the limb (bodyRadPx: the disc's true radius on screen); the old anchor, 1.3 R up in world y,
+  // was well off the disc
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const bodyRadPx = new Function(cut(H, 'function bodyRadPx(', '\n') + ';return bodyRadPx')();
+  const V = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], nz = a => { const l = Math.hypot(...a); return a.map(x => x / l); };
+  const Wd = 1280, Hd = 800, tanY = Math.tan(0.45), tanX = tanY * Wd / Hd, Rb = 1.0e6, cen = [3e8, 0, 1e8], camW = [cen[0] - 2.2e6, cen[1] + 2.6e6, cen[2] + 1.4e6];
+  const Fw = nz(V([cen[0] + 4e5, cen[1], cen[2] - 3e5], camW)), Rr = nz(cr(Fw, [0, 1, 0])), Uu = cr(Rr, Fw);
+  const project = p => { const q = V(p, camW), z = dt(q, Fw); return z <= 0 ? null : [Wd / 2 * (1 + dt(q, Rr) / (z * tanX)), Hd / 2 * (1 - dt(q, Uu) / (z * tanY))]; };
+  const c = project(cen), d = Math.hypot(...V(cen, camW)), rp = bodyRadPx(Rb, d, Hd, tanY);
+  let lim = 0; const vd = nz(V(cen, camW)), a1 = nz(cr(vd, [0, 1, 0])), a2 = cr(a1, vd), ca = Rb / d, sa = Math.sqrt(1 - ca * ca);   // the limb: the tangent circle seen from the camera
+  for (let i = 0; i < 360; i++) { const t = i * DG, P = [0, 1, 2].map(j => cen[j] - vd[j] * Rb * ca + (a1[j] * Math.cos(t) + a2[j] * Math.sin(t)) * Rb * sa), q = project(P); lim += Math.hypot(q[0] - c[0], q[1] - c[1]) / 360; }
+  const old = project([cen[0], cen[1] + 1.3 * Rb, cen[2]]), oldOff = Math.hypot(old[0] - c[0], old[1] - c[1]) / lim, txtY = c[1] - (rp + 8);
+  check('flow-51: the map\'s body label: its dot is the body\'s projected centre and its name 8 px over the limb (bodyRadPx within 3 % of the drawn disc, close and off-axis); the old anchor, 1.3 R up in world y, sat off the disc',
+    H.includes("...BODIES.map(b=>({p:bodyPos(b,simT),mark:'body',R:b.R,") && H.includes("L.mark==='body'?bodyRadPx(L.R,len(sub(L.p,camW)),H,tanY)+8*k") && H.includes('const rp=bodyRadPx(b.R,d,H,tanY);')
+      && Math.abs(rp / lim - 1) < 0.03 && txtY < c[1] - lim && txtY > c[1] - lim - 20 && oldOff > 1.1,
+    `disc ${lim.toFixed(0)} px, bodyRadPx ${rp.toFixed(0)} px; name ${(c[1] - txtY).toFixed(0)} px over the centre; the old anchor ${oldOff.toFixed(2)} radii from it`);
+}
