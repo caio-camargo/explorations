@@ -2572,7 +2572,12 @@ What the walker learned (each found by walking the course headless and tracing w
 - **Setting off from standing**, the ankle pushes (the pressure goes back toward the heel): with no foothold behind (the
   crater's rim) it had stood frozen, wanting 1 m/s.
 
-**Measured** (test space-33, now 13 checks): the rubble lane straight north: hummocks at the flat pace (Tellus 1.13 m/s,
+- **Shift starts at once** (after Caio: "starting the fast movement is a little sluggish"): speeding up hard on Shift,
+  the step in progress is cut to a lope's contact time and the next ones are quick steps with no flight, until it is
+  within a quarter of the pace (not against a wall or slipping: quick steps against a boulder climbed it). Walk to 90 %
+  of the hurried pace: Tellus 1.09 → 0.71 s, Selene 3.42 → 2.15 s (there the grip is the limit: about 0.4 g of push).
+
+**Measured** (test space-33, now 14 checks): the rubble lane straight north: hummocks at the flat pace (Tellus 1.13 m/s,
 flat 1.12; Selene 0.47, flat 0.47), stones with no air; in the boulders, Tellus stopped at a wall at z 30.6, Selene
 through at 107 s, highest foot 0.18 m, no falls. Walked head-on into a 1.06 m boulder: stops at it, highest foot 0.05 m.
 The crater straight in and out: Tellus 39 s, Selene 50 s, no falls. The 15° bank: firm 32 s (Tellus) / 80 s (Selene)

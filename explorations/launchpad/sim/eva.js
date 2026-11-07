@@ -141,8 +141,8 @@ function evaNext(A){const T=A.T,W=A.W,g=evaG(W),vd=A.tel.vd;if(g<1e-3||A.st==='d
   const moving=len(vd)>.02||Math.hypot(A.v[0],A.v[2])>.05;if(!moving)return{f:A.f,t:Math.max(0,.5*evaStepP(T,g)-A.tdT),still:true};
   const tau=Math.max(0,A.stepP-A.stepT),e0=[A.p[0]-A.c[0],0,A.p[2]-A.c[2]],v=[A.v[0],0,A.v[2]],ch=Math.cosh(w*tau),sh=Math.sinh(w*tau);
   const x=add(A.c,add(mul(e0,ch),mul(v,sh/w))),vT=add(mul(e0,w*sh),mul(v,ch));
-  if(A.lope){const tf=air([x[0],A.p[1],x[2]],vT,T.hopV),xl=add(x,mul(vT,tf));return{f:evaPlaceAt(A,xl,vT,vd,evaStanceP(T,g)),t:tau+tf}}
-  return{f:evaPlaceAt(A,x,vT,vd,evaStepP(T,g)),t:tau}}
+  if(A.lope&&!A.accel){const tf=air([x[0],A.p[1],x[2]],vT,T.hopV),xl=add(x,mul(vT,tf));return{f:evaPlaceAt(A,xl,vT,vd,evaStanceP(T,g)),t:tau+tf}}
+  return{f:evaPlaceAt(A,x,vT,vd,A.accel?evaStanceP(T,g):evaStepP(T,g)),t:tau}}
 function evaStep(A,dt=EVA_DT){const T=A.T,W=A.W,g=evaG(W),I=A.in;A.t+=dt;
   // turning: the keys turn; walking to a target, or sidestepping, faces the way it goes
   const vd=evaWanted(A);A.tel.vd=vd;
@@ -187,9 +187,13 @@ function evaStep(A,dt=EVA_DT){const T=A.T,W=A.W,g=evaG(W),I=A.in;A.t+=dt;
   // the body passes over the foot (quick short steps, the foot always ahead: a long stance would let the pendulum speed it
   // up again past the foot), with no flight between
   const vh0=[A.v[0],0,A.v[2]],sp0=len(vh0),braking=sp0>.6&&dot(vd,vh0)/sp0<sp0-.5,passed=dot(sub(A.p,A.f),vh0)>0;
+  // speeding up hard on Shift (wanting 0.3 m/s or a quarter more than it has), quick steps of a lope's contact
+  // time with no flight between, starting now (a walk's long step, or the first step from standing, was a wait); not
+  // against a wall or slipping (quick steps against a boulder climbed it)
+  const vdl=len(vd);A.accel=want&&I.hurry&&vdl>sp0+Math.max(.3,.25*vdl)&&A.t-(A.wallT??-9)>1&&!A.tel.slip;if(A.accel)A.stepP=Math.min(A.stepP,Math.max(A.stepT,evaStanceP(T,g)));
   if((moving&&A.stepT>=A.stepP)||!want&&ol>T.foot*1.5&&A.stepT>.2*A.stepP||braking&&passed&&A.stepT>.12){
-    if(A.lope&&moving&&!braking){A.st='air';A.toT=A.t;A.jumpK='hop';A.v[1]=T.hopV+dot([A.v[0],0,A.v[2]],evaSlope(A));A.hopTop=-1e9;A.rec.steps++;evaTrail(A,dt);return}
-    A.stepT=0;A.stepP=evaStepP(T,g);A.f=(A.t-(A.wallT??-9)<.5&&len(vd)>.02&&evaStepUp(A,vd))||evaPlace(A,vd,A.stepP);A.rec.steps++;evaPrint(A)}
+    if(A.lope&&moving&&!braking&&!A.accel){A.st='air';A.toT=A.t;A.jumpK='hop';A.v[1]=T.hopV+dot([A.v[0],0,A.v[2]],evaSlope(A));A.hopTop=-1e9;A.rec.steps++;evaTrail(A,dt);return}
+    A.stepT=0;A.stepP=A.accel?evaStanceP(T,g):evaStepP(T,g);A.f=(A.t-(A.wallT??-9)<.5&&len(vd)>.02&&evaStepUp(A,vd))||evaPlace(A,vd,A.stepP);A.rec.steps++;evaPrint(A)}
   // the foot's force: the pendulum's push and the weight, inside the friction cone of the ground under the foot
   const ah=[w2*(A.p[0]-A.c[0]),0,w2*(A.p[2]-A.c[2])],n=evaNormal(W,A.f[0],A.f[2]);let F=mul([ah[0],g,ah[2]],T.m);
   const Fn=Math.max(0,dot(F,n)),Ft=sub(F,mul(n,dot(F,n))),ftl=len(Ft);A.tel.cone=Fn>0?ftl/(muF*Fn):Infinity;A.tel.slip=ftl>muF*Fn;

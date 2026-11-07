@@ -953,6 +953,13 @@
   check('EVA: hurried, it lopes (Froude past 0.5): off the ground part of each stride, about half the time on Selene; faster than walking',
     hT.A.rec.falls === 0 && hS.A.rec.falls === 0 && hT.air / hT.t > .1 && hS.air / hS.t > .35 && hT.t < walks[0].t && hS.t < walks[1].t,
     `Tellus ${(50 / hT.t).toFixed(2)} m/s, ${(100 * hT.air / hT.t).toFixed(0)} % in the air; Selene ${(50 / hS.t).toFixed(2)} m/s, ${(100 * hS.air / hS.t).toFixed(0)} % in the air`);
+  // Shift out of a walk: quick steps with no flight until near the hurried pace (a walk's long step, then a lope's long
+  // flights, made it sluggish: 1.1 s at Tellus, 3.4 s on Selene to 90 %)
+  const spurt = g => { const W = EVA.world(g, null), A = EVA.new(W, straight.x, straight.z, straight.psi); A.in.fwd = 1; for (let t = 0; t < 4; t += EVA.DT) EVA.step(A);
+    A.in.hurry = true; const vr = EVA.runV(EVA.TUNE, g); let t = 0; while (t < 6 && Math.hypot(A.v[0], A.v[2]) < .9 * vr) { EVA.step(A); t += EVA.DT; } return { t, falls: A.rec.falls }; };
+  const spT = spurt(9.81), spS = spurt(sel);
+  check('EVA: Shift out of a walk gets to 90 % of the hurried pace quickly (under 0.9 s at Tellus, 2.5 s on Selene, where the grip limits it), without a fall',
+    spT.t < .9 && spS.t < 2.5 && spT.falls + spS.falls === 0, `Tellus ${spT.t.toFixed(2)} s, Selene ${spS.t.toFixed(2)} s`);
   const r20 = [9.81, sel].map(g => run(g, null, ridge(20), { fwd: 1 }, 300, A => A.p[2] >= 40)), r30 = run(sel, null, ridge(30), { fwd: 1 }, 60);
   let slid = 0; const slideRun = run(sel, null, ridge(30), { fwd: 1 }, 60, A => { if (A.tel.slide) slid += EVA.DT; return false; });
   check('EVA: the 20° ridge is walked over without a fall (slowing on the slope); the 30° one, at the friction angle, is still tried, not refused: on Selene it gets up it slowly, slipping or on hands and feet (the E0b scramble)',
