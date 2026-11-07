@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2100,3 +2100,46 @@ pod at up to 98 %). `vehicle-1`'s bare-slope check accepts lost or tipped.
 
 **Not here:** righting it (a crew, a visit: M3); legs or wings changing how it lies (it rests on its widest body); a
 topple in the sea (`seaCheck`'s own path); the camera's view of the ground. Test `vehicle-38`.
+
+## v1.273 — the Lunar-class presets climb to orbit unrescued, staged as designed (2026-11-07, vehicle worker, QUEUE Q537; from Q515)
+
+**The question** (Q515, notes/flow.md § v1.272): the Crewed Lunar's own standard climb levelled off in the air (Q483's
+'level' at 65 km, pod 100 %) and only made orbit on v1.272's ◇; the Lunar's upper stage read 0.16 g, the Crewed Lunar's
+third 0.10 g. Retune the climb or the upper stages?
+
+**Neither: no preset changed.** Two findings, both measured headless:
+- **The level-off was the test flier, not the rocket.** flow-41/46's flier stages only when *every* engine is out, so a
+  booster rocket carries its dry boosters on: the Crewed Lunar's four (~10 t) ride through the core's last 62 s. The core
+  then burns out at 59.5 km with the apoapsis at 71 km, flat, and the lander stage has to finish in the air. Dropped when
+  their own tanks run dry (as `dvPlan` assumes and test.mjs's `fly`, fly_ladder and fly_crewlunar stage), the same profile
+  goes quiet: the core burns out at 62 km still climbing at 390 m/s and 2,790 m/s fast, apoapsis 86 km, and the
+  lander stage lifts that over the air on the climb.
+- **The upper stages aren't that weak.** `stageStats`' `twr` is thrust at the *sea-level* Isp (`ispA`), and the Petrel's
+  is 90 s against 345 in vacuum, so a Petrel stage reads 26 % of what it pushes up there. In vacuum at ignition: Lunar
+  0.62 g, Big Lunar 0.61, Sample Return 0.48, Probe 0.75, Crewed Lunar 0.39 (the Orbiter's 1.49). `pilotMargin`'s
+  "under 0.3 g" Lunar-class test reads the same sea-level figure; it still sorts the five right, so it stays.
+
+**Measured** (the profile flat by 54 km while the ◇ climbs, then the ◇'s coast and burn; Δv left in orbit):
+
+| Preset | flow-41's staging (dry boosters kept) | staged as designed |
+|---|---|---|
+| Crewed Lunar | 'level' at 65 km, pod 100 %, burn from 54 km (lowest 51), 3,914 m/s | quiet, pod 53 %, burn from 110 km, **4,653** |
+| Sample Return | quiet, pod 55 %, burn from 94 km, 4,284 | quiet, pod 56 %, from 109 km, 4,493 |
+| Big Lunar | quiet, pod 57 %, from 106 km, 3,981 | quiet, pod 57 %, from 100 km, 4,123 |
+| Lunar · Probe (no boosters) | quiet, pod 56 · 58 %, 4,078 · 4,293 | the same |
+| Heavy · Asparagus · TV Satellite | quiet, 748 · 773 · 2,828 | quiet, 1,284 · 2,326 · 3,473 |
+| Orbiter · Satellite · Passenger Orbiter · Beeper | quiet, 799 · 716 · 583 · 1,559 | the same |
+
+Margins staged as designed, flat earlier: by 50 km every Lunar-class preset is quiet with the pod at 61–67 %; by 46 km
+still quiet, pod 71–91 % (the Crewed Lunar's 91 %, the Lunar's 82 %), all in orbit with 4,100–4,680 m/s left. The Crewed
+Lunar's mission budget is untouched (core §26: 2,817 m/s in the lander, 1,832 to come home; §27 lands and comes home).
+What a steeper turn or a stronger lander engine would have bought, for the record (dry boosters kept): the Crewed Lunar
+flat by 62 km goes quiet (4,083 left), a Kestrel in place of the Petrel quiet (3,713, −515 m/s of lander Δv), the core
+cut to T32 + T16 quiet (3,890, −425 in all), crossfed boosters quiet (4,323); none needed.
+
+**For flow:** a pilot who doesn't drop spent boosters climbs the Crewed Lunar flat into the heat, and the ◇ (v1.272)
+then saves it. Is there a cue when side boosters run dry? **For economy:** no preset cost moved.
+
+**Checks:** `vehicle-39` (twelve presets staged as designed: orbit, Q483 quiet, Δv left pinned ±50 m/s; the Lunar class
+with the pod under 60 % and the burn above 95 km; the dry-booster Crewed Lunar's level-off shown in the detail). No pinned
+numbers elsewhere changed. `node test.mjs --smoke --jobs 2`: all passed.
