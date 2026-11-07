@@ -609,16 +609,16 @@ function facTick(){for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.build
 // (Q332) a spent stage afloat under its chutes is fetched like a vessel (recoveryOf's ships: local boats, or the fleet's
 // range, at RECOVER_V from an hour's notice) if it's still afloat when they arrive: refurbished at its splash's wear,
 // less the ship time. What sinks first is lost (the fleet, if built, still salvages it below).
-function stageRecover(R){if(!R.launchPf)return;const lv=facLv('fleet'),reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);let got=0,n=0,lost=0;
+function stageRecover(R){if(!R.launchPf)return;const reach=recoveryReach();let got=0,n=0,lost=0;   // (Q536) the verdict's reach, one rule
   for(const v of R.drops){const f=v.sea;if(v.kind!=='sea'||!f||f.fate!=='afloat'||!v.pf||!v.parts)continue;
-    const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R,sail=RECOVER_PREP+d/RECOVER_V;
+    const d=recoveryDist(norm(v.pf),norm(R.launchPf)),sail=RECOVER_PREP+d/RECOVER_V;
     if(d>reach||f.afloat<sail){v.fate=d>reach?'beyond our ships':'sank before the ships arrived';lost++;continue}
     let val=0;for(const p of v.parts)val+=partPrice(p)*REFURB*wearOf(p,f.sp);v.got=val-2;v.fate='recovered';got+=v.got;n++}
   if(n){PROG.funds+=got;ledAdd('stages',got);R.stageBack=got;HOOK.news(`Spent stage${n>1?'s':''} recovered from the sea: ${n>1?`${n}, `:''}${got>=0?'+':''}${fmtM(got)} refurbished, after ship time`,got>=0?'ok':'')}
   if(lost)HOOK.news(`${lost} spent stage${lost>1?'s':''} came down under ${lost>1?'their':'its'} chutes but ${lost>1?'were':'was'} lost at sea`,'')}
 // salvaged for parts: load and heat wear count, the splash itself doesn't
 function fleetSalvage(R){const lv=facLv('fleet');if(!lv||!R.launchPf)return;let got=0,n=0;const seen={};
-  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts||v.got)continue;const d=Math.acos(clamp(dot(norm(v.pf),norm(R.launchPf)),-1,1))*TELLUS.R;if(d>FAC.fleet.range[lv])continue;
+  for(const v of R.drops){if(v.kind!=='sea'||!v.pf||!v.parts||v.got)continue;if(recoveryDist(norm(v.pf),norm(R.launchPf))>recoveryReach())continue;   // (Q536) the verdict's reach (the fleet's range, built)
     let val=0;for(const p of v.parts){val+=partPrice(p)*REFURB*FAC.fleet.sal[lv]*wearOf(p,TOUCH_OK);seen[p.d.key]={land:1}}got+=val-2;n++}
   if(!n)return;PROG.funds+=got;ledAdd('salvage',got);khLearn({khSeen:seen},0.3);
   HOOK.news(`Recovery fleet: ${n} stage${n>1?'s':''} fished out of the sea, ${got>=0?'+':''}${fmtM(got)} after ship time`,got>=0?'ok':'')}

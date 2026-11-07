@@ -275,13 +275,16 @@ const RECOVER_LOCAL=200e3,RECOVER_V=10,RECOVER_PREP=3600;
 // vector: the ships sail from there); afloat: how long it floats (s; Infinity by default); sea: in the water (default:
 // the sea at pf).
 const recoveryReach=()=>{const lv=typeof facLv==='function'?facLv('fleet'):0;return Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0)};
+// (Q536) the ships' distance to a point (unit vectors: the point, the launch point they sail from), over the ground; with
+// recoveryReach the one rule for what our ships reach: the verdict, the map's zones, spent stages (stageRecover, fleetSalvage)
+const recoveryDist=(u,from)=>Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R;
 // another power's welcome, by relations: a 'friend' sends it back, 'tense' sends it back worn after long talks, 'hostile' keeps it
 const recoveryRel=i=>{const r=relOf(HOME,i);return r>=0?'friend':r>=-0.2?'tense':'hostile'};
 const recoveryFrom=s=>s&&s.rec&&s.rec.launchPf?norm(s.rec.launchPf):(s&&s.site||curSite()).u;
 function landingVerdict(b,pf,o={}){
   if(b!==TELLUS)return{where:b.name,who:null,recovered:false,hours:null,refund:0,kind:'none',why:'',text:`on ${b.name}: no one there to recover it`,km:null};
   const u=norm(pf),sea=o.sea??seaAt(b,pf);
-  if(sea){const from=o.from||SITES[0].u,d=Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R,reach=recoveryReach(),sail=RECOVER_PREP+d/RECOVER_V,afloat=o.afloat??Infinity,
+  if(sea){const from=o.from||SITES[0].u,d=recoveryDist(u,from),reach=recoveryReach(),sail=RECOVER_PREP+d/RECOVER_V,afloat=o.afloat??Infinity,
       km=(d/1e3).toFixed(0),h=sail/3600,hs=Math.max(1,Math.round(h)),sea0={where:'the sea',hours:h,km:d/1e3};
     if(d<=reach&&afloat<sail)return{...sea0,who:'our ships',recovered:false,refund:0,kind:'sank',
       why:`sank ${(afloat/3600).toFixed(0)} h after splashdown, ${km} km out; our ships needed ${h.toFixed(0)} h`,text:`at sea ${km} km out: sinks in ${afloat<3600?`${Math.max(1,Math.round(afloat/60))} min`:`${(afloat/3600).toFixed(0)} h`}, before our ships get there (~${hs} h)`};
@@ -308,7 +311,7 @@ const fallVerdict=(f,s)=>f?landingVerdict(f.b,f.pf,{from:recoveryFrom(s),afloat:
 const recoveryRule=()=>`Recovered if it comes down on our land, or at sea within ${(recoveryReach()/1e3).toFixed(0)} km of the pad (abroad it depends on relations: friendly powers send it back, tense ones after long talks, hostile ones keep it; the Map's Recovery zones layer shows where)`;
 // the recovery zone of a point on Tellus, for the map's layer: 'home' (our land or no one's), 'friend', 'tense', 'hostile'
 // (another power's land), 'reach' (sea our ships reach from `from`), 'far' (sea beyond it). pw: the power there (powerAt)
-function recoveryZone(u,from,land,pw,reach=recoveryReach()){if(!land)return Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R<=reach?'reach':'far';
+function recoveryZone(u,from,land,pw,reach=recoveryReach()){if(!land)return recoveryDist(u,from)<=reach?'reach':'far';
   return!pw||pw.i===HOME?'home':recoveryRel(pw.i)}
 // ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
 // above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask

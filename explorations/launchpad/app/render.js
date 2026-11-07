@@ -227,7 +227,7 @@ function render(){spoolFrame();
   gl.disable(gl.BLEND);gl.depthMask(true);
   profMark('bloom');bloomEnd();profMark(null);
   // ---- 2D overlay
-  OV_K=ov.width/W;octx.setTransform(OV_K,0,0,ov.height/H,0,0);octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];mapUI.qnodes=[];
+  OV_K=ov.width/W;octx.setTransform(OV_K,0,0,ov.height/H,0,0);octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];mapUI.qnodes=[];mapUI.recLeg=null;
   if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
@@ -256,10 +256,17 @@ function render(){spoolFrame();
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
       if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
-      if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*Math.min(devicePixelRatio||1,1.5),c:L.c2||L.c,o:0})}   // (Q488) a second line under the mark: the landing verdict
-    {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k;texts.sort((a,b)=>a.o-b.o);
-      for(const T of texts){const w=octx.measureText(T.t).width+4*k,r=[T.x-w/2,T.y-h+3*k,T.x+w/2,T.y+3*k];
-        if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
+      if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*Math.min(devicePixelRatio||1,1.5),c:L.c2||L.c,o:0,plate:1})}   // (Q488) a second line under the mark: the landing verdict
+    // (flow, Q536) the Recovery legend's box is taken first, so labels keep off it (and the powers' names keep off the marks'
+    // own labels, MAP_PUT); the landing verdict (plate) is never skipped: it takes the first free spot (under the X, lower,
+    // above its title; slid aside) and sits on a plate
+    {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k,hit=r=>put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]);texts.sort((a,b)=>a.o-b.o);
+      MAP_PUT=[];if(recLegOn(era)){const g=recLegRect();put.push([g.x0,g.y0,g.x1,g.y1])}
+      for(const T of texts){const w=octx.measureText(T.t).width+4*k,box=(x,y)=>[x-w/2,y-h+3*k,x+w/2,y+3*k];let r=box(T.x,T.y);
+        if(T.plate){const fit=x=>Math.max(w/2+2,Math.min(W-w/2-2,x)),C=[[T.x,T.y],[T.x,T.y+h*1.2],[T.x,T.y-h*3.7],[T.x,T.y+h*2.4]],P=[];
+          for(const[x,y]of C)P.push([fit(x),y],[fit(x-w/2-8*k),y],[fit(x+w/2+8*k),y]);const f=P.find(([x,y])=>!hit(box(x,y)))||P[0];T.x=f[0];T.y=f[1];r=box(T.x,T.y);
+          octx.fillStyle=era===1?'rgba(246,240,222,.85)':'rgba(8,12,18,.62)';octx.fillRect(r[0]-2*k,r[1]-1*k,r[2]-r[0]+4*k,r[3]-r[1]+2*k)}
+        else if(hit(r))continue;put.push(r);if(T.o<=1)MAP_PUT.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
     if(atlasMode||mapShow('recovery'))atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
   const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll&&!atMC;   // (flow) the builder's markers stay off behind the Program and Debrief panels
   if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx,true3)=>{const s=project(add(pw,qrot(S.q,true3?[0,y-S.cm[1],0]:[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;   // true3: at the real centre of mass, off the axis if it is (vehicle, Q337)
