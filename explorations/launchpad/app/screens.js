@@ -204,8 +204,8 @@ function pickLandSite(m){const V=HOOK.view;if(!V)return;const d=norm(add(V.Fw,ad
   landPick=hit;updateAutoBtn();HOOK.msg(`Landing site on ${hit.body}: ${sitePlace(hit.pf)} · ▶ Procedure lands there`)}
 let drag=null,downAt=null,hDrag=null,nDrag=false;
 // map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
-const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*Math.min(devicePixelRatio||1,1.5);
-function pickOrbit(m){let best=null,bd=1e9;for(const q of mapUI.pick){const d=Math.hypot(q.x-m[0],q.y-m[1]);if(d<bd){bd=d;best=q}}return bd<16*Math.min(devicePixelRatio||1,1.5)?best:null}
+const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*ovPx();
+function pickOrbit(m){let best=null,bd=1e9;for(const q of mapUI.pick){const d=Math.hypot(q.x-m[0],q.y-m[1]);if(d<bd){bd=d;best=q}}return bd<16*ovPx()?best:null}
 cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX,e.clientY];
   if(view==='map'&&mode==='flight'){const m=toCv(e),h=mapUI.handles.find(h=>near(m,[h.x,h.y],11));
     if(h&&S.node&&!S.node.burning){hDrag={h,cur:m};drag=null;return}

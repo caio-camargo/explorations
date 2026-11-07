@@ -1120,7 +1120,37 @@
     ok2 = ok2 && a.h <= 0.2 * ih && a.w <= 0.2 * iw && a.fs <= 10.5 && a.x + a.w <= iw && a.y + a.h <= ih && z.h <= 2 * z.fs && z.w < a.w;
     L.push(`${iw}×${ih}: ${Math.round(a.w)}×${Math.round(a.h)} px at ${a.fs.toFixed(1)} px (${(100 * a.h / ih).toFixed(0)}% high), folded ${Math.round(z.w)}×${Math.round(z.h)}`); }
   const wired = H.includes('if(recLegOn(era)){const g=recLegRect();put.push(') && H.includes('else if(recLegOn(era))recLegDraw(o,recLegRect())') && H.includes('recLegToggle();drag=null')
-    && H.includes("c:L.c2||L.c,o:0,plate:1") && /if\(T\.plate\)\{[\s\S]{0,400}P\.find\(/.test(H) && H.includes('if(MAP_PUT.some(') && H.includes('const c=W/innerWidth');
+    && H.includes("c:L.c2||L.c,o:0,plate:1") && /if\(T\.plate\)\{[\s\S]{0,400}P\.find\(/.test(H) && H.includes('if(MAP_PUT.some(') && H.includes('const c=ovPx()');
   check('flow-47: the Recovery legend is compact (under a fifth of the window, ≤ 10.5 px type, folds to one line), sized in CSS pixels; the verdict under the X is on a plate and moves off labels and the legend; powers\' names give way to it',
     ok2 && wired, L.join(' · ') + ` · wired ${wired}`);
+}
+
+// flow-48. Map overlay text the same size at any render scale (flow, QUEUE Q539; from Q536). The overlay is drawn in the 3D
+// view's pixels (W = innerWidth·min(dpr,1.5)·RS), so a size of N·min(dpr,1.5) grew by 1/RS when the adaptive resolution
+// dropped on a slow GPU (×2.9 at RS 0.35: the X's labels, cities, powers' names, node handles, the readout). Every overlay
+// mark and text is now sized by one helper, ovPx() (W/innerWidth, app/render.js): N·ovPx() is N CSS px at any RS. Source:
+// nothing sizes from min(devicePixelRatio…) but the canvases themselves; computed: 12 px type is 12 CSS px at RS 1 and 0.35.
+{
+  const H = html.replace(/\r\n/g, '\n'), B = readFileSync(new URL('./builder.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  // the only min(devicePixelRatio…) left: the 3D view's size, the overlay canvas's size, the mission track's own canvas
+  const allowed = [/const dpr=Math\.min\(devicePixelRatio\|\|1,1\.5\)\*RS,w=Math\.round\(innerWidth\*dpr\)/, /const od=Math\.min\(devicePixelRatio\|\|1,2\),ow=/, /^function mcTrackDraw\(\)/];
+  const stray = (H + '\n' + B).split('\n').filter(l => /min\(devicePixelRatio/.test(l) && !allowed.some(r => r.test(l.trim()))).map(l => l.trim().slice(0, 60));
+  const drawers = { 'drawMap and the flight markers': cut(H, '// ---- 2D overlay', '\nfunction nuToT('), atlasOverlay: cut(H, 'function atlasOverlay(', '\nfunction eraInk('),
+    drawEraMap: cut(H, 'function drawEraMap(', '\nfunction gateMsg('), recLegRect: cut(H, 'function recLegRect(', '\nfunction recLegDraw('), rvLabels: cut(H, 'function rvLabels(', '\n'),
+    'map picking': cut(H, 'const toCv=', '\nfunction pickOrbit') + cut(H, 'function pickOrbit(', '\n'), 'node handle drag': cut(H, 'if(hDrag&&S.node){', '\n'), 'builder overlay': cut(B, 'const DPR=', '\n') };
+  const missing = Object.entries(drawers).filter(([, s]) => !s || !s.includes('ovPx()')).map(([n]) => n);
+  // no fixed-size font in the map's drawers (a font is N·k, k = ovPx())
+  const fixed = [drawers['drawMap and the flight markers'], drawers.atlasOverlay, drawers.drawEraMap].join('\n').match(/font=`(?:bold |600 )?\d+(?:\.\d+)?px/g) || [];
+  check('flow-48: every map overlay text and mark sizes from one helper, ovPx(), not min(devicePixelRatio…) (the X\'s labels, cities, powers\' names, node handles, the readout, the notebook/terminal maps, the flight markers, the rover yard, the builder)',
+    !stray.length && !missing.length && !fixed.length && /function ovPx\(w=W,iw=innerWidth\)\{return w\/iw\}/.test(H),
+    `stray ${stray.length ? stray.join(' | ') : 'none'} · without the helper ${missing.join(', ') || 'none'} · fixed fonts ${fixed.join(' ') || 'none'}`);
+  // computed: the 3D view's width as render() sets it, the helper from the source, 12 px type at RS 1 and 0.35, dpr 1 and 2
+  const ovPx = new Function(cut(H, 'function ovPx(', '\n') + ';return ovPx')(), iw = 1280, rows = [];
+  let same = /const dpr=Math\.min\(devicePixelRatio\|\|1,1\.5\)\*RS,w=Math\.round\(innerWidth\*dpr\)/.test(H);
+  for (const dpr of [1, 2]) for (const RS of [1, 0.35]) {
+    const W = Math.round(iw * Math.min(dpr, 1.5) * RS), css = u => 12 * u * iw / W;   // drawing units → CSS px (the overlay spans the window)
+    const now = css(ovPx(W, iw)), was = css(Math.min(dpr, 1.5));
+    same = same && Math.abs(now - 12) < 0.05; rows.push(`dpr ${dpr} RS ${RS}: ${now.toFixed(2)} CSS px (was ${was.toFixed(1)})`); }
+  check('flow-48: the helper keeps 12 px type at 12 CSS px at RS 1 and RS 0.35 (dpr 1 and 2); before, it grew to ~34 px at RS 0.35', same, rows.join(' · '));
 }
