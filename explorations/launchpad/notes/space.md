@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2586,3 +2586,24 @@ with no slip; loose 88 s (32 s slipping) / 119 s (48 s slipping). Earlier checks
 
 **Not yet:** walking round a boulder is the player's job (the click-to-go walks straight at the target and slides along
 whatever is in the way: no path-finding). The rest of E0b (stairs, ladder, gaps, lander and rover mocks) is next.
+
+## v1.280 — a wait cut mid-transfer keeps its encounter (2026-11-07, space session, QUEUE Q530)
+
+**The bug.** Q526 found that cutting `advanceDays` into day pieces made a Selene transfer miss its encounter, and that the
+old code missed the same way when a wait stopped mid-transfer. The queue line blamed `predictFrom`'s 400-step search. It
+isn't that: around Tellus a transfer reaching past half Selene's orbit is `pertNear`, so it's a `numLeg` leg (the adaptive
+kick–drift–kick stepper, `coastStep`), not a Kepler leg with the scan. The fault was in `cruiseStep` (sim/space.js): when a
+wait ends before the leg's next event, it moved the cruise to the wait's end with a **fixed 600 s RK4** (`tideRK4`), a
+different integrator from the predictor's. Off a 300 km perigee that RK4 is ~15,000 km off a 5 s RK4 after one day; the
+predictor's own `coastTo` is within 0.1 km. So every stop mid-transfer moved the craft off the trajectory the map had shown.
+
+**Measured** (8 aims: 300 km circular, Hohmann speed × 1.000/1.002/1.004, phases where the predictor finds the encounter;
+scratch `split.mjs`): one wait to past the arrival enters Selene 8/8 before and after; 1-day waits **0/8 before, 8/8 after**.
+
+**The fix.** `cruiseStep` coasts a perturbed cruise with `coastTo(B, r, v, t, T1)`, the predictor's stepper (the same step
+rule as `numLeg`, only the last step cut at `T1`), so stopping and restarting is the same trajectory to stepper accuracy.
+`tideRK4` stays for station-keeping and moon orbits (`moonOrbStep`, `skTick`), whose steps are fixed fractions of their
+own period. Test **space-34** (fails on the old code: "1-day waits: missed").
+
+**Not done.** `advanceDays` still moves the orbits once over the whole wait after the world's day pieces (Q526's choice,
+made because of this bug). With the cruise split-stable that could move to per piece; nothing needs it today.

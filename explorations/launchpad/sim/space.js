@@ -340,7 +340,7 @@ function cruiseStep(q,T1){const o=ORB_T0;ORB_T0=0;let guard=0;
     if(L.endKind==='impact'&&L.endT<=T1){PROG.sats=PROG.sats.filter(x=>x!==q);HOOK.news(`${q.name} struck ${B.name}`,'bad');return}
     if(tEnd<T1&&legs[1]){const n=legs[1];q.r=n.r.slice();q.v=n.v.slice();q.epoch=n.t;if(n.b===TELLUS)delete q.bodyName;else q.bodyName=n.b.name;
       HOOK.news(L.endKind==='enc'?`${q.name} has entered ${n.b.name}'s sphere of influence`:`${q.name} has left ${B.name}'s pull: now around ${n.b.name}`,'ok');if(L.endKind==='enc')stagedCruise(q,n.b)}   // arriving pays (Q167)
-    else{if(pertNear(B,el)){let r=q.r,v=q.v,t=q.epoch;const h=Math.min(600,el.e<1?el.period/120:600);while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}q.r=r;q.v=v}
+    else{if(pertNear(B,el))[q.r,q.v]=coastTo(B,q.r,q.v,q.epoch,T1);   // the predictor's own stepper (Q530: a fixed 600 s RK4 drifted ~15,000 km in a day off a low perigee, so a wait cut mid-transfer lost the encounter)
       else[q.r,q.v]=kepler(q.r,q.v,T1-q.epoch,B.mu);q.epoch=T1}
     const B2=orbBody(q),e2=elements(q.r,q.v,B2.mu);
     if(settled(B2,e2)){delete q.cruise;q.skRate=null;HOOK.news(`${q.name} has settled into an orbit around ${B2.name} (${kmS(e2.pe-B2.R)}–${kmS(e2.ap-B2.R)} km)`,'ok');return}}}

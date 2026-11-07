@@ -6754,3 +6754,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Tests:** aerofx-50 passes (the per-vertex version failed it); `--smoke` all passed.
 - **Next:** Caio's look at TESTING 336; spacewalk suits with backpacks come with E1 (Q533). Earlier follow-ups still
   open: Q455 (crew views), Q534 (faceplate openings), CREW.md 1.0.0 on Caio's word.
+
+## 2026-11-07 — space (explorations-8f): a wait cut mid-transfer keeps its encounter (Q530, v1.280)
+
+- **Asked:** Caio asked for PLAYTEST #148 (infinite fuel, start in orbit); it was already Q542 with the orchestrator's
+  worker, so it was left there. Then an unclaimed item: Q530 (Q540/Q541 were taken).
+- **Found:** not `predictFrom`'s 400-step scan as the queue guessed. A Selene transfer around Tellus is a perturbed
+  (`numLeg`) leg; the fault was `cruiseStep` moving a cruise to a wait's end with a fixed 600 s RK4, ~15,000 km off a fine
+  reference after a day from a 300 km perigee. 1-day waits reached Selene 0 of 8 aims (one long wait: 8 of 8).
+- **Done:** `cruiseStep` coasts with `coastTo` (the predictor's stepper): 8 of 8 either way.
+- **Files:** `sim/space.js`, `tests/space.mjs` (space-34, fails on the old code), `notes/space.md`, `NOTES.md`,
+  `TESTING.md` (346), `QUEUE.md` (Q530 ✓), `ACTIVE_WORK.md`.
+- **Tests:** `--smoke` (318 sections) all passed; flow-16, space-8/9/34 pass. Headless only, no game run.
+- **Next:** with cruises split-stable, `advanceDays` could move the orbits per day piece (Q526's note); nothing needs it.

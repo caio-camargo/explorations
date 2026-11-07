@@ -15,7 +15,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 |---|---|---|
 | [`notes/foundations.md`](notes/foundations.md) | The idea, the first prototype (v1.0–v1.11), measurements, negative results, precision tricks, picking this up cold, open threads | 19 |
 | [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 27 |
-| [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 47 |
+| [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 48 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 19 |
@@ -191,6 +191,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.265 — EVA E0a after Caio's feel pass: turning un-mirrored, feet land where the physics puts them (`EVA.next`), jump and lope legs, falls topple and get up (2026-11-06, space session, QUEUE Q531)
 - v1.267 — EVA E0b rough ground: rubble lane (hummocks, stones, boulders), a crater, loose vs firm 15° banks; rocks are walls slid along, banks are scrambled up on hands and feet (2026-11-06, space session, QUEUE Q531)
 - v1.266 — EVA: no invisible walls (slope look-ahead along the path, a creep, slides on its feet), footholds for knee-high banks (2026-11-06, space session, QUEUE Q531)
+- v1.280 — a wait cut mid-transfer keeps its encounter: a cruise between events coasts with the predictor's own stepper (coastTo), not a fixed 600 s RK4 that drifted ~15,000 km a day off a low perigee (2026-11-07, space session, QUEUE Q530)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
