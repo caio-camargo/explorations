@@ -6,17 +6,19 @@
 // PACE=1: epoch 1–2 pacing for a new player instead (flights and days to first orbit, the longest wait with nothing
 // affordable, bailouts before orbit). FAILFIRST=1: the first try at every first fails; FAILFIRST=orbit: only the first orbital attempt fails, the worst
 // single failure ("nothing unaffordable after one failure").
+// OFFERS=1: one line per row with funds, bailouts, career offers and offers posted by source, then a mean line (Q528).
 import { readFileSync } from 'node:fs';
 import { pageSource } from './page.mjs';
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
+genOffer=(g=>(k,R)=>{const o=g(k,R);if(o&&HOOK.offer)HOOK.offer(o);return o})(genOffer);   // career.mjs counts offers posted, by source
 return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,withdrawContract,payFloor,curSite,rvPrice,sciGot,selSci,selN,SELENE,PARTS,DAY_S,
   PROG,CT,MISSIONS,START,newShip,vesselCost,POWERS,ARCH,flav,opOf,own,ownKind,stateShare,raceLost,RACE,RIVALS,sanctioned,capOf,offerRisk,missionOpen,
   TELLUS,HOOK,rng,raceSchedule,PRESETS,PARTS,PRICE,norm,cross,khUse,FAC,facLv,facQuote,buildFac,standReady,buildStand,testQuote,startTest,STAND_COST,devQuote,startDev,devLv,prodLine,prodQuote,startProdLine,sourceOf,tierOf,IGN_FAIL,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
 const { PROG: P, CT, TELLUS } = api;
 const YEARS = +(process.argv[2] || 3), SEEDS = +(process.argv[3] || 3), VARIANT = process.argv[4] || 'base', DAYS = 400 * YEARS, ATMK = TELLUS.atm / 1e3;
-const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+const news = [], posted = {}; api.HOOK.news = t => news.push(t); api.HOOK.offer = o => { posted[o.src] = (posted[o.src] || 0) + 1; }; api.HOOK.msg = () => {}; api.HOOK.save = () => {};
 
 // ---- designs: what each costs (real presets) and the flight record it produces
 const SOUND_S = ['chute', 'sci', 't1', 'fins', 'sparrow'], SOUND_B = ['chute', 'sci', 't2', 'fins', 'sparrow'], QUAL = ['chute', 'sci', 't2', 'fins', 'kestrel'];
@@ -166,7 +168,7 @@ function run(arch, start, seed) {
   Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: null, active: [], cdone: 0, stand: {}, recs: {},
     cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
     nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {}, fac: {}, stand2: null, dev: {}, devJob: null, studies: {}, studyQ: [], compEra: null, staged: {}, sel: null, procs: {} });
-  api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); api.ensureBoard(); news.length = 0;
+  api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); for (const k in posted) delete posted[k]; api.ensureBoard(); news.length = 0;
   const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0, wd: 0, rover: null, rvSpend: 0, reads: 0, panos: 0, selDay: null, rvTries: 0, accepted: 0 };
   while (P.day < DAYS && m.fl < 600) {
     // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
@@ -204,7 +206,7 @@ function run(arch, start, seed) {
   m.sanc = news.filter(t => /imposes sanctions/.test(t)).length;
   m.selDone = news.filter(t => /^Contract done for .*: (Read Selene|A panorama of Selene|A seismic network|Locate \d+ moonquakes|Bound Selene|Science from Selene)/.test(t));
   m.selPay = m.selDone.reduce((a, t) => a + (+((t.match(/\(\+([\d.]+)M\)/) || [])[1] || 0)), 0); m.selDay = P.done.selland ? Math.round(P.done.selland.day) : null;
-  return { ...m, final: P.funds, kh: avg(Object.keys(P.kh || {}).map(k => api.khUse(k))) || 0, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
+  return { ...m, posted: { ...posted }, final: P.funds, kh: avg(Object.keys(P.kh || {}).map(k => api.khUse(k))) || 0, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
     race: api.RACE.map(id => P.done[id] ? (api.raceLost(id) != null ? '2' : '1') : (api.raceLost(id) != null ? 'L' : '-')).join(''), home: api.home };
 }
 
@@ -213,8 +215,12 @@ const f0 = x => x.toFixed(0).padStart(5);
 console.log(`career runner [${VARIANT}]: ${YEARS} years (${DAYS} days), ${SEEDS} seeds each · race: 1 first, 2 second, L lost (not done), - open (beeper/hop/orbiter)`);
 if (PACE) { const pc = k => f0(planCost(FIRST_PLAN[k]()).c); console.log(`first-flight prices (M): weather${pc('weather')} loads${pc('loads')} hop${pc('hop')} beeper${pc('beeper')} orbiter${pc('orbiter')} · start funds ${Object.entries(api.START).map(([k, v]) => k + ' ' + v.funds).join(', ')}${FAILFIRST ? ' · FAILFIRST=' + FAILFIRST : ''}`); }
 else console.log('archetype    start       flights fail% idle%  firsts  day:beeper/orbiter  contracts  funds y1/y2/final  min  bail debt  op  careers sanc race   | ignF  kh%  lines spent  support');
+// OFFERS=1: one line per row with final funds, bailouts, career offers, contracts done and offers posted by source, then the mean over all rows (Q528)
+const OFFERS = !!process.env.OFFERS, SRCS = ['sci', 'com', 'gov', 'tour', 'mil'], ALL = [];
 for (const arch of (process.env.ARCHS || Object.keys(api.ARCH).join(',')).split(',')) for (const start of (process.argv[5] || 'agency,company,consortium').split(',')) {
   const rs = []; for (let k = 0; k < SEEDS; k++) rs.push(run(arch, start, k + (+process.env.SEED0 || 1)));
+  ALL.push(...rs);
+  if (OFFERS) { console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} careers ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)} contracts ${f0(avg(rs.map(r => r.cd)))} | offers ${SRCS.map(k => k + f0(avg(rs.map(r => r.posted[k] || 0)))).join(' ')}`); continue; }
   const day = id => { const d = rs.map(r => r.firsts[id]).filter(x => x != null); return d.length ? f0(avg(d)) + (d.length < rs.length ? '*' : ' ') : '   — '; };
   if (process.env.SELENE) { const sd = rs.filter(r => r.selDay != null), rv = rs.filter(r => r.rover);
     console.log(`${arch.padEnd(12)} ${start.padEnd(10)} soft landing ${sd.length}/${rs.length} day ${sd.length ? f0(avg(sd.map(r => r.selDay))) : '   — '}  rover ${rv.length}/${rs.length} (spent ${f0(avg(rs.map(r => r.rvSpend)))})  Selene contracts ${(avg(rs.map(r => r.selDone.length))).toFixed(1).padStart(4)} paying ${f0(avg(rs.map(r => r.selPay)))}  readings ${f0(avg(rs.map(r => r.reads)))}  accepted ${(avg(rs.map(r => r.accepted))).toFixed(1)}  final ${f0(avg(rs.map(r => r.final)))}`); continue; }
@@ -223,3 +229,4 @@ for (const arch of (process.env.ARCHS || Object.keys(api.ARCH).join(',')).split(
   if (process.env.SPEND) { console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} fl ${f0(avg(rs.map(r => r.fl)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1)} | lines ${f0(avg(rs.map(r => r.lineSpend)))} facilities ${f0(avg(rs.map(r => r.facSpend)))} (${(avg(rs.map(r => r.fac))).toFixed(1)}) tests ${f0(avg(rs.map(r => r.testSpend)))} (${(avg(rs.map(r => r.tests))).toFixed(0)}) dev ${f0(avg(rs.map(r => r.devSpend)))} (${(avg(rs.map(r => r.devs))).toFixed(0)}) kh ${f0(100 * avg(rs.map(r => r.kh)))}%`); continue; }
   console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')} | ${(avg(rs.map(r => r.ign))).toFixed(1).padStart(4)} ${f0(100 * avg(rs.map(r => r.kh)))} ${(avg(rs.map(r => r.lines))).toFixed(1).padStart(5)} ${f0(avg(rs.map(r => r.lineSpend)))}  ${(avg(rs.map(r => r.support))).toFixed(1).padStart(5)}`);
 }
+if (OFFERS) console.log(`MEAN over ${ALL.length} careers: final ${f0(avg(ALL.map(r => r.final)))} bail ${(avg(ALL.map(r => r.bail))).toFixed(2)} careers ${(avg(ALL.map(r => r.careers))).toFixed(2)} contracts ${f0(avg(ALL.map(r => r.cd)))} firsts ${(avg(ALL.map(r => Object.keys(r.firsts).length))).toFixed(2)} | offers ${SRCS.map(k => k + ' ' + (avg(ALL.map(r => r.posted[k] || 0))).toFixed(1)).join(' ')}`);
