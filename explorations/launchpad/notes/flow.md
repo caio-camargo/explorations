@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1485,3 +1485,42 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
 - **Checks:** test `flow-45` (five cases: the pad lit, orbit, climbing in the air, falling near the ground, low over Selene;
   railsWhy agrees with railsOK; no "physics" in the readout or the control; the loop and keys go through warpCap/warpStep).
   TESTING row 338.
+
+## v1.272 — the ◇ holds the height on a weak stage's burn (2026-11-07, flow worker, QUEUE Q515; from Q483)
+- **The repro** (headless, the Lunar flown as flow-41 does: its own profile flat by X km, then the ◇ from Q483's warning on):
+  flat by 40, warned at 9 km, it coasted from 47 km to ~104 km at 1,860 m/s across (3,480 wanted), began the burn 6 s before
+  the apoapsis and sank to 62 km, the ◇ flipping climb ↔ burn for ~8 minutes, and burned all ~5,400 m/s there (24 × 62 km,
+  fell). Three causes: **the burn's length** was `nodeBurnTime`, the engines lit now, so the coast's "half the burn before
+  the apoapsis" read the 1,100 kN booster that had fuel left (a few seconds) instead of the 65 kN upper stage after it
+  (minutes); **the burn's aim** (the 'circ' aim, the velocity change to circular here) only lifts the nose once the craft
+  is already sinking; and **the latch** was checked after the climb test, so an apoapsis under 100 km (it dips as the orbit
+  rounds out) turned the burn back into a level climb ◇ (the profile is flat past 54 km).
+- **Now** (`turnGuide`, sim/flight.js): the coast times the burn with `stagedBurnTime(s, dv)` (dvPlan's stages in turn at full
+  throttle; flat by 40 on the Lunar: 184 s against the booster's 28), so a weak stage starts early, still climbing. The burn
+  ◇ is the 'circ' aim, or, when that isn't enough, `guideHold`: the pitch whose thrust upward offsets gravity less the
+  centripetal part, steering to the height the burn began at (its apoapsis, at least the air's top; climbing or sinking at
+  most 150 m/s, time constant 40 s), never over 60°; within 50 m/s of circular here its across part fades (it toggled
+  forward / back and spent the Orbiter's tank holding 102 km). **A begun burn never goes back to the climb.** One begun low
+  (under 90 % of its height) that has lifted the apoapsis 10 % over the air with 20 s to spare coasts to it again
+  (burn > coast > burn), until drag pulls the apoapsis back into the air. **Levelling off in the air** (Q483's 'level', which
+  says "lift the nose to the ◇" while the profile's ◇ lay on the horizon), the climb ◇ above 40 % of the air also lifts to
+  the hold, steering to 110 km; on a climb that turned in time the path rises faster than it asks, so nothing changes there.
+- **Measured** (the ◇ obeyed from the warning; before → after): the Lunar flat by 40 fell (lowest 62.2 km in the burn, 24 ×
+  62 km) → orbit 100 × 105 km, the burn from 79 km and never under it, 3,999 m/s left; flat by 43 ('level' at 59 km) fell
+  (5 × 59) → 100 × 109, pod peak 98 → 84 %, 4,067 left; flat by 36–50 every one orbits. The Big Lunar, Probe, Sample Return
+  and Crewed Lunar flat by 40 fell or burned up → orbit (3,880–4,240 left); the Sample Return's own standard climb (flat by 54)
+  fell → orbit. The Orbiter, Satellite, TV Satellite, Heavy, Passenger Orbiter, Beeper and Asparagus: their standard climbs
+  the same within 2 km and 5 m/s, every obeyed flat climb still orbits (the Orbiter flat by 46 543 → 770 m/s left, the
+  Heavy 595 → 690). No climb after the burn begins on any of them.
+- **Q483's warning for a weak stage:** not moved. Obeyed from where it fires now ('turn' at 9–10 km on climbs flat by 36–42,
+  'level' at 59–63 km flat by 43–44) the Lunar makes orbit with the pod at most 84 %; flat by 45–50 it stays quiet and
+  orbits on the ◇ alone.
+- **For vehicle:** the Crewed Lunar's own standard climb (flat by 54) levels off in the air: 'level' fires at 65 km and the
+  pod reaches its limit (it now makes orbit on the ◇; before it burned up). The Lunar's upper stage is weaker than the queue
+  said: 0.16 g at ignition (65 kN, 3,720 m/s over 370 s; stageStats), not 0.4 (that's the Orbiter's, 0.39); the Crewed
+  Lunar's third stage 0.10 g over 554 s. Both well inside the "under 0.3 g" pilot-margin class.
+- **Checks:** test `flow-46` (the Lunar flat by 40 and by 43, obeyed: orbit, lowest in the burn over 70 km, no climb after the
+  burn, the coast's burn time through the stages over twice this stage's alone); `flow-41`'s unheeded flat-by-46 Orbiter now
+  may reach orbit on the ◇'s burn, with the pod at its limit (the check allows that); flow-34, 37, 39 unchanged.
+  `node test.mjs --smoke --jobs 2`: all passed (309 sections).
+  The ◇'s drawing didn't change (only its direction and phase), so no GPU look. TESTING row 339.

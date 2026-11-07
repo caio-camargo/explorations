@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
+**Version**: v2.0.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -18,7 +18,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 47 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
-| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 17 |
+| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 18 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
 
@@ -356,6 +356,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.259 — a falling orbit is one line: the blue to the top of the air, the red on from there in the same frame to the X on the ground; the red is drawn in the modern map again (2026-11-06, flow worker, QUEUE Q489, PLAYTEST #126)
 - v1.269 — where it comes down and who brings it back: the landing verdict under the map's X, on the Descent card and at a node's landing ("recovered by our ships, ~6 h" / "lands in Kordia: they keep it"); a Recovery zones map layer; the Rollout's check says where a chuted craft is recovered (2026-11-06, flow worker, QUEUE Q488, PLAYTEST #123) → [notes/flow.md](notes/flow.md)
 - v1.271 — the warp readout drops "(physics)": just N×, with the levels locked now dimmed beside it and why (2026-11-06, flow worker, QUEUE Q511)
+- v1.272 — the ◇ holds the height on a weak stage's burn: timed through the stages, lifted against the sink, never back to the climb once begun; levelling off in the air the climb ◇ lifts too; the Lunar class obeyed from the warning makes orbit (2026-11-07, flow worker, QUEUE Q515)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

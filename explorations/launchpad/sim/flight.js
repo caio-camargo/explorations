@@ -453,10 +453,16 @@ function nodeInfo(s){const n=s.node;if(!n)return null;
   else[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu);
   const f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
   return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
-function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
+function burnThrust(s){ // full throttle, vacuum, on the engines burning now (or the next stage's): {F: N, md: kg/s}, or null
   let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&groupFuel(s,s.grp[p.i])>0)}
-  if(!E.length)return NaN;const Fv=[0,0,0];let md=0;for(const p of E){const d=tdirOf(p),f=p.d.thrust*1000*engK(p);Fv[0]+=f*d[0];Fv[1]+=f*d[1];Fv[2]+=f*d[2];md+=engineMdot(p.d)*engK(p)*1000}const F=len(Fv);
-  return s.mass*(1-Math.exp(-dv/(F/md)))/md}
+  if(!E.length)return null;const Fv=[0,0,0];let md=0;for(const p of E){const d=tdirOf(p),f=p.d.thrust*1000*engK(p);Fv[0]+=f*d[0];Fv[1]+=f*d[1];Fv[2]+=f*d[2];md+=engineMdot(p.d)*engK(p)*1000}return{F:len(Fv),md}}
+function nodeBurnTime(s,dv){const B=burnThrust(s);if(!B)return NaN;const{F,md}=B;return s.mass*(1-Math.exp(-dv/(F/md)))/md}
+// (flow, Q515) the same through the stages: full throttle, vacuum, each stage of the Δv plan in turn (a strong stage running dry
+// into a weak one: the Lunar's 0.16 g upper stage takes ~10× its booster's time for the same m/s). All of them if dv is more
+function stagedBurnTime(s,dv){let t=0,rem=dv;for(const x of dvPlan(s,0)){if(!(x.dv>0.5)||!(x.burn>0))continue;
+    if(x.dv<rem){t+=x.burn;rem-=x.dv;continue}
+    const m1=x.m1||x.m0,ve=x.dv/Math.log(x.m0/m1);return t+x.burn*(1-Math.exp(-rem/ve))/(1-m1/x.m0)}
+  return t}
 function nodeBurn(s,Y,T,dt){const n=s.node;
   if(!n.burning){if(simT<n.t-(n.est||0)-60)return;n.dvW=nodeInfo(s).dvW;n.applied=[0,0,0];n.burning=true}
   n.applied=madd(n.applied,Y,T/s.mass*dt);const rem=sub(n.dvW,n.applied);
@@ -526,8 +532,8 @@ function ascentPitch(b,h){const AS=(b.atm||7e4)/7e4,f=clamp((h-200*AS)/(38000*AS
 // The navball's turn marker: where the nose should be now on the standard ascent, while climbing through the air until the
 // apoapsis is 10 % above it. Toward where the craft already goes over the ground (from 20 m/s across), else where the nose
 // leans, else east. (Q485, PLAYTEST #121) Then the rest of the way to orbit: coast to the apoapsis, the marker waiting on the
-// horizon, and from half the burn before it, burn there toward a circular orbit (the procedure's 'circ' aim) until the
-// periapsis is out of the air. null when there's nothing to fly. {ph: 'climb' | 'coast' | 'burn', p: pitch (deg), u: the
+// horizon, and from half the burn before it (through the stages: stagedBurnTime), burn there toward a circular orbit (the
+// procedure's 'circ' aim, lifted to hold the height for a weak stage, Q515) until the periapsis is out of the air. null when there's nothing to fly. {ph: 'climb' | 'coast' | 'burn', p: pitch (deg), u: the
 // direction, nose: the nose's pitch now (deg), dv: m/s to a circular orbit at the apoapsis (coast) or here (burn), tAp: s to
 // the apoapsis, tb: the burn's length (s)}
 const GUIDE_BURN=new WeakSet(),GUIDE_COAST=new WeakSet();   // craft past the climb (until the apoapsis sinks back into the air,
@@ -536,22 +542,49 @@ const GUIDE_BURN=new WeakSet(),GUIDE_COAST=new WeakSet();   // craft past the cl
 // 12 kPa). Swept on every orbital preset (notes/flow.md § v1.241): gated lower, it pins the ◇ to a near-vertical prograde and
 // the turn never starts (the Heavy, TV Satellite, Beeper); from Mach 3 it costs ~15–30 m/s and keeps every stage pointed
 const GUIDE_M=3,GUIDE_QA=36000;
+// (flow, Q515) the burn's height hold: the height it steers to (GUIDE_H, per craft: the apoapsis when it began, at least the
+// air's top), burns paused for a coast (GUIDE_REST) and the spare time (s) a low burn needs to pause, within GUIDE_DV m/s of
+// circular the ◇'s across part fades, the hold's time constant (s), the fastest climb or sink it asks (m/s), the steepest aim
+const GUIDE_H=new WeakMap(),GUIDE_REST=new WeakSet(),GUIDE_TW=20,GUIDE_DV=50,GUIDE_TAU=40,GUIDE_VR=150,GUIDE_PMAX=60*Math.PI/180;
 function turnGuide(s){const b=s.body;if(!b.atm||s.landed||!s.alive)return null;const h=len(s.r)-b.R,f=localFrame(s.r),el=elements(s.r,s.v,b.mu),
   flat=x=>sub(x,mul(f.up,dot(x,f.up))),Y=qrot(s.q,[0,1,0]),nose=Math.asin(clamp(dot(Y,f.up),-1,1))*180/Math.PI;
-  if(el.ap-b.R<=b.atm*(GUIDE_COAST.has(s)?1:1.1)){GUIDE_COAST.delete(s);if(dot(s.v,f.up)<=0&&!(s.thrust>0))return null;   // past the profile's end, level until then; sinking under power (a turn too flat, Q483) it stays
+  const burning=GUIDE_BURN.has(s);   // (Q515) a begun burn stays a burn: its apoapsis dips into the air and back as the orbit rounds out
+  if(!burning&&el.ap-b.R<=b.atm*(GUIDE_COAST.has(s)?1:1.1)){GUIDE_COAST.delete(s);if(dot(s.v,f.up)<=0&&!(s.thrust>0))return null;   // past the profile's end, level until then; sinking under power (a turn too flat, Q483) it stays
     const va=sub(s.v,surfVel(b,s.r)),vs=flat(va),ny=flat(Y),hd=len(vs)>20?norm(vs):len(ny)>0.02?norm(ny):f.e,r=ascentPitch(b,h)*Math.PI/180;
     let u=add(mul(hd,Math.cos(r)),mul(f.up,Math.sin(r)));
+    // (Q515) levelling off in the air under power (Q483's 'level'), the profile's flat end says nothing: the ◇ lifts to the
+    // burn's height hold, steering to 10 % over the air. On a climb that turned in time the path rises faster than it asks
+    if(h>0.4*b.atm){const ph=guideHold(s,f,h,b.atm*1.1);if(ph>r)u=add(mul(hd,Math.cos(ph)),mul(f.up,Math.sin(ph)))}
     // (Q482, PLAYTEST #120) past Mach 3 the ◇ stays within GUIDE_QA / q degrees of the surface prograde: the profile ran ~7°
     // below it at 35 km, and a stage lit there (the Passenger Orbiter's, no fins) flipped. q·α is what turns a craft
     const q=0.5*density(b,h)*dot(va,va),sp=len(va),w=clamp((sp/SND(h)-GUIDE_M+0.5)/0.5,0,1),lim=q>0&&w>0?GUIDE_QA/(q*w)*Math.PI/180:Infinity;   // faded in over Mach 2.5–3: the ◇ never jumps
     if(lim<Math.PI){const pr=mul(va,1/sp),a=Math.acos(clamp(dot(u,pr),-1,1));if(a>lim)u=norm(add(mul(pr,Math.sin(a-lim)),mul(u,Math.sin(lim))))}
     return{ph:'climb',p:Math.asin(clamp(dot(u,f.up),-1,1))*180/Math.PI,u,nose}}
-  if(el.e>=1||el.pe-b.R>b.atm||!(len(flat(s.v))>1))return null;   // in orbit, or not going round
+  if(el.e>=1||el.pe-b.R>b.atm||!(len(flat(s.v))>1)){if(el.pe-b.R>b.atm){GUIDE_BURN.delete(s);GUIDE_COAST.delete(s);GUIDE_REST.delete(s);GUIDE_H.delete(s)}return null}   // in orbit (done: a later fall is a climb's again), or not going round
+  const vr=dot(s.v,f.up);if(burning&&vr<=0&&!(s.thrust>0)&&h<b.atm)return null;   // a burn given up, falling back into the air
   GUIDE_COAST.add(s);
-  const vAp=Math.sqrt(b.mu*(2/el.ap-1/el.a)),need=Math.sqrt(b.mu/el.ap)-vAp,tb=nodeBurnTime(s,need)||0,tAp=timeToNu(el,Math.PI),
+  const vAp=Math.sqrt(b.mu*(2/el.ap-1/el.a)),need=Math.sqrt(b.mu/el.ap)-vAp,tb=stagedBurnTime(s,need)||0,tAp=timeToNu(el,Math.PI),
     hz=norm(flat(s.v)),d=sub(mul(hz,Math.sqrt(b.mu/len(s.r))),s.v);
-  if(dot(s.v,f.up)>0&&tAp>tb/2&&!GUIDE_BURN.has(s))return{ph:'coast',p:0,u:hz,nose,dv:need,tAp,tb};
-  GUIDE_BURN.add(s);const u=norm(d);return{ph:'burn',p:Math.asin(clamp(dot(u,f.up),-1,1))*180/Math.PI,u,nose,dv:len(d),tAp,tb}}
+  // a burn begun low (in the air, under 90 % of the height it steers to) that has put the apoapsis there and 10 % over the
+  // air, with time to spare, waits again to burn at the top, until drag pulls the apoapsis back into the air; never back to the climb
+  const H0=GUIDE_H.get(s),rest=GUIDE_REST.has(s),apH=el.ap-b.R,
+    wait=vr>0&&tAp>tb/2&&(!burning||rest&&apH>b.atm||h<0.9*H0&&apH>=Math.max(H0,1.1*b.atm)&&tAp>tb/2+GUIDE_TW);
+  if(wait){if(burning)GUIDE_REST.add(s);return{ph:'coast',p:0,u:hz,nose,dv:need,tAp,tb}}
+  if(!burning||rest){GUIDE_BURN.add(s);GUIDE_REST.delete(s);GUIDE_H.set(s,Math.max(el.ap-b.R,b.atm))}
+  // (Q515) the burn holds the height: the 'circ' aim's pitch, or, when that isn't enough, the pitch whose thrust upward
+  // offsets the sink (gravity less the centripetal part) and steers to the height the burn began at (its apoapsis, at
+  // least the air's top): on a strong stage the 'circ' aim already holds and stays; a weak one (the Lunar's, 0.16 g) noses up
+  // instead of sinking back into the air. Never more than GUIDE_PMAX: some of the thrust always goes across
+  // across: forward, less within GUIDE_DV m/s of circular here (it toggled forward / back there), back past it; still at most GUIDE_PMAX
+  const pd=Math.asin(clamp(dot(norm(d),f.up),-1,1)),ph=guideHold(s,f,h,GUIDE_H.get(s)),k=clamp(dot(d,hz)/GUIDE_DV,-1,1),
+    pu=clamp(Math.atan2(Math.sin(ph),Math.abs(k)*Math.cos(ph)),-GUIDE_PMAX,GUIDE_PMAX),u=ph>pd?add(mul(hz,(k<0?-1:1)*Math.cos(pu)),mul(f.up,Math.sin(pu))):norm(d);
+  return{ph:'burn',p:Math.asin(clamp(dot(u,f.up),-1,1))*180/Math.PI,u,nose,dv:len(d),tAp,tb}}
+// (Q515) the pitch (rad) whose thrust upward, at full throttle, offsets the sink (gravity less the centripetal part) and steers
+// toward height H (climbing or sinking at most GUIDE_VR m/s), at most GUIDE_PMAX; -Infinity with no engine to burn
+function guideHold(s,f,h,H){const b=s.body,B=burnThrust(s),A=B?B.F/s.mass:0;if(!(A>0))return -Infinity;
+  const vr=dot(s.v,f.up),rr=len(s.r),vh=len(sub(s.v,mul(f.up,vr))),
+    aV=b.mu/(rr*rr)-vh*vh/rr+(clamp((H-h)/GUIDE_TAU,-GUIDE_VR,GUIDE_VR)-vr)/(GUIDE_TAU/2);
+  return Math.asin(clamp(aV/A,-1,Math.sin(GUIDE_PMAX)))}
 // (flow, Q483; PLAYTEST #119, Q474's sweep) too flat, too low: a hand climb that levels off inside the air builds orbital
 // speed there and the pod cooks (flat by 43 km instead of 54 the Orbiter and the Lunar burn up at 45–60 km, Mach 9), or it
 // sinks back. Two signs, burning, fast (Mach 1.5+) and below 65 % of the air, not yet in orbit: 'turn', the path's pitch
