@@ -38,6 +38,7 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;mapFoc=null;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
   $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll||atMC||atTitle);$('ttl').classList.toggle('hidden',!atTitle);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('mc').classList.toggle('hidden',!atMC);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');document.body.classList.toggle('room',inRoom());
+  if(view!=='map')ovClose('mapLay');   // (flow, Q443; PLAYTEST #115) the map's Layers panel is the map's: it shut over the flight and the rooms
   if(atMC)renderMission();   // (after the room shows: the ground track sizes its canvas to the wall)
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.

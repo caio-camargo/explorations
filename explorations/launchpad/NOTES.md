@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.43 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.44 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -18,7 +18,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 48 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
-| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 20 |
+| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 21 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 17 |
 
@@ -368,6 +368,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: the aim and the mission card (Q345 + Q513): contracts' conditions as data, "This flight is for" in the Assembly, a live Mission card in flight, the aim's legs and the program's Δv guess, Rollout/Dispatch/procedures fed by it; 7 slices, 1–3 the first-hour P1 (2026-11-07, flow worker; plan only)
 - v1.284 — east on the navball at launch (Caio's (a)): E stays at the bottom, bigger and amber on the pad and the climb's first 15°, kept on the rim when leaning the wrong way; compass letters no longer cut in half by the rim (2026-11-07, flow, QUEUE Q507; PLAYTEST #140)
 - Plan: Guided (Q491): a switch on the charter (on for a first program) that makes six first missions lessons (briefing on the Rollout, how-rows on Q548's Mission card, a debrief line), one card per system as it unlocks, dimmed tabs until then, and a "what's this" ? key for everyone; never physics or money; 7 slices after Q547–Q549 (2026-11-07, flow worker; plan only)
+- v1.285 — the map's Layers panel closes when you leave the map (2026-11-07, flow, QUEUE Q443; PLAYTEST #115)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

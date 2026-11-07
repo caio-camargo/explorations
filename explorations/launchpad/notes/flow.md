@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1992,3 +1992,11 @@ the page source, every `HELP` entry is used, none nested; a save from before has
    Guided is on (crew, Selene, stations: one card each, no lessons); or Guided switches itself off after lesson 6.
 5. **Guided and difficulty:** default **independent**: Article 3 keeps its own default (Normal); or a first program with
    Guided suggests Easy.
+
+## v1.285 — the map's Layers panel closes when you leave the map (2026-11-07, flow, QUEUE Q443; PLAYTEST #115)
+
+The test bench found it at v1.209 (robot row `layers`, TESTING 249): open the map, open *Layers*, go back to the flight,
+and `#mapLay` stayed over the flight view. Nothing closed it: `#bLay` only toggles it. Now `go()` (app/screens.js)
+closes it whenever the new screen isn't the map, after the view is set, so every way out (M, the rooms, End flight)
+shuts it. Reopening the map leaves it closed; `bLay` opens it again. Checked: `node playtest.mjs layers` passes
+(`panel: false`; the row failed from v1.209, and no code closed `#mapLay` until now).

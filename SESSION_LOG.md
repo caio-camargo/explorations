@@ -6778,3 +6778,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md` (Q507 ✓), `ACTIVE_WORK.md`.
 - **Numbering:** v1.281–283 and TESTING 347–348 are on unmerged worker branches (Q543–Q546), so this took v1.284 / 349.
 - **Next:** Caio's look at TESTING 349.
+
+## 2026-11-07 — flow (explorations-8f): the map's Layers panel closes off the map (Q443, v1.285; PLAYTEST #115)
+
+- **Done:** one line in `go()` (app/screens.js): `#mapLay` closes whenever the new screen isn't the map.
+- **Checked:** `node playtest.mjs layers` passes (`panel: false`), GPU lock taken and released.
+- **Files:** `app/screens.js`, `notes/flow.md`, `NOTES.md`, `PLAYTEST.md` (#115 ✓), `QUEUE.md` (Q443 ✓), `ACTIVE_WORK.md`.
+- **Seen:** the main clone was mid-merge by another session (Q491's plan) when I pulled; left alone, it finished on its own.
