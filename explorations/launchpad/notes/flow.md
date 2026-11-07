@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1666,3 +1666,147 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   into the ground; after: the buried one folded, the message names it; the after shots also show the withdrawn
   "on its side: no ignition" stage row), `eval_5` the map zoomed on Selene (before: name and dot off the disc; after: dot at
   the centre, the name on the limb), `eval_6` zoomed out. TESTING row 345.
+
+## Plan: the aim and the mission card (Q345 + Q513) (2026-11-07, flow worker, QUEUE Q513 P1, Q345; D16.1, D23, UI.md § 3.1, PLAYTEST #145; plan only)
+
+**What exists.**
+- **`flightAims()`** (sim/vessel.js 524) silently picks what the next flight is for: every accepted `sat` contract (its
+  altitude), every `image` one (alt 0), and the NEXT card's mission when it is an orbit one (`ORBIT_MISSIONS`). Its only
+  readers are Δv to orbit: `orbitNeed`/`launchWarnings` (the most demanding goal; read by the Assembly's `orbitLine` and
+  the Rollout's `rollChecks`), and the Assembly's `powerAim`/`lifeLine` (the highest altitude). It ignores inclination,
+  every suborbital contract, Selene, rendezvous; nothing on screen says what was picked.
+- **Contracts** (`CT`, sim/contracts.js): 27 types. 17 are judged on a flight by one opaque predicate `ok(R, p, s)` on the
+  flight record (`recNew`, filled live by `missionTick`, sim/program.js 278–330: `apexSci`, `bands`, `qPart`, `orb`,
+  `landed`, `recSci`, `landBiome`, `landDist`, `gMax`, `bioOK`, `aurora`, `endPf`, `rdv`, `lift`); `contractEval` runs it
+  every tick, so a contract is paid the moment it is met. 10 (`sel*`, `st*`) are judged between flights (`done(c, N)`).
+  The 29 `MISSIONS` (firsts) have the same `ok(R)` shape, some with a `prog()` count ("2/4 bands"). Nothing can ask a
+  contract *which* of its conditions is unmet, or whether one can no longer be met.
+- **The Assembly** is still one right-hand column (`BLD.panel`; app/editor.js `orbitLine`, …): Q237's three tabs (Checks /
+  Stages / Part) and the GO/NO-GO board exist only in `mockups/builder/` (`?aim=1` is the aim overlay). The Rollout's
+  checks are a flat ok/warn/bad list (`rollChecks`, app/rollout.js).
+- **The guess's parts:** `predErr(s)` (sim/program.js 662) is the compute era's bound (`COMP_ERAS[].err`: 30 %, 15 %, 5 %,
+  0), tightened by a study of *this design* (`studyOf`, keyed by its parts); it scatters the impact point and a
+  dispatch's orbit today. No Δv need is ever off by it. Flown facts live in the logbook (`PROG.log.orbit.v`, `selene`,
+  `land`, `sorbit`).
+- **Flight:** cards register in `HUD_CARDS` (app/hud.js); the dark cockpit hides all but `CP_CARDS` (app/cockpit.js) in a
+  critical phase. Q488 left the hook: `impact.verdict` / `impVerdict()` (app/program-ui.js 417–429; `landingVerdict`,
+  sim/world.js 284) says who brings the craft back ("recovered by our ships, ~6 h" / "lands in Kordia: they keep it").
+- **Procedures** are keyed by design + signature (`procKey(stack)`, then `'Selene:land'`, `'Selene:flyby'`,
+  `'Selene:orbit'`, `'Selene:free-return'`; phases `transfer / capture / land / surface / ascend / home / return`);
+  `procStart(s, proc, target)` already takes a target (`pe`, `ap`, `inc`). Dispatch reads `dispatchTarget(c)` = the
+  contract's own `alt`/`inc` (`sat`, `recon`).
+
+**The data model.**
+- **A contract's conditions as data (economy).** Each `CT` type and each `MISSIONS` entry gains, beside its `ok`:
+  - `needs(p)`: what the *design* must carry, `[{id:'sci', t:'an instrument package', has:ship=>bool}, {id:'chute',
+    t:'a parachute (to be recovered)'}, {id:'bio'}, {id:'cam+ant'}, {id:'mass', t:'2 t of mass simulators'}, {id:'dock'}]`.
+  - `conds(p)`: what the *flight* must do, each `{id, t, state:(R, s)=>'met'|'lost'|'open'|'pending', now?:(R, s)=>text}`.
+    `apex`: *apex 40–55 km* (met once `apexSci` is in range and falling; lost past `hi`; now: "now 47 km") and
+    *recovered* (pending in flight, read with the landing verdict; met at `recSci`). `sat`: *periapsis and apoapsis
+    300 ± 25 km*, *inclination 45 ± 3°*. `bioHop`: *to space*, *never over 5 g* (lost at `gMax > g`), *home safe*.
+    `ballistic`: *from Dunnzar Cape* (lost if launched elsewhere), *down at sea within 40 km of the target*. The
+    between-flight types get one cond, *judged at home* with their `done` progress ("1 of 3 readings received").
+  - `ok` stays the judge (no payout rule moves); a test proves *all conds met ⇔ ok* on fixture records.
+- **An aim** (D23) is saved with the design: `stack.aim = {jobs:[contract id, or 'm:'+mission id], legs:[… up to 3]}`.
+  A leg: `{k:'orbit', b:'Tellus', alt:300, inc:'pad'|'polar'|'stat'|deg}`, `{k:'hop', alt:55}`, `{k:'flyby', b:'Selene'}`,
+  `{k:'land', b, site:null|pf}`, `{k:'meet', id}`, `{k:'home', how:'sea'|'land'}` or `{k:'stay'}`. Every field has a
+  default. `procKey` must skip `aim` (as it skips `dep`, `ag`), or picking an aim would orphan the design's procedures.
+- **A contract maps to legs** by `CT[type].legs(p)` (economy, beside `conds`): `apex`/`sample`/`aurora`/`test` → hop (to
+  `hi`, the band's top, 100 km poleward) + home; `landing`/`field`/`ballistic` → hop + land (near the pad, on the biome,
+  at the target); `bioHop`/`touristHop` → hop to space + home; `sat`/`recon` → orbit (alt, inc); `image` → an orbit
+  tilted past the city's latitude; `lift`/`milLift` → orbit (lowest safe); `touristOrbit` → orbit + home; `rdv`/`service`
+  → meet; `retrieve` → meet + home; `sel*` → land on Selene; `st*` → meet the station (or land at its beacon).
+  `aimFromJobs(jobs)` merges the ticked jobs' legs (one ascent; when two orbits disagree the first ticked wins, see
+  question 5). A job aim is that merge, your own aim is legs set by hand; either way `stack.aim.legs` is what everything
+  downstream reads.
+- **The Δv need per leg is the program's guess (economy).** `legNeed(leg, site)` is the true need: patched conics from the
+  pad's latitude (the ascent to the orbit, with the tilt's cost against the planet's spin as in `dispatchEstimate`'s
+  `vRot·cos` term; transfer, capture, landing and return by vis-viva), plus losses by experience (the logbook's flown
+  ascent when there is one, else `DV_ORBIT_EST`'s gap) and Q475's pilot margin on the climb. `legGuess(leg)` =
+  need × (1 + e), e = b·(2u − 1), u from `rng(hash(PROG.wseed, destination, knowledge))`: destination is `body:kind`
+  ("Tellus:orbit:polar", "Selene:land"); knowledge is the era index, + 1 when this design is studied, + 2 once anyone
+  has flown the leg. b is the era's bound (the study's when studied, as `predErr`), × 1.5 where nobody has been (× 2 for
+  a landing nobody has made). A flown leg is known (b = 0, "flown: 3,640"). The same inputs give the same e, so
+  reopening never rerolls; a study or a first flight changes the knowledge and draws again inside the tighter bound (the
+  guess can move the wrong way first). The line states the bound in words (D23: "could be 30 % off").
+- **The verdict** for the aim: the true need lies in [guess/(1+b), guess/(1−b)]. *Reaches it*: carried ≥ guess/(1−b)
+  (or known, with spare); *Probably*: ≥ guess; *Unlikely*: ≥ guess/(1+b); *Short*: below.
+
+**The Assembly panel: "This flight is for".**
+- **Before Q237** it is a block at the top of today's right column; **after Q237** it is the Checks tab's first line
+  (*Aim: Weather satellite · polar, 300 km ▾*) and the overlay's "A job" section (`mockups/builder/?aim=1`). One function
+  renders the rows for both (`jobRows(stack)`), so nothing is built twice.
+- One row per accepted contract and for the NEXT card's mission: a tick, the title, the pay, its needs as chips each with
+  its check ("instrument package ✓ · parachute ✗ · apex 40–55 km"), a dim *judged at home* for the between-flight types.
+  Ticking writes `stack.aim.jobs` and re-derives `legs`; a done or expired contract drops off with one dim line. Offers
+  aren't listed (one line: "3 offers on the Program's board (P)").
+- The board (D16.1) answers for what is ticked: `orbitLine`, `launchWarnings` and the Rollout read `aimGoals(stack)`
+  instead of `flightAims()`, and a missing need is a check with its fix (UI.md rule 14: "Recovered: no parachute · Fix: a
+  parachute on the capsule"). Nothing ticked and no legs: a generic low orbit (UI.md § 5.1).
+- **Δv per leg against the stages** (vehicle, on Q237's Stages tab): each leg's guessed need, cumulative, laid against the
+  stages' Δv (vacuum; the first stage in air), and tagged on the stage that finishes it (`→ orbit`, `→ land`). The
+  *Reaches its target* row: "our guess ~3,900 m/s, it carries 4,210, could be 30 % off", with the study button.
+
+**The Mission card (flight).**
+- `HUD_CARDS` gains `{id:'mission', title:'Mission'}`: for each job in `S.rec.aim` (copied from the design at launch, as
+  `open0` is), its title and its `conds` as rows: **✓** met; **✗** lost, with why ("apex passed 55 km"); **○** open,
+  with `now` ("apex now 31 km"); **◐** pending, for *recovered* while still flying, its words from `impVerdict()`
+  ("pending: recovered by our ships, ~6 h", or amber "pending: lands in Kordia, they keep it"). A job with every row ✓
+  folds to "done · +12M" (`contractEval`'s payment). Contracts met that weren't ticked show as "also done".
+- Hidden in the dark cockpit like the other cards (not in `CP_CARDS`), but a condition changing state says one line in the
+  message strip, once ("Apex in range ✓", "Over 5 g: the biology flight is lost ✗"), so a sounding flight hears it.
+- The same rows later feed the Debrief's contract lines and Q491's Guided lessons (#125).
+
+**Rollout, Dispatch and procedures take the aim (flow).**
+- **Rollout:** its Δv check reads the aim's legs and the guess's verdict; one check per ticked job's unmet need; the
+  procedure button picks the design's procedure whose signature matches the aim (orbit → the ascent; land on Selene →
+  `'Selene:land'`, the site from the leg), and `procStart` gets the leg's target (`pe`/`ap`/`inc` from altitude and tilt).
+- **Dispatch:** `dispatchTarget(c)` reads the job's orbit leg (`CT[type].legs`) instead of `c.p.alt`; `dispatchEstimate`'s
+  "can this design do it" reads `needs`. The Assembly offers Dispatch for each ticked job that can be dispatched.
+- **What replaces `flightAims`:** `aimOf(stack)` (the saved aim, or the default one, derived and shown ticked) →
+  `aimGoals(aim)` (`[{name, alt, inc, b}]`, what `orbitNeed` reads). `flightAims` stays a one-line wrapper,
+  `aimGoals(aimOf(stackDef))`, for its four readers until the last one moves (additive first), then goes.
+
+**Tests that prove each slice.**
+- *economy*: every flight-judged `CT` type and mission has `needs`, `conds`, `legs`; on fixture records (one met, one short
+  each way) all conds met ⇔ `ok`; each cond turns `lost` when it must (apex past `hi`, `gMax` over, launched from
+  elsewhere) and never flips back.
+- *economy*: `legGuess` the same across calls and a reload; over 1,000 seeds |guess/need − 1| ≤ b; different per
+  destination and per knowledge level; a study redraws inside the tighter bound; a flown leg exact; Cheap compute exact.
+- *flow*: the Mission card over a scripted sounding record: open → "now 47 km" → ✓ → pending with the verdict's words →
+  done; past 55 km → ✗; one message per change; hidden in a critical phase; the card's wiring in the page source.
+- *flow*: ticks persist in `stack.aim` through save and load and leave `procKey` unchanged; unticking a sat contract moves
+  `launchWarnings`' goal; a missing chute is a Rollout check; nothing ticked reads low orbit.
+- *vehicle*: `legNeed` for 300 km polar from an equatorial pad exceeds the equatorial orbit by the spin's share; a Selene
+  landing's need within 10 % of the logbook's flown number on the stock lander; legs tagged on the right stage.
+- *flow*: the Rollout's procedure pick and `procStart`'s target come from the aim; `dispatchTarget` from the leg.
+
+**Slices, in build order.**
+1. **Conditions as data** (economy, S–M): `needs`, `conds`, `legs` on the 17 flight-judged types and the missions; the
+   consistency test. Nothing on screen yet.
+2. **The Mission card** (flow, S): read-only, live ✓/✗/○/◐ with Q488's verdict for *recovered*. Until slice 3 it lists
+   every accepted contract whose needs this vessel meets, plus the NEXT mission. **First hour (P1): this answers #145's
+   "a player finds out only in the Debrief".**
+3. **"This flight is for"** (flow, S): the block atop today's Assembly column; ticks into `stack.aim.jobs`; needs with
+   their checks; `aimGoals` behind `orbitLine`, `launchWarnings` and `rollChecks`. **First hour (P1): with 1 and 2 this
+   closes Q513**, before any tab or leg editor.
+4. **The guess** (economy, M): `legNeed`, `legGuess`, the knowledge levels, the verdict words; the Δv rows read it.
+5. **Q237's tabs** (vehicle, M–L; its own item): Checks / Stages / Part from `mockups/builder/`; slice 3's block becomes
+   the Checks tab's first line.
+6. **The aim overlay** (vehicle + flow, M): the job list (slice 3's rows) and your own aim in up to three legs (defaults
+   everywhere, the small globe for a site); *Reaches its target* with the guess; legs tagged on the stages (vehicle).
+7. **Rollout, procedures and Dispatch take the aim** (flow, S–M); then `flightAims` retired (S).
+
+**Questions for Caio (each with the default if silent).**
+1. **What is ticked on a design with no aim yet?** Default: the NEXT card's mission and every accepted contract whose
+   needs the design already meets, shown ticked (today's silent pick, made visible); the rest listed unticked with what
+   they miss.
+2. **Does an unticked contract still pay if the flight meets it?** Default: yes, as today ("also done" on the card and in
+   the Debrief); ticking chooses what the checks answer for, not what can pay.
+3. **"Recovered" when it lands where a power keeps it.** Today `recSci` is any intact landing on Tellus, so a package
+   Kordia keeps still completes a "recovered" contract. Default: recovered = landed intact *and* Q488's verdict brings it
+   back (ours, or sent back); "they keep it" is ✗ on the card.
+4. **A ✗ in flight:** default: the contract stays open for another flight until its deadline (today's rule); the card
+   says "lost for this flight", never "failed".
+5. **Two ticked jobs that need different orbits:** default: allowed; the first ticked sets the orbit leg, the other's row
+   says "needs a different orbit: another flight" and is NO-GO for it.
