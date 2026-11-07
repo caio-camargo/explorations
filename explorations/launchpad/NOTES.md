@@ -18,7 +18,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 47 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 65 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
-| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 15 |
+| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 16 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
 
@@ -353,6 +353,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.253 — warn before the turn goes flat into the heat: a master caution and a red ◇ when the climb runs under the profile or levels off in the air (2026-10-31, flow session 2, QUEUE Q483, PLAYTEST #119)
 - v1.254 — a crash on Selene gets landing-burn advice, not a parachute (2026-10-31, flow session 2, QUEUE Q497, PLAYTEST #133)
 - v1.259 — a falling orbit is one line: the blue to the top of the air, the red on from there in the same frame to the X on the ground; the red is drawn in the modern map again (2026-11-06, flow worker, QUEUE Q489, PLAYTEST #126)
+- v1.269 — where it comes down and who brings it back: the landing verdict under the map's X, on the Descent card and at a node's landing ("recovered by our ships, ~6 h" / "lands in Kordia: they keep it"); a Recovery zones map layer; the Rollout's check says where a chuted craft is recovered (2026-11-06, flow worker, QUEUE Q488, PLAYTEST #123) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

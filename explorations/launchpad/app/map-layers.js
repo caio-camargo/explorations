@@ -6,13 +6,14 @@
 // remembered per browser (localStorage, only what you changed); one you never touched follows the era's default, so a new
 // thing turns up when it starts to matter. Your own ship, its orbit and plan, nodes, the target and impacts are always drawn.
 const MAP_LAYERS=[['cities','Cities'],['stations','Ground stations'],['targets','Contract targets'],['sats','Our satellites and landers'],
-  ['debris','Debris and spent stages'],['links','Links home'],['moons','Moons\' orbits and spheres of influence'],['planets','The planets and Helios'],['names','Names']];
+  ['recovery','Recovery zones: where a landing is recovered'],['debris','Debris and spent stages'],['links','Links home'],['moons','Moons\' orbits and spheres of influence'],['planets','The planets and Helios'],['names','Names']];
 const MAP_LAY_KEY='launchpad-map-layers';
 let mapLaySet=(()=>{try{return JSON.parse(localStorage.getItem(MAP_LAY_KEY)||'{}')||{}}catch(e){return{}}})();
 // the era's defaults: before anything of ours is in orbit the cities are the map's landmarks and the planets are far off;
 // once it is (the beeper flown), the cities give way to the satellites and the planets come in (their missions are ahead)
+// (flow, Q488) the recovery zones show by themselves while the ship is coming down on Tellus (a landing predicted there)
 function mapLayDefault(k){const orbit=eraOf()>=2;
-  return k==='cities'?!orbit:k==='planets'?orbit:k==='debris'?orbit:true}
+  return k==='cities'?!orbit:k==='planets'?orbit:k==='debris'?orbit:k==='recovery'?!!(typeof impact!=='undefined'&&impact&&impact.b===TELLUS):true}
 const mapShow=k=>k in mapLaySet?!!mapLaySet[k]:mapLayDefault(k);
 function mapLaySave(){try{localStorage.setItem(MAP_LAY_KEY,JSON.stringify(mapLaySet))}catch(e){}}
 function renderMapLay(){const el=$('mapLay');if(!el)return;
