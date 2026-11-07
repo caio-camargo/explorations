@@ -6729,3 +6729,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Done:** slope look-ahead along the path with a creep (never 0); slips slide on the feet below 2.5 m/s; footholds onto
   knee-high banks (stepUp 0.45, stepDown 0.6). Crossing all four ridges sideways now works at Tellus and Selene.
 - **Checks:** space-33 10 checks, `--smoke` all passed. **Next:** E0b's rough ground first (Caio: uneven terrain matters).
+
+## 2026-11-06 — space session: EVA E0b rough ground, Shift spurt (Q531, v1.267)
+
+- **Done:** stations 6–9: rubble lane (hummocks, stones, boulders), crater, loose vs firm 15° banks (`W.grip`). Faces
+  past 50° are walls slid along (brace, no ladder-climbing); the body rides ground averaged over a stride, capped over
+  the feet; scrambling on hands and feet up banks too steep to stand on. Caio: Shift sluggish to start → quick steps
+  with no flight while speeding up on Shift (Tellus 1.09 → 0.71 s, Selene 3.42 → 2.15 s to 90 %).
+- **Checks:** space-33 now 14 checks; `--smoke` 736 PASS, none failed. **Next:** rest of E0b (stairs, ladder, gaps,
+  lander and rover mocks); walking off from standing still waits ~1 s for its first step (offered to Caio).
