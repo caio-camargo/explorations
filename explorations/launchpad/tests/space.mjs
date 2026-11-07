@@ -1027,3 +1027,20 @@
   check('EVA: at 0 g there is nothing to push against: the keys do nothing, it floats where it was (rails and tethers come with E0c)',
     z.A.st === 'float' && len(z.A.v) < 1e-9 && Math.abs(z.A.p[2] - straight.z) < 1e-9, z.A.tel.why);
 }
+
+// space-34. A wait cut mid-transfer keeps its encounter (space, QUEUE Q530): a cruise moved between events with a fixed
+// 600 s RK4 drifted ~15,000 km in a day off a 300 km perigee, so a Selene transfer carried in 1-day waits never arrived
+// (0 of 8 aims; one long wait: 8 of 8). cruiseStep now coasts with the predictor's own stepper (coastTo).
+{
+  const mk = () => new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,predictFrom,TELLUS,SELENE,PROG,HOOK,DAY_S,set ORB_T0(v){ORB_T0=v}};')();
+  const D = mk(); D.ORB_T0 = 0; const T = D.TELLUS, Sl = D.SELENE, r0 = T.R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002;
+  let tr = null; for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
+    if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, tA: L[0].endT }; }
+  const run = piece => { const E = mk(); E.ORB_T0 = 0; const news = []; E.HOOK.news = m => news.push(m); E.HOOK.msg = () => {}; E.HOOK.save = () => {};
+    const P = E.PROG; P.sats = []; P.day = 0; const s = E.newShip(E.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: E.TELLUS, r: tr.r, v: tr.v }); E.satRegister(s, { day0: 0 });
+    const q = P.sats.at(-1), end = Math.ceil(tr.tA / E.DAY_S) + 0.01; while (P.day < end - 1e-9) E.advanceDays(Math.min(piece, end - P.day));
+    return { in: news.some(m => /entered Selene/.test(m)), day: q && q.epoch / E.DAY_S }; };
+  const one = tr && run(1e9), days = tr && run(1);
+  check('in flight: a Selene transfer carried in 1-day waits enters Selene’s sphere as one long wait does (the cruise coasts with the predictor’s stepper)',
+    !!tr && one.in && days.in, tr ? `arrival predicted day ${(tr.tA / D.DAY_S).toFixed(2)}; one wait: ${one.in ? 'entered' : 'missed'}; 1-day waits: ${days.in ? 'entered' : 'missed'}` : 'no aim found');
+}
