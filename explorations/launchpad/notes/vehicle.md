@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2143,3 +2143,165 @@ then saves it. Is there a cue when side boosters run dry? **For economy:** no pr
 **Checks:** `vehicle-39` (twelve presets staged as designed: orbit, Q483 quiet, Δv left pinned ±50 m/s; the Lunar class
 with the pod under 60 % and the burn above 95 km; the dry-booster Crewed Lunar's level-off shown in the detail). No pinned
 numbers elsewhere changed. `node test.mjs --smoke --jobs 2`: all passed.
+
+## Plan: solid motors as a main-stage choice (Q252; 2026-11-07, vehicle worker, PLAYTEST #51, D15.1; nothing built)
+
+**The ask** (Caio 2026-10-10: "a good mechanic if real"; 2026-10-13, raised to M1: "the same solid/liquid fuel separation
+as ksp... either forgotten or added far down the queue"). It is real: once lit, a solid burns to the end. Its thrust curve
+is cast into the grain. Only some late military motors have thrust-termination ports. Pillars 2 (a design problem: a stage
+you can't stop) and 8 (solids grow with the eras). Not a new system: the parts and the rule exist, the main stage is new.
+
+**What exists today:**
+- **Kick motors** (`kick30/80/200`, v1.207): `solid:true`, with the propellant on the motor (`res0.fuel`); `flowGroups` cuts
+  every joint round a solid, so nothing feeds it and it feeds nothing. Its stage arms it, the first throttle-up lights it, and
+  then `physStep` **holds the vessel's throttle at 1** to burnout (then puts it back to 0). Infinite fuel (Q542) still burns
+  a solid out. The bench's Δv line says "a kick motor fires once, all of it".
+- **The escape tower** (`les`, 150 kN for 3 s) and **spin-up motors** (`spin`) are solids with their own kinds and rules.
+  They stay as they are.
+- The plumes and the crackle already know solids (`app/gl.js` `PFX…prop:'solid'`, `app/sound.js`).
+- **What blocks a main stage:** the throttle belongs to the whole vessel. Strap two solids on a liquid core and the solids'
+  rule pins the core at full throttle too. `dvPlan`, `burnThrust`, `ascentEst` and `trimOf` all take `engineMdot(p.d)` from
+  the part alone, so a per-motor setting has nowhere to live. Engines have no throttle range or ignition count yet (Q279
+  waits on this plan).
+- **Schools never change physics** (POWERS § schools; `sim/program.js` says so). So the parts below are the same for
+  everyone. Schools change how solids look (Coastal's big white boosters with segment rings, Mountain's terracotta stages with
+  a flex boot, black carbon nozzles) and which signature designs rivals fly. The only era clock is the computing eras
+  (`COMP_ERAS`, years 0 / 3 / 7 / 14), so solid generations ride `d.era` the way the RTG does (v1.113).
+
+**The mechanic:**
+1. **Each engine gets its own throttle** (`engThr(s,p)`). A liquid engine follows `s.throttle`. A solid gives
+   `lim × curve(burnt share)` from lighting to burnout, and 0 otherwise. Nothing forces the throttle any more. The lever moves
+   the liquids only. This replaces v1.207's pinned throttle, and a kick motor flies exactly as before.
+2. **Lighting:** as now, its stage arms it and the first moment the throttle is up lights it (at once if the throttle is
+   already up). **On the pad the liquids light first.** The solids light only once every liquid engine in that stage has lit
+   (`igniteOK`). If a liquid fails, the solids stay cold and the launch scrubs on the pad, as the Shuttle, Ariane 5 and H-II
+   did. Once a solid is lit, the pad lets go.
+3. **No shutdown, no restart:** X (cut), a node that completes and a procedure's cut all act on the liquids only. The HUD says
+   "Throttle cut: the solids burn on (14 s)".
+4. **The grain, set on the pad only** (the part's options in the Assembly; read-only in Rollout and in flight):
+   - **thrust 60–100 %** in 5 % steps. This scales thrust and mass flow together, so the burn lasts 1/k as long and gives the
+     same Δv. It is a slower-burning cast, not a limiter.
+   - **shape: *even*** (flat), or ***max-q dip***: full thrust, then down to 70 % from 25 % to 55 % of the propellant burnt,
+     then back to 95 %, the Shuttle SRB's bucket.
+   - **every solid tails off** over its last 3 % of propellant (2–4 s). The burnout cue fires when the tail-off starts.
+   The Isp is constant, so the Δv and the impulse don't depend on the grain: `dvPlan` stays exact, with the curve's knots as
+   extra step boundaries for burn times.
+5. **Separation:** spent solids drop when the player stages, cued as now ("Booster burnout", `spentCue`). Staging a solid
+   that is still burning asks for a second Space ("Boosters still burning, 9 s: Space again to drop them"). A dropped burning
+   motor is debris with its remaining propellant lost. That is a simplification: debris don't thrust.
+6. **Segmented boosters** (from the mainframes era): one part with a **segments** option (`nd.sg`, like a fairing's length;
+   not `seg`, which is the staging segment). Each segment adds height, propellant and thrust, so the burn time stays the same:
+   the burning area grows with the length. Titan's UA1205 and UA1207 are the same motor with five and seven segments.
+7. **Stacks and radial mounts:** a solid sits in a stack like any engine (its nozzle at the bottom, nothing below it), or on
+   radial decouplers. 2.5 m boosters need a **`rdec25`** (`big('rdec')`, ratings ×4): the 1.25 m `rdec`'s 800 kN would see a
+   three-segment booster's push. Crossfeed set on a solid's decoupler does nothing, and the builder says so. An interstage over
+   a solid encloses its nozzle (`d.nz`), not the whole motor. Thrust acts at 0.8 h (`thrustPt`), the forward dome, which suits
+   a solid as it is.
+
+**The parts** (all schools; game numbers before `lvl().isp`; propellant 1.75 t/m³ fits each one's volume. The propellant
+share is set a step under the real motor's on purpose, see question 4):
+
+| Key · name | Era | Size · h | Prop / dry t (share) | Thrust vac kN | Isp sl / vac s | Burn s | Steering | Price M (case + grain) | Analogue |
+|---|---|---|---|---|---|---|---|---|---|
+| `ember` Ember | 0 | 0.6 m · 2.6 m | 1.1 / 0.38 (0.74) | 90 | 225 / 250 | 30 | fixed | 0.8 + 0.55 | Sergeant / Recruit, Scout's upper solids |
+| `cinder` Cinder | 0 | 1.25 m · 4.5 m | 7.2 / 2.5 (0.74) | 330 | 230 / 255 | 55 | fixed (fins or the core steer) | 2.5 + 3.6 | Castor 1, Algol |
+| `cinder2` Cinder II | 1 | 1.25 m · 5.5 m | 9.0 / 2.5 (0.78) | 400 | 240 / 265 | 58 | fixed, may be canted | 3 + 4.5 | Castor 2 → 4 |
+| `brand` Brand, segmented | 1 | 2.5 m · 2.4 m a segment + 2.4 m ends, 2–5 segments (3) | 15 / 4.2 a segment (0.78) | 420 a segment | 238 / 265 | 93 | 4° (liquid injection, as a gimbal) | 4 + 3 a segment + 7.5 a segment | Titan UA1205 / 1207 |
+| `flare` Flare, segmented | 2 | 2.5 m · 2.8 m a segment + 2.6 m ends, 3–5 (4) | 18 / 4.0 a segment (0.82) | 520 a segment | 248 / 276 | 94 | 6° flex nozzle | 6 + 3.5 a segment + 9 a segment | Shuttle SRB, Ariane P230 |
+| `star` Star, vacuum | 2 | 1.25 m · 2.0 m | 3.0 / 0.55 (0.85) | 100 | 180 / 292 | 86 | 3° | 5 + 1.5 | Star 48, Castor 30, Zefiro 9 |
+| `gem` Graphite strap-on | 3 | 1.25 m · 6.5 m | 11 / 2.4 (0.82) | 480 | 250 / 278 | 62 | fixed | 4 + 5.5 | GEM 40/60 |
+
+- **Grain priced by the tonne:** `SOLID_PRICE` = 0.5 M/t, against `FUEL_PRICE` 0.2 for liquids. `vesselCost` already prices a
+  part's `cap.fuel`. A recovered solid refunds its **case only** (`partPrice`), never the grain, and Shuttle-style case
+  recovery falls out of chutes on a booster.
+- **Tier:** every solid is tier 1 (small engines) whatever its thrust. The segmented ones are tier 2. `tierOf` today puts
+  anything ≥ 300 kN at tier 2. Solids are why young industries flew first (Japan, India). Each key has its own know-how.
+- **Gates:** `ember` and `cinder` are open from the start. The rest open with their era (`d.era`), listed and designable
+  before that, as v1.113.
+- The kick motors stay as they are (bench parts with the real Star 13's share).
+
+**What a player gets** (on paper: the rocket equation, vacuum Isp, 3 t above the stage). Kestrel + Tank 8 t: 2,660 m/s for
+about 20.4 M. Cinder: 2,090 m/s for 6.1 M. Cinder II: 2,520 m/s for 7.5 M. **The Orbiter with two Cinders** on radial
+decouplers: 14.0 → 33.6 t, liftoff thrust-to-weight 1.51 → 2.44, Δv about 5,080 → 6,080 m/s, for +14 M on 57.5 M. The
+same lift from two liquid boosters (the Heavy's pair) costs about 39 M. So solids are **cheap lift, simple and storable,
+with low Isp, high thrust and no stopping**. The price is mass on the pad, max-q, g and an orbit you can't trim. A player
+picks them to get off the ground cheaply, to give a weak core thrust, for sounding rockets and the launch rail (Q230: a
+three-stage all-solid, Cinder → two Embers → Ember, makes about 5,500 m/s on paper with a small payload), and later for a
+precise vacuum kick.
+
+**What can go wrong, and what the Assembly says:**
+- **The Δv plan marks a solid stage:** "burns 55 s · can't be stopped". The stage's g at burnout comes from the plan's thrust
+  over its final mass.
+- **g at burnout** (new check): a stage carrying crew, a passenger or a biocapsule that passes `G_LIM` (8 g) or a contract's
+  `p.g` at burnout warns. Example: a Cinder hop with a biocapsule reaches about 9.8 g. The fix line: "a slower grain
+  (right-click: grain 75 % gives 7.4 g), or more mass above it". A liquid stage only gets an *ok* note, since the pilot can
+  throttle.
+- **Max-q:** `ascentEst` flies the grain and its curve, and `jointFix`'s "less thrust low down" becomes "a slower grain or the
+  max-q dip" when the culprit is a solid.
+- **A solid that finishes the climb** (the last stage before orbit on the plan): "it gives all 1,240 m/s at once: flown
+  well it ends on a 110 × 640 km orbit (the aim, D23)". It reads the same `orbitNeed` and pilot margin. A sloppy climb spends
+  the surplus first, so the margin is unchanged and the surplus is shown as where the orbit ends.
+- **A solid lander:** "a solid can't land: it can't throttle" when the stage that touches down is solid. A solid **retro**
+  followed by liquid verniers is fine (Surveyor) and isn't flagged.
+- **Early drop:** the staging editor notes a stage that drops solids lit in the same event as the next stage's liquids.
+
+**HUD, ◇ guidance, procedures:**
+- **HUD:** each burning solid group gets a bar of burn time left, tagged SOLID. The throttle gauge shows the liquids. Lit,
+  tail-off and burnout lines exist or extend v1.207's.
+- **The ◇ (flow):** the climb steers attitude only, so solid stages need nothing new there. For a solid **circularising
+  stage**, the coast-and-burn (v1.239) centres the burn on the apoapsis and holds horizontal, and the HUD draws the orbit the
+  motor's whole impulse leaves (a ghost line). No cut-off follows. Energy-wasting steering (Minuteman's GEM yaw) is left for
+  later.
+- **Nodes:** a node whose burn falls on a solid says "the motor gives 1,240 m/s, all of it; the node takes 980" and draws
+  the full-impulse orbit.
+- **Procedures and dispatch:** a solid's impulse is deterministic, so replays hold. Procedure cuts act on the liquids only.
+  Tapes retire on the physics change, as always (`TAPE_V`).
+- **Pilot margin:** unchanged (+150, or +350 under 0.3 g). Solid stages are seldom weak.
+
+**Tests that prove it** (tests/vehicle.mjs):
+- With two solids lit and the throttle at 0, the solids burn to burnout in the planned time ±1 % and the liquid core's tank
+  doesn't move. With the throttle up, the core drinks at its own rate.
+- X, a completed node and a procedure's cut leave a lit solid burning.
+- Grain 70 %: the burn takes 1/0.7 as long and the Δv is unchanged (±0.5 %). The max-q dip conserves impulse (±0.1 %) and
+  lowers `ascentEst`'s qMax on a test booster design.
+- Segments: 2 → 4 doubles thrust and propellant, and the burn time stays the same.
+- A forced liquid ignition failure on the pad leaves the solids cold and the vessel on the pad, with no loss.
+- A Cinder + biocapsule hop warns about g, and at grain 75 % the warning clears and the flight's `R.gMax` stays under 8.
+- The Orbiter with two Cinders reaches orbit on the scripted ascent, with the Δv left pinned ±50 m/s.
+- An all-solid three-stage reaches orbit from the pad with no input (feeds Q230).
+- A recovered booster refunds its case only. A Cinder stage costs under 35 % of a Kestrel + Tank 8 t stage.
+- `vehicle-28` (the kick motor) still passes, with its "throttle back to 0" assertion rewritten for per-engine throttle.
+- `vehicle-39`'s twelve presets are unmoved. `career.mjs`: first orbit still in 4–6 flights.
+
+**Slices, in build order:**
+1. **Per-engine throttle and the era-0 solids** (vehicle ⚙, M): `engThr` through `physStep`, `ctrlAuthority`, `gimSteer`,
+   `dvPlan`, `burnThrust`, `ascentEst`, `trimOf` and sound. Also the pad's ignition order, no-cut messages, `ember` and
+   `cinder`, `SOLID_PRICE`, case-only refunds and tier 1 for solids. The tests above for these.
+2. **The grain and the Assembly's checks** (vehicle ⚙ + 🖥, S): thrust % and shape on the part's options, read-only in
+   Rollout. The Δv plan's solid marks, g at burnout, the surplus orbit, the solid lander, the second Space on a burning drop,
+   crossfeed ignored, and `jointFix`'s grain line.
+3. **Presets and the first hour** (vehicle + economy, S): a Solid Sounding preset (Ember and fins) and Orbiter + solids (two
+   Cinders), measured. `career.mjs` re-run. Economy's note on the cheap-lift path.
+4. **Later solids** (vehicle ⚙, M): `cinder2`, `brand` and `flare` with the segments option, `star`, `rdec25`, era gates,
+   the tail-off and the max-q dip shape.
+5. **The ◇ and nodes with a solid** (flow 🖥, M): the centred burn, the full-impulse ghost orbit, the node line, and
+   procedures that leave solids alone.
+6. **The look** (parts & pad 🖥, S): segment rings, black nozzles, Mountain's flex boot and terracotta, Coastal's white
+   boosters, `PFX` entries for the new keys, and each school's signature solid design for rivals' pictures.
+7. **Late extras** (vehicle, S, M2): thrust-termination ports on `star` from era 2 (+3 % mass, +1 M: one cut, the rest
+   vented) and `gem` at era 3. Then Q279's ignitions and throttle ranges build on slice 1's `engThr`.
+
+**Questions for Caio (defaults if silent):**
+1. **Names:** fire words for solids, as the liquids are birds: Ember, Cinder, Brand, Flare, Star (**default**). Or plain
+   descriptive names ("Solid booster 1.25 m").
+2. **The grain:** thrust 60–100 % plus two shapes, *even* and *max-q dip*, set on the pad only (**default**). Or thrust %
+   only. Or a third shape, boost–sustain (a dual-thrust grain).
+3. **Dropping a burning solid:** allowed after a second Space, the motor lost (**default**). Or refused until burnout, as the
+   Shuttle couldn't drop its SRBs early.
+4. **Propellant share a step under the real motors'** (0.74–0.85 against the real 0.82–0.94), so Isp, not mass, is the
+   trade (**default**). The game's liquid stage is heavy (Kestrel + Tank 8 t is 0.76). At real shares the mid-era Cinder II
+   would out-lift the Kestrel stage for a third of the price.
+5. **The first hour:** two new presets (Solid Sounding, Orbiter + solids), the existing ones unchanged (**default**). Or the
+   Sounding preset's Sparrow swapped for an Ember (solids from flight one; career numbers move).
+6. **Thrust-termination ports** on the late vacuum solid (**default yes**, era 2 onward, one cut). Or never: a solid never
+   stops, full stop.
