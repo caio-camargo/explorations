@@ -70,6 +70,21 @@ function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!
   const R=s.rec=recNew();REVERT0={R,prog:snap};Object.assign(R,{launched:true,day0,cost:0,ops:OPS_FIX,fromOrbit:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});PROG.funds-=R.ops;
   if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
+// (QA + space, Q542) a tester start: the design on the table, placed by placeCraft (sim/space.js) as flyEntry starts a
+// flight from orbit. The program is snapshotted first, so the flight's end (missionEnd) or a Revert puts it back as it was,
+// a target dummy included; Revert then starts the same placement again.
+function testStart(spec){if(!TEST.on||BLD.isEmpty(stackDef)){HOOK.msg('Tester: put a design on the table first');return false}
+  const day0=Math.ceil(PROG.day-1e-9),probe=newShip(stackDef),chk=placeCraft(probe,{...spec,where:spec.where==='beside'&&spec.target==='dummy'?'orbit':spec.where,T:day0*DAY_S});   // a dry run: refused before anything moves (no dummy yet)
+  if(!chk.ok){HOOK.msg(`Tester: ${chk.why}`);return false}
+  if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
+  advanceDays(day0-PROG.day);if(ORB_ABS)ORB_T0=day0*DAY_S;
+  const snap=JSON.stringify(PROG),s=newShip(stackDef),R=s.rec=recNew();REVERT0={R,prog:snap};
+  Object.assign(R,{launched:true,day0,cost:0,ops:0,fromOrbit:true,tester:{...spec},crewInit:1,crewed:false,crewOK:true,cg:0,cgMax:0,ccab:290});
+  const out=placeCraft(s,{...spec,T:day0*DAY_S});s.name=designLabel(stackDef,s)||'Tester craft';
+  if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(stackDef,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;
+  const B=S.body,el=S.landed?null:elements(S.r,S.v,B.mu),tg=out.target!=null&&(PROG.sats||[]).find(q=>q.id===out.target);
+  HOOK.msg(`Tester start: ${S.landed?`on ${B.name} at ${sitePlace(S.pf)}`:spec.where==='soi'?`on the way into ${spec.body}'s sphere`:`${fmtD(el.pe-B.R)} × ${fmtD(el.ap-B.R)} round ${B.name}`}${tg?`, ${((+spec.behind||PLACE_BEHIND)/1e3).toFixed(0)} km behind ${tg.name} (the target)`:''}${out.drop?` · ${out.drop} stage${out.drop>1?'s':''} dropped`:''} · nothing from this flight is kept`);
+  return true}   // (no save: a reload mid-flight must not keep the dummy)
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
 function satsHTML(){return cruiseHTML()+satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()}

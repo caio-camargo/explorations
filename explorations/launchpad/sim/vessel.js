@@ -921,7 +921,7 @@ function physStep(s,dt){
   gimSteer(s,s.throttle>0?eng:[],thr,steer>0?rest:[0,0,0],dt,FC?FC.out:[]);
   if(s.sasE){const I=madd(s.sasI||[0,0,0],s.sasE,dt),m=len(I);s.sasI=m>s.sasA?mul(I,s.sasA/m):I}   // SAS rate integral (ctrlAccel)
   if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*engK(p)*1000,t=thr[i],pt=thrustPt(p);
-    const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
+    const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];if(!(TEST.on&&TEST.fuel)||p.d.solid)want[g]=(want[g]||0)+md*s.throttle*dt/1000}   // (tester, Q542) infinite fuel: tanks never drain; a solid still burns out
     const on=onArr(s),fuel=fuelArr(s),rank=dropRank(s,s.evIdx);for(const g in want)drawFuel(s,on,fuel,s.grp,rank,+g,want[g]);
     s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=fuel[i]})}
   const out=new Set(),next=s.events[s.evIdx];

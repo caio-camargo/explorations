@@ -112,6 +112,7 @@ addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.ta
 // 'launchpad-tester-flags'; the sandbox program lives in 'launchpad-program-tester'. The rules it bends are in the SIM tester block.
 const TEST_FLAGS=[['money','Infinite money','funds never drop below '+fmtM(TEST_FUNDS)],['kh','Full know-how and certification','every part flies as if well known; flight safety signs off'],
   ['tools','All tools','impact prediction, maneuver planning, encounter forecasts'],['nofail','No ignition failures',''],['fast','Instant stacking','launches take no preparation days'],
+  ['fuel','Infinite fuel','tanks and RCS gas never drain (a solid kick motor still burns out; batteries are real). The HUD tag says ∞ FUEL'],
   ['record','Record this session','keyframes of the save, the tape of every flight, the camera, keys and clicks: a file to replay (app/record.js; NOTES § Plan: record and replay)'],
   ['log','Verbose log','staging, ignition, contact and touchdown speed, destruction and its cause, heating, money, contracts, saves: a panel, the console, a download (app/testlog.js)']];
 let testArm=null;
@@ -136,15 +137,36 @@ function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mo
     +(fl?'<div class="sub">Epoch, date, era, funds and missions wait until the flight is over.</div>':'')
     +`<h3>Debris · ${Math.round(fragBands().reduce((a,b)=>a+b,0)).toLocaleString('en')} fragments</h3><div>at <input type="number" id="testDebKm" min="110" step="10" value="400" style="width:5em"${dis}> km, <input type="number" id="testDebT" min="0.1" step="0.5" value="1" style="width:4em"${dis}> t <button data-test-act="breakup"${dis}>Breakup</button><button data-test-act="asat"${dis}>ASAT test</button><button data-test-act="clutter"${dis}>+100 dead stages there</button></div><div>debris setting ${['off','light','real'].map(k=>`<button data-test-press="${k}"${pressureOf('debris')===k?' class="on"':''}${dis}>${k}</button>`).join('')}</div><div class="sub">Q161 · then advance the date: the bands drain, warnings and the cascade come as news; Program → Fleet has the fragment line. On <i>light</i> (the default, a tenth of real rates) a cascade needs ten times the clutter: about 1,500 stages and a breakup at 825 km feed the band on <i>real</i>.</div>`
     +`<h3>Hardware school</h3><div>${['auto',...Object.keys(SCHOOLS)].map(k=>{const id=k==='auto'?null:SCHOOL_IDS[k],built=k==='auto'||id!=null;return`<button data-test-school="${k}"${built&&SCHOOL_FORCE===id?' class="on"':''}${built?'':' disabled title="no look yet: it draws as Cape (QUEUE Q102 steps 6–7)"'}>${k==='auto'?'Auto':SCHOOLS[k].name}</button>`}).join('')}</div><div class="sub">Every part drawn in one school, for screenshots (Q106). Auto: each part in its maker's.</div>`
-    +`<h3>Go to body</h3><div>${BODY_CAT.map(b=>`<button data-test-body="${b.name}"${dis}>${b.name}</button>`).join('')}</div><div class="sub">SYSTEM.md's bodies drawn alone, placeholder looks (Q79). Esc comes back.</div>`
+    +`<h3>Go to body</h3><div>${BODY_CAT.map(b=>`<button data-test-body="${b.name}"${dis}>${b.name}</button>`).join('')}</div><div class="sub">SYSTEM.md's bodies drawn alone, placeholder looks (Q79). Esc comes back.</div>`+testStartHTML(fl)
     +`<h3>Jobs</h3>${act('jobs','Finish every job in progress now')}`
     +`<h3>Sandbox</h3>${act('copy','Copy my career into the sandbox','Click again: the sandbox is replaced')}${act('fresh','Fresh sandbox','Click again: the sandbox is wiped')}<br>`
     +`${act('leave','Leave tester mode')}`+(typeof recMenu==='function'?recMenu():'')}
+// Start in orbit (QA + space, Q542, PLAYTEST #148): the design on the table minus its climb, placed by placeCraft. The
+// choices live in TSTART for the session (not saved); the inputs write back on change, so a re-render keeps them.
+const TSTART={body:'Tellus',where:'orbit',alt:'',inc:'0',lat:'0',lon:'180',drop:'auto',tgt:'dummy',behind:'3'};
+const TS_WHERE=[['orbit','In orbit'],['beside','Beside a target'],['landed','Landed'],['soi','Entering its sphere']];
+function testStartHTML(fl){const T=TSTART,B=BODIES.find(b=>b.name===T.body)||TELLUS,moon=!!B.parent,dis=fl?' disabled':'';if(!moon&&(T.where==='landed'||T.where==='soi'))T.where='orbit';
+  const empty=typeof BLD==='undefined'||BLD.isEmpty(stackDef),steps=empty?[]:placeSteps(stackDef),auto=placeAuto(steps,placeNeed(B,T.where,+T.alt*1e3||PLACE_ALT[B.name])),
+    inp=(k,w,extra='')=>`<input type="number" data-test-s="${k}" value="${T[k]}" style="width:${w}em"${extra}${dis}>`,
+    tg=T.where==='beside'?orbitsAt(B).filter(q=>!q.junk).slice(0,30):[],
+    stp=i=>`stage ${i+1} (${Math.round(i?steps[i].dv:steps[i].dvA).toLocaleString('en')} m/s)`,
+    dropL=k=>k?`drop ${k}: from ${stp(k)}`:`keep all${steps.length?`: from ${stp(0)}`:''}`;
+  return`<h3>Start in orbit</h3><div>${BODIES.map(b=>`<button data-test-sb="${b.name}"${b===B?' class="on"':''}${dis}>${b.name}</button>`).join('')}</div>`
+    +`<div>${TS_WHERE.map(([k,l])=>`<button data-test-sw="${k}"${k===T.where?' class="on"':''}${dis||(!moon&&(k==='landed'||k==='soi')?' disabled':'')}>${l}</button>`).join('')}</div>`
+    +(T.where==='landed'?`<div>at ${inp('lat',4,' step="1" min="-90" max="90"')}° N ${inp('lon',4.5,' step="1"')}° E <span class="dim">(180: the near side's middle)</span></div>`
+      :`<div>${T.where==='soi'?'flyby':'at'} ${inp('alt',5,` step="10" min="0" placeholder="${PLACE_ALT[B.name]/1e3}"`)} km, inclination ${inp('inc',4,' step="5"')}°</div>`)
+    +(T.where==='beside'?`<div>target <select data-test-s="tgt"${dis}><option value="dummy">a fresh Docking dummy</option>${tg.map(q=>`<option value="${q.id}"${String(q.id)===T.tgt?' selected':''}>${q.name}</option>`).join('')}</select> ${inp('behind',3,' step="1" min="0.1"')} km behind</div>`:'')
+    +`<div><select data-test-s="drop"${dis||(empty?' disabled':'')}><option value="auto">${empty?'no design on the table':`auto: ${dropL(auto)}`}</option>${steps.map((x,k)=>`<option value="${k}"${String(k)===T.drop?' selected':''}>${dropL(k)}</option>`).join('')}</select></div>`
+    +`<div>${`<button data-test-act="start"${dis||(empty?' disabled':'')}>Start${T.where==='landed'?` on ${B.name}`:T.where==='soi'?` into ${B.name}'s sphere`:` round ${B.name}`}</button>`}</div>`
+    +`<div class="sub">The design on the table, its climb's stages dropped (auto: those spent before getting there), full tanks. A sandbox flight: nothing it does is kept, no pay, no register; Revert starts it again. The dummy is the Docking preset's head, gone after the flight.</div>`}
 function testDone(){testTopUp();HOOK.save();renderProgram();renderTester();if(screenNow()==='assembly')editorChanged()}
 function testSaveFlags(){try{const f={};for(const[x]of TEST_FLAGS)f[x]=TEST[x];localStorage.setItem('launchpad-tester-flags',JSON.stringify(f))}catch(x){}}
 document.addEventListener('change',e=>{const d=e.target.dataset||{};if(!TEST.on)return;
+  if(d.testS){TSTART[d.testS]=e.target.value;return}   // (Q542) the start's choices
   if(d.testMis){testMission(d.testMis,e.target.checked);testDone();return}
-  const k=d.testFlag;if(!k)return;TEST[k]=e.target.checked;testSaveFlags();testDone()});
+  const k=d.testFlag;if(!k)return;TEST[k]=e.target.checked;testSaveFlags();testBadge();testDone()});
+// the HUD's TESTER tag says when the tanks are bottomless (Q542)
+function testBadge(){const b=$('testerBadge');if(b)b.textContent=TEST.fuel?'TESTER · ∞ FUEL':'TESTER'}
 document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)return;
   if(e.target.id==='testerBadge'){ovToggle('tester');return}
   if(d.testEp){testEpoch(+d.testEp);HOOK.msg(`Tester: epoch ${d.testEp}`);testDone();return}
@@ -152,10 +174,14 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)r
   if(d.testSchool){SCHOOL_FORCE=d.testSchool==='auto'?null:SCHOOL_IDS[d.testSchool]??null;HOOK.rebuild();if(screenNow()==='assembly')editorChanged();renderTester();return}
   if(d.testPress){PROG.pressures=PROG.pressures||{};PROG.pressures.debris=d.testPress;HOOK.msg(`Tester: debris ${d.testPress}`);testDone();return}
   if(d.testBody){ovClose('tester');bodyViewOpen(d.testBody,1);return}
+  if(d.testSb){if(TSTART.body!==d.testSb){TSTART.body=d.testSb;TSTART.alt='';TSTART.tgt='dummy'}renderTester();return}
+  if(d.testSw){TSTART.where=d.testSw;renderTester();return}
   if(d.testEra){const ok=testEra(+d.testEra);HOOK.msg(ok?`Tester: ${COMP_ERAS[compEra()].name.toLowerCase()}, ${fmtDate(PROG.day)}`:"Tester: that era doesn't reach this program within 60 years");testDone();return}
   const a=d.testAct;if(!a)return;
   if((a==='copy'||a==='fresh')&&testArm!==a){testArm=a;renderTester();return}testArm=null;
-  if(a==='jobs'){testFinishJobs();HOOK.msg('Tester: every job finished');testDone()}
+  if(a==='start'){const T=TSTART,num=(v,f)=>v===''||v==null||!isFinite(+v)?f:+v,B=BODIES.find(b=>b.name===T.body)||TELLUS;
+    if(testStart({body:T.body,where:T.where,alt:num(T.alt,PLACE_ALT[B.name]/1e3)*1e3,inc:num(T.inc,0),lat:num(T.lat,0),lon:num(T.lon,180),drop:T.drop==='auto'?'auto':+T.drop,target:T.tgt,behind:num(T.behind,3)*1e3}))ovClose('tester')}
+  else if(a==='jobs'){testFinishJobs();HOOK.msg('Tester: every job finished');testDone()}
   else if(a==='goto'){if(testGoto($('testDayIn').value))testDone()}
   else if(a==='breakup'||a==='asat'||a==='clutter'){const km=$('testDebKm').value,n=a==='breakup'?testBreakup(km,$('testDebT').value):a==='asat'?testAsat(km):testClutter(100,km);
     HOOK.msg(n?`Tester: ${a==='clutter'?n+' dead stages':Math.round(n).toLocaleString('en')+' fragments'} at ${km} km`:'Tester: pick a height above the air');testDone()}
@@ -163,7 +189,7 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)r
   else if(a==='copy'||a==='fresh'){try{if(a==='copy')localStorage.setItem(PROG_KEY,localStorage.getItem('launchpad-program-v1')||'null');else localStorage.removeItem(PROG_KEY)}catch(x){}
     HOOK.save=()=>{};location.reload()}   // (no save on the way out: it would write the old sandbox back)
   else if(a==='leave'){const u=new URL(location.href);u.searchParams.delete('tester');location.href=u.href}});
-if(TEST.on){$('testerBadge').classList.remove('hidden');testTopUp()}   // (also each frame, and after every menu action)
+if(TEST.on){$('testerBadge').classList.remove('hidden');testBadge();testTopUp()}   // (also each frame, and after every menu action)
 // ---- the Program screen (slice 2). renderProgram (economy/bodies) still writes one long column into the hidden #program;
 // progLayout() sorts its sections into tabs by their heading. A heading it doesn't know goes to "More", so a new section
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.

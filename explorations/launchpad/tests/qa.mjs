@@ -81,3 +81,72 @@
   check('tester: the school picker lists Auto and every school, and a pick sets SCHOOL_FORCE and rebuilds the ship',
     /data-test-school="\$\{k\}"/.test(pg) && /\['auto',\.\.\.Object\.keys\(SCHOOLS\)\]/.test(pg) && /if\(d\.testSchool\)\{SCHOOL_FORCE=[^}]*HOOK\.rebuild\(\)/.test(pg));
 }
+
+// qa-6. Infinite fuel (QA + space, QUEUE Q542, PLAYTEST #148): with the tester's flag a full-throttle burn leaves every
+// tank as it was and the craft keeps accelerating; off (or outside tester mode) the same burn drains them. Own SIM copy.
+{
+  const F = new Function(src + 'return {TEST,PROG,HOOK,PRESETS,newShip,placeCraft,physStep,set S(v){S=v},set t(v){simT=v},len};')();
+  F.HOOK.msg = () => {}; F.HOOK.news = () => {}; F.HOOK.save = () => {}; F.HOOK.rebuild = () => {}; F.HOOK.debris = () => {};
+  const burn = on => { F.TEST.on = on; F.TEST.fuel = on; F.t = 0; const s = F.newShip(F.PRESETS.Orbiter); F.placeCraft(s, { body: 'Tellus', alt: 300e3, T: 0 }); F.S = s;
+    const f0 = s.parts.map(p => p.res.fuel || 0), v0 = F.len(s.v); s.throttle = 1; for (let i = 0; i < 1500; i++) F.physStep(s, 0.02);
+    const f1 = s.parts.map(p => p.res.fuel || 0); return { same: f0.every((x, i) => x === f1[i]), used: f0.reduce((a, x, i) => a + x - f1[i], 0), dv: F.len(s.v) - v0 }; };
+  const a = burn(true), b = burn(false); F.TEST.on = false; F.TEST.fuel = false;
+  check('tester: infinite fuel keeps every tank full through a 30 s burn in orbit (the craft still speeds up); without it the same burn drains them',
+    a.same && Math.abs(a.dv) > 50 && !b.same && b.used > 0.1,
+    `on: tanks unchanged ${a.same}, |v| changed ${a.dv.toFixed(0)} m/s · off: ${(b.used * 1000).toFixed(0)} kg burnt, ${b.dv.toFixed(0)} m/s`);
+}
+
+// qa-7. Start in orbit (QA + space, QUEUE Q542, PLAYTEST #148): placeCraft puts the design, minus the stages its climb
+// spent, on a circular orbit of the body asked for (altitude, inclination), beside a target (a Docking dummy a few km
+// behind on its orbit), standing upright on Selene, or on a transfer that enters Selene's sphere within minutes. A tester
+// flight earns nothing: its end puts the program back as it was, the dummy gone. Own SIM copy.
+{
+  const P = new Function(src + 'return {TEST,PROG,HOOK,PRESETS,BODIES,TELLUS,SELENE,newShip,placeCraft,placeSteps,placeAuto,placeNeed,physStep,advPhys,advRails,missionEnd,recNew,satAt,kepler,elements,qrot,norm,len,sub,dot,set S(v){S=v},set t(v){simT=v},get t(){return simT},set REV(v){REVERT0=v}};')();
+  P.HOOK.msg = () => {}; P.HOOK.news = () => {}; P.HOOK.save = () => {}; P.HOOK.rebuild = () => {}; P.HOOK.debris = () => {}; P.TEST.on = true; P.t = 0;
+  const D = Math.PI / 180, inc = (s) => { const e = P.elements(s.r, s.v, s.body.mu); return Math.acos(e.h[1] / e.hl) / D; };
+  const orb = (s) => { const e = P.elements(s.r, s.v, s.body.mu); return { alt: (e.a - s.body.R) / 1e3, e: e.e, inc: Math.acos(e.h[1] / e.hl) / D }; };
+  // (1) Tellus, 250 km at 51.6°: the Orbiter's first stage dropped (auto), the upper stage lit and full
+  const s1 = P.newShip(P.PRESETS.Orbiter), n1 = s1.parts.filter(p => p.on).length, r1 = P.placeCraft(s1, { body: 'Tellus', alt: 250e3, inc: 51.6, T: 0 }), o1 = orb(s1);
+  const ok1 = r1.ok && r1.drop === 1 && s1.body === P.TELLUS && Math.abs(o1.alt - 250) < 0.01 && o1.e < 1e-9 && Math.abs(o1.inc - 51.6) < 0.01 && !s1.landed
+    && !s1.parts.some(p => p.on && p.d.key === 'kestrel') && s1.parts.filter(p => p.on && p.res.fuel > 0).every(p => Math.abs(p.res.fuel - (p.d.res0 ? p.d.res0.fuel : p.res.fuel)) < 1e-9);
+  // (2) Selene, 40 km polar, the Lunar preset: its booster stage and the climb's upper stage dropped, the lander's stage kept
+  const s2 = P.newShip(P.PRESETS.Lunar), st2 = P.placeSteps(s2.stack), r2 = P.placeCraft(s2, { body: 'Selene', alt: 40e3, inc: 90, T: 0 }), o2 = orb(s2);
+  const s2b = P.newShip(P.PRESETS.Lunar), r2b = P.placeCraft(s2b, { body: 'Selene', alt: 40e3, inc: 90, drop: 2, T: 0 });
+  const ok2 = r2.ok && s2.body === P.SELENE && Math.abs(o2.alt - 40) < 0.01 && Math.abs(o2.inc - 90) < 0.01 && r2.drop >= 1 && r2.drop < st2.length && r2b.ok && r2b.drop === 2
+    && s2b.parts.filter(p => p.on).length < s2.parts.filter(p => p.on).length;
+  // refused: under Tellus's air, outside Selene's sphere, landing on Tellus
+  const bad = ['Tellus', 'Selene', 'Tellus'].map((b, i) => P.placeCraft(P.newShip(P.PRESETS.Orbiter), { body: b, alt: [80e3, 9000e3, 0][i], where: i === 2 ? 'landed' : 'orbit', T: 0 }));
+  check('tester start: in orbit round Tellus (250 km, 51.6°) and Selene (40 km polar), the climb\'s stages dropped (auto, or as many as asked), full tanks; refused below the air, outside the sphere, landed on Tellus',
+    ok1 && ok2 && bad.every(x => !x.ok),
+    `Tellus ${o1.alt.toFixed(2)} km e ${o1.e.toExponential(1)} ${o1.inc.toFixed(2)}°, drop ${r1.drop} (${n1}→${s1.parts.filter(p => p.on).length} parts) · Selene ${o2.alt.toFixed(2)} km ${o2.inc.toFixed(2)}°, drop ${r2.drop} of ${st2.length} stages (asked 2: ${r2b.drop}) · refused: ${bad.map(x => x.why).join(' | ')}`);
+  // (3) beside a fresh Docking dummy on a 300 km orbit, 3 km behind: in the register, the target, co-orbital (still ~3 km apart an hour on)
+  const P0 = P.PROG, snap = JSON.stringify(P0), sats0 = (P0.sats || []).length, flights0 = P0.flights, funds0 = P0.funds;
+  P.t = 0; const s3 = P.newShip(P.PRESETS.Orbiter); s3.rec = Object.assign(P.recNew(), { launched: true, day0: 0, tester: { where: 'beside' } }); P.REV = { R: s3.rec, prog: snap };
+  const r3 = P.placeCraft(s3, { body: 'Tellus', where: 'beside', alt: 300e3, inc: 28, target: 'dummy', T: 0 }), q3 = (P0.sats || []).find(q => q.id === r3.target);
+  const [tr, tv] = q3 ? P.satAt(q3, 0) : [[0, 0, 0], [0, 0, 0]], d0 = P.len(P.sub(tr, s3.r)), [ar] = P.kepler(s3.r, s3.v, 3600, s3.body.mu), [br] = P.kepler(tr, tv, 3600, s3.body.mu), d1 = P.len(P.sub(ar, br));
+  const eS = P.elements(s3.r, s3.v, s3.body.mu), eT = P.elements(tr, tv, s3.body.mu);
+  const ok3 = r3.ok && !!q3 && s3.target === q3.id && /Target dummy/.test(q3.name) && q3.shape.some(o => o.k === 'port') && (P0.sats || []).length === sats0 + 1
+    && Math.abs(d0 - 3000) < 5 && Math.abs(d1 - 3000) < 20 && Math.abs(eS.a - eT.a) < 1 && P.dot(P.sub(tr, s3.r), s3.v) > 0;
+  // its end: discarded whole (no flight counted, no pay, the dummy gone)
+  P.S = s3; P.missionEnd(s3);
+  const ok3b = (P0.sats || []).length === sats0 && P0.flights === flights0 && P0.funds === funds0 && s3.rec.ended;
+  check('tester start beside a target: a Docking dummy registered on the orbit asked for, the craft 3 km behind it on the same orbit (still 3 km after an hour), targeted; the flight\'s end leaves the program as it was',
+    ok3 && ok3b, `dummy ${q3 ? q3.name : 'none'}, ${d0.toFixed(0)} m behind, ${d1.toFixed(0)} m after an hour, Δa ${Math.abs(eS.a - eT.a).toFixed(2)} m · after the end: ${(P0.sats || []).length} objects (was ${sats0}), flights ${P0.flights}`);
+  // (4) landed on Selene at 10°N 170°E, the lander stage: at rest upright, still standing 5 s on
+  P.t = 0; const s4 = P.newShip(P.PRESETS.Lunar); s4.rec = Object.assign(P.recNew(), { launched: true, day0: 0, tester: {} });
+  const r4 = P.placeCraft(s4, { body: 'Selene', where: 'landed', lat: 10, lon: 170, T: 0 }); P.S = s4;
+  const up4 = () => P.dot(P.norm(P.qrot(s4.q, [0, 1, 0])), P.norm(s4.r)), u0 = up4(), lat4 = Math.asin(P.norm(s4.pf)[1]) / D;
+  for (let i = 0; i < 250; i++) P.advPhys(s4);
+  check('tester start landed on Selene: the lander stage stands upright at the spot asked for, at rest, and stays there',
+    r4.ok && r4.drop >= 1 && s4.body === P.SELENE && s4.landed && s4.alive && !s4.tipped && u0 > 0.9999 && up4() > 0.9999 && Math.abs(lat4 - 10) < 0.01 && P.len(P.sub(s4.v, [0, 0, 0])) < 10,
+    `drop ${r4.drop}, up·nose ${u0.toFixed(5)} → ${up4().toFixed(5)}, lat ${lat4.toFixed(2)}°, landed ${s4.landed}, alive ${s4.alive}`);
+  // (5) entering Selene's sphere: on a transfer in Tellus's frame, inside Selene's sphere within minutes, a flyby periapsis near the 100 km asked
+  P.t = 0; const s5 = P.newShip(P.PRESETS.Lunar); s5.rec = Object.assign(P.recNew(), { launched: true, day0: 0, tester: {} });
+  const r5 = P.placeCraft(s5, { body: 'Selene', where: 'soi', alt: 100e3, T: 0 }); P.S = s5; const b0 = s5.body.name;
+  let n = 0; while (s5.body !== P.SELENE && n++ < 120) P.advRails(s5, 10, 10);
+  const pe5 = s5.body === P.SELENE ? (P.elements(s5.r, s5.v, P.SELENE.mu).pe - P.SELENE.R) / 1e3 : NaN;
+  check('tester start entering Selene\'s sphere: it starts round Tellus and crosses into Selene\'s sphere within minutes, on a flyby near the periapsis asked for',
+    r5.ok && b0 === 'Tellus' && s5.body === P.SELENE && P.t < 600 && Math.abs(pe5 - 100) < 30,
+    `from ${b0}, in Selene's sphere after ${P.t.toFixed(0)} s, periapsis ${pe5.toFixed(1)} km (asked 100)`);
+  P.TEST.on = false;
+}

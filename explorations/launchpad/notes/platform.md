@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-13
+**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -703,3 +703,51 @@ over +0.4 ms but the desk at Low (+1.3, one round). Load 25 → 24 s. **Q315 cos
 **Seen on the way: Low barely helps on the iGPU.** At full resolution the pad is ~31 ms at High and ~30.5 at Low (~33 fps
 either way), a lift-off ~36 vs ~32: Low saves ~7 % there. Most of what Low saves must come from the resolution scale, so
 this is worth a look on a machine whose only GPU is the Intel one (the platform lane's perf work).
+
+## v1.278 — the tester's infinite fuel and starts in orbit (2026-11-07, orchestrator worker, QUEUE Q542; PLAYTEST #148)
+
+Caio: "an infinite fuel mode for testing, plus some starting points like in orbit of different bodies", for practising
+rendezvous and satellite missions. Both live in the tester menu (`?tester`, F2).
+
+**Infinite fuel** (`TEST.fuel`, a flag like the others, saved per browser): one check where each propellant is taken.
+`physStep` adds no draw for a liquid engine's flow group (the thrust is unchanged, the tanks stay full, the mass too),
+and `rcsStep` takes no gas out of the bottles. A solid kick motor still burns out (it is held at full thrust until it is
+empty, so an endless one could never be stopped); batteries, a holed tank's leak and EVA are real. The HUD's TESTER tag
+reads **TESTER · ∞ FUEL** while it's on.
+
+**Start in orbit** (a section of the menu, out of flight only): a body (Tellus, Selene, Nyx), where (*In orbit*, *Beside a
+target*, *Landed*, *Entering its sphere*; the last two on a moon), altitude and inclination (or latitude and longitude
+landed), the stages to drop, *Start*. One placement function, `placeCraft(s, spec)` in `sim/space.js`, works on a fresh
+`newShip` (Q452 can reuse it):
+- **Stages dropped**: `placeSteps` reads the design's Δv steps (`dvPlan`, the first at sea level); `placeNeed` is the Δv
+  spent before that point (the logbook's orbit, else `DV_ORBIT_EST`; for a moon + a Hohmann transfer, + the capture onto
+  the orbit asked, + the descent landed); `placeAuto` drops every stage whose Δv is all spent by then and keeps the one
+  burning when it's reached (full: the tester's fuel isn't rationed), never the last. The picker overrides it ("drop 2:
+  from stage 3 (1,632 m/s)"). `placeDrop` fires those staging events as staging would (parts off, the next stage lit,
+  fairings dropped) without debris. Measured: the Orbiter drops its booster for Tellus orbit; the Lunar keeps its Petrel
+  stage for Selene orbit (drop 1) and only the Wren lander landed (drop 2).
+- **In orbit**: circular at the altitude, inclination, node and argument of latitude (`placeCirc`, addBody's convention),
+  nose prograde, SAS on. Refused under the air / the highest ground, or past 80 % of a moon's smallest sphere.
+- **Beside a target**: a registry object round that body (the menu lists them, debris left out), or a fresh **Docking
+  dummy** (the Docking preset minus its first stage, registered by `satRegister` as "Target dummy N"); the craft 3 km
+  (settable) behind it on the same orbit (`kepler` back by 3 km of arc), targeted. Co-orbital: still 3 km apart an hour on.
+- **Landed**: upright at the latitude and longitude (180° E: Selene's near side), legs down, pinned as landed (`syncLanded`).
+- **Entering its sphere**: a hyperbola about the moon with a Hohmann transfer's arrival speed and the periapsis asked
+  (default 100 km), its plane the moon's orbit tilted by the inclination, started 100 km outside the sphere in the parent's
+  frame: on Selene it crosses in ~3 min with a 100.5 km periapsis.
+
+**No credit.** The flight starts as `flyEntry`'s from orbit (`testStart`, `app/program-ui.js`: a whole day, `ORB_T0`) with
+`R.tester` (the spec) and the program snapshotted (REVERT0) before any dummy is registered. `missionTick` runs only the
+world's hazards for it (a leak, debris passes): no staged pay, rendezvous or overflight contracts, logbook or missions;
+`missionEnd` discards it whole (`missionDiscard`): no flight counted, no registry entry, the dummy gone, the program as it
+was, no debrief. Revert starts the same placement again (also on Hard). The start isn't saved, so a reload mid-flight
+keeps no dummy.
+
+**Tests** (`tests/qa.mjs`): qa-6, a 30 s burn in orbit leaves the tanks full with the flag (the craft still gains ~440 m/s)
+and drains 576 kg without; qa-7, Tellus 250 km 51.6° and Selene 40 km polar to 0.01 km / 0.01°, stages dropped auto and as
+asked, three refusals; the dummy 3,000 m ahead, 3,000 m after an hour, the end leaves the program as it was; landed on
+Selene upright at 10° N and still standing 5 s on; the sphere entered after 190 s, periapsis 100.5 km. Screenshots (RTX):
+the menu with the Lunar on the table, and the Lunar's Petrel + Wren in a 40 km polar Selene orbit, tanks full after a 3 s burn.
+
+**Left**: no keep-it switch (a satellite placed this way can't stay in the sandbox's register); RCS gas isn't in the tests
+(no preset carries RCS); no "landed elsewhere on Tellus" start; *Entering its sphere* is a flyby, not a captured free return.
