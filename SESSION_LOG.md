@@ -6576,6 +6576,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 19 (design desk, 2026-10-31):** PLAYTEST #146: the engine sounds like static: the voices' Strouhal number is a cold jet's 0.2, rockets peak near 0.03; fix proposed for the sound beat.
 - **Addendum 20 (design desk, 2026-11-06):** Caio dropped the face creator ("too thorny"): **D26** the head is ligne claire (heads sheet a); FACES.md parked, W33 closed; Q531 the head build proposed. EVA had no design or code: **EVA.md 0.1.0** scopes it (uses from history; movement as one physical body fed by clicks or keys; Froude gaits, tethers, walkback; slices E1–E4); W45 asks three questions with defaults; Q532 (E1) proposed.
 - **Addendum 21 (design desk, 2026-11-06):** Caio took W45's defaults and asked for a movement test ground first: **D27**; EVA.md 0.1.1 § 6a specifies E0 (gravities, a course with stairs, a ladder and a 0 g hall, debug tools, a headless twin); E0 proposed in QUEUE, E1 after it.
+- **Addendum 22 (design desk, 2026-11-07):** PLAYTEST #148 (tester: infinite fuel, start in orbit of any body, beside a target, landed on Selene); a mission exercise for Caio (station rendezvous and docking, city imaging, the polar weather satellite) answered in chat from what exists.
 
 ## 2026-10-30/31 — look & sound (sky & bodies): Q493 Selene's flashing grain (v1.242), Q324 Selene up close (v1.249)
 
