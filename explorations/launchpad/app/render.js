@@ -349,7 +349,7 @@ function drawPatches(list,camW,out,labels,cols,dash,tag){
 // A numeric (perturbed) prediction costs milliseconds, so it isn't redone every frame: it stands while the craft is where it
 // said the craft would be (within a km or 0.1 % of the radius); while thrusting, it's redone at most four times a second.
 function predStill(){const c=predCache,p0=c&&c.p[0];if(!p0||!p0.path||c.body!==S.body||S.landed)return false;
-  const P=p0.path,thr=S.throttle>0&&activeEngines(S).length>0;if(thr)return performance.now()-c.wall<250;
+  const P=p0.path,thr=enginesBurning(S);if(thr)return performance.now()-c.wall<250;
   if(simT>(p0.tDrawn||p0.endT||p0.tEnd||-Infinity))return false;let i=1;while(i<P.length-1&&P[i][1]<simT)i++;   // (Q487) tDrawn: past the revolution it drew, a new one
   const[a,ta]=P[i-1],[b,tb]=P[i],f=tb>ta?clamp((simT-ta)/(tb-ta),0,1):0,q=add(a,mul(sub(b,a),f));
   return len(sub(q,S.r))<Math.max(1000,1e-3*len(S.r))*(1+len(sub(b,a))/2e4)}

@@ -12,7 +12,7 @@ addEventListener('keydown',e=>{
   if(S&&S.proc&&!S.proc.done&&['w','a','s','d','q','e','z','x','t',' ','shift','control','backspace'].includes(k)){S.proc=null;HOOK.msg('Procedure off — you have control')}
   if(k===' ')tapeStage(recTape,S);
   else if(k==='backspace'){e.preventDefault();tapeAbort(recTape,S)}
-  else if(k==='z')S.throttle=1;else if(k==='x')S.throttle=0;
+  else if(k==='z')S.throttle=1;else if(k==='x'){S.throttle=0;const sl=solidLeft(S);if(sl>0)HOOK.msg(`Throttle cut: the solids burn on (${Math.ceil(sl)} s)`)}   // (Q550) the lever moves the liquids only
   else if(k==='t'){S.sas=!S.sas;S.hold=null;renderSAS()}
   else if(k==='m')toggleMap();
   else if(k==='.')warpStep(1);

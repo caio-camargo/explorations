@@ -116,14 +116,14 @@ function sndGroan(b){const c=AUD.ctx,t=c.currentTime+(b.delay||0)+0.05,o=c.creat
 function sndBeep(f,dur,gain,delay=0){const c=AUD.ctx,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();o.frequency.value=f;
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+0.01);g.gain.setValueAtTime(gain,t+dur-0.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+dur+0.02)}
 function sndState(){const b=S.body,h=len(S.r)-b.R,inAir=b.atm&&h<b.atm,E=S.alive?activeEngines(S):[];let T=0,Ts=0;
-  for(const e of E){const t=e.d.thrust*1000*engK(e)*S.throttle;T+=t;if(pfxOf(e.d).prop==='solid')Ts+=t}
+  for(const e of E){const t=e.d.thrust*1000*engK(e)*engThr(S,e);T+=t;if(pfxOf(e.d).prop==='solid')Ts+=t}
   if(S.lesT>0){const les=S.parts.find(p=>p.on&&p.d.kind==='les');if(les){T+=les.d.thrust*1000;Ts+=les.d.thrust*1000}}
   let hot=0;for(const p of S.parts)if(p.on&&p.d.Tmax&&p.T)hot=Math.max(hot,p.T/p.d.Tmax);
-  const eng=E.map(e=>({key:e.d.key,T:e.d.thrust*1000*engK(e)*S.throttle,exit:e.d.exit}));
+  const eng=E.map(e=>({key:e.d.key,T:e.d.thrust*1000*engK(e)*engThr(S,e),exit:e.d.exit}));
   // elsewhere: other vessels burning and debris falling through the air, within 30 km, as heard from here (Q67)
   const me=shipWorld(),rt=qrot(S.q,[1,0,0]),aMe=inAir?density(b,h)/b.rho0:0,others=[],airAt=(bb,r)=>{const hh=len(r)-bb.R;return bb.atm&&hh<bb.atm?density(bb,hh)/bb.rho0:0};
   if(aMe>0){for(const v of FLEET){if(v===S||!v.alive||!v.parts)continue;const w=add(bodyPos(v.body,simT),v.r),dv=sub(w,me),d=len(dv);if(d>3e4)continue;
-      let Tv=0;for(const e of activeEngines(v))Tv+=e.d.thrust*1000*(v.throttle||0);if(Tv>0)others.push({d,T:Tv,air:Math.min(aMe,airAt(v.body,v.r)),x:dot(dv,rt)/Math.max(d,1)})}
+      let Tv=0;for(const e of activeEngines(v))Tv+=e.d.thrust*1000*(engThr(v,e)||0);if(Tv>0)others.push({d,T:Tv,air:Math.min(aMe,airAt(v.body,v.r)),x:dot(dv,rt)/Math.max(d,1)})}
     for(const g of debris){const w=add(bodyPos(g.body,simT),g.r),dv=sub(w,me),d=len(dv);if(d>3e4)continue;const ag=airAt(g.body,g.r);if(!(ag>0))continue;
       const sp=len(sub(g.v,surfVel(g.body,g.r))),qd=0.5*ag*g.body.rho0*sp*sp;if(qd<500)continue;
       others.push({d,T:0,whoosh:0.5*Math.min(1,Math.sqrt(qd/2e4)),air:Math.min(aMe,ag),x:dot(dv,rt)/Math.max(d,1)})}}

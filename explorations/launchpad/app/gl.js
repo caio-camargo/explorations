@@ -1660,6 +1660,7 @@ function partBody(out,p){
     // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
     case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
     case'padapt6':case'padapt3':{const t=d.prof[d.prof.length-1];lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[t[0],t[1],C.ST]],o,32)}break;   // narrowing to a small payload (Q505)
+    case'ember':case'cinder':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.D:C.W]),o,24);break;   // main-stage solids (Q550): a dark nozzle, a white case; each school's look is slice 6's
     case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
     case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
     case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;
@@ -1718,15 +1719,15 @@ HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
 let markT=null;const SPK={n:0,k:0};
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
-  const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed&&!S.mkLift){S.mkLift=true;S.mkLiftT=simT}
-  const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle,
+  const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive?activeEngines(S).filter(p=>engThr(S,p)>0):[];if(!S.landed&&!S.mkLift){S.mkLift=true;S.mkLiftT=simT}
+  const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base0=1+2*(1-pr),
     qE=S.alive&&b.atm?plasmaHeat(b,S.r,S.v,S.qHeat):0,kH=qE>1.5e4?clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5):0;
   for(const p of S.parts){if(!p.on)continue;const m=markOf(p);
     if(p.cap.fuel)m.frost=pad?1:Math.max(0,m.frost-dt*(1/45+sp/6000));
     if(p.T>480){m.char=Math.max(m.char,clamp((p.T-480)/(p.d.Tmax-480),0,1));if(sp>1)m.cd=madd(m.cd,fb,(p.T-480)*dt/sp)}
     if(p.cap.ablator)m.char=Math.max(m.char,clamp((p.T-420)/300,0,1),Math.min(1,3*(1-p.res.ablator/p.cap.ablator)));   // an ablator blackens far below its rating
     hotTo(m,kH,dt);if(kH>0&&sp>1)m.cd=madd(m.cd,fb,dt*kH/sp);   // the glow's windward side, also on parts whose bulk stays cool
-    if(vacNozzle(p.d)){const tg=eng.includes(p)?S.throttle:0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
+    if(vacNozzle(p.d)){const tg=eng.includes(p)?engThr(S,p):0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
   // (Q320, B4.3) the ship sheds sparks of ablator (and flakes of paint) from its hot face, as falling stages do
   if(kH>0&&b===TELLUS&&sp>1){const abl=S.parts.some(p=>p.on&&p.cap.ablator&&p.res.ablator>0),va=sub(S.v,surfVel(b,S.r));SPK.n+=dt*kH*(abl?45:12);
     for(;SPK.n>1&&SPK.k<40;SPK.n--,SPK.k++){const R=Math.random,u=norm([R()-.5,R()-.5,R()-.5]);
@@ -1734,7 +1735,7 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
   ventTick(dt);   // (Q294) broken tanks venting
   if(S.wet&&!S.mkSplash){S.mkSplash=true;splashFx(S)}   // (Q267) the moment it hits the sea
   if(S.landed&&S.water)surfFx(S,b,S.r,S.q,S.yTop-S.yBot,S.radius||1,dt);   // (Q335) afloat: the waterline laps
-  for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
+  for(const e of eng){const top=e.y0+e.h,base=base0*engThr(S,e);markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
     for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
       const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
   for(const d of debris){const kH=d.body.atm?DEBH.get(d)?.k||0:0;
@@ -1778,7 +1779,7 @@ const PROPS={
   // solid: aluminised composite, blinding white-yellow, nearly opaque, few diamonds; its smoke is white (alumina)
   solid:{ig:[1,.95,.8],igT:.06,rich:.12,tail:.35,co:[1,.92,.78],di:[1,.9,.75],ma:[1,.62,.3],va:[1,.82,.6],so:[1,1,1],K:[7,.4,1.6,0],op:1.6},
   hydrolox:{ig:[.6,.6,1],igT:.05,rich:.1,tail:.1,co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
-const PFX={les:{prop:'solid',pe:.9},sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
+const PFX={les:{prop:'solid',pe:.9},ember:{prop:'solid',pe:.9},cinder:{prop:'solid',pe:.9},sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
   kestrel:{prop:'kerolox',pe:.75},condor:{prop:'kerolox',pe:.8},albatross:{prop:'kerolox',pe:.7}};
 // an engine without an entry: kerolox, with a vacuum nozzle if its sea-level Isp is under half its vacuum one
 const pfxOf=d=>PFX[d.key]||PFX[d.base]||{prop:'kerolox',pe:d.ispA<0.5*d.ispV?.025:.75};
@@ -1991,7 +1992,7 @@ const PLT={p:new Float32Array(4),c:new Float32Array(3),p2:new Float32Array(4),c2
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
 function plumeLight(camW){PLT.c.fill(0);PLT.c2.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
   const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;const rec=[];
-  for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
+  for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:engThr(S,e);const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
       pf=plumeFrame(e),Q=pf.qt?qmul(S.q,pf.qt):S.q,o=add(sub(p,camW),qrot(S.q,sub(pf.ex,S.cm))),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
     if(thr<.01&&g[0]+g[1]+g[2]<.01)continue;
     let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
@@ -2267,7 +2268,7 @@ const SPOOL=new WeakMap();
 const SPOOL_F=[-1e9,-1e9];
 function spoolFrame(){if(simT<SPOOL_F[1])SPOOL_F[1]=-1e9;if(simT!==SPOOL_F[1]){SPOOL_F[0]=SPOOL_F[1];SPOOL_F[1]=simT}}   // the clock going back (a new flight): no last frame
 function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:SPOOL_F[0],ig:-1e9,off:-1e9,tg:0});const gap=simT-sp.t,dt=clamp(gap,0,5);sp.t=simT;
-  const tg=on?(e.les?1:S.throttle):0;if(gap>.5){sp.k=tg;sp.tg=tg;return sp}if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
+  const tg=on?(e.les?1:engThr(S,e)):0;if(gap>.5){sp.k=tg;sp.tg=tg;return sp}if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
   const a=simT-sp.ig;sp.k+=(tg-sp.k)*(1-Math.exp(-dt/(tg<sp.k?.22:a<.6?.3:.12)));return sp}
 // the engines whose plume shows: the burning ones, and stopped ones still tailing off: [[engine, burning]]
 function plumeEngines(){const A=S.alive?activeEngines(S):[],out=A.map(e=>[e,true]);

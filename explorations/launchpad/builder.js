@@ -293,6 +293,8 @@ const PART_INFO={
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
   padapt:'The ring a payload stands on inside the rocket. It comes with every payload block, and it is the separation ring: staging it releases the payload and drops the stage under it.',
   bwt:'A plain mass on the side, to bring a lopsided payload\'s centre of mass back onto the axis. The bench sizes it for you.',
+  ember:'A small solid motor, 0.6 m: once lit it burns to the end (30 s), no throttle and no stopping. Cheap, simple lift for sounding rockets and the upper stages of an all-solid rocket.',
+  cinder:'A solid booster, 1.25 m: 330 kN for 55 s once lit, and nothing stops it. Strap two on a liquid core on radial decouplers for cheap lift off the pad (the core still throttles).',
   kick30:'A small solid motor for a light satellite: once lit it burns to the end, full thrust, no stopping. The early way into the final orbit.',
   kick80:'A solid kick motor for a few hundred kilos of satellite: it fires once, all of it, to circularise or raise an orbit.',
   kick200:'The biggest kick motor: from a transfer orbit to the final one for a mid-size satellite. One shot; point it first.',
@@ -355,6 +357,8 @@ const PART_PAIRS={
   adapt:'a 2.5 m stage below, a 1.25 m stack above',
   padapt:'a payload block, inside a fairing',
   bwt:'the payload bench\'s balance check',
+  ember:'fins or a steering stage above it: it has no gimbal; or another Ember on top for an all-solid rocket',
+  cinder:'radial decouplers on a liquid core, a nose cone on top: the core steers with its gimbal while they burn',
   kick30:'a payload released in a transfer orbit, pointed by its wheels',
   kick80:'a payload released in a transfer orbit, pointed by its wheels',
   kick200:'a payload released in a transfer orbit, pointed by its wheels',
@@ -399,6 +403,7 @@ const partPairs=d=>PART_PAIRS[d.key]||d.base&&PART_PAIRS[d.base]||PART_PAIRS[d.k
 function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.kind==='tank')L.push(['propellant',n(d.wet-d.dry,'t')],['mass',`${n(d.wet,'t')} full, ${n(d.dry,'t')} empty`]);else L.push(['mass',n(d.m,'t',3)]);
   if(d.kind==='engine')L.push(['thrust',`${d.thrust} kN`],['Isp',`${d.ispA} s sea level · ${d.ispV} s vacuum <span class="dim">(higher: more Δv from a tank)</span>`]   /* (Q384) the card is itself the tooltip: a gloss, not a term */);
+  if(d.solid&&d.res0&&d.res0.fuel)L.push(['grain',`${n(d.res0.fuel,'t',3)} (${n(d.m+d.res0.fuel,'t',3)} full) · burns ${Math.round(d.res0.fuel/engineMdot(d))} s once lit; nothing stops it`]);   // (Q550)
   if(d.thrust&&d.kind!=='engine')L.push(['thrust',`${d.thrust} kN for ${d.burn} s`]);
   if(d.crew)L.push(['seats',d.crew]);if(d.berths)L.push(['berths',d.berths]);
   if(d.torque)L.push(['turning',`${d.torque/1000} kN·m`]);if(d.Wp)L.push(['power',`${d.Wp} W in full sun`]);if(d.Wg)L.push(['power',`${d.Wg} W always`]);
@@ -407,7 +412,7 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.fm)L.push(['shell',`${d.fls[0]}–${d.fls[d.fls.length-1]} m long, ${n(d.fm,'t',3)} a metre, dropped at its stage`]);
   L.push(['size',`${+(2*d.r).toFixed(2)} m wide · ${+d.h.toFixed(2)} m tall`],['heat limit',`${d.Tmax} K`]);
   {const w=depOf(d.key);if(w)L.push(['deploys',DEP_HOW[w].split(':')[0]])}   // (Q400) the key and the button
-  try{const pr=partPrice({d,jr:0})+((d.res0&&d.res0.fuel)||0)*FUEL_PRICE;if(isFinite(pr))L.push(['price',fmtM(pr)+(d.kind==='tank'?' with its propellant':'')])}catch(e){}
+  try{const pr=partPrice({d,jr:0})+((d.res0&&d.res0.fuel)||0)*propPrice(d);if(isFinite(pr))L.push(['price',fmtM(pr)+(d.kind==='tank'?' with its propellant':d.solid?` with its grain (the case alone ${fmtM(partPrice({d,jr:0}))})`:'')])}catch(e){}
   return L}
 function partCardHTML(k){const d=PARTS[k],lk=typeof partOpen==='function'?partOpen(k):{ok:true};
   return`<b>${d.name}</b><div class="pcs">${partInfo(d)}</div>`+(lk.ok?'':`<div class="warn">Not open yet: it ${lk.why}. You can design with it; a launch with it is refused.</div>`)+

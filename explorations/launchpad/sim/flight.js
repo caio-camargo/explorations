@@ -285,7 +285,10 @@ function stage(s){
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}
   if(ev.decouple.length)HOOK.msg(ev.radial?'Booster separation':'Stage separation');
-  for(const k of ev.ignite){if(!igniteOK(s,k)){if(!ev.decouple.length){s.evIdx--;break}continue}s.segs[k].ignited=true}   // know-how: an unfamiliar engine can fail to light (a pure ignition can be retried)
+  // (Q550) the liquids light first: a segment of solids only lights after every liquid one in the event, so on the pad a
+  // liquid that fails to ignite leaves the solids cold and the rocket on the pad (the Shuttle's, Ariane 5's order)
+  const allSolid=k=>{const E=s.parts.filter(p=>p.on&&p.seg===k&&p.d.kind==='engine');return E.length>0&&E.every(p=>p.d.solid)};
+  for(const k of[...ev.ignite.filter(k=>!allSolid(k)),...ev.ignite.filter(allSolid)]){if(!igniteOK(s,k)){if(!ev.decouple.length){s.evIdx--;break}continue}s.segs[k].ignited=true}   // know-how: an unfamiliar engine can fail to light (a pure ignition can be retried)
   if(ev.ignite.length&&!ev.decouple.length)HOOK.msg('Ignition');
   logEv('stage',`event ${s.evIdx}: ${ev.decouple.length} group(s) dropped, ${ev.ignite.filter(k=>s.segs[k].ignited).length} of ${ev.ignite.length} lit; ${(len(s.r)-s.body.R)/1000|0} km, ${len(sub(s.v,surfVel(s.body,s.r))).toFixed(0)} m/s`);
   spinFire(s,ev);
@@ -301,7 +304,7 @@ function spinFire(s,ev){if(ev.radial)return;const on=s.parts.filter(p=>p.on);if(
   HOOK.msg(`Spin motors firing: ~${(J/s.I[1]*60/2/Math.PI).toFixed(0)} rpm`)}
 // why the craft can't go on rails ('' when it can): the warp control shows it on the levels past 100× (Q511)
 function railsWhy(s){
-  if(!s.alive)return'the flight is over';if(s.throttle>0&&activeEngines(s).length>0)return'engines running';
+  if(!s.alive)return'the flight is over';if(enginesBurning(s))return'engines running';
   if(s.landed)return'';
   if(len(s.r)-s.body.R<=physAlt(s.body))return s.body.atm?'in the air':'near the ground';
   if(hitNear(s)||fleetNear(s))return'near another craft';   // near a satellite: physics, so contact is checked
@@ -480,7 +483,7 @@ function stagedBurnTime(s,dv){let t=0,rem=dv;for(const x of dvPlan(s,0)){if(!(x.
 function nodeBurn(s,Y,T,dt){const n=s.node;
   if(!n.burning){if(simT<n.t-(n.est||0)-60)return;n.dvW=nodeInfo(s).dvW;n.applied=[0,0,0];n.burning=true}
   n.applied=madd(n.applied,Y,T/s.mass*dt);const rem=sub(n.dvW,n.applied);
-  if(dot(rem,n.dvW)<=0||len(rem)<0.1){s.node=null;s.throttle=0;nodeNext(s);HOOK.msg(s.node?'Maneuver complete — throttle cut; next node is up':'Maneuver complete — throttle cut')}}
+  if(dot(rem,n.dvW)<=0||len(rem)<0.1){s.node=null;s.throttle=0;nodeNext(s);const sl=solidLeft(s);HOOK.msg((s.node?'Maneuver complete — throttle cut; next node is up':'Maneuver complete — throttle cut')+(sl>0?`: the solids burn on (${Math.ceil(sl)} s)`:''))}}
 // ---- node chains (vehicle session, Q33). s.node is the node being flown (as before); s.nodeQ holds the ones after it, in
 // time order. Each node carries the body whose leg it sits on (b, a name; none means the vessel's body when it was placed),
 // so a capture burn can be planned before the encounter: the SOI switch keeps the nodes for the new body and drops the old

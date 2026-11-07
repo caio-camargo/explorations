@@ -16,11 +16,11 @@
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.padapt6=0.5;PRICE.padapt3=0.5;PRICE.core6=5;PRICE.core3=4;PRICE.rwheel6=3.5;PRICE.rwheel3=2.5;PRICE.batt6=1;PRICE.batt3=0.8;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
+PRICE.ember=0.8;PRICE.cinder=2.5;PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.padapt6=0.5;PRICE.padapt3=0.5;PRICE.core6=5;PRICE.core3=4;PRICE.rwheel6=3.5;PRICE.rwheel3=2.5;PRICE.batt6=1;PRICE.batt3=0.8;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
 PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
-const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
+const FUEL_PRICE=0.2,SOLID_PRICE=0.5,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 // rover parts (QUEUE Q10): prices (M; wheels each, hub motor included) and the first that opens each. The yard is free:
 // design and test-drive anything at home; a rocket can't carry a rover with a part that isn't open yet (rvLaunchWhy).
 const RV_PRICE={ch:{s:4,m:9,l:20},wh:{s:.5,m:1.5,l:3},it:{bat:1,seat:3,cam:2,ant:3,arm:5,spec:6,seis:4,drill:8}};
@@ -48,7 +48,10 @@ const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRI
 // its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.
 // Tracking is one comparison per part per step: the structure and heat passes already computed the numbers.
 const wearOf=(p,touch)=>{const dk=1-0.25*(p.d?devLv(p.d.key,'dur'):0);return(1-0.7*dk*clamp(((p.wL||0)-.5)/.5,0,1))*(1-0.7*dk*clamp(((p.wT||0)-.5)/.5,0,1))*clamp(1-(touch-TOUCH_OK)/6*0.6,0.4,1)};   // durability development: wear ×0.75 per level
-function vesselCost(parts){let c=0,dry=0;for(const p of parts){const q=partPrice(p);c+=q+(p.cap.fuel||0)*FUEL_PRICE;dry+=q}return{cost:c,dry}}
+// a solid's grain is priced by the tonne (SOLID_PRICE, Q550), dearer than liquid propellant; a recovered solid refunds its case
+// only (partPrice, never the grain: the refunds read partPrice)
+const propPrice=d=>d.solid?SOLID_PRICE:FUEL_PRICE;
+function vesselCost(parts){let c=0,dry=0;for(const p of parts){const q=partPrice(p);c+=q+(p.cap.fuel||0)*propPrice(p.d);dry+=q}return{cost:c,dry}}
 const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
 const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
 // a new save's world seed (Q529): the page draws one when there is no save to load, and Reset program draws one; the
@@ -295,7 +298,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(b===TELLUS&&h>b.atm&&!R.logSpace){R.logSpace=1;logNote(s,'space',R.dv)}
   if(b===SELENE&&!R.logSel){R.logSel=1;logNote(s,'selene',R.dv)}
   if(b===SELENE&&s.landed&&s.alive&&!R.logLand){R.logLand=1;logNote(s,'land',R.dv);logNote(s,'sg',SELENE.mu/dot(s.r,s.r))}   // a lander measures g
-  const coast=!(s.throttle>0&&activeEngines(s).length);   // the period is read off an orbit the engines have stopped changing (space Q114, PLAYTEST #30)
+  const coast=!enginesBurning(s);   // the period is read off an orbit the engines have stopped changing (space Q114, PLAYTEST #30)
   if(b===SELENE&&!s.landed&&!R.logSOrb&&coast){const e2=elements(s.r,s.v,b.mu);if(e2.e<1&&e2.pe>b.R+5000&&e2.ap<b.soi){R.logSOrb=1;logNote(s,'sorbit',{p:e2.period,alt:(e2.pe+e2.ap)/2-b.R})}}
   {const dT=len(b===TELLUS?s.r:add(s.r,bodyPos(b,simT)))-TELLUS.R;if(s.alive&&dT>R.far)R.far=dT}
   if(phys&&s.alive){if(s.qdyn>R.qMax)R.qMax=s.qdyn;for(const p of s.parts)if(p.on&&p.T>R.hotT){R.hotT=p.T;R.hotPart=p.d.name}
@@ -533,7 +536,8 @@ const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
 // tier 1 for steerable fins (d.ctl), reaction wheels and spin motors: they carry actuators (control session)
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
-  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel'||d.kind==='spin'||d.kind==='leg'||d.kind==='solar')return 1;if(d.kind==='comp')return 2;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+  if(d.kind==='engine')return d.solid?1:d.thrust>=300?2:1;   // every solid is a small engine, whatever its thrust (Q550)
+  if(d.ctl||d.kind==='rwheel'||d.kind==='spin'||d.kind==='leg'||d.kind==='solar')return 1;if(d.kind==='comp')return 2;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   const g=typeof giantSells==='function'?giantSells():null;if(g)return{how:'giant',k:g.k,from:g.from,name:g.name,t};   // the commercial giant undercuts any import (Q206)

@@ -11,7 +11,7 @@ const smoke=[];let smokeAcc=0;const WIND=[3.5,0,-2];   // planet-fixed m/s: a li
 // pour out of the flame channel's mouth (and a few spill over the deck); elsewhere they ring the impact point.
 let gSmokeAcc=0;
 function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=toPF(TELLUS,S.r,simT),onPad=len(sub(spf,pp))<300,pa=pressure(TELLUS,len(S.r)-TELLUS.R);
-  for(const e of activeEngines(S)){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle,L=plumeShape(e.d,thr,pa)[2],
+  for(const e of activeEngines(S)){const sp=SPOOL.get(e),thr=sp?sp.k:engThr(S,e),L=plumeShape(e.d,thr,pa)[2],
       nz=toPF(TELLUS,add(S.r,qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),simT),hn=len(nz)-groundR(TELLUS,nz),w=thr*sstep(L*1.15,L*.35,hn);
     if(w<.02)continue;gSmokeAcc+=dt*30*w*Math.max(.6,e.d.exit/.55);
     while(gSmokeAcc>1){gSmokeAcc-=1;if(smoke.length>2500)smoke.shift();const R=Math.random;let pf,s0=2.5+2*R();
@@ -24,7 +24,7 @@ function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
   while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>4000)smoke.shift();
-    const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
+    const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,engThr(S,e),rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
     smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:110+Math.random()*60,rise:Math.random()*0.6,seed:Math.random()*97})}}}

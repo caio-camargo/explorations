@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2305,3 +2305,61 @@ precise vacuum kick.
    Sounding preset's Sparrow swapped for an Ember (solids from flight one; career numbers move).
 6. **Thrust-termination ports** on the late vacuum solid (**default yes**, era 2 onward, one cut). Or never: a solid never
    stops, full stop.
+
+## v1.286 — solids, slice 1: each engine's own throttle, and the Ember and Cinder (2026-11-07, vehicle worker, QUEUE Q550; plan Q252 above)
+
+**What changed.** The throttle was the whole vessel's: v1.207's kick-motor rule held `s.throttle` at 1 while a solid
+burned, so two solids strapped on a liquid core would have pinned the core at full. Now every engine has its own:
+- **`engThr(s,p)`** (sim/vessel.js, by `activeEngines`): a liquid gives `s.throttle`; a solid gives 1 from lighting to
+  burnout and 0 before or after (slice 2's grain will replace the 1 with `lim × curve(burnt share)`). Two helpers:
+  `enginesBurning(s)` (an active engine with its own throttle up) and `solidLeft(s)` (the longest a lit solid still burns).
+- **`physStep`**: thrust, mass flow and the gimbals' steering columns (`gimSteer`) read each engine's `engThr`; the old
+  `s.throttle>0` gate is "any engine burning". A solid lights at the first moment the lever is up once its stage is lit
+  (at once if it already is), as before. The lever is no longer forced up. At burnout a solid is marked spent ("2 × Cinder
+  solid burnt out"), and the lever goes back to 0 **only if no liquid engine is active beside it**: a kick motor or an
+  all-solid stack behaves exactly as v1.207 (vehicle-28 passes unchanged, its "throttle back to 0" included); beside a
+  liquid core the lever stays where the pilot left it.
+- **`ctrlAuthority` / `ctrlAuthRoll`**: `thr` left out means each engine's own (`ctrlAccel` and `physStep` call it so);
+  a number still means one throttle for all (the what-ifs: `probe`, the turn times, tests).
+- **The pad's ignition order** (`stage()`, sim/flight.js): a segment whose engines are all solids lights after every
+  liquid segment in the same event, so a liquid that fails to ignite on the pad (the event steps back) leaves the solids
+  cold and the rocket on the pad.
+- **No cut for a lit solid:** X, a completed node and a procedure's cut set the lever to 0, which now moves the liquids
+  only. X says "Throttle cut: the solids burn on (14 s)"; a completed node adds ": the solids burn on (N s)".
+- **Everything else that asked "is the throttle up and an engine active"** now asks `enginesBurning`: rails (`railsWhy`),
+  the logbook's coasting orbit (`missionTick`), the predictor's refresh (`predStill`). The plume spool, the vacuum nozzle's
+  glow, the soot, the smoke, the plume light, the sound's thrust and solid share (and other vessels' thrust), and the
+  reference views' spool reset read `engThr` per engine.
+- **`dvPlan`, `burnThrust`, `ascentEst`, `trimOf`** needed nothing in this slice: they already burn every engine at full,
+  which is what a solid does. Slice 2's grain changes that (the curve's knots as plan steps).
+
+**The parts** (sim/vessel.js; the same for every school; era 0 via `d.era`, so open from the start and the card says so):
+
+| | Size · h | Prop / dry t (share) | Thrust vac kN | Isp sl / vac s | Burn s | Price M (case + grain) |
+|---|---|---|---|---|---|---|
+| `ember` Ember solid | 0.6 m · 2.6 m | 1.1 / 0.38 (0.74) | 90 | 225 / 250 | 30.0 | 0.8 + 0.55 |
+| `cinder` Cinder solid | 1.25 m · 4.5 m | 7.2 / 2.5 (0.74) | 330 | 230 / 255 | 54.6 | 2.5 + 3.6 |
+
+Both fixed nozzles (`gim:0`), ratings like the structure of their size, a dark nozzle and a white case (`app/gl.js`; the
+schools' looks are slice 6), solid plumes and crackle (`PFX`). The Ember is 0.6 m, so the payload bench lists it too.
+- **`SOLID_PRICE` = 0.5 M/t** (sim/program.js; liquids' `FUEL_PRICE` 0.2): `vesselCost` and the part card price a solid's
+  grain by it (`propPrice`; the kick motors' grain too: +0.05 M on the large one). A recovered solid refunds its **case
+  only**: every refund reads `partPrice`, which never held the propellant.
+- **Tier 1** (`tierOf`): every solid is a small engine whatever its thrust (the Cinder's 330 kN would be tier 2).
+- The card: "grain 7.2 t (9.7 t full) · burns 55 s once lit; nothing stops it", the price with "the case alone 2.5M".
+
+**Measured** (vehicle-40): two Cinders on radial decouplers round the Orbiter's Tank 8 t (33.8 t on the pad, three plan
+stages 2,074 / 1,121 / 3,112 m/s vacuum, sea-level T/W 2.42). Lit with a touch on the throttle, lever to 0: the rocket
+lifts on the solids alone, the core's tank doesn't move in 10 s while the Cinders burn 2.64 t; at half throttle the core
+drinks exactly half its flow and the Cinders the same 2.64 t; burnout at 54.58 s (plan 54.56), the lever left at ½.
+With 3 t above: an Ember stage 691 m/s (30.0 s), a Cinder stage 2,093 m/s vacuum, 1,888 at sea level (54.6 s): the
+rocket equation exactly, and the plan's ~2,090. Cinder 6.1 M against Kestrel + Tank 8 t 20.4 M (30 %).
+
+**For slice 2 (Q551):** `engThr`'s solid branch is where the grain goes (thrust % and the shape against the burnt share);
+`engineMdot(p.d)` in `dvPlan`, `burnThrust`, `ascentRun`, `trimOf` and `solidLeft` must then read the part's grain, not
+`p.d` alone. The second Space on a burning drop is not built: staging a burning solid off today just drops it. **For
+slice 5 (◇, nodes):** a node completes with the lever cut and the solids burning on; the node's Δv doesn't yet know a
+solid gives all of its impulse. **Not covered by a test:** the pad's ignition order (it needs a forced know-how failure).
+
+**Checks:** `vehicle-40` (new). Run with `--only`: 2, 3, 6, 12, 17, 18, control-1, vehicle-3, -10, -11, -19, -21, -28,
+-37, -39, -40, flow-40, flow-49, econ-27, space-7, qa-6: all passed. The full `--smoke` is owed (Caio's batch).

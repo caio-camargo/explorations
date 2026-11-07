@@ -131,6 +131,12 @@ const PARTS={
   scomp:{kin:'ocomp',name:'Onboard computer (side)',kind:'comp',surf:true,noAero:true,m:0.03,h:0.3,r:0.06,off:0.06,w:0.1,W:50,era:2,C:900,T:600,B:200},
   whip:{kin:'ant',name:'Whip antenna',kind:'ant',surf:true,noAero:true,m:0.01,h:0.5,r:0.03,off:0.03,C:900,T:600,B:200},
   bant:{name:'Boom antenna',kind:'ant',fold:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.07,off:0.07,gain:5,span:3,qMax:1500,C:900,T:600,S:150,B:60},
+  // solid motors as a main-stage choice (vehicle, Q550 = slice 1 of Q252's plan, notes/vehicle.md): once lit a solid burns
+  // to the end at its grain's thrust (engThr), whatever the throttle; the propellant is cast in the motor (res fuel, fed by
+  // nothing and feeding nothing, flowGroups). Propellant share a step under the real motors' (0.74, plan question 4) so Isp,
+  // not mass, is the trade. The same parts for every school (schools change looks, never physics). era 0: open from the start
+  ember:{name:'Ember solid',kind:'engine',solid:true,era:0,m:0.38,res0:{fuel:1.1},h:2.6,r:0.3,cm:.55,thrust:90,gim:0,gimR:10,ispA:225,ispV:250,exit:0.2,C:900,T:600,B:200,prof:[[.2,0],[.1,.28],[.3,.4],[.3,2.6]]},
+  cinder:{name:'Cinder solid',kind:'engine',solid:true,era:0,m:2.5,res0:{fuel:7.2},h:4.5,r:0.625,cm:.55,thrust:330,gim:0,gimR:10,ispA:230,ispV:255,exit:0.42,C:2500,T:1200,B:450,prof:[[.42,0],[.2,.5],[.625,.72],[.625,4.5]]},
   condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,gim:4,gimR:8,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
 };
 for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
@@ -642,6 +648,13 @@ function rebuildShape(s){
   for(const p of ps)if(p!==s.root&&p.parent&&p.parent.on)order.push(p);
   order.sort((a,b)=>dist(b)-dist(a));s.order=order}
 function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&groupFuel(s,s.grp[p.i])>1e-9)}
+// each engine's own throttle (Q550, Q252's plan): a liquid follows the lever (s.throttle); a lit solid gives its grain's thrust
+// (full, until slice 2's grain settings) from lighting to burnout, and 0 before or after. Nothing forces the lever any more
+function engThr(s,p){return p.d.solid?(p.lit&&!p.spent?1:0):s.throttle}
+// something is pushing: an active engine whose own throttle is up (the lever, or a lit solid)
+function enginesBurning(s){return activeEngines(s).some(p=>engThr(s,p)>0)}
+// the longest a lit solid still burns (s at full grain), 0 if none: the HUD's "the solids burn on" lines
+function solidLeft(s){let t=0;for(const p of activeEngines(s))if(p.d.solid&&p.lit&&!p.spent)t=Math.max(t,(p.res.fuel||0)/(engineMdot(p.d)*engK(p)));return t}
 function syncLanded(s){if(s.float)seaPose(s);s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
 // speeds against the surface low in the air, or near an airless body's ground (it turns: Selene's equator moves at 6 m/s)
@@ -683,16 +696,17 @@ function velFrame(s){const vr=speedRef(s).v;if(len(vr)<0.5)return null;
   const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return{pro,nrm:null,rad:null};
   const nrm=norm(h);return{pro,nrm,rad:norm(cross(s.v,nrm))}}
 let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
-// control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM
-function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
+// control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM.
+// thr: one throttle for all (a what-if: 1 = full), or left out for each engine's own (engThr, Q550)
+function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*(thr??engThr(s,p))*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
 // ... and about roll: a gimbal only rolls the vessel from off its axis (side boosters, clusters), so one central engine adds nothing
-function ctrlAuthRoll(s,engs,thr){let tau=s.torque;for(const p of engs){if(!gimOK(p))continue;const r=sub(thrustPt(p),s.cm);tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*Math.hypot(r[0],r[2])}return tau}
+function ctrlAuthRoll(s,engs,thr){let tau=s.torque;for(const p of engs){if(!gimOK(p))continue;const r=sub(thrustPt(p),s.cm);tau+=p.d.thrust*1000*engK(p)*(thr??engThr(s,p))*Math.sin(p.d.gim*Math.PI/180)*Math.hypot(r[0],r[2])}return tau}
 // Control: reaction wheels in the pod plus engine gimbal (plus RCS when asked). Returns the commanded angular acceleration
 // (world frame); physStep gives the wheels' share as a torque and turns the nozzles for the rest (gimSteer).
 function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel you fly
   const X=qrot(s.q,[1,0,0]),Y=qrot(s.q,[0,1,0]),Z=qrot(s.q,[0,0,1]);
   const E=activeEngines(s),rt=rcs?rcsTauCap(s):0,fa=s.finAuth&&s.finT===simT?s.finAuth:null,fP=fa?Math.min(fa[0],fa[2]):0,fR=fa?fa[1]:0;
-  const aP=(ctrlAuthority(s,E,s.throttle)+rt+fP)/Math.max(s.I[0],s.I[2]),aR=Math.min(2,(ctrlAuthRoll(s,E,s.throttle)+rt+fR)/s.I[1]);
+  const aP=(ctrlAuthority(s,E)+rt+fP)/Math.max(s.I[0],s.I[2]),aR=Math.min(2,(ctrlAuthRoll(s,E)+rt+fR)/s.I[1]);
   // a spun stage (spin motors firing, or fired and still turning ≥ SPIN_MIN/2 about its axis): SAS leaves the roll alone, so it damps the
   // wobble instead of eating the spin. A roll key under SAS hands the roll back (SAS then spins it down)
   if(s.spun&&(Math.abs(dot(s.w,Y))<SPIN_MIN/2&&!s.parts.some(p=>p.on&&p.spinT>0)||s.sas&&I.roll))s.spun=false;
@@ -714,7 +728,7 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   // A rate loop alone can't hold against a steady torque (thrust off the CoM, a stable rocket's aero moment): it leaves a
   // standing error, and asks for no more than its gain × the rate error, which can be less than the wheels already give. So
   // while the zone is on the rate loop also integrates (time constant SAS_TI), clamped to the authority, reset when it's off.
-  let lag=0;if(s.throttle>0)for(const p of E)lag=Math.max(lag,p.d.gim/p.d.gimR);
+  let lag=0;for(const p of E)if(engThr(s,p)>0)lag=Math.max(lag,p.d.gim/p.d.gimR);
   if(fP>0.25*s.torque)for(const p of s.fins)if(p.d.ctl)lag=Math.max(lag,p.d.ctl/p.d.ctlR);   // steerable fins, once they carry real weight
   const A=avOf(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
   let al=mul(sub(wd,wS),A.k);
@@ -903,25 +917,33 @@ function physStep(s,dt){
   const r=s.r,rl=len(r),h=rl-b.R,pr=pressure(b,h);
   for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0;p.Q=0}
   const eng=activeEngines(s);let T=0;
-  // kick motors (Q422): lit by a throttle-up once their stage is lit, then full thrust to burnout whatever the throttle says
-  for(const p of eng)if(p.d.solid&&!p.lit&&s.throttle>0){p.lit=true;HOOK.msg(`${p.d.name.replace(/ \(solid\)$/,'')} lit: it burns to the end`)}
-  if(eng.some(p=>p.d.solid&&p.lit))s.throttle=1;
-  else if(s.parts.some(p=>p.on&&p.lit&&!p.spent&&p.d.solid)){for(const p of s.parts)if(p.on&&p.lit&&p.d.solid&&!p.spent){p.spent=true;HOOK.msg(`${p.d.name.replace(/ \(solid\)$/,'')} burnt out`)}s.throttle=0}
+  // solids (kick motors Q422, main-stage solids Q550): lit by a throttle-up once their stage is lit (at once if the lever is
+  // already up), then their own throttle (engThr) holds full thrust to burnout whatever the lever says; the lever moves
+  // the liquids only. On the pad the liquids light first: stage() lights a solid's segment after the liquids', so a liquid
+  // that fails to ignite leaves the solids cold. A solid that burns out with no liquid burning beside it (a kick motor, an
+  // all-solid stack) puts the lever back to 0, as v1.207 did; beside a liquid core the lever is the pilot's
+  const sn=p=>p.d.name.replace(/ \(solid\)$/,'');
+  {const L=eng.filter(p=>p.d.solid&&!p.lit&&s.throttle>0);for(const p of L)p.lit=true;
+   if(L.length)HOOK.msg(L.length>1&&L.every(p=>p.d.key===L[0].d.key)?`${L.length} × ${sn(L[0])} lit: they burn to the end`:`${L.map(sn).join(', ')} lit: ${L.length>1?'they burn':'it burns'} to the end`)}
+  {const out=s.parts.filter(p=>p.on&&p.lit&&!p.spent&&p.d.solid&&!eng.includes(p));if(out.length){for(const p of out)p.spent=true;
+    HOOK.msg(out.length>1&&out.every(p=>p.d.key===out[0].d.key)?`${out.length} × ${sn(out[0])} burnt out`:`${out.map(sn).join(', ')} burnt out`);
+    if(!eng.some(p=>!p.d.solid))s.throttle=0}}
   // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
-  const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0*s.throttle):[];
+  const et=eng.map(p=>engThr(s,p)),lit=et.some(x=>x>0);   // each engine's own throttle (Q550)
+  const thr=lit?eng.map((p,i)=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0*et[i]):[];
   // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
-  const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
+  const steer=(lit?ctrlAuthority(s,eng)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
   // free channels (gimbal, fins) unload from 2 %; RCS costs gas, so it only keeps them usable: past 80 % down to 60 %
   const hf=s.wH&&s.hmax>0?len(s.wH)/s.hmax:0;s.wDump=steer>0?hf>0.02:rcsCap>0&&(s.wDump?hf>0.6:hf>0.8);
   let dump=[0,0,0];if(s.wDump){dump=mul(s.wH,1/WHEEL_DUMP);const dl=len(dump),cap=Math.min(s.torque,0.5*(steer>0?steer:rcsCap));if(dl>cap)dump=mul(dump,cap/dl)}
   const tauW=wheelGive(s,add(tauC,dump),dt),rest=sub(tauC,tauW);   // rest = the law's torque the wheels didn't give, minus the unloading
-  gimSteer(s,s.throttle>0?eng:[],thr,steer>0?rest:[0,0,0],dt,FC?FC.out:[]);
+  gimSteer(s,lit?eng:[],thr,steer>0?rest:[0,0,0],dt,FC?FC.out:[]);
   if(s.sasE){const I=madd(s.sasI||[0,0,0],s.sasE,dt),m=len(I);s.sasI=m>s.sasA?mul(I,s.sasA/m):I}   // SAS rate integral (ctrlAccel)
-  if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*engK(p)*1000,t=thr[i],pt=thrustPt(p);
-    const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];if(!(TEST.on&&TEST.fuel)||p.d.solid)want[g]=(want[g]||0)+md*s.throttle*dt/1000}   // (tester, Q542) infinite fuel: tanks never drain; a solid still burns out
+  if(lit){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*engK(p)*1000,t=thr[i],pt=thrustPt(p);
+    const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];if(!(TEST.on&&TEST.fuel)||p.d.solid)want[g]=(want[g]||0)+md*et[i]*dt/1000}   // (tester, Q542) infinite fuel: tanks never drain; a solid still burns out
     const on=onArr(s),fuel=fuelArr(s),rank=dropRank(s,s.evIdx);for(const g in want)drawFuel(s,on,fuel,s.grp,rank,+g,want[g]);
     s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=fuel[i]})}
   const out=new Set(),next=s.events[s.evIdx];

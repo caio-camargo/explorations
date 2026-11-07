@@ -201,7 +201,7 @@ window.refView = async (n) => {
     S.throttle = 1; stage(S);
     while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
     INP.pitch = 0; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render();
-    for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } }   // the climb wasn't rendered: these engines lit long ago
+    for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = engThr(S, e) } }   // the climb wasn't rendered: these engines lit long ago
     render();
     if (act === 'cut') S.throttle = 0; else stage(S);
     const t0 = simT; while (simT - t0 < age - 1e-9) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); render(); }
@@ -231,7 +231,7 @@ window.refView = async (n) => {
     const [alt, age, yaw, pitch, dist] = abt[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS['Crewed Lunar'])); editorChanged(); document.getElementById('launch').click();
     if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0;
-      for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } } }
+      for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = engThr(S, e) } } }
     else { const tw = simT; while (simT - tw < 15) advPhys(S) }   // the gantry clear
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render();
     const ok = abort(S); const t0 = simT; while (simT - t0 < age - 1e-9) { advPhys(S); emitSmoke(DT); render() }
@@ -303,7 +303,7 @@ window.refView = async (n) => {
     const [alt, aoa, yaw, pitch, dist] = ft[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
     S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0;
-    for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } }
+    for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = engThr(S, e) } }
     const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), sd = norm(cross(va, up)), a = aoa / 57.2958;
     const Y = add(mul(va, Math.cos(a)), mul(norm(cross(sd, va)), Math.sin(a))), X = norm(cross(Y, sd)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null;
     const hold = () => { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), sd = norm(cross(va, up)), a = aoa / 57.2958;
@@ -466,7 +466,7 @@ window.refView = async (n) => {
     S.throttle = 1; stage(S); let qm = 0;
     while (S.alive && simT < 300) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT);
       qm = Math.max(qm, S.qdyn); if (len(S.r) - TELLUS.R > 4000 && S.qdyn < qm * 0.995) break }
-    INP.pitch = 0; for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } }
+    INP.pitch = 0; for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = engThr(S, e) } }
     cam.yaw = 1.75; cam.pitch = 0.05; cam.dist = 60; window.simulate = () => {}; render(); await settle(); bare();
     return 'max-q ' + (qm / 1e3).toFixed(1) + ' kPa at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km, Mach ' + S.mach.toFixed(2);
   }

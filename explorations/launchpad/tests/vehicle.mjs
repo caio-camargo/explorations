@@ -1022,3 +1022,51 @@
   for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
   api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
 }
+
+// vehicle-40. Solids, slice 1: each engine's own throttle and the first two solids (vehicle, QUEUE Q550; Q252's plan in
+// notes/vehicle.md). engThr: a liquid follows the lever, a lit solid gives full thrust to burnout. Two Cinders on radial
+// decouplers round the Orbiter's core: with the lever at 0 the core's tank doesn't move while the solids drain at their own
+// rate and lift the rocket; at half throttle the core drinks half its flow and the solids are unchanged; they burn out in
+// the planned 54.6 s (±1 %), and beside a liquid core the lever stays where the pilot left it. A kick motor and an all-solid
+// Ember burn out with the lever back to 0 (v1.207). Δv: an Ember and a Cinder under 3 t match the rocket equation (Cinder
+// ~2,090 m/s, the plan's). The grain is priced by the tonne (0.5 M/t) and a recovered Cinder refunds its case only; a
+// Cinder stage costs under 35 % of a Kestrel + Tank 8 t; every solid is a small engine (tier 1). Not covered here: the pad's
+// ignition order (stage() lights a solid's segment after the liquids'; a failed liquid leaves them cold), which needs a
+// forced know-how failure. A fresh SIM (D): nothing of the shared api's state is touched.
+{
+  const D = new Function(src + '\nreturn {newShip,stage,advPhys,stageStats,engThr,solidLeft,enginesBurning,vesselCost,partPrice,tierOf,lvl,HOOK,TELLUS,DT,G0,stageRecover,PROG,REFURB,SOLID_PRICE,PARTS,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.news = () => {};
+  const fuelOf = (s, k) => s.parts.filter(p => p.on && p.d.key === k).reduce((a, p) => a + (p.res.fuel || 0), 0);
+  // two Cinders on the Orbiter, from the pad: a touch on the throttle lights everything, then the lever goes to 0
+  const OC = ['chute', 'pod', 't2', 't1', 'petrel', 'dec', { k: 't8', rad: { n: 2, dec: true, stack: ['cone', 'cinder'] } }, 'fins', 'kestrel'];
+  D.t = 0; const s = D.newShip(OC); D.S = s; s.throttle = 1; D.stage(s); D.advPhys(s); s.throttle = 0;
+  const t0 = D.t, c0 = fuelOf(s, 'cinder'), k0 = fuelOf(s, 't8');
+  for (let i = 0; i < 10 / D.DT; i++) D.advPhys(s);
+  const c1 = fuelOf(s, 'cinder'), k1 = fuelOf(s, 't8'), flying = !s.landed && s.alive, left = D.solidLeft(s),
+    cut = s.parts.filter(p => p.on && p.d.key === 'cinder').every(p => D.engThr(s, p) === 1) && D.enginesBurning(s);
+  s.throttle = 0.5; for (let i = 0; i < 10 / D.DT; i++) D.advPhys(s);
+  const c2 = fuelOf(s, 'cinder'), k2 = fuelOf(s, 't8'), kest = D.PARTS.kestrel, mdK = kest.thrust / (kest.ispV * D.G0 * D.lvl().isp);
+  let n = 0; while (fuelOf(s, 'cinder') > 0 && n++ < 1e5) D.advPhys(s); D.advPhys(s);
+  const tb = D.t - t0, burnPlan = 7.2 / (330 / (255 * D.G0 * D.lvl().isp)), lever = s.throttle, outMsg = msgs.some(m => /2 × Cinder solid burnt out/.test(m)),
+    litMsg = msgs.some(m => /2 × Cinder solid lit: they burn to the end/.test(m));
+  const strap = k1 === k0 && Math.abs((c0 - c1) - (c1 - c2)) < 0.01 && Math.abs((k1 - k2) / 10 - 0.5 * mdK) < 0.01 * mdK && Math.abs(tb / burnPlan - 1) < 0.01 && lever === 0.5;
+  // a kick motor and an all-solid Ember with the lever held up: back to 0 at burnout (v1.207)
+  const solo = stack => { D.t = 0; const v = D.newShip(stack); D.S = v; const r0 = D.TELLUS.R + D.TELLUS.atm + 10e3; v.landed = false; v.r = [r0, 0, 0]; v.v = [0, 0, Math.sqrt(D.TELLUS.mu / r0)];
+    D.stage(v); v.throttle = 1; let k = 0; const key = stack[stack.length - 1]; while (fuelOf(v, key) > 0 && k++ < 1e5) D.advPhys(v); D.advPhys(v); return { thr: v.throttle, spent: !!v.parts.find(p => p.d.key === key).spent }; };
+  const kick = solo(['core', 'kick200']), emb = solo(['core', 'ember']);
+  // Δv per stage: 3 t (six mass simulators) above an Ember and a Cinder, against the rocket equation at vacuum Isp
+  const g = D.G0 * D.lvl().isp, eq = (isp, dry, prop) => isp * g * Math.log((3 + dry + prop) / (3 + dry)), B6 = Array(6).fill('ballast');
+  const SE = D.stageStats([...B6, 'ember']).stages[0], SC = D.stageStats([...B6, 'cinder']).stages[0];
+  const eE = eq(250, 0.38, 1.1), eC = eq(255, 2.5, 7.2), dvOK = Math.abs(SE.dvV / eE - 1) < 0.005 && Math.abs(SC.dvV / eC - 1) < 0.005 && Math.abs(SC.dvV - 2090) < 25
+    && Math.abs(SE.burn - 30) < 1 && Math.abs(SC.burn - 54.6) < 0.6 && Math.abs(SC.dvA / eq(230, 2.5, 7.2) - 1) < 0.005;
+  // money: the grain by the tonne, the case-only refund, the stage against a liquid one
+  const cost = st => D.vesselCost(D.newShip(st).parts).cost, cC = cost(['cinder']), cE = cost(['ember']), cK = cost(['t8', 'kestrel']);
+  const cinder = D.newShip(['cinder']).parts[0], caseP = D.partPrice(cinder);
+  const R = { launchPf: [D.TELLUS.R, 0, 0], drops: [{ kind: 'sea', sea: { fate: 'afloat', afloat: 1e9, sp: 0 }, pf: [D.TELLUS.R, 0, 0], parts: [cinder] }] };
+  D.stageRecover(R);
+  const money = Math.abs(cC - (caseP + 7.2 * D.SOLID_PRICE)) < 1e-9 && Math.abs(cE - (0.8 + 1.1 * 0.5)) < 1e-9 && Math.abs(cC - 6.1) < 1e-9 && cC / cK < 0.35
+    && Math.abs(R.stageBack - (caseP * D.REFURB - 2)) < 1e-9 && D.tierOf('cinder') === 1 && D.tierOf('ember') === 1 && D.tierOf('condor') === 2;
+  check('vehicle-40: solids slice 1 (Q550): two Cinders on the Orbiter burn at full while the lever moves only the core (0: its tank still; ½: half its flow), out in the planned 54.6 s with the lever left alone; a kick motor and an Ember alone put the lever back to 0; Ember and Cinder Δv per the rocket equation (Cinder ~2,090 m/s); grain 0.5 M/t, a recovered Cinder refunds its case only, tier 1',
+    flying && cut && left > 40 && strap && litMsg && outMsg && kick.thr === 0 && kick.spent && emb.thr === 0 && emb.spent && dvOK && money,
+    `flying ${flying}; lever 0: Cinders ${(c0 - c1).toFixed(3)} t in 10 s, core ${(k0 - k1).toFixed(4)} t; ½: Cinders ${(c1 - c2).toFixed(3)} t, core ${(k1 - k2).toFixed(3)} t (½ flow ${(5 * mdK).toFixed(3)}); solids left ${left.toFixed(1)} s; burnout ${tb.toFixed(2)} s (plan ${burnPlan.toFixed(2)}), lever after ${lever}; kick lever ${kick.thr} (spent ${kick.spent}), Ember ${emb.thr} (spent ${emb.spent}); Δv Ember ${SE.dvV.toFixed(0)} (eq ${eE.toFixed(0)}, ${SE.burn.toFixed(1)} s), Cinder ${SC.dvV.toFixed(0)} (eq ${eC.toFixed(0)}, ${SC.burn.toFixed(1)} s, sea level ${SC.dvA.toFixed(0)}); cost Cinder ${cC.toFixed(2)} M (case ${caseP.toFixed(2)}), Ember ${cE.toFixed(2)}, Kestrel + Tank 8 t ${cK.toFixed(2)} (${(100 * cC / cK).toFixed(0)} %); recovered ${R.stageBack != null ? R.stageBack.toFixed(2) : '—'} M; tiers ${D.tierOf('cinder')}/${D.tierOf('ember')}/${D.tierOf('condor')}`);
+}
