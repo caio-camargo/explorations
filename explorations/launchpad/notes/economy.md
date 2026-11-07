@@ -3461,7 +3461,7 @@ offers) pins seed 14, not 31 (31 has no offer in trouble now; over 60 seeds trou
 52/12 before; 14 passes before and after); core §19's contact check waits 1 day, not 3 (the logbook keeps the best
 day, the satellite's `contact` is the last day's).
 
-## v1.263 — the money curve after day-sized ticks; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
+## v1.270 — the money curve after day-sized ticks; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
 
 **The targets.** No document gives a number for final funds or offer counts; what they do say: the board holds at most
 6 (v1.15), science arrives fastest and government slowest (v1.15), tourism goes with (standing/50)² (v1.19), "the weaker
@@ -3485,7 +3485,7 @@ government 1/30 → 1/40 with military 1/130: 728M against 748M over 12 seeds, i
 
 **Measured** (`OFFERS=1 node career.mjs 3 6`, 18 rows × 6 seeds; seeds 1–6 and 7–12 averaged; pre-v1.261 is 945b14f^1):
 
-| | pre-v1.261 | v1.261 | v1.263 |
+| | pre-v1.261 | v1.261 | v1.270 |
 |---|---|---|---|
 | mean final funds (s1–6 / s7–12) | 649 / 736 | 1,110 / 1,031 | 742 / 753 |
 | bailouts a career | 1.01 | 0.59 | 0.62 |

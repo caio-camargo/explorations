@@ -760,10 +760,10 @@
 // econ-33. The money curve after day-sized ticks (economy worker, QUEUE Q528): v1.261 rolled the world once a day, so
 // the board no longer starves during a flight's long preparation, and tourism (rate × (standing/50)², +5 standing a job
 // done) and military work snowballed: in `career.mjs 3 6` tourism and military offers 2.9 + 2.1 → 22.5 + 14.8 a career,
-// mean final funds 649 → 1,110M. Their rates went 1/22 → 1/90 and 1/35 → 1/100 a day (v1.263). A small career run
+// mean final funds 649 → 1,110M. Their rates went 1/22 → 1/90 and 1/35 → 1/100 a day (v1.270). A small career run
 // (career.mjs OFFERS=1, open superpower and frugal, agency and company, 2 years, 2 seeds; ~8 s) keeps tourism and military
 // offers under 10 a career (v1.261 gave 13–24 on four seed sets, now 5–8) and mean funds in a band (now 301–477).
-// notes/economy.md § "v1.263".
+// notes/economy.md § "v1.270".
 {
   const { execFileSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
   const out = execFileSync(process.execPath, [fileURLToPath(new URL('./career.mjs', import.meta.url)), '2', '2', 'base', 'agency,company'],
