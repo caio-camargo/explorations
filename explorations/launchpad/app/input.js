@@ -15,8 +15,8 @@ addEventListener('keydown',e=>{
   else if(k==='z')S.throttle=1;else if(k==='x')S.throttle=0;
   else if(k==='t'){S.sas=!S.sas;S.hold=null;renderSAS()}
   else if(k==='m')toggleMap();
-  else if(k==='.'){warpTo=null;warpIdx=Math.min(WARPS.length-1,warpIdx+1)}
-  else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
+  else if(k==='.')warpStep(1);
+  else if(k===',')warpStep(-1);
   else if(k==='/'){warpTo=null;warpIdx=0}
   else if(k==='c'&&view==='map')cycleAtlas();
   else if(k==='tab'&&view==='map')mapFocusCycle(1);   // (Q262) the ship, the bodies, our craft: app/map-layers.js

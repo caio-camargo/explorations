@@ -1014,3 +1014,35 @@
   const readers = has('impact.verdict=fallVerdict(impact,S)', "t2:V?V.t:''", 'function landRow()', 'impactRow(),...landRow()', 'ok(recoveryRule())', 'planImp.v.text', "['recovery','Recovery zones", 'recoveryZone(atlasU(x,y)');
   check('flow-44: the map X, the node\'s landing, the Descent card, the Rollout check and the Recovery zones layer read the verdict', readers, api.recoveryRule());
 }
+
+// flow-45. The warp readout drops "(physics)" (flow, QUEUE Q511; Caio 2026-10-31: "physics should hold throughout"). It
+// does: up to 100× off rails the loop takes the same fixed step more times a frame. The readout is just N×; the levels the
+// loop won't take now are dimmed beside it, with why (railsWhy, the same tests as railsOK; warpCap, the loop's own caps).
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const S0 = api.S, t0 = api.t, F0 = api.FLEET.slice();
+  const ro = cut(page, "$('warpN').textContent=", ';'), blk = cut(page, '// the warp readout (Q511)', 'renderStages()'), ctl = cut(H, '<span id="warp"', '</span><button id="bMap"');
+  const src = cut(page, 'function warpCap(', '\n// a step of the warp control');
+  const wc = src && new Function('S', 'player', 'simT', 'FLEET', 'WARPS', 'flightRailsOK', 'railsWhy', 'railsOK', 'dot', 'norm', 'groundGap', src + ';return warpCap');
+  const cap = s => wc(s, null, api.t, [], [1, 2, 4, 10, 50, 100, 1000, 10000, 100000], () => api.railsOK(s), api.railsWhy, api.railsOK, dot, norm, api.groundGap)();
+  const ship = (b, h, vUp, vSide) => { api.t = 1000; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.body = b; s.r = [b.R + h, 0, 0]; s.v = [vUp, 0, -vSide]; s.throttle = 0; return s; };
+  const gnd = (b, h) => h + api.groundAlt(b, api.toPF(b, [b.R + h, 0, 0], 1000)), rows = [], C = [];
+  const pad = api.newShip(api.PRESETS.Orbiter); api.S = pad; api.stage(pad); pad.throttle = 1;
+  C.push(['on the pad, lit', pad, 5, /engines running/]);
+  C.push(['in orbit, coasting', ship(TELLUS, 300e3, 0, Math.sqrt(TELLUS.mu / (TELLUS.R + 300e3))), 8, /^$/]);
+  C.push(['climbing at 40 km', ship(TELLUS, 40e3, 800, 1500), 5, /in the air/]);
+  C.push(['falling at 1 km', ship(TELLUS, gnd(TELLUS, 1000), -300, 0), 0, /ground/]);
+  C.push(['3 km over Selene', ship(api.SELENE, gnd(api.SELENE, 3000), 0, 1500), 5, /near the ground/]);
+  let ok = !!wc && typeof api.railsWhy === 'function';
+  for (const [l, s, max, re] of C) {
+    if (!ok) break;
+    const w = api.railsWhy(s), c = cap(s), good = (w === '') === api.railsOK(s) && c.max === max && re.test(c.why);
+    ok = ok && good; rows.push(`${l}: ${c.max === 8 ? 'all open' : `up to ${[1, 2, 4, 10, 50, 100][c.max]}× (${c.why})`}${good ? '' : ' ✗'}`);
+  }
+  const ui = !/physics/i.test(ro) && !/physics/i.test(ctl) && ro.length > 10 && blk.includes('c=warpCap()') && /'lock'/.test(blk) && ctl.includes('id="warpL"')
+    && page.includes('warpIdx=Math.min(warpIdx,warpCap(false).max)') && page.includes("k==='.')warpStep(1)") && page.includes('warpStep(+d.warp)');
+  check('flow-45: the warp readout says N× with no "(physics)"; the levels the loop won\'t take are dimmed with why (engines, the air, the ground, another craft), from the same tests the loop uses',
+    ok && ui, `${rows.join(' · ')} · ui ${ui}`);
+  api.S = S0; api.t = t0; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
+}

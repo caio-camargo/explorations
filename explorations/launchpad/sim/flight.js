@@ -285,10 +285,14 @@ function spinFire(s,ev){if(ev.radial)return;const on=s.parts.filter(p=>p.on);if(
   const lo=on.reduce((a,p)=>p.y0<a.y0?p:a).seg,M=on.filter(p=>p.d.kind==='spin'&&!p.spinT&&!p.spent&&p.seg===lo&&(ev.decouple.length||ev.ignite.includes(p.seg)));
   if(!M.length)return;let J=0;for(const p of M){p.spinT=p.d.burn;J+=p.d.spinJ}geom(s);s.spun=true;
   HOOK.msg(`Spin motors firing: ~${(J/s.I[1]*60/2/Math.PI).toFixed(0)} rpm`)}
-function railsOK(s){
-  if(!s.alive)return false;const thr=s.throttle>0&&activeEngines(s).length>0;
-  if(s.landed)return!thr;
-  return!thr&&len(s.r)-s.body.R>physAlt(s.body)&&!hitNear(s)&&!fleetNear(s)&&!rcsBusy(s)&&!armBusy(s)}   // near a satellite: physics, so contact is checked
+// why the craft can't go on rails ('' when it can): the warp control shows it on the levels past 100× (Q511)
+function railsWhy(s){
+  if(!s.alive)return'the flight is over';if(s.throttle>0&&activeEngines(s).length>0)return'engines running';
+  if(s.landed)return'';
+  if(len(s.r)-s.body.R<=physAlt(s.body))return s.body.atm?'in the air':'near the ground';
+  if(hitNear(s)||fleetNear(s))return'near another craft';   // near a satellite: physics, so contact is checked
+  return rcsBusy(s)?'RCS working':armBusy(s)?'the arm is moving':''}
+function railsOK(s){return!railsWhy(s)}
 // Advance on rails. Kepler is exact, so the only reasons to sub-step are SOI changes, the atmosphere edge, and (near Nyx)
 // the perturbation, which is integrated in kick–drift–kick steps.
 function rails(s,dt){

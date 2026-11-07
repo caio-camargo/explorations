@@ -72,4 +72,4 @@ function renderCards(){const el=$('cards');if(!el)return;const now=performance.n
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.cpin){const id=d.cpin;hudPins.has(id)?hudPins.delete(id):hudPins.add(id);try{localStorage.setItem('launchpad-hud-pins',JSON.stringify([...hudPins]))}catch(x){}renderCards();hudLayout()}
   else if(d.cfold){const id=d.cfold;hudShut.has(id)?hudShut.delete(id):hudShut.add(id);renderCards();hudLayout()}
-  else if(d.warp&&mode==='flight'){warpTo=null;warpIdx=clamp(warpIdx+(+d.warp),0,WARPS.length-1);updateHUD()}});
+  else if(d.warp&&mode==='flight'){warpStep(+d.warp);updateHUD()}});
