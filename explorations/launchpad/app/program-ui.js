@@ -139,7 +139,7 @@ HOOK.logged=ids=>{const T=player?tapeCut(player):recTape;if(!T||!T.ops||T.ops.le
 // The map ages with the program like the logbook: pencil on graph paper (orbits sketched in ink, the planet a hand-drawn
 // circle with its night side hatched), then a vector terminal (a glowing wireframe globe, phosphor-green orbits). Same
 // simulation, same camera, same clicks and handles: only the drawing changes. "Modern look" keeps the rendered map.
-let MAPSEGS=null;
+let MAPSEGS=null,MAP_PUT=[];   // MAP_PUT: this frame's boxes of the marks' own labels (the X, its verdict, a node) (Q536: the powers' names keep off them)
 const mapEra=()=>view==='map'&&mode==='flight'&&!modernUI()?eraOf():0;
 const ERA_FONT={1:k=>`${15*k}px 'Segoe Print','Bradley Hand','Comic Sans MS',cursive`,2:k=>`${12*k}px ui-monospace,Consolas,monospace`};
 const inkCache=new Map(),inkCv=document.createElement('canvas').getContext('2d');
@@ -194,21 +194,41 @@ function atlasInk(era,camW,project,tanY,k){const L=ATLAS.lines;if(!L)return;cons
       if(p&&q){o.moveTo(p[0],p[1]);o.lineTo(q[0],q[1])}}
     o.stroke()}
   o.setLineDash([])}
+// (flow, Q536; from Q488's screenshots) the Recovery layer's legend: compact, bottom right like the biome legend, on a plate;
+// sized in CSS pixels whatever the 3D view's resolution (W/innerWidth: the labels' k doesn't follow RS, so on a slow GPU
+// they grow) and smaller on a short window; a click on it folds it to its title (remembered). recLegLayout is pure, for tests.
+const REC_LEG=()=>[['home','Ours, no one\'s: trucked'],['reach',`Sea ≤ ${(recoveryReach()/1e3).toFixed(0)} km: our ships`],['friend','Friendly: sent back'],['tense','Tense: back worn'],['hostile','Hostile: kept'],['far','Sea beyond: lost']];
+let recLegShut=(()=>{try{return localStorage.getItem('launchpad-recleg')==='1'}catch(e){return false}})();
+function recLegToggle(){recLegShut=!recLegShut;try{localStorage.setItem('launchpad-recleg',recLegShut?'1':'0')}catch(e){}}
+// iw, ih: the window (CSS px); rows: the legend's lines; open; tw(text, font px): a text's width. The box in CSS px
+function recLegLayout(iw,ih,rows,open,tw){const fs=Math.max(8.5,Math.min(10.5,ih/72)),row=Math.round(fs*1.3),pad=Math.round(fs*.6),sw=Math.round(fs*.8),
+    title=`Recovery zones ${open?'▾':'▸'}`,w=Math.ceil(Math.max(tw(title,fs),...(open?rows.map(r=>sw+fs*.5+tw(r[1],fs)):[0])))+2*pad,h=row*(open?rows.length+1:1)+pad,
+    x=iw-w-10,y=ih-h-10;return{fs,row,pad,sw,title,w,h,x,y}}
+const recLegOn=era=>!era&&mapShow('recovery')&&atlasMode!==1&&!!ATLAS.lines;
+// the legend's box in the 3D view's pixels (the overlay's drawing units), with its layout; mapUI.recLeg for the click
+function recLegRect(){const c=W/innerWidth,o=octx,fo=o.font,rows=REC_LEG(),L=recLegLayout(innerWidth,innerHeight,rows,!recLegShut,(t,f)=>{o.font=`${f*c}px ui-sans-serif,system-ui,sans-serif`;return o.measureText(t).width/c});
+  o.font=fo;const r={c,rows,L,x0:L.x*c,y0:L.y*c,x1:(L.x+L.w)*c,y1:(L.y+L.h)*c};mapUI.recLeg=[r.x0,r.y0,r.x1,r.y1];return r}
+function recLegDraw(o,r){const{c,rows,L}=r,fo=o.font,ta=o.textAlign;o.fillStyle='rgba(8,12,18,.72)';o.fillRect(r.x0,r.y0,r.x1-r.x0,r.y1-r.y0);
+  o.font=`${L.fs*c}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';const x=r.x0+L.pad*c;let y=r.y0+(L.pad*.5+L.row*.75)*c;
+  o.fillStyle='rgba(225,232,240,.9)';o.fillText(L.title,x,y);
+  if(!recLegShut)for(const[z,l]of rows){y+=L.row*c;const C=REC_INK[z],s=L.sw*c;o.fillStyle=`rgb(${C[0]},${C[1]},${C[2]})`;o.fillRect(x,y-s,s,s);
+    if(z==='friend'){o.fillStyle='rgba(8,12,18,.7)';o.fillRect(x+s*.25,y-s,s*.2,s);o.fillRect(x+s*.6,y-s,s*.2,s)}   // hatched, as on the map
+    o.fillStyle='rgba(225,232,240,.9)';o.fillText(l,x+s+L.fs*.5*c,y)}
+  o.font=fo;o.textAlign=ta}
 // over every map look: the powers' names on their land, the biome legend (rendered map), and what's under the pointer
 function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=Math.min(devicePixelRatio||1,1.5),ink=c=>era?eraInk(era,c):c,fnt=o.font;
   if(!A.lines){o.textAlign='left';o.fillStyle=ink('#cfd8e3');o.fillText(`Atlas: surveying ${(100*A.y/A.H).toFixed(0)}%`,14*k,H-60*k);o.textAlign='center';return}
   o.font=`600 ${11*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='center';
   for(const nm of A.names){if(!nm)continue;const w=atlasW(nm.u);if(!atlasVis(w,camW))continue;const s=project(w);if(!s)continue;const P=POWERS[nm.i];
     o.fillStyle=ink(`hsl(${P.hue},80%,${atlasMode===2?'92%':'78%'})`);o.strokeStyle=era===1?'rgba(246,240,222,.8)':'rgba(0,0,0,.65)';o.lineWidth=3*k;
-    const t=P.root.toUpperCase().split('').join(' ');o.strokeText(t,s[0],s[1]);o.fillText(t,s[0],s[1]);
+    const t=P.root.toUpperCase().split('').join(' '),wd=o.measureText(t).width/2+2*k,rc=[s[0]-wd,s[1]-11*k,s[0]+wd,s[1]+(mapShow('recovery')?17:3)*k];
+    if(MAP_PUT.some(q=>q[0]<rc[2]&&rc[0]<q[2]&&q[1]<rc[3]&&rc[1]<q[3]))continue;   // (Q536) the map's label rule: a name over the X's labels (the landing verdict) gives way
+    o.strokeText(t,s[0],s[1]);o.fillText(t,s[0],s[1]);
     if(mapShow('recovery')){const z=nm.i===HOME?'home':recoveryRel(nm.i),w={home:'ours: trucked home',friend:'sends it back',tense:'sends it back worn',hostile:'keeps what lands'}[z],c=REC_INK[z],fo=o.font;   // (Q488) its welcome to what lands there
       o.font=`${10*k}px ui-sans-serif,system-ui,sans-serif`;o.fillStyle=ink(`rgb(${c[0]},${c[1]},${c[2]})`);o.strokeText(w,s[0],s[1]+13*k);o.fillText(w,s[0],s[1]+13*k);o.font=fo}}
   if(atlasMode===1&&!era){const ids=[...new Set(A.bio)].filter(i=>i).sort((a,b)=>a-b),x=W-150*k,y0=H-(ids.length*14+24)*k;o.font=`${10.5*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';
     ids.forEach((id,j)=>{const y=y0+j*14*k;o.fillStyle=BIOME_INK[id];o.fillRect(x,y-8*k,10*k,10*k);o.fillStyle='rgba(225,232,240,.9)';o.fillText(BIOMES[id],x+15*k,y+1*k)})}
-  else if(mapShow('recovery')&&!era){const L=[['home','Ours, or no one\'s: trucked home'],['reach',`Sea within ${(recoveryReach()/1e3).toFixed(0)} km: our ships`],['friend','Friendly: sent back'],['tense','Tense: back worn, after talks'],['hostile','Hostile: kept'],['far','Sea beyond reach: lost']],
-      y0=H-(L.length*12+12)*k;o.font=`${9.5*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';const x=W-Math.max(...L.map(l=>o.measureText(l[1]).width))-24*k;o.fillStyle='rgba(225,232,240,.9)';o.fillText('Recovery zones',x,y0-13*k);   // (Q488) the Recovery layer's legend
-    L.forEach(([z,l],j)=>{const y=y0+j*12*k,c=REC_INK[z];o.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`;o.fillRect(x,y-7*k,9*k,9*k);if(z==='friend'){o.fillStyle='rgba(8,12,18,.7)';o.fillRect(x+2*k,y-7*k,2*k,9*k);o.fillRect(x+6*k,y-7*k,2*k,9*k)}
-      o.fillStyle='rgba(225,232,240,.9)';o.fillText(l,x+13*k,y+1*k)})}
+  else if(recLegOn(era))recLegDraw(o,recLegRect());   // (Q536) the Recovery layer's legend, compact
   // the readout: cast the pointer's ray at Tellus
   const m=mapUI.mouse&&[mapUI.mouse[0]*W/cv.clientWidth,mapUI.mouse[1]*H/cv.clientHeight];if(m){const dd=norm(add(Fw,add(mul(R,(2*m[0]/W-1)*tanX),mul(U,(1-2*m[1]/H)*tanY)))),cen=bodyPos(TELLUS,simT),oc=sub(camW,cen),b=dot(oc,dd),q=b*b-dot(oc,oc)+TELLUS.R*TELLUS.R;
     if(q>0&&-b-Math.sqrt(q)>0){const pf=toPF(TELLUS,madd(oc,dd,-b-Math.sqrt(q)),simT),a=atlasAt(pf),deg=(v,p,n)=>`${Math.abs(v).toFixed(1)}°${v>=0?p:n}`;

@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.33 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -358,6 +358,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.269 — where it comes down and who brings it back: the landing verdict under the map's X, on the Descent card and at a node's landing ("recovered by our ships, ~6 h" / "lands in Kordia: they keep it"); a Recovery zones map layer; the Rollout's check says where a chuted craft is recovered (2026-11-06, flow worker, QUEUE Q488, PLAYTEST #123) → [notes/flow.md](notes/flow.md)
 - v1.271 — the warp readout drops "(physics)": just N×, with the levels locked now dimmed beside it and why (2026-11-06, flow worker, QUEUE Q511)
 - v1.272 — the ◇ holds the height on a weak stage's burn: timed through the stages, lifted against the sink, never back to the climb once begun; levelling off in the air the climb ◇ lifts too; the Lunar class obeyed from the warning makes orbit (2026-11-07, flow worker, QUEUE Q515)
+- v1.274 — the Recovery legend compact (CSS pixels, folds on a click), the landing verdict on a plate placed off other labels, one reach rule for spent stages (recoveryReach/recoveryDist) (2026-11-07, flow worker, QUEUE Q536)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

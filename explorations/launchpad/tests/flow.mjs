@@ -1082,3 +1082,45 @@
   for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
   api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
 }
+
+// flow-47. Recovery zones polish (flow, QUEUE Q536; from Q488's screenshots). One reach rule: spent stages fetched from the
+// sea (stageRecover) and the fleet's salvage (fleetSalvage) use the verdict's recoveryReach and recoveryDist, not their own,
+// so a stage just inside the reach is fetched and one just past it isn't, at every fleet level, as landingVerdict says. The
+// Recovery legend is compact (a fifth of the window at most, at 1280×720 and 1024×600; folded, one line), sized in CSS
+// pixels; the landing verdict under the X sits on a plate and moves off other labels; the powers' names give way to it.
+{
+  const P = api.PROG, keepProg = structuredClone(P), news0 = api.HOOK.news, keepS = api.S, keepT = api.t, R = TELLUS.R, from = api.SITES[0].u, rows = [];
+  const H = html.replace(/\r\n/g, '\n'), cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  let said = []; api.HOOK.news = m => said.push(m);
+  const parts = () => api.newShip(['chute', 'pod']).parts;
+  const drop = d => ({ kind: 'sea', pf: mul(api.alongAz(from, 1.1, d / R), R), parts: parts(), sea: { fate: 'afloat', afloat: Infinity, sp: 3 } });
+  let ok = true;
+  for (const lv of [0, 1, 2]) {
+    P.fac = lv ? { fleet: { lv } } : {}; const reach = api.recoveryReach(), ds = [reach - 5e3, reach + 5e3];
+    const Rr = { launchPf: mul(from, R), drops: ds.map(drop) }; said = []; api.stageRecover(Rr);
+    const fates = Rr.drops.map(v => v.fate), want = ds.map(d => api.landingVerdict(TELLUS, mul(api.alongAz(from, 1.1, d / R), R), { from, sea: true }).kind === 'sea');
+    const agree = fates.every((f, i) => (f === 'recovered') === want[i]) && Math.abs(api.recoveryDist(norm(Rr.drops[0].pf), from) - ds[0]) < 1;
+    let salv = 'n/a';
+    if (lv) { const R2 = { launchPf: mul(from, R), drops: ds.map(drop) }; said = []; api.fleetSalvage(R2); salv = said.join(' '); if (!/: 1 stage fished/.test(salv)) ok = false; }
+    ok = ok && agree; rows.push(`fleet ${lv} (reach ${(reach / 1e3).toFixed(0)} km): ${fates.join(' / ')}${lv ? `; salvage: ${/: (\d+) stage/.exec(salv)?.[1] ?? 0} of 2` : ''}`);
+  }
+  const src = cut(H, 'function stageRecover(', '\n// salvaged') + cut(H, 'function fleetSalvage(', '\nfunction facilitiesHTML');
+  const one = src.length > 200 && (src.match(/recoveryReach\(\)/g) || []).length === 2 && (src.match(/recoveryDist\(/g) || []).length === 2 && !/FAC\.fleet\.range|RECOVER_LOCAL|Math\.acos/.test(src);
+  check('flow-47: one reach rule: spent stages fetched from the sea and the fleet\'s salvage use recoveryReach/recoveryDist; just inside the reach fetched, just past it not, at fleet levels 0-2, as the landing verdict says',
+    ok && one, rows.join(' · ') + ` · one rule in the source ${one}`);
+  for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
+  api.HOOK.news = news0; api.S = keepS; api.t = keepT;   // put back: later shards see the state they had
+  // the legend: its layout is pure (recLegLayout); text measured at 0.55 em a character, a little wide for a sans
+  const lsrc = cut(H, 'function recLegLayout(', '\nconst recLegOn'), rsrc = cut(H, 'const REC_LEG=', '\nlet recLegShut');
+  const lay = lsrc && new Function(lsrc + ';return recLegLayout')(), legRows = rsrc && new Function('recoveryReach', rsrc + ';return REC_LEG')(() => 1500e3)();
+  const tw = (t, f) => t.length * f * 0.55, L = [];
+  let ok2 = !!lay && Array.isArray(legRows) && legRows.length === 6;
+  for (const [iw, ih] of [[1280, 720], [1024, 600], [1920, 1080]]) { if (!ok2) break;
+    const a = lay(iw, ih, legRows, true, tw), z = lay(iw, ih, legRows, false, tw);
+    ok2 = ok2 && a.h <= 0.2 * ih && a.w <= 0.2 * iw && a.fs <= 10.5 && a.x + a.w <= iw && a.y + a.h <= ih && z.h <= 2 * z.fs && z.w < a.w;
+    L.push(`${iw}×${ih}: ${Math.round(a.w)}×${Math.round(a.h)} px at ${a.fs.toFixed(1)} px (${(100 * a.h / ih).toFixed(0)}% high), folded ${Math.round(z.w)}×${Math.round(z.h)}`); }
+  const wired = H.includes('if(recLegOn(era)){const g=recLegRect();put.push(') && H.includes('else if(recLegOn(era))recLegDraw(o,recLegRect())') && H.includes('recLegToggle();drag=null')
+    && H.includes("c:L.c2||L.c,o:0,plate:1") && /if\(T\.plate\)\{[\s\S]{0,400}P\.find\(/.test(H) && H.includes('if(MAP_PUT.some(') && H.includes('const c=W/innerWidth');
+  check('flow-47: the Recovery legend is compact (under a fifth of the window, ≤ 10.5 px type, folds to one line), sized in CSS pixels; the verdict under the X is on a plate and moves off labels and the legend; powers\' names give way to it',
+    ok2 && wired, L.join(' · ') + ` · wired ${wired}`);
+}

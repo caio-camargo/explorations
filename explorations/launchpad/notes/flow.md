@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1524,3 +1524,30 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   may reach orbit on the ◇'s burn, with the pod at its limit (the check allows that); flow-34, 37, 39 unchanged.
   `node test.mjs --smoke --jobs 2`: all passed (309 sections).
   The ◇'s drawing didn't change (only its direction and phase), so no GPU look. TESTING row 339.
+
+## v1.274 — the Recovery legend compact, the verdict on a plate, one reach rule (2026-11-07, flow worker, QUEUE Q536; from Q488)
+- **Why the legend was huge in Q488's screenshots:** the map's labels are drawn in the 3D view's pixels, which shrink with
+  the adaptive resolution (`RS`, down to 0.35 on a slow GPU), and their size `k = min(dpr, 1.5)` doesn't follow it, so every
+  label grows by 1/RS (×2.9 there). On the RTX at 1280×720 RS is 1 and the old legend was ~150 px wide. The legend is now
+  sized in CSS pixels (`W/innerWidth`), so it stays small whatever RS does; **the other map labels still grow at low RS**
+  (the X's labels, cities, powers' names: `before_/after_sea_modern_lowres.png`), a general fix for another session.
+- **The legend** (`recLegLayout`, pure; `recLegRect`, `recLegDraw`, app/program-ui.js): bottom right on a dark plate like the
+  pointer's readout, six short lines ("Ours, no one's: trucked", "Sea ≤ 200 km: our ships", "Friendly: sent back", "Tense:
+  back worn", "Hostile: kept", "Sea beyond: lost") with 8 px swatches; type `innerHeight/72` clamped to 8.5–10.5 px:
+  ~157×97 px at 1280×720 (13 % of the height), 134×82 at 1024×600. A click on it folds it to "Recovery zones ▸" (remembered,
+  `launchpad-recleg`). It shows only while the layer is on (as before; the layer is on by itself while a landing is predicted).
+- **The verdict under the X** keeps the map's label rule (PLAYTEST #31: placed most useful first, a later one that would
+  overlap is skipped) with two additions: the legend's box is taken first, so no label lands on it; and the verdict, first
+  placed and never skipped, takes the first free spot (under the X, lower, above its title; slid aside) and sits on a plate
+  (dark; paper in the notebook) so it reads over the tinted sea. The powers' names, drawn after (atlasOverlay), give way to
+  the X's labels and a node's (`MAP_PUT`); they still don't hide each other or the cities, as before.
+- **One reach rule:** `recoveryDist(u, from)` (sim/world.js) with `recoveryReach()` now serves the verdict, the map's zones,
+  `stageRecover` and `fleetSalvage` (sim/program.js), which had their own copies. No behaviour change: the arithmetic is the
+  same (the fleet's range is always over the local boats' 200 km, so `fleetSalvage`'s `range[lv]` was `recoveryReach()`).
+- **Not done:** trucking time on land: no rule in the design notes (only "trucked home"), so `hours` stays null on land; the
+  spread is still Q260's two circles (no ellipse, as asked).
+- **Checks:** test `flow-47` (fleet levels 0–2: a stage 5 km inside the reach is fetched, 5 km past it isn't, as
+  landingVerdict says; the fleet salvages the same one; the source has no reach of its own; the legend under a fifth of the
+  window at 1280×720, 1024×600 and 1920×1080, type ≤ 10.5 px, folded one line; the wiring). `node test.mjs --smoke --jobs 2`:
+  all passed (311 sections). Screenshots (RTX, 1280×720 window): `scratchpad/q536/{before,after}_{sea,foe}_{modern,notebook}.png`,
+  `after_foe_modern_folded.png`, `{before,after}_sea_modern_lowres.png` (RS forced to 0.35). TESTING row 340.
