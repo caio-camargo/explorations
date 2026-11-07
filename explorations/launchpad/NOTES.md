@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.39 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.40 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -364,6 +364,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.276 — a cue when a stage still attached has run dry: the staging list's next row lit amber ("empty: drop them (Space)") and one line, once per stage; never auto-stages; a correction note on v1.272's flier-made claims (2026-11-07, flow worker, QUEUE Q538)
 - v1.277 — a toppled lander on screen (Q508 seen in the game): an "On its side" card says what is out under the hull and why (no sky, no sun, no view) and the damage; the Fleet tab says "on its side"; the map draws no orbit line or "Impact in 1s" for a landed craft (2026-11-07, flow worker, QUEUE Q527)
 - v1.279 — a wing, boom or leg pinned under a toppled lander stays folded and says why (P, Y, groups, stages; the free ones move); the map's body names on their bodies (the dot at the centre, the name over the limb). Staging on its side left to the simulation (Q545, Caio) (2026-11-07, flow worker, QUEUE Q540, Q541)
+- v1.281 — near the ground, retrograde hands over to stability: under 3 m/s within 50 m a craft on SAS retrograde switches to Stability (upright if leaning past 3°), says so once, never switches back (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
