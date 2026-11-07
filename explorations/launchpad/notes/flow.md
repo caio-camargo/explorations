@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1519,6 +1519,10 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   pod reaches its limit (it now makes orbit on the ◇; before it burned up). The Lunar's upper stage is weaker than the queue
   said: 0.16 g at ignition (65 kN, 3,720 m/s over 370 s; stageStats), not 0.4 (that's the Orbiter's, 0.39); the Crewed
   Lunar's third stage 0.10 g over 554 s. Both well inside the "under 0.3 g" pilot-margin class.
+- **Correction** (2026-11-07, Q538; see notes/vehicle.md § v1.273): "the Sample Return's own standard climb fell" and "the
+  Crewed Lunar levels off at 65 km" describe flow-41/46's test flier, which stages only when every engine is out and so keeps
+  dry boosters attached, not the presets. Staged as designed both climb to orbit with the warning quiet. The g figures above
+  are thrust at the sea-level Isp; in vacuum the Lunar's upper stage is 0.62 g, the Crewed Lunar's lander stage 0.39 g.
 - **Checks:** test `flow-46` (the Lunar flat by 40 and by 43, obeyed: orbit, lowest in the burn over 70 km, no climb after the
   burn, the coast's burn time through the stages over twice this stage's alone); `flow-41`'s unheeded flat-by-46 Orbiter now
   may reach orbit on the ◇'s burn, with the pod at its limit (the check allows that); flow-34, 37, 39 unchanged.
@@ -1578,3 +1582,32 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   340 by v1.274). Screenshots (RTX, 1280×720 window, RS forced via `RS_MAX=RS=…`):
   `scratchpad/q539/{before,after}_{sea_modern,sea_notebook,node_modern}_{rs1,rs035}.png`: before, at 0.35 the verdict, the
   cities and DUNNZAR are ~3× bigger; after, the rs035 shots match rs1 in size (softer, as expected). TESTING row 341.
+
+## v1.276 — a cue when a stage still attached has run dry (2026-11-07, flow worker, QUEUE Q538; from Q537)
+- **Why:** a pilot who doesn't drop spent stages keeps their dead weight: the Crewed Lunar's four empty boosters (~10 t) ride
+  through the core's last 62 s and the climb levels off in the air (notes/vehicle.md § v1.273); only v1.272's ◇ saves it.
+  The only word was physStep's one-shot "boosters empty — stage to drop them", 3 s in the message area, right after
+  "Booster burnout".
+- **`spentStage(s)`** (sim/flight.js): the next staging event is a drop and everything it drops is spent: an engine there was
+  lit, none of them can draw fuel (`groupFuel`), no fuel left in its tanks. Nothing still burning goes with it (one booster
+  of four still firing: no cue), a stage never lit isn't spent, an event that drops nothing gets none. Hand flights only
+  (not a procedure), launched, off the ground. **`spentCue(s)`**: spent for 2 s of flight time (a pilot who stages at
+  burnout never sees it), then lit until staged; `say` the first time for that event on that ship. Never stages by itself.
+- **On screen** (`dryHint`, app/cockpit.js, from `cockpit()`): the staging list's next row lit amber, a bar on its left and
+  a pulse for 3 s, then steady, with "empty: drop them (Space)" under it (`.stg.dry`, the HUD's `--warn`; ink under
+  `body.paper`); and once, in the message area, for 6 s: "Boosters ×4 empty — Space drops them (stage 2)" (physStep's
+  wording, with the key and the row named). Amber, not the master caution: it will need action, it isn't burning the craft
+  (UI.md § 2.4), and the caution box would stay lit and nag. The Δv card's "empty: stage (Space)" was already there.
+- **One line, not two:** physStep's old one-liner now fires only for a crossfed group whose own tanks are empty while its
+  engines run on (the Asparagus, as before); a burnt-out one is the cue's. The Asparagus's crossfed pairs aren't lit: their
+  engines still burn on the core's fuel, so the "nothing burning" rule holds them out (the old line still says it there).
+- **Measured** (Crewed Lunar, standard climb flat by 54 then the ◇): boosters kept, they run dry at 95.4 s (29.6 km), the
+  cue at 97.4 s naming "boosters ×4", stage 2, said once, gone the step after staging; staged as designed (each stage
+  dropped as its tanks run dry) it never shows, and the flight is unchanged (orbit, 4,653 m/s left, as vehicle-39).
+- **Correction** to § v1.272's "for vehicle" claims: a note added there (they describe the test flier, not the presets).
+- **Checks:** test `flow-49` (kept: the cue within 3 s of burnout, named, once, cleared on staging; one booster refuelled
+  while the rest are dry: burning, no cue; an event that drops nothing: none; staged as designed: never over 2 s, here 0;
+  no auto-staging; the old line gone for the Crewed Lunar, still there for the Asparagus; the wiring).
+  `node test.mjs --smoke --jobs 2`: all passed (313 sections). Screenshots (RTX, headless `shot.mjs`, the Crewed Lunar at
+  39 km with its boosters dry ~3 s): `scratchpad/q538/cue_2.png` (the lit row and the line), `cue_3.png` (staged: gone).
+  TESTING row 342.

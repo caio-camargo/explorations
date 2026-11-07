@@ -208,6 +208,7 @@ function renderSAS(){const el=$('sas');el.innerHTML='';
     if(!sasModeOK(S,k)){const g=avNext(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()})`);continue}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
     b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}
   if(no.length)t.title=`${avOf(S).name}. Not yet: ${no.join(', ')}`}
+let dryKey='';   // (Q538) the event whose row is lit as spent (cockpit.js dryHint; declared here, renderStages runs first)
 function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
   const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];
     if(e.decouple.length)parts.push(e.radial?'drop '+S.segs[e.decouple[0]].label.split(' (')[0]:'decouple');
@@ -215,7 +216,8 @@ function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="m
       parts.push('ignite '+Object.entries(nm).map(([n,c])=>c>1?`${n}×${c}`:n).join(' + '))}
     if(e.chute)parts.push('chute');
     for(const id of e.ag||[]){const g=(S.ag||[]).find(x=>x.id===id);if(g)parts.push(tipEsc(g.name))}   // action groups (Q329)
-    html+=`<div class="stg${i===S.evIdx?' cur':''}"><b>${i===S.evIdx?'▶ ':''}${i+1}</b> ${parts.join(' · ')}</div>`}
+    const dry=i===S.evIdx&&dryKey===`${i}`?spentStage(S):null;   // (Q538) a spent stage still attached: lit, and why
+    html+=`<div class="stg${i===S.evIdx?' cur':''}${dry?' dry':''}"><b>${i===S.evIdx?'▶ ':''}${i+1}</b> ${parts.join(' · ')}${dry?`<div class="dryc">empty: drop ${dry.many?'them':'it'} (Space)</div>`:''}</div>`}
   if(S.evIdx>=ev.length)html+='<div class="dim">no stages left</div>';
   const agg={};for(let k=0;k<S.segs.length;k++){const fm=S.parts.filter(p=>p.on&&p.seg===k).reduce((a,p)=>a+(p.cap.fuel||0),0);
     if(fm>0){const L=S.segs[k].label,a=agg[L]=agg[L]||[0,0];a[0]+=segFuel(S,k);a[1]+=fm}}

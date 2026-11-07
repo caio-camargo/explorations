@@ -30,7 +30,12 @@ function hlGauges(){const F=hlFracs();for(const[id,x,who,what]of[['gHeat',F.heat
   const h=`${Math.round(Math.min(1,Math.max(0,x))*100)}%`,c=hlCls(x);if(g.firstChild.style.height!==h)g.firstChild.style.height=h;if(g.className!==`g ${c}`.trim())g.className=`g ${c}`.trim();
   const t=`${id==='gHeat'?'HEAT':'LOAD'}: ${who?`${who}, ${Math.round(x*100)}% ${what}`:'nothing yet'}`;if(g.title!==t)g.title=t}}
 let mcPrev='';
-function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();turnHint();circHint();hlGauges();
+// (flow, QUEUE Q538) a spent stage still attached (spentCue, sim/flight.js): the staging list's next row lit, "empty: drop
+// it (Space)", and one line in the message area, once per stage. Amber, not the master caution: it will need action, it
+// isn't burning the craft (UI.md § 2.4). Never stages by itself.
+function dryHint(){const c=S&&mode==='flight'?spentCue(S):null,k=c?`${c.i}`:'';if(k!==dryKey){dryKey=k;renderStages()}
+  if(c&&c.say){HOOK.msg(`${c.what[0].toUpperCase()+c.what.slice(1)} empty — Space drops ${c.many?'them':'it'} (stage ${c.i+1})`);msgTimer=6}}
+function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();turnHint();circHint();hlGauges();dryHint();
   let m=$('mcau');if(!m){m=document.createElement('div');m.id='mcau';m.className='hidden';(document.getElementById('hud')||document.body).appendChild(m)}
   const L=cautions(),txt=L.length?`<b>MASTER CAUTION</b> ${L.join(' · ')}`:'';
   if(m.innerHTML!==txt){m.innerHTML=txt;if(txt&&L.join()!==mcPrev){m.classList.remove('new');void m.offsetWidth;m.classList.add('new')}mcPrev=L.join()}m.classList.toggle('hidden',!L.length);
