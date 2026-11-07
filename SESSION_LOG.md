@@ -6680,3 +6680,76 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** sim/debrief.js, tests/flow.mjs, notes/flow.md (1.0.12), NOTES.md, TESTING (331), PLAYTEST (#133), QUEUE (Q497 ✓),
   ACTIVE_WORK.
 - **Next for flow:** Q513 (P1, contracts in the Assembly and in flight; plan with Q345). Caio: TESTING 319, 329, 330, 331.
+
+## 2026-11-06 — space session: EVA E0a, the movement test ground (Q531, v1.263)
+
+- **What:** Ranked EVA.md's E0 as Q531 at Caio's go, planned it (notes/space.md § "Plan: EVA E0") and built slice E0a:
+  `sim/eva.js` (a walker as an inverted pendulum on its stance foot; steps placed to reach the wanted velocity within the
+  leg's reach and the grip; friction cone; lope past Froude 0.5; jump; falls and getting up) and `eva-lab.html` (any
+  body's gravity or a slider, μ, the 50 m straight and 5–30° ridges, keys and click-to-go, pause / slow / step / reset,
+  three cameras, debug lines, a readout). `index.html?eva-lab` redirects; the Rover yard links it.
+- **Measured:** walk 50 m: Tellus 1.10 m/s, Selene 0.46, Nyx 0.23; lope Tellus 2.67, Selene 1.14 (47 % airborne); 20°
+  ridge climbed slowly, 30° refused; jump 0.06 m Tellus, 1.87 m Selene. Three first-run bugs became rules (notes § v1.263).
+- **Checks:** space-33 (6 checks), `--smoke` all passed; screenshots on the GPU (lope on Selene, 20° ridge at Tellus).
+- **Files:** sim/eva.js, eva-lab.html, index.html, test.mjs, app/rover-yard.js, tests/space.mjs, notes/space.md, NOTES.md,
+  TESTING (334), QUEUE (Q531), ACTIVE_WORK.
+- **Next:** Caio's feel pass on E0a (TESTING 334; Selene's walk may be too slow, the lope too low: `frWalk`, `hopV`); then
+  E0b, E0c, E0d.
+
+## 2026-11-06 — look & sound, astronauts: the ligne-claire head (Q532, v1.264)
+
+- **What:** Caio asked for astronaut work and picked the ligne-claire head (D26) from four options. Claimed it as Q532
+  (Q531 went to the EVA lab the same minute). `app/crew-look.js`'s carved head became the head mock-up's option (a): a
+  round head, a small chin and nose, ears; hair built from the hairline up with an inked edge (seven styles); the face
+  drawn on as strokes and fills (brows, dot eyes, a hook under the nose, a one-line or open mouth, a moustache); eight
+  people (`CREW_PEOPLE`) and the five flight-portrait expressions (`CREW_EX`). New bench `mockups/crew-studio/` draws the
+  game's `crewFigure` close up (sheet, heads, helmets, suits).
+- **Checks:** `aerofx-5` gains the head check (fails with a 25 % bigger head); `--smoke` all passed after merging main.
+  Stills in `output/launchpad/mockups/crew-studio/` (machine-local).
+- **Not verified:** the head under the game's own mesh shader: the crew views (120–122, 127–144) don't show the crew
+  reliably (Q455; a lead added to it).
+- **Files:** app/crew-look.js, tests/look.mjs, mockups/crew-studio/index.html (new), mockups/README.md, notes/look.md,
+  CREW.md (0.3.2), TESTING (335), QUEUE (Q532 ✓, Q455 lead, a Proposed line), ACTIVE_WORK.
+- **Next:** Caio's look at TESTING 335 / the studio sheet; Q455 (the crew views) to see the head in the game's light;
+  clean faceplate openings (Proposed); CREW.md says it goes to 1.0.0 when the head is built: Caio's call.
+- **Follow-up:** the studio page needs serving (reads `app/gl.js`), so it failed from `file://`; it now says so, and the README notes it (d0aa360). Caio's verdict on TESTING 335: fine for now, maybe revisit. CREW.md stays at 0.3.2.
+
+## 2026-11-06 — space session: EVA E0a feel pass (Q531, v1.265)
+
+- **Caio's feedback:** turning inverted; a jerk at foot strike; jump legs walked; Shift lope skipped oddly; no fall/get-up.
+- **Done:** right-handed heading fix (`EVA.rt`); `EVA.next` predicts each foot's landing (within 1 cm) so the swing meets
+  it; smoothed torso; jump and lope flight legs; falls as a toppling pendulum, lying, getting up (hands-and-knees or
+  sitting); *Knock over [F]*. Found and fixed: stop-from-lope on Selene fell 37/40, hard turns while loping fell 20/20.
+- **Checks:** space-33 now 9 checks; headless pose continuity script (scratch); `--smoke` all passed; GPU screenshots of
+  lope, jump, topple, lie, rise. v1.264 was taken by look (Q532) meanwhile: renumbered.
+- **Next:** Caio's second look (TESTING 334); then E0b.
+
+## 2026-11-06 — space session: EVA, no invisible walls (Q531, v1.266)
+
+- **Caio:** stuck at a lateral drop-off on an incline, "an invisible wall"; uneven terrain matters.
+- **Done:** slope look-ahead along the path with a creep (never 0); slips slide on the feet below 2.5 m/s; footholds onto
+  knee-high banks (stepUp 0.45, stepDown 0.6). Crossing all four ridges sideways now works at Tellus and Selene.
+- **Checks:** space-33 10 checks, `--smoke` all passed. **Next:** E0b's rough ground first (Caio: uneven terrain matters).
+
+## 2026-11-06 — space session: EVA E0b rough ground, Shift spurt (Q531, v1.267)
+
+- **Done:** stations 6–9: rubble lane (hummocks, stones, boulders), crater, loose vs firm 15° banks (`W.grip`). Faces
+  past 50° are walls slid along (brace, no ladder-climbing); the body rides ground averaged over a stride, capped over
+  the feet; scrambling on hands and feet up banks too steep to stand on. Caio: Shift sluggish to start → quick steps
+  with no flight while speeding up on Shift (Tellus 1.09 → 0.71 s, Selene 3.42 → 2.15 s to 90 %).
+- **Checks:** space-33 now 14 checks; `--smoke` 736 PASS, none failed. **Next:** rest of E0b (stairs, ladder, gaps,
+  lander and rover mocks); walking off from standing still waits ~1 s for its first step (offered to Caio).
+
+## 2026-11-07 — look & sound, astronauts: the game's suits on the EVA lab's walker (Q535, v1.268)
+
+- **What:** Caio asked to put the spacesuit designs on the EVA lab's moving figure. `eva-lab.html` now builds any of
+  the 18 launch suits with `crewFigure` and binds each piece to a bone of the lab's pose (torso, thighs, shins, upper
+  arms, forearms); hoses stretch between bones; a Suit/person picker (default Cape middle). `crewFigure` returns
+  `o.rig` (standing skeleton + pins for Steppe's case, its slung pack, knee pads).
+- **Found on the way:** per-vertex binding tore the torso where the arm hangs against it (29 cm) and threw Arsenal's
+  shin plates to the hand; binding by piece (wrapping crew-look's helpers during the build) fixed it.
+- **Files:** `eva-lab.html`, `app/crew-look.js`, `tests/look.mjs` (aerofx-50), `notes/look.md`, `TESTING.md` (336),
+  `QUEUE.md` (Q535 ✓), `ACTIVE_WORK.md`. Stills: `output/launchpad/mockups/eva-suits/` (machine-local).
+- **Tests:** aerofx-50 passes (the per-vertex version failed it); `--smoke` all passed.
+- **Next:** Caio's look at TESTING 336; spacewalk suits with backpacks come with E1 (Q533). Earlier follow-ups still
+  open: Q455 (crew views), Q534 (faceplate openings), CREW.md 1.0.0 on Caio's word.

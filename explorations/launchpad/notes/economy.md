@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3460,3 +3460,52 @@ before (gaps 0.44 and 4.6), passes now. econ-31's comment points here. Changed f
 offers) pins seed 14, not 31 (31 has no offer in trouble now; over 60 seeds trouble/excelling offers come in 48/15,
 52/12 before; 14 passes before and after); core §19's contact check waits 1 day, not 3 (the logbook keeps the best
 day, the satellite's `contact` is the last day's).
+
+## v1.270 — the money curve after day-sized ticks; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
+
+**The targets.** No document gives a number for final funds or offer counts; what they do say: the board holds at most
+6 (v1.15), science arrives fastest and government slowest (v1.15), tourism goes with (standing/50)² (v1.19), "the weaker
+the archetype, the leaner the times: state-run frugal and resource programs need 1–3 top-ups" and strong programs at
+~1,000M by year 3 were already "nothing to spend it on" (v1.28), money never beats flying (D17.8), and M1's finish line
+of 4–6 flights to first orbit with no start stuck (v1.77). So the pre-v1.261 curve is the target where it agrees with
+those (mean funds, the weak state programs lean), and the documents win where the old numbers were the bug's (frugal
+agency 6.3 top-ups; science 5× commercial on the board).
+
+**What the money was.** `career.mjs` with `OFFERS=1` (new: offers posted by source, plus a mean line) and, in a scratch
+copy, the pay of contracts done by source: v1.261's extra ~480M a career is tourism (131 → 585M) and military work
+(125 → 389M); science fell (196 → 29M). Each tourist job done adds 5 tourism standing, and the rate goes with its square,
+so a tourism board feeds itself; the long ticks used to cut that loop. A uniform cut of all rates barely moves money
+(×0.33: mean 850M), since the runner still finds the best-paying job on a thinner board.
+
+**Changed** (`sim/contracts.js` `SRC`): tourism 1/22 → **1/90** a day, military 1/35 → **1/100** (at standing 50, before
+the archetype and ownership factors). Not changed: `BOARD_MAX` 6 (the documents' number), `OFFER_LIFE`, the cap of 4 a
+roll (with a day's dice a source's chance is under 0.3 a day, so it never binds now; it still caps a test's direct
+multi-day call) and the source order (it only matters when two arrive the same day on a board with one slot). Also tried:
+government 1/30 → 1/40 with military 1/130: 728M against 748M over 12 seeds, inside the noise, so left out.
+
+**Measured** (`OFFERS=1 node career.mjs 3 6`, 18 rows × 6 seeds; seeds 1–6 and 7–12 averaged; pre-v1.261 is 945b14f^1):
+
+| | pre-v1.261 | v1.261 | v1.270 |
+|---|---|---|---|
+| mean final funds (s1–6 / s7–12) | 649 / 736 | 1,110 / 1,031 | 742 / 753 |
+| bailouts a career | 1.01 | 0.59 | 0.62 |
+| career offers a career | 1.68 | 0.55 | 0.72 |
+| contracts done | 20 | 18 | 16.5 |
+| offers posted: sci / com / gov / tour / mil | 49.9 / 17.4 / 10.2 / 3.2 / 2.4 | 34.6 / 31.2 / 30.3 / 19.0 / 15.8 | 41.0 / 36.5 / 35.1 / 5.6 / 6.8 |
+| pay by source (s1–6): sci / com / gov / tour / mil | 196 / 148 / 152 / 131 / 125 | 29 / 85 / 145 / 585 / 389 | 59 / 136 / 253 / 138 / 226 |
+| top-ups, frugal agency / consortium, resource agency / consortium (s1–6) | 6.3 / 5.2 / 1.3 / 1.0 | 2.7 / 1.7 / 0.8 / 1.5 | 3.0 / 2.0 / 1.8 / 1.0 |
+
+Mean funds land +8 % over the old 12-seed mean (692), inside the runner's seed noise (the two old seed sets differ by
+87M). Rows look like v1.28's table: superpowers 590–1,250M, frugal and resource companies 113–345M, the weak state programs 1–3
+top-ups. `PACE=1 node career.mjs 2 5`: every start reaches orbit in 5/5 runs in 4–6 flights (the old frugal company
+was 4/5). Bailouts stay at v1.261's level and career offers (which come with recent top-ups) under the old ones: the
+old early game was poorer than its rates meant, because its board starved; read as intended, not retuned.
+
+**Q529.** `freshSeed()` (sim/program.js) draws a 32-bit seed; the page calls it when no save loads (`app/state.js`,
+before the first board and the rivals are drawn), and Reset program uses it (`app/editor.js`). The SIM's `PROG` still
+starts on 12345, so headless tests are repeatable; a test that wants another world sets `PROG.wseed`.
+
+**Tests:** econ-33 runs `career.mjs` small (open superpower and frugal, agency and company, 2 years, 2 seeds, ~7 s):
+tourism + military offers under 10 a career (v1.261: 13–24 on four seed sets; now 5–8) and mean funds 150–650M (now
+301). econ-34: the page draws a fresh seed when no save loads, before `ensureBoard`; Reset draws one; the SIM starts
+on 12345; two fresh seeds give different first boards. No pinned number in an existing test changed.

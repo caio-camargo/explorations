@@ -153,7 +153,24 @@ const BIOME_INK=['#2a5d8a','#eef3f6','#a9b49c','#47715a','#cdc386','#5b9a4e','#a
 let atlasMode=(()=>{try{return(+localStorage.getItem('launchpad-atlas')||0)%3}catch(e){return 0}})();const ATLAS_GL={tex:null,mode:0};
 function cycleAtlas(){atlasMode=(atlasMode+1)%3;try{localStorage.setItem('launchpad-atlas',atlasMode)}catch(e){}
   HOOK.msg(['Atlas off','Atlas: biomes','Atlas: powers'][atlasMode]+(atlasMode&&!ATLAS.lines?' (surveying…)':''))}
-function atlasTick(){if(!atlasBake(6))return;if(ATLAS_GL.mode!==atlasMode)atlasTex(atlasMode)}
+function atlasTick(){if(!atlasBake(6))return;if(atlasMode&&ATLAS_GL.mode!==atlasMode)atlasTex(atlasMode);
+  if(mapShow('recovery')){const k=recZoneKey();if(ATLAS_GL.rkey!==k)recZoneTex(k)}}
+// (flow, Q488; PLAYTEST #123) the recovery zones: the map's Recovery layer (app/map-layers.js) tints Tellus with them, in a
+// texture of its own (C's atlas keeps its own, and shows under it): our land and no one's, and the sea our ships reach from
+// the launch point, green; a friendly power's land green-hatched; a tense one's amber; a hostile one's red; the sea beyond
+// reach grey. recoveryZone (sim/world.js, with landingVerdict) decides each point; rebuilt when the launch point, the ships'
+// reach or a power's welcome changes (recZoneKey).
+const REC_INK={home:[70,205,95,150],friend:[70,205,95,150],tense:[235,170,50,165],hostile:[225,60,50,170],reach:[60,200,170,120],far:[110,116,128,55]};
+const recZoneKey=()=>[...recoveryFrom(S).map(x=>x.toFixed(4)),recoveryReach(),HOME,...POWERS.map(p=>p.i===HOME?'':recoveryRel(p.i))].join(',');
+function recZoneTex(key){const A=ATLAS,W=A.W,H=A.H,d=new Uint8Array(W*H*4),from=recoveryFrom(S),reach=recoveryReach(),zc=['home'];
+  for(const p of POWERS)zc[p.i+1]=recoveryZone(null,from,true,p,reach);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const k=y*W+x,land=A.bio[k]>0,z=land?zc[A.pow[k]]:recoveryZone(atlasU(x,y),from,false,null,reach);let c=REC_INK[z],a=c[3];
+    if(land){const nb=[y*W+(x+1)%W,y*W+(x+W-1)%W,y>0?k-W:k,y<H-1?k+W:k];if(nb.some(j=>!A.bio[j])){c=[22,26,34];a=230}else if(nb.some(j=>A.pow[j]!==A.pow[k])){c=[28,28,34];a=230}
+      else if(z==='friend'&&(x+y)%6>2)a=35}   // the hatching: a friendly power's land, between ours and a tense one's
+    d[k*4]=c[0];d[k*4+1]=c[1];d[k*4+2]=c[2];d[k*4+3]=a}
+  if(!ATLAS_GL.rtex)ATLAS_GL.rtex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.rtex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);ATLAS_GL.rkey=key}
 // colour + opacity per point: biome or power colour, coasts dark, borders light (biomes) or dark (powers)
 function atlasTex(mode){const A=ATLAS,W=A.W,H=A.H,d=new Uint8Array(W*H*4),hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
   const bc=BIOME_INK.map(hex),pc=POWERS.map(p=>rgbOf(`hsl(${p.hue},50%,58%)`).slice(0,3)),edge=mode===1?[250,248,236]:[28,28,34];
@@ -183,16 +200,23 @@ function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=
   o.font=`600 ${11*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='center';
   for(const nm of A.names){if(!nm)continue;const w=atlasW(nm.u);if(!atlasVis(w,camW))continue;const s=project(w);if(!s)continue;const P=POWERS[nm.i];
     o.fillStyle=ink(`hsl(${P.hue},80%,${atlasMode===2?'92%':'78%'})`);o.strokeStyle=era===1?'rgba(246,240,222,.8)':'rgba(0,0,0,.65)';o.lineWidth=3*k;
-    const t=P.root.toUpperCase().split('').join(' ');o.strokeText(t,s[0],s[1]);o.fillText(t,s[0],s[1])}
+    const t=P.root.toUpperCase().split('').join(' ');o.strokeText(t,s[0],s[1]);o.fillText(t,s[0],s[1]);
+    if(mapShow('recovery')){const z=nm.i===HOME?'home':recoveryRel(nm.i),w={home:'ours: trucked home',friend:'sends it back',tense:'sends it back worn',hostile:'keeps what lands'}[z],c=REC_INK[z],fo=o.font;   // (Q488) its welcome to what lands there
+      o.font=`${10*k}px ui-sans-serif,system-ui,sans-serif`;o.fillStyle=ink(`rgb(${c[0]},${c[1]},${c[2]})`);o.strokeText(w,s[0],s[1]+13*k);o.fillText(w,s[0],s[1]+13*k);o.font=fo}}
   if(atlasMode===1&&!era){const ids=[...new Set(A.bio)].filter(i=>i).sort((a,b)=>a-b),x=W-150*k,y0=H-(ids.length*14+24)*k;o.font=`${10.5*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';
     ids.forEach((id,j)=>{const y=y0+j*14*k;o.fillStyle=BIOME_INK[id];o.fillRect(x,y-8*k,10*k,10*k);o.fillStyle='rgba(225,232,240,.9)';o.fillText(BIOMES[id],x+15*k,y+1*k)})}
+  else if(mapShow('recovery')&&!era){const L=[['home','Ours, or no one\'s: trucked home'],['reach',`Sea within ${(recoveryReach()/1e3).toFixed(0)} km: our ships`],['friend','Friendly: sent back'],['tense','Tense: back worn, after talks'],['hostile','Hostile: kept'],['far','Sea beyond reach: lost']],
+      y0=H-(L.length*12+12)*k;o.font=`${9.5*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';const x=W-Math.max(...L.map(l=>o.measureText(l[1]).width))-24*k;o.fillStyle='rgba(225,232,240,.9)';o.fillText('Recovery zones',x,y0-13*k);   // (Q488) the Recovery layer's legend
+    L.forEach(([z,l],j)=>{const y=y0+j*12*k,c=REC_INK[z];o.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`;o.fillRect(x,y-7*k,9*k,9*k);if(z==='friend'){o.fillStyle='rgba(8,12,18,.7)';o.fillRect(x+2*k,y-7*k,2*k,9*k);o.fillRect(x+6*k,y-7*k,2*k,9*k)}
+      o.fillStyle='rgba(225,232,240,.9)';o.fillText(l,x+13*k,y+1*k)})}
   // the readout: cast the pointer's ray at Tellus
   const m=mapUI.mouse&&[mapUI.mouse[0]*W/cv.clientWidth,mapUI.mouse[1]*H/cv.clientHeight];if(m){const dd=norm(add(Fw,add(mul(R,(2*m[0]/W-1)*tanX),mul(U,(1-2*m[1]/H)*tanY)))),cen=bodyPos(TELLUS,simT),oc=sub(camW,cen),b=dot(oc,dd),q=b*b-dot(oc,oc)+TELLUS.R*TELLUS.R;
-    if(q>0&&-b-Math.sqrt(q)>0){const a=atlasAt(toPF(TELLUS,madd(oc,dd,-b-Math.sqrt(q)),simT)),deg=(v,p,n)=>`${Math.abs(v).toFixed(1)}°${v>=0?p:n}`;
+    if(q>0&&-b-Math.sqrt(q)>0){const pf=toPF(TELLUS,madd(oc,dd,-b-Math.sqrt(q)),simT),a=atlasAt(pf),deg=(v,p,n)=>`${Math.abs(v).toFixed(1)}°${v>=0?p:n}`;
       const t=a.id?`${a.biome[0].toUpperCase()+a.biome.slice(1)} · ${a.power?a.power.name:'unclaimed'} · ${Math.round(a.h).toLocaleString('en')} m`:`Sea · ${Math.round(-a.h).toLocaleString('en')} m deep`;
-      const t2=`${deg(a.lat,'N','S')} ${deg(a.lon,'E','W')}`;o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
-      const wd=Math.max(o.measureText(t).width,o.measureText(t2).width)+12*k,x=Math.min(m[0]+14*k,W-wd-4),y=m[1]+18*k;
-      o.fillStyle=era===1?'rgba(246,240,222,.92)':'rgba(8,12,18,.82)';o.fillRect(x,y-12*k,wd,32*k);o.fillStyle=ink('#e6edf5');o.fillText(t,x+6*k,y);o.fillText(t2,x+6*k,y+14*k)}}
+      const t2=`${deg(a.lat,'N','S')} ${deg(a.lon,'E','W')}`,t3=mapShow('recovery')?`Landing here: ${landingVerdict(TELLUS,pf,{from:recoveryFrom(S)}).text}`:'';   // (Q488) what a landing here would mean
+      o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
+      const wd=Math.max(o.measureText(t).width,o.measureText(t2).width,o.measureText(t3).width)+12*k,x=Math.min(m[0]+14*k,W-wd-4),y=m[1]+18*k;
+      o.fillStyle=era===1?'rgba(246,240,222,.92)':'rgba(8,12,18,.82)';o.fillRect(x,y-12*k,wd,(t3?46:32)*k);o.fillStyle=ink('#e6edf5');o.fillText(t,x+6*k,y);o.fillText(t2,x+6*k,y+14*k);if(t3)o.fillText(t3,x+6*k,y+28*k)}}
   o.font=fnt;o.textAlign='center'}
 function eraInk(era,c){const[r,g,b,a]=rgbOf(c),warm=r>g+40&&r>b+40;
   return era===1?(warm?`rgba(176,54,42,${Math.max(.6,a)})`:`rgba(29,42,82,${Math.max(.55,a)})`):(warm?`rgba(214,255,120,${Math.max(.7,a)})`:`rgba(57,255,110,${Math.max(.55,a)})`)}
@@ -222,6 +246,7 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
           if((xa-c[0])*sx+(ya-c[1])*sy<0&&(xb-c[0])*sx+(yb-c[1])*sy<0){o.moveTo(xa,ya);o.lineTo(xb,yb)}}}
       o.stroke();o.restore()}}}
   if(atlasMode)atlasInk(era,camW,project,tanY,k);   // coasts and borders (terrain session)
+  else if(mapShow('recovery'))atlasInk(era,camW,project,tanY,k);   // (Q488) the Recovery layer in ink: the borders it follows (the welcome is under each name)
   // every line the map computed (orbits, plans, Selene, satellites, impact traces), in two inks
   const segs=MAPSEGS;if(!segs||!segs.length)return;const warm=[],cool=[];
   for(let i=0;i<segs.length;i+=14){const a=project(add([segs[i],segs[i+1],segs[i+2]],camW)),bb=project(add([segs[i+7],segs[i+8],segs[i+9]],camW));if(!a||!bb)continue;
@@ -348,13 +373,21 @@ function updateHUD(){
     // the atmosphere's unsampled bands: fly the same prediction with the air 25 % thinner and thicker there (once a second)
     if(!impact||impact.b!==TELLUS||(BANDS.every(k=>PROG.atm[k])&&!predErr(S)))impSpread=null;   // predErr: the compute era (economy)
     else if(simT-impST>1||simT<impST){impST=simT;const lo=predictImpact(S,-1),hi=predictImpact(S,1),gc=(a,b)=>Math.acos(clamp(dot(norm(a),norm(b)),-1,1))*TELLUS.R/1000;
-      impSpread=lo&&hi?{lo,hi,km:Math.max(gc(lo.pf,impact.pf),gc(hi.pf,impact.pf))}:null}
+      impSpread=lo&&hi?{lo,hi,km:Math.max(gc(lo.pf,impact.pf),gc(hi.pf,impact.pf))}:null;if(impSpread)for(const x of[lo,hi])x.verdict=fallVerdict(x,S)}
+    if(impact)impact.verdict=fallVerdict(impact,S);   // (flow, Q488) the landing verdict: sim/world.js landingVerdict, read by impVerdict
     // range safety: while climbing under power, the impact point (the whole spread of it) must stay clear of cities
     const vs=impact&&S.thrust>0&&impact.b===TELLUS?[impact,...(impSpread?[impSpread.lo,impSpread.hi]:[])].map(x=>rangeVerdict(S.site,TELLUS,x.pf)):[],
       rs=vs.find(v=>v.kind==='city')||vs.find(v=>v.kind==='near')||null,warn=!!rs;
     if(warn&&!rangeWarned){rangeWarned=true;HOOK.msg(`RANGE SAFETY: impact point over ${rs.city.name}`);HOOK.news(`Range safety officer spills coffee as flight path crosses ${rs.city.name}`,'warn')}
     if(!warn)rangeWarned=false;S.rangeWarn=warn?rs:null}}
 let rangeWarned=false,impSpread=null,impST=-1;const heard=new Set();
+// (flow, Q488; PLAYTEST #123) the predicted landing's verdict in one line, for the map's X and the Descent card: where it
+// comes down and who brings it back (landingVerdict), and, when an end of the spread would be judged otherwise, where that is
+function verdictLine(v,spread){if(!v)return'';let alt=null;
+  if(spread)for(const x of[spread.lo,spread.hi]){const w=x&&x.verdict;if(w&&(w.recovered!==v.recovered||w.where!==v.where))alt=w}
+  return v.text+(alt?` · the spread reaches ${alt.where==='the sea'?'the sea':alt.where}${alt.recovered?'':` (${alt.kind==='kept'?'kept':'lost'})`}`:'')}
+const impVerdict=()=>impact&&impact.verdict?{v:impact.verdict,t:verdictLine(impact.verdict,impSpread)}:null;
+const verdictInk=v=>v.recovered?(v.refund<1?'#ffd27a':'#7dffa8'):'#ff8a6a';   // green: home whole; amber: worn; red: lost or kept
 
 // ---- autopilot tapes in browser storage, one per exact design (and sim version: a tape only replays on the sim that made it)
 const tapeKey=()=>'launchpad-tape:'+tapeV()+':'+JSON.stringify(stackDef);
@@ -406,7 +439,8 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
   for(let k=0;k<3;k++)$('nd'+k).textContent=n.dv[k].toFixed(1)+' m/s';
   const tt=n.t-simT,start=tt-(isFinite(est)?nodeLead(S,dv):0),more=(S.nodeQ||[]).length;   // the lead puts half the Δv before the node (vehicle, Q33)
   $('nd-sum').innerHTML=pick+(n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
-    `${term('dv','Δv')} <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`);
+    `${term('dv','Δv')} <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`)
+    +(planImp.f&&planCache&&planImp.key===planCache.key&&toolOK('impact')?`<br>lands: <span style="color:${verdictInk(planImp.v)}">${tipEsc(planImp.v.text)}</span>`:'');   // (Q488) where the plan comes down (the map works it out)
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
 renderEditor();go('title');   // (Q241 R3) the page opens on the title screen
 requestAnimationFrame(frame);

@@ -6,7 +6,7 @@
 // every accepted contract is checked against every flight, so one well-planned flight can complete several. Pay scales
 // with difficulty, the source's standing with us, and (commercial) the business cycle. Government money also arrives
 // as a budget every 100 days, scaled by public opinion at home. Firsts (MISSIONS) stay one-time; these never run out.
-const SRC={sci:{name:'Science',rate:1/14},com:{name:'Commercial',rate:1/18},gov:{name:'Government',rate:1/30},tour:{name:'Tourism',rate:1/22},mil:{name:'Military',rate:1/35}};
+const SRC={sci:{name:'Science',rate:1/14},com:{name:'Commercial',rate:1/18},gov:{name:'Government',rate:1/30},tour:{name:'Tourism',rate:1/90},mil:{name:'Military',rate:1/100}};   // tourism and military per day at standing 50 (Q528, v1.270: were 1/22 and 1/35, which only long ticks' starved board kept in check)
 const BOARD_MAX=6,OFFER_LIFE=50,GRANT_100=15;   // M per 100 days at home opinion 50
 const capOf=()=>2+Math.min(4,Math.floor((PROG.cdone||0)/3));
 const standOf=k=>(PROG.stand||{})[k]??50;

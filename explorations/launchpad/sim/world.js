@@ -266,17 +266,50 @@ const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
 // tense ones return it worn after long talks, hostile ones keep it. The factor scales the refurbishment refund.
 // The ships take time (Q274): they sail at RECOVER_V from an hour's notice, and what sinks before they arrive is lost.
 const RECOVER_LOCAL=200e3,RECOVER_V=10,RECOVER_PREP=3600;
-function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a',why:''};const u=norm(s.pf);
-  if(s.water){const from=R&&R.launchPf?norm(R.launchPf):(s.site||SITES[0]).u,d=Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R,
-      lv=typeof facLv==='function'?facLv('fleet'):0,reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);
-    const sail=RECOVER_PREP+d/RECOVER_V,afloat=s.float?s.float.sinkAt-s.float.t:Infinity;
-    if(d<=reach&&afloat<sail)return{factor:0,kind:'sank',why:`sank ${(afloat/3600).toFixed(0)} h after splashdown, ${(d/1e3).toFixed(0)} km out; our ships needed ${(sail/3600).toFixed(0)} h`};
-    return d<=reach?{factor:1,kind:'sea',why:`fished out of the sea ${(d/1e3).toFixed(0)} km out, ${(sail/3600).toFixed(0)} h after splashdown`}:{factor:0,kind:'lost',why:`came down ${(d/1e3).toFixed(0)} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
-  const p=powerAt(u);if(!p||p.i===HOME)return{factor:1,kind:'land',why:''};
-  const rel=relOf(HOME,p.i);
-  if(rel>=0)return{factor:1,kind:'returned',why:`landed in ${p.name}, which sends it back`};
-  if(rel>=-0.2)return{factor:0.8,kind:'returned',why:`landed in ${p.name}: returned, worn, after long talks`};
-  return{factor:0,kind:'kept',why:`landed in ${p.name}, which keeps it`}}
+// (flow, Q488; PLAYTEST #123) the same rules as a verdict on any point, before anything comes down: one source of truth
+// for recoveryOf (the landing settled), the map's X and its zones, the Descent card, a node's landing and the Rollout's
+// check. landingVerdict(b, pf, {from, afloat, sea}) → {where, who, recovered, hours, refund, kind, why, text, km}: where in
+// words ('the sea', 'our land', 'unclaimed land', a power's name, another body's); who brings it back ('our ships',
+// 'trucks', the power, or null); hours: the ships' time to it (null on land); refund: the factor on the refurbishment
+// refund; why: the Debrief's words (recoveryOf's, unchanged); text: the prediction's. from: the launch point (a unit
+// vector: the ships sail from there); afloat: how long it floats (s; Infinity by default); sea: in the water (default:
+// the sea at pf).
+const recoveryReach=()=>{const lv=typeof facLv==='function'?facLv('fleet'):0;return Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0)};
+// another power's welcome, by relations: a 'friend' sends it back, 'tense' sends it back worn after long talks, 'hostile' keeps it
+const recoveryRel=i=>{const r=relOf(HOME,i);return r>=0?'friend':r>=-0.2?'tense':'hostile'};
+const recoveryFrom=s=>s&&s.rec&&s.rec.launchPf?norm(s.rec.launchPf):(s&&s.site||curSite()).u;
+function landingVerdict(b,pf,o={}){
+  if(b!==TELLUS)return{where:b.name,who:null,recovered:false,hours:null,refund:0,kind:'none',why:'',text:`on ${b.name}: no one there to recover it`,km:null};
+  const u=norm(pf),sea=o.sea??seaAt(b,pf);
+  if(sea){const from=o.from||SITES[0].u,d=Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R,reach=recoveryReach(),sail=RECOVER_PREP+d/RECOVER_V,afloat=o.afloat??Infinity,
+      km=(d/1e3).toFixed(0),h=sail/3600,hs=Math.max(1,Math.round(h)),sea0={where:'the sea',hours:h,km:d/1e3};
+    if(d<=reach&&afloat<sail)return{...sea0,who:'our ships',recovered:false,refund:0,kind:'sank',
+      why:`sank ${(afloat/3600).toFixed(0)} h after splashdown, ${km} km out; our ships needed ${h.toFixed(0)} h`,text:`at sea ${km} km out: sinks in ${afloat<3600?`${Math.max(1,Math.round(afloat/60))} min`:`${(afloat/3600).toFixed(0)} h`}, before our ships get there (~${hs} h)`};
+    return d<=reach?{...sea0,who:'our ships',recovered:true,refund:1,kind:'sea',why:`fished out of the sea ${km} km out, ${h.toFixed(0)} h after splashdown`,text:`at sea ${km} km out: recovered by our ships, ~${hs} h`}
+      :{...sea0,hours:null,who:null,recovered:false,refund:0,kind:'lost',why:`came down ${km} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`,text:`at sea ${km} km out, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
+  const p=powerAt(u);if(!p||p.i===HOME)return{where:p?'our land':'unclaimed land',who:'trucks',recovered:true,hours:null,refund:1,kind:'land',why:'',text:`on ${p?'our':'unclaimed'} land: trucked home`,km:null};
+  const k=recoveryRel(p.i),base={where:p.name,who:p.name,hours:null,km:null};
+  if(k==='friend')return{...base,recovered:true,refund:1,kind:'returned',why:`landed in ${p.name}, which sends it back`,text:`lands in ${p.name}: they send it back`};
+  if(k==='tense')return{...base,recovered:true,refund:0.8,kind:'returned',why:`landed in ${p.name}: returned, worn, after long talks`,text:`lands in ${p.name}: returned worn, after long talks`};
+  return{...base,recovered:false,refund:0,kind:'kept',why:`landed in ${p.name}, which keeps it`,text:`lands in ${p.name}: they keep it`}}
+// a landed vessel's recovery, as the flight settles it: the verdict where it lies, with how long it actually floats
+function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a',why:''};
+  const v=landingVerdict(TELLUS,s.pf,{sea:!!s.water,from:R&&R.launchPf?norm(R.launchPf):(s.site||SITES[0]).u,afloat:s.float?s.float.sinkAt-s.float.t:Infinity});
+  return{factor:v.refund,kind:v.kind,why:v.why}}
+// how long a craft still in flight would float after splashdown (s), its flotation bags out: sinkTime on its present shape
+const AFLOAT_EST=new WeakMap();   // per vessel, kept off the vessel (its state is hashed and recorded)
+function afloatEst(s){if(!s||!s.lines||!s.parts||typeof sinkTime!=='function')return Infinity;const key=Math.round(s.mass/50),c=AFLOAT_EST.get(s);
+  if(c&&c.lines===s.lines&&c.key===key)return c.T;
+  const bags=s.bags,sp=s.seaP;let T=Infinity;s.bags=bags||s.parts.some(p=>p.on&&p.d.float);s.seaP=null;try{T=sinkTime(s)}catch(e){}s.bags=bags;s.seaP=sp;
+  AFLOAT_EST.set(s,{lines:s.lines,key,T});return T}
+// the verdict on a predicted fall (predictImpact's) of vessel s: the ships sail from its launch point; it floats as it would
+const fallVerdict=(f,s)=>f?landingVerdict(f.b,f.pf,{from:recoveryFrom(s),afloat:afloatEst(s)}):null;
+// before launch (the Rollout's checks, for a craft with a parachute): where what comes back is recovered, in one line
+const recoveryRule=()=>`Recovered if it comes down on our land, or at sea within ${(recoveryReach()/1e3).toFixed(0)} km of the pad (abroad it depends on relations: friendly powers send it back, tense ones after long talks, hostile ones keep it; the Map's Recovery zones layer shows where)`;
+// the recovery zone of a point on Tellus, for the map's layer: 'home' (our land or no one's), 'friend', 'tense', 'hostile'
+// (another power's land), 'reach' (sea our ships reach from `from`), 'far' (sea beyond it). pw: the power there (powerAt)
+function recoveryZone(u,from,land,pw,reach=recoveryReach()){if(!land)return Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R<=reach?'reach':'far';
+  return!pw||pw.i===HOME?'home':recoveryRel(pw.i)}
 // ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
 // above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
 // low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.

@@ -11,6 +11,8 @@ function aeroRow(){const b=S.body,h=len(S.r)-b.R;return['Aero',b.atm&&h<b.atm?`M
 function heatRow(){return['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—']}
 function structRow(){return['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']}
 function impactRow(){return['Impact',!toolOK('impact')?'<span class="dim">no trajectory data yet</span>':impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${impSpread&&impSpread.km>0.5?` <span class="warn">± ${impSpread.km.toFixed(0)} km</span>`:''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—']}
+// (flow, Q488; PLAYTEST #123) where it comes down and who brings it back: the map X's verdict, one line (impVerdict)
+function landRow(){const V=toolOK('impact')&&impVerdict();return V?[['Landing',`<span style="color:${verdictInk(V.v)}">${tipEsc(V.t)}</span>`]]:[]}
 const inAir=()=>!!S.body.atm&&!S.landed&&len(S.r)-S.body.R<S.body.atm;
 // (slice 4b) the Ascent condition: in the air with q over 1 kPa or below 20 km (the climb's start, a landing's radar tape),
 // low over an airless body, or the skin above 30 % of its limit. Held 3 s after it ends, so the cluster doesn't flicker.
@@ -39,7 +41,7 @@ const HUD_CARDS=[
   // Ascent: shown with the gauges (ascentOn)
   {id:'ascent',title:'Ascent',when:ascentOn,rows:()=>[GAUGES?aoaRow():aeroRow(),heatRow(),structRow()]},   // with the gauges on, only what they don't draw (Mach and q are on the dials)
   // Descent: coming down with an impact predicted; or, any time, the range safety warning (impact point over a city)
-  {id:'descent',title:'Descent',when:()=>S.alive&&!S.landed&&(!!S.rangeWarn||dot(S.v,S.r)<0&&(!!impact||!toolOK('impact'))),rows:()=>[impactRow()]},
+  {id:'descent',title:'Descent',when:()=>S.alive&&!S.landed&&(!!S.rangeWarn||dot(S.v,S.r)<0&&(!!impact||!toolOK('impact'))),rows:()=>[impactRow(),...landRow()]},
   {id:'dv',title:'<span style="text-transform:none">Δv</span>',rows:dvRows},   // (Q495) shown in the dark cockpit too: a burn is when it matters
   {id:'target',title:'Target',rows:()=>[...tgtRows(),...dockRows()]},
   {id:'stat',title:'Stationary orbit',rows:statRows},   // (vehicle, Q454) when to start the transfer, app/program-ui.js; on the Map too

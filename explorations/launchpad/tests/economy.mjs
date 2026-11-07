@@ -756,3 +756,36 @@
     took && gb < 1e-3 && gc < 1e-3 && a.lost === b.lost && a.lost === c.lost && Object.keys(a.rel).length > 0,
     `largest gap: 10-day ${gb.toExponential(1)}, contract ${gc.toExponential(1)}; home opinion ${a.op[0].toFixed(2)}/${b.op[0].toFixed(2)}/${c.op[0].toFixed(2)}; race ${a.lost}`);
 }
+
+// econ-33. The money curve after day-sized ticks (economy worker, QUEUE Q528): v1.261 rolled the world once a day, so
+// the board no longer starves during a flight's long preparation, and tourism (rate × (standing/50)², +5 standing a job
+// done) and military work snowballed: in `career.mjs 3 6` tourism and military offers 2.9 + 2.1 → 22.5 + 14.8 a career,
+// mean final funds 649 → 1,110M. Their rates went 1/22 → 1/90 and 1/35 → 1/100 a day (v1.270). A small career run
+// (career.mjs OFFERS=1, open superpower and frugal, agency and company, 2 years, 2 seeds; ~8 s) keeps tourism and military
+// offers under 10 a career (v1.261 gave 13–24 on four seed sets, now 5–8) and mean funds in a band (now 301–477).
+// notes/economy.md § "v1.270".
+{
+  const { execFileSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
+  const out = execFileSync(process.execPath, [fileURLToPath(new URL('./career.mjs', import.meta.url)), '2', '2', 'base', 'agency,company'],
+    { env: { ...process.env, OFFERS: '1', ARCHS: 'openSuper,frugal', SEED0: '1' }, encoding: 'utf8' });
+  const M = /MEAN over (\d+) careers: final\s+(-?\d+) .*\| offers sci ([\d.]+) com ([\d.]+) gov ([\d.]+) tour ([\d.]+) mil ([\d.]+)/.exec(out) || [];
+  const [n, fin, sci, com, gov, tour, mil] = M.slice(1).map(Number);
+  check('money curve (Q528): a small career run keeps tourism + military offers under 10 a career and mean funds in 150–650M',
+    n === 8 && tour + mil < 10 && fin > 150 && fin < 650 && sci + com + gov > 3 * (tour + mil),
+    `${n} careers: final ${fin}M; offers a career sci ${sci} com ${com} gov ${gov} tour ${tour} mil ${mil}`);
+}
+
+// econ-34. A new save draws its own world (economy worker, QUEUE Q529): since v1.261 the world's dice come from the save's
+// seed, so the page draws one (freshSeed) when no save loads, before the first board is drawn; Reset program draws one
+// too. The SIM itself still starts on 12345, so headless tests stay repeatable. Two fresh seeds give different boards.
+{
+  const A = new Function(src + 'return {PROG,HOOK,freshSeed,ensureBoard};')(), seed0 = A.PROG.wseed, seeds = Array.from({ length: 20 }, () => A.freshSeed());
+  A.HOOK.save = () => {}; A.PROG.wseed = seeds[0]; A.ensureBoard(); const B = { PROG: { offers: A.PROG.offers } }; A.PROG.offers = null; A.PROG.wseed = seeds[1]; A.ensureBoard(); const C = A;
+  const st = readFileSync(new URL('./app/state.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
+  const iSet = st.indexOf('progLoaded=true'), iNew = st.indexOf('if(!progLoaded)PROG.wseed=freshSeed()'), iBoard = st.indexOf('ensureBoard()', iNew);
+  const board = D => JSON.stringify(D.PROG.offers.map(o => [o.type, o.client, o.p.pay]));
+  check('new save (Q529): the page draws a fresh world seed when no save loads, before the first board; Reset draws one; the SIM stays on 12345',
+    seed0 === 12345 && new Set(seeds).size === 20 && seeds.every(s => Number.isInteger(s) && s >= 0 && s < 2 ** 32)
+      && iSet > 0 && iNew > iSet && iBoard > iNew && /wseed:freshSeed\(\)/.test(ed) && board(B) !== board(C),
+    `seeds ${seeds.slice(0, 3).join(', ')}…; boards ${board(B).slice(0, 60)} | ${board(C).slice(0, 60)}`);
+}

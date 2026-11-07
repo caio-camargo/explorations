@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1435,7 +1435,42 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   never above the air; steps under 30 km; times in order; the last point is the X, on the ground within 20 m; drawn before
   the GPU draw); failed before (no `fallLine`; the old drawing was up to 248 km off). TESTING row 332.
 
-## v1.263 — the warp readout drops "(physics)"; locked levels are dimmed, with why (2026-11-06, flow worker, QUEUE Q511)
+## v1.269 — where it comes down, and who brings it back (2026-11-06, flow worker, QUEUE Q488; PLAYTEST #123, P1)
+- **The problem** (Caio, 2026-10-30): "there was no indication i would need to land somewhere specific for my craft to be
+  recoverable, nor any way to tell where it would be". The rules existed, unseen (`recoveryOf`, slice D and Q274): the sea
+  only within the ships' reach of the launch point (200 km of local boats, or the fleet's range) and only if they get there
+  before it sinks; our land or no one's trucked home; another power's land by relations.
+- **One verdict** (sim/world.js): `landingVerdict(b, pf, {from, afloat, sea})` → `{where, who, recovered, hours, refund,
+  kind, why, text, km}`. `recoveryOf` (the landing settled) is now a call to it (same factors, kinds and Debrief words);
+  `fallVerdict(f, s)` judges a predicted fall (the ships sail from `recoveryFrom(s)`, the launch point; it floats
+  `afloatEst(s)`, `sinkTime` on the craft's shape with its flotation bags out, cached per shape off the vessel);
+  `recoveryZone` gives the map's zone of a point; `recoveryRule()` the Rollout's line; `recoveryReach()`, `recoveryRel(i)`
+  the reach and a power's welcome (friend ≥ 0, tense ≥ −0.2, hostile) that were inline before.
+- **Where the player sees it:** under the map's X a second line in the verdict's colour (green home whole, amber back worn,
+  red lost or kept): "at sea 140 km out: recovered by our ships, ~5 h", "on our land: trucked home", "lands in Kordia: they
+  keep it", "at sea …: sinks in 20 min, before our ships get there (~5 h)"; when an end of the spread is judged otherwise,
+  "· the spread reaches …" (`verdictLine`, app/program-ui.js; `impact.verdict` computed with the impact, 4 Hz). The
+  **Descent card** has a *Landing* row with the same line (`landRow`, app/hud.js). A **node** that brings the craft down:
+  a white "▸plan lands in …" X at the plan's landing with its verdict under it, and "lands: …" in the node panel
+  (`predictImpact(s, 0, st)` now falls from a given state; `planImp` in render.js, at most 5 times a second while dragging).
+  The **Rollout's checks** (the board before launch) say, for a design with a parachute: "Recovered if it comes down on our
+  land, or at sea within 200 km of the pad (ⓘ abroad by relations; the Map's Recovery zones layer)".
+- **The Recovery zones layer** (Layers panel, `recovery`; on by itself while a landing on Tellus is predicted): Tellus
+  tinted from the atlas grid in a texture of its own (`recZoneTex`, so C's atlas keeps its own): our land and no one's
+  green, the sea within reach teal-green with a ring at the reach round the launch point, a friendly power's land
+  green-hatched, tense amber, hostile red, the sea beyond grey; coasts and borders dark; a legend bottom right; the
+  pointer's readout adds "Landing here: …". Rebuilt when the launch point, the reach (the fleet) or a power's welcome changes.
+  In the notebook and terminal maps (the first hour is the notebook) the layer is ink: coasts and borders, the reach ring,
+  and under each power's name its welcome ("ours: trucked home", "sends it back", "keeps what lands"); the verdict line
+  under the X is in the era's ink (blue when recovered, red pencil when lost or kept).
+- **Not done:** the spread as a true ellipse (still Q260's two circles); tinted zones in the notebook/terminal maps (ink
+  only there); the legend is large on a small window; trucking time on land (no rule for it: `hours` is null on land); rivals' penalties for a craft they keep
+  (PLAYTEST #124, Q490: only the words here). Q513's mission card can read `impact.verdict` for "recovery pending".
+- **Checks:** test `flow-44` (the verdict on our land, the sea within reach with its hours, sinking first, beyond reach, a
+  power's land at three relations, Selene; `recoveryOf` agrees on each; a Sounding flight's verdict predicted at 30 km is the
+  recovery it gets; the readers in the page source). TESTING row 334.
+
+## v1.271 — the warp readout drops "(physics)"; locked levels are dimmed, with why (2026-11-06, flow worker, QUEUE Q511)
 - **Caio (2026-10-31):** "the time adjustor doesn't need to say 'physics' i think, bc physics should hold throughout, levels
   at which it doesnt at any given time are locked, right?" Right: up to 100× off rails the loop takes the same fixed step
   more times a frame (results identical), and past 100× needs rails, which the loop already refuses when they don't hold.
@@ -1447,6 +1482,6 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   arm moving), and `railsOK` is now `!railsWhy`. `warpCap()` (app/loop.js) adds the loop's own caps (the autopilot and a
   flying procedure at 100×; another craft of ours off rails; under 15 s from the ground 4×, under 4 s or a heavy load 1×),
   and the loop clamps with it, so the bars and the loop can't disagree. `warpStep(d)` serves the buttons and `,` `.`.
-- **Checks:** test `flow-44` (five cases: the pad lit, orbit, climbing in the air, falling near the ground, low over Selene;
+- **Checks:** test `flow-45` (five cases: the pad lit, orbit, climbing in the air, falling near the ground, low over Selene;
   railsWhy agrees with railsOK; no "physics" in the readout or the control; the loop and keys go through warpCap/warpStep).
-  TESTING row 334.
+  TESTING row 338.

@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
+**Version**: v2.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-06
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -16,9 +16,9 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/foundations.md`](notes/foundations.md) | The idea, the first prototype (v1.0–v1.11), measurements, negative results, precision tricks, picking this up cold, open threads | 19 |
 | [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 26 |
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 47 |
-| [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 65 |
+| [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
-| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 16 |
+| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 17 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
 
@@ -184,6 +184,11 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.257 — a stationary slot keeps its longitude; a TV satellite is named "TV" (2026-11-05, space worker, QUEUE Q521, Q522)
 - v1.258 — a TV satellite's life reads true; other Tellus antennas are "Navsats" (2026-11-06, space worker, QUEUE Q520, Q523)
 - v1.262 — a moon orbit on the map is one revolution, not two months of them; a late impact or escape keeps the first and last turns (2026-11-06, space worker, QUEUE Q487, PLAYTEST #127)
+- Plan: EVA E0, the movement test ground (2026-11-06, space session, QUEUE Q531; nothing built)
+- v1.263 — EVA E0a: the test ground's flat and slopes; `sim/eva.js`, `eva-lab.html` (2026-11-06, space session, QUEUE Q531)
+- v1.265 — EVA E0a after Caio's feel pass: turning un-mirrored, feet land where the physics puts them (`EVA.next`), jump and lope legs, falls topple and get up (2026-11-06, space session, QUEUE Q531)
+- v1.267 — EVA E0b rough ground: rubble lane (hummocks, stones, boulders), a crater, loose vs firm 15° banks; rocks are walls slid along, banks are scrambled up on hands and feet (2026-11-06, space session, QUEUE Q531)
+- v1.266 — EVA: no invisible walls (slope look-ahead along the path, a creep, slides on its feet), footholds for knee-high banks (2026-11-06, space session, QUEUE Q531)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -266,6 +271,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.255 — routines count clean runs (2026-11-04, economy worker, QUEUE Q500, PLAYTEST #134)
 - Q446: a missed deadline's opinion drift — the world's dice, not the miss (2026-11-06, economy worker, TESTING 247; nothing built)
 - v1.261 — the world's dice are the calendar's (2026-11-06, economy worker, QUEUE Q526, from Q446)
+- v1.270 — the money curve after day-sized ticks: tourism and military offers back to a trickle; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -348,7 +354,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.253 — warn before the turn goes flat into the heat: a master caution and a red ◇ when the climb runs under the profile or levels off in the air (2026-10-31, flow session 2, QUEUE Q483, PLAYTEST #119)
 - v1.254 — a crash on Selene gets landing-burn advice, not a parachute (2026-10-31, flow session 2, QUEUE Q497, PLAYTEST #133)
 - v1.259 — a falling orbit is one line: the blue to the top of the air, the red on from there in the same frame to the X on the ground; the red is drawn in the modern map again (2026-11-06, flow worker, QUEUE Q489, PLAYTEST #126)
-- v1.263 — the warp readout drops "(physics)": just N×, with the levels locked now dimmed beside it and why (2026-11-06, flow worker, QUEUE Q511)
+- v1.269 — where it comes down and who brings it back: the landing verdict under the map's X, on the Descent card and at a node's landing ("recovered by our ships, ~6 h" / "lands in Kordia: they keep it"); a Recovery zones map layer; the Rollout's check says where a chuted craft is recovered (2026-11-06, flow worker, QUEUE Q488, PLAYTEST #123) → [notes/flow.md](notes/flow.md)
+- v1.271 — the warp readout drops "(physics)": just N×, with the levels locked now dimmed beside it and why (2026-11-06, flow worker, QUEUE Q511)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

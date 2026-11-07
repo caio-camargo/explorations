@@ -278,15 +278,36 @@
   const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
   const C = new Function(src + `const P=[];const pv=(o,p,n,c)=>{o.push(p);P.push({p,c})},tube=(o,A,B)=>{o.push(A,B)},lathe=(o,prof)=>{for(const[r,y]of prof)o.push([r,y,0])};
     ${cut('const SUIT_DEFAULT=', '\n// The crew on the access arm')}
-    return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,P};`)();
+    return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,CREW_PEOPLE,CREW_EX,P};`)();
   const lines = [0, 1, 2, 3, 4, 5].map(k => C.SUITS[k]), key = c => c.slice(0, 3).map(x => x.toFixed(2)).join(),
     suitsOk = lines.every(L => L && L.length === 3 && new Set(L.map(x => key(x.c1))).size === 3) && C.suitOf(9, 0) === C.SUIT_DEFAULT && C.suitOf(1, 2) !== C.SUIT_DEFAULT;
   const pts = a => a.filter(Array.isArray), st = pts(C.crewFigure(C.suitOf(0, 0), 'stand', 0)), wv = pts(C.crewFigure(C.suitOf(1, 2), 'wave', 1));
   const ys = st.map(p => p[1]), top = Math.max(...ys), foot = Math.min(...ys), wTop = Math.max(...wv.map(p => p[1]));
-  const skin = C.P.filter(v => Math.abs(v.c[0] - 0.95) < 1e-9 && Math.abs(v.c[1] - 0.76) < 1e-9).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
+  const sk0 = C.CREW_PEOPLE[0].skin, skin = C.P.filter(v => v.c[0] === sk0[0] && v.c[1] === sk0[1] && v.c[2] === sk0[2]).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
   check('crew look: a stylised astronaut ~1.78 m tall on its own feet; the waving glove rises above the helmet; the face shows; six schools × three suits, each generation its own colour',
     top > 1.74 && top < 1.82 && Math.abs(foot) < 0.02 && wTop > top && faceFwd > 20 && suitsOk,
     `height ${top.toFixed(3)} m, feet at ${foot.toFixed(3)}, waving hand to ${wTop.toFixed(2)} m; ${faceFwd} face vertices forward`);
+  // Q532 (D26): the ligne-claire head. Dot eyes (no whites) in the neutral face, whites when wide open; each of the five
+  // expressions draws a different face; the roster spans every skin tone (darkest under a third of the lightest's
+  // luminance) with several hair styles and moustaches; and every launch suit's helmet holds the whole head and hair.
+  {
+    const lum = c => .2126 * c[0] + .7152 * c[1] + .0722 * c[2], white = v => v.c[0] > .95 && v.c[1] > .95 && v.c[2] > .95 && v.c[3] === 0;
+    const faceOf = (k, ex) => { C.P.length = 0; C.crewFigure(C.SUIT_DEFAULT, 'stand', k, ex); return C.P.filter(v => v.c[3] === 2 && v.c[0] < .06 || white(v) || v.c[0] === .38).map(v => v.p.map(x => x.toFixed(4)).join()).sort().join('|') };
+    const ex = Object.keys(C.CREW_EX), faces = new Set(ex.map(e => faceOf(0, e)));
+    C.P.length = 0; C.crewFigure(C.SUIT_DEFAULT, 'stand', 0, 'neutral'); const neutralWhites = C.P.filter(white).length;
+    C.P.length = 0; C.crewFigure(C.SUIT_DEFAULT, 'stand', 0, 'alarm'); const alarmWhites = C.P.filter(white).length;
+    const L = C.CREW_PEOPLE.map(p => lum(p.skin)), styles = new Set(C.CREW_PEOPLE.map(p => p.style)), mous = C.CREW_PEOPLE.filter(p => p.mous).length;
+    const s = C.CREW_C, hip = s.legL + s.boot[1] * 1.2, neck = hip + s.tH + s.head * .25, HC = [0, neck + s.head * 1.05, s.head * .05], misfit = [];
+    for (let sc = 0; sc < 6; sc++) for (let g = 0; g < 3; g++) for (let k = 0; k < C.CREW_PEOPLE.length; k++) {
+      const su = C.suitOf(sc, g), HR = (su.helm && su.helm.R) || s.helmR, pe = C.CREW_PEOPLE[k], cols = [pe.skin, pe.hair].map(c => c.join());
+      C.P.length = 0; C.crewFigure(su, 'stand', k, 'neutral');
+      const far = Math.max(...C.P.filter(v => cols.includes(v.c.slice(0, 3).join())).map(v => Math.hypot(v.p[0] - HC[0], v.p[1] - HC[1], v.p[2] - HC[2])));
+      if (far > HR * (su.helm && su.helm.egg ? 1.2 : 1)) misfit.push(`${sc}·${g} person ${k}: ${far.toFixed(3)} > ${HR}`);
+    }
+    check('crew look: the ligne-claire head (Q532): dot eyes, five expressions each its own face, a roster across every skin tone with several hair styles and moustaches, every launch helmet holds the head',
+      neutralWhites === 0 && alarmWhites > 0 && faces.size === ex.length && ex.length === 5 && Math.min(...L) < Math.max(...L) / 3 && styles.size >= 6 && mous >= 2 && !misfit.length,
+      misfit.slice(0, 3).join(' | ') || `${faces.size} faces; skin luminance ${Math.min(...L).toFixed(2)}–${Math.max(...L).toFixed(2)}; ${styles.size} hair styles, ${mous} moustaches; whites ${neutralWhites}/${alarmWhites}`);
+  }
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}}),
       crewMeshes=(n,sch)=>Array.from({length:Math.min(n,2)},(_,k)=>({mesh:{free(){}},k}));
@@ -1062,4 +1083,43 @@
     used: /if\(uSel>0\.&&w\*uNR<\.5\)refl\*=rocksL\(MB\(d\*tN\)\+uNdet,nb,MB\(uSun\),MB\(V\),w\*uNR\);/.test(moon)
   };
   check('Selene up close: mottled regolith and boulders with long shadows (views 112–113)', Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
+// aerofx-50. The game's suits on the EVA lab's walker (look & sound, astronauts, QUEUE Q535). eva-lab.html builds each
+// launch suit with crewFigure, binds every vertex to one bone of the lab's pose and moves it with that bone. Posed back
+// at the suit's own skeleton, every suit comes back unmoved; in a long stride (knees and elbows bent, a lean) no
+// triangle tears: no edge grows by more than 6 cm except a hose's, which may stretch between two bones.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END')), lab = readFileSync(new URL('./eva-lab.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const cutOf = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const L = new Function(src + `const Q=new URLSearchParams('');
+    ${cutOf(lab, 'function pv(', '</script>')}
+    ${cutOf(page, 'const SUIT_DEFAULT=', '\n// The crew on the access arm')}
+    ${cutOf(lab, 'function legIK(', '\nfunction lerpJ')}
+    ${cutOf(lab, 'const SUIT_SCH=', '\nfunction prints')}
+    return {crewFigure,suitOf,joints,buildRig,drawSuit,set:(i,k)=>{suitI=i;personI=k;RIG=null},rig:()=>RIG};`)();
+  const HOSE_C = [.55, .56, .56], isHose = (o, i) => Math.abs(o[i + 6] - HOSE_C[0]) < 1e-6 && Math.abs(o[i + 7] - HOSE_C[1]) < 1e-6;
+  const bad = [];
+  for (let si = 0; si < 18; si++) {
+    L.set(si, si % 8); const raw = L.crewFigure(L.suitOf(Math.floor(si / 3), si % 3), 'stand', si % 8), r = raw.rig, n = raw.length / 9;
+    const lg = k => r.legs.find(l => (l.sx > 0) === (k === 0)), ar = k => r.arms.find(a => (a.sx > 0) === (k === 0));
+    const rest = { hip: [0, r.hip, 0], sh: [0, r.sh, 0], tu: [0, 1, 0], R: [-1, 0, 0], F: [0, 0, 1], hips: [0, 1].map(k => lg(k).h), knees: [0, 1].map(k => lg(k).kn),
+      feet: [0, 1].map(k => [lg(k).an[0], 0, lg(k).an[2]]), shs: [0, 1].map(k => ar(k).a), elb: [0, 1].map(k => ar(k).e), hands: [0, 1].map(k => ar(k).g) };
+    const o0 = []; L.drawSuit(o0, rest); let back = 0; for (let i = 0; i < o0.length; i++) back = Math.max(back, Math.abs(o0[i] - raw[i]));
+    // a long stride: the +x foot ahead, the other behind and lifted, arms swinging against the legs, a 12° lean
+    const tu = [0, Math.cos(.21), Math.sin(.21)], hip = [0, .84, 0];
+    const J = L.joints(hip, tu, [-1, 0, 0], [[.11, 0, .42], [-.11, .12, -.38]], [[.3, .72, -.25], [-.3, .76, .3]], [0, 0, 1], [0, 0, -1]);
+    const o = []; L.drawSuit(o, J); let worst = 0, at = '';
+    for (let t = 0; t < n; t += 3) {
+      if ([0, 1, 2].some(k => isHose(raw, (t + k) * 9))) continue;
+      for (const [a, b] of [[0, 1], [1, 2], [2, 0]]) {
+        const A = (t + a) * 9, B = (t + b) * 9, d = (x, i, j) => Math.hypot(x[i] - x[j], x[i + 1] - x[j + 1], x[i + 2] - x[j + 2]), g = d(o, A, B) - d(raw, A, B);
+        if (g > worst) { const bn = L.rig().bone; worst = g; at = `y ${raw[A + 1].toFixed(2)} [${raw.slice(A, A + 3).map(v => v.toFixed(2))}]→[${raw.slice(B, B + 3).map(v => v.toFixed(2))}] bones ${bn[t + a]},${bn[t + b]}` }
+      }
+    }
+    if (back > 1e-4 || worst > .06) bad.push(`suit ${si}: back ${back.toExponential(1)}, an edge +${(worst * 100).toFixed(1)} cm at ${at}`);
+  }
+  check('EVA lab wears the game\'s suits (Q535): all 18 launch suits bound to the walker\'s bones come back unmoved at rest, and tear nowhere in a long stride (hoses may stretch)',
+    !bad.length && /<script src="app\/crew-look\.js"><\/script>/.test(lab) && /if\(suitI>=0\)drawSuit\(o,J\);else drawJ\(o,J\)/.test(lab),
+    bad.slice(0, 18).join(' | ') || '18 suits, rest exact, no tear over 6 cm');
 }

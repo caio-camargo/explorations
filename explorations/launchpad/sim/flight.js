@@ -648,11 +648,11 @@ function fall(b,r,v,t,kdrag){
       const e2=elements(r,v,mu);if(e2.pe>top)return null;const c=(e2.p/(top-1)-1)/e2.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(e2,-Math.acos(c));
       for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt;if(tAir==null)tAir=t}}
   return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:tAir??t0,capped:i>=40000}}   // capped: still up when the steps ran out (a slow decay), not an impact
-function predictImpact(s,sg=0){
-  if(s.landed||!s.alive)return null;const b=s.body;
+function predictImpact(s,sg=0,st=null){   // st: {b, r, v, t} to fall from instead of now (flow, Q488: where a node leads)
+  if(s.landed||!s.alive)return null;const b=st?st.b:s.body;
   const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=b.atm?dragTable(s,aoa):[0,0],m=s.mass;
   const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)},pe=sg&&b===TELLUS?predErr(s):0;
-  const f=fall(b,s.r,s.v,simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*(atmU(h)+pe):1)});
+  const f=fall(b,st?st.r:s.r,st?st.v:s.v,st?st.t:simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*(atmU(h)+pe):1)});
   return f&&f.capped?null:f}   // (flow, Q266) a slow decay that outlasts the steps isn't an impact: no X, no path round the planet   // pe: the compute era's prediction error (economy)
 // (flow, Q489; PLAYTEST #126) the fall as the map draws it: one line on from where the orbit line stops (the top of the air,
 // falling; or the ship, already falling in it) to the ground, each point where it will be at its own time (pathT), in the
