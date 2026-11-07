@@ -913,7 +913,8 @@
   R['Orbiter 51'] = fly('Orbiter', 51);
   for (const k of [46, 40]) { R[`Orbiter ${k}`] = fly('Orbiter', k); R[`Orbiter ${k}, obeyed`] = fly('Orbiter', k, true); }
   const quiet = ['Orbiter 54', 'Lunar 54', 'Heavy 54', 'Orbiter 51'].every(k => !R[k].w && R[k].out === 'orbit');
-  const early = [46, 40].every(k => R[`Orbiter ${k}`].w && R[`Orbiter ${k}`].w.heat < 0.9 && R[`Orbiter ${k}`].out !== 'orbit' && R[`Orbiter ${k}, obeyed`].out === 'orbit');
+  // unheeded it's lost, or (since Q515's burn hold, which can save the flat-by-46 Orbiter flown on the ◇ past the climb) the pod reaches its limit
+  const early = [46, 40].every(k => R[`Orbiter ${k}`].w && R[`Orbiter ${k}`].w.heat < 0.9 && (R[`Orbiter ${k}`].out !== 'orbit' || R[`Orbiter ${k}`].peak >= 0.99) && R[`Orbiter ${k}, obeyed`].out === 'orbit');
   const H = html, ui = H.includes('const F=S.proc?null:turnFlat(S);if(F)L.push(') && H.includes("fl=tg&&!S.proc&&turnFlat(S),gc=fl?'#ff5a3a':'#fff1c8'") && H.includes("${fl?' ▲':''}");
   check('flow-41: too flat, too low: quiet on the standard climb (Orbiter, Lunar, Heavy) and flat by 51 km; flat by 46 and 40 km the master caution and a red ◇ fire with the pod under 90 % of its limit, and obeyed the Orbiter makes orbit',
     quiet && early && ui,
@@ -1045,4 +1046,39 @@
   check('flow-45: the warp readout says N× with no "(physics)"; the levels the loop won\'t take are dimmed with why (engines, the air, the ground, another craft), from the same tests the loop uses',
     ok && ui, `${rows.join(' · ')} · ui ${ui}`);
   api.S = S0; api.t = t0; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
+}
+
+// flow-46. The ◇ saves a Lunar-class climb that went flat (flow, QUEUE Q515; from Q483). Before: obeyed from the warning (9 km,
+// flat by 40) the Lunar coasted to ~104 km with little speed across, and its 0.16 g upper stage, burning on the 'circ' aim,
+// sank to 62 km while the ◇ flipped climb ↔ burn (the coast's 100/110 km band) and it fell. Now the burn's length counts the
+// stages (stagedBurnTime: the weak stage's long burn starts early), the burn ◇ lifts to hold the height (guideHold: thrust
+// upward against gravity less the centripetal part), a begun burn never turns back into a climb, and levelling off in the
+// air (Q483's 'level', 59 km on a climb flat by 43) the climb ◇ lifts too. Flown as flow-41 does, the ◇ obeyed from the warning.
+{
+  const T = api.TELLUS, D = 180 / Math.PI, P = api.PROG, keepProg = structuredClone(P), keepS = api.S, keepT = api.t, F0 = api.FLEET.slice();
+  const fly = (Pn, fk) => { api.t = 0; const s = api.newShip(api.PRESETS[Pn]); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+    let n = 0, w = null, out = 'lost', burn = null, low = Infinity, back = 0, coast = null; const seen = [];
+    while (s.alive && n++ < 300000) { const h = len(s.r) - T.R, f = api.localFrame(s.r), G = api.turnGuide(s), pad = h < 2000 && !G;
+      if (G && seen[seen.length - 1] !== G.ph) seen.push(G.ph);
+      if (G && G.ph === 'coast' && !coast) coast = { tb: G.tb, one: api.nodeBurnTime(s, G.dv) };
+      if (G && G.ph === 'burn' && !burn) burn = { h }; if (burn) { low = Math.min(low, h); if (G && G.ph === 'climb') back++; }
+      const own = !w && (G ? G.ph === 'climb' : h < T.atm), x = Math.min(1, Math.max(0, (h - 286) / (fk * 1000 - 286))), p = 90 * (1 - Math.pow(x, 0.6)) / D;
+      const Y = own ? norm(add(mul(f.e, Math.cos(p)), mul(f.up, Math.sin(p)))) : G ? G.u : norm(sub(s.v, api.surfVel(T, s.r))), X = norm(cross(Y, f.n));
+      s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; s.throttle = G && G.ph === 'coast' ? 0 : G || pad || h < T.atm && !w ? 1 : 0;
+      const F = api.turnFlat(s); if (F && !w) w = { h, why: F.why };
+      const el = elements(s.r, s.v, T.mu); if (!G && el.pe - T.R > T.atm) { out = 'orbit'; break; }
+      if (!G && !pad && dot(s.v, s.r) < 0 && h < T.atm * 0.9) { out = 'fell'; break; }
+      if (s.evIdx < s.events.length && api.activeEngines(s).length === 0 && s.throttle > 0) api.stage(s);
+      api.advPhys(s); }
+    const el = elements(s.r, s.v, T.mu);
+    return { out: s.alive ? out : 'burned up', w, burn, low, back, coast, seen, pe: el.pe - T.R, ap: el.ap - T.R, left: api.dvRemaining(s).tot }; };
+  const R = { 'flat by 40': fly('Lunar', 40), 'flat by 43': fly('Lunar', 43) }, a = R['flat by 40'];
+  const ok = Object.values(R).every(r => r.w && r.out === 'orbit' && r.pe > T.atm && r.burn && r.back === 0 && r.low > 0.7 * T.atm);
+  const staged = a.coast && a.coast.tb > 2 * a.coast.one;   // the coast's burn time counts the weak stage after the booster
+  check('flow-46: the Lunar obeying the ◇ from the warning (flat by 40: \'turn\' at 9 km; flat by 43: \'level\' at 59 km) makes orbit: the burn holds the height (lowest over 70 km, was 62), never flips back to the climb, and starts early for the weak stage',
+    ok && staged,
+    Object.entries(R).map(([k, r]) => `${k}: ${r.w ? `${r.w.why} at ${(r.w.h / 1e3).toFixed(0)} km` : 'quiet'}, ${r.seen.join(' > ')}, burn from ${r.burn ? (r.burn.h / 1e3).toFixed(1) : '—'} km, lowest ${(r.low / 1e3).toFixed(1)} km, ${r.back} back to climb, ${r.out} ${(r.pe / 1e3).toFixed(0)} × ${(r.ap / 1e3).toFixed(0)} km, ${r.left.toFixed(0)} m/s left`).join(' · ')
+      + ` · coast's burn ${a.coast ? `${a.coast.tb.toFixed(0)} s through the stages (this stage alone ${a.coast.one.toFixed(0)} s)` : '—'}`);
+  for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
+  api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
 }
