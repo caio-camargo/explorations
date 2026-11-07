@@ -971,6 +971,9 @@
 // card, the node's landing and the Rollout's check all read it.
 {
   const P = api.PROG, R = TELLUS.R, home = api.SITES[0], keepRel = JSON.parse(JSON.stringify(P.rel || {})), keepFac = P.fac, from = home.u, rows = [];
+  // the Sounding flight below completes missions, pays, logs: the whole program is put back after (it moved the next step on,
+  // and with it the Δv aims later sections' launch warnings read)
+  const keepProg = structuredClone(P), keepS = api.S, keepT = api.t;
   P.fac = {};
   const V = (u, o = {}) => api.landingVerdict(TELLUS, mul(norm(u), R), { from, ...o });
   const homeCity = api.CITIES.find(c => c.power && c.power.i === api.HOME && api.isLand(c.u));
@@ -1005,7 +1008,7 @@
   const got = s.landed ? api.recoveryOf(s, s.rec) : null;
   check('flow-44: a Sounding flight\'s landing verdict, predicted at 30 km on the way down, is the recovery it gets',
     !!pv && !!got && pv.kind === got.kind && pv.refund === got.factor, `predicted: ${pv ? pv.text : 'none'} · landed: ${got ? `${got.kind} ${got.why}` : 'not landed'} · reach ${(api.recoveryReach() / 1e3).toFixed(0)} km`);
-  P.fac = keepFac;
+  P.fac = keepFac; for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg); api.S = keepS; api.t = keepT;
   // the readers: the map's X (and the node's), the Descent card, the Rollout's check and the Recovery layer all go through it
   const has = (...a) => a.every(x => html.indexOf(x) >= 0);
   const readers = has('impact.verdict=fallVerdict(impact,S)', "t2:V?V.t:''", 'function landRow()', 'impactRow(),...landRow()', 'ok(recoveryRule())', 'planImp.v.text', "['recovery','Recovery zones", 'recoveryZone(atlasU(x,y)');
