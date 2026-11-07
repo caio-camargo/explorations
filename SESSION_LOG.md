@@ -6739,3 +6739,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   with no flight while speeding up on Shift (Tellus 1.09 → 0.71 s, Selene 3.42 → 2.15 s to 90 %).
 - **Checks:** space-33 now 14 checks; `--smoke` 736 PASS, none failed. **Next:** rest of E0b (stairs, ladder, gaps,
   lander and rover mocks); walking off from standing still waits ~1 s for its first step (offered to Caio).
+
+## 2026-11-07 — look & sound, astronauts: the game's suits on the EVA lab's walker (Q535, v1.268)
+
+- **What:** Caio asked to put the spacesuit designs on the EVA lab's moving figure. `eva-lab.html` now builds any of
+  the 18 launch suits with `crewFigure` and binds each piece to a bone of the lab's pose (torso, thighs, shins, upper
+  arms, forearms); hoses stretch between bones; a Suit/person picker (default Cape middle). `crewFigure` returns
+  `o.rig` (standing skeleton + pins for Steppe's case, its slung pack, knee pads).
+- **Found on the way:** per-vertex binding tore the torso where the arm hangs against it (29 cm) and threw Arsenal's
+  shin plates to the hand; binding by piece (wrapping crew-look's helpers during the build) fixed it.
+- **Files:** `eva-lab.html`, `app/crew-look.js`, `tests/look.mjs` (aerofx-50), `notes/look.md`, `TESTING.md` (336),
+  `QUEUE.md` (Q535 ✓), `ACTIVE_WORK.md`. Stills: `output/launchpad/mockups/eva-suits/` (machine-local).
+- **Tests:** aerofx-50 passes (the per-vertex version failed it); `--smoke` all passed.
+- **Next:** Caio's look at TESTING 336; spacewalk suits with backpacks come with E1 (Q533). Earlier follow-ups still
+  open: Q455 (crew views), Q534 (faceplate openings), CREW.md 1.0.0 on Caio's word.
