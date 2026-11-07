@@ -927,8 +927,9 @@ function physStep(s,dt){
   const out=new Set(),next=s.events[s.evIdx];
   for(let k=0;k<s.segs.length;k++){const g=s.segs[k],eng=s.parts.filter(p=>p.on&&p.seg===k&&p.d.kind==='engine');
     if(g.ignited&&!g.flamed&&eng.length&&eng.every(p=>groupFuel(s,s.grp[p.i])<=1e-9)){g.flamed=true;out.add(g.label.startsWith('boosters')?'Booster burnout':'Flameout')}
-    // a crossfed segment empties its own tanks while its engines run on: say so when it's the next thing to drop
-    else if(!g.dryNote&&next&&next.decouple.includes(k)&&s.parts.some(p=>p.on&&p.seg===k&&p.cap.fuel)&&segFuel(s,k)<=1e-9){g.dryNote=true;out.add(`${g.label.split(' ')[0]} empty — stage to drop them`)}}
+    // a crossfed segment empties its own tanks while its engines run on: say so when it's the next thing to drop (one burnt
+    // out too is spentCue's, sim/flight.js: the staging row lit and one line, Q538)
+    else if(!g.flamed&&!g.dryNote&&next&&next.decouple.includes(k)&&s.parts.some(p=>p.on&&p.seg===k&&p.cap.fuel)&&segFuel(s,k)<=1e-9){g.dryNote=true;out.add(`${g.label.split(' ')[0]} empty — stage to drop them`)}}
   for(const m of out)HOOK.msg(m);
   for(const p of s.parts)if(p.on&&p.spinT>0){const k=Math.min(dt,p.spinT)/dt;p.L[1]+=k*p.d.spinJ/p.d.burn;p.spinT-=dt;if(p.spinT<=0){p.spinT=0;p.spent=true}}   // spin motors: a pure couple about the axis
   s.thrust=T;

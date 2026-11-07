@@ -603,6 +603,22 @@ function turnFlat(s){const b=s.body;if(!b||!b.atm||s.landed||!s.alive||!(s.thrus
   const was=FLAT_ON.get(s),why=def>TURN_FLAT?'turn':tAp<FLAT_TAP?'level':was==='turn'&&def>TURN_FLAT/2||was==='level'&&tAp<45?was:null;
   if(why)FLAT_ON.set(s,why);else FLAT_ON.delete(s);
   return why?{why,def,tAp}:null}
+// (flow, QUEUE Q538; from Q537) a spent stage still attached: the next staging event is a drop, and everything it would drop
+// is dry (an engine there was lit, none of them can draw fuel, no fuel left in its tanks). Nothing still burning goes with
+// it, and a stage never lit (fuel in it) isn't "spent". A hand flight, launched and off the ground. null, or {i: the event,
+// what: the staging list's name for it, many: them / it}. Q537: the Crewed Lunar's four dry boosters (~10 t) kept through
+// the core's last 62 s level the climb off in the air.
+function spentStage(s){if(!s||!s.alive||s.landed||s.proc||!s.rec||!s.rec.launched)return null;const ev=s.events[s.evIdx];
+  if(!ev||!ev.decouple.length)return null;const drop=s.parts.filter(p=>p.on&&ev.decouple.includes(p.seg));if(!drop.length)return null;
+  const eng=drop.filter(p=>p.d.kind==='engine'&&s.segs[p.seg].ignited);if(!eng.length)return null;
+  if(eng.some(p=>groupFuel(s,s.grp[p.i])>1e-9)||drop.some(p=>(p.res.fuel||0)>1e-6))return null;
+  return{i:s.evIdx,what:s.segs[ev.decouple[0]].label.split(' (')[0],many:ev.radial||ev.decouple.length>1}}
+// the cue: dry for DRY_WAIT s of flight time (a pilot staging at burnout never sees it), then lit until staged; say: the
+// first time for this event on this ship (the one line in the message area, once per stage)
+const DRY_WAIT=2,DRY_C=new WeakMap();
+function spentCue(s){const d=spentStage(s);let c=DRY_C.get(s);if(!c)DRY_C.set(s,c={i:-1,t0:0,said:[]});
+  if(!d){c.i=-1;return null}if(d.i!==c.i){c.i=d.i;c.t0=simT}if(simT-c.t0<DRY_WAIT)return null;
+  const say=!c.said.includes(d.i);if(say)c.said.push(d.i);return{...d,say}}
 let ASC_C={key:null,v:null};
 function ascentEst(stack){const key=JSON.stringify(stack);if(ASC_C.key===key)return ASC_C.v;const v=ascentRun(stack);ASC_C={key,v};return v}
 function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)return out;

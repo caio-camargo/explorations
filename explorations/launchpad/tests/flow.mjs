@@ -1154,3 +1154,63 @@
     same = same && Math.abs(now - 12) < 0.05; rows.push(`dpr ${dpr} RS ${RS}: ${now.toFixed(2)} CSS px (was ${was.toFixed(1)})`); }
   check('flow-48: the helper keeps 12 px type at 12 CSS px at RS 1 and RS 0.35 (dpr 1 and 2); before, it grew to ~34 px at RS 0.35', same, rows.join(' · '));
 }
+
+// flow-49. A cue when a stage still attached has run dry (flow, QUEUE Q538; from Q537). A pilot who keeps the Crewed Lunar's
+// four empty boosters (~10 t) through the core's last 62 s levels off in the air. spentCue (sim/flight.js): the next staging
+// event is a drop, everything it drops is dry (a lit engine, none drawing fuel, no fuel left) and has been for 2 s; then
+// the staging list's row lights ("empty: drop them (Space)") and one line goes to the message area, once per stage. Flown on
+// the standard climb (flat by 54, then the ◇): boosters kept (staging only when every engine is out, flow-41's flier), the
+// cue comes ~2 s after their burnout, names them and clears when staged; staged as designed it never shows; a drop that
+// would take a burning engine with it, or a next event that drops nothing, gets none. Never stages by itself.
+{
+  const T = api.TELLUS, D = 180 / Math.PI, P = api.PROG, keepProg = structuredClone(P), keepS = api.S, keepT = api.t, F0 = api.FLEET.slice();
+  const keepNews = api.HOOK.news; api.HOOK.news = () => {};
+  const fly = (Pn, designed, at) => { api.t = 0; const s = api.newShip(api.PRESETS[Pn]); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+    let n = 0, out = 'lost', on = 0, longest = 0, raw = null, cue = null, says = 0, auto = 0; const R = { s };
+    while (s.alive && n++ < 300000) { const h = len(s.r) - T.R, f = api.localFrame(s.r), G = api.turnGuide(s), pad = h < 2000 && !G;
+      const own = G ? G.ph === 'climb' : h < T.atm, x = Math.min(1, Math.max(0, (h - 286) / (54000 - 286))), p = 90 * (1 - Math.pow(x, 0.6)) / D;
+      const Y = own ? norm(add(mul(f.e, Math.cos(p)), mul(f.up, Math.sin(p)))) : G ? G.u : norm(sub(s.v, api.surfVel(T, s.r))), X = norm(cross(Y, f.n));
+      s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; s.throttle = G && G.ph === 'coast' ? 0 : G || pad || h < T.atm ? 1 : 0;
+      const el = elements(s.r, s.v, T.mu); if (!G && el.pe - T.R > T.atm) { out = 'orbit'; break; }
+      if (!G && !pad && dot(s.v, s.r) < 0 && h < T.atm * 0.9) { out = 'fell'; break; }
+      if (s.evIdx < s.events.length && s.throttle > 0 && (api.activeEngines(s).length === 0 || designed && api.dvRemaining(s).cur <= 0.5)) api.stage(s);
+      const e0 = s.evIdx; api.advPhys(s); if (s.evIdx !== e0) auto++;   // the sim staging by itself (it mustn't)
+      const d = api.spentStage(s), c = api.spentCue(s);
+      if (d && !raw) raw = { t: api.t, i: d.i, h };
+      if (c) { on += api.DT; longest = Math.max(longest, on); if (c.say) says++; if (!cue) cue = { t: api.t, ...c }; } else on = 0;
+      if (at && at(s, R, d, c)) break; }
+    return Object.assign(R, { out: s.alive ? out : 'burned up', longest, raw, cue, says, auto, left: api.dvRemaining(s).tot }); };
+  // boosters kept: the cue lit for 5 s, then the pilot stages; 5 s on, done
+  const K = fly('Crewed Lunar', false, (s, R, d, c) => {
+    if (c && !R.lit) R.lit = { t: api.t, ev: s.evIdx };
+    if (R.lit && !R.staged && api.t - R.lit.t > 5) {   // before staging: a next event that drops nothing gets no cue
+      const ev = s.events[s.evIdx]; s.events[s.evIdx] = { ...ev, decouple: [] }; R.noDrop = api.spentStage(s); s.events[s.evIdx] = ev;
+      R.staged = { t: api.t, ev: s.evIdx, what: s.segs[ev.decouple[0]].label }; api.stage(s); R.after = api.spentCue(s); }
+    if (R.staged && !R.cleared && api.t - R.staged.t > 0.5) R.cleared = { cue: api.spentCue(s), ev: s.evIdx };
+    return R.staged && api.t - R.staged.t > 5; });
+  // a drop that would take a burning engine: as the boosters run dry, one of the four gets 0.5 t back
+  const B = fly('Crewed Lunar', false, (s, R, d) => {
+    if (d && !R.fed) { const tk = s.parts.find(p => p.on && p.seg === s.events[d.i].decouple[0] && p.cap && p.cap.fuel > 0.5); if (tk) { tk.res.fuel = 0.5; R.fed = { t: api.t }; } }
+    if (R.fed) { const e = s.events[s.evIdx]; R.burning = R.burning || api.activeEngines(s).some(p => e.decouple.includes(p.seg)); }
+    return R.fed && api.t - R.fed.t > 8; });
+  const S0 = fly('Crewed Lunar', true);
+  // physStep's old one-liner ("boosters empty — stage to drop them") now only for a crossfed group whose engines run on
+  // (the Asparagus), so a burnt-out stage gets one line, not two
+  const keepMsg = api.HOOK.msg, M = []; api.HOOK.msg = m => M.push(m);
+  const K2 = fly('Crewed Lunar', false, () => api.t > 110), kM = M.splice(0), A = fly('Asparagus', false, () => api.t > 60), aM = M.splice(0);
+  api.HOOK.msg = keepMsg;
+  const one = !kM.some(m => /stage to drop them/.test(m)) && kM.includes('Booster burnout') && K2.says === 1 && aM.some(m => /^boosters empty — stage to drop them$/.test(m)) && A.says === 0;
+  const kept = K.raw && K.cue && K.cue.i === 1 && K.cue.what === 'boosters ×4' && K.cue.many && K.cue.t - K.raw.t <= 3 && K.says === 1
+    && K.staged && K.staged.ev === 1 && !K.after && K.cleared && !K.cleared.cue && K.noDrop === null && K.auto === 0;
+  const burn = B.fed && B.burning && B.longest === 0 && B.says === 0;
+  const designed = S0.out === 'orbit' && S0.longest <= 2 && S0.says === 0 && S0.auto === 0;
+  const H = html, ui = H.includes('function dryHint(){const c=S&&mode===\'flight\'?spentCue(S):null') && H.includes('empty — Space drops ${c.many?\'them\':\'it\'} (stage ${c.i+1})')
+    && H.includes('else if(!g.flamed&&!g.dryNote&&next&&next.decouple.includes(k)') && one
+    && H.includes('<div class="dryc">empty: drop ${dry.many?\'them\':\'it\'} (Space)</div>') && /\.stg\.dry\{[^}]*var\(--warn\)/.test(H) && H.includes('hlGauges();dryHint();');
+  check('flow-49: a spent stage still attached: kept, the Crewed Lunar\'s dry boosters get the cue within ~2 s of burnout (named, once), cleared when staged; staged as designed it never shows; none when the drop takes a burning engine or drops nothing; never auto-stages; wired (the lit row, the message)',
+    kept && burn && designed && ui,
+    `kept: boosters dry at ${K.raw ? `${K.raw.t.toFixed(1)} s, ${(K.raw.h / 1e3).toFixed(1)} km` : '—'}, cue ${K.cue ? `at ${K.cue.t.toFixed(1)} s ("${K.cue.what}", stage ${K.cue.i + 1})` : 'never'}, said ${K.says}×, staged at ${K.staged ? K.staged.t.toFixed(1) : '—'} s → cleared ${K.cleared ? !K.cleared.cue : '—'}, no-drop event ${K.noDrop === null ? 'quiet' : 'cued'}`
+      + ` · one booster fed 0.5 t: burning ${!!B.burning}, cue ${B.longest.toFixed(1)} s · staged as designed: ${S0.out}, ${S0.left.toFixed(0)} m/s left, cue at most ${S0.longest.toFixed(1)} s · auto-staged ${K.auto + B.auto + S0.auto} · messages kept: ${kM.join(" / ")}; Asparagus: ${aM.filter(m => /empty/.test(m)).join(" / ") || "none"} · wired ${ui}`);
+  api.HOOK.news = keepNews; for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
+  api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
+}
