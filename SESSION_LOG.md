@@ -6712,6 +6712,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   CREW.md (0.3.2), TESTING (335), QUEUE (Q532 ✓, Q455 lead, a Proposed line), ACTIVE_WORK.
 - **Next:** Caio's look at TESTING 335 / the studio sheet; Q455 (the crew views) to see the head in the game's light;
   clean faceplate openings (Proposed); CREW.md says it goes to 1.0.0 when the head is built: Caio's call.
+- **Follow-up:** the studio page needs serving (reads `app/gl.js`), so it failed from `file://`; it now says so, and the README notes it (d0aa360). Caio's verdict on TESTING 335: fine for now, maybe revisit. CREW.md stays at 0.3.2.
 
 ## 2026-11-06 — space session: EVA E0a feel pass (Q531, v1.265)
 
