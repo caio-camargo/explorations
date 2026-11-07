@@ -67,8 +67,10 @@ function advanceDays(d,halt){if(!(d>0))return;const t0=PROG.day,t1=t0+d;
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
-// fast → the stacking days in missionTick. Epochs, the date and finishing jobs are actions, not flags.
-const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false,log:false,record:false},TEST_FUNDS=1e5;
+// fast → the stacking days in missionTick, fuel → physStep's tank draw and rcsStep's gas (Q542). Epochs, the date and
+// finishing jobs are actions, not flags; so is a start in orbit (placeCraft, sim/space.js): its flight has R.tester and
+// earns nothing (missionTick skips the career's checks; missionEnd discards it whole, as a revert).
+const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false,log:false,record:false,fuel:false},TEST_FUNDS=1e5;
 // the tester's log (QUEUE Q265, PLAYTEST #65): with TEST.log on, logEv(kind, text) keeps a line (sim time, world day) in LOG
 // and hands it to HOOK.log (app/testlog.js: the panel, the console, the download). Off, it returns at once, so the SIM
 // can call it anywhere. Kinds: stage, contact, heat, pay, msg, destroyed, news, money, contract, mission, save, tester.
@@ -274,7 +276,9 @@ function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,b
 function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
   return{ok:worst<=1,worst,p:wp}}
-function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.sim&&R.launched&&phys)R.simS=(R.simS||0)+dt;if(R.launched)stagedTick(s,R);   // economy: staged pay
+function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
+  if(R.tester){if(s.leaks)leakTick(s,dt,phys);if(s.alive||s.fragIn)fragPass(s,dt);return}   // a tester start (Q542): the hazards, none of the pay, logbook or missions
+  if(R.sim&&R.launched&&phys)R.simS=(R.simS||0)+dt;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
   if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
@@ -456,7 +460,9 @@ function simEnd(s){const R=s&&s.rec;if(!R||!R.sim||R.ended)return null;const run
   out.days=out.launched?Math.max(SIM_MIN_D,out.hours/SIM_DAY_H):0;advanceDays(out.days);
   if(out.launched){const k=s.stack?designKey(s.stack):'?';PROG.simH=PROG.simH||{};PROG.simH[k]=(PROG.simH[k]||0)+out.hours}
   HOOK.save();return out}
-function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
+  if(R&&R.tester&&!R.ended){missionDiscard(s);HOOK.msg('Tester start over: nothing from it is kept');HOOK.save();return null}   // (Q542) a tester start: put back as before it, dummy and all
+  if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)

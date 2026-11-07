@@ -1121,8 +1121,8 @@ function rcsStep(s,dt,tauB){const J=s.rcs&&rcsJets(s);s.rcsFire=0;s.rcsShots=[];
   for(let j=0;j<n;j++){const z=J.N[j];J.acc[j]+=Math.min(1,duty[j]);if(J.acc[j]<1){if(duty[j]===0)J.acc[j]=0.5;continue}J.acc[j]-=1;
     const dm=z.F*dt/(z.isp*G0)/1000;if(gas-used<dm)continue;used+=dm;s.rcsFire++;s.rcsShots.push(j);
     addF(z.p,z.d[0]*z.F,z.d[1]*z.F,z.d[2]*z.F,z.at[0],z.at[1],z.at[2])}
-  // gas out of the fullest bottles first
-  for(const p of s.parts.filter(p=>p.on&&p.res.gas>0).sort((a,b)=>b.res.gas-a.res.gas)){if(used<=0)break;const x=Math.min(used,p.res.gas);p.res.gas-=x;used-=x}}
+  // gas out of the fullest bottles first (none with the tester's infinite fuel, Q542)
+  if(!(TEST.on&&TEST.fuel))for(const p of s.parts.filter(p=>p.on&&p.res.gas>0).sort((a,b)=>b.res.gas-a.res.gas)){if(used<=0)break;const x=Math.min(used,p.res.gas);p.res.gas-=x;used-=x}}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
 function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c.p.dis&&t!=null)(PROG.disDone=PROG.disDone||[]).push({posted:c.posted,t});PROG.active.splice(i,1);income(c.p.pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);sat.imgs++;
@@ -1167,3 +1167,69 @@ function satTick(d,R,dd=d){satPowTick(d);stationTick(d);const sats=satsUp().filt
         let b=(q.pendB||0)+linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))*SAT_STEP*satDuty(q);
         while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;q.owe=(q.owe||0)+IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
         q.pendB=q.pending.length?b:0;break}}}}
+// ---- tester starts (QA + space, QUEUE Q542, PLAYTEST #148): a craft put where a flight would have taken it, to practise
+// rendezvous, docking and satellite work without flying the climb. placeCraft(s, spec) works on a fresh newShip and
+// nothing else (bar a target dummy it registers on request), so Q452 (simulate a leg) can reuse it. spec: {body (name),
+// where: 'orbit' | 'beside' | 'landed' | 'soi', alt (m; for 'soi' the flyby's periapsis), inc, lan, u (degrees: the
+// plane, its node, where on it), drop (stages to drop, null: placeAuto), target ('dummy' or a registry id), behind (m),
+// lat, lon (degrees, landed), T (program time at the flight's t = 0)}. Returns {ok, why, drop, target}.
+const PLACE_ALT={Tellus:200e3,Selene:30e3,Nyx:20e3},PLACE_BEHIND=3000,PLACE_GAP=100e3;
+// the design's burns in order (dvPlan's steps with Δv, vacuum; dvA the first at sea level) and the event each starts on
+function placeSteps(stack){const s=newShip(stack),v=dvPlan(s,0).filter(x=>x.dv>0.5),a=dvPlan(s,1).filter(x=>x.dv>0.5);
+  return v.map((x,i)=>({ev:x.ev,dv:x.dv,dvA:a[i]?a[i].dv:x.dv,m0:x.m0}))}
+// the Δv spent before the craft is where it starts: the climb to orbit (the logbook's, else DV_ORBIT_EST), then for a
+// moon the Hohmann transfer, the capture onto the orbit (or the flyby: none) and for a landing the descent
+function placeNeed(B,where,alt){const L=PROG.log&&PROG.log.orbit,n0=L&&L.v>0?L.v:DV_ORBIT_EST;if(!B||!B.parent)return n0;
+  const P=B.parent,r0=P.R+(P.atm||0)+1e5,r1=B.orb.a,vc1=Math.sqrt(P.mu/r1),dv1=Math.sqrt(P.mu/r0)*(Math.sqrt(2*r1/(r0+r1))-1),vinf=Math.abs(vc1-vc1*Math.sqrt(2*r0/(r0+r1)));
+  if(where==='soi')return n0+dv1;const rp=B.R+(where==='landed'?20e3:alt||PLACE_ALT[B.name]||20e3),vc=Math.sqrt(B.mu/rp),cap=Math.sqrt(vinf*vinf+2*B.mu/rp)-vc;
+  return n0+dv1+cap+(where==='landed'?vc*1.05:0)}
+// how many stages to drop: every one whose Δv is all spent before that point; the stage burning when it's reached stays
+// (full: the tester's fuel is not rationed), and the last stage with Δv always stays
+function placeAuto(steps,need){let c=0,k=0;for(let i=0;i<steps.length;i++){c+=i?steps[i].dv:steps[i].dvA;if(c<=need+1e-6)k=i+1;else break}return Math.min(k,Math.max(0,steps.length-1))}
+// drop the first k stages as staging would (their parts off, the next stage lit, fairings on the way gone), without debris
+function placeDrop(s,k){const st=placeSteps(s.stack);k=clamp(Math.round(+k)||0,0,Math.max(0,st.length-1));if(!k)return 0;const to=st[k].ev;
+  for(let i=s.evIdx;i<to&&i<s.events.length;i++){const e=s.events[i];for(const g of e.decouple)for(const p of s.parts)if(p.seg===g)p.on=false;
+    for(const g of e.ignite)if(s.segs[g])s.segs[g].ignited=true;for(const j of e.fair||[]){const p=s.parts[j];if(p&&p.on&&p.profF){p.fj=true;p.xm=0}}}
+  s.evIdx=Math.max(s.evIdx,to);geom(s);rebuildShape(s);s.foot=null;return k}
+// a circular orbit of B: radius B.R + alt, inclination, node and argument of latitude in degrees (addBody's convention:
+// prograde +X → −Z, +Y north)
+function placeCirc(B,alt,inc=0,lan=0,u=0){const r=B.R+alt,V=Math.sqrt(B.mu/r),D=Math.PI/180,cO=Math.cos(lan*D),sO=Math.sin(lan*D),cw=Math.cos(u*D),sw=Math.sin(u*D),ci=Math.cos(inc*D),si=Math.sin(inc*D);
+  return[mul([cO*cw-sO*sw*ci,sw*si,-(sO*cw+cO*sw*ci)],r),mul([-cO*sw-sO*cw*ci,cw*si,-(-sO*sw+cO*cw*ci)],V)]}
+// in free flight at r, v about B, nose prograde, belly (+X) up
+function placePose(s,B,r,v){const pro=norm(v),up=norm(sub(norm(r),mul(pro,dot(norm(r),pro))));
+  Object.assign(s,{body:B,r:r.slice(),v:v.slice(),q:qFromBasis(up,pro,cross(up,pro)),w:[0,0,0],landed:false,throttle:0,sas:true,restT:0,inContact:false,tipped:null});s.pf=toPF(B,s.r,simT)}
+// approaching a moon: a hyperbola about it with the transfer's arrival speed (a Hohmann from its parent's low orbit),
+// periapsis alt above it, its plane the moon's orbit tilted by inc about the approach, started PLACE_GAP outside the
+// sphere; in the parent's frame, as a transfer is flown. Returns [r, v] about B.parent at flight time t.
+function placeSOI(B,alt,inc,t){const P=B.parent,[RB,VB]=bodyRel(B,t),mu=B.mu,rp=B.R+alt,a1=len(RB),r0=P.R+(P.atm||0)+1e5,
+    vinf=Math.max(150,len(VB)-Math.sqrt(P.mu/a1)*Math.sqrt(2*r0/(r0+a1))),e=1+rp*vinf*vinf/mu,al=Math.atan2(e-1/e,Math.sin(Math.acos(-1/e))),
+    X=norm(mul(VB,-1)),N0=norm(cross(RB,VB)),D=inc*Math.PI/180,N=norm(add(mul(N0,Math.cos(D)),mul(cross(X,N0),Math.sin(D)))),Y=cross(N,X),
+    Pv=sub(mul(X,Math.cos(al)),mul(Y,Math.sin(al))),Qv=cross(N,Pv),rP=mul(Pv,rp),vP=mul(Qv,Math.sqrt(mu*(1+e)/rp)),R1=soiAt(B,t)+PLACE_GAP;
+  let lo=0,hi=600;while(len(kepler(rP,vP,-hi,mu)[0])<R1&&hi<1e8)hi*=2;
+  for(let k=0;k<80;k++){const m=(lo+hi)/2;if(len(kepler(rP,vP,-m,mu)[0])<R1)lo=m;else hi=m}
+  const[r,v]=kepler(rP,vP,-hi,mu);return[add(r,RB),add(v,VB)]}
+// standing upright on B at lat, lon (degrees; lon as sitePlace reads it, 180 = Selene's near side), legs down
+function placeLand(s,B,lat,lon){const D=Math.PI/180,la=lat*D,lo=lon*D,u=[Math.cos(la)*Math.cos(lo),Math.sin(la),Math.cos(la)*Math.sin(lo)];
+  for(const p of s.parts)if(p.on&&p.d.kind==='leg'){p.dep=true;p.depT=simT}s.foot=null;geom(s);
+  let yb=s.yBot;const pts=footPoints(s);if(pts.length){yb=Infinity;for(const f of pts)yb=Math.min(yb,f.pt[1]);yb-=s.cm[1]}
+  const f=siteFrame(u);Object.assign(s,{body:B,pf:mul(u,B.R+groundAlt(B,mul(u,B.R))-yb),qLocal:qFromBasis(f.e,f.up,f.s),landed:true,throttle:0,restT:0,inContact:false,tipped:null,landedAt:simT});s.foot=null;syncLanded(s)}
+// a docking target for 'beside': the Docking preset minus its first stage, on the orbit asked for, in the register
+function placeDummy(B,alt,inc,lan,u,T){const d=newShip(PRESETS.Docking);placeDrop(d,placeSteps(d.stack).length-1);const[r,v]=placeCirc(B,alt,inc,lan,u);placePose(d,B,r,v);
+  const R={T,open0:[],crewed:false},n0=HOOK.news;HOOK.news=()=>{};try{satRegister(d,R)}finally{HOOK.news=n0}
+  const q=(PROG.sats||[]).find(x=>x.id===R.satId);if(q)q.name=`Target dummy ${q.id}`;return q||null}
+function placeCraft(s,spec){const B=BODIES.find(b=>b.name===spec.body)||TELLUS,where=spec.where||'orbit',T=spec.T??progT(s),
+    alt=+(spec.alt??PLACE_ALT[B.name]??50e3),inc=+(spec.inc||0),lan=+(spec.lan||0),u=+(spec.u||0),floor=B.R+(B.atm||MOON_PE+bodyTop(B));
+  if(!isFinite(alt)||!isFinite(inc))return{ok:false,why:'altitude and inclination are numbers'};
+  if(where!=='landed'&&where!=='soi'&&B.R+alt<=floor)return{ok:false,why:`${B.name}: above ${Math.ceil((floor-B.R)/1e3)} km, clear of ${B.atm?'the air':'the ground'}`};
+  if(where!=='landed'&&where!=='soi'&&B.parent&&B.R+alt>=0.8*B.soiMin)return{ok:false,why:`${B.name}: below ${Math.floor((0.8*B.soiMin-B.R)/1e3)} km, inside its sphere`};
+  if((where==='landed'||where==='soi')&&!B.parent)return{ok:false,why:where==='landed'?'land on a moon (Tellus has the pad)':'pick a moon to fly into'};
+  if(where==='soi'&&!(alt>0))return{ok:false,why:'the flyby passes above the ground: altitude > 0'};
+  let tq=null;if(where==='beside'){tq=spec.target!=null&&spec.target!=='dummy'?orbitsAt(B).find(q=>q.id===+spec.target):null;
+    if(spec.target!=null&&spec.target!=='dummy'&&!tq)return{ok:false,why:`no object ${spec.target} in orbit round ${B.name}`}}
+  const steps=placeSteps(s.stack),drop=placeDrop(s,spec.drop==null||spec.drop==='auto'?placeAuto(steps,placeNeed(B,where,alt)):spec.drop);
+  if(where==='landed')placeLand(s,B,+(spec.lat||0),+(spec.lon??180));
+  else if(where==='soi')placePose(s,B.parent,...placeSOI(B,alt,inc,simT));
+  else if(where==='beside'){if(!tq)tq=placeDummy(B,alt,inc,lan,u,T);if(!tq)return{ok:false,why:'the dummy did not register'};
+    const[r,v]=satAt(tq,T);placePose(s,orbBody(tq),...kepler(r,v,-(+spec.behind||PLACE_BEHIND)/len(v),orbBody(tq).mu));s.target=tq.id}
+  else placePose(s,B,...placeCirc(B,alt,inc,lan,u));
+  return{ok:true,why:'',drop,target:tq?tq.id:null,steps:steps.length}}

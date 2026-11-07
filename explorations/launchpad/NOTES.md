@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.36 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -20,7 +20,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 18 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
-| [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 16 |
+| [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 17 |
 
 ---
 
@@ -435,3 +435,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.121 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
 - The satellite-network robot run: M2's finish line (2026-10-13, test bench, QUEUE Q233)
 - Test bench timings: Q19's A/B, Q315 and Q321 on the iGPU (2026-10-13, test bench, QUEUE Q19, Q349, Q373)
+- v1.278 — the tester's infinite fuel and starts in orbit: an *Infinite fuel* flag (tanks and RCS gas never drain, TESTER · ∞ FUEL) and *Start in orbit* (the design minus its climb's stages round Tellus, Selene or Nyx at any altitude and inclination; beside a target or a Docking dummy 3 km behind; landed upright on a moon; entering a moon's sphere), one `placeCraft(s, spec)`; a tester start earns nothing and is discarded at its end (2026-11-07, orchestrator worker, QUEUE Q542, PLAYTEST #148)
