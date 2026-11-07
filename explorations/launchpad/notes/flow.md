@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1551,3 +1551,30 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   window at 1280×720, 1024×600 and 1920×1080, type ≤ 10.5 px, folded one line; the wiring). `node test.mjs --smoke --jobs 2`:
   all passed (311 sections). Screenshots (RTX, 1280×720 window): `scratchpad/q536/{before,after}_{sea,foe}_{modern,notebook}.png`,
   `after_foe_modern_folded.png`, `{before,after}_sea_modern_lowres.png` (RS forced to 0.35). TESTING row 340.
+
+## v1.275 — map overlay text the same size at any render scale (2026-11-07, flow worker, QUEUE Q539; from Q536)
+- **The flaw:** the overlay is drawn in the 3D view's pixels (`W = innerWidth·min(dpr,1.5)·RS`; OV_K scales them to the
+  overlay canvas, Q258), and every size was `N·min(dpr,1.5)`, which ignores RS: when the adaptive resolution drops on a slow
+  GPU (to 0.35) or the graphics setting caps it (`RS_MAX`), every label and mark grew by 1/RS (×2.9 at 0.35). Some marks
+  (cities, ground stations, satellites, the ship, the X, label offsets) had no factor at all and grew the same way.
+- **One helper:** `ovPx(w=W, iw=innerWidth)` (app/render.js) = drawing units per CSS pixel, so `N·ovPx()` is N CSS px at
+  any RS; at RS 1 it equals the old `min(dpr,1.5)`, so nothing changes on a fast GPU at dpr ≤ 1.5. Used by: drawMap (the font,
+  every mark: ship, node and its handles, queued nodes, planets, cities, ground stations, satellites, close approaches, the X,
+  the ghost circle, the label offsets, the label-overlap boxes and the verdict's plate), `atlasOverlay` (powers' names, their
+  welcome line, the biome legend, the readout), `drawEraMap` (the notebook's grid and hatching, the terminal's scanlines, ink
+  widths), `recLegRect` (was its own `W/innerWidth`), the flight markers outside the map (the impact X, satellites' ◇, a landed
+  target's ◇, our craft), the builder's CoM/CoP marks and `BLD`'s overlay (`DPR()`), the rover yard's labels, and the hit
+  radii that must match what's drawn (`near`/`pickOrbit` in app/screens.js, the node-handle drag in app/loop.js).
+- **On a high-dpi screen** (dpr > 1.5) the marks that had no factor are now 1.5× their old device size, i.e. the same CSS size
+  as at dpr 1 (they were drawn smaller there before).
+- **Already right, left alone:** the gauges (`gaugeRect` sizes by `cv.width/cv.clientWidth`, which follows RS); the navball
+  and its ◇ turn marker (their own canvas, `nctx`, a fixed size in CSS); the mission track (its own canvas); the map's
+  double-click pick (`cv.width/cv.clientWidth`); bodyview (its own frame, no labels). Not touched: builder.js's `overlay()` has
+  its `o.save();o.font=…` inside a comment, so its percentages inherit the CoM label's bold 13 px font (harmless; noted only).
+- **Checks:** test `flow-48` (source: no `min(devicePixelRatio…)` left but the 3D view's and overlay canvas's sizes and the
+  mission track's canvas; each overlay drawer goes through `ovPx()`; no fixed-size font in the map's drawers. Computed: from
+  render()'s W formula, 12 px type is 12.00 CSS px at RS 1 and 0.35 at dpr 1 and 2; it was 34.3 at 0.35). flow-47's wiring
+  check now looks for `const c=ovPx()`. `node test.mjs --smoke --jobs 2`: all passed (312 sections; also fixes TESTING's "Next free" left at
+  340 by v1.274). Screenshots (RTX, 1280×720 window, RS forced via `RS_MAX=RS=…`):
+  `scratchpad/q539/{before,after}_{sea_modern,sea_notebook,node_modern}_{rs1,rs035}.png`: before, at 0.35 the verdict, the
+  cities and DUNNZAR are ~3× bigger; after, the rs035 shots match rs1 in size (softer, as expected). TESTING row 341.

@@ -3,6 +3,10 @@
 'use strict';
 // ============================================================ render
 let W=1,H=1;
+// (flow, Q539) the overlay's size unit: its drawing units (the 3D view's pixels, W across) per CSS pixel, so N*ovPx() is N CSS px
+// whatever the adaptive resolution RS does. Every overlay mark and text is sized by it: min(dpr,1.5) alone grew them by 1/RS
+// on a slow GPU (x2.9 at RS 0.35). At RS 1 it is min(dpr,1.5), as before
+function ovPx(w=W,iw=innerWidth){return w/iw}
 // ---- adaptive resolution: GPU timer queries (async, never stall) drive a render-scale multiplier
 const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0,RS_MAX=1;   // RS_MAX: the graphics quality's resolution cap (Settings, flow)
 const GPU_NAME=(()=>{const e=gl.getExtension('WEBGL_debug_renderer_info');const r=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
@@ -231,36 +235,36 @@ function render(){spoolFrame();
   if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
-    octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
+    octx.font=`${12*ovPx()}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     const era=mapEra();if((era===1)!==document.body.classList.contains('paper'))document.body.classList.toggle('paper',era===1);   // the notebook's paper: the HUD switches to ink (flow, evergreen)
-    if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels){L.c=eraInk(era,L.c);if(L.c2)L.c2=eraInk(era,L.c2)}}
-    const texts=[];   // (flow, PLAYTEST #31) label texts are placed after the marks, most useful first, and one that would overlap a placed one is skipped
+    if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](ovPx());for(const L of labels){L.c=eraInk(era,L.c);if(L.c2)L.c2=eraInk(era,L.c2)}}
+    const texts=[],k=ovPx();   // (flow, PLAYTEST #31) label texts are placed after the marks, most useful first, and one that would overlap a placed one is skipped
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;if(L.mark==='sat')mapUI.sats.push({x:s[0],y:s[1],id:L.id});
-      if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
-      else if(L.mark==='qnode'){const k=Math.min(devicePixelRatio||1,1.5);mapUI.qnodes.push({x:s[0],y:s[1],k:L.k});octx.strokeStyle=L.c;octx.lineWidth=2*k;octx.beginPath();octx.arc(s[0],s[1],5.5*k,0,7);octx.stroke();octx.beginPath();octx.arc(s[0],s[1],2*k,0,7);octx.fill()}   // (flow, Q157) a queued node
-      else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=L.k?null:s;mapUI.handles=[];
+      if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7*k);octx.lineTo(s[0]+6*k,s[1]);octx.lineTo(s[0],s[1]+7*k);octx.lineTo(s[0]-6*k,s[1]);octx.closePath();octx.fill()}
+      else if(L.mark==='qnode'){mapUI.qnodes.push({x:s[0],y:s[1],k:L.k});octx.strokeStyle=L.c;octx.lineWidth=2*k;octx.beginPath();octx.arc(s[0],s[1],5.5*k,0,7);octx.stroke();octx.beginPath();octx.arc(s[0],s[1],2*k,0,7);octx.fill()}   // (flow, Q157) a queued node
+      else if(L.mark==='node'){const HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=L.k?null:s;mapUI.handles=[];
         for(const[d,axis,sign]of L.axes){const q=project(add(L.p,mul(d,cam.mDist*0.06)));let ux=q?q[0]-s[0]:0,uy=q?q[1]-s[1]:0,ul=Math.hypot(ux,uy);
           if(ul<1e-3){ux=sign;uy=0;ul=1}ux/=ul;uy/=ul;const hx=s[0]+ux*40*k,hy=s[1]+uy*40*k;mapUI.handles.push({x:hx,y:hy,ux,uy,axis,sign});
           let dx=hx,dy=hy;if(hDrag&&hDrag.h.axis===axis&&hDrag.h.sign===sign){const off=(hDrag.cur[0]-hDrag.h.x)*ux+(hDrag.cur[1]-hDrag.h.y)*uy;dx=hDrag.h.x+ux*off;dy=hDrag.h.y+uy*off}
           octx.strokeStyle=HC[axis];octx.lineWidth=1.5*k;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(dx,dy);octx.stroke();
           octx.fillStyle=HC[axis];octx.beginPath();octx.arc(dx,dy,(sign>0?6:4.5)*k,0,7);sign>0?octx.fill():(octx.lineWidth=2*k,octx.stroke())}
         octx.fillStyle=L.c;octx.strokeStyle='#fff';octx.lineWidth=1.5*k;octx.beginPath();octx.arc(s[0],s[1],7*k,0,7);octx.fill();octx.stroke()}
-      else if(L.mark==='city'){octx.beginPath();octx.arc(s[0],s[1],2.2,0,7);octx.fill()}
-      else if(L.mark==='gs'){octx.strokeStyle=L.c;octx.lineWidth=1.5;octx.strokeRect(s[0]-3.5,s[1]-3.5,7,7)}
-      else if(L.mark==='sat'){octx.beginPath();octx.moveTo(s[0],s[1]-4);octx.lineTo(s[0]+4,s[1]);octx.lineTo(s[0],s[1]+4);octx.lineTo(s[0]-4,s[1]);octx.closePath();octx.fill()}
-      else if(L.mark==='ca'){octx.strokeStyle=L.c;octx.lineWidth=2;octx.beginPath();octx.arc(s[0],s[1],5,0,7);octx.stroke()}
-      else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
-      else if(L.mark==='planet'){const k=Math.min(devicePixelRatio||1,1.5),r=L.px*k;octx.beginPath();octx.arc(s[0],s[1],r,0,7);octx.fill();
+      else if(L.mark==='city'){octx.beginPath();octx.arc(s[0],s[1],2.2*k,0,7);octx.fill()}
+      else if(L.mark==='gs'){octx.strokeStyle=L.c;octx.lineWidth=1.5*k;octx.strokeRect(s[0]-3.5*k,s[1]-3.5*k,7*k,7*k)}
+      else if(L.mark==='sat'){octx.beginPath();octx.moveTo(s[0],s[1]-4*k);octx.lineTo(s[0]+4*k,s[1]);octx.lineTo(s[0],s[1]+4*k);octx.lineTo(s[0]-4*k,s[1]);octx.closePath();octx.fill()}
+      else if(L.mark==='ca'){octx.strokeStyle=L.c;octx.lineWidth=2*k;octx.beginPath();octx.arc(s[0],s[1],5*k,0,7);octx.stroke()}
+      else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5*k;octx.beginPath();octx.moveTo(s[0]-6*k,s[1]-6*k);octx.lineTo(s[0]+6*k,s[1]+6*k);octx.moveTo(s[0]+6*k,s[1]-6*k);octx.lineTo(s[0]-6*k,s[1]+6*k);octx.stroke()}
+      else if(L.mark==='planet'){const r=L.px*k;octx.beginPath();octx.arc(s[0],s[1],r,0,7);octx.fill();
         if(L.sun){octx.strokeStyle=L.c;octx.lineWidth=1.5*k;octx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4;octx.moveTo(s[0]+Math.cos(a)*r*1.5,s[1]+Math.sin(a)*r*1.5);octx.lineTo(s[0]+Math.cos(a)*r*2.2,s[1]+Math.sin(a)*r*2.2)}octx.stroke()}}
       else if(L.mark==='txt'){}
-      else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
-      else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
-      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
-      if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*Math.min(devicePixelRatio||1,1.5),c:L.c2||L.c,o:0,plate:1})}   // (Q488) a second line under the mark: the landing verdict
+      else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.lineWidth=k;octx.setLineDash([4*k,4*k]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
+      else{octx.beginPath();octx.arc(s[0],s[1],3*k,0,7);octx.fill()}
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10)*k,c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
+      if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*k,c:L.c2||L.c,o:0,plate:1})}   // (Q488) a second line under the mark: the landing verdict
     // (flow, Q536) the Recovery legend's box is taken first, so labels keep off it (and the powers' names keep off the marks'
     // own labels, MAP_PUT); the landing verdict (plate) is never skipped: it takes the first free spot (under the X, lower,
     // above its title; slid aside) and sits on a plate
-    {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k,hit=r=>put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]);texts.sort((a,b)=>a.o-b.o);
+    {const put=[],h=13*k,hit=r=>put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]);texts.sort((a,b)=>a.o-b.o);
       MAP_PUT=[];if(recLegOn(era)){const g=recLegRect();put.push([g.x0,g.y0,g.x1,g.y1])}
       for(const T of texts){const w=octx.measureText(T.t).width+4*k,box=(x,y)=>[x-w/2,y-h+3*k,x+w/2,y+3*k];let r=box(T.x,T.y);
         if(T.plate){const fit=x=>Math.max(w/2+2,Math.min(W-w/2-2,x)),C=[[T.x,T.y],[T.x,T.y+h*1.2],[T.x,T.y-h*3.7],[T.x,T.y+h*2.4]],P=[];
@@ -270,7 +274,7 @@ function render(){spoolFrame();
     if(atlasMode||mapShow('recovery'))atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
   const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll&&!atMC;   // (flow) the builder's markers stay off behind the Program and Debrief panels
   if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx,true3)=>{const s=project(add(pw,qrot(S.q,true3?[0,y-S.cm[1],0]:[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;   // true3: at the real centre of mass, off the axis if it is (vehicle, Q337)
-      const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
+      const k=ovPx(),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
       octx.fillStyle='#000';octx.beginPath();octx.arc(s[0],s[1],8*k,0,7);octx.fill();octx.strokeStyle=c;octx.lineWidth=3*k;octx.beginPath();octx.arc(s[0],s[1],6*k,0,7);octx.stroke();
       octx.fillStyle=c;octx.beginPath();octx.arc(s[0],s[1],2.2*k,0,7);octx.fill();
@@ -279,18 +283,18 @@ function render(){spoolFrame();
     mk(S.ana.ful.ycm,'#ffd84a','CoM',12,true);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
   if(building&&HOOK.edOverlay)HOOK.edOverlay(octx);
   if(mode==='flight'&&view!=='map'&&S.alive&&impact&&toolOK('impact')){const ip=add(bodyPos(impact.b,simT),fromPF(impact.b,impact.pf,simT)),q=project(ip);
-    if(q){const k=Math.min(devicePixelRatio||1,1.5),d=len(sub(ip,shipWorld()));octx.strokeStyle='#ff6b5a';octx.fillStyle='#ff6b5a';octx.lineWidth=2.5*k;
+    if(q){const k=ovPx(),d=len(sub(ip,shipWorld()));octx.strokeStyle='#ff6b5a';octx.fillStyle='#ff6b5a';octx.lineWidth=2.5*k;
       octx.beginPath();octx.moveTo(q[0]-8*k,q[1]-8*k);octx.lineTo(q[0]+8*k,q[1]+8*k);octx.moveTo(q[0]+8*k,q[1]-8*k);octx.lineTo(q[0]-8*k,q[1]+8*k);octx.stroke();
       octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`impact · ${fmtD(d)}`,q[0],q[1]-12*k)}}
-  if(mode==='flight'&&view!=='map'){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();
+  if(mode==='flight'&&view!=='map'){const k=ovPx(),me=shipWorld();
     for(const q of[...satsUp(),...moonSats()]){if(S.rec&&S.rec.satId===q.id)continue;const p=add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),d=len(sub(p,me)),s=project(p),tg=q.id===S.target;if(!s||d>2e5&&!tg)continue;
       octx.fillStyle=tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0';octx.beginPath();octx.moveTo(s[0],s[1]-5*k);octx.lineTo(s[0]+5*k,s[1]);octx.lineTo(s[0],s[1]+5*k);octx.lineTo(s[0]-5*k,s[1]);octx.closePath();
       if(d<300)continue;octx.fill();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${q.name} · ${fmtD(d)}`,s[0],s[1]-10*k)}}
-  if(mode==='flight'&&view!=='map'){const T=tgtOf(S);if(T&&T.landed){const k=Math.min(devicePixelRatio||1,1.5),q=project(add(bodyPos(S.body,simT),T.r));
+  if(mode==='flight'&&view!=='map'){const T=tgtOf(S);if(T&&T.landed){const k=ovPx(),q=project(add(bodyPos(S.body,simT),T.r));
     if(q){octx.fillStyle='#ffb347';octx.beginPath();octx.moveTo(q[0],q[1]-6*k);octx.lineTo(q[0]+6*k,q[1]);octx.lineTo(q[0],q[1]+6*k);octx.lineTo(q[0]-6*k,q[1]);octx.closePath();octx.fill();
       octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${T.q.name} · ${fmtD(len(T.dr))}`,q[0],q[1]-10*k)}}}
   if(mode==='drive')rvLabels(octx,project);
-  if(mode==='flight'&&view!=='map'&&FLEET.length){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
+  if(mode==='flight'&&view!=='map'&&FLEET.length){const k=ovPx(),me=shipWorld();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
   if(view!=='map'&&document.body.classList.contains('paper'))document.body.classList.remove('paper');

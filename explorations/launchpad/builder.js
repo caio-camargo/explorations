@@ -24,7 +24,7 @@ const parentOf=(n,t)=>{for(const c of kids(n)){if(c===t)return n;const r=parentO
 // a payload block (Q416) isn't a part: it lays out as an adapter and the payload's own parts, each pointing back at it (payOf)
 const PAYDEF={key:'pay',kind:'pay',name:'Payload',m:0,h:0},pdef=k=>PARTS[k]||PAYDEF,name=k=>pdef(k).name;
 const dnOf=p=>p&&p.dn?(p.dn.payOf||p.dn):null;   // the design node a part answers to: its payload block, else its own
-const DPR=()=>Math.min(devicePixelRatio||1,1.5);
+const DPR=()=>ovPx();   // (flow, Q539) CSS px in the 3D view's pixels, whatever RS (app/render.js)
 // deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
 const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':null};
 // how a part deploys in flight (flow, QUEUE Q400): the part panel's line and the part card's row

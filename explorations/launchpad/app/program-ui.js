@@ -195,8 +195,8 @@ function atlasInk(era,camW,project,tanY,k){const L=ATLAS.lines;if(!L)return;cons
     o.stroke()}
   o.setLineDash([])}
 // (flow, Q536; from Q488's screenshots) the Recovery layer's legend: compact, bottom right like the biome legend, on a plate;
-// sized in CSS pixels whatever the 3D view's resolution (W/innerWidth: the labels' k doesn't follow RS, so on a slow GPU
-// they grow) and smaller on a short window; a click on it folds it to its title (remembered). recLegLayout is pure, for tests.
+// sized in CSS pixels whatever the 3D view's resolution (ovPx(), app/render.js; since Q539 every map label is too, so on a slow GPU
+// nothing grows) and smaller on a short window; a click on it folds it to its title (remembered). recLegLayout is pure, for tests.
 const REC_LEG=()=>[['home','Ours, no one\'s: trucked'],['reach',`Sea ≤ ${(recoveryReach()/1e3).toFixed(0)} km: our ships`],['friend','Friendly: sent back'],['tense','Tense: back worn'],['hostile','Hostile: kept'],['far','Sea beyond: lost']];
 let recLegShut=(()=>{try{return localStorage.getItem('launchpad-recleg')==='1'}catch(e){return false}})();
 function recLegToggle(){recLegShut=!recLegShut;try{localStorage.setItem('launchpad-recleg',recLegShut?'1':'0')}catch(e){}}
@@ -206,7 +206,7 @@ function recLegLayout(iw,ih,rows,open,tw){const fs=Math.max(8.5,Math.min(10.5,ih
     x=iw-w-10,y=ih-h-10;return{fs,row,pad,sw,title,w,h,x,y}}
 const recLegOn=era=>!era&&mapShow('recovery')&&atlasMode!==1&&!!ATLAS.lines;
 // the legend's box in the 3D view's pixels (the overlay's drawing units), with its layout; mapUI.recLeg for the click
-function recLegRect(){const c=W/innerWidth,o=octx,fo=o.font,rows=REC_LEG(),L=recLegLayout(innerWidth,innerHeight,rows,!recLegShut,(t,f)=>{o.font=`${f*c}px ui-sans-serif,system-ui,sans-serif`;return o.measureText(t).width/c});
+function recLegRect(){const c=ovPx(),o=octx,fo=o.font,rows=REC_LEG(),L=recLegLayout(innerWidth,innerHeight,rows,!recLegShut,(t,f)=>{o.font=`${f*c}px ui-sans-serif,system-ui,sans-serif`;return o.measureText(t).width/c});
   o.font=fo;const r={c,rows,L,x0:L.x*c,y0:L.y*c,x1:(L.x+L.w)*c,y1:(L.y+L.h)*c};mapUI.recLeg=[r.x0,r.y0,r.x1,r.y1];return r}
 function recLegDraw(o,r){const{c,rows,L}=r,fo=o.font,ta=o.textAlign;o.fillStyle='rgba(8,12,18,.72)';o.fillRect(r.x0,r.y0,r.x1-r.x0,r.y1-r.y0);
   o.font=`${L.fs*c}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';const x=r.x0+L.pad*c;let y=r.y0+(L.pad*.5+L.row*.75)*c;
@@ -216,7 +216,7 @@ function recLegDraw(o,r){const{c,rows,L}=r,fo=o.font,ta=o.textAlign;o.fillStyle=
     o.fillStyle='rgba(225,232,240,.9)';o.fillText(l,x+s+L.fs*.5*c,y)}
   o.font=fo;o.textAlign=ta}
 // over every map look: the powers' names on their land, the biome legend (rendered map), and what's under the pointer
-function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=Math.min(devicePixelRatio||1,1.5),ink=c=>era?eraInk(era,c):c,fnt=o.font;
+function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=ovPx(),ink=c=>era?eraInk(era,c):c,fnt=o.font;
   if(!A.lines){o.textAlign='left';o.fillStyle=ink('#cfd8e3');o.fillText(`Atlas: surveying ${(100*A.y/A.H).toFixed(0)}%`,14*k,H-60*k);o.textAlign='center';return}
   o.font=`600 ${11*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='center';
   for(const nm of A.names){if(!nm)continue;const w=atlasW(nm.u);if(!atlasVis(w,camW))continue;const s=project(w);if(!s)continue;const P=POWERS[nm.i];
@@ -235,17 +235,17 @@ function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=
       const t=a.id?`${a.biome[0].toUpperCase()+a.biome.slice(1)} · ${a.power?a.power.name:'unclaimed'} · ${Math.round(a.h).toLocaleString('en')} m`:`Sea · ${Math.round(-a.h).toLocaleString('en')} m deep`;
       const t2=`${deg(a.lat,'N','S')} ${deg(a.lon,'E','W')}`,t3=mapShow('recovery')?`Landing here: ${landingVerdict(TELLUS,pf,{from:recoveryFrom(S)}).text}`:'';   // (Q488) what a landing here would mean
       o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
-      const wd=Math.max(o.measureText(t).width,o.measureText(t2).width,o.measureText(t3).width)+12*k,x=Math.min(m[0]+14*k,W-wd-4),y=m[1]+18*k;
+      const wd=Math.max(o.measureText(t).width,o.measureText(t2).width,o.measureText(t3).width)+12*k,x=Math.min(m[0]+14*k,W-wd-4*k),y=m[1]+18*k;
       o.fillStyle=era===1?'rgba(246,240,222,.92)':'rgba(8,12,18,.82)';o.fillRect(x,y-12*k,wd,(t3?46:32)*k);o.fillStyle=ink('#e6edf5');o.fillText(t,x+6*k,y);o.fillText(t2,x+6*k,y+14*k);if(t3)o.fillText(t3,x+6*k,y+28*k)}}
   o.font=fnt;o.textAlign='center'}
 function eraInk(era,c){const[r,g,b,a]=rgbOf(c),warm=r>g+40&&r>b+40;
   return era===1?(warm?`rgba(176,54,42,${Math.max(.6,a)})`:`rgba(29,42,82,${Math.max(.55,a)})`):(warm?`rgba(214,255,120,${Math.max(.7,a)})`:`rgba(57,255,110,${Math.max(.55,a)})`)}
 const wob=(x,y,i)=>[x+Math.sin(i*1.7+y*.05)*.7,y+Math.cos(i*2.3+x*.05)*.7];   // a hand's tremor, steady from frame to frame
-function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,1.5),o=octx;
+function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
   // the sheet
-  if(era===1){o.fillStyle='#f6f0de';o.fillRect(0,0,W,H);o.strokeStyle='rgba(120,160,210,.28)';o.lineWidth=1;o.beginPath();
+  if(era===1){o.fillStyle='#f6f0de';o.fillRect(0,0,W,H);o.strokeStyle='rgba(120,160,210,.28)';o.lineWidth=k;o.beginPath();
     for(let x=0;x<W;x+=24*k){o.moveTo(x,0);o.lineTo(x,H)}for(let y=0;y<H;y+=24*k){o.moveTo(0,y);o.lineTo(W,y)}o.stroke()}
-  else{o.fillStyle='#020a03';o.fillRect(0,0,W,H);o.fillStyle='rgba(255,255,255,.025)';for(let y=0;y<H;y+=3*k)o.fillRect(0,y,W,1)}
+  else{o.fillStyle='#020a03';o.fillRect(0,0,W,H);o.fillStyle='rgba(255,255,255,.025)';for(let y=0;y<H;y+=3*k)o.fillRect(0,y,W,k)}
   const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
   // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
   for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
@@ -260,7 +260,7 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
     o.stroke();o.shadowBlur=0;
     if(era===1){const sq=project(add(cen,mul(SUN,b.R)));if(sq){let sx=sq[0]-c[0],sy=sq[1]-c[1];const sl=Math.hypot(sx,sy)||1;sx/=sl;sy/=sl;
       o.save();o.beginPath();o.arc(c[0],c[1],rp,0,7);o.clip();o.beginPath();o.rect(c[0]-rp-2,c[1]-rp-2,2*rp+4,2*rp+4);o.clip();
-      o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=1;o.beginPath();
+      o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=k;o.beginPath();
       for(let t=-rp*1.5;t<rp*1.5;t+=6*k){const x0=c[0]+t,y0=c[1]-rp*1.5,x1=c[0]+t+rp*1.2,y1=c[1]+rp*1.5;   // diagonal strokes, kept on the night half
         for(let u=0;u<1;u+=.05){const xa=x0+(x1-x0)*u,ya=y0+(y1-y0)*u,xb=x0+(x1-x0)*(u+.05),yb=y0+(y1-y0)*(u+.05);
           if((xa-c[0])*sx+(ya-c[1])*sy<0&&(xb-c[0])*sx+(yb-c[1])*sy<0){o.moveTo(xa,ya);o.lineTo(xb,yb)}}}

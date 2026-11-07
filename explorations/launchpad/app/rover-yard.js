@@ -157,7 +157,7 @@ function drawRoverScene(drawMesh,camW){const th=bodyTheta(TELLUS,simT),Y=rvYardS
     drawMesh(rvBodyMesh(R.d),modelQ(qW,sub(pW,camW),mul(G.cm,-1)),pW);
     G.wheels.forEach((w,i)=>{const s=R.wh[i],l=R.dep?G.Wk.tr*(1-RV_SAG):s.l,c=add(pW,qrot(qW,sub([w.x,G.yM-l,w.z],G.cm))),q=qmul(qmul(qW,qaxis([0,1,0],w.steer*R.steer)),qaxis([1,0,0],s.spin));
       drawMesh(wm,modelQ(q,sub(c,camW)),c)})}}
-function rvLabels(octx,project){const k=Math.min(devicePixelRatio||1,1.5),Y=rvYardShown();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillStyle='rgba(255,220,160,.9)';
+function rvLabels(octx,project){const k=ovPx(),Y=rvYardShown();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillStyle='rgba(255,220,160,.9)';
   for(const f of RV_YARD){const p=add(bodyPos(TELLUS,simT),fromPF(TELLUS,yardPF(Y,f.x+(f.k==='bank'?2:0),f.k==='bank'?20:9,1.2),simT)),q=project(p);if(q&&len(sub(p,HOOK.view.camW))<400)octx.fillText(f.k==='ramp'?`${f.a}° ramp`:`${f.a}° side slope`,q[0],q[1])}}
 
 // ---- rovers in a flight (R2): deploy from the HUD's Rover row, ] drives one (and the next), [ goes back to the lander.
