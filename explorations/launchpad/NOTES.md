@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -362,6 +362,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.275 — map overlay text and marks the same size at any render scale: one helper, ovPx() (CSS px in the 3D view's pixels), for every map label, mark, node handle, the readout, the notebook/terminal maps, the flight markers, the rover yard and the builder's overlay (2026-11-07, flow worker, QUEUE Q539)
 - v1.276 — a cue when a stage still attached has run dry: the staging list's next row lit amber ("empty: drop them (Space)") and one line, once per stage; never auto-stages; a correction note on v1.272's flier-made claims (2026-11-07, flow worker, QUEUE Q538)
 - v1.277 — a toppled lander on screen (Q508 seen in the game): an "On its side" card says what is out under the hull and why (no sky, no sun, no view) and the damage; the Fleet tab says "on its side"; the map draws no orbit line or "Impact in 1s" for a landed craft (2026-11-07, flow worker, QUEUE Q527)
+- v1.281 — the era maps show the night side: the terminal dims and scanlines it in green with the terminator as a line; the notebook hatches the true night region, not a half-disc (2026-11-07, orchestrator worker, QUEUE Q546, PLAYTEST #152)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -414,6 +415,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
 - v1.172 — a falling stage under its chutes, its splash, and the waterline (2026-10-13, effects beat, QUEUE Q335)
 - v1.174 — the effects' sounds: crack and groan, venting hiss, the splash, the blackout's edges (2026-10-13, effects beat, QUEUE Q363, Q362)
+- v1.280 — the landing dust is round, not a square: windowed to zero inside its raymarch box (it summed into a pale square at the box's sides); the splash in air too (2026-11-07, orchestrator worker, QUEUE Q543, PLAYTEST #149)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

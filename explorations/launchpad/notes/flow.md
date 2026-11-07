@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1638,3 +1638,23 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   craft listing nothing; the wiring of the card, the Fleet tab, the map, TIP_NO). Screenshots (RTX):
   `scratchpad/q527/b/eval_{2,4,5,6,10}.png` before (the default view, low side, end-on, from above, the map with "Impact in
   1s"), `scratchpad/q527/c/eval_{2,10,14}.png` after (the card, the map clean, the Fleet tab). TESTING row 343.
+
+## v1.281 — the era maps show the night side (2026-11-07, orchestrator worker, QUEUE Q546; PLAYTEST #152)
+
+- **Asked:** Caio: "the monochrome computer display on the map doesn't include a terminator/indication of which side is
+  night".
+- **Cause:** `drawEraMap`'s terminal style drew each body as a limb circle and a wireframe, with no day or night. The
+  notebook did hatch a night side, but as a half-disc cut through the centre square to the sun's screen direction, which
+  is wrong whenever the sun is in front of or behind the body (a crescent drew as a half).
+- **What changed:** `eraNight(b, cen, c, rp, camW, project)` (app/program-ui.js) finds the night region as the map sees
+  it: the visible arc of the terminator (the great circle square to `SUN`, sampled at 96 points, its ends pushed out to the
+  limb), closed round the limb the dark way (the side of the anti-sun point); none when the terminator is out of view on
+  the day side, the whole disc when it's out of view on the night side. The **terminal** dims its wireframe there
+  (the display's black at 62 %), lays scanlines in its own green at the display's 3-px pitch, and draws the terminator as
+  a glowing green line: one colour, as the era. The **notebook** keeps its pencil hatching (diagonal strokes) but clipped
+  to the same true night region, and pencils the terminator in with the hand's tremor (`wob`). Sized by `ovPx()`.
+  Bodies under 3 px across get none.
+- **Checks:** test `flow-51` (computed with a pinhole camera 10 radii out: the night share of the disc is 0, 11.5, 49.9,
+  88.4, 100 % at sun-camera angles 0°, 45°, 90°, 135°, 180°, against the phase's 0, 14.6, 50, 85.4, 100; the wiring of both
+  styles). Screenshots (RTX): `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/before_map/eval_{3,4,5,6}.png` (no night side), `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/after_map/eval_{3,4,5,6}.png`
+  (Selene and Tellus half and gibbous in shadow on the terminal; the notebook's hatching). TESTING 346.

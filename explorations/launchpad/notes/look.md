@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2408,3 +2408,26 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Test:** `aerofx-50`: all 18 suits posed at their own skeleton come back unmoved; in a long stride (knees and
   elbows bent, a lean) no edge grows by more than 6 cm except a hose's. The per-vertex binding fails it (29 cm).
   TESTING 336.
+
+## v1.280 — the landing dust is round, not a square (2026-11-07, orchestrator worker, QUEUE Q543; PLAYTEST #149)
+
+- **Asked:** Caio, landing on Nyx: "when near the surface, the rocket plume or dust kicked up or something forms a square
+  on the ground".
+- **Cause:** the landing dust (`DUST_FS`, drawn by `drawDust` on an airless body) is raymarched inside a box 3.2 × the
+  reach wide. Its density fell as `exp(-2.6 ρ/reach)`, which never reaches zero: at the box's sides ~1.6 % of the centre's
+  density was left, the sheet there was ~7 m thick, and a ray grazing the ground summed that over tens of metres. The
+  box's square footprint showed as a pale square from above and as a flat-topped pale wall round the lander from a low
+  camera. A cut-off (`if(d<.002)continue`) drew a contour of its own. Reproduced in the game (RTX, `playtest.mjs --eval`):
+  a Wren lander held 4 m and 12 m over Nyx and 4 m over Selene, full thrust.
+- **Fix:** the density is windowed to zero inside the box: radially (smoothstep from 0.75 to 1.5 × the reach; the box's
+  inscribed circle is 1.6 ×) and under its lid (the thickness capped at a quarter of the box height, and a height window
+  to zero at the lid). The cut-off is gone (a `fall` test skips the empty samples instead). Opacity per metre 2.4 → 1.6,
+  so the sheet reads as a sheet and not a white floor. The hot-gas splash on bodies with air (`IMP_FS`) had the same
+  exponential with no window inside its 9-exit-radii box: windowed too (smoothstep from 6 to 9 exit radii). It still
+  fades with height (it starts 30–40 m up) and thrust as before. Cost: the same march; one more smoothstep per sample.
+- **Tellus:** a 4 m hover over the sea showed no splash to judge (the jet barely reaches the water); the window is a
+  safeguard there.
+- **Checks:** test `aerofx-51` (the windows, the lid matching `drawDust`'s box, no cut-off; computed: zero at the box's side
+  and corner, one at half the reach). Screenshots (RTX): `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/before/eval_{2,5,10,15}.png` (Nyx 4 m low and from 110 m
+  up: the square; Nyx 12 m; Selene), `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/after_dust/eval_{2,5,10,15}.png` (the same views: a round sheet, soft rim).
+  TESTING 346.

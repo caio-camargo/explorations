@@ -255,6 +255,20 @@ function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=
   o.font=fnt;o.textAlign='center'}
 function eraInk(era,c){const[r,g,b,a]=rgbOf(c),warm=r>g+40&&r>b+40;
   return era===1?(warm?`rgba(176,54,42,${Math.max(.6,a)})`:`rgba(29,42,82,${Math.max(.55,a)})`):(warm?`rgba(214,255,120,${Math.max(.7,a)})`:`rgba(57,255,110,${Math.max(.55,a)})`)}
+// (Q546, PLAYTEST #152) a body's night side as the era map sees it: the visible arc of the terminator (the great circle
+// square to SUN; screen points, its ends pushed out to the limb) closed round the limb the dark way. null: no night in view;
+// {all:true}: the whole disc is night (the terminator hidden behind the limb, the camera over the dark side)
+function eraNight(b,cen,c,rp,camW,project){const oc=norm(sub(camW,cen)),e1=norm(cross(SUN,Math.abs(SUN[1])<.9?[0,1,0]:[1,0,0])),e2=cross(SUN,e1),N=96,vs=[],ps=[];
+  const none=()=>dot(oc,SUN)>0?null:{all:true,arc:[],poly:[]};
+  for(let i=0;i<N;i++){const t=i/N*6.2832,p=add(cen,add(mul(e1,b.R*Math.cos(t)),mul(e2,b.R*Math.sin(t))));vs.push(dot(sub(p,cen),sub(camW,p))>0);ps.push(p)}
+  const s=vs.findIndex((v,i)=>v&&!vs[(i+N-1)%N]);if(s<0)return none();
+  const arc=[];for(let i=0;i<N&&vs[(s+i)%N];i++){const q=project(ps[(s+i)%N]);if(q)arc.push(q)}if(arc.length<2)return none();
+  const ang=q=>Math.atan2(q[1]-c[1],q[0]-c[0]),rim=a=>[c[0]+rp*Math.cos(a),c[1]+rp*Math.sin(a)],aA=ang(arc[0]),aB=ang(arc[arc.length-1]);
+  arc.unshift(rim(aA));arc.push(rim(aB));
+  const ns=sub(mul(oc,dot(SUN,oc)),SUN),qn=len(ns)>1e-6?project(madd(cen,norm(ns),b.R)):null,an=qn?ang(qn):aB+Math.PI,T=6.2832,md=x=>(x%T+T)%T;
+  const d1=md(aA-aB),up=md(an-aB)<d1,span=up?d1:T-d1,n=Math.max(2,Math.ceil(span/.08)),poly=arc.slice();
+  for(let i=1;i<n;i++)poly.push(rim(aB+(up?1:-1)*span*i/n));
+  return{all:false,arc,poly}}
 const wob=(x,y,i)=>[x+Math.sin(i*1.7+y*.05)*.7,y+Math.cos(i*2.3+x*.05)*.7];   // a hand's tremor, steady from frame to frame
 function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
   // the sheet
@@ -262,7 +276,7 @@ function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
     for(let x=0;x<W;x+=24*k){o.moveTo(x,0);o.lineTo(x,H)}for(let y=0;y<H;y+=24*k){o.moveTo(0,y);o.lineTo(W,y)}o.stroke()}
   else{o.fillStyle='#020a03';o.fillRect(0,0,W,H);o.fillStyle='rgba(255,255,255,.025)';for(let y=0;y<H;y+=3*k)o.fillRect(0,y,W,k)}
   const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
-  // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
+  // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude; both mark the night side (Q546)
   for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
     const rp=(H/2)*Math.tan(Math.asin(b.R/d))/tanY;if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
     o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k*OV_K}   // shadowBlur ignores the transform (Q258)
@@ -273,13 +287,19 @@ function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
     if(era===2){for(let la=-60;la<=60;la+=30)line(t=>P(la*Math.PI/180,t*6.2832),64);for(let lo=0;lo<360;lo+=30)line(t=>P((t-.5)*Math.PI,lo*Math.PI/180),48)}
     else line(t=>P(0,t*6.2832),64);   // the notebook just pencils in the equator
     o.stroke();o.shadowBlur=0;
-    if(era===1){const sq=project(add(cen,mul(SUN,b.R)));if(sq){let sx=sq[0]-c[0],sy=sq[1]-c[1];const sl=Math.hypot(sx,sy)||1;sx/=sl;sy/=sl;
-      o.save();o.beginPath();o.arc(c[0],c[1],rp,0,7);o.clip();o.beginPath();o.rect(c[0]-rp-2,c[1]-rp-2,2*rp+4,2*rp+4);o.clip();
-      o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=k;o.beginPath();
-      for(let t=-rp*1.5;t<rp*1.5;t+=6*k){const x0=c[0]+t,y0=c[1]-rp*1.5,x1=c[0]+t+rp*1.2,y1=c[1]+rp*1.5;   // diagonal strokes, kept on the night half
-        for(let u=0;u<1;u+=.05){const xa=x0+(x1-x0)*u,ya=y0+(y1-y0)*u,xb=x0+(x1-x0)*(u+.05),yb=y0+(y1-y0)*(u+.05);
-          if((xa-c[0])*sx+(ya-c[1])*sy<0&&(xb-c[0])*sx+(yb-c[1])*sy<0){o.moveTo(xa,ya);o.lineTo(xb,yb)}}}
-      o.stroke();o.restore()}}}
+    // (Q546, PLAYTEST #152) the night side, clipped to where it really is (eraNight): the terminal dims its wireframe there,
+    // lays scanlines in its own green and draws the terminator as a glowing line; the notebook hatches it in pencil
+    // (diagonal strokes, as before Q546, but on the true night region, not a half-disc) and pencils the terminator in
+    const nt=rp>=3*k?eraNight(b,cen,c,rp,camW,project):null;
+    if(nt){o.save();o.beginPath();if(nt.all)o.arc(c[0],c[1],rp,0,7);else nt.poly.forEach((q,i)=>i?o.lineTo(q[0],q[1]):o.moveTo(q[0],q[1]));o.closePath();o.clip();
+      if(era===2){o.fillStyle='rgba(2,10,3,.62)';o.fillRect(c[0]-rp-2,c[1]-rp-2,2*rp+4,2*rp+4);o.fillStyle='rgba(57,255,110,.16)';
+        for(let y=Math.floor((c[1]-rp)/(3*k))*3*k;y<c[1]+rp;y+=3*k)o.fillRect(c[0]-rp-2,y,2*rp+4,k)}   // on the display's own scanline pitch
+      else{o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=k;o.beginPath();
+        for(let t=-rp*1.5;t<rp*1.5;t+=6*k){o.moveTo(c[0]+t,c[1]-rp*1.5);o.lineTo(c[0]+t+rp*1.2,c[1]+rp*1.5)}o.stroke()}   // diagonal strokes
+      o.restore();
+      if(nt.arc.length>1){o.beginPath();nt.arc.forEach((q,i)=>{const[x,y]=era===1?wob(q[0],q[1],i):q;i?o.lineTo(x,y):o.moveTo(x,y)});
+        if(era===2){o.strokeStyle='rgba(57,255,110,.85)';o.lineWidth=1.1*k;o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=5*k*OV_K}else{o.strokeStyle='rgba(29,42,82,.4)';o.lineWidth=.9*k}
+        o.stroke();o.shadowBlur=0}}}
   if(atlasMode)atlasInk(era,camW,project,tanY,k);   // coasts and borders (terrain session)
   else if(mapShow('recovery'))atlasInk(era,camW,project,tanY,k);   // (Q488) the Recovery layer in ink: the borders it follows (the welcome is under each name)
   // every line the map computed (orbits, plans, Selene, satellites, impact traces), in two inks
