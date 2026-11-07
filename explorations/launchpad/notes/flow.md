@@ -1468,7 +1468,7 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   (PLAYTEST #124, Q490: only the words here). Q513's mission card can read `impact.verdict` for "recovery pending".
 - **Checks:** test `flow-44` (the verdict on our land, the sea within reach with its hours, sinking first, beyond reach, a
   power's land at three relations, Selene; `recoveryOf` agrees on each; a Sounding flight's verdict predicted at 30 km is the
-  recovery it gets; the readers in the page source). TESTING row 334.
+  recovery it gets; the readers in the page source). TESTING row 337.
 
 ## v1.271 — the warp readout drops "(physics)"; locked levels are dimmed, with why (2026-11-06, flow worker, QUEUE Q511)
 - **Caio (2026-10-31):** "the time adjustor doesn't need to say 'physics' i think, bc physics should hold throughout, levels
