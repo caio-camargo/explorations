@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.19 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.20 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -622,5 +622,7 @@ Not a choice page: a bench. It loads the game's `app/crew-look.js` (and `sim/cor
 draws `crewFigure` in a plain studio light (not the game's mesh shader), to judge the ligne-claire head: `?view=sheet`
 (the five flight-portrait expressions, the roster of eight, the 48 px row and ×3), `heads` (the head alone: front,
 profile, back), `helmets` (all 18 launch suits round the head), `suits` (full figures); `?still` hides the bar. Stills in
-`output/launchpad/mockups/crew-studio/`.
+`output/launchpad/mockups/crew-studio/`. **Serve it, don't open the file**: unlike the other pages it reads the game's
+files, which a browser refuses from `file://` — `python -m http.server 8780` in `explorations/launchpad`, then
+`http://localhost:8780/mockups/crew-studio/`.
 

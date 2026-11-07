@@ -113,5 +113,6 @@ async function main() {
   small.slice(0, 5).forEach((_, i) => c2.drawImage(cv, X48(i), 502, 48, 48, 10 + i * 152, 560, 144, 144));
   document.title += ' (ready)';
 }
-main().catch(e => { document.title += ' ERROR'; document.getElementById('bar').textContent = 'ERROR ' + (e.stack || e); console.error(e) });
+main().catch(e => { document.title += ' ERROR';
+  if (location.protocol === 'file:') { document.getElementById('bar').textContent = 'This page reads the game\'s app/gl.js, which a browser won\'t do from file://. Serve the launchpad folder instead: python -m http.server 8780 (in explorations/launchpad), then open http://localhost:8780/mockups/crew-studio/'; return } document.getElementById('bar').textContent = 'ERROR ' + (e.stack || e); console.error(e) });
 </script></body></html>
