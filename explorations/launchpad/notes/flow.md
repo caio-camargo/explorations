@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1829,3 +1829,166 @@ belly faces east on the pad, W leans that way, the climb upright on the ball) **
   vertical, 10° west, 10° east, 30° east (normal E), 30° west (hidden) all as above. Drawing only; no headless check.
 - **Numbering:** v1.281–v1.283 and TESTING 347–348 were already used on unmerged worker branches (Q543–Q546), so this
   took v1.284 and TESTING 349.
+
+## Plan: Guided (Q491) (2026-11-07, flow worker, QUEUE Q491; PLAYTEST #125, D25, UI.md rules 2, 3, 9, 13; after the aim plan above; plan only)
+
+Caio (#125): "the game is getting complicated". Not a separate tutorial mode: a **Guided** switch on a career that turns the
+first missions into lessons and introduces each system once, when it first matters.
+
+**What exists for onboarding.**
+- **The charter** (v1.163, `app/title.js`): Article 1 whose program, 2 how it starts, 3 how hard (Q476, `PROG.lvl`).
+- **NEXT** (`nextStep()`, sim/next.js): one suggestion above the Program's tabs, with "try the Sounding preset"
+  (`NEXT_PRESET`: weather, loads → Sounding; beeper → Beeper; hop → Passenger; orbiter → Passenger Orbiter). Its order is
+  decisions, accepted contracts, then open missions (a preset's first, then epoch, then the smallest pay).
+- **Mission briefs** (`MISSIONS[].brief`, `win`) on the Missions tab; contract `brief`s on the board.
+- **One-off cockpit hints** (app/cockpit.js): `depHint` (folded parts), `turnHint` (the turn, two lines), `circHint` (coast,
+  burn, "in orbit"), `dryHint` (a dry stage still attached), Q483's flat-turn caution. The ◇ (`turnGuide`) on the navball.
+  Each hint stops for good per **browser** (`launchpad-hint-*` in localStorage), not per career.
+- **The glossary** (v1.175, v1.224, `app/terms.js`): `TERMS` + `term(k)`, one tooltip (`#termTip`, v1.192), part cards and
+  self-explaining warnings in the Assembly (D21, D22). Terms only: no panel says what *it* is for.
+- **The Debrief**: the outcome, the ledger (`R.paid`), firsts, and for a loss one fix line (`debHelp`, sim/debrief.js). Nothing
+  says what went *well*.
+- **Gates that already pace the game:** missions by `req` (weather → beeper; loads → hop → orbiter; beeper → lift1, wxsat, tv);
+  contract types by `CT[].req` (from the start: apex, sample, test, landing, field, aurora; after weather: ballistic; after
+  hop: bioHop, touristHop; after beeper: sat, image, recon, rdv, service; after orbiter: touristOrbit; after lift1: lift,
+  milLift; Selene and stations later); logbook tools by fact (`TOOLS`: impact prediction after the first apex, maneuver
+  planning after the first orbit, encounters after Selene's pull); the terminal look once the beeper flies (`eraOf`);
+  mission control's **C** once something is up or dispatched (`netOpen`); routines by computing era (`AUTO_LADDER`,
+  `COMP_ERAS`: mainframes at year 3); SAS modes by the autopilot part (the gyro has no Prograde). What does **not** pace:
+  the Program's tabs (Industry, Company, World, Fleet show from day one, "Nothing here yet" or full of numbers).
+- **Coming** (the aim plan above): Q547's `conds` per mission and contract, Q548's **Mission card** (✓ ✗ ○ ◐, one message per
+  change), Q549's "This flight is for". The card is the checklist that ticks as you go: Guided adds rows to it, never a
+  second card.
+
+**What Guided changes, and what it never changes.**
+- **Changes:** presentation and pacing only. The order NEXT suggests, a briefing card, extra *how* rows on the Mission card,
+  a lesson line in the Debrief, one introduction card per system, dimmed tabs until introduced, and the hints' memory (per
+  career while Guided is on).
+- **Never changes:** physics, Δv, money, payouts, deadlines, failures, mission and contract rules, what can be flown or
+  accepted. Difficulty is Q476's alone (D25): Guided Hard is a valid career. So a tape, a study and a record don't carry
+  Guided (`tapeV()`, `studyKey` untouched), and the tests prove it.
+- **State:** `PROG.guide = {on, les:{id:'done'|'flown'}, seen:{sysId:day}}`; absent = off (every save from before plays as it
+  did). Code: `sim/guide.js` (the tables and pure predicates) and `app/guide.js` (cards, rows, the help mode).
+- **Picked on the charter**, Article 3's second line: *Guided: the first flights are lessons* ☑. **On by default for a first
+  program** (this browser has never founded one: `launchpad-founded` in localStorage, set by `chooseStart`); after that the
+  last choice, as `resetProgram` keeps the level.
+
+**The lessons.** Each is a **mission** (the program's firsts, not random offers: offers are drawn by seed, and a lesson must
+exist in every career). `LESSONS` (sim/guide.js): `{id, m: mission id, preset, teaches, key, steps:[…]}`. A step has Q547's
+cond shape, `{id, t, state:(S, R)=>'met'|'open', now?, say, fix}`: a *how* row ("stage when the first stage burns out")
+beside the mission's *must* rows (its `conds`, the judge). `say` is the prompt shown when the step becomes the current one; a
+step done out of order still ticks; a missed step never fails anything. A lesson is **done when its mission is**
+(`PROG.done[m]`), whatever the steps say.
+
+| # | Lesson (mission, preset) | Teaches · the one new control | How rows (*must* rows are the mission's `conds`) |
+|---|---|---|---|
+| 1 | **Up and back** (weather, Sounding) | launch, staging, the chute, recovery (Q488's zone) · Space | lit ✓ · staged at burnout ✓ · past 10 km (must) · chute open low ✓ · down intact ✓ · recovered ◐→✓ (must, in `impVerdict`'s words) |
+| 2 | **The first orbit** (beeper, Beeper) | the turn, the coast, circularising · W and the ◇, X, Z | leaned east by 100 m/s ✓ · on the ◇ through max-q ✓ · apoapsis out of the air ✓ · engine cut (X) ✓ · burn on the ◇ at the apoapsis ✓ · periapsis out of the air (must) |
+| 3 | **Built for a number** (loads, Sounding) | the Assembly's checks (max-q, TWR, the stage table); the first edit of a design · hover terms | max-q ≥ 25 kPa (must) · the design changed from the preset (Assembly, before launch) ✓ · max-q read on the Instruments card ✓ |
+| 4 | **A passenger** (hop, Passenger) | g and cabin heat; flight safety's approval · the Rollout's checks | approved (must) · to space (must) · under the g limit (must, `now` in g) · cabin under its limit (must) · chute ✓ · home safe (must) |
+| 5 | **Coming home** (orbiter, Passenger Orbiter) | the deorbit burn, the landing point, recovery zones · retrograde, a node, the map's X | one orbit (must) · a node planned (unlocked by lesson 2's orbit) ✓ · retrograde burn ✓ · the X in a recovery zone ✓ · heat shield first ✓ · home safe within the air (must) |
+| 6 | **A satellite** (wxsat, Satellite) | the payload bench, power in shadow, a polar orbit, deploying · the bench, P | built on the bench ✓ · polar 80–100° (must) · stable (must) · deployed (P) ✓ · powered through the night (must) |
+
+- **Order:** Caio's (#125: a sounding rocket, the first orbit, coming home, a satellite); lessons 3 and 4 sit where they do
+  because `orbiter` requires `hop` requires `loads` (Guided can't skip a `req`). With Guided on, **NEXT** is the first
+  unfinished lesson whose mission is open (else `nextStep()` as today): "**Lesson 2 of 6** The first orbit · try the Beeper
+  preset". Decisions with a deadline still come first.
+- **The briefing card** (office paper, rule 13): on the **Rollout**, above its checks, when the flight's aim (Q549's ticks,
+  else `flightAims`) holds a lesson's mission: the title, *what it teaches* (one line), *the one new control* (a key cap),
+  the rows to come (dim), and, when the lesson has been flown before, last time's first missed step ("last time: the chute
+  opened at 300 m"). Launch or Enter dismisses it; the Mission card's title reopens it. Once Q450 exists, *Simulate first*
+  beside Launch on it.
+- **The cockpit checklist** is Q548's Mission card: the lesson's *how* rows interleaved with the mission's *must* rows. In a
+  critical phase (`cpPhase`) the card folds to **one line, the current step** ("▸ lean the nose east · now 90°"), kept with
+  `CP_CARDS` while Guided is on (question 2); off-phase it shows whole. A step turning ✓ says one line in the message strip,
+  as Q548's conds do. The current step's `say` replaces today's hint for it: `turnHint`'s and `circHint`'s words move into
+  lesson 2's steps, `depHint`'s into lesson 6's. Off Guided the hints stay today's one-offs per browser; a lesson done sets
+  their `launchpad-hint-*` flags, so turning Guided off later doesn't replay them.
+- **The debrief line**: `debLesson(D, R)` under the outcome, from the steps' record (`R.steps[id]` = the time met, filled
+  each tick like `R.apex`). Done: "**Lesson 1 done.** Staged at burnout, chute open at 3.1 km, recovered by our ships"; not
+  done: "4 of 6 steps. Next time: {the first missed step's `fix`}", then `debHelp` as today for a loss. One line.
+
+**The unlock pacing: one card, one highlight.** `GUIDE_SYS` (sim/guide.js): `{id, room, when:()=>bool, t, d, hi}`. `when` is a
+pure read of `PROG` (the gate that already exists, or the first time it matters), `d` two sentences, `hi` the selector lit for
+six seconds (`.hint`, as `depHint` does). `guideTick(room)` on entering a room shows **at most one** card, the first due and
+unseen; the rest wait for the next visit. Desk and Assembly: a slip of paper, dismissed by a click or Enter. Flight: never a
+card, one message line plus the highlight, and never in a critical phase.
+
+| When (the gate) | Room | Introduces · lights |
+|---|---|---|
+| founded | desk | the desk and NEXT · `#progNext` |
+| first B | Assembly | presets and "This flight is for" (Q549) · the preset list |
+| first Rollout | Rollout | the GO/NO-GO checks · `#rollChecks` |
+| first flight's end | Debrief | the ledger, know-how · the ledger |
+| lesson 1 done | desk | **the contract board**: clients pay for flights like this one; the card names one offer a Sounding can do (Q547's `needs`) · the Contracts tab |
+| first logbook fact | desk | the logbook (F): measured facts and the tools they unlock · `#bLog3` |
+| impact prediction unlocked | flight, descending | the X and the recovery zones · the map's X |
+| first ignition failure, or a design with a low-know-how engine | Debrief / Assembly | know-how and the test stand · the Industry tab |
+| beeper done | desk | the terminal (the program has a computer); **mission control (C)** · `#bMC` |
+| sat / image contracts open | desk | orbit contracts (altitude, inclination) · the board |
+| a new SAS mode | flight, off-phase | that mode · its button |
+| maneuver planning unlocked | flight, in orbit | nodes · the map |
+| the first decision | desk | decisions with a deadline · the in-tray |
+| a rival's first | desk | the race and the World tab |
+| mainframes (year 3) / a routine allowed | desk | compute and routines · Industry's Compute, Fleet's Routines |
+| Dispatch first offered | Assembly | dispatch · its button |
+| crew, Selene, stations, rovers | desk | one card each as they open, no lessons |
+
+- **Tabs not introduced yet are dimmed** but click as today (question 1): the read is quiet, nothing is withheld. Turning
+  Guided on mid-career marks seen what the career has already used (an accepted contract, a sat up, a routine, a study).
+- Economy writes the cards for its systems (contracts, know-how, industry, compute, dispatch, the race); flow the rest.
+
+**The "what's this" key (for everyone, Guided or not; with economy).** **?** (Shift+/; H stays the key list and gains a line)
+enters help mode: the cursor shows ?, hovering any element with `data-help` shows its entry in the one tooltip, a click pins
+it, Esc or ? leaves. `HELP` beside `TERMS` (app/terms.js): `{t, d, terms:[k…]}` per panel and control: what it is *for* (the
+decision it serves, rule 2) in two sentences, then its terms as links one level deep (rule 9's limit). In flight, help mode
+pauses the game, as Esc does. Economy writes the entries for its panels (funds, contracts and offers, know-how, the test
+stand, industry, compute, the guess once Q345's slice 4 lands); flow the rest (HUD cards, navball, staging, the map's layers,
+the rooms).
+
+**Switching Guided off mid-career.** Settings → *Guided*, beside Difficulty (off a flight, as `setLevel`). Off stops lesson
+rows, briefing and introduction cards, lights the dimmed tabs and gives NEXT back to `nextStep()`; the Mission card stays (it
+is Q548's). One news line. On again resumes at the first unfinished lesson whose mission is still open (done missions'
+lessons count as done). Nothing else moves: no number, no tape, no record.
+
+**What the robot (`playtest.mjs m1`) checks.** m1 founds a new career, so it now plays Guided (on by default). Add: the
+charter shows Guided ticked; NEXT reads "Lesson 1 of 6"; the briefing card on the Rollout, gone at Launch; on the Sounding
+flight the Mission card's rows tick in order (lit, staged, past 10 km, chute, down, recovered), one message each; during the
+ascent the card is one line; the Debrief has the lesson line; flight 2 on the Beeper ticks all of lesson 2's rows under the
+robot's kick and NEXT moves on; at most one introduction card per room visit (the contract board's after flight 1); no box
+over another at 1280×800 with the slip, the briefing and the one-line step (`PT.boxes`). A new row `guided`: Settings → off
+mid-career (no cards, tabs lit, NEXT as `nextStep`), on again (resumes at the right lesson); **?** over three panels shows
+their entries and Esc leaves; a career founded with Guided off sees today's flow (no card, no lesson line).
+
+**Tests that prove each slice** (test.mjs): every lesson's mission exists and the lesson order respects the `req` chain; each
+step's state over scripted records (met, open, out of order); **Guided changes no number**: a fixture flight bit-identical,
+`tapeV()`, `studyKey`, payouts and deadlines the same with `PROG.guide.on` true and false; NEXT in lesson order with it on and
+`nextStep()` with it off; `guideTick` shows at most one card, each once; every `hi` selector and every `data-help` exists in
+the page source, every `HELP` entry is used, none nested; a save from before has no `guide` and plays as off.
+
+**Slices, in build order.**
+1. **The switch** (flow, S): `PROG.guide`, the charter's line, the first-program default, Settings' toggle, saves. No
+   dependency.
+2. **Lessons as data** (flow + economy, S): `LESSONS` with steps and fixes, `R.steps` on the flight record; tests. After
+   **Q547** (the *must* rows are its `conds`).
+3. **The cockpit checklist** (flow, S–M): lesson rows on the Mission card, the one-line current step in a critical phase,
+   tick messages, the hints moved into steps. After **Q548** and slice 2.
+4. **Briefing, NEXT and the debrief line** (flow, S): NEXT in lesson order, the Rollout's briefing card, `debLesson`. After
+   slice 2; reads **Q549**'s ticks once built (`flightAims` until then).
+5. **One card per system** (flow + economy texts, M): `GUIDE_SYS`, `guideTick`, the highlights, dimmed tabs. After slice 1;
+   needs Q547 only for the contract board's card naming an offer.
+6. **"What's this"** (flow + economy texts, S–M): `HELP`, `data-help`, the ? mode. No dependency: can go first or in
+   parallel; useful with Guided off.
+7. **The robot** (QA, S): m1's Guided checks and the `guided` row; TESTING rows. After 3–5.
+
+**Questions for Caio (each with the default if silent).**
+1. **Systems not introduced yet:** default **dimmed but clickable** (the tab is there, quiet, until its card); or hidden until
+   introduced; or shown as today.
+2. **The dark cockpit in a lesson:** default the Mission card **folds to one line, the current step**, through the ascent
+   and other critical phases (Guided only); or it hides as Q548 says and the message strip alone carries the prompts.
+3. **Lessons 3 and 4** (loads, hop: on the way to coming home, as `orbiter`'s prerequisites): default **short lessons, one
+   new thing each** (the Assembly's checks; g and the Rollout); or plain missions with no lesson.
+4. **Where Guided ends:** default **lessons end with the weather satellite**, and introduction cards keep coming while
+   Guided is on (crew, Selene, stations: one card each, no lessons); or Guided switches itself off after lesson 6.
+5. **Guided and difficulty:** default **independent**: Article 3 keeps its own default (Normal); or a first program with
+   Guided suggests Easy.
