@@ -1214,3 +1214,34 @@
   api.HOOK.news = keepNews; for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
   api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
 }
+
+// flow-50. A toppled lander on screen (flow, QUEUE Q527; from Q508). Seen in the game: it lies on the ground, still, framed;
+// the Debrief and news read right. What read wrong: nothing said which parts the fall put out of use, the Fleet tab didn't
+// say it lies on its side, and the map drew a landed craft's own "orbit" (its ground turning) with "Impact in 1s". Now
+// tipState (sim/flight.js) feeds the flight's "On its side" card: buried antennas, wings, cameras and why each is out (no
+// sky, no sun, no view), alike ones grouped; broken and damaged parts. Its own sim, as vehicle-38's drop (nothing shared).
+{
+  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,fromPF,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,DT,footPoints,tipSpeed,tipState,recNew,len,norm,add,mul,cross,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  Object.assign(D.HOOK, { msg: () => {}, boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
+  const B = D.SELENE, DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)];
+  let u = null; for (let la = -30; la <= 30 && !u; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const w = U(la, lo); if (D.surfaceHit(D.surfaceAt(B, w), w, B) > 0) continue; if (D.terrainSlope(B, w) < 0.02) { u = w; break; } }
+  const des = D.toV2(['sci', 'core', 't1', 'wren']), fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  fd(des.root, 't1').c.push({ k: 'whip', at: { y: 0.5, a: 0, n: 1 }, c: [] }, { k: 'whip', at: { y: 0.5, a: Math.PI, n: 1 }, c: [] }, { k: 'wpanel', at: { y: 0.3, a: 0, n: 1 }, c: [] }, { k: 'wpanel', at: { y: 0.3, a: Math.PI, n: 1 }, c: [] });
+  D.t = 0; const s = D.newShip(des); D.S = s; Object.assign(s, { landed: false, body: B, sas: false, throttle: 0 }); s.rec = D.recNew(); s.rec.launched = true;
+  const vt = D.tipSpeed(s, B.mu / B.R ** 2), fy = Math.min(...D.footPoints(s).map(f => f.pt[1])) - s.cm[1];
+  s.r = D.fromPF(B, D.mul(u, B.R + D.groundAlt(B, u) - fy + 0.2), 0); const up = D.norm(s.r), e = D.norm(D.cross([0, 1, 0], up));
+  s.v = D.add(D.surfVel(B, s.r), D.add(D.mul(up, -1), D.mul(e, 1.5 * vt))); s.q = D.qFromBasis(e, up, D.cross(e, up)); s.w = [0, 0, 0];
+  for (let i = 0; i < 40 / D.DT && s.alive && !s.landed; i++) D.physStep(s, D.DT);
+  const T = D.tipState(s), up0 = D.tipState(D.newShip(des));
+  const w2 = s.parts.find(p => p.on && p.d.key === 'whip' && !p.buried); if (w2) w2.buried = true; const T2 = D.tipState(s); if (w2) w2.buried = false;
+  check('flow-50: a lander on its side says what the fall put out of use: the buried whip (no sky) and wing (no sun), the damaged parts with how much; alike ones grouped; an upright craft lists nothing',
+    s.alive && !!s.tipped && T.under.includes('whip antenna: no sky') && T.under.includes('solar wing: no sun') && T.under.length === 2 && T.broke.length === 0
+      && T.hurt.length === s.tipped.hurt && T.hurt.every(h => /^[a-z ]+ \d+ %$/.test(h)) && T2.under.includes('2 × whip antenna: no sky')
+      && !up0.under.length && !up0.broke.length && !up0.hurt.length,
+    `${s.alive ? `under: ${T.under.join(' · ')}; damaged: ${T.hurt.join(', ') || 'none'}; broken: ${T.broke.join(', ') || 'none'}; both whips: ${T2.under.join(' · ')}` : s.lossWhy}`);
+  const H = html;
+  check('flow-50: wired: the "On its side" card (tipRows), the Fleet tab\'s "on its side", no own trajectory on the map once landed, the blocked line says "drop a stage"',
+    H.includes("{id:'tipped',title:'On its side',rows:()=>tipRows()}") && H.includes('function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);')
+      && H.includes("${q.bodyName}${q.tipped?' · <span class=\"warn\">on its side</span>':''}") && H.includes('if(!S.landed)drawPatches(gateLegs(predCache.p,labels)')
+      && H.includes("TIP_NO=\"It lies on its side: it can't lift off or drop a stage"));
+}
