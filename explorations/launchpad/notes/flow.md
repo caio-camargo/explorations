@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1810,3 +1810,22 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
    says "lost for this flight", never "failed".
 5. **Two ticked jobs that need different orbits:** default: allowed; the first ticked sets the orbit leg, the other's row
    says "needs a different orbit: another flight" and is NO-GO for it.
+
+## v1.284 — east on the navball at launch (2026-11-07, flow, QUEUE Q507; PLAYTEST #140, Caio's (a))
+
+Caio asked for east at the top at launch. The catch (PLAYTEST #140): whichever point is at the top, leaning to it brings
+the ground in from the top, so east up means the whole climb heads-down. He chose (a): **east stays at the bottom** (the
+belly faces east on the pad, W leans that way, the climb upright on the ball) **and says so**.
+
+- **The E at launch:** on the pad, and up the climb (`turnGuide`'s `ph === 'climb'`) while the nose is within 15° of
+  vertical (`dot(Y, up) > 0.966`), the E is 18 px and amber (`#ffb000`, the aircraft symbol's colour) instead of 13 px
+  white. Past 15° it is an ordinary letter again: by then the ◇ and the heading line carry the direction.
+- **Wrong way:** leaning west puts E just behind the ball, where points were never drawn; the launch E stays pinned to the
+  rim up to 15° behind (`sy ≥ −0.27`), so it still says which way to go.
+- **Clipped letters (found looking):** near vertical every compass point sits on the rim, and all four letters were cut
+  in half by the ball's edge (`scratchpad/q507/before_pad.png`). Letters past the rim's inner band are pulled in (8 px,
+  11 px for the big E). This applies at any attitude, not only at launch.
+- **Checked** on the GPU with `shot.mjs` (refView 18 with the HUD shown; the sim frozen, launched, climbing at 150 m/s):
+  vertical, 10° west, 10° east, 30° east (normal E), 30° west (hidden) all as above. Drawing only; no headless check.
+- **Numbering:** v1.281–v1.283 and TESTING 347–348 were already used on unmerged worker branches (Q543–Q546), so this
+  took v1.284 and TESTING 349.

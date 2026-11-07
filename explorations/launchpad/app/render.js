@@ -501,8 +501,14 @@ function drawNavball(){
       for(const[cl,w]of[['rgba(0,0,0,.6)',5],[gc,2.5]]){nctx.strokeStyle=cl;nctx.lineWidth=w;nctx.beginPath();nctx.moveTo(...P(-4,-7));nctx.lineTo(...P(3,0));nctx.lineTo(...P(-4,7));nctx.stroke()}}}
   // the compass points on the horizon: N marked in red (Q254)
   nctx.font='bold 13px ui-monospace,Consolas,monospace';nctx.textAlign='center';nctx.textBaseline='middle';
-  for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const sy=dot(d,Y);if(sy<-0.02)continue;
-    const x=NS/2+dot(d,Z)*Rr,y=NS/2+dot(d,X)*Rr;nctx.lineWidth=3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
+  // (flow, Q507; PLAYTEST #140, Caio's (a)) east stays at the bottom at launch (the belly faces east, W leans that way, the
+  // ground comes in from below), and says so: on the pad and up the climb while the nose is within 15° of vertical, the E
+  // is bigger and amber. Near vertical every point sits on the rim, where the letters were cut in half: pulled inside it.
+  // Leaning the wrong way (west) puts E just behind the ball: it stays on the rim then, up to the 15°, saying where east is
+  const eL=dot(Y,f.up)>0.966&&(S.landed||!!tg&&tg.ph==='climb');
+  for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,eL?'#ffb000':'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const big=eL&&l==='E',sy=dot(d,Y);if(sy<(big?-0.27:-0.02))continue;
+    const ix=dot(d,Z),iy=dot(d,X),ir=Math.hypot(ix,iy),rIn=(Rr-(big?11:8))/Rr,k=ir>rIn||sy<0?rIn/Math.max(ir,1e-3):1,x=NS/2+ix*k*Rr,y=NS/2+iy*k*Rr;
+    nctx.font=`bold ${big?18:13}px ui-monospace,Consolas,monospace`;nctx.lineWidth=big?4:3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
   const ht=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${Math.round(pit)+0}°${tg?` ${guideTxt(tg)}${fl?' ▲':''}`:''}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`,rt=navRefLabel(S,sr);

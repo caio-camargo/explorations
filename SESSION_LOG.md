@@ -6767,3 +6767,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `TESTING.md` (346), `QUEUE.md` (Q530 ✓), `ACTIVE_WORK.md`.
 - **Tests:** `--smoke` (318 sections) all passed; flow-16, space-8/9/34 pass. Headless only, no game run.
 - **Next:** with cruises split-stable, `advanceDays` could move the orbits per day piece (Q526's note); nothing needs it.
+
+## 2026-11-07 — flow (explorations-8f): east on the navball at launch (Q507, v1.284; PLAYTEST #140)
+
+- **Done:** Caio's (a): E stays at the bottom; on the pad and the climb's first 15° it is 18 px amber, kept on the rim
+  when leaning west (it was hidden behind the ball). Found looking: near vertical all four compass letters were cut in
+  half by the rim; pulled inside now, at any attitude.
+- **Checked:** `shot.mjs` on the GPU (lock taken and released): vertical, 10° W/E, 30° E/W. No headless check (drawing).
+- **Files:** `app/render.js` (`drawNavball`), `notes/flow.md`, `NOTES.md`, `TESTING.md` (349), `PLAYTEST.md` (#140 ✓),
+  `QUEUE.md` (Q507 ✓), `ACTIVE_WORK.md`.
+- **Numbering:** v1.281–283 and TESTING 347–348 are on unmerged worker branches (Q543–Q546), so this took v1.284 / 349.
+- **Next:** Caio's look at TESTING 349.
