@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-30
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2344,3 +2344,67 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
   unchanged (.16 vs .09 lower in the seas); rocks have no light from earthshine or the ground; relief and the horizon
   are G3's.
 - **Test:** `aerofx-49`. TESTING 326.
+
+## v1.264 — The ligne-claire head (2026-11-06, look & sound, astronauts, QUEUE Q532, D26)
+
+- **Asked:** D26 (Caio, design desk 2026-11-06): the face creator "proved too thorny"; the head is the head mock-up's
+  option (a), Tintin's school (`mockups/heads/`, `output/launchpad/mockups/heads/sheet-a.png`). Replaces the carved head
+  (round 4–5) in `app/crew-look.js`; the face engine (FACES.md, F2–F9) stays parked.
+- **The head, `crewHead`:** the mock-up's ligne-claire shapes as a mesh: a round skull (R·.93, 1, .95), a small round
+  chin, a small nose set into the face, ears. Head radius `CREW_C.head` .13 → .14 ("slightly big"), capped at .8 of
+  the helmet's radius so the smallest helmets (Mercury's .17) still hold it.
+- **Hair, `hairShell`:** a shell over the skull, built column by column from the style's hairline (bisected per
+  column), so its edge is a smooth line; the band along each edge is ink (the mock-up's inked hairline). Smooth normals
+  except curls (faceted on purpose). Styles: crew cut, side part (a wave), bob (flares), bun, curls, receding (a band
+  round the back), bald. Apollo's Snoopy cap replaces the hair as before.
+  *Tried first:* the old `blob` with a per-quad keep: the hairline stair-stepped and the ink came out as dark squares at
+  the temples.
+- **The face, `crewFace`:** drawn on, not modelled (the mock-up paints it in head space; the game's mesh shader has no
+  per-head texture): dots, strokes and fills in face coordinates (head radii) laid on the skull, chin and nose a hair's
+  breadth out (fills at .012 R, ink at .02 R). Brows (three points, the inner end up in worry and down in anger; hair
+  colour mixed 65 % to ink), dot eyes (whites and a pupil when wide open, a line when squinting), a hook of ink under
+  the nose, a one-line mouth or an open one (a top row of teeth for the grin, clenched for grit), a moustache.
+  `CREW_EX` holds the mock-up's five flight-portrait expressions (neutral, grin, grit, alarm, wonder); `crewFigure`
+  takes the expression as a 4th argument (default neutral).
+- **The people, `CREW_PEOPLE`:** the mock-up's six plus two (a bald man with a moustache, the darkest skin; a crew cut
+  with a moustache, a medium skin): skin luminance .21–.87, seven hair styles, three moustaches. `crewFigure`'s person
+  is an index or a person object (for the roster, Q182). The pad's two are 0 and 1.
+- **Judged in** `mockups/crew-studio/` (new): the game's own `crewFigure` in a plain studio light (`?view=sheet`: the
+  five expressions, the roster, the 48 px row and ×3; `heads`: the head alone, front, profile, back; `helmets`: all 18
+  launch suits; `suits`: full figures). At 48 px the five expressions tell apart (grit, alarm and wonder at once; grin
+  vs neutral by the mouth); the roster reads as eight people. Stills: `output/launchpad/mockups/crew-studio/`.
+- **Not done / noticed:** Cape's first suit (Mercury) has a small porthole: the mouth sits below it, so its portraits
+  show eyes and brows only (portraits want an open faceplate). The faceplate openings of several helmets are cut
+  quad by quad (`keep` on the shell and its liner), so their edges are jagged and the liner shows as squares round the
+  face: a follow-up (QUEUE *Proposed*). Nothing shows portraits in the game yet (the roster screen is economy's, Q182).
+- **Test:** `aerofx-5` (a new check: dot eyes, five distinct faces, the roster's spread, every launch helmet holding the
+  head and hair of every person; it fails when the head is 25 % bigger). TESTING 335.
+
+## v1.268 — The game's suits on the EVA lab's walker (2026-11-07, look & sound, astronauts, QUEUE Q535)
+
+- **Asked:** Caio: "apply the spacesuit designs to the moving figure created in the other session" (the EVA lab's box
+  figure, `eva-lab.html`, Q531).
+- **How:** the lab builds a suit once with `crewFigure` (the standing figure) and binds it to its own pose's bones:
+  the torso (with the helmet, head and packs, not stretched), each thigh, each shin (with its boot), each upper arm,
+  each forearm (with its glove). Each frame every vertex moves rigidly with its bone (`drawSuit`; limbs stretch along
+  their length to the pose's, ±3 %). `crewFigure` now returns its standing skeleton as `o.rig` (hip and shoulder
+  heights, torso size, each leg's hip/knee/ankle, each arm's shoulder/elbow/glove) and `pins` for pieces a mover
+  shouldn't guess.
+- **Binding by piece, not by vertex:** the build wraps crew-look's `blob`, `limb`, `tube` and `lathe` to mark where
+  each piece starts, and a whole piece follows the bone nearest its centre. Hoses (`HOSE` tubes) bind point by point
+  so they stretch between two bones. Pinned: Steppe's ventilator case to its hand, Steppe late's slung pack to the
+  torso, knee pads and Arsenal late's knee plate to the shin.
+  *Tried first:* each vertex to its nearest bone. Where the arm hangs against the torso, the torso's corners went with
+  the arm and tore open in a stride (up to 29 cm); the hand's reach caught Arsenal late's shin plates (shards at the
+  knees); a knee pad split across the knee. A thigh or upper arm now also stops at its joint, a shin or forearm starts
+  there.
+- **The lab:** a *Suit* picker (the 18 launch suits, school × generation, or the old box figure) and a person (the
+  eight of `CREW_PEOPLE`); `?suit=` (school × 3 + generation) and `?person=` in the URL. Default Cape middle (Apollo).
+  The lab draws with crew-look's own code: a small script gives it `pv`, `tube` and `lathe` in the lab's 9-float vertex
+  (gl.js is the whole renderer and isn't loaded); materials are dropped (the lab's flat light; glass is opaque).
+- **Launch suits, not spacewalk suits:** no suit has a backpack yet; the spacewalk suits come with E1 (Q533).
+- **Stills:** `output/launchpad/mockups/eva-suits/` (machine-local): `gallery.png` (nine suits walking and loping),
+  `knees.png`, `bones.png` (vertices coloured by bone, the first try's shards).
+- **Test:** `aerofx-50`: all 18 suits posed at their own skeleton come back unmoved; in a long stride (knees and
+  elbows bent, a lean) no edge grows by more than 6 cm except a hose's. The per-vertex binding fails it (29 cm).
+  TESTING 336.

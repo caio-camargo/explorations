@@ -1435,7 +1435,7 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   never above the air; steps under 30 km; times in order; the last point is the X, on the ground within 20 m; drawn before
   the GPU draw); failed before (no `fallLine`; the old drawing was up to 248 km off). TESTING row 332.
 
-## v1.263 — where it comes down, and who brings it back (2026-11-06, flow worker, QUEUE Q488; PLAYTEST #123, P1)
+## v1.269 — where it comes down, and who brings it back (2026-11-06, flow worker, QUEUE Q488; PLAYTEST #123, P1)
 - **The problem** (Caio, 2026-10-30): "there was no indication i would need to land somewhere specific for my craft to be
   recoverable, nor any way to tell where it would be". The rules existed, unseen (`recoveryOf`, slice D and Q274): the sea
   only within the ships' reach of the launch point (200 km of local boats, or the fleet's range) and only if they get there

@@ -934,3 +934,96 @@
   check('a Tellus → Selene transfer still finds the encounter (Q487), and the Selene leg after it', !!tr && !!tr[1].path && tr[1].path.length > 2,
     tr ? `${legs(tr)}; encounter in ${(tr[0].endT / 86400).toFixed(2)} d, pass ${((tr[1].minR - Sl.R) / 1e3).toFixed(0)} km up` : 'no encounter found');
 }
+
+// space-33. EVA E0a: astronauts on foot (space, QUEUE Q531; EVA.md § 3, § 6a; notes/space.md § "Plan: EVA E0"). The
+// lab's headless twin: the same walker on the same course. Walk the 50 m straight at three gravities; lope when hurried;
+// climb the 20° ridge and try the 30° one (μ 0.6 is a 31° friction angle); no invisible walls; E0b's rough ground (the
+// rubble lane, a boulder, the crater, loose vs firm banks); jump; a drop that is a fall at Tellus and not at Selene;
+// nothing to push against at 0 g.
+{
+  const { EVA } = api, B = n => api.BODIES.find(b => b.name === n), gOf = b => b.mu / b.R ** 2;
+  const run = (g, R, st, inp, secs, stop) => { const W = EVA.world(g, R), A = EVA.new(W, st.x, st.z, st.psi); Object.assign(A.in, inp); let t = 0, air = 0;
+    while (t < secs && !(stop && stop(A))) { EVA.step(A); t += EVA.DT; if (A.st === 'air') air += EVA.DT; } return { A, t, air }; };
+  const S = EVA.stations, straight = S[0], ridge = a => S.find(s => s.k === 'slope' + a), past50 = A => A.p[2] >= 50;
+  const walks = ['Tellus', 'Selene', 'Nyx'].map(n => ({ n, ...run(gOf(B(n)), B(n).R, straight, { fwd: 1 }, 400, past50) }));
+  check('EVA: the 50 m straight walked at Tellus, Selene and Nyx without a fall, slower as gravity falls (the step\'s period goes as √(L/g))',
+    walks.every(w => past50(w.A) && w.A.rec.falls === 0) && walks[0].t < walks[1].t && walks[1].t < walks[2].t,
+    walks.map(w => `${w.n} ${w.t.toFixed(0)} s (${(50 / w.t).toFixed(2)} m/s, ${w.A.rec.steps} steps)`).join('; '));
+  const sel = gOf(B('Selene')), hT = run(9.81, B('Tellus').R, straight, { fwd: 1, hurry: true }, 400, past50), hS = run(sel, B('Selene').R, straight, { fwd: 1, hurry: true }, 400, past50);
+  check('EVA: hurried, it lopes (Froude past 0.5): off the ground part of each stride, about half the time on Selene; faster than walking',
+    hT.A.rec.falls === 0 && hS.A.rec.falls === 0 && hT.air / hT.t > .1 && hS.air / hS.t > .35 && hT.t < walks[0].t && hS.t < walks[1].t,
+    `Tellus ${(50 / hT.t).toFixed(2)} m/s, ${(100 * hT.air / hT.t).toFixed(0)} % in the air; Selene ${(50 / hS.t).toFixed(2)} m/s, ${(100 * hS.air / hS.t).toFixed(0)} % in the air`);
+  // Shift out of a walk: quick steps with no flight until near the hurried pace (a walk's long step, then a lope's long
+  // flights, made it sluggish: 1.1 s at Tellus, 3.4 s on Selene to 90 %)
+  const spurt = g => { const W = EVA.world(g, null), A = EVA.new(W, straight.x, straight.z, straight.psi); A.in.fwd = 1; for (let t = 0; t < 4; t += EVA.DT) EVA.step(A);
+    A.in.hurry = true; const vr = EVA.runV(EVA.TUNE, g); let t = 0; while (t < 6 && Math.hypot(A.v[0], A.v[2]) < .9 * vr) { EVA.step(A); t += EVA.DT; } return { t, falls: A.rec.falls }; };
+  const spT = spurt(9.81), spS = spurt(sel);
+  check('EVA: Shift out of a walk gets to 90 % of the hurried pace quickly (under 0.9 s at Tellus, 2.5 s on Selene, where the grip limits it), without a fall',
+    spT.t < .9 && spS.t < 2.5 && spT.falls + spS.falls === 0, `Tellus ${spT.t.toFixed(2)} s, Selene ${spS.t.toFixed(2)} s`);
+  const r20 = [9.81, sel].map(g => run(g, null, ridge(20), { fwd: 1 }, 300, A => A.p[2] >= 40)), r30 = run(sel, null, ridge(30), { fwd: 1 }, 60);
+  let slid = 0; const slideRun = run(sel, null, ridge(30), { fwd: 1 }, 60, A => { if (A.tel.slide) slid += EVA.DT; return false; });
+  check('EVA: the 20° ridge is walked over without a fall (slowing on the slope); the 30° one, at the friction angle, is still tried, not refused: on Selene it gets up it slowly, slipping or on hands and feet (the E0b scramble)',
+    r20.every(r => r.A.p[2] >= 40 && r.A.rec.falls === 0) && r30.A.rec.falls === 0 && r30.A.p[2] > 9 && slid + r30.A.rec.scram > 5,
+    `20°: Tellus ${r20[0].t.toFixed(0)} s, Selene ${r20[1].t.toFixed(0)} s; 30° on Selene: z ${r30.A.p[2].toFixed(1)} m after 60 s, ${slid.toFixed(0)} s of it slipping, ${r30.A.rec.scram.toFixed(0)} s scrambling`);
+  // no invisible walls (Caio 2026-11-06): straight across all four ridges sideways, over their 45° sides; knee-high banks
+  // are stepped onto (a foothold), the big faces slid down; on Selene off the side of a ridge top on its feet
+  const across = [9.81, sel].map(g => run(g, null, { x: 8, z: 8, psi: Math.PI / 2 }, { fwd: 1 }, 200, A => A.p[0] > 50));
+  const off = run(sel, null, { x: 16, z: 25, psi: 0 }, { side: 1 }, 40, A => A.p[0] < 11.5 && A.st === 'stand' && A.p[1] < 1.05);
+  check('EVA: no invisible walls: walked sideways across all four ridges (up and down their 45° sides) at Tellus and Selene; on Selene, sidestepped off a ridge top, sliding down the 45° side on its feet',
+    across.every(r => r.A.p[0] > 50 && r.A.rec.falls <= 1) && across[1].A.rec.falls === 0 && off.A.p[0] < 11.5 && off.A.rec.falls === 0,
+    `across: Tellus ${across[0].t.toFixed(0)} s (${across[0].A.rec.falls} fall), Selene ${across[1].t.toFixed(0)} s; off the side: ${off.t.toFixed(0)} s`);
+  // E0b, rough ground (Caio 2026-11-06: "being able to navigate uneven terrain is important in this game"). The rubble
+  // lane walked straight north: hummocks at about the flat pace, stones without leaving the ground, boulders gone round
+  // (a wall slid along) or stepped onto where a foothold is; the crater in and out; the same 15° bank firm and loose
+  const st = k => S.find(s => s.k === k);
+  const lane = [9.81, sel].map(g => { let z12 = 0, z26 = 0, air26 = 0, footTop = 0, walled = false;
+    const r = run(g, null, st('rough'), { fwd: 1 }, 240, A => { if (!z12 && A.p[2] > 12) z12 = A.t; if (!z26 && A.p[2] > 26) z26 = A.t; if (!z26 && A.st === 'air') air26 += EVA.DT;
+      footTop = Math.max(footTop, A.f[1]); if (/wall/.test(A.tel.why)) walled = true; return A.p[2] > 44; });
+    return { ...r, z12, z26, air26, footTop, walled }; });
+  const flatV = [walks[0], walks[1]].map(w => 50 / w.t);
+  check('EVA: the rubble lane walked straight at Tellus and Selene without a fall: the hummocks near the flat pace, the stones without leaving the ground; in the boulders never up on one (a foot no higher than a step), through them or stopped at one (a wall: the player steers round)',
+    lane.every((r, i) => r.A.rec.falls === 0 && r.z26 > 0 && 13 / r.z12 > .75 * flatV[i] && r.air26 < .5 && r.footTop < .6 && (r.A.p[2] > 44 || r.walled)),
+    lane.map((r, i) => `${i ? 'Selene' : 'Tellus'}: hummocks ${(13 / r.z12).toFixed(2)} m/s (flat ${flatV[i].toFixed(2)}), stones done at ${r.z26.toFixed(0)} s, ${r.air26.toFixed(1)} s in the air; boulders ${r.A.p[2] > 44 ? `through at ${r.t.toFixed(0)} s` : `stopped at z ${r.A.p[2].toFixed(1)}`}, highest foot ${r.footTop.toFixed(2)} m; ${r.A.rec.falls} falls`).join('; '));
+  // a boulder well over a step is a wall, not a ladder: walked into head-on, no foot ever goes up it
+  const clear = k => { for (let d = k.r + .3; d < k.r + 2.5; d += .1) for (const l of [-.5, 0, .5]) if (EVA.courseH(k.x + l, k.z - d) > .15) return false; return true; };
+  const big = EVA.rocks.filter(k => k.H > .9 && clear(k)).sort((a, b) => b.H - a.H)[0];
+  let footTop = 0, walled = false;
+  const into = run(9.81, null, { x: big.x, z: big.z - big.r - 2, psi: 0 }, { fwd: 1 }, 15, A => { footTop = Math.max(footTop, A.f[1]); if (/wall/.test(A.tel.why)) walled = true; return false; });
+  check('EVA: a boulder over a step high (the biggest with a clear approach) is a wall, not a ladder: walked into head-on, it stops or slides round; no foot goes up its face',
+    walled && footTop < big.H * .5 && into.A.rec.falls === 0, `boulder ${big.H.toFixed(2)} m high: highest foot ${footTop.toFixed(2)} m; wall ${walled}; ${into.A.rec.falls} falls`);
+  const crater = [9.81, sel].map(g => run(g, null, st('crater'), { fwd: 1 }, 200, A => A.p[2] > 24));
+  const bank = k => [9.81, sel].map(g => { let sl = 0; const r = run(g, null, st(k), { fwd: 1 }, 240, A => { if (A.tel.slip) sl += EVA.DT; return A.p[2] > 58; }); return { ...r, sl }; });
+  const firm = bank('firm'), loose = bank('loose');
+  check('EVA: the crater (30° inside at its rim) walked into and out of straight at Tellus and Selene without a fall; the 15° bank walked over without a slip on firm ground, slipping and slower on loose soil (half the grip)',
+    crater.every(r => r.A.p[2] > 24 && r.A.rec.falls === 0) && firm.every(r => r.A.p[2] > 58 && r.sl < .5 && r.A.rec.falls === 0)
+      && loose.every((r, i) => r.A.p[2] > 58 && r.sl > 5 && r.t > 1.3 * firm[i].t),
+    `crater: Tellus ${crater[0].t.toFixed(0)} s, Selene ${crater[1].t.toFixed(0)} s; bank firm ${firm.map(r => r.t.toFixed(0)).join('/')} s, loose ${loose.map(r => `${r.t.toFixed(0)} s (${r.sl.toFixed(0)} s slipping)`).join(' / ')}`);
+  const jump = (g, R) => { const r = run(g, R, straight, { jump: true }, 120, A => A.st === 'stand' && A.rec.airT > 0); return r.A; };
+  const jT = jump(9.81, B('Tellus').R), jS = jump(sel, B('Selene').R), small = run(.005, 500, straight, { jump: true }, 30);
+  check('EVA: a jump is the leg\'s push over a crouch: a few cm in a suit at Tellus, over 1.5 m on Selene, faster than escape on a 500 m rock',
+    jT.rec.top < .15 && jS.rec.top > 1.5 && small.A.rec.escaped && small.A.st === 'air',
+    `Tellus ${jT.rec.top.toFixed(2)} m, Selene ${jS.rec.top.toFixed(2)} m; 500 m rock at 0.005 m/s²: ${EVA.jumpV(EVA.TUNE, .005).toFixed(2)} m/s vs escape ${EVA.escV({ g: .005, R: 500 }).toFixed(2)}`);
+  const drop = g => { const W = EVA.world(g, null), A = EVA.new(W, 0, 10, 0); A.st = 'air'; A.p[1] += 3; let t = 0, down = 0;
+    while (t < 30) { EVA.step(A); t += EVA.DT; if (A.st === 'down') down += EVA.DT; } return { A, down }; };
+  const dT = drop(9.81), dS = drop(sel);
+  check('EVA: a 3 m drop is a fall at Tellus (7.7 m/s) and gets up again; at Selene (3.1 m/s) it lands on its feet',
+    dT.A.rec.falls === 1 && dT.down > 1 && dT.A.st === 'stand' && dS.A.rec.falls === 0 && dS.A.st === 'stand', `Tellus: down ${dT.down.toFixed(1)} s`);
+  // Caio's first feel pass (2026-11-06): turning was mirrored, a stop out of a lope on Selene fell
+  const tr = run(9.81, null, straight, { turn: 1 }, 1);
+  check('EVA: D (turn +1) turns right: facing +z, the heading swings toward −x, which is on the right in a right-handed frame with y up',
+    EVA.fw(tr.A.psi)[0] < -.5 && EVA.rt(0)[0] === -1, `heading after 1 s: (${EVA.fw(tr.A.psi).map(x => x.toFixed(2)).join(', ')})`);
+  let stopF = 0, turnF = 0;
+  for (const g of [9.81, sel, .4]) for (let k = 0; k < 10; k++) {
+    const W = EVA.world(g, null), A = EVA.new(W, 0, -2, 0), B = EVA.new(W, 0, -2, 0), T0 = 4 + k * .37; Object.assign(A.in, { fwd: 1, hurry: true }); Object.assign(B.in, { fwd: 1, hurry: true });
+    for (let t = 0; t < T0 + 10; t += EVA.DT) { if (t > T0) Object.assign(A.in, { fwd: 0, hurry: false }); B.in.turn = t > T0 ? 1 : 0; EVA.step(A); EVA.step(B); }
+    stopF += A.rec.falls; turnF += B.rec.falls; }
+  check('EVA: letting go out of a lope, or turning hard while loping, never falls (30 tries each at Tellus, Selene, Nyx): it slows into turns, keeps loping until it has slowed to a walk, and steps no farther than the grip leaves room for the ankle',
+    stopF === 0 && turnF === 0, `falls: stopping ${stopF}, turning ${turnF}`);
+  const kn = run(sel, null, straight, {}, 1); EVA.knock(kn.A); let tt = 0, topT = 0, ph = '';
+  while (kn.A.st === 'down' && tt < 60) { EVA.step(kn.A); tt += EVA.DT; if (kn.A.dn && kn.A.dn.ph === 'topple') topT = tt; ph = kn.A.dn ? kn.A.dn.ph : ph; }
+  check('EVA: a fall topples, lies and gets up on its own (knocked over on Selene: the topple takes over a second, getting up a few)', kn.A.st === 'stand' && topT > 1 && tt < 30,
+    `topple ${topT.toFixed(1)} s, up after ${tt.toFixed(1)} s`);
+  const z = run(0, null, straight, { fwd: 1 }, 5);
+  check('EVA: at 0 g there is nothing to push against: the keys do nothing, it floats where it was (rails and tethers come with E0c)',
+    z.A.st === 'float' && len(z.A.v) < 1e-9 && Math.abs(z.A.p[2] - straight.z) < 1e-9, z.A.tel.why);
+}
