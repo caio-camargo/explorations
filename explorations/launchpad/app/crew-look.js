@@ -107,7 +107,7 @@ const slab=(out,c,r,col)=>blob(out,c,r,col,.3,8,6);
 // One astronaut, pose 'stand' or 'wave' (the right arm up), person k (an index into CREW_PEOPLE, or a person), expression
 // ex (CREW_EX). Returns the vertex array.
 function crewFigure(suit,pose,k=0,ex='neutral'){const s=CREW_C,o=[],b=suit.body||[1,1,1,1],F=suit.f||{},hm=suit.helm||{},who=typeof k==='object'?k:CREW_PEOPLE[k%CREW_PEOPLE.length];
-  const S=suit.c1,T=suit.c2,B=suit.boot,G=suit.glove||B,SH=suit.shell,AC=suit.acc||T;
+  const S=suit.c1,T=suit.c2,B=suit.boot,G=suit.glove||B,SH=suit.shell,AC=suit.acc||T,pins=[];   // pins: [from, to, bone, side] for pieces a mover must not guess (the rig below)
   const LR=s.legR*b[0],AR=s.armR*b[0],TW=s.tw*b[1],TD=s.td*b[2],AL=s.armL*b[3],GR=s.glove*(1+(b[0]-1)*.6),HR=hm.R||s.helmR,hd=Math.min(s.head,HR*.8);   // the head fits the smallest helmet
   const hip=s.legL+s.boot[1]*1.2,sh=hip+s.tH,neck=sh+s.head*.25,HC=[0,neck+s.head*1.05,s.head*.05],tc=hip+s.tH*.5;
   // legs, boots
@@ -146,12 +146,12 @@ function crewFigure(suit,pose,k=0,ex='neutral'){const s=CREW_C,o=[],b=suit.body|
   if(F.waist)ring(hip+.08,T,.022);
   if(F.flashes){armBands(0,.16,T,0);armBands(.84,1,T,1)}
   if(F.padChest)chest(.7,[TW*.74,s.tH*.15,.045],[S[0]*.8,S[1]*.8,S[2]*.8,2]);
-  if(F.kneePads)for(const[,kn]of legs)blob(o,add(kn,[0,0,LR*.72]),[LR*.85,LR,LR*.5],F.redChest?T:[S[0]*.8,S[1]*.8,S[2]*.8,2],1,8,5);
-  if(F.caseHand){const cc=add(wL,[-.02,-GR*1.3-.15,0]),CS=[.58,.63,.66,0];slab(o,cc,[.06,.13,.19],CS);   // the ventilator case, two hoses from the belly
-    tube(o,add(cc,[0,.13,-.07]),add(wL,[0,-GR*.7,-.03]),.011,DK,4);tube(o,add(cc,[0,.13,.07]),add(wL,[0,-GR*.7,.03]),.011,DK,4);
+  if(F.kneePads)for(const[,kn,,sx]of legs){const p0=o.length;blob(o,add(kn,[0,0,LR*.72]),[LR*.85,LR,LR*.5],F.redChest?T:[S[0]*.8,S[1]*.8,S[2]*.8,2],1,8,5);pins.push([p0,o.length,'shin',sx])}
+  if(F.caseHand){const cc=add(wL,[-.02,-GR*1.3-.15,0]),CS=[.58,.63,.66,0],p0=o.length;slab(o,cc,[.06,.13,.19],CS);   // the ventilator case, two hoses from the belly
+    tube(o,add(cc,[0,.13,-.07]),add(wL,[0,-GR*.7,-.03]),.011,DK,4);tube(o,add(cc,[0,.13,.07]),add(wL,[0,-GR*.7,.03]),.011,DK,4);pins.push([p0,o.length,'hand',-1]);
     for(const dz of[-.035,.035])tube(o,[-.02+dz,hip+.14,TD+.005],add(cc,[.03,.1,.13+dz]),.016,HOSE,6)}
-  if(F.shoulderPack){const pk=[-(TW*1.05+AR+.05),hip+.02,.03];slab(o,pk,[.04,.12,.14],[.58,.63,.66,0]);
-    tube(o,[TW*.55,sh+.03,-.03],[TW*.42,sh-.03,TD*1.04],.016,DK,4);tube(o,[TW*.42,sh-.03,TD*1.04],add(pk,[.02,.11,.06]),.016,DK,4);tube(o,[.03,hip+.13,TD],add(pk,[.03,0,.12]),.014,HOSE,6)}
+  if(F.shoulderPack){const pk=[-(TW*1.05+AR+.05),hip+.02,.03],p0=o.length;slab(o,pk,[.04,.12,.14],[.58,.63,.66,0]);
+    tube(o,[TW*.55,sh+.03,-.03],[TW*.42,sh-.03,TD*1.04],.016,DK,4);tube(o,[TW*.42,sh-.03,TD*1.04],add(pk,[.02,.11,.06]),.016,DK,4);tube(o,[.03,hip+.13,TD],add(pk,[.03,0,.12]),.014,HOSE,6);pins.push([p0,o.length,'torso'])}
   // Arsenal: military issue, webbing, pockets, a flag patch; the hose goes in at the side of the hip
   if(F.capstan){for(const[h,kn,an,sx]of legs){const d=[sx*LR*.97,0,0];tube(o,add(h,d),add(kn,d),.016,[S[0]*.62,S[1]*.62,S[2]*.62,2],5);tube(o,add(kn,d),add(an,add(d,[0,.08,0])),.016,[S[0]*.62,S[1]*.62,S[2]*.62,2],5)}
     for(const[a,e,w,sx]of arms){const d=[sx*AR*.95,0,0];tube(o,add(a,d),add(e,d),.014,[S[0]*.62,S[1]*.62,S[2]*.62,2],5);tube(o,add(e,d),add(w,d),.014,[S[0]*.62,S[1]*.62,S[2]*.62,2],5)}}
@@ -164,7 +164,7 @@ function crewFigure(suit,pose,k=0,ex='neutral'){const s=CREW_C,o=[],b=suit.body|
   if(F.redChest)chest(.72,[TW*.82,s.tH*.17,.035],T);
   if(F.redShoulders)armBands(0,.2,T,0);
   if(F.pockets)for(const[,kn,an]of legs)for(const t of[.38,.68])slab(o,add(mix3(kn,an,t),[0,0,LR*.92]),[LR*.55,.045,.022],[S[0]*.85,S[1]*.85,S[2]*.85,2]);
-  if(F.plates){const PL=[S[0]*.72,S[1]*.72,S[2]*.72,0];for(const[,kn,an]of legs){slab(o,add(mix3(kn,an,.45),[0,0,LR*.9]),[LR*.78,.13,.024],PL);slab(o,add(kn,[0,.02,LR*1.]),[LR*.72,.065,.028],PL)}
+  if(F.plates){const PL=[S[0]*.72,S[1]*.72,S[2]*.72,0];for(const[,kn,an,sx]of legs){slab(o,add(mix3(kn,an,.45),[0,0,LR*.9]),[LR*.78,.13,.024],PL);const p0=o.length;slab(o,add(kn,[0,.02,LR*1.]),[LR*.72,.065,.028],PL);pins.push([p0,o.length,'shin',sx])}
     for(const[,e,w]of arms)slab(o,add(mix3(e,w,.5),[0,0,AR*.88]),[AR*.72,.08,.02],PL)}
   if(F.chestPlate){chest(.7,[TW*.86,s.tH*.12,.03],[S[0]*.72,S[1]*.72,S[2]*.72,0]);chest(.86,[TW*.86,.02,.03],T)}
   if(F.cuffs)armBands(.84,1,T,1);
@@ -222,6 +222,12 @@ function crewFigure(suit,pose,k=0,ex='neutral'){const s=CREW_C,o=[],b=suit.body|
   // the head, ligne claire (D26; mockups/heads/ option (a)): a slightly big round skull with a small round chin, a small
   // nose and ears; hair a flat shell with an inked hairline (or Apollo's Snoopy cap); the face drawn on, not modelled
   crewHead(o,add(HC,[0,-hd*.12,0]),hd,who,CREW_EX[ex]||CREW_EX.neutral,F.snoopy);
+  // the standing skeleton, for whoever moves the figure (eva-lab.html binds each vertex to a bone, Q535): hip and shoulder
+  // heights, the torso's half-width and depth, each leg's hip, knee, ankle and side, each arm's shoulder, elbow, glove;
+  // pins: pieces bound by name, not by nearness (Steppe's case goes with the hand, its slung pack with the torso, a knee
+  // pad with the shin), as
+  // [first, end) in o's entries, the bone, the side
+  o.rig={pins,hip,sh,neck,HC,TW,TD,LR,AR,legs:legs.map(([h,kn,an,sx])=>({h,kn,an,sx})),arms:arms.map(([a,e,w,sx])=>({a,e,g:add(w,[0,(wave&&sx>0?1:-1)*GR*.6,0]),sx}))};
   return o}
 // hair: a shell round c (P(d) the point for a unit direction d) where hk(d) > 0, built column by column from the hairline
 // up, so its edge is a smooth line, not a row of quads; the band along each edge is ink (ligne claire's inked hairline);

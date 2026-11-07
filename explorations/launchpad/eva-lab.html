@@ -26,6 +26,27 @@ select,input[type=range]{width:100%;font:inherit;background:rgba(0,0,0,.3);color
 <script src="sim/system.js"></script>
 <script src="sim/eva.js"></script>
 <script>
+// The pieces app/crew-look.js builds the astronaut from (app/gl.js's pv, tube and lathe, here in the lab's 9-float
+// vertex: position, normal, colour; the material in a colour's 4th entry is dropped), so the lab can wear the game's
+// suits (QUEUE Q535). gl.js itself is the whole game's renderer and isn't loaded here.
+'use strict';
+const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+function pv(out,P,N,c){out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2])}
+function tube(out,A,B,r,col,seg=6,caps=false){const d=sub(B,A),L=len(d);if(L<1e-9)return;const Y=mul(d,1/L),X=norm(cross(Math.abs(Y[1])<.9?[0,1,0]:[1,0,0],Y)),Z=cross(X,Y);
+  const N=a=>add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),P=(a,y)=>add(add(A,mul(Y,y)),mul(N(a),r));
+  for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;for(const[a,y]of[[a0,0],[a0,L],[a1,L],[a0,0],[a1,L],[a1,0]])pv(out,P(a,y),N(a),col)}
+  if(caps)for(const[y,s]of[[0,-1],[L,1]])for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,n=mul(Y,s);pv(out,add(A,mul(Y,y)),n,col);pv(out,P(a0,y),n,col);pv(out,P(a1,y),n,col)}}
+// a lathe with each band's own normal (gl.js smooths across gentle bends; the suit only lathes its neck ring and a sun disc)
+function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){
+  for(let i=0;i<prof.length-1;i++){const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1],nr=y1-y0,ny=-(r1-r0),l=Math.hypot(nr,ny);if(l<1e-9)continue;
+    const V=(r,y,a,c)=>pv(out,[o[0]+r*Math.cos(a),o[1]+y,o[2]+r*Math.sin(a)],[nr/l*Math.cos(a),ny/l,nr/l*Math.sin(a)],c);
+    for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;V(r0,y0,a0,c0);V(r1,y1,a0,c1);V(r1,y1,a1,c1);V(r0,y0,a0,c0);V(r1,y1,a1,c1);V(r0,y0,a1,c0)}}
+  const cap=(r,y,c,ny)=>{if(r<=0)return;for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
+    pv(out,[o[0],o[1]+y,o[2]],[0,ny,0],c);pv(out,[o[0]+r*Math.cos(a0),o[1]+y,o[2]+r*Math.sin(a0)],[0,ny,0],c);pv(out,[o[0]+r*Math.cos(a1),o[1]+y,o[2]+r*Math.sin(a1)],[0,ny,0],c)}};
+  if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
+</script>
+<script src="app/crew-look.js"></script>
+<script>
 'use strict';
 const $=id=>document.getElementById(id);
 // ---------------------------------------------------------------- state
@@ -154,7 +175,57 @@ function poseScramble(A){VIS.feet=null;VIS.swing=null;const v=[A.v[0],0,A.v[2]],
   const feet=[0,1].map(k=>{const s=k?1:-1,q=g(add(A.p,add(mul(fw,-.3+.1*Math.sin(ph+k*Math.PI)),mul(R,.13*s))));return add(q,[0,.04+Math.max(0,.07*Math.sin(ph+k*Math.PI)),0])});
   const hands=[0,1].map(k=>{const s=k?1:-1,q=g(add(A.p,add(mul(fw,.55+.1*Math.sin(ph+(1-k)*Math.PI)),mul(R,.25*s))));return add(q,[0,.06+Math.max(0,.08*Math.sin(ph+(1-k)*Math.PI)),0])});
   return joints(hip,tu,R,feet,hands,fw,mul(fw,-1))}
-function figure(o,A,dt){drawJ(o,A.st==='down'?poseDown(A):A.scram?poseScramble(A):poseUpright(A,dt))}
+function figure(o,A,dt){const J=A.st==='down'?poseDown(A):A.scram?poseScramble(A):poseUpright(A,dt);if(suitI>=0)drawSuit(o,J);else drawJ(o,J)}
+// ---------------------------------------------------------------- the game's suits on the figure (QUEUE Q535)
+// crewFigure (app/crew-look.js) builds a standing astronaut; each vertex is bound once to one bone of the lab's pose and
+// moves with it rigidly: the torso (with the helmet, the head and the packs), each thigh, each shin (with its boot), each
+// upper arm, each forearm (with the glove and whatever the hand carries). A hose from the chest to a hand stretches,
+// its two ends on two bones. Launch suits for now: the spacewalk suits come with E1 (Q533).
+const SUIT_SCH=['Cape','Steppe','Arsenal','Coastal','Mountain','Isle'],SUIT_GEN=['early','middle','late'];
+let suitI=Q.has('suit')?+Q.get('suit'):1,personI=+(Q.get('person')||0),RIG=null;   // suitI = school × 3 + generation (1: Cape middle); −1 the lab's box figure
+function buildRig(){
+  // the suit is built with its pieces marked: every blob, limb, tube and lathe call starts a piece (crew-look.js's own
+  // helpers, wrapped for the build), so a whole piece follows one bone and no shape tears where an arm meets the torso
+  const marks=[],hose=new Set(),_b=blob,_l=limb,_t=tube,_a=lathe;
+  blob=(o,...x)=>{marks.push(o.length/9);return _b(o,...x)};limb=(o,...x)=>{marks.push(o.length/9);return _l(o,...x)};
+  tube=(o,A,B,r,col,...x)=>{marks.push(o.length/9);if(col===HOSE)hose.add(marks.length-1);return _t(o,A,B,r,col,...x)};lathe=(o,...x)=>{marks.push(o.length/9);return _a(o,...x)};
+  let raw;try{raw=crewFigure(suitOf(Math.floor(suitI/3),suitI%3),'stand',personI)}finally{blob=_b;limb=_l;tube=_t;lathe=_a}
+  const r=raw.rig,n=raw.length/9;marks.push(n);
+  const X0=[-1,0,0],fr=(A,B,side)=>{const d=sub(B,A),L=len(d),Y=mul(d,1/L);let X=sub(side,mul(Y,dot(side,Y)));X=len(X)<1e-3?norm(cross(Y,[0,0,1])):norm(X);return{A,X,Y,Z:cross(X,Y),L}};
+  // bones in the rest pose, in drawSuit's order; the lab's side k = 0 is the figure's +x (the pose's R points to −x)
+  const L=k=>r.legs.find(l=>(l.sx>0)===(k===0)),Ar=k=>r.arms.find(a=>(a.sx>0)===(k===0)),sole=l=>[l.an[0],0,l.an[2]];
+  const B=[{f:fr([0,r.hip,0],[0,r.sh,0],X0),rigid:1}];
+  for(let k=0;k<2;k++)B.push({f:fr(L(k).h,L(k).kn,X0),r:r.LR*1.1,end:1});
+  for(let k=0;k<2;k++)B.push({f:fr(L(k).kn,sole(L(k)),X0),r:r.LR,start:1});
+  for(let k=0;k<2;k++)B.push({f:fr(Ar(k).a,Ar(k).e,X0),r:r.AR*1.1,end:1});
+  for(let k=0;k<2;k++){const a=Ar(k);B.push({f:fr(a.e,a.g,X0),r:r.AR,start:1})}
+  // which bone, for a piece's centre (or, along a hose, for each point, so the hose stretches between two bones): a limb
+  // when within 1.25 of its radius (the nearest such), else the nearest of the limbs and the torso by distance over
+  // radius (the torso an ellipse of its half-width and depth between the hip and the neck); a thigh or upper arm stops
+  // at its knee or elbow and a shin or forearm starts there; anything at the ankles is a boot, its shin's
+  const segD=(P,b)=>{const f=b.f,u=dot(sub(P,f.A),f.Y);if(b.end&&u>f.L+.01||b.start&&u<-.01)return Infinity;return len(sub(P,add(f.A,mul(f.Y,clamp(u,0,f.L)))))/b.r};
+  const torD=P=>{const ex=Math.max(r.hip-.08-P[1],P[1]-r.neck-.05,0);return Math.hypot(P[0]/(r.TW*1.1),P[2]/(r.TD*1.2))+ex/.05};
+  const anY=r.legs[0].an[1],which=P=>{let bi=0,bd=Infinity;for(let j=1;j<B.length;j++){const d=segD(P,B[j]);if(d<bd){bd=d;bi=j}}
+    if(bd>1.25&&torD(P)<bd)bi=0;if(P[1]<anY+.12)bi=P[0]>0?3:4;return bi};
+  const pins=(r.pins||[]).map(([a,b,nm,sx])=>[a/9,b/9,nm,sx]),bone=new Uint8Array(n),loc=new Float32Array(n*6),col=new Float32Array(n*3),Pt=i=>[raw[i*9],raw[i*9+1],raw[i*9+2]];
+  for(let m=0;m<marks.length-1;m++){const a=marks[m],b=marks[m+1];if(b<=a)continue;
+    let c=[0,0,0];for(let i=a;i<b;i++)c=add(c,Pt(i));const bc=which(mul(c,1/(b-a)));
+    for(let i=a;i<b;i++)bone[i]=hose.has(m)?which(Pt(i)):bc}
+  for(const[a,b,nm,sx]of pins)for(let i=a;i<b;i++)bone[i]=nm==='torso'?0:nm==='shin'?(sx>0?3:4):sx>0?7:8;   // pieces the suit names (Steppe's case: its hand; knee pads: the shin)
+  for(let i=0;i<n;i++){const bi=bone[i],f=B[bi].f,q=sub(Pt(i),f.A),N=[raw[i*9+3],raw[i*9+4],raw[i*9+5]];
+    loc.set([dot(q,f.X),dot(q,f.Y)/(B[bi].rigid?1:f.L),dot(q,f.Z),dot(N,f.X),dot(N,f.Y),dot(N,f.Z)],i*6);col.set([raw[i*9+6],raw[i*9+7],raw[i*9+8]],i*3)}
+  RIG={n,bone,loc,col}}
+// the pose's bones, the same order, from the lab's joints: torso J.hip→J.sh (not stretched), thighs J.hips→J.knees, shins
+// J.knees→J.feet, upper arms J.shs→J.elb, forearms J.elb→J.hands; limbs stretch along their length to the pose's
+function drawSuit(o,J){if(!RIG)buildRig();
+  const fr=(A,Bp,rigid)=>{const d=sub(Bp,A),L=len(d),Y=mul(d,1/L);let X=sub(J.R,mul(Y,dot(J.R,Y)));X=len(X)<1e-3?norm(cross(Y,J.F)):norm(X);return{A,X,Y,Z:cross(X,Y),L:rigid?1:L}};
+  const F=[fr(J.hip,J.sh,1)];for(let k=0;k<2;k++)F.push(fr(J.hips[k],J.knees[k]));for(let k=0;k<2;k++)F.push(fr(J.knees[k],J.feet[k]));
+  for(let k=0;k<2;k++)F.push(fr(J.shs[k],J.elb[k]));for(let k=0;k<2;k++)F.push(fr(J.elb[k],J.hands[k]));
+  const{n,bone,loc,col}=RIG,base=o.length;o.length=base+n*9;
+  for(let i=0;i<n;i++){const f=F[bone[i]],l=i*6,a=loc[l],b=loc[l+1]*f.L,c=loc[l+2],j=base+i*9,X=f.X,Y=f.Y,Z=f.Z,A=f.A;
+    o[j]=A[0]+X[0]*a+Y[0]*b+Z[0]*c;o[j+1]=A[1]+X[1]*a+Y[1]*b+Z[1]*c;o[j+2]=A[2]+X[2]*a+Y[2]*b+Z[2]*c;
+    const na=loc[l+3],nb=loc[l+4],nc=loc[l+5];o[j+3]=X[0]*na+Y[0]*nb+Z[0]*nc;o[j+4]=X[1]*na+Y[1]*nb+Z[1]*nc;o[j+5]=X[2]*na+Y[2]*nb+Z[2]*nc;
+    o[j+6]=col[i*3];o[j+7]=col[i*3+1];o[j+8]=col[i*3+2]}}
 // footprints: dark marks where the feet came down
 function prints(o){for(const[x,y,z,psi]of A.prints){const F=[Math.sin(psi),0,Math.cos(psi)],R=[Math.cos(psi),0,-Math.sin(psi)],n=EVA.normal(W,x,z);obox(o,[x,y+.006,z],R,n,F,.06,.003,.13,[.3,.3,.29])}}
 
@@ -199,12 +270,15 @@ function panel(){const on=b=>b?' class="on"':'';
     +`<div class="row" style="margin-top:4px"><span>slider</span><span class="k" id="glab">${f(gNow)} m/s² · ${f(gNow/9.81)} g</span></div><input id="gs" type="range" min="0" max="1.5" step=".005" value="${gNow/9.81}">`
     +`<div><button id="g0"${on(gNow===0)}>0 g</button><button id="gT">Tellus</button><button id="gS">Selene</button><button id="gN">Nyx</button></div>`
     +`<h2>Ground</h2><div class="row"><span>friction μ</span><span class="k" id="mul">${f(muNow)} (${f(Math.atan(muNow)*180/Math.PI,0)}°)</span></div><input id="mu" type="range" min=".1" max="1.2" step=".05" value="${muNow}">`;
+  h+=`<h2>Suit</h2><select id="suit"><option value="-1"${suitI<0?' selected':''}>the lab's box figure</option>`+SUIT_SCH.flatMap((S,i)=>SUIT_GEN.map((G,g)=>`<option value="${i*3+g}"${i*3+g===suitI?' selected':''}>${S} ${G} (launch suit)</option>`)).join('')+`</select>`
+    +`<select id="person" style="margin-top:3px">`+CREW_PEOPLE.map((_,i)=>`<option value="${i}"${i===personI?' selected':''}>person ${i+1}</option>`).join('')+`</select>`;
   h+=`<h2>Stations</h2>`+EVA.stations.map((s,i)=>`<div><button data-st="${i}"${on(i===stI)}>${i+1}</button> ${s.name}</div>`).join('');
   h+=`<h2>Time</h2><button id="tp"${on(paused)}>Pause [P]</button><button id="ts"${on(slow)}>×0.25 [,]</button><button id="t1">Step [.]</button><button id="tr">Reset [R]</button><button id="kn">Knock over [F]</button>`;
   h+=`<h2>View</h2>`+['follow','side','top'].map(m=>`<button data-cam="${m}"${on(camMode===m)}>${m}</button>`).join('')+`<button id="dbg"${on(dbg)}>debug [G]</button>`;
   h+=`<div class="sub" style="margin-top:6px">${dbg?'<span style="color:#ff0">+</span> centre of mass · <span style="color:#4f4">+</span> centre of pressure (the line to the body is the leg, red as grip runs out) · <span style="color:#f4f">+</span> capture point · <span style="color:#4ef">|</span> foot force (1 m = the weight) · <span style="color:#fff">→</span> wanted velocity · <span style="color:#fa4">—</span> trail':''}</div>`;
   h+=`<h2>Coming</h2><div class="sub">E0b stairs, ladder, gaps, rough ground, the lander and rover mocks · E0c the 0 g hall and a spinning hull · E0d tweak panel, record and replay</div>`;
   $('panel').innerHTML=h;
+  $('suit').onchange=e=>{suitI=+e.target.value;RIG=null};$('person').onchange=e=>{personI=+e.target.value;RIG=null};
   $('body').onchange=e=>{bodyI=+e.target.value;setG(BOD[bodyI].g,BOD[bodyI].R)};
   $('gs').oninput=e=>setG(+e.target.value*9.81,undefined,false);$('gs').onchange=()=>panel();
   const pick=n=>{const i=BOD.findIndex(b=>b.name===n);if(i>=0){bodyI=i;setG(BOD[i].g,BOD[i].R)}};
