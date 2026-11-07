@@ -28,6 +28,17 @@ function footPoints(s){const key=s.parts.map(p=>p.on?(p.dep?2:1):0).join('');if(
     if(p.y0>yb+0.5)continue;const r=Math.max(p.d.r*0.95,0.05);
     for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;pts.push({p,pt:[p.pos[0]+r*Math.cos(a),p.y0,p.pos[2]+r*Math.sin(a)]})}}
   s.foot={key,pts:pts.slice(0,32)};return s.foot.pts}
+// (vehicle, QUEUE Q545) a craft woken on the ground (s.roused: thrust, RCS or its wheels moved it, landed) meets it with its
+// whole outline too: every stack line's profile sampled <= 0.5 m apart, 8 points round each ring, and the fins' tips. Cached
+// per shape; groundContact takes the ones within reach of the ground. A point's anchor (fp.a) is its friction's, as a foot's.
+function hullPts(s){if(s.hullP&&s.hullP.lines===s.lines)return s.hullP.pts;const pts=[],seen=new Set();
+  const put=(p,x,y,z)=>{const k=`${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}`;if(!seen.has(k)){seen.add(k);pts.push({p,pt:[x,y,z],hull:true})}};
+  for(const ln of s.lines)for(const e of ln.E){const n=Math.max(1,Math.ceil(e.L/0.5));
+    for(let i=0;i<=n;i++){const f=i/n,r=e.r0+(e.r1-e.r0)*f,y=e.y0+(e.y1-e.y0)*f;if(r<0.03){put(e.p,ln.ox,y,ln.oz);continue}
+      for(let j=0;j<8;j++){const a=j*Math.PI/4;put(e.p,ln.ox+r*Math.cos(a),y,ln.oz+r*Math.sin(a))}}}
+  for(const p of s.fins){const d=p.d,one=d.kind==='rfin';for(const[ax,az]of one?[[Math.cos(p.phi||0),Math.sin(p.phi||0)]]:FIN4){const rr=one?d.span:d.r+d.span;
+    for(const y of[p.y0,p.y0+d.chord])put(p,p.pos[0]+ax*rr,y,p.pos[2]+az*rr)}}
+  s.hullP={lines:s.lines,pts};return pts}
 // how fast it may drift sideways at touchdown and still stand (vehicle, Q264 / PLAYTEST #64): the feet stop, it pivots on
 // the edge of its stance, and the swing (angular momentum m·v·h about that edge) must lift the centre of mass over it.
 // h: centre of mass above the feet; b: the stance's half-width in its narrowest direction. The Hopper (5.8 m on its bell,
@@ -99,8 +110,15 @@ function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),vS=sub(s.v,surfVel(b,s
   if(vE>=lim){s.crashSpeed=sp;lose(s,`destroyed: hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${among}, over the ${lim.toFixed(0)} m/s it can take`,3);return false}
   return true}
 function groundContact(s,dt){const b=s.body;
-  if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;return}
-  const pts=s.wet?footPoints(s).concat(seaPts(s).hull):footPoints(s),n=pts.length,mPer=s.mass/n,k=mPer*C_GREF/C_DEFL,c=2*C_ZETA*Math.sqrt(k*mPer),qi=qconj(s.q);let any=false;
+  if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;if(!s.landed)s.roused=null;return}   // well clear: an ordinary flight again (Q545)
+  let pts=s.wet?footPoints(s).concat(seaPts(s).hull):footPoints(s),n=pts.length;const hits=s.roused?new Map():null;
+  // (Q545) woken on the ground: the hull's points near the ground join the feet; n counts the ones touching, generously
+  // (sloped ground), since each point's gains are capped as one of n sharing the craft's effective mass
+  if(s.roused){const up=norm(s.r),hc=len(s.r)-groundR(b,toPF(b,s.r,simT)),H=[];let m=0;
+    for(const fp of hullPts(s)){const rw=qrot(s.q,sub(fp.pt,s.cm)),z=hc+dot(rw,up),o=len(sub(rw,mul(up,dot(rw,up))));
+      if(z>0.4+0.5*o){fp.a=null;continue}H.push(fp);if(z<0.1+0.3*o)m++}
+    pts=pts.concat(H);n+=m}
+  const mPer=s.mass/n,k=mPer*C_GREF/C_DEFL,c=2*C_ZETA*Math.sqrt(k*mPer),qi=qconj(s.q);let any=false;
   for(const fp of pts){const rb=sub(fp.pt,s.cm),rw=qrot(s.q,rb),P=add(s.r,rw),pf=toPF(b,P,simT),sea=seaAt(b,pf),gA=sea?bodyH(b,pf):groundAlt(b,pf),pen=b.R+gA-len(P);
     if(pen<=0){fp.a=null;continue}   // over the sea the ground is the seabed (Q301): deep, it's out of reach and the water holds the craft (seaForces)
     if(!s.inContact){if(!(sea&&s.wet)&&!touchdown(s))return;s.inContact=true}   // a splash was judged on the way in (seaCheck)
@@ -111,6 +129,10 @@ function groundContact(s,dt){const b=s.body;
     // are halved because the normal and the friction forces below a tall stack push on the same pitch: each alone at full gain
     // was stable, together they rang at two steps' period.
     const Fn=Math.max(0,Math.min(k,0.5*mN/(dt*dt))*pen-Math.min(c,0.5*mN/dt)*vn),vt=sub(vP,mul(nW,vn));let Fw=mul(nW,Fn);
+    // (Q545) a woken craft's hull striking the ground: at the speed it comes down onto it; sliding, at its slide speed in a
+    // boulder field (the cells that add to a touchdown) and at SKID of it on open ground. Damage as a topple's (groundHits)
+    if(hits&&fp.hull){const vs=len(vt),vh=Math.max(fp.a?0:-vn,vs>TIP_SAFE&&surfaceHit(su,pf,b)>0?vs:0,SKID*vs);
+      if(vh>TIP_SAFE){const h=hits.get(fp.p);if(!h||vh>h.v)hits.set(fp.p,{v:vh,lim:TIP_BREAK+(su.soft||0)})}}
     // friction (vehicle, Q31): a tangential spring to where the point first touched (stiction: it holds on a slope instead of
     // creeping, which a velocity-only cap can't do), plus a damper; both capped by the point's effective mass along the slip,
     // rotation included. Past μ·Fn the point slides and its anchor follows, so a slide is Coulomb as before.
@@ -121,19 +143,50 @@ function groundContact(s,dt){const b=s.body;
       if(fl>cap){Ft=mul(Ft,cap/fl);if(dl>1e-9)fp.a=toPF(b,sub(P,mul(d,Math.min(1,cap/(kt*dl)))),simT)}
       Fw=add(Fw,Ft)}
     const fb=qrot(qi,Fw);addF(fp.p,fb[0],fb[1],fb[2],fp.pt[0],fp.pt[1],fp.pt[2])}
-  if(any)s.touchT=simT}
+  if(any)s.touchT=simT;
+  if(s.roused){if(hits.size)groundHits(s,hits);   // (Q545) off the ground 0.3 s: the next touch is judged as a touchdown again
+    if(!any&&s.inContact&&simT-(s.touchT??-1e9)>0.3){s.inContact=false;if(s.thrust>0&&!s.roused.off){s.roused.off=true;HOOK.msg('Takeoff')}}}}
+// (vehicle, Q545) parts of a woken craft that hit the ground: damage as a topple's (TIP_SAFE to broken at TIP_BREAK plus the
+// ground's softness); the craft is lost only when its root breaks
+function groundHits(s,hits){const b=s.body;
+  for(const[p,h]of hits){const d=clamp((h.v-TIP_SAFE)/(h.lim-TIP_SAFE),0,1),d0=p.dmg||0;if(d<=d0+0.02)continue;p.dmg=d;
+    const nm=p.d.name.toLowerCase(),why=`the ${nm} hit ${b.name} at ${h.v.toFixed(1)} m/s: ${d>=1?'broken':`${Math.round(d*100)} % damaged`}`;logEv('contact',why);
+    if(p===s.root&&d>=1){s.crashSpeed=h.v;debFail(s,'topple',why);lose(s,`destroyed: its ${nm} hit ${b.name} at ${h.v.toFixed(0)} m/s`,2);return}
+    if(d>=1||simT-(p.hitT??-1e9)>2){p.hitT=simT;HOOK.msg(why[0].toUpperCase()+why.slice(1))}}}   // one line per part per 2 s (a slide hits it again and again)
 // after each step: the nose in the ground, toppling, coming to rest; and splashdowns (seaCheck)
 function groundCheck(s){
   const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len)return;   // well above the highest ground: nothing to hit
   const pT=madd(s.r,Y,s.yTop),hT=len(pT)-groundR(b,toPF(b,pT,simT)),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),pf0=toPF(b,s.r,simT);
   if(seaAt(b,pf0)){seaCheck(s);return}   // the sea: a fluid since Q274 (seaForces pushes; seaCheck judges the splash, the rest and a sinking)
-  if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.crashSpeed=sp;lose(s,`destroyed: the nose hit ${b.name} at ${sp.toFixed(0)} m/s`,3);return}
+  if(hT<0&&!s.roused){const sp=len(sub(s.v,surfVel(b,s.r)));s.crashSpeed=sp;lose(s,`destroyed: the nose hit ${b.name} at ${sp.toFixed(0)} m/s`,3);return}
   if(!s.inContact)return;
-  if(tilt>C_TOPPLE){const F=tipFall(s,tilt,pf0);if(F.lost){s.crashSpeed=F.v;lose(s,`${toppleWhy(s,pf0)}; its ${F.root} hit the ground at ${F.v.toFixed(0)} m/s`,2)}else tipOver(s,F,pf0);return}   // a slow fall lies on its side (Q508)
+  if(tilt>C_TOPPLE&&!s.roused){const F=tipFall(s,tilt,pf0);if(F.lost){s.crashSpeed=F.v;lose(s,`${toppleWhy(s,pf0)}; its ${F.root} hit the ground at ${F.v.toFixed(0)} m/s`,2)}else tipOver(s,F,pf0);return}   // a slow fall lies on its side (Q508)
   const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
-  if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
-  if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
-    const ls=s.landSurface||{name:'?',hit:0};HOOK.msg(`Landed on ${b.name} (${ls.name}) at ${s.touchV.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(s.touchV+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`)}}
+  if(vr<0.15&&wr<0.03&&!(s.thrust>0)&&!(s.roused&&ctlKeys(s))){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing), nor (woken) while the keys turn or push it (SAS alone may fire RCS at rest)
+  if(s.restT>=C_REST){if(s.roused){settle(s,tilt);return}
+    s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;HOOK.msg(landMsg(s,tilt))}}
+function landMsg(s,tilt){const b=s.body,ls=s.landSurface||{name:'?',hit:0},tv=s.touchV||0;
+  return`Landed on ${b.name} (${ls.name}) at ${tv.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(tv+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`}
+// ---- thrust on the ground moves the craft (vehicle, QUEUE Q545; PLAYTEST #151). A landed craft is pinned where it came to
+// rest (s.landed: no forces, so no jitter). Thrust on one lying on its side, or the keys turning it with its wheels or RCS
+// (any craft landed away from its pad; also thrust leaning 15° or more), wakes it (rouse): a free body again, held by the
+// ground's contact at its feet and its whole outline (hullPts), with friction, so it pivots about the edge it rests on,
+// slides, rights itself or tumbles as the forces say. Parts break only by the sim's rules: a hull point striking the ground
+// (groundHits), the joints' loads (structLoads), a touchdown's verdict once it has left the ground. Still again for C_REST
+// (no thrust, no RCS, no keys) it sleeps (settle): upright, landed; past C_TOPPLE, on its side (s.tipped, p.buried anew).
+const ctlKeys=s=>{const I=inpOf(s);return!!((s.torque>0||s.rcs)&&(I.pitch||I.yaw||I.roll)||s.rcs&&(I.tx||I.ty||I.tz))};
+function rouse(s){const b=s.body,up=norm(s.r);s.landed=false;s.float=null;s.roused={t:simT};s.inContact=true;s.touchT=simT;s.restT=0;s.foot=null;
+  s.v=surfVel(b,s.r);s.w=[0,bodyOmega(b),0];const P=footPoints(s).concat(hullPts(s));for(const fp of P)fp.a=null;
+  // seated: the lowest of its feet and hull points just touching (the pose a topple left it in lies on its widest body)
+  let c=Infinity;for(const fp of P){const X=add(s.r,qrot(s.q,sub(fp.pt,s.cm)));c=Math.min(c,len(X)-groundR(b,toPF(b,X,simT)))}
+  if(isFinite(c)&&(c>0.01||c<-0.05))s.r=madd(s.r,up,-c);
+  logEv('contact',`moving on ${b.name}${s.tipped?' from its side':''}`)}
+function settle(s,tilt){const b=s.body,was=s.tipped;s.roused=null;s.landed=true;s.inContact=false;s.water=false;s.restT=0;s.foot=null;
+  s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
+  if(tilt>C_TOPPLE){buryParts(s);s.tipped=tipNote(s,was?was.v:0);const T=s.tipped,why=`at rest on its side on ${b.name}${T.broke.length?`; broken: the ${T.broke.join(', ').toLowerCase()}`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`;
+    logEv('contact',why);HOOK.msg(why[0].toUpperCase()+why.slice(1));return}
+  for(const p of s.parts)p.buried=false;s.tipped=null;
+  if(was){const why=`standing again on ${b.name}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`;logEv('contact',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}else HOOK.msg(landMsg(s,tilt))}
 // why it fell over (Q264): the drift or the lean it came down with, against what this stack can stand; legs if it has none
 function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0),vt=tipSpeed(s,b.mu/(b.R*b.R)),dr=s.touchDrift||0,ti=(s.touchTilt||0)*57.3;
   const how=dr>0.6*vt?`it touched down drifting ${dr.toFixed(1)} m/s sideways, and it tips over past ${vt.toFixed(1)} m/s`
@@ -144,10 +197,10 @@ function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},s
 // stance's edge; energy gives its turn rate when it lands flat (from the rate it has and its centre of mass dropping
 // h·cos(tilt)), and each part hits at that rate times its height over the base. A part takes damage from TIP_SAFE m/s and
 // breaks (dmg 1: no thrust, no signal, no power) at TIP_BREAK plus the ground's softness; the craft is lost only when its
-// root (the pod, the probe core) breaks. Otherwise it is landed, s.tipped, pinned on its side: the parts mounted round the
-// side that now faces down are p.buried, so a buried antenna has no sky and a buried wing no sun. Liftoff and staging are
-// blocked (TIP_NO), and so is a rover's deploy. Righting it (a crew, a visit) waits for M3.
-const TIP_SAFE=2,TIP_BREAK=6,TIP_NO="It lies on its side: it can't lift off or drop a stage (righting it waits for a crew or a visit)";
+// root (the pod, the probe core) breaks. Otherwise it is landed, s.tipped, at rest on its side: the parts mounted round the
+// side that now faces down are p.buried, so a buried antenna has no sky and a buried wing no sun. A rover's deploy waits
+// until it stands. Since Q545 nothing else is refused: thrust, RCS or the wheels move it (rouse), and it may right itself.
+const TIP_SAFE=2,TIP_BREAK=6,SKID=0.1;   // SKID (Q545): a hull sliding on open ground strikes it at this share of its slide speed (breaks from ~60 m/s)
 function tipFall(s,tilt,pf0){const b=s.body,g=b.mu/dot(s.r,s.r),up=norm(s.r),Y=qrot(s.q,[0,1,0]),su=surfaceAt(b,pf0),lim=TIP_BREAK+(su.soft||0);
   let yb=Infinity;for(const f of footPoints(s))yb=Math.min(yb,f.pt[1]);if(!isFinite(yb))yb=Math.min(...s.parts.filter(p=>p.on).map(p=>p.y0));
   const h=Math.max(0.05,s.cm[1]-yb),k=norm(cross(up,Y)),w0=Math.max(0,dot(sub(s.w,[0,bodyOmega(b),0]),k)),Ip=Math.min(s.I[0],s.I[2])+s.mass*h*h;
@@ -159,13 +212,16 @@ function tipOver(s,F,pf0){const b=s.body,up=norm(s.r),Y=qrot(s.q,[0,1,0]);let H=
   const B=add(s.r,qrot(s.q,sub([0,F.yb,0],s.cm)));s.q=qnorm(qmul(qFromTo(Y,H),s.q));
   const P=add(B,qrot(s.q,sub(s.cm,[0,F.yb,0]))),pf=toPF(b,P,simT);s.r=fromPF(b,mul(norm(pf),groundR(b,pf)+F.rl),simT);
   const broke=[],hurt=[];
-  for(const[p,v]of F.hit){const d=clamp((v-TIP_SAFE)/(F.lim-TIP_SAFE),0,1);if(d>0){p.dmg=Math.max(p.dmg||0,d);(p.dmg>=1?broke:hurt).push(p)}
-    const o=Math.hypot(p.pos[0],p.pos[2]),u=o>0.05?[p.pos[0]/o,0,p.pos[2]/o]:p.inst&&p.inst.surf&&p.phi!=null?[Math.cos(p.phi),0,Math.sin(p.phi)]:null;
-    p.buried=!!u&&dot(qrot(s.q,u),up)<-0.5}
-  s.tipped={v:F.top,t:simT,broke:[...new Set(broke.map(p=>p.d.name))],hurt:hurt.length,buried:s.parts.filter(p=>p.on&&p.buried).length};s.throttle=0;s.inContact=false;s.restT=0;
+  for(const[p,v]of F.hit){const d=clamp((v-TIP_SAFE)/(F.lim-TIP_SAFE),0,1);if(d>0){p.dmg=Math.max(p.dmg||0,d);(p.dmg>=1?broke:hurt).push(p)}}
+  buryParts(s);s.tipped={v:F.top,t:simT,broke:[...new Set(broke.map(p=>p.d.name))],hurt:hurt.length,buried:s.parts.filter(p=>p.on&&p.buried).length};s.inContact=false;s.restT=0;   // the throttle stays: thrust moves it (Q545)
   s.landed=true;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;s.foot=null;
   const T=s.tipped,why=`toppled over on ${b.name}, its top hitting at ${F.top.toFixed(1)} m/s: it lies on its side${T.broke.length?`; broken: the ${T.broke.join(', ').toLowerCase()}`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`;
   s.tipWhy=why;logEv('contact',why);debFail(s,'topple',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
+// the parts mounted round the side that faces down (off-axis, outward within 60° of straight down) are under the hull
+function buryParts(s){const up=norm(s.r);for(const p of s.parts){if(!p.on)continue;const o=Math.hypot(p.pos[0],p.pos[2]),u=o>0.05?[p.pos[0]/o,0,p.pos[2]/o]:p.inst&&p.inst.surf&&p.phi!=null?[Math.cos(p.phi),0,Math.sin(p.phi)]:null;
+  p.buried=!!u&&dot(qrot(s.q,u),up)<-0.5}}
+// what a craft at rest on its side carries (Q545's settle; tipOver's own counts only that fall's damage)
+const tipNote=(s,v)=>{const on=s.parts.filter(p=>p.on);return{v,t:simT,broke:[...new Set(on.filter(p=>p.dmg>=1).map(p=>p.d.name))],hurt:on.filter(p=>p.dmg>0&&p.dmg<1).length,buried:on.filter(p=>p.buried).length}};
 // (flow, QUEUE Q540) on its side, a deployable pressed under the hull (p.buried: a wing, a boom antenna, a leg) stays folded:
 // P, Y, the Unfold button, an action group or a staged group leave it and say why; the others move. (Staging and thrust on
 // the ground are Q545's: Caio, 2026-11-07, the simulation should decide what thrust does to a craft on its side.)
@@ -280,7 +336,7 @@ function lesJettison(s,chute){const les=s.parts.find(p=>p.on&&p.d.kind==='les');
   if(chute&&s.chutePart){s.chute=true;s.chuteA=0}HOOK.msg(chute?'Tower jettisoned, chute armed':'Escape tower jettisoned')}
 function stage(s){
   // a procedure being recorded notes staging done before the tank ran dry
-  if(!s.alive)return;if(s.procRec&&!s.procRec.cut&&!s.landed&&dvRemaining(s).cur>0.5)s.procRec.early.push(len(s.r)-s.body.R);if(s.procRec&&s.procRec.m&&s.landed)s.procRec.m.surfStage++;{const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les&&!(s.lesT>0)&&len(s.r)-s.body.R>LES_JET_ALT)lesJettison(s,false)}s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;if(s.tipped&&s.landed&&ev.decouple.length){HOOK.msg(TIP_NO);return}s.evIdx++;
+  if(!s.alive)return;if(s.procRec&&!s.procRec.cut&&!s.landed&&dvRemaining(s).cur>0.5)s.procRec.early.push(len(s.r)-s.body.R);if(s.procRec&&s.procRec.m&&s.landed)s.procRec.m.surfStage++;{const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les&&!(s.lesT>0)&&len(s.r)-s.body.R>LES_JET_ALT)lesJettison(s,false)}s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
   for(const k of ev.decouple){const list=s.parts.filter(p=>p.on&&p.seg===k);if(!list.length)continue;
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}

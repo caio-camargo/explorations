@@ -860,7 +860,7 @@ function detach(s,list,kick,spin,asVessel){
   else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
     w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
-  if(s.landed)s.landed=false;
+  if(s.landed){if(s.tipped&&!s.water)rouse(s);else s.landed=false}   // a stage dropped off a craft on its side: it moves as the ground lets it (Q545)
   HOOK.rebuild()}
 // ---- engine gimbal (control session). Each engine's nozzle swivels up to d.gim degrees, at most d.gimR °/s. p.gv is its
 // deflection: a vessel-frame vector across its thrust axis, |gv| = sin(angle); the thrust points along tdir + gv, so the
@@ -934,9 +934,10 @@ function physStep(s,dt){
   for(const p of s.parts)if(p.on&&p.spinT>0){const k=Math.min(dt,p.spinT)/dt;p.L[1]+=k*p.d.spinJ/p.d.burn;p.spinT-=dt;if(p.spinT<=0){p.spinT=0;p.spent=true}}   // spin motors: a pure couple about the axis
   s.thrust=T;
   const Y=qrot(s.q,[0,1,0]);
-  if(s.landed){const W=s.mass*b.mu/(rl*rl);
-    if(s.tipped&&T>0){s.throttle=0;HOOK.msg(TIP_NO)}   // on its side (Q508): the engines can't lift it
-    if(!s.tipped&&T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
+  if(s.landed){const W=s.mass*b.mu/(rl*rl),cu=dot(Y,norm(r));
+    // (Q545) thrust or the keys move a craft on its side; the keys (wheels, RCS), or thrust leaning 15° or more, one landed away from its pad
+    if(!s.water&&(s.tipped?T>0||ctlKeys(s):(s.landedAt!=null||s.reg)&&T*cu<=W&&(ctlKeys(s)||T>0&&cu<0.966)))rouse(s);
+    else if(!s.tipped&&T*cu>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
     else{simT+=dt;syncLanded(s);s.gload=1;s.maxLoad=0;return}}
   if(s.node&&T>0)nodeBurn(s,Y,T,dt);
   const vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);

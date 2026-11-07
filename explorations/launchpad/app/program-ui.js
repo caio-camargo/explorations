@@ -332,7 +332,7 @@ document.addEventListener('click',e=>{const op=e.target.dataset&&e.target.datase
 // (flow, Q527) a lander on its side (Q508): what is out under the hull and why, what the fall broke or damaged, and why it stays
 function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);
   return[...(T.under.length?[['Under it',T.under.join(' · ')]]:[]),...(T.broke.length?[['Broken',`<span class="bad">${T.broke.join(', ')}</span>`]]:[]),
-    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Stuck','<span class="dim">no liftoff · righting it waits for a crew or a visit</span>']]}
+    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Righting','<span class="dim">thrust, RCS or the wheels can stand it up</span>']]}
 function bayRows(){const B=S.parts.filter(p=>p.on&&p.d.kind==='bay');if(!B.length)return[];const f=Math.min(...B.map(doorF)),op=B.some(b=>b.open),
     load=B.some(b=>b.children.some(c=>c.on&&c.inBay===b)),st=f===0?'shut':f===1?'open':`${op?'opening':'closing'} ${(f*100).toFixed(0)}%`;
   return[['Bay',`${st} <button data-bay="${op?'close':'open'}">${op?'close':'open'} [B]</button>${load&&f===1?' <button data-bay="rel">release payload</button>':load?'':' <span class="dim">empty</span>'}`]]}
