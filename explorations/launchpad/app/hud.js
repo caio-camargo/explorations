@@ -45,6 +45,7 @@ const HUD_CARDS=[
   {id:'dv',title:'<span style="text-transform:none">Δv</span>',rows:dvRows},   // (Q495) shown in the dark cockpit too: a burn is when it matters
   {id:'target',title:'Target',rows:()=>[...tgtRows(),...dockRows()]},
   {id:'stat',title:'Stationary orbit',rows:statRows},   // (vehicle, Q454) when to start the transfer, app/program-ui.js; on the Map too
+  {id:'tipped',title:'On its side',rows:()=>tipRows()},   // (flow, Q527) a toppled lander: what's out under it and why, the damage
   {id:'payload',title:'Payload',rows:payloadRows},
   {id:'fleet',title:'Fleet',rows:fleetRows},
   {id:'vehicle',title:'Vehicle',when:()=>spinRows().length+wheelRows().length>0||!!S.rcs,

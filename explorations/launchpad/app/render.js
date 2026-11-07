@@ -371,7 +371,7 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
     for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,[.79,.91,.42,.5]);pv=p}}
   for(const q of[...satsUp(),...moonSats()]){if(q.id!==S.target&&!mapShow(q.junk?'debris':'sats'))continue;const B=orbBody(q),o=bodyPos(B,simT),[r,v]=satAt(q,tNow()),el=elements(r,v,B.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(o,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
   if(mapShow('links'))mapLinks(seg);   // space Q173: each satellite's link home right now
-  drawPatches(gateLegs(predCache.p,labels),camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
+  if(!S.landed)drawPatches(gateLegs(predCache.p,labels),camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');   // (Q527) landed: no path of its own (its ground's turning drew a line and "Impact in 1s")
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
   mapUI.pickW=[];const p0=predCache.p[0];
   if(p0&&p0.path&&!S.landed){const off=bodyPos(p0.b,simT);for(const[r,t]of p0.path)if(t>=simT)mapUI.pickW.push({p:add(off,r),t})}

@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1611,3 +1611,30 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   `node test.mjs --smoke --jobs 2`: all passed (313 sections). Screenshots (RTX, headless `shot.mjs`, the Crewed Lunar at
   39 km with its boosters dry ~3 s): `scratchpad/q538/cue_2.png` (the lit row and the line), `cue_3.png` (staged: gone).
   TESTING row 342.
+
+## v1.277 — a toppled lander on screen (2026-11-07, flow worker, QUEUE Q527; from Q508, PLAYTEST #142)
+- **Why:** v1.260 (Q508, notes/vehicle.md § v1.260) leaves a slow topple alive on its side, but was only tested headless.
+  Looked at in the real game (RTX, headless Chrome through `playtest.mjs --eval`): a probe lander (sci, core, t1, Wren, two
+  whips, two wings) set down on a flat sunlit spot of Selene drifting 1.5× its tip speed, as vehicle-38 drops it.
+- **What looked right:** it lies on its widest body on the ground, level (the navball reads pitch 0°), not sunk or floating;
+  the buried whip pokes into the dust; no jitter (pose unchanged over 180 frames); the default camera frames it. The MET
+  line's amber "on its side"; the topple message; Z → "It lies on its side: …" with the throttle cut; the Debrief's
+  "Toppled over on Selene · lying on its side; 2 parts damaged; it stays there" and its incident; the news "Selene lander 1
+  stays on Selene, lying on its side".
+- **What read wrong, fixed:**
+  - Nothing said which parts the fall put out of use. **`tipState(s)`** (sim/flight.js) lists the antennas, wings and
+    cameras under the hull and why each is out (`TIP_OUT`: no sky, no sun, no view), the broken parts, the damaged ones with
+    how much; alike ones grouped ("2 × whip antenna: no sky"). The flight's new **"On its side" card** (`tipRows`,
+    app/program-ui.js; `HUD_CARDS` 'tipped') shows it: Under it · Broken · Damaged · "Stuck: no liftoff · righting it
+    waits for a crew or a visit". (There was no per-part antenna or panel readout in flight to fix; this is it.)
+  - The Fleet tab's "On the surface" line didn't say it lies on its side: now "Selene lander 1 [Fly] · Selene · on its side".
+  - The map drew a landed craft's own path: its ground turning with the body, as an orbit line round Selene and "Impact in
+    1s (perturbed)". `drawMap` now skips the craft's own patches once landed (any landed craft, not only a tipped one).
+  - TIP_NO said "it can't lift off or stage", but an ignition event still stages (only a decoupling is blocked): now
+    "it can't lift off or drop a stage".
+- **Left for the queue** (Q527's report): the "Unfold wings (P)" button still unfolds a wing lying under the hull; the
+  Stages list still offers the next ignition as if it could fly.
+- **Checks:** test `flow-50` (the drop: whip "no sky" and wing "no sun" under it, the damage with %, grouping, an upright
+  craft listing nothing; the wiring of the card, the Fleet tab, the map, TIP_NO). Screenshots (RTX):
+  `scratchpad/q527/b/eval_{2,4,5,6,10}.png` before (the default view, low side, end-on, from above, the map with "Impact in
+  1s"), `scratchpad/q527/c/eval_{2,10,14}.png` after (the card, the map clean, the Fleet tab). TESTING row 343.

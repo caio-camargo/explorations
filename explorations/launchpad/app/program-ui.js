@@ -91,7 +91,7 @@ function moonSatsHTML(){const L=moonSats().filter(q=>!q.junk),T=tNow();if(!L.len
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-B.R)}–${fmtD(el.ap-B.R)}, ${inc.toFixed(0)}°${kit?` · ${kit}`:''}${stationLine(q)}${slotLine(q)}</div>`}).join('')).join('')}
 function landedHTML(){const L=landedUp();if(!L.length)return'';
   return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
-    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`+(base?baseRunLine(q,stackDef):'')}).join('')}
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${q.tipped?' · <span class="warn">on its side</span>':''}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`+(base?baseRunLine(q,stackDef):'')}).join('')}
 // the fragment bands (space, Q147): how many, the thickest band and what it means for a 2 m satellite there
 function fragHTML(){const F=PROG.frag;if(!F)return'';const n=F.reduce((a,x)=>a+x,0);if(n<100)return'';const b=F.indexOf(Math.max(...F)),lo=Math.round((TELLUS.atm+b*BAND_W)/1e3),
   K=PRESSURE_K[pressureOf('debris')]||0,r=4*2*2*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b))*DAY_S*YEAR_D*K,c=Object.entries(PROG.casc||{}).filter(x=>x[1]>=2).map(x=>Math.round((TELLUS.atm+x[0]*BAND_W)/1e3));
@@ -314,6 +314,10 @@ function armRows(){if(!S.parts.some(p=>p.on&&p.d.kind==='arm'))return[];const ar
     return[['Arm',`${g.kind==='berth'?'berthing':'stowing'} ${a.e.name} · ${(100*(1-left/Math.max(g.d0,1e-9))).toFixed(0)}%`]]}
   return[['Arm',`holding ${a.e.name}${bt('berth','berth')}${bt('stow','stow in bay')}${bt('free','release')}`]]}
 document.addEventListener('click',e=>{const op=e.target.dataset&&e.target.dataset.arm;if(!op||mode!=='flight'||!S)return;tapeArm(recTape,S,op)});
+// (flow, Q527) a lander on its side (Q508): what is out under the hull and why, what the fall broke or damaged, and why it stays
+function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);
+  return[...(T.under.length?[['Under it',T.under.join(' · ')]]:[]),...(T.broke.length?[['Broken',`<span class="bad">${T.broke.join(', ')}</span>`]]:[]),
+    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Stuck','<span class="dim">no liftoff · righting it waits for a crew or a visit</span>']]}
 function bayRows(){const B=S.parts.filter(p=>p.on&&p.d.kind==='bay');if(!B.length)return[];const f=Math.min(...B.map(doorF)),op=B.some(b=>b.open),
     load=B.some(b=>b.children.some(c=>c.on&&c.inBay===b)),st=f===0?'shut':f===1?'open':`${op?'opening':'closing'} ${(f*100).toFixed(0)}%`;
   return[['Bay',`${st} <button data-bay="${op?'close':'open'}">${op?'close':'open'} [B]</button>${load&&f===1?' <button data-bay="rel">release payload</button>':load?'':' <span class="dim">empty</span>'}`]]}

@@ -145,7 +145,7 @@ function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},s
 // root (the pod, the probe core) breaks. Otherwise it is landed, s.tipped, pinned on its side: the parts mounted round the
 // side that now faces down are p.buried, so a buried antenna has no sky and a buried wing no sun. Liftoff and staging are
 // blocked (TIP_NO), and so is a rover's deploy. Righting it (a crew, a visit) waits for M3.
-const TIP_SAFE=2,TIP_BREAK=6,TIP_NO="It lies on its side: it can't lift off or stage (righting it waits for a crew or a visit)";
+const TIP_SAFE=2,TIP_BREAK=6,TIP_NO="It lies on its side: it can't lift off or drop a stage (righting it waits for a crew or a visit)";
 function tipFall(s,tilt,pf0){const b=s.body,g=b.mu/dot(s.r,s.r),up=norm(s.r),Y=qrot(s.q,[0,1,0]),su=surfaceAt(b,pf0),lim=TIP_BREAK+(su.soft||0);
   let yb=Infinity;for(const f of footPoints(s))yb=Math.min(yb,f.pt[1]);if(!isFinite(yb))yb=Math.min(...s.parts.filter(p=>p.on).map(p=>p.y0));
   const h=Math.max(0.05,s.cm[1]-yb),k=norm(cross(up,Y)),w0=Math.max(0,dot(sub(s.w,[0,bodyOmega(b),0]),k)),Ip=Math.min(s.I[0],s.I[2])+s.mass*h*h;
@@ -164,6 +164,12 @@ function tipOver(s,F,pf0){const b=s.body,up=norm(s.r),Y=qrot(s.q,[0,1,0]);let H=
   s.landed=true;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;s.foot=null;
   const T=s.tipped,why=`toppled over on ${b.name}, its top hitting at ${F.top.toFixed(1)} m/s: it lies on its side${T.broke.length?`; broken: the ${T.broke.join(', ').toLowerCase()}`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`;
   s.tipWhy=why;logEv('contact',why);debFail(s,'topple',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
+// (flow, Q527) what the fall left out of use, for the flight's "On its side" card: the antennas, wings and cameras pressed
+// under the hull (and why each is out), the parts broken, the parts damaged (how much). Alike ones grouped: "2 × whip antenna"
+const TIP_OUT={ant:'no sky',solar:'no sun',cam:'no view'};
+function tipState(s){const on=s.parts.filter(p=>p.on),nm=p=>p.d.name.toLowerCase(),grp=a=>[...new Set(a)].map(x=>{const n=a.filter(y=>y===x).length;return n>1?`${n} × ${x}`:x});
+  return{under:grp(on.filter(p=>p.buried&&!(p.dmg>=1)&&TIP_OUT[p.d.kind]).map(p=>`${nm(p)}: ${TIP_OUT[p.d.kind]}`)),broke:grp(on.filter(p=>p.dmg>=1).map(nm)),
+    hurt:grp(on.filter(p=>p.dmg>0&&p.dmg<1).map(p=>`${nm(p)} ${Math.round(p.dmg*100)} %`))}}
 // ---- the sea (world session, Q274; NOTES § v1.122). Water is a fluid. Every stack line's outer profile (s.lines, the
 // aero's) is cut into slices up to SEA_DY tall; each slice is a disc sampled at SEA_N points on the ring of radius r/√2,
 // which keeps the disc's waterplane moment, so the righting moment comes out right. A point under the water pushes up
