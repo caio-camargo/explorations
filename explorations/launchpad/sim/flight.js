@@ -49,8 +49,8 @@ function landStance(s,g,nev){const on0=s.parts.map(p=>p.on),fu0=s.parts.map(p=>p
 // a lost vessel keeps its cause (Q264): s.lossWhy, a clause for the Debrief's outcome and the message that stays on screen
 function lose(s,why,boom){s.alive=false;s.lossWhy=why;if(boom)HOOK.boom(s.body,s.r,simT,boom);logEv('loss',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
 // legs down (op 'down') or up ('up'): instant for now (the look beat can animate the swing); returns how many moved
-function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;p.depT=simT;n++}
-  if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
+function legOp(s,op){const dn=op==='down';let n=0;const pin=[];for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){if(dn&&pinned(s,p))pin.push(p);else{p.dep=dn;p.depT=simT;n++}}
+  if(n){s.foot=null;HOOK.rebuild();HOOK.msg((dn?'Legs down':'Legs up')+(pin.length?` (${pinNote(pin)})`:''))}else if(pin.length)HOOK.msg(pinMsg(pin));return n}
 const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);
 // ---- action groups (vehicle, QUEUE Q329, PLAYTEST #80). A design carries ag: [{id, name, op, n: [node ids]}]: the
 // deployable parts it moves (legs, folding wings and antennas, bay doors, the chute; every copy of each node) and how:
@@ -69,16 +69,18 @@ const agOut=(s,p)=>p.d.kind==='bay'?!!p.open:p.d.kind==='chute'?!!s.chute:!!p.de
 function agFire(s,id){const g=(s.ag||[]).find(x=>x.id===String(id));if(!g||!s.alive)return 0;
   if(g.stock&&g.op==='tog')return g.id==='sol'?wingOp(s,wingsOut(s)?'in':'out'):legOp(s,legsDown(s)?'up':'down');   // exactly P and Y
   const P=agParts(s,g);if(!P.length){HOOK.msg(`${g.name}: nothing on board to move`);return 0}
-  const out=g.op==='out'?true:g.op==='in'?false:!P.some(p=>agOut(s,p));let n=0,k=0,leg=false,shape=false;const bays=[];
+  const out=g.op==='out'?true:g.op==='in'?false:!P.some(p=>agOut(s,p));let n=0,k=0,leg=false,shape=false;const bays=[],pin=[];
   for(const p of P){if(agOut(s,p)===out)continue;
     if(p.d.kind==='chute'){if(out){s.chute=true;s.chuteA=0;n++}continue}   // armed, as by its stage; it isn't packed again
     if(p.d.kind==='bay'){bays.push(p);continue}
+    if(out&&(unfolds(p.d)||p.d.kind==='leg')&&pinned(s,p)){pin.push(p);continue}   // (Q540) under a toppled hull
     if(out&&unfolds(p.d)&&encased(s,p)){k++;continue}
     p.dep=out;p.depT=simT;n++;if(p.d.kind==='leg')leg=true;else shape=true}
   if(bays.length&&bayDoors(s,out,bays))n+=bays.length;
   if(leg)s.foot=null;if(n||shape)HOOK.rebuild();
   logEv('stage',`action group ${g.name}: ${n} part(s) ${out?'out':'in'}`);
-  if(n)HOOK.msg(`${g.name}: ${out?'out':'in'}${k?` (${k} still inside the fairing)`:''}`);else if(k)HOOK.msg(`${g.name}: inside the fairing: jettison it first (stage), then unfold`);
+  if(n)HOOK.msg(`${g.name}: ${out?'out':'in'}${k?` (${k} still inside the fairing)`:''}${pin.length?` (${pinNote(pin)})`:''}`);else if(k)HOOK.msg(`${g.name}: inside the fairing: jettison it first (stage), then unfold`);
+  else if(pin.length)HOOK.msg(`${g.name}: ${pinMsg(pin)}`);
   return n}
 // a procedure puts the legs down by itself (vehicle, Q121): descending within 1.5 km of the ground
 function autoLegs(s){if(!s.proc||s.landed||!s.alive||!s.parts.some(p=>p.on&&p.d.kind==='leg'&&!p.dep))return;
@@ -164,6 +166,12 @@ function tipOver(s,F,pf0){const b=s.body,up=norm(s.r),Y=qrot(s.q,[0,1,0]);let H=
   s.landed=true;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;s.foot=null;
   const T=s.tipped,why=`toppled over on ${b.name}, its top hitting at ${F.top.toFixed(1)} m/s: it lies on its side${T.broke.length?`; broken: the ${T.broke.join(', ').toLowerCase()}`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`;
   s.tipWhy=why;logEv('contact',why);debFail(s,'topple',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}
+// (flow, QUEUE Q540) on its side, a deployable pressed under the hull (p.buried: a wing, a boom antenna, a leg) stays folded:
+// P, Y, the Unfold button, an action group or a staged group leave it and say why; the others move. (Staging and thrust on
+// the ground are Q545's: Caio, 2026-11-07, the simulation should decide what thrust does to a craft on its side.)
+const pinned=(s,p)=>!!(s.tipped&&s.landed&&p.buried);
+function pinNote(P){const n=P.length,a=[...new Set(P.map(p=>p.d.name.toLowerCase()))];return n===1?`the ${a[0]} is pinned under it`:`${n} ${a.length===1?a[0]+'s':'parts'} are pinned under it`}
+const pinMsg=P=>{const t=pinNote(P);return t[0].toUpperCase()+t.slice(1)+`: ${P.length>1?'they stay':'it stays'} folded`};
 // (flow, Q527) what the fall left out of use, for the flight's "On its side" card: the antennas, wings and cameras pressed
 // under the hull (and why each is out), the parts broken, the parts damaged (how much). Alike ones grouped: "2 × whip antenna"
 const TIP_OUT={ant:'no sky',solar:'no sun',cam:'no view'};

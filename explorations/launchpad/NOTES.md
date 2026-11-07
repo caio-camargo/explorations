@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -18,7 +18,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 47 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
-| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 18 |
+| [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 19 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
 | [`notes/platform.md`](notes/platform.md) | Tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction | 17 |
 
@@ -362,6 +362,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.275 — map overlay text and marks the same size at any render scale: one helper, ovPx() (CSS px in the 3D view's pixels), for every map label, mark, node handle, the readout, the notebook/terminal maps, the flight markers, the rover yard and the builder's overlay (2026-11-07, flow worker, QUEUE Q539)
 - v1.276 — a cue when a stage still attached has run dry: the staging list's next row lit amber ("empty: drop them (Space)") and one line, once per stage; never auto-stages; a correction note on v1.272's flier-made claims (2026-11-07, flow worker, QUEUE Q538)
 - v1.277 — a toppled lander on screen (Q508 seen in the game): an "On its side" card says what is out under the hull and why (no sky, no sun, no view) and the damage; the Fleet tab says "on its side"; the map draws no orbit line or "Impact in 1s" for a landed craft (2026-11-07, flow worker, QUEUE Q527)
+- v1.279 — a wing, boom or leg pinned under a toppled lander stays folded and says why (P, Y, groups, stages; the free ones move); the map's body names on their bodies (the dot at the centre, the name over the limb). Staging on its side left to the simulation (Q545, Caio) (2026-11-07, flow worker, QUEUE Q540, Q541)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

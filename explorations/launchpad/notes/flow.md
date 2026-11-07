@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1638,3 +1638,31 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   craft listing nothing; the wiring of the card, the Fleet tab, the map, TIP_NO). Screenshots (RTX):
   `scratchpad/q527/b/eval_{2,4,5,6,10}.png` before (the default view, low side, end-on, from above, the map with "Impact in
   1s"), `scratchpad/q527/c/eval_{2,10,14}.png` after (the card, the map clean, the Fleet tab). TESTING row 343.
+
+## v1.279 — a wing under a toppled lander stays folded; the map's body names on their bodies (2026-11-07, flow worker, QUEUE Q540, Q541; from Q527)
+- **Why:** Q527's look at a lander on its side (v1.277) found "Unfold wings (P)" unfolding a wing lying under the hull
+  (drawn into the ground). And on the map zoomed on Selene, its name and dot floated well above the disc
+  (`scratchpad/q527/b/eval_10.png`).
+- **Pinned parts (sim/flight.js `pinned`, `pinNote`, `pinMsg`):** on a tipped, landed craft a deployable with `p.buried` (a
+  solar wing, a boom antenna, a leg) stays folded. `wingOp` (P, the Unfold button), `legOp` (Y) and `agFire` (the action
+  groups, their keys and their staged atoms) skip it and say why: "Solar wings out (the solar wing is pinned under it)", or
+  with nothing free, "2 solar wings are pinned under it: they stay folded". The free ones move. Folding is never refused.
+  When everything P could unfold is pinned, the button reads "Wings pinned under it" (dimmed).
+- **Staging left alone (Caio, 2026-11-07):** Q540 also asked to refuse a tipped craft's next ignition (the Stages list
+  offered "1 ignite Wren" and Space fired it). Built, then withdrawn on Caio's direction: "firing the rocket with the craft
+  on the ground should cause it to move — if the player can work it, they should be able to set it right using thrusters
+  and/or rcs … destruction should come from the simulation, not be automatic." So no new refusal: ignition stages as
+  before, and v1.260's liftoff/drop block stays as it was, to be revisited with thrust on the ground in **Q545**.
+- **The body label (Q541):** the map put each body's label at `bodyPos + [0, 1.3 R, 0]` (1.15 R for Tellus), in world
+  units along world y: zoomed out it sat just over the dot of a small disc, zoomed in it was 0.3 R off the limb, and with a
+  tilted camera that "up" is partly depth. Not v1.275's `ovPx` (still so after it: `scratchpad/q540/before/eval_5.png`).
+  Now the label's point is the body's centre (`mark:'body'`: the dot is the centre) and the name sits 8 CSS px over the
+  limb, from **`bodyRadPx(R, d, h, tanY)`** (app/render.js), the disc's radius on the view, which the notebook's and
+  terminal's limb circles (`drawEraMap`) now share.
+- **Checks:** test `flow-51` (the drop of flow-50: P with one wing under it, then both; the Solar panels group; a stage of
+  action groups only; an upright craft pins nothing; the wiring; computed: the label's centre and `bodyRadPx` within 3 % of a
+  close, off-axis, tilted view's true limb, the old anchor 1.15 radii off the centre). Screenshots (RTX,
+  `scratchpad/q540/{before,after}/`): `eval_3`/`eval_4` the toppled lander after P (before: both wings out, the buried one
+  into the ground; after: the buried one folded, the message names it; the after shots also show the withdrawn
+  "on its side: no ignition" stage row), `eval_5` the map zoomed on Selene (before: name and dot off the disc; after: dot at
+  the centre, the name on the limb), `eval_6` zoomed out. TESTING row 345.
