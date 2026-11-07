@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.41 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.42 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -366,6 +366,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.277 — a toppled lander on screen (Q508 seen in the game): an "On its side" card says what is out under the hull and why (no sky, no sun, no view) and the damage; the Fleet tab says "on its side"; the map draws no orbit line or "Impact in 1s" for a landed craft (2026-11-07, flow worker, QUEUE Q527)
 - v1.279 — a wing, boom or leg pinned under a toppled lander stays folded and says why (P, Y, groups, stages; the free ones move); the map's body names on their bodies (the dot at the centre, the name over the limb). Staging on its side left to the simulation (Q545, Caio) (2026-11-07, flow worker, QUEUE Q540, Q541)
 - Plan: the aim and the mission card (Q345 + Q513): contracts' conditions as data, "This flight is for" in the Assembly, a live Mission card in flight, the aim's legs and the program's Δv guess, Rollout/Dispatch/procedures fed by it; 7 slices, 1–3 the first-hour P1 (2026-11-07, flow worker; plan only)
+- Plan: Guided (Q491): a switch on the charter (on for a first program) that makes six first missions lessons (briefing on the Rollout, how-rows on Q548's Mission card, a debrief line), one card per system as it unlocks, dimmed tabs until then, and a "what's this" ? key for everyone; never physics or money; 7 slices after Q547–Q549 (2026-11-07, flow worker; plan only)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
