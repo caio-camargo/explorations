@@ -985,3 +985,40 @@
     !lun.alive && /hit the ground at \d+ m\/s/.test(lun.lossWhy || '') && !hop.alive && /toppled over.*hit the ground at \d+ m\/s/.test(hop.lossWhy || ''),
     `Lunar on Selene: ${lun.alive ? 'survived' : lun.lossWhy}; Hopper on Tellus: ${hop.alive ? 'survived' : hop.lossWhy}`);
 }
+
+// vehicle-39. Every preset's standard climb, staged as designed, reaches orbit without rescue (vehicle, QUEUE Q537; from
+// Q515). Flown as flow-41 flies it (the nose on the profile flat by 54 km while the ◇ climbs, then the ◇'s coast and burn),
+// but each stage dropped when its own tanks run dry (dvRemaining's current stage spent, as test.mjs's fly, fly_ladder and
+// fly_crewlunar stage), not only when every engine is out. Q515 saw the Crewed Lunar level off in the air ('level' at 65 km,
+// pod 100 %): that flier carries its four dry boosters (~10 t) through the core's last 62 s. Staged, the Lunar class climbs
+// quiet with the pod under 60 % and starts the circularising burn near 100 km; every preset's Δv left in orbit is pinned
+// (±50 m/s). Their upper stages are 0.39–0.75 g in vacuum at ignition (the 0.10–0.20 is stageStats' T/W at the sea-level Isp).
+{
+  const T = api.TELLUS, D = 180 / Math.PI, P = api.PROG, keepProg = structuredClone(P), keepS = api.S, keepT = api.t, F0 = api.FLEET.slice();
+  const fly = (Pn, staged = true) => { api.t = 0; const s = api.newShip(api.PRESETS[Pn]); api.S = s; s.sas = false; s.throttle = 1; api.stage(s);
+    let n = 0, w = null, peak = 0, out = 'lost', burn = null, low = Infinity;
+    while (s.alive && n++ < 300000) { const h = len(s.r) - T.R, f = api.localFrame(s.r), G = api.turnGuide(s), pad = h < 2000 && !G;
+      const own = G ? G.ph === 'climb' : h < T.atm, x = Math.min(1, Math.max(0, (h - 286) / (54e3 - 286))), p = 90 * (1 - Math.pow(x, 0.6)) / D;
+      const Y = own ? norm(add(mul(f.e, Math.cos(p)), mul(f.up, Math.sin(p)))) : G ? G.u : norm(sub(s.v, api.surfVel(T, s.r))), X = norm(cross(Y, f.n));
+      s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; s.throttle = G && G.ph === 'coast' ? 0 : G || pad || h < T.atm ? 1 : 0;
+      if (G && G.ph === 'burn' && !burn) burn = h; if (burn) low = Math.min(low, h);
+      const F = api.turnFlat(s), heat = s.hot ? s.hot.T / s.hot.d.Tmax : 0; peak = Math.max(peak, heat); if (F && !w) w = { h, why: F.why };
+      const el = elements(s.r, s.v, T.mu); if (!G && el.pe - T.R > T.atm) { out = 'orbit'; break; }
+      if (!G && !pad && dot(s.v, s.r) < 0 && h < T.atm * 0.9) { out = 'fell'; break; }
+      if (s.evIdx < s.events.length && s.throttle > 0 && (api.activeEngines(s).length === 0 || staged && api.dvRemaining(s).cur <= 0.5)) api.stage(s);
+      api.advPhys(s); }
+    return { out: s.alive ? out : 'burned up', w, peak, burn, low, left: s.alive ? api.dvRemaining(s).tot : 0 }; };
+  // Δv left in orbit, m/s (v1.273)
+  const PIN = { Lunar: 4077, 'Crewed Lunar': 4653, 'Big Lunar': 4123, 'Sample Return': 4493, Probe: 4292, Orbiter: 799, Satellite: 715, 'TV Satellite': 3473,
+    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1559, Asparagus: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
+  const R = Object.fromEntries(Object.keys(PIN).map(k => [k, fly(k)])), bad = [];
+  for (const [k, r] of Object.entries(R)) { const lc = LUNAR.includes(k);
+    if (r.out !== 'orbit' || r.w || Math.abs(r.left - PIN[k]) > 50 || lc && (r.peak >= 0.6 || !(r.low > 0.95 * T.atm))) bad.push(k); }
+  const dry = fly('Crewed Lunar', false);   // flow-41's staging: the dry boosters ride along
+  check('vehicle-39: every preset\'s standard climb, staged as designed, makes orbit with the Q483 warning quiet; the Lunar class (Lunar, Crewed Lunar, Big Lunar, Sample Return, Probe) with the pod under 60 % and the burn from ~100 km; Δv left as pinned',
+    !bad.length,
+    (bad.length ? `wrong: ${bad.join(', ')} · ` : '') + Object.entries(R).map(([k, r]) => `${k}: ${r.out}, ${r.w ? `${r.w.why} at ${(r.w.h / 1e3).toFixed(0)} km` : 'quiet'}, pod ${(r.peak * 100).toFixed(0)} %, burn from ${r.burn ? (r.burn / 1e3).toFixed(0) : '—'} km, ${r.left.toFixed(0)} m/s left`).join(' · ')
+      + ` · the Crewed Lunar carrying its dry boosters: ${dry.out}, ${dry.w ? `${dry.w.why} at ${(dry.w.h / 1e3).toFixed(0)} km` : 'quiet'}, pod ${(dry.peak * 100).toFixed(0)} %`);
+  for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
+  api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
+}

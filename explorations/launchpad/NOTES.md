@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
+**Version**: v2.0.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-07
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -14,7 +14,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 | File | What it holds | Sections |
 |---|---|---|
 | [`notes/foundations.md`](notes/foundations.md) | The idea, the first prototype (v1.0–v1.11), measurements, negative results, precision tricks, picking this up cold, open threads | 19 |
-| [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 26 |
+| [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 27 |
 | [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 47 |
 | [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
@@ -130,6 +130,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.200 — the planets in the sky as points of light by their magnitudes, a moon under a pixel as a point, stars faded by the sky's contrast (none by day), a fainter airglow (2026-10-13, sky & bodies, QUEUE Q374, Q395, Q407)
 - v1.212 — farmland round settled land (fields, hedges, roads, woods, villages, filtered by footprint), a scrub range round each pad, coasts blended over the pixel (2026-10-13, sky & bodies, QUEUE Q401, Q403)
 - v1.260 — a slow topple lies on its side: alive, damaged by the hit, buried antennas and wings out, no liftoff (2026-11-06, vehicle worker, QUEUE Q508, PLAYTEST #142)
+- v1.273 — every preset's standard climb, staged as designed, makes orbit unrescued; the Crewed Lunar "levelling off" was the test flier carrying its dry boosters; the Lunar class's upper stages are 0.39–0.75 g in vacuum (no preset changed) (2026-11-07, vehicle worker, QUEUE Q537)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
