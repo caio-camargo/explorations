@@ -31,7 +31,7 @@ function renderRover(){const el=$('rvDes');if(!el)return;
     <h2>${rvEsc(e.name)}</h2><div>on ${RV.body.name} · ${Math.round(G.m)} kg · ${e.km.toFixed(2)} km driven so far</div>
     <div class="sub" style="margin-top:6px">Nobody is there to right it or change its battery. Its line of sight home, sunlight and the signal's delay come with power and contact (R3); plans that drive it between flights with R5.</div>`;return}const L=rvDesigns(),d=L[rvSel],C=RV_CH[d.ch],st=rvStats(d),T=st.T,Sx=st.S,on=(a,b)=>a===b?' class="on"':'';
   const opt=k=>`<option value="${k}"${''}>${RV_IT[k].name} · ${RV_IT[k].m} kg</option>`;
-  let h=`<h1>ROVER YARD</h1><div class="sub">design a rover, then drive it here at home</div><div class="ndrow"><button data-go="program">← Program [P]</button></div>`;
+  let h=`<h1>ROVER YARD</h1><div class="sub">design a rover, then drive it here at home</div><div class="ndrow"><button data-go="program">← Program [P]</button> <a href="eva-lab.html" target="_blank" title="The EVA movement test ground: astronauts on foot at any gravity (a developer's tool, QUEUE Q531)">EVA lab ↗</a></div>`;
   h+=`<h2>Designs</h2>`+L.map((x,i)=>`<div class="row"><span class="nm">${i===rvSel?'<b class="acc">':''}${rvEsc(x.name)}${i===rvSel?'</b>':''}</span>${i===rvSel?'':`<button data-rv="sel" data-i="${i}">open</button>`}</div>`).join('')
     +`<div class="ndrow"><button data-rv="new">New</button><button data-rv="copy">Copy</button>${L.length>1?'<button data-rv="del">Delete</button>':''}</div>`;
   h+=`<h2>Name</h2><input id="rvName" value="${rvEsc(d.name)}" maxlength="28" style="width:100%;font:inherit;background:rgba(0,0,0,.3);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:2px 4px">`;

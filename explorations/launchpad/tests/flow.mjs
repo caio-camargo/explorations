@@ -962,3 +962,55 @@
   check('flow-43: a falling orbit is one line: the red starts where the blue stops (top of the air, or the ship in it), same frame, and ends on the ground at the X; drawn before the map lines go to the GPU',
     ok && drawn, `${rows.join(' · ')} · the old drawing was up to ${(oldOff / 1e3).toFixed(0)} km off · drawn in time ${drawn}`);
 }
+
+// flow-44. Where a craft comes down, and who brings it back (flow, QUEUE Q488; PLAYTEST #123, P1). One verdict
+// (landingVerdict, sim/world.js) for every point: our land is trucked home; the sea within our ships' reach of the launch
+// point is fished out (~hours), beyond it lost, and what sinks before the ships arrive is lost; another power's land by
+// relations (sent back, back worn, kept); Selene: no recovery. recoveryOf (the landing settled) is the same verdict, and a
+// Sounding flight's predicted verdict (fallVerdict on predictImpact) is what it gets when it lands. The map's X, the Descent
+// card, the node's landing and the Rollout's check all read it.
+{
+  const P = api.PROG, R = TELLUS.R, home = api.SITES[0], keepRel = JSON.parse(JSON.stringify(P.rel || {})), keepFac = P.fac, from = home.u, rows = [];
+  // the Sounding flight below completes missions, pays, logs: the whole program is put back after (it moved the next step on,
+  // and with it the Δv aims later sections' launch warnings read)
+  const keepProg = structuredClone(P), keepS = api.S, keepT = api.t;
+  P.fac = {};
+  const V = (u, o = {}) => api.landingVerdict(TELLUS, mul(norm(u), R), { from, ...o });
+  const homeCity = api.CITIES.find(c => c.power && c.power.i === api.HOME && api.isLand(c.u));
+  let near = null, far = null;
+  for (let k = 1; k <= 60 && !(near && far); k++) for (let a = 0; a < 12; a++) { const q = api.alongAz(from, a * Math.PI / 6, k * 20e3 / R);
+    if (api.isLand(q) || V(q).where !== 'the sea') continue; const d = k * 20; if (!near && d >= 60 && d <= 180) near = [q, d]; if (!far && d >= 900) far = [q, d]; }
+  const vh = V(homeCity.u), vn = V(near[0]), vs = V(near[0], { afloat: 600 }), vf = V(far[0]);
+  const city = api.CITIES.find(c => c.power && c.power.i !== api.HOME && api.isLand(c.u)), key = api.pairKey(api.HOME, city.power.i);
+  P.rel[key] = 0.5; const vFr = V(city.u); P.rel[key] = -0.1; const vTe = V(city.u); P.rel[key] = -0.6; const vHo = V(city.u);
+  const zHo = api.recoveryZone(norm(city.u), from, true, city.power), zN = api.recoveryZone(near[0], from, false), zF = api.recoveryZone(far[0], from, false);
+  // recoveryOf, the settled landing, is the same verdict
+  const at = (u, water) => { const s = api.newShip(['chute', 'pod']); s.landed = true; s.water = water; s.pf = mul(norm(u), R); return s; }, Rr = { launchPf: mul(from, R) };
+  const same = [[homeCity.u, false, vh], [near[0], true, vn], [far[0], true, vf], [city.u, false, vHo]].every(([u, w, v]) => { const r = api.recoveryOf(at(u, w), Rr); return r.factor === v.refund && r.kind === v.kind; });
+  P.rel = keepRel;
+  const vSel = api.landingVerdict(SELENE, [SELENE.R, 0, 0], { from });
+  const hrs = (3600 + near[1] * 1e3 / 10) / 3600;
+  const ok1 = vh.recovered && vh.refund === 1 && vh.kind === 'land' && /trucked home/.test(vh.text)
+    && vn.recovered && vn.who === 'our ships' && Math.abs(vn.hours - hrs) < 0.2 && new RegExp(`recovered by our ships, ~${Math.max(1, Math.round(hrs))} h`).test(vn.text)
+    && !vs.recovered && vs.kind === 'sank' && !vf.recovered && vf.kind === 'lost' && vf.hours === null
+    && vFr.recovered && vFr.refund === 1 && vTe.recovered && vTe.refund === 0.8 && !vHo.recovered && vHo.refund === 0 && vHo.who === city.power.name && vHo.text === `lands in ${city.power.name}: they keep it`
+    && !vSel.recovered && vSel.kind === 'none' && vSel.where === 'Selene' && zHo === 'hostile' && zN === 'reach' && zF === 'far' && same;
+  rows.push(vh.text, vn.text, vs.text, vf.text, vFr.text, vTe.text, vHo.text, vSel.text);
+  check('flow-44: one landing verdict: our land trucked home, the sea within reach fished out in ~hours (lost if it sinks first, lost beyond reach), a power\'s land by relations (sent back, worn, kept), Selene none; recoveryOf agrees',
+    ok1, rows.join(' · '));
+  // a Sounding flight: the verdict predicted on the way down is the one it gets on landing
+  api.t = 0; const s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0, pv = null;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) {
+    if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; }
+    if (armed && !pv && len(s.r) - R < 30e3) pv = api.fallVerdict(api.predictImpact(s), s);
+    api.advPhys(s);
+  }
+  const got = s.landed ? api.recoveryOf(s, s.rec) : null;
+  check('flow-44: a Sounding flight\'s landing verdict, predicted at 30 km on the way down, is the recovery it gets',
+    !!pv && !!got && pv.kind === got.kind && pv.refund === got.factor, `predicted: ${pv ? pv.text : 'none'} · landed: ${got ? `${got.kind} ${got.why}` : 'not landed'} · reach ${(api.recoveryReach() / 1e3).toFixed(0)} km`);
+  P.fac = keepFac; for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg); api.S = keepS; api.t = keepT;
+  // the readers: the map's X (and the node's), the Descent card, the Rollout's check and the Recovery layer all go through it
+  const has = (...a) => a.every(x => html.indexOf(x) >= 0);
+  const readers = has('impact.verdict=fallVerdict(impact,S)', "t2:V?V.t:''", 'function landRow()', 'impactRow(),...landRow()', 'ok(recoveryRule())', 'planImp.v.text', "['recovery','Recovery zones", 'recoveryZone(atlasU(x,y)');
+  check('flow-44: the map X, the node\'s landing, the Descent card, the Rollout check and the Recovery zones layer read the verdict', readers, api.recoveryRule());
+}

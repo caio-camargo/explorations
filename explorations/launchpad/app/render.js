@@ -54,7 +54,8 @@ function render(){spoolFrame();
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   profMark('cloud bake');const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&PSLAB&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0){covBake(camW);shdBake()}
   if(!desk&&SKY_B5)galBake();   // (Q321) once per program seed and setting
-  if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
+  // (Q488) the Recovery layer's zones are baked from the atlas too
+  if(view==='map'&&mode==='flight'&&(atlasMode||mapShow('recovery')))atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
   if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
@@ -77,8 +78,8 @@ function render(){spoolFrame();
    galaxy();gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    if(u.uGalC){gl.activeTexture(gl.TEXTURE12);gl.bindTexture(gl.TEXTURE_CUBE_MAP,GALC.tex);gl.uniform1i(u.uGalC,12);gl.activeTexture(gl.TEXTURE0);gl.uniform1f(u.uGalE,GALC.enc);   // (Q321) the baked sky on unit 12
     gl.uniform1f(u.uStT,(fxNow()/1000)%1000);gl.uniform1f(u.uStK,Math.max(1,1.2/EXPO.E))}   // the twinkle's clock; the stars' floor under a low exposure
-   {const on=view==='map'&&mode==='flight'&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);
-    if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
+   {const mp=view==='map'&&mode==='flight',rz=mp&&mapShow('recovery')&&!!ATLAS_GL.rtex&&!!ATLAS_GL.rkey,on=rz||mp&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);   // (Q488) the recovery zones over C's atlas
+    if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,rz?ATLAS_GL.rtex:ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uIv,ICE_VARY?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);if(u.uShd){gl.activeTexture(gl.TEXTURE14);gl.bindTexture(gl.TEXTURE_2D,SHD.tex);gl.uniform1i(u.uShd,14)}gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
@@ -232,7 +233,7 @@ function render(){spoolFrame();
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     const era=mapEra();if((era===1)!==document.body.classList.contains('paper'))document.body.classList.toggle('paper',era===1);   // the notebook's paper: the HUD switches to ink (flow, evergreen)
-    if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels)L.c=eraInk(era,L.c)}
+    if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels){L.c=eraInk(era,L.c);if(L.c2)L.c2=eraInk(era,L.c2)}}
     const texts=[];   // (flow, PLAYTEST #31) label texts are placed after the marks, most useful first, and one that would overlap a placed one is skipped
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;if(L.mark==='sat')mapUI.sats.push({x:s[0],y:s[1],id:L.id});
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
@@ -254,11 +255,12 @@ function render(){spoolFrame();
       else if(L.mark==='txt'){}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
-      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})}
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
+      if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*Math.min(devicePixelRatio||1,1.5),c:L.c2||L.c,o:0})}   // (Q488) a second line under the mark: the landing verdict
     {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k;texts.sort((a,b)=>a.o-b.o);
       for(const T of texts){const w=octx.measureText(T.t).width+4*k,r=[T.x-w/2,T.y-h+3*k,T.x+w/2,T.y+3*k];
         if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
-    if(atlasMode)atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
+    if(atlasMode||mapShow('recovery'))atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
   const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll&&!atMC;   // (flow) the builder's markers stay off behind the Program and Debrief panels
   if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx,true3)=>{const s=project(add(pw,qrot(S.q,true3?[0,y-S.cm[1],0]:[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;   // true3: at the real centre of mass, off the axis if it is (vehicle, Q337)
       const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
@@ -346,6 +348,7 @@ function mapLinks(seg){const T=tNow(),n=(PROG.sats||[]).length;if(!(Math.abs(T-m
       v.push([P,L.st?add(bodyPos(TELLUS,simT),rotY(mul(L.st.u,TELLUS.R),absTh(T))):add(bodyPos(TELLUS,simT),mul(norm(sub(P,bodyPos(TELLUS,simT))),TELLUS.R)),[.45,1,.55,.45]])}
     mapLinkMemo={t:T,n,v}}
   for(const[a,b,c]of mapLinkMemo.v)seg(a,b,c)}
+let planImp={key:null,wall:-1e9,f:null,v:null};   // (Q488) where the node's plan lands, cached by planCache's key
 function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pass below belongs to a layer: mapShow, app/map-layers.js
   if(!predCache||predCache.t!==simT&&!predStill())predCache={t:simT,p:predict(S),wall:performance.now(),body:S.body};
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
@@ -369,6 +372,10 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
     if(!planCache||planCache.key!==key&&!(planCache.num&&performance.now()-planCache.wall<250)){const p=predictFrom(nodePlanEnd(S)||{b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});planCache={key,p,num:p.some(x=>x.path),wall:performance.now()}}
     const plan=planCache.p;
     drawPatches(gateLegs(plan,labels),camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
+    // (flow, Q488; PLAYTEST #123) a node that brings it down: where the plan lands, and its verdict (the X's, fallVerdict).
+    // Flown from the node's state at most 5 times a second while the node is dragged
+    if(planImp.key!==planCache.key&&performance.now()-planImp.wall>200){const f=predictImpact(S,0,nodePlanEnd(S)||{b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});planImp={key:planCache.key,wall:performance.now(),f,v:fallVerdict(f,S)}}
+    if(planImp.f&&toolOK('impact')){const f=planImp.f;labels.push({p:add(bodyPos(f.b,simT),fromPF(f.b,f.pf,f.t)),mark:'impact',t:`▸plan lands in ${fmtT(f.t-simT)}`,c:'#ffffff',t2:planImp.v.text,c2:verdictInk(planImp.v)})}
     // (flow, Q157) every node of a chain: the one the node panel has selected (◀ node k of n ▶) gets the drag handles, the
     // others a marker with its Δv and time (a click on one selects it). Places from nodePlan; a node on another body's leg is
     // drawn by that body where it will be then, as the plan's legs are.
@@ -401,7 +408,11 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
     // (flow, Q266; PLAYTEST #66) a slow decay goes round many times inside the air: draw only the last revolution, and say how many
     let pv=null;for(const r of FL.pts){const q=add(bp,r);if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
     const ip=add(bp,FL.end),revs=(impact.t-simT)/P;
-    labels.push({p:ip,mark:'impact',t:`impact in ${fmtT(impact.t-simT)}${revs>1.5?` · after ~${Math.round(revs)} orbits`:''}`,c:'#ff6b5a'})}   // Q488: the landing verdict goes on this X (FL.pf, FL.tEnd)
+    const V=impVerdict();   // (flow, Q488; PLAYTEST #123) under the X, its verdict: who brings it back, or who keeps it (impact.verdict: FL.pf at FL.tEnd)
+    labels.push({p:ip,mark:'impact',t:`impact in ${fmtT(impact.t-simT)}${revs>1.5?` · after ~${Math.round(revs)} orbits`:''}`,c:'#ff6b5a',t2:V?V.t:'',c2:V?verdictInk(V.v):''})}
+  // (flow, Q488) the Recovery layer's edge at sea: our ships' reach, a ring round the launch point on the ground
+  if(mapShow('recovery')){const from=recoveryFrom(S),a=recoveryReach()/TELLUS.R,o=bodyPos(TELLUS,simT);let pv=null;
+    for(let i=0;i<=120;i++){const u=alongAz(from,i/120*6.2832,a),w=fromPF(TELLUS,mul(u,TELLUS.R+200),simT),p=add(o,w),vis=dot(w,sub(camW,p))>0;if(pv&&vis)seg(pv,p,[.35,.9,.75,.8]);pv=vis?p:null}}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);gl.uniform1f(PLINE.u.uLk,1/EXPO.E);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>EVA lab — Launchpad</title>
+<!-- eva-lab.html — the EVA movement test ground (space session, QUEUE Q531; EVA.md § 6a; notes/space.md § "Plan: EVA E0").
+     A developer's tool, not a training simulator: it loads only the simulation's math and bodies (sim/core.js,
+     sim/system.js) and the movement (sim/eva.js), and draws with a small WebGL of its own. index.html?eva-lab opens it. -->
+<style>
+:root{--fg:#d8dde4;--dim:#8a93a0;--acc:#f0b84a;--line:#3a4250;--bg:rgba(14,17,22,.86)}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--fg);font:12px/1.45 ui-monospace,Consolas,monospace}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}#ov{pointer-events:none}
+#panel{position:fixed;left:8px;top:8px;bottom:8px;width:250px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+#read{position:fixed;right:8px;top:8px;width:330px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;white-space:pre}
+#help{position:fixed;left:276px;bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 9px;color:var(--dim)}
+#tm{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:15px;color:var(--acc);text-shadow:0 1px 3px #000}
+h1{font-size:15px;margin:0;color:var(--acc);letter-spacing:.08em}h2{font-size:11px;margin:12px 0 4px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.sub{color:var(--dim)}a{color:var(--acc)}
+button{font:inherit;background:rgba(255,255,255,.06);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:2px 6px;margin:1px 2px 1px 0;cursor:pointer}
+button:hover{border-color:var(--dim)}button.on{border-color:var(--acc);color:var(--acc)}
+select,input[type=range]{width:100%;font:inherit;background:rgba(0,0,0,.3);color:var(--fg);border:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:6px}.k{color:var(--acc)}.warn{color:#f08a4a}
+</style></head><body>
+<canvas id="gl"></canvas><canvas id="ov"></canvas>
+<div id="panel"></div><div id="read"></div><div id="tm"></div>
+<div id="help"><span class="k">W/S</span> walk · <span class="k">A/D</span> turn · <span class="k">Q/E</span> sidestep · <span class="k">Shift</span> hurry · <span class="k">Space</span> jump · <span class="k">click</span> walk to ·
+  <span class="k">right-drag</span> look · <span class="k">wheel</span> zoom · <span class="k">P</span> pause · <span class="k">,</span> slow · <span class="k">.</span> step · <span class="k">R</span> reset · <span class="k">F</span> knock over · <span class="k">C</span> camera · <span class="k">G</span> debug · <span class="k">1–9</span> stations</div>
+<script src="sim/core.js"></script>
+<script src="sim/system.js"></script>
+<script src="sim/eva.js"></script>
+<script>
+// The pieces app/crew-look.js builds the astronaut from (app/gl.js's pv, tube and lathe, here in the lab's 9-float
+// vertex: position, normal, colour; the material in a colour's 4th entry is dropped), so the lab can wear the game's
+// suits (QUEUE Q535). gl.js itself is the whole game's renderer and isn't loaded here.
+'use strict';
+const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+function pv(out,P,N,c){out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2])}
+function tube(out,A,B,r,col,seg=6,caps=false){const d=sub(B,A),L=len(d);if(L<1e-9)return;const Y=mul(d,1/L),X=norm(cross(Math.abs(Y[1])<.9?[0,1,0]:[1,0,0],Y)),Z=cross(X,Y);
+  const N=a=>add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),P=(a,y)=>add(add(A,mul(Y,y)),mul(N(a),r));
+  for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;for(const[a,y]of[[a0,0],[a0,L],[a1,L],[a0,0],[a1,L],[a1,0]])pv(out,P(a,y),N(a),col)}
+  if(caps)for(const[y,s]of[[0,-1],[L,1]])for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,n=mul(Y,s);pv(out,add(A,mul(Y,y)),n,col);pv(out,P(a0,y),n,col);pv(out,P(a1,y),n,col)}}
+// a lathe with each band's own normal (gl.js smooths across gentle bends; the suit only lathes its neck ring and a sun disc)
+function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){
+  for(let i=0;i<prof.length-1;i++){const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1],nr=y1-y0,ny=-(r1-r0),l=Math.hypot(nr,ny);if(l<1e-9)continue;
+    const V=(r,y,a,c)=>pv(out,[o[0]+r*Math.cos(a),o[1]+y,o[2]+r*Math.sin(a)],[nr/l*Math.cos(a),ny/l,nr/l*Math.sin(a)],c);
+    for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;V(r0,y0,a0,c0);V(r1,y1,a0,c1);V(r1,y1,a1,c1);V(r0,y0,a0,c0);V(r1,y1,a1,c1);V(r0,y0,a1,c0)}}
+  const cap=(r,y,c,ny)=>{if(r<=0)return;for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
+    pv(out,[o[0],o[1]+y,o[2]],[0,ny,0],c);pv(out,[o[0]+r*Math.cos(a0),o[1]+y,o[2]+r*Math.sin(a0)],[0,ny,0],c);pv(out,[o[0]+r*Math.cos(a1),o[1]+y,o[2]+r*Math.sin(a1)],[0,ny,0],c)}};
+  if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
+</script>
+<script src="app/crew-look.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+// ---------------------------------------------------------------- state
+const Q=new URLSearchParams(location.search);
+const BOD=EVA.bodies();
+let bodyI=Math.max(0,BOD.findIndex(b=>b.name===(Q.get('body')||'Selene'))),gNow=BOD[bodyI].g,muNow=.6,stI=clamp(+(Q.get('station')||1)-1,0,EVA.stations.length-1);
+let W=EVA.world(gNow,BOD[bodyI].R,muNow),A=null,paused=false,slow=false,stepOnce=0,camMode='follow',dbg=true,target=null;
+const cam={yaw:0,pitch:.3,dist:6,user:0,p:[0,1,0]};
+function spawn(){const s=EVA.stations[stI];A=EVA.new(W,s.x,s.z,s.psi);if(typeof VIS!=='undefined'){VIS.feet=null;VIS.swing=null;VIS.sf=-1}cam.yaw=s.psi;cam.user=0;target=null;cam.p=A.p.slice()}
+function setG(g,R,re=true){gNow=g;W.g=g;if(R!==undefined)W.R=R;if(re)panel();else{const l=$('glab');if(l)l.textContent=`${f(gNow)} m/s² · ${f(gNow/9.81)} g`}}
+spawn();
+
+// ---------------------------------------------------------------- GL
+const cv=$('gl'),gl=cv.getContext('webgl2',{antialias:true}),ov=$('ov'),ox=ov.getContext('2d');
+const VS=`#version 300 es
+in vec3 aP;in vec3 aN;in vec3 aC;uniform mat4 uVP;out vec3 vN;out vec3 vC;out vec3 vW;
+void main(){vN=aN;vC=aC;vW=aP;gl_Position=uVP*vec4(aP,1.);}`;
+const FS=`#version 300 es
+precision highp float;in vec3 vN;in vec3 vC;in vec3 vW;uniform vec3 uCam;uniform vec3 uSky;out vec4 o;
+void main(){vec3 c=vC;if(length(vN)>.5){vec3 n=normalize(vN),L=normalize(vec3(.45,.8,.35));c*=.32+.68*max(0.,dot(n,L));}
+  float f=1.-exp(-length(vW-uCam)/160.);o=vec4(mix(c,uSky,f*.85),1.);}`;
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(x);return x}
+const prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);gl.useProgram(prog);
+const U={vp:gl.getUniformLocation(prog,'uVP'),cam:gl.getUniformLocation(prog,'uCam'),sky:gl.getUniformLocation(prog,'uSky')};
+function mkBuf(){const vao=gl.createVertexArray(),b=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  [['aP',0],['aN',12],['aC',24]].forEach(([n,o])=>{const l=gl.getAttribLocation(prog,n);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,3,gl.FLOAT,false,36,o)});return{vao,b,n:0}}
+function upload(B,arr,usage=gl.DYNAMIC_DRAW){gl.bindBuffer(gl.ARRAY_BUFFER,B.b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(arr),usage);B.n=arr.length/9}
+const GROUND=mkBuf(),DYN=mkBuf(),LINES=mkBuf();
+// geometry helpers: triangles with normals, unlit lines (normal 0)
+const tri=(o,a,b,c,col)=>{const n=norm(cross(sub(b,a),sub(c,a)));for(const p of[a,b,c])o.push(p[0],p[1],p[2],n[0],n[1],n[2],col[0],col[1],col[2])};
+const quad=(o,a,b,c,d,col)=>{tri(o,a,b,c,col);tri(o,a,c,d,col)};
+const line=(o,a,b,col)=>{o.push(a[0],a[1],a[2],0,0,0,col[0],col[1],col[2],b[0],b[1],b[2],0,0,0,col[0],col[1],col[2])};
+// a box at c with axes X, Y, Z (unit) and half sizes
+function obox(o,c,X,Y,Z,hx,hy,hz,col){const P=(sx,sy,sz)=>add(c,add(mul(X,sx*hx),add(mul(Y,sy*hy),mul(Z,sz*hz))));
+  quad(o,P(1,-1,-1),P(1,1,-1),P(1,1,1),P(1,-1,1),col);quad(o,P(-1,-1,1),P(-1,1,1),P(-1,1,-1),P(-1,-1,-1),col);
+  quad(o,P(-1,1,-1),P(-1,1,1),P(1,1,1),P(1,1,-1),col);quad(o,P(-1,-1,1),P(-1,-1,-1),P(1,-1,-1),P(1,-1,1),col);
+  quad(o,P(-1,-1,1),P(1,-1,1),P(1,1,1),P(-1,1,1),col);quad(o,P(1,-1,-1),P(-1,-1,-1),P(-1,1,-1),P(1,1,-1),col)}
+// a limb: a box from a to b, width w, facing `side`
+function seg(o,a,b,w,col,side=[1,0,0]){const Y=norm(sub(b,a)),l=len(sub(b,a));let X=sub(side,mul(Y,dot(side,Y)));X=len(X)<1e-4?norm(cross(Y,[0,0,1])):norm(X);const Z=cross(X,Y);obox(o,mul(add(a,b),.5),X,Y,Z,w/2,l/2+w*.3,w/2,col)}
+function ball(o,c,r,col,n=10){for(let i=0;i<n;i++)for(let j=0;j<2*n;j++){const P=(a,b)=>{const t=Math.PI*a/n,f=Math.PI*b/n;return add(c,[r*Math.sin(t)*Math.cos(f),r*Math.cos(t),r*Math.sin(t)*Math.sin(f)])};
+  const a=P(i,j),b=P(i+1,j),cc=P(i+1,j+1),d=P(i,j+1);tri(o,a,cc,b,col);tri(o,a,d,cc,col)}}
+
+// ---------------------------------------------------------------- the course mesh (static)
+// the plain on a 0.5 m grid; the rough ground (E0b, west of x = −8) on 0.25 m, so the stones show
+const GX0=-46,GX1=52,GZ0=-14,GZ1=72,GS=.5,RX0=-46,RX1=-8,RZ0=-2,RZ1=56;
+function buildGround(){const o=[],h=(x,z)=>W.ground(x,z);
+  const cell=(x,z,s)=>{const a=[x,h(x,z),z],b=[x,h(x,z+s),z+s],c=[x+s,h(x+s,z+s),z+s],d=[x+s,h(x+s,z),z];
+    const n=EVA.normal(W,x+s/2,z+s/2),sl=Math.acos(clamp(n[1],-1,1))*180/Math.PI,chk=(Math.floor(x)+Math.floor(z))&1?1:.93;
+    let col=[.47*chk,.46*chk,.44*chk];if(sl>1)col=[.5*chk+sl*.006,.45*chk,.4*chk-sl*.004];
+    if(Math.abs(x)<1.2&&z>=0&&z<=50)col=[.56*chk,.56*chk,.54*chk];   // the straight's lane
+    if(x<-6&&sl>40)col=[.36,.35,.34];                                  // rock faces (boulders, stones' sides)
+    else if(x<-6&&h(x+s/2,z+s/2)>.08&&sl<25&&x>-27&&z>11)col=[.6,.59,.57];   // the tops of stones and boulders
+    if(W.grip&&W.grip(x+s/2,z+s/2)<1)col=[col[0]*1.12,col[1]*.98,col[2]*.8];   // loose soil: warmer, browner
+    quad(o,a,b,c,d,col)};
+  for(let x=GX0;x<GX1;x+=GS)for(let z=GZ0;z<GZ1;z+=GS)if(!(x>=RX0&&x<RX1&&z>=RZ0&&z<RZ1))cell(x,z,GS);
+  for(let x=RX0;x<RX1;x+=GS/2)for(let z=RZ0;z<RZ1;z+=GS/2)cell(x,z,GS/2);
+  // the straight's marks: every metre a tick, every 5 m a bar, every 10 m a wide bar
+  for(let z=0;z<=50;z++){const w=z%10===0?1.2:z%5===0?.9:.25,t=z%5===0?.08:.03;obox(o,[0,.004,z],[1,0,0],[0,1,0],[0,0,1],w,.004,t,[.92,.92,.88])}
+  upload(GROUND,o,gl.STATIC_DRAW)}
+buildGround();
+
+// ---------------------------------------------------------------- the figure (EVA.md § 4: rigid pieces, procedural joints)
+const SUIT=[.9,.9,.88],PACK=[.72,.73,.74],BOOT=[.4,.4,.42],VISOR=[.85,.62,.2],GLOVE=[.55,.55,.58];
+function legIK(hip,foot,bend,L1=.45,L2=.45){let d=sub(foot,hip),D=len(d);if(D>L1+L2-.01){foot=add(hip,mul(d,(L1+L2-.01)/D));d=sub(foot,hip);D=len(d)}
+  const u=mul(d,1/D),b=norm(sub(bend,mul(u,dot(bend,u)))),a=(L1*L1-L2*L2+D*D)/(2*D),hgt=Math.sqrt(Math.max(0,L1*L1-a*a));return[add(add(hip,mul(u,a)),mul(b,hgt)),foot]}
+const UP=[0,1,0],DOWN=[0,-1,0],smooth=u=>{u=clamp(u,0,1);return u*u*(3-2*u)},lerp=(a,b,k)=>add(mul(a,1-k),mul(b,k));
+// a pose: hips, torso axis tu, right R, feet and hands; knees and elbows by two-bone IK (bend = which way the knee goes)
+function joints(hip,tu,R,feet,hands,bendL,bendA){const F=norm(cross(tu,R)),sh=add(hip,mul(tu,.58)),head=add(sh,mul(tu,.26)),J={hip,tu,R,F,sh,head,hips:[],shs:[],knees:[],feet:[],elb:[],hands:[]};
+  for(let k=0;k<2;k++){const s=k?1:-1,hp=add(hip,mul(R,.11*s)),sp=add(sh,add(mul(R,.27*s),mul(tu,-.04))),[kn,ft]=legIK(hp,feet[k],bendL||F),[el,hd]=legIK(sp,hands[k],bendA||mul(F,-1),.3,.3);
+    J.hips.push(hp);J.shs.push(sp);J.knees.push(kn);J.feet.push(ft);J.elb.push(el);J.hands.push(hd)}return J}
+const shoulderAt=(hip,tu,R,k)=>add(add(hip,mul(tu,.54)),mul(R,k?.27:-.27));
+function lerpJ(a,b,k){const o={};for(const n of['hip','sh','head'])o[n]=lerp(a[n],b[n],k);for(const n of['hips','shs','knees','feet','elb','hands'])o[n]=[lerp(a[n][0],b[n][0],k),lerp(a[n][1],b[n][1],k)];
+  o.tu=norm(lerp(a.tu,b.tu,k));o.R=norm(lerp(a.R,b.R,k));o.F=norm(cross(o.tu,o.R));return o}
+function rotJ(J,piv,ax,th){const c=Math.cos(th),s=Math.sin(th),rv=r=>add(add(mul(r,c),mul(cross(ax,r),s)),mul(ax,dot(ax,r)*(1-c))),rp=p=>add(piv,rv(sub(p,piv))),o={};
+  for(const n of['hip','sh','head'])o[n]=rp(J[n]);for(const n of['hips','shs','knees','feet','elb','hands'])o[n]=J[n].map(rp);o.tu=rv(J.tu);o.R=rv(J.R);o.F=rv(J.F);return o}
+function drawJ(o,J){const{R,F,tu}=J;
+  for(let k=0;k<2;k++){seg(o,J.hips[k],J.knees[k],.17,SUIT,R);seg(o,J.knees[k],J.feet[k],.15,SUIT,R);
+    const Y=norm(sub(J.knees[k],J.feet[k])),Z0=sub(F,mul(Y,dot(F,Y))),Z=len(Z0)>1e-3?norm(Z0):norm(cross(R,Y));obox(o,add(add(J.feet[k],mul(Z,.05)),mul(Y,.02)),norm(cross(Y,Z)),Y,Z,.065,.05,.15,BOOT);
+    seg(o,J.shs[k],J.elb[k],.13,SUIT,R);seg(o,J.elb[k],J.hands[k],.12,SUIT,R);ball(o,J.hands[k],.06,GLOVE,4)}
+  seg(o,J.hip,J.sh,.44,SUIT,R);obox(o,add(add(J.hip,mul(tu,.36)),mul(F,-.27)),R,tu,F,.22,.32,.1,PACK);ball(o,J.head,.18,SUIT);obox(o,add(J.head,mul(F,.12)),R,tu,F,.12,.08,.06,VISOR)}
+// standing / walking / in the air. VIS holds what is only for drawing: the smoothed torso lean, and where each foot was
+// drawn, so a foot never jumps (the swinging foot starts from where it was and ends where EVA.next says it lands).
+var VIS={sf:-1,st:'',feet:null,swing:null,air0:null,lean:[0,0,0],drop:0,lastJ:null};
+function poseUpright(A,dt){const T=A.T,fw=EVA.fw(A.psi),R=EVA.rt(A.psi),side=k=>mul(R,k?.11:-.11),sfI=A.sf,swI=1-A.sf,nx=EVA.next(A);
+  const want=A.st==='stand'?mul([A.p[0]-A.c[0],0,A.p[2]-A.c[2]],.35/T.h):mul([A.v[0],0,A.v[2]],.04);VIS.lean=lerp(VIS.lean,want,1-Math.exp(-dt*5));const tu=norm(add(UP,VIS.lean));
+  if(!VIS.feet){VIS.feet=[add(A.feet[0],side(0)),add(A.feet[1],side(1))];VIS.sf=A.sf}
+  if(VIS.sf!==A.sf){VIS.swing=VIS.feet[swI];VIS.sf=A.sf}if(!VIS.swing)VIS.swing=VIS.feet[swI];
+  if(A.st==='air'&&VIS.st!=='air')VIS.air0=VIS.feet.map(x=>x.slice());VIS.st=A.st;
+  let hip=sub(A.p,[0,.1,0]);const feet=[],planted=[];
+  if(A.st==='stand'){feet[sfI]=add(A.f,side(sfI));planted.push(sfI);
+    const el=A.tdT,tot=el+nx.t,s=tot>1e-6?clamp(el/tot,0,1):1,lift=nx.still?.03:A.lope?.22:.12;
+    feet[swI]=add(lerp(VIS.swing,add(nx.f,side(swI)),smooth(s)),[0,Math.sin(Math.PI*s)*lift,0]);if(s<.06||s>.94)planted.push(swI)}
+  else{const el=A.t-A.toT,rem=nx.t,s=clamp(el/Math.max(1e-6,el+rem),0,1),fl=el+rem,w0=smooth(el/Math.max(.15,.4*fl)),w1=smooth(1-rem/Math.max(.2,.3*fl)),a0=VIS.air0||VIS.feet;
+    if(A.jumpK==='jump'){const tuck=.3*Math.sin(Math.PI*s);for(const k of[0,1]){const rel=add(add(hip,[0,-(.84-tuck),0]),add(side(k),mul(fw,k?.06:-.06)));feet[k]=lerp(lerp(a0[k],rel,w0),add(nx.f,side(k)),w1)}}
+    else{// a lope's flight: the foot that pushed trails and tucks; the other reaches for where it lands
+      const tr=add(add(hip,[0,-.68,0]),add(mul(fw,-.32),side(sfI)));feet[sfI]=lerp(a0[sfI],tr,w0);
+      feet[swI]=add(lerp(a0[swI],add(nx.f,side(swI)),smooth(s)),[0,Math.sin(Math.PI*s)*.15,0])}}
+  // the hips sink when the planted feet are spread (the legs are 0.9 m), eased so leaving the ground doesn't pop them up
+  let drop=0;for(const k of planted){const dh=Math.hypot(hip[0]-feet[k][0],hip[2]-feet[k][2]);drop=Math.max(drop,hip[1]-feet[k][1]-Math.sqrt(Math.max(.04,.885**2-dh*dh)))}
+  VIS.drop+=(drop-VIS.drop)*(1-Math.exp(-dt*10));hip=sub(hip,[0,VIS.drop,0]);
+  const sw=dot(sub(feet[0],feet[1]),fw),up=A.st==='air'&&A.jumpK==='jump'?.25*Math.sin(Math.PI*clamp((A.t-A.toT)/Math.max(.1,A.t-A.toT+nx.t),0,1)):0,
+    hands=[0,1].map(k=>add(shoulderAt(hip,tu,R,k),add(mul(tu,-.56+up),add(mul(fw,.1+(k?.3:-.3)*sw),mul(R,k?.05:-.05)))));
+  const J=joints(hip,tu,R,feet,hands,fw);VIS.feet=J.feet.map(x=>x.slice());VIS.lastJ=J;return J}
+// a fall: the standing pose turned about the feet by the topple's angle; lying is its last angle; getting up runs through
+// keyframes (hands and knees from the front, sitting from the back; then a crouch; then standing)
+function poseUprightAt(G,psi,crouch=0){const R=EVA.rt(psi),fw=EVA.fw(psi),hip=add(G,[0,.88-crouch,0]),feet=[add(G,mul(R,-.11)),add(G,mul(R,.11))],hands=[0,1].map(k=>add(shoulderAt(hip,UP,R,k),add([0,-.5,0],mul(fw,.15))));
+  return joints(hip,UP,R,feet,hands,fw)}
+function poseDown(A){const T=A.T,D=A.dn,ax=norm(cross(UP,D.dir)),te=EVA.thEnd(T);VIS.feet=null;VIS.swing=null;VIS.lean=[0,0,0];VIS.drop=0;
+  const lieAt=(p,th)=>{const piv=sub(p,add(mul(D.dir,T.h*Math.sin(th)),[0,T.h*Math.cos(th),0]));return rotJ(poseUprightAt(piv,A.psi),piv,ax,th)};
+  if(D.ph==='topple'){const J=lieAt(A.p,Math.min(D.th,te));return VIS.lastJ&&D.t<.3?lerpJ(VIS.lastJ,J,smooth(D.t/.3)):J}
+  VIS.lastJ=null;
+  if(D.ph==='lie')return lieAt(A.p,te);
+  const K0=lieAt(D.L,te),S=D.S,Fr=D.face?D.dir:mul(D.dir,-1),psiR=Math.atan2(Fr[0],Fr[2]),R=EVA.rt(psiR),sd=k=>mul(R,k?.12:-.12),u=clamp(D.t/D.dur,0,1);
+  let K1;
+  if(D.face){const hip=add(S,add([0,.55,0],mul(Fr,-.05))),tu=norm(add(Fr,[0,.3,0]));
+    K1=joints(hip,tu,R,[0,1].map(k=>add(add(S,mul(Fr,-.5)),add(sd(k),[0,.05,0]))),[0,1].map(k=>add(add(S,mul(Fr,.62)),mul(R,k?.25:-.25))),norm(add(Fr,[0,-1,0])),mul(Fr,-1))}
+  else{const hip=add(S,add([0,.16,0],mul(Fr,-.35))),tu=norm(add([0,1,0],mul(Fr,-.35)));
+    K1=joints(hip,tu,R,[0,1].map(k=>add(add(S,mul(Fr,.45)),sd(k))),[0,1].map(k=>add(add(hip,mul(Fr,-.28)),mul(R,k?.3:-.3))).map(h=>[h[0],S[1]+.03,h[2]]),UP,mul(Fr,-1))}
+  const hip2=add(S,add([0,.55,0],mul(Fr,-.12))),tu2=norm(add(UP,mul(Fr,.55)));
+  const K2=joints(hip2,tu2,R,[0,1].map(k=>add(S,sd(k))),[0,1].map(k=>add(add(S,mul(Fr,.4)),add(mul(R,k?.25:-.25),[0,.2,0]))),Fr);
+  const K3=poseUprightAt(S,psiR);
+  return u<.4?lerpJ(K0,K1,smooth(u/.4)):u<.75?lerpJ(K1,K2,smooth((u-.4)/.35)):lerpJ(K2,K3,smooth((u-.75)/.25))}
+// scrambling (E0b): bent forward over the bank, hands on the ground ahead and feet behind, the hand-and-foot pairs moving in turn
+function poseScramble(A){VIS.feet=null;VIS.swing=null;const v=[A.v[0],0,A.v[2]],vl=len(v),fw=vl>.05?mul(v,1/vl):EVA.fw(A.psi),R=norm(cross(fw,UP)),
+  g=(p)=>[p[0],W.ground(p[0],p[2]),p[2]],ph=A.t*Math.PI*1.4,hip=sub(A.p,[0,.22,0]),tu=norm(add(mul(fw,1),[0,.75,0]));
+  const feet=[0,1].map(k=>{const s=k?1:-1,q=g(add(A.p,add(mul(fw,-.3+.1*Math.sin(ph+k*Math.PI)),mul(R,.13*s))));return add(q,[0,.04+Math.max(0,.07*Math.sin(ph+k*Math.PI)),0])});
+  const hands=[0,1].map(k=>{const s=k?1:-1,q=g(add(A.p,add(mul(fw,.55+.1*Math.sin(ph+(1-k)*Math.PI)),mul(R,.25*s))));return add(q,[0,.06+Math.max(0,.08*Math.sin(ph+(1-k)*Math.PI)),0])});
+  return joints(hip,tu,R,feet,hands,fw,mul(fw,-1))}
+function figure(o,A,dt){const J=A.st==='down'?poseDown(A):A.scram?poseScramble(A):poseUpright(A,dt);if(suitI>=0)drawSuit(o,J);else drawJ(o,J)}
+// ---------------------------------------------------------------- the game's suits on the figure (QUEUE Q535)
+// crewFigure (app/crew-look.js) builds a standing astronaut; each vertex is bound once to one bone of the lab's pose and
+// moves with it rigidly: the torso (with the helmet, the head and the packs), each thigh, each shin (with its boot), each
+// upper arm, each forearm (with the glove and whatever the hand carries). A hose from the chest to a hand stretches,
+// its two ends on two bones. Launch suits for now: the spacewalk suits come with E1 (Q533).
+const SUIT_SCH=['Cape','Steppe','Arsenal','Coastal','Mountain','Isle'],SUIT_GEN=['early','middle','late'];
+let suitI=Q.has('suit')?+Q.get('suit'):1,personI=+(Q.get('person')||0),RIG=null;   // suitI = school × 3 + generation (1: Cape middle); −1 the lab's box figure
+function buildRig(){
+  // the suit is built with its pieces marked: every blob, limb, tube and lathe call starts a piece (crew-look.js's own
+  // helpers, wrapped for the build), so a whole piece follows one bone and no shape tears where an arm meets the torso
+  const marks=[],hose=new Set(),_b=blob,_l=limb,_t=tube,_a=lathe;
+  blob=(o,...x)=>{marks.push(o.length/9);return _b(o,...x)};limb=(o,...x)=>{marks.push(o.length/9);return _l(o,...x)};
+  tube=(o,A,B,r,col,...x)=>{marks.push(o.length/9);if(col===HOSE)hose.add(marks.length-1);return _t(o,A,B,r,col,...x)};lathe=(o,...x)=>{marks.push(o.length/9);return _a(o,...x)};
+  let raw;try{raw=crewFigure(suitOf(Math.floor(suitI/3),suitI%3),'stand',personI)}finally{blob=_b;limb=_l;tube=_t;lathe=_a}
+  const r=raw.rig,n=raw.length/9;marks.push(n);
+  const X0=[-1,0,0],fr=(A,B,side)=>{const d=sub(B,A),L=len(d),Y=mul(d,1/L);let X=sub(side,mul(Y,dot(side,Y)));X=len(X)<1e-3?norm(cross(Y,[0,0,1])):norm(X);return{A,X,Y,Z:cross(X,Y),L}};
+  // bones in the rest pose, in drawSuit's order; the lab's side k = 0 is the figure's +x (the pose's R points to −x)
+  const L=k=>r.legs.find(l=>(l.sx>0)===(k===0)),Ar=k=>r.arms.find(a=>(a.sx>0)===(k===0)),sole=l=>[l.an[0],0,l.an[2]];
+  const B=[{f:fr([0,r.hip,0],[0,r.sh,0],X0),rigid:1}];
+  for(let k=0;k<2;k++)B.push({f:fr(L(k).h,L(k).kn,X0),r:r.LR*1.1,end:1});
+  for(let k=0;k<2;k++)B.push({f:fr(L(k).kn,sole(L(k)),X0),r:r.LR,start:1});
+  for(let k=0;k<2;k++)B.push({f:fr(Ar(k).a,Ar(k).e,X0),r:r.AR*1.1,end:1});
+  for(let k=0;k<2;k++){const a=Ar(k);B.push({f:fr(a.e,a.g,X0),r:r.AR,start:1})}
+  // which bone, for a piece's centre (or, along a hose, for each point, so the hose stretches between two bones): a limb
+  // when within 1.25 of its radius (the nearest such), else the nearest of the limbs and the torso by distance over
+  // radius (the torso an ellipse of its half-width and depth between the hip and the neck); a thigh or upper arm stops
+  // at its knee or elbow and a shin or forearm starts there; anything at the ankles is a boot, its shin's
+  const segD=(P,b)=>{const f=b.f,u=dot(sub(P,f.A),f.Y);if(b.end&&u>f.L+.01||b.start&&u<-.01)return Infinity;return len(sub(P,add(f.A,mul(f.Y,clamp(u,0,f.L)))))/b.r};
+  const torD=P=>{const ex=Math.max(r.hip-.08-P[1],P[1]-r.neck-.05,0);return Math.hypot(P[0]/(r.TW*1.1),P[2]/(r.TD*1.2))+ex/.05};
+  const anY=r.legs[0].an[1],which=P=>{let bi=0,bd=Infinity;for(let j=1;j<B.length;j++){const d=segD(P,B[j]);if(d<bd){bd=d;bi=j}}
+    if(bd>1.25&&torD(P)<bd)bi=0;if(P[1]<anY+.12)bi=P[0]>0?3:4;return bi};
+  const pins=(r.pins||[]).map(([a,b,nm,sx])=>[a/9,b/9,nm,sx]),bone=new Uint8Array(n),loc=new Float32Array(n*6),col=new Float32Array(n*3),Pt=i=>[raw[i*9],raw[i*9+1],raw[i*9+2]];
+  for(let m=0;m<marks.length-1;m++){const a=marks[m],b=marks[m+1];if(b<=a)continue;
+    let c=[0,0,0];for(let i=a;i<b;i++)c=add(c,Pt(i));const bc=which(mul(c,1/(b-a)));
+    for(let i=a;i<b;i++)bone[i]=hose.has(m)?which(Pt(i)):bc}
+  for(const[a,b,nm,sx]of pins)for(let i=a;i<b;i++)bone[i]=nm==='torso'?0:nm==='shin'?(sx>0?3:4):sx>0?7:8;   // pieces the suit names (Steppe's case: its hand; knee pads: the shin)
+  for(let i=0;i<n;i++){const bi=bone[i],f=B[bi].f,q=sub(Pt(i),f.A),N=[raw[i*9+3],raw[i*9+4],raw[i*9+5]];
+    loc.set([dot(q,f.X),dot(q,f.Y)/(B[bi].rigid?1:f.L),dot(q,f.Z),dot(N,f.X),dot(N,f.Y),dot(N,f.Z)],i*6);col.set([raw[i*9+6],raw[i*9+7],raw[i*9+8]],i*3)}
+  RIG={n,bone,loc,col}}
+// the pose's bones, the same order, from the lab's joints: torso J.hip→J.sh (not stretched), thighs J.hips→J.knees, shins
+// J.knees→J.feet, upper arms J.shs→J.elb, forearms J.elb→J.hands; limbs stretch along their length to the pose's
+function drawSuit(o,J){if(!RIG)buildRig();
+  const fr=(A,Bp,rigid)=>{const d=sub(Bp,A),L=len(d),Y=mul(d,1/L);let X=sub(J.R,mul(Y,dot(J.R,Y)));X=len(X)<1e-3?norm(cross(Y,J.F)):norm(X);return{A,X,Y,Z:cross(X,Y),L:rigid?1:L}};
+  const F=[fr(J.hip,J.sh,1)];for(let k=0;k<2;k++)F.push(fr(J.hips[k],J.knees[k]));for(let k=0;k<2;k++)F.push(fr(J.knees[k],J.feet[k]));
+  for(let k=0;k<2;k++)F.push(fr(J.shs[k],J.elb[k]));for(let k=0;k<2;k++)F.push(fr(J.elb[k],J.hands[k]));
+  const{n,bone,loc,col}=RIG,base=o.length;o.length=base+n*9;
+  for(let i=0;i<n;i++){const f=F[bone[i]],l=i*6,a=loc[l],b=loc[l+1]*f.L,c=loc[l+2],j=base+i*9,X=f.X,Y=f.Y,Z=f.Z,A=f.A;
+    o[j]=A[0]+X[0]*a+Y[0]*b+Z[0]*c;o[j+1]=A[1]+X[1]*a+Y[1]*b+Z[1]*c;o[j+2]=A[2]+X[2]*a+Y[2]*b+Z[2]*c;
+    const na=loc[l+3],nb=loc[l+4],nc=loc[l+5];o[j+3]=X[0]*na+Y[0]*nb+Z[0]*nc;o[j+4]=X[1]*na+Y[1]*nb+Z[1]*nc;o[j+5]=X[2]*na+Y[2]*nb+Z[2]*nc;
+    o[j+6]=col[i*3];o[j+7]=col[i*3+1];o[j+8]=col[i*3+2]}}
+// footprints: dark marks where the feet came down
+function prints(o){for(const[x,y,z,psi]of A.prints){const F=[Math.sin(psi),0,Math.cos(psi)],R=[Math.cos(psi),0,-Math.sin(psi)],n=EVA.normal(W,x,z);obox(o,[x,y+.006,z],R,n,F,.06,.003,.13,[.3,.3,.29])}}
+
+// ---------------------------------------------------------------- camera
+let VP=null,camW=[0,0,0],camB=null;
+function mat(fov,asp,n,f,eye,at){const Z=norm(sub(eye,at)),X=norm(cross([0,1,0],Z)),Y=cross(Z,X),t=1/Math.tan(fov/2);
+  const V=[X[0],Y[0],Z[0],0,X[1],Y[1],Z[1],0,X[2],Y[2],Z[2],0,-dot(X,eye),-dot(Y,eye),-dot(Z,eye),1],P=[t/asp,0,0,0,0,t,0,0,0,0,(f+n)/(n-f),-1,0,0,2*f*n/(n-f),0];
+  const M=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=P[k*4+r]*V[c*4+k];M[c*4+r]=s}camB={X,Y,Z,t,asp};return M}
+function camera(dt){const k=1-Math.exp(-dt*6);cam.p=add(cam.p,mul(sub(A.p,cam.p),k));
+  if(camMode==='follow'&&!cam.user){let d=A.psi-cam.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));cam.yaw+=d*(1-Math.exp(-dt*1.5))}
+  const at=cam.p;let eye;
+  if(camMode==='top')eye=add(at,[0,cam.dist*2.4,-.01]);
+  else if(camMode==='side'){const R=EVA.rt(A.psi);eye=add(at,add(mul(R,cam.dist*1.3),[0,.4,0]))}
+  else eye=add(at,[-Math.sin(cam.yaw)*Math.cos(cam.pitch)*cam.dist,Math.sin(cam.pitch)*cam.dist,-Math.cos(cam.yaw)*Math.cos(cam.pitch)*cam.dist]);
+  const gy=W.ground(eye[0],eye[2])+.3;if(eye[1]<gy)eye[1]=gy;camW=eye;return mat(.9,cv.width/cv.height,.05,500,eye,at)}
+function project(p){const x=VP[0]*p[0]+VP[4]*p[1]+VP[8]*p[2]+VP[12],y=VP[1]*p[0]+VP[5]*p[1]+VP[9]*p[2]+VP[13],w=VP[3]*p[0]+VP[7]*p[1]+VP[11]*p[2]+VP[15];
+  if(w<.05)return null;return[(x/w*.5+.5)*ov.width,(.5-y/w*.5)*ov.height]}
+// a click on the ground: march the ray until it goes under
+function pick(mx,my){const B=camB,nx=(mx/innerWidth)*2-1,ny=1-(my/innerHeight)*2,d=norm(add(mul(B.Z,-1),add(mul(B.X,nx*B.asp/B.t),mul(B.Y,ny/B.t))));
+  let p=camW;for(let s=0;s<400;s++){const q=add(p,mul(d,.25));if(q[1]<=W.ground(q[0],q[2])){let a=p,b=q;for(let i=0;i<12;i++){const m=mul(add(a,b),.5);if(m[1]<=W.ground(m[0],m[2]))b=m;else a=m}return b}p=q}return null}
+
+// ---------------------------------------------------------------- input
+const keys=new Set();
+addEventListener('keydown',e=>{if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();keys.add(k);if(k===' ')e.preventDefault();if(e.repeat)return;
+  if(k==='p')paused=!paused;else if(k===',')slow=!slow;else if(k==='.'){paused=true;stepOnce++}else if(k==='r')spawn();
+  else if(k==='c')camMode={follow:'side',side:'top',top:'follow'}[camMode];else if(k==='g')dbg=!dbg;else if(k==='f')EVA.knock(A);
+  else if(/^[1-9]$/.test(k)&&+k<=EVA.stations.length){stI=+k-1;spawn()}panel()});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));addEventListener('blur',()=>keys.clear());
+let drag=null;cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{if(e.button===2){drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)}else if(e.button===0){const p=pick(e.clientX,e.clientY);if(p){target=p;A.in.target=[p[0],p[2]]}}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;cam.yaw-=(e.clientX-drag[0])*.006;cam.pitch=clamp(cam.pitch+(e.clientY-drag[1])*.004,-.2,1.45);cam.user=1;drag=[e.clientX,e.clientY]});
+cv.addEventListener('pointerup',()=>drag=null);
+cv.addEventListener('wheel',e=>{cam.dist=clamp(cam.dist*Math.exp(e.deltaY*.001),1.5,60);e.preventDefault()},{passive:false});
+function readKeys(){const I=A.in,h=k=>keys.has(k)?1:0;I.fwd=h('w')-h('s');I.side=h('e')-h('q');I.turn=h('d')-h('a');I.hurry=keys.has('shift');I.jump=keys.has(' ');
+  if(I.fwd||I.side||I.turn){if(I.target){I.target=null;target=null}}if(I.fwd||I.turn)cam.user=0;if(!I.target)target=null}
+
+// ---------------------------------------------------------------- the panel and the readout
+const f=(x,n=2)=>Number.isFinite(x)?x.toFixed(n):'∞';
+function panel(){const on=b=>b?' class="on"':'';
+  let h=`<h1>EVA LAB</h1><div class="sub">the movement test ground · E0a–b: flat, slopes, rough ground</div><div style="margin-top:4px"><a href="index.html">← Launchpad</a></div>`;
+  h+=`<h2>Gravity</h2><select id="body">`+BOD.map((b,i)=>`<option value="${i}"${i===bodyI?' selected':''}>${b.name} — ${f(b.g)} m/s²${b.gas?' (no surface)':''}</option>`).join('')+`</select>`
+    +`<div class="row" style="margin-top:4px"><span>slider</span><span class="k" id="glab">${f(gNow)} m/s² · ${f(gNow/9.81)} g</span></div><input id="gs" type="range" min="0" max="1.5" step=".005" value="${gNow/9.81}">`
+    +`<div><button id="g0"${on(gNow===0)}>0 g</button><button id="gT">Tellus</button><button id="gS">Selene</button><button id="gN">Nyx</button></div>`
+    +`<h2>Ground</h2><div class="row"><span>friction μ</span><span class="k" id="mul">${f(muNow)} (${f(Math.atan(muNow)*180/Math.PI,0)}°)</span></div><input id="mu" type="range" min=".1" max="1.2" step=".05" value="${muNow}">`;
+  h+=`<h2>Suit</h2><select id="suit"><option value="-1"${suitI<0?' selected':''}>the lab's box figure</option>`+SUIT_SCH.flatMap((S,i)=>SUIT_GEN.map((G,g)=>`<option value="${i*3+g}"${i*3+g===suitI?' selected':''}>${S} ${G} (launch suit)</option>`)).join('')+`</select>`
+    +`<select id="person" style="margin-top:3px">`+CREW_PEOPLE.map((_,i)=>`<option value="${i}"${i===personI?' selected':''}>person ${i+1}</option>`).join('')+`</select>`;
+  h+=`<h2>Stations</h2>`+EVA.stations.map((s,i)=>`<div><button data-st="${i}"${on(i===stI)}>${i+1}</button> ${s.name}</div>`).join('');
+  h+=`<h2>Time</h2><button id="tp"${on(paused)}>Pause [P]</button><button id="ts"${on(slow)}>×0.25 [,]</button><button id="t1">Step [.]</button><button id="tr">Reset [R]</button><button id="kn">Knock over [F]</button>`;
+  h+=`<h2>View</h2>`+['follow','side','top'].map(m=>`<button data-cam="${m}"${on(camMode===m)}>${m}</button>`).join('')+`<button id="dbg"${on(dbg)}>debug [G]</button>`;
+  h+=`<div class="sub" style="margin-top:6px">${dbg?'<span style="color:#ff0">+</span> centre of mass · <span style="color:#4f4">+</span> centre of pressure (the line to the body is the leg, red as grip runs out) · <span style="color:#f4f">+</span> capture point · <span style="color:#4ef">|</span> foot force (1 m = the weight) · <span style="color:#fff">→</span> wanted velocity · <span style="color:#fa4">—</span> trail':''}</div>`;
+  h+=`<h2>Coming</h2><div class="sub">E0b stairs, ladder, gaps, rough ground, the lander and rover mocks · E0c the 0 g hall and a spinning hull · E0d tweak panel, record and replay</div>`;
+  $('panel').innerHTML=h;
+  $('suit').onchange=e=>{suitI=+e.target.value;RIG=null};$('person').onchange=e=>{personI=+e.target.value;RIG=null};
+  $('body').onchange=e=>{bodyI=+e.target.value;setG(BOD[bodyI].g,BOD[bodyI].R)};
+  $('gs').oninput=e=>setG(+e.target.value*9.81,undefined,false);$('gs').onchange=()=>panel();
+  const pick=n=>{const i=BOD.findIndex(b=>b.name===n);if(i>=0){bodyI=i;setG(BOD[i].g,BOD[i].R)}};
+  $('g0').onclick=()=>setG(0);$('gT').onclick=()=>pick('Tellus');$('gS').onclick=()=>pick('Selene');$('gN').onclick=()=>pick('Nyx');
+  $('mu').oninput=e=>{muNow=+e.target.value;W.mu=muNow;$('mul').textContent=`${f(muNow)} (${f(Math.atan(muNow)*180/Math.PI,0)}°)`};
+  document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{stI=+b.dataset.st;spawn();panel()});
+  document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>{camMode=b.dataset.cam;panel()});
+  $('tp').onclick=()=>{paused=!paused;panel()};$('ts').onclick=()=>{slow=!slow;panel()};$('t1').onclick=()=>{paused=true;stepOnce++;panel()};$('tr').onclick=()=>{spawn();panel()};
+  $('dbg').onclick=()=>{dbg=!dbg;panel()};$('kn').onclick=()=>EVA.knock(A);
+  document.querySelectorAll('#panel button').forEach(b=>b.addEventListener('mouseup',()=>b.blur()))}
+panel();
+function readout(){const T=A.T,g=gNow,v=Math.hypot(A.v[0],A.v[2]),vd=Math.hypot(A.tel.vd[0],A.tel.vd[2]),fr=EVA.froude(A),vL=Math.sqrt(T.frLope*g*T.L),jv=EVA.jumpV(T,g),esc=EVA.escV(W);
+  const b=BOD[bodyI],name=Math.abs(b.g-g)<1e-6?b.name:'custom',onG=A.st==='stand';
+  const lines=[`${name} · g ${f(g)} m/s² (${f(g/9.81)} g) · μ ${f(W.mu)}`,
+    `state   ${EVA.gait(A)}`,
+    `speed   ${f(v)} m/s · wanted ${f(vd)}`,
+    `Froude  ${g>0?f(fr):'—'} · lope past ${f(T.frLope)} (${f(vL)} m/s here)`,
+    `step    ${f(EVA.stepP(T,g))} s · lope contact ${f(g>0?clamp(T.kStance*Math.sqrt(T.L/g),.15,1.5):0)} s`,
+    `lean    ${onG?f(A.tel.lean,0)+'°':'—'} · falls at ${T.fallDeg}°`,
+    `grip    ${onG?(Number.isFinite(A.tel.cone)?f(100*A.tel.cone,0)+' % used':'none'):'—'}${onG&&A.tel.slip?'  SLIPPING':''}`,
+    `height  ${f(A.p[1]-T.h-W.ground(A.p[0],A.p[2]))} m off the ground${A.st==='air'?'':''}`,
+    `jump    ${jv>.05?f(jv)+' m/s → '+f(g>0?jv*jv/(2*g):Infinity,1)+' m up':'too heavy to jump'}`,
+    `escape  ${W.R?(esc<1e4?f(esc,1):f(esc,0))+' m/s':'—'}${A.rec.escaped?'  ESCAPED':''}`,
+    `record  ${f(A.rec.dist,1)} m · top ${f(A.rec.vmax)} m/s · ${A.rec.steps} steps`,
+    `        falls ${A.rec.falls} · air ${f(A.rec.airT,1)} s · highest ${f(A.rec.top)} m`,
+    A.tel.why?`note    ${A.tel.why}`:''];
+  $('read').textContent=lines.filter(Boolean).join('\n');$('tm').textContent=paused?'PAUSED':slow?'×0.25':''}
+
+// ---------------------------------------------------------------- the frame
+let last=performance.now(),rdAt=0;
+function frame(now){const dtR=Math.min(.1,(now-last)/1000);last=now;
+  if(innerWidth!==ov.width||innerHeight!==ov.height){const dpr=Math.min(2,devicePixelRatio||1);cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;ov.width=innerWidth;ov.height=innerHeight}
+  readKeys();
+  if(!paused)EVA.run(A,dtR*(slow?.25:1));else while(stepOnce>0){for(let i=0;i<4;i++)EVA.step(A);stepOnce--}
+  VP=camera(dtR);
+  gl.viewport(0,0,cv.width,cv.height);const sky=gNow<.05?[0,0,0]:[.02,.02,.03];gl.clearColor(sky[0],sky[1],sky[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+  gl.uniformMatrix4fv(U.vp,false,VP);gl.uniform3fv(U.cam,camW);gl.uniform3fv(U.sky,sky);
+  gl.bindVertexArray(GROUND.vao);gl.drawArrays(gl.TRIANGLES,0,GROUND.n);
+  const o=[];figure(o,A,dtR);prints(o);if(target)for(let i=0;i<16;i++){const a=i/16*6.283,b=(i+1)/16*6.283,r=.35,y=W.ground(target[0],target[2])+.02;
+    quad(o,[target[0]+r*Math.cos(a),y,target[2]+r*Math.sin(a)],[target[0]+r*Math.cos(b),y,target[2]+r*Math.sin(b)],[target[0]+(r-.07)*Math.cos(b),y,target[2]+(r-.07)*Math.sin(b)],[target[0]+(r-.07)*Math.cos(a),y,target[2]+(r-.07)*Math.sin(a)],[1,.75,.2])}
+  upload(DYN,o);gl.bindVertexArray(DYN.vao);gl.drawArrays(gl.TRIANGLES,0,DYN.n);
+  if(dbg){const L=[],X=(p,s,c)=>{line(L,add(p,[-s,0,0]),add(p,[s,0,0]),c);line(L,add(p,[0,-s,0]),add(p,[0,s,0]),c);line(L,add(p,[0,0,-s]),add(p,[0,0,s]),c)};
+    const tr=A.trail;for(let i=1;i<tr.length;i++)line(L,tr[i-1],tr[i],[1,.6,.2]);
+    X(A.p,.15,[1,1,0]);
+    if(A.st==='stand'){const cu=Math.min(1,A.tel.cone||0);X(A.c,.12,[.3,1,.3]);line(L,A.c,A.p,[cu,1-cu*.8,.2]);X(A.tel.cp,.1,[1,.3,1]);
+      line(L,A.c,add(A.c,mul(A.tel.F,1/(A.T.m*Math.max(gNow,.1)))),[.3,.9,1]);
+      const vd=A.tel.vd;if(len(vd)>.01)line(L,add(A.c,[0,.03,0]),add(A.c,add(vd,[0,.03,0])),[1,1,1])}
+    gl.disable(gl.DEPTH_TEST);upload(LINES,L);gl.bindVertexArray(LINES.vao);gl.drawArrays(gl.LINES,0,LINES.n);gl.enable(gl.DEPTH_TEST)}
+  // labels
+  ox.clearRect(0,0,ov.width,ov.height);ox.font='12px ui-monospace,Consolas,monospace';ox.textAlign='center';
+  const lab=(p,t,c='#dde')=>{const q=project(p);if(q){ox.fillStyle='rgba(0,0,0,.6)';ox.fillText(t,q[0]+1,q[1]+1);ox.fillStyle=c;ox.fillText(t,q[0],q[1])}};
+  for(let z=10;z<=50;z+=10)lab([-1.6,.05,z],z+' m');lab([0,.05,0],'start');
+  for(const r of EVA.ridges)lab([r.x,.3,4],r.a+'°','#fc8');
+  {const L=EVA.lane,C=EVA.crater,B=EVA.banks;lab([-17,.3,2],'hummocks','#fc8');lab([-17,.4,13],'stones','#fc8');lab([-17,.6,27],'boulders','#fc8');
+    lab([C.x,C.rim+.4,C.z-C.R],'crater rim','#fc8');lab([(B.x0+B.xm)/2,.3,B.z0-1],'loose soil 15°','#fc8');lab([(B.xm+B.x1)/2,.3,B.z0-1],'firm 15°','#fc8')}
+  if(now-rdAt>100){rdAt=now;readout()}
+  requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script>
+</body></html>
