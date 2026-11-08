@@ -1302,3 +1302,20 @@
       && Math.abs(rp / lim - 1) < 0.03 && txtY < c[1] - lim && txtY > c[1] - lim - 20 && oldOff > 1.1,
     `disc ${lim.toFixed(0)} px, bodyRadPx ${rp.toFixed(0)} px; name ${(c[1] - txtY).toFixed(0)} px over the centre; the old anchor ${oldOff.toFixed(2)} radii from it`);
 }
+
+// flow-52. Two planets close on the map's ring share one label (flow, QUEUE Q192; v1.99's open end). The overlap rule
+// (PLAYTEST #31) dropped one planet's label in a conjunction and left a nameless dot; mergePlanetTexts (app/render.js)
+// now joins them, `Hesper, Astraea`, and three in a row join the same way. Planets apart keep their own labels, and a
+// label that isn't a planet's is never merged. Computed on mergePlanetTexts with 7 px per character, 13 px high.
+{
+  const H = html.replace(/\r\n/g, '\n'), i = H.indexOf('function mergePlanetTexts('), fsrc = i < 0 ? '' : H.slice(i, H.indexOf('\nfunction ', i + 10));
+  const merge = fsrc ? new Function(fsrc + 'return mergePlanetTexts;')() : null, w = t => t.length * 7, P = (n, x, y) => ({ t: `${n} · ~150 days there`, x, y, o: 5 });
+  const run = T => { merge(T, w, 13); return T.map(t => t.t); };
+  const two = merge && run([P('Hesper', 300, 200), P('Astraea', 330, 205), P('Enyo', 700, 200)]);
+  const three = merge && run([P('Hesper', 300, 200), P('Astraea', 360, 200), P('Erebus', 420, 200)]);
+  const other = merge && run([{ t: 'Selene', x: 300, y: 200, o: 1 }, P('Hesper', 305, 200)]);
+  check('flow-52: two planets close on the map share one label (`Hesper, Astraea`), three in a row too; planets apart keep theirs, and a body\'s label is never merged into a planet\'s',
+    !!merge && /^\s*mergePlanetTexts\(texts,/m.test(H) && two.join('|') === 'Hesper, Astraea|Enyo · ~150 days there' && three.join('|') === 'Hesper, Astraea, Erebus'
+      && other.join('|') === 'Selene|Hesper · ~150 days there',
+    merge ? `${two.join(' / ')}; ${three.join(' / ')}; ${other.join(' / ')}` : 'no mergePlanetTexts');
+}

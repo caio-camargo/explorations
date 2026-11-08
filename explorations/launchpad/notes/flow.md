@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2000,3 +2000,17 @@ and `#mapLay` stayed over the flight view. Nothing closed it: `#bLay` only toggl
 closes it whenever the new screen isn't the map, after the view is set, so every way out (M, the rooms, End flight)
 shuts it. Reopening the map leaves it closed; `bLay` opens it again. Checked: `node playtest.mjs layers` passes
 (`panel: false`; the row failed from v1.209, and no code closed `#mapLay` until now).
+
+## v1.286 — two planets close on the map share one label (2026-11-08, flow, QUEUE Q192; v1.99's open end)
+
+In a conjunction two planets sit within a few degrees on the map's ring, and the overlap rule (PLAYTEST #31) skipped
+the second one's label, so it was a dot with no name. Now `mergePlanetTexts` (app/render.js, run in `drawMap` just
+before the labels are placed) joins overlapping planet labels into one, names only: `Hesper, Hyperion`, centred between
+them; three in a row join the same way. A planet's own label (`Enyo · ~280 days there`) comes back when they separate.
+Only planet labels merge (text priority 5): a body's or a satellite's label never takes a planet's name.
+- Test `flow-52` (3 cases on the function plus its call in `drawMap`; mutations caught: the overlap test always false,
+  the call removed). Robot row `planetlabels` (day 31: Hesper and Hyperion 0.2° apart; day 42: Hesper and Enyo; one shot
+  without the merge for comparison), checked on the GPU: merged `Hesper, Hyperion` and `Hesper, Enyo`, unmerged only
+  `Hesper · …` with Hyperion's dot unnamed.
+- Conjunctions are common: some pair is within 3° in about half the months (23 of the first 50) (Hesper–Hyperion days 28–35, Hesper–Enyo 39–45,
+  Enyo–Hyperion from 51).

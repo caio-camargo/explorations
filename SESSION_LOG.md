@@ -6785,3 +6785,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checked:** `node playtest.mjs layers` passes (`panel: false`), GPU lock taken and released.
 - **Files:** `app/screens.js`, `notes/flow.md`, `NOTES.md`, `PLAYTEST.md` (#115 ✓), `QUEUE.md` (Q443 ✓), `ACTIVE_WORK.md`.
 - **Seen:** the main clone was mid-merge by another session (Q491's plan) when I pulled; left alone, it finished on its own.
+
+## 2026-11-08 — flow (explorations-8f): two planets close on the map share one label (Q192, v1.286)
+
+- **Done:** `mergePlanetTexts` (app/render.js) joins overlapping planet labels into one, names only (`Hesper, Hyperion`),
+  before the overlap rule places them; before, the second planet in a conjunction was an unnamed dot.
+- **Checked:** test flow-52 (both mutations caught), smoke 763/0; robot row `planetlabels` on the GPU (lock taken and
+  released): day 31 `Hesper, Hyperion`, day 42 `Hesper, Enyo`, unmerged for comparison.
+- **Files:** `app/render.js`, `tests/flow.mjs`, `playtest.mjs` (row `planetlabels`), `notes/flow.md`, `NOTES.md`,
+  `TESTING.md` (350), `QUEUE.md` (Q192 ✓), `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 350 whenever; next unclaimed ready items: Q212, Q211.

@@ -884,6 +884,12 @@ ROWS.layers = {title: "the map's layers", steps: [DOCK_HELPERS, M1_HELPERS, `tes
   `for (const [k] of MAP_LAYERS) mapLaySet[k] = ['sats', 'links'].includes(k); renderMapLay(); render(); true`, {shot: 'ours'},
   `mapLaySet = {}; mapLaySave(); go('flight'); ({panel: PT.vis('#mapLay')})`],
   checks: {panel: `PT.vis('#mapLay')`}, expect: {panel: v => v === false}};
+// planetlabels (Q192): two planets close on the map's ring share one label; day 31 has Hesper and Hyperion 0.2° apart,
+// day 42 Hesper and Enyo; the second shot of each day is without the merge (one label dropped, a nameless dot)
+ROWS.planetlabels = {title: "the map's planet labels in a conjunction", steps: [DOCK_HELPERS, M1_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.day = 31; PT.park(S); mapLaySet.planets = true; go('map'); render(); ({day: tNow() / DAY_S})`,
+  {shot: 'day31'}, `window.MPT0 = mergePlanetTexts; window.mergePlanetTexts = () => {}; render(); true`, {shot: 'day31_unmerged'},
+  `window.mergePlanetTexts = MPT0; PROG.day = 42; PT.park(S); render(); ({day: tNow() / DAY_S})`, {shot: 'day42'},
+  `mapLaySet = {}; mapLaySave(); go('flight'); true`]};
 // focus: what the map is centred on (Q262): a satellite up and the ship in orbit; the Focus list to the satellite, then a
 // double-click on Selene (projected from the map's camera), then Home back to the ship
 ROWS.focus = {title: "the map's focus", steps: [DOCK_HELPERS, M1_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); PT.preset('Beeper'); PT.launch(); PT.park(S); S.r = mul(S.r, -1); S.v = mul(S.v, -1); go('map'); render(); ({list: [...document.querySelectorAll('#mapFocus option')].map(o => o.textContent)})`, {shot: 'ship'},

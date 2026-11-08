@@ -265,6 +265,7 @@ function render(){spoolFrame();
       else{octx.beginPath();octx.arc(s[0],s[1],3*k,0,7);octx.fill()}
       if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?(L.px*1.6+8)*k:L.mark==='body'?bodyRadPx(L.R,len(sub(L.p,camW)),H,tanY)+8*k:10*k),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
       if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*k,c:L.c2||L.c,o:0,plate:1})}   // (Q488) a second line under the mark: the landing verdict
+    mergePlanetTexts(texts,t=>octx.measureText(t).width+4*k,13*k);
     // (flow, Q536) the Recovery legend's box is taken first, so labels keep off it (and the powers' names keep off the marks'
     // own labels, MAP_PUT); the landing verdict (plate) is never skipped: it takes the first free spot (under the X, lower,
     // above its title; slid aside) and sits on a plate
@@ -305,6 +306,15 @@ function render(){spoolFrame();
   {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);if(mv)renderMapFocus();hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
+// (flow, Q192; v1.99's open end) two planets close on the map's ring: their labels would overlap and the overlap rule would
+// drop one (the dot stays), so they become one label with both names, `Hesper, Astraea`, over the first; three in a row
+// merge the same way. Labels are {t,x,y,o}; planets are o 5, and the name is what comes before ' · '. w(t) is a text's
+// width, h its height. Changes texts in place.
+function mergePlanetTexts(texts,w,h){const P=texts.filter(T=>T.o===5&&T.t);for(const T of P)T.names=[T.t.split(' · ')[0]];
+  const box=T=>{const a=w(T.t)/2;return[T.x-a,T.y-h,T.x+a,T.y]},hit=(a,b)=>a[0]<b[2]&&b[0]<a[2]&&a[1]<b[3]&&b[1]<a[3];
+  for(let again=true;again;){again=false;
+    for(const A of P)if(!A.gone)for(const B of P)if(B!==A&&!B.gone&&hit(box(A),box(B))){A.names.push(...B.names);B.gone=true;A.t=A.names.join(', ');A.x=(A.x+B.x)/2;again=true}}
+  for(let i=texts.length-1;i>=0;i--)if(texts[i].gone)texts.splice(i,1)}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
 function patchRange(pt){const el=pt.el;
   if(pt.end){let n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=el.nu)n1+=6.2832;return[el.nu,n1]}
