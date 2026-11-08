@@ -6807,3 +6807,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/power.js`, `app/editor.js`, `tests/space.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md` (351),
   `QUEUE.md` (Q212 ✓), `ACTIVE_WORK.md`.
 - **Next:** Q211 (the pad calendar's window bar) is the next unclaimed ready item.
+
+## 2026-11-08 — flow (transitions): the screen-transitions mock-up (Q555, PLAYTEST #153)
+
+- **Done:** gave #153 its number (Q555) and built the mock-up Caio asked for first: `mockups/transitions/index.html`.
+  Everyday moves (door between rooms, paper for the debrief, a camera move Assembly → pad; 150–500 ms knob), the opening
+  and the founding (seal, filed, front page, dawn, desk; full once, short after), any input skips, *Short transitions*
+  and reduced motion as fades, synthesised sounds. `screens/` gained `&bare=1` (no caption) to be embedded.
+- **Checked:** every sequence, skipped and not, ends in the right room with nothing left half-way (state checks in
+  Chrome, no errors); headless stills of four founding beats (fixed: the folder's tab peeking, a daylight "dawn").
+  Timed headless at full speed: doors 250 ms, paper 305, camera 1104, opening 3.8 s, founding 8.6 s (1.8 after). Found
+  and fixed: hidden layers at opacity 0 aren't rasterised (first fades 3–4× late) and an animated filter on the dawn
+  (2.5 s late): layers kept at .001, a warm-up pass at load, the dawn as opacity-only layers. Not watched live at speed
+  (the Chrome window here was throttled to 2 fps): the feel is Caio's try.
+- **Files:** `explorations/launchpad/mockups/transitions/index.html` (new), `mockups/screens/index.html`,
+  `mockups/README.md`, `QUEUE.md` (Q555), `PLAYTEST.md` (#153), `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio tries it and calls the durations and the founding's beats; then the build (go() gains a transition
+  layer, ttlFound the ceremony; look & sound the real sounds and the pad camera).
+

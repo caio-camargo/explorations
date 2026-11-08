@@ -1,7 +1,30 @@
 # Launchpad — mock-ups
-**Version**: 0.1.20 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.21 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-08 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
+
+## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
+
+Open `transitions/index.html` **served** (e.g. `python -m http.server` in `explorations/launchpad/`, then
+`/mockups/transitions/`), Chrome, sound on. Motion is judged by feel, so try it rather than the stills
+(`output/launchpad/mockups/transitions/`: the seal, filed, the front page, dawn). The rooms are `screens/`'s stills in
+iframes (`&bare=1`); the sounds are Web Audio stand-ins for look & sound's. It walks every room once behind a cover at
+load (~2 s), and keeps hidden layers at opacity .001: a layer at 0 isn't rasterised, so its first fade ran 3–4× late.
+Animate only opacity and transform (an animated filter or blend over the whole picture repainted every frame: the dawn
+ran 2.5 s late). **The build should keep both lessons.** Durations measured headless: doors 250, paper 305, camera 1104 ms.
+
+| What | How it plays | Knob |
+|---|---|---|
+| **Everyday moves** (1–6) | **door** between rooms (the old room dims, the new one settles from 102 %); **paper** for the debrief (a sheet laid on the desk, taken off it); **camera** Assembly → pad (one zoom out from the rocket, ~1.1 s, a rumble) | *Everyday* 150–500 ms (default 250) |
+| **Opening** (O) | the wordmark over the night pad while the world's names roll (where the ~1.5 s generation would hide), then the menu and the charter slide in; 3.8 s | full once, then 0.9 s |
+| **Founding** (the charter's button, Enter) | signed, the seal stamped (thump, the charter jolts, an ink ring), *In force*, filed in a folder, the front page spins in (*The Fenfen Courier*), dawn over the site, the desk; 8.6 s | full once (or skipped once), then 1.8 s: seal, front page, desk |
+| **Any key or click** | finishes whatever is moving at once, landing where it was going | |
+| **Short transitions** | every move a 150 ms fade, the ceremonies' same beats as fades; on by itself under `prefers-reduced-motion` | |
+
+Not in it: firsts and eras (the same front page, Q53's posters), the pad camera on the real 3D scene (the photo stands in;
+it shows a rocket where the founding's dawn should be an empty site). *Slow ×4* is for looking at a beat.
+
+**Pick:** _(Caio: the durations, door vs plain fade, the founding's length and beats; the knobs as they stand if silent)_
 
 ## identity/ — one visual identity for the screens (QUEUE Q73 → Q53, PLAYTEST #13)
 
