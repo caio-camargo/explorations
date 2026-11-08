@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2607,3 +2607,17 @@ own period. Test **space-34** (fails on the old code: "1-day waits: missed").
 
 **Not done.** `advanceDays` still moves the orbits once over the whole wait after the world's day pieces (Q526's choice,
 made because of this bug). With the cruise split-stable that could move to per piece; nothing needs it today.
+
+## v1.287 — the builder says what a satellite's battery will do between flights (2026-11-08, space, QUEUE Q212; from v1.108)
+
+v1.108 made a flat battery cost a satellite its service, but the builder's power line only said "the panels can't keep
+up: it runs flat", so the first anyone heard of the days was the news line after launch. Now, under the power line, a
+design that would run down says how: *As a satellite here: its battery lasts 4 days, then it goes quiet (no cells)*;
+short on cells, *... lasts N days, then it works in sunlight only, 60 % of the time*; a battery too small for the
+shadow, *its battery runs out in every shadow, so it works N % of the time*. A design that never runs down gets no line.
+- `satPowFuture(b)` (sim/power.js, additive): from a `powerBudget`, the days on the battery and the share after, by
+  `satDuty`'s own rule, so the builder and the registry can't disagree. `satPowLine` (app/editor.js) words it, at the
+  orbit `powerLine` already uses (the flight's aim, else low orbit, the sun in its plane: the longest shadow).
+- Test `space-35`: three budgets against the registry itself (`satPowTick` from full, 0.05-day steps): flat on the day it
+  says (within a step) and the same share after; the Probe gets none (mutation caught: the days doubled). Checked in the
+  builder on the GPU: the Docking preset (no cells, 50 W on 1500 Wh) reads "lasts 4 days, then it goes quiet".

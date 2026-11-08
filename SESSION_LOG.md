@@ -6796,3 +6796,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/render.js`, `tests/flow.mjs`, `playtest.mjs` (row `planetlabels`), `notes/flow.md`, `NOTES.md`,
   `TESTING.md` (350), `QUEUE.md` (Q192 ✓), `ACTIVE_WORK.md`.
 - **Next:** Caio's look at TESTING 350 whenever; next unclaimed ready items: Q212, Q211.
+
+## 2026-11-08 — space (explorations-8f): the builder says what a satellite's battery will do (Q212, v1.287)
+
+- **Done:** under the builder's power line, a design that runs down says how long and what after: "As a satellite here:
+  its battery lasts 4 days, then it goes quiet (no cells)" / "... then it works in sunlight only, 60 % of the time" /
+  "... runs out in every shadow, so it works N % of the time". `satPowFuture` (sim/power.js) uses satDuty's own rule.
+- **Checked:** test space-35 against the registry (satPowTick), mutation caught; smoke 764/0; the Docking preset's line in
+  the Assembly on the GPU (lock taken and released).
+- **Files:** `sim/power.js`, `app/editor.js`, `tests/space.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md` (351),
+  `QUEUE.md` (Q212 ✓), `ACTIVE_WORK.md`.
+- **Next:** Q211 (the pad calendar's window bar) is the next unclaimed ready item.
