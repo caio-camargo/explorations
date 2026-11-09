@@ -6578,6 +6578,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 21 (design desk, 2026-11-06):** Caio took W45's defaults and asked for a movement test ground first: **D27**; EVA.md 0.1.1 § 6a specifies E0 (gravities, a course with stairs, a ladder and a 0 g hall, debug tools, a headless twin); E0 proposed in QUEUE, E1 after it.
 - **Addendum 22 (design desk, 2026-11-07):** PLAYTEST #148 (tester: infinite fuel, start in orbit of any body, beside a target, landed on Selene); a mission exercise for Caio (station rendezvous and docking, city imaging, the polar weather satellite) answered in chat from what exists.
 - **Addendum 23 (design desk, 2026-11-08):** PLAYTEST #153: screens change instantly; two tiers proposed (fast everyday transitions, rare skippable ceremonies incl. founding), mock-up first.
+- **Addendum 24 (design desk, 2026-11-09):** PLAYTEST #156: the payoff at a mission's target (gauges on the way, a diegetic proof per mission, tiers by weight, near misses explained); W46 partial pay for near-missed orbits (default yes).
 
 ## 2026-10-30/31 — look & sound (sky & bodies): Q493 Selene's flashing grain (v1.242), Q324 Selene up close (v1.249)
 
