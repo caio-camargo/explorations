@@ -1319,3 +1319,17 @@
       && other.join('|') === 'Selene|Hesper · ~150 days there',
     merge ? `${two.join(' / ')}; ${three.join(' / ')}; ${other.join(' / ')}` : 'no mergePlanetTexts');
 }
+
+// flow-53. The pad calendar's window bar (flow, QUEUE Q211; from Q185 v1.104): a dispatch built and held on the pad for
+// its window has its own bar, hatched amber and dashed (.cbar.window, both palettes), saying "held for its window" (its
+// title keeps the whole line); and a bar's padding and border no longer add to its width (box-sizing), so a booking
+// ends on its day and doesn't run under the next bar. Computed on netCalHTML (app/network.js) with a stub PROG.
+{
+  const H = html.replace(/\r\n/g, '\n'), i = H.indexOf('function netCalHTML('), fsrc = i < 0 ? '' : H.slice(i, H.indexOf('\n//', i));
+  const cal = fsrc ? new Function('PROG', 'NET_DAYS', 'upcoming', fsrc + 'return netCalHTML;')({ day: 0 }, 180, () => []) : null;
+  const out = cal ? cal({ pads: [{ pad: 0, bars: [{ from: 0, to: 25, kind: 'dispatch', title: 'Comsat 2 · Satellite' }, { from: 25, to: 70, kind: 'window', title: 'Comsat 2 · Satellite: waiting for its window' }] }] }) : '';
+  const css = /\.cbar\{[^}]*box-sizing:border-box/.test(H) && /\n\.cbar\.window\{[^}]*dashed/.test(H) && /#mcCal \.cbar\.window\{/.test(H);
+  check('flow-53: the pad calendar draws a dispatch held for its window as its own bar ("held for its window", hatched amber, dashed, in both palettes), and bars end on their day (border-box)',
+    css && /class="cbar window"[^>]*title="Comsat 2 · Satellite: waiting for its window">held for its window</.test(out) && /class="cbar dispatch"[^>]*>Comsat 2 · Satellite</.test(out),
+    `css ${css}; ${(out.match(/class="cbar [^"]*"[^>]*>[^<]*/g) || []).map(s => s.replace(/style="[^"]*" /, '')).join(' | ') || 'no netCalHTML'}`);
+}

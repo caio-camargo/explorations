@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
+**Version**: 1.0.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-09
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2014,3 +2014,19 @@ Only planet labels merge (text priority 5): a body's or a satellite's label neve
   `Hesper · …` with Hyperion's dot unnamed.
 - Conjunctions are common: some pair is within 3° in about half the months (23 of the first 50) (Hesper–Hyperion days 28–35, Hesper–Enyo 39–45,
   Enyo–Hyperion from 51).
+
+## v1.288 — the pad calendar's window bar (2026-11-09, flow, QUEUE Q211; from Q185 v1.104)
+
+Since v1.104 a dispatch built before its window gets a second bar on the pad calendar (`kind 'window'`, `netData` in
+sim/program.js): the pad is held, nothing is being stacked. It had no style, so it looked like a second booking. Now
+`.cbar.window` (index.html) is hatched amber with a dashed border, in mission control's green palette too (`#mcCal`),
+and says *held for its window*; hovering it still gives the whole line (`Comsat 2 · Satellite: waiting for its window`).
+- **Found on the way:** a `.cbar`'s 4 px padding and its border were added to its width (content-box), so every bar ran
+  ~10 px past its day and under the next one: a booking's name ran into its window bar. `.cbar` is `border-box` now, and
+  the window bar sits 3 px after the booking. This may be part of Q310's "labels overlap when a booking and its window
+  are both short"; the overlap of two short bars' text is still Q310's.
+- The queue's "network.js's fallback still builds one bar per dispatch" was already gone: `netCalHTML` draws `N.pads`
+  as `netData` builds them.
+- Test `flow-53` (netCalHTML with a stub; the CSS rules; mutation caught: the bar's label back to the title). Checked on
+  the GPU: mission control's Pads page with a satellite ready on day 25 for a day-70 window: two separate bars.
+- **Still open:** the tick labels (`30 D`, `60 D`) are drawn over the bars.

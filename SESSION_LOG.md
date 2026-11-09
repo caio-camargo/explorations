@@ -6826,3 +6826,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Caio tries it and calls the durations and the founding's beats; then the build (go() gains a transition
   layer, ttlFound the ceremony; look & sound the real sounds and the pad camera).
 
+## 2026-11-09 — flow (explorations-8f): the pad calendar's window bar (Q211, v1.288)
+
+- **Done:** `.cbar.window` (hatched amber, dashed, both palettes) saying "held for its window"; `.cbar` is border-box,
+  so a bar ends on its day instead of ~10 px later under the next one.
+- **Checked:** test flow-53 (mutation caught), smoke 765/0; mission control's Pads page on the GPU (lock taken and
+  released) with a dispatch ready on day 25 for a day-70 window.
+- **Files:** `index.html` (CSS), `app/network.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md` (352),
+  `QUEUE.md` (Q211 ✓), `ACTIVE_WORK.md`.
+- **Next:** Q310 (the calendar's short-bar labels; the tick labels over the bars) fits next.

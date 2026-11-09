@@ -180,7 +180,9 @@ details.ms.of>summary{cursor:pointer;list-style:none}details.ms.of>summary::-web
 .netf{width:100%;border-collapse:collapse}.netf td{padding:2px 8px 2px 0;vertical-align:top}
 .cal{margin-top:4px}.crow{display:flex;align-items:center;margin:3px 0}.cl{width:64px;color:var(--dim);font-size:11px}.ctr{position:relative;flex:1;height:22px;background:rgba(127,209,255,.05);border:1px solid var(--line);border-radius:3px}
 .tk{position:absolute;top:0;bottom:0;border-left:1px dashed var(--line)}.tk b{position:absolute;top:-1px;left:3px;white-space:nowrap;font:normal 9.5px ui-monospace,monospace;color:var(--dim)}.cfree{position:absolute;left:8px;top:3px;color:var(--dim);font-size:11px}
-.cbar{position:absolute;top:2px;bottom:2px;min-width:4px;background:rgba(127,209,255,.35);border:1px solid var(--acc);border-radius:2px;font-size:10.5px;line-height:16px;padding:0 4px;overflow:hidden;white-space:nowrap}.cev{position:absolute;top:4px;width:2px;height:12px;background:var(--warn)}
+.cbar{position:absolute;top:2px;bottom:2px;min-width:4px;box-sizing:border-box;background:rgba(127,209,255,.35);border:1px solid var(--acc);border-radius:2px;font-size:10.5px;line-height:16px;padding:0 4px;overflow:hidden;white-space:nowrap}.cev{position:absolute;top:4px;width:2px;height:12px;background:var(--warn)}
+/* (Q211) a dispatch built and waiting on the pad for its window: the pad is held, nothing is being stacked; hatched, dashed, amber */
+.cbar.window{margin-left:3px;padding-left:7px;background:repeating-linear-gradient(135deg,rgba(255,181,71,.22) 0 4px,transparent 4px 8px);border:1px dashed var(--warn);color:var(--warn)}
 .dh{color:var(--acc);font-size:11.5px;margin-top:10px}   /* the Debrief's headings */
 /* ---- mission control (flow session, Q241 R4; NOTES § v1.N): a control room, instrument panels (W14). A room: no 3D behind it.
    A wall (clocks, the big screen, the pads) over four consoles; CRT text in VT323 (OFL, bundled). */
@@ -199,7 +201,7 @@ details.ms.of>summary{cursor:pointer;list-style:none}details.ms.of>summary::-web
 #mc .scan{position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px);pointer-events:none}
 #mcWallTabs{display:flex;gap:6px;align-items:center;padding:5px 8px 0;position:relative;z-index:1}#mcWallTabs .dim{color:#3f8f5a}
 #mcTrack{flex:1;width:100%;min-height:0;display:block}#mcTrack.hidden{display:none}
-#mcCal{flex:1;overflow:auto;padding:14px 12px 8px;font-size:16px;--line:#1f6b39;--acc:#7dff9c;--dim:#3f8f5a}#mcCal .cl{font-size:16px;width:70px}#mcCal .cbar{font-size:15px;line-height:16px;background:rgba(125,255,156,.18)}#mcCal .cev{background:#ffb547}#mcCal .tk b{font:14px VT323,monospace}
+#mcCal{flex:1;overflow:auto;padding:14px 12px 8px;font-size:16px;--line:#1f6b39;--acc:#7dff9c;--dim:#3f8f5a}#mcCal .cl{font-size:16px;width:70px}#mcCal .cbar{font-size:15px;line-height:16px;background:rgba(125,255,156,.18)}#mcCal .cev{background:#ffb547}#mcCal .cbar.window{background:repeating-linear-gradient(135deg,rgba(255,181,71,.2) 0 5px,transparent 5px 10px);border-color:#ffb547;color:#ffb547}#mcCal .tk b{font:14px VT323,monospace}
 #mcNet{flex:1;overflow:auto;padding:8px 12px;font-size:15px;line-height:17px}#mcNet.hidden{display:none}#mcNet .dim{color:#3f8f5a}#mcNet .bad{color:#ff6a5a}#mcNet .warn{color:#ffb547}
 #mcNet .nbn{font-size:18px;margin-bottom:6px}#mcNet .nbn.bad{color:#ff6a5a;text-shadow:0 0 6px rgba(255,106,90,.5)}#mcNet .ngrid{display:grid;gap:4px 8px}#mcNet .nb{border-bottom:1px solid #1f6b39;font-size:18px}
 #mcNet .nl{color:#3f8f5a;align-self:center}#mcNet .nc{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;min-height:30px;border-bottom:1px dashed rgba(31,107,57,.6);padding-bottom:4px}
