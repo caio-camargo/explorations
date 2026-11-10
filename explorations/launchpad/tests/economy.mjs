@@ -792,3 +792,25 @@
       && iSet > 0 && iNew > iSet && iBoard > iNew && /function resetProgram\(\)\{programNew\(\)/.test(ed) && resetSeeds() && board(B) !== board(C),
     `seeds ${seeds.slice(0, 3).join(', ')}…; boards ${board(B).slice(0, 60)} | ${board(C).slice(0, 60)}`);
 }
+
+// econ-35. A dispatched flight settles its contract with a whole flight record (worker session, QUEUE R14, review
+// 2026-11-09 § 2, P1): the dispatch handed `contractEval` a stub record ({orb, cdone, dv}), and every active contract's
+// check reads it, so a "Qualify the X" contract on the books (`R.qPart[...]`) threw inside the world tick: the dispatch
+// was charged and marked done, the day's tick and the orbits' skipped. Own SIM copy; the flight itself is a stand-in.
+{
+  const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,procKey,orderDispatch,advanceDays};')(), P = A.PROG, news = [];
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = m => news.push(m); A.programNew(); A.chooseStart('agency');
+  Object.assign(P, { funds: 2000, day: 10, flights: 3, done: { beeper: { flight: 0, day: 0 } } });
+  const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], orb = { pe: 150e3, ap: 152e3, inc: 0, sci: true };
+  P.procs = { [A.procKey(st)]: { kind: 'orbit', target: { pe: 150e3, ap: 152e3 }, dv: 4445 } };
+  const sat = { id: 921, type: 'sat', src: 'com', client: 0, p: { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 },
+    test = { id: 922, type: 'test', src: 'com', client: 0, p: { k: 'kestrel', q: 25, pay: 20, dur: 300 }, deadline: P.day + 300 },
+    sample = { id: 923, type: 'sample', src: 'sci', client: 0, p: { k: 2, pay: 14, dur: 300 }, deadline: P.day + 300 };
+  P.active = [test, sample, sat];
+  A.HOOK.dispatchRun = () => ({ ok: true, orb, dv: 4400 });
+  A.orderDispatch(sat, st); const D = P.dispatch[0], L0 = D.launch; let err = null;
+  try { for (let n = 0; n < 20 && D.status !== 'done' && D.status !== 'failed'; n++) { P.decisions = []; A.advanceDays(5); } } catch (e) { err = e; }
+  check('econ-35: a dispatched flight settles its contract with a whole record: a "Qualify the X" and an air-sample contract on the books don\'t throw in the world tick; the satellite contract is paid, the other two stay open',
+    !err && D.status === 'done' && !P.active.includes(sat) && P.active.includes(test) && P.active.includes(sample) && P.day > L0 && news.some(m => /Dispatched flight to orbit/.test(m)),
+    err ? `threw: ${err.message}` : `${D.status} on day ${(D.flown ?? 0).toFixed(1)} (launch ${L0.toFixed(1)}), day now ${P.day.toFixed(1)}; open: ${P.active.map(c => c.type).join(', ')}`);
+}

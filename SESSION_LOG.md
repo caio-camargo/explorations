@@ -7010,3 +7010,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   **Open with Caio:** where the style comes from (FACES § 8: the cage riding on this head, our own stylising shapes,
   or light and paint only). Files: `mockups/faces3/*` (new), `FACES.md` 0.1.7, `mockups/README.md` 0.1.23.
 
+
+## 2026-11-10 — generic worker (Opus, worktree launchpad-r14): a dispatch beside a Qualify contract no longer crashes the world tick (R14, v1.300)
+
+- **Done:** review R14 (P1). `dispatchTick` settled a dispatch with a stub record; `contractEval` runs every active
+  contract's check on it, so `CT.test.ok` (`R.qPart`) and `CT.sample.ok` (`R.bands`) threw in the world tick. The record
+  is now `{...recNew(), orb, dv, dispatched}`. All 27 contract types checked against it: only `sat` passes, none throws.
+- **Checked:** new test `econ-35` (fails on the old line, passes now); full `node test.mjs`: all passed.
+- **Not checked:** the game by hand (TESTING row 362).
+- **Files:** `sim/program.js`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** the other confirmed review bugs: R15 (top-up mid-flight), R16 (`Infinity` in saves), R21, R22.

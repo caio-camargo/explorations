@@ -1020,7 +1020,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
   D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
   const seen={};for(const p of v.parts)if(p.on)seen[p.d.key]=p.d.kind==='engine'?{fly:1,maxq:1,burn:1}:{fly:1,maxq:1};khLearn({khSeen:seen});
   if(D.route!=null){routeRun(D,res);HOOK.save();continue}   // a routine's run (Q184): no contract to settle
-  if(res.ok){const R={orb:res.orb,cdone:[],dv:res.dv,dispatched:true};contractEval({rec:R,parts:v.parts});
+  if(res.ok){const R={...recNew(),orb:res.orb,dv:res.dv,dispatched:true};contractEval({rec:R,parts:v.parts});   // a whole record (R14): every contract's check reads it, and a stub threw on `R.qPart`
     HOOK.news(R.cdone.length?`Dispatched flight to orbit: ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, ${R.cdone.join(', ')}`:`Dispatched flight reached ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, outside the contract's window`,R.cdone.length?'ok':'warn')}
   else HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');
   HOOK.save()}}
