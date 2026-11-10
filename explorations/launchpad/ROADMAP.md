@@ -162,7 +162,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`TECH_SCOUTING.md`](TECH_SCOUTING.md) | real space tech mined for ideas |
 | [`mockups/README.md`](mockups/README.md) | the mock-up pages and Caio's picks |
 | [`DECISIONS.md`](DECISIONS.md) | every decision, one line each |
-| Reviews: [`REVIEW-2026-10-11.md`](REVIEW-2026-10-11.md) | a whole-project review (one per milestone) |
+| Reviews: [`REVIEW-2026-10-11.md`](REVIEW-2026-10-11.md), [`REVIEW-2026-11-09.md`](REVIEW-2026-11-09.md) | a whole-project review (one per milestone); 11-09 audits the code and tests (tasks R1–R24) |
 
 ### M3–M5 — design only for now (📝 items, any lane)
 

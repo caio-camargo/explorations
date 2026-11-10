@@ -6835,3 +6835,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `index.html` (CSS), `app/network.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md` (352),
   `QUEUE.md` (Q211 ✓), `ACTIVE_WORK.md`.
 - **Next:** Q310 (the calendar's short-bar labels; the tick labels over the bars) fits next.
+
+## 2026-11-09 — review (Fable 5.2, main clone): a code and process audit of Launchpad, tasks R1–R24
+
+- **Done:** four read-only audits (physics sim, app and renderer, economy and saves, the test suite) and a pass over
+  process and repo state, at `6bdf2ed` (v1.288); written up as `explorations/launchpad/REVIEW-2026-11-09.md` with
+  file:line evidence and what was reproduced headless. 24 tasks added to QUEUE *Proposed* for the orchestrator to rank.
+  No game code changed.
+- **Checked:** smoke 774/0 in 191 s, full 844/0 in 345 s (`--jobs 4`); 14 mutations on a scratch copy.
+- **Seen:** the test audit ran 9 smoke runs at once for ~10 min (about 22:35–22:46) and took RAM to 0.2 GB; a session
+  running then may have seen failures that weren't its own.
+- **Files:** `explorations/launchpad/REVIEW-2026-11-09.md` (new), `QUEUE.md` (Proposed), `ROADMAP.md` (catalog row),
+  `INDEX.md`, `playbooks/project-review.md` (step 2b).
+- **Next:** the orchestrator ranks R1–R24 (R4 first: five one-line fixes); Caio's calls: R18's defaults, and no new
+  mechanism until R1–R4 and the confirmed bugs are in.
