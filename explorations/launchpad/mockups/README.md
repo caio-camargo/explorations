@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.21 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-08 · **Status**: for Caio to pick
+**Version**: 0.1.22 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -331,6 +331,17 @@ them), open eyes (a carved upper-lid ledge, painted iris, a catchlight), lips wr
 base with nostril wings, a shorter thicker neck (Thunderbirds' ratio) and a broader jaw, painted warmth and tinted lips.
 
 **Pick:** _(Caio)_
+
+## faces2/ — the face engine, second construction ([`FACES.md`](../FACES.md) § 7)
+
+`faces2/index.html` (2026-11-10): the same idea as `faces/` below (a house head, genes, generated faces) on a different
+construction: one control cage whose rows and columns are the face's own lines, subdivided into the skin
+(Catmull–Clark with creases). **Edit**: 55 sliders by region, a ¾ view that turns under the mouse, front, profile,
+48 px; *Planes* runs from a soft modelled head to bare carved planes; a *cage* box shows the lattice. **Sheet**: twelve
+generated faces. URL: `?mode=edit|sheet`, `?dna=F2:...`, `?seed=`. Stills: `output/launchpad/mockups/faces2/`
+(`house.png`, `house-closeup.png`, `house-carved.png`, `cage.png`, `sheet.png`). A first pass; FACES § 7 lists what is rough.
+
+**Pick:** _(Caio: is this construction the one to continue?)_
 
 ## faces/ — the face engine's lab (D12 → [`FACES.md`](../FACES.md) § 4, stages F0–F1)
 

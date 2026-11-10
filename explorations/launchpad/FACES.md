@@ -1,6 +1,6 @@
 # FACES — the face engine
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-06
-**Status**: **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
+**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Status**: **a second construction is on trial (2026-11-10, § 7)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -208,3 +208,44 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   a nose root shaped like the bridge, blended into the brow. 71 genes. Next for hair: more eras, partings, facial hair.
 - **Thunderbirds quiff done properly** (profile-first: vertical front, curve back); the other six styles still rough.
   **Age**: wrinkles and under-eye bags as genes the Age macro drives. Nose length limited above the lip. 73 genes.
+
+## 7. The second construction (2026-11-10, Caio: "diagnose or rebuild it")
+
+**What was wrong with the first lab** (`mockups/faces/`), measured and read from its code:
+
+- **Not speed.** On the RTX 3050 its shader compiles in 2.4 s and a 12-face grid draws in 0.7 s.
+- **The head was assembled, not one surface.** About twenty signed-distance solids (ellipsoids for skull, jaw, chin and
+  brow; a wedge, a ball and two more balls for the nose; blocks for lips; a sphere in a bored hole for each eye) joined
+  by smooth unions and cut by planes. Nothing made the forehead run into the brow and the bridge as one plane, which
+  is what the deco references are. The nose read as a plank with a ball on it, the hair as a cap.
+- **Genes were offsets on those solids, so they collided.** Fourteen comments in the shader are repairs for one gene
+  breaking another ("so no keel", "never reaches the mouth", "never in a hole"). Each new gene needed couplings with
+  the old ones; that is the thorniness.
+- **The stretches broke the distance field**, patched with one hand-tuned step factor per face (`uL`).
+- **Saved faces drifted.** DNA stored each gene as a fraction of its range, so retuning a range changed every preset.
+- **The spread was wrong.** The twelve roster archetypes look like one man in twelve paint jobs; the pushed
+  signatures look like monsters. Little lies between.
+
+**The second lab** ([`mockups/faces2/index.html`](mockups/faces2/index.html)) keeps § 2–3's ideas (house head, genes,
+signatures, DNA) and replaces the construction:
+
+1. **One control cage.** A lattice of 22 rings × 20 columns. Rows are the face's lines (brow edge, lid margins, nose
+   tip, lip borders, jaw line); columns are its landmarks (midline, nose edge, inner eye corner, pupil, outer corner,
+   face corner, side, ear, back). The house head is a typed table of the face's points (`FACE`); the skull and neck
+   come from a section formula.
+2. **Catmull–Clark subdivision with semi-sharp creases** makes the skin (three levels, 75k triangles, 20–60 ms per
+   change). The *Planes* gene puts a floor under every edge's sharpness: 0 is a soft modelled head, 3 the cage's bare
+   planes. Brow, nose ridge, lip borders and jaw line carry their own creases (*Feature edges*).
+3. **A gene moves named cage points.** Rows keep their order, so a long nose cannot reach the lip and nothing needs a
+   repair. Proportions (forehead, nose length, nose to mouth, chin) remap heights between landmarks. 55 genes.
+4. **Eyes** are balls behind an opening in the cage; **hair** is a shell grown from the cage with a carved edge;
+   **ears** are a small cage of their own. A rasterised mesh with a shadow map, so the head turns under the mouse.
+5. **DNA by name** (`F2:jw=1.2,np=.03`): only genes that differ from the house head, in real units.
+6. It is a mesh, so D12.3's option (b) (the 3D figure wears the same head) comes without marching cubes.
+
+**State:** a first pass, one sitting. Checked by eye on the GPU: the house head in ¾, front, profile and close-up, at
+*Planes* 0.45 and 1.6, and one sheet of twelve generated faces (stills in `output/launchpad/mockups/faces2/`).
+**Not checked:** each gene at both ends of its range; the 48 px thumbnails; any face against a reference picture.
+**Known rough:** the eyes stare (no lid thickness, no lash line); a pinch at the inner eye corner; ears are plain
+slabs; the hairline waves where the shell steps down the cage; nostrils are not modelled; no expressions, no
+breeding tab, no archetypes yet (the first lab's are in its file, in the old gene space).

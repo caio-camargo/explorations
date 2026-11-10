@@ -6988,3 +6988,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** Caio's look at TESTING 361. The paused `vehicle` branch also touches `tests/vehicle.mjs` (it has two
   vehicle-38s of its own); its merge may need vehicle-40's numbering checked.
+
+## 2026-11-10 — faces (Fable, worktree launchpad-faces): the 3D face creator diagnosed, a second construction (faces2)
+
+- **Asked:** Caio: "serious trouble with the face modeler"; diagnose or rebuild the 3D face creator (not the ligne-claire head).
+- **Diagnosis:** not speed (first lab: 2.4 s compile, 0.7 s for a 12-face grid). The head was about twenty SDF solids
+  glued together, its 74 genes offsets on those solids that needed a repair each time two met. FACES.md § 7.
+- **Built:** `mockups/faces2/index.html`: one control cage (rows and columns are the face's lines), Catmull–Clark with
+  semi-sharp creases, genes that move named cage points, ball eyes, a hair shell, DNA by gene name. Edit and Sheet tabs.
+- **Checked:** by eye on the GPU: house head (¾, front, profile, close-up; Planes 0.45 and 1.6) and one sheet of
+  twelve. A bug found that way: the eyeballs were wound backwards and lit from inside.
+- **Not checked:** each gene at its range ends; 48 px thumbnails; any face against a reference. Rough spots listed in FACES § 7.
+- **Files:** launchpad `mockups/faces2/index.html` (new), `FACES.md` 0.1.6 (§ 7), `mockups/README.md` 0.1.22 (§ faces2);
+  `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/faces2/`. The first lab is untouched.
+- **Next:** Caio's look at faces2 (continue this construction?). Then eyes (lids, lashes), ears, hair masses, range tests.
+
