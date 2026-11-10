@@ -2504,7 +2504,7 @@ the visual effect of decoupling") and #160 ("could have more oomph, like maybe s
   holding and then easing). **Not seen:** the gas and flecks moving over the following seconds; the machine ran out
   of memory under other sessions' work and headless Chrome stalled. TESTING row 358 is the check.
 
-## v1.295 — The cells from afar; the wing opens at once (2026-11-10, look & sound, parts & pad, QUEUE Q565)
+## v1.297 — The cells from afar; the wing opens at once (2026-11-10, look & sound, parts & pad, QUEUE Q565)
 
 Caio on v1.294: "as I zoom out the white grid lines, the bigger ones, seem to stay the same size and it looks more white
 than blue"; and "it would be nicer if they unfolded all at once, a bit slower".
@@ -2517,5 +2517,5 @@ than blue"; and "it would be nicer if they unfolded all at once, a bit slower".
 - **Unfolding:** every panel's hinge follows the same `sstep(0,1,u)`, so the accordion opens as one; `DEP_S.wing` 4 → 6 s
   (the boom's slide still the first quarter, 1.5 s). **Vehicle (branch `vehicle`, DEP_S moved into sim/flight.js):**
   keep 6 for the wing when you merge; with Q457 the sim counts the wing out at 6 s.
-- **Test:** aerofx-41's fractions for 6 s and its drawing check (one `sstep(0,1,u)` for all panels). TESTING 358.
+- **Test:** aerofx-41's fractions for 6 s and its drawing check (one `sstep(0,1,u)` for all panels). TESTING 359. (Committed as "v1.295" with TESTING 358: both taken by Q564 minutes before; renumbered.)
 

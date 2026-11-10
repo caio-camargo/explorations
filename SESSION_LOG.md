@@ -6954,3 +6954,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/program.js`, `sim/record.js`, `app/state.js`, `app/program-ui.js`, `tests/platform.mjs`,
   `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R1c ✓), `ACTIVE_WORK.md`.
 - **Next:** R1d (the loader fills a save from the table), then R16 (the core bound's Infinity).
+- **Follow-up, v1.297** (committed as "v1.295" in `0ebf6c0`: Q564 had taken v1.295 and TESTING 358 minutes before; renumbered,
+  TESTING 359). Caio: the module lines kept their width zoomed out and the wing went white; and the panels should unfold
+  all at once, a bit slower. `linc` (lines under a pixel dimmed to their true coverage) in the cell branch; all panels on
+  one hinge curve, `DEP_S.wing` 4 → 6 s. Zoom series 3–40 m and mid-unfold stills checked; aerofx-41, -53 pass.
+  **Vehicle:** your branch moved `DEP_S` into sim/flight.js; keep wing 6 when you merge.
