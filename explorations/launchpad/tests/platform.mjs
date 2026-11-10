@@ -97,3 +97,31 @@
   A.REC.on = false;
 }
 
+
+// platform-6. One `PROG` schema (QUEUE R1a; notes/platform.md § "Plan: one PROG schema"): PROG_SCHEMA in sim/program.js
+// lists every field with its default, what New program does with it and what it is. Static: every `PROG.x` in sim/,
+// app/, builder.js and career.mjs (its `P.x`) is a row and every row is used; a `PROG.x||<literal>` (or `??`) read whose
+// literal differs from the row's default fails (a null or absent default is exempt: the read is the guard). And the
+// three lists that still exist on their own agree with it: PROG's starting literal, resetProgram's, and progFresh.
+{
+  const G = new Function(src + 'return {PROG_SCHEMA,progFresh,FUNDS0};')(), T = G.PROG_SCHEMA, rd = f => readFileSync(new URL('./' + f, import.meta.url), 'utf8');
+  const code = [...pageScripts(), 'builder.js'].map(f => [f, rd(f)]), car = rd('career.mjs'), used = new Map(), add = (k, f) => used.set(k, (used.get(k) || new Set()).add(f));
+  for (const [f, s] of code) for (const m of s.matchAll(/\bPROG\.([A-Za-z_$][\w$]*)/g)) add(m[1], f);
+  for (const m of car.matchAll(/(?<![\w$.])P\.([A-Za-z_$][\w$]*)/g)) add(m[1], 'career.mjs');
+  const missing = [...used.keys()].filter(k => !(k in T)), unused = Object.keys(T).filter(k => !used.has(k));
+  const KEEP = ['career', 'library', 'pref', 'meta', 'transient'], badRow = Object.entries(T).filter(([, r]) => !(Array.isArray(r) && r.length === 3 && KEEP.includes(r[1]) && typeof r[2] === 'string' && r[2].length > 3));
+  check('platform-6: every PROG field the code uses is a PROG_SCHEMA row, every row is used, and each row is [default, keep, why]',
+    !missing.length && !unused.length && !badRow.length, `${used.size} fields used, ${Object.keys(T).length} rows; not in the table: ${missing.join(', ') || 'none'}; unused rows: ${unused.join(', ') || 'none'}; bad rows: ${badRow.map(r => r[0]).join(', ') || 'none'}`);
+  const J = v => JSON.stringify(v), lit = { '{}': {}, '[]': [], 'null': null, 'false': false, 'true': true, "''": '' }, off = [];
+  for (const [f, s] of code) for (const m of s.matchAll(/\bPROG\.([A-Za-z_$][\w$]*)\s*(?:\|\||\?\?)\s*(\{\}|\[\]|null|false|true|''|-?\d+(?:\.\d+)?(?![\w.]))/g)) {
+    const r = T[m[1]]; if (!r || r[0] == null || typeof r[0] === 'function') continue;
+    const v = m[2] in lit ? lit[m[2]] : Number(m[2]); if (J(v) !== J(r[0])) off.push(`${m[1]}||${m[2]} (${f}; the table: ${J(r[0])})`); }
+  check('platform-6: a PROG.x||<literal> read uses the table\'s default (null and absent defaults exempt)', !off.length, off.join('; ') || 'all agree');
+  // the starting literal and resetProgram's: each value is the table's default (wseed is a seed: only its presence)
+  const objOf = (s, re) => new Function('FUNDS0', 'freshSeed', 'return ' + s.match(re)[1])(G.FUNDS0, () => 7), diff = (o, name) => Object.entries(o).filter(([k, v]) => k !== 'wseed' && !(k in T && J(v) === J(T[k][0]))).map(([k, v]) => `${name}.${k}=${J(v)}`);
+  const start = objOf(rd('sim/program.js'), /const PROG=(\{[^\n]*?\});/), reset = objOf(rd('app/editor.js'), /function resetProgram\(\)\{[\s\S]*?Object\.assign\(PROG,(\{[^\n]*?\})\)/), F = G.progFresh();
+  const bad = [...diff(start, 'start'), ...diff(reset, 'reset')], fresh = Object.keys(F).every(k => T[k][1] === 'career' && T[k][0] !== undefined) && F.funds === G.FUNDS0 && Number.isInteger(F.wseed) && F.done !== G.progFresh().done;
+  const kept = G.progFresh({ designs: { saved: [1] }, lvl: 'hard', sats: [1], funds: 5 }), carry = J(kept.designs) === J({ saved: [1] }) && kept.lvl === 'hard' && J(kept.sats) === '[]' && kept.funds === G.FUNDS0;
+  check('platform-6: PROG\'s starting literal and resetProgram\'s agree with the table; progFresh builds the career fields fresh (no shared objects) and carries the library and the level over',
+    !bad.length && fresh && carry, `${bad.join(', ') || 'start and reset agree'}; progFresh: ${Object.keys(F).length} fields, fresh ${fresh}, carries ${carry}`);
+}

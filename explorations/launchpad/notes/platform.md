@@ -834,3 +834,19 @@ are found or fixed on the way; R19's shared formulas are separate.
    (no data loss when going back and forth between builds); the tester's log lists them.
 3. **Difficulty on *New program*:** *default: the charter preselects the last one and still asks* (today's behaviour,
    since `lvl` already survives).
+
+## v1.292 — the `PROG` schema, first slice (2026-11-10, review fixes, QUEUE R1a; § "Plan: one `PROG` schema")
+
+`PROG_SCHEMA` in sim/program.js, after `freshSeed`: all 87 fields, one row each, `[default, keep, why]`, grouped (money,
+world, missions, know-how, fleet, logbook, Selene, library). `progFresh(keepFrom)` builds a fresh program from it and
+carries the `library` (designs, payloads, rovers) and `pref` (lvl) fields over from `keepFrom`. Nothing calls it yet:
+no behaviour changes (R1b moves `resetProgram` and `career.mjs` onto it).
+- **Everyone: a new `PROG` field needs a row**, or test platform-6 fails. A `PROG.x||<literal>` read must use the row's
+  default unless that default is null or absent.
+- Defaults: a field `resetProgram` sets keeps its reset value; the other 43 take their `||` reads' default, or stay
+  absent (`riv, giant, frag, navCov, site, sel, lastDebrief, electionWarned`): built on first use, or meaningful absent.
+- Found by the check: the desk's ledger read `PROG.funds||0` (the table: 60). The guard could never fire (the loader
+  repairs `funds`), so it went.
+- Test platform-6: every field used is a row and every row used; the `||` defaults agree; PROG's starting literal and
+  `resetProgram`'s agree with the table; `progFresh` gives fresh objects and carries the library over. Mutations
+  caught: a row removed, a default changed (both the `??` read and `resetProgram` disagree).

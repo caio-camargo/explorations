@@ -25,7 +25,7 @@ function deskLayout(box,gate){
   const H=POWERS[HOME],d=PROG.day||0;
   $('deskLH').innerHTML=`${H?flagSVG(H,62):''}<div class="org"><div class="n">${progName()}</div>
     <div class="s">Office of the Director · ${ownKind()}${H?` · ${H.name}`:''}</div></div>
-    <div class="ledger">funds<b>${fmtM(PROG.funds||0)}</b></div>
+    <div class="ledger">funds<b>${fmtM(PROG.funds)}</b></div>
     <div class="cal"><div class="m">YEAR ${deskYear(d)}</div><div class="d">${deskDay(d)}</div><div class="y">day</div></div>`;
   // the in-tray: the Inbox (decisions first, offers, what's coming up, news)
   const n=gate?0:box.inbox.filter(x=>x.classList.contains('ms')).length;

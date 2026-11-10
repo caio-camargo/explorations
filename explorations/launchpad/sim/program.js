@@ -54,6 +54,116 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // a new save's world seed (Q529): the page draws one when there is no save to load, and Reset program draws one; the
 // SIM itself starts on 12345, so headless tests stay repeatable (a test that wants another world sets PROG.wseed)
 const freshSeed=()=>(Math.random()*4294967296)>>>0;
+// ---- the program's fields (QUEUE R1, notes/platform.md § "Plan: one PROG schema"). One row per field: [default, keep, why].
+// default: what a fresh program holds (a function is called; undefined = left absent, built on first use or meaningful
+// when absent). keep: what New program does with it: 'career' back to the default, 'library' and 'pref' carried over
+// (the player's designs; the charter's preselected level), 'meta' written by the save, 'transient' never saved.
+// A new field gets a row here: test platform-6 fails on a field the table lacks, or on a `||` default that differs.
+// (R1a: the table and progFresh only; resetProgram, career.mjs, the snapshots and the loader move onto it in R1b–R1d.)
+const PROG_SCHEMA={
+  // the calendar and the money
+  day:[0,'career','days since the founding (Tellus days)'],
+  funds:[FUNDS0,'career','money, M'],
+  bailouts:[0,'career','government top-ups taken'],
+  bailRecent:[0,'career','top-ups, fading from memory (×e^(−days/300))'],
+  led:[{},'career','the money ledger by line, for the Debrief'],
+  leasePaid:[0,'career','station lease paid, M, all time'],
+  bmult:[1,'career','the budget multiplier the last election set'],
+  // the world
+  wseed:[freshSeed,'career','the world\'s seed (powers, contracts, daily dice)'],
+  gseed:[null,'career','the galaxy\'s seed, drawn the first time the sky is drawn'],
+  home:[0,'career','the home power\'s index'],
+  homeArch:[null,'career','the home power\'s archetype, picked on the charter'],
+  own:[null,'career','who owns the program: kind, state shares, debt'],
+  history:[[],'career','career moves (defections, hires)'],
+  rel:[{},'career','relations between powers, by pair'],
+  op:[{},'career','opinion of the program, by power'],
+  nat:[{},'career','nationalism, by power (absent: the archetype\'s)'],
+  riv:[undefined,'career','the rival programs\' state, built by rivInit'],
+  raceLost:[{},'career','firsts a rival took, by mission'],
+  raceAnn:[{},'career','rival announcements already made, by mission'],
+  giant:[undefined,'career','the commercial giant, made when it appears'],
+  sanc:[{},'career','sanctions on us, by power: the day they lapse'],
+  overR:[{},'career','overflight rights, by power: the day they lapse'],
+  overNews:[{},'career','the last overflight protest, by power: its day'],
+  hush:[0,'career','failures hushed up'],
+  hushPen:[0,'career','the opinion owed for hushed-up failures'],
+  demand:[null,'career','the leadership\'s demand for a spectacular'],
+  cancelled:[false,'career','the program is being cancelled'],
+  nextElection:[null,'career','the next election\'s day'],
+  electionWarned:[undefined,'career','the 50-day election warning was given'],
+  cycle:[0,'career','the commercial launch market, −0.75…0.75'],
+  cyc:[null,'career','the market cycle\'s phase'],
+  cycJ:[0,'career','the market\'s daily jitter'],
+  comm:[0,'career','the commodity price cycle'],
+  commPh:[null,'career','the commodity cycle\'s phase'],
+  pressures:[{},'career','world pressure settings (debris: light…)'],
+  // missions, contracts, decisions
+  done:[{},'career','missions achieved, by id'],
+  recs:[{},'career','the sponsor\'s records, per epoch (cover loss)'],
+  staged:[{},'career','staged missions\' payments, by mission'],
+  streak:[0,'career','clean-range streak'],
+  flights:[0,'career','flights launched'],
+  offers:[null,'career','the contract board (null: deal it)'],
+  active:[[],'career','contracts taken'],
+  cseq:[0,'career','the last contract id'],
+  cdone:[0,'career','contracts completed'],
+  back:[[],'career','contracts that come back to the board later'],
+  disDone:[[],'career','disaster-imaging contracts done: posted, imaged'],
+  stand:[{},'career','standing with each contract source (absent: 50)'],
+  decisions:[[],'career','decisions waiting for the player'],
+  dseq:[0,'career','the last decision id'],
+  // know-how, industry, facilities
+  atm:[{},'career','atmosphere bands sampled'],
+  cert:[{},'career','parts\' certification from flights'],
+  kh:[{},'career','know-how by part: use, regimes'],
+  lines:[{},'career','production lines by part'],
+  dev:[{},'career','development levels by part and goal'],
+  devJob:[null,'career','the development job under way'],
+  fac:[{},'career','facilities: level, building'],
+  stand2:[null,'career','the test stand: ready, job'],
+  studies:[{},'career','design studies done, by design'],
+  studyQ:[[],'career','design studies under way'],
+  compEra:[null,'career','the computer era last announced'],
+  simH:[{},'career','simulator hours by design'],
+  // fleet, network, debris
+  sats:[[],'career','the registry: satellites and craft left in space'],
+  satN:[0,'career','the last registry id'],
+  stations:[[],'career','stations'],
+  procs:[{},'career','flight procedures by design'],
+  dispatch:[[],'career','dispatched launches'],
+  dispN:[0,'career','the last dispatch id'],
+  routes:[[],'career','satellite routines'],
+  routeN:[0,'career','the last routine id'],
+  navCov:[undefined,'career','navigation coverage, 0…1, when last measured'],
+  labDays:[0,'career','station lab days, all time'],
+  casc:[{},'career','debris bands in a cascade, by band'],
+  frag:[undefined,'career','debris fragments per band, made on first use'],
+  breakups:[[],'career','breakups in orbit'],
+  // logbook, debrief, the place
+  log:[{},'career','the logbook\'s records'],
+  lastDebrief:[undefined,'career','the last Debrief, kept with the save'],
+  site:[undefined,'career','the launch site picked (absent: home\'s)'],
+  // Selene's ground: rovers, science
+  rvOut:[[],'career','rovers left in the field'],
+  rvN:[0,'career','the last rover id'],
+  wheelKm:[{},'career','km of testing per wheel'],
+  sel:[undefined,'career','Selene science: spectra, panoramas, seismometers, quakes, the core'],
+  // the player's library and preferences (questions 1 and 3 of the plan)
+  designs:[undefined,'library','the player\'s rocket designs: saved, launched'],
+  payloads:[undefined,'library','the player\'s payload designs'],
+  rovers:[undefined,'library','the player\'s rover designs'],
+  lvl:[undefined,'pref','difficulty (absent: Normal); the charter preselects it'],
+  // the save itself
+  ver:[undefined,'meta','the save\'s version (SAVE_V), written by the save'],
+  newerSave:[undefined,'transient','set by the loader for a save from a newer game, then cleared']};
+const progClone=v=>v!==null&&typeof v==='object'?JSON.parse(JSON.stringify(v)):v;
+// a fresh program from the table; with keepFrom, its 'library' and 'pref' fields are carried over
+function progFresh(keepFrom){const o={};
+  for(const k in PROG_SCHEMA){const[d,keep]=PROG_SCHEMA[k];
+    if(keepFrom&&(keep==='library'||keep==='pref')&&keepFrom[k]!==undefined){o[k]=progClone(keepFrom[k]);continue}
+    if(keep==='meta'||keep==='transient'||d===undefined)continue;o[k]=typeof d==='function'?d():progClone(d)}
+  return o}
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
