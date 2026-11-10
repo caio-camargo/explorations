@@ -1836,21 +1836,21 @@ function shdBake(){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th)
 let BLOOM=true;   // false: no glow (Low; A/B). The frame still goes through the HDR target and the composite (Q314)
 const HDR_RT=!!gl.getExtension('EXT_color_buffer_float');   // RGBA16F targets; without it, RGBA8 (light above 1 clips)
 const SCN={w:0,h:0,on:false};
-function texRT(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
-  gl.texImage2D(gl.TEXTURE_2D,0,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,HDR_RT?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
+function texRT(w,h,ldr){const t=gl.createTexture(),f16=HDR_RT&&!ldr;gl.bindTexture(gl.TEXTURE_2D,t);   // ldr: 8 bits (the graded frame, Q560)
+  gl.texImage2D(gl.TEXTURE_2D,0,f16?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,f16?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,fb,w,h}}
 // the scene target for this frame size (multisampled colour + depth/stencil, a resolve texture, the bloom chain)
 function sceneTarget(w,h){if(SCN.w===w&&SCN.h===h)return SCN;
-  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
+  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,SCN.out,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
   const ns=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)),rc=gl.createRenderbuffer(),rd=gl.createRenderbuffer(),ms=gl.createFramebuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER,rc);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h);
   gl.bindRenderbuffer(gl.RENDERBUFFER,rd);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.DEPTH24_STENCIL8,w,h);
   gl.bindFramebuffer(gl.FRAMEBUFFER,ms);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rc);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rd);
   const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
-  const res=texRT(w,h),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,chain,ok});return SCN}
+  const res=texRT(w,h),out=texRT(w,h,true),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,out,chain,ok});return SCN}
 // the framebuffer the 3D frame is being drawn into (passes that render elsewhere mid-frame come back to it)
 const sceneFB=()=>SCN.on?SCN.ms:null;
 function bloomBegin(w,h){SCN.on=false;const T=sceneTarget(w,h);if(!T.ok)return;SCN.on=true;gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms)}
@@ -1889,6 +1889,27 @@ function expoTick(T){const c=T.chain[3],now=performance.now(),dt=Math.min(.25,(n
 // the exposure settled at once, for the reference views and stills (a blocking read; never in play)
 function expoNow(){const T=SCN;if(!T.chain||!HDR_RT)return;const c=T.chain[3],a=new Float32Array(c.w*c.h*4);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,c.fb);gl.readPixels(0,0,c.w,c.h,gl.RGBA,gl.FLOAT,a);EXPO.L=expoMean(a,c.w,c.h)??EXPO.L;if(EXPO.L)EXPO.t=expoTarget(EXPO.L,EXPO.H);if(EXPO.auto)EXPO.E=EXPO.t}
+// (Q560) the upscale. When the scaler has the 3D view below the screen's pixels, the graded frame used to be stretched by
+// the browser (bilinear: soft, and blocky on edges). Now the canvas stays at device pixels and this pass brings the
+// frame up: Catmull-Rom through nine bilinear taps (it keeps edges where bilinear smears them), then a sharpen against
+// the local mean, held inside the range of the four nearest texels so no edge rings or haloes. Done on the graded
+// 8-bit frame, where a step in value is a step the eye sees. The film grain is laid here, at device pixels: grain the
+// size of an upscaled texel reads as blocks. uSh: the sharpen (more the further the frame is stretched).
+const UPS_FS=`#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS;uniform vec2 uSz;uniform float uSh,uGr,uT;
+void main(){vec2 uv=vNdc*.5+.5,sp=uv*uSz,tc=floor(sp-.5)+.5,f=sp-tc,px=1./uSz;
+ vec2 w0=f*(-.5+f*(1.-.5*f)),w1=1.+f*f*(-2.5+1.5*f),w2=f*(.5+f*(2.-1.5*f)),w3=f*f*(-.5+.5*f),w12=w1+w2;
+ vec2 t0=(tc-1.)*px,t3=(tc+2.)*px,t12=(tc+w2/w12)*px;
+ vec3 c=texture(uS,vec2(t0.x,t0.y)).rgb*w0.x*w0.y+texture(uS,vec2(t12.x,t0.y)).rgb*w12.x*w0.y+texture(uS,vec2(t3.x,t0.y)).rgb*w3.x*w0.y
+  +texture(uS,vec2(t0.x,t12.y)).rgb*w0.x*w12.y+texture(uS,vec2(t12.x,t12.y)).rgb*w12.x*w12.y+texture(uS,vec2(t3.x,t12.y)).rgb*w3.x*w12.y
+  +texture(uS,vec2(t0.x,t3.y)).rgb*w0.x*w3.y+texture(uS,vec2(t12.x,t3.y)).rgb*w12.x*w3.y+texture(uS,vec2(t3.x,t3.y)).rgb*w3.x*w3.y;
+ vec3 a=texture(uS,tc*px).rgb,b=texture(uS,(tc+vec2(1.,0.))*px).rgb,d=texture(uS,(tc+vec2(0.,1.))*px).rgb,e=texture(uS,(tc+1.)*px).rgb;
+ vec3 lo=min(min(a,b),min(d,e)),hi=max(max(a,b),max(d,e));
+ c=clamp(c+uSh*(c-(a+b+d+e)*.25),lo,hi);
+ vec2 g=gl_FragCoord.xy+uT;float n=fract(sin(dot(g,vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(g,vec2(39.3468,11.135)))*24634.6345)-1.;
+ float Y=dot(c,vec3(.2126,.7152,.0722));o=vec4(c+n*uGr*(.35+2.6*Y*(1.-Y)),1.);}`;
+let UPSCALE=true;   // false: the old way, the canvas at the 3D view's size and the browser's stretch (A/B)
+const PUPS=mkProg(QUAD_VS,UPS_FS);
 function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,T.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.res.fb);gl.blitFramebuffer(0,0,w,h,0,0,w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
@@ -1898,13 +1919,18 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   else{const dst=T.chain[3];gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,T.res.t);   // Low: the 1/16 level in one pass (sparser taps; only the exposure reads it)
     gl.uniform2f(u.uPx,4/w,4/h);gl.uniform1f(u.uTh,0);gl.uniform1i(u.uMx,2);gl.drawArrays(gl.TRIANGLES,0,3)}
   expoTick(T);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
+  const up=cv.width!==w||cv.height!==h;   // (Q560) the canvas is larger than the 3D view: grade into T.out, then the upscale pass
+  gl.bindFramebuffer(gl.FRAMEBUFFER,up?T.out.fb:null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
   gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,fxNow()%997);
-  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);
+  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,up?0:GRADE.gr);
   gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
-  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
+  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);
+  if(up){const q=PUPS.u;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(PUPS.p);gl.bindTexture(gl.TEXTURE_2D,T.out.t);
+    gl.uniform1i(q.uS,0);gl.uniform2f(q.uSz,w,h);gl.uniform1f(q.uSh,Math.min(1,1.6*(1-w/cv.width)));gl.uniform1f(q.uGr,GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);
+    gl.drawArrays(gl.TRIANGLES,0,3);gl.viewport(0,0,w,h)}
+  gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
 // ---- fin-tip vapor: each fin tip's recent path, planet-fixed, with how much vapor it shed there. A fin sheds a tip
 // vortex in proportion to its load: the cross-flow component along its normal (so in a turn two fins of a ring trail
 // and two don't), dynamic pressure and angle of attack; condensation needs humid low air and subsonic-to-low-supersonic
@@ -2085,7 +2111,7 @@ const GC={panel:'#17191c',bezel:'#2b2e33',face:'#e8e1cc',faceDim:'#c9c1a9',ink:'
 // (flow, UI slice 4b) the strip's place is #gslot, the left of the bottom cluster (gauges | throttle | navball | SAS);
 // app/hud.js shows the slot while the Ascent condition holds, so in space the cluster narrows. Scaled to the slot's width.
 function gaugeRect(){const g=document.getElementById('gslot');if(!g||g.closest('.hidden')||!g.offsetParent||getComputedStyle(g).visibility==='hidden')return null;   // the HUD hidden: no gauges
-  const r=g.getBoundingClientRect(),k=cv.width/cv.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
+  const r=g.getBoundingClientRect(),k=W/cv.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
 function gaugeFont(px,s,w=600){return `${w} ${Math.round(px*s)}px Bahnschrift,"DIN Alternate","Arial Narrow",Arial,sans-serif`}
 function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S.r)-b.R;
   // the data

@@ -55,7 +55,11 @@ function render(){spoolFrame();
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();profMark('setup');
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
-  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}W=w;H=h;
+  // (Q560) the canvas stays at device pixels and the frame is brought up to it by the upscale pass (gl.js, UPS_FS), unless
+  // the scene target failed (then the frame is drawn straight to the canvas, at the view's size, as before). W and H are
+  // the 3D view's pixels, as ever: a page position is x*W/cv.clientWidth, never cv.width
+  {const d1=Math.min(devicePixelRatio||1,1.5),up=UPSCALE&&sceneTarget(w,h).ok,cw=up?Math.round(innerWidth*d1):w,ch=up?Math.round(innerHeight*d1):h;
+    if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch}}W=w;H=h;
   // (flow, Q258; PLAYTEST #58) the overlay (labels, the era maps, the gauges) is drawn at device pixels, not at the 3D view's
   // adaptive resolution: it's cheap 2D, and upscaled it read as low-res. Drawing stays in the 3D view's pixels (OV_K scales).
   {const od=Math.min(devicePixelRatio||1,2),ow=Math.round(innerWidth*od),oh=Math.round(innerHeight*od);if(ov.width!==ow||ov.height!==oh){ov.width=ow;ov.height=oh}}

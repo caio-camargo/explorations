@@ -894,7 +894,7 @@ ROWS.planetlabels = {title: "the map's planet labels in a conjunction", steps: [
 // double-click on Selene (projected from the map's camera), then Home back to the ship
 ROWS.focus = {title: "the map's focus", steps: [DOCK_HELPERS, M1_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); PT.preset('Beeper'); PT.launch(); PT.park(S); S.r = mul(S.r, -1); S.v = mul(S.v, -1); go('map'); render(); ({list: [...document.querySelectorAll('#mapFocus option')].map(o => o.textContent)})`, {shot: 'ship'},
   `{const el = document.getElementById('mapFocus'); renderMapFocus(); el.value = 's:' + PROG.sats[0].id; el.dispatchEvent(new Event('change')); render(); ({key: mapFocusKey(), dist: Math.round(cam.mDist / 1e3)})}`, {shot: 'satellite'},
-  `{const V = HOOK.view, p = bodyPos(BODIES[1], simT), d = sub(p, V.camW), z = dot(d, V.Fw), k = cv.clientWidth / cv.width, x = (dot(d, V.R) / z / V.tanX + 1) / 2 * V.W * k, y = (1 - dot(d, V.U) / z / V.tanY) / 2 * V.H * k;
+  `{const V = HOOK.view, p = bodyPos(BODIES[1], simT), d = sub(p, V.camW), z = dot(d, V.Fw), k = cv.clientWidth / W, x = (dot(d, V.R) / z / V.tanX + 1) / 2 * V.W * k, y = (1 - dot(d, V.U) / z / V.tanY) / 2 * V.H * k;
     cv.dispatchEvent(new MouseEvent('dblclick', {clientX: x, clientY: y, bubbles: true})); render(); ({key: mapFocusKey(), at: [Math.round(x), Math.round(y)]})}`, {shot: 'selene'},
   {key: 'Home'}, `render(); ({key: mapFocusKey()})`, {shot: 'home'}],
   checks: {key: `mapFocusKey()`}, expect: {key: v => v === 'ship'}};

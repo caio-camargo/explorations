@@ -1143,3 +1143,19 @@
     still && endH[1] > .7 * GPU_BUDGET && endH[1] < 1.05 * GPU_BUDGET && tBack >= 0 && tBack < 10 && light && low[0] <= .6 && Math.abs(floor[0] - RS_MIN) < 1e-9,
     `heavy: ${(endH[0] * 100).toFixed(0)} % at ${endH[1].toFixed(1)} ms${still ? '' : ' (still moving)'}; back to 100 % after ${tBack < 0 ? 'never' : (tBack + 1) * .6 + ' s'}; Low ${(low[0] * 100).toFixed(0)} %; floor ${(floor[0] * 100).toFixed(0)} %`);
 }
+
+// aerofx-52. The upscale pass's filter (review session, QUEUE Q560). UPS_FS can't run here, but its Catmull-Rom weights
+// can: lifted from the shader's text and evaluated, they must sum to 1 at every sub-texel position (no brightening or
+// darkening as the scaler moves), rebuild a straight ramp exactly, and overshoot a hard step (which is the sharpening
+// the clamp to the four nearest texels then keeps from ringing).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const UPS_FS='), sh = pg.slice(i, pg.indexOf('`;', i)), m = /vec2 (w0=.*?),w12=w1\+w2;/.exec(sh);
+  const wf = m && new Function('f', 'const ' + m[1].replace(/(\d)\.(?!\d)/g, '$1') + ';return[w0,w1,w2,w3]');
+  let sum = 0, ramp = 0, over = 0;
+  if (wf) for (let f = 0; f <= 1; f += .05) { const w = wf(f); sum = Math.max(sum, Math.abs(w[0] + w[1] + w[2] + w[3] - 1));
+    ramp = Math.max(ramp, Math.abs(-w[0] + w[2] + 2 * w[3] - f)); over = Math.max(over, w[2] + w[3] - 1, -(w[2] + w[3])); }   // texels at -1, 0, 1, 2; a step between 0 and 1
+  check('the upscale filter is a true Catmull-Rom (Q560): weights sum to 1, a ramp comes back exact, a step overshoots (the clamp holds it), and the pass clamps to the four nearest texels',
+    !!wf && sum < 1e-12 && ramp < 1e-12 && over > .03 && over < .12 && /c=clamp\(c\+uSh\*\(c-\(a\+b\+d\+e\)\*\.25\),lo,hi\)/.test(sh),
+    wf ? `sum off by ${sum.toExponential(1)}, ramp by ${ramp.toExponential(1)}, step overshoot ${(over * 100).toFixed(1)} %` : 'weights not found in UPS_FS');
+}
