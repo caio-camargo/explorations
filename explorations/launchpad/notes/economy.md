@@ -3509,3 +3509,10 @@ starts on 12345, so headless tests are repeatable; a test that wants another wor
 tourism + military offers under 10 a career (v1.261: 13–24 on four seed sets; now 5–8) and mean funds 150–650M (now
 301). econ-34: the page draws a fresh seed when no save loads, before `ensureBoard`; Reset draws one; the SIM starts
 on 12345; two fresh seeds give different first boards. No pinned number in an existing test changed.
+
+## career.mjs's baseline moves: rows no longer inherit each other (2026-11-10, review fixes, QUEUE R1b; notes/platform.md § v1.293)
+
+Since v1.293 every `career.mjs` row starts from the game's own `programNew`, so a row's numbers no longer depend on
+the rows before it (before, frugal/agency was 408 M in the table and 346 M alone). **Compare against the new table, not
+older ones:** `node career.mjs 3 3`, mean final funds 654 M (691 before), lowest row resource/company 100 M (147),
+mean flights 25.3, failures 19.9 %. Older numbers in these notes were measured with the leak.

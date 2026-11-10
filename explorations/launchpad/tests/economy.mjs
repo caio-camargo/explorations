@@ -28,7 +28,8 @@
   P.recs = { maxCost: 30 }; P.flights = 9; const x7 = D.coverLoss({}, { cost: 80, refund: 0, cdone: [], orbit: true });
   check('cover: a rocket that reached orbit worked, even with nothing completed: no cover (PLAYTEST #33)', x7 === 0);
   const H = html.replace(/\r\n/g, '\n');
-  check('cover: kept in PROG.recs, which a new game resets', /recs:\{\}/.test(H.slice(H.indexOf('// ==== SIM END'))));
+  const SCH = new Function(src + 'return PROG_SCHEMA;')();   // (R1b) a new game is programNew, built from the table
+  check('cover: kept in PROG.recs, which a new game resets', H.length > 0 && JSON.stringify(SCH.recs.slice(0, 2)) === '[{},"career"]');
 }
 
 // econ-2. Who may launch where (economy session, QUEUE Q6): siteAccess(site) → {ok, why, fee}. Our sites free; a sea
@@ -784,8 +785,10 @@
   const st = readFileSync(new URL('./app/state.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
   const iSet = st.indexOf('progLoaded=true'), iNew = st.indexOf('if(!progLoaded)PROG.wseed=freshSeed()'), iBoard = st.indexOf('ensureBoard()', iNew);
   const board = D => JSON.stringify(D.PROG.offers.map(o => [o.type, o.client, o.p.pay]));
+  // Reset is programNew since R1b: it draws a seed each time
+  const resetSeeds = () => { const X = new Function(src + 'return {PROG,HOOK,programNew};')(); X.HOOK.save = () => {}; X.programNew(); const s1 = X.PROG.wseed; X.programNew(); return Number.isInteger(s1) && s1 !== 12345 && X.PROG.wseed !== s1; };
   check('new save (Q529): the page draws a fresh world seed when no save loads, before the first board; Reset draws one; the SIM stays on 12345',
     seed0 === 12345 && new Set(seeds).size === 20 && seeds.every(s => Number.isInteger(s) && s >= 0 && s < 2 ** 32)
-      && iSet > 0 && iNew > iSet && iBoard > iNew && /wseed:freshSeed\(\)/.test(ed) && board(B) !== board(C),
+      && iSet > 0 && iNew > iSet && iBoard > iNew && /function resetProgram\(\)\{programNew\(\)/.test(ed) && resetSeeds() && board(B) !== board(C),
     `seeds ${seeds.slice(0, 3).join(', ')}…; boards ${board(B).slice(0, 60)} | ${board(C).slice(0, 60)}`);
 }
