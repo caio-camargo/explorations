@@ -6943,3 +6943,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/vessel.js`, `sim/core.js`, `app/state.js`, `app/gl.js`, `app/render.js`, `tests/look.mjs`,
   `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** Caio's look at TESTING 358; then Q561 (footprint filtering), #157 (the night limb's dark band).
+
+## 2026-11-10 — review fixes (Opus, worktree launchpad-review): one serializer for PROG (R1c, v1.296)
+
+- **Done:** `progJSON`/`progRestore` and `progLossy` in sim/program.js; the save, `REVERT0` and `missionDiscard`, the two
+  flights from orbit, and the recorder use them. Tester mode names values JSON would lose, once each.
+- **Checked:** platform-6's new check (a mutation putting the save back on JSON.stringify is caught); smoke and the full
+  suite passed. On the way, smoke failed to compile: another session's merge had lost a brace in tests/look.mjs; it
+  was already fixed on main (`3a091b09`) by the time I looked.
+- **Files:** `sim/program.js`, `sim/record.js`, `app/state.js`, `app/program-ui.js`, `tests/platform.mjs`,
+  `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R1c ✓), `ACTIVE_WORK.md`.
+- **Next:** R1d (the loader fills a save from the table), then R16 (the core bound's Infinity).
