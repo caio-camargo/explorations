@@ -85,7 +85,7 @@ const GENES = [   // [key, group, label, default, low, high]
   ['sex', 'Person', 'Sex: female–male', .5, 0, 1], ['age', 'Person', 'Age: young–old', .2, 0, 1],
   ['af', 'Person', 'Population: African', 1, 0, 1], ['as', 'Person', 'Population: Asian', 1, 0, 1], ['ca', 'Person', 'Population: European', 1, 0, 1],
   ['wt', 'Person', 'Weight: thin–heavy', 0, -1, 1], ['ex', 'Person', 'Exaggerate', 1, .3, 3],
-  ['np', 'Style', 'Planes: few–many', .36, 0, 1], ['nf', 'Style', 'Nose bridge: round–flat', 1, 0, 1], ['nw', 'Style', 'Bridge width', 1.2, .5, 2.4], ['ns', 'Style', 'Nose profile: natural–straight', .5, 0, 1], ['ol', 'Style', 'Edge lines', .35, 0, 1],
+  ['np', 'Style', 'Planes: few–many', .36, 0, 1], ['nf', 'Style', 'Nose bridge: natural–one plane', 1, 0, 1], ['nw', 'Style', 'Bridge width', 1.2, .5, 1.8], ['nt', 'Style', 'Bridge: even–wider at the tip', .3, 0, 1], ['ol', 'Style', 'Edge lines', .35, 0, 1],
   ['ht', 'Hair', 'Volume on top', .5, 0, 1], ['hq', 'Hair', 'Front: flat–quiff', .35, 0, 1], ['hsd', 'Hair', 'Volume at the sides', .3, 0, 1],
   ['bk', 'Paint', 'Eyebrow weight', 0, 0, 1], ['st', 'Paint', 'Skin tone: light–deep', .22, 0, 1],
   ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['lt', 'Paint', 'Lip colour', .7, 0, 1], ['hg', 'Paint', 'Comb grooves', .5, 0, 1],
@@ -186,27 +186,40 @@ function refine(S, P, n) { n = n || 3; const { ptr, idx, w } = S, N = ptr.length
   for (let i = 0; i < N; i++) for (let j = ptr[i]; j < ptr[i + 1]; j++) { const k = idx[j] * n, ww = w[j]; for (let c = 0; c < n; c++) O[i * n + c] += ww * P[k + c]; } return O; }
 
 // ---- house style: shapes the references have and a real face has not, imposed on MakeHuman's points before the planes are cut
-// The nose's bridge: from between the brows to the tip, every point within the strip's half-width is put at the ridge's
-// own depth (a plateau, not an arch), and the points near its border are moved out onto the border, so the strip ends
-// in an edge. "Straight" pulls the ridge toward the line from brow to tip, and the nose's sides follow.
+// The nose's bridge is one flat plane, built and not found: a four-cornered strip from the brow line to the nose tip.
+// MakeHuman's mesh is a regular grid there, so the strip is the middle column of points and two columns on each side;
+// each point gets a place on the plane (how far down, how far across), and the outer columns are its straight edges.
+// The points beside the strip follow, so the nose's sides run up to the edges. When the planes are cut (below), the
+// strip's points may only merge into each other, and its edges and corners stay: the plane survives at every level.
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-let RIDGE = [], GLAB = -1, NSV = [];
-function noseInit(A) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 + 1] / MH.eye.length;
-  const mid = NSV.filter(i => Math.abs(A[i * 3]) < .003 && A[i * 3 + 2] > .2); GLAB = -1;
-  for (const i of mid) { const y = A[i * 3 + 1]; if (y > ey + .03 && y < ey + .14 && (GLAB < 0 || A[i * 3 + 2] > A[GLAB * 3 + 2])) GLAB = i; }
-  RIDGE = mid.filter(i => A[i * 3 + 1] <= A[GLAB * 3 + 1] + .07 && A[i * 3 + 1] >= A[MH.tip * 3 + 1] - .001); }
-function noseStyle(P, g) { if (g.nf <= 0 && g.ns <= 0) return P;
-  const R = RIDGE.map(i => [P[i * 3 + 1], P[i * 3 + 2]]).sort((a, b) => b[0] - a[0]), yT = P[GLAB * 3 + 1], zT = P[GLAB * 3 + 2], yB = P[MH.tip * 3 + 1], zB = P[MH.tip * 3 + 2];
-  const ridge = y => { if (y >= R[0][0]) return R[0][1]; for (let k = 1; k < R.length; k++) if (y >= R[k][0]) return mix(R[k][1], R[k - 1][1], (y - R[k][0]) / (R[k - 1][0] - R[k][0] || 1)); return R[R.length - 1][1]; };
+let RIDGE = [], NSV = [], STRIP = [], LINES = null, BCOL = [];   // LINES: 16 in the strip, 1 / 2 on its left / right edge, 4 / 8 on its top / bottom edge
+function noseInit(A, quads) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 + 1] / MH.eye.length;
+  const eq = new Map(), nb = new Map(), ek = (a, b) => a < b ? a * NV + b : b * NV + a;
+  for (const q of quads) for (let j = 0; j < 4; j++) { const a = q[j], b = q[(j + 1) % 4], k = ek(a, b); if (!eq.has(k)) eq.set(k, []); eq.get(k).push(q);
+    if (!nb.has(a)) nb.set(a, new Set()); if (!nb.has(b)) nb.set(b, new Set()); nb.get(a).add(b); nb.get(b).add(a); }
+  const onMid = i => Math.abs(A[i * 3]) < .003; let top = -1;   // the ridge: down the middle, from the brow line to the tip
+  for (const i of nb.keys()) { const y = A[i * 3 + 1]; if (onMid(i) && A[i * 3 + 2] > .2 && y > ey && y <= ey + .062 && (top < 0 || y > A[top * 3 + 1])) top = i; }
+  const chain = [top]; while (chain[chain.length - 1] !== MH.tip && chain.length < 40) { const c = chain[chain.length - 1]; let n = -1;
+    for (const j of nb.get(c)) if (onMid(j) && A[j * 3 + 1] < A[c * 3 + 1] && (n < 0 || A[j * 3 + 1] > A[n * 3 + 1])) n = j; if (n < 0) break; chain.push(n); }
+  const side = (col, sg) => { const next = new Array(col.length).fill(-1);   // the next column of the grid, to one side
+    for (let k = 0; k < col.length - 1; k++) for (const q of eq.get(ek(col[k], col[k + 1])) || []) { const o = q.filter(v => v !== col[k] && v !== col[k + 1]); if (o.length !== 2) continue;
+      if (sg * (A[o[0] * 3] + A[o[1] * 3] - A[col[k] * 3] - A[col[k + 1] * 3]) <= 1e-5) continue; const a = nb.get(col[k]).has(o[0]) ? o[0] : o[1]; next[k] = a; next[k + 1] = a === o[0] ? o[1] : o[0]; }
+    return next; };
+  RIDGE = chain; STRIP = []; LINES = new Uint8Array(NV); const n = chain.length, yT = A[chain[0] * 3 + 1], yB = A[chain[n - 1] * 3 + 1], cols = [[chain, 0]];
+  for (const sg of [1, -1]) { const c1 = side(chain, sg), c2 = side(c1, sg); cols.push([c1, .5 * sg], [c2, sg]); if (sg > 0) BCOL = c2; }
+  for (const [col, s] of cols) col.forEach((i, k) => { if (i < 0) { console.error('nose strip: the grid breaks at row', k); return; }
+    STRIP.push([i, (yT - A[chain[k] * 3 + 1]) / (yT - yB), s]); LINES[i] = 16 | (s === 1 ? 1 : 0) | (s === -1 ? 2 : 0) | (k === 0 ? 4 : 0) | (k === n - 1 ? 8 : 0); }); }
+function noseStyle(P, g) { const f = g.nf; if (f <= 0) return P;
+  const iT = RIDGE[0], iB = RIDGE[RIDGE.length - 1], yT = P[iT * 3 + 1], zT = P[iT * 3 + 2], yB = P[iB * 3 + 1], zB = P[iB * 3 + 2], W0 = .022 * g.nw * (1 - .5 * g.nt), W1 = .022 * g.nw * (1 + .5 * g.nt);
+  const B = BCOL.map(i => [P[i * 3 + 1], Math.abs(P[i * 3]), P[i * 3 + 2]]).sort((a, b) => b[0] - a[0]);   // the strip's edge on this face before it is moved: height, half-width, depth
+  const edge = y => { if (y >= B[0][0]) return B[0]; for (let k = 1; k < B.length; k++) if (y >= B[k][0]) { const q = (y - B[k][0]) / (B[k - 1][0] - B[k][0] || 1); return [y, mix(B[k][1], B[k - 1][1], q), mix(B[k][2], B[k - 1][2], q)]; } return B[B.length - 1]; };
   const moved = [];
-  for (const i of NSV) { const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2]; if (y > yT + .05 || y < yB - .012 || z < .2) continue;
-    const t = clamp((yT - y) / (yT - yB), 0, 1), W = .022 * g.nw * (1 + .3 * t * t), u = Math.abs(x) / W; if (u > 2.6) continue;
-    const r = ridge(y); if (z < r - .03 - .008 * t) continue;   // only the nose's own top and upper sides, not the eye's corner behind it
-    const fade = sstep(yT + .05, yT + .01, y) * sstep(yB - .012, yB + .004, y), dz = g.ns * (zT + (zB - zT) * t - r) * fade * (y <= yT ? 1 : 0);
-    let nz = z + dz * (1 - sstep(1, 2.6, u)), nx = x;
-    if (u <= 1) { nz = mix(nz, r + dz, g.nf * fade); if (u > .5) nx = mix(x, Math.sign(x) * W, g.nf * fade); }
-    moved.push(i, nx, nz); }
+  for (const i of NSV) { if (LINES[i]) continue; const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2]; if (y > yT + .02 || y < yB - .012 || z < .2) continue;   // the nose's sides
+    const t = clamp((yT - y) / (yT - yB), 0, 1), W = mix(W0, W1, t), e = edge(y), b = e[1], ax = Math.abs(x), L = Math.max(b, W) + .025; if (ax < b - .005 || ax >= L) continue;
+    const v = Math.max(0, (ax - b) / (L - b)), fy = sstep(yT + .02, yT, y) * sstep(yB - .012, yB, y) * f, fz = sstep(e[2] - .05, e[2] - .02, z);
+    moved.push(i, mix(x, Math.sign(x) * (W + v * (L - W)), fy), z + (mix(zT, zB, t) - e[2]) * (1 - sstep(0, 1, v)) * fy * fz); }
   for (let k = 0; k < moved.length; k += 3) { P[moved[k] * 3] = moved[k + 1]; P[moved[k] * 3 + 2] = moved[k + 2]; }
+  for (const [i, t, s] of STRIP) { P[i * 3] = mix(P[i * 3], s * mix(W0, W1, t), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yT, yB, t), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zT, zB, t), f); }
   return P; }
 
 // ---- planes: the skin simplified by collapsing edges, once, on the average head
@@ -231,11 +244,12 @@ function planesInit(A, tr) {
     return q(0) * x * x + 2 * q(1) * x * y + 2 * q(2) * x * z + 2 * q(3) * x + q(4) * y * y + 2 * q(5) * y * z + 2 * q(6) * y + q(7) * z * z + 2 * q(8) * z + q(9); };
   let sym = true;
   const valid = (u, v) => { if (bnd[u] && !bnd[v]) return false;
+    if (LINES[u] && (!LINES[v] || (LINES[u] & ~LINES[v]))) return false;   // the nose's bridge: a point of the strip merges only into the strip, and never leaves an edge it lies on
     if (sym && (MIR[u] === v || (MIR[u] === u && MIR[v] !== v))) return false;   // never across the middle, never off it
     const nv = neigh(v); let common = 0, shared = 0; for (const w of neigh(u)) if (nv.has(w)) common++; for (const t of vt[u]) if (vt[v].has(t)) shared++;
     if (!shared || common !== shared) return false;   // the surface stays a surface
     for (const t of vt[u]) { if (vt[v].has(t)) continue; const i = T[t * 3], j = T[t * 3 + 1], k = T[t * 3 + 2], n0 = nrm3(i, j, k), n1 = nrm3(i === u ? v : i, j === u ? v : j, k === u ? v : k);
-      if (n1[3] < 1e-10 || n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2] < .2 * n0[3] * n1[3]) return false; }   // no face may flip over
+      if (n1[3] < 1e-7 || n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2] < .2 * n0[3] * n1[3]) return false; }   // no face may flip over
     return true; };
   const cost = new Float64Array(NV).fill(Infinity), tgt = new Int32Array(NV).fill(-1);
   const best = u => { cost[u] = Infinity; tgt[u] = -1; if (dead[u]) return; for (const v of neigh(u)) { const e = err(u, v); if (e < cost[u] && valid(u, v)) { cost[u] = e; tgt[u] = v; } } };
@@ -261,14 +275,19 @@ function level(K) { let L = lvlCache.get(K); if (L) return L; const par = new In
 
 // ---- a face's mesh as loose triangles: position, normal, (material, shade, lip)
 let VB = new Float32Array(9 * 3 * 30000), VN = 0, INFO = {}, bald = false;
-function put(x, y, z, nx, ny, nz, m, lip) { const o = VN++ * 9; VB[o] = x; VB[o + 1] = y; VB[o + 2] = z; VB[o + 3] = nx; VB[o + 4] = ny; VB[o + 5] = nz; VB[o + 6] = m; VB[o + 7] = 1; VB[o + 8] = lip; }
-function flat(P, a, b, c, m, lip) { const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+function put(x, y, z, nx, ny, nz, m, lip, e) { const o = VN++ * 9; VB[o] = x; VB[o + 1] = y; VB[o + 2] = z; VB[o + 3] = nx; VB[o + 4] = ny; VB[o + 5] = nz; VB[o + 6] = m; VB[o + 7] = e || 0; VB[o + 8] = lip; }
+function flat(P, a, b, c, m, lip, e) { const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
   let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-  for (const i of [a, b, c]) put(P[i], P[i + 1], P[i + 2], nx, ny, nz, m, lip); }
+  for (const i of [a, b, c]) put(P[i], P[i + 1], P[i + 2], nx, ny, nz, m, lip, e); }
 function assemble(g) {
   const M = noseStyle(frame(shape(g)), g), K = Math.round(60 * Math.pow(SKN / 60, g.np)), L = level(K), nt = L.length / 3, need = (nt * 3 * 5 + EYES.q.length / 4 * 6 + 64) * 9;
   if (VB.length < need) VB = new Float32Array(need); VN = 0;
-  for (let t = 0; t < nt; t++) { const a = L[t * 3], b = L[t * 3 + 1], c = L[t * 3 + 2]; flat(M, a * 3, b * 3, c * 3, 0, LIPV[a] + LIPV[b] + LIPV[c] > 250 ? 1 : 0); }
+  const TN = new Float32Array(nt * 3), HID = new Uint8Array(nt), em = new Map();   // HID: the triangle's edges that lie inside one plane (its neighbour there faces the same way) and are not drawn
+  for (let t = 0; t < nt; t++) { const a = L[t * 3] * 3, b = L[t * 3 + 1] * 3, c = L[t * 3 + 2] * 3, ux = M[b] - M[a], uy = M[b + 1] - M[a + 1], uz = M[b + 2] - M[a + 2], vx = M[c] - M[a], vy = M[c + 1] - M[a + 1], vz = M[c + 2] - M[a + 2];
+    const x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx, l = Math.hypot(x, y, z) || 1; TN[t * 3] = x / l; TN[t * 3 + 1] = y / l; TN[t * 3 + 2] = z / l; }
+  for (let t = 0; t < nt; t++) for (let e = 0; e < 3; e++) { const p = L[t * 3 + e], r = L[t * 3 + (e + 1) % 3], k = p < r ? p * NV + r : r * NV + p, o = em.get(k); if (o === undefined) { em.set(k, t * 4 + e); continue; }
+    const t2 = o >> 2; if (TN[t * 3] * TN[t2 * 3] + TN[t * 3 + 1] * TN[t2 * 3 + 1] + TN[t * 3 + 2] * TN[t2 * 3 + 2] > .9995) { HID[t] |= 1 << (e + 2) % 3; HID[t2] |= 1 << ((o & 3) + 2) % 3; } }
+  for (let t = 0; t < nt; t++) { const a = L[t * 3], b = L[t * 3 + 1], c = L[t * 3 + 2]; flat(M, a * 3, b * 3, c * 3, 0, LIPV[a] + LIPV[b] + LIPV[c] > 250 ? 1 : 0, HID[t]); }
   if (!bald) {   // the hair: the scalp's planes, stood off the skull, with a wall down to the skin round the edge
     const H = new Float32Array(M.length), done = new Uint8Array(NV), ec = new Map(), ht = [];
     const off = v => { if (done[v]) return; done[v] = 1; const x = M[v * 3], y = M[v * 3 + 1], z = M[v * 3 + 2], nx = x, ny = y - .55, nz = z + .07, l = Math.hypot(nx, ny, nz), up = clamp((y - .6) / .35, 0, 1), fr = clamp((z - .05) / .3, 0, 1) * clamp(1 - Math.abs(x) / .22, 0, 1) * up;
@@ -291,7 +310,7 @@ const glc = document.createElement('canvas'); glc.width = glc.height = 1040;
 const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: true });
 const VS = `#version 300 es
 in vec3 aP,aN,aM;uniform mat4 uVP,uLVP;out vec3 vP,vN,vM,vB;out vec4 vL;
-void main(){vP=aP;vN=aN;vM=aM;int k=gl_VertexID%3;vB=vec3(k==0,k==1,k==2);vL=uLVP*vec4(aP,1.);gl_Position=uVP*vec4(aP,1.);}`;
+void main(){vP=aP;vN=aN;vM=aM;int k=gl_VertexID%3,e=int(aM.y+.5);vB=vec3(k==0||(e&1)!=0,k==1||(e&2)!=0,k==2||(e&4)!=0);vL=uLVP*vec4(aP,1.);gl_Position=uVP*vec4(aP,1.);}`;
 const FS = `#version 300 es
 precision highp float;precision highp sampler2DShadow;
 in vec3 vP,vN,vM,vB;in vec4 vL;out vec4 o;uniform float uLine;
@@ -299,7 +318,7 @@ uniform vec3 uCam,uKey,uSkin,uHair,uIris,uLip,uFlush,uCheek,uTip,uBrow[4],uFlat;
 float seg(vec3 p,vec3 a,vec3 b,out float h){vec3 pa=p-a,ba=b-a;h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length((pa-ba*h)*vec3(1.,1.,.3));}
 void main(){
  if(uFlat.x>=0.){o=vec4(uFlat,1.);return;}
- vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 rd=normalize(vP-uCam),q=vec3(abs(vP.x),vP.yz),al=uSkin;float gloss=.55,ao=vM.y;int m=int(vM.x+.5);
+ vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 rd=normalize(vP-uCam),q=vec3(abs(vP.x),vP.yz),al=uSkin;float gloss=.55,ao=1.;int m=int(vM.x+.5);
  if(m==3){al=uHair;gloss=.5;   // hair: comb grooves running front to back, as a bend in the normal
   float u=atan(vP.x,vP.y-.42),ph=u*22.+1.2*sin(vP.z*7.+u*2.);vec3 td=normalize(vec3(vP.y-.42,-vP.x,0.)+1e-4);
   n=normalize(n+td*cos(ph)*.5*uGroove);al*=1.-.25*uGroove*(.5-.5*sin(ph));}
@@ -398,7 +417,7 @@ function changed() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdi
 function renderEdit() { const t0 = performance.now(); uploaded = null; upload(cur); $('stat').textContent = `mesh ${(performance.now() - t0).toFixed(0)} ms, ${INFO.planes} planes on the skin`;
   render([[$('vq'), cur, orbit], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
 $('reset').onclick = () => { cur = house(); sync(); changed(); };
-$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'ns']) cur[k] = o[k]; sync(); changed(); };
+$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt']) cur[k] = o[k]; sync(); changed(); };
 $('bald').onchange = () => { bald = $('bald').checked; renderEdit(); };
 $('apply').onclick = () => { const g = fromDNA($('dna').value); if (g) { cur = g; sync(); changed(); } };
 $('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
@@ -412,12 +431,12 @@ function renderSheet() { const grid = $('grid'); grid.innerHTML = ''; const jobs
     cell.innerHTML = `<canvas class="t" width="250" height="250"></canvas><canvas class="t th" width="48" height="48"></canvas><div class="sig">${TAG.get(g) || ''}</div>`;
     const [big, th] = cell.querySelectorAll('canvas'); cell.onclick = () => { cur = { ...g }; sync(); setMode('edit'); changed(); }; grid.appendChild(cell); jobs.push([big, g, 'q'], [th, g, 'q']); });
   render(jobs); }
-const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'ns']) g[k] = cur[k]; return g; });
+const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt']) g[k] = cur[k]; return g; });
 $('fresh').onclick = () => { pop = newPop(); renderSheet(); };
 function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m)); document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
   if (m === 'edit') renderEdit(); else { if (!pop.length) pop = newPop(); renderSheet(); } }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
-window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, sheet: () => { pop = newPop(); setMode('sheet'); } };
+window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, strip: () => { const M = noseStyle(frame(shape(cur)), cur), L = level(Math.round(60 * Math.pow(SKN / 60, cur.np))), left = new Set(); let n = 0; for (let i = 0; i < L.length; i += 3) { const k = (LINES[L[i]] ? 1 : 0) + (LINES[L[i + 1]] ? 1 : 0) + (LINES[L[i + 2]] ? 1 : 0); if (k === 3) n++; for (let j = 0; j < 3; j++) if (LINES[L[i + j]]) left.add(L[i + j]); } return { rows: RIDGE.length, points: STRIP.length, left: left.size, tris: n }; }, sheet: () => { pop = newPop(); setMode('sheet'); } };
 (async () => {
   P0 = await unpack(MH.v, Float32Array); NV = MH.nV; IDX = await unpack(MH.idx, Uint16Array); DEL = await unpack(MH.d, Int16Array);
   const fq = await unpack(MH.faces, Uint16Array), fm = await unpack(MH.fmat, Uint8Array), lip = await unpack(MH.lip, Uint8Array), faces = [];
@@ -428,7 +447,7 @@ window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house
   EYES = { src: esrc, S: subdiv({ nV: esrc.length, faces: ef, fmat: ef.map(() => 2), sharp: new Map(), corner: new Set() }), c: [0, 0, 0] }; EYES.q = Int32Array.from(EYES.S.mesh.faces.flat());
   const hl = a => a < .7 ? .86 : a < 1.3 ? mix(.86, .64, (a - .7) / .6) : a < 1.9 ? mix(.64, .58, (a - 1.3) / .6) : mix(.58, .3, clamp((a - 1.9) / .9, 0, 1));   // the hairline: forehead, temple, over the ear, nape
   SCALP = new Uint8Array(NV); for (let i = 0; i < NV; i++) SCALP[i] = A[i * 3 + 1] > hl(Math.abs(Math.atan2(A[i * 3], A[i * 3 + 2] + .07))) ? 1 : 0;
-  NSV = [...new Set(tr)]; noseInit(A); noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
+  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
   const t0 = performance.now(), left = planesInit(A, tr); console.log('planes: collapsed', SKN, 'points to', left, 'in', Math.round(performance.now() - t0), 'ms'); window.PLANES = [SKN, left, Math.round(performance.now() - t0)];
   cur = fromDNA(Q.get('dna')) || house(); sync(); $('dna').value = toDNA(cur); setMode(Q.get('mode') === 'sheet' ? 'sheet' : 'edit');
 })();

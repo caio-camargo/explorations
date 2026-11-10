@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.25 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.26 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -339,6 +339,10 @@ a few hundred flat planes; every corner is still a MakeHuman point, so all slide
 *Planes: few–many*, *Edge lines*, the person and feature sliders. **Sheet**: twelve generated people.
 URL: `?mode=edit|sheet`, `?dna=F5:...`, `?seed=`. Stills: `output/launchpad/mockups/faces5/` (`average.png`,
 `average-few-planes.png`, `sheet.png`, `man-smile.png`).
+**The nose bridge is one built plane** (house style, step 1): a four-cornered strip from the brow line to the tip that
+the plane-cutting may not break up; *Nose bridge: natural–one plane*, *Bridge width*, *Bridge: even–wider at the
+tip*. Stills: `nose-plane-closeup.png`, `nose-plane-front.png`, `nose-plane-many-planes.png`, `sheet-nose-plane.png`
+(the earlier `nose-flat-*` stills are the first attempt, which Caio rejected).
 
 **Pick:** _(Caio: is this the direction?)_
 

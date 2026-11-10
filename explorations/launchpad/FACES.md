@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -366,4 +366,24 @@ is one strip from brow to tip on every generated face; without it several triang
 Rough: *straight* at 1 makes a wedge that juts from the forehead (too much past about .7); the strip's top, between
 the brows, gives some faces a frown; the tip's flat front is small. Not checked: the strip on extreme noses (the
 hump, flare and tip sliders at their ends).
+
+**Step 1 redone: the bridge as one built plane** (2026-11-10; Caio: "the nose definitely did not work, the bridge
+needs to be one plane, or at least start as one"). The plateau above was still a patch of triangles that only
+roughly agreed. Now the plane is *built, not found*: MakeHuman's mesh is a regular grid along the nose, so the strip
+is the middle column of points and two columns each side, from the brow line (the first row at or under eye height
++ .062) to the tip, 16 rows, 80 points. Each point has a fixed place on the plane (how far down, how far across); on
+every face the plane runs straight from that face's own brow-line point to its own nose tip, so the profile is one
+line and the natural dip between the eyes is filled. The outer columns are the plane's two straight edges; the
+points beside them follow, so the nose's sides run up to the edges. **Two rules keep it one plane when the planes
+are cut:** a point of the strip merges only into another point of the strip, and a point on one of the strip's four
+edges never leaves that edge (so the four corners never move). And **edges between planes that face the same way are
+no longer drawn** (anywhere on the skin), so triangles lying in one plane read as one plane.
+Sliders: *Nose bridge: natural–one plane* (house 1; in between it is a blend and not flat), *Bridge width* (1.2),
+*Bridge: even–wider at the tip* (.3). *Nose profile: natural–straight* is gone: one plane is always straight.
+Seen (GPU; `nose-plane-closeup.png`, `nose-plane-front.png`, `nose-plane-many-planes.png`, `sheet-nose-plane.png`):
+at the house setting the strip is down to its four corners and two middle points, drawn as one four-cornered plane
+from brow to tip, with one large plane down each side of the nose; it holds at more planes (.6) and fewer (.15), and
+on the sheet of twelve. Rough: under the tip the nose drops away with almost no wings or nostrils at the house plane
+count; the brow line above the plane is still whatever the cutting left. Not checked: extreme nose sliders; the
+width slider at its ends; expressions that move the nose.
 

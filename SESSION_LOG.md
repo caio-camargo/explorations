@@ -7037,4 +7037,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   is a stylisation plain plane-cutting misses. `noseStyle`: a plateau strip from brow to tip imposed on MakeHuman's
   points, and the planes cut on the styled average. Seen: one flat strip on every generated face. FACES 0.1.11 § 10.
   **Next:** Caio's look; then the same kind of step for other features (brow line, lips, lids), by his notes.
+- **Follow-up 6: the bridge as one built plane (faces5).** Caio: "the nose definitely did not work, the bridge needs
+  to be one plane, or at least start as one". The plateau was a patch of triangles. Now: a strip of the mesh's own
+  grid (5 columns, 16 rows, brow line to tip) placed on one plane per face; the cutting may merge the strip's points
+  only into each other and never off its edges; edges inside one plane are not drawn. Seen: one four-cornered plane
+  at every plane count tried and on the sheet. Rough: wings and nostrils under the tip. FACES 0.1.12 § 10, README
+  0.1.26. `faces5/index.html` is now edited directly (the scratch generator is behind it). **Next:** Caio's look.
 
