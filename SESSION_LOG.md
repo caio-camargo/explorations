@@ -7033,4 +7033,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   MakeHuman's skin reduced by quadric edge collapse (once, on the average head, symmetric), drawn flat; corners stay
   MakeHuman points, so sliders and expressions carry. **Seen:** reads as a head in planes, people stay distinct, 1–5 ms.
   Rough: lids, lip outline, hair, neck edge, no brows. FACES 0.1.10 § 10, README 0.1.25. **Next:** Caio's look.
+- **Follow-up 5: the flat nose bridge (faces5).** Caio: the direction is right; the deco / Mr. Incredible flat bridge
+  is a stylisation plain plane-cutting misses. `noseStyle`: a plateau strip from brow to tip imposed on MakeHuman's
+  points, and the planes cut on the styled average. Seen: one flat strip on every generated face. FACES 0.1.11 § 10.
+  **Next:** Caio's look; then the same kind of step for other features (brow line, lips, lids), by his notes.
 

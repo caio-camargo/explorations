@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -352,4 +352,18 @@ A change takes 1–5 ms.
 whole planes, so its outline is jagged; the hair is thin and its edge steps; the neck's cut is ragged; no eyebrows
 (the paint from faces3 lands in the wrong place, so it is off).
 **Not checked:** sliders one by one; 48 px; very low plane counts on faces other than the average.
+
+**House style, step 1: the flat nose bridge** (2026-11-10; Caio: "in the art-deco / Mr. Incredible style the bridge
+is flat: a stylization which isn't captured in a naive rendering into planes"). Cutting planes only keeps what the
+mesh already has, so the style needs a second kind of step: **a shape imposed on MakeHuman's points before the planes
+are cut.** `noseStyle` in faces5: from between the brows to the tip, every point within the strip's half-width is put
+at the ridge's own depth (a plateau, not an arch), and the points near the strip's border are moved out onto it, so
+the strip ends in an edge. The planes are then cut on the average head *already in the house style*, so the collapse
+keeps that edge. Sliders: *Nose bridge: round–flat* (house 1), *Bridge width* (1.2), *Nose profile: natural–straight*
+(.5; pulls the ridge toward the line from brow to tip, the nose's sides following).
+Seen (GPU; `nose-flat-closeup.png` against `nose-round-closeup.png`, `sheet-flat-nose.png`): from the front the bridge
+is one strip from brow to tip on every generated face; without it several triangles meet along the ridge.
+Rough: *straight* at 1 makes a wedge that juts from the forehead (too much past about .7); the strip's top, between
+the brows, gives some faces a frown; the tip's flat front is small. Not checked: the strip on extreme noses (the
+hump, flare and tip sliders at their ends).
 
