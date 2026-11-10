@@ -70,7 +70,7 @@ function render(){spoolFrame();
     const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
     camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
   else{
-    let tgt;const CB=mode==='drive'&&RV?RV.body:mode==='flight'&&RVA?RVA.body:S.body;if(mode==='drive'&&RV)tgt=rvWorld(RV);else if(mode==='flight'&&RVA)tgt=rvPoseW(RVA).p;else if(S.alive)tgt=shipWorld();else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
+    let tgt;const CB=mode==='drive'&&RV?RV.body:mode==='flight'&&RVA?RVA.body:S.body;if(mode==='drive'&&RV)tgt=rvWorld(RV);else if(mode==='flight'&&RVA)tgt=rvPoseW(RVA).p;else if(S.alive){tgt=shipWorld();if(mode==='flight')tgt=add(tgt,camLag())}else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
     if(mode==='editor'&&!HOOK.edStill)cam.yaw+=0.002;
     const f=localFrame(sub(tgt,bodyPos(CB,simT)));if(mode==='editor'&&cam.edY)tgt=madd(tgt,f.up,cam.edY);
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));

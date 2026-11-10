@@ -38,7 +38,7 @@ function drawSmoke(VP,camW,R,U){
   if(smokeK.length<n){smokeK=new Float64Array(n*2);smokeI=new Uint32Array(n*2);smokeP=new Float64Array(n*12);smokeV=new Float32Array(n*96)}
   for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
     let rx,ry,rz;const o=i*6;
-    if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2]}   // fxPuff: inertial, ballistic
+    if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2];if(q.g){const h=.5*age*age;rx+=q.g[0]*h;ry+=q.g[1]*h;rz+=q.g[2]*h}}   // fxPuff: inertial, ballistic
     else{if(q.ux===undefined){const L=len(q.pf),u=[q.pf[0]/L,q.pf[1]/L,q.pf[2]/L],h=L-TELLUS.R;q.ux=u[0];q.uy=u[1];q.uz=u[2];
         // (Q319, B2.6) the wind at the puff's height: it turns with height and peaks in a jet stream near 11 km, so a
         // contrail kinks and shears as it drifts (was one step at 8 km)
@@ -162,14 +162,30 @@ function surfFx(o,b,r,q,L0,rad,dt){if(b!==TELLUS||!dt)return;o.mkSurf=(o.mkSurf|
     fxPuff(P,surfVel(b,P),{s0:.1+.12*R()*Math.min(rad,2),grow:.5,a0:.45,life:1.5+R()})}}
 // staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
 // The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
+// (Q564; PLAYTEST #159, #160) Staging. The camera looks at the centre of mass, and dropping parts moves it in one step:
+// detach reports the jump (HOOK.cmShift), the camera keeps looking where it was and closes the gap as a critically
+// damped spring (no jerk at the start, there within about a second). camLagStep is the spring's exact step.
+const CAML={x:[0,0,0],v:[0,0,0],t:0,s:null},CAML_W=4.5;
+function camLagStep(L,dt){const e=Math.exp(-CAML_W*dt);for(let i=0;i<3;i++){const A=L.x[i],B=L.v[i]+CAML_W*A;L.x[i]=(A+B*dt)*e;L.v[i]=(B-CAML_W*(A+B*dt))*e}return L.x}
+HOOK.cmShift=(s,d)=>{if(s===S&&CAML.s===S)CAML.x=sub(CAML.x,d)};
+function camLag(){if(CAML.s!==S){CAML.s=S;CAML.x=[0,0,0];CAML.v=[0,0,0]}const n=performance.now(),dt=clamp((n-CAML.t)/1000,0,.1);CAML.t=n;return camLagStep(CAML,dt)}
+// The separation itself: a flash at the seam, gas venting from it in a ring (a slow thick one and a fast thin one),
+// sparks, and in thin air a cloud of flecks that drift off slowly and glint in the sun. Everything falls with the craft
+// (g, scaled by how thin the air is): without it the puffs slid 4 m off the seam in the first second in orbit.
 function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;
   const rad=dec.d.kind==='rdec',J=rad?[dec.pos[0],dec.y0+dec.h/2,dec.pos[2]]:[dec.pos[0],dec.y0+dec.h,dec.pos[2]],
     at=add(d.r,qrot(d.q,sub(J,d.cm))),Y=qrot(d.q,[0,1,0]),X=qrot(d.q,[1,0,0]),Z=qrot(d.q,[0,0,1]),r=rad?.4:(dec.d.r||R0),
-    pa=pressure(TELLUS,len(d.r)-TELLUS.R),R=Math.random;
-  for(let i=0;i<18;i++){const a=i/18*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=4+6*R()+8*(1-pa);   // gas vents radially from the seam
-    fxPuff(add(at,mul(u,r)),add(S.v,add(mul(u,sp),mul(Y,(R()-.5)*2))),{s0:.3+.3*R(),grow:1.5+2*R()+3*(1-pa),a0:.45*(.25+.75*pa),life:1.5+2.5*R()*(.3+pa),hot:.25})}
+    pa=clamp(pressure(TELLUS,len(d.r)-TELLUS.R),0,1),vac=1-pa,rl=len(d.r),g=mul(d.r,-TELLUS.mu/(rl*rl*rl)*vac),lit=!inShadow(TELLUS,d.r),R=Math.random;
+  fxPuff(at,S.v,{s0:r*.9,grow:3,a0:.9,life:.14,hot:3,g});   // the charge
+  for(let i=0;i<28;i++){const a=i/28*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=4+6*R()+8*vac;   // gas vents radially from the seam
+    fxPuff(add(at,mul(u,r)),add(S.v,add(mul(u,sp),mul(Y,(R()-.5)*2))),{s0:.3+.3*R(),grow:1.5+2*R()+3*vac,a0:.45*(.4+.6*pa),life:1.5+2.5*R()*(.4+.6*pa),hot:.25,g})}
+  for(let i=0;i<20;i++){const a=i/20*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=16+14*R();   // and a fast thin ring ahead of it
+    fxPuff(add(at,mul(u,r)),add(S.v,mul(u,sp)),{s0:.15,grow:4+2*R(),a0:.1+.08*vac,life:.6+.4*R(),hot:.3,g})}
   for(let i=0;i<26;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=8+18*R();   // sparks: small, hot, fast, short-lived
-    fxPuff(add(at,mul(u,r*.8)),add(S.v,mul(u,sp)),{s0:.05+.05*R(),grow:0,a0:.9,life:.25+.45*R(),hot:1.6})}}
+    fxPuff(add(at,mul(u,r*.8)),add(S.v,mul(u,sp)),{s0:.05+.05*R(),grow:0,a0:.9,life:.25+.45*R(),hot:1.6,g})}
+  for(let i=0,n=Math.round(36*clamp((vac-.85)/.15,0,1));i<n;i++){const u=norm([R()-.5,R()-.5,R()-.5]);   // flecks (frost, paint, foil): only where no wind takes them
+    fxPuff(add(at,mul(u,r*R())),add(S.v,mul(u,.4+3*R())),{s0:.015+.03*R(),grow:0,a0:.85,life:3+5*R(),hot:lit?.55+.5*R():.08,g})}}
+HOOK.sep=sepFx;
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 // tester mode (?tester in the URL) keeps its own program, so cheats never reach the career (TEST: the SIM tester block)
 TEST.on=(()=>{try{return new URLSearchParams(location.search).has('tester')}catch(e){return false}})();

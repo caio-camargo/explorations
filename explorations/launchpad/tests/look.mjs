@@ -1159,3 +1159,37 @@
     !!wf && sum < 1e-12 && ramp < 1e-12 && over > .03 && over < .12 && /c=clamp\(c\+uSh\*\(c-\(a\+b\+d\+e\)\*\.25\),lo,hi\)/.test(sh),
     wf ? `sum off by ${sum.toExponential(1)}, ramp by ${ramp.toExponential(1)}, step overshoot ${(over * 100).toFixed(1)} %` : 'weights not found in UPS_FS');
 }
+
+// aerofx-53. Staging (review session, QUEUE Q564; PLAYTEST #159 "the camera instantly recenters on the craft", #160 "more
+// oomph"). The camera looks at the centre of mass, which jumps when parts leave: detach reports the jump (HOOK.cmShift)
+// and the page eases over it (camLagStep, a critically damped spring). The separation's puffs fall with the craft: an
+// Orbiter is staged in a 300 km orbit, flown on for a second, and the gas ring must still be centred on the seam.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const CAML='), j = pg.indexOf('HOOK.sep=sepFx;', i);
+  const D = new Function(src + `const PUFFS=[];function fxPuff(r,v,o){PUFFS.push({r,v,o})}` + pg.slice(i, j) +
+    `;return{CAML,camLagStep,sepFx,PUFFS,newShip,stage,advPhys,PRESETS,HOOK,TELLUS,DT,set S(v){S=v},set t(v){simT=v}}`)();
+  const T = D.TELLUS, sep = alt => { D.t = 0; D.PUFFS.length = 0; const s = D.newShip(D.PRESETS.Orbiter); D.S = s; s.landed = false; s.throttle = 0; s.sas = false;
+    const r = T.R + alt; s.r = [r, 0, 0]; s.v = [0, 0, Math.sqrt(T.mu / r)]; D.CAML.s = s; D.CAML.x = [0, 0, 0]; D.CAML.v = [0, 0, 0];
+    const r0 = s.r.slice(); let at = null; D.HOOK.msg = () => {}; D.HOOK.debris = d => { at = at || d; D.sepFx(d) };
+    for (let k = 0; k < 6 && !at; k++) D.stage(s);
+    return { s, r0, at } };
+  const o = sep(300e3), jump = sub(o.s.r, o.r0), seen = add(o.s.r, D.CAML.x);
+  const held = !!o.at && len(jump) > 1 && len(sub(seen, o.r0)) < 1e-6;   // the camera's target has not moved, though the craft's centre has
+  // the spring: 60 frames a second from the jump
+  const x0 = len(D.CAML.x), tr = []; for (let k = 0; k < 72; k++) tr.push(len(D.camLagStep(D.CAML, 1 / 60)));
+  const soft = tr[0] > .99 * x0, mono = tr.every((x, k) => x <= (k ? tr[k - 1] : x0) + 1e-12), there = tr[65] < .05 * x0 && tr[29] > .1 * x0;
+  // the puffs: each carries the fall; the gas ring (hot .25) a second later, against the craft flown on for that second
+  const P = D.PUFFS.slice(), g = T.mu / (T.R + 300e3) ** 2, allG = P.length > 100 && P.every(p => p.o.g && Math.abs(len(p.o.g) / g - 1) < .01);
+  const ring = P.filter(p => p.o.hot === .25), flecks = P.filter(p => p.o.life >= 3 && !p.o.grow).length, flash = P.filter(p => p.o.hot === 3).length;
+  const seam = ring.reduce((a, p) => add(a, mul(p.r, 1 / ring.length)), [0, 0, 0]), rS = o.s.r.slice();
+  for (let k = 0; k < Math.round(1 / D.DT); k++) D.advPhys(o.s);
+  const cen = fall => ring.reduce((a, p) => add(a, mul(add(add(p.r, p.v), fall ? mul(p.o.g, .5) : [0, 0, 0]), 1 / ring.length)), [0, 0, 0]);
+  const off = fall => len(sub(sub(cen(fall), o.s.r), sub(seam, rS))), dG = off(true), d0 = off(false);
+  // on the way up, in thick air: no flecks (the wind would take them) and no fall added
+  const lo = sep(2000), loP = D.PUFFS, loOk = !!lo.at && loP.length > 60 && !loP.some(p => p.o.life >= 3 && !p.o.grow) && loP.every(p => len(p.o.g) < .3 * g);
+  check('staging: the camera holds its target over the jump and eases to the craft in about a second; the separation gas stays on the seam in orbit, with a flash and drifting flecks (Q564)',
+    held && soft && mono && there && allG && ring.length === 28 && flecks === 36 && flash === 1 && dG < 1.5 && d0 > 3 && loOk,
+    `the centre jumped ${len(jump).toFixed(1)} m, the target ${len(sub(seen, o.r0)).toExponential(0)} m; first frame keeps ${(tr[0] / x0 * 100).toFixed(1)} %, ${(tr[29] / x0 * 100).toFixed(0)} % left at 0.5 s, ${(tr[65] / x0 * 100).toFixed(1)} % at 1.1 s; ` +
+    `${P.length} puffs (${flecks} flecks); the ring is ${dG.toFixed(2)} m off the seam after 1 s (${d0.toFixed(1)} m without the fall); at 2 km ${loP.length} puffs, flecks ${loP.filter(p => p.o.life >= 3 && !p.o.grow).length}`);
+}

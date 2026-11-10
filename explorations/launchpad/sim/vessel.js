@@ -856,10 +856,10 @@ function detach(s,list,kick,spin,asVessel){
   for(const p of list)p.on=false;
   geom(s);rebuildShape(s);
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
-  if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
+  if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w);HOOK.sep({body:s.body,r:add(s.r,off),q:s.q.slice(),parts:list,cm:dc})}   // a command part aboard: a vessel of its own
   else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
     w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
-  s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
+  {const sh=qrot(s.q,sub(s.cm,c0));s.r=add(s.r,sh);HOOK.cmShift(s,sh)}   // the page eases its camera over this jump (Q564)
   if(s.landed)s.landed=false;
   HOOK.rebuild()}
 // ---- engine gimbal (control session). Each engine's nozzle swivels up to d.gim degrees, at most d.gimR °/s. p.gv is its
