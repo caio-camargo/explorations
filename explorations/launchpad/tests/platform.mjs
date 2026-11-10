@@ -117,11 +117,27 @@
     const r = T[m[1]]; if (!r || r[0] == null || typeof r[0] === 'function') continue;
     const v = m[2] in lit ? lit[m[2]] : Number(m[2]); if (J(v) !== J(r[0])) off.push(`${m[1]}||${m[2]} (${f}; the table: ${J(r[0])})`); }
   check('platform-6: a PROG.x||<literal> read uses the table\'s default (null and absent defaults exempt)', !off.length, off.join('; ') || 'all agree');
-  // the starting literal and resetProgram's: each value is the table's default (wseed is a seed: only its presence)
+  // the starting literal: each value is the table's default (wseed is a seed: only its presence); resetProgram has no list of its own (R1b)
   const objOf = (s, re) => new Function('FUNDS0', 'freshSeed', 'return ' + s.match(re)[1])(G.FUNDS0, () => 7), diff = (o, name) => Object.entries(o).filter(([k, v]) => k !== 'wseed' && !(k in T && J(v) === J(T[k][0]))).map(([k, v]) => `${name}.${k}=${J(v)}`);
-  const start = objOf(rd('sim/program.js'), /const PROG=(\{[^\n]*?\});/), reset = objOf(rd('app/editor.js'), /function resetProgram\(\)\{[\s\S]*?Object\.assign\(PROG,(\{[^\n]*?\})\)/), F = G.progFresh();
-  const bad = [...diff(start, 'start'), ...diff(reset, 'reset')], fresh = Object.keys(F).every(k => T[k][1] === 'career' && T[k][0] !== undefined) && F.funds === G.FUNDS0 && Number.isInteger(F.wseed) && F.done !== G.progFresh().done;
+  const start = objOf(rd('sim/program.js'), /const PROG=(\{[^\n]*?\});/), F = G.progFresh(), ownList = !/function resetProgram\(\)\{programNew\(\);/.test(rd('app/editor.js')) || /Object\.assign\(P, \{ done:/.test(car);
+  const bad = diff(start, 'start'), fresh = Object.keys(F).every(k => T[k][1] === 'career' && T[k][0] !== undefined) && F.funds === G.FUNDS0 && Number.isInteger(F.wseed) && F.done !== G.progFresh().done;
   const kept = G.progFresh({ designs: { saved: [1] }, lvl: 'hard', sats: [1], funds: 5 }), carry = J(kept.designs) === J({ saved: [1] }) && kept.lvl === 'hard' && J(kept.sats) === '[]' && kept.funds === G.FUNDS0;
-  check('platform-6: PROG\'s starting literal and resetProgram\'s agree with the table; progFresh builds the career fields fresh (no shared objects) and carries the library and the level over',
-    !bad.length && fresh && carry, `${bad.join(', ') || 'start and reset agree'}; progFresh: ${Object.keys(F).length} fields, fresh ${fresh}, carries ${carry}`);
+  check('platform-6: PROG\'s starting literal agrees with the table; resetProgram and career.mjs keep no list of their own; progFresh builds the career fields fresh (no shared objects) and carries the library and the level over',
+    !bad.length && !ownList && fresh && carry, `${bad.join(', ') || 'the start agrees'}; own lists ${ownList}; progFresh: ${Object.keys(F).length} fields, fresh ${fresh}, carries ${carry}`);
+  // R1b: a program reset after 300 days of play is the same object as a new one in a fresh SIM (same seed), but for the
+  // player's designs (launch history emptied) and the level. R17's repro: the sanction and the lost race are gone.
+  const mk = () => { const X = new Function(src + 'return {PROG,programNew,advanceDays,sanction,sanctioned,raceLost,HOOK,get home(){return HOME}};')(); X.HOOK.news = () => {}; X.HOOK.msg = () => {}; return X; };
+  const A = mk(), B = mk(); A.programNew({ wseed: 5 }); A.advanceDays(300); A.sanction(1, 500, 'test'); Object.assign(A.PROG, { raceLost: { beeper: 2 }, home: 2, lvl: 'hard', designs: { saved: [{ name: 'x' }], launched: [{ n: 1 }] } }); A.PROG.sats.push({ id: 1 });
+  const dirty = A.sanctioned(1) && A.raceLost('beeper') === 2 && A.PROG.day >= 300;
+  A.programNew({ wseed: 5 }); B.programNew({ wseed: 5 });
+  const lib = J(A.PROG.designs) === J({ saved: [{ name: 'x' }], launched: [] }) && A.PROG.lvl === 'hard', strip = P => { const o = { ...P }; delete o.designs; delete o.lvl; return J(o); };
+  const same = strip(A.PROG) === strip(B.PROG), gone = !A.sanctioned(1) && A.raceLost('beeper') === null && A.home === 0 && A.PROG.sats.length === 0;
+  const dk = Object.keys(A.PROG).filter(k => J(A.PROG[k]) !== J(B.PROG[k]) && k !== 'designs' && k !== 'lvl');
+  check('platform-6: New program after 300 days of play equals a new program in a fresh SIM (same seed), the designs and level aside; the sanction, the lost race, the satellites and the home power are gone (R17)',
+    dirty && same && gone && lib, `played ${dirty}; same ${same}${dk.length ? ` (differ: ${dk.join(', ')})` : ''}; R17 gone ${gone}; designs and level kept ${lib}`);
+  // career.mjs: a row's numbers don't depend on the rows run before it
+  const { execFileSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
+  const row = archs => execFileSync(process.execPath, [fileURLToPath(new URL('./career.mjs', import.meta.url)), '1', '1', 'base', 'agency'], { env: { ...process.env, ARCHS: archs }, encoding: 'utf8' }).trim().split('\n').pop();
+  const alone = row('frugal'), after = row('resource,openSuper,frugal');
+  check('platform-6: a career.mjs row gives the same numbers alone and after other rows (one reset, the game\'s)', alone === after && /^frugal/.test(alone), `${alone.replace(/\s+/g, ' ').slice(0, 90)}${alone === after ? '' : ` · after others: ${after.replace(/\s+/g, ' ').slice(0, 90)}`}`);
 }

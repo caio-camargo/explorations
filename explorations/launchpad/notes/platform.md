@@ -850,3 +850,24 @@ no behaviour changes (R1b moves `resetProgram` and `career.mjs` onto it).
 - Test platform-6: every field used is a row and every row used; the `||` defaults agree; PROG's starting literal and
   `resetProgram`'s agree with the table; `progFresh` gives fresh objects and carries the library over. Mutations
   caught: a row removed, a default changed (both the `??` read and `resetProgram` disagree).
+
+## v1.293 — one reset for New program and career.mjs (2026-11-10, review fixes, QUEUE R1b; fixes R17)
+
+`programNew(set)` (sim/program.js, after `progFresh`): every field back to the table's default (it clears `PROG` first,
+so nothing from the old career survives), the player's designs and the level carried over (`designs.launched`
+emptied), then `HOME`, `RIVALS`, `REVERT0`, `DEBRIEF_LAST` and the board. `set` is for fields chosen before the world is
+built. `resetProgram` (the title's New program, More's reset program) is now `programNew(); HOOK.save(); editorChanged()`;
+`career.mjs`'s `run()` calls `api.programNew({homeArch, wseed})` instead of its own 48-field list.
+- **R17 fixed:** before, 43 fields survived a reset: satellites, stations, sanctions, lost races, procedures, routines,
+  the logbook, the ledger, the rivals, contracts due back, the commercial giant, debris. Also gone now: the launch site
+  picked (back to home's) and the last Debrief.
+- **career.mjs rows are independent:** frugal/agency ended at 408 M in the full table, 346 M alone, 345 M after one
+  other row. Now a row is the same wherever it runs. The new baseline (`node career.mjs 3 3`): mean final funds
+  654 M (was 691), lowest row 100 M (resource/company, was 147), mean flights 25.3 (same), failure rate 19.9 % (was 19.3).
+  Rows move both ways (rising/agency 799 → 717, resource/agency 397 → 701): before, each row started from whatever the
+  rows before had left (their sanctions, races, contracts due back), so no single old number was "right".
+- Tests: platform-6 gains two checks: New program after 300 days of play equals a new program in a fresh SIM (same
+  seed), the designs and level aside; and a career.mjs row alone equals the same row after others (mutations caught:
+  the old career.mjs reset, a programNew that doesn't clear first). Three source-text checks that read resetProgram's
+  old list now check the table and programNew: economy's *cover kept in PROG.recs*, econ-34 (*Reset draws a seed*),
+  look's *a reset draws a new galaxy*.
