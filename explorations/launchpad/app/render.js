@@ -27,9 +27,30 @@ function gpuTimerBegin(){if(!TQ||PROF.on)return;if(tqPending.length<4){tqCur=gl.
 function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);tqPending.push(tqCur);tqCur=null}
   while(tqPending.length&&gl.getQueryParameter(tqPending[0],gl.QUERY_RESULT_AVAILABLE)){const q=tqPending.shift();
     if(!gl.getParameter(TQ.GPU_DISJOINT_EXT)){const ms=gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;gpuMs=gpuMs==null?ms:gpuMs*.85+ms*.15}gl.deleteQuery(q)}}
-function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames under ~22 ms)
-  const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
-  if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<RS_MAX)RS=Math.min(RS_MAX,RS*1.12)}
+// (Q559, PLAYTEST: "a lot of pixelation") the scaler. It used to aim at 7 ms of a 16.7 ms frame and grow back only under
+// 3.85 ms, so one heavy moment left the view at 45-55 % with half the GPU idle. Now: a budget of GPU_BUDGET ms (60 fps with
+// room for the CPU's share and the compositor), and steps sized by what they will cost. GPU time goes as the pixel count
+// (rs squared), so a step's load is predicted: shrink to land at 0.9 of the budget (at most 30 % a step), grow 12 % only
+// when the grown frame would still be under 0.92. The two can't chase each other: a shrink lands at 0.9, and growing
+// from there predicts 1.13. resNext is pure (tests/look.mjs, res-1).
+const RS_MIN=0.35,GPU_BUDGET=11;
+function resNext(rs,load,cap){
+  if(rs>cap)return cap;if(load>1.05)return Math.max(RS_MIN,rs*Math.max(.7,Math.sqrt(.9/load)));
+  const up=Math.min(cap,rs*1.12);
+  return up>rs&&load*(up/rs)**2<.92?up:rs}
+// Without timer queries the only signal is the frame interval, and under vsync that never says how much room is left.
+// So: shrink when frames run long (over 1.3 refresh periods), and when they have held the refresh for a while, try one
+// step up; a probe that makes frames run long is taken back and the wait before the next one doubles (4 s to 64 s).
+const RSP={per:1/60,dt:1/60,wait:4,t:0,up:false};
+function adaptRes(dtR){
+  rsT+=dtR;
+  if(gpuMs!=null){slowAvg=slowAvg*.9+gpuMs/GPU_BUDGET*.1;if(rsT<0.6)return;rsT=0;
+    const r=resNext(RS,slowAvg,RS_MAX);if(r!==RS){slowAvg*=(r/RS)**2;RS=r}return}
+  if(dtR<0.1){RSP.dt=RSP.dt*.9+dtR*.1;RSP.per=Math.min(RSP.per*1.0005,Math.max(dtR,1/240))}   // the refresh period: the shortest frame lately
+  RSP.t+=dtR;if(rsT<0.6)return;rsT=0;const late=RSP.dt>RSP.per*1.3;
+  if(late&&RS>RS_MIN){RS=Math.max(RS_MIN,RS*.82);if(RSP.up)RSP.wait=Math.min(64,RSP.wait*2);RSP.up=false;RSP.t=0}
+  else if(!late&&RS<RS_MAX&&RSP.t>RSP.wait){RS=Math.min(RS_MAX,RS*1.12);RSP.up=true;RSP.t=0}
+  else if(!late&&RSP.up&&RSP.t>2){RSP.up=false;RSP.wait=4}}   // the probe held: the next one comes soon
 function render(){spoolFrame();
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();profMark('setup');

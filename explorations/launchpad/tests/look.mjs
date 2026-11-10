@@ -1123,3 +1123,23 @@
     !bad.length && /<script src="app\/crew-look\.js"><\/script>/.test(lab) && /if\(suitI>=0\)drawSuit\(o,J\);else drawJ\(o,J\)/.test(lab),
     bad.slice(0, 18).join(' | ') || '18 suits, rest exact, no tear over 6 cm');
 }
+
+// aerofx-51. The resolution scaler uses the frame it has (review session, QUEUE Q559; Caio: "a lot of pixelation"). The
+// old rule aimed at 7 ms and grew back only under 3.85 ms, so a heavy moment left the view at half resolution with half
+// the GPU idle. resNext is run here against a GPU whose cost is a fixed part plus one that goes as the pixel count.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const RS_MIN='), j = pg.indexOf('// Without timer queries', i);
+  const { resNext, RS_MIN, GPU_BUDGET } = new Function(pg.slice(i, j) + ';return{resNext,RS_MIN,GPU_BUDGET}')();
+  // one 0.6 s step of the game's loop: the load the scaler sees is the smoothed GPU time over the budget
+  const run = (rs, cap, costs) => { const tr = []; let avg = null;
+    for (const [n, fixed, perPx] of costs) for (let k = 0; k < n; k++) { const ms = fixed + perPx * rs * rs; avg = avg == null ? ms : avg * .3 + ms * .7; rs = resNext(rs, avg / GPU_BUDGET, cap); tr.push([rs, fixed + perPx * rs * rs]); }
+    return tr; };
+  const heavy = run(1, 1, [[40, 2, 20]]), endH = heavy.at(-1), still = heavy.slice(-20).every(x => x[0] === endH[0]);   // 22 ms at full size
+  const back = run(endH[0], 1, [[40, 1, 5]]), tBack = back.findIndex(x => x[0] === 1);                                 // then 6 ms at full size
+  const low = run(1, .6, [[5, 1, 5]]).at(-1), floor = run(1, 1, [[60, 30, 60]]).at(-1);
+  const light = run(1, 1, [[20, 1, 8]]).every(x => x[0] === 1);                                                          // 9 ms: never touched
+  check('the scaler uses the frame it has (Q559): a 22 ms scene settles and stays between 70 % and 105 % of the budget; when the scene lightens the view is back at full size within 6 s; a 9 ms scene is never scaled; the Low cap and the floor hold',
+    still && endH[1] > .7 * GPU_BUDGET && endH[1] < 1.05 * GPU_BUDGET && tBack >= 0 && tBack < 10 && light && low[0] <= .6 && Math.abs(floor[0] - RS_MIN) < 1e-9,
+    `heavy: ${(endH[0] * 100).toFixed(0)} % at ${endH[1].toFixed(1)} ms${still ? '' : ' (still moving)'}; back to 100 % after ${tBack < 0 ? 'never' : (tBack + 1) * .6 + ' s'}; Low ${(low[0] * 100).toFixed(0)} %; floor ${(floor[0] * 100).toFixed(0)} %`);
+}
