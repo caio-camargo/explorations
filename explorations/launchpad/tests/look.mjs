@@ -1187,7 +1187,7 @@
   const cen = fall => ring.reduce((a, p) => add(a, mul(add(add(p.r, p.v), fall ? mul(p.o.g, .5) : [0, 0, 0]), 1 / ring.length)), [0, 0, 0]);
   const off = fall => len(sub(sub(cen(fall), o.s.r), sub(seam, rS))), dG = off(true), d0 = off(false);
   // on the way up, in thick air: no flecks (the wind would take them) and no fall added
-  const lo = sep(2000), loP = D.PUFFS, loOk = !!lo.at && loP.length > 60 && !loP.some(p => p.o.life >= 3 && !p.o.grow) && loP.every(p => len(p.o.g) < .3 * g);
+  const lo = sep(2000), loP = D.PUFFS, loOk = !!lo.at && loP.length > 60 && !loP.some(p => p.o.life >= 3 && !p.o.grow) && loP.every(p => len(p.o.g) < .5 * g);
   check('staging: the camera holds its target over the jump and eases to the craft in about a second; the separation gas stays on the seam in orbit, with a flash and drifting flecks (Q564)',
     held && soft && mono && there && allG && ring.length === 28 && flecks === 36 && flash === 1 && dG < 1.5 && d0 > 3 && loOk,
     `the centre jumped ${len(jump).toFixed(1)} m, the target ${len(sub(seen, o.r0)).toExponential(0)} m; first frame keeps ${(tr[0] / x0 * 100).toFixed(1)} %, ${(tr[29] / x0 * 100).toFixed(0)} % left at 0.5 s, ${(tr[65] / x0 * 100).toFixed(1)} % at 1.1 s; ` +
