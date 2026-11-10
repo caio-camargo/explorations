@@ -1180,6 +1180,7 @@
   const used = /rboxUV\(out,c,w\/2-\.015,h\/2-\.02,\.008,CELL,a\+th\)/.test(page) && /rboxUV\(out,\[cx\+c\*\(R\+\.014\)/.test(page);
   check('the solar wing\'s cells (Q565): rboxUV maps the broad faces in metres for the wing panel and the body tile, edges flagged, its own kind with a shader branch, used by both parts',
     wing && tile && shader && used, `wing ${wing} · body tile ${tile} · shader ${shader} · used ${used}`);
+}
 
 // aerofx-54. Staging (review session, QUEUE Q564; PLAYTEST #159 "the camera instantly recenters on the craft", #160 "more
 // oomph"). The camera looks at the centre of mass, which jumps when parts leave: detach reports the jump (HOOK.cmShift)
