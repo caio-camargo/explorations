@@ -6892,3 +6892,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   kept; the charter preselects the last difficulty and still asks.
 - **Files:** `notes/platform.md`, `NOTES.md`, `QUEUE.md`, `SESSION_LOG.md`. No game code.
 - **Next:** R1a (the schema and the static check), or R5–R8 in the review's order.
+
+## 2026-11-10 — review fixes (Opus, worktree launchpad-review): the `PROG` schema, first slice (R1a, v1.292)
+
+- **Done:** `PROG_SCHEMA` in sim/program.js (87 rows: default, keep, why) and `progFresh(keepFrom)`; nothing calls it
+  yet. Removed the desk ledger's dead `PROG.funds||0` guard (the only `||` default that disagreed).
+- **Checked:** test platform-6 (fields ↔ rows, `||` defaults, the start and reset literals, progFresh); mutations caught
+  (a row removed, a default changed); smoke all passed.
+- **Files:** `sim/program.js`, `app/desk.js`, `tests/platform.mjs`, `notes/platform.md`, `NOTES.md`, `QUEUE.md`
+  (R1a ✓), `ACTIVE_WORK.md`.
+- **Next:** R1b (`programNew` for resetProgram and career.mjs, fixes R17; re-measure career.mjs's baseline).
