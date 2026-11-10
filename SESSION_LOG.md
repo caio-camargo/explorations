@@ -6914,3 +6914,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/program.js`, `app/editor.js`, `career.mjs`, `tests/platform.mjs`, `tests/economy.mjs`, `tests/look.mjs`,
   `notes/platform.md`, `notes/economy.md`, `NOTES.md`, `TESTING.md` (356), `QUEUE.md` (R1b ✓, R17 ✓), `ACTIVE_WORK.md`.
 - **Next:** R1c (one serializer for the save and the snapshots; reports non-JSON values, finds R16), then R1d.
+
+## 2026-11-10 — look & sound, parts & pad (Opus, worktree `launchpad-visuals`): the solar wing's cells (Q565, v1.294)
+
+- **Done:** Caio: the solar wings' texture is very plain. Filed and took Q565. `rboxUV` gives the cell boxes their own
+  kind and panel-local metres; `MESH_FS` k == 17 draws 4 × 4 modules of small cells per wing panel (interconnects,
+  white substrate between modules, a contact bar and fingers), a blue and a cover-glass tilt per cell, violet at
+  grazing; the body cells the same. Cell gaps first came out white (read as window frames), darkened.
+- **Checked:** aerofx-53 (two mutations caught); every `aerofx` test passes; stills before/after in the builder
+  (`output/launchpad/solar/`, machine-local). **Not checked:** in orbit under the sun, the iGPU, GPU cost; the full
+  smoke skipped (0.1–0.6 GB free all session).
+- **Default for Caio:** both faces of a wing are cells (the sim counts both); a white back is a small change.
+- **Files:** `app/gl.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (357), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at the stills and TESTING 357; a view of a wing in orbit for refset if this area gets more work.
