@@ -164,6 +164,13 @@ function progFresh(keepFrom){const o={};
     if(keepFrom&&(keep==='library'||keep==='pref')&&keepFrom[k]!==undefined){o[k]=progClone(keepFrom[k]);continue}
     if(keep==='meta'||keep==='transient'||d===undefined)continue;o[k]=typeof d==='function'?d():progClone(d)}
   return o}
+// a new program (R1b): every career field back to its default (none survives: R17), the player's designs and the level
+// kept (the new program's launch history starts empty), then the world built for it: the home power, the race, the
+// board. `set`: fields chosen before the world is built (career.mjs: its seed and archetype). The title's New program,
+// More's reset program and career.mjs's rows all start here.
+function programNew(set){const F=Object.assign(progFresh(PROG),set||{});if(F.designs)F.designs.launched=[];
+  for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,F);
+  HOME=PROG.home||0;RIVALS=raceSchedule();REVERT0=null;DEBRIEF_LAST=null;ensureBoard()}
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;

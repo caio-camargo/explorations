@@ -2456,7 +2456,7 @@ and the frame is brought up by a pass of its own.
 - **Test:** `aerofx-52` lifts the shader's weights and checks them (they sum to 1, rebuild a ramp exactly, overshoot a
   step by 7.4 %, which the clamp holds). The pass itself can't run headless. TESTING 355.
 
-## v1.293 — Staging: the camera eases, a stronger separation (2026-11-10, review session, QUEUE Q564)
+## v1.294 — Staging: the camera eases, a stronger separation (2026-11-10, review session, QUEUE Q564)
 
 PLAYTEST #159 (Caio: "when i activate a stage, the camera instantly recenters on the craft ... jerky and kind of ruins
 the visual effect of decoupling") and #160 ("could have more oomph, like maybe some gas dispersal").
@@ -2479,4 +2479,4 @@ the visual effect of decoupling") and #160 ("could have more oomph, like maybe s
 - Still Tellus only (`fxPuff` positions are Tellus-centred): a separation round Selene or Nyx shows nothing, as before.
 - Test `aerofx-53`. **Seen on the GPU:** the first frames of a separation in orbit (the cloud at the seam, the target
   holding and then easing). **Not seen:** the gas and flecks moving over the following seconds; the machine ran out
-  of memory under other sessions' work and headless Chrome stalled. TESTING row 356 is the check.
+  of memory under other sessions' work and headless Chrome stalled. TESTING row 357 is the check.

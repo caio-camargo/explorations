@@ -134,7 +134,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
-  const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')(), P = {};
+  const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED,PROG_SCHEMA}')(), P = {};
   const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + body('galSights') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
     SIMF.rng, SIMF.norm, SIMF.add, SIMF.sub, SIMF.mul, SIMF.dot, SIMF.WSEED, P);
   const a = G.galaxy(), s1 = P.gseed, b = G.galaxy(), w = G.makeGal(SIMF.WSEED), o = G.makeGal(s1 + 1);
@@ -142,7 +142,7 @@
   const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
   check('galaxy per program: drawn once and kept, different seeds differ, a reset draws a new one; views pin WSEED',
     s1 > 0 && a === b && a.seed === s1 && Math.abs(dot(w.gx, o.gx)) < 0.9999 && s2 > 0 && s2 !== s1 && c.seed === s2
-      && vj.includes('PROG.gseed = WSEED') && ed.includes('Object.assign(PROG,{gseed:null,') && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
+      && vj.includes('PROG.gseed = WSEED') && ed.includes('function resetProgram(){programNew()') && SIMF.PROG_SCHEMA.gseed[0] === null && SIMF.PROG_SCHEMA.gseed[1] === 'career' && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
     `seeds ${s1} → reset ${s2}; WSEED vs other gx·gx ${dot(w.gx, o.gx).toFixed(3)}`);
   // QUEUE Q116 (PLAYTEST #32): near an airless body the lighting's fill comes from its sunlit ground, about its own up:
   // on Selene's day side the ground term is lit; on its night side it is dark; far out in space there is none

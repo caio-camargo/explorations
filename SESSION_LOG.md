@@ -6903,7 +6903,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (R1a ✓), `ACTIVE_WORK.md`.
 - **Next:** R1b (`programNew` for resetProgram and career.mjs, fixes R17; re-measure career.mjs's baseline).
 
-## 2026-11-10 — review session (Fable, worktree launchpad-sharp): staging eases the camera, a stronger separation (Q564, v1.293)
+## 2026-11-10 — review fixes (Opus, worktree launchpad-review): one reset for New program and career.mjs (R1b, v1.293; R17)
+
+- **Done:** `programNew(set)` in sim/program.js: clears `PROG`, fills it from the table, keeps designs (launch history
+  emptied) and the level, rebuilds HOME, RIVALS, the board, clears REVERT0 and DEBRIEF_LAST. `resetProgram` and
+  `career.mjs`'s `run()` call it. R17 fixed with it.
+- **Checked:** platform-6's two new checks (reset after 300 days = a fresh program; a career.mjs row alone = after
+  others), both mutations caught; three old source-text checks moved to the table; smoke and the full suite passed.
+  career.mjs baseline before/after: mean final 691 → 654 M (notes/economy.md).
+- **Files:** `sim/program.js`, `app/editor.js`, `career.mjs`, `tests/platform.mjs`, `tests/economy.mjs`, `tests/look.mjs`,
+  `notes/platform.md`, `notes/economy.md`, `NOTES.md`, `TESTING.md` (356), `QUEUE.md` (R1b ✓, R17 ✓), `ACTIVE_WORK.md`.
+- **Next:** R1c (one serializer for the save and the snapshots; reports non-JSON values, finds R16), then R1d.
+
+## 2026-11-10 — review session (Fable, worktree launchpad-sharp): staging eases the camera, a stronger separation (Q564, v1.294)
 
 - **Done:** PLAYTEST #159 and #160 (Caio, the same day). `detach` reports the centre-of-mass jump (`HOOK.cmShift`) and
   the flight camera closes it as a critically damped spring (`CAML`, `camLagStep`: about a second). `sepFx`: puffs fall
@@ -6914,7 +6926,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   GPU: the first frames only (the cloud at the seam, the target easing).
 - **Not checked:** the gas and flecks over the following seconds, and `drawSmoke`'s use of `g` (the test computes the
   positions itself). Free memory fell to 0.3 GB under other sessions' work and headless Chrome stalled on page load,
-  so the GPU run was stopped. TESTING row 356 is the check.
+  so the GPU run was stopped. TESTING row 357 is the check.
 - **Files:** `sim/vessel.js`, `sim/core.js`, `app/state.js`, `app/gl.js`, `app/render.js`, `tests/look.mjs`,
   `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
-- **Next:** Caio's look at TESTING 356; then Q561 (footprint filtering), #157 (the night limb's dark band).
+- **Next:** Caio's look at TESTING 357; then Q561 (footprint filtering), #157 (the night limb's dark band).
