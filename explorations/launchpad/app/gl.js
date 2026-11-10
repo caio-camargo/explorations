@@ -690,7 +690,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   else if(k==14&&side){                                    // reinforcement collar: a bolt row
    alb=mix(alb,vec3(.6),dots(s,v,h*.5,.06,.01,fp));}
   else if(k==17){                                          // (Q565) solar cells: vU = metres on the broad face (rboxUV), its width, its height
-   if(vU.z<0.){alb=pow(vec3(.66,.64,.6),vec3(2.2));m=0;metal=0.;rough=.6;}   // the box's narrow edges: the white substrate
+   if(vU.z<0.){alb=pow(vec3(.5,.49,.46),vec3(2.2));m=0;metal=0.;rough=.6;}   // the box's narrow edges: the white substrate
    else{vec2 q=vU.xy,fw=vec2(fwidth(q.x),fwidth(q.y))+1e-6;float W=vU.z;
     // a wing panel is 4 × 4 modules with 6 mm of substrate between them; a body tile is one module. Cells ~2.4 × 4.6 cm,
     // portrait, 0.6 mm apart, a silver contact bar along each one's foot and fine fingers up it
@@ -701,7 +701,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
     vec3 cb=alb*mix(vec3(.82,.88,1.),vec3(1.12,.94,1.1),r1)*(.86+.28*r2*fd+.14*(1.-fd));   // each cell its own blue; the spread averages out from afar
     float gz=1.-abs(dot(normalize(vN),V));cb*=mix(vec3(1.),vec3(1.7,1.,1.45),gz*gz*gz);   // the coating turns violet at a grazing look
     cb=mix(cb,vec3(.3,.31,.33),fg*.7);
-    alb=mix(mix(cb,pow(vec3(.72,.7,.65),vec3(2.2)),gap),vec3(.62,.63,.65),bar);metal=bar;rough=mix(.05,.55,gap);m=gap>.5?0:4;
+    vec3 gc=mix(pow(vec3(.3,.32,.38),vec3(2.2)),pow(vec3(.62,.61,.57),vec3(2.2)),step(cg*.8,mg));   // between cells the dark interconnects; between modules the substrate
+    alb=mix(mix(cb,gc,gap),vec3(.62,.63,.65),bar);metal=bar;rough=mix(.05,.55,gap);m=gap>.5?0:4;
     vec3 Tt=normalize(cross(vec3(0.,1.,0.),nO)+1e-5);nO+=(Tt*(r3-.5)+vec3(0.,1.,0.)*(hh(id+vec2(5.,29.))-.5))*.07*fd*(1.-gap);}}   // each cover glass sits at its own tilt, so the sun's glint breaks up cell by cell
  }
  // Steppe (Q102): grey-green enamel panel by panel, dark seams where Cape has its roll pattern; olive-tinted bells
