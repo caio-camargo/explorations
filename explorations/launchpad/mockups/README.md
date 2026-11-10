@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.23 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.24 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -331,6 +331,14 @@ them), open eyes (a carved upper-lid ledge, painted iris, a catchlight), lips wr
 base with nostril wings, a shorter thicker neck (Thunderbirds' ratio) and a broader jaw, painted warmth and tinted lips.
 
 **Pick:** _(Caio)_
+
+## faces4/ — MakeHuman's people drawn through the cage ([`FACES.md`](../FACES.md) § 9)
+
+`faces4/index.html` (2026-11-10): faces2's cage bound to faces3's MakeHuman head (it loads `../faces3/mh-head.js`).
+MakeHuman's sliders and macros move the cage; the cage keeps *Planes* and the creases. **Edit** (a *cage* box shows
+the lattice) and **Sheet**. URL: `?mode=edit|sheet`, `?dna=F4:...`, `?seed=`. Stills: `output/launchpad/mockups/faces4/`
+(`average.png`, `average-closeup.png`, `sheet.png`, `sheet-carved.png`, `man-smile.png`). The mechanism works; the
+mid-face ripples and the nose is weak (FACES § 9).
 
 ## faces3/ — the face engine on MakeHuman's shape library ([`FACES.md`](../FACES.md) § 8)
 

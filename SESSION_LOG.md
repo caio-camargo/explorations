@@ -7023,4 +7023,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Follow-up 2: style by an automatic filter, a negative result.** *Simplify* and *Carve* sliders in faces3 (smoothing,
   then normal filtering). Seen: features dissolve into a smooth mannequin and no planes appear. Recorded in FACES 0.1.8
   § 8. Next: the faces2 cage riding on MakeHuman's head, so planes sit on chosen lines.
+- **Follow-up 3: the cage on MakeHuman's head (faces4).** `mockups/faces4/index.html`: the cage's rows moved to
+  landmarks found on MakeHuman's profile, eye opening, mouth corner, nose wing and jaw edge; every cage point stored as
+  a place on a MakeHuman triangle; a fit so the skin passes through the targets. **Seen:** it works (varied carved
+  heads, Planes, 20–90 ms); the mid-face ripples, the nose is weak from the front, expressions mostly fade.
+  FACES 0.1.9 § 9, README 0.1.24. **Next:** line up the eye rows with the cheek, more rows on the nose, then a house
+  style as cage offsets (faces2's genes). Claim stays open.
 

@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -290,4 +290,41 @@ smoothing there are no strong edges left for it to keep, and the subdivision tha
 **Why it fails:** a filter cannot know which edges are the style. In the references the planes sit on chosen lines
 (brow into nose, lip borders, jaw, cheekbone); a filter keeps whichever edges happen to be sharpest. The sliders stay
 in the lab at 0. This leaves way (a): planes placed by design, in the cage.
+
+## 9. The cage on MakeHuman's head (2026-11-10, way (a) of § 8)
+
+[`mockups/faces4/index.html`](mockups/faces4/index.html): MakeHuman decides who the person is; faces2's cage decides
+how they are drawn. The binding is made once, on the average head, when the page loads (about a second):
+
+1. **Landmarks on MakeHuman's profile**, found by casting rays at the midline: nose tip, nose base, lip borders (from
+   a lip mask the bake takes from the lip-volume shapes), the slit, the chin's crease and point, nose root, brow.
+   The cage's rows are moved to those heights.
+2. **The eye's opening**, found by looking from the front for where the eyeball is nearer than the skin; the cage's
+   four lid points go to its corners, top and bottom. **The mouth's corner** and **the nose's wing** are MakeHuman
+   vertices (the outermost lip point; the point the nose-flaring shape moves most). **The jaw's edge** under each
+   column is where the surface falls away to the neck.
+3. Every cage point is then dropped onto the surface (from the front for the face, toward the head's axis elsewhere)
+   and stored as a place on one MakeHuman triangle. Any MakeHuman shape or expression then moves the cage.
+4. The cage's points are control points and the skin falls inside them, so each change runs four fitting passes that
+   move the points until the skin passes through its targets.
+
+MakeHuman's ears are drawn as they are; the eyes are balls where MakeHuman puts them; hair is faces2's shell.
+
+**Seen** (GPU, by eye; stills in `output/launchpad/mockups/faces4/`): the mechanism works. Sex, age, population and
+weight give different carved heads (`sheet.png`, `sheet-carved.png`); *Planes* works on all of them; the lips and the
+chin come through well; a change takes 20–90 ms. Two bugs found by measuring each cage point's distance from its
+target: rays down the exact midline slipped between triangles (41 points off, then none), and rays from below entered
+through the neck's open end.
+**Not good yet:**
+- **Ripples across the mid-face**: bands under the eyes and over the cheeks, where the eye's rows (placed by the
+  opening) and the same rows further out (placed by the profile) do not line up.
+- **The nose is weak from the front**: MakeHuman's nose is a real, small nose, and five cage rows do not hold its
+  ridge. The brow has no strong edge either, so the deco "brow into nose" line is not there.
+- **Expressions mostly fade**: a smile shows faintly; raised brows barely. The cage is too coarse to carry them.
+- The eyes are small and the eyebrow paint sits high.
+**Not checked:** sliders one by one; 48 px; the fit's accuracy beyond "no point further than 0.06 from its target".
+
+**What this makes possible, not yet done:** the style can now be added in the cage's own terms, on top of any
+person: faces2's genes (brow forward, nose root filled for a straight profile, a squarer jaw, bigger eyes) as a
+fixed "house style" offset, since the cage's points have names.
 
