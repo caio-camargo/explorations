@@ -203,7 +203,7 @@ let progLoaded=false;try{const j=migrateSave(JSON.parse(localStorage.getItem(PRO
   if(j.newerSave){delete PROG.newerSave;setTimeout(()=>HOOK.msg&&HOOK.msg('This program was saved by a newer version of the game: some of it may not load right'),1500)}}}catch(e){}   // a flight in progress doesn't survive a reload
 if(!progLoaded)PROG.wseed=freshSeed();   // a new save gets a world of its own (Q529), not 12345 for every first career
 if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
-HOOK.save=()=>{try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
+HOOK.save=()=>{try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,progJSON())}catch(e){}};
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
 function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pendingDrops[i];if(simT<d.impact.t)continue;pendingDrops.splice(i,1);

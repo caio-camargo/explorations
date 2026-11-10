@@ -871,3 +871,18 @@ built. `resetProgram` (the title's New program, More's reset program) is now `pr
   the old career.mjs reset, a programNew that doesn't clear first). Three source-text checks that read resetProgram's
   old list now check the table and programNew: economy's *cover kept in PROG.recs*, econ-34 (*Reset draws a seed*),
   look's *a reset draws a new galaxy*.
+
+## v1.296 — one serializer for the save and every snapshot (2026-11-10, review fixes, QUEUE R1c)
+
+`progJSON()` / `progRestore(j)` (sim/program.js, after `programNew`) replace the six ways `PROG` was copied: the save
+(`HOOK.save`), the revert/simulator snapshot at liftoff (`REVERT0`) and `missionDiscard`'s restore, the two flights from
+orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `progHash`). `progJSON` leaves out
+`transient` fields (`newerSave`); `progRestore` clears `PROG` first, so a field the snapshot lacks goes.
+- **What JSON loses**, listed by path by `progLossy(v)`: Infinity and NaN (they come back null), functions, Maps, Sets,
+  Dates, typed arrays, holes (undefined) in arrays. **In tester mode** `progJSON` says each new one once ("Tester: the
+  save loses PROG.sel.core.hi=Infinity") and warns in the console. In the plain game it only serializes.
+- It doesn't fix values: R16 (`sim/rovers.js:359`, `core.hi:Infinity`) is still there, now named in the tester's
+  messages the first time Selene's core gets a bound.
+- Test platform-6: no snapshot of `PROG` taken any other way (a mutation putting the save back on
+  `JSON.stringify(PROG)` is caught); `progLossy` finds all seven kinds planted; 300 days of play lose nothing; the
+  tester is told once about R16's bound; a restore drops a field added after the snapshot, and `newerSave` isn't written.

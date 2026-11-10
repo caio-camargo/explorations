@@ -59,7 +59,7 @@ const freshSeed=()=>(Math.random()*4294967296)>>>0;
 // when absent). keep: what New program does with it: 'career' back to the default, 'library' and 'pref' carried over
 // (the player's designs; the charter's preselected level), 'meta' written by the save, 'transient' never saved.
 // A new field gets a row here: test platform-6 fails on a field the table lacks, or on a `||` default that differs.
-// (R1a: the table and progFresh only; resetProgram, career.mjs, the snapshots and the loader move onto it in R1b–R1d.)
+// Built on it: progFresh, programNew (the one reset, R1b), progJSON/progRestore (the one serializer, R1c).
 const PROG_SCHEMA={
   // the calendar and the money
   day:[0,'career','days since the founding (Tellus days)'],
@@ -171,6 +171,25 @@ function progFresh(keepFrom){const o={};
 function programNew(set){const F=Object.assign(progFresh(PROG),set||{});if(F.designs)F.designs.launched=[];
   for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,F);
   HOME=PROG.home||0;RIVALS=raceSchedule();REVERT0=null;DEBRIEF_LAST=null;ensureBoard()}
+// one serializer (R1c): the save, the revert and simulator snapshot taken at liftoff, a flight from orbit's, and the
+// recorder all go through progJSON / progRestore. JSON loses some values without a word: Infinity and NaN become null,
+// a function, Map, Set or typed array doesn't come back as itself, undefined in an array becomes null (R16: a Selene
+// core bound of Infinity came back null and paid 132 M). progLossy(v) lists them by path; in tester mode progJSON says
+// each new one once. Transient fields are never written.
+const PROG_LOSSY=new Set();
+function progLossy(v,p='PROG',out=[]){
+  if(typeof v==='number'){if(!isFinite(v))out.push(`${p}=${v}`)}
+  else if(typeof v==='function'||typeof v==='symbol'||typeof v==='bigint')out.push(`${p}: a ${typeof v}`);
+  else if(v&&typeof v==='object'){
+    if(v instanceof Map||v instanceof Set||v instanceof Date||ArrayBuffer.isView(v))out.push(`${p}: a ${v.constructor.name}`);
+    else if(Array.isArray(v))v.forEach((x,i)=>x===undefined?out.push(`${p}[${i}]: undefined`):progLossy(x,`${p}[${i}]`,out));
+    else for(const k in v)progLossy(v[k],`${p}.${k}`,out)}
+  return out}
+function progJSON(){const o={};for(const k in PROG)if(!(PROG_SCHEMA[k]&&PROG_SCHEMA[k][1]==='transient'))o[k]=PROG[k];
+  if(TEST.on)for(const b of progLossy(o))if(!PROG_LOSSY.has(b)){PROG_LOSSY.add(b);console.warn('the save loses',b);if(HOOK.msg)HOOK.msg(`Tester: the save loses ${b}`)}
+  return JSON.stringify(o)}
+// back to a snapshot (progJSON's text, or a parsed save): every field the snapshot lacks goes
+function progRestore(j){const p=typeof j==='string'?JSON.parse(j):progClone(j);for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,p)}
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
@@ -403,7 +422,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;REVERT0={R,prog:JSON.stringify(PROG)};if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
+  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -553,7 +572,7 @@ function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCos
 // loaded mid-flight) is dropped unsettled: nothing registered or paid, but nothing given back.
 let REVERT0=null;
 function missionDiscard(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return false;
-  if(REVERT0&&REVERT0.R===R){const p=JSON.parse(REVERT0.prog);for(const k in PROG)delete PROG[k];Object.assign(PROG,p)}
+  if(REVERT0&&REVERT0.R===R)progRestore(REVERT0.prog);
   R.ended=true;R.reverted=true;REVERT0=null;return true}
 // The simulator (Q449, Q282 slice 1; NOTES economy § "Plan: the simulator replaces revert", W42 on its defaults). A run is
 // a normal flight with R.sim set, started before liftoff: liftoff snapshots the program as for a revert (REVERT0) but

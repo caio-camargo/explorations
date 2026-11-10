@@ -126,9 +126,9 @@
     !bad.length && !ownList && fresh && carry, `${bad.join(', ') || 'the start agrees'}; own lists ${ownList}; progFresh: ${Object.keys(F).length} fields, fresh ${fresh}, carries ${carry}`);
   // R1b: a program reset after 300 days of play is the same object as a new one in a fresh SIM (same seed), but for the
   // player's designs (launch history emptied) and the level. R17's repro: the sanction and the lost race are gone.
-  const mk = () => { const X = new Function(src + 'return {PROG,programNew,advanceDays,sanction,sanctioned,raceLost,HOOK,get home(){return HOME}};')(); X.HOOK.news = () => {}; X.HOOK.msg = () => {}; return X; };
+  const mk = () => { const X = new Function(src + 'return {PROG,programNew,advanceDays,sanction,sanctioned,raceLost,progLossy,HOOK,get home(){return HOME}};')(); X.HOOK.news = () => {}; X.HOOK.msg = () => {}; return X; };
   const A = mk(), B = mk(); A.programNew({ wseed: 5 }); A.advanceDays(300); A.sanction(1, 500, 'test'); Object.assign(A.PROG, { raceLost: { beeper: 2 }, home: 2, lvl: 'hard', designs: { saved: [{ name: 'x' }], launched: [{ n: 1 }] } }); A.PROG.sats.push({ id: 1 });
-  const dirty = A.sanctioned(1) && A.raceLost('beeper') === 2 && A.PROG.day >= 300;
+  const dirty = A.sanctioned(1) && A.raceLost('beeper') === 2 && A.PROG.day >= 300, played = A.progLossy(A.PROG);   // (R1c, below)
   A.programNew({ wseed: 5 }); B.programNew({ wseed: 5 });
   const lib = J(A.PROG.designs) === J({ saved: [{ name: 'x' }], launched: [] }) && A.PROG.lvl === 'hard', strip = P => { const o = { ...P }; delete o.designs; delete o.lvl; return J(o); };
   const same = strip(A.PROG) === strip(B.PROG), gone = !A.sanctioned(1) && A.raceLost('beeper') === null && A.home === 0 && A.PROG.sats.length === 0;
@@ -140,4 +140,19 @@
   const row = archs => execFileSync(process.execPath, [fileURLToPath(new URL('./career.mjs', import.meta.url)), '1', '1', 'base', 'agency'], { env: { ...process.env, ARCHS: archs }, encoding: 'utf8' }).trim().split('\n').pop();
   const alone = row('frugal'), after = row('resource,openSuper,frugal');
   check('platform-6: a career.mjs row gives the same numbers alone and after other rows (one reset, the game\'s)', alone === after && /^frugal/.test(alone), `${alone.replace(/\s+/g, ' ').slice(0, 90)}${alone === after ? '' : ` · after others: ${after.replace(/\s+/g, ' ').slice(0, 90)}`}`);
+  // R1c: one serializer. No snapshot of PROG is taken any other way; progLossy finds what JSON would lose; 300 days of
+  // play lose nothing; in tester mode the save says so once per value (R16's core bound as the example); a restore
+  // drops what the snapshot lacked; a transient field is never written.
+  const own = code.filter(([, s]) => /JSON\.stringify\(PROG\)|jclone\(PROG\)|JSON\.parse\(REVERT0/.test(s)).map(([f]) => f);
+  const L = new Function(src + 'return {PROG,progLossy,progJSON,progRestore,TEST,HOOK,PROG_LOSSY};')();
+  const planted = L.progLossy({ a: Infinity, b: NaN, c: () => 1, d: new Map(), e: [1, undefined], f: new Float32Array(2), g: { h: -Infinity }, ok: [null, 'x', { y: 0 }] });
+  const plantedOK = planted.length === 7 && planted.includes('PROG.g.h=-Infinity') && planted.includes('PROG.e[1]: undefined') && !planted.some(p => p.includes('ok'));
+  L.HOOK.news = () => {}; const said = []; L.HOOK.msg = m => said.push(m); L.TEST.on = true;
+  L.PROG.sel = { core: { lo: 0, hi: Infinity, n: 1 } }; L.progJSON(); const text = L.progJSON(); L.TEST.on = false;
+  const told = said.length === 1 && /PROG\.sel\.core\.hi=Infinity/.test(said[0]) && JSON.parse(text).sel.core.hi === null;
+  L.PROG.funds = 7; L.PROG.newerSave = true; const snap = L.progJSON(); L.PROG.funds = 99; L.PROG.extra = 1; L.progRestore(snap);
+  const back = L.PROG.funds === 7 && !('extra' in L.PROG) && !('newerSave' in L.PROG) && !/newerSave/.test(snap);
+  check('platform-6: every PROG snapshot goes through progJSON/progRestore; progLossy finds Infinity, NaN, functions, Maps, typed arrays and holes; 300 days of play lose nothing; the tester hears of a lossy value once; a restore drops what the snapshot lacked',
+    !own.length && plantedOK && !played.length && told && back,
+    `own snapshots: ${own.join(', ') || 'none'}; planted ${planted.length}/7; after 300 days: ${played.join(', ') || 'nothing lost'}; tester told ${told} (${said.length}× "${(said[0] || '').slice(0, 60)}"); restore ${back}`);
 }
