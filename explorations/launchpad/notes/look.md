@@ -2455,3 +2455,26 @@ and the frame is brought up by a pass of its own.
   coastline's staircase (PLAYTEST #99) is sharper too: that is the shader's own aliasing, Q561's.
 - **Test:** `aerofx-52` lifts the shader's weights and checks them (they sum to 1, rebuild a ramp exactly, overshoot a
   step by 7.4 %, which the clamp holds). The pass itself can't run headless. TESTING 355.
+
+## v1.294 — The solar wing's cells (2026-11-10, look & sound, parts & pad, QUEUE Q565)
+
+Caio: "the texture of the solar wings, which are currently very plain". Each wing panel was one flat dark-blue box
+(`CELL`, kind 0, so `MESH_FS` added nothing); the body tiles the same.
+
+- **`rboxUV`** (app/gl.js, after `rbox`): a box of cells with its own kind, `SOLAR_K` = 17, and, on its broad faces,
+  the position in metres from the face's corner in the u/v slots and the face's size in R/h; the narrow edges carry
+  R = −1. The broad face is the box's thinnest axis, so the wing panel (thin along z) and the body tile (thin along x)
+  both map. No school or hue bits: Steppe's repaint greys anything light, and would have greyed the substrate.
+- **`MESH_FS` k == 17:** a wing panel is 4 × 4 modules, 6 mm of white substrate between them; a body tile is one
+  module. Cells ~2.4 × 4.6 cm, portrait, 0.6 mm apart (dark grey-blue interconnects, not white: white read as window
+  frames at the satellite's usual distance), a silver contact bar along each cell's foot and fingers up it. Each cell
+  its own blue (the spread fades with the footprint), violet toward a grazing look (the anti-reflection coat), and its
+  own cover-glass tilt (±.035), so the sun's glint breaks up cell by cell. Every line through `lin`/`band`, so they
+  fade to their average coverage instead of shimmering. The edges are the substrate.
+- **Both faces are cells.** `sim/power.js` counts a wing's plane from either side, so the drawing matches what the sim
+  counts; a white back (as real wings have) is a one-line change if Caio wants it, with the sim made one-sided too.
+- **Stills** (builder, view 111 and close-ups; left before, right after): `output/launchpad/solar/` (`q565-whole-`,
+  `-near-`, `-body-cells-`, `-wings-before-after.png`). Not looked at in orbit, under the sun's glint, or on the iGPU.
+- **Test:** `aerofx-53` (the mapping for both boxes, the kind not colliding with `KIND`, the branch, both parts use
+  it); mutations caught (the face's width swapped, the kind left as PK's). TESTING 357.
+
