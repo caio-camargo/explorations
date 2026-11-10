@@ -6881,3 +6881,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/render.js`, `app/gl.js`, `app/screens.js`, `app/map-layers.js`, `playtest.mjs`, `tests/look.mjs`,
   `notes/look.md`, `NOTES.md`, `TESTING.md` (354, 355), `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** Caio's look at TESTING 354 and 355; #157 needs reference stills of the night limb.
+
+## 2026-11-09 — review fixes (Opus, main clone): the plan for one `PROG` schema (R1; plan only)
+
+- **Done:** `notes/platform.md` § "Plan: one `PROG` schema". Inventory at v1.289: 87 `PROG` fields, 302 `||` reads, four
+  places that rebuild it with their own lists (`resetProgram` 44 fields, `career.mjs` 48, the loader, the whole-object
+  snapshots). The design: `PROG_SCHEMA` (`d`, `keep`, `why`), `progFresh`/`programNew`, one `progJSON` that reports
+  non-JSON values, the loader filling from the schema, a five-part check. Slices R1a–R1d in QUEUE *Proposed*.
+- **Defaults for Caio** (silence keeps them): designs, payloads and rovers survive *New program*; unknown save fields are
+  kept; the charter preselects the last difficulty and still asks.
+- **Files:** `notes/platform.md`, `NOTES.md`, `QUEUE.md`, `SESSION_LOG.md`. No game code.
+- **Next:** R1a (the schema and the static check), or R5–R8 in the review's order.

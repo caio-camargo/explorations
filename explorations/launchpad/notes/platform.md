@@ -764,3 +764,73 @@ onto its own line, nothing else changed:
   Erebus isn't live (stub body), so nothing flown changes.
 - Test: `ground-7` gained a blades check (79 of 4000 points; fails on the old line: B max 0). The four browser lines
   have no test of their own; R3's lint (a `//` comment followed by statements) is the guard for the kind.
+
+## Plan: one `PROG` schema (2026-11-09, review fixes, QUEUE R1; REVIEW-2026-11-09; plan only)
+
+**The ask** (the review's R1): one table of `PROG`'s fields, their defaults and which survive a new program, that
+`resetProgram`, the save and its migration, `missionDiscard`'s snapshot and `career.mjs`'s reset all derive from; and a
+check that fails when code uses a field the table lacks.
+
+**What's there today** (read from the code at v1.289, a scratch inventory over `sim/`, `app/`, `builder.js`, `career.mjs`):
+- **87 fields** are used as `PROG.x`. `PROG` starts as a 10-field literal (`sim/program.js:53`); the rest appear on first
+  write, and **302 reads** guard with `PROG.x||default` (the review counted 279 with a narrower pattern). No code reaches
+  `PROG` through an alias; the only bracket uses are the whole-object restores below.
+- **Four places rebuild it, each with its own list:**
+  | Where | How | Gap |
+  |---|---|---|
+  | `resetProgram` (`app/editor.js:47`), the title's *New program* and More's *reset program* | `Object.assign` of 44 fields; `HOME=0`, `RIVALS`, `ensureBoard` | **43 fields survive** (R17): `sats, stations, procs, routes, sanc, raceLost, log, led, riv, back, cseq, giant, casc, frag, …` |
+  | `career.mjs` `run()` (line 168) | its own `Object.assign` of 48 | misses `cseq, bailRecent, back, giant, led, riv, …` (a row's numbers depend on the rows before it); has `sats, stations, procs, sanc, raceLost, sel` that `resetProgram` lacks; lacks `dispatch, gseed` |
+  | the loader (`app/state.js:187`) | `Object.assign(PROG, migrated save)`, then fixes `funds, day, rel, op` | a field the save lacks stays absent: the 302 `||` reads absorb it |
+  | `missionDiscard` (`sim/program.js:439`), the simulator, flights from orbit (`app/program-ui.js:70,81`), the recorder (`sim/record.js:50`) | whole-object `JSON.stringify` / `jclone` snapshot and restore | complete, but lossy: `Infinity` becomes `null` (R16's 132 M core payout) and nothing says so |
+- `SAVE_V=1`, one migration (0 → 1, the loader's old fix-ups).
+
+**The design.**
+1. **`PROG_SCHEMA`** in `sim/program.js`, next to `PROG`: one row per field, `{d, keep, why}`.
+   - `d` is the default: a JSON value (cloned on use), a function (`wseed: freshSeed`), or `undefined` = **absent is
+     meaningful** (`lvl` absent is Normal; `giant`, `site`, `frag`, `navCov`, `gseed` are built on first use).
+   - `keep` says what *New program* does with it: `'career'` (back to `d`; 81 fields), `'library'` (survives: the
+     player's designs, see question 1), `'pref'` (survives as the charter's preselection: `lvl`), `'transient'` (never
+     saved: `newerSave`), `'meta'` (`ver`, written by the save).
+   - `why` is the field's one-line meaning, the comment that today is scattered over 23 files.
+   The defaults come from the `||` reads (they agree today wherever they're a literal; the ones the scratch pass couldn't
+   read, marked `?`, get looked at by hand in slice 1).
+2. **`progFresh(keepFrom)`**: a new program object from the schema; with `keepFrom`, the `library`/`pref` fields are
+   carried over. **`programNew(opts)`** = clear `PROG`, assign `progFresh(PROG)`, then the world globals (`HOME=0`,
+   `RIVALS=raceSchedule()`, `ensureBoard()`). `resetProgram` becomes `programNew(); HOOK.save(); editorChanged()`;
+   `career.mjs`'s `run()` calls `api.programNew()` and then sets only what a row varies (`homeArch`, `wseed`, the start).
+   The initial `PROG` is `progFresh()` too, so a first career and a reset one start alike.
+3. **One serializer, `progJSON()` / `progRestore(json)`**, used by the save, `REVERT0`, the simulator, flights from orbit
+   and the recorder. It drops `transient` fields, and **in tester mode and in tests it walks the object and reports any
+   non-JSON value** (`Infinity`, `NaN`, `undefined` in an array, a function, a `Map`/`Set`) with its path: R16's sweep,
+   and a guard for the next one. In the plain game it only serializes.
+4. **The loader fills from the schema:** `Object.assign(PROG, progFresh(), migrated)`, so an old save gets every field's
+   default and the reads stop needing `||`. Unknown keys in a save are kept (question 2). No `SAVE_V` bump: filling
+   defaults changes nothing a save means; the bump stays for when a field changes meaning, as now.
+5. **The check** (a new `platform-N` section, in smoke):
+   (a) static: every `PROG.<name>` in `sim/`, `app/`, `builder.js` and `career.mjs` is a schema row, and every row is
+   used somewhere; (b) static: a `PROG.x||<literal>` read whose literal differs from the row's `d` fails; (c) dirty a
+   program (fly the robot's career a few hundred days in the SIM), `programNew()`, and `PROG` deep-equals `progFresh()`
+   except the `library`/`pref` fields (R17's repro: `sanctioned(1)`, `raceLost('beeper')`); (d) the same dirty program
+   through `progJSON` reports no non-JSON values; (e) `career.mjs` with the same row twice in one process gives the same
+   numbers (today 408 / 346 / 277 M depend on the rows before).
+
+**Slices** (platform lane; Opus is enough for each):
+- **R1a** the schema, `progFresh`, `why` for each row, checks (a), (b); no behaviour change (the initial `PROG` is
+  already a subset). Decide the `?` defaults by hand.
+- **R1b** `programNew` for `resetProgram` and `career.mjs` (fixes **R17**); checks (c), (e). `career.mjs`'s table
+  changes, since rows stop inheriting the ones before: re-measure and write down the new baseline (NOTES economy).
+- **R1c** `progJSON`/`progRestore` everywhere a snapshot is taken; the non-JSON report; check (d). It finds R16's
+  `core.hi:Infinity` (R16 fixes the value; R1c only reports).
+- **R1d** the loader fills from the schema. Then, lazily and by lane (additive first), retire `||` reads as files are
+  touched; check (b) keeps the ones left honest.
+
+**Fits with:** R2 (test sections run isolated) gets its fresh program from `progFresh()`/`programNew()`; R16 and R17
+are found or fixed on the way; R19's shared formulas are separate.
+
+**Questions for Caio** (silence keeps the default):
+1. **Do the player's designs survive *New program*?** (`designs.saved`, `payloads`, `rovers`.) *Default: yes,* like a
+   craft library outside the save; the new program's design history (`designs.launched`) starts empty.
+2. **A save with fields this game doesn't know** (from a newer build, or one since removed): *default: kept as they are*
+   (no data loss when going back and forth between builds); the tester's log lists them.
+3. **Difficulty on *New program*:** *default: the charter preselects the last one and still asks* (today's behaviour,
+   since `lvl` already survives).
