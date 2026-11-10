@@ -6902,3 +6902,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/program.js`, `app/desk.js`, `tests/platform.mjs`, `notes/platform.md`, `NOTES.md`, `QUEUE.md`
   (R1a ✓), `ACTIVE_WORK.md`.
 - **Next:** R1b (`programNew` for resetProgram and career.mjs, fixes R17; re-measure career.mjs's baseline).
+
+## 2026-11-10 — review session (Fable, worktree launchpad-sharp): staging eases the camera, a stronger separation (Q564, v1.293)
+
+- **Done:** PLAYTEST #159 and #160 (Caio, the same day). `detach` reports the centre-of-mass jump (`HOOK.cmShift`) and
+  the flight camera closes it as a critically damped spring (`CAML`, `camLagStep`: about a second). `sepFx`: puffs fall
+  with the craft (`fxPuff` takes `g`), a flash, a second fast gas ring, flecks in thin air, more opacity in vacuum, and
+  a piece that leaves as a vessel shows it too (`HOOK.sep`).
+- **Checked:** test `aerofx-53` (a staged Orbiter in a 300 km orbit: the target holds over a 5.1 m jump, the ring is
+  0.3 m off the seam after 1 s against 3.3 m without the fall; removing the hook fails it); smoke all passed. On the
+  GPU: the first frames only (the cloud at the seam, the target easing).
+- **Not checked:** the gas and flecks over the following seconds, and `drawSmoke`'s use of `g` (the test computes the
+  positions itself). Free memory fell to 0.3 GB under other sessions' work and headless Chrome stalled on page load,
+  so the GPU run was stopped. TESTING row 356 is the check.
+- **Files:** `sim/vessel.js`, `sim/core.js`, `app/state.js`, `app/gl.js`, `app/render.js`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 356; then Q561 (footprint filtering), #157 (the night limb's dark band).

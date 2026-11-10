@@ -2455,3 +2455,28 @@ and the frame is brought up by a pass of its own.
   coastline's staircase (PLAYTEST #99) is sharper too: that is the shader's own aliasing, Q561's.
 - **Test:** `aerofx-52` lifts the shader's weights and checks them (they sum to 1, rebuild a ramp exactly, overshoot a
   step by 7.4 %, which the clamp holds). The pass itself can't run headless. TESTING 355.
+
+## v1.293 — Staging: the camera eases, a stronger separation (2026-11-10, review session, QUEUE Q564)
+
+PLAYTEST #159 (Caio: "when i activate a stage, the camera instantly recenters on the craft ... jerky and kind of ruins
+the visual effect of decoupling") and #160 ("could have more oomph, like maybe some gas dispersal").
+
+- **The camera.** It looks at the centre of mass (`shipWorld`), and `detach` (sim/vessel.js) moves `s.r` to the new one
+  in the same step: 5 m on an Orbiter, more on a small satellite leaving a big stage. `detach` now reports the jump
+  (`HOOK.cmShift(s, shift)`, a no-op in the sim) and the page keeps a lag vector (`CAML`, app/state.js) that takes the
+  jump off the camera's target and then closes as a critically damped spring (`camLagStep`, the exact step, ω = 4.5/s):
+  99.7 % of the gap is still there after the first frame, 34 % at 0.5 s, 4 % at 1.1 s. Real time, so it is the same at
+  any warp. Only the flight camera (`render`, the non-map branch); the lag is dropped when `S` changes.
+- **The separation** (`sepFx`, app/state.js; it existed since the staging beat, see **Staging** above). Three things
+  made it weak in orbit: the gas was at 11 % opacity in vacuum, its puffs travelled in straight lines while the craft
+  fell round the planet (4.4 m off the seam after 1 s, 18 m after 2 s), and a piece that left as a vessel of its own
+  (a command part aboard) got nothing, since it never passed `HOOK.debris`. Now: `fxPuff` takes an acceleration `g`
+  (`drawSmoke` adds ½·g·age²) and `sepFx` gives every puff the local gravity × (1 − pressure); `detach` calls
+  `HOOK.sep` for a piece that becomes a vessel; and the effect is a **flash** at the seam (one hot puff, 0.14 s), the
+  **gas ring** (28 puffs, was 18; opacity 0.18 in vacuum, was 0.11), a **fast thin ring** ahead of it (20 puffs at
+  16–30 m/s, under a second), the sparks as before, and above ~17 km (pressure under 15 %) up to 36 **flecks** that
+  drift off at 0.4–3.4 m/s for 3–8 s and glint when the craft is in sunlight (dim in the planet's shadow).
+- Still Tellus only (`fxPuff` positions are Tellus-centred): a separation round Selene or Nyx shows nothing, as before.
+- Test `aerofx-53`. **Seen on the GPU:** the first frames of a separation in orbit (the cloud at the seam, the target
+  holding and then easing). **Not seen:** the gas and flecks moving over the following seconds; the machine ran out
+  of memory under other sessions' work and headless Chrome stalled. TESTING row 356 is the check.
