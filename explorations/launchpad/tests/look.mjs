@@ -1159,3 +1159,25 @@
     !!wf && sum < 1e-12 && ramp < 1e-12 && over > .03 && over < .12 && /c=clamp\(c\+uSh\*\(c-\(a\+b\+d\+e\)\*\.25\),lo,hi\)/.test(sh),
     wf ? `sum off by ${sum.toExponential(1)}, ramp by ${ramp.toExponential(1)}, step overshoot ${(over * 100).toFixed(1)} %` : 'weights not found in UPS_FS');
 }
+
+// aerofx-53. The solar wing's cells (look & sound parts & pad, QUEUE Q565): rboxUV gives a box of cells its own kind
+// (SOLAR_K, no school bits, so a school's repaint can't grey the cells) and, on its broad faces, the position in metres
+// from the face's corner with the face's size; the narrow edges carry R = -1. The wing panel (thin along z) and the body
+// tile (thin along x) both map; MESH_FS has the branch, and no part kind collides with SOLAR_K.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('const VX=16'), page.indexOf('const KIND=')) + page.slice(page.indexOf('function pv('), page.indexOf('// surface of revolution')) +
+    page.slice(page.indexOf('function box('), page.indexOf('// a swept, tapered fin'));
+  const { rboxUV, SOLAR_K, KIND } = new Function('rotY', src + ';const KIND=' + /const KIND=(\{[^}]*\})/.exec(page)[1] + ';return{rboxUV,SOLAR_K,KIND}')(
+    (v, th) => { const c = Math.cos(th), s = Math.sin(th); return [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]] });
+  const map = (hx, hy, hz, phi) => { const o = []; rboxUV(o, [1, 2, 3], hx, hy, hz, [.1, .1, .3, 4], phi); const V = [];
+    for (let i = 0; i < o.length; i += 16) V.push({ u: o[i + 10], v: o[i + 11], R: o[i + 12], h: o[i + 13], k: o[i + 14], y: o[i + 1] - 2 }); return V };
+  const ok = (V, W, Hh) => { const b = V.filter(x => x.R > 0), e = V.filter(x => x.R < 0);
+    return b.length === 12 && e.length === 24 && V.every(x => x.k === SOLAR_K) && b.every(x => Math.abs(x.R - W) < 1e-9 && Math.abs(x.h - Hh) < 1e-9 && x.u > -1e-9 && x.u < W + 1e-9 && Math.abs(x.v - (x.y + Hh / 2)) < 1e-9)
+      && new Set(b.map(x => x.u.toFixed(6))).size === 2 };
+  const wing = ok(map(.285, .28, .008, .7), .57, .56), tile = ok(map(.004, .088, .046, 2.1), .092, .176);
+  const shader = /else if\(k==17\)\{/.test(page) && SOLAR_K === 17 && !Object.values(KIND).includes(SOLAR_K);
+  const used = /rboxUV\(out,c,w\/2-\.015,h\/2-\.02,\.008,CELL,a\+th\)/.test(page) && /rboxUV\(out,\[cx\+c\*\(R\+\.014\)/.test(page);
+  check('the solar wing\'s cells (Q565): rboxUV maps the broad faces in metres for the wing panel and the body tile, edges flagged, its own kind with a shader branch, used by both parts',
+    wing && tile && shader && used, `wing ${wing} · body tile ${tile} · shader ${shader} · used ${used}`);
+}

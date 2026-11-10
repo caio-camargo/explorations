@@ -689,6 +689,20 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb=mix(alb,vec3(.02),1.-sqw((v+vO.x*.5)/.12,fv/.12+.01));}
   else if(k==14&&side){                                    // reinforcement collar: a bolt row
    alb=mix(alb,vec3(.6),dots(s,v,h*.5,.06,.01,fp));}
+  else if(k==17){                                          // (Q565) solar cells: vU = metres on the broad face (rboxUV), its width, its height
+   if(vU.z<0.){alb=pow(vec3(.66,.64,.6),vec3(2.2));m=0;metal=0.;rough=.6;}   // the box's narrow edges: the white substrate
+   else{vec2 q=vU.xy,fw=vec2(fwidth(q.x),fwidth(q.y))+1e-6;float W=vU.z;
+    // a wing panel is 4 × 4 modules with 6 mm of substrate between them; a body tile is one module. Cells ~2.4 × 4.6 cm,
+    // portrait, 0.6 mm apart, a silver contact bar along each one's foot and fine fingers up it
+    vec2 mp=W>.3?vec2(W,vU.w)/4.:vec2(W,vU.w),nc=max(vec2(1.),floor(mp/vec2(.024,.046)+.5)),cp=mp/nc,id=floor(q/cp),cf=fract(q/cp)*cp;
+    float mg=W>.3?max(lin(q.x,mp.x,.003,fw.x),lin(q.y,mp.y,.003,fw.y)):0.,cg=max(lin(q.x,cp.x,.0003,fw.x),lin(q.y,cp.y,.0003,fw.y)),gap=max(mg,cg*.8);
+    float bar=band(cf.y,.0008,.0024,fw.y)*(1.-gap),fg=lin(q.x+cp.x*.25,cp.x/8.,.00012,fw.x)*(1.-gap)*(1.-bar);
+    float r1=hh(id+vec2(13.1,7.7)),r2=hh(id.yx+vec2(3.3,1.9)),r3=hh(id+vec2(41.,17.)),fd=smoothstep(.012,.003,max(fw.x,fw.y));
+    vec3 cb=alb*mix(vec3(.82,.88,1.),vec3(1.12,.94,1.1),r1)*(.86+.28*r2*fd+.14*(1.-fd));   // each cell its own blue; the spread averages out from afar
+    float gz=1.-abs(dot(normalize(vN),V));cb*=mix(vec3(1.),vec3(1.7,1.,1.45),gz*gz*gz);   // the coating turns violet at a grazing look
+    cb=mix(cb,vec3(.3,.31,.33),fg*.7);
+    alb=mix(mix(cb,pow(vec3(.72,.7,.65),vec3(2.2)),gap),vec3(.62,.63,.65),bar);metal=bar;rough=mix(.05,.55,gap);m=gap>.5?0:4;
+    vec3 Tt=normalize(cross(vec3(0.,1.,0.),nO)+1e-5);nO+=(Tt*(r3-.5)+vec3(0.,1.,0.)*(hh(id+vec2(5.,29.))-.5))*.07*fd*(1.-gap);}}   // each cover glass sits at its own tilt, so the sun's glint breaks up cell by cell
  }
  // Steppe (Q102): grey-green enamel panel by panel, dark seams where Cape has its roll pattern; olive-tinted bells
  if(uSeam>0.&&sch==1&&k>0){float wl=dot(alb,vec3(.3,.59,.11));
@@ -1398,6 +1412,13 @@ function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,
   const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])pv(out,q[i],n,col)}}
 function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
   out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,...a.slice(i+6,i+VX))}}
+// (Q565) a box of solar cells: as rbox, but kind SOLAR_K and, in the u/v slots, the position in metres from the corner of
+// its broad face (its thinnest axis is the face's normal; v runs up when y isn't that axis), the face's width and height
+// in the R/h slots; R = -1 on the box's narrow edges. No school or hue bits: a school's repaint must not touch the cells
+const SOLAR_K=17;
+function rboxUV(out,c,hx,hy,hz,col,phi){const a=[],H=[hx,hy,hz],t=H.indexOf(Math.min(hx,hy,hz)),va=t===1?2:1,ua=[0,1,2].find(i=>i!==t&&i!==va);box(a,[0,0,0],hx,hy,hz,col);
+  for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi),broad=Math.abs(a[i+3+t])>.5;
+    out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,...a.slice(i+6,i+10),a[i+ua]+H[ua],a[i+va]+H[va],broad?2*H[ua]:-1,2*H[va],SOLAR_K,PK.i)}}
 // a swept, tapered fin at angle a around the part axis: root chord ch on the hull (radius r0), tip chord ×0.45 flush with
 // the trailing edge, thickness 2t; the leading edge is a bare-metal strip, the faces take the paint
 function fin(out,o,a,r0,sp,ch,t,col){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
@@ -1597,7 +1618,7 @@ function partBody(out,p){
       const f=depF(p);if(f>0){const L=d.span,w=L/4,b0=.13+.47*sstep(0,.25,f),u=clamp((f-.25)/.75,0,1);tube(out,P(.02,h/2),P(b0-.05,h/2),.03,C.ST,6);rbox(out,P(b0-.03,h/2),.03,h*.5,.025,C.D,a);   // boom, yoke
         // (Q411) the panels unfold one after another, an accordion hinged at alternate edges
         let H=P(b0,h/2);for(let k=0;k<4;k++){const g=sstep(0,1,u*4-k),th=(1-g)*Math.PI/2*(k%2?-1:1),dr=[Math.cos(a+th),0,Math.sin(a+th)],fo=(1-g)*k*.02,c=[H[0]+dr[0]*w/2+n[0]*fo,H[1],H[2]+dr[2]*w/2+n[2]*fo];
-          rbox(out,c,w/2-.015,h/2-.02,.008,CELL,a+th);rbox(out,c,w/2,h/2,.004,C.ST,a+th);H=[H[0]+dr[0]*w,H[1],H[2]+dr[2]*w]}   // cells on a frame
+          rboxUV(out,c,w/2-.015,h/2-.02,.008,CELL,a+th);rbox(out,c,w/2,h/2,.004,C.ST,a+th);H=[H[0]+dr[0]*w,H[1],H[2]+dr[2]*w]}   // cells on a frame
         if(u>=1){rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}}   // the wing's edge spars, once flat
       else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover
     // solar cells on the body: tiles that follow a 0.625 m hull's curve (4 columns × 4 rows), on a thin steel backing
@@ -1638,7 +1659,7 @@ function partBody(out,p){
       lathe(out,[[0,.05,C.D],[.12,.05,C.D],[.12,h-.05,C.D],[0,h-.05,C.D]],c,12,[false,false]);for(let k=0;k<4;k++)fin(out,c,k*Math.PI/2,.12,.08,h-.1,.01,C.D)}break;
     case'bpanel':{const a=p.phi||0,R=.625,cx=x-Math.cos(a)*R,cz=z-Math.sin(a)*R,CELL=[.08,.11,.28,4];
       for(let k=0;k<4;k++){const ak=a+(k-1.5)*.17,c=Math.cos(ak),s=Math.sin(ak);rbox(out,[cx+c*(R+.008),y+h/2,cz+s*(R+.008)],.004,h/2,.054,C.ST,ak);
-        for(let j=0;j<4;j++)rbox(out,[cx+c*(R+.014),y+(j+.5)*h/4,cz+s*(R+.014)],.004,h/8-.012,.046,CELL,ak)}}break;
+        for(let j=0;j<4;j++)rboxUV(out,[cx+c*(R+.014),y+(j+.5)*h/4,cz+s*(R+.014)],.004,h/8-.012,.046,CELL,ak)}}break;
     // battery: a ribbed ring of cells, an orange stripe, two terminal boxes
     case'batt':{const pr=[[.625,0,C.D],[.625,.02,C.D]];for(let k=0;k<5;k++){const y0=.02+k*.022;pr.push([.61,y0,C.K],[.61,y0+.011,C.K],[.625,y0+.011,C.D],[.625,y0+.022,C.D])}
       pr.push([.625,.13,C.O],[.625,h,C.O]);lathe(out,pr,o);for(const a of[.6,3.7])rbox(out,[x+Math.cos(a)*.64,y+h*.55,z+Math.sin(a)*.64],.025,.04,.06,C.D,a)}break;
