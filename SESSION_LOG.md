@@ -7043,4 +7043,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   only into each other and never off its edges; edges inside one plane are not drawn. Seen: one four-cornered plane
   at every plane count tried and on the sheet. Rough: wings and nostrils under the tip. FACES 0.1.12 § 10, README
   0.1.26. `faces5/index.html` is now edited directly (the scratch generator is behind it). **Next:** Caio's look.
+- **Follow-up 7: the nose's underside, a second built plane (faces5).** Caio on the bridge: "yes, much better, this
+  is the idea". A patch of skin under the nose (found on the average head; nostril tubes cut out and closed) placed
+  on one plane from the tip to the nose's base, its rim on four edges. Seen: the nose is a prism of four planes at
+  every plane count tried and on the sheet. Rough: no nostrils, no wing bulge. FACES 0.1.13 § 10, README 0.1.27.
+  **Next:** Caio's look; candidates: the brow line, the lips, the lids.
 

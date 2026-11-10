@@ -205,11 +205,60 @@ function noseInit(A, quads) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 
     for (let k = 0; k < col.length - 1; k++) for (const q of eq.get(ek(col[k], col[k + 1])) || []) { const o = q.filter(v => v !== col[k] && v !== col[k + 1]); if (o.length !== 2) continue;
       if (sg * (A[o[0] * 3] + A[o[1] * 3] - A[col[k] * 3] - A[col[k + 1] * 3]) <= 1e-5) continue; const a = nb.get(col[k]).has(o[0]) ? o[0] : o[1]; next[k] = a; next[k + 1] = a === o[0] ? o[1] : o[0]; }
     return next; };
-  RIDGE = chain; STRIP = []; LINES = new Uint8Array(NV); const n = chain.length, yT = A[chain[0] * 3 + 1], yB = A[chain[n - 1] * 3 + 1], cols = [[chain, 0]];
+  RIDGE = chain; STRIP = []; LINES = new Uint16Array(NV); const n = chain.length, yT = A[chain[0] * 3 + 1], yB = A[chain[n - 1] * 3 + 1], cols = [[chain, 0]];
   for (const sg of [1, -1]) { const c1 = side(chain, sg), c2 = side(c1, sg); cols.push([c1, .5 * sg], [c2, sg]); if (sg > 0) BCOL = c2; }
   for (const [col, s] of cols) col.forEach((i, k) => { if (i < 0) { console.error('nose strip: the grid breaks at row', k); return; }
     STRIP.push([i, (yT - A[chain[k] * 3 + 1]) / (yT - yB), s]); LINES[i] = 16 | (s === 1 ? 1 : 0) | (s === -1 ? 2 : 0) | (k === 0 ? 4 : 0) | (k === n - 1 ? 8 : 0); }); }
+// The nose's underside is a second built plane: from the bridge's bottom edge (the tip) back to the base of the nose,
+// as wide there as the wings. Its points are the skin under the nose that lies near that plane, found once on the
+// average head; the nostrils (deep tubes in MakeHuman's mesh) are cut out and closed over. The rim of the patch is put
+// on the plane's four edges, and the same two rules as the bridge keep it one plane when the planes are cut.
+let UNDER = [], SUBN = -1, ALAR = -1;   // LINES for the underside: 32 in it, 64 / 128 on its side edges, 256 on its back edge; its front edge is the bridge's bottom edge (8)
+function underInit(A, tr, g) { UNDER = []; const dbg = window.UNDERDBG = {};
+  const tip = RIDGE[RIDGE.length - 1], yB = A[tip * 3 + 1], zB = A[tip * 3 + 2], nb = new Map(), add = (a, b) => { if (!nb.has(a)) nb.set(a, new Set()); nb.get(a).add(b); };
+  for (let i = 0; i < tr.length; i += 3) for (let k = 0; k < 3; k++) { add(tr[i + k], tr[i + (k + 1) % 3]); add(tr[i + (k + 1) % 3], tr[i + k]); }
+  let c = tip; SUBN = -1;   // the base of the nose: the deepest point down the middle under the tip
+  for (let k = 0; k < 14; k++) { let n = -1; for (const j of nb.get(c)) if (Math.abs(A[j * 3]) < .003 && A[j * 3 + 1] < A[c * 3 + 1] && (n < 0 || A[j * 3 + 1] > A[n * 3 + 1])) n = j;
+    if (n < 0 || A[n * 3 + 1] < yB - .085) break; c = n; if (SUBN < 0 || A[c * 3 + 2] < A[SUBN * 3 + 2]) SUBN = c; }
+  const tw = MH.targets['nose-nostrils-width-incr']; ALAR = -1; let bm = 0;   // the wing's widest point: what MakeHuman's nostril-width slider moves most
+  if (tw) for (let j = tw[0]; j < tw[0] + tw[1]; j++) { const m = Math.abs(DEL[j * 3]); if (A[IDX[j] * 3] > 0 && m > bm) { bm = m; ALAR = IDX[j]; } }
+  if (SUBN < 0 || ALAR < 0) { console.error('nose underside: landmarks not found'); return tr; }
+  const yK = A[SUBN * 3 + 1], zK = mix(A[SUBN * 3 + 2], A[ALAR * 3 + 2], .5), Wa = Math.abs(A[ALAR * 3]) * .95, W1 = .022 * g.nw * (1 + .5 * g.nt);
+  const dy = yK - yB, dz = zK - zB, len = Math.hypot(dy, dz), ny = -dz / len, nz = dy / len;
+  const par = i => { const y = A[i * 3 + 1] - yB, z = A[i * 3 + 2] - zB, a = (y * dy + z * dz) / (len * len); return [a, A[i * 3] / mix(W1, Wa, clamp(a, 0, 1)), y * ny + z * nz]; };   // along, across, height off the plane
+  const S = new Set(), stack = []; for (const [i] of STRIP) if (LINES[i] & 8) { S.add(i); stack.push(i); }
+  while (stack.length) { const u = stack.pop(); for (const v of nb.get(u)) { if (S.has(v) || LINES[v]) continue; const [a, s, d] = par(v);
+      if (a < -.01 || a > 1.04 || Math.abs(s) > 1.06 || d < -.012 || d > .03) continue; S.add(v); stack.push(v); } }
+  const H = new Set(), big = new Set();   // what the patch encloses (the nostrils) is cut out
+  for (const s0 of S) for (const v0 of nb.get(s0)) { if (S.has(v0) || LINES[v0] || H.has(v0) || big.has(v0)) continue; const cs = [v0], seen = new Set(cs); let isBig = false;
+      for (let q = 0; q < cs.length && !isBig; q++) for (const w of nb.get(cs[q])) { if (S.has(w) || seen.has(w)) continue; if (big.has(w) || LINES[w] || cs.length > 500) { isBig = true; break; } seen.add(w); cs.push(w); }
+      for (const v of cs) (isBig ? big : H).add(v); }
+  const out = [], nxt = new Map(); let rimEdges = 0;
+  for (let i = 0; i < tr.length; i += 3) { const t = [tr[i], tr[i + 1], tr[i + 2]]; if (!t.some(v => H.has(v))) { out.push(...t); continue; }
+    for (let k = 0; k < 3; k++) { const p = t[k], r = t[(k + 1) % 3]; if (!H.has(p) && !H.has(r)) { nxt.set(p, r); rimEdges++; } } }
+  let holes = 0; for (const p0 of [...nxt.keys()]) { if (!nxt.has(p0)) continue; const loop = [p0]; let p = nxt.get(p0); nxt.delete(p0); while (p !== p0 && nxt.has(p)) { loop.push(p); const q = nxt.get(p); nxt.delete(p); p = q; }
+    holes++; for (let k = 1; k < loop.length - 1; k++) out.push(loop[0], loop[k], loop[k + 1]); }
+  // the patch's own triangles and its rim
+  const ec = new Map(), inT = new Set(), ek = (a, b) => a < b ? a * NV + b : b * NV + a;
+  for (let i = 0; i < out.length; i += 3) { const a = out[i], b = out[i + 1], c2 = out[i + 2]; if (!S.has(a) || !S.has(b) || !S.has(c2)) continue; inT.add(a); inT.add(b); inT.add(c2);
+    for (const [p, r] of [[a, b], [b, c2], [c2, a]]) ec.set(ek(p, r), (ec.get(ek(p, r)) || 0) + 1); }
+  const rn = new Map(); for (const [k, n] of ec) if (n === 1) { const p = Math.floor(k / NV), r = k % NV; if (!rn.has(p)) rn.set(p, []); if (!rn.has(r)) rn.set(r, []); rn.get(p).push(r); rn.get(r).push(p); }
+  const front = STRIP.filter(e => LINES[e[0]] & 8), FL = front.find(e => e[2] === 1)[0], FR = front.find(e => e[2] === -1)[0];
+  if (!rn.has(FL)) { console.error('nose underside: the patch does not reach the bridge'); return tr; }
+  let loop = [FL], prev = -1, cur = FL; for (let k = 0; k < 400; k++) { const o = rn.get(cur).filter(v => v !== prev); if (!o.length) break; prev = cur; cur = o[0]; if (cur === FL) break; loop.push(cur); }
+  const P2 = new Map(); for (const i of inT) P2.set(i, par(i));
+  const near = sg => { let b = -1, bd = 1e9; for (const i of loop) { if (LINES[i]) continue; const [a, s] = P2.get(i), d = ((1 - a) * len) ** 2 + ((1 - sg * s) * Wa) ** 2; if (d < bd) { bd = d; b = i; } } return b; };
+  const KL = near(1), KR = near(-1); if (loop.indexOf(FR) < loop.indexOf(KL)) loop = [FL, ...loop.slice(1).reverse()];
+  const iKL = loop.indexOf(KL), iKR = loop.indexOf(KR), iFR = loop.indexOf(FR); dbg.sizes = { patch: S.size, used: inT.size, nostril: H.size, holes, rimEdges, rim: loop.length, rimAll: rn.size, corners: [0, iKL, iKR, iFR] };
+  if (!(0 < iKL && iKL < iKR && iKR < iFR)) { console.error('nose underside: the rim is out of order', dbg.sizes); return tr; }
+  const line = new Map(); loop.forEach((v, k) => line.set(v, (k >= 0 && k <= iKL && k !== 0 ? 64 : 0) | (k === 0 ? 64 : 0) | (k >= iKL && k <= iKR ? 256 : 0) | (k >= iKR && k <= iFR ? 128 : 0)));
+  let stray = 0; for (let k = iFR + 1; k < loop.length; k++) if (!(LINES[loop[k]] & 8)) stray++; dbg.sizes.strayFront = stray;
+  for (const i of inT) { const l = line.get(i) || 0; if (LINES[i] & 8) { LINES[i] |= 32 | (i === FL ? 64 : 0) | (i === FR ? 128 : 0); continue; }
+    let [a, s] = P2.get(i); a = clamp(a, .03, .97); s = clamp(s, -.97, .97); if (l & 64) s = 1; if (l & 128) s = -1; if (l & 256) a = 1;
+    LINES[i] = 32 | l; UNDER.push([i, a, s]); }
+  return out; }
 function noseStyle(P, g) { const f = g.nf; if (f <= 0) return P;
+  const yS = P[SUBN * 3 + 1], zK = mix(P[SUBN * 3 + 2], P[ALAR * 3 + 2], .5), Wa = Math.abs(P[ALAR * 3]) * .95;   // the base of the nose and the wings, before anything moves
   const iT = RIDGE[0], iB = RIDGE[RIDGE.length - 1], yT = P[iT * 3 + 1], zT = P[iT * 3 + 2], yB = P[iB * 3 + 1], zB = P[iB * 3 + 2], W0 = .022 * g.nw * (1 - .5 * g.nt), W1 = .022 * g.nw * (1 + .5 * g.nt);
   const B = BCOL.map(i => [P[i * 3 + 1], Math.abs(P[i * 3]), P[i * 3 + 2]]).sort((a, b) => b[0] - a[0]);   // the strip's edge on this face before it is moved: height, half-width, depth
   const edge = y => { if (y >= B[0][0]) return B[0]; for (let k = 1; k < B.length; k++) if (y >= B[k][0]) { const q = (y - B[k][0]) / (B[k - 1][0] - B[k][0] || 1); return [y, mix(B[k][1], B[k - 1][1], q), mix(B[k][2], B[k - 1][2], q)]; } return B[B.length - 1]; };
@@ -220,6 +269,7 @@ function noseStyle(P, g) { const f = g.nf; if (f <= 0) return P;
     moved.push(i, mix(x, Math.sign(x) * (W + v * (L - W)), fy), z + (mix(zT, zB, t) - e[2]) * (1 - sstep(0, 1, v)) * fy * fz); }
   for (let k = 0; k < moved.length; k += 3) { P[moved[k] * 3] = moved[k + 1]; P[moved[k] * 3 + 2] = moved[k + 2]; }
   for (const [i, t, s] of STRIP) { P[i * 3] = mix(P[i * 3], s * mix(W0, W1, t), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yT, yB, t), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zT, zB, t), f); }
+  for (const [i, a, s] of UNDER) { P[i * 3] = mix(P[i * 3], s * mix(W1, Wa, a), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yB, yS, a), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zB, zK, a), f); }
   return P; }
 
 // ---- planes: the skin simplified by collapsing edges, once, on the average head
@@ -286,7 +336,7 @@ function assemble(g) {
   for (let t = 0; t < nt; t++) { const a = L[t * 3] * 3, b = L[t * 3 + 1] * 3, c = L[t * 3 + 2] * 3, ux = M[b] - M[a], uy = M[b + 1] - M[a + 1], uz = M[b + 2] - M[a + 2], vx = M[c] - M[a], vy = M[c + 1] - M[a + 1], vz = M[c + 2] - M[a + 2];
     const x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx, l = Math.hypot(x, y, z) || 1; TN[t * 3] = x / l; TN[t * 3 + 1] = y / l; TN[t * 3 + 2] = z / l; }
   for (let t = 0; t < nt; t++) for (let e = 0; e < 3; e++) { const p = L[t * 3 + e], r = L[t * 3 + (e + 1) % 3], k = p < r ? p * NV + r : r * NV + p, o = em.get(k); if (o === undefined) { em.set(k, t * 4 + e); continue; }
-    const t2 = o >> 2; if (TN[t * 3] * TN[t2 * 3] + TN[t * 3 + 1] * TN[t2 * 3 + 1] + TN[t * 3 + 2] * TN[t2 * 3 + 2] > .9995) { HID[t] |= 1 << (e + 2) % 3; HID[t2] |= 1 << ((o & 3) + 2) % 3; } }
+    const t2 = o >> 2; if (Math.abs(TN[t * 3] * TN[t2 * 3] + TN[t * 3 + 1] * TN[t2 * 3 + 1] + TN[t * 3 + 2] * TN[t2 * 3 + 2]) > .9995) { HID[t] |= 1 << (e + 2) % 3; HID[t2] |= 1 << ((o & 3) + 2) % 3; } }
   for (let t = 0; t < nt; t++) { const a = L[t * 3], b = L[t * 3 + 1], c = L[t * 3 + 2]; flat(M, a * 3, b * 3, c * 3, 0, LIPV[a] + LIPV[b] + LIPV[c] > 250 ? 1 : 0, HID[t]); }
   if (!bald) {   // the hair: the scalp's planes, stood off the skull, with a wall down to the skin round the edge
     const H = new Float32Array(M.length), done = new Uint8Array(NV), ec = new Map(), ht = [];
@@ -447,7 +497,7 @@ window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house
   EYES = { src: esrc, S: subdiv({ nV: esrc.length, faces: ef, fmat: ef.map(() => 2), sharp: new Map(), corner: new Set() }), c: [0, 0, 0] }; EYES.q = Int32Array.from(EYES.S.mesh.faces.flat());
   const hl = a => a < .7 ? .86 : a < 1.3 ? mix(.86, .64, (a - .7) / .6) : a < 1.9 ? mix(.64, .58, (a - 1.3) / .6) : mix(.58, .3, clamp((a - 1.9) / .9, 0, 1));   // the hairline: forehead, temple, over the ear, nape
   SCALP = new Uint8Array(NV); for (let i = 0; i < NV; i++) SCALP[i] = A[i * 3 + 1] > hl(Math.abs(Math.atan2(A[i * 3], A[i * 3 + 2] + .07))) ? 1 : 0;
-  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
+  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); { const t2 = underInit(A, tr, house()); tr.length = 0; for (const v of t2) tr.push(v); } NSV = [...new Set(tr)]; noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
   const t0 = performance.now(), left = planesInit(A, tr); console.log('planes: collapsed', SKN, 'points to', left, 'in', Math.round(performance.now() - t0), 'ms'); window.PLANES = [SKN, left, Math.round(performance.now() - t0)];
   cur = fromDNA(Q.get('dna')) || house(); sync(); $('dna').value = toDNA(cur); setMode(Q.get('mode') === 'sheet' ? 'sheet' : 'edit');
 })();

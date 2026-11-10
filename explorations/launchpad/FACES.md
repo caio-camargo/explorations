@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.13 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -386,4 +386,19 @@ from brow to tip, with one large plane down each side of the nose; it holds at m
 on the sheet of twelve. Rough: under the tip the nose drops away with almost no wings or nostrils at the house plane
 count; the brow line above the plane is still whatever the cutting left. Not checked: extreme nose sliders; the
 width slider at its ends; expressions that move the nose.
+
+**Step 2: the nose's underside as a second built plane** (2026-11-10; Caio on the bridge: "yes, much better, this is
+the idea"). `underInit` in faces5: a four-cornered plane from the bridge's bottom edge (the tip) back to the base of
+the nose, as wide there as the wings. The mesh is not a grid under the nose, so the patch is found once on the
+average head: the skin near that plane, grown outward from the tip (142 points). MakeHuman's nostrils are deep
+tubes; what the patch encloses is cut out and closed over (12 points, 2 holes). The patch's rim (36 points) is put
+on the plane's four edges, corner to corner, and the same two rules keep it one plane. On each face the back edge
+sits at that face's own nose base (the deepest midline point under the tip), its depth halfway between that point
+and the wing, its half-width .95 of the wing's widest point (the point MakeHuman's nostril-width slider moves most).
+It shares the bridge's slider (*Nose bridge: natural–one plane*).
+Seen (GPU; `nose-under-closeup.png`, `nose-under-front.png`, `nose-under-many-planes.png`, `sheet-nose-under.png`):
+the nose is a prism of four planes (bridge, two sides, underside), the underside one dark trapezoid from the front;
+it holds at .15, .36 and .6 on the planes slider and on the sheet of twelve. Rough: no nostrils and no bulge of the
+wings (the sides run straight from the bridge's edge to the underside's edge). Not checked: nose sliders at their
+ends, the nose expressions, how the upper lip meets the back edge on faces with a short lip.
 

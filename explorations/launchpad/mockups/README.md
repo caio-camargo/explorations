@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.26 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.27 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -343,6 +343,9 @@ URL: `?mode=edit|sheet`, `?dna=F5:...`, `?seed=`. Stills: `output/launchpad/mock
 the plane-cutting may not break up; *Nose bridge: natural–one plane*, *Bridge width*, *Bridge: even–wider at the
 tip*. Stills: `nose-plane-closeup.png`, `nose-plane-front.png`, `nose-plane-many-planes.png`, `sheet-nose-plane.png`
 (the earlier `nose-flat-*` stills are the first attempt, which Caio rejected).
+**The nose's underside is a second built plane** (step 2): from the tip back to the nose's base, the nostrils closed
+over; with the bridge and the two sides the nose is a prism of four planes. Stills: `nose-under-closeup.png`,
+`nose-under-front.png`, `nose-under-many-planes.png`, `sheet-nose-under.png`.
 
 **Pick:** _(Caio: is this the direction?)_
 
