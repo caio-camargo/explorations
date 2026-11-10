@@ -248,7 +248,8 @@ function thrustLine(o){if(isEmpty(stackDef)||!S.events.length)return;const ig=ne
   o.save();o.setLineDash([7*k,5*k]);o.lineWidth=2*k;o.strokeStyle=T.f>.6?'#ff6b6b':T.f>.2?'#ffb454':'#ff9a3c';o.beginPath();o.moveTo(a[0],a[1]);o.lineTo(b[0],b[1]);o.stroke();o.restore();
   o.font=`bold ${12*k}px ui-monospace,Consolas,monospace`;o.fillStyle=o.strokeStyle;o.textAlign='left';o.fillText(`thrust · misses CoM ${(T.miss*100).toFixed(T.miss<.1?1:0)} cm`,b[0]+6*k,b[1])}
 function overlay(o){
-  if(mode!=='editor'||typeof atHQ!=='undefined'&&atHQ||isEmpty(stackDef))return;thrustLine(o);const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
+  if(mode!=='editor'||typeof atHQ!=='undefined'&&atHQ||isEmpty(stackDef))return;thrustLine(o);const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)
+  o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
   if(st.loads&&!st.held){const seen=[];
     for(const p of S.parts){if(!p.on||!p.parent)continue;const f=certFrac(p);if(f==null||!isFinite(f))continue;const q=proj(p.jP);if(!q)continue;
       const c=f>1?'#ff6b6b':f>.7?'#ffb454':'#7dffa8';o.fillStyle=c;o.beginPath();o.arc(q[0],q[1],(f>.7?3.5:2.5)*k,0,7);o.fill();

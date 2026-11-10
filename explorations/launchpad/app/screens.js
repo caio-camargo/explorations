@@ -208,7 +208,8 @@ function progLayout(){const kids=[...$('program').children];if(!kids.length)retu
     else if(n.querySelector('[data-dk]'))box.inbox.unshift(n);   // a decision with a deadline: first thing you see
     else if(cur==='inbox'&&/^Standing/.test(n.textContent))box.contracts.splice(1,0,n);
     else box[cur].push(n)}
-  progGate=needCharter();   // (the charter is the title screen now, Q241 R3; the desk never shows unfounded)progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
+  progGate=needCharter();   // (the charter is the title screen now, Q241 R3; the desk never shows unfounded)
+  progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
   const nx=progGate?null:nextStep(),pn=$('progNext');pn.classList.toggle('hidden',!nx);   // what to do next (Q40), above the tabs
   if(nx)pn.innerHTML=`<b>NEXT</b> ${nx.title} <span class="dim">· ${nx.why}</span>${nx.how?` <span class="acc">· try ${nx.how}</span>`:''}<button data-ptab="${nx.tab}">${PROG_TABS.find(t=>t[0]===nx.tab)[1]} ▸</button>`;
   $('bBuild').disabled=progGate;$('bDebLast').classList.toggle('hidden',!DEBRIEF_LAST||progGate);$('bMC').classList.toggle('hidden',!netOpen()||progGate);

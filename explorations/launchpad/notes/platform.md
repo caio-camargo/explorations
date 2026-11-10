@@ -751,3 +751,16 @@ the menu with the Lunar on the table, and the Lunar's Petrel + Wren in a 40 km p
 
 **Left**: no keep-it switch (a satellite placed this way can't stay in the sandbox's register); RCS gas isn't in the tests
 (no preset carries RCS); no "landed elsewhere on Tellus" start; *Entering its sphere* is a flyby, not a captured free return.
+
+## v1.289 — five lines a `//` comment swallowed (2026-11-09, review fixes, QUEUE R4; REVIEW-2026-11-09)
+
+A note on the end of a line, then live code with no line break: the code was part of the comment. Each split back
+onto its own line, nothing else changed:
+- `app/editor.js` (since v1.236, Q436): the SAS mode button in use gets `.on` again.
+- `app/screens.js` (since v1.160): `progInbox` is counted again, so the Inbox badge (the tab, the HQ strip) shows.
+- `app/render.js`: `uSeam` and `setMarks` are reset after the debris pass, before the satellites and the rest.
+- `builder.js`: `overlay()` runs `o.save()` and sets its font again (`o.restore()` had run without a save).
+- `sim/ground.js`: Erebus's blade mask (`B`) is baked again; before, the channel stayed 0 and no ground read *blades*.
+  Erebus isn't live (stub body), so nothing flown changes.
+- Test: `ground-7` gained a blades check (79 of 4000 points; fails on the old line: B max 0). The four browser lines
+  have no test of their own; R3's lint (a `//` comment followed by statements) is the guard for the kind.
