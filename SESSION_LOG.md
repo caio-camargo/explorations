@@ -6975,3 +6975,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/state.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`,
   `ACTIVE_WORK.md`.
 - **Next:** Caio's look at TESTING 358 and 360; Q561, #157.
+
+## 2026-11-10 — generic worker (Opus, worktree launchpad-q202): the Hopper and the Beeper roll out stable (Q202, v1.299)
+
+- **Done:** PLAYTEST #36 (P3). Measured every preset's Rollout margin: only the Hopper (−0.047) and the Beeper (−0.053)
+  went negative, both supersonic. A second fin ring on each (the Passenger Orbiter's fix): +0.26 and +1.39 calibers, 1.5M
+  dearer, ~100 m/s less Δv. Not chosen: a neutral band in Rollout (hides real marginal designs), dropping the Beeper's cone.
+- **Checked:** full `node test.mjs`: one failure, vehicle-39's Beeper pin (1559 → 1468 m/s, expected; updated); new test
+  `vehicle-40` (every preset ≥ 0 calibers). vehicle-3/4/39/40 rerun: all passed.
+- **Not checked:** nothing on the GPU; the Rollout screen by eye (TESTING row 361).
+- **Files:** `sim/vessel.js` (PRESETS), `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`,
+  `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 361. The paused `vehicle` branch also touches `tests/vehicle.mjs` (it has two
+  vehicle-38s of its own); its merge may need vehicle-40's numbering checked.

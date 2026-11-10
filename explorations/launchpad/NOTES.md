@@ -132,6 +132,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.260 — a slow topple lies on its side: alive, damaged by the hit, buried antennas and wings out, no liftoff (2026-11-06, vehicle worker, QUEUE Q508, PLAYTEST #142)
 - v1.273 — every preset's standard climb, staged as designed, makes orbit unrescued; the Crewed Lunar "levelling off" was the test flier carrying its dry boosters; the Lunar class's upper stages are 0.39–0.75 g in vacuum (no preset changed) (2026-11-07, vehicle worker, QUEUE Q537)
 - Plan: solid motors as a main-stage choice: per-engine throttle, a grain set on the pad, solids per era, the Assembly's checks for a stage that can't stop (2026-11-07, vehicle worker, QUEUE Q252, PLAYTEST #51; plan only)
+- v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

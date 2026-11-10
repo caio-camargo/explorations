@@ -174,7 +174,9 @@ const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy'
 // A design is the core stack top→bottom; an entry is a part key, or {k, rad:{n, dec, stack}} for a part with a
 // radial group beside it: n copies of a side stack (top→bottom), bottoms level with that part's bottom.
 const PRESETS={
-  Hopper:['chute','pod','t2','fins','kestrel'],
+  // two fin rings on the Hopper and the Beeper (Q202, PLAYTEST #36): with one, both rolled out ⚠ unstable, −0.05 calibers
+  // supersonic; with two, Hopper +0.26, Beeper +1.39 (1.5M dearer, ~100 m/s less Δv), as the Passenger Orbiter's second ring
+  Hopper:['chute','pod','t2','fins','fins','kestrel'],
   // the Orbiter's upper stage carries a Tank 1 t besides its Tank 2 t (vehicle, PLAYTEST #121, 2026-10-30): flown by hand it
   // ran dry for Caio, the ◇ followed; a scripted ascent now leaves ~794 m/s in orbit, not ~425 (study_pilot.mjs), 57.5M not 55.8M
   Orbiter:['chute','pod','t2','t1','petrel','dec','t8','fins','kestrel'],
@@ -184,7 +186,7 @@ const PRESETS={
   // home. A nose cone over its chute (Q201, PLAYTEST #35): the bare capsule's shoulder took the ascent's heat (skin ~500 K,
   // so its 10-min cabin passed 330 K by T+212 s); under the cone the skin stays ~320 K and the cabin ~300 K. The cone moves the
   // centre of pressure forward (+0.94 → −0.67 calibers), so a second fin ring puts it back (+0.91; measured: 580 m/s spare in orbit)
-  Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
+  Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
   'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
   Satellite:null,   // set below, after toV2 (side parts on its frame)
   'TV Satellite':null,   // set below, after the bench's starters (a payload block)

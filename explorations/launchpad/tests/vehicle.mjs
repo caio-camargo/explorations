@@ -1008,9 +1008,9 @@
       if (s.evIdx < s.events.length && s.throttle > 0 && (api.activeEngines(s).length === 0 || staged && api.dvRemaining(s).cur <= 0.5)) api.stage(s);
       api.advPhys(s); }
     return { out: s.alive ? out : 'burned up', w, peak, burn, low, left: s.alive ? api.dvRemaining(s).tot : 0 }; };
-  // Δv left in orbit, m/s (v1.273)
+  // Δv left in orbit, m/s (v1.273; Beeper 1559 → 1468 with its second fin ring, Q202)
   const PIN = { Lunar: 4077, 'Crewed Lunar': 4653, 'Big Lunar': 4123, 'Sample Return': 4493, Probe: 4292, Orbiter: 799, Satellite: 715, 'TV Satellite': 3473,
-    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1559, Asparagus: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
+    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1468, Asparagus: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
   const R = Object.fromEntries(Object.keys(PIN).map(k => [k, fly(k)])), bad = [];
   for (const [k, r] of Object.entries(R)) { const lc = LUNAR.includes(k);
     if (r.out !== 'orbit' || r.w || Math.abs(r.left - PIN[k]) > 50 || lc && (r.peak >= 0.6 || !(r.low > 0.95 * T.atm))) bad.push(k); }
@@ -1021,4 +1021,15 @@
       + ` · the Crewed Lunar carrying its dry boosters: ${dry.out}, ${dry.w ? `${dry.w.why} at ${(dry.w.h / 1e3).toFixed(0)} km` : 'quiet'}, pod ${(dry.peak * 100).toFixed(0)} %`);
   for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
   api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
+}
+
+// vehicle-40. Every preset rolls out stable (worker session, QUEUE Q202, PLAYTEST #36): no stock design opens with Rollout's
+// "Aerodynamically unstable" line, which a newcomer can't act on. The Hopper and the Beeper were at −0.05 calibers supersonic
+// with one fin ring; a second ring puts them at +0.26 and +1.39. The margin is Rollout's own: the worse of full and supersonic.
+{
+  const cal = n => { const s = api.newShip(api.PRESETS[n]), A = api.analyze(s), c = r => (r.ycm - r.ycp) / (2 * s.radius); return Math.min(c(A.ful), c(A.sup)); };
+  const M = Object.fromEntries(Object.keys(api.PRESETS).map(n => [n, cal(n)])), neg = Object.keys(M).filter(n => !(M[n] >= 0));
+  check('vehicle-40: every preset rolls out stable in the air (Rollout\'s margin, the worse of full and supersonic, ≥ 0 calibers)',
+    !neg.length && M.Hopper > 0.15 && M.Beeper > 0.15,
+    (neg.length ? `unstable: ${neg.join(', ')} · ` : '') + Object.entries(M).map(([n, m]) => `${n} ${m.toFixed(2)}`).join(', '));
 }

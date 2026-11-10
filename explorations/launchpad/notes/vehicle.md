@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-10
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2305,3 +2305,29 @@ precise vacuum kick.
    Sounding preset's Sparrow swapped for an Ember (solids from flight one; career numbers move).
 6. **Thrust-termination ports** on the late vacuum solid (**default yes**, era 2 onward, one cut). Or never: a solid never
    stops, full stop.
+
+## v1.299 — the Hopper and the Beeper roll out stable (2026-11-10, worker session, QUEUE Q202, PLAYTEST #36)
+
+**The report** (robot, TESTING row 157): Rollout opened the stock Hopper with ⚠ *Aerodynamically unstable (−0.05 calibers):
+only steering keeps it straight*; the Beeper too. A preset shouldn't open with a warning a newcomer can't act on.
+
+**Measured** (Rollout's margin: the worse of `analyze`'s full and supersonic, `(ycm − ycp) / 2r`), every preset before the fix:
+Hopper +0.02 full / **−0.047** supersonic, Beeper +0.24 / **−0.053**; every other preset positive (lowest: Asparagus +0.04
+supersonic). Both were neutral within a whisker, unstable only once supersonic, where the centre of pressure moves forward.
+
+| Candidate | Margin (worse) | Cost | Δv on the pad |
+|---|---|---|---|
+| Hopper, one fin ring (was) | −0.05 | 36.4M | 1,560 m/s |
+| Hopper, two fin rings | **+0.26** | 37.9M | 1,454 m/s |
+| Beeper, one fin ring (was) | −0.05 | 50.8M | 2,619 m/s |
+| Beeper, two fin rings | **+1.39** | 52.3M | 2,539 m/s |
+| Beeper without its nose cone | +3.29 | 49.8M | 2,660 m/s |
+
+**Chosen:** a second fin ring on both, the fix the Passenger Orbiter already carries (its cone needed one too). Not chosen:
+treating −0.05 as neutral in Rollout (it would hide a real marginal design the player built), and dropping the Beeper's cone
+(it shields what's under it on the way up; the Passenger Orbiter's cone was added for exactly that, Q201). The Beeper's
+scripted climb now leaves **1,468 m/s** in orbit (was 1,559; vehicle-39's pin). The Hopper's other tests (the topple stand,
+impact prediction, the short-for-orbit warning, afloat) pass unchanged.
+
+**Test** `vehicle-40`: every preset's Rollout margin ≥ 0, the Hopper and the Beeper above +0.15. A new preset that rolls out
+unstable fails it.
