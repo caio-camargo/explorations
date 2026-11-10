@@ -2503,3 +2503,32 @@ the visual effect of decoupling") and #160 ("could have more oomph, like maybe s
 - Test `aerofx-54`. **Seen on the GPU:** the first frames of a separation in orbit (the cloud at the seam, the target
   holding and then easing). **Not seen:** the gas and flecks moving over the following seconds; the machine ran out
   of memory under other sessions' work and headless Chrome stalled. TESTING row 358 is the check.
+
+## v1.297 — The whole exhaust trail (2026-11-10, review session, QUEUE Q566)
+
+PLAYTEST #161, Caio's design note: "the player should be able to see the full smoke trail from the launch pad as the
+rocket leaves the atmosphere, for the aesthetics of the launch".
+
+Two things removed the trail's pad end long before that. A trail puff lived 110–170 s (an ascent leaves the air in
+3–5 min). And the list held 4000 puffs while `emitSmoke` lays them 0.35 widths apart per engine, under a metre apart
+off the pad: a three-engine rocket lays 14 000 by 33 km (the test's model), so the oldest were dropped within the
+first kilometres.
+
+- **Life:** `TRAIL_LIFE` 420 s × (1–1.3), 7–9 min. Opacity still falls linearly with age, so the pad end is at about
+  half strength when the craft leaves the air and gone a few minutes into the coast.
+- **Thinning:** a puff 1.3 m across at birth is 30 m across half a minute later, and most of its neighbours add
+  nothing. `trailThin` (twice a second) walks the trail in the order it was laid and retires a puff when its two
+  neighbours are within `TRAIL_GAP` (0.6) of a radius of each other, so no step along the trail ever exceeds that
+  (it was laid at ~0.7). A retired puff fades over 3 s (`q.kt`), no pop. First try: drop any puff too near the last
+  one kept. That left holes of 2 radii, since a kept puff can go later, after the ones dropped for it. The model:
+  14 379 puffs laid, at most 3 221 held, 914 from the pad to 33 km at 300 s; nine engines: at most 5 445.
+- **The list:** `SMOKE_MAX` 6000 for the trail (was 4000), and when full it gives up a fading puff before the oldest
+  (`smokeDrop`), which is the pad end.
+- **A least size on screen** (`drawSmoke`, every puff): one that would be under 1.5 px wide is drawn at 1.5 px and
+  thinner by the same ratio, so the far end of the trail is a steady thin line instead of puffs that flicker in and
+  out between pixels. From the top of the air the pad end is ~100 m wide at 100–200 km: about a pixel.
+- **Not changed:** the trail still ends at ~33 km (no visible exhaust above), and the pad's ground cloud still lasts
+  40–70 s. No air between the camera and a far puff: the trail is as white at 150 km as next to the camera.
+- Test `aerofx-55` (the model above; a short life or a wider gap fails it). **Not seen on the GPU:** another session
+  held the GPU and free memory was 0.6 GB. `drawSmoke`'s part (the fade, the least size) ran on a stub GL only (in the test).
+  TESTING row 359.

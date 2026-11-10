@@ -427,6 +427,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.290 — the resolution scaler uses the frame it has: an 11 ms budget, steps sized by their cost, a probe without timers (2026-11-09, review session, QUEUE Q559)
 - v1.291 — a sharpening upscale: the canvas at device pixels, Catmull-Rom and a clamped sharpen, the grain at device pixels (2026-11-09, review session, QUEUE Q560)
 - v1.295 — staging: the camera eases onto the craft (a spring over the centre-of-mass jump), and a stronger separation: flash, two gas rings, flecks, all falling with the craft (2026-11-10, review session, Q564) → [notes/look.md](notes/look.md)
+- v1.297 — the whole exhaust trail: puffs live 7–9 min, the trail is thinned as its puffs widen so the list holds it from the pad up, a least size on screen (2026-11-10, review session, Q566) → [notes/look.md](notes/look.md)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

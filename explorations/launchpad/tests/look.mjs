@@ -517,7 +517,7 @@
   const pr = page.match(/hypergolic:\{[^}]*so:\[([^\]]*)\][^}]*pf:([\d.]+)\}/), so = pr && pr[1].split(',').map(Number);
   const brown = pr && +pr[2] > 0 && so[2] > so[1] && so[1] > so[0];
   const hg = cs => .5 * (.51 / Math.pow(1.49 - 1.4 * cs, 1.5) + 1) / 12.566, fwd = hg(1) / hg(-1);
-  const trail = /rho<0\.006\)return;/.test(page) && /smoke\.length>4000\)smoke\.shift\(\);/.test(page) && /life:110\+Math\.random\(\)\*60,/.test(page)
+  const trail = /rho<0\.006\)return;/.test(page) && /smoke\.length>SMOKE_MAX\)smokeDrop\(smoke\);/.test(page) && /life:TRAIL_LIFE\*\(1\+\.3\*Math\.random\(\)\),/.test(page)   /* (Q566) the trail's life and list: aerofx-55 */
     && /Math\.exp\(-\(\(\(h-11000\)\/4000\)\*\*2\)\),th=h\/6000/.test(page) && !/q\.wf/.test(page);
   check('flames slice 1: vacuum glow cools with expansion, sunlight scatters forward (none in shadow), turbulent core, Mach disk, kerolox curtain, a brown hypergolic puff; a longer, sheared contrail',
     shader && wired && brown && fwd > 10 && trail, `shader ${shader} · wired ${wired} · hypergolic puff ${brown} (so ${so}) · forward/back scattering ${fwd.toFixed(0)}× · contrail ${trail}`);
@@ -1236,7 +1236,18 @@
   // the trail as it stands at 300 s: it starts at the pad, ends at 33 km, and no step along it is wider than a puff's half-width
   let gap = 0, gAt = 0; for (let k = 1; k < L.length; k++) { const g = (L[k].pf[0] - L[k - 1].pf[0]) / Math.min(sz(L[k]), sz(L[k - 1])); if (g > gap) { gap = g; gAt = L[k].pf[0] } }
   const whole = L.length > 100 && L[0].pf[0] < 30 && L.at(-1).pf[0] > 32500 && gap < .7, alive = L.every(q => T - q.t0 < q.life) && TRAIL_LIFE >= 400;
+  // drawSmoke itself, on a GL that does nothing: a far puff is brought up to 1.5 px and thinned by the same ratio, a near
+  // one is left alone, a retired one is half gone after 1.5 s and out of the list after 3
+  const k0 = pg.indexOf('let smokeV='), k1 = pg.indexOf('const rcsSeen', k0);
+  const G = new Function(src + `const smoke=[],H=1000,FC=1,SUN=[1,0,0],PLT={p:[0,0,0,0],c:[0,0,0],p2:[0,0,0,0],c2:[0,0,0]},smokeVAO=0,smokeBuf=0,PSMOKE={p:0,u:{}},PMESH={p:0};
+    const gl=new Proxy({},{get:()=>()=>{}}),lightEnv=()=>({sun:[1,1,1],sky:[0,0,0],gnd:[0,0,0]});` + pg.slice(k0, k1) +
+    `;return{smoke,drawSmoke,get P(){return smokeP},TELLUS,toPF,set t(v){simT=v}}`)();
+  G.t = 0; const cam = [G.TELLUS.R + 100e3, 0, 0], puff = (d, o = {}) => ({ pf: G.toPF(G.TELLUS, [G.TELLUS.R + 100e3 - d, 0, 0], 0), t0: 0, s0: 50, grow: 0, a0: .4, life: 1000, rise: 0, seed: 1, ux: 1, uy: 0, uz: 0, wx: 0, wy: 0, wz: 0, ...o });
+  G.t = 0; G.smoke.push(puff(100e3), puff(1000), puff(1000, { kt: -1.5 }), puff(1000, { kt: -3.5 })); let drew = '';
+  try { G.drawSmoke(new Float32Array(16), cam, [0, 0, 1], [0, 1, 0]) } catch (e) { drew = String(e) }
+  const far = [G.P[3], G.P[4]], near = [G.P[9], G.P[10]], fade = G.P[16];
+  const drawOk = !drew && G.smoke.length === 3 && Math.abs(far[0] - 82) < .5 && Math.abs(far[1] - .4 * 50 / 82) < .005 && near[0] === 50 && Math.abs(near[1] - .4) < 1e-9 && Math.abs(fade - .2) < 1e-9;
   check('the exhaust trail lasts the climb (Q566): thinned as its puffs widen it fits the list from the pad to 33 km, as solid as it was laid, 300 s after liftoff; unthinned it would overflow and lose the pad end',
-    whole && alive && A.peak < SMOKE_MAX * .6 && B.peak > SMOKE_MAX && TRAIL_GAP < .7 && Math.min(...N.list.map(q => q.pf[0])) < 30 && N.list.length > 100,
-    `${A.laid} puffs laid; at most ${A.peak} held with thinning (the list takes ${SMOKE_MAX}), ${B.peak} without; at 300 s ${L.length} puffs from ${L[0].pf[0].toFixed(0)} m to ${(L.at(-1).pf[0] / 1000).toFixed(1)} km, the widest step ${gap.toFixed(2)} of a puff's half-width (at ${(gAt / 1000).toFixed(1)} km); nine engines: at most ${N.peak} held, the trail still starts at ${Math.min(...N.list.map(q => q.pf[0])).toFixed(0)} m`);
+    whole && alive && A.peak < SMOKE_MAX * .6 && B.peak > SMOKE_MAX && TRAIL_GAP < .7 && Math.min(...N.list.map(q => q.pf[0])) < 30 && N.list.length > 100 && drawOk,
+    `${A.laid} puffs laid; at most ${A.peak} held with thinning (the list takes ${SMOKE_MAX}), ${B.peak} without; at 300 s ${L.length} puffs from ${L[0].pf[0].toFixed(0)} m to ${(L.at(-1).pf[0] / 1000).toFixed(1)} km, the widest step ${gap.toFixed(2)} of a puff's half-width (at ${(gAt / 1000).toFixed(1)} km); nine engines: at most ${N.peak} held, the trail still starts at ${Math.min(...N.list.map(q => q.pf[0])).toFixed(0)} m; drawn: ${drew || `a 50 m puff at 100 km is ${far[0].toFixed(0)} m at opacity ${far[1].toFixed(2)} (was 0.40), at 1 km ${near[0]} m at ${near[1].toFixed(2)}, retired 1.5 s ago ${fade.toFixed(2)}, ${G.smoke.length} of 4 left`}`);
 }

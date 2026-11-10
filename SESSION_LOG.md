@@ -6954,3 +6954,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/program.js`, `sim/record.js`, `app/state.js`, `app/program-ui.js`, `tests/platform.mjs`,
   `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R1c ✓), `ACTIVE_WORK.md`.
 - **Next:** R1d (the loader fills a save from the table), then R16 (the core bound's Infinity).
+
+## 2026-11-10 — review session (Fable, worktree launchpad-sharp): the whole exhaust trail (Q566, v1.297)
+
+- **Done:** PLAYTEST #161 (Caio's design note: the full trail from the pad visible as the rocket leaves the air).
+  Trail puffs live 7–9 min (was under 3); `trailThin` retires puffs as the trail widens so the list (6000) holds it
+  from the pad up; a full list drops fading puffs first; `drawSmoke` draws sub-pixel puffs at 1.5 px, thinner.
+- **Checked:** test `aerofx-55` (a model ascent: 14 379 puffs laid, at most 3 221 held, whole at 300 s, no step over
+  0.6 of a radius; nine engines 5 445; mutations caught); smoke all passed.
+- **Not checked:** nothing on the GPU (another session held the lock; 0.6 GB of memory free). `drawSmoke`'s changes
+  ran on a stub GL only (in `aerofx-55`). The cost of longer-lived wide puffs when the camera looks down the trail. TESTING row 359.
+- **Lesson:** a command chain that pipes the smoke run through `grep | tail` does not stop on a failure; the merge of
+  v1.295 was pushed with a broken test file for one commit that way. Check the run's last line before merging.
+- **Files:** `app/state.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`,
+  `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 357–359; Q561, #157.
