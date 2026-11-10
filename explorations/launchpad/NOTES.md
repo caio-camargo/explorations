@@ -427,7 +427,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.290 — the resolution scaler uses the frame it has: an 11 ms budget, steps sized by their cost, a probe without timers (2026-11-09, review session, QUEUE Q559)
 - v1.291 — a sharpening upscale: the canvas at device pixels, Catmull-Rom and a clamped sharpen, the grain at device pixels (2026-11-09, review session, QUEUE Q560)
 - v1.295 — staging: the camera eases onto the craft (a spring over the centre-of-mass jump), and a stronger separation: flash, two gas rings, flecks, all falling with the craft (2026-11-10, review session, Q564) → [notes/look.md](notes/look.md)
-- v1.297 — the whole exhaust trail: puffs live 7–9 min, the trail is thinned as its puffs widen so the list holds it from the pad up, a least size on screen (2026-11-10, review session, Q566) → [notes/look.md](notes/look.md)
+- v1.298 — the whole exhaust trail: puffs live 7–9 min, the trail is thinned as its puffs widen so the list holds it from the pad up, a least size on screen (2026-11-10, review session, Q566) → [notes/look.md](notes/look.md)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
@@ -455,4 +455,5 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.292 — the `PROG` schema: `PROG_SCHEMA` (87 fields: default, what New program does, what it is) and `progFresh`; nothing calls it yet; a new field needs a row (test platform-6) (2026-11-10, review fixes, QUEUE R1a)
 - v1.293 — one reset: `programNew` for New program and career.mjs; nothing from the old career survives (R17); career.mjs rows independent of the rows before (new baseline: mean final 654 M) (2026-11-10, review fixes, QUEUE R1b)
 - v1.294 — the solar wing's cells: each wing panel 4 × 4 modules of small cells (grey interconnects, white substrate between modules, a contact bar and fingers), each cell its own blue and its own cover-glass tilt, violet at a grazing look; the body cells the same (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.294)
+- v1.297 — the cells' grid lines keep their true coverage from afar (`linc`), so a wing stays blue as you zoom out; the wing's panels unfold together over 6 s (was one after another over 4 s) (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.297; committed as "v1.295", renumbered)
 - v1.296 — one serializer: `progJSON`/`progRestore` for the save, revert, simulator, flights from orbit and the recorder; the tester is told of values JSON would lose (R16 named) (2026-11-10, review fixes, QUEUE R1c)

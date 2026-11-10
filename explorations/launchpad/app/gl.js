@@ -583,6 +583,9 @@ float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i
 // lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
 float lin(float x,float per,float hw,float fw){float d=abs(fract(x/per+.5)-.5)*per,l=1.-smoothstep(hw,hw+fw*1.5,d);return mix(2.*hw/per,l,smoothstep(per*.5,per*.12,fw));}
 // sqw: square wave, 1 on the first half of each unit cycle of x (fw = footprint in cycles)
+// (Q565) a line that keeps its true coverage: under a pixel wide it is drawn a pixel wide and dimmed by the ratio, so
+// thin lines fade with distance instead of holding a 1–2 px width (lin keeps ~1.5 px and paints a fine grid too bright)
+float linc(float x,float per,float hw,float fw){float d=abs(fract(x/per+.5)-.5)*per,w=max(hw,fw*.5);return mix((1.-smoothstep(w-fw*.5,w+fw*.5,d))*hw/w,2.*hw/per,smoothstep(per*.3,per,fw));}
 float sqw(float x,float fw){fw=min(fw,.25);return mix(.5,smoothstep(.25-fw,.25+fw,abs(fract(x-.25)-.5)),smoothstep(.5,.2,fw));}
 // band: inside [a,b]
 float band(float x,float a,float b,float fw){fw=fw*.75+1e-5;return smoothstep(a-fw,a+fw,x)*(1.-smoothstep(b-fw,b+fw,x));}
@@ -695,8 +698,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
     // a wing panel is 4 × 4 modules with 6 mm of substrate between them; a body tile is one module. Cells ~2.4 × 4.6 cm,
     // portrait, 0.6 mm apart, a silver contact bar along each one's foot and fine fingers up it
     vec2 mp=W>.3?vec2(W,vU.w)/4.:vec2(W,vU.w),nc=max(vec2(1.),floor(mp/vec2(.024,.046)+.5)),cp=mp/nc,id=floor(q/cp),cf=fract(q/cp)*cp;
-    float mg=W>.3?max(lin(q.x,mp.x,.003,fw.x),lin(q.y,mp.y,.003,fw.y)):0.,cg=max(lin(q.x,cp.x,.0003,fw.x),lin(q.y,cp.y,.0003,fw.y)),gap=max(mg,cg*.8);
-    float bar=band(cf.y,.0008,.0024,fw.y)*(1.-gap),fg=lin(q.x+cp.x*.25,cp.x/8.,.00012,fw.x)*(1.-gap)*(1.-bar);
+    float mg=W>.3?max(linc(q.x,mp.x,.003,fw.x),linc(q.y,mp.y,.003,fw.y)):0.,cg=max(linc(q.x,cp.x,.0003,fw.x),linc(q.y,cp.y,.0003,fw.y)),gap=max(mg,cg*.8);
+    float bar=band(cf.y,.0008,.0024,fw.y)*(1.-gap),fg=linc(q.x+cp.x*.25,cp.x/8.,.00012,fw.x)*(1.-gap)*(1.-bar);
     float r1=hh(id+vec2(13.1,7.7)),r2=hh(id.yx+vec2(3.3,1.9)),r3=hh(id+vec2(41.,17.)),fd=smoothstep(.012,.003,max(fw.x,fw.y));
     vec3 cb=alb*mix(vec3(.82,.88,1.),vec3(1.12,.94,1.1),r1)*(.86+.28*r2*fd+.14*(1.-fd));   // each cell its own blue; the spread averages out from afar
     float gz=1.-abs(dot(normalize(vN),V));cb*=mix(vec3(1.),vec3(1.7,1.,1.45),gz*gz*gz);   // the coating turns violet at a grazing look
@@ -1497,7 +1500,7 @@ function fairSeams(out,pr,o){for(const a of[0,Math.PI]){const c=Math.cos(a),sn=M
 // doorT for bay doors), and the drawing follows its fraction in sim time, so it pauses and warps with the game: a wing's
 // boom slides out and its panels unfold one after another (4 s), a boom antenna swings up and out, then extends (3 s), a
 // leg swings down (1.6 s). No stamp (set in the Assembly, a loaded save): at once. 0 stowed … 1 out
-const DEP_S={wing:4,ant:3,leg:1.6};
+const DEP_S={wing:6,ant:3,leg:1.6};   // (Q565, Caio) the wing 4 → 6 s, its panels opening together
 function depF(p){const on=!!p.dep;if(p.depT==null)return on?1:0;const T=p.d.kind==='leg'?DEP_S.leg:p.d.wing?DEP_S.wing:DEP_S.ant,f=clamp((simT-p.depT)/T,0,1);return on?f:1-f}
 const depKey=s=>s?s.parts.filter(p=>p.on&&p.depT!=null).map(p=>Math.round(depF(p)*40)).join():'';
 function partBody(out,p){
@@ -1617,8 +1620,8 @@ function partBody(out,p){
     // framed panels (its plane holds n and y, as power.js assumes)
     case'wpanel':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r],CELL=[.08,.11,.28,4];
       const f=depF(p);if(f>0){const L=d.span,w=L/4,b0=.13+.47*sstep(0,.25,f),u=clamp((f-.25)/.75,0,1);tube(out,P(.02,h/2),P(b0-.05,h/2),.03,C.ST,6);rbox(out,P(b0-.03,h/2),.03,h*.5,.025,C.D,a);   // boom, yoke
-        // (Q411) the panels unfold one after another, an accordion hinged at alternate edges
-        let H=P(b0,h/2);for(let k=0;k<4;k++){const g=sstep(0,1,u*4-k),th=(1-g)*Math.PI/2*(k%2?-1:1),dr=[Math.cos(a+th),0,Math.sin(a+th)],fo=(1-g)*k*.02,c=[H[0]+dr[0]*w/2+n[0]*fo,H[1],H[2]+dr[2]*w/2+n[2]*fo];
+        // (Q411) the panels unfold as an accordion hinged at alternate edges; (Q565, Caio) all together, not one after another
+        let H=P(b0,h/2);for(let k=0;k<4;k++){const g=sstep(0,1,u),th=(1-g)*Math.PI/2*(k%2?-1:1),dr=[Math.cos(a+th),0,Math.sin(a+th)],fo=(1-g)*k*.02,c=[H[0]+dr[0]*w/2+n[0]*fo,H[1],H[2]+dr[2]*w/2+n[2]*fo];
           rboxUV(out,c,w/2-.015,h/2-.02,.008,CELL,a+th);rbox(out,c,w/2,h/2,.004,C.ST,a+th);H=[H[0]+dr[0]*w,H[1],H[2]+dr[2]*w]}   // cells on a frame
         if(u>=1){rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}}   // the wing's edge spars, once flat
       else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover

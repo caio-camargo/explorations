@@ -6954,8 +6954,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/program.js`, `sim/record.js`, `app/state.js`, `app/program-ui.js`, `tests/platform.mjs`,
   `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R1c ✓), `ACTIVE_WORK.md`.
 - **Next:** R1d (the loader fills a save from the table), then R16 (the core bound's Infinity).
+- **Follow-up, v1.297** (committed as "v1.295" in `0ebf6c0`: Q564 had taken v1.295 and TESTING 358 minutes before; renumbered,
+  TESTING 359). Caio: the module lines kept their width zoomed out and the wing went white; and the panels should unfold
+  all at once, a bit slower. `linc` (lines under a pixel dimmed to their true coverage) in the cell branch; all panels on
+  one hinge curve, `DEP_S.wing` 4 → 6 s. Zoom series 3–40 m and mid-unfold stills checked; aerofx-41, -53 pass.
+  **Vehicle:** your branch moved `DEP_S` into sim/flight.js; keep wing 6 when you merge.
 
-## 2026-11-10 — review session (Fable, worktree launchpad-sharp): the whole exhaust trail (Q566, v1.297)
+
+## 2026-11-10 — review session (Fable, worktree launchpad-sharp): the whole exhaust trail (Q566, v1.298)
 
 - **Done:** PLAYTEST #161 (Caio's design note: the full trail from the pad visible as the rocket leaves the air).
   Trail puffs live 7–9 min (was under 3); `trailThin` retires puffs as the trail widens so the list (6000) holds it
@@ -6963,9 +6969,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checked:** test `aerofx-55` (a model ascent: 14 379 puffs laid, at most 3 221 held, whole at 300 s, no step over
   0.6 of a radius; nine engines 5 445; mutations caught); smoke all passed.
 - **Not checked:** nothing on the GPU (another session held the lock; 0.6 GB of memory free). `drawSmoke`'s changes
-  ran on a stub GL only (in `aerofx-55`). The cost of longer-lived wide puffs when the camera looks down the trail. TESTING row 359.
+  ran on a stub GL only (in `aerofx-55`). The cost of longer-lived wide puffs when the camera looks down the trail. TESTING row 360.
 - **Lesson:** a command chain that pipes the smoke run through `grep | tail` does not stop on a failure; the merge of
   v1.295 was pushed with a broken test file for one commit that way. Check the run's last line before merging.
 - **Files:** `app/state.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`,
   `ACTIVE_WORK.md`.
-- **Next:** Caio's look at TESTING 357–359; Q561, #157.
+- **Next:** Caio's look at TESTING 358 and 360; Q561, #157.

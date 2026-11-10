@@ -962,7 +962,7 @@
 }
 
 // aerofx-41. Deploying animates (look & sound effects beat, QUEUE Q411): the sim stamps p.depT when a wing, boom antenna
-// or leg starts out or back (wingOp, legOp); depF follows it in sim time (wing 4 s, antenna 3 s, leg 1.6 s), at once with
+// or leg starts out or back (wingOp, legOp); depF follows it in sim time (wing 6 s since Q565, antenna 3 s, leg 1.6 s), at once with
 // no stamp; the wing's panels unfold one after another, the antenna swings then extends, the leg swings down; the ship's
 // mesh is rebuilt while a fraction moves.
 {
@@ -970,12 +970,12 @@
   const src = page.slice(page.indexOf('const DEP_S='), page.indexOf('const depKey='));
   const F = (simT, p) => new Function('simT', 'clamp', src + 'return depF')(simT, (x, a, b) => Math.min(b, Math.max(a, x)))(p);
   const W = { d: { kind: 'solar', wing: true } }, L = { d: { kind: 'leg' } };
-  const vals = [F(5, { ...W, dep: true }), F(2, { ...W, dep: true, depT: 0 }), F(4, { ...W, dep: true, depT: 0 }), F(0.8, { ...L, dep: true, depT: 0 }), F(0.8, { ...L, dep: false, depT: 0 }), F(9, { ...L, dep: false, depT: 0 })];
+  const vals = [F(5, { ...W, dep: true }), F(3, { ...W, dep: true, depT: 0 }), F(6, { ...W, dep: true, depT: 0 }), F(0.8, { ...L, dep: true, depT: 0 }), F(0.8, { ...L, dep: false, depT: 0 }), F(9, { ...L, dep: false, depT: 0 })];
   const fr = vals[0] === 1 && vals[1] === .5 && vals[2] === 1 && vals[3] === .5 && vals[4] === .5 && vals[5] === 0;
   const stamp = /p\.dep=o;p\.depT=simT;n\+\+;/.test(H) && /\{p\.dep=dn;p\.depT=simT;n\+\+\}/.test(H);
-  const draw = (page.match(/const f=depF\(p\);if\(f>0\)\{/g) || []).length === 3 && /let H=P\(b0,h\/2\);for\(let k=0;k<4;k\+\+\)\{const g=sstep\(0,1,u\*4-k\)/.test(page)
+  const draw = (page.match(/const f=depF\(p\);if\(f>0\)\{/g) || []).length === 3 && /let H=P\(b0,h\/2\);for\(let k=0;k<4;k\+\+\)\{const g=sstep\(0,1,u\),/.test(page)
     && /const k=bayKey\(S\)\+'\|'\+depKey\(S\);/.test(page) && /bayKey\(v\)\+'\|'\+depKey\(v\)/.test(page);
-  check('deploying animates: stamped by the sim, followed in sim time (at once without a stamp), panel by panel; the mesh rebuilt while it moves', fr && stamp && draw,
+  check('deploying animates: stamped by the sim, followed in sim time (at once without a stamp), the panels together; the mesh rebuilt while it moves', fr && stamp && draw,
     `fractions ${vals.join(', ')} · stamps ${stamp} · drawing ${draw}`);
 }
 

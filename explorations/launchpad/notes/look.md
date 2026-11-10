@@ -2504,7 +2504,23 @@ the visual effect of decoupling") and #160 ("could have more oomph, like maybe s
   holding and then easing). **Not seen:** the gas and flecks moving over the following seconds; the machine ran out
   of memory under other sessions' work and headless Chrome stalled. TESTING row 358 is the check.
 
-## v1.297 — The whole exhaust trail (2026-11-10, review session, QUEUE Q566)
+## v1.297 — The cells from afar; the wing opens at once (2026-11-10, look & sound, parts & pad, QUEUE Q565)
+
+Caio on v1.294: "as I zoom out the white grid lines, the bigger ones, seem to stay the same size and it looks more white
+than blue"; and "it would be nicer if they unfolded all at once, a bit slower".
+
+- **`linc`** (MESH_FS, beside `lin`): `lin` never draws a line under ~1.5 px and only fades to its average once the
+  period is under ~2–8 px, so the 6 mm module gaps held 1–2 px from 3 m to 20 m and painted the wing white. `linc` draws
+  a line under a pixel at a pixel's width dimmed by true width ÷ drawn width (its coverage stays 2·hw/per at every
+  distance), and fades to the average once the period is under ~3 px. Used only in the cell branch; `lin`'s other
+  callers are untouched. Zoom series 3–40 m old vs new: the new stays blue, the lines fade.
+- **Unfolding:** every panel's hinge follows the same `sstep(0,1,u)`, so the accordion opens as one; `DEP_S.wing` 4 → 6 s
+  (the boom's slide still the first quarter, 1.5 s). **Vehicle (branch `vehicle`, DEP_S moved into sim/flight.js):**
+  keep 6 for the wing when you merge; with Q457 the sim counts the wing out at 6 s.
+- **Test:** aerofx-41's fractions for 6 s and its drawing check (one `sstep(0,1,u)` for all panels). TESTING 359. (Committed as "v1.295" with TESTING 358: both taken by Q564 minutes before; renumbered.)
+
+
+## v1.298 — The whole exhaust trail (2026-11-10, review session, QUEUE Q566)
 
 PLAYTEST #161, Caio's design note: "the player should be able to see the full smoke trail from the launch pad as the
 rocket leaves the atmosphere, for the aesthetics of the launch".
@@ -2531,4 +2547,4 @@ first kilometres.
   40–70 s. No air between the camera and a far puff: the trail is as white at 150 km as next to the camera.
 - Test `aerofx-55` (the model above; a short life or a wider gap fails it). **Not seen on the GPU:** another session
   held the GPU and free memory was 0.6 GB. `drawSmoke`'s part (the fade, the least size) ran on a stub GL only (in the test).
-  TESTING row 359.
+  TESTING row 360.
