@@ -7002,4 +7002,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** launchpad `mockups/faces2/index.html` (new), `FACES.md` 0.1.6 (§ 7), `mockups/README.md` 0.1.22 (§ faces2);
   `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/faces2/`. The first lab is untouched.
 - **Next:** Caio's look at faces2 (continue this construction?). Then eyes (lids, lashes), ears, hair masses, range tests.
+- **Follow-up, same session: MakeHuman's shape library (faces3).** Caio asked how faces2 compares with other face
+  creators, then chose to start from a validated library. MakeHuman's mesh, targets and expressions are CC0 (licence
+  read). `mockups/faces3/`: `bake_mh.py` (head cut out: 4,516 points, 114 sliders, macros, 34 expression units),
+  `mh-head.js` (0.72 MB), `index.html`. **Seen on the GPU:** a sound human head at once, working expressions, varied
+  people; realistic, not carved; exaggerating every slider gives monsters. **Not checked:** sliders one by one, 48 px.
+  **Open with Caio:** where the style comes from (FACES § 8: the cage riding on this head, our own stylising shapes,
+  or light and paint only). Files: `mockups/faces3/*` (new), `FACES.md` 0.1.7, `mockups/README.md` 0.1.23.
 

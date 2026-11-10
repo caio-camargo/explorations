@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.22 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.23 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -331,6 +331,15 @@ them), open eyes (a carved upper-lid ledge, painted iris, a catchlight), lips wr
 base with nostril wings, a shorter thicker neck (Thunderbirds' ratio) and a broader jaw, painted warmth and tinted lips.
 
 **Pick:** _(Caio)_
+
+## faces3/ — the face engine on MakeHuman's shape library ([`FACES.md`](../FACES.md) § 8)
+
+`faces3/index.html` (2026-11-10): MakeHuman's head, feature sliders, sex / age / population / weight macros and
+expression units (CC0, public domain) under faces2's light and paint. `mh-head.js` is the baked data; `bake_mh.py`
+makes it from a MakeHuman checkout. **Edit**: about 160 sliders in folded groups, *Exaggerate*, a view that turns.
+**Sheet**: twelve generated people. URL: `?mode=edit|sheet`, `?dna=F3:...`, `?seed=`. Stills:
+`output/launchpad/mockups/faces3/` (`average.png`, `sheet.png`, `sheet-exaggerate-2.png`, `old-man-smile.png`).
+Realistic, not yet carved; FACES § 8 lists what was seen and the open style question.
 
 ## faces2/ — the face engine, second construction ([`FACES.md`](../FACES.md) § 7)
 

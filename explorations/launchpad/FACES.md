@@ -1,6 +1,6 @@
 # FACES — the face engine
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
-**Status**: **a second construction is on trial (2026-11-10, § 7)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -249,3 +249,34 @@ signatures, DNA) and replaces the construction:
 **Known rough:** the eyes stare (no lid thickness, no lash line); a pinch at the inner eye corner; ears are plain
 slabs; the hairline waves where the shell steps down the cage; nostrils are not modelled; no expressions, no
 breeding tab, no archetypes yet (the first lab's are in its file, in the old gene space).
+
+## 8. A borrowed shape library: MakeHuman (2026-11-10, Caio: "start with something already validated")
+
+**How faces2 compares with other creators.** One surface with a fixed layout, deformed by parameters, is what every
+3D creator in § 2 does; faces2 is that. What differs is the source of the shapes: theirs come from artists or scans,
+ours were typed by hand. And faces2's cage is a plain grid, where made heads run rings of edges round the eyes and mouth.
+
+**MakeHuman** (github.com/makehumancommunity/makehuman) supplies exactly those two things. Its base mesh, targets and
+expressions are **CC0 1.0** (public domain; its `LICENSE.md` § C, read 2026-11-10; the program's code is AGPL and is
+not used). [`mockups/faces3/bake_mh.py`](mockups/faces3/bake_mh.py) cuts the head out of it: 4,516 points, 114
+feature sliders (left and right merged), macros for sex, age, three populations and weight, and 34 expression units,
+in `mh-head.js` (0.72 MB). [`mockups/faces3/index.html`](mockups/faces3/index.html) draws it with faces2's light and
+paint, a hair shell, a generator, and *Exaggerate* (a face's difference from the average face, multiplied).
+
+**Seen** (GPU, by eye; stills in `output/launchpad/mockups/faces3/`):
+- The average head is a sound human head at once: ears, lids, nostrils, lips. One slider change takes 8–30 ms.
+- Expressions work on any face (an old man's smile, with its folds: `old-man-smile.png`). That is stage F7, for free.
+- Sex, age, population and weight give plainly different people (`sheet.png`).
+- **It is realistic, not carved.** None of the deco or puppet style is in it.
+- **Exaggerating everything fails.** At ×2 the sheet is monsters (`sheet-exaggerate-2.png`): § 3's rule (push one to
+  three features, keep the rest quiet) holds here too.
+- Rough: the generator moves all 107 feature sliders at once and leaves dents; the hair shell's edge is jagged (it
+  follows the mesh's quads); the painted eyebrows land in the wrong place; the neck's cut edge is ragged.
+
+**Not checked:** the sliders one by one; the 48 px thumbnails; the other two expression sets (African, Asian; the
+bake takes the European one).
+
+**Open: where the style comes from.** Three ways, not yet tried: (a) faces2's cage riding on this head (each cage
+point bound to a place on MakeHuman's surface, so the library moves the cage and the cage keeps the planes);
+(b) a few stylising shapes of our own on MakeHuman's mesh (a bigger eye, a simpler nose, a squarer jaw) with the
+signature generator; (c) leave the shape alone and stylise by light and paint only.

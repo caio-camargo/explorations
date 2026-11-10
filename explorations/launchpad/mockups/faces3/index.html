@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face lab 3</title>
+<!-- Launchpad face engine, third lab (2026-11-10; FACES.md § 8): a borrowed, validated shape library under our renderer.
+     The head, its 114 feature sliders, the sex / age / population / weight macros and 34 expression units are MakeHuman's
+     (CC0 1.0, public domain; github.com/makehumancommunity/makehuman), baked into mh-head.js by bake_mh.py. This page adds
+     the puppet-studio light and paint of faces2, a generator, and "Exaggerate": every face's difference from the average
+     face, multiplied. A face is stored by slider name (F3:sex=1,nose-scale-vert-decr-incr=.4).
+     URL: ?mode=edit|sheet, ?dna=F3:..., ?seed=n. -->
+<style>
+  :root { --bg: #0e1116; --panel: #151a22; --line: #262d39; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  header { display: flex; gap: 18px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0; color: var(--acc); }
+  .tabs button { background: none; border: 0; color: var(--dim); font: inherit; font-size: 14px; padding: 4px 8px; cursor: pointer; }
+  .tabs button.on { color: var(--fg); border-bottom: 2px solid var(--acc); }
+  .note { color: var(--dim); font-size: 12px; }
+  button.b { background: #232a36; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; font: inherit; cursor: pointer; }
+  button.b:hover { border-color: var(--acc); }
+  .mode { display: none; padding: 12px 14px; }
+  .mode.on { display: block; }
+  canvas.t { display: block; background: #2b2b2b; }
+  #edit.on { display: flex; gap: 16px; align-items: flex-start; }
+  #side { width: 300px; flex: none; max-height: calc(100vh - 70px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  #side details { border-top: 1px solid var(--line); padding: 4px 0; }
+  #side summary { cursor: pointer; color: var(--acc); font-weight: 600; padding: 2px 0; }
+  .row { display: grid; grid-template-columns: 118px 1fr 44px; gap: 6px; align-items: center; margin: 2px 0; }
+  .row label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row span { font: 11px ui-monospace, monospace; color: var(--dim); text-align: right; }
+  .row input { width: 100%; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+  #views { display: grid; grid-template-columns: 520px 255px; gap: 10px 14px; }
+  .cap { color: var(--dim); font-size: 12px; margin-top: 3px; }
+  .thumbs { display: flex; gap: 10px; align-items: flex-end; margin-top: 8px; }
+  #vq { cursor: grab; }
+  #dna { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; background: #0b0e13; color: var(--fg); border: 1px solid var(--line); padding: 5px; }
+  #grid { display: grid; grid-template-columns: repeat(4, 250px); gap: 12px; margin-top: 10px; }
+  .cell { position: relative; cursor: pointer; }
+  .cell .th { position: absolute; right: 4px; bottom: 4px; border: 1px solid #0008; }
+  .cell .sig { position: absolute; left: 6px; top: 4px; right: 6px; font-size: 10px; color: #ddd; text-shadow: 0 0 3px #000; pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Face lab 3</h1>
+  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="sheet">Sheet</button></nav>
+  <span class="note">MakeHuman's head and shape library (public domain) under our light and paint. Drag the big view to turn the head.</span>
+</header>
+<section id="edit" class="mode">
+  <div id="side">
+    <div class="btns">
+      <button class="b" id="reset">Average</button><button class="b" id="rand">Randomise</button>
+      <label class="note"><input type="checkbox" id="bald"> no hair</label>
+    </div>
+    <div id="sliders"></div>
+  </div>
+  <div>
+    <div id="views">
+      <div><canvas class="t" id="vq" width="520" height="520"></canvas><div class="cap">¾ (drag to turn; double-click to reset)</div></div>
+      <div><canvas class="t" id="vf" width="255" height="255"></canvas><div class="cap">Front</div>
+        <canvas class="t" id="vp" width="255" height="255" style="margin-top:8px"></canvas><div class="cap">Profile</div></div>
+    </div>
+    <div class="thumbs"><canvas class="t" id="tq" width="48" height="48"></canvas><canvas class="t" id="tf" width="48" height="48"></canvas><canvas class="t" id="tp" width="48" height="48"></canvas><span class="note">48 px</span><span class="note" id="stat"></span></div>
+    <p class="note" style="margin:12px 0 4px">DNA (sliders that differ from the average face, by name):</p>
+    <input id="dna" spellcheck="false"><div class="btns"><button class="b" id="apply">Apply</button><button class="b" id="copy">Copy</button></div>
+  </div>
+</section>
+<section id="sheet" class="mode">
+  <div class="btns"><button class="b" id="fresh">New faces</button><span class="note">Twelve generated faces: sex, age, population mix and weight drawn at random, every feature slider near the middle, one head shape. They take "Exaggerate" from the editor. Click one to edit it.</span></div>
+  <div id="grid"></div>
+</section>
+<script src="mh-head.js"></script>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+const mix = (a, b, t) => a + (b - a) * t, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+// ---- the sliders: ours first (the person, paint), then MakeHuman's features and expression units
+const pretty = k => k.replace(/^x-/, '').replace(/-(decr-incr|in-out|down-up|backward-forward|compress-uncompress|concave-convex|less-more|small-big|decr|incr)$/, '').replace(/-/g, ' ');
+const GENES = [   // [key, group, label, default, low, high]
+  ['sex', 'Person', 'Sex: female–male', .5, 0, 1], ['age', 'Person', 'Age: young–old', .2, 0, 1],
+  ['af', 'Person', 'Population: African', 1, 0, 1], ['as', 'Person', 'Population: Asian', 1, 0, 1], ['ca', 'Person', 'Population: European', 1, 0, 1],
+  ['wt', 'Person', 'Weight: thin–heavy', 0, -1, 1], ['ex', 'Person', 'Exaggerate', 1, .3, 3],
+  ['ht', 'Hair', 'Volume on top', .5, 0, 1], ['hq', 'Hair', 'Front: flat–quiff', .35, 0, 1], ['hsd', 'Hair', 'Volume at the sides', .3, 0, 1],
+  ['bk', 'Paint', 'Eyebrow weight', .5, 0, 1], ['st', 'Paint', 'Skin tone: light–deep', .22, 0, 1],
+  ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['lt', 'Paint', 'Lip colour', .7, 0, 1], ['hg', 'Paint', 'Comb grooves', .5, 0, 1],
+  ...MH.sliders.map(s => [s.key, s.group[0].toUpperCase() + s.group.slice(1), pretty(s.key), 0, s.neg.length ? -1 : 0, 1]),
+  ...MH.units.map(u => [u, 'Expression', pretty(u), 0, 0, 1]),
+];
+const OPEN = new Set(['Person', 'Paint', 'Hair']), GK = Object.fromEntries(GENES.map(g => [g[0], g]));
+const house = () => Object.fromEntries(GENES.map(g => [g[0], g[3]]));
+const toDNA = g => 'F3:' + GENES.filter(d => Math.abs(g[d[0]] - d[3]) > 1e-4).map(d => d[0] + '=' + (+g[d[0]].toFixed(3))).join(',');
+function fromDNA(s) { const m = /^F3:(.*)$/.exec((s || '').trim()); if (!m) return null; const g = house();
+  for (const kv of m[1].split(',')) { const [k, v] = kv.split('='); if (GK[k] && isFinite(+v)) g[k] = clamp(+v, GK[k][4], GK[k][5]); } return g; }
+
+// ---- Catmull–Clark (as in faces2), one level over MakeHuman's quads
+function subdiv(m) {
+  const nV = m.nV, F = m.faces, nF = F.length, N = nV + 1, ek = (a, b) => a < b ? a * N + b : b * N + a;
+  const E = new Map(), EL = [], vE = [], vF = []; for (let i = 0; i < nV; i++) { vE.push([]); vF.push([]); }
+  for (let fi = 0; fi < nF; fi++) { const f = F[fi]; for (let i = 0; i < f.length; i++) { const a = f[i], b = f[(i + 1) % f.length], k = ek(a, b); let e = E.get(k);
+    if (!e) { e = { a, b, f0: fi, f1: -1, id: EL.length, s: m.sharp.get(k) || 0 }; E.set(k, e); EL.push(e); vE[a].push(e); vE[b].push(e); } else e.f1 = fi; vF[a].push(fi); } }
+  const nE = EL.length; for (const e of EL) if (e.f1 < 0) e.s = 99;
+  const ptr = new Int32Array(nV + nF + nE + 1), idx = [], w = []; let row = 0;
+  const emit = acc => { for (const [i, x] of acc) { idx.push(i); w.push(x); } ptr[++row] = idx.length; }, A = (acc, i, x) => acc.set(i, (acc.get(i) || 0) + x);
+  for (let v = 0; v < nV; v++) { const es = vE[v], k = es.length, acc = new Map(); if (!k) { A(acc, v, 1); emit(acc); continue; }
+    const sh = es.filter(e => e.s > 0), bnd = es.some(e => e.f1 < 0); let t = 0, mode = 0;
+    if (m.corner.has(v) || sh.length >= 3) { mode = 2; t = m.corner.has(v) ? 1 : Math.min(1, sh.reduce((a, e) => a + e.s, 0) / sh.length); }
+    else if (sh.length === 2) { mode = 1; t = Math.min(1, (sh[0].s + sh[1].s) / 2); }
+    if (bnd) t = 1;
+    if (mode === 2) A(acc, v, t); else if (mode === 1) { A(acc, v, .75 * t); for (const e of sh) A(acc, e.a === v ? e.b : e.a, .125 * t); }
+    if (t < 1) { const u = 1 - t, fs = vF[v], nf = fs.length; for (const fi of fs) { const f = F[fi], x = u / (nf * k * f.length); for (const i of f) A(acc, i, x); }
+      for (const e of es) { A(acc, v, u / (k * k)); A(acc, e.a === v ? e.b : e.a, u / (k * k)); } A(acc, v, u * (k - 3) / k); }
+    emit(acc); }
+  for (const f of F) { const acc = new Map(); for (const i of f) A(acc, i, 1 / f.length); emit(acc); }
+  for (const e of EL) { const acc = new Map(), t = Math.min(1, e.s); A(acc, e.a, .5 * t); A(acc, e.b, .5 * t);
+    if (t < 1) { const u = 1 - t; A(acc, e.a, .25 * u); A(acc, e.b, .25 * u); for (const fi of [e.f0, e.f1]) { const f = F[fi]; for (const i of f) A(acc, i, .25 * u / f.length); } } emit(acc); }
+  const N2 = nV + nF + nE + 1, ek2 = (a, b) => a < b ? a * N2 + b : b * N2 + a, faces = [], fmat = [], sharp = new Map();
+  for (let fi = 0; fi < nF; fi++) { const f = F[fi], n = f.length; for (let i = 0; i < n; i++) { const v = f[i], e1 = E.get(ek(v, f[(i + 1) % n])), e0 = E.get(ek(f[(i + n - 1) % n], v));
+    faces.push([v, nV + nF + e1.id, nV + fi, nV + nF + e0.id]); fmat.push(m.fmat[fi]); } }
+  for (const e of EL) if (e.f1 >= 0 && e.s > 1) { const mid = nV + nF + e.id; sharp.set(ek2(e.a, mid), e.s - 1); sharp.set(ek2(mid, e.b), e.s - 1); }
+  return { mesh: { nV: nV + nF + nE, faces, fmat, sharp, corner: m.corner }, ptr, idx: Int32Array.from(idx), w: Float32Array.from(w) };
+}
+
+// ---- the baked data
+let P0, AVG, NV, TOPO, LIPF, IDX, DEL, TQ, FM, HAIRV = [];   // HAIRV: for each hair-shell point, the scalp point under it
+async function unpack(b64, T) { const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const buf = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); return new T(buf); }
+function morph(w, out) {   // out += sum of weight x target
+  for (const name in w) { const t = MH.targets[name], k = w[name] / MH.q; if (!t || !w[name]) continue;
+    for (let j = t[0], e = t[0] + t[1]; j < e; j++) { const i = IDX[j] * 3; out[i] += DEL[j * 3] * k; out[i + 1] += DEL[j * 3 + 1] * k; out[i + 2] += DEL[j * 3 + 2] * k; } } }
+function macroW(g) { const w = {}, es = (g.af + g.as + g.ca) || 1, E = { african: g.af / es, asian: g.as / es, caucasian: g.ca / es };
+  for (const [s, sw] of [['female', 1 - g.sex], ['male', g.sex]]) for (const [a, aw] of [['young', 1 - g.age], ['old', g.age]]) {
+    for (const e in E) w[e + '-' + s + '-' + a] = E[e] * sw * aw;
+    w['weight-' + s + '-' + a + '-minweight'] = sw * aw * Math.max(0, -g.wt); w['weight-' + s + '-' + a + '-maxweight'] = sw * aw * Math.max(0, g.wt); }
+  return w; }
+function shape(g) {   // the face's points: the average, plus its difference from the average times "Exaggerate", plus the expression
+  const P = P0.slice(), w = macroW(g), x = {};
+  for (const s of MH.sliders) { const v = g[s.key]; if (!v) continue; for (const n of v > 0 ? s.pos : s.neg) w[n] = (w[n] || 0) + Math.abs(v); }
+  morph(w, P); if (g.ex !== 1) for (let i = 0; i < P.length; i++) P[i] = AVG[i] + (P[i] - AVG[i]) * g.ex;
+  for (const u of MH.units) if (g[u]) x[u] = g[u]; morph(x, P); return P; }
+function frame(P) {   // chin at 0, crown at 1, the nose tip at z = .515: MakeHuman's macros also move and size the whole body
+  const y0 = P[MH.chin * 3 + 1], s = 1 / (P[MH.crown * 3 + 1] - y0), z0 = P[MH.tip * 3 + 2] * s - .515;
+  for (let i = 0; i < P.length; i += 3) { P[i] *= s; P[i + 1] = (P[i + 1] - y0) * s; P[i + 2] = P[i + 2] * s - z0; } return P; }
+function withHair(P, g) {   // the hair: a shell standing off the scalp
+  const C = new Float32Array((NV + HAIRV.length) * 3); C.set(P);
+  HAIRV.forEach((v, k) => { const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2], nx = x, ny = y - .55, nz = z + .07, l = Math.hypot(nx, ny, nz), up = clamp((y - .6) / .35, 0, 1), fr = clamp((z - .05) / .3, 0, 1) * clamp(1 - Math.abs(x) / .22, 0, 1) * up;
+    const T = .02 + .05 * g.ht * up + .035 * g.hsd * (1 - up), q = g.hq * .1 * fr, o = (NV + k) * 3; C[o] = x + nx / l * T; C[o + 1] = y + ny / l * T + q * .65; C[o + 2] = z + nz / l * T + q * .55; });
+  return C; }
+function refine(S, P, n) { n = n || 3; const { ptr, idx, w } = S, N = ptr.length - 1, O = new Float32Array(N * n);
+  for (let i = 0; i < N; i++) for (let j = ptr[i]; j < ptr[i + 1]; j++) { const k = idx[j] * n, ww = w[j]; for (let c = 0; c < n; c++) O[i * n + c] += ww * P[k + c]; } return O; }
+
+// ---- a face's mesh as loose triangles: position, normal, (material, cavity shade, lip mask)
+let VB = new Float32Array(9 * 3 * 50000), VN = 0, INFO = {}, bald = false;
+function assemble(g) {
+  const C = withHair(frame(shape(g)), g), P = refine(TOPO, C), nV = P.length / 3, Nn = new Float32Array(nV * 3), L = new Float32Array(nV * 3), cnt = new Float32Array(nV), nq = TQ.length / 4;
+  for (let q = 0; q < nq; q++) { const a = TQ[q * 4] * 3, b = TQ[q * 4 + 1] * 3, c = TQ[q * 4 + 2] * 3, d = TQ[q * 4 + 3] * 3;
+    const ux = P[c] - P[a], uy = P[c + 1] - P[a + 1], uz = P[c + 2] - P[a + 2], vx = P[d] - P[b], vy = P[d + 1] - P[b + 1], vz = P[d + 2] - P[b + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    for (const i of [a, b, c, d]) { Nn[i] += nx; Nn[i + 1] += ny; Nn[i + 2] += nz; }
+    for (const [i, j] of [[a, b], [b, c], [c, d], [d, a]]) { L[i] += P[j]; L[i + 1] += P[j + 1]; L[i + 2] += P[j + 2]; cnt[i / 3]++; L[j] += P[i]; L[j + 1] += P[i + 1]; L[j + 2] += P[i + 2]; cnt[j / 3]++; } }
+  const ao = new Float32Array(nV);
+  for (let i = 0; i < nV; i++) { const k = i * 3, l = Math.hypot(Nn[k], Nn[k + 1], Nn[k + 2]) || 1; Nn[k] /= l; Nn[k + 1] /= l; Nn[k + 2] /= l;
+    const c = cnt[i] || 1, dx = L[k] / c - P[k], dy = L[k + 1] / c - P[k + 1], dz = L[k + 2] / c - P[k + 2], d = Math.hypot(dx, dy, dz) || 1e-9;
+    ao[i] = clamp(1 - 1.6 * Math.max(0, (dx * Nn[k] + dy * Nn[k + 1] + dz * Nn[k + 2]) / (d + .004)), .25, 1); }
+  if (VB.length < nq * 6 * 9) VB = new Float32Array(nq * 6 * 9); VN = 0;
+  for (let q = 0; q < nq; q++) { const m = FM[q]; if (m === 3 && bald) continue;
+    for (const j of [0, 1, 2, 0, 2, 3]) { const i = TQ[q * 4 + j], k = i * 3, o = VN++ * 9;
+      VB[o] = P[k]; VB[o + 1] = P[k + 1]; VB[o + 2] = P[k + 2]; VB[o + 3] = Nn[k]; VB[o + 4] = Nn[k + 1]; VB[o + 5] = Nn[k + 2]; VB[o + 6] = m; VB[o + 7] = ao[i]; VB[o + 8] = LIPF[i]; } }
+  const mean = ids => { const o = [0, 0, 0]; for (const i of ids) for (let c = 0; c < 3; c++) o[c] += C[i * 3 + c] / ids.length; return o; }, at = i => [C[i * 3], C[i * 3 + 1], C[i * 3 + 2]];
+  const ec = mean(MH.eye), er = Math.max(...MH.eye.map(i => Math.hypot(C[i * 3] - ec[0], C[i * 3 + 1] - ec[1], C[i * 3 + 2] - ec[2])));
+  INFO = { eye: [...ec, er], brow: MH.brow.flatMap(b => { const p = mean(b); return [p[0], p[1] + .004, p[2]]; }), cheek: at(MH.cheek), tip: at(MH.tip), frame: 0 };
+}
+const SKIN = [[.95, .78, .66], [.92, .74, .6], [.9, .7, .56], [.84, .62, .47], [.76, .53, .38], [.65, .42, .29], [.53, .33, .22], [.43, .26, .17], [.3, .18, .12], [.2, .12, .08]];
+const HAIRC = [[.05, .04, .035], [.14, .085, .05], [.4, .2, .1], [.48, .19, .07], [.78, .58, .32], [.62, .62, .6]];
+const IRIS = [[.22, .12, .06], [.36, .2, .1], [.42, .36, .18], [.3, .44, .3], [.3, .46, .62], [.48, .52, .56]];
+const ramp = (A, x) => { const f = clamp(x, 0, 1) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(f)), k = f - i; return A[i].map((v, j) => v + (A[i + 1][j] - v) * k); };
+const pick = (A, x) => A[Math.round(clamp(x, 0, 1) * (A.length - 1))];
+const glc = document.createElement('canvas'); glc.width = glc.height = 1040;
+const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: true });
+const VS = `#version 300 es
+in vec3 aP,aN,aM;uniform mat4 uVP,uLVP;out vec3 vP,vN,vM;out vec4 vL;
+void main(){vP=aP;vN=aN;vM=aM;vL=uLVP*vec4(aP,1.);gl_Position=uVP*vec4(aP,1.);}`;
+const FS = `#version 300 es
+precision highp float;precision highp sampler2DShadow;
+in vec3 vP,vN,vM;in vec4 vL;out vec4 o;
+uniform vec3 uCam,uKey,uSkin,uHair,uIris,uLip,uFlush,uCheek,uTip,uBrow[4],uFlat;uniform vec4 uEye;uniform float uBrowW,uLipT,uGroove;uniform sampler2DShadow uSh;
+float seg(vec3 p,vec3 a,vec3 b,out float h){vec3 pa=p-a,ba=b-a;h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length((pa-ba*h)*vec3(1.,1.,.3));}
+void main(){
+ if(uFlat.x>=0.){o=vec4(uFlat,1.);return;}
+ vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 rd=normalize(vP-uCam),q=vec3(abs(vP.x),vP.yz),al=uSkin;float gloss=.55,ao=vM.y;int m=int(vM.x+.5);
+ if(m==3){al=uHair;gloss=.5;   // hair: comb grooves running front to back, as a bend in the normal
+  float u=atan(vP.x,vP.y-.42),ph=u*22.+1.2*sin(vP.z*7.+u*2.);vec3 td=normalize(vec3(vP.y-.42,-vP.x,0.)+1e-4);
+  n=normalize(n+td*cos(ph)*.5*uGroove);al*=1.-.25*uGroove*(.5-.5*sin(ph));}
+ else if(m==2){   // the eye: a ball, the iris looking forward
+  vec3 c=vec3(uEye.x*sign(vP.x),uEye.yz),d=normalize(vP-c),ax=normalize(vec3(-.05*sign(vP.x),-.02,1.));float r=dot(d,ax)>0.?length(cross(d,ax)):1.;
+  al=vec3(.95,.93,.9)*(1.-.35*smoothstep(.6,1.,r));
+  al=mix(al,uIris*(.6+.9*smoothstep(.5,.18,r)),smoothstep(.52,.49,r));al*=1.-.6*smoothstep(.05,0.,abs(r-.51));
+  al=mix(al,vec3(.02),smoothstep(.22,.19,r));gloss=1.;ao=1.;}
+ else{float fl=.8*exp(-dot(q-uCheek,q-uCheek)/.006)+.45*exp(-dot(vP-uTip,vP-uTip)/.003);al=mix(uSkin,uFlush,.3*clamp(fl,0.,1.));
+  {float lp=smoothstep(.25,.6,vM.z);al=mix(al,uLip,uLipT*lp);gloss=mix(gloss,.75,lp);}
+  if(uBrowW>0.){float h,d=1.;for(int i=0;i<3;i++){float hh,dd=seg(q,uBrow[i],uBrow[i+1],hh);if(dd<d){d=dd;h=(float(i)+hh)/3.;}}
+   float th=mix(.017,.006,h)*(.45+uBrowW);al=mix(al,uHair*.75,.85*smoothstep(th,th*.55,d));}}
+ vec3 s=vL.xyz/vL.w*.5+.5;float sha=0.,bias=.0025+.004*(1.-max(dot(n,uKey),0.));
+ for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++)sha+=texture(uSh,vec3(s.xy+vec2(i,j)*1.6/1024.,s.z-bias));sha/=9.;if(m==2)sha=mix(.75,1.,sha);
+ vec3 fillD=normalize(vec3(-uKey.x,.15,uKey.z+.3)),rimD=normalize(vec3(-uKey.x*.6,.45,-.85));
+ float key=max(dot(n,uKey),0.)*mix(.22,1.,sha),fill=max(dot(n,fillD),0.)*.36,sky=.5+.5*n.y,oc=ao*mix(.75,1.,sky);
+ vec3 col=al*(key*vec3(1.,.95,.87)*1.15*mix(.7,1.,ao)+fill*vec3(.84,.9,1.)*oc+(vec3(.1,.11,.13)*sky+vec3(.07,.055,.045))*oc);
+ vec3 rf=reflect(rd,n);float sp=max(dot(rf,uKey),0.);
+ col+=vec3(1.,.95,.88)*(pow(sp,22.)*.16*gloss+pow(sp,220.)*1.3*step(.95,gloss))*key;
+ col+=vec3(.9,.93,1.)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,rimD),0.)*.45*oc;
+ col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function program(vs, fs) { const p = gl.createProgram(); for (const [t, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } gl.attachShader(p, s); }
+  gl.bindAttribLocation(p, 0, 'aP'); gl.bindAttribLocation(p, 1, 'aN'); gl.bindAttribLocation(p, 2, 'aM'); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(p)); return p; }
+const prog = program(VS, FS), progD = program(VS, `#version 300 es
+precision highp float;void main(){}`);
+const UL = {}, U = (p, n) => (UL[n + (p === prog ? '' : 'd')] ||= gl.getUniformLocation(p, n));
+const vbuf = gl.createBuffer(), lbuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+function attribs(stride) { gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, stride, 0);
+  if (stride > 12) { gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 12); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, stride, 24); }
+  else { gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); } }
+const SM = 1024, shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SM, SM, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+const shFB = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, shFB); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shTex, 0); gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.enable(gl.DEPTH_TEST); gl.enable(gl.SCISSOR_TEST);
+const nrm = v => { const l = Math.hypot(...v); return v.map(x => x / l); }, crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const look = (e, t) => { const z = nrm([e[0] - t[0], e[1] - t[1], e[2] - t[2]]), x = nrm(crs([0, 1, 0], z)), y = crs(z, x); return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1]; };
+const persp = (fy, n, f) => { const t = 1 / Math.tan(fy / 2); return [t, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; };
+const ortho = (h, n, f) => [1 / h, 0, 0, 0, 0, 1 / h, 0, 0, 0, 0, 2 / (n - f), 0, 0, 0, (f + n) / (n - f), 1];
+const mul = (a, b) => { const o = new Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3]; return o; };
+let uploaded = null, ZOOM = null;
+function upload(g) { if (uploaded === g) return; assemble(g); uploaded = g; gl.bindBuffer(gl.ARRAY_BUFFER, vbuf); gl.bufferData(gl.ARRAY_BUFFER, VB.subarray(0, VN * 9), gl.DYNAMIC_DRAW); }
+const ANG = { q: [.62, .05], f: [0, .03], p: [Math.PI / 2, .03] };
+function drawTile(cv, g, view) {
+  upload(g); const [a, el] = Array.isArray(view) ? view : ANG[view], W = cv.width, s = Math.min(glc.width, W < 100 ? W * 4 : W * 2), H = glc.height;
+  const T = ZOOM && W > 100 ? ZOOM.slice(0, 3) : [0, .38 + .45 * INFO.frame, .0], d = ZOOM && W > 100 ? ZOOM[3] : 3.3 + Math.max(0, -INFO.frame) * 2, cam = [T[0] + Math.sin(a) * Math.cos(el) * d, T[1] + Math.sin(el) * d, T[2] + Math.cos(a) * Math.cos(el) * d];
+  const key = nrm([-.75 * Math.cos(a) + .3 * Math.sin(a), .7, .3 * Math.cos(a) + .75 * Math.sin(a)]);
+  const LVP = mul(ortho(.95, .1, 6), look([T[0] + key[0] * 3, T[1] + key[1] * 3, T[2] + key[2] * 3], T)), VP = mul(persp(.44, .1, 20), look(cam, T));
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf); attribs(36);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, shFB); gl.viewport(0, 0, SM, SM); gl.scissor(0, 0, SM, SM); gl.clear(gl.DEPTH_BUFFER_BIT); gl.useProgram(progD);
+  gl.uniformMatrix4fv(U(progD, 'uVP'), false, LVP); gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); gl.drawArrays(gl.TRIANGLES, 0, VN); gl.disable(gl.POLYGON_OFFSET_FILL);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.clearColor(.168, .168, .168, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(prog); const u3 = (n, v) => gl.uniform3fv(U(prog, n), v), sk = ramp(SKIN, g.st), dp = g.st;
+  gl.uniformMatrix4fv(U(prog, 'uVP'), false, VP); gl.uniformMatrix4fv(U(prog, 'uLVP'), false, LVP); u3('uCam', cam); u3('uKey', key); u3('uFlat', [-1, 0, 0]);
+  u3('uSkin', sk); u3('uFlush', sk.map((v, j) => v * [.96, .6, .68][j] * (1 + .1 * dp))); u3('uLip', sk.map((v, j) => v * [.8 + .05 * dp, .47 + .2 * dp, .53 + .12 * dp][j] * (1 + .1 * dp)));
+  u3('uHair', pick(HAIRC, g.hc)); u3('uIris', pick(IRIS, g.ic)); u3('uCheek', INFO.cheek); u3('uTip', INFO.tip); gl.uniform3fv(U(prog, 'uBrow'), INFO.brow); gl.uniform4fv(U(prog, 'uEye'), INFO.eye);
+  gl.uniform1f(U(prog, 'uBrowW'), g.bk); gl.uniform1f(U(prog, 'uLipT'), g.lt); gl.uniform1f(U(prog, 'uGroove'), g.hg); gl.uniform1i(U(prog, 'uSh'), 0); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex);
+  gl.drawArrays(gl.TRIANGLES, 0, VN);
+  const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
+}
+let queue = [], busy = false;
+function render(jobs) { queue = jobs; window.FRAME_DONE = 0; if (!busy) { busy = true; requestAnimationFrame(step); } }
+function step() { const t0 = performance.now(); while (queue.length && performance.now() - t0 < 12) drawTile(...queue.shift()); if (!queue.length) { busy = false; window.FRAME_DONE = 1; return; } requestAnimationFrame(step); }
+
+// ---- the generator
+let seed = +(Q.get('seed') || Date.now() % 1e9);
+const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(6.2832 * rnd());
+const SHAPE_RE = /^head-(oval|round|rectangular|square|triangular|invertedtriangular|diamond)$/, FEAT = MH.sliders.filter(s => !SHAPE_RE.test(s.key)), SHAPES = MH.sliders.filter(s => SHAPE_RE.test(s.key));
+const TAG = new WeakMap();
+function randomFace() { const g = house(); g.sex = rnd() < .5 ? .1 + .15 * rnd() : .75 + .25 * rnd(); g.age = Math.pow(rnd(), 1.6); g.wt = clamp(gauss() * .35, -1, 1);
+  const e = [rnd(), rnd(), rnd()].map(x => Math.pow(x, 3)); g.af = e[0]; g.as = e[1]; g.ca = e[2];
+  for (const s of FEAT) g[s.key] = clamp(gauss() * .38, s.neg.length ? -1 : 0, 1);
+  const sh = SHAPES[Math.floor(rnd() * SHAPES.length)]; g[sh.key] = .4 + .6 * rnd();
+  const es = g.af + g.as + g.ca; g.st = clamp((g.af * .8 + g.as * .35 + g.ca * .15) / es + gauss() * .1, 0, 1); g.hc = g.age > .7 ? 1 : (g.ca / es > .5 ? rnd() * .8 : rnd() * .3); g.ic = g.ca / es > .5 ? rnd() : rnd() * .3;
+  TAG.set(g, `${g.sex > .5 ? 'man' : 'woman'}, ${g.age < .3 ? 'young' : g.age < .65 ? 'middle-aged' : 'old'}, ${pretty(sh.key).replace('head ', '')} head`); return g; }
+
+// ---- Edit
+const $ = id => document.getElementById(id);
+let cur = house(), orbit = ANG.q.slice(), mode = '';
+const sl = {};
+{ const box = $('sliders'); for (const r of [...new Set(GENES.map(g => g[1]))]) { const det = document.createElement('details'); det.open = OPEN.has(r); det.innerHTML = `<summary>${r}</summary>`;
+    for (const d of GENES) { if (d[1] !== r) continue; const row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = `<label title="${d[0]}. Double-click the slider to reset.">${d[2]}</label><input type="range" min="${d[4]}" max="${d[5]}" step="${(d[5] - d[4]) / 200}"><span></span>`;
+      const inp = row.querySelector('input'), sp = row.querySelector('span');
+      inp.oninput = () => { cur = { ...cur, [d[0]]: +inp.value }; sp.textContent = (+inp.value).toFixed(2); changed(); };
+      inp.ondblclick = () => { cur = { ...cur, [d[0]]: d[3] }; sync(); changed(); };
+      sl[d[0]] = [inp, sp]; det.appendChild(row); }
+    box.appendChild(det); } }
+function sync() { for (const d of GENES) { sl[d[0]][0].value = cur[d[0]]; sl[d[0]][1].textContent = cur[d[0]].toFixed(2); } }
+function changed() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
+function renderEdit() { const t0 = performance.now(); uploaded = null; upload(cur); $('stat').textContent = `mesh ${(performance.now() - t0).toFixed(0)} ms, ${(VN / 3 / 1000).toFixed(0)}k triangles`;
+  render([[$('vq'), cur, orbit], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+$('reset').onclick = () => { cur = house(); sync(); changed(); };
+$('rand').onclick = () => { const ex = cur.ex; cur = randomFace(); cur.ex = ex; sync(); changed(); };
+$('bald').onchange = () => { bald = $('bald').checked; renderEdit(); };
+$('apply').onclick = () => { const g = fromDNA($('dna').value); if (g) { cur = g; sync(); changed(); } };
+$('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
+{ const cv = $('vq'); let drag = null;
+  cv.onpointerdown = e => { drag = [e.clientX, e.clientY, orbit[0], orbit[1]]; cv.setPointerCapture(e.pointerId); };
+  cv.onpointermove = e => { if (!drag) return; orbit = [drag[2] - (e.clientX - drag[0]) * .01, clamp(drag[3] + (e.clientY - drag[1]) * .01, -1.2, 1.2)]; render([[cv, cur, orbit]]); };
+  cv.onpointerup = () => { drag = null; }; cv.ondblclick = () => { orbit = ANG.q.slice(); render([[cv, cur, orbit]]); }; }
+let pop = [];
+function renderSheet() { const grid = $('grid'); grid.innerHTML = ''; const jobs = [];
+  pop.forEach(g => { const cell = document.createElement('div'); cell.className = 'cell';
+    cell.innerHTML = `<canvas class="t" width="250" height="250"></canvas><canvas class="t th" width="48" height="48"></canvas><div class="sig">${TAG.get(g) || ''}</div>`;
+    const [big, th] = cell.querySelectorAll('canvas'); cell.onclick = () => { cur = { ...g }; sync(); setMode('edit'); changed(); }; grid.appendChild(cell); jobs.push([big, g, 'q'], [th, g, 'q']); });
+  render(jobs); }
+const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); g.ex = cur.ex; return g; });
+$('fresh').onclick = () => { pop = newPop(); renderSheet(); };
+function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m)); document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  if (m === 'edit') renderEdit(); else { if (!pop.length) pop = newPop(); renderSheet(); } }
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, sheet: () => { pop = newPop(); setMode('sheet'); } };
+(async () => {
+  P0 = await unpack(MH.v, Float32Array); NV = MH.nV; IDX = await unpack(MH.idx, Uint16Array); DEL = await unpack(MH.d, Int16Array);
+  const fq = await unpack(MH.faces, Uint16Array), fm = await unpack(MH.fmat, Uint8Array), lip = await unpack(MH.lip, Uint8Array), faces = [];
+  for (let i = 0; i < fm.length; i++) faces.push([fq[i * 4], fq[i * 4 + 1], fq[i * 4 + 2], fq[i * 4 + 3]]);
+  // the scalp: skin above a hairline that runs from the forehead, round the temple, over the ear and down to the nape
+  const fmat = Array.from(fm), scalp = new Uint8Array(NV), hl = a => a < .7 ? .86 : a < 1.3 ? mix(.86, .64, (a - .7) / .6) : a < 1.9 ? mix(.64, .58, (a - 1.3) / .6) : mix(.58, .3, clamp((a - 1.9) / .9, 0, 1));
+  for (let i = 0; i < NV; i++) scalp[i] = P0[i * 3 + 1] > hl(Math.abs(Math.atan2(P0[i * 3], P0[i * 3 + 2] + .07))) ? 1 : 0;
+  const hmap = new Map(), hv = v => { if (!hmap.has(v)) { hmap.set(v, NV + HAIRV.length); HAIRV.push(v); } return hmap.get(v); }, hf = [];
+  for (let i = 0; i < fm.length; i++) if (fm[i] === 0 && faces[i].every(v => scalp[v])) hf.push(faces[i].map(hv));
+  const NT = NV + HAIRV.length, ecount = new Map(), EK = (a, b) => a < b ? a * (NT + 1) + b : b * (NT + 1) + a, sharp = new Map();
+  for (const f of hf) for (let j = 0; j < 4; j++) { const k = EK(f[j], f[(j + 1) % 4]); ecount.set(k, (ecount.get(k) || 0) + 1); }
+  for (const f of hf.slice()) for (let j = 0; j < 4; j++) { const a = f[j], b = f[(j + 1) % 4]; if (ecount.get(EK(a, b)) === 1) { hf.push([b, a, HAIRV[a - NV], HAIRV[b - NV]]); sharp.set(EK(a, b), 2); } }   // the shell's edge, closed down onto the skin
+  for (const f of hf) { faces.push(f); fmat.push(3); }
+  TOPO = subdiv({ nV: NT, faces, fmat, sharp, corner: new Set() });
+  TQ = new Int32Array(TOPO.mesh.faces.length * 4); TOPO.mesh.faces.forEach((f, i) => TQ.set(f, i * 4)); FM = Uint8Array.from(TOPO.mesh.fmat);
+  { const l = new Float32Array(NT); for (let i = 0; i < NV; i++) l[i] = lip[i] / 255; LIPF = refine(TOPO, l, 1); }
+  AVG = P0.slice(); morph(macroW(house()), AVG);
+  cur = fromDNA(Q.get('dna')) || house(); sync(); $('dna').value = toDNA(cur); setMode(Q.get('mode') === 'sheet' ? 'sheet' : 'edit');
+})();
+</script>
+</body>
+</html>
