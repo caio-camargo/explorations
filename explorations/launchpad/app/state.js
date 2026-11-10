@@ -19,22 +19,35 @@ function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=t
       else{const up=norm(nz),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),a=R()*6.283,rr=e.d.exit*(5+6*R())+(onPad?3:0);
         pf=add(mul(up,len(nz)-hn+1+R()*1.5),add(mul(X,Math.cos(a)*rr),mul(Z,Math.sin(a)*rr)));s0*=.7}
       smoke.push({pf,t0:simT,s0,grow:6+4*R(),a0:.5,life:40+30*R(),rise:1+1.5*R(),seed:R()*97})}}}
-function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
+// (Q566; PLAYTEST #161, Caio: "the player should be able to see the full smoke trail from the launch pad as the rocket
+// leaves the atmosphere") The trail's puffs live TRAIL_LIFE (7–9 min: an ascent leaves the air in 3–5), and the list
+// can hold the whole trail because old puffs are thinned as they widen: laid 0.9 m apart off the pad, a puff is 30 m
+// across half a minute later and most of its neighbours add nothing. trailThin walks the trail in the order it was laid
+// and retires (q.kt: a 3 s fade, drawSmoke) a puff when its two neighbours are within TRAIL_GAP of a puff's radius of
+// each other, so no step along the trail ever grows past that (dropping against the last one kept left holes of 2 radii).
+const TRAIL_LIFE=420,TRAIL_GAP=.6,SMOKE_MAX=6000;let thinAcc=0;
+function trailThin(list,t){let L=null,Ls=0,P=null,Ps=0,n=0;for(const q of list){if(!q.tr||q.kt)continue;const sz=q.s0+q.grow*Math.sqrt(Math.max(0,t-q.t0));
+    if(!L){L=q;Ls=sz;continue}if(P){const dx=q.pf[0]-L.pf[0],dy=q.pf[1]-L.pf[1],dz=q.pf[2]-L.pf[2],m=TRAIL_GAP*Math.min(sz,Ls,Ps);
+      if(dx*dx+dy*dy+dz*dz<m*m){P.kt=t;n++}else{L=P;Ls=Ps}}   // P goes only if the step it leaves (L to q) is still under the gap
+    P=q;Ps=sz}return n}
+// a full list gives up a puff that is already fading before it gives up the oldest, which is the trail's pad end
+function smokeDrop(list){const i=list.findIndex(q=>q.kt);if(i<0)list.shift();else list.splice(i,1)}
+function emitSmoke(dt){thinAcc+=dt;if(thinAcc>=.5){thinAcc=0;trailThin(smoke,simT)}if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
   emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
-  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>4000)smoke.shift();
+  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>SMOKE_MAX)smokeDrop(smoke);
     const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
-    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:110+Math.random()*60,rise:Math.random()*0.6,seed:Math.random()*97})}}}
+    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:TRAIL_LIFE*(1+.3*Math.random()),rise:Math.random()*0.6,seed:Math.random()*97,tr:1})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
 // of CPU a frame with ~1000 puffs.
 let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
 const QC=[-1,-1,1,-1,1,1,-1,-1,1,1,-1,1];
 function drawSmoke(VP,camW,R,U){
-  let w=0;for(let i=0;i<smoke.length;i++){const q=smoke[i],age=simT-q.t0;if(age<=q.life&&age>=0)smoke[w++]=q}smoke.length=w;
-  const n=w;if(!n)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th);
+  let w=0;for(let i=0;i<smoke.length;i++){const q=smoke[i],age=simT-q.t0;if(age<=q.life&&age>=0&&!(q.kt&&simT-q.kt>3))smoke[w++]=q}smoke.length=w;
+  const n=w;if(!n)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th),pxa=.82/H;   // pxa: three quarters of a pixel, in radians (fov 1.0)
   if(smokeK.length<n){smokeK=new Float64Array(n*2);smokeI=new Uint32Array(n*2);smokeP=new Float64Array(n*12);smokeV=new Float32Array(n*96)}
   for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
     let rx,ry,rz;const o=i*6;
@@ -46,7 +59,9 @@ function drawSmoke(VP,camW,R,U){
         q.wx=m*(WIND[0]*c0+x[0]*s0+u[0]*uw*(1-c0));q.wy=m*(WIND[1]*c0+x[1]*s0+u[1]*uw*(1-c0));q.wz=m*(WIND[2]*c0+x[2]*s0+u[2]*uw*(1-c0))}
       const ra=q.rise*age,x=q.pf[0]+q.ux*ra+q.wx*age,y=q.pf[1]+q.uy*ra+q.wy*age,z=q.pf[2]+q.uz*ra+q.wz*age;
       rx=c*x+sn*z-camW[0];ry=y-camW[1];rz=-sn*x+c*z-camW[2]}
-    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
+    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;{let sz=q.s0+q.grow*Math.sqrt(age),al=q.a0*(1-age/q.life);if(q.kt)al*=Math.max(0,1-(simT-q.kt)/3);
+      // a puff under 1.5 px wide is drawn at 1.5 px and thinner by the same ratio: the far end of a trail is a steady line, not a flicker
+      const mn=Math.sqrt(rx*rx+ry*ry+rz*rz)*pxa;if(sz<mn){al*=sz/mn;sz=mn}smokeP[o+3]=sz;smokeP[o+4]=al}smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
     smokeK[i]=rx*rx+ry*ry+rz*rz;smokeI[i]=i}
   const idx=smokeI.subarray(0,n).sort((a,b)=>smokeK[b]-smokeK[a]),v=smokeV;let k=0;
   for(let m=0;m<n;m++){const i=idx[m],o=i*6,sz=smokeP[o+3],seed=smoke[i].seed;

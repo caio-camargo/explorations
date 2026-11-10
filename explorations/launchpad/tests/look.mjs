@@ -1215,3 +1215,28 @@
     `the centre jumped ${len(jump).toFixed(1)} m, the target ${len(sub(seen, o.r0)).toExponential(0)} m; first frame keeps ${(tr[0] / x0 * 100).toFixed(1)} %, ${(tr[29] / x0 * 100).toFixed(0)} % left at 0.5 s, ${(tr[65] / x0 * 100).toFixed(1)} % at 1.1 s; ` +
     `${P.length} puffs (${flecks} flecks); the ring is ${dG.toFixed(2)} m off the seam after 1 s (${d0.toFixed(1)} m without the fall); at 2 km ${loP.length} puffs, flecks ${loP.filter(p => p.o.life >= 3 && !p.o.grow).length}`);
 }
+
+// aerofx-55. The whole exhaust trail (review session, QUEUE Q566; PLAYTEST #161, Caio: "the player should be able to see
+// the full smoke trail from the launch pad as the rocket leaves the atmosphere"). A three-engine rocket climbs at 12 m/s²
+// and lays its trail by emitSmoke's rule (a puff every 0.35 widths of 2.5 m + 3.5 % of the speed, born at half that, to
+// 33 km); trailThin runs every second, as in the game, for 300 s (the craft is out of the air by ~200 s).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const TRAIL_LIFE='), j = pg.indexOf('function emitSmoke(dt){', i);
+  const { TRAIL_LIFE, TRAIL_GAP, SMOKE_MAX, trailThin, smokeDrop } = new Function(pg.slice(i, j) + ';return{TRAIL_LIFE,TRAIL_GAP,SMOKE_MAX,trailThin,smokeDrop}')();
+  let rs = 7; const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  const run = (thin, eng = 3) => { let list = [], acc = 0, peak = 0, laid = 0;
+    for (let k = 0; k < 300 * 50; k++) { const t = k / 50, sp = 12 * t, h = 6 * t * t;
+      if (h < 33000) { const s0 = 2.5 + sp * .035, gap = Math.max(.008, .35 * s0 / Math.max(sp, 1)); acc += 1 / 50;
+        while (acc > gap) { acc -= gap; for (let e = 0; e < eng; e++) { if (thin && list.length > SMOKE_MAX) smokeDrop(list); list.push({ tr: 1, pf: [h + (R() - .5) * s0 * .45, e * 1.2 + (R() - .5) * s0 * .45, (R() - .5) * s0 * .45], t0: t, s0: s0 * (.8 + .4 * R()) * .5, grow: 4 + 3 * R(), life: TRAIL_LIFE * (1 + .3 * R()) }); laid++ } } }
+      if (thin && k % 25 === 24) { trailThin(list, t); list = list.filter(q => t - q.t0 <= q.life && !(q.kt && t - q.kt > 3)) }
+      peak = Math.max(peak, list.length) }
+    return { list: list.filter(q => !q.kt), peak, laid } };
+  const A = run(true), B = run(false), N = run(true, 9), T = 300, sz = q => q.s0 + q.grow * Math.sqrt(T - q.t0), L = A.list.slice().sort((a, b) => a.pf[0] - b.pf[0]);
+  // the trail as it stands at 300 s: it starts at the pad, ends at 33 km, and no step along it is wider than a puff's half-width
+  let gap = 0, gAt = 0; for (let k = 1; k < L.length; k++) { const g = (L[k].pf[0] - L[k - 1].pf[0]) / Math.min(sz(L[k]), sz(L[k - 1])); if (g > gap) { gap = g; gAt = L[k].pf[0] } }
+  const whole = L.length > 100 && L[0].pf[0] < 30 && L.at(-1).pf[0] > 32500 && gap < .7, alive = L.every(q => T - q.t0 < q.life) && TRAIL_LIFE >= 400;
+  check('the exhaust trail lasts the climb (Q566): thinned as its puffs widen it fits the list from the pad to 33 km, as solid as it was laid, 300 s after liftoff; unthinned it would overflow and lose the pad end',
+    whole && alive && A.peak < SMOKE_MAX * .6 && B.peak > SMOKE_MAX && TRAIL_GAP < .7 && Math.min(...N.list.map(q => q.pf[0])) < 30 && N.list.length > 100,
+    `${A.laid} puffs laid; at most ${A.peak} held with thinning (the list takes ${SMOKE_MAX}), ${B.peak} without; at 300 s ${L.length} puffs from ${L[0].pf[0].toFixed(0)} m to ${(L.at(-1).pf[0] / 1000).toFixed(1)} km, the widest step ${gap.toFixed(2)} of a puff's half-width (at ${(gAt / 1000).toFixed(1)} km); nine engines: at most ${N.peak} held, the trail still starts at ${Math.min(...N.list.map(q => q.pf[0])).toFixed(0)} m`);
+}
