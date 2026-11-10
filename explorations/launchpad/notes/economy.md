@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-06
+**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-10
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3516,3 +3516,21 @@ Since v1.293 every `career.mjs` row starts from the game's own `programNew`, so 
 the rows before it (before, frugal/agency was 408 M in the table and 346 M alone). **Compare against the new table, not
 older ones:** `node career.mjs 3 3`, mean final funds 654 M (691 before), lowest row resource/company 100 M (147),
 mean flights 25.3, failures 19.9 %. Older numbers in these notes were measured with the leak.
+
+## v1.300 — a dispatched flight settles its contract on a whole record (2026-11-10, worker session, QUEUE R14, P1)
+
+**The bug** (review 2026-11-09 § 2, R14, confirmed there: `advanceDays(80)` threw at day 31): `dispatchTick` settled a
+successful dispatch with `contractEval({rec: {orb, cdone, dv, dispatched}, parts})`, a stub record. `contractEval` runs
+**every** active contract's check against it, so with a "Qualify the X" contract on the books `CT.test.ok` read
+`R.qPart[p.k]` of `undefined` and threw inside the world tick. The dispatch was already charged and marked done; the rest
+of the day's tick (and `orbTick`) was skipped, every tick, while the contract stayed open. An air-sample contract
+(`R.bands[p.k]`) did the same.
+
+**Fix** (`sim/program.js`, `dispatchTick`): the record is `{...recNew(), orb, dv, dispatched: true}`, the same blank
+record a flight starts with. Checked every contract type (27) against it with a matching orbit: only `sat` passes (as it
+should), none throws; `landDist: Infinity` and `bioOK: true` can't complete anything since every check that reads them
+also needs `landed` or `bio`.
+
+**Test** `econ-35`: a satellite dispatch with a Qualify and an air-sample contract also on the books: no throw, the
+satellite contract paid, the other two still open. Fails on the old line with *Cannot read properties of undefined
+(reading 'kestrel')*.

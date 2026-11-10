@@ -277,6 +277,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Q446: a missed deadline's opinion drift — the world's dice, not the miss (2026-11-06, economy worker, TESTING 247; nothing built)
 - v1.261 — the world's dice are the calendar's (2026-11-06, economy worker, QUEUE Q526, from Q446)
 - v1.270 — the money curve after day-sized ticks: tourism and military offers back to a trickle; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
+- v1.300 — a dispatched flight settles its contract on a whole flight record: a "Qualify the X" or air-sample contract on the books no longer crashes the world tick (2026-11-10, worker, QUEUE R14, P1) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 
