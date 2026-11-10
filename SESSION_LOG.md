@@ -6849,3 +6849,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `INDEX.md`, `playbooks/project-review.md` (step 2b).
 - **Next:** the orchestrator ranks R1–R24 (R4 first: five one-line fixes); Caio's calls: R18's defaults, and no new
   mechanism until R1–R4 and the confirmed bugs are in.
+
+## 2026-11-09 — review fixes (Opus, worktree launchpad-review): five lines a comment swallowed (R4, v1.289)
+
+- **Done:** split back onto their own lines the five live statements the review found inside end-of-line `//`
+  comments: the lit SAS mode button (`app/editor.js`), the Inbox badge count (`app/screens.js`), the seam/marks reset
+  after debris (`app/render.js`), the builder overlay's `o.save()` and font (`builder.js`), Erebus's blade mask
+  (`sim/ground.js`).
+- **Checked:** smoke all passed (twice); `ground-7` gained a blades check: 79 of 4000 points with the fix, B max 0 without
+  (fails on the old line). The four browser-side lines weren't looked at in Chrome: TESTING 353 for Caio's eye.
+- **Seen:** `.git/objects/d2/8aa2d0f1a733a1d202ca0dd821e11dd0ef9efe (1)` (2026-10-07, Drive-era duplicate) makes git print
+  "bad sha1 file"; harmless, left in place.
+- **Files:** `app/editor.js`, `app/screens.js`, `app/render.js`, `builder.js`, `sim/ground.js`, `tests/world.mjs`,
+  `notes/platform.md`, `NOTES.md`, `TESTING.md` (353), `QUEUE.md` (R4 ✓), `ACTIVE_WORK.md`.
+- **Next:** R1, R5–R8, R2, R3 in the review's order; R3's lint should use these five as fixtures.
