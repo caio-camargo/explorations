@@ -7029,4 +7029,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   heads, Planes, 20–90 ms); the mid-face ripples, the nose is weak from the front, expressions mostly fade.
   FACES 0.1.9 § 9, README 0.1.24. **Next:** line up the eye rows with the cheek, more rows on the nose, then a house
   style as cage offsets (faces2's genes). Claim stays open.
+- **Follow-up 4: planes (faces5).** Caio on faces4: not the direction; simplify the face into planes. `mockups/faces5/`:
+  MakeHuman's skin reduced by quadric edge collapse (once, on the average head, symmetric), drawn flat; corners stay
+  MakeHuman points, so sliders and expressions carry. **Seen:** reads as a head in planes, people stay distinct, 1–5 ms.
+  Rough: lids, lip outline, hair, neck edge, no brows. FACES 0.1.10 § 10, README 0.1.25. **Next:** Caio's look.
 

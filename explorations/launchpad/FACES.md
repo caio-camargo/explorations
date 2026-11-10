@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -327,4 +327,29 @@ through the neck's open end.
 **What this makes possible, not yet done:** the style can now be added in the cage's own terms, on top of any
 person: faces2's genes (brow forward, nose root filled for a straight profile, a squarer jaw, bigger eyes) as a
 fixed "house style" offset, since the cage's points have names.
+
+## 10. The face simplified into planes (2026-11-10)
+
+Caio on faces4 (§ 9): "not the right direction. it's more a question of simplifying the face into planes."
+So the cage is set aside, and MakeHuman's face is kept as it is and reduced.
+
+[`mockups/faces5/index.html`](mockups/faces5/index.html): the skin's 9,000 small triangles are merged into a few
+hundred big ones, each shaded flat. The merging is edge collapse by quadric error (Garland & Heckbert 1997), run once
+on the average head when the page loads (0.3 s, 4,372 points down to 36), left and right together. A collapse always
+moves a point onto its neighbour, so every remaining corner is one of MakeHuman's own points and still follows every
+slider and every expression. *Planes* picks how far down the recorded sequence to go (about 120 to 9,000 planes;
+the house setting is about 540). *Edge lines* darkens each plane toward its border. Eyes stay round; the hair is
+the scalp's own planes stood off the skull.
+
+Why this works where § 8's Carve filter did not: that one smoothed first, moved points toward flatness, and was then
+subdivided and shaded smooth, so nothing flat was left to see. Here nothing is smoothed and every plane is drawn flat.
+
+**Seen** (GPU, by eye; stills in `output/launchpad/mockups/faces5/`): it reads as a head cut into planes, and the
+planes fall on the face's structure (brow, nose ridge and wings, cheekbone, jaw) without being told to. Twelve
+generated people stay different people (`sheet.png`). An expression carries: a smile on an older man (`man-smile.png`).
+A change takes 1–5 ms.
+**Rough:** where the lids' points were merged away an eyeball can stand proud of its socket; the lip colour follows
+whole planes, so its outline is jagged; the hair is thin and its edge steps; the neck's cut is ragged; no eyebrows
+(the paint from faces3 lands in the wrong place, so it is off).
+**Not checked:** sliders one by one; 48 px; very low plane counts on faces other than the average.
 
