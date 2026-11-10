@@ -112,7 +112,6 @@ then removes them from the Drive folder.
 > (planning now lives in `launchpad-planning2`); it's a clean, stale copy and can be removed. `launchpad-plumes` is
 > registered but its folder isn't on this machine: left alone. **On any machine that can't see these folders: never
 > run `git worktree prune`.**
-| Caio + Claude (review fixes, Opus) | 2026-11-09 | **R4**: five lines where a `//` comment swallowed live code (editor.js, screens.js, render.js, builder.js, sim/ground.js). Worktree `launchpad-review`, branch `review` | `app/editor.js`, `app/screens.js`, `app/render.js`, `builder.js`, `sim/ground.js` |
 
 > **Economy, 2026-10-07 (v1.29 know-how): one cross-scope line in `stage()`.** Before marking a segment ignited it asks
 > `igniteOK(s, k)` (economy's know-how: an unfamiliar engine can fail to light; a failed pure-ignition event rolls back
