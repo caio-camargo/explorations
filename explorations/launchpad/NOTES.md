@@ -424,6 +424,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.170 — an incoming fragment and its strike; no more black puffs in vacuum (2026-10-13, effects beat, QUEUE Q302)
 - v1.172 — a falling stage under its chutes, its splash, and the waterline (2026-10-13, effects beat, QUEUE Q335)
 - v1.174 — the effects' sounds: crack and groan, venting hiss, the splash, the blackout's edges (2026-10-13, effects beat, QUEUE Q363, Q362)
+- v1.290 — the resolution scaler uses the frame it has: an 11 ms budget, steps sized by their cost, a probe without timers (2026-11-09, review session, QUEUE Q559)
+- v1.291 — a sharpening upscale: the canvas at device pixels, Catmull-Rom and a clamped sharpen, the grain at device pixels (2026-11-09, review session, QUEUE Q560)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

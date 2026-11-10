@@ -2408,3 +2408,50 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Test:** `aerofx-50`: all 18 suits posed at their own skeleton come back unmoved; in a long stride (knees and
   elbows bent, a lean) no edge grows by more than 6 cm except a hose's. The per-vertex binding fails it (29 cm).
   TESTING 336.
+
+## v1.290 — The resolution scaler uses the frame it has (2026-11-09, review session, QUEUE Q559)
+
+Caio: "a lot of pixelation when I play" (Chrome, High, GPU steady at 45–55 %). The GPU figure was the cause showing:
+`adaptRes` aimed at 7 ms of GPU time in a 16.7 ms frame (42 %), shrank the view above 7.35 ms and grew it back only
+under 3.85 ms. A shrink step cut the cost by a third, to about 4.9 ms, so after one heavy moment the view stayed small
+with half the GPU idle (BEAUTY § 1.1 measured 45–55 % on the pad, in clouds and with vapor). Without timer queries the
+load was the frame interval over 22 ms, which under 60 Hz vsync never reads below 0.76: the view could shrink and
+never grow.
+
+- **The budget is 11 ms** (`GPU_BUDGET`): 60 fps with room for the CPU's share of the frame and the compositor. On a
+  faster display it holds about 90 fps.
+- **Steps are sized by their cost** (`resNext`, pure): GPU time goes as the pixel count, so a step's load is predicted.
+  Over 1.05 of the budget the view shrinks to land at 0.9 (at most 30 % a step); it grows 12 % only when the grown frame
+  would be under 0.92. A shrink lands at 0.9 and growing from there predicts 1.13, so the two can't chase each other.
+  After a step the smoothed load is rescaled by the same prediction instead of waiting to catch up.
+- **Without timers** the scaler probes: frames over 1.3 refresh periods shrink the view; frames that have held the
+  refresh for 4 s try one step up, and a step that makes frames run long is taken back and the wait doubles (to 64 s).
+  The refresh period is the shortest frame lately. Not run on a browser without the extension: by reading and arithmetic.
+- **Not changed:** the 35 % floor, Low's 60 % cap, the 0.6 s between steps.
+- **Test:** `aerofx-51` runs `resNext` against a GPU of a fixed cost plus one per pixel: a 22 ms scene settles (57 % at
+  8.5 ms) and stays; lightened to 6 ms the view is at 100 % in 3 s; a 9 ms scene is never scaled (the old rule held it
+  at 82 %); the cap and floor hold. Weakening the grow rule to the old threshold fails it. TESTING 354.
+
+## v1.291 — A sharpening upscale (2026-11-09, review session, QUEUE Q560)
+
+When the scaler had the 3D view below the screen's pixels, the canvas itself was that small and the browser stretched
+it: bilinear, soft everywhere and blocky on edges. Now **the canvas stays at device pixels** (the 1.5× cap as before)
+and the frame is brought up by a pass of its own.
+
+- **`UPS_FS`** (app/gl.js): the graded frame goes to an 8-bit target at the view's size (`SCN.out`), then Catmull-Rom
+  through nine bilinear taps, a sharpen against the mean of the four nearest texels (`uSh` = 1.6 × the fraction of the
+  width being made up, at most 1), and a clamp to those four texels' range, so nothing rings or haloes. It works on the
+  graded frame because there a step in value is a step the eye sees. **The film grain moved into this pass** when it
+  runs: grain the size of a stretched texel read as blocks.
+- **At 100 % the pass is skipped** and the composite draws to the canvas as before: no cost at full size. `UPSCALE=false`
+  is the old way, for A/B. If the scene target fails, the canvas is the view's size, as before.
+- **`W` and `H` are still the 3D view's pixels**, and no longer the canvas's: a page position is `x*W/cv.clientWidth`.
+  `toCv` (screens.js), the map's pick radius (map-layers.js), `gaugeRect` (gl.js) and the robot's Selene marker
+  (playtest.mjs) used `cv.width` and were moved.
+- **Measured** (RTX 3050, headless, 1262×704, the view forced to 50 %): view 30 (the Orbiter off the pad) 3.6 ms and
+  view 100 (orbit) 2.9 ms with the pass on; not measured against the pass off in the same frame, nor on the iGPU.
+  Stills, machine-local: `output/launchpad/sharp/` (`pad-old.png`, `pad-new.png`, `orbit-new.png`).
+- **Seen in the stills:** the rocket's edges and paint, the horizon and the plume come up clearly sharper. The far
+  coastline's staircase (PLAYTEST #99) is sharper too: that is the shader's own aliasing, Q561's.
+- **Test:** `aerofx-52` lifts the shader's weights and checks them (they sum to 1, rebuild a ramp exactly, overshoot a
+  step by 7.4 %, which the clamp holds). The pass itself can't run headless. TESTING 355.

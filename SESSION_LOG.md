@@ -6863,3 +6863,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `app/editor.js`, `app/screens.js`, `app/render.js`, `builder.js`, `sim/ground.js`, `tests/world.mjs`,
   `notes/platform.md`, `NOTES.md`, `TESTING.md` (353), `QUEUE.md` (R4 ✓), `ACTIVE_WORK.md`.
 - **Next:** R1, R5–R8, R2, R3 in the review's order; R3's lint should use these five as fixtures.
+
+## 2026-11-09 — review session (Fable 5.2, worktree `launchpad-sharp`): the pixelation (Q559 v1.290, Q560 v1.291)
+
+- **Done:** Caio: "a lot of pixelation when I play" (Chrome, High, GPU steady at 45-55 %). **Q559:** the resolution
+  scaler aimed at 7 ms of a 16.7 ms frame and grew back only under 3.85 ms; now an 11 ms budget, steps sized by their
+  predicted cost (`resNext`), and a probe upward when there are no timer queries. **Q560:** the canvas stays at device
+  pixels and a pass brings the scaled view up (Catmull-Rom, a clamped sharpen, the grain at device pixels); skipped at
+  100 %. Q561-Q563 filed (footprint filtering, a temporal plan, half-res smoke and vapor).
+- **Checked:** tests aerofx-51 (the scaler against a cost model; the old grow rule fails it) and aerofx-52 (the
+  filter's weights); smoke passes. On the GPU (lock taken and released): views 30 and 100 forced to 50 %, old and new,
+  no console errors; stills in `output/launchpad/sharp/`. **Not checked:** the scaler live over a whole flight, the
+  no-timer probe on a browser without the extension, the iGPU, the pass's own cost.
+- **Everyone:** `W`/`H` are the 3D view's pixels and no longer the canvas's: use `W/cv.clientWidth`.
+- **Also filed:** PLAYTEST #157 (a dark band in the upper air on the night side and at the terminator), #158 (a free
+  camera for the tester); #135 seen again.
+- **Files:** `app/render.js`, `app/gl.js`, `app/screens.js`, `app/map-layers.js`, `playtest.mjs`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md` (354, 355), `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 354 and 355; #157 needs reference stills of the night limb.

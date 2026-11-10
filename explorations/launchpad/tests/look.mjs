@@ -1154,7 +1154,7 @@
   const wf = m && new Function('f', 'const ' + m[1].replace(/(\d)\.(?!\d)/g, '$1') + ';return[w0,w1,w2,w3]');
   let sum = 0, ramp = 0, over = 0;
   if (wf) for (let f = 0; f <= 1; f += .05) { const w = wf(f); sum = Math.max(sum, Math.abs(w[0] + w[1] + w[2] + w[3] - 1));
-    ramp = Math.max(ramp, Math.abs(-w[0] + w[2] + 2 * w[3] - f)); over = Math.max(over, w[2] + w[3] - 1, -(w[2] + w[3])); }   // texels at -1, 0, 1, 2; a step between 0 and 1
+    ramp = Math.max(ramp, Math.abs(-w[0] + w[2] + 2 * w[3] - f)); over = Math.max(over, -w[0], -w[3]); }   // texels at -1, 0, 1, 2; a step just before or after the pair rebuilds as 1 - w0 or 1 - w3
   check('the upscale filter is a true Catmull-Rom (Q560): weights sum to 1, a ramp comes back exact, a step overshoots (the clamp holds it), and the pass clamps to the four nearest texels',
     !!wf && sum < 1e-12 && ramp < 1e-12 && over > .03 && over < .12 && /c=clamp\(c\+uSh\*\(c-\(a\+b\+d\+e\)\*\.25\),lo,hi\)/.test(sh),
     wf ? `sum off by ${sum.toExponential(1)}, ramp by ${ramp.toExponential(1)}, step overshoot ${(over * 100).toFixed(1)} %` : 'weights not found in UPS_FS');
