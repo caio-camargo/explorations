@@ -83,13 +83,14 @@ const GENES = [   // [key, group, label, default, low, high]
   ['sex', 'Person', 'Sex: female–male', .5, 0, 1], ['age', 'Person', 'Age: young–old', .2, 0, 1],
   ['af', 'Person', 'Population: African', 1, 0, 1], ['as', 'Person', 'Population: Asian', 1, 0, 1], ['ca', 'Person', 'Population: European', 1, 0, 1],
   ['wt', 'Person', 'Weight: thin–heavy', 0, -1, 1], ['ex', 'Person', 'Exaggerate', 1, .3, 3],
+  ['sm', 'Style', 'Simplify (smooth detail away)', 0, 0, 1], ['cv', 'Style', 'Carve (flat planes)', 0, 0, 1], ['cs', 'Style', 'Plane size', .4, .15, .9],
   ['ht', 'Hair', 'Volume on top', .5, 0, 1], ['hq', 'Hair', 'Front: flat–quiff', .35, 0, 1], ['hsd', 'Hair', 'Volume at the sides', .3, 0, 1],
   ['bk', 'Paint', 'Eyebrow weight', .5, 0, 1], ['st', 'Paint', 'Skin tone: light–deep', .22, 0, 1],
   ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['lt', 'Paint', 'Lip colour', .7, 0, 1], ['hg', 'Paint', 'Comb grooves', .5, 0, 1],
   ...MH.sliders.map(s => [s.key, s.group[0].toUpperCase() + s.group.slice(1), pretty(s.key), 0, s.neg.length ? -1 : 0, 1]),
   ...MH.units.map(u => [u, 'Expression', pretty(u), 0, 0, 1]),
 ];
-const OPEN = new Set(['Person', 'Paint', 'Hair']), GK = Object.fromEntries(GENES.map(g => [g[0], g]));
+const OPEN = new Set(['Person', 'Style', 'Paint', 'Hair']), GK = Object.fromEntries(GENES.map(g => [g[0], g]));
 const house = () => Object.fromEntries(GENES.map(g => [g[0], g[3]]));
 const toDNA = g => 'F3:' + GENES.filter(d => Math.abs(g[d[0]] - d[3]) > 1e-4).map(d => d[0] + '=' + (+g[d[0]].toFixed(3))).join(',');
 function fromDNA(s) { const m = /^F3:(.*)$/.exec((s || '').trim()); if (!m) return null; const g = house();
@@ -143,6 +144,37 @@ function shape(g) {   // the face's points: the average, plus its difference fro
 function frame(P) {   // chin at 0, crown at 1, the nose tip at z = .515: MakeHuman's macros also move and size the whole body
   const y0 = P[MH.chin * 3 + 1], s = 1 / (P[MH.crown * 3 + 1] - y0), z0 = P[MH.tip * 3 + 2] * s - .515;
   for (let i = 0; i < P.length; i += 3) { P[i] *= s; P[i + 1] = (P[i + 1] - y0) * s; P[i + 2] = P[i + 2] * s - z0; } return P; }
+// ---- the style, as two filters on the skin's points (the eyes are left alone)
+// Simplify: Taubin smoothing, which removes small detail without shrinking the head.
+// Carve: the faces' normals are averaged with neighbours that already point the same way (so they gather into a few
+// directions and stay different across a strong edge), then the points move to fit those normals: flat planes meeting
+// at the head's own edges (Sun et al. 2007, feature-preserving mesh filtering).
+let SKF = null, SKV = null, VNB = null, FNB = null, VFA = null;
+function styleInit(faces, fm) { SKF = []; for (let i = 0; i < fm.length; i++) if (fm[i] === 0) SKF.push(faces[i]);
+  const vn = new Map(), vf = new Map(); SKF.forEach((f, fi) => { for (let j = 0; j < 4; j++) { const a = f[j], b = f[(j + 1) % 4];
+      if (!vn.has(a)) { vn.set(a, new Set()); vf.set(a, []); } if (!vn.has(b)) { vn.set(b, new Set()); vf.set(b, []); } vn.get(a).add(b); vn.get(b).add(a); vf.get(a).push(fi); } });
+  SKV = [...vn.keys()]; VNB = SKV.map(v => [...vn.get(v)]); VFA = SKV.map(v => vf.get(v));
+  FNB = SKF.map((f, fi) => { const s = new Set(); for (const v of f) for (const g of vf.get(v)) if (g !== fi) s.add(g); return [...s]; }); }
+function stylise(P, g) {
+  if (g.sm > 0) { const n = Math.round(g.sm * 30), D = new Float32Array(SKV.length * 3);
+    for (let it = 0; it < n * 2; it++) { const k = it % 2 ? -.53 : .5;
+      SKV.forEach((v, i) => { const nb = VNB[i]; let x = 0, y = 0, z = 0; for (const u of nb) { x += P[u * 3]; y += P[u * 3 + 1]; z += P[u * 3 + 2]; } D[i * 3] = x / nb.length - P[v * 3]; D[i * 3 + 1] = y / nb.length - P[v * 3 + 1]; D[i * 3 + 2] = z / nb.length - P[v * 3 + 2]; });
+      SKV.forEach((v, i) => { P[v * 3] += k * D[i * 3]; P[v * 3 + 1] += k * D[i * 3 + 1]; P[v * 3 + 2] += k * D[i * 3 + 2]; }); } }
+  if (g.cv > 0) { const nF = SKF.length, N = new Float32Array(nF * 3), A = new Float32Array(nF), M = new Float32Array(nF * 3), C = new Float32Array(nF * 3), O = P.slice(), s2 = 2 * g.cs * g.cs;
+    const fn = () => { for (let f = 0; f < nF; f++) { const q = SKF[f], a = q[0] * 3, b = q[1] * 3, c = q[2] * 3, d = q[3] * 3;
+        const ux = P[c] - P[a], uy = P[c + 1] - P[a + 1], uz = P[c + 2] - P[a + 2], vx = P[d] - P[b], vy = P[d + 1] - P[b + 1], vz = P[d + 2] - P[b + 2];
+        const x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx, l = Math.hypot(x, y, z) || 1e-12; A[f] = l; N[f * 3] = x / l; N[f * 3 + 1] = y / l; N[f * 3 + 2] = z / l;
+        for (let k = 0; k < 3; k++) C[f * 3 + k] = (P[a + k] + P[b + k] + P[c + k] + P[d + k]) / 4; } };
+    fn();
+    for (let it = 0; it < 14; it++) { for (let f = 0; f < nF; f++) { let x = N[f * 3] * A[f], y = N[f * 3 + 1] * A[f], z = N[f * 3 + 2] * A[f];
+        for (const h of FNB[f]) { const dx = N[f * 3] - N[h * 3], dy = N[f * 3 + 1] - N[h * 3 + 1], dz = N[f * 3 + 2] - N[h * 3 + 2], w = A[h] * Math.exp(-(dx * dx + dy * dy + dz * dz) / s2); x += w * N[h * 3]; y += w * N[h * 3 + 1]; z += w * N[h * 3 + 2]; }
+        const l = Math.hypot(x, y, z) || 1; M[f * 3] = x / l; M[f * 3 + 1] = y / l; M[f * 3 + 2] = z / l; } N.set(M); }
+    const T = N.slice();   // the target normals
+    for (let it = 0; it < 20; it++) { fn(); SKV.forEach((v, i) => { const fs = VFA[i]; let x = 0, y = 0, z = 0;
+        for (const f of fs) { const d = T[f * 3] * (C[f * 3] - P[v * 3]) + T[f * 3 + 1] * (C[f * 3 + 1] - P[v * 3 + 1]) + T[f * 3 + 2] * (C[f * 3 + 2] - P[v * 3 + 2]); x += T[f * 3] * d; y += T[f * 3 + 1] * d; z += T[f * 3 + 2] * d; }
+        P[v * 3] += x / fs.length; P[v * 3 + 1] += y / fs.length; P[v * 3 + 2] += z / fs.length; }); }
+    if (g.cv < 1) for (const v of SKV) for (let k = 0; k < 3; k++) P[v * 3 + k] = mix(O[v * 3 + k], P[v * 3 + k], g.cv); }
+  return P; }
 function withHair(P, g) {   // the hair: a shell standing off the scalp
   const C = new Float32Array((NV + HAIRV.length) * 3); C.set(P);
   HAIRV.forEach((v, k) => { const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2], nx = x, ny = y - .55, nz = z + .07, l = Math.hypot(nx, ny, nz), up = clamp((y - .6) / .35, 0, 1), fr = clamp((z - .05) / .3, 0, 1) * clamp(1 - Math.abs(x) / .22, 0, 1) * up;
@@ -154,7 +186,7 @@ function refine(S, P, n) { n = n || 3; const { ptr, idx, w } = S, N = ptr.length
 // ---- a face's mesh as loose triangles: position, normal, (material, cavity shade, lip mask)
 let VB = new Float32Array(9 * 3 * 50000), VN = 0, INFO = {}, bald = false;
 function assemble(g) {
-  const C = withHair(frame(shape(g)), g), P = refine(TOPO, C), nV = P.length / 3, Nn = new Float32Array(nV * 3), L = new Float32Array(nV * 3), cnt = new Float32Array(nV), nq = TQ.length / 4;
+  const C = withHair(stylise(frame(shape(g)), g), g), P = refine(TOPO, C), nV = P.length / 3, Nn = new Float32Array(nV * 3), L = new Float32Array(nV * 3), cnt = new Float32Array(nV), nq = TQ.length / 4;
   for (let q = 0; q < nq; q++) { const a = TQ[q * 4] * 3, b = TQ[q * 4 + 1] * 3, c = TQ[q * 4 + 2] * 3, d = TQ[q * 4 + 3] * 3;
     const ux = P[c] - P[a], uy = P[c + 1] - P[a + 1], uz = P[c + 2] - P[a + 2], vx = P[d] - P[b], vy = P[d + 1] - P[b + 1], vz = P[d + 2] - P[b + 2];
     const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
@@ -265,7 +297,7 @@ const SHAPE_RE = /^head-(oval|round|rectangular|square|triangular|invertedtriang
 const TAG = new WeakMap();
 function randomFace() { const g = house(); g.sex = rnd() < .5 ? .1 + .15 * rnd() : .75 + .25 * rnd(); g.age = Math.pow(rnd(), 1.6); g.wt = clamp(gauss() * .35, -1, 1);
   const e = [rnd(), rnd(), rnd()].map(x => Math.pow(x, 3)); g.af = e[0]; g.as = e[1]; g.ca = e[2];
-  for (const s of FEAT) g[s.key] = clamp(gauss() * .38, s.neg.length ? -1 : 0, 1);
+  for (const s of FEAT) g[s.key] = clamp(gauss() * .22, s.neg.length ? -1 : 0, 1);
   const sh = SHAPES[Math.floor(rnd() * SHAPES.length)]; g[sh.key] = .4 + .6 * rnd();
   const es = g.af + g.as + g.ca; g.st = clamp((g.af * .8 + g.as * .35 + g.ca * .15) / es + gauss() * .1, 0, 1); g.hc = g.age > .7 ? 1 : (g.ca / es > .5 ? rnd() * .8 : rnd() * .3); g.ic = g.ca / es > .5 ? rnd() : rnd() * .3;
   TAG.set(g, `${g.sex > .5 ? 'man' : 'woman'}, ${g.age < .3 ? 'young' : g.age < .65 ? 'middle-aged' : 'old'}, ${pretty(sh.key).replace('head ', '')} head`); return g; }
@@ -287,7 +319,7 @@ function changed() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdi
 function renderEdit() { const t0 = performance.now(); uploaded = null; upload(cur); $('stat').textContent = `mesh ${(performance.now() - t0).toFixed(0)} ms, ${(VN / 3 / 1000).toFixed(0)}k triangles`;
   render([[$('vq'), cur, orbit], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
 $('reset').onclick = () => { cur = house(); sync(); changed(); };
-$('rand').onclick = () => { const ex = cur.ex; cur = randomFace(); cur.ex = ex; sync(); changed(); };
+$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'sm', 'cv', 'cs']) cur[k] = o[k]; sync(); changed(); };
 $('bald').onchange = () => { bald = $('bald').checked; renderEdit(); };
 $('apply').onclick = () => { const g = fromDNA($('dna').value); if (g) { cur = g; sync(); changed(); } };
 $('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
@@ -301,7 +333,7 @@ function renderSheet() { const grid = $('grid'); grid.innerHTML = ''; const jobs
     cell.innerHTML = `<canvas class="t" width="250" height="250"></canvas><canvas class="t th" width="48" height="48"></canvas><div class="sig">${TAG.get(g) || ''}</div>`;
     const [big, th] = cell.querySelectorAll('canvas'); cell.onclick = () => { cur = { ...g }; sync(); setMode('edit'); changed(); }; grid.appendChild(cell); jobs.push([big, g, 'q'], [th, g, 'q']); });
   render(jobs); }
-const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); g.ex = cur.ex; return g; });
+const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'sm', 'cv', 'cs']) g[k] = cur[k]; return g; });
 $('fresh').onclick = () => { pop = newPop(); renderSheet(); };
 function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m)); document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
   if (m === 'edit') renderEdit(); else { if (!pop.length) pop = newPop(); renderSheet(); } }
@@ -311,6 +343,7 @@ window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house
   P0 = await unpack(MH.v, Float32Array); NV = MH.nV; IDX = await unpack(MH.idx, Uint16Array); DEL = await unpack(MH.d, Int16Array);
   const fq = await unpack(MH.faces, Uint16Array), fm = await unpack(MH.fmat, Uint8Array), lip = await unpack(MH.lip, Uint8Array), faces = [];
   for (let i = 0; i < fm.length; i++) faces.push([fq[i * 4], fq[i * 4 + 1], fq[i * 4 + 2], fq[i * 4 + 3]]);
+  styleInit(faces, fm);
   // the scalp: skin above a hairline that runs from the forehead, round the temple, over the ear and down to the nape
   const fmat = Array.from(fm), scalp = new Uint8Array(NV), hl = a => a < .7 ? .86 : a < 1.3 ? mix(.86, .64, (a - .7) / .6) : a < 1.9 ? mix(.64, .58, (a - 1.3) / .6) : mix(.58, .3, clamp((a - 1.9) / .9, 0, 1));
   for (let i = 0; i < NV; i++) scalp[i] = P0[i * 3 + 1] > hl(Math.abs(Math.atan2(P0[i * 3], P0[i * 3 + 2] + .07))) ? 1 : 0;

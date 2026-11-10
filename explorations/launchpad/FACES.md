@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -280,3 +280,14 @@ bake takes the European one).
 point bound to a place on MakeHuman's surface, so the library moves the cage and the cage keeps the planes);
 (b) a few stylising shapes of our own on MakeHuman's mesh (a bigger eye, a simpler nose, a squarer jaw) with the
 signature generator; (c) leave the shape alone and stylise by light and paint only.
+
+**Tried and failed: style by an automatic filter** (2026-11-10). faces3 gained *Simplify* (Taubin smoothing of the
+skin) and *Carve* (the faces' normals gathered into a few directions, then the points moved to fit them; Sun et al.
+2007), with *Plane size*. Seen on the GPU (`carve-filter.png`, `carve-filter-sheet.png`): Simplify does remove detail,
+but it removes the features with it. The lids flatten and the eyes sink, the lips part, and every face drifts toward
+one smooth mannequin. Carve adds almost no visible planes on top, and Plane size changes nothing that shows: after
+smoothing there are no strong edges left for it to keep, and the subdivision that follows rounds what it makes.
+**Why it fails:** a filter cannot know which edges are the style. In the references the planes sit on chosen lines
+(brow into nose, lip borders, jaw, cheekbone); a filter keeps whichever edges happen to be sharpest. The sliders stay
+in the lab at 0. This leaves way (a): planes placed by design, in the cage.
+

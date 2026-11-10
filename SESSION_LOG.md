@@ -7020,3 +7020,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Not checked:** the game by hand (TESTING row 362).
 - **Files:** `sim/program.js`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** the other confirmed review bugs: R15 (top-up mid-flight), R16 (`Infinity` in saves), R21, R22.
+- **Follow-up 2: style by an automatic filter, a negative result.** *Simplify* and *Carve* sliders in faces3 (smoothing,
+  then normal filtering). Seen: features dissolve into a smooth mannequin and no planes appear. Recorded in FACES 0.1.8
+  § 8. Next: the faces2 cage riding on MakeHuman's head, so planes sit on chosen lines.
+
