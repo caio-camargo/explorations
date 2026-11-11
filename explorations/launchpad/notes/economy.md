@@ -3555,7 +3555,7 @@ were free money). Test `econ-36` (fails on the old line).
 Rollout refuse hardware + site fee over the funds and only warn for ops, by design (the Rollout's text: it flies into the
 red, and below the floor someone steps in, now at the end of the flight). A sim-side refusal at liftoff would need a
 place to refuse from; left as it is.
-## v1.303 — a job's conditions as data (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1, notes/flow.md § "Plan: the aim and the mission card")
+## v1.304 — a job's conditions as data (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1, notes/flow.md § "Plan: the aim and the mission card")
 
 **What it is.** Until now a contract was judged by one opaque `ok(R, p, s)` on the flight record, so nothing could ask
 *which* condition was unmet or whether one could no longer be met. Now every `CT` type and every `MISSIONS` entry also

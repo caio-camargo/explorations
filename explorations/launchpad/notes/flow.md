@@ -2031,7 +2031,7 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
   the GPU: mission control's Pads page with a satellite ready on day 25 for a day-70 window: two separate bars.
 - **Still open:** the tick labels (`30 D`, `60 D`) are drawn over the bars.
 
-## v1.304 — what a mission opens: `opensOf`, the debrief's *Opened* block, *opens:* on the Missions tab (2026-11-11, flow, QUEUE Q570; Caio: the gameplay loop)
+## v1.305 — what a mission opens: `opensOf`, the debrief's *Opened* block, *opens:* on the Missions tab (2026-11-11, flow, QUEUE Q570; Caio: the gameplay loop)
 
 - **Why:** the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover's high-gain antenna, and nothing on
   screen said so. The only hint was NEXT's "opens X" for the one mission it suggests.
@@ -2044,7 +2044,7 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
 - **On screen:** the debrief's **Opened** block under the ledger (`D.opened`, built in `debBuild` from the missions paid this
   flight; `debPaid` now keeps the mission's `id`): mission names go to the Missions tab, contract kinds to the in-tray, a
   part shows its card on hover. Each open mission on the Missions tab has a dim *opens: …* line with the names. The
-  completion notice (v1.305) has the short line.
+  completion notice (v1.306) has the short line.
 - **Test** `econ-38`: for all 29 missions, in two programs (only its ancestors done; everything but it and what follows),
   asked before and after, `opensOf` equals the before/after diff of `missionOpen`, `offerTypes` over every source (with the
   world's own `CT.open` gates set aside: they wait on a station or a satellite) and `partOpen`/`rvPartOpen`: 116
@@ -2052,15 +2052,15 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
 - **Seen in the browser:** the Missions tab (*Above the weather · opens: 1 mission (The beeper) · 1 kind of contract
   (ballistic tests)*); a debrief's Opened block; its link to the Missions tab.
 
-## v1.305 — a completion notice you can't miss (2026-11-11, flow, QUEUE Q569; Q558's first slice)
+## v1.306 — a completion notice you can't miss (2026-11-11, flow, QUEUE Q569; Q558's first slice)
 
 - **Before:** `missionComplete` and `contractEval` said it with `HOOK.msg`: one 18 px line for 3 s in the slot the staging
   and gravity-turn hints overwrite.
 - **Now:** the sim calls `HOOK.done({k, id, name, win, pay, first, second, flight})` (a new no-op in `HOOK`, sim/core.js)
   from `missionComplete`, `contractEval` (`flight` false for a dispatch) and `selDone` (contracts judged at home), and no
   longer `HOOK.msg`. `app/notice.js` (new, loaded after app/debrief.js) queues it in `#done`, a card under `#msg`: kicker
-  (*Mission complete* / *Contract done* / *First in the world*), name, win line, pay, what it opened (v1.304), and where the
-  flight stands (v1.306's `mcLeft`: *Done: end the flight when you like*, *Bring it home: …*). It stays until Enter or a
+  (*Mission complete* / *Contract done* / *First in the world*), name, win line, pay, what it opened (v1.305), and where the
+  flight stands (v1.307's `mcLeft`: *Done: end the flight when you like*, *Bring it home: …*). It stays until Enter or a
   click (Enter is taken in the capture phase, so the first Enter closes the notice and the next one ends the flight); two
   at once queue (*1 more after this*); one that comes mid-burn waits for the engines to stop, and once up a burn doesn't
   hide it; a flight's notices go when the flight ends (the debrief says it); a world mission's shows at the desk.
@@ -2070,9 +2070,9 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
   leaves it; queued; dismissed one by one; held through a burn; gone with its flight; a world one at the desk. It caught a
   notice that never hid once the queue emptied.
 
-## v1.306 — the Mission card: when a flight is done (2026-11-11, flow, QUEUE Q548; § "Plan: the aim and the mission card", slice 2)
+## v1.307 — the Mission card: when a flight is done (2026-11-11, flow, QUEUE Q548; § "Plan: the aim and the mission card", slice 2)
 
-- **Q547 merged** with it (its v1.285 is v1.303 now, its `econ-35` is `econ-37`): `jobConds` and `jobNeeds` are what the
+- **Q547 merged** with it (its v1.285 is v1.304 now, its `econ-35` is `econ-37`): `jobConds` and `jobNeeds` are what the
   card reads.
 - **What the flight is for, until the aim (Q549):** `cardJobs(s)` (sim/next.js): first what it has done (`rec.paid`), then
   every accepted contract with a cond judged on a flight whose needs the vessel carried when first asked (on the pad: a
