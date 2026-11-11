@@ -209,19 +209,24 @@ function noseInit(A, quads) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 
   for (const sg of [1, -1]) { const c1 = side(chain, sg), c2 = side(c1, sg); cols.push([c1, .5 * sg], [c2, sg]); if (sg > 0) BCOL = c2; }
   for (const [col, s] of cols) col.forEach((i, k) => { if (i < 0) { console.error('nose strip: the grid breaks at row', k); return; }
     STRIP.push([i, (yT - A[chain[k] * 3 + 1]) / (yT - yB), s]); LINES[i] = 16 | (s === 1 ? 1 : 0) | (s === -1 ? 2 : 0) | (k === 0 ? 4 : 0) | (k === n - 1 ? 8 : 0); });
-  // the brow line: from each top corner of the bridge, one row of the grid up and then outward along it to past the eye
+  // the brow: two lines a side, both starting on the bridge's side edge and running outward along the grid's rows to past
+  // the eye. The upper is the brow's ridge (from the bridge's top corner, one row up, then outward); the lower is the
+  // crease over the upper lid (from the next point down the bridge's edge). The plane under the brow lies between them,
+  // so it ends on the bridge in an edge and not in a point.
   BROW = []; let ex = 0; for (const i of MH.eye) ex += Math.abs(A[i * 3]) / MH.eye.length;
-  for (const sg of [1, -1]) { const corner = cols.find(c => c[1] === sg)[0][0]; let u = -1; for (const j of nb.get(corner)) if (!LINES[j] && A[j * 3 + 1] > A[corner * 3 + 1] && (u < 0 || A[j * 3 + 1] > A[u * 3 + 1])) u = j;
-    if (u < 0) { console.error('brow: no row above the bridge'); continue; } const ch = [corner, u]; let cur = u;
-    while (sg * A[cur * 3] < ex + .085 && ch.length < 14) { let nx = -1, bs = 0; for (const j of nb.get(cur)) { if (ch.includes(j) || LINES[j]) continue; const sc = sg * (A[j * 3] - A[cur * 3]) - 2 * Math.abs(A[j * 3 + 1] - A[cur * 3 + 1]); if (sc > bs) { bs = sc; nx = j; } }
-      if (nx < 0) break; ch.push(nx); cur = nx; }
-    const x0 = Math.abs(A[corner * 3]), x1 = Math.abs(A[cur * 3]); ch.forEach((i, k) => { if (k) BROW.push([i, clamp((Math.abs(A[i * 3]) - x0) / (x1 - x0), .02, 1), corner, cur]); LINES[i] |= (sg > 0 ? 512 : 1024) | (i === cur ? 2048 : 0); }); } }
+  const walk = (ch, sg, far) => { let cur = ch[ch.length - 1]; while (sg * A[cur * 3] < ex + far && ch.length < 14) { let nx = -1, bs = 0;
+      for (const j of nb.get(cur)) { if (ch.includes(j) || LINES[j]) continue; const sc = sg * (A[j * 3] - A[cur * 3]) - 2 * Math.abs(A[j * 3 + 1] - A[cur * 3 + 1]); if (sc > bs) { bs = sc; nx = j; } }
+      if (nx < 0) break; ch.push(nx); cur = nx; } return ch; };
+  for (const sg of [1, -1]) { const c2 = cols.find(c => c[1] === sg)[0], corner = c2[0]; let u = -1; for (const j of nb.get(corner)) if (!LINES[j] && A[j * 3 + 1] > A[corner * 3 + 1] && (u < 0 || A[j * 3 + 1] > A[u * 3 + 1])) u = j;
+    if (u < 0) { console.error('brow: no row above the bridge'); continue; }
+    for (const [ch, kind, bit, endBit] of [[walk([corner, u], sg, .085), 0, sg > 0 ? 512 : 1024, 2048], [walk([c2[1]], sg, .075), 1, sg > 0 ? 4096 : 8192, 16384]]) { const a = ch[0], e = ch[ch.length - 1], x0 = Math.abs(A[a * 3]), x1 = Math.abs(A[e * 3]);
+      ch.forEach((i, k) => { if (k) BROW.push([i, clamp((Math.abs(A[i * 3]) - x0) / (x1 - x0), .02, 1), a, e, kind]); LINES[i] |= bit | (i === e ? endBit : 0); }); } } }
 // The brow: its points are put on one straight line (seen from the front) from the bridge's top corner to the brow's outer
 // end, and pushed forward so the ridge overhangs the eye. They keep each face's own depth, so a heavy brow stays heavy.
 // When the planes are cut, a point of the line merges only along the line, and its ends stay.
-function browStyle(P, g) { if (g.bf <= 0) return P; const E = new Map(); for (const b of BROW) if (!E.has(b[3])) E.set(b[3], [P[b[3] * 3], P[b[3] * 3 + 1]]);
-  for (const [i, t, c, e] of BROW) { const en = E.get(e), yI = P[c * 3 + 1], yE = mix(en[1], yI, .5) + g.bt * .03;
-    P[i * 3] = mix(P[i * 3], mix(P[c * 3], en[0], t), g.bf); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yI, yE, t), g.bf); P[i * 3 + 2] += g.bf * g.bo * .03 * sstep(0, .3, t); }
+function browStyle(P, g) { if (g.bf <= 0) return P; const E = new Map(); for (const b of BROW) if (!E.has(b[3])) E.set(b[3], P[b[3] * 3]);
+  for (const [i, t, c, e, kind] of BROW) {   // both lines are level from their point on the bridge (or tilted together), so the plane between them is a band
+    P[i * 3] = mix(P[i * 3], mix(P[c * 3], E.get(e), t), g.bf); P[i * 3 + 1] = mix(P[i * 3 + 1], P[c * 3 + 1] + g.bt * .03 * t, g.bf); if (!kind) P[i * 3 + 2] += g.bf * g.bo * .03 * sstep(0, .3, t); }
   return P; }
 // The nose's underside is a second built plane: from the bridge's bottom edge (the tip) back to the base of the nose,
 // as wide there as the wings. Its points are the skin under the nose that lies near that plane, found once on the

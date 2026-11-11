@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.14 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.15 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -418,4 +418,17 @@ the edge dips in a V over the eye. On the sheet of twelve every face has it. Rou
 natural brow is modest at the house setting; the line ends just past the eye and the temple beyond is whatever the
 cutting left; the forehead above is a fan of triangles. Not checked: the overhang and tilt sliders at their ends,
 the brow sliders and expressions of MakeHuman (raise, frown) with the ridge on.
+
+**Step 3 corrected: the brow as a level band** (2026-11-11; Caio: "they all look pretty angry because of the triangle
+pointing down at the eye, so i don't think that's the right point for a vertex"). The dark plane under the brow ran
+to a point at the bridge's top corner, its lower edge climbing to it from the eye: a scowl on every face. **A plane
+that should read as a band must end in an edge, not a point.** Now there are two lines a side, both starting on the
+bridge's side edge: the brow's ridge from the top corner (as before), and the crease over the upper lid from the
+next point down that edge (the grid row there runs outward over the eye; 2 points a side past the bridge). Both are
+level from their point on the bridge (the tilt slider turns them together), and both are kept when the planes are
+cut, their ends fixed. The brow's outer end no longer takes half its own height: level is the house setting.
+Seen (GPU; `brow-band-closeup.png`, `brow-band-front.png`, `sheet-brow-band.png`): the plane under the brow is a
+level dark band from the bridge's edge outward; the faces on the sheet read calm, not angry. Rough: the eyeballs
+stand prouder of the lids than before; the crease line is short (it stops over the eye's middle); the forehead
+above the bridge is still a fan of triangles meeting at its top. Not checked: as above.
 

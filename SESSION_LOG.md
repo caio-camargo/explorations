@@ -7053,4 +7053,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `?under=1`. New: the brow's points on one straight line from the bridge's top corner to past the eye, pushed
   forward, protected when the planes are cut. Seen: a straight brow edge on every face of the sheet; modest change
   at the house setting. FACES 0.1.14 § 10, README 0.1.28. **Next:** Caio's look; then lips or lids.
+- **Follow-up 9 (2026-11-11): the brow as a level band (faces5).** Caio: right direction, but "they all look pretty
+  angry because of the triangle pointing down at the eye". The plane under the brow ended in a point at the
+  bridge's corner. Now a second kept line (the upper lid's crease, from the next point down the bridge's edge), both
+  lines level: the plane is a band ending in an edge. Seen: calm faces on the sheet. Rough: eyeballs stand proud.
+  FACES 0.1.15 § 10, README 0.1.29. **Next:** Caio's look; then the lids (the eyeballs), or the lips.
 
