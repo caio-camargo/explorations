@@ -7062,4 +7062,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   or three vertices, for anger, fear, surprise. The ridge now runs through three kept points with a height slider
   each; six mood buttons. Seen: six different brows on the average man; afraid and sad are close. Only the ridge
   moves. FACES 0.1.16 § 10, README 0.1.30. **Next:** Caio's look.
+- **Follow-up 11 (2026-11-11): the lids and the eyes (faces5).** Caio: "yes, this is good. let's proceed with lids
+  and eyes". The lid's front edge (a ring of 28 points an eye) is built as a six-cornered opening just outside the
+  eyeball, kept when the planes are cut; two lid sliders, set by the moods; an iris-size slider. Fixed on the way:
+  the cut ran on the unstyled head since follow-up 8 (a call lost in a comment); faces moved sideways by MakeHuman's
+  head sliders had one blank, proud eye (now centred on the eyes, each eye round its own centre). Seen: eyes inside
+  the lids on the whole sheet; six moods distinct. FACES 0.1.17 § 10, README 0.1.31. **Next:** Caio's look; then
+  the lips, or the lid's crease following the lid.
 
+### 2026-11-11 — Launchpad vehicle session: R21, the stale drag cache (v1.301)
+- **Summary:** `dragTable` (`sim/flight.js`) cached the impact predictor's CdA table by part count and AoA bin, so a fairing
+  jettison or bay doors kept the old table (Satellite after jettison: 1.70 m² cached vs 3.30 true at Mach 1). The cache
+  now also holds the `s.lines` it was measured on (`rebuildShape` replaces it on every outline change). Keying on `profOf`
+  was tried and rejected (it disagrees with `s.lines` while bay doors finish closing). New test `vehicle-41`, which fails
+  on the old code; `--smoke` all passed (788).
+- **Files:** `sim/flight.js`, `test.mjs` (api: `dragTable`, `fairJettison`, `bayDoors`, `bayTick`), `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.301, `NOTES.md`, `QUEUE.md` (R21 ✓), `ACTIVE_WORK.md`.
+- **Next:** none for R21. No TESTING row (not visible on screen; the robot check covers it).

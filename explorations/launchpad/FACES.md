@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.16 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.17 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -446,4 +446,30 @@ are clear, surprised lifts the whole band, afraid and sad both lift the inner en
 Rough: only the ridge moves (the forehead above, the lids and the eye's opening do not, and MakeHuman's own brow
 expressions are overridden where the ridge is built); every person gets the same brow heights. Not checked: the
 moods on the sheet and in three-quarter view, at 48 px, and at other plane counts.
+
+**Step 4: the lids and the eyes** (2026-11-11; Caio on the brow's three points: "yes, this is good. let's proceed
+with lids and eyes"). `lidInit` / `lidStyle` in faces5. MakeHuman's skin runs round the eyeball in rings: the lid's
+inner fold (inside the ball), two more rings of thickness, then the lid's front edge, the first ring wholly outside
+the ball (28 points an eye). That fourth ring is the built shape: **a six-cornered opening**, the face's own two
+corners plus two points on the upper lid and two on the lower, joined by straight pieces and laid on a ball 1.09
+times the eyeball's radius, so the lids always cover it. The upper and lower heights are the face's own, times a
+slider each: *Upper lid: low–high* (0 to 1 is .3 to 1.9 times its own rise; house .5 is its own) and *Lower lid:
+low–high* (1.6 to .3 times its own drop). The three rings inside move with the edge; three rings outside follow,
+fading. When the planes are cut the six corners stay, and the edge's other points merge only along their own lid.
+*Eyes: natural–built lids* (house 1) blends it. The six mood buttons now set the lids with the brow: neutral
+(.5 .5), resolute (.42 .58), angry (.3 .8), afraid (.9 .6), surprised (1 .3), sad (.28 .5). *Iris size* (Paint,
+house .36; it was .52 and filled the whole opening) so the white shows when the eye is wide.
+Three faults found and fixed on the way. (1) The cut was being made on the natural average head: the call that
+styles it first had slid into a comment when the underside was parked (follow-up 8). (2) MakeHuman's head sliders
+can move the whole head sideways; the eye's paint and the built shapes assumed the middle at x = 0, so on such faces
+one eyeball was drawn blank and outside its lids (visible on earlier sheets as a white ball). `frame` now puts the
+middle of the two eyeballs at x = 0, and each eye is painted and built round its own centre. (3) The eye's normals
+used the previous face's eye centre.
+Seen (GPU; `lid-moods.png`, the average man, front; `sheet-lids.png`, `sheet-lids-surprised.png`; `lids-range.png`):
+the eyeballs sit inside the lids on every face of the sheet; the six moods read differently, and afraid (wide) and
+sad (drooped) are no longer alike; the opening holds nearly closed, wide open, at 216 and 2,382 planes, and with
+big close-set eyes. Rough: the upper lid's peak is nearer one point than two; in three-quarter view a sliver of the
+ball can show under the outer corner; the lid's crease is still the short level line of step 3 and does not follow
+the lid; the iris always looks straight ahead. Not checked: MakeHuman's own eye expressions with the built lids,
+the 48 px tiles beyond a glance, each mood on many faces.
 

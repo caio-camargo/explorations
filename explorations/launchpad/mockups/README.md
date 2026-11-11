@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.30 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.31 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -354,6 +354,11 @@ under the brow is now a level band between the ridge and the upper lid's crease,
 Stills: `brow-band-closeup.png`, `brow-band-front.png`, `sheet-brow-band.png`.
 **The brow's expression** (2026-11-11): the ridge runs through three kept points (inner end, middle, outer end) with a
 height slider each, and buttons for neutral, resolute, angry, afraid, surprised, sad. Still: `brow-moods.png`.
+**The lids and the eyes** (step 4, 2026-11-11): the lid's edge is a built six-cornered opening laid just outside the
+eyeball, so the ball no longer stands proud; *Upper lid* and *Lower lid* sliders, set by the mood buttons with the
+brow; *Iris size*. Each eye is built round its own centre (faces whose head MakeHuman had moved sideways had one
+blank eye). Stills: `lid-moods.png`, `sheet-lids.png`, `sheet-lids-surprised.png`, `lids-range.png`,
+`sheet-before-lids.png`.
 
 **Pick:** _(Caio: is this the direction?)_
 
