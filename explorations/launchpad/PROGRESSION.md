@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -32,6 +32,9 @@ done and what it opened. This document is the second half.
 
 **A need → a design → a test → the flight → it stays → it grants something you can see.**
 
+**Any flight can fulfil any mission** (D29): missions and contracts are criteria on what a flight did, never an
+assignment. Ticking a job in the Assembly aims the checks; it never decides what pays.
+
 Each step has a place (§ 5) and each grant has a ceremony (§ 3). "It grants" is one of four things: a part, a room or
 building, a reach (where you can command, how far you can go), or a routine (something that now runs itself).
 
@@ -39,7 +42,8 @@ building, a reach (where you can command, how far you can go), or a routine (som
 
 **The rule.** A part opens with the mission that first proves the thing it is for. It arrives **unproven**: know-how
 and certification stay exactly as they are, so the test stand and the first flights of a new part have a job. Unlock,
-then prove. No new mechanism: `PART_GATE` grows, `partOpen` and `partLaunchWhy` already refuse a launch, the builder
+then prove. The proving can be a **qualification mission** (W50, Q588): one per part family, each a different thing
+to do, met by any flight that carries the part. No new mechanism: `PART_GATE` grows, `partOpen` and `partLaunchWhy` already refuse a launch, the builder
 already lists a closed part dimmed with its reason (Q190).
 
 **The overlay** (Caio: "very visible: you end the mission, they appear as an overlay, *Part unlocked!*, with a picture
@@ -50,20 +54,23 @@ of the part"). After the flight report, one card per grant, in order of weight:
   routine;
 - several grants queue; any key moves on; the list stays in the report's **Opened** block (Q570's `opensOf`).
 
-**Chapters.** An epoch becomes a chapter with a question, a visible finish and a grant. First draft, for the economy
-plan (Q573) to measure against the M1 finish line (first orbit in 4–6 flights) and the presets:
+**Chapters.** An epoch becomes a chapter with a question, a visible finish and a grant. The map of which part opens
+with which mission is planned and measured in [`notes/economy.md`](notes/economy.md) § "Plan: the unlock map and
+chapters" (Q573); this is its summary.
 
-| Chapter | The question | Starts with | Opens along the way | Capstone → grant |
-|---|---|---|---|---|
-| 1 Sounding rockets | can we reach space and bring it back? | Sparrow, tanks 1–4 t, fins, nose cone, parachute, instrument package, decoupler | biocapsule (*Above the weather*) | *Structural test flight* → **Kestrel, tank 8 t, steerable fins** |
-| 2 Once around | can we stay up? | | Petrel and the reaction wheel (*Passenger: the hop*); pod and heat shield | *The beeper* → **mission control opens; the satellite bench** (probe cores, batteries, body cells, cameras, whip antenna, fairing); **the globe table** |
-| 3 Satellites that work | can what we launch earn its place? | | solar wing, boom antenna, apogee engine, kick motors, spheres (*Weather satellite*); **Condor** (*Heavy lift I*) | *TV for the capital* or *Navigation constellation* → **routines** (dispatch of a flown ascent); **docking ports, RCS** |
-| 4a A house in the sky | can people live up there? | | habitat; crew capsule and escape tower (the abort tests); arm and cargo bay; laboratory | *Thirty days aboard* → **the yard** (assembly in orbit, LATE_GAME § Yards) |
-| 4b Selene | can we reach another world? | **Albatross and the 2.5 m family** (*Heavy lift II*) | landing legs, Wren (*The far side*); rover parts as today (`RV_GATE`) | *Soft landing* → **the base beacon**; with 4a, *Crew on Selene* → **bases** |
-| 5 Nyx and beyond | | | RTG, onboard computer (their eras, as today) | as LATE_GAME § "The arc after Selene" |
+| Chapter | The question | Opens along the way | Capstone → grant |
+|---|---|---|---|
+| 1 Sounding rockets | can we reach space and bring it back? | biocapsule, tank 4 t, steerable fins (*Above the weather*); boosters (*Range certification*); pod, heat shield (*the hop*) | *Structural test flight* → **the orbital kit**: Kestrel, Petrel, tank 8 t, reaction wheel |
+| 2 Once around | can we stay up? | crew capsule, escape tower (*one orbit*); **Condor** (*Heavy lift I*); **Albatross and the 2.5 m family** (*Heavy lift II*) | *The beeper* → **mission control, the globe, the satellite bench** (20 parts, one card) |
+| 3 Satellites that work | can what we launch earn its place? | solar wing, boom antenna, apogee engine, kick motors (*Weather satellite*) | *TV for the capital* → **docking**: ports, RCS, the habitat |
+| 4a A house in the sky | can people live up there? | arm, cargo bay (*A station*); laboratory (*A crew aboard*); crews fly (the max-q abort) | *Thirty days aboard* → **the yard** (LATE_GAME § Yards) |
+| 4b Selene | can we reach another world? | landing legs, Wren, rovers (*The far side*); base beacon (*Soft landing*) | *Crew on Selene* → **bases** |
+| 5 Nyx | what else is out there? | RTG, onboard computer (their eras) | *An orbit that lasts* → LATE_GAME § "The arc after Selene" |
 
-Chapters 4a and 4b run side by side; a base needs both. The two Heavy lift missions, which today only pay, become the
-gates for the big engines.
+The start is twelve parts: a Sparrow, two tanks, fins, a nose cone, a parachute, an instrument package, a decoupler.
+Chapters 4a and 4b run side by side, both after chapter 3 (stations after TV; the far side after the weather satellite
+and Heavy lift II); a base needs both. First orbit now needs the structural test. **Measured:** the scripted player
+already flew it, so first orbit stays at 4.2 flights on average (max 6).
 
 **Chapters as events.** The Missions tab shows the current chapter's finish and its grant. A capstone gets the poster
 headline (Q479) before its unlock cards. The desk wall (it already holds the firsts, `app/desk.js:41`) is the trophy
@@ -71,23 +78,43 @@ case.
 
 ## 4. Contact limits uncrewed flight (Caio: "makes sense, fully")
 
-**The rule.** An uncrewed vessel answers the stick only while it has a link home: a ground station in view or a relay
-(`linkOf`, `entryRelay`). A crewed vessel always answers: the pilot is the computer (CREW.md).
+Planned and measured in [`notes/space.md`](notes/space.md) § "Plan: contact limits uncrewed flight" (Q574); this is
+its summary.
 
-**Out of contact**, by the avionics it launched with (`AV`, `sim/vessel.js:665`):
+**The rule.** An uncrewed vessel answers the stick only while mission control can reach it: a ground station in view,
+the launch range, or a relay. A vessel with a crew aboard always answers: the pilot is the computer (CREW.md). The
+biocapsule's passenger and the capsule's test dummies are not a crew.
 
-| Avionics | What it does alone |
-|---|---|
-| Gyro autopilot (era 0) | holds its attitude; flies **one stored command**, set while in contact: a burn at a held attitude for a set time, or a staging on a timer (a clock, as the launch rail's sequencer in MIDGAME) |
-| Analog autopilot (era 1) | the same, in any of its hold modes, and a short list of stored commands |
-| Guidance computer (era 2 on) | every planned burn, guided (`blind: 'board'` in `sim/procedures.js`) |
+**Out of contact the last command stands** (throttle, hold mode), and the vessel flies what was stored in it. The
+stored command is **an armed node**, by the avionics the vessel launched with:
+
+| Avionics | An armed node, out of contact | How many |
+|---|---|---|
+| Gyro autopilot | burns at the attitude it is holding, cuts off at the node's Δv, **then stages N times** (drop the stage, arm the chute) | one |
+| Analog autopilot | the same, and may turn to one of its hold modes first | the next three |
+| Guidance computer | points and flies every node | all |
+
+**Measured** (flown headless, a new program's default site, the pad's station alone):
+- Every first-orbit burn is out of the pad's sight: the Beeper's circularising burn falls 576–608 km downrange, 78 s
+  after the horizon takes the link at 385 km. The player has 64–107 s after the ascent cutoff to store it.
+- A stored, timed burn at a held attitude circularises as well as a guided one (108 × 109 km against 103 × 109 km).
+- *Passenger: one orbit* needs a burn and two stagings with nobody listening: hence "then stage N".
+- Six buildable ground stations give 23 % contact at 150 km over the equator (the pad alone: 12 %). Stations shorten
+  the wait; they do not give control.
+
+**So the rule comes with two things:**
+- **A launch range** (default; W51): the pad plus a tracking ship 700 km downrange. Eastward launches then stay in
+  contact through insertion, the first orbit plays as today, and the rule first bites on the passenger's return, the
+  weather satellite's polar insertion and the TV transfer. Hard has no ship; Easy never limits.
+- **Relays that reach.** Today a relay is one hop, whip to whip, about 300 km. The dish (Q338) and relay chains (Q217)
+  are what make a comms constellation the answer to a gap; until then the answers are a stored command, a crew or an
+  onboard computer.
+
+**Also fixed by the plan:** plasma on the way up never refuses a command (the link word reads "plasma blackout" for
+23–42 s around the ascent cutoff on all four flights); away from Tellus the question is honest (nothing is commanded
+behind Selene, or without an antenna), where today's link assumes deep-space antennas always reach.
 
 - **Nothing is lost** (pillar 5): the vessel coasts, warp works, and one key warps to the next contact.
-- **What it makes worth building:** ground stations (already buildable, `buildStation`), relay satellites, a crew, an
-  onboard computer. Each changes what you can do at the stick.
-- **The first hour is the risk.** The beeper's circularising burn may fall beyond the pad station's horizon. The plan
-  (Q574) measures that first. If it does, the first orbit becomes "store the burn before you lose contact", taught by
-  the Mission card, and the level decides how hard it bites (default: Easy never limits; Normal and Hard do).
 - Light delay stays where it is (rovers) until M5's distances.
 
 ## 5. The office as three tables (supersedes W35's "no 3D behind the rooms")
@@ -113,7 +140,7 @@ case.
 ## 6. Order of work
 
 1. **Chapter starts** (Q571): saves at *first orbit done*, *first station up*, *landed on Selene*, with a prudent
-   player's funds, so Caio can play the middle of the game now.
+   player's funds, so Caio can play the middle of the game now. ✓ v1.309: the title's *Start at* line (`node chapters.mjs` remakes them).
 2. **The unlock overlay** (Q572) on today's 13 gated parts.
 3. **Plans**: the unlock map and chapters (Q573), contact limits (Q574). **Mock-up**: the tables (Q575).
 4. Builds, after Caio's answers and W48's freeze: the map's data and presets, chapters as events (Q576), contact
@@ -121,13 +148,17 @@ case.
 
 ## 7. Open questions (each with a default; the named item brings it back)
 
-| # | Question | Default | Item |
+| # | Question | Default | Where |
 |---|---|---|---|
-| 1 | Does an engine unlock outright, or as a development program (opens *on paper*, qualified after stand firings)? | outright, arriving unproven | Q573 |
-| 2 | Is first orbit still 4–6 flights with chapter 1's gate in front of the Kestrel? | yes: hold the finish line, move the gate if not | Q573 |
-| 3 | Does contact limit the first orbit on Normal? | yes if a stored burn can be taught in the Mission card; else from chapter 3 | Q574 |
-| 4 | Does a design saved with a part that is no longer open (an old save) still fly? | yes: parts already flown stay open | Q573 |
-| 5 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
+| 5 | Does contact limit the first orbit on Normal? | yes, with a launch range (the pad and a tracking ship 700 km downrange) | W51 |
+| 6 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
+
+**Answered by Caio (W50, 2026-11-11):** engines open outright and a qualification mission proves them (Q588); the
+structural test's bar is 20 kPa; the map's order stands; the Petrel opens with the Kestrel.
+
+**Answered by the plans:** first orbit stays 4–6 flights with the gate (Q573, measured); a part already flown stays
+open, so old saves keep what they have used (Q573, rule 1).
+
 
 ---
 
@@ -135,3 +166,8 @@ case.
 - **0.1.0 (2026-11-11):** written from Caio's review of the loop (the same day's conversation): visible unlocks with
   an overlay, contact limits on uncrewed flight, chapters with capstones, the office as three tables; W35's "no 3D
   behind the rooms" superseded (D28).
+- **0.1.1 (2026-11-11):** § 3's chapter table and § 7 from Q573's plan (measured): the hop in chapter 1, the Petrel with
+  the Kestrel, the Heavy lift missions in chapter 2, stations after TV, Selene after Heavy lift II.
+- **0.1.2 (2026-11-11):** § 4 from Q574's plan (measured): the stored command is an armed node with a staging tail, the
+  launch range, plasma never refuses a command, relays need the dish to matter.
+- **0.1.3 (2026-11-11):** D29 (any flight can fulfil any mission); W50 answered (qualification missions, Q588).

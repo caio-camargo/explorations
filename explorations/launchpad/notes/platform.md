@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -886,3 +886,68 @@ orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `
 - Test platform-6: no snapshot of `PROG` taken any other way (a mutation putting the save back on
   `JSON.stringify(PROG)` is caught); `progLossy` finds all seven kinds planted; 300 days of play lose nothing; the
   tester is told once about R16's bound; a restore drops a field added after the snapshot, and `newerSave` isn't written.
+
+## v1.308 — a bad save no longer bricks the page (2026-11-11, platform, QUEUE R10)
+
+The review (2026-11-09 § 2) found three saves that threw on every reload with no reset reachable: `{"ver":1,"home":99}`,
+`{"done":null}`, `{"rel":null}`. Reproduced headless: each loaded, then threw on the first world tick (`align` of an
+undefined power, `Object.keys(null)`, `null['0-1']`); so do `offers: 5` and `active: null`.
+- **`progLoad(j, home)`** (sim/program.js, after `progRestore`) is the one loader; the page and the recorder's `recLoad`
+  both call it. (1) The save goes onto `PROG_BASE` (PROG's starting literal, so a save missing `done`/`cert`/`atm` gets
+  them, as the old `Object.assign` did). (2) `progRepair`: a field whose kind differs from its `PROG_SCHEMA` default is
+  put back to the default (object, array, finite number, string, boolean; a null default takes anything), and a `home`
+  that is no power goes to 0. `PROG_REPAIRED` names them; the page says "Parts of the saved program were damaged and are
+  reset: done (null)". (3) `progDerive`: HOME, the rivals, the board, the old finite fix-ups. (4) **`progProbe`**: one day of
+  the world on the save with news, messages and saves muted, then put back exactly (transient fields kept aside), so a
+  save that would throw in the first frame throws here. Any throw: `PROG` becomes a new program and the error comes back.
+  A played save (200 days) loads exactly as a plain restore, and 30 days on from it match: the probe leaves no trace.
+  Cost: under 1 ms.
+- **The page** (app/state.js): a save that won't parse, isn't a program, or fails `progLoad` is copied to
+  `launchpad-program-v1-bad` (`-tester-bad` in tester mode) **before** anything can save over it; a new program starts and
+  the player is told (message and a *bad* news line). With no room for the copy, the tab never saves (`progHeld`), so the
+  old save stays.
+- **Saving**: `HOOK.save` no longer swallows a failure: "Could not save: browser storage is full…" (quota) or the error,
+  at most once a minute, and not at all where storage was unreadable at boot (private windows).
+- **Two tabs**: the browser's `storage` event tells a tab when another one wrote the save; that tab stops saving and says
+  so ("reload it to carry on here"). Whichever tab saves first keeps the program; the other can't write an older program
+  over it.
+- Not done: no way in the game to download the `-bad` copy (R9's *Export save* is the place); `offers` (null default) isn't
+  kind-checked, the probe catches it. R1d (fill a save from the schema) is still open; `progRepair` only fixes kinds.
+- Test platform-7 runs the page's own load/save block against the SIM with a fake `localStorage`: the five broken shapes
+  load repaired and play 3 days; `sats:[5]`, `offers:5`, non-JSON and a bare string are kept as `-bad` and a new program
+  starts; storage full holds the save; quota said once; another tab's write stops this tab's saves; the played-save
+  equality above. platform-2's slice of the page now ends at `// Loading (R10)`.
+## v1.309 — chapter starts: begin at first orbit, the first station or Selene (2026-11-11, QA, QUEUE Q571; PROGRESSION § 6)
+
+- **Why:** Caio can't playtest stations and bases because every playtest starts at hour one.
+- **On the title menu:** under New program, a *Start at* line: **First orbit done**, **First station up**, **Landed on
+  Selene**. Picking one loads `starts/<id>.js` (a script tag, so it works from a file too), writes its save into its own
+  slot (`CHAPTER_KEY`, `launchpad-program-chapter`; `PROG_SLOT` in app/state.js, read from `launchpad-slot`) and reloads; the career's
+  save is never read or written. In that slot Continue says *a chapter start* and New program becomes **Back to your
+  career**. The player's library and level (`PROG_SCHEMA`'s `library`/`pref` fields) come along. In tester mode a start
+  replaces the tester's program instead, flags and all; outside it there are no tester flags.
+- **How they're made:** `node chapters.mjs` plays one career with career.mjs's scripted player (the prudent one: a reserve,
+  declines offers but a rescue loan) through the game's own economy, race, opinion and calendar, and snapshots `progJSON`
+  at each milestone, so each start carries on from the one before. career.mjs is now also a module: `run(arch, start,
+  seed, opts)` with `until`, `days`, `keep` (carry on), `goals` (missions it goes for, a bonus on their value: *Measure the
+  air* and, after orbit, the escape tower's two tests, the station and the Selene firsts) and `registry` (what an orbit
+  leaves, its last stage, is posed on its orbit and the Selene lander on the near side, then the game's own `satRegister`
+  files them). New plans: `PLANS.abort` (a crew capsule under its tower on the Passenger's booster) and `PLANS.station`
+  (a habitat, a port on top and one on its side, a probe core, on the Heavy). The default rows are unchanged
+  (`PACE=1 node career.mjs 3 2` prints the same before and after). Deterministic: the same files every run.
+- **What they hold (seed 1, a random world that came out a rising power, a national agency):** *First orbit done* day 60,
+  2 flights, 180M, the weather, the air and the beeper done, Beeper 1 up. *First station up* day 494, 12 flights, 172M,
+  10 firsts (the hop and one orbit, the tower qualified), Beeper 1 and the habitat (the game names it *Object 1*).
+  *Landed on Selene* day 805, 15 flights, 581M, 13 firsts (the far side, the impactor, the soft landing), *Selene lander 1*.
+  The flights are abstracted as career.mjs always has (a record per plan, a success probability): fast and cheap next
+  to a person's career, and contracts are few (1–3).
+- **When the save schema moves:** `node chapters.mjs` and commit `starts/`. `--dry` prints the summary only.
+- **Test** `qa-8`: each start loads as the page loads a save, carries only `PROG_SCHEMA` fields and nothing `progLossy`
+  flags, survives a `progJSON` round trip, has its milestones without a tester mark, its registry (a beeper up; a habitat
+  with two free ports by `stFind`; a lander on Selene), runs 40 days, and launches what its next mission takes (the
+  *Structural test flight* on the Sounding preset; *Heavy lift I* on the scripted player's Orbiter with ballast: no
+  `NEXT_PRESET` for it). The title menu lists the same three, into their own slot.
+- **Seen in a browser** (headless Chrome on the GPU, by script): each start from the title, Continue to the desk (NEXT, the
+  Missions tab with the done firsts struck, the registry), the career save byte-for-byte untouched, Back to your career.
+  In the desktop Chrome the tab froze after the station start once, while the local server was starved (4.6 s per file);
+  with the server restarted it loaded in 1 s at 8 ms a frame headless. Not played by hand (TESTING 368).

@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
+**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2621,3 +2621,229 @@ shadow, *its battery runs out in every shadow, so it works N % of the time*. A d
 - Test `space-35`: three budgets against the registry itself (`satPowTick` from full, 0.05-day steps): flat on the day it
   says (within a step) and the same share after; the Probe gets none (mutation caught: the days doubled). Checked in the
   builder on the GPU: the Docking preset (no cells, 50 W on 1500 Wh) reads "lasts 4 days, then it goes quiet".
+
+## Plan: contact limits uncrewed flight (2026-11-11, review 2 session, Fable; QUEUE Q574; PROGRESSION § 4, D28; plan only)
+
+D28 (2): an uncrewed vessel answers the stick only while it has a link home; out of contact it does what its avionics
+can alone. This plan measures where that bites, fixes the rule's details and cuts it into slices. No game code changed.
+Scripts: `review/2026-11-11/q574/` (`fly.mjs`, `cover.mjs`, `world.mjs`, `api.mjs`; run from `explorations/launchpad`; `SHIP=700`, `AZ=3`, `ONLYASC=1` are `fly.mjs`'s switches).
+
+### Measured (v1.307, a new program: Dunnzar Cape on the equator, the pad's station alone, launches due east)
+
+**Flown** on the real SIM with the tests' `handAscent` (`fly_ladder.mjs:27`, copied and instrumented: vertical to 200 m,
+flat by 38 km, engines off at a 110 km apoapsis, circularised there), the link read from `linkOf` every 0.5 s:
+
+| Preset | Ascent cutoff | Horizon takes the link | Circularising burn | Burn length | Lost before the burn |
+|---|---|---|---|---|---|
+| Beeper | 146 s, 132 km downrange | 247 s, 385 km, 98 km up | 325–337 s, 576–608 km | 12.4 s, 470 m/s | 78 s |
+| Passenger Orbiter | 165 s, 164 km | 238 s, 363 km, 88 km up | 391–400 s, 764–786 km | 8.1 s, 284 m/s | 153 s |
+| Satellite | 187 s, 175 km | 252 s, 352 km, 84 km up | 441–448 s, 858–876 km | 6.6 s, 237 m/s | 189 s |
+| TV Satellite | 127 s, 134 km | 234 s, 394 km, 102 km up | 289–308 s, 523–572 km | 18.9 s, 547 m/s | 55 s |
+| Satellite, heading 3° (polar) | 197 s, 205 km | (in plasma until the horizon) | 529–533 s, 1,210–1,220 km | 4 s | all of the coast |
+
+- **Every first-orbit insertion happens out of contact.** The pad sees a craft at 100 km out to 390 km downrange
+  (`gsSees`, 5° above the terrain mask; 316 km at 70 km up, 489 km at 150 km, 875 km at 500 km: geometry on the game's
+  masks, `cover.mjs`). The burns fall at 523–876 km.
+- **The window to act is 64–107 s**: from the ascent cutoff to the horizon. That is when a player would place the node,
+  point and arm it.
+- **A plasma blackout on the way up.** `plasmaOn` (`sim/world.js:327`) is true for 23–42 s around the ascent cutoff
+  on all four flights (56–73 km up, from 2.2 km/s in thin air), so `linkOf` reads "plasma blackout" at the moment the
+  engines are cut. On the polar flight it lasts until the horizon. This driver flies low and fast; a lofted ascent may
+  miss it. It is today's behaviour, only ever shown as a word on the MET line.
+- **Afterwards** the 102 × 109 km orbit (42.5 min) passes the pad once per orbit for 4.8 min: AOS 39–41 min after
+  insertion. In contact about 11 % of the time.
+- **Passenger Orbiter, once round and home** (the return of `tests/vehicle.mjs` vehicle-3: a retrograde burn, the
+  gyro's retrograde hold, everything staged at 20 km): the deorbit burn fell 629 km short of the pad, out of contact;
+  the pad saw it for 2.6 min on the way past; the chute stage fired at 20 km, 1,843 km downrange, out of contact;
+  it landed 1,854 km from the pad. A burn that lands it at home is further upstream still. **The return needs a burn
+  and a staging with nobody listening.** The chute itself is barometric once armed (`sim/vessel.js:949`).
+- **TV Satellite** (geometry from `statXfer`, `sim/program.js:331`, on the flown parking orbit): the transfer burn
+  (991 m/s, 27 s) comes 32.8 min after insertion at a longitude fixed by the capital's, and **no station a new
+  program may build sees it** (pad, Kamar, Quelka Heights, Fenor Falls, Ortel, Loal Heights, Selan). The apogee burn,
+  111 min later at 5,668 km, is in the pad's view; a stationary slot is in view all day.
+- **A stored, timed burn is enough, and is no worse than a guided one.** The same circularisation flown as one held
+  attitude (prograde at apoapsis, fixed in space) for the computed time, centred on apoapsis:
+
+  | Preset | Guided (tests) | Held attitude, timed |
+  |---|---|---|
+  | Beeper | 103 × 109 km | 108 × 109 km |
+  | Passenger Orbiter | 102 × 109 km | 109 × 109 km |
+  | Satellite | 102 × 109 km | 109 × 109 km |
+  | TV Satellite | 103 × 109 km | 109 × 110 km |
+
+  Holding the aim the guided burn starts with, for the guided burn's time, gives 99–102 × 109–112 km. Both are flown
+  with perfect pointing; a hand-set attitude will be worse (not measured).
+- **Stations barely help in low orbit** (geometry, three days sampled every 5 s, the best station added each time):
+
+  | Orbit | Pad alone | + 1 | + 2 | + 3 | all 6 buildable | Longest gap |
+  |---|---|---|---|---|---|---|
+  | 150 km, equatorial | 12.3 % | 23.3 % (Selan, abroad) | 23.3 % | 23.3 % | 23.3 % | 43 → 30 min |
+  | 500 km, equatorial | 22.1 % | 43.2 % (Selan) | 48.8 % | 50.8 % | 50.8 % | 56 → 35 min |
+  | 150 km, 85° | 2.6 % | 6.1 % | 9.0 % | 11.6 % | 16.9 % | 240 → 64 min |
+  | 500 km, 85° | 7.7 % | 21.1 % | 30.2 % | 35.8 % | 41.8 % | 205 → 53 min |
+
+  The two home cities are at 32° and 42° latitude and never see a low equatorial orbit. Stations shorten the wait for
+  a pass; they do not give continuous control. Relays do not either, yet: a whip-to-whip hop reaches about 300 km
+  (`sim/space.js:47-52`), and the dish is not built (Q197, Q217, Q338).
+
+**Comms satellites are not the answer yet** (parent session's note). Caio's aim is that relay satellites become
+necessary to talk to a craft. The rule makes contact matter, but today's relays cannot fill the gap: one hop,
+whip to whip, about 300 km. A relay constellation that gives control around the planet needs the dish (Q197, folded
+into Q338) and relay chains (Q217). Until those are built, the answers to a gap are a stored command, a crew or an
+onboard computer; with them, three or four relays in a high orbit replace the waiting. Q338's dish and Q217 are
+the rule's companions and should be ranked with it.
+
+**What this means.** With the rule as PROGRESSION § 4 states it and nothing else, the first orbit becomes "place a node,
+point at it and arm it within about a minute of the cutoff", on the stretch PLAYTEST #119 already calls too hard. The
+stored burn itself works. So the plan adds one thing (the launch range, below) and corrects two (the stored command
+carries a staging; plasma never refuses a command).
+
+### The rule
+
+**1. One question, asked in the SIM: `cmdLink(s)` → `{ok, why, via}`** (new, beside `linkOf`, `sim/world.js:340`;
+pure: reads the vessel, `simT`, `PROG.stations`, the registry). `linkOf` stays as it is, for data (`R.lk`,
+`sim/program.js:465`) and the MET line.
+- **Exempt, always ok:** a crew aboard (`R.crewed`, `sim/program.js:379`, or `crewOn(s)`, `sim/space.js:804`; the
+  capsule's dummies before the max-q abort and the biocapsule's passenger are not crew); landed; no program running
+  (`!khOn()`); the simulator (`R.sim`, `sim/program.js:610`); the tester's *All tools* (`TEST.tools`, as `avNow`);
+  the Easy level (`lvlKey()==='easy'`, `sim/core.js:120`; W-row below); a procedure or tape flying (`s.proc`, `player`:
+  they already have their own rules, `autoAllowed`, `entryLink`).
+- **At Tellus:** a station in view (`stationsAll` + `gsSees`, as `linkOf`), or **the launch range**, or one relay hop
+  (`entryRelay`, `sim/space.js:57`, given the live vessel as a pseudo-entry: its `antOf` radio and its position).
+  **Plasma never refuses a command** (it stays a telemetry word): otherwise every ascent above loses the stick at its
+  cutoff.
+- **Away from Tellus:** today `linkOf` says ok for any other body ("deep space", `sim/world.js:341`). `cmdLink` uses
+  `entryDirect`'s honest test instead (`sim/space.js:40-46`): not behind the body (what `seesTellus`,
+  `sim/program.js:321`, already does for the far-side pictures) and the rate above `LINK_FLOOR`, so a craft with no
+  antenna cannot be commanded at Selene, and nothing is commanded behind it. This is what makes a Selene relay worth
+  building later.
+- **Cost:** stations are a loop of `gsSees` on memoised masks; relays cost a `satAt` per relay, so they are tried only
+  when the direct test fails. Evaluate once per sim second, kept on the record like `R.lk` (`R.cmdT`, `R.cmd`), and
+  once per frame at most in the app. Under rails warp the app asks the SIM for the next change (below) instead of
+  sampling.
+
+**2. The launch range** (new; recommended, see the W row). The pad's station plus one **tracking ship 700 km downrange
+due east** (a downrange station where that point is land; fixed per site, drawn on the map). Counted by `cmdLink` and
+`linkOf` only, not by `stationsAll`, so the registry, imagery and coverage income do not move. Flown with it
+(`SHIP=700 node fly.mjs`): all four eastward insertions stay in contact from liftoff to the end of the circularising
+burn (at 750 km two flights have an 8–14 s gap at 84–88 km up). It does not cover the polar launch (1,210 km
+downrange, and 700 km north of Dunnzar Cape is land), the return, or the TV transfer: those are where the rule
+teaches. It belongs with the recovery fleet (`FAC.fleet`, `sim/program.js:761`): level 0 has the one ship.
+
+**3. What is refused out of contact** (the app asks `cmdOK()`, a per-frame cache of `cmdLink(S).ok`; one helper
+wraps every site, one message at most every 5 s: "No contact — it flies its stored commands"):
+- the stick and throttle: `app/loop.js:14-17` (`INP.*` forced to 0, Shift/Ctrl ignored), `z`/`x` (`app/input.js:15`);
+- staging and abort: Space, Backspace (`app/input.js:13-14`);
+- SAS and RCS: `t`, `v` (`app/input.js:16, 30`), the SAS and RCS buttons (`app/editor.js:207-213`);
+- parts: bay, legs, wings, action groups (`app/input.js:25-29`; `app/hud.js:28`; `app/program-ui.js:339, 448-450`);
+- planning: a node placed, dragged or deleted (`app/program-ui.js:377, 455-474`, `app/loop.js:51-52`,
+  `app/screens.js:248`, `app/input.js:32`), a target set (`app/program-ui.js:308`), because a plan made on the ground
+  cannot reach the craft. The player may still look: map, camera, cards, switching vessel;
+- **never refused:** warp (`.` `,` `/`), pause, the map, End flight, Revert.
+- A fleet vessel taken over (`cycleVessel`, `[` `]`) and a registry craft flown from orbit (`flyEntry`,
+  `app/program-ui.js:65`) answer to the same question for themselves.
+- Rovers keep their own rule (`rvContact`, `sim/rovers.js:249`: a round trip late, not at all out of contact).
+
+**4. The last command stands.** When contact drops, the controls stay as they were: the throttle, the SAS mode, RCS.
+The stick reads zero. It is the physical answer and the one a player can predict. A burn under a node still ends by
+itself: `nodeBurn` counts the delivered Δv and cuts the throttle (`sim/flight.js:480-483`), with or without contact. A
+burn with no node runs to the end of its stage, which is why the HUD warns before the horizon (below).
+
+**5. Stored commands, by the avionics the vessel launched with** (`avOf(s)`, `sim/vessel.js:665-669`; `avCap`,
+`sim/power.js:41`: no computer aboard, no guidance computer). The command is **an armed node**: `s.node.armed`, set
+by a new *Store* action on the node panel while in contact.
+
+| Avionics | An armed node, out of contact | How many |
+|---|---|---|
+| Gyro autopilot | at the node's time less half its burn: full throttle at **the attitude it is holding** (Stability: the player pointed it at the node's mark before the horizon); `nodeBurn` cuts it; **then stage N times** (set with the command: drop the stage, arm the chute) | one |
+| Analog autopilot | the same, and it may turn to one of its own hold modes first (prograde, retrograde, normal…: `AV[1].modes`) | the chain's next three (`s.nodeQ`) |
+| Guidance computer | points at the node (`sasMode 'node'`, `sasTarget`, `sim/vessel.js:674`) and flies it: today's `blind:'board'` rule (`AUTO_LADDER`, `sim/procedures.js:414-415`), now in flight too | every node |
+
+- The gyro row is a gyro platform, a clock and an integrating accelerometer: 1950s hardware, and MIDGAME's launch
+  rail already promises "staging on timers".
+- **"Then stage N"** is what the Passenger Orbiter's return needs: a retrograde burn (the gyro has that hold), then two
+  stagings; the chute opens by pressure. One command, one tail.
+- **In the SIM:** `cmdStep(s)` at the top of `physStep`'s control pass: when an armed node comes due and `cmdLink` is
+  false (or always, once armed: simpler and the same result), set the throttle, hold or turn as the row allows, and
+  after `nodeBurn` clears the node run the stagings. Deterministic: it reads only the vessel and `simT`.
+- **Tapes.** A tape records the controls each step (`controls`, `sim/procedures.js:24`) and the node as data
+  (`:25-31`). Arming is one more field on the node, so old tapes replay unchanged and `TAPE_V` does not move. A replay
+  runs `cmdStep` too and reaches the same throttle the tape then sets: test it (below), and bump `TAPE_V` only if that
+  test shows a difference.
+- **The registry.** A vessel that ends its flight with an armed node keeps it as `q.nodes` (`sim/space.js:147`),
+  where today's ladder decides (`handOffWhy`, `sim/space.js:390`: mission control flies burns from mainframes, blind
+  from onboard computers). Not changed here; the End flight card says when an armed burn will not be flown.
+
+**6. What the player sees.**
+- **A link lamp** by the MET line (`app/program-ui.js:385` builds the link text today): in contact (through what),
+  *horizon in 40 s*, no contact with *next contact in 39 min*. `cmdNext(s)`: the next change of `cmdLink` along the
+  coast, sampled as `nodeNextPass` does for the registry (`sim/space.js:400`).
+- **Warp to contact:** one key (and the lamp is a button) sets `warpTo` (`app/loop.js:21`) to `cmdNext`; warp also
+  stops ahead of an armed node, as it does for a procedure's wake (`app/loop.js:23`).
+- **A warning** when the horizon is under 30 s away with the engines burning and no armed node: "Contact ends in 30 s:
+  it will keep burning".
+- **The Mission card** (`missionRows`, `app/hud.js:49`): one row when a job's next step falls out of contact ("store
+  the burn before the horizon"), and Guided's lesson for it (Q491).
+- The map draws each station's circle at the craft's altitude and the range ship (with Q575's globe later).
+
+**7. Levels.** Easy never limits (`LEVELS.easy`, `sim/core.js:117`: add `contact:false`). Normal and Hard limit. Hard
+has no range ship (the pad alone). The level is already part of a tape's and a study's key (`tapeV`, `studyKey`).
+
+### What must not change
+- **Headless flights:** tests, `fly_ladder.mjs`, `career.mjs` and the robot's drivers set the controls directly; the
+  refusal lives in the app, so they fly as now. `cmdStep` acts only on an armed node, which none of them sets.
+- **Dispatch and procedures:** already gated (`autoAllowed`, `entryLink`); a procedure flies with the best avionics
+  (`avOf`: `s.proc`). Untouched.
+- **The simulator, the tester, crewed flights, Easy:** exempt (rule 1).
+- **Rovers, the registry's link, imagery and coverage income:** untouched (the ship is not in `stationsAll`).
+- **The robot playtests** (`playtest.mjs` writes `S.throttle` directly on 44 lines): they pass
+  unchanged, which also means they stop proving a player can do it. Slice Q586 makes the M1 and M2 routes ask `cmdOK`.
+
+### Tests
+- `tests/space.mjs`, new sections: `cmdLink` against `linkOf` on a flown Beeper (same answer except in plasma and with
+  the ship); behind Selene and with no antenna at Selene: no; a crewed capsule, the simulator, Easy: yes.
+- `tests/vehicle.mjs`: the Beeper with an armed node at apoapsis and the stick never touched after the cutoff reaches a
+  stable orbit; the Passenger Orbiter with an armed retrograde node "then stage 2" lands its passenger; a tape of
+  each replays to the same state; an old tape (no armed node) replays bit for bit.
+- `tests/flow.mjs` (and R34's page harness when it exists): out of contact every listed site leaves the vessel's
+  controls unchanged; warp still moves; the lamp's text.
+
+### Slices (filed as Q581–Q587; Q582–Q585 are mechanisms under W48)
+
+| # | Item | Lane | Size | Load |
+|---|---|---|---|---|
+| Q581 | **Contact study kept**: `review/2026-11-11/q574/` into `study_contact.mjs` (the table above, any site, any heading, `SHIP=`), so the range ship's distance and the levels are set from a run, per site | space | S | ⚙ |
+| Q582 | **`cmdLink` and the launch range** (rules 1, 2): the SIM's one question, exemptions, the honest test away from Tellus, the ship per site; `cmdNext`; no player-facing change yet; `tests/space.mjs` | space | M | ⚙ |
+| Q583 | **Stored commands** (rule 5): `node.armed`, "then stage N", `cmdStep` by avionics, the tape and registry carry; `tests/vehicle.mjs` (Beeper and Passenger Orbiter untouched after arming) | space, with vehicle | M | ⚙ |
+| Q584 | **The input rule and the lamp** (rules 3, 4, 6): one `cmdOK()` wrapper at every site listed, the link lamp, the horizon warning, warp to contact, *Store* on the node panel; behind a setting until e | flow | M | 🖥 |
+| Q585 | **Levels and the lesson** (rule 7): `contact` on `LEVELS`, the Mission card row, Guided's card, the glossary; the setting comes off | flow, with economy | S | 🖥 |
+| Q586 | **The robot asks too**: `playtest.mjs` `m1`, `m2` and the M2 flights send their controls through `cmdOK`, storing a burn where a player must; TESTING rows for a human (the first stored burn, the return, warp to contact) | QA | M | ⚙ |
+| Q587 | **Coverage on the map**: station circles at the craft's altitude, the range ship, the gap ahead on the orbit line (feeds Q575's globe) | flow, with look | S | 🖥 |
+
+Order: Q581, Q582, Q583, Q584, Q585; Q586 beside Q584; Q587 any time after Q582.
+
+### For Caio (one W row)
+
+> **W51: Does contact limit the first orbit on Normal?** (Q574; default if silent: **yes, with a launch range**)
+> Measured: with the pad's station alone every first-orbit burn is out of contact (the Beeper's by 78 s), and the
+> player has 64–107 s after the cutoff to store it. Options: **(a, default)** the rule applies from the first flight
+> and every site has a launch range, the pad plus one tracking ship 700 km downrange: eastward launches stay in
+> contact through insertion, so the first orbit plays as today, and the rule first bites on *Passenger: one orbit*'s
+> return, the weather satellite's polar insertion and the TV transfer; Hard drops the ship; **(b)** no ship: the
+> stored burn is the first orbit's lesson (it works: 108 × 109 km against 103 × 109 km guided), at the cost of the
+> hardest minute of the first hour; **(c)** the rule starts after *The beeper*.
+
+Recommendation: (a). It keeps one rule for the whole game, the ship is a thing on the map that explains contact
+before it matters, and the first stored command arrives on a flight with a free minute to place it (the return burn
+is planned over the pad, an orbit ahead).
+
+### Not checked
+- A player's ascent: only the tests' driver was flown (low and fast). A lofted ascent moves the cutoff, the plasma
+  window and the horizon.
+- Pointing by hand at a node's mark and holding it on the gyro: the stored burn was flown with exact attitude.
+- Sites other than Dunnzar Cape, other programs' worlds, and whether 700 km east is sea at each.
+- A deorbit burn planned to land at home (the flown return is the test's, which lands 1,854 km downrange).
+- The TV flight beyond its parking orbit (the transfer and apogee points are geometry, not flown).
+- Frame cost of `cmdLink` with many relays; `cmdNext` under perturbed orbits (`pertNear`).
+- Whether a replay with `cmdStep` matches its tape (the test in Q583 decides `TAPE_V`).
+- Docking and EVA under the rule (an uncrewed docking is already an onboard-computer routine).

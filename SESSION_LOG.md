@@ -7148,3 +7148,44 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **PARKED still:** R29b (reload during a flight from orbit), as logged above.
 - **Next:** Q571 and Q572 can start now; Q573 and Q574 are plans (their builds are mechanisms under W48's freeze);
   Q575's mock-up goes to Caio as a W row.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the plans for Q573 (the unlock map) and Q574 (contact limits), measured
+
+- **Asked:** Caio: "can you start on 573 and 574 then?" (plans only).
+- **Done:** `notes/economy.md` § "Plan: the unlock map and chapters"; `notes/space.md` § "Plan: contact limits uncrewed
+  flight" (written by a fork of this session; its Beeper run and the tracking-ship run were repeated here before it was
+  adopted); `PROGRESSION.md` 0.1.2 (§ 3, § 4, § 7); QUEUE Q577–Q580 and Q581–Q587, W50 and W51; scripts in
+  `explorations/launchpad/review/2026-11-11/q573/` and `q574/`. No game code or test edited.
+- **Found (Q573):** the gate in front of the Kestrel costs the scripted player no flight (4.2 to first orbit, max 6,
+  with and without); Sparrow-only stacks did not reach orbit in the shapes tried; the Petrel is not needed for a first
+  orbit (Kestrel under a Sparrow: 40 M, 1,700 m/s left); the Sounding passes the structural test by 0.2 kPa; the map
+  places all 84 parts and needs six `req` changes.
+- **Found (Q574):** every first-orbit burn is beyond the pad station's horizon (the Beeper's by 78 s); a stored timed
+  burn circularises as well as a guided one; six buildable stations give 23 % contact at 150 km; `linkOf` reads
+  "plasma blackout" for 23–42 s around the ascent cutoff on all four presets with the tests' ascent.
+- **Not checked:** anything in play or by hand; sites other than the default; the far side on anything but the Probe;
+  funds beyond first orbit under the new order; the rest of the fork's runs beyond the two repeated.
+- **Lesson:** PROGRESSION § 4 assumed ground stations and relays would give control at the stick. Measured, they do
+  not in low orbit; the dish and relay chains (Q338, Q217) are what make comms satellites matter.
+- **PARKED still:** R29b.
+- **Next:** Caio answers W50 and W51 (defaults hold); Q577 and Q581 are the first builds; Q582–Q585 wait on W48.
+
+- **Later the same session:** Caio answered W50 ("in general ok"; a development program may be new missions if not
+  repetitive) and stated a principle, now **D29: any flight can fulfil any mission**. QUEUE: W50 moved to DECISIONS,
+  Q577 ready, **Q588** (plan: qualification missions) and **Q589** (design: coming home, more than a parachute, from
+  his side note on airbrakes). PROGRESSION 0.1.3. W51 still open (default holds).
+
+## 2026-11-11 — QA, chapter starts (Opus 5.5, worktree launchpad-loop): Q571 (v1.309)
+
+- **Asked:** Caio: work on Q571 (three starting saves so the middle of the game can be played).
+- **Done:** `chapters.mjs` plays one career with career.mjs's scripted player (career.mjs is now also a module: `run`
+  with `until`, `keep`, `goals`, `registry`; new plans for the escape-tower tests and a station; default rows unchanged)
+  and writes `starts/{orbit,station,selene}.js`; the title menu's *Start at* line loads one into its own slot
+  (`PROG_SLOT`, `launchpad-program-chapter`), *Back to your career* returns. Test `qa-8`; TESTING 368.
+- **Checked:** `qa-8`; the shards that read what changed (core, qa, platform, economy) after merging main; the full run was stopped by the machine running low on memory at 588 checks (one failure there, a source scan of save keys, fixed); CI runs the full suite on push; headless Chrome by script: each start from the title,
+  Continue to the desk, the career save untouched, back to the career.
+- **Not checked:** played by hand. The desktop Chrome tab froze once after the station start while the local server was
+  starved; headless with a fresh server it loads in ~1 s.
+- **Next:** Q572 (the unlock overlay). The starts are abstracted careers (fast, few contracts): if they feel too rich or
+  too thin, tune `chapters.mjs` (goals, seed) and regenerate.
