@@ -814,3 +814,21 @@
     !err && D.status === 'done' && !P.active.includes(sat) && P.active.includes(test) && P.active.includes(sample) && P.day > L0 && news.some(m => /Dispatched flight to orbit/.test(m)),
     err ? `threw: ${err.message}` : `${D.status} on day ${(D.flown ?? 0).toFixed(1)} (launch ${L0.toFixed(1)}), day now ${P.day.toFixed(1)}; open: ${P.active.map(c => c.type).join(', ')}`);
 }
+
+// econ-36. No government top-up while a flight is open (economy, QUEUE R15, review 2026-11-09 § 2): liftoff debits the
+// rocket, then the study, pad, prep and flight days tick the world, and `econTick` → `floorCheck` topped the program up
+// to the floor before the flight's own pay and refunds came in (49 of 51 in-flight bailouts in `career.mjs 3 3` were
+// unneeded). Now the floor waits for `missionEnd`, which checks once everything is settled; a revert clears the hold.
+{
+  const D = new Function(src + 'return {missionTick,missionEnd,missionDiscard,newShip,advanceDays,PROG,HOOK,vesselCost,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  D.HOOK.msg = () => {}; D.HOOK.save = () => {}; D.HOOK.news = () => {}; D.resetHome();
+  Object.assign(D.PROG, { wseed: 5, day: 40, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 3, done: {}, atm: { 0: 1 } });
+  D.chooseStart('agency'); const P = D.PROG, stack = ['chute', 'pod', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];
+  const fly = (pay, end) => { const s = D.newShip(stack), c = D.vesselCost(s.parts).cost; P.funds = c + 10; P.bailouts = 0; s.landed = false; D.t = 0;
+    D.missionTick(s, 0, false); const low = P.funds < 25; D.advanceDays(30); const mid = P.bailouts; P.funds += pay; end(s); return { low, mid, after: P.bailouts, funds: P.funds }; };
+  const a = fly(100, s => D.missionEnd(s)), b = fly(0, s => D.missionEnd(s)), c = fly(0, s => D.missionDiscard(s));
+  D.advanceDays(5); const cAfter = P.bailouts;
+  check('econ-36: no top-up while a flight is open: below the floor after liftoff and 30 days on, no bailout; the flight\'s pay settles it with none; a flight that still ends short gets one at missionEnd; a revert leaves no hold',
+    a.low && a.mid === 0 && a.after === 0 && b.low && b.mid === 0 && b.after === 1 && b.funds >= 25 - 1e-9 && c.low && c.mid === 0 && cAfter === 0,
+    `paid: low ${a.low} mid ${a.mid} end ${a.after}; short: mid ${b.mid} end ${b.after} funds ${b.funds.toFixed(1)}; reverted: mid ${c.mid} later ${cAfter} funds ${P.funds.toFixed(1)}`);
+}

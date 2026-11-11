@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-10
+**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3534,3 +3534,24 @@ also needs `landed` or `bio`.
 **Test** `econ-35`: a satellite dispatch with a Qualify and an air-sample contract also on the books: no throw, the
 satellite contract paid, the other two still open. Fails on the old line with *Cannot read properties of undefined
 (reading 'kestrel')*.
+
+## v1.302 — no government top-up while a flight is open (2026-11-11, economy session, QUEUE R15)
+
+**The bug** (review 2026-11-09 § 2, R15, confirmed there): liftoff debits the rocket, ops and site fee, then the study,
+pad and prep waits and, at the end, the flight's own days run through `advanceDays` → `econTick` → `floorCheck`. A
+program below 25 M after paying for its rocket was topped up to the floor *before* the flight's contract pay, mission
+pay and refurbishment came in: the review's 110 M agency flying a 108.8 M Heavy ended at 85.5 M instead of 61.6 M, and
+each of those top-ups counted toward `PROG.bailouts` (three take a bigger stake) and cost opinion.
+
+**The fix:** `FLOOR_HOLD` (sim/program.js, beside `REVERT0`) holds the open flight's record from liftoff (not a simulator
+run) until `missionEnd` has settled pay, refunds and damages; `econTick` skips its `floorCheck` while it is set (`floorCheck` itself
+still checks at once when called), and `missionEnd` clears it just before its own `floorCheck`. A revert (`missionDiscard`) and a load clear it. The rescue offer for a
+private program waits the same way. Dispatches are unchanged: they debit and settle inside one `dispatchTick`.
+
+**Measured** (`node career.mjs 3 3`, 18 rows): bailouts per career 0.98 → 0.15; final funds 678 → 659 M (the top-ups
+were free money). Test `econ-36` (fails on the old line).
+
+**Not done, the other half of R15:** a funds gate inside the sim at liftoff. The launch button (`app/editor.js`) and the
+Rollout refuse hardware + site fee over the funds and only warn for ops, by design (the Rollout's text: it flies into the
+red, and below the floor someone steps in, now at the end of the flight). A sim-side refusal at liftoff would need a
+place to refuse from; left as it is.
