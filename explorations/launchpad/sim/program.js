@@ -213,8 +213,16 @@ function progProbe(home){const snap=progJSON(),H={news:HOOK.news,msg:HOOK.msg,sa
   for(const k in PROG)if(PROG_SCHEMA[k]&&PROG_SCHEMA[k][1]==='transient')tr[k]=PROG[k];
   HOOK.news=HOOK.msg=HOOK.save=HOOK.log=()=>{};
   try{advanceDays(1)}finally{Object.assign(HOOK,H);progRestore(snap);progDerive(home);Object.assign(PROG,tr)}}
-function progLoad(j,home){PROG_REPAIRED=[];
-  try{progRestore(Object.assign(structuredClone(PROG_BASE),typeof j==='string'?JSON.parse(j):j));PROG_REPAIRED=progRepair();progDerive(home);progProbe(home);return null}
+// (R1d) A save loads onto every row's default (progFresh), then PROG's starting literal (so a save from before `wseed`
+// keeps world 12345, as it always loaded), then the save: an old save gets every field, and a field read with `||d` no longer
+// needs its `||` (retire them lazily, by lane, as files are touched; platform-6 keeps the ones left equal to the table).
+// Absent and default read alike everywhere (audit 2026-11-11, notes/platform.md v1.302). Fields this game doesn't know
+// (a newer build's, or a removed one's) are kept as they are and named in the tester's log (PROG_UNKNOWN).
+let PROG_UNKNOWN=[];
+function progLoad(j,home){PROG_REPAIRED=[];PROG_UNKNOWN=[];
+  try{const p=typeof j==='string'?JSON.parse(j):j;PROG_UNKNOWN=p&&typeof p==='object'?Object.keys(p).filter(k=>!(k in PROG_SCHEMA)):[];
+    progRestore(Object.assign(progFresh(),structuredClone(PROG_BASE),p));PROG_REPAIRED=progRepair();progDerive(home);progProbe(home);
+    if(PROG_UNKNOWN.length)logEv('save',`the save has fields this game doesn't know, kept: ${PROG_UNKNOWN.join(', ')}`);return null}
   catch(e){progRestore(PROG_BASE);programNew();return e}}   // (from the base: the bad save's designs could throw in programNew too)
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.

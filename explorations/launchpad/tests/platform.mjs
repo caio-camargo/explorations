@@ -218,3 +218,24 @@
   check('platform-7: a played save (200 days) loads with nothing repaired, as a plain restore would; 30 days on from it match',
     !err && !rep.length && loadedPlain === loadedProbe && plain === probed, `error ${err && err.message}; repaired ${rep.join(', ') || 'nothing'}; load same ${loadedPlain === loadedProbe}; 30 days same ${plain === probed}`);
 }
+
+// platform-8. The loader fills a save from the schema (QUEUE R1d; notes/platform.md § "Plan: one PROG schema", step 4): a
+// sparse save (funds, and a field this game doesn't know) loads with every PROG_SCHEMA row that has a default present and
+// of its default's kind, its own funds, world 12345 (a save from before `wseed` keeps the world it always loaded with),
+// the unknown field kept and named in the tester's log; and a save that has a field keeps its value, not the default.
+{
+  const X = new Function(src + 'return {PROG,PROG_SCHEMA,progLoad,TEST,LOG,HOOK,unknown:()=>PROG_UNKNOWN};')(); X.HOOK.news = () => {}; X.HOOK.msg = () => {};
+  X.TEST.on = true; X.TEST.log = true;
+  const err = X.progLoad({ ver: 1, funds: 5, zzz: { a: 1 } });
+  const kindOf = v => v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
+  const missing = Object.entries(X.PROG_SCHEMA).filter(([k, [d, keep]]) => d !== undefined && keep !== 'meta' && keep !== 'transient'
+    && (!(k in X.PROG) || (d !== null && typeof d !== 'function' && kindOf(X.PROG[k]) !== kindOf(d)))).map(([k]) => k);
+  const logged = X.LOG.some(e => e.kind === 'save' && /zzz/.test(e.text));
+  X.TEST.on = false; X.TEST.log = false;
+  const ok1 = !err && !missing.length && X.PROG.funds === 5 && X.PROG.wseed === 12345 && X.PROG.zzz && X.PROG.zzz.a === 1 && X.unknown().join() === 'zzz' && logged;
+  const Y = new Function(src + 'return {PROG,progLoad,HOOK};')(); Y.HOOK.news = () => {}; Y.HOOK.msg = () => {};
+  const err2 = Y.progLoad({ ver: 1, done: { beeper: { flight: 1 } }, bailouts: 3, wseed: 99 });
+  const ok2 = !err2 && Y.PROG.done.beeper && Y.PROG.bailouts === 3 && Y.PROG.wseed === 99;
+  check('platform-8: a sparse save loads with every schema field filled (its default\'s kind), its own values kept, world 12345 without a wseed, an unknown field kept and named in the tester\'s log',
+    ok1 && ok2, `error ${err && err.message}; missing or wrong kind: ${missing.join(', ') || 'none'}; funds ${X.PROG.funds}; wseed ${X.PROG.wseed}; unknown ${X.unknown().join()} logged ${logged}; own values kept ${ok2}`);
+}
