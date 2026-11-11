@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -917,3 +917,25 @@ undefined power, `Object.keys(null)`, `null['0-1']`); so do `offers: 5` and `act
   load repaired and play 3 days; `sats:[5]`, `offers:5`, non-JSON and a bare string are kept as `-bad` and a new program
   starts; storage full holds the save; quota said once; another tab's write stops this tab's saves; the played-save
   equality above. platform-2's slice of the page now ends at `// Loading (R10)`.
+
+## v1.309 — the loader fills a save from the schema (2026-11-11, platform, QUEUE R1d)
+
+The last slice of the `PROG` schema plan (step 4). `progLoad` (v1.308) now builds a save on `progFresh()` (every row's
+default), then PROG's starting literal, then the save. An old save gets every field; a field read with `||default` no
+longer needs the `||`. The literal goes second so a save from before `wseed` keeps world 12345, which it always loaded
+with (`progFresh` would draw a new world). No `SAVE_V` bump: filling defaults changes nothing a save means.
+- **The audit first** (a scratch script over `sim/`, `app/`, `builder.js`, `career.mjs`): for each row with a non-null
+  default, every read that could tell absent from the default (`!PROG.k`, `== null`, `=== undefined`, `'k' in PROG`,
+  `&&`, a ternary, `if(PROG.k)`). 13 fields, ~25 reads; all read the same either way (0 and false are falsy like absent;
+  `{}`/`[]` reads are `PROG.k&&PROG.k.sub` or `.length`). The one difference: `home` is now always set, so the load always
+  computes the rivals' forecast (it did once a home was chosen; `rivTick` would build it on the first day anyway).
+  Null-default rows: the two `!= null` reads (`cyc`, `commPh`) treat null as absent. Nothing iterates over `PROG`'s keys
+  but the serializer.
+- **Fields the game doesn't know** are kept as they are (the plan's question 2, default) and named in the tester's
+  verbose log (`PROG_UNKNOWN`, a `save` line).
+- **Not done (by design):** the `||` reads stay. Retire them lazily, by lane, when a file is touched; platform-6 keeps the
+  ones left equal to the table.
+- Test platform-8: a sparse save (`funds: 5` and an unknown field) loads with every row that has a default present and of
+  its default's kind, funds 5, world 12345, the unknown field kept and logged; a save's own values (`done`, `bailouts`,
+  `wseed`) are kept. platform-7's played-save check (a played save loads as a plain restore would) still passes: a
+  program from `programNew` already has every field.
