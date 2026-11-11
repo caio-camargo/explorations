@@ -121,6 +121,134 @@ const CT={
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
+// ---- a job's conditions as data (economy worker, QUEUE Q547; notes/flow.md § "Plan: the aim and the mission card",
+// slice 1). Beside its ok(), every contract type and every mission says what the design must carry, needs(p) →
+// [{id, t, has(ship) → bool}]; what the flight must do, conds(p) → [{id, t, state(R, s) → 'met' | 'lost' | 'open' |
+// 'pending', now?(R, s) → text}]; and where it goes, legs(p) → the aim's legs ({k:'orbit'|'hop'|'flyby'|'land'|'meet'|
+// 'home'|'stay', b, alt (km), inc, …}). ok() still judges and pays; the conds are cut so that every cond met ⇔ ok on a
+// flight record (econ-37). 'lost': this flight can't meet it any more (past the band, over the g, launched elsewhere,
+// down in the wrong place, or the flight is over); 'pending': it waits on the landing (recovered). The between-flight
+// types (sel*, st*, image) and the world missions carry one cond, judged at home (always pending on a flight: ok is false
+// there too). Nothing reads these yet but the tests; the Mission card (Q548) and "This flight is for" (Q549) will.
+const jOver=(R,s)=>!!R.ended||!!s&&s.alive===false;
+const jUp=(R,s)=>!R.landed&&!!s&&s.alive!==false&&!s.landed&&!!s.r&&!!s.v&&dot(s.v,s.r)>0;   // still climbing
+// a cond: met(R, s) decides it; o.lost (beyond the flight being over), o.wait (pending, not open, while unmet), o.now,
+// o.keep (never lost just because the flight is over: judged on the program, as the range's streak)
+function jC(id,t,met,o={}){return{id,t,state:(R,s)=>met(R,s)?'met':o.lost&&o.lost(R,s)||!o.keep&&jOver(R,s)?'lost':o.wait?'pending':'open',...(o.now?{now:o.now}:{})}}
+const jHome=t=>({id:'home',t:t||'judged at home',home:true,state:()=>'pending'});
+const jRec=()=>jC('rec','recovered',R=>!!R.recSci,{lost:R=>!!R.landed&&!R.recSci,wait:1});
+const jG=(g,k='gMax',end=R=>!!R.landed)=>jC('g',`never over ${g} g`,R=>R[k]<=g&&end(R),{lost:R=>R[k]>g,now:R=>R[k]>0?`so far ${R[k].toFixed(1)} g`:''});
+const jKm=x=>`${kmS(x)} km`;
+// needs: a part of a kind aboard (newShip's parts, or a flying vessel's)
+const jHas=(v,f)=>!!v&&(v.parts||[]).some(p=>p.on!==false&&p.d&&f(p.d));
+const jN=(id,t,f)=>({id,t,has:v=>jHas(v,f)}),jK=(id,k,t)=>jN(id,t,d=>d.kind===k);
+const N_SCI=jK('sci','sci','an instrument package'),N_BIO=jK('bio','bio','a biocapsule'),N_CAM=jK('cam','cam','a camera'),N_ANT=jK('ant','ant','an antenna'),
+  N_CHUTE=jN('chute','a parachute (to come home intact)',d=>d.kind==='chute'||d.kind==='leg'),N_DOCK=jK('dock','port','a docking port'),N_BAY=jK('bay','bay','a cargo bay'),
+  N_CREW=jN('crew','a crew capsule',d=>d.kind==='pod'&&d.crew>0),N_LES=jK('les','les','an escape tower'),N_HAB=jK('hab','hab','a habitat module'),N_LAB=jK('lab','lab','a laboratory module');
+const N_MASS=m=>({id:'mass',t:`${m} t of mass simulators`,has:v=>!!v&&(v.parts||[]).reduce((a,p)=>a+(p.on!==false&&p.d&&p.d.kind==='ballast'?p.d.m:0),0)>=m-1e-9});
+const N_PART=k=>jN('part:'+k,`a ${PARTS[k]?PARTS[k].name:k}`,d=>d.key===k||kinOf(d.key)===k);
+const L_HOME={k:'home',how:'land'},L_ORBIT=(alt=null,inc='pad')=>({k:'orbit',b:'Tellus',alt,inc});
+const cityInc=ci=>{const c=CITIES[ci];return c?Math.min(90,Math.ceil(Math.asin(Math.abs(c.u[1]))*180/Math.PI)+1):'pad'};
+const ballDist=(R,p)=>Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R;
+const satConds=p=>[jC('orbit','an instrument package in orbit',R=>!!R.orb&&!!R.orb.sci),
+  jC('height',`periapsis and apoapsis ${p.alt} ± ${p.tol} km`,R=>!!R.orb&&R.orb.pe>=(p.alt-p.tol)*1e3&&R.orb.ap<=(p.alt+p.tol)*1e3,{now:R=>R.orb?`now ${kmS(R.orb.pe)} × ${kmS(R.orb.ap)} km`:''}),
+  jC('inc',`inclination ${p.inc} ± ${p.itol}°`,R=>!!R.orb&&Math.abs(R.orb.inc-p.inc)<=p.itol,{now:R=>R.orb?`now ${R.orb.inc.toFixed(1)}°`:''})];
+const bioConds=(p,orbit)=>[orbit?jC('orbit','one full orbit',R=>!!R.bio&&R.bioOrbits>=1,{lost:R=>!R.bioOK,now:R=>R.bioOrbits>0?`${Math.min(100,R.bioOrbits*100).toFixed(0)} % of an orbit`:''})
+    :jC('space',`to space (${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.bio&&!!R.bioSpace,{lost:R=>!R.bioOK,now:R=>`apex ${jKm(R.apex)}`}),
+  jG(p.g),jC('safe','home safe',R=>!!R.landed&&!!R.bioOK,{lost:R=>!R.bioOK,now:R=>R.bioWhy||''})];
+const L_SEL={k:'land',b:'Selene'},stLeg=p=>p.base?{k:'land',b:'Selene',at:p.st}:{k:'meet',id:p.st},massCond=p=>jC('mass',`${p.m} t of mass simulators in a stable orbit`,R=>R.lift>=p.m-1e-9,{now:R=>R.lift>0?`${R.lift} t up`:''});
+const CT_JOB={
+  apex:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop',alt:p.hi},L_HOME],
+    conds:p=>[jC('apex',`apex ${p.lo}–${p.hi} km`,(R,s)=>R.apexSci>=p.lo*1e3&&R.apexSci<=p.hi*1e3&&!jUp(R,s),{lost:R=>R.apexSci>p.hi*1e3,now:R=>`now ${jKm(R.apexSci)}`}),jRec()]},
+  sample:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop',alt:p.k*10+10},L_HOME],
+    conds:p=>[jC('band',`through the ${p.k*10}–${p.k*10+10} km band`,R=>!!R.bands[p.k],{now:R=>`apex ${jKm(R.apexSci)}`}),jRec()]},
+  test:{needs:p=>[N_PART(p.k),N_SCI],legs:p=>[{k:'hop',q:p.q},L_HOME],
+    conds:p=>[jC('q',`max-q ${p.q} kPa on the ${PARTS[p.k]?PARTS[p.k].name:p.k}, instrumented`,R=>((R.qPart||{})[p.k]||0)>=p.q*1000,{now:R=>((R.qPart||{})[p.k]||0)>0?`so far ${(R.qPart[p.k]/1e3).toFixed(1)} kPa`:''})]},
+  landing:{needs:()=>[N_CHUTE],legs:p=>[{k:'hop',alt:20},{k:'land',b:'Tellus',site:null,km:p.dk}],
+    conds:p=>[jC('high','above 20 km',R=>R.apex>=2e4,{now:R=>`apex ${jKm(R.apex)}`}),
+      jC('land',`down within ${p.dk} km of the pad`,R=>!!R.landed&&R.landDist<=p.dk*1e3,{lost:R=>!!R.landed,now:R=>R.landed?`${jKm(R.landDist)} away`:''})]},
+  bioHop:{needs:()=>[N_BIO,N_CHUTE],legs:()=>[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:p=>bioConds(p,false)},
+  sat:{needs:()=>[N_SCI],legs:p=>[L_ORBIT(p.alt,p.inc)],conds:satConds},
+  image:{needs:()=>[N_CAM,N_ANT],legs:p=>[L_ORBIT(null,cityInc(p.ci))],conds:()=>[jHome('judged as the pictures come down')]},
+  field:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop'},{k:'land',b:'Tellus',biome:p.b}],
+    conds:p=>[jC('ground',`down on ${BIOMES[p.b]}`,R=>!!R.landed&&R.landBiome===p.b,{lost:R=>!!R.landed,now:R=>R.landed?`down on ${BIOMES[R.landBiome]}`:''}),jRec()]},
+  aurora:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop',alt:AURORA_ALT/1e3,lat:p.lat},L_HOME],
+    conds:p=>[jC('aurora',`above ${AURORA_ALT/1e3} km poleward of ${(+p.lat).toFixed(0)}°`,R=>!!R.aurora),jRec()]},
+  lift:{needs:p=>[N_MASS(p.m)],legs:()=>[L_ORBIT()],conds:p=>[massCond(p)]},
+  touristHop:{needs:()=>[N_BIO,N_CHUTE],legs:()=>[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:p=>bioConds(p,false)},
+  touristOrbit:{needs:()=>[N_BIO,N_CHUTE],legs:()=>[L_ORBIT(),L_HOME],conds:p=>bioConds(p,true)},
+  recon:{needs:()=>[N_SCI],legs:p=>[L_ORBIT(p.alt,p.inc)],conds:satConds},
+  ballistic:{needs:()=>[N_SCI],legs:p=>[{k:'hop'},{k:'land',b:'Tellus',site:p.u,km:p.rad,how:'sea'}],
+    conds:p=>[jC('site',`from ${p.sname||'the pad'}`,R=>!p.site||R.site===p.site,{lost:R=>!!R.launched}),
+      jC('down',`an instrument package down within ${p.rad} km of the target`,R=>!!R.endPf&&!!R.endSci&&ballDist(R,p)<=p.rad*1e3,{lost:R=>!!R.endPf,now:R=>R.endPf?`${jKm(ballDist(R,p))} off`:''})]},
+  selRead:{needs:()=>[],legs:()=>[L_SEL],conds:()=>[jHome()]},
+  selPano:{needs:()=>[],legs:()=>[L_SEL],conds:()=>[jHome()]},
+  selSeis:{needs:()=>[],legs:()=>[L_SEL],conds:()=>[jHome()]},
+  selQuake:{needs:()=>[],legs:()=>[],conds:()=>[jHome()]},
+  selCore:{needs:()=>[],legs:()=>[],conds:()=>[jHome()]},
+  selFar:{needs:()=>[],legs:()=>[{k:'land',b:'Selene',far:true}],conds:()=>[jHome()]},
+  service:{needs:()=>[N_DOCK],legs:p=>[{k:'meet',id:p.sat}],conds:p=>[jC('dock',`docked with ${p.name}`,(R,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat))]},
+  stResupply:{needs:()=>[],legs:p=>[stLeg(p)],conds:()=>[jHome()]},
+  stLab:{needs:()=>[],legs:p=>[{k:'meet',id:p.st}],conds:()=>[jHome()]},
+  stExpand:{needs:p=>[p.kind==='lab'?N_LAB:N_HAB],legs:p=>[stLeg(p)],conds:()=>[jHome()]},
+  rdv:{needs:()=>[],legs:p=>[{k:'meet',id:p.sat}],conds:p=>[jC('near',`within ${RDV_D} m of ${p.name}, under ${RDV_V} m/s`,R=>!!(R.rdv&&R.rdv[p.sat]))]},
+  retrieve:{needs:()=>[N_BAY],legs:p=>[{k:'meet',id:p.sat},L_HOME],
+    conds:p=>[jC('bay',`${p.name} stowed in a closed bay`,(R,s)=>!!s&&(s.att||[]).some(a=>a.kind==='bay'&&isSat(a.e,p.sat)&&!!s.parts[a.hpi]&&doorF(s.parts[a.hpi])===0)),
+      jC('home','landed at home',(R,s)=>!!(s&&s.alive&&s.landed&&s.body===TELLUS))]},
+  milLift:{needs:p=>[N_MASS(p.m)],legs:()=>[L_ORBIT()],conds:p=>[massCond(p)]},
+};
+for(const k in CT_JOB)Object.assign(CT[k],CT_JOB[k]);
+// the missions (firsts), the same three; their conds read the record as their ok(R, s) does (and air and range the program)
+const crewLost=R=>!!R.crewInit&&!!R.crewed&&!R.crewOK;
+const M_JOB={
+  weather:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:10},L_HOME],conds:[jC('apex','above 10 km',R=>R.apex>=1e4,{now:R=>`apex ${jKm(R.apex)}`}),jRec()]},
+  air:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:40},L_HOME],conds:[0,1,2,3].map(k=>jC('band'+k,`the ${k*10}–${k*10+10} km band analysed`,()=>!!PROG.atm[k],{wait:1}))},
+  loads:{needs:[N_SCI],legs:[{k:'hop',q:25},L_HOME],conds:[jC('q','max-q 25 kPa with an instrument package',R=>R.sciQ>=25000,{now:R=>R.sciQ>0?`so far ${(R.sciQ/1e3).toFixed(1)} kPa`:''})]},
+  range:{needs:[],legs:[{k:'hop'}],conds:[jC('streak','three clean flights in a row',()=>PROG.streak>=3,{wait:1,keep:1,now:()=>`${PROG.streak||0} of 3`})]},
+  beeper:{needs:[N_SCI],legs:[L_ORBIT()],conds:[jC('orbit',`an instrument package in a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.orbitSci)]},
+  hop:{needs:[N_BIO,N_CHUTE],legs:[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:[jC('safety','flight safety signs off',R=>!!R.approved,{lost:R=>!R.approved}),
+    jC('space',`to space (${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.bioSpace,{lost:R=>!R.bioOK,now:R=>`apex ${jKm(R.apex)}`}),
+    jC('safe',`home safe (under ${G_LIM} g, cabin under ${CABIN_MAX} K)`,R=>!!R.landed&&!!R.bioOK,{lost:R=>!R.bioOK,now:R=>R.bioWhy||''})]},
+  orbiter:{needs:[N_BIO,N_CHUTE],legs:[L_ORBIT(),L_HOME],conds:[jC('safety','flight safety signs off',R=>!!R.approved,{lost:R=>!R.approved}),
+    jC('orbit','one full orbit',R=>R.bioOrbits>=1,{lost:R=>!R.bioOK,now:R=>R.bioOrbits>0?`${Math.min(100,R.bioOrbits*100).toFixed(0)} % of an orbit`:''}),
+    jC('safe',`home safe, within ${AIR_S/3600} h of air`,R=>!!R.landed&&!!R.bioOK,{lost:R=>!R.bioOK,now:R=>R.bioWhy||''})]},
+  lift1:{needs:[N_MASS(0.5)],legs:[L_ORBIT()],conds:[massCond({m:0.5})]},
+  lift2:{needs:[N_MASS(2)],legs:[L_ORBIT()],conds:[massCond({m:2})]},
+  wxsat:{needs:[N_CAM,N_ANT],legs:[L_ORBIT(null,'polar')],conds:[jC('polar','a camera and an antenna in a polar orbit (80–100°)',R=>!!R.weather,{now:R=>R.orb?`now ${R.orb.inc.toFixed(0)}°`:''})]},
+  tv:{needs:[N_ANT],legs:[L_ORBIT(Math.round(STAT_R/1e3-TELLUS.R/1e3),'stat')],conds:[jC('stat',"an antenna in a stationary orbit, in the capital's sky",R=>!!R.tv)]},
+  diswatch:{needs:[N_CAM,N_ANT],legs:[L_ORBIT()],conds:[jHome()]},
+  nav:{needs:[N_ANT],legs:[L_ORBIT()],conds:[jHome()]},
+  station1:{needs:[N_HAB,N_DOCK],legs:[L_ORBIT(),{k:'stay'}],conds:[jHome()]},
+  stationcrew:{needs:[N_CREW,N_DOCK],legs:[{k:'meet',id:'station'}],conds:[jHome()]},
+  stationlab:{needs:[N_LAB,N_DOCK],legs:[{k:'meet',id:'station'}],conds:[jHome()]},
+  station30:{needs:[],legs:[{k:'meet',id:'station'}],conds:[jHome()]},
+  farside:{needs:[N_CAM],legs:[{k:'flyby',b:'Selene'}],conds:[jC('photo','the sunlit far side photographed',R=>!!R.farPhoto||!!R.farSent),
+    jC('sent','the pictures home',R=>!!R.farSent,{now:R=>R.farPhoto&&!R.farSent&&R.farGot>0?`${Math.min(99,R.farGot/FAR_BITS*100).toFixed(0)} % down`:''})]},
+  selimp:{needs:[N_SCI,N_ANT],legs:[{k:'land',b:'Selene',hard:true}],conds:[jC('impact','into Selene on the near side, heard to the end',R=>!!R.selImpact)]},
+  selland:{needs:[N_SCI,N_ANT],legs:[L_SEL],conds:[jC('land','down on the near side under 4 m/s, phoning home',R=>!!R.selLand)]},
+  selsample:{needs:[N_SCI,N_CHUTE],legs:[L_SEL,L_HOME],conds:[jC('sample','an instrument package down on Selene',R=>!!R.selSampled),
+    jC('rec','recovered at home',R=>!!R.landed&&!!R.recSci,{lost:R=>!!R.landed&&!R.recSci,wait:1})]},
+  padabort:{needs:[N_CREW,N_LES,N_CHUTE],legs:[{k:'hop',alt:0},L_HOME],conds:[jC('abort','an abort from the pad (under 200 m)',R=>!!R.abort&&R.abort.alt<200,{lost:R=>!!R.abort&&!(R.abort.alt<200)}),
+    jC('home','the capsule home intact',R=>!!R.capHome),jG(G_LIM,'cgMax',R=>!!R.capHome)]},
+  maxqabort:{needs:[N_CREW,N_LES,N_CHUTE],legs:[{k:'hop',q:15},L_HOME],conds:[jC('abort','an abort at 15 kPa or more',R=>!!R.abort&&R.abort.q>=15000,{lost:R=>!!R.abort&&!(R.abort.q>=15000),now:R=>R.qMax>0?`max-q so far ${(R.qMax/1e3).toFixed(1)} kPa`:''}),
+    jC('home','the capsule home intact',R=>!!R.capHome),jG(G_LIM,'cgMax',R=>!!R.capHome)]},
+  crewaround:{needs:[N_CREW,N_CHUTE],legs:[{k:'flyby',b:'Selene'},L_HOME],conds:[jC('crew','a crew aboard',R=>!!R.crewed,{lost:R=>!!R.crewInit&&!R.crewed}),
+    jC('sel',"into Selene's sphere of influence",R=>!!R.crewSel,{lost:crewLost}),jC('safe','home safe',R=>!!R.crewOK&&!!R.capHome,{lost:crewLost,now:R=>R.crewWhy||''})]},
+  crewland:{needs:[N_CREW,N_CHUTE],legs:[L_SEL,L_HOME],conds:[jC('crew','a crew aboard',R=>!!R.crewed,{lost:R=>!!R.crewInit&&!R.crewed}),
+    jC('land','down on Selene under 4 m/s',R=>!!R.crewSelLand,{lost:crewLost}),jC('safe','home safe',R=>!!R.crewOK&&!!R.capHome,{lost:crewLost,now:R=>R.crewWhy||''})]},
+  nyxfind:{needs:[N_SCI,N_ANT],legs:[{k:'stay'}],conds:[jC('track',`tracked ${NYX_TRACK_H} h where Nyx's pull counts`,R=>!!R.nyxFound,{lost:R=>!!R.launched&&!R.nyxLook,now:R=>R.nyxTrack>0?`${(R.nyxTrack/3600).toFixed(1)} of ${NYX_TRACK_H} h`:''})]},
+  nyxfly:{needs:[N_CAM,N_ANT],legs:[{k:'flyby',b:'Nyx'}],conds:[jC('fly',"into Nyx's sphere of influence, camera and antenna working",R=>!!R.nyxFly)]},
+  nyxorb:{needs:[N_SCI],legs:[{k:'orbit',b:'Nyx',alt:null,inc:null}],conds:[jC('orb',`in orbit around Nyx for ${(4*Math.PI/NYX.n/3600).toFixed(0)} h`,R=>R.nyxOrbT>=4*Math.PI/NYX.n,{now:R=>R.nyxOrbT>0?`${(R.nyxOrbT/3600).toFixed(1)} h so far`:''})]},
+  nyxland:{needs:[N_SCI],legs:[{k:'land',b:'Nyx'}],conds:[jC('land','down on Nyx under 3 m/s',R=>!!R.nyxLand)]},
+};
+for(const M of MISSIONS){const J=M_JOB[M.id];if(J)Object.assign(M,{needs:()=>J.needs,conds:()=>J.conds,legs:()=>J.legs})}
+// a job: an active contract ({type, p}) or a mission (M, its id, or 'm:'+id). Its conds' states on a record; all met?; its needs on a ship
+const jobT=x=>typeof x==='string'?MISSIONS.find(M=>'m:'+M.id===x||M.id===x)||null:x&&x.type?CT[x.type]:x;
+const jobP=x=>x&&x.type?x.p:undefined;
+const jNow=(c,R,s)=>{try{return c.now(R,s)||''}catch(e){return''}};   // a reading never breaks the card
+function jobConds(x,R,s){const T=jobT(x);return T&&T.conds?T.conds(jobP(x)).map(c=>({id:c.id,t:c.t,state:c.state(R,s),now:c.now?jNow(c,R,s):'',home:!!c.home})):[]}
+const jobMet=(x,R,s)=>{const C=jobConds(x,R,s);return C.length>0&&C.every(c=>c.state==='met')};
+function jobNeeds(x,v){const T=jobT(x);return T&&T.needs?T.needs(jobP(x)).map(n=>({id:n.id,t:n.t,ok:!!n.has(v)})):[]}
 // ---- sanctions: a power that sanctions the program sends no offers, cancels its contracts and withholds its share of
 // budget day until the sanction lapses. Home sanctions too: military work for home's enemies (always found out) and,
 // in intense tension (relation < −0.75), commercial work for them (export controls).

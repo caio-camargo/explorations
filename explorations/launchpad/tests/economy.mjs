@@ -832,3 +832,93 @@
     a.low && a.mid === 0 && a.after === 0 && b.low && b.mid === 0 && b.after === 1 && b.funds >= 25 - 1e-9 && c.low && c.mid === 0 && cAfter === 0,
     `paid: low ${a.low} mid ${a.mid} end ${a.after}; short: mid ${b.mid} end ${b.after} funds ${b.funds.toFixed(1)}; reverted: mid ${c.mid} later ${cAfter} funds ${P.funds.toFixed(1)}`);
 }
+
+// econ-37. A job's conditions as data (economy worker, QUEUE Q547; notes/flow.md § "Plan: the aim and the mission card",
+// slice 1): every contract type and mission carries needs, conds and legs. On flight records (a met one per type, every
+// one-field step short of it, and fuzzed records near every threshold), all conds met ⇔ ok, for the 17 flight-judged
+// types and the flight missions; labels and states are sane; a cond turns lost when it must (apex past the band, over the
+// g, launched elsewhere, down without the package) and stays lost; the between-flight types and world missions are one
+// "judged at home" cond. procKey ignores stack.aim.
+{
+  const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,TELLUS,SELENE,NYX,rng,recNew,jobConds,jobMet,jobNeeds,newShip,PRESETS,procKey,norm,cross,add,mul,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, T = D.TELLUS; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, done: {}, own: null, decisions: [], site: null }); D.chooseStart('agency');
+  const FLIGHT = Object.keys(D.CT).filter(k => !D.CT[k].sel && k !== 'image'), HOMEJ = Object.keys(D.CT).filter(k => !FLIGHT.includes(k));
+  const SAT = { sat: 5, name: 'Beeper 2', n: 1, worth: 3, pay: 100, dur: 300 };
+  const params = k => { if (['service', 'rdv', 'retrieve'].includes(k)) return [SAT]; const out = [], R = D.rng(11 + k.length); for (let i = 0; i < 40 && out.length < 3; i++) { const p = D.CT[k].gen(R); if (p) out.push(p); } return out; };
+  const at = (u, d) => { const w = D.norm(D.cross(u, [0, 1, 0])), a = d / T.R; return D.mul(D.add(D.mul(u, Math.cos(a)), D.mul(w, Math.sin(a))), T.R); };
+  const pick = (R, a) => a[R() * a.length | 0], B = R => R() < 0.5, NYXT = 4 * Math.PI / D.NYX.n;
+  const pool = p => { const v = [0, 0.5, 1, 2, 1e4, 2e4, 15000, 25000, 199, 200, 1e9, 4.9, 5.1, 7.9, 8.1, NYXT - 1, NYXT + 1];
+    for (const x of Object.values(p || {})) if (typeof x === 'number') for (const y of [x, x * 1e3]) v.push(y, y - 1, y + 1, y - 1e-6, y + 1e-6); return v; };
+  const FLAGS = ['launched', 'ended', 'bio', 'bioOK', 'bioSpace', 'aurora', 'endSci', 'approved', 'orbitSci', 'weather', 'tv', 'farPhoto', 'farSent', 'selImpact', 'selLand',
+    'selSampled', 'capHome', 'crewed', 'crewOK', 'crewInit', 'crewSel', 'crewSelLand', 'nyxFound', 'nyxLook', 'nyxFly', 'nyxLand'];
+  function fuzz(R, p) { const V = pool(p), n = () => pick(R, V), landed = B(R), r = D.recNew(); for (const k of FLAGS) r[k] = B(R);
+    Object.assign(r, { landed, recSci: landed && B(R), apexSci: n(), apex: n(), landDist: n(), gMax: n(), bioOrbits: n(), lift: n(), sciQ: n(), cgMax: n(), nyxOrbT: n(), qMax: n(), farGot: n(), nyxTrack: n(),
+      qPart: p && p.k ? { [p.k]: n() } : {}, landBiome: pick(R, [p && p.b, 3, 0]), site: pick(R, [p && p.site, 'elsewhere', null]), rdv: pick(R, [undefined, { 5: 1 }, { 6: 1 }]),
+      abort: B(R) ? null : { alt: pick(R, [100, 199.9, 200, 500]), q: pick(R, [14999, 15000, 20000]) } });
+    for (let k = 0; k < 10; k++) if (B(R)) r.bands[k] = 1;
+    r.orb = B(R) ? null : { pe: n(), ap: n(), inc: p && p.inc != null ? pick(R, [p.inc, p.inc + p.itol, p.inc + p.itol + 0.01, p.inc - p.itol - 0.01, 90]) : n(), sci: B(R) };
+    r.endPf = p && p.u && B(R) ? at(p.u, pick(R, [0, p.rad * 1e3 - 1, p.rad * 1e3 + 1, 5e5])) : null;
+    const s = B(R) ? undefined : { rec: r, alive: B(R), landed: B(R), body: pick(R, [T, D.SELENE]), r: [T.R + 5e4, 0, 0], v: [pick(R, [-100, 100]), 0, 0], parts: [{ open: B(R) }],
+      att: B(R) ? [] : [{ kind: pick(R, ['bay', 'port']), e: { id: pick(R, [5, 6]) }, hpi: pick(R, [0, 1]) }] };
+    P.atm = {}; for (let k = 0; k < 4; k++) if (R() < 0.7) P.atm[k] = 1; P.streak = pick(R, [0, 2, 3]); return { r, s }; }
+  // a met record for each flight-judged type
+  const GOOD = { apex: p => ({ landed: true, recSci: true, apexSci: (p.lo + p.hi) / 2 * 1e3 }), sample: p => ({ landed: true, recSci: true, bands: { [p.k]: 1 } }),
+    test: p => ({ qPart: { [p.k]: p.q * 1000 + 1 } }), landing: p => ({ landed: true, apex: 3e4, landDist: 0 }),
+    bioHop: () => ({ landed: true, bio: true, bioOK: true, bioSpace: true, gMax: 1 }), touristHop: () => ({ landed: true, bio: true, bioOK: true, bioSpace: true, gMax: 1 }),
+    touristOrbit: () => ({ landed: true, bio: true, bioOK: true, bioOrbits: 1.2, gMax: 1 }), sat: p => ({ orb: { pe: p.alt * 1e3, ap: p.alt * 1e3, inc: p.inc, sci: true } }),
+    recon: p => ({ orb: { pe: p.alt * 1e3, ap: p.alt * 1e3, inc: p.inc, sci: true } }), field: p => ({ landed: true, recSci: true, landBiome: p.b }),
+    aurora: () => ({ landed: true, recSci: true, aurora: 1 }), lift: p => ({ lift: p.m }), milLift: p => ({ lift: p.m }),
+    ballistic: p => ({ endPf: at(p.u, 0), endSci: true, site: p.site }), service: () => ({}), rdv: () => ({ rdv: { 5: 1 } }), retrieve: () => ({}) };
+  const GOODS = { service: () => ({ alive: true, att: [{ e: { id: 5 } }] }), retrieve: () => ({ alive: true, landed: true, body: T, parts: [{ open: false }], att: [{ kind: 'bay', e: { id: 5 }, hpi: 0 }] }) };
+  const STATES = new Set(['met', 'lost', 'open', 'pending']), bad = [], mis = [], cover = {};
+  const sane = (x, R, s, where) => { const C = D.jobConds(x, R, s), ids = new Set(C.map(c => c.id));
+    if (!C.length || ids.size !== C.length || C.some(c => !STATES.has(c.state) || typeof c.t !== 'string' || !c.t || typeof c.now !== 'string' || /undefined|NaN/.test(c.t + c.now))) bad.push(`${where}: ${JSON.stringify(C).slice(0, 160)}`); };
+  const same = (x, ok, R, s, where) => { const m = D.jobMet(x, R, s); if (m !== !!ok) mis.push(`${where}: ok ${!!ok} conds ${JSON.stringify(D.jobConds(x, R, s).map(c => c.id + ':' + c.state))}`); return m; };
+  const R0 = D.rng(547);
+  for (const k of FLIGHT) { const CTk = D.CT[k]; cover[k] = { met: 0, not: 0 };
+    for (const p of params(k)) { const c = { type: k, p };
+      const g = Object.assign(D.recNew(), { launched: true }, GOOD[k](p)), gs = GOODS[k] ? GOODS[k]() : undefined;
+      if (!CTk.ok(g, p, gs) || !D.jobMet(c, g, gs)) mis.push(`${k}: the met fixture isn't met (ok ${!!CTk.ok(g, p, gs)}, conds ${JSON.stringify(D.jobConds(c, g, gs).map(x => x.id + ':' + x.state))})`);
+      // every one-field step short of it
+      for (const f of Object.keys(GOOD[k](p))) for (const v of [false, 0, 1e9, null, {}]) { const r = { ...g, [f]: v }; let ok;
+        try { ok = CTk.ok(r, p, gs); } catch (e) { continue; }   // ok() itself can't read this shape (an orbit of null): not a record a flight makes
+        same(c, ok, r, gs, `${k} ${f}=${JSON.stringify(v)}`); }
+      if (gs) for (const [f, v] of [['alive', false], ['landed', false], ['body', D.SELENE], ['att', []], ['parts', [{ open: true }]]]) { const s = { ...gs, [f]: v }; same(c, CTk.ok(g, p, s), g, s, `${k} s.${f}`); }
+      for (let i = 0; i < 800; i++) { const { r, s } = fuzz(R0, p); const ok = CTk.ok(r, p, s); cover[k][ok ? 'met' : 'not']++; same(c, ok, r, s, `${k} fuzz ${i}`); if (i < 200) sane(c, r, s, `${k} fuzz ${i}`); } } }
+  const MF = D.MISSIONS.filter(M => !M.world), MW = D.MISSIONS.filter(M => M.world);
+  for (const M of MF) { cover['m:' + M.id] = { met: 0, not: 0 };
+    for (let i = 0; i < 800; i++) { const { r, s } = fuzz(R0, null); const ok = M.ok(r, s); cover['m:' + M.id][ok ? 'met' : 'not']++; same(M, ok, r, s, `m:${M.id} fuzz ${i}`); if (i < 200) sane(M, r, s, `m:${M.id} fuzz ${i}`); } }
+  const thin = MF.filter(M => !cover['m:' + M.id].met).map(M => M.id);
+  check(`job conditions (Q547): all conds met ⇔ ok for the ${FLIGHT.length} flight-judged contract types and ${MF.length} flight missions (met fixtures, one-field steps short, fuzz); labels and states sane`,
+    FLIGHT.length === 17 && MF.length + MW.length === 29 && !mis.length && !bad.length && !thin.length && D.MISSIONS.every(M => M.conds && M.needs && M.legs) && Object.values(D.CT).every(t => t.conds && t.needs && t.legs),
+    `${mis.length} mismatches${mis.length ? ': ' + mis.slice(0, 3).join(' | ') : ''}; ${bad.length} insane${bad.length ? ': ' + bad[0] : ''}; missions never met in fuzz: ${thin.join(',') || 'none'}; fuzz met e.g. retrieve ${cover.retrieve.met}, m:crewland ${cover['m:crewland'].met}`);
+  // lost when it must, and it stays lost; pending for recovered; open with its now
+  const st = (x, R, s) => Object.fromEntries(D.jobConds(x, R, s).map(c => [c.id, c.state])), now = (x, R, s, id) => D.jobConds(x, R, s).find(c => c.id === id).now;
+  const ap = { type: 'apex', p: { lo: 40, hi: 55, pay: 10, dur: 60 } }, Ra = Object.assign(D.recNew(), { launched: true, apexSci: 47e3 }), sa = { alive: true, landed: false, body: T, r: [T.R + 47e3, 0, 0], v: [100, 0, 0] };
+  const up = st(ap, Ra, sa), upNow = now(ap, Ra, sa, 'apex'); sa.v = [-100, 0, 0]; const down = st(ap, Ra, sa);
+  Object.assign(Ra, { landed: true, recSci: true }); sa.landed = true; const home = st(ap, Ra, sa), paid = !!D.CT.apex.ok(Ra, ap.p) && D.jobMet(ap, Ra, sa);
+  const Rb = Object.assign(D.recNew(), { launched: true, apexSci: 56e3 }), high = st(ap, Rb, sa); Object.assign(Rb, { landed: true, recSci: true }); const highHome = st(ap, Rb, sa);
+  const Rc = Object.assign(D.recNew(), { launched: true, apexSci: 47e3, landed: true, recSci: false }), noPkg = st(ap, Rc, sa);
+  check('job conditions: the sounding run reads open "now 47 km" climbing, met falling, recovered pending, then all met; past 55 km lost and still lost once home; down without the package: recovered lost',
+    up.apex === 'open' && upNow === 'now 47 km' && up.rec === 'pending' && down.apex === 'met' && down.rec === 'pending' && home.apex === 'met' && home.rec === 'met' && paid
+      && high.apex === 'lost' && highHome.apex === 'lost' && noPkg.rec === 'lost', JSON.stringify({ up, upNow, down, home, high, highHome, noPkg }));
+  const bh = { type: 'bioHop', p: { g: 5 } }, Rg = Object.assign(D.recNew(), { launched: true, bio: true, bioSpace: true, gMax: 6.2 }), g1 = st(bh, Rg); Rg.landed = true; const g2 = st(bh, Rg);
+  const bp = D.CT.ballistic.gen(D.rng(5)), bl = { type: 'ballistic', p: bp }, b0 = st(bl, D.recNew()), b1 = st(bl, Object.assign(D.recNew(), { launched: true, site: 'elsewhere' }));
+  const sat = { type: 'sat', p: { alt: 300, tol: 25, inc: 45, itol: 3 } }, ended = st(sat, Object.assign(D.recNew(), { launched: true, ended: true })), live = st(sat, Object.assign(D.recNew(), { launched: true }));
+  const rangeM = D.MISSIONS.find(M => M.id === 'range'); P.streak = 2; const rg = st(rangeM, Object.assign(D.recNew(), { ended: true }));
+  check('job conditions: over 5 g is lost and stays lost on landing; a ballistic test open before launch, lost from another site; an orbit open in flight, lost once the flight is over; the range streak waits (pending), never lost',
+    g1.g === 'lost' && g2.g === 'lost' && g2.safe === 'met' && g2.space === 'met' && b0.site === 'open' && b1.site === 'lost' && live.inc === 'open' && ended.inc === 'lost' && ended.orbit === 'lost' && rg.streak === 'pending',
+    JSON.stringify({ g1, g2, b0, b1, live, ended, rg }));
+  // the between-flight types and world missions: one cond, judged at home; needs and legs well formed; procKey ignores the aim
+  const homeOK = [...HOMEJ.map(k => ({ type: k, p: params(k)[0] || { st: 1, ci: 0 } })), ...MW].every(x => { const C = D.jobConds(x, D.recNew()); return C.length === 1 && C[0].home && C[0].state === 'pending'; });
+  const LEGK = new Set(['orbit', 'hop', 'flyby', 'land', 'meet', 'home', 'stay']), hopper = D.newShip(D.PRESETS.Hopper);
+  const legsOK = FLIGHT.every(k => params(k).every(p => { const L = D.CT[k].legs(p); return L.length > 0 && L.length <= 3 && L.every(l => LEGK.has(l.k)); })) && MF.every(M => M.legs().length > 0 && M.legs().every(l => LEGK.has(l.k)));
+  const nApex = D.jobNeeds({ type: 'apex', p: ap.p }, hopper), nLift = D.jobNeeds({ type: 'lift', p: { m: 1 } }, hopper), nTest = D.jobNeeds({ type: 'test', p: { k: 'kestrel', q: 20 } }, hopper);
+  const needsOK = nApex.length === 2 && !nApex.find(n => n.id === 'sci').ok && nApex.find(n => n.id === 'chute').ok && !nLift[0].ok && nTest.find(n => n.id === 'part:kestrel').ok
+    && [...FLIGHT.flatMap(k => params(k).map(p => ({ type: k, p }))), ...D.MISSIONS].every(x => D.jobNeeds(x, hopper).every(n => n.id && n.t && !/undefined|NaN/.test(n.t) && typeof n.ok === 'boolean'));
+  const tree = { k: 'pod', ch: [{ k: 't2' }] }, keyOK = D.procKey({ ...tree, aim: { jobs: ['m:beeper'], legs: [{ k: 'orbit', b: 'Tellus', alt: 300, inc: 'pad' }] } }) === D.procKey(tree)
+    && D.procKey(Object.assign(D.PRESETS.Hopper.slice(), { aim: { jobs: [1] } })) === D.procKey(D.PRESETS.Hopper);
+  check('job conditions: the between-flight types and world missions are one "judged at home" cond (pending); legs well formed (1–3, known kinds); needs read a design (the Hopper: chute yes, package no, a Kestrel aboard); procKey ignores stack.aim',
+    homeOK && legsOK && needsOK && keyOK, `home ${homeOK}; legs ${legsOK}; needs ${needsOK} ${JSON.stringify(nApex)}; procKey ${keyOK}`);
+}
