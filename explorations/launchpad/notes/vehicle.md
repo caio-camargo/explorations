@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2402,6 +2402,8 @@ stall, no aspect ratio and no change with Mach, so the same 4 holds at Mach 3, w
 home, more than a parachute" and reuses most of what exists. Tier 2 is a second vehicle game (a new builder, a new
 engine family, new demands on the world) and does not serve the loop PROGRESSION.md is fixing; park it with the
 winged runway shuttle already deferred in notes/space.md § "Stations, modules and moonbases".
+
+**Decided (D30, Caio 2026-11-11):** tier 1 is wanted (planned as Q592); tiers 2 and 3 are backlog.
 
 **Not checked:** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
 contact code.

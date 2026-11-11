@@ -7194,3 +7194,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   waits only on Q581 and W48's freeze. He asked what planes like KSP's would take: sized in
   explorations/launchpad/notes/vehicle.md § "Scope: winged flight" (three tiers; today's plates give a lift-to-drag
   of about 4 at wing size, `review/2026-11-11/glide.mjs`). Nothing queued: he is holding scope.
+
+- **And:** Caio on winged flight: tier 1 (the winged return) is good, aeroplanes and spaceplanes are backlog: **D30**,
+  **Q592** (plan: the winged return, vehicle).
