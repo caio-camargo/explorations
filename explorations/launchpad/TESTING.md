@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.103 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-07 · **Status**: running checklist
+**Version**: 0.1.104 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -152,6 +152,7 @@ NOTES § "The robot playtester".
 | 360 | The whole exhaust trail (Q566, v1.298) | Launch the Orbiter and fly a normal ascent. Look back at the pad now and then (drag the view) up to the edge of the air (70 km), and once from the map's edge of space. Also watch the trail near the rocket in the first 30 s. | The trail runs unbroken from the pad to where the smoke stops (~33 km) the whole way up; far away it is a thin steady line, not flickering dots. Near the rocket it looks as before: no puffs popping out, no holes, no beads. The frame rate holds (`res` in the performance readout as on a flight before). | |
 | 361 | The Hopper and the Beeper roll out stable (Q202, v1.299) | In the Assembly pick the Hopper preset, then Roll out; again with the Beeper | Neither shows ⚠ *Aerodynamically unstable*; each has two fin rings above its engine | test `vehicle-40` (every preset) |
 | 362 | A dispatch beside a Qualify contract (R14, v1.300) | Take a "Qualify the X" contract and a satellite contract; dispatch the satellite contract (a design with an ascent procedure) and let the days run past its launch | The dispatch flies and the satellite contract is paid; the calendar keeps moving; the Qualify contract stays open | test `econ-35` |
+| 363 | A bad save, a full disk, two tabs (R10, v1.301) | In the console: `localStorage.setItem('launchpad-program-v1','{"ver":1,"home":99}')`, reload; then `'{"ver":1,"sats":[5]}'`, reload. Then open the game in two tabs and do something that saves (accept a contract) in each | First: the game opens, a message names `home` as reset. Second: a new program and a message that the old one is kept as `launchpad-program-v1-bad`. Tabs: the second tab to act is told another tab saved and that it no longer saves | test `platform-7` |
 
 ### Orbits & planning
 

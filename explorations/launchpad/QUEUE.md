@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.217 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 0.1.218 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -354,7 +354,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | R7 | **Stop testing pictures with regexes**: pixel checks on the reference views where the GPU bench runs, delete the rest; fix the vacuous flow check (`tests/flow.mjs:816`), wall-clock `tests/vehicle.mjs:350`, core §2, `Math.random` in core (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA | M | 🖥 | ready |
 | R8 | **Repair the robot playtester and run it on a schedule** (default-output rows fail with `ReferenceError: PRESETS / cam / go`) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA (test bench) | S | 🖥 | ready |
 | R9 | **A frame that throws must not end the game**: try/catch in `frame()`, a `window.onerror`/`unhandledrejection` handler with *Reload* and *Export save* (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | flow, platform | S | 🖥 | ready |
-| R10 | **A bad save must not brick the page**: `raceSchedule()`/`ensureBoard()` inside the try; a backup before overwriting a save that failed to parse; surface quota errors; a guard for two tabs (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
+| R10 | **A bad save must not brick the page**: `raceSchedule()`/`ensureBoard()` inside the try; a backup before overwriting a save that failed to parse; surface quota errors; a guard for two tabs (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ✓ v1.301 |
 | R11 | **First load**: merge Q19 (`terrain`, measured 28 → 14 s); a loading indicator; compile shaders the title doesn't need after it shows (`KHR_parallel_shader_compile`); a message when a compile fails (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | M | 🖥 | ready |
 | R12 | **WebGL context loss**: handle `webglcontextlost`/`restored` (at least a reload message) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | XS | 🖥 | ready |
 | R13 | **Smaller app items**: adaptive resolution can't grow without timer queries; engine sound in a hidden tab; replay speed by refresh rate; the 10 Hz HUD `innerHTML` rebuild and game logic in it; `landPick`; the flight-reset list ×5; builder keys from the title; `rvMeshC` growth (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | flow, platform | S–M | 🖥 | ready |

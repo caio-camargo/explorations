@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.47 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-09
+**Version**: v2.0.48 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -459,3 +459,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.294 — the solar wing's cells: each wing panel 4 × 4 modules of small cells (grey interconnects, white substrate between modules, a contact bar and fingers), each cell its own blue and its own cover-glass tilt, violet at a grazing look; the body cells the same (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.294)
 - v1.297 — the cells' grid lines keep their true coverage from afar (`linc`), so a wing stays blue as you zoom out; the wing's panels unfold together over 6 s (was one after another over 4 s) (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.297; committed as "v1.295", renumbered)
 - v1.296 — one serializer: `progJSON`/`progRestore` for the save, revert, simulator, flights from orbit and the recorder; the tester is told of values JSON would lose (R16 named) (2026-11-10, review fixes, QUEUE R1c)
+- v1.301 — a bad save no longer bricks the page: `progLoad` repairs kinds from `PROG_SCHEMA`, probes a muted day, falls back to a new program; the bad text kept as `-bad`; quota errors said; a second tab stops saving (2026-11-11, platform, QUEUE R10)

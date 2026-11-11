@@ -27,7 +27,7 @@
 // saving never lowers a newer save's version. When SAVE_V goes up, add the new step's fixture here.
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
-  const blk = pg.slice(pg.indexOf('const SAVE_V='), pg.indexOf('try{const j=migrateSave('));
+  const blk = pg.slice(pg.indexOf('const SAVE_V='), pg.indexOf('// Loading (R10)'));
   const { SAVE_V, MIGRATE, migrateSave } = new Function(blk + ';return {SAVE_V,MIGRATE,migrateSave}')();
   const v0 = migrateSave({ funds: 50, day: NaN, sats: [{ id: 1, docked: true }], done: { beeper: 1 } });
   const cur = { ver: SAVE_V, funds: 70, day: 12, rel: { 1: 0.2 }, op: {}, sats: [] }, curOut = migrateSave(JSON.parse(JSON.stringify(cur)));
@@ -155,4 +155,66 @@
   check('platform-6: every PROG snapshot goes through progJSON/progRestore; progLossy finds Infinity, NaN, functions, Maps, typed arrays and holes; 300 days of play lose nothing; the tester hears of a lossy value once; a restore drops what the snapshot lacked',
     !own.length && plantedOK && !played.length && told && back,
     `own snapshots: ${own.join(', ') || 'none'}; planted ${planted.length}/7; after 300 days: ${played.join(', ') || 'nothing lost'}; tester told ${told} (${said.length}× "${(said[0] || '').slice(0, 60)}"); restore ${back}`);
+}
+
+// platform-7. A bad save must not brick the page (QUEUE R10; review 2026-11-09 § 2). The page's own loading and saving
+// code (app/state.js, from SAVE_V to the `storage` listener) runs here against the SIM with a fake localStorage. The
+// review's three saves (`home` 99, `done` null, `rel` null) and two more broken shapes each threw on every reload: now
+// each loads, repaired, and plays a day. A save that still stops the game (a satellite that is a number) or isn't JSON is
+// copied to the -bad key and a new program starts; with no room for the copy, the tab never saves over it. A failed save
+// is said (quota), not swallowed; another tab's save makes this tab stop saving. A good played save loads unchanged and
+// the load's probe day leaves no trace (30 more days from it match 30 from a plain restore).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const blk = pg.slice(pg.indexOf('const SAVE_V='), pg.indexOf('// dropped stages leave the simulation'));
+  const boot = (raw, { full = false, key = 'launchpad-program-v1' } = {}) => {
+    const store = new Map(raw == null ? [] : [[key, raw]]), said = [], news = [], heard = [];
+    const localStorage = { getItem: k => store.has(k) ? store.get(k) : null,
+      setItem: (k, v) => { if (full) { const e = new Error('The quota has been exceeded.'); e.name = 'QuotaExceededError'; throw e; } store.set(k, String(v)); } };
+    const X = new Function('localStorage', 'setTimeout', 'performance', 'addEventListener', 'console',
+      src + `const PROG_KEY=${JSON.stringify(key)};\n` + blk + `;return {PROG,HOOK,advanceDays,progLoaded,get held(){return progHeld},PROG_BAD,get home(){return HOME}}`);
+    const api2 = X(localStorage, f => f(), { now: () => 1e9 }, (ev, f) => heard.push([ev, f]), { error() {} });
+    api2.HOOK.msg = m => said.push(m); api2.HOOK.news = (t, c) => news.push(c);
+    return Object.assign(api2, { store, said, news, heard, key });   // (not a spread: it would freeze the `held` getter)
+  };
+  // the HOOKs are swapped in after boot, so boot's own words are caught by running the timers late: re-run with hooks set
+  const bootSaid = (raw, o) => { const said = [], news = []; const hk = { msg: m => said.push(m), news: (t, c) => news.push(c) };
+    let q = []; const B = (() => { const store = new Map(raw == null ? [] : [[(o && o.key) || 'launchpad-program-v1', raw]]);
+      const localStorage = { getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => { if (o && o.full) { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; } store.set(k, String(v)); } };
+      const X = new Function('localStorage', 'setTimeout', 'performance', 'addEventListener', 'console',
+        src + `const PROG_KEY='launchpad-program-v1';\n` + blk + `;return {PROG,HOOK,advanceDays,progLoaded,get held(){return progHeld},get home(){return HOME},POWERS}`);
+      const r = X(localStorage, f => q.push(f), { now: () => 1e9 }, () => {}, { error() {} }); return { ...r, store }; })();
+    B.HOOK.msg = hk.msg; B.HOOK.news = hk.news; q.forEach(f => f()); return { ...B, said, news }; };
+  const J = v => JSON.stringify(v), plays = B => { try { B.advanceDays(3); return true; } catch (e) { return e.message; } };
+  // (`rel` null is mended by the version-0 migration, so nothing is named; the others name their field)
+  const repaired = [['{"ver":1,"home":99}', 1], ['{"done":null}', 1], ['{"rel":null}', 0], ['{"ver":1,"active":null,"offers":[]}', 1], ['{"ver":1,"funds":"lots"}', 1]].map(([raw, named]) => {
+    const B = bootSaid(raw), ok = plays(B);
+    return { raw, ok: B.progLoaded && ok === true && !B.store.has('launchpad-program-v1-bad') && B.said.some(m => /damaged/.test(m)) === !!named && B.home < B.POWERS.length, why: ok };
+  });
+  const rOK = repaired.every(r => r.ok);
+  check('platform-7: the review\'s three bricking saves and two more broken shapes load, repaired and named, and play on',
+    rOK, repaired.map(r => `${r.raw} ${r.ok ? 'ok' : `✗ (${r.why})`}`).join('; '));
+  // (`offers` has a null default, so its kind isn't checked: the probe day catches it)
+  const bad = ['{"ver":1,"sats":[5]}', '{"ver":1,"offers":5}', '{not json', '"a string"'].map(raw => {
+    const B = bootSaid(raw), ok = plays(B), kept = B.store.get('launchpad-program-v1-bad') === raw;
+    return { raw, ok: !B.progLoaded && kept && ok === true && B.said.some(m => /can't be loaded/.test(m)) && B.news.includes('bad') && B.PROG.day < 10, why: ok };
+  });
+  const full = bootSaid('{"ver":1,"sats":[5]}', { full: true }); full.HOOK.save(); const fullOK = full.held && full.store.get('launchpad-program-v1') === '{"ver":1,"sats":[5]}' && full.said.some(m => /no room/.test(m));
+  check('platform-7: a save that stops the game or isn\'t a program is kept as -bad and a new program starts; with no room for the copy the tab never saves over it',
+    bad.every(r => r.ok) && fullOK, `${bad.map(r => `${r.raw} ${r.ok ? 'kept' : `✗ (${r.why})`}`).join('; ')}; storage full: held ${fullOK}`);
+  // saving: quota said once a minute at most; another tab's write stops this tab's saves
+  const Q = boot(null, { full: true }); Q.HOOK.save(); Q.HOOK.save(); const quotaOK = Q.said.length === 1 && /storage is full/.test(Q.said[0]);
+  const T = boot(null), lis = T.heard.find(([ev]) => ev === 'storage'); T.HOOK.save(); const first = T.store.get(T.key);
+  lis[1]({ key: 'other' }); const still = !T.held; lis[1]({ key: T.key }); T.PROG.funds = 12345; T.HOOK.save();
+  const tabsOK = !!first && still && T.held && T.store.get(T.key) === first && T.said.some(m => /another tab/.test(m));
+  check('platform-7: a failed save is said (quota, once), and a save from another tab stops this tab from saving over it', quotaOK && tabsOK, `quota ${quotaOK} (${Q.said.length} said); two tabs ${tabsOK}`);
+  // a good save: loads exactly, and the probe day leaves no trace
+  const P = new Function(src + 'return {PROG,programNew,advanceDays,progJSON,progRestore,progDerive,progLoad,HOOK,PROG_REPAIRED:()=>PROG_REPAIRED};');
+  const mkP = () => { const X = P(); X.HOOK.news = () => {}; X.HOOK.msg = () => {}; return X; };
+  const A = mkP(); A.programNew({ wseed: 7 }); A.advanceDays(200); const save = A.progJSON();
+  const srt = t => { const o = JSON.parse(t); return J(Object.fromEntries(Object.keys(o).sort().map(k => [k, o[k]]))); };   // (field order differs: the load starts from PROG's literal)
+  const R1 = mkP(); R1.progRestore(save); R1.progDerive(); const loadedPlain = srt(R1.progJSON()); R1.advanceDays(30); const plain = srt(R1.progJSON());
+  const R2 = mkP(); const err = R2.progLoad(JSON.parse(save)); const loadedProbe = srt(R2.progJSON()), rep = R2.PROG_REPAIRED(); R2.advanceDays(30); const probed = srt(R2.progJSON());
+  check('platform-7: a played save (200 days) loads with nothing repaired, as a plain restore would; 30 days on from it match',
+    !err && !rep.length && loadedPlain === loadedProbe && plain === probed, `error ${err && err.message}; repaired ${rep.join(', ') || 'nothing'}; load same ${loadedPlain === loadedProbe}; 30 days same ${plain === probed}`);
 }

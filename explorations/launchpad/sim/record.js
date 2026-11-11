@@ -46,10 +46,9 @@ function recFlightEnd(s,tape){if(!REC.on||!REC.flight)return;REC.events.push(rec
 function recStop(){if(REC.flight)recFlightEnd();recProg();REC.on=false}
 // load a recording's starting save into this SIM the way the page loads a save (app/state.js, after migrateSave): the
 // program, then what the SIM derives from it (HOME, the rivals' schedule, the offer board, missing tables). A replay must
-// start here, not from a bare Object.assign: a program is more than PROG (platform-5 found HOME and RIVALS).
-function recLoad(start){progRestore(start.prog);
-  HOME=start.home??PROG.home??0;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();
-  if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{}}
+// start here, not from a bare Object.assign: a program is more than PROG (platform-5 found HOME and RIVALS). Since R10 both
+// are progLoad (sim/program.js); a start the page couldn't load is an error here, not a quiet new program.
+function recLoad(start){const e=progLoad(start.prog,start.home);if(e)throw e}
 // the recording so far; a flight still in the air is closed in the copy (marked open), not in the recording
 const recFile=()=>({v:REC_V,game:REC.game,start:REC.start,events:REC.flight?[...REC.events,{...recFlightEv(),open:true}]:REC.events});
 // the save at time t of a recording (R3's scrub between flights): the start, then every diff up to t
