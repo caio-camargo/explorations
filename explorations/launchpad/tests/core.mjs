@@ -2222,7 +2222,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the page: the save slot follows the mode, and the menu's key shows in Help only in tester mode
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const writes = [...page.matchAll(/localStorage\.setItem\(([^,]+),/g)].map(m => m[1]).filter(k => /program/i.test(k) || k === 'PROG_KEY');
-  check('tester: the program saves to PROG_KEY only, a separate slot in tester mode', /const PROG_KEY=TEST\.on\?'launchpad-program-tester':'launchpad-program-v1'/.test(page) && writes.length && writes.every(k => k === 'PROG_KEY'),
+  check('tester: the program saves to PROG_KEY only, a separate slot in tester mode', /PROG_KEY=TEST\.on\?'launchpad-program-tester':PROG_SLOT\?CHAPTER_KEY:'launchpad-program-v1'/.test(page) && writes.length && writes.every(k => k === 'PROG_KEY' || k === 'TEST.on?PROG_KEY:CHAPTER_KEY'),   // + a chapter start's own slot (Q571)
     `program writes: ${writes.join(', ')}`);
   check('tester: the F2 row is hidden from Help outside tester mode', /\{k:\['f2'\][^}]*tester:true\}/.test(page) && /L\.filter\(r=>!r\.tester\|\|TEST\.on\)/.test(page));
 }
