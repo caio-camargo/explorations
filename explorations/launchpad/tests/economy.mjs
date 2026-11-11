@@ -960,3 +960,47 @@
     M.length === 29 && !bad.length && any >= 20 && facts,
     `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
 }
+
+// econ-39. The unlock map as data (economy, QUEUE Q577; the plan Q573, notes/economy.md § "Plan: the unlock map and
+// chapters"; review/2026-11-11/q573/m3.mjs's checks): every part is open at the start, gated by a mission or by its era;
+// with only a mission's req closure done, its needs and its NEXT_PRESET are open; each contract type's needs are open at
+// its req; a part already flown stays open; the qualification contract draws only open parts; the structural test's bar.
+{
+  const D = new Function(src + 'return {PROG,HOOK,PARTS,PART_GATE,MISSIONS,CT,CT_JOB,NEXT_PRESET,PRESETS,newShip,partOpen,partLaunchWhy,kinOf,rng,LOADS_Q,M_JOB,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, flights: 1, decisions: [], offers: [], active: [] }); D.chooseStart('agency');
+  const START = ['sparrow', 't1', 't2', 'cone', 'chute', 'sci', 'dec', 'fins', 'rfin', 'ballast', 'bwt', 'spin'], keys = Object.keys(D.PARTS);
+  const era = keys.filter(k => D.PARTS[k].era != null), gated = keys.filter(k => D.PART_GATE[k]), free = keys.filter(k => D.PARTS[k].era == null && !D.PART_GATE[k]);
+  const ids = new Set(D.MISSIONS.map(M => M.id)), badGate = gated.filter(k => !ids.has(D.PART_GATE[k])), badKey = Object.keys(D.PART_GATE).filter(k => !D.PARTS[k]);
+  check('unlock map: twelve parts at the start, the rest on a mission or an era, every gate a real mission and a real part',
+    free.slice().sort().join() === START.slice().sort().join() && gated.length === 69 && era.length + gated.length + free.length === keys.length && !badGate.length && !badKey.length,
+    `${keys.length} parts: ${free.length} at the start, ${gated.length} on ${new Set(gated.map(k => D.PART_GATE[k])).size} missions, ${era.length} by era${badGate.length ? '; bad gates ' + badGate : ''}${badKey.length ? '; no such part ' + badKey : ''}`);
+  const M = Object.fromEntries(D.MISSIONS.map(x => [x.id, x])), clos = ids0 => { const S = new Set(); const go = id => { for (const r of M[id].req || []) if (!S.has(r)) { S.add(r); go(r); } }; ids0.forEach(go); return S; };
+  const at = S => { P.done = Object.fromEntries([...S].map(id => [id, { day: 0, flight: 1 }])); P.kh = {}; return { parts: keys.filter(k => D.partOpen(k).ok).map(k => ({ d: D.PARTS[k], on: true })) }; };
+  const needsOf = (J, p) => { try { return (typeof J.needs === 'function' ? J.needs(p) : J.needs) || []; } catch (e) { return []; } };
+  const has = (n, v) => n.id === 'mass' ? v.parts.some(p => p.d.kind === 'ballast') : n.has(v);   // (a mass need is a quantity: the simulators being open is the gate)
+  const badM = [];
+  for (const X of D.MISSIONS) { const v = at(clos([X.id])), J = D.M_JOB[X.id] || {}, miss = needsOf(J, {}).filter(n => !has(n, v)).map(n => n.id), pk = D.NEXT_PRESET[X.id], pw = pk ? D.partLaunchWhy(D.newShip(D.PRESETS[pk]).parts) : '';
+    if (miss.length || pw) badM.push(`${X.id}: ${miss.join(',')}${pw ? ' ' + pk + ' ' + pw : ''}`); }
+  const badC = [];
+  for (const t in D.CT) { const T = D.CT[t], S = T.req ? clos([T.req]) : new Set(); if (T.req) S.add(T.req); const v = at(S), J = D.CT_JOB[t] || T;
+    const miss = needsOf(J, { k: 'sparrow', m: 0.5, kind: 'hab', sat: 1, name: 'x' }).filter(n => !has(n, v)).map(n => n.id); if (miss.length) badC.push(`${t} (req ${T.req || '-'}): ${miss}`); }
+  check('unlock map: with only its req closure done, each mission\'s needs and NEXT_PRESET are open; each contract type\'s needs at its req', !badM.length && !badC.length,
+    [...badM, ...badC].join(' · ') || `${D.MISSIONS.length} missions, ${Object.keys(D.CT).length} contract types`);
+  const req = id => (M[id].req || []).slice().sort().join('+');
+  check('unlock map: the six req changes (beeper and hop after weather and the structural test, TV after the weather satellite, a station after TV, the far side after the weather satellite and Heavy lift II, servicing and modules after TV); and a crew aboard after the max-q abort (a crew flies only after it)',
+    req('beeper') === 'loads+weather' && req('hop') === 'loads+weather' && req('tv') === 'wxsat' && req('station1') === 'tv' && req('farside') === 'lift2+wxsat' && req('stationcrew') === 'maxqabort+station1' && D.CT.service.req === 'tv' && D.CT.stExpand.req === 'tv',
+    ['beeper', 'hop', 'tv', 'station1', 'farside', 'stationcrew'].map(id => id + '←' + req(id)).join(' '));
+  at(new Set()); const shut = !D.partOpen('kestrel').ok && /Structural test flight/.test(D.partOpen('kestrel').why);
+  P.kh = { kestrel: { use: 0.3, reg: {} } }; const flown = D.partOpen('kestrel').ok, other = !D.partOpen('petrel').ok;
+  const side = keys.find(k => D.PARTS[k].kin && D.PART_GATE[k]); let kin = true; if (side) { P.kh = { [D.kinOf(side)]: { use: 0.3, reg: {} } }; kin = D.partOpen(side).ok; }
+  check('unlock map: a part already flown stays open (an old save keeps it); one never flown follows the map', shut && flown && other && kin, `kestrel closed, open once flown; petrel still closed${side ? `; ${side} open by its kin ${D.kinOf(side)}` : ''}`);
+  at(new Set()); const R = D.rng(7), drawn = new Set(); for (let i = 0; i < 200; i++) { const o = D.CT.test.gen(R); if (o) drawn.add(o.p ? o.p.k : o.k); }
+  at(new Set(['weather', 'loads'])); const R2 = D.rng(7), drawn2 = new Set(); for (let i = 0; i < 200; i++) { const o = D.CT.test.gen(R2); if (o) drawn2.add(o.p ? o.p.k : o.k); }
+  check('unlock map: the qualification contract draws only open parts (the Kestrel after the structural test, never the Condor before Heavy lift I)',
+    [...drawn].every(k => START.includes(k)) && drawn2.has('kestrel') && !drawn2.has('condor'), `start: ${[...drawn]} · after the structural test: ${[...drawn2]}`);
+  const L = M.loads, ok = q => L.ok({ sciQ: q });
+  check('unlock map: the structural test\'s bar is 20 kPa (W50), in the mission and its job\'s condition', D.LOADS_Q === 20000 && ok(20000) && !ok(19900) && /20 kPa/.test(L.brief) && /20 kPa/.test(D.M_JOB.loads.conds[0].t || ''),
+    `ok at 20.0 kPa: ${ok(20000)}, at 19.9: ${ok(19900)}`);
+  P.done = {}; P.kh = {};
+}

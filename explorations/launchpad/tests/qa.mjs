@@ -169,7 +169,7 @@
     D.load(JSON.parse(JSON.stringify(C.save))); const P = D.PROG, J = JSON.parse(D.progJSON()), round = Object.keys(C.save).every(k => JSON.stringify(J[k]) === JSON.stringify(C.save[k]));
     const done = WANT[id].every(k => P.done[k] && !P.done[k].test) && !Object.values(P.done).some(d => d.test), cheat = Object.entries(D.TEST).some(([k, v]) => v === true);
     const reg = id === 'orbit' ? D.satsUp().some(q => q.sci) : id === 'station' ? !!D.stFind(s => s.berths > 0 && s.ports >= 2) : D.landedUp().some(q => q.bodyName === 'Selene');
-    const M0 = D.missionsInOrder(D.MISSIONS.filter(M => !P.done[M.id] && D.missionOpen(M)))[0], nx = C.meta.next || {};
+    const L0 = D.missionsInOrder(D.MISSIONS.filter(M => !P.done[M.id] && D.missionOpen(M))), nx = C.meta.next || {}, M0 = L0.find(M => M.id === nx.id);   // open, and in NEXT's order (Q577: the first with a design)
     const st = nx.preset ? D.PRESETS[nx.preset] : nx.stack, s = D.newShip(st), cost = D.vesselCost(s.parts).cost, locked = D.partLaunchWhy(s.parts);
     s.landed = false; D.S = s; D.missionTick(s, 0, false); const launched = !!(s.rec && s.rec.launched);
     let ran = true; try { D.advanceDays(40); } catch (e) { ran = false; }

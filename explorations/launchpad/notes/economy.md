@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3735,3 +3735,35 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
 - Prices and funds beyond first orbit under the new order (TV before stations, Selene after Heavy lift II): the runner
   was run in `PACE` mode only.
 - The `test` contract, dispatch and procedures against a closed part in a stored design (read, not run).
+
+## v1.311 — the unlock map, slice 1: the map as data (2026-11-11, economy, QUEUE Q577; the plan Q573 above)
+
+- **`PART_GATE`** (sim/program.js) is the plan's table, written by mission: twelve parts at the start, 69 on 14 missions
+  (the orbital kit with the structural test, the satellite bench with the beeper, the 2.5 m family with Heavy lift II,
+  high orbits with the weather satellite, docking with TV, …), three by era. No new mechanism: `partOpen`,
+  `partLaunchWhy` and the builder's dimming are Q190's.
+- **A part already flown stays open** (`partFlown`: `PROG.kh` of the part or its `kinOf`). An old save keeps what it has
+  flown; nothing to migrate.
+- **`req` changes:** the beeper and the hop wait for weather and the structural test; TV for the weather satellite; a
+  station for TV; the far side for the weather satellite and Heavy lift II; the `service` and `stExpand` contracts for
+  TV. **One more than the plan:** *A crew aboard* now waits for the max-q abort too. A crew only flies after it
+  (`R.crewed` reads `PROG.done.maxqabort`), so the mission used to show open with no way to do it. The plan's m3.mjs
+  missed this because it read mission needs from `CT_JOB` (contracts) instead of `M_JOB`, so its mission check was empty.
+- **The qualification contract** draws only open parts (`CT.test.gen`; none open: no offer).
+- **The structural test's bar is 20 kPa** (`LOADS_Q`, W50): the mission, its brief and its job condition. The builder's
+  design case stays 25 kPa.
+- **career.mjs:** the structural test flies the Sounding (25.2 kPa straight up, the plan's m1), and the scripted player
+  skips any design with a part not open yet (`partLaunchWhy`, as the page refuses it). `PACE=1 node career.mjs 3 5`:
+  89 of 90 reach orbit in 4 or 5 flights (mean 4.2: the plan's gated figure, within a flight of today's).
+- **Chapter starts regenerated** (`node chapters.mjs`, Q571; Q580's last line): career.mjs has abstracted weather and TV
+  satellites now (`PLANS.wxsat`, `PLANS.tvsat`), since a station waits for TV and the far side for both. *First orbit done*
+  day 172, 6 flights (the structural test, the hop and one orbit before the beeper); *First station up* day 471 with
+  Lookout 1 and TV 1; *Landed on Selene* day 886 after both heavy lifts. Each start's next mission is the first in NEXT's
+  order that has a design (Disaster watch, a world mission, is skipped); the Selene start's is Sample return on its
+  preset. (Heavy lift's mass simulators sit at the bottom of the runner's stack, so what stays up is named *Object*.)
+- **Tests:** `econ-39` (the plan's m3 checks, with `M_JOB`: every part placed; each mission's needs and `NEXT_PRESET` open
+  at its req closure; each contract type's needs at its req; the req changes; flown stays open; the qualification draw;
+  the bar); six core checks that set missions by hand now set the new reqs; `qa-8` takes the next mission as recorded.
+- **Not done here:** the robot's route (`playtest.mjs m1` needs the structural test before the Beeper) and PLAYROUTE
+  sitting 1 (Q580); the builder's view of closed presets (Q578); families and reasons (Q579). Not played by hand
+  (TESTING 369): whether a new player gets the Sounding past 20 kPa.
