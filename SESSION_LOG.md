@@ -7105,3 +7105,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   should lose the craft (R29b).
 
 - **PARKED 2026-11-11 (review 2 session):** R29b, whether a reload during a flight from orbit loses the craft. Parked at: recommendation given to Caio (restore the vessel to its state when control was taken, same as Revert, from one snapshot kept in the save), no decision yet, nothing written into the R29 row. Caio moved to the gameplay loop (mission completion feedback, forward momentum).
+- **Follow-up (same session): R26 (P1), RCS fought the gimbals (v1.303).** `physStep` asked `ctrlAccel` for RCS's
+  command after the aero pass had moved `s.simTA` on, so that call lost the Q382 aero feed-forward and RCS was told to
+  push the cancelled aero moment back in (a Beeper with Docking's RCS: 30.0 of 30.0 kg of gas on the climb). The RCS
+  command is now computed beside the first call: 0.06 kg on the same climb (review's `r23e.mjs`: median 1.000 → 0.000).
+  New test `vehicle-42` (fails on the old code); `--smoke` all passed (790). Files: `sim/vessel.js`, `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.303, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`. Changes `TAPE_V` (source hash): older tapes
+  replay stale. **Next for vehicle:** R22 (four physics fixes), R28 with flow.
