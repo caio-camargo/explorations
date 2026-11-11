@@ -23,7 +23,7 @@
 
 Launchpad coding sessions each work in their own git worktree (outside Google Drive), on their own branch, and merge
 into `main` when a slice is done. The main clone (`C:/Users/caioa/dev/explorations`, see the move note below) stays on
-`main` for planning and docs. **Merging:** `git fetch`, then `node check_numbers.mjs` in `explorations/launchpad/` (renumber anything it reports: a version, TESTING/PLAYTEST row or Q/W/D item `origin/main` also took; QUEUE Q160), merge `origin/main` into your branch in your worktree and test there; then in
+`main` for planning and docs. **Merging:** `git fetch`, then `node check_numbers.mjs` in `explorations/launchpad/` (renumber anything it reports: a version, TESTING/PLAYTEST row or Q/W/D item `origin/main` also took; QUEUE Q160), merge `origin/main` into your branch in your worktree, run `node test.mjs --smoke --jobs 4` there, then **push the branch and wait for CI's full run** (`gh run watch`, or `gh run list --branch <branch>`; `.github/workflows/launchpad-tests.yml` runs `check_numbers.mjs` and the full `node test.mjs` on every push, since 2026-11-11: no full run on the shared machine); green, then in
 the main clone `git pull --ff-only`, `git merge --ff-only <branch>`, `git push origin main` (refused push = `main`
 moved on the other machine: pull and repeat). Not every folder below exists on every machine; `git worktree list` in
 the main clone shows this machine's.
