@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-10
+**Version**: 1.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2331,3 +2331,23 @@ impact prediction, the short-for-orbit warning, afloat) pass unchanged.
 
 **Test** `vehicle-40`: every preset's Rollout margin ≥ 0, the Hopper and the Beeper above +0.15. A new preset that rolls out
 unstable fails it.
+
+## v1.301 — the drag table follows the outline (2026-11-11, vehicle session, QUEUE R21; REVIEW-2026-11-09 § 2)
+
+**The bug** (review, confirmed): `dragTable` (`sim/flight.js`), the CdA(Mach) table the impact predictor and `ascentRun`
+integrate, was cached on the attached-part count and the 5° AoA bin. Jettisoning a fairing keeps its part (the base ring
+stays on, `p.fj`), and bay doors move no part, so neither changed the key: the predictor kept the table measured on the
+old outline until the next staging.
+
+**Measured** (vehicle-41, AoA 0, CdA m² at Mach 1 / 2 / 3 / 5): the Satellite with its fairing 1.70 / 1.69 / 1.70 / 1.71;
+after jettison the stale cache kept those, the true table is **3.30 / 3.39 / 3.42 / 3.44** (≈1.9–2× the drag; the bare
+payload and the open ring are blunter than the shell). A bay stack (core § 29's): shut 2.42–2.50, open 2.52–2.61.
+
+**The fix:** the cache also stores the `s.lines` it was measured on, and holds only while that is still the vessel's
+`s.lines`. `rebuildShape` makes a new one on every outline change (a fairing off, doors starting to open, doors done
+closing in `bayTick`, a stage gone, a docking), and that object is exactly what `aeroPass` reads, so the table can't
+disagree with the shape. Rejected: keying on each part's `profOf`: closing doors switch `profOf` back the moment
+`doorF` reaches 0, while `s.lines` changes at `bayTick`, so a call between the two would cache the open outline's table
+under the shut key. Fin deflection (`p.fd`) still doesn't enter the table: it's a control state, not an outline.
+
+**Test:** `vehicle-41` (fails on the old key: the jettisoned table equalled the fairing's).
