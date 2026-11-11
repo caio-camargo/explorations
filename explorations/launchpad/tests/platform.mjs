@@ -239,3 +239,38 @@
   check('platform-8: a sparse save loads with every schema field filled (its default\'s kind), its own values kept, world 12345 without a wseed, an unknown field kept and named in the tester\'s log',
     ok1 && ok2, `error ${err && err.message}; missing or wrong kind: ${missing.join(', ') || 'none'}; funds ${X.PROG.funds}; wseed ${X.PROG.wseed}; unknown ${X.unknown().join()} logged ${logged}; own values kept ${ok2}`);
 }
+
+// platform-9. A frame that throws must not end the game (QUEUE R9; review 2026-11-09 § 2). Static: frame() (app/loop.js)
+// is only a try/catch around frameBody that schedules the next frame whatever happened, and frameBody schedules none of
+// its own; app/fault.js loads first of the app scripts. Run (app/fault.js against a stub document): an error, a script
+// error and a rejected promise each reach the panel, with what broke, where and how often; Keep playing hides it until an
+// error it hasn't shown; Export the old save appears only when R10 kept one. (The page itself, headless: a scratch run
+// of review/2026-11-11/app/harness.cjs, notes/platform.md v1.310; R34 adopts that harness.)
+{
+  const { readFileSync } = await import('node:fs'), rd = f => readFileSync(new URL(f, import.meta.url), 'utf8');
+  const loop = rd('./app/loop.js'), fault = rd('./app/fault.js'), idx = rd('./index.html');
+  const body = loop.slice(loop.indexOf('function frameBody('), loop.indexOf('\n', loop.indexOf('function frameBody(')) + 1);
+  const fbEnd = loop.indexOf('\nfunction ', loop.indexOf('function frameBody(') + 10), fb = loop.slice(loop.indexOf('function frameBody('), fbEnd < 0 ? undefined : fbEnd);
+  const staticOK = /function frame\(now\)\{try\{frameBody\(now\)\}catch\(e\)\{gameFault\(e,'frame'\)\}requestAnimationFrame\(frame\)\}/.test(loop)
+    && !/requestAnimationFrame/.test(fb) && body.length > 0
+    && idx.indexOf('<script src="app/fault.js">') >= 0;
+  const firstApp = /<script src="(app\/[\w-]+\.js)">/.exec(idx);
+  const mk = store => { const els = [], win = {}; const el = () => ({ style: {}, dataset: {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h || ''; }, click() {}, remove() {} });
+    const document = { body: { appendChild: e => els.push(e) }, createElement: el };
+    const X = new Function('document', 'addEventListener', 'localStorage', 'console', 'URL', 'Blob', 'PROG', 'progJSON', 'location', 'logEv',
+      fault + ';return {FAULT,gameFault,hasBadSave,setBad(k){globalThis.PROG_BAD=k}}');
+    const r = X(document, (t, f) => { win[t] = f; }, { getItem: k => store[k] ?? null }, { error() {} }, {}, function () {}, { day: 3 }, () => '{}', {}, () => {});
+    return { ...r, els, win }; };
+  const A = mk({});
+  const thrown = (() => { try { null.x; } catch (e) { return e; } })();
+  A.gameFault(thrown, 'frame'); A.gameFault(thrown, 'frame'); A.win.error({ error: new Error('script') }); A.win.unhandledrejection({ reason: 'lost' });
+  const p = A.FAULT.el, html = p.innerHTML;
+  const shows = A.FAULT.n === 4 && A.els.length === 1 && /Something went wrong/.test(html) && /4×/.test(html) && /data-fault="reload"/.test(html) && /data-fault="save"/.test(html) && !/data-fault="bad"/.test(html);
+  p.onclick({ target: { dataset: { fault: 'keep' } } }); const hid = p.style.display === 'none';
+  A.gameFault(thrown, 'frame'); const stayed = p.style.display === 'none';
+  A.gameFault(new Error('a new one'), 'frame'); const back = p.style.display === '' && /a new one/.test(p.innerHTML);
+  globalThis.PROG_BAD = 'launchpad-program-v1-bad'; const B = mk({ 'launchpad-program-v1-bad': '{"x":1}' }); B.gameFault(new Error('e'), 'frame'); const badBtn = /data-fault="bad"/.test(B.FAULT.el.innerHTML); delete globalThis.PROG_BAD;
+  check('platform-9: frame() catches and always schedules the next frame; app/fault.js loads first and shows a panel (what, where, how often; Reload, Export save) for a frame error, a script error and a lost promise; Keep playing hides it until a new error; the old save\'s button only when R10 kept one',
+    staticOK && firstApp && firstApp[1] === 'app/fault.js' && shows && hid && stayed && back && badBtn,
+    `static ${staticOK} (first app script ${firstApp && firstApp[1]}); shows ${shows} (${A.FAULT.n} faults); keep hides ${hid}, same error stays hidden ${stayed}, new one back ${back}; old-save button ${badBtn}`);
+}
