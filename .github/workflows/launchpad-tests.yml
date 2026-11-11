@@ -1,0 +1,35 @@
+# Launchpad's full test suite on every push that touches the game (orchestrator 2026-11-11, Caio's call).
+# The merge gate: a session pushes its branch, waits with `gh run watch`, merges when this passes.
+# Locally sessions keep `--smoke` and `--only <lane>`; the full run happens here, off the shared machine.
+# Same command as the local gate (`node test.mjs`, one process), so a result here means the same thing.
+name: launchpad tests
+
+on:
+  push:
+    paths:
+      - 'explorations/launchpad/**'
+      - '.github/workflows/launchpad-tests.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: launchpad-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}   # a branch's newer push replaces its run; main's runs all finish
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: explorations/launchpad
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # check_numbers.mjs compares the branch with origin/main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: numbers (check_numbers.mjs)
+        run: node check_numbers.mjs
+      - name: full suite (node test.mjs)
+        run: node test.mjs

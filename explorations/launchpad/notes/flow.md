@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-09
+**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2030,3 +2030,70 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
 - Test `flow-53` (netCalHTML with a stub; the CSS rules; mutation caught: the bar's label back to the title). Checked on
   the GPU: mission control's Pads page with a satellite ready on day 25 for a day-70 window: two separate bars.
 - **Still open:** the tick labels (`30 D`, `60 D`) are drawn over the bars.
+
+## v1.305 — what a mission opens: `opensOf`, the debrief's *Opened* block, *opens:* on the Missions tab (2026-11-11, flow, QUEUE Q570; Caio: the gameplay loop)
+
+- **Why:** the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover's high-gain antenna, and nothing on
+  screen said so. The only hint was NEXT's "opens X" for the one mission it suggests.
+- **The reader (sim/program.js, beside `missionOpen`):** `opensOf(id)` → `{missions, contracts, parts, rover}`: the
+  missions whose last missing `req` it is, `CT[k].req===id`, `PART_GATE`, `RV_GATE`. It reads today's `PROG.done` with `id`
+  counted done, so the same call answers before the mission (the Missions tab) and after it (the debrief).
+  `opensNames(ids)` merges several missions' lists with names (a mission another of `ids` did isn't "opened");
+  `opensLine(o, full)` says it in one line. Contract kinds have names now: `CT_KIND` (sim/contracts.js); `genOffer`'s type
+  filter is `offerTypes(src)`, unchanged.
+- **On screen:** the debrief's **Opened** block under the ledger (`D.opened`, built in `debBuild` from the missions paid this
+  flight; `debPaid` now keeps the mission's `id`): mission names go to the Missions tab, contract kinds to the in-tray, a
+  part shows its card on hover. Each open mission on the Missions tab has a dim *opens: …* line with the names. The
+  completion notice (v1.306) has the short line.
+- **Test** `econ-38`: for all 29 missions, in two programs (only its ancestors done; everything but it and what follows),
+  asked before and after, `opensOf` equals the before/after diff of `missionOpen`, `offerTypes` over every source (with the
+  world's own `CT.open` gates set aside: they wait on a station or a satellite) and `partOpen`/`rvPartOpen`: 116
+  comparisons. The beeper's numbers above.
+- **Seen in the browser:** the Missions tab (*Above the weather · opens: 1 mission (The beeper) · 1 kind of contract
+  (ballistic tests)*); a debrief's Opened block; its link to the Missions tab.
+
+## v1.306 — a completion notice you can't miss (2026-11-11, flow, QUEUE Q569; Q558's first slice)
+
+- **Before:** `missionComplete` and `contractEval` said it with `HOOK.msg`: one 18 px line for 3 s in the slot the staging
+  and gravity-turn hints overwrite.
+- **Now:** the sim calls `HOOK.done({k, id, name, win, pay, first, second, flight})` (a new no-op in `HOOK`, sim/core.js)
+  from `missionComplete`, `contractEval` (`flight` false for a dispatch) and `selDone` (contracts judged at home), and no
+  longer `HOOK.msg`. `app/notice.js` (new, loaded after app/debrief.js) queues it in `#done`, a card under `#msg`: kicker
+  (*Mission complete* / *Contract done* / *First in the world*), name, win line, pay, what it opened (v1.305), and where the
+  flight stands (v1.307's `mcLeft`: *Done: end the flight when you like*, *Bring it home: …*). It stays until Enter or a
+  click (Enter is taken in the capture phase, so the first Enter closes the notice and the next one ends the flight); two
+  at once queue (*1 more after this*); one that comes mid-burn waits for the engines to stop, and once up a burn doesn't
+  hide it; a flight's notices go when the flight ends (the debrief says it); a world mission's shows at the desk.
+  `doneTick` runs from the frame loop, guarded with `typeof`: the first frame comes before notice.js loads (the browser
+  check caught the loop dying on it).
+- **Test** `flow-55` (the notice's code with a stub DOM and `HOOK.msg`'s real line): shown with its parts; a hint after it
+  leaves it; queued; dismissed one by one; held through a burn; gone with its flight; a world one at the desk. It caught a
+  notice that never hid once the queue emptied.
+
+## v1.307 — the Mission card: when a flight is done (2026-11-11, flow, QUEUE Q548; § "Plan: the aim and the mission card", slice 2)
+
+- **Q547 merged** with it (its v1.285 is v1.304 now, its `econ-35` is `econ-37`): `jobConds` and `jobNeeds` are what the
+  card reads.
+- **What the flight is for, until the aim (Q549):** `cardJobs(s)` (sim/next.js): first what it has done (`rec.paid`), then
+  every accepted contract with a cond judged on a flight whose needs the vessel carried when first asked (on the pad: a
+  dropped stage doesn't take the job off), then up to three missions open at launch (`rec.open0`, W11) it could meet, in
+  NEXT's order (`missionsInOrder`, split out of `nextStep`).
+- **Where it stands:** `jobsLeft(J)`: *home* (a job wants only bringing home: its `rec`, `safe` or `home` cond left),
+  *todo* (a job under way: a cond met, one open; "pending", as the air bands waiting on the analysis, doesn't hold it),
+  *done* (something done this flight and nothing above). App-side `mcLeft()` adds *(land it first to keep the hardware)*
+  on a path down through the air.
+- **The card** (first in `HUD_CARDS`, `missionRows`, app/hud.js): a *Now* row with that; each job's title, kind and pay,
+  then its conds ✓ met, ✗ lost, ○ open with the reading now, ◐ waiting; the conds that bring it home read Q488's verdict
+  while it flies (*recovered by our ships, ~6 h*, in its colour). A job done folds to *✓ name · done, +pay*. Left-aligned
+  as a checklist. Not in `CP_CARDS`: the dark cockpit folds it.
+- **One message per change** (`missionWatch`, from `cockpit()`): a cond turning met or lost says one line in `#msg`
+  (*Apex 10–25 km ✓*, *…: apex 40–55 km ✗*); not at the first look, not for a job just paid (the notice says that), not
+  once the flight is over.
+- **End flight ▸ [Enter]** also shows when `mcLeft().k==='done'`, not only after a landing or a loss (`debEndBtn`).
+- **Test** `flow-54`: a scripted sounding record with a 40–55 km apex contract: open *now 31 km* → ✓ at 52 km falling (one
+  message) → *bring it home* with ◐ and the verdict's words → landed with the package: the contract and *Above the
+  weather* paid, *done*; past 55 km ✗ once and stays; the Hopper (no package) gets no apex job; the wiring.
+- **Seen in the browser** (a Sounding flown with `simulate` steps from the console): the card through the climb, the
+  messages, the notice for the structural test flight over a crash, and after a chute landing *Done: end the flight when
+  you like*, two notices queued, Recover vessel. **Not judged:** whether three missions plus a contract is too much card
+  early on (*Measure the air* lists its four bands, all ◐ until a landing analyses them).

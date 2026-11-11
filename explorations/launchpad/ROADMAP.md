@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.3 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 1.9.4 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -152,6 +152,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`CREW.md`](CREW.md) | astronauts: who they are, skill and qualifications, the office, how they look, suits |
 | [`FACES.md`](FACES.md) | the face engine (parked, D26) |
 | [`EVA.md`](EVA.md) | astronauts outside: what EVA is for, how crew move, slices E1–E4 |
+| [`PROGRESSION.md`](PROGRESSION.md) | the loop between flights: visible unlocks, chapters, contact limits on uncrewed flight, the office as tables of models |
 | [`MIDGAME.md`](MIDGAME.md) | from single flights to routines: the automation ladder, the launch rail, windows, satellites |
 | [`LATE_GAME.md`](LATE_GAME.md) | the network, outposts, the tech ceiling, capstones, debris |
 | [`GROUND.md`](GROUND.md) | every body's ground: generators, recipes, slices |

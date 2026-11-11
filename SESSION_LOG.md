@@ -7103,3 +7103,70 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `ROADMAP.md` (reviews row), `INDEX.md`, `ACTIVE_WORK.md`.
 - **Next:** the orchestrator ranks R25–R34 (R26 first); Caio's call on whether a reload during a flight from orbit
   should lose the craft (R29b).
+
+- **PARKED 2026-11-11 (review 2 session):** R29b, whether a reload during a flight from orbit loses the craft. Parked at: recommendation given to Caio (restore the vessel to its state when control was taken, same as Revert, from one snapshot kept in the save), no decision yet, nothing written into the R29 row. Caio moved to the gameplay loop (mission completion feedback, forward momentum).
+- **Follow-up (same session): R26 (P1), RCS fought the gimbals (v1.303).** `physStep` asked `ctrlAccel` for RCS's
+  command after the aero pass had moved `s.simTA` on, so that call lost the Q382 aero feed-forward and RCS was told to
+  push the cancelled aero moment back in (a Beeper with Docking's RCS: 30.0 of 30.0 kg of gas on the climb). The RCS
+  command is now computed beside the first call: 0.06 kg on the same climb (review's `r23e.mjs`: median 1.000 → 0.000).
+  New test `vehicle-42` (fails on the old code); `--smoke` all passed (790). Files: `sim/vessel.js`, `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.303, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`. Changes `TAPE_V` (source hash): older tapes
+  replay stale. **Next for vehicle:** R22 (four physics fixes), R28 with flow.
+
+## 2026-11-11 — flow, the gameplay loop (Opus 5.5, worktree launchpad-loop): Q570, Q569, Q548 (v1.305–v1.307), Q547 merged (v1.304)
+
+- **Asked:** Caio: work on Q569, Q570 and Q548. Q548 needed Q547 (built, unmerged): Caio chose to merge it with them.
+- **Done:** Q547 merged and renumbered (v1.285 → v1.304, `econ-35` → `econ-37`). **Q570 v1.305:** `opensOf(id)` and its
+  names/line (sim/program.js), `CT_KIND`, `offerTypes`; the debrief's *Opened* block (links to the Missions tab, part cards)
+  and *opens:* on each open mission. **Q569 v1.306:** completions go through a new `HOOK.done` to `app/notice.js` (`#done`):
+  name, win, pay, what it opened, what's left; queued, until Enter or a click, held mid-burn, dropped when its flight ends,
+  shown at the desk for world missions. **Q548 v1.307:** the Mission card (`cardJobs`, `jobsLeft`, `missionRows`), one
+  message per condition change, End flight when the flight's work is done.
+- **Checked:** tests `econ-38`, `flow-54`, `flow-55` (new); full `node test.mjs` after merging origin/main: 854 checks, all passed; in Chrome on a local server:
+  the Missions tab, a Sounding flown by script steps (card, messages, notices queued, *Done*, Recover vessel), the debrief's
+  Opened block and its link. The browser check found the frame loop dying on the first frame (`doneTick` called before
+  notice.js loaded): guarded.
+- **Not checked:** played by hand (TESTING 364–366); an orbital flight's *done* → End flight in orbit.
+- **Next:** Q549 (the aim: "This flight is for") replaces `cardJobs`' guess with ticked jobs; Q558's proofs build on the notice.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the loop and progression reviewed with Caio; PROGRESSION.md, D28, Q571–Q576
+
+- **Asked:** Caio, after the loop slices landed: reconsider the game loop and progression "now that the game has more
+  shape", so building, testing and progression feel exciting; he is concerned about forward momentum and wants to
+  reach stations and bases.
+- **Found (read and `career.mjs`, not played):** epochs are a label; 68 of 84 parts open on day one; the beeper is the
+  one big unlock (5 missions, 8 contract types, 7 parts); contact gates automation and data only, never a hand-flown
+  vessel; stations and bases are in the code, unplayed behind the first hour.
+- **Decided by Caio (D28):** parts unlock visibly with an overlay; contact limits uncrewed flight; the office becomes
+  tables of models (site model, globe, orrery), superseding W35's "no 3D behind the rooms"; epochs become chapters.
+- **Done:** `explorations/launchpad/PROGRESSION.md` (new, 0.1.0); DECISIONS D28; QUEUE Q571 (chapter starts), Q572
+  (unlock overlay), Q573 and Q574 (plans: the unlock map; contact limits), Q575 (mock-up: the tables), Q576 (chapters
+  as events); ROADMAP's documents table; INDEX.
+- **Not checked:** the chapter table's balance (Q573 measures it); where the first-hour flights lose contact (Q574
+  measures it first); whether a globe can be drawn in the desk scene (Q575).
+- **PARKED still:** R29b (reload during a flight from orbit), as logged above.
+- **Next:** Q571 and Q572 can start now; Q573 and Q574 are plans (their builds are mechanisms under W48's freeze);
+  Q575's mock-up goes to Caio as a W row.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the plans for Q573 (the unlock map) and Q574 (contact limits), measured
+
+- **Asked:** Caio: "can you start on 573 and 574 then?" (plans only).
+- **Done:** `notes/economy.md` § "Plan: the unlock map and chapters"; `notes/space.md` § "Plan: contact limits uncrewed
+  flight" (written by a fork of this session; its Beeper run and the tracking-ship run were repeated here before it was
+  adopted); `PROGRESSION.md` 0.1.2 (§ 3, § 4, § 7); QUEUE Q577–Q580 and Q581–Q587, W50 and W51; scripts in
+  `explorations/launchpad/review/2026-11-11/q573/` and `q574/`. No game code or test edited.
+- **Found (Q573):** the gate in front of the Kestrel costs the scripted player no flight (4.2 to first orbit, max 6,
+  with and without); Sparrow-only stacks did not reach orbit in the shapes tried; the Petrel is not needed for a first
+  orbit (Kestrel under a Sparrow: 40 M, 1,700 m/s left); the Sounding passes the structural test by 0.2 kPa; the map
+  places all 84 parts and needs six `req` changes.
+- **Found (Q574):** every first-orbit burn is beyond the pad station's horizon (the Beeper's by 78 s); a stored timed
+  burn circularises as well as a guided one; six buildable stations give 23 % contact at 150 km; `linkOf` reads
+  "plasma blackout" for 23–42 s around the ascent cutoff on all four presets with the tests' ascent.
+- **Not checked:** anything in play or by hand; sites other than the default; the far side on anything but the Probe;
+  funds beyond first orbit under the new order; the rest of the fork's runs beyond the two repeated.
+- **Lesson:** PROGRESSION § 4 assumed ground stations and relays would give control at the stick. Measured, they do
+  not in low orbit; the dish and relay chains (Q338, Q217) are what make comms satellites matter.
+- **PARKED still:** R29b.
+- **Next:** Caio answers W50 and W51 (defaults hold); Q577 and Q581 are the first builds; Q582–Q585 wait on W48.

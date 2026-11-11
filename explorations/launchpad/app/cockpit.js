@@ -35,7 +35,7 @@ let mcPrev='';
 // isn't burning the craft (UI.md § 2.4). Never stages by itself.
 function dryHint(){const c=S&&mode==='flight'?spentCue(S):null,k=c?`${c.i}`:'';if(k!==dryKey){dryKey=k;renderStages()}
   if(c&&c.say){HOOK.msg(`${c.what[0].toUpperCase()+c.what.slice(1)} empty — Space drops ${c.many?'them':'it'} (stage ${c.i+1})`);msgTimer=6}}
-function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();turnHint();circHint();hlGauges();dryHint();
+function cockpit(){const ph=cpPhase(),n=$('news');if(n)n.classList.toggle('held',!!ph);depHint();turnHint();circHint();hlGauges();dryHint();missionWatch();
   let m=$('mcau');if(!m){m=document.createElement('div');m.id='mcau';m.className='hidden';(document.getElementById('hud')||document.body).appendChild(m)}
   const L=cautions(),txt=L.length?`<b>MASTER CAUTION</b> ${L.join(' · ')}`:'';
   if(m.innerHTML!==txt){m.innerHTML=txt;if(txt&&L.join()!==mcPrev){m.classList.remove('new');void m.offsetWidth;m.classList.add('new')}mcPrev=L.join()}m.classList.toggle('hidden',!L.length);
