@@ -7062,4 +7062,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   or three vertices, for anger, fear, surprise. The ridge now runs through three kept points with a height slider
   each; six mood buttons. Seen: six different brows on the average man; afraid and sad are close. Only the ridge
   moves. FACES 0.1.16 § 10, README 0.1.30. **Next:** Caio's look.
+- **Follow-up 11 (2026-11-11): the lids and the eyes (faces5).** Caio: "yes, this is good. let's proceed with lids
+  and eyes". The lid's front edge (a ring of 28 points an eye) is built as a six-cornered opening just outside the
+  eyeball, kept when the planes are cut; two lid sliders, set by the moods; an iris-size slider. Fixed on the way:
+  the cut ran on the unstyled head since follow-up 8 (a call lost in a comment); faces moved sideways by MakeHuman's
+  head sliders had one blank, proud eye (now centred on the eyes, each eye round its own centre). Seen: eyes inside
+  the lids on the whole sheet; six moods distinct. FACES 0.1.17 § 10, README 0.1.31. **Next:** Caio's look; then
+  the lips, or the lid's crease following the lid.
 

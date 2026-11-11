@@ -56,7 +56,7 @@
     <div class="btns">
       <button class="b" id="reset">Average</button><button class="b" id="rand">Randomise</button>
       <label class="note"><input type="checkbox" id="bald"> no hair</label>
-      <div id="moods" style="margin-top:8px"><span class="note">Brow: </span></div>
+      <div id="moods" style="margin-top:8px"><span class="note">Mood: </span></div>
     </div>
     <div id="sliders"></div>
   </div>
@@ -86,10 +86,10 @@ const GENES = [   // [key, group, label, default, low, high]
   ['sex', 'Person', 'Sex: female–male', .5, 0, 1], ['age', 'Person', 'Age: young–old', .2, 0, 1],
   ['af', 'Person', 'Population: African', 1, 0, 1], ['as', 'Person', 'Population: Asian', 1, 0, 1], ['ca', 'Person', 'Population: European', 1, 0, 1],
   ['wt', 'Person', 'Weight: thin–heavy', 0, -1, 1], ['ex', 'Person', 'Exaggerate', 1, .3, 3],
-  ['np', 'Style', 'Planes: few–many', .36, 0, 1], ['nf', 'Style', 'Nose bridge: natural–one plane', 1, 0, 1], ['nw', 'Style', 'Bridge width', 1.2, .5, 1.8], ['nt', 'Style', 'Bridge: even–wider at the tip', .3, 0, 1], ['bf', 'Style', 'Brow: natural–built ridge', 1, 0, 1], ['bi', 'Style', 'Brow: inner end low–high', .32, 0, 1], ['bm', 'Style', 'Brow: middle low–high', .44, 0, 1], ['bx', 'Style', 'Brow: outer end low–high', .24, 0, 1], ['bo', 'Style', 'Brow overhang', .4, 0, 1], ['ol', 'Style', 'Edge lines', .35, 0, 1],
+  ['np', 'Style', 'Planes: few–many', .36, 0, 1], ['nf', 'Style', 'Nose bridge: natural–one plane', 1, 0, 1], ['nw', 'Style', 'Bridge width', 1.2, .5, 1.8], ['nt', 'Style', 'Bridge: even–wider at the tip', .3, 0, 1], ['bf', 'Style', 'Brow: natural–built ridge', 1, 0, 1], ['bi', 'Style', 'Brow: inner end low–high', .32, 0, 1], ['bm', 'Style', 'Brow: middle low–high', .44, 0, 1], ['bx', 'Style', 'Brow: outer end low–high', .24, 0, 1], ['bo', 'Style', 'Brow overhang', .4, 0, 1], ['ef', 'Style', 'Eyes: natural–built lids', 1, 0, 1], ['eu', 'Style', 'Upper lid: low–high', .5, 0, 1], ['el', 'Style', 'Lower lid: low–high', .5, 0, 1], ['ol', 'Style', 'Edge lines', .35, 0, 1],
   ['ht', 'Hair', 'Volume on top', .5, 0, 1], ['hq', 'Hair', 'Front: flat–quiff', .35, 0, 1], ['hsd', 'Hair', 'Volume at the sides', .3, 0, 1],
   ['bk', 'Paint', 'Eyebrow weight', 0, 0, 1], ['st', 'Paint', 'Skin tone: light–deep', .22, 0, 1],
-  ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['lt', 'Paint', 'Lip colour', .7, 0, 1], ['hg', 'Paint', 'Comb grooves', .5, 0, 1],
+  ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['is', 'Paint', 'Iris size', .36, .25, .55], ['lt', 'Paint', 'Lip colour', .7, 0, 1], ['hg', 'Paint', 'Comb grooves', .5, 0, 1],
   ...MH.sliders.map(s => [s.key, s.group[0].toUpperCase() + s.group.slice(1), pretty(s.key), 0, s.neg.length ? -1 : 0, 1]),
   ...MH.units.map(u => [u, 'Expression', pretty(u), 0, 0, 1]),
 ];
@@ -128,7 +128,7 @@ function subdiv(m) {
 }
 
 // ---- the baked data
-let P0, AVG, NV, TOPO, LIPF, IDX, DEL, TQ, FM, HAIRV = [];   // HAIRV: for each hair-shell point, the scalp point under it
+let P0, AVG, NV, TOPO, LIPF, IDX, DEL, TQ, FM, HAIRV = [], EYEL = [];   // EYEL: the other eyeball's points (MH.eye is the one at +x)   // HAIRV: for each hair-shell point, the scalp point under it
 async function unpack(b64, T) { const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   const buf = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); return new T(buf); }
 function morph(w, out) {   // out += sum of weight x target
@@ -144,9 +144,10 @@ function shape(g) {   // the face's points: the average, plus its difference fro
   for (const s of MH.sliders) { const v = g[s.key]; if (!v) continue; for (const n of v > 0 ? s.pos : s.neg) w[n] = (w[n] || 0) + Math.abs(v); }
   morph(w, P); if (g.ex !== 1) for (let i = 0; i < P.length; i++) P[i] = AVG[i] + (P[i] - AVG[i]) * g.ex;
   for (const u of MH.units) if (g[u]) x[u] = g[u]; morph(x, P); return P; }
-function frame(P) {   // chin at 0, crown at 1, the nose tip at z = .515: MakeHuman's macros also move and size the whole body
-  const y0 = P[MH.chin * 3 + 1], s = 1 / (P[MH.crown * 3 + 1] - y0), z0 = P[MH.tip * 3 + 2] * s - .515;
-  for (let i = 0; i < P.length; i += 3) { P[i] *= s; P[i + 1] = (P[i + 1] - y0) * s; P[i + 2] = P[i + 2] * s - z0; } return P; }
+const eyeC = (P, ids) => { const c = [0, 0, 0, 0]; for (const i of ids) for (let k = 0; k < 3; k++) c[k] += P[i * 3 + k] / ids.length; for (const i of ids) c[3] += Math.hypot(P[i * 3] - c[0], P[i * 3 + 1] - c[1], P[i * 3 + 2] - c[2]) / ids.length; return c; };   // an eyeball's centre and radius
+function frame(P) {   // chin at 0, crown at 1, the nose tip at z = .515, the middle of the two eyeballs at x = 0: MakeHuman's macros and head sliders also move and size the whole body
+  const y0 = P[MH.chin * 3 + 1], s = 1 / (P[MH.crown * 3 + 1] - y0), z0 = P[MH.tip * 3 + 2] * s - .515; let xm = 0; for (const i of MH.eye) xm += P[i * 3]; for (const i of EYEL) xm += P[i * 3]; xm /= MH.eye.length + EYEL.length;
+  for (let i = 0; i < P.length; i += 3) { P[i] = (P[i] - xm) * s; P[i + 1] = (P[i + 1] - y0) * s; P[i + 2] = P[i + 2] * s - z0; } return P; }
 // ---- the style, as two filters on the skin's points (the eyes are left alone)
 // Simplify: Taubin smoothing, which removes small detail without shrinking the head.
 // Carve: the faces' normals are averaged with neighbours that already point the same way (so they gather into a few
@@ -206,7 +207,7 @@ function noseInit(A, quads) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 
     for (let k = 0; k < col.length - 1; k++) for (const q of eq.get(ek(col[k], col[k + 1])) || []) { const o = q.filter(v => v !== col[k] && v !== col[k + 1]); if (o.length !== 2) continue;
       if (sg * (A[o[0] * 3] + A[o[1] * 3] - A[col[k] * 3] - A[col[k + 1] * 3]) <= 1e-5) continue; const a = nb.get(col[k]).has(o[0]) ? o[0] : o[1]; next[k] = a; next[k + 1] = a === o[0] ? o[1] : o[0]; }
     return next; };
-  RIDGE = chain; STRIP = []; LINES = new Uint16Array(NV); const n = chain.length, yT = A[chain[0] * 3 + 1], yB = A[chain[n - 1] * 3 + 1], cols = [[chain, 0]];
+  RIDGE = chain; STRIP = []; LINES = new Uint32Array(NV); const n = chain.length, yT = A[chain[0] * 3 + 1], yB = A[chain[n - 1] * 3 + 1], cols = [[chain, 0]];
   for (const sg of [1, -1]) { const c1 = side(chain, sg), c2 = side(c1, sg); cols.push([c1, .5 * sg], [c2, sg]); if (sg > 0) BCOL = c2; }
   for (const [col, s] of cols) col.forEach((i, k) => { if (i < 0) { console.error('nose strip: the grid breaks at row', k); return; }
     STRIP.push([i, (yT - A[chain[k] * 3 + 1]) / (yT - yB), s]); LINES[i] = 16 | (s === 1 ? 1 : 0) | (s === -1 ? 2 : 0) | (k === 0 ? 4 : 0) | (k === n - 1 ? 8 : 0); });
@@ -231,6 +232,50 @@ function browStyle(P, g) { if (g.bf <= 0) return P; const E = new Map(); for (co
   const hI = g.bi * .05, hM = g.bm * .05, hO = g.bx * .05;   // the ridge's three kept points, as heights over the bridge's top: the brow's expression
   for (const [i, t, c, e, kind, sv] of BROW) { const h = kind ? 0 : sv < .5 ? mix(hI, hM, sv * 2) : mix(hM, hO, sv * 2 - 1);   // the lid's crease stays level
     P[i * 3] = mix(P[i * 3], mix(P[c * 3], E.get(e), t), g.bf); P[i * 3 + 1] = mix(P[i * 3 + 1], P[c * 3 + 1] + h, g.bf); if (!kind) P[i * 3 + 2] += g.bf * g.bo * .03 * sstep(0, .3, t); }
+  return P; }
+// The eye's opening: the lid's front edge is a ring of MakeHuman's points round the eyeball (the fourth ring out from the
+// lid's inner fold; the three inside it are the lid's thickness). It is built as a six-cornered opening: the face's own
+// two corners, two points on the upper lid and two on the lower, joined by straight pieces and laid on a ball a little
+// larger than the eyeball, so the lids always cover it. The upper and lower heights are the face's own, times the two lid
+// sliders (the eye's part of the expression). The rings inside move with the edge; three rings outside follow, fading.
+// When the planes are cut, the six corners stay and the other points of the edge merge only along their own lid.
+let LID = [];
+function lidInit(A, quads) { LID = []; const nb = new Map(), eq = new Map(), ek = (a, b) => a < b ? a * NV + b : b * NV + a, UP = 1 << 16, LO = 1 << 17;
+  for (const q of quads) for (let j = 0; j < 4; j++) { const a = q[j], b = q[(j + 1) % 4], k = ek(a, b); if (!eq.has(k)) eq.set(k, []); eq.get(k).push(q);
+    if (!nb.has(a)) nb.set(a, new Set()); if (!nb.has(b)) nb.set(b, new Set()); nb.get(a).add(b); nb.get(b).add(a); }
+  const c = [0, 0, 0]; for (const i of MH.eye) for (let k = 0; k < 3; k++) c[k] += A[i * 3 + k] / MH.eye.length;
+  const dist = i => Math.hypot(A[i * 3] - c[0], A[i * 3 + 1] - c[1], A[i * 3 + 2] - c[2]); let r = 0; for (const i of MH.eye) r += dist(i) / MH.eye.length;
+  const straight = (p, q) => { const qs = new Set(); for (const f of eq.get(ek(p, q)) || []) for (const v of f) qs.add(v); const o = [...nb.get(q)].filter(u => !qs.has(u)); return o.length === 1 ? o[0] : -1; };   // on across q, along the grid
+  let v0 = -1; for (const i of nb.keys()) if (A[i * 3] > 0 && A[i * 3 + 2] - c[2] > .2 * r && (v0 < 0 || dist(i) < dist(v0))) v0 = i;   // the lid's inner fold: the skin nearest the eye's centre
+  let v1 = -1; for (const j of nb.get(v0)) if (v1 < 0 || Math.abs(dist(j) - dist(v0)) < Math.abs(dist(v1) - dist(v0))) v1 = j;
+  const fold = [v0, v1]; for (let k = 0; k < 60; k++) { const n = straight(fold[fold.length - 2], fold[fold.length - 1]); if (n < 0 || n === v0) break; fold.push(n); }
+  const inFold = new Set(fold), cols = fold.map(a => { let f = -1; for (const j of nb.get(a)) if (!inFold.has(j) && (f < 0 || A[j * 3 + 2] > A[f * 3 + 2])) f = j;
+    const col = [a, f]; while (col.length < 7) { const n = straight(col[col.length - 2], col[col.length - 1]); if (n < 0) break; col.push(n); } return col; });
+  window.LIDDBG = { fold: fold.length, r, cols: cols.map(c2 => c2.length).join('') };
+  if (cols.some(col => col.length < 4)) { console.error('lids: the grid breaks round the eye'); return; }
+  const ring = cols.map(col => col[3]), n = ring.length; let ki = 0, ko = 0; ring.forEach((i, k) => { if (A[i * 3] < A[ring[ki] * 3]) ki = k; if (A[i * 3] > A[ring[ko] * 3]) ko = k; });
+  let open = 0; for (let k = 0; k < n; k++) if (!nb.get(ring[k]).has(ring[(k + 1) % n])) { open++; console.error('lids: the edge is not a closed ring at', k); }
+  const xi = A[ring[ki] * 3], xo = A[ring[ko] * 3], sOf = i => clamp((A[i * 3] - xi) / (xo - xi), 0, 1), halves = [[], []];
+  for (let k = (ki + 1) % n; k !== ko; k = (k + 1) % n) halves[0].push(k); for (let k = (ko + 1) % n; k !== ki; k = (k + 1) % n) halves[1].push(k);
+  const my = h => h.reduce((a, k) => a + A[ring[k] * 3 + 1], 0) / h.length; if (my(halves[0]) < my(halves[1])) halves.reverse();
+  const pts = [{ k: ki, s: 0, up: 0, h: 0, pin: 1 }, { k: ko, s: 1, up: 0, h: 0, pin: 1 }];
+  halves.forEach((h, hi) => { const up = hi ? -1 : 1, want = hi ? [.4, .72] : [.3, .68], hs = hi ? [.8, 1] : [1, .85], pin = want.map(w => h.reduce((b, k) => Math.abs(sOf(ring[k]) - w) < Math.abs(sOf(ring[b]) - w) ? k : b, h[0])), ps = pin.map(k => sOf(ring[k]));
+    for (const k of h) { const s = sOf(ring[k]); pts.push({ k, s, up, pin: pin.includes(k) ? 1 : 0, h: s < ps[0] ? hs[0] * s / ps[0] : s < ps[1] ? mix(hs[0], hs[1], (s - ps[0]) / (ps[1] - ps[0])) : hs[1] * (1 - s) / (1 - ps[1]) }); } });
+  const mir = i => { let b = -1, bd = 1e-6; for (const u of nb.keys()) { const d = (A[u * 3] + A[i * 3]) ** 2 + (A[u * 3 + 1] - A[i * 3 + 1]) ** 2 + (A[u * 3 + 2] - A[i * 3 + 2]) ** 2; if (d < bd) { bd = d; b = u; } } if (b < 0) console.error('lids: no twin for', i); return b; };
+  let clash = 0;
+  for (const sg of [1, -1]) { const m = sg > 0 ? i => i : mir, S = { sg, ci: m(ring[ki]), co: m(ring[ko]), pts: [] };
+    for (const p of pts) { const col = cols[p.k], i = m(col[3]); if (LINES[i]) { clash++; console.error('lids: the edge meets another built line at', i); }
+      LINES[i] |= p.up > 0 ? UP : p.up < 0 ? LO : UP | LO; if (p.pin) PIN[i] = 1; S.pts.push({ i, s: p.s, up: p.up, h: p.h, inn: col.slice(0, 3).map(m), out: col.slice(4).map(m) }); }
+    LID.push(S); }
+  Object.assign(window.LIDDBG, { open, clash, upper: halves[0].length, lower: halves[1].length, pins: pts.filter(p => p.pin).map(p => [ring[p.k], +p.s.toFixed(2), p.up]), dist: ring.map(i => +(dist(i) / r).toFixed(2)).join(' ') }); }
+function lidStyle(P, g) { if (g.ef <= 0 || !LID.length) return P; const f = g.ef;
+  const mu = g.eu < .5 ? mix(.3, 1, g.eu * 2) : mix(1, 1.9, g.eu * 2 - 1), ml = g.el < .5 ? mix(1.6, 1, g.el * 2) : mix(1, .3, g.el * 2 - 1);   // the lids' heights, as multiples of the face's own
+  for (const S of LID) { const c = eyeC(P, S.sg > 0 ? MH.eye : EYEL), cx = c[0], rho = c[3] * 1.09, xi = P[S.ci * 3], yi = P[S.ci * 3 + 1], xo = P[S.co * 3], yo = P[S.co * 3 + 1]; let U = 0, Lw = 0;
+    for (const p of S.pts) { const d = P[p.i * 3 + 1] - mix(yi, yo, p.s); if (p.up > 0) U = Math.max(U, d); else if (p.up < 0) Lw = Math.max(Lw, -d); }
+    for (const p of S.pts) { const x = mix(xi, xo, p.s), y = mix(yi, yo, p.s) + (p.up > 0 ? U * mu : -Lw * ml) * p.h, dx = x - cx, dy = y - c[1], z = c[2] + Math.sqrt(Math.max(rho * rho - dx * dx - dy * dy, 1e-6));
+      const o = p.i * 3, mx = (x - P[o]) * f, my = (y - P[o + 1]) * f, mz = (z - P[o + 2]) * f; P[o] += mx; P[o + 1] += my; P[o + 2] += mz;
+      for (const j of p.inn) { P[j * 3] += mx; P[j * 3 + 1] += my; P[j * 3 + 2] += mz; }
+      p.out.forEach((j, k) => { if (LINES[j]) return; const w = .75 - .25 * k; P[j * 3] += mx * w; P[j * 3 + 1] += my * w; P[j * 3 + 2] += mz * w; }); } }
   return P; }
 // The nose's underside is a second built plane: from the bridge's bottom edge (the tip) back to the base of the nose,
 // as wide there as the wings. Its points are the skin under the nose that lies near that plane, found once on the
@@ -280,7 +325,7 @@ function underInit(A, tr, g) { UNDER = []; const dbg = window.UNDERDBG = {};
     let [a, s] = P2.get(i); a = clamp(a, .03, .97); s = clamp(s, -.97, .97); if (l & 64) s = 1; if (l & 128) s = -1; if (l & 256) a = 1;
     LINES[i] = 32 | l; UNDER.push([i, a, s]); }
   return out; }
-function noseStyle(P, g) { const f = g.nf; if (f <= 0) return browStyle(P, g);
+function noseStyle(P, g) { const f = g.nf; if (f <= 0) return browStyle(lidStyle(P, g), g);
   const yS = P[SUBN * 3 + 1], zK = mix(P[SUBN * 3 + 2], P[ALAR * 3 + 2], .5), Wa = Math.abs(P[ALAR * 3]) * .95;   // the base of the nose and the wings, before anything moves
   const iT = RIDGE[0], iB = RIDGE[RIDGE.length - 1], yT = P[iT * 3 + 1], zT = P[iT * 3 + 2], yB = P[iB * 3 + 1], zB = P[iB * 3 + 2], W0 = .022 * g.nw * (1 - .5 * g.nt), W1 = .022 * g.nw * (1 + .5 * g.nt);
   const B = BCOL.map(i => [P[i * 3 + 1], Math.abs(P[i * 3]), P[i * 3 + 2]]).sort((a, b) => b[0] - a[0]);   // the strip's edge on this face before it is moved: height, half-width, depth
@@ -293,7 +338,7 @@ function noseStyle(P, g) { const f = g.nf; if (f <= 0) return browStyle(P, g);
   for (let k = 0; k < moved.length; k += 3) { P[moved[k] * 3] = moved[k + 1]; P[moved[k] * 3 + 2] = moved[k + 2]; }
   for (const [i, t, s] of STRIP) { P[i * 3] = mix(P[i * 3], s * mix(W0, W1, t), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yT, yB, t), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zT, zB, t), f); }
   for (const [i, a, s] of UNDER) { P[i * 3] = mix(P[i * 3], s * mix(W1, Wa, a), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yB, yS, a), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zB, zK, a), f); }
-  return browStyle(P, g); }
+  return browStyle(lidStyle(P, g), g); }
 
 // ---- planes: the skin simplified by collapsing edges, once, on the average head
 let SEQ = [], SKT = null, SKN = 0, EYES = null, LIPV = null, SCALP = null;
@@ -369,7 +414,7 @@ function assemble(g) {
       for (const [p, r] of [[a, b], [b, c], [c, a]]) { const k = p < r ? p * NV + r : r * NV + p; ec.set(k, ec.has(k) ? null : [p, r]); } }
     for (const e of ec.values()) { if (!e) continue; const [p, r] = e, W = new Float32Array(12); W.set(H.subarray(r * 3, r * 3 + 3), 0); W.set(H.subarray(p * 3, p * 3 + 3), 3); W.set(M.subarray(p * 3, p * 3 + 3), 6); W.set(M.subarray(r * 3, r * 3 + 3), 9); flat(W, 0, 3, 6, 3, 0); flat(W, 0, 6, 9, 3, 0); } }
   { const EP = new Float32Array(EYES.src.length * 3); EYES.src.forEach((v, i) => { EP[i * 3] = M[v * 3]; EP[i * 3 + 1] = M[v * 3 + 1]; EP[i * 3 + 2] = M[v * 3 + 2]; });   // the eyes stay round
-    const P = refine(EYES.S, EP), q = EYES.q, c = [0, 0, 0]; for (let i = 0; i < q.length; i += 4) for (const j of [0, 1, 2, 0, 2, 3]) { const k = q[i + j] * 3, s = P[k] < 0 ? -1 : 1; put(P[k], P[k + 1], P[k + 2], P[k] - s * EYES.c[0], P[k + 1] - EYES.c[1], P[k + 2] - EYES.c[2], 2, 0); } }
+    const P = refine(EYES.S, EP), q = EYES.q, cR = eyeC(M, MH.eye), cL = eyeC(M, EYEL); for (let i = 0; i < q.length; i += 4) for (const j of [0, 1, 2, 0, 2, 3]) { const k = q[i + j] * 3, s = P[k] < 0 ? -1 : 1, c = s > 0 ? cR : cL; put(P[k], P[k + 1], P[k + 2], P[k] - c[0], P[k + 1] - c[1], P[k + 2] - c[2], 2, s); } }   // the normal is the direction from the eye's own centre; the last number says which eye
   const mean = ids => { const o = [0, 0, 0]; for (const i of ids) for (let c = 0; c < 3; c++) o[c] += M[i * 3 + c] / ids.length; return o; }, at = i => [M[i * 3], M[i * 3 + 1], M[i * 3 + 2]];
   const ec = mean(MH.eye), er = Math.max(...MH.eye.map(i => Math.hypot(M[i * 3] - ec[0], M[i * 3 + 1] - ec[1], M[i * 3 + 2] - ec[2]))); EYES.c = ec;
   INFO = { eye: [...ec, er], brow: MH.brow.flatMap(b => { const p = mean(b); return [p[0], p[1] + .004, p[2]]; }), cheek: at(MH.cheek), tip: at(MH.tip), frame: 0, planes: nt };
@@ -387,7 +432,7 @@ void main(){vP=aP;vN=aN;vM=aM;int k=gl_VertexID%3,e=int(aM.y+.5);vB=vec3(k==0||(
 const FS = `#version 300 es
 precision highp float;precision highp sampler2DShadow;
 in vec3 vP,vN,vM,vB;in vec4 vL;out vec4 o;uniform float uLine;
-uniform vec3 uCam,uKey,uSkin,uHair,uIris,uLip,uFlush,uCheek,uTip,uBrow[4],uFlat;uniform vec4 uEye;uniform float uBrowW,uLipT,uGroove;uniform sampler2DShadow uSh;
+uniform vec3 uCam,uKey,uSkin,uHair,uIris,uLip,uFlush,uCheek,uTip,uBrow[4],uFlat;uniform vec4 uEye;uniform float uBrowW,uLipT,uGroove,uIrisR;uniform sampler2DShadow uSh;
 float seg(vec3 p,vec3 a,vec3 b,out float h){vec3 pa=p-a,ba=b-a;h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length((pa-ba*h)*vec3(1.,1.,.3));}
 void main(){
  if(uFlat.x>=0.){o=vec4(uFlat,1.);return;}
@@ -396,10 +441,10 @@ void main(){
   float u=atan(vP.x,vP.y-.42),ph=u*22.+1.2*sin(vP.z*7.+u*2.);vec3 td=normalize(vec3(vP.y-.42,-vP.x,0.)+1e-4);
   n=normalize(n+td*cos(ph)*.5*uGroove);al*=1.-.25*uGroove*(.5-.5*sin(ph));}
  else if(m==2){   // the eye: a ball, the iris looking forward
-  vec3 c=vec3(uEye.x*sign(vP.x),uEye.yz),d=normalize(vP-c),ax=normalize(vec3(-.05*sign(vP.x),-.02,1.));float r=dot(d,ax)>0.?length(cross(d,ax)):1.;
+  vec3 d=normalize(vN),ax=normalize(vec3(-.05*vM.z,-.08,1.));float r=dot(d,ax)>0.?length(cross(d,ax)):1.;
   al=vec3(.95,.93,.9)*(1.-.35*smoothstep(.6,1.,r));
-  al=mix(al,uIris*(.6+.9*smoothstep(.5,.18,r)),smoothstep(.52,.49,r));al*=1.-.6*smoothstep(.05,0.,abs(r-.51));
-  al=mix(al,vec3(.02),smoothstep(.22,.19,r));gloss=1.;ao=1.;}
+  float R=uIrisR;al=mix(al,uIris*(.6+.9*smoothstep(R,R*.35,r)),smoothstep(R+.01,R-.02,r));al*=1.-.6*smoothstep(.05,0.,abs(r-R));
+  al=mix(al,vec3(.02),smoothstep(R*.44,R*.38,r));gloss=1.;ao=1.;}
  else{float fl=.8*exp(-dot(q-uCheek,q-uCheek)/.006)+.45*exp(-dot(vP-uTip,vP-uTip)/.003);al=mix(uSkin,uFlush,.3*clamp(fl,0.,1.));
   {float lp=smoothstep(.25,.6,vM.z);al=mix(al,uLip,uLipT*lp);gloss=mix(gloss,.75,lp);}
   if(uBrowW>0.){float h,d=1.;for(int i=0;i<3;i++){float hh,dd=seg(q,uBrow[i],uBrow[i+1],hh);if(dd<d){d=dd;h=(float(i)+hh)/3.;}}
@@ -452,7 +497,7 @@ function drawTile(cv, g, view) {
   gl.uniformMatrix4fv(U(prog, 'uVP'), false, VP); gl.uniformMatrix4fv(U(prog, 'uLVP'), false, LVP); u3('uCam', cam); u3('uKey', key); u3('uFlat', [-1, 0, 0]);
   u3('uSkin', sk); u3('uFlush', sk.map((v, j) => v * [.96, .6, .68][j] * (1 + .1 * dp))); u3('uLip', sk.map((v, j) => v * [.8 + .05 * dp, .47 + .2 * dp, .53 + .12 * dp][j] * (1 + .1 * dp)));
   u3('uHair', pick(HAIRC, g.hc)); u3('uIris', pick(IRIS, g.ic)); u3('uCheek', INFO.cheek); u3('uTip', INFO.tip); gl.uniform3fv(U(prog, 'uBrow'), INFO.brow); gl.uniform4fv(U(prog, 'uEye'), INFO.eye);
-  gl.uniform1f(U(prog, 'uBrowW'), g.bk); gl.uniform1f(U(prog, 'uLipT'), g.lt); gl.uniform1f(U(prog, 'uGroove'), 0); gl.uniform1f(U(prog, 'uLine'), g.ol); gl.uniform1i(U(prog, 'uSh'), 0); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex);
+  gl.uniform1f(U(prog, 'uBrowW'), g.bk); gl.uniform1f(U(prog, 'uLipT'), g.lt); gl.uniform1f(U(prog, 'uIrisR'), g.is); gl.uniform1f(U(prog, 'uGroove'), 0); gl.uniform1f(U(prog, 'uLine'), g.ol); gl.uniform1i(U(prog, 'uSh'), 0); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex);
   gl.drawArrays(gl.TRIANGLES, 0, VN);
   const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
 }
@@ -490,9 +535,10 @@ function changed() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdi
 function renderEdit() { const t0 = performance.now(); uploaded = null; upload(cur); $('stat').textContent = `mesh ${(performance.now() - t0).toFixed(0)} ms, ${INFO.planes} planes on the skin`;
   render([[$('vq'), cur, orbit], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
 $('reset').onclick = () => { cur = house(); sync(); changed(); };
-const MOODS = { neutral: [.32, .44, .24], resolute: [.08, .08, .08], angry: [0, .26, .46], afraid: [.7, .58, .2], surprised: [.62, .92, .6], sad: [.62, .4, .06] };   // inner end, middle, outer end
-for (const m in MOODS) { const b = document.createElement('button'); b.className = 'b'; b.textContent = m; b.style.cssText = 'padding:2px 7px;margin:0 3px 3px 0;font-size:11px'; b.onclick = () => { cur = { ...cur, bi: MOODS[m][0], bm: MOODS[m][1], bx: MOODS[m][2] }; sync(); changed(); }; $('moods').appendChild(b); }
-$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt', 'bf', 'bo', 'bi', 'bm', 'bx']) cur[k] = o[k]; sync(); changed(); };
+const MOODS = { neutral: [.32, .44, .24, .5, .5], resolute: [.08, .08, .08, .42, .58], angry: [0, .26, .46, .3, .8], afraid: [.7, .58, .2, .9, .6], surprised: [.62, .92, .6, 1, .3], sad: [.62, .4, .06, .28, .5] };   // the brow's inner end, middle, outer end; the upper lid, the lower lid
+const mood = m => { const [bi, bm, bx, eu, el] = MOODS[m]; cur = { ...cur, bi, bm, bx, eu, el }; sync(); changed(); };
+for (const m in MOODS) { const b = document.createElement('button'); b.className = 'b'; b.textContent = m; b.style.cssText = 'padding:2px 7px;margin:0 3px 3px 0;font-size:11px'; b.onclick = () => mood(m); $('moods').appendChild(b); }
+$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt', 'bf', 'bo', 'bi', 'bm', 'bx', 'ef', 'eu', 'el']) cur[k] = o[k]; sync(); changed(); };
 $('bald').onchange = () => { bald = $('bald').checked; renderEdit(); };
 $('apply').onclick = () => { const g = fromDNA($('dna').value); if (g) { cur = g; sync(); changed(); } };
 $('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
@@ -506,15 +552,16 @@ function renderSheet() { const grid = $('grid'); grid.innerHTML = ''; const jobs
     cell.innerHTML = `<canvas class="t" width="250" height="250"></canvas><canvas class="t th" width="48" height="48"></canvas><div class="sig">${TAG.get(g) || ''}</div>`;
     const [big, th] = cell.querySelectorAll('canvas'); cell.onclick = () => { cur = { ...g }; sync(); setMode('edit'); changed(); }; grid.appendChild(cell); jobs.push([big, g, 'q'], [th, g, 'q']); });
   render(jobs); }
-const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt', 'bf', 'bo', 'bi', 'bm', 'bx']) g[k] = cur[k]; return g; });
+const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt', 'bf', 'bo', 'bi', 'bm', 'bx', 'ef', 'eu', 'el']) g[k] = cur[k]; return g; });
 $('fresh').onclick = () => { pop = newPop(); renderSheet(); };
 function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m)); document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
   if (m === 'edit') renderEdit(); else { if (!pop.length) pop = newPop(); renderSheet(); } }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
-window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, strip: () => { const M = noseStyle(frame(shape(cur)), cur), L = level(Math.round(60 * Math.pow(SKN / 60, cur.np))), left = new Set(); let n = 0; for (let i = 0; i < L.length; i += 3) { const k = (LINES[L[i]] ? 1 : 0) + (LINES[L[i + 1]] ? 1 : 0) + (LINES[L[i + 2]] ? 1 : 0); if (k === 3) n++; for (let j = 0; j < 3; j++) if (LINES[L[i + j]]) left.add(L[i + j]); } return { brow: BROW.length, rows: RIDGE.length, points: STRIP.length, left: left.size, tris: n }; }, sheet: () => { pop = newPop(); setMode('sheet'); }, mood: m => { cur = { ...cur, bi: MOODS[m][0], bm: MOODS[m][1], bx: MOODS[m][2] }; sync(); changed(); } };
+window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, strip: () => { const M = noseStyle(frame(shape(cur)), cur), L = level(Math.round(60 * Math.pow(SKN / 60, cur.np))), left = new Set(); let n = 0; for (let i = 0; i < L.length; i += 3) { const k = (LINES[L[i]] ? 1 : 0) + (LINES[L[i + 1]] ? 1 : 0) + (LINES[L[i + 2]] ? 1 : 0); if (k === 3) n++; for (let j = 0; j < 3; j++) if (LINES[L[i + j]]) left.add(L[i + j]); } return { brow: BROW.length, rows: RIDGE.length, points: STRIP.length, left: left.size, tris: n }; }, sheet: () => { pop = newPop(); setMode('sheet'); }, mood };
 (async () => {
   P0 = await unpack(MH.v, Float32Array); NV = MH.nV; IDX = await unpack(MH.idx, Uint16Array); DEL = await unpack(MH.d, Int16Array);
   const fq = await unpack(MH.faces, Uint16Array), fm = await unpack(MH.fmat, Uint8Array), lip = await unpack(MH.lip, Uint8Array), faces = [];
+  { const es = new Set(MH.eye), all = new Set(); for (let i = 0; i < fm.length; i++) if (fm[i] === 2) for (let k = 0; k < 4; k++) all.add(fq[i * 4 + k]); EYEL = [...all].filter(v => !es.has(v)); }
   for (let i = 0; i < fm.length; i++) faces.push([fq[i * 4], fq[i * 4 + 1], fq[i * 4 + 2], fq[i * 4 + 3]]);
   AVG = P0.slice(); morph(macroW(house()), AVG); const A = frame(AVG.slice()); LIPV = lip;
   const ev = new Map(), esrc = [], ef = [], tr = [];
@@ -522,7 +569,8 @@ window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house
   EYES = { src: esrc, S: subdiv({ nV: esrc.length, faces: ef, fmat: ef.map(() => 2), sharp: new Map(), corner: new Set() }), c: [0, 0, 0] }; EYES.q = Int32Array.from(EYES.S.mesh.faces.flat());
   const hl = a => a < .7 ? .86 : a < 1.3 ? mix(.86, .64, (a - .7) / .6) : a < 1.9 ? mix(.64, .58, (a - 1.3) / .6) : mix(.58, .3, clamp((a - 1.9) / .9, 0, 1));   // the hairline: forehead, temple, over the ear, nape
   SCALP = new Uint8Array(NV); for (let i = 0; i < NV; i++) SCALP[i] = A[i * 3 + 1] > hl(Math.abs(Math.atan2(A[i * 3], A[i * 3 + 2] + .07))) ? 1 : 0;
-  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); if (Q.get('under') === '1') { const t2 = underInit(A, tr, house()); tr.length = 0; for (const v of t2) tr.push(v); }   // parked: Caio preferred the nose with the bridge alone NSV = [...new Set(tr)]; noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
+  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); if (Q.get('under') === '1') { const t2 = underInit(A, tr, house()); tr.length = 0; for (const v of t2) tr.push(v); }   // parked: Caio preferred the nose with the bridge alone
+  NSV = [...new Set(tr)]; lidInit(A, faces.filter((f, i) => fm[i] === 0)); if (Q.get('rawcut') !== '1') noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
   const t0 = performance.now(), left = planesInit(A, tr); console.log('planes: collapsed', SKN, 'points to', left, 'in', Math.round(performance.now() - t0), 'ms'); window.PLANES = [SKN, left, Math.round(performance.now() - t0)];
   cur = fromDNA(Q.get('dna')) || house(); sync(); $('dna').value = toDNA(cur); setMode(Q.get('mode') === 'sheet' ? 'sheet' : 'edit');
 })();
