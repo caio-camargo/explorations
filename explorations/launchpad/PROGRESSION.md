@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -159,12 +159,6 @@ structural test's bar is 20 kPa; the map's order stands; the Petrel opens with t
 **Answered by the plans:** first orbit stays 4–6 flights with the gate (Q573, measured); a part already flown stays
 open, so old saves keep what they have used (Q573, rule 1).
 
----|---|---|---|
-| 1 | Does an engine unlock outright, or as a development program (opens *on paper*, qualified after stand firings)? | outright, arriving unproven | Q573 |
-| 2 | Is first orbit still 4–6 flights with chapter 1's gate in front of the Kestrel? | yes: hold the finish line, move the gate if not | Q573 |
-| 3 | Does contact limit the first orbit on Normal? | yes if a stored burn can be taught in the Mission card; else from chapter 3 | Q574 |
-| 4 | Does a design saved with a part that is no longer open (an old save) still fly? | yes: parts already flown stay open | Q573 |
-| 5 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
 
 ---
 
