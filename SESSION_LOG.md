@@ -7070,3 +7070,38 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   the lids on the whole sheet; six moods distinct. FACES 0.1.17 § 10, README 0.1.31. **Next:** Caio's look; then
   the lips, or the lid's crease following the lid.
 
+### 2026-11-11 — Launchpad vehicle session: R21, the stale drag cache (v1.301)
+- **Summary:** `dragTable` (`sim/flight.js`) cached the impact predictor's CdA table by part count and AoA bin, so a fairing
+  jettison or bay doors kept the old table (Satellite after jettison: 1.70 m² cached vs 3.30 true at Mach 1). The cache
+  now also holds the `s.lines` it was measured on (`rebuildShape` replaces it on every outline change). Keying on `profOf`
+  was tried and rejected (it disagrees with `s.lines` while bay doors finish closing). New test `vehicle-41`, which fails
+  on the old code; `--smoke` all passed (788).
+- **Files:** `sim/flight.js`, `test.mjs` (api: `dragTable`, `fairJettison`, `bayDoors`, `bayTick`), `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.301, `NOTES.md`, `QUEUE.md` (R21 ✓), `ACTIVE_WORK.md`.
+- **Next:** none for R21. No TESTING row (not visible on screen; the robot check covers it).
+
+
+## 2026-11-11 — review 2 (Fable 5.2, worktree launchpad-audit): the review fixes audited, R2/R3 plans, R13/R23 repros, the app layer (R25–R34)
+
+- **Asked:** Caio, after asking whether Fable is worth using beyond the 11-09 review: go ahead with the recommended
+  uses (audit the merged fixes, plan R2 and R3, turn the "read" items into repros, audit the app layer).
+- **Done:** `explorations/launchpad/REVIEW-2026-11-11.md`; scripts in `explorations/launchpad/review/2026-11-11/`;
+  QUEUE *Proposed* R25–R34, notes on R2, R3, R13, R23. No game code or test edited. Two background agents did the
+  repros and the app audit; their top findings were rerun here before being written down.
+- **Found:** the merged fixes (R1a–c, R4, R14, R17, R21) hold. A fresh SIM before every test section passes today
+  (271 sections, 701 checks; 11 checks change value). Five more swallowed lines (`views.js:78`, `tests/core.mjs` ×4).
+  Two "latent" items are live: RCS adds back the aero moment (R26, P1), a fleet vessel passes through the planet
+  under warp (R27). The app layer loads headless and gave 12 confirmed defects (R28–R33); R34 makes the harness a test.
+  R13's adaptive-resolution item is refuted (fixed in v1.290).
+- **Not checked:** nothing on the GPU or in a browser; `tests/look.mjs` and the five SLOW sections under a fresh SIM;
+  R10, R15, R16 (not merged yet); dispatch, watch mode, docking and field rovers in the app were read, not run.
+  Timings in the review were taken on a loaded machine and are rough.
+- **Lesson:** a timing taken while other sessions run tests is not evidence: one SIM build measured 0.5 s and 20 s
+  minutes apart. And Git Bash heredocs here drop one level of backslashes: write scripts that contain them with the
+  file tool.
+- **Files:** `explorations/launchpad/REVIEW-2026-11-11.md` (new), `explorations/launchpad/review/2026-11-11/` (new),
+  `QUEUE.md`, `ROADMAP.md` (reviews row), `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** the orchestrator ranks R25–R34 (R26 first); Caio's call on whether a reload during a flight from orbit
+  should lose the craft (R29b).
+
+- **PARKED 2026-11-11 (review 2 session):** R29b, whether a reload during a flight from orbit loses the craft. Parked at: recommendation given to Caio (restore the vessel to its state when control was taken, same as Revert, from one snapshot kept in the save), no decision yet, nothing written into the R29 row. Caio moved to the gameplay loop (mission completion feedback, forward momentum).

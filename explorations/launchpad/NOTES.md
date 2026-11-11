@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.47 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-09
+**Version**: v2.0.48 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -133,6 +133,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.273 — every preset's standard climb, staged as designed, makes orbit unrescued; the Crewed Lunar "levelling off" was the test flier carrying its dry boosters; the Lunar class's upper stages are 0.39–0.75 g in vacuum (no preset changed) (2026-11-07, vehicle worker, QUEUE Q537)
 - Plan: solid motors as a main-stage choice: per-engine throttle, a grain set on the pad, solids per era, the Assembly's checks for a stage that can't stop (2026-11-07, vehicle worker, QUEUE Q252, PLAYTEST #51; plan only)
 - v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
+- v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -278,6 +279,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.261 — the world's dice are the calendar's (2026-11-06, economy worker, QUEUE Q526, from Q446)
 - v1.270 — the money curve after day-sized ticks: tourism and military offers back to a trickle; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
 - v1.300 — a dispatched flight settles its contract on a whole flight record: a "Qualify the X" or air-sample contract on the books no longer crashes the world tick (2026-11-10, worker, QUEUE R14, P1) → [notes/economy.md](notes/economy.md)
+- v1.302 — no government top-up while a flight is open: the floor waits for the flight to settle (2026-11-11, economy, QUEUE R15) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 

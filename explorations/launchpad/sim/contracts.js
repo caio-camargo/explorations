@@ -313,7 +313,8 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
 // for (1 from worldTick); S(salt): a stream per subsystem (worldTick's), else they share R (tests call these with one R)
 function econTick(d,R,dd=d,S=null){const Rs=salt=>S?S(salt):R;ensureBoard();selTick();standTick();devTick();facTick();compTick();dispatchTick();
   if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;ledAdd('upkeep',-(OVERHEAD+OVERHEAD_CAP*capOf())*d);   // running the program, from its first launch on (more as it grows)
-    floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
+    if(!FLOOR_HOLD)floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue.
+    // (R15) not while a flight is open (FLOOR_HOLD): its waits and days tick here before its own pay and refunds come in; missionEnd checks once settled
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
   const c0=PROG.cycle||0;if(R||PROG.cyc!=null){PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R?(R()-.5)*0.15*Math.sqrt(dd/10):0);if(R)PROG.cycJ=(R()-.5)*0.1;   // the jitter is a day's
     PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(PROG.cycJ||0),-1,1)}
