@@ -7175,3 +7175,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   repetitive) and stated a principle, now **D29: any flight can fulfil any mission**. QUEUE: W50 moved to DECISIONS,
   Q577 ready, **Q588** (plan: qualification missions) and **Q589** (design: coming home, more than a parachute, from
   his side note on airbrakes). PROGRESSION 0.1.3. W51 still open (default holds).
+
+## 2026-11-11 — QA, chapter starts (Opus 5.5, worktree launchpad-loop): Q571 (v1.309)
+
+- **Asked:** Caio: work on Q571 (three starting saves so the middle of the game can be played).
+- **Done:** `chapters.mjs` plays one career with career.mjs's scripted player (career.mjs is now also a module: `run`
+  with `until`, `keep`, `goals`, `registry`; new plans for the escape-tower tests and a station; default rows unchanged)
+  and writes `starts/{orbit,station,selene}.js`; the title menu's *Start at* line loads one into its own slot
+  (`PROG_SLOT`, `launchpad-program-chapter`), *Back to your career* returns. Test `qa-8`; TESTING 368.
+- **Checked:** `qa-8`; the shards that read what changed (core, qa, platform, economy) after merging main; the full run was stopped by the machine running low on memory at 588 checks (one failure there, a source scan of save keys, fixed); CI runs the full suite on push; headless Chrome by script: each start from the title,
+  Continue to the desk, the career save untouched, back to the career.
+- **Not checked:** played by hand. The desktop Chrome tab froze once after the station start while the local server was
+  starved; headless with a fresh server it loads in ~1 s.
+- **Next:** Q572 (the unlock overlay). The starts are abstracted careers (fast, few contracts): if they feel too rich or
+  too thin, tune `chapters.mjs` (goals, seed) and regenerate.
