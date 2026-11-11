@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3600,3 +3600,26 @@ scripted checks too: the sounding run's open → met → pending → met path an
 the ballistic site check, an orbit lost once the flight is over, the range pending, the judged-at-home conds, well-formed
 legs and needs on the Hopper, and `procKey` ignoring `aim`. One check: loosening a cond (`<` for `<=` on the
 inclination) makes it fail with 31 mismatches.
+
+## v1.304 — the economy on intent: markets saturate, the big sales come once (2026-11-11, economy session, QUEUE R18, W47's defaults)
+
+**What the review found** (2026-11-09 § 2, R18): satellite income was linear in satellites (`utilTick`: 5 TV satellites
+= 200 M per 100 days against a 19.8 M budget day; imagery in `satTick` likewise), and the privatization and foreign-stake
+offers came back after being taken (5–6 IPOs ≈ 1,140 M in a career; the same friend could buy 15 % twice). W47 asked
+Caio; no answer yet, so its defaults: **saturate, once-only**.
+
+**Built:**
+- `mktShare(n)` (sim/program.js): each further satellite selling into a market adds `MKT_K` = 0.5 of the one before;
+  every satellite in it gets the mean share. n satellites earn (1 − 0.5ⁿ)/0.5 of one: 1, 1.5, 1.75, 1.94, never 2.
+  Two markets: TV for the capital (`utilTick`, the satellites `isTV` this tick) and imagery (`satTick`, the camera
+  satellites with an antenna). 5 TV satellites: 200 → 77.5 M per 100 days.
+- `PROG.ipoSold`: the privatization is offered until sold, then never again. `PROG.stakeBy`: each foreign power buys a
+  stake once (my reading of "once per career" for stakes: once per power, so a second friend can still come).
+  Both start over on a career move (defection or hire: new books). Two `PROG_SCHEMA` rows.
+
+**Measured:** `career.mjs 3 3` as is: identical (it declines these offers and flies no satellites). With
+`ACCEPT=ipo,stake`: mean final funds 827 → 752 M at 3 years, 2,111 → 1,747 M at 6. Test `econ-39`.
+
+**Left as is, for Caio:** `careerMove` sets funds to the offer and zeroes the debt. Read as intended: the team leaves
+the old program's books (and its debt) behind, and the "bad" branch is a hail mary. Say if a defection should carry
+the debt.
