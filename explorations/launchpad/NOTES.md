@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.52 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.54 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -15,8 +15,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 |---|---|---|
 | [`notes/foundations.md`](notes/foundations.md) | The idea, the first prototype (v1.0–v1.11), measurements, negative results, precision tricks, picking this up cold, open threads | 19 |
 | [`notes/vehicle.md`](notes/vehicle.md) | Parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes | 27 |
-| [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 49 |
-| [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 66 |
+| [`notes/space.md`](notes/space.md) | Orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers | 50 |
+| [`notes/economy.md`](notes/economy.md) | The program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs | 67 |
 | [`notes/world.md`](notes/world.md) | Terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies | 21 |
 | [`notes/flow.md`](notes/flow.md) | Screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook | 23 |
 | [`notes/look.md`](notes/look.md) | Hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look | 33 |
@@ -196,6 +196,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.266 — EVA: no invisible walls (slope look-ahead along the path, a creep, slides on its feet), footholds for knee-high banks (2026-11-06, space session, QUEUE Q531)
 - v1.280 — a wait cut mid-transfer keeps its encounter: a cruise between events coasts with the predictor's own stepper (coastTo), not a fixed 600 s RK4 that drifted ~15,000 km a day off a low perigee (2026-11-07, space session, QUEUE Q530)
 - v1.287 — the builder's power line says what the battery will do as a satellite: "lasts 4 days, then it goes quiet" (2026-11-08, space, QUEUE Q212; from v1.108)
+- Plan: contact limits uncrewed flight (Q574): flown, every first-orbit burn is out of the pad's sight (the Beeper's by 78 s) and a stored timed burn circularises as well as a guided one; `cmdLink`, the launch range (a tracking ship 700 km downrange), armed nodes by avionics, what is refused where; slices Q581–Q587 and W51 (2026-11-11, review 2 session; plan only)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -282,6 +283,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.300 — a dispatched flight settles its contract on a whole flight record: a "Qualify the X" or air-sample contract on the books no longer crashes the world tick (2026-11-10, worker, QUEUE R14, P1) → [notes/economy.md](notes/economy.md)
 - v1.302 — no government top-up while a flight is open: the floor waits for the flight to settle (2026-11-11, economy, QUEUE R15) → [notes/economy.md](notes/economy.md)
 - v1.304 — a job's conditions as data: needs, conds and legs on every contract type and mission, all conds met ⇔ ok (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1)
+- Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 
 ## World: [`notes/world.md`](notes/world.md)
 
