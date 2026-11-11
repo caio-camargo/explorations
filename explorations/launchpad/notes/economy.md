@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3555,3 +3555,20 @@ were free money). Test `econ-36` (fails on the old line).
 Rollout refuse hardware + site fee over the funds and only warn for ops, by design (the Rollout's text: it flies into the
 red, and below the floor someone steps in, now at the end of the flight). A sim-side refusal at liftoff would need a
 place to refuse from; left as it is.
+
+## v1.303 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
+
+**The bug** (review 2026-11-09 § 2, R16, confirmed there): `seisLocate` (sim/rovers.js) started the core bracket at
+`hi: Infinity`. JSON turns that into `null` (every save, and every simulator run, since the run is put back from a
+snapshot); `null < Infinity` is true, so `selN().coreW` came out as `(0 − lo)/1e3`, negative, and "Bound Selene's core"
+(`coreW <= 300`) paid 132 M at once. The logbook's line read "radius 300 km–0.0 km" the same way.
+
+**The fix:** `hi: null` is "no bound yet", in the state and in the logbook note; `seisLocate` reads it as Infinity when it
+narrows; `selN` and the logbook take both null and an older in-memory Infinity as unbounded. A save already carrying
+`null` is now read right, so no migration.
+
+**The sweep for other non-JSON values in `PROG`:** `career.mjs 3 3` with `progLossy(PROG)` at the end of each of the 18
+careers: none. By reading: the other stored-Infinity candidates stay off `PROG` (the flight record's `landDist`, kept on
+the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist` with `isFinite`; station and power
+`days` are computed, not stored). `career.mjs` doesn't reach the late game (R19), so tester mode's warning
+(`progJSON`, R1c) stays the net for what this missed. Test `econ-37` (fails on the old line).

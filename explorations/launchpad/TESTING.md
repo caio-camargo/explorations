@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.104 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: running checklist
+**Version**: 0.1.105 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -153,6 +153,7 @@ NOTES § "The robot playtester".
 | 361 | The Hopper and the Beeper roll out stable (Q202, v1.299) | In the Assembly pick the Hopper preset, then Roll out; again with the Beeper | Neither shows ⚠ *Aerodynamically unstable*; each has two fin rings above its engine | test `vehicle-40` (every preset) |
 | 362 | A dispatch beside a Qualify contract (R14, v1.300) | Take a "Qualify the X" contract and a satellite contract; dispatch the satellite contract (a design with an ascent procedure) and let the days run past its launch | The dispatch flies and the satellite contract is paid; the calendar keeps moving; the Qualify contract stays open | test `econ-35` |
 | 363 | No top-up while a flight is open (R15, v1.302) | With a government agency, take funds down to about the price of a rocket (Assembly: a design that leaves under 25 M after the launch). Launch it, fly a flight that earns something (a contract or a first), recover | No *grudgingly tops up* news during the flight or its waits; the flight's pay comes in; a top-up appears only if the program is still under 25 M at the debrief | test `econ-36` |
+| 364 | Selene's core after a reload (R16, v1.303) | With a seismic network on Selene that has located a quake but not yet bounded the core (the logbook says *no S-wave shadow yet*), save and reload the page | The logbook line still says *no S-wave shadow yet*; "Bound Selene's core" is neither paid nor offered as done | test `econ-37` |
 
 ### Orbits & planning
 
@@ -447,4 +448,4 @@ NOTES § "The robot playtester".
 | 352 | The pad calendar's window bar (Q211, v1.288) | Dispatch a design to launch at a window well after it's ready (or wait until one is queued that way); open Mission control, Pads page [W] | The booking's bar, then 3 px later a hatched amber dashed bar saying "held for its window" up to the launch; hovering it gives the whole line; the booking's name no longer runs into it | test `flow-53` |
 | 353 | Five lines a comment had swallowed (R4, v1.289) | In flight, click a SAS mode (Prograde, say); then open the Program with an unread mission message in the Inbox | The mode's button stays lit while it holds; the Inbox tab and the HQ strip show the count of unread messages | test `ground-7` (Erebus's blades only); the two above by eye |
 
-Next free number: **364** (QA, 2026-10-09: the counter said 165 while rows ran to 172, and 168 was doubled: "Meet the world's powers" 168 → 173. **Take the number right before you commit, after a pull, and grep for it**: LESSONS #37) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+Next free number: **365** (QA, 2026-10-09: the counter said 165 while rows ran to 172, and 168 was doubled: "Meet the world's powers" 168 → 173. **Take the number right before you commit, after a pull, and grep for it**: LESSONS #37) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).

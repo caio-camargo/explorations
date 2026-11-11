@@ -257,7 +257,7 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
 // Selene science counts (R4), for the sel contracts: readings by unit and from the far side, panoramas, stations, located
 // quakes, the core bracket's width (km)
 function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
-  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
+  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi!=null&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}   // (R16) hi null: no bound yet (a save turns Infinity into null)
 function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
   income(pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');HOOK.save()}

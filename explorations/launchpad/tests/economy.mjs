@@ -832,3 +832,20 @@
     a.low && a.mid === 0 && a.after === 0 && b.low && b.mid === 0 && b.after === 1 && b.funds >= 25 - 1e-9 && c.low && c.mid === 0 && cAfter === 0,
     `paid: low ${a.low} mid ${a.mid} end ${a.after}; short: mid ${b.mid} end ${b.after} funds ${b.funds.toFixed(1)}; reverted: mid ${c.mid} later ${cAfter} funds ${P.funds.toFixed(1)}`);
 }
+
+// econ-37. No `Infinity` in the saved core bracket (economy, QUEUE R16, review 2026-11-09 § 2): `seisLocate` started
+// Selene's core bracket at `hi: Infinity`; a save (or the simulator's snapshot) turns that into `null`, `null < Infinity`
+// is true, `coreW` went negative and "Bound Selene's core" paid at once. Now `hi: null` means no bound yet; readers take
+// both null and an old in-memory Infinity as unbounded.
+{
+  const A = new Function(src + 'return {PROG,HOOK,selSci,selN,progJSON,progRestore,progLossy,LOGF,CT};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {};
+  const S = A.selSci(); S.quakes = [{ id: 1 }]; S.core = { lo: 3e5, hi: null, n: 1 };
+  const lossy = A.progLossy(P), w0 = A.selN().coreW; A.progRestore(A.progJSON()); const w1 = A.selN().coreW;
+  P.sel.core.hi = Infinity; const wInf = A.selN().coreW; A.progRestore(A.progJSON()); const w2 = A.selN().coreW;
+  const fmt = A.LOGF.find(f => f.id === 'secore').fmt, txt = fmt({ lo: 3e5, hi: null, n: 1 });
+  const dn = A.CT.selCore.done({ p: { w: 300 } }, A.selN()); P.sel.core = { lo: 3e5, hi: 5e5, n: 2 }; const wB = A.selN().coreW;
+  check('econ-37: Selene\'s core bracket survives a save: unbounded stays unbounded (null or an old Infinity), "Bound Selene\'s core" is not done by a reload; a real bracket still measures',
+    !lossy.length && w0 === Infinity && w1 === Infinity && wInf === Infinity && w2 === Infinity && !dn && /no S-wave shadow/.test(txt) && Math.abs(wB - 200) < 1e-9,
+    `done ${dn}; lossy [${lossy.join(', ')}]; widths ${w0} ${w1} ${wInf} ${w2}, bracket ${wB}; log "${txt.slice(0, 40)}"`);
+}
