@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.217 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 0.1.218 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -22,6 +22,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
 | 5 | **The beauty pass, after its foundations** (D18; B0 ✓: Q312 v1.134, Q313 v1.135, Q314 v1.137 the HDR scene): now ready Q318 re-entry glow and Q319 the flames (effects), Q315 the craft's quick wins (parts & pad), Q322 shrinking `SKY_FS` and Q326 (sky & bodies) | look & sound: effects (claim open), parts & pad and sky & bodies (**no sessions**) | the rest of BEAUTY (Q316, Q317, Q320, Q321, Q323) |
 | 6 | **M2 is done** (2026-11-05): the robot's `m2` passes every check flying TV like a normal player (Q499, Q500, Q516, Q517, Q519, Q521). Next: Caio plays M2; economy weighs the TV balance flag; M3 becomes the next finish line | Caio, economy | M3 next |
+| 7 | **W49: M2 done, M3 open for code?** (default yes, after W48's freeze) | you | space's lane (gated to one ready row), Q459–Q461, Q91 |
 
 ## How a session uses this
 
@@ -217,6 +218,7 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 
 ### space — bodies, orbits, registry, procedures, docking, stations, rovers, the link (was bodies + sats + planning)
 Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`, port 8777; on `pc_de_varginha`), `launchpad-planning2` (branch `planning`, port 8775).
+**Ready while M3 is gated (orchestrator 2026-11-11):** this lane's only ready row is Q531 (held by the EVA session); take **R23** (rails, latent) and **R22** (physics fixes, shared with vehicle) from the review rows under QA. W49 asks about opening M3.
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | slice 1 ✓ `7918837` (v1.76: spent stages in orbit become registry Debris; plan in NOTES § "Plan: debris and Kessler"); slices 2–4 are Q146–Q148 |
@@ -346,25 +348,25 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q563 | **Smoke, vapor and the impingement volume at half resolution** (BEAUTY B0.1's rest; Q313 moved only the cloud deck); with R11's Q19 merge for its −16 % frame time | look (effects) | S–M | 🖥 | ready |
 | Q567 | PLAYTEST **#157** (P2): **a dark black band in the upper atmosphere on the night side from orbit**, and along the terminator at night; reference stills first | look (sky & bodies) | S | 🖥 | ready |
 | Q568 | PLAYTEST **#158** (P3): **a free camera** in the tester menu (body, lat, lon, altitude, heading, time of day) that prints its scene as a pasteable call | QA (tester menu) | S | 🖥 | ready |
-| R1d | **The loader fills a save from the schema**; then retire `||` reads lazily by lane (after R1a ✓ v1.292, R1b ✓ v1.293, R1c ✓ v1.296) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
-| R2 | 📝 **Test sections run isolated** (13+ checks differ between smoke and the full run; a fresh `PROG`/`api` per section or snapshot/restore) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform, QA | M | 📝 | ready (plan first) |
-| R3 | **A lint step in `--smoke`**: swallowed code after `//` (R4's five lines as fixtures), `no-undef` across the classic scripts' shared scope (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
+| R1d | **The loader fills a save from the schema**; then retire `\|\|` reads lazily by lane (after R1a ✓ v1.292, R1b ✓ v1.293, R1c ✓ v1.296) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
+| R2 | 📝 **Test sections run isolated** (13+ checks differ between smoke and the full run; a fresh `PROG`/`api` per section or snapshot/restore) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform, QA | M | 📝 | 📝 plan → review 2 (Fable) 2026-11-11; build after the plan |
+| R3 | **A lint step in `--smoke`**: swallowed code after `//` (R4's five lines as fixtures), `no-undef` across the classic scripts' shared scope (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | 📝 plan → review 2 (Fable) 2026-11-11; build after the plan |
 | R5 | **Smoke is 191 s, not ~25 s**: refresh `SLOW` in `shards.mjs`, fix the documented times, keep an economy section in smoke (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
 | R6 | **Tests for six survived mutations** (fuel price, client opinion sign, `safetyReview`, debris drag, the drag-reversal limiter, debt from half of income) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA | S | ⚙ | ready |
 | R7 | **Stop testing pictures with regexes**: pixel checks on the reference views where the GPU bench runs, delete the rest; fix the vacuous flow check (`tests/flow.mjs:816`), wall-clock `tests/vehicle.mjs:350`, core §2, `Math.random` in core (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA | M | 🖥 | ready |
 | R8 | **Repair the robot playtester and run it on a schedule** (default-output rows fail with `ReferenceError: PRESETS / cam / go`) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA (test bench) | S | 🖥 | ready |
 | R9 | **A frame that throws must not end the game**: try/catch in `frame()`, a `window.onerror`/`unhandledrejection` handler with *Reload* and *Export save* (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | flow, platform | S | 🖥 | ready |
-| R10 | **A bad save must not brick the page**: `raceSchedule()`/`ensureBoard()` inside the try; a backup before overwriting a save that failed to parse; surface quota errors; a guard for two tabs (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
+| R10 | **A bad save must not brick the page**: `raceSchedule()`/`ensureBoard()` inside the try; a backup before overwriting a save that failed to parse; surface quota errors; a guard for two tabs (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | → platform (Opus) 2026-11-11 |
 | R11 | **First load**: merge Q19 (`terrain`, measured 28 → 14 s); a loading indicator; compile shaders the title doesn't need after it shows (`KHR_parallel_shader_compile`); a message when a compile fails (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | M | 🖥 | ready |
 | R12 | **WebGL context loss**: handle `webglcontextlost`/`restored` (at least a reload message) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | XS | 🖥 | ready |
 | R13 | **Smaller app items**: adaptive resolution can't grow without timer queries; engine sound in a hidden tab; replay speed by refresh rate; the 10 Hz HUD `innerHTML` rebuild and game logic in it; `landPick`; the flight-reset list ×5; builder keys from the title; `rvMeshC` growth (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | flow, platform | S–M | 🖥 | ready |
 | R14 | (**P1**) **A dispatched flight crashes the world tick under a "Qualify the X" contract** (`sim/program.js:887` hands `contractEval` a stub; `CT.test.ok` reads `R.qPart`) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy | S | ⚙ | ✓ v1.300 |
 | R15 | **The government top-up fires mid-flight** (`floorCheck` before the flight settles; ~864 M unneeded over 1,369 simulated flights); no funds gate in the sim at launch (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy | S | ⚙ | → economy (Opus) 2026-11-11 |
-| R16 | **`Infinity` in saved state** pays "Bound Selene's core" 132 M on reload (`sim/rovers.js:359`); sweep `PROG` for other non-JSON values (R1c reports them) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy, space | S | ⚙ | ready |
+| R16 | **`Infinity` in saved state** pays "Bound Selene's core" 132 M on reload (`sim/rovers.js:359`); sweep `PROG` for other non-JSON values (R1c reports them) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy, space | S | ⚙ | → economy (Opus) 2026-11-11 |
 | R18 | **Economy balance on intent** (W47): satellite income without saturation; IPOs and stakes recur; `careerMove` overwrites funds and zeroes debt (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy | S | ⚙ | ready on W47's defaults |
 | R19 | **`career.mjs` sees the late game** (dispatch, routines, studies, simulator, earning satellites, stations, crew) and **shares formulas** instead of copies (ignition ×3, stacking days ×3, ops ×4, a literal `*1.6` in ~15 pays) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy | M | ⚙ | ready |
 | R20 | **Smaller economy items**: election catch-up; unledgered patronage and ~30 direct `PROG.funds` writes; every save the same world (`makePowers(seed=11)`, `rng(777)`, `WSEED=13`: Q529 drew `wseed` only) and the first race lost in all 54 careers; stale text (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | economy | S | ⚙ | ready |
-| R21 | **Stale drag cache at fairing jettison** (`dragTable` keyed by part count and AoA bin, `sim/flight.js:687`; the predictor ~1.8× light on drag until the next drop) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | vehicle | S | ⚙ | ready |
+| R21 | **Stale drag cache at fairing jettison** (`dragTable` keyed by part count and AoA bin, `sim/flight.js:687`; the predictor ~1.8× light on drag until the next drop) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | vehicle | S | ⚙ | ⏳ vehicle 2026-11-11 |
 | R22 | **Four physics fixes**: `fall()` predicts an impact in the past on an escape; a failed ignition runs the event's other effects twice; `detach()` momentum and CoM shift; Easy's air factor applied twice in `ascentRun` (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | vehicle, space | S | ⚙ | ready |
 | R23 | **Latent, before grounds are attached**: rails' fixed 5 km floor ignores `bodyTop`; `fleetRails` finishes a step as plain Kepler; `rails()` truncates at 4000 steps silently; `ORB_T0` without try/finally ×5; RCS without the aero feed-forward (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | space, vehicle | S | ⚙ | ready |
 | R24 | **Drain the coordination files and the branches**: QUEUE to its 300-line budget (struck rows and ranked Proposed to `archive/`), `ACTIVE_WORK.md` to live claims, build `check_docs.mjs`, merge or close stranded branches (the orchestrator's five worker branches await Caio's batch smoke) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | orchestrator | M | 📝 | **claimed** orchestrator 2026-11-10 |
@@ -405,7 +407,7 @@ Open design questions get a D row here (**next: D21**); answered ones go to [`DE
 
 Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md) (the full text as asked: [`archive/decisions-2026-10.md`](archive/decisions-2026-10.md)). **Don't restate a decision here; link its ID.**
 
-## Waiting on Caio (no default possible; **next: W47**, numbered past both this table and DECISIONS.md, after a pull; answered rows go to DECISIONS and leave)
+## Waiting on Caio (no default possible; **next: W50**, numbered past both this table and DECISIONS.md, after a pull; answered rows go to DECISIONS and leave)
 
 | # | Question | Unblocks |
 |---|---|---|
@@ -416,5 +418,6 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 | W46 | **A near-missed satellite orbit** (PLAYTEST #156; default if silent: **yes**): should a satellite just off its target still pay part, for the hours it does the job (TV while it's 15° up in the capital's sky; weather while its inclination covers most latitudes), with full pay only on target? Emergent and forgiving, but it changes economy's numbers | economy; #156's near-miss line |
 | W47 | **Economy on intent** (review R18; default if silent: **saturate, once-only**): should satellite income saturate (5 TV satellites pay 200 M per 100 days today against a 19.8 M budget day), and should IPOs and foreign stakes be once per career (5–6 IPOs ≈ 1,140 M now)? | economy; R18 |
 | W48 | **Freeze new mechanisms until the guards are in?** (review § 3; default if silent: **yes**): no new mechanism until R1–R4 and the confirmed bugs (R14–R16, R21–R22) are in; lanes take fixes and polish meanwhile. Affects the orchestrator's built-but-unmerged solids (Q550) and the planned Guided/aim slices | all lanes |
+| W49 | **M2 done; does M3 open for code?** (ROADMAP rule 4; default if silent: **yes, once W48's freeze lifts**): M2's finish line is the robot's and passed 2026-11-05 (`m2`; Next unblockers row 6), so rule 4 marks M2 done and M3 becomes the *next* milestone, which opens code for M3 items: space Q459, Q460, Q461; world Q91 G3–G6. M1 stays *current* until you play the first hour (W16). ROADMAP is left unchanged until you answer | space (1 ready row), world Q91, every M3 build item |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
