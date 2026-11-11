@@ -7103,3 +7103,5 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `ROADMAP.md` (reviews row), `INDEX.md`, `ACTIVE_WORK.md`.
 - **Next:** the orchestrator ranks R25–R34 (R26 first); Caio's call on whether a reload during a flight from orbit
   should lose the craft (R29b).
+
+- **PARKED 2026-11-11 (review 2 session):** R29b, whether a reload during a flight from orbit loses the craft. Parked at: recommendation given to Caio (restore the vessel to its state when control was taken, same as Revert, from one snapshot kept in the save), no decision yet, nothing written into the R29 row. Caio moved to the gameplay loop (mission completion feedback, forward momentum).
