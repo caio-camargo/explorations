@@ -959,7 +959,9 @@
   check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover antenna; opensNames merges; opensLine',
     M.length === 29 && !bad.length && any >= 20 && facts,
     `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
-// econ-37. No `Infinity` in the saved core bracket (economy, QUEUE R16, review 2026-11-09 § 2): `seisLocate` started
+}
+
+// econ-40. No `Infinity` in the saved core bracket (economy, QUEUE R16, review 2026-11-09 § 2): `seisLocate` started
 // Selene's core bracket at `hi: Infinity`; a save (or the simulator's snapshot) turns that into `null`, `null < Infinity`
 // is true, `coreW` went negative and "Bound Selene's core" paid at once. Now `hi: null` means no bound yet; readers take
 // both null and an old in-memory Infinity as unbounded.
@@ -971,7 +973,7 @@
   P.sel.core.hi = Infinity; const wInf = A.selN().coreW; A.progRestore(A.progJSON()); const w2 = A.selN().coreW;
   const fmt = A.LOGF.find(f => f.id === 'secore').fmt, txt = fmt({ lo: 3e5, hi: null, n: 1 });
   const dn = A.CT.selCore.done({ p: { w: 300 } }, A.selN()); P.sel.core = { lo: 3e5, hi: 5e5, n: 2 }; const wB = A.selN().coreW;
-  check('econ-37: Selene\'s core bracket survives a save: unbounded stays unbounded (null or an old Infinity), "Bound Selene\'s core" is not done by a reload; a real bracket still measures',
+  check('econ-40: Selene\'s core bracket survives a save: unbounded stays unbounded (null or an old Infinity), "Bound Selene\'s core" is not done by a reload; a real bracket still measures',
     !lossy.length && w0 === Infinity && w1 === Infinity && wInf === Infinity && w2 === Infinity && !dn && /no S-wave shadow/.test(txt) && Math.abs(wB - 200) < 1e-9,
     `done ${dn}; lossy [${lossy.join(', ')}]; widths ${w0} ${w1} ${wInf} ${w2}, bracket ${wB}; log "${txt.slice(0, 40)}"`);
 }
