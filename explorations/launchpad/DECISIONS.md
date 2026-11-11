@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.15 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-13
+**Version**: 1.0.16 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-13
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -125,3 +125,4 @@ The full text of every question as it was asked (options, reasons) is in
 | D29 | 2026-11-11 | **Any flight can fulfil any mission** (Caio: "a flight is not tied to one specific mission, if it fulfills the criteria, then the mission is completed"): missions and contracts are criteria on what a flight did, never an assignment; the Assembly's *This flight is for* ticks (Q549) aim the checks and the Mission card, they never decide what pays. W11 stays (a mission counts on a flight launched while it was open) | PROGRESSION § 2, Q549, Q588 |
 | W51 | 2026-11-11 | **Contact limits the first orbit on Normal, with a launch range** (Caio: "default is fine, go with the tracking ship"): the rule applies from the first flight; every site's launch range is the pad plus a tracking ship 700 km downrange, so eastward insertions stay in contact; Hard has no ship, Easy never limits | notes/space.md § "Plan: contact limits uncrewed flight", PROGRESSION § 4, Q582 |
 | D30 | 2026-11-11 | **Winged flight** (Caio: "1 is good, 2 and 3 can be backlogged"): the **winged return** is wanted (a craft launched upright on a rocket that glides home and lands on a strip); **aeroplanes** (runway takeoff, jets, a horizontal builder) and **spaceplanes** are backlog: no items, no code, until Caio brings them back | notes/vehicle.md § "Scope: winged flight", Q592, Q589 |
+| D31 | 2026-11-11 | **A backlog** (Caio: "good for these stray ideas without polluting the queue with scope creep"): [`BACKLOG.md`](BACKLOG.md) holds ideas worth keeping that are not work: one row each, no Q number, nothing built or planned from it; only Caio promotes a row to QUEUE. Seeded with D30's aeroplanes and spaceplanes | BACKLOG.md, ROADMAP § Documents, QUEUE § Proposed |

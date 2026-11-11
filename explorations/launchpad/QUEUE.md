@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.232 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
+**Version**: 0.1.233 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -473,4 +473,4 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 | W49 | **M2 done; does M3 open for code?** (ROADMAP rule 4; default if silent: **yes, once W48's freeze lifts**): M2's finish line is the robot's and passed 2026-11-05 (`m2`; Next unblockers row 6), so rule 4 marks M2 done and M3 becomes the *next* milestone, which opens code for M3 items: space Q459, Q460, Q461; world Q91 G3–G6. M1 stays *current* until you play the first hour (W16). ROADMAP is left unchanged until you answer | space (1 ready row), world Q91, every M3 build item |
 
 
-## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
