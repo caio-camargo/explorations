@@ -41,8 +41,8 @@
     tr[0].m.air > m1.m.air && m1.m.buf > 0.5 && Math.abs(tr.reduce((b, x) => x.m.wind > b.m.wind ? x : b).t - mq.t) < 15 && k30.m.air < 0.25 * tr[0].m.air && k80.m.air < 0.02 && k80.m.str > 0,
     `${tr.length} samples; max-q ${(mq.q / 1e3).toFixed(1)} kPa at T+${mq.t.toFixed(0)}`);
   const P = H.slice(H.indexOf('// ==== SIM END'));
-  check('sound is wired: F4 in KEYS.all, sndTick called from frame() and not from render()',
-    /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frame\(now\)\{[^]*?sndTick\(dtR\)[^]*?requestAnimationFrame\(frame\)\}/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
+  check('sound is wired: F4 in KEYS.all, sndTick called from frameBody() (the frame, R9) and not from render()',
+    /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frameBody\(now\)\{[^]*?sndTick\(dtR\)/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
 }
 
 // aerofx-1. The plasma shell needs speed, not just heat (look & sound effects beat, QUEUE Q20 / PLAYTEST #17): the
