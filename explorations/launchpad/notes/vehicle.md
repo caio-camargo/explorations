@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2351,3 +2351,20 @@ disagree with the shape. Rejected: keying on each part's `profOf`: closing doors
 under the shut key. Fin deflection (`p.fd`) still doesn't enter the table: it's a control state, not an outline.
 
 **Test:** `vehicle-41` (fails on the old key: the jettisoned table equalled the fairing's).
+
+## v1.303 — RCS no longer fights the gimbals (2026-11-11, vehicle session, QUEUE R26, P1; REVIEW-2026-11-11 § 6)
+
+**The bug** (review 2, confirmed with `review/2026-11-11/r23e.mjs`): `physStep` asks `ctrlAccel` twice: once at the top
+for the wheels, gimbals and fins, once later for RCS (`ctrlAccel(s,true)`), and RCS is handed the difference
+(alR − alC)·I. The Q382 feed-forward (cancel last step's aero moment as it comes) is gated on `s.simTA===simT`, and the
+aero pass between the two calls sets `s.simTA=simT+dt`. So only the first call had the feed-forward, and the difference
+told RCS to push the whole aero moment back in: RCS command · τ_aero / |τ_aero|², median **1.000** over 4,633 steps.
+Any design with RCS on while an unstable stage burns in air: the Beeper with Docking's RCS rings spent **30.0 of 30.0 kg**
+of gas on its climb, the gimbals and RCS pulling against each other.
+
+**The fix:** RCS's command is computed right after the first one, before the aero pass, with the same inputs; the RCS
+block later uses it. The calls stay in the same order (the second still sets `s.sasE` last, as before). After: median
+**0.000**, **0.06 kg** of gas on the same climb, 100 km, alive. `ctrlAccel` and `physStep` are in `TAPE_V`'s hash, so
+tapes recorded before replay stale (as with any physics change).
+
+**Test:** `vehicle-42` (the repro's flight, without the instrumentation; fails on the old code at 30.0 kg).
