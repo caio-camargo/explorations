@@ -13,7 +13,7 @@ on:
 
 concurrency:
   group: launchpad-tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}   # a branch's newer push replaces its run; main's runs all finish
 
 jobs:
   full:
