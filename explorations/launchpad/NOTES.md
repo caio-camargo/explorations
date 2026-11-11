@@ -135,6 +135,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
+- Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
+**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2823,6 +2823,8 @@ has no range ship (the pad alone). The level is already part of a tape's and a s
 Order: Q581, Q582, Q583, Q584, Q585; Q586 beside Q584; Q587 any time after Q582.
 
 ### For Caio (one W row)
+
+**Answered by Caio 2026-11-11: (a), with the tracking ship (DECISIONS W51).**
 
 > **W51: Does contact limit the first orbit on Normal?** (Q574; default if silent: **yes, with a launch range**)
 > Measured: with the pad's station alone every first-orbit burn is out of contact (the Beeper's by 78 s), and the
