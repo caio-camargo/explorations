@@ -1,5 +1,5 @@
 # Review 2 scripts (2026-11-11)
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (Fable 5.2, review 2 session) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 1.0.2 · **Author**: Caio Camargo + Claude (Fable 5.2, review 2 session) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: evidence for [`../../REVIEW-2026-11-11.md`](../../REVIEW-2026-11-11.md); not part of the test suite.
 **Purpose**: The repro and prototype scripts that review cites, so a session taking a task can run its evidence first.
 Each reads the game from `../../` and writes nothing there. Run from this folder with `node <file>`.
@@ -19,5 +19,7 @@ Each reads the game from `../../` and writes nothing there. Run from this folder
 | `app/B_sound.cjs`, `app/B_reach.cjs`, `app/B_glsl.cjs`, `app/B_glrun.cjs` | R32 (sound), R33 and the shader checks |
 | `app/scan.cjs` (`node --expose-internals`), `app/scan2.cjs`, `scan2b.cjs`, `scan3.cjs`, `scan4.cjs`, `app/A_deps.cjs` | R3(b) and the other mechanical passes |
 | `app/monkey.cjs` | the random walk over player-reachable actions |
+| `q573/m1.mjs`, `m2.mjs`, `m3.mjs`, `q573/mkcareer.cjs` | Q573's plan (the unlock map; notes/economy.md): what a Sparrow can do, which stacks reach orbit, the map checked against missions, contracts and presets, the career runner with the gates |
+| `q574/fly.mjs [presets]`, `q574/cover.mjs`, `q574/world.mjs` (`api.mjs` is their harness; **run from `explorations/launchpad`**: `node review/2026-11-11/q574/fly.mjs Beeper`; `SHIP=700`, `AZ=3`, `ONLYASC=1`) | Q574's plan (contact limits; notes/space.md): where each first-hour flight loses the pad's link against where its burns fall, a stored timed burn against a guided one, coverage by stations |
 
 When R34 adopts the harness into `tests/`, move this folder to `archive/`.
