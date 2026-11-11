@@ -24,19 +24,22 @@ Launchpad, QA lane, on **Caio's second computer**, left running. **No game code.
 on the main machine, where the GPU is shared and two game runs at once hang it: it has its own GPU and its own
 `.game-busy` lock, so it never waits for one.
 
-**Setup, once:** clone from GitHub to `C:/Users/<you>/dev/explorations` on that machine (never into Google Drive), Node 22+,
+**Setup, once:** clone from GitHub to `C:/Users/<you>/dev/explorations` on that machine (never into Google Drive), Node 24 (CI's version; space-33 walks differently on 22),
 Chrome, Python. Serve with the threaded server (QUEUE Flags, "Flaky page loads"); set `PT_OUT` to a folder outside the repo.
 Its claim row names the machine (`hostname`). Work in the clone's `main` for docs; a worktree only if it ever builds.
 
 **Loop** (self-paced `/loop`, ~30 min when idle): `git pull`, then the first of these that has work:
-1. **Guard `main`:** for each new `## v1.N` since its last pass, `node test.mjs --smoke`, `node playtest.mjs m1`, and after an M2 merge `node playtest.mjs m2` (Q233). A
+1. **The *🖥 checks* table** in QUEUE (QA section), oldest first: check out the row's commit, run what it names, set its
+   state `✓` or `✗ → PLAYTEST #n`, push. Sessions wait on these to merge, so they come first (2026-11-11).
+2. **Guard `main`:** CI runs the full suite on every push (`gh run list --branch main`; a red run on `main` is a P1).
+   For each new `## v1.N` since its last pass, `node playtest.mjs m1`, and after an M2 merge `node playtest.mjs m2` (Q233). A
    failure is a PLAYTEST item (P1 if `m1` broke) naming the version and the commit, and a line under QUEUE *Proposed*.
-2. **QA items marked 🖥🖥 or "quiet machine"** (Q19's timing A/B on its branch, Q215's flake, Q233's M2 robot run): claim
+3. **QA items marked 🖥🖥 or "quiet machine"** (Q19's timing A/B on its branch, Q215's flake, Q233's M2 robot run): claim
    in QUEUE, run, report. A timing A/B is valid here as a *relative* number; say the machine and GPU beside it.
-3. **The robot pass over untried TESTING rows**, newest first: set each up as `playtest.mjs` rows do, judge what a robot
+4. **The robot pass over untried TESTING rows**, newest first: set each up as `playtest.mjs` rows do, judge what a robot
    can (layout, text, numbers, timings, a broken scene), mark it `✓ n (robot)`, `✗ n → P#m (robot)` or
    `~ n (robot): needs a human`. Feel, difficulty and fun stay Caio's.
-4. **Before/after stills** for look & sound merges (`node refset.mjs`), into `output/launchpad/`, linked from the item.
+5. **Before/after stills** for look & sound merges (`node refset.mjs`), into `output/launchpad/`, linked from the item.
 
 Pull before each edit; commit and push TESTING / PLAYTEST / QUEUE changes in small commits; take numbers from
 `node check_numbers.mjs`. Never merge or push code. If the queue gives it nothing for two passes, say so in its claim row

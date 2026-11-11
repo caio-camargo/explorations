@@ -37,12 +37,22 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 **Load** (the machine is shared, and two game runs at once hang or crash):
 - 🖥 = verifying it needs the game running in Chrome on the GPU (preview, `playtest.mjs`, `shot.mjs`).
-- ⚙ = headless only: `node test.mjs` (about 8 min of CPU) and reading code.
+- ⚙ = headless only: `node test.mjs --smoke`/`--only` and reading code (the full run is CI's).
 - 📝 = docs or design, no runs.
 
 **Courtesy lock for 🖥 runs (per machine, not in git):** before you start Chrome on the game, look for
 `C:/Users/caioa/dev/.game-busy`. If it's there and less than 20 minutes old, do ⚙ work first and check again. Otherwise
 write your session name and the time into it, and delete it when your browser run ends. It's a convention, not a guarantee.
+
+**Testing (orchestrator 2026-11-11, Caio's call): the full suite runs in CI, GPU checks go to the test bench.**
+- **While you work:** `node test.mjs --smoke --jobs 4` and `--only <your lane>`. You still write the checks for your change.
+- **Before merging:** push your branch. GitHub Actions runs `check_numbers.mjs` and the full `node test.mjs` on it
+  (`.github/workflows/launchpad-tests.yml`); `gh run watch` or `gh run list --branch <branch>` for the result. Merge when
+  it's green (recipe: `ACTIVE_WORK.md`). A failure names the check: fix it yourself, you have the context. Don't run the
+  full suite locally.
+- **A 🖥 check you'd otherwise queue on the lock** (`playtest.mjs m1`/`m2`, stills, a TESTING row by robot): add a row to
+  *🖥 checks* under QA (branch @ commit, what to run, what passing looks like), take your next ⚙ item, and merge when it
+  comes back ✓. Quick previews while you build stay yours. If no test bench claim is live, run it yourself under the lock.
 
 **Kickoff line Caio can paste into a fresh session:**
 > You are the launchpad **<lane>** session (one of: flow, economy, vehicle, space, world, look & sound, QA, platform; for look & sound add the beat: parts & pad,
@@ -57,6 +67,7 @@ the feedback I paste into PLAYTEST items.* For the **test bench** (Caio's second
 
 ## Flags (read before merging)
 
+- **THE FULL SUITE RUNS IN CI NOW** (orchestrator 2026-11-11, Caio's call): push your branch, wait for GitHub Actions' full `node test.mjs` (`gh run watch`), merge when green; locally only `--smoke`/`--only`. GPU checks go to *🖥 checks* (QA section) for the test bench. Details: *Testing* under "How a session uses this"; recipe in `ACTIVE_WORK.md`. CI runs Node 24 (Q590: space-33 walks differently on 22).
 - **The world's dice are the calendar's** (v1.261, Q526, 2026-11-06): `advanceDays` (sim/program.js) now cuts world time at whole days; every world subsystem takes `(d, R, dd=d)` and rolls only on the piece that reaches a day (`R=null` between). `wseed` is fixed per save. **Everyone:** tests that pinned a seed's outcome may shift (core §18 moved seed 31 → 14); old saves' worlds shift from the next tick. **Economy:** offers flow much more (+71 % funds in career.mjs) → Q528. **Update v1.270 (Q528):** tourism and military rates cut (1/90, 1/100 a day); funds back near the old curve.
 - **A slow topple no longer destroys a craft** (v1.260, Q508, 2026-11-06): `groundCheck` → `tipFall`/`tipOver` in `sim/flight.js`; new `s.tipped`, `p.buried`. **Economy:** a tipped Selene lander still earns landing/sampling credit; Tellus refurbishment now scales each part by 1 − dmg (debris damage too); knobs `TIP_SAFE` 2, `TIP_BREAK` 6. **Vehicle/flow:** `vehicle-1`'s bare-slope check accepts lost or tipped; a small pod toppling on Tellus now survives.
 - **TV satellites trim their tilt** (v1.256, Q517, 2026-11-05): `tvTrim` in `sim/space.js` `orbTick` (held satellites earning TV only). One TV satellite now earns ~37% more over its life (862 → 1,181) and stays on air ~3,650 d instead of ~2,430. **Economy:** check TV prices/balance; **space:** Q520 readout. **Update v1.257 (Q521):** a stationary slot now also keeps its longitude, so a player's TV satellite earns until its tanks run dry (~1,650 d on the preset's 380 m/s, was ~300): roughly 5× the TV income per satellite (estimate). Old saves: a held stationary satellite snaps back to the longitude it was released at.
@@ -239,6 +250,8 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q463 | **SW5, any body can turn** (Q331): a `spin:{P,th0}` rule in `bodyTheta`/`bodyOmega`/`thAbs` (Tellus one case), `landPowInit` samples the body's solar day, the `'plane'` window search spans the sidereal day; serves Hesper and Enyo too | M5 | S | ⚙ | blocked: milestone gate (M5); with Q176 |
 | Q464 | **SW6, the slow world itself** (Q331, D19; with look, world, QA; W44 q1): a `SYSTEM_BODIES` row with μ, a place in the body tree, `th0` for hot poles at perihelion, `BODY_CAT`, the look (grey, craters, lobate scarps, hollows), ground with polar cold traps; 6.6× Tellus's sunlight | M5 | L | 🖥 | blocked: milestone gate (M5); after Q176, Q177 |
 | Q531 | **EVA E0, the movement test ground** (EVA.md § 6a, D27): `sim/eva.js` (one body with contact, push-off strides, a tether, hand over hand along rails) and a screen at `?eva-lab` and in the Rover yard's menu; gravity by body, a slider, 0 g, a spinning hull; the course; pause, slow motion, step, reset, debug drawing, readout, tweak panel, record/replay; a headless twin. Slices E0a (flat + slopes) → E0b (stairs, ladder, gaps, rough) → E0c (0 g hall) → E0d (tweaks, replay, study). Caio sees E0a first | M3 | M–L | 🖥 | E0a ✓ v1.263 (`eva-lab.html`, `sim/eva.js`; notes space § v1.263; TESTING 334); E0b rough ground ✓ v1.267 (notes space § v1.267); **rest of E0b next** (stairs, ladder, gaps, mocks), then E0c, E0d |
+| Q590 | **The EVA rubble-lane check depends on the Node version** (space-33, `tests/space.mjs:984`): run alone, Node 22 walks the Tellus walker *through* the boulders with a foot 0.79 m up (FAIL), Node 24 stops it at z 30.6, foot 0.17 m (PASS). The boulder step-up is decided by rounding: make the walker's choice robust (or the check honest about it), then CI can test on more than one Node — orchestrator 2026-11-11, CI runs 43111935792 / 43111940718 | M2 | S | ⚙ | **ready** (the EVA session knows the walker best) |
+| Q591 | **The staging check (aerofx-54, `tests/look.mjs:1213`, Q564) is a coin flip at its edge**: it wants the gas ring more than 3 m off the seam without the fall (`d0 > 3`), and `sepFx` draws the puffs with `Math.random`; CI on `r1d` (2026-11-11) read "3.0 m" and failed, the same code passed on `r10`. Seed the puffs in the test (or test a margin the spread can't cross) | — | XS | ⚙ | ready (look & sound, effects) |
 | Q533 | **EVA slice E1, out of the hatch** (design desk 2026-11-06, EVA.md, W45 defaults; with look & sound, parts & pad beat): an EVA button on a crewed vessel in orbit with a hatch; the school's spacewalk suit (CREW § suits) tethered beside it; a backpack or umbilical timer; the first spacewalk as a world first raced by rivals; era events that cost time (a ballooned suit, a fogged visor, a hatch that won't close; EVA.md § 5). No hull path yet (E3) | M3 | M | 🖥 | ready **after Q531** (E0, D27) |
 
 ### world — the planet, sites, geography, Selene's ground (was terrain)
@@ -315,6 +328,12 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 
 ### QA — robot playtester, tester menu, TESTING/PLAYTEST upkeep, balance runs (was playtest + tester)
 Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester` (branch `tester`, port 8797). Playtest intake (Q60) needs no worktree: it edits docs in the main clone.
+
+#### 🖥 checks (the test bench drains these, oldest first; any session adds a row)
+
+| # | Branch @ commit | Run | Passing looks like | Asked by | State |
+|---|---|---|---|---|---|
+
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q60 | **Standing role, playtest intake:** when Caio pastes raw feedback ("the gantry looks odd at night"), turn it into PLAYTEST items: symptom, a lead, a priority (P1–P3), an owner lane; one line per item under *Proposed* here; a TESTING row's `#` cell pointed at it if one applies. **No game code.** Never closes: start one whenever Caio has feedback | — | S | 📝 | standing |
@@ -372,7 +391,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | R1d | **The loader fills a save from the schema**; then retire `\|\|` reads lazily by lane (after R1a ✓ v1.292, R1b ✓ v1.293, R1c ✓ v1.296) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ✓ v1.309 |
 | R2 | 📝 **Test sections run isolated** (13+ checks differ between smoke and the full run; a fresh `PROG`/`api` per section or snapshot/restore) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform, QA | M | 📝 | **plan ✓** `REVIEW-2026-11-11.md § 3` (a fresh SIM per section already passes: 271 sections, 701 checks; prototype `review/2026-11-11/iso.mjs`); build ready |
 | R3 | **A lint step in `--smoke`**: swallowed code after `//` (R4's five lines as fixtures), `no-undef` across the classic scripts' shared scope (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | **plan ✓** `REVIEW-2026-11-11.md § 4` (prototypes `review/2026-11-11/swallow.mjs`, `app/scan.cjs`, `app/B_reach.cjs`); build ready |
-| R5 | **Smoke is 191 s, not ~25 s**: refresh `SLOW` in `shards.mjs`, fix the documented times, keep an economy section in smoke (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | ready |
+| R5 | **Smoke is 191 s, not ~25 s**: refresh `SLOW` in `shards.mjs`, fix the documented times, keep an economy section in smoke (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | platform | S | ⚙ | **ready, next for platform** (orchestrator 2026-11-11: every session runs smoke; ~7× shorter) |
 | R6 | **Tests for six survived mutations** (fuel price, client opinion sign, `safetyReview`, debris drag, the drag-reversal limiter, debt from half of income) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA | S | ⚙ | ready |
 | R7 | **Stop testing pictures with regexes**: pixel checks on the reference views where the GPU bench runs, delete the rest; fix the vacuous flow check (`tests/flow.mjs:816`), wall-clock `tests/vehicle.mjs:350`, core §2, `Math.random` in core (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA | M | 🖥 | ready |
 | R8 | **Repair the robot playtester and run it on a schedule** (default-output rows fail with `ReferenceError: PRESETS / cam / go`) (review 2026-11-09, `REVIEW-2026-11-09.md § 2`) | QA (test bench) | S | 🖥 | ready |
@@ -454,4 +473,3 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 | W51 | **Does contact limit the first orbit on Normal?** (Q574's plan, notes/space.md § "Plan: contact limits uncrewed flight"; default if silent: **(a) yes, with a launch range**). Measured: with the pad's station alone every first-orbit burn is out of contact (the Beeper's by 78 s) and the player has 64–107 s after the cutoff to store it. **(a, default)** the rule applies from the first flight and every site has a launch range, the pad plus one tracking ship 700 km downrange: eastward launches stay in contact through insertion, the first orbit plays as today, and the rule first bites on *Passenger: one orbit*'s return, the weather satellite's polar insertion and the TV transfer; Hard drops the ship; **(b)** no ship: the stored burn is the first orbit's lesson (it works: 108 × 109 km against 103 × 109 km guided), at the cost of the hardest minute of the first hour; **(c)** the rule starts after *The beeper* | Q582–Q587 |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-| space — **The EVA rubble-lane check depends on the Node version** (space-33, `tests/space.mjs:984`): run alone, Node 22 walks the Tellus walker *through* the boulders with a foot 0.79 m up (FAIL), Node 24 stops it at z 30.6, foot 0.17 m (PASS). The boulder step-up is decided by rounding: make the walker's choice robust (or the check honest about it), then CI can test on more than one Node — orchestrator 2026-11-11, CI runs 43111935792 / 43111940718 |
