@@ -85,7 +85,7 @@ const GENES = [   // [key, group, label, default, low, high]
   ['sex', 'Person', 'Sex: female–male', .5, 0, 1], ['age', 'Person', 'Age: young–old', .2, 0, 1],
   ['af', 'Person', 'Population: African', 1, 0, 1], ['as', 'Person', 'Population: Asian', 1, 0, 1], ['ca', 'Person', 'Population: European', 1, 0, 1],
   ['wt', 'Person', 'Weight: thin–heavy', 0, -1, 1], ['ex', 'Person', 'Exaggerate', 1, .3, 3],
-  ['np', 'Style', 'Planes: few–many', .36, 0, 1], ['nf', 'Style', 'Nose bridge: natural–one plane', 1, 0, 1], ['nw', 'Style', 'Bridge width', 1.2, .5, 1.8], ['nt', 'Style', 'Bridge: even–wider at the tip', .3, 0, 1], ['ol', 'Style', 'Edge lines', .35, 0, 1],
+  ['np', 'Style', 'Planes: few–many', .36, 0, 1], ['nf', 'Style', 'Nose bridge: natural–one plane', 1, 0, 1], ['nw', 'Style', 'Bridge width', 1.2, .5, 1.8], ['nt', 'Style', 'Bridge: even–wider at the tip', .3, 0, 1], ['bf', 'Style', 'Brow: natural–one straight ridge', 1, 0, 1], ['bo', 'Style', 'Brow overhang', .4, 0, 1], ['bt', 'Style', 'Brow: outer end down–up', 0, -1, 1], ['ol', 'Style', 'Edge lines', .35, 0, 1],
   ['ht', 'Hair', 'Volume on top', .5, 0, 1], ['hq', 'Hair', 'Front: flat–quiff', .35, 0, 1], ['hsd', 'Hair', 'Volume at the sides', .3, 0, 1],
   ['bk', 'Paint', 'Eyebrow weight', 0, 0, 1], ['st', 'Paint', 'Skin tone: light–deep', .22, 0, 1],
   ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['lt', 'Paint', 'Lip colour', .7, 0, 1], ['hg', 'Paint', 'Comb grooves', .5, 0, 1],
@@ -192,7 +192,7 @@ function refine(S, P, n) { n = n || 3; const { ptr, idx, w } = S, N = ptr.length
 // The points beside the strip follow, so the nose's sides run up to the edges. When the planes are cut (below), the
 // strip's points may only merge into each other, and its edges and corners stay: the plane survives at every level.
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-let RIDGE = [], NSV = [], STRIP = [], LINES = null, BCOL = [];   // LINES: 16 in the strip, 1 / 2 on its left / right edge, 4 / 8 on its top / bottom edge
+let RIDGE = [], NSV = [], STRIP = [], LINES = null, BCOL = [], BROW = [];   // LINES: 16 in the strip, 1 / 2 on its left / right edge, 4 / 8 on its top / bottom edge
 function noseInit(A, quads) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 + 1] / MH.eye.length;
   const eq = new Map(), nb = new Map(), ek = (a, b) => a < b ? a * NV + b : b * NV + a;
   for (const q of quads) for (let j = 0; j < 4; j++) { const a = q[j], b = q[(j + 1) % 4], k = ek(a, b); if (!eq.has(k)) eq.set(k, []); eq.get(k).push(q);
@@ -208,7 +208,21 @@ function noseInit(A, quads) { let ey = 0; for (const i of MH.eye) ey += A[i * 3 
   RIDGE = chain; STRIP = []; LINES = new Uint16Array(NV); const n = chain.length, yT = A[chain[0] * 3 + 1], yB = A[chain[n - 1] * 3 + 1], cols = [[chain, 0]];
   for (const sg of [1, -1]) { const c1 = side(chain, sg), c2 = side(c1, sg); cols.push([c1, .5 * sg], [c2, sg]); if (sg > 0) BCOL = c2; }
   for (const [col, s] of cols) col.forEach((i, k) => { if (i < 0) { console.error('nose strip: the grid breaks at row', k); return; }
-    STRIP.push([i, (yT - A[chain[k] * 3 + 1]) / (yT - yB), s]); LINES[i] = 16 | (s === 1 ? 1 : 0) | (s === -1 ? 2 : 0) | (k === 0 ? 4 : 0) | (k === n - 1 ? 8 : 0); }); }
+    STRIP.push([i, (yT - A[chain[k] * 3 + 1]) / (yT - yB), s]); LINES[i] = 16 | (s === 1 ? 1 : 0) | (s === -1 ? 2 : 0) | (k === 0 ? 4 : 0) | (k === n - 1 ? 8 : 0); });
+  // the brow line: from each top corner of the bridge, one row of the grid up and then outward along it to past the eye
+  BROW = []; let ex = 0; for (const i of MH.eye) ex += Math.abs(A[i * 3]) / MH.eye.length;
+  for (const sg of [1, -1]) { const corner = cols.find(c => c[1] === sg)[0][0]; let u = -1; for (const j of nb.get(corner)) if (!LINES[j] && A[j * 3 + 1] > A[corner * 3 + 1] && (u < 0 || A[j * 3 + 1] > A[u * 3 + 1])) u = j;
+    if (u < 0) { console.error('brow: no row above the bridge'); continue; } const ch = [corner, u]; let cur = u;
+    while (sg * A[cur * 3] < ex + .085 && ch.length < 14) { let nx = -1, bs = 0; for (const j of nb.get(cur)) { if (ch.includes(j) || LINES[j]) continue; const sc = sg * (A[j * 3] - A[cur * 3]) - 2 * Math.abs(A[j * 3 + 1] - A[cur * 3 + 1]); if (sc > bs) { bs = sc; nx = j; } }
+      if (nx < 0) break; ch.push(nx); cur = nx; }
+    const x0 = Math.abs(A[corner * 3]), x1 = Math.abs(A[cur * 3]); ch.forEach((i, k) => { if (k) BROW.push([i, clamp((Math.abs(A[i * 3]) - x0) / (x1 - x0), .02, 1), corner, cur]); LINES[i] |= (sg > 0 ? 512 : 1024) | (i === cur ? 2048 : 0); }); } }
+// The brow: its points are put on one straight line (seen from the front) from the bridge's top corner to the brow's outer
+// end, and pushed forward so the ridge overhangs the eye. They keep each face's own depth, so a heavy brow stays heavy.
+// When the planes are cut, a point of the line merges only along the line, and its ends stay.
+function browStyle(P, g) { if (g.bf <= 0) return P; const E = new Map(); for (const b of BROW) if (!E.has(b[3])) E.set(b[3], [P[b[3] * 3], P[b[3] * 3 + 1]]);
+  for (const [i, t, c, e] of BROW) { const en = E.get(e), yI = P[c * 3 + 1], yE = mix(en[1], yI, .5) + g.bt * .03;
+    P[i * 3] = mix(P[i * 3], mix(P[c * 3], en[0], t), g.bf); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yI, yE, t), g.bf); P[i * 3 + 2] += g.bf * g.bo * .03 * sstep(0, .3, t); }
+  return P; }
 // The nose's underside is a second built plane: from the bridge's bottom edge (the tip) back to the base of the nose,
 // as wide there as the wings. Its points are the skin under the nose that lies near that plane, found once on the
 // average head; the nostrils (deep tubes in MakeHuman's mesh) are cut out and closed over. The rim of the patch is put
@@ -257,7 +271,7 @@ function underInit(A, tr, g) { UNDER = []; const dbg = window.UNDERDBG = {};
     let [a, s] = P2.get(i); a = clamp(a, .03, .97); s = clamp(s, -.97, .97); if (l & 64) s = 1; if (l & 128) s = -1; if (l & 256) a = 1;
     LINES[i] = 32 | l; UNDER.push([i, a, s]); }
   return out; }
-function noseStyle(P, g) { const f = g.nf; if (f <= 0) return P;
+function noseStyle(P, g) { const f = g.nf; if (f <= 0) return browStyle(P, g);
   const yS = P[SUBN * 3 + 1], zK = mix(P[SUBN * 3 + 2], P[ALAR * 3 + 2], .5), Wa = Math.abs(P[ALAR * 3]) * .95;   // the base of the nose and the wings, before anything moves
   const iT = RIDGE[0], iB = RIDGE[RIDGE.length - 1], yT = P[iT * 3 + 1], zT = P[iT * 3 + 2], yB = P[iB * 3 + 1], zB = P[iB * 3 + 2], W0 = .022 * g.nw * (1 - .5 * g.nt), W1 = .022 * g.nw * (1 + .5 * g.nt);
   const B = BCOL.map(i => [P[i * 3 + 1], Math.abs(P[i * 3]), P[i * 3 + 2]]).sort((a, b) => b[0] - a[0]);   // the strip's edge on this face before it is moved: height, half-width, depth
@@ -270,7 +284,7 @@ function noseStyle(P, g) { const f = g.nf; if (f <= 0) return P;
   for (let k = 0; k < moved.length; k += 3) { P[moved[k] * 3] = moved[k + 1]; P[moved[k] * 3 + 2] = moved[k + 2]; }
   for (const [i, t, s] of STRIP) { P[i * 3] = mix(P[i * 3], s * mix(W0, W1, t), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yT, yB, t), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zT, zB, t), f); }
   for (const [i, a, s] of UNDER) { P[i * 3] = mix(P[i * 3], s * mix(W1, Wa, a), f); P[i * 3 + 1] = mix(P[i * 3 + 1], mix(yB, yS, a), f); P[i * 3 + 2] = mix(P[i * 3 + 2], mix(zB, zK, a), f); }
-  return P; }
+  return browStyle(P, g); }
 
 // ---- planes: the skin simplified by collapsing edges, once, on the average head
 let SEQ = [], SKT = null, SKN = 0, EYES = null, LIPV = null, SCALP = null;
@@ -467,7 +481,7 @@ function changed() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdi
 function renderEdit() { const t0 = performance.now(); uploaded = null; upload(cur); $('stat').textContent = `mesh ${(performance.now() - t0).toFixed(0)} ms, ${INFO.planes} planes on the skin`;
   render([[$('vq'), cur, orbit], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
 $('reset').onclick = () => { cur = house(); sync(); changed(); };
-$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt']) cur[k] = o[k]; sync(); changed(); };
+$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt', 'bf', 'bo', 'bt']) cur[k] = o[k]; sync(); changed(); };
 $('bald').onchange = () => { bald = $('bald').checked; renderEdit(); };
 $('apply').onclick = () => { const g = fromDNA($('dna').value); if (g) { cur = g; sync(); changed(); } };
 $('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
@@ -481,12 +495,12 @@ function renderSheet() { const grid = $('grid'); grid.innerHTML = ''; const jobs
     cell.innerHTML = `<canvas class="t" width="250" height="250"></canvas><canvas class="t th" width="48" height="48"></canvas><div class="sig">${TAG.get(g) || ''}</div>`;
     const [big, th] = cell.querySelectorAll('canvas'); cell.onclick = () => { cur = { ...g }; sync(); setMode('edit'); changed(); }; grid.appendChild(cell); jobs.push([big, g, 'q'], [th, g, 'q']); });
   render(jobs); }
-const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt']) g[k] = cur[k]; return g; });
+const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'np', 'ol', 'nf', 'nw', 'nt', 'bf', 'bo', 'bt']) g[k] = cur[k]; return g; });
 $('fresh').onclick = () => { pop = newPop(); renderSheet(); };
 function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m)); document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
   if (m === 'edit') renderEdit(); else { if (!pop.length) pop = newPop(); renderSheet(); } }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
-window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, strip: () => { const M = noseStyle(frame(shape(cur)), cur), L = level(Math.round(60 * Math.pow(SKN / 60, cur.np))), left = new Set(); let n = 0; for (let i = 0; i < L.length; i += 3) { const k = (LINES[L[i]] ? 1 : 0) + (LINES[L[i + 1]] ? 1 : 0) + (LINES[L[i + 2]] ? 1 : 0); if (k === 3) n++; for (let j = 0; j < 3; j++) if (LINES[L[i + j]]) left.add(L[i + j]); } return { rows: RIDGE.length, points: STRIP.length, left: left.size, tris: n }; }, sheet: () => { pop = newPop(); setMode('sheet'); } };
+window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, strip: () => { const M = noseStyle(frame(shape(cur)), cur), L = level(Math.round(60 * Math.pow(SKN / 60, cur.np))), left = new Set(); let n = 0; for (let i = 0; i < L.length; i += 3) { const k = (LINES[L[i]] ? 1 : 0) + (LINES[L[i + 1]] ? 1 : 0) + (LINES[L[i + 2]] ? 1 : 0); if (k === 3) n++; for (let j = 0; j < 3; j++) if (LINES[L[i + j]]) left.add(L[i + j]); } return { brow: BROW.length, rows: RIDGE.length, points: STRIP.length, left: left.size, tris: n }; }, sheet: () => { pop = newPop(); setMode('sheet'); } };
 (async () => {
   P0 = await unpack(MH.v, Float32Array); NV = MH.nV; IDX = await unpack(MH.idx, Uint16Array); DEL = await unpack(MH.d, Int16Array);
   const fq = await unpack(MH.faces, Uint16Array), fm = await unpack(MH.fmat, Uint8Array), lip = await unpack(MH.lip, Uint8Array), faces = [];
@@ -497,7 +511,7 @@ window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house
   EYES = { src: esrc, S: subdiv({ nV: esrc.length, faces: ef, fmat: ef.map(() => 2), sharp: new Map(), corner: new Set() }), c: [0, 0, 0] }; EYES.q = Int32Array.from(EYES.S.mesh.faces.flat());
   const hl = a => a < .7 ? .86 : a < 1.3 ? mix(.86, .64, (a - .7) / .6) : a < 1.9 ? mix(.64, .58, (a - 1.3) / .6) : mix(.58, .3, clamp((a - 1.9) / .9, 0, 1));   // the hairline: forehead, temple, over the ear, nape
   SCALP = new Uint8Array(NV); for (let i = 0; i < NV; i++) SCALP[i] = A[i * 3 + 1] > hl(Math.abs(Math.atan2(A[i * 3], A[i * 3 + 2] + .07))) ? 1 : 0;
-  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); { const t2 = underInit(A, tr, house()); tr.length = 0; for (const v of t2) tr.push(v); } NSV = [...new Set(tr)]; noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
+  NSV = [...new Set(tr)]; noseInit(A, faces.filter((f, i) => fm[i] === 0)); if (Q.get('under') === '1') { const t2 = underInit(A, tr, house()); tr.length = 0; for (const v of t2) tr.push(v); }   // parked: Caio preferred the nose with the bridge alone NSV = [...new Set(tr)]; noseStyle(A, house());   // the planes are cut on the average head already in the house style, so they keep its edges
   const t0 = performance.now(), left = planesInit(A, tr); console.log('planes: collapsed', SKN, 'points to', left, 'in', Math.round(performance.now() - t0), 'ms'); window.PLANES = [SKN, left, Math.round(performance.now() - t0)];
   cur = fromDNA(Q.get('dna')) || house(); sync(); $('dna').value = toDNA(cur); setMode(Q.get('mode') === 'sheet' ? 'sheet' : 'edit');
 })();

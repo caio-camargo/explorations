@@ -7048,4 +7048,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   on one plane from the tip to the nose's base, its rim on four edges. Seen: the nose is a prism of four planes at
   every plane count tried and on the sheet. Rough: no nostrils, no wing bulge. FACES 0.1.13 § 10, README 0.1.27.
   **Next:** Caio's look; candidates: the brow line, the lips, the lids.
+- **Follow-up 8: underside parked, the brow ridge (faces5).** Caio: "the earlier nose was better, simpler. we can
+  stick with that for now, and yes, brow ok". PARKED: the nose's underside plane, parked at: working, off by default,
+  `?under=1`. New: the brow's points on one straight line from the bridge's top corner to past the eye, pushed
+  forward, protected when the planes are cut. Seen: a straight brow edge on every face of the sheet; modest change
+  at the house setting. FACES 0.1.14 § 10, README 0.1.28. **Next:** Caio's look; then lips or lids.
 

@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.27 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.28 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -345,7 +345,11 @@ tip*. Stills: `nose-plane-closeup.png`, `nose-plane-front.png`, `nose-plane-many
 (the earlier `nose-flat-*` stills are the first attempt, which Caio rejected).
 **The nose's underside is a second built plane** (step 2): from the tip back to the nose's base, the nostrils closed
 over; with the bridge and the two sides the nose is a prism of four planes. Stills: `nose-under-closeup.png`,
-`nose-under-front.png`, `nose-under-many-planes.png`, `sheet-nose-under.png`.
+`nose-under-front.png`, `nose-under-many-planes.png`, `sheet-nose-under.png`. **Parked** (Caio preferred the bridge
+alone); `?under=1` shows it.
+**The brow is one straight ridge** (step 3) out of the bridge's top corner, overhanging the eye: *Brow: natural–one
+straight ridge*, *Brow overhang*, *Brow: outer end down–up*. Stills: `brow-ridge-closeup.png`, `brow-ridge-front.png`,
+`brow-natural-front.png`, `sheet-brow.png`.
 
 **Pick:** _(Caio: is this the direction?)_
 

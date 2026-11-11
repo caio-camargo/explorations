@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.13 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.14 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -401,4 +401,21 @@ the nose is a prism of four planes (bridge, two sides, underside), the underside
 it holds at .15, .36 and .6 on the planes slider and on the sheet of twelve. Rough: no nostrils and no bulge of the
 wings (the sides run straight from the bridge's edge to the underside's edge). Not checked: nose sliders at their
 ends, the nose expressions, how the upper lip meets the back edge on faces with a short lip.
+**Parked the same day** (Caio: "i think the earlier nose was better, simpler. we can stick with that for now"): the
+underside plane is off; the nose is the bridge plane alone, and the cutting shapes the rest. The code stays in
+faces5; `?under=1` brings it back.
+
+**Step 3: the brow as one straight ridge** (2026-11-10; Caio: "brow ok"). `browStyle` in faces5: from each top corner
+of the bridge, one row of the grid up and then outward along that row to past the eye (5 points a side). Seen from
+the front they are put on one straight line from the bridge's corner to the brow's outer end (the end's height is
+halfway between its own and the corner's, so the line rises a little outward), and pushed forward so the ridge
+overhangs the eye; each keeps its face's own depth, so a heavy brow stays heavy. When the planes are cut, a point of
+the line merges only along the line and its two ends stay. Sliders: *Brow: natural–one straight ridge* (house 1),
+*Brow overhang* (.4, up to .03 head heights), *Brow: outer end down–up* (0).
+Seen (GPU; `brow-ridge-closeup.png`, `brow-ridge-front.png` against `brow-natural-front.png`, `sheet-brow.png`): the
+brow is one straight edge running out of the bridge's top corner, the socket under it one dark plane; without it
+the edge dips in a V over the eye. On the sheet of twelve every face has it. Rough: the difference from the
+natural brow is modest at the house setting; the line ends just past the eye and the temple beyond is whatever the
+cutting left; the forehead above is a fan of triangles. Not checked: the overhang and tilt sliders at their ends,
+the brow sliders and expressions of MakeHuman (raise, frown) with the ridge on.
 
