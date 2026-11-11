@@ -7189,3 +7189,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   starved; headless with a fresh server it loads in ~1 s.
 - **Next:** Q572 (the unlock overlay). The starts are abstracted careers (fast, few contracts): if they feel too rich or
   too thin, tune `chapters.mjs` (goals, seed) and regenerate.
+
+- **Later again:** Caio answered **W51** (the default: contact limits the first orbit, with the tracking ship); Q582 now
+  waits only on Q581 and W48's freeze. He asked what planes like KSP's would take: sized in
+  explorations/launchpad/notes/vehicle.md § "Scope: winged flight" (three tiers; today's plates give a lift-to-drag
+  of about 4 at wing size, `review/2026-11-11/glide.mjs`). Nothing queued: he is holding scope.
