@@ -10,7 +10,7 @@
 {
   const vm = await import('node:vm'), fs = await import('node:fs'), files = pageScripts();
   const read = f => fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8'), sim = files.filter(f => f.startsWith('sim/'));
-  const ctx = vm.createContext({ console, performance }), bad = [];
+  const ctx = vm.createContext({ console, performance, structuredClone }), bad = [];   // (the browser's globals the SIM uses at load)
   for (const f of sim) try { new vm.Script(read(f), { filename: f }).runInContext(ctx); } catch (e) { bad.push(`${f}: ${e.message}`); }
   check('split: each SIM file loads as its own script, in page order (no top-level call into a later file)',
     !bad.length && vm.runInContext('typeof physStep === "function" && typeof dispatchRun === "function" && PROG.funds > 0', ctx), bad.join('; ') || `${sim.length} files`);
