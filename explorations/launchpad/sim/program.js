@@ -243,7 +243,7 @@ function advanceDays(d,halt){if(!(d>0))return;const t0=PROG.day,t1=t0+d;
 const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false,log:false,record:false,fuel:false},TEST_FUNDS=1e5;
 // the tester's log (QUEUE Q265, PLAYTEST #65): with TEST.log on, logEv(kind, text) keeps a line (sim time, world day) in LOG
 // and hands it to HOOK.log (app/testlog.js: the panel, the console, the download). Off, it returns at once, so the SIM
-// can call it anywhere. Kinds: stage, contact, heat, pay, msg, destroyed, news, money, contract, mission, save, tester.
+// can call it anywhere. Kinds: stage, contact, heat, pay, msg, destroyed, news, money, contract, mission, save, tester, error (app/fault.js).
 const LOG=[],LOG_MAX=5000;
 function logEv(kind,text){if(!(TEST.on&&TEST.log))return;const e={t:simT,day:PROG.day||0,kind,text};LOG.push(e);
   if(LOG.length>LOG_MAX)LOG.splice(0,LOG.length-LOG_MAX);HOOK.log(e)}

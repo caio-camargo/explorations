@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.54 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.55 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -470,3 +470,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.296 — one serializer: `progJSON`/`progRestore` for the save, revert, simulator, flights from orbit and the recorder; the tester is told of values JSON would lose (R16 named) (2026-11-10, review fixes, QUEUE R1c)
 - v1.308 — a bad save no longer bricks the page: `progLoad` repairs kinds from `PROG_SCHEMA`, probes a muted day, falls back to a new program; the bad text kept as `-bad`; quota errors said; a second tab stops saving (2026-11-11, platform, QUEUE R10)
 - v1.309 — the loader fills a save from the schema: every field present, a save from before `wseed` keeps world 12345, unknown fields kept and logged; the `||` reads retire lazily (2026-11-11, platform, QUEUE R1d)
+- v1.310 — a frame that throws no longer ends the game: `frame()` always schedules the next one; `app/fault.js` catches errors and lost promises with a panel (Reload, Export save, the old save R10 kept, Keep playing) (2026-11-11, platform, QUEUE R9)

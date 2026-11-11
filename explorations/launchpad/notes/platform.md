@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -939,3 +939,28 @@ with (`progFresh` would draw a new world). No `SAVE_V` bump: filling defaults ch
   its default's kind, funds 5, world 12345, the unknown field kept and logged; a save's own values (`done`, `bailouts`,
   `wseed`) are kept. platform-7's played-save check (a played save loads as a plain restore would) still passes: a
   program from `programNew` already has every field.
+
+## v1.310 — a frame that throws no longer ends the game (2026-11-11, platform, QUEUE R9)
+
+Before: `frame()` (app/loop.js) called `requestAnimationFrame(frame)` as its last line, so one exception anywhere in a
+frame (the sim, the HUD, the render) skipped it and the game froze for good, with nothing on screen; the page had no
+error handler at all (review 2026-11-09 § 2).
+- `frame(now)` is now `try{frameBody(now)}catch(e){gameFault(e,'frame')}requestAnimationFrame(frame)`: the next frame
+  is scheduled whatever happened. `frameBody` is the old body.
+- **`app/fault.js`** (new, loaded first of the app scripts, so it also catches an app script that throws while loading):
+  `window` `error` and `unhandledrejection` handlers and `gameFault(e, src)`. A panel at the bottom: "Something went wrong.
+  The game is still running but may misbehave; export your save before you reload", the message, where (`app/loop.js:53`,
+  from the stack), how many times; *Reload*, *Export save* (`progJSON()` as `launchpad-save-day<N>.json`), *Export the old
+  save* when R10 kept an unloadable one (`launchpad-save-unloadable.json`), *Keep playing* (hides it until an error it
+  hasn't shown). The first time each error is seen it goes to the console; every fault goes to the tester's log
+  (`logEv('error', …)`).
+- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (there is no Import yet: a save
+  file goes back by `localStorage.setItem` in the console).
+- Not done: a frame that throws every time keeps throwing (the panel counts it); no automatic pause.
+- **Checked in the page, headless** (scratch run of `review/2026-11-11/app/harness.cjs`, the R34 harness, 64 s boot on
+  the shared machine): boot 0 errors; `testTopUp` made to throw, 5 frames: 5 faults, none escaped, the next frame
+  scheduled each time, the panel shows "boom in a frame · app/loop.js:53 · 5×" with its buttons; restored, the game runs
+  on; a window `error` and a rejected promise both reach it; *Keep playing* hides it.
+- Test platform-9: the static shape of `frame`/`frameBody` and the script order; `app/fault.js` run against a stub
+  document (the panel's content, the count, Keep playing, a new error bringing it back, the old-save button only with a
+  `-bad` copy).
