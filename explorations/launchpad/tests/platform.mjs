@@ -245,7 +245,7 @@
 // its own; app/fault.js loads first of the app scripts. Run (app/fault.js against a stub document): an error, a script
 // error and a rejected promise each reach the panel, with what broke, where and how often; Keep playing hides it until an
 // error it hasn't shown; Export the old save appears only when R10 kept one. (The page itself, headless: a scratch run
-// of review/2026-11-11/app/harness.cjs, notes/platform.md v1.310; R34 adopts that harness.)
+// of review/2026-11-11/app/harness.cjs, notes/platform.md v1.311; R34 adopts that harness.)
 {
   const { readFileSync } = await import('node:fs'), rd = f => readFileSync(new URL(f, import.meta.url), 'utf8');
   const loop = rd('./app/loop.js'), fault = rd('./app/fault.js'), idx = rd('./index.html');

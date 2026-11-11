@@ -216,7 +216,7 @@ function progProbe(home){const snap=progJSON(),H={news:HOOK.news,msg:HOOK.msg,sa
 // (R1d) A save loads onto every row's default (progFresh), then PROG's starting literal (so a save from before `wseed`
 // keeps world 12345, as it always loaded), then the save: an old save gets every field, and a field read with `||d` no longer
 // needs its `||` (retire them lazily, by lane, as files are touched; platform-6 keeps the ones left equal to the table).
-// Absent and default read alike everywhere (audit 2026-11-11, notes/platform.md v1.302). Fields this game doesn't know
+// Absent and default read alike everywhere (audit 2026-11-11, notes/platform.md v1.310). Fields this game doesn't know
 // (a newer build's, or a removed one's) are kept as they are and named in the tester's log (PROG_UNKNOWN).
 let PROG_UNKNOWN=[];
 function progLoad(j,home){PROG_REPAIRED=[];PROG_UNKNOWN=[];

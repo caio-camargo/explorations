@@ -150,3 +150,38 @@
     `from ${b0}, in Selene's sphere after ${P.t.toFixed(0)} s, periapsis ${pe5.toFixed(1)} km (asked 100)`);
   P.TEST.on = false;
 }
+
+// qa-8. Chapter starts (QA, QUEUE Q571; PROGRESSION.md § 6): starts/<id>.js are saves made by `node chapters.mjs`
+// (career.mjs's scripted player on the real economy, its registry through satRegister). Each loads as the page loads a
+// save, carries only PROG_SCHEMA fields and nothing JSON loses, has its milestone done without a tester mark, its
+// registry (the Beeper; a habitat with two free ports; a lander on Selene), runs 40 days, and can launch what its next
+// mission takes. The title menu lists the same three, in their own slot. A failure here after a schema change: run
+// `node chapters.mjs` and commit starts/.
+{
+  const IDS = ['orbit', 'station', 'selene'], WANT = { orbit: ['beeper'], station: ['beeper', 'station1', 'maxqabort'], selene: ['beeper', 'station1', 'maxqabort', 'selland'] };
+  const res = [];
+  for (const id of IDS) {
+    const D = new Function(src + 'return {PROG,PROG_SCHEMA,progLossy,progJSON,HOOK,TEST,MISSIONS,missionOpen,missionsInOrder,NEXT_PRESET,PRESETS,newShip,vesselCost,partLaunchWhy,missionTick,advanceDays,stFind,satsUp,landedUp,ensureBoard,load:j=>{Object.assign(PROG,j);HOME=PROG.home||0;RIVALS=raceSchedule();ensureBoard()},set S(v){S=v}}')();
+    D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+    const w = {}; new Function('window', readFileSync(new URL(`./starts/${id}.js`, import.meta.url), 'utf8'))(w); const C = (w.CHAPTER_SAVES || {})[id];
+    if (!C) { res.push({ id, ok: false, why: 'no save' }); continue; }
+    const extra = Object.keys(C.save).filter(k => !D.PROG_SCHEMA[k] || D.PROG_SCHEMA[k][1] === 'transient'), lossy = D.progLossy(C.save);
+    D.load(JSON.parse(JSON.stringify(C.save))); const P = D.PROG, J = JSON.parse(D.progJSON()), round = Object.keys(C.save).every(k => JSON.stringify(J[k]) === JSON.stringify(C.save[k]));
+    const done = WANT[id].every(k => P.done[k] && !P.done[k].test) && !Object.values(P.done).some(d => d.test), cheat = Object.entries(D.TEST).some(([k, v]) => v === true);
+    const reg = id === 'orbit' ? D.satsUp().some(q => q.sci) : id === 'station' ? !!D.stFind(s => s.berths > 0 && s.ports >= 2) : D.landedUp().some(q => q.bodyName === 'Selene');
+    const M0 = D.missionsInOrder(D.MISSIONS.filter(M => !P.done[M.id] && D.missionOpen(M)))[0], nx = C.meta.next || {};
+    const st = nx.preset ? D.PRESETS[nx.preset] : nx.stack, s = D.newShip(st), cost = D.vesselCost(s.parts).cost, locked = D.partLaunchWhy(s.parts);
+    s.landed = false; D.S = s; D.missionTick(s, 0, false); const launched = !!(s.rec && s.rec.launched);
+    let ran = true; try { D.advanceDays(40); } catch (e) { ran = false; }
+    const ok = !extra.length && !lossy.length && round && done && !cheat && reg && M0 && M0.id === nx.id && cost <= C.save.funds && !locked.length && launched && ran && isFinite(P.funds);
+    res.push({ id, ok, why: `${C.meta.name}: day ${Math.round(C.save.day)}, ${C.save.flights} flights, ${C.save.funds.toFixed(0)}M; next ${nx.id} (${nx.preset || 'stack'}, ${cost.toFixed(0)}M${locked.length ? ', locked ' + locked.map(x => x.k) : ''}${launched ? '' : ', not launched'})`
+      + (extra.length ? ` extra ${extra}` : '') + (lossy.length ? ` lossy ${lossy}` : '') + (round ? '' : ' not lossless') + (done ? '' : ' milestones') + (reg ? '' : ' registry') + (ran ? '' : ' days threw') });
+  }
+  check('chapter starts: each loads, carries only schema fields, has its milestone and registry, no tester marks, runs on, and can launch its next mission', res.every(r => r.ok), res.map(r => r.why).join(' · '));
+  const T = readFileSync(new URL('./app/title.js', import.meta.url), 'utf8'), S = readFileSync(new URL('./app/state.js', import.meta.url), 'utf8');
+  const names = [...T.matchAll(/\{id:'(\w+)',name:'([^']+)'\}/g)].map(m => m[1] + ':' + m[2]).join(','), w = {};
+  for (const id of IDS) new Function('window', readFileSync(new URL(`./starts/${id}.js`, import.meta.url), 'utf8'))(w);
+  check('chapter starts: the title menu lists the three (names as the saves have them), each into its own slot',
+    names === IDS.map(id => id + ':' + w.CHAPTER_SAVES[id].meta.name).join(',') && /data-chapter="\$\{c\.id\}"/.test(T) && /CHAPTER_KEY='launchpad-program-chapter',PROG_KEY=TEST\.on\?'launchpad-program-tester':PROG_SLOT\?CHAPTER_KEY:'launchpad-program-v1'/.test(S)
+      && /localStorage\.setItem\(TEST\.on\?PROG_KEY:CHAPTER_KEY/.test(T) && /HOOK\.save=\(\)=>\{\};location\.reload\(\)/.test(T), names);
+}

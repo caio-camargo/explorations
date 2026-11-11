@@ -205,7 +205,10 @@ HOOK.sep=sepFx;
 // tester mode (?tester in the URL) keeps its own program, so cheats never reach the career (TEST: the SIM tester block)
 TEST.on=(()=>{try{return new URLSearchParams(location.search).has('tester')}catch(e){return false}})();
 if(TEST.on)try{Object.assign(TEST,JSON.parse(localStorage.getItem('launchpad-tester-flags')||'{}'),{on:true})}catch(e){}
-const PROG_KEY=TEST.on?'launchpad-program-tester':'launchpad-program-v1';
+// a program begun from a chapter start (Q571, app/title.js) lives in a slot of its own, so the career is never read or
+// written: 'launchpad-slot' says which one the page opens ('chapter', else the career's)
+const PROG_SLOT=(()=>{try{return localStorage.getItem('launchpad-slot')==='chapter'}catch(e){return false}})();
+const CHAPTER_KEY='launchpad-program-chapter',PROG_KEY=TEST.on?'launchpad-program-tester':PROG_SLOT?CHAPTER_KEY:'launchpad-program-v1';
 // Save versions (QUEUE Q57). A save carries `ver`; a save without one is version 0. MIGRATE[n] takes a save from version n
 // to n+1, pure (the parsed JSON in, the same object out), and migrateSave runs the chain from the save's version up to
 // SAVE_V. When a change to PROG would break an old save, bump SAVE_V and add the step here, with a fixture in test.mjs

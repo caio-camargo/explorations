@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -140,7 +140,7 @@ behind Selene, or without an antenna), where today's link assumes deep-space ant
 ## 6. Order of work
 
 1. **Chapter starts** (Q571): saves at *first orbit done*, *first station up*, *landed on Selene*, with a prudent
-   player's funds, so Caio can play the middle of the game now.
+   player's funds, so Caio can play the middle of the game now. ✓ v1.309: the title's *Start at* line (`node chapters.mjs` remakes them).
 2. **The unlock overlay** (Q572) on today's 13 gated parts.
 3. **Plans**: the unlock map and chapters (Q573), contact limits (Q574). **Mock-up**: the tables (Q575).
 4. Builds, after Caio's answers and W48's freeze: the map's data and presets, chapters as events (Q576), contact
