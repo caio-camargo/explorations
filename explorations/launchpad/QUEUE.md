@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.230 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
+**Version**: 0.1.231 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -67,6 +67,7 @@ the feedback I paste into PLAYTEST items.* For the **test bench** (Caio's second
 
 ## Flags (read before merging)
 
+- **CI's one known flake: aerofx-54 (staging, Q564)** (orchestrator 2026-11-11): a red run whose only failure is "staging: the camera holds its target…" is Q591's random `d0`, not your change: `gh run rerun <id> --failed` and merge on green. Any other failure is yours.
 - **THE FULL SUITE RUNS IN CI NOW** (orchestrator 2026-11-11, Caio's call): push your branch, wait for GitHub Actions' full `node test.mjs` (`gh run watch`), merge when green; locally only `--smoke`/`--only`. GPU checks go to *🖥 checks* (QA section) for the test bench. Details: *Testing* under "How a session uses this"; recipe in `ACTIVE_WORK.md`. CI runs Node 24 (Q590: space-33 walks differently on 22).
 - **The world's dice are the calendar's** (v1.261, Q526, 2026-11-06): `advanceDays` (sim/program.js) now cuts world time at whole days; every world subsystem takes `(d, R, dd=d)` and rolls only on the piece that reaches a day (`R=null` between). `wseed` is fixed per save. **Everyone:** tests that pinned a seed's outcome may shift (core §18 moved seed 31 → 14); old saves' worlds shift from the next tick. **Economy:** offers flow much more (+71 % funds in career.mjs) → Q528. **Update v1.270 (Q528):** tourism and military rates cut (1/90, 1/100 a day); funds back near the old curve.
 - **A slow topple no longer destroys a craft** (v1.260, Q508, 2026-11-06): `groundCheck` → `tipFall`/`tipOver` in `sim/flight.js`; new `s.tipped`, `p.buried`. **Economy:** a tipped Selene lander still earns landing/sampling credit; Tellus refurbishment now scales each part by 1 − dmg (debris damage too); knobs `TIP_SAFE` 2, `TIP_BREAK` 6. **Vehicle/flow:** `vehicle-1`'s bare-slope check accepts lost or tipped; a small pod toppling on Tellus now survives.
@@ -300,6 +301,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: effects — plumes, plasma, vapor, dust, explosions, debris re-entry, bloom · worktree `launchpad-aerofx` (branch `aerofx`)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
+| Q591 | (**P1**, flaky gate) **aerofx-54's staging check fails about half its runs** (`tests/look.mjs:1213`, Q564): `d0 > 3` (the ring's offset without the fall) rides on the puffs' random velocities: CI got 2.8 and 3.0 (fail), 3.3 and 3.7 (pass) on the same code; `main` went red at `87dc112` for it. Seed the puffs in the check (or bound `d0` by what the spread allows), and run it ~10 times (`gh workflow run launchpad-tests.yml -f args="--only aerofx-54"`) — orchestrator 2026-11-11 | M2 | XS | ⚙ | **ready, first for effects or any lane** (it blocks every merge at random) |
 | Q319 | **BEAUTY B2, the flames:** sunlit plume scattering (the twilight jellyfish), vacuum plumes faint and propellant-coloured (not brown fog; soot fades with altitude), sea-level cores with structure, shock diamonds with a Mach disk, palettes against photos (kerosene, hydrolox, solids, hypergolics), the plume light brighter in HDR, a longer contrail and fuller pad cloud (paid by Q313), heat haze (High) | M2 | L | 🖥 | slice 1 ✓ v1.153 (vacuum glow cools, sunlit exhaust, turbulent core, Mach disk, kerolox curtain, hypergolic puff, plume light, contrail and wind shear; test aerofx-13; TESTING 235); heat haze ✓ v1.158 (test aerofx-17; TESTING 240); cluster lights ✓ v1.162 (test aerofx-19; TESTING 244). **Q319 done** |
 
 #### beat: sky & bodies — atmosphere, clouds, stars, how each body looks · worktree `launchpad-sky` (new, branch `sky`, port 8802; create it on first start)
