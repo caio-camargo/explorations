@@ -214,11 +214,33 @@ const SAVE_V=1,MIGRATE=[
   j=>{for(const q of j.sats||[])delete q.docked;j.rel=j.rel||{};j.op=j.op||{};if(!isFinite(j.funds))delete j.funds;if(!isFinite(j.day))j.day=0;return j}];   // 0 → 1: the loader's old fix-ups
 function migrateSave(j){if(!j||typeof j!=='object')return null;let v=Number.isInteger(j.ver)?j.ver:0;
   if(v>SAVE_V){j.newerSave=true;return j}for(;v<SAVE_V;v++)j=MIGRATE[v](j);j.ver=SAVE_V;return j}
-let progLoaded=false;try{const j=migrateSave(JSON.parse(localStorage.getItem(PROG_KEY)||'null'));if(j){progLoaded=true;Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked;debRestore();   // the last Debrief comes back (Q100)
-  if(j.newerSave){delete PROG.newerSave;setTimeout(()=>HOOK.msg&&HOOK.msg('This program was saved by a newer version of the game: some of it may not load right'),1500)}}}catch(e){}   // a flight in progress doesn't survive a reload
-if(!progLoaded)PROG.wseed=freshSeed();   // a new save gets a world of its own (Q529), not 12345 for every first career
-if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
-HOOK.save=()=>{try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,progJSON())}catch(e){}};
+// Loading (R10): progLoad (sim/program.js) repairs, derives and probes the save, and starts a new program if it can't. A
+// save that won't parse or load is first copied to PROG_BAD, so the new program's first save can't destroy it; with no
+// room for that copy, this tab never saves (progHeld). Nothing here throws: a bad save no longer bricks the page.
+// A flight in progress doesn't survive a reload.
+const PROG_BAD=PROG_KEY+'-bad',bootSay=(t,cls)=>setTimeout(()=>{HOOK.msg(t);if(cls)HOOK.news(t,cls)},1500);
+let progLoaded=false,progHeld=false,storeOK=true;
+{let raw=null,why=null;try{raw=localStorage.getItem(PROG_KEY)}catch(e){storeOK=false}
+  if(raw){let j=null;try{j=migrateSave(JSON.parse(raw))}catch(e){why='it is not readable'}
+    if(j){const e=progLoad(j),newer=PROG.newerSave;delete PROG.newerSave;
+      if(e){why=`it stops the game: ${e.message}`;console.error('launchpad: the saved program failed to load',e)}
+      else{progLoaded=true;
+        if(newer)bootSay('This program was saved by a newer version of the game: some of it may not load right');
+        if(PROG_REPAIRED.length)bootSay(`Parts of the saved program were damaged and are reset: ${PROG_REPAIRED.join(', ')}`,'warn')}}
+    else if(!why)why='it is not a program';
+    if(why){try{localStorage.setItem(PROG_BAD,raw)}catch(e){progHeld=true}
+      bootSay(progHeld?`The saved program can't be loaded (${why}), and there is no room to keep a copy: this tab won't save over it`
+        :`The saved program can't be loaded (${why}). A new program has started; the old one is kept in browser storage as "${PROG_BAD}"`,'bad')}}
+  if(!progLoaded&&!why){PROG.wseed=freshSeed();progDerive()}}   // no save: a world of its own (Q529), not 12345 for every first career
+// Saving (R10): a failed write is said (once a minute at most; quota is the likely one), not swallowed. Two tabs on one
+// program: the browser tells every other tab when one writes the save; from then on those tabs stop saving (they would
+// write their older program over it) and say so. Whichever tab saves first keeps the program.
+let saveSaidAt=-1e9;
+HOOK.save=()=>{if(progHeld)return;try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,progJSON())}
+  catch(e){const n=performance.now();if(storeOK&&n-saveSaidAt>60e3){saveSaidAt=n;
+    HOOK.msg(/quota/i.test(`${e.name} ${e.message}`)?'Could not save: browser storage is full. Free some (old autopilot tapes, other sites\' data) or progress is lost on reload':`Could not save the program (${e.message})`)}}};
+addEventListener('storage',e=>{if(e.key!==PROG_KEY||progHeld)return;progHeld=true;
+  const t='This program was saved in another tab: this tab no longer saves. Reload it to carry on here';HOOK.msg(t);HOOK.news(t,'bad')});
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
 function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pendingDrops[i];if(simT<d.impact.t)continue;pendingDrops.splice(i,1);

@@ -7170,3 +7170,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   not in low orbit; the dish and relay chains (Q338, Q217) are what make comms satellites matter.
 - **PARKED still:** R29b.
 - **Next:** Caio answers W50 and W51 (defaults hold); Q577 and Q581 are the first builds; Q582–Q585 wait on W48.
+
+- **Later the same session:** Caio answered W50 ("in general ok"; a development program may be new missions if not
+  repetitive) and stated a principle, now **D29: any flight can fulfil any mission**. QUEUE: W50 moved to DECISIONS,
+  Q577 ready, **Q588** (plan: qualification missions) and **Q589** (design: coming home, more than a parachute, from
+  his side note on airbrakes). PROGRESSION 0.1.3. W51 still open (default holds).

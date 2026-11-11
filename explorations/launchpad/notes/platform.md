@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -886,3 +886,34 @@ orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `
 - Test platform-6: no snapshot of `PROG` taken any other way (a mutation putting the save back on
   `JSON.stringify(PROG)` is caught); `progLossy` finds all seven kinds planted; 300 days of play lose nothing; the
   tester is told once about R16's bound; a restore drops a field added after the snapshot, and `newerSave` isn't written.
+
+## v1.308 — a bad save no longer bricks the page (2026-11-11, platform, QUEUE R10)
+
+The review (2026-11-09 § 2) found three saves that threw on every reload with no reset reachable: `{"ver":1,"home":99}`,
+`{"done":null}`, `{"rel":null}`. Reproduced headless: each loaded, then threw on the first world tick (`align` of an
+undefined power, `Object.keys(null)`, `null['0-1']`); so do `offers: 5` and `active: null`.
+- **`progLoad(j, home)`** (sim/program.js, after `progRestore`) is the one loader; the page and the recorder's `recLoad`
+  both call it. (1) The save goes onto `PROG_BASE` (PROG's starting literal, so a save missing `done`/`cert`/`atm` gets
+  them, as the old `Object.assign` did). (2) `progRepair`: a field whose kind differs from its `PROG_SCHEMA` default is
+  put back to the default (object, array, finite number, string, boolean; a null default takes anything), and a `home`
+  that is no power goes to 0. `PROG_REPAIRED` names them; the page says "Parts of the saved program were damaged and are
+  reset: done (null)". (3) `progDerive`: HOME, the rivals, the board, the old finite fix-ups. (4) **`progProbe`**: one day of
+  the world on the save with news, messages and saves muted, then put back exactly (transient fields kept aside), so a
+  save that would throw in the first frame throws here. Any throw: `PROG` becomes a new program and the error comes back.
+  A played save (200 days) loads exactly as a plain restore, and 30 days on from it match: the probe leaves no trace.
+  Cost: under 1 ms.
+- **The page** (app/state.js): a save that won't parse, isn't a program, or fails `progLoad` is copied to
+  `launchpad-program-v1-bad` (`-tester-bad` in tester mode) **before** anything can save over it; a new program starts and
+  the player is told (message and a *bad* news line). With no room for the copy, the tab never saves (`progHeld`), so the
+  old save stays.
+- **Saving**: `HOOK.save` no longer swallows a failure: "Could not save: browser storage is full…" (quota) or the error,
+  at most once a minute, and not at all where storage was unreadable at boot (private windows).
+- **Two tabs**: the browser's `storage` event tells a tab when another one wrote the save; that tab stops saving and says
+  so ("reload it to carry on here"). Whichever tab saves first keeps the program; the other can't write an older program
+  over it.
+- Not done: no way in the game to download the `-bad` copy (R9's *Export save* is the place); `offers` (null default) isn't
+  kind-checked, the probe catches it. R1d (fill a save from the schema) is still open; `progRepair` only fixes kinds.
+- Test platform-7 runs the page's own load/save block against the SIM with a fake `localStorage`: the five broken shapes
+  load repaired and play 3 days; `sats:[5]`, `offers:5`, non-JSON and a bare string are kept as `-bad` and a new program
+  starts; storage full holds the save; quota said once; another tab's write stops this tab's saves; the played-save
+  equality above. platform-2's slice of the page now ends at `// Loading (R10)`.

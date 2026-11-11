@@ -3735,7 +3735,7 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
 - Prices and funds beyond first orbit under the new order (TV before stations, Selene after Heavy lift II): the runner
   was run in `PACE` mode only.
 - The `test` contract, dispatch and procedures against a closed part in a stored design (read, not run).
-## v1.308 — the economy on intent: markets saturate, the big sales come once (2026-11-11, economy session, QUEUE R18, W47's defaults)
+## v1.310 — the economy on intent: markets saturate, the big sales come once (2026-11-11, economy session, QUEUE R18, W47's defaults)
 
 **What the review found** (2026-11-09 § 2, R18): satellite income was linear in satellites (`utilTick`: 5 TV satellites
 = 200 M per 100 days against a 19.8 M budget day; imagery in `satTick` likewise), and the privatization and foreign-stake

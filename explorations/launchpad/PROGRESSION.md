@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -32,6 +32,9 @@ done and what it opened. This document is the second half.
 
 **A need → a design → a test → the flight → it stays → it grants something you can see.**
 
+**Any flight can fulfil any mission** (D29): missions and contracts are criteria on what a flight did, never an
+assignment. Ticking a job in the Assembly aims the checks; it never decides what pays.
+
 Each step has a place (§ 5) and each grant has a ceremony (§ 3). "It grants" is one of four things: a part, a room or
 building, a reach (where you can command, how far you can go), or a routine (something that now runs itself).
 
@@ -39,7 +42,8 @@ building, a reach (where you can command, how far you can go), or a routine (som
 
 **The rule.** A part opens with the mission that first proves the thing it is for. It arrives **unproven**: know-how
 and certification stay exactly as they are, so the test stand and the first flights of a new part have a job. Unlock,
-then prove. No new mechanism: `PART_GATE` grows, `partOpen` and `partLaunchWhy` already refuse a launch, the builder
+then prove. The proving can be a **qualification mission** (W50, Q588): one per part family, each a different thing
+to do, met by any flight that carries the part. No new mechanism: `PART_GATE` grows, `partOpen` and `partLaunchWhy` already refuse a launch, the builder
 already lists a closed part dimmed with its reason (Q190).
 
 **The overlay** (Caio: "very visible: you end the mission, they appear as an overlay, *Part unlocked!*, with a picture
@@ -146,22 +150,15 @@ behind Selene, or without an antenna), where today's link assumes deep-space ant
 
 | # | Question | Default | Where |
 |---|---|---|---|
-| 1 | Does an engine unlock outright, or as a development program (opens *on paper*, qualified after stand firings)? | outright, arriving unproven | W50 |
-| 2 | The structural test's bar: the Sounding passes 25 kPa by 0.2 kPa, and the flight now stands before the Kestrel | 20 kPa | W50 |
-| 3 | The order the map fixes: the structural test before orbit, TV before stations, two tonnes to orbit before Selene | yes | W50 |
-| 4 | The Petrel with the Kestrel, or after the hop? | with the Kestrel (no preset changes) | W50 |
 | 5 | Does contact limit the first orbit on Normal? | yes, with a launch range (the pad and a tracking ship 700 km downrange) | W51 |
 | 6 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
+
+**Answered by Caio (W50, 2026-11-11):** engines open outright and a qualification mission proves them (Q588); the
+structural test's bar is 20 kPa; the map's order stands; the Petrel opens with the Kestrel.
 
 **Answered by the plans:** first orbit stays 4–6 flights with the gate (Q573, measured); a part already flown stays
 open, so old saves keep what they have used (Q573, rule 1).
 
----|---|---|---|
-| 1 | Does an engine unlock outright, or as a development program (opens *on paper*, qualified after stand firings)? | outright, arriving unproven | Q573 |
-| 2 | Is first orbit still 4–6 flights with chapter 1's gate in front of the Kestrel? | yes: hold the finish line, move the gate if not | Q573 |
-| 3 | Does contact limit the first orbit on Normal? | yes if a stored burn can be taught in the Mission card; else from chapter 3 | Q574 |
-| 4 | Does a design saved with a part that is no longer open (an old save) still fly? | yes: parts already flown stay open | Q573 |
-| 5 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
 
 ---
 
@@ -173,3 +170,4 @@ open, so old saves keep what they have used (Q573, rule 1).
   the Kestrel, the Heavy lift missions in chapter 2, stations after TV, Selene after Heavy lift II.
 - **0.1.2 (2026-11-11):** § 4 from Q574's plan (measured): the stored command is an armed node with a staging tail, the
   launch range, plasma never refuses a command, relays need the dish to matter.
+- **0.1.3 (2026-11-11):** D29 (any flight can fulfil any mission); W50 answered (qualification missions, Q588).
