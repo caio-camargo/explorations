@@ -7112,3 +7112,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   New test `vehicle-42` (fails on the old code); `--smoke` all passed (790). Files: `sim/vessel.js`, `tests/vehicle.mjs`,
   `notes/vehicle.md` § v1.303, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`. Changes `TAPE_V` (source hash): older tapes
   replay stale. **Next for vehicle:** R22 (four physics fixes), R28 with flow.
+
+## 2026-11-11 — flow, the gameplay loop (Opus 5.5, worktree launchpad-loop): Q570, Q569, Q548 (v1.305–v1.307), Q547 merged (v1.304)
+
+- **Asked:** Caio: work on Q569, Q570 and Q548. Q548 needed Q547 (built, unmerged): Caio chose to merge it with them.
+- **Done:** Q547 merged and renumbered (v1.285 → v1.304, `econ-35` → `econ-37`). **Q570 v1.305:** `opensOf(id)` and its
+  names/line (sim/program.js), `CT_KIND`, `offerTypes`; the debrief's *Opened* block (links to the Missions tab, part cards)
+  and *opens:* on each open mission. **Q569 v1.306:** completions go through a new `HOOK.done` to `app/notice.js` (`#done`):
+  name, win, pay, what it opened, what's left; queued, until Enter or a click, held mid-burn, dropped when its flight ends,
+  shown at the desk for world missions. **Q548 v1.307:** the Mission card (`cardJobs`, `jobsLeft`, `missionRows`), one
+  message per condition change, End flight when the flight's work is done.
+- **Checked:** tests `econ-38`, `flow-54`, `flow-55` (new); full `node test.mjs` after merging origin/main: 854 checks, all passed; in Chrome on a local server:
+  the Missions tab, a Sounding flown by script steps (card, messages, notices queued, *Done*, Recover vessel), the debrief's
+  Opened block and its link. The browser check found the frame loop dying on the first frame (`doneTick` called before
+  notice.js loaded): guarded.
+- **Not checked:** played by hand (TESTING 364–366); an orbital flight's *done* → End flight in orbit.
+- **Next:** Q549 (the aim: "This flight is for") replaces `cardJobs`' guess with ticked jobs; Q558's proofs build on the notice.
