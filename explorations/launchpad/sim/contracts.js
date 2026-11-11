@@ -388,7 +388,8 @@ function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
   return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
 function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
   income(pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
-  standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');HOOK.save()}
+  standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');
+  HOOK.done({k:'contract',id:c.id,name:cTitle(c),win:`for ${POWERS[c.client].name}`,pay,flight:false});HOOK.save()}   // (Q569) judged at home: the notice at the desk
 function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].sel);if(!A.length)return;const N=selN();for(const c of A){c.base=c.base||(CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN());if(CT[c.type].done(c,N))selDone(c)}}
 // a satellite worth servicing: ours, earning (TV in view, or imagery with 30 % contact or more), an era behind or more,
 // and not already on the board or taken
@@ -416,7 +417,16 @@ function stPick(f){const L=typeof satsUp==='function'?[...satsUp(),...landedUp()
 // a station's measure for a contract: supplies (t), lab-days, or the number of modules of a kind (lab, hab), docked ones included
 function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stOf(q);if(k==='sup')return s?s.sup:0;
   const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
-function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
+// the contract types a source can offer today: its mission done (req) and the world ready for it (open: a station to
+// supply, a satellite to meet). Q570's test reads it against opensOf
+const offerTypes=src=>Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));
+// what each type is, as a kind of work (QUEUE Q570: "Opened" lists types, not offers; a title needs an offer's numbers)
+const CT_KIND={apex:'sounding experiments',sample:'air samples',test:'part qualifications',landing:'recovery demonstrations',bioHop:'biology flights',
+  sat:'satellites to order',image:'city imaging',field:'field stations',aurora:'aurora flights',lift:'heavy lift to orbit',touristHop:'tourist flights to space',
+  touristOrbit:'orbital holidays',recon:'reconnaissance orbits',ballistic:'ballistic tests',selRead:"readings of Selene's ground",selPano:'panoramas of Selene',
+  selSeis:'seismic networks on Selene',selQuake:'moonquake hunts',selCore:"Selene's core",selFar:"Selene's far side science",service:'satellite servicing',
+  stResupply:'station resupply',stLab:'lab-days on a station',stExpand:'station modules',rdv:'rendezvous',retrieve:'satellite retrieval',milLift:'classified payloads'};
+function genOffer(src,R){const types=offerTypes(src);if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv)*(1-giantShare()):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.max(payFloor(type),Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10);   // clients pay for what they care about; never under the floor
@@ -435,7 +445,7 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
-    HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
+    HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.done({k:'contract',id:c.id,name:cTitle(c),win:`for ${POWERS[c.client].name}`,pay,flight:!R.dispatched});HOOK.save()}}   // (Q569) the notice
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
 // R: this tick's dice, or null between a day's rolls (Q526: then only the smooth parts move); dd: the days the dice stand
 // for (1 from worldTick); S(salt): a stream per subsystem (worldTick's), else they share R (tests call these with one R)

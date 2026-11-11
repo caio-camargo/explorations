@@ -405,6 +405,25 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
     if(s.landed&&s.alive&&sci&&(s.touchV||0)<3&&!R.nyxLand){R.nyxLand=true;logNote(s,'nyxland',R.dv)}}
   else R.nyxRun=0}
 const missionOpen=M=>(M.req||[]).every(r=>PROG.done[r]);
+// what completing mission `id` opens (QUEUE Q570, Caio 2026-11-11: "nothing on screen says so"): the missions whose last
+// missing req it is, the contract types it gates (CT[k].req; some then also wait on the world, CT[k].open: a station to
+// supply, a satellite to meet), the parts and rover parts it unlocks (PART_GATE, RV_GATE). Read against today's
+// PROG.done with `id` counted done, so it answers before the mission (what it would open) and after (what it opened).
+function opensOf(id){const has=r=>r===id||!!PROG.done[r];
+  return{missions:MISSIONS.filter(M=>M.id!==id&&!PROG.done[M.id]&&(M.req||[]).includes(id)&&M.req.every(has)).map(M=>M.id),
+    contracts:Object.keys(CT).filter(k=>CT[k].req===id),
+    parts:Object.keys(PART_GATE).filter(k=>PART_GATE[k]===id&&PARTS[k]),
+    rover:Object.entries(RV_GATE).flatMap(([kind,o])=>Object.keys(o).filter(k=>o[k]===id).map(k=>kind+':'+k))}}
+// the same with names, for the screens: several missions' openings merged, each once. A mission another of `ids`
+// already did doesn't count as opened. Each list [{id, t}] (t: the name to show)
+function opensNames(ids){const o={missions:[],contracts:[],parts:[],rover:[]},add=(L,id,t)=>{if(!L.some(x=>x.id===id))L.push({id,t})},RVN={ch:RV_CH,wh:RV_WH,it:RV_IT};
+  for(const id of ids){const x=opensOf(id);for(const m of x.missions)if(!ids.includes(m))add(o.missions,m,MISSIONS.find(M=>M.id===m).name);
+    for(const k of x.contracts)add(o.contracts,k,CT_KIND[k]||k);for(const k of x.parts)add(o.parts,k,PARTS[k].name);
+    for(const r of x.rover){const[kind,k]=r.split(':'),nm=((RVN[kind]||{})[k]||{}).name||k;add(o.rover,r,kind==='it'?`rover ${nm.toLowerCase()}`:nm)}}
+  return o}
+// one line of it: "3 missions · 8 kinds of contract · 7 parts" (full: each with its names); '' when it opens nothing
+function opensLine(o,full){const n=(L,one,many)=>L.length?`${L.length>1?`${L.length} ${many}`:`1 ${one}`}${full?` (${L.map(x=>x.t).join(', ')})`:''}`:'';
+  return[n(o.missions,'mission','missions'),n(o.contracts,'kind of contract','kinds of contract'),n([...o.parts,...o.rover],'part','parts')].filter(Boolean).join(' · ')}
 function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,bands:{},orbit:false,orbitSci:false,lift:0,
   sf:{},bio:false,bioOK:true,bioWhy:'',bioSpace:false,bioOrbits:0,g:0,gMax:0,cabin:290,approved:true,drops:[],cert0:{},recSci:false,pet:'',
   apexSci:0,qPart:{},orb:null,landDist:Infinity,cdone:[],dv:0,newLog:[],qMax:0,far:0,vEntry:0,hotT:0,hotPart:'',khSeen:{}}}
@@ -501,9 +520,9 @@ const OWN_TONE={openSuper:'Live on every channel; the press room erupts.',closed
   rising:'The nation takes its place among the leaders.',frugal:'For less than a new motorway bridge, the science desk notes.',
   resource:'A world record, the palace announces, on the largest screen in the capital.',security:'State media: a successful test, the site reports.'};
 function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
-    income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
+    income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null,id:M.id});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
-    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
+    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
 // ---- overflight (QUEUE Q181, W23; NOTES § "Plan: overflight politics"): **low flight only.** While the vessel is below
 // OVER_H, not yet in orbit (its periapsis inside the atmosphere: an ascent, a hop, a descent) and within OVER_D of its
 // launch point, whose land is under it is sampled about once a second (R.over). Orbit is free to pass over, whatever its

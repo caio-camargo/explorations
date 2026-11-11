@@ -922,3 +922,41 @@
   check('job conditions: the between-flight types and world missions are one "judged at home" cond (pending); legs well formed (1–3, known kinds); needs read a design (the Hopper: chute yes, package no, a Kestrel aboard); procKey ignores stack.aim',
     homeOK && legsOK && needsOK && keyOK, `home ${homeOK}; legs ${legsOK}; needs ${needsOK} ${JSON.stringify(nApex)}; procKey ${keyOK}`);
 }
+
+// econ-38. What a mission opens (economy reader for flow, QUEUE Q570; Caio 2026-11-11, the gameplay loop): opensOf(id)
+// lists the missions whose last missing req it is, the contract types it gates (CT.req), the parts and rover parts it
+// unlocks (PART_GATE, RV_GATE). For each of the 29 missions, in two programs (only its ancestors done; everything done but
+// it and what follows from it), opensOf, asked before and after, equals the before/after diff of missionOpen, of
+// offerTypes over every source (the world's own gates, CT.open, set aside: they wait on a station or a satellite, not on
+// the mission) and of partOpen / rvPartOpen. The beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover
+// antenna; opensNames merges several missions' lists (one done by another isn't "opened") and opensLine says it in a line.
+{
+  const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,PARTS,RV_GATE,opensOf,opensNames,opensLine,offerTypes,missionOpen,partOpen,rvPartOpen,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, done: {}, own: null, decisions: [], site: null }); D.chooseStart('agency');
+  const M = D.MISSIONS, byId = id => M.find(m => m.id === id), SRC = [...new Set(Object.values(D.CT).flatMap(t => t.src))];
+  const anc = id => { const out = new Set(), go = x => { for (const r of byId(x).req || []) if (!out.has(r)) { out.add(r); go(r); } }; go(id); return out; };
+  const desc = id => M.filter(m => m.id !== id && anc(m.id).has(id)).map(m => m.id);
+  for (const k in D.CT) if (D.CT[k].open) { D.CT[k].open0 = D.CT[k].open; delete D.CT[k].open; }   // the world's gates aside
+  const snap = () => ({ m: M.filter(m => !P.done[m.id] && D.missionOpen(m)).map(m => m.id), c: [...new Set(SRC.flatMap(s => D.offerTypes(s)))],
+    p: Object.keys(D.PARTS).filter(k => D.partOpen(k).ok), r: Object.entries(D.RV_GATE).flatMap(([kind, o]) => Object.keys(o).filter(k => D.rvPartOpen(kind, k).ok).map(k => kind + ':' + k)) });
+  const diff = (a, b) => b.filter(x => !a.includes(x)).sort().join(','), srt = L => L.slice().sort().join(',');
+  const got = O => ({ m: srt(O.missions), c: srt(O.contracts), p: srt(O.parts), r: srt(O.rover) }), bad = [];
+  let runs = 0, any = 0;
+  for (const m of M) for (const [state, done] of [['ancestors', [...anc(m.id)]], ['all else', M.map(x => x.id).filter(x => x !== m.id && !desc(m.id).includes(x))]]) {
+    P.done = Object.fromEntries(done.map(x => [x, { flight: 1, day: 0 }])); const a = snap(), O = D.opensOf(m.id);
+    P.done[m.id] = { flight: 1, day: 0 }; const b = snap(), O2 = D.opensOf(m.id);
+    const want = { m: diff(a.m, b.m), c: diff(a.c, b.c), p: diff(a.p, b.p), r: diff(a.r, b.r) };
+    for (const g of [got(O), got(O2)]) { runs++; if (JSON.stringify(want) !== JSON.stringify(g)) bad.push(`${m.id} (${state}): want ${JSON.stringify(want)} got ${JSON.stringify(g)}`); }
+    if (want.m || want.c || want.p || want.r) any++; }
+  for (const k in D.CT) if (D.CT[k].open0) { D.CT[k].open = D.CT[k].open0; delete D.CT[k].open0; }
+  P.done = { weather: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
+  P.done = {}; const two = D.opensNames(['weather', 'beeper']), none = D.opensLine(D.opensNames(['nyxland']));
+  const facts = B.missions.length === 5 && B.contracts.length === 8 && B.parts.length === 7 && B.rover.join() === 'it:ant'
+    && line === '5 missions · 8 kinds of contract · 8 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
+    && N.contracts.every(x => x.t && !/^[a-z]+[A-Z]/.test(x.t)) && none === ''
+    && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 5 && two.contracts.length === 9;
+  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover antenna; opensNames merges; opensLine',
+    M.length === 29 && !bad.length && any >= 20 && facts,
+    `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
+}

@@ -37,7 +37,36 @@ function dvRows(){if(!S.alive)return[];const b=S.body,pr=b.atm&&b.rho0?density(b
   if(g&&g.ph!=='climb')R.push(['To orbit',`${g.dv.toFixed(0)} m/s · ${fmtT(g.tb)} <span class="dim">burn</span> · <span class="${tot>=g.dv?'ok':'bad'}" title="${tot>=g.dv?'left over after it':'short of it'}">${tot>=g.dv?'+':'−'}${Math.abs(tot-g.dv).toFixed(0)}</span>`]);
   return R}
 const aoaRow=()=>['AoA',inAir()?`${(S.aoa*57.3).toFixed(1)}°`:'—'];
+// (flow, Q548; PLAYTEST #145) the Mission card: what this flight is doing for whom (cardJobs, sim/next.js), each job's
+// conditions (Q547's conds) live: ✓ met, ✗ lost, ○ open with the reading now, ◐ waiting; the conds that bring it home
+// read, while it flies, Q488's verdict (who brings it back). A job done folds to one line with its pay. The first row says
+// where the flight stands (jobsLeft): done, end it when you like; bring it home; or what's still to do.
+const MC_MARK={met:['✓','ok'],lost:['✗','bad'],open:['○','dim'],pending:['◐','warn']};
+// where the flight stands, for the card and the notice: jobsLeft, and on a path down through the air, that ending it now
+// writes the hardware off (the refurbishment comes with a landing)
+function mcLeft(J){if(!S||!S.alive||!S.rec||S.rec.ended)return null;const L=jobsLeft(J||cardJobs(S));if(!L||L.k!=='done')return L;
+  const B=S.body,down=!S.landed&&!!B.atm&&elements(S.r,S.v,B.mu).pe<B.R+B.atm;return down?{...L,t:L.t+' (land it first to keep the hardware)'}:L}
+function missionRows(){if(!S||!S.rec||S.rec.ended)return[];const J=cardJobs(S);if(!J.length)return[];const L=mcLeft(J),out=[];
+  const V=S.alive&&!S.landed&&toolOK('impact')&&impVerdict();
+  if(L)out.push([`<b class="${L.k==='done'?'ok':'acc'}">Now</b>`,`<span class="${L.k==='done'?'ok':'acc'}">${tipEsc(L.t[0].toUpperCase()+L.t.slice(1))}</span>`]);
+  for(const j of J){if(j.done){out.push(['<span class="ok">✓</span>',`${tipEsc(j.title)} <span class="ok">· done, +${fmtM(j.pay)}</span>`]);continue}
+    out.push(['',`<b>${tipEsc(j.title)}</b> <span class="dim">· ${j.k} · ${fmtM(j.pay)}</span>`]);
+    for(const c of j.conds){const home=MC_HOME.includes(c.id)&&!c.home,wait=home&&c.state!=='met'&&c.state!=='lost'&&V,[m,cl]=MC_MARK[wait?'pending':c.state]||MC_MARK.open;
+      const now=wait?` <span style="color:${verdictInk(V.v)}">· ${tipEsc(V.t)}</span>`:c.now&&c.state!=='met'?` <span class="dim">· ${tipEsc(c.now)}</span>`:'';
+      out.push([`<span class="${cl}">${m}</span>`,`<span class="${c.state==='lost'?'bad':c.state==='met'?'':'dim'}">${tipEsc(c.t)}</span>${now}`])}}
+  return out}
+// (Q548) a condition changing state says one line, once, card or no card (the dark cockpit folds it away): "Apex 40–55 km
+// ✓", "Biology flight: never over 5 g ✗". Not for a job just done (the completion notice says that, Q569), nor at the
+// first look of a flight, nor once it is over (the loss says why).
+let mcSeen=null;
+function missionWatch(){if(mode!=='flight'||!S||!S.rec||!S.rec.launched||!S.alive||S.rec.ended)return;const R=S.rec;
+  if(!mcSeen||mcSeen.R!==R)mcSeen={R,st:new Map(),first:true};const said=[];
+  for(const j of cardJobs(S)){if(j.done)continue;for(const c of j.conds){const k=j.key+'/'+c.id,was=mcSeen.st.get(k);mcSeen.st.set(k,c.state);
+    if(mcSeen.first||was===undefined||was===c.state)continue;
+    if(c.state==='met')said.push(`${c.t[0].toUpperCase()+c.t.slice(1)} ✓`);else if(c.state==='lost')said.push(`${j.title}: ${c.t} ✗`)}}
+  mcSeen.first=false;if(said.length)HOOK.msg(said.join(' · '))}
 const HUD_CARDS=[
+  {id:'mission',title:'Mission',rows:missionRows},   // (Q548) first: what the flight is for. Not in CP_CARDS: the dark cockpit folds it
   // Ascent: shown with the gauges (ascentOn)
   {id:'ascent',title:'Ascent',when:ascentOn,rows:()=>[GAUGES?aoaRow():aeroRow(),heatRow(),structRow()]},   // with the gauges on, only what they don't draw (Mach and q are on the dials)
   // Descent: coming down with an impact predicted; or, any time, the range safety warning (impact point over a city)

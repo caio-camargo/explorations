@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.49 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -377,6 +377,9 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.285 — the map's Layers panel closes when you leave the map (2026-11-07, flow, QUEUE Q443; PLAYTEST #115)
 - v1.286 — two planets close on the map share one label (`Hesper, Hyperion`) instead of one losing its name (2026-11-08, flow, QUEUE Q192)
 - v1.288 — the pad calendar's window bar: hatched amber, dashed, "held for its window"; bars no longer run past their day (border-box) (2026-11-09, flow, QUEUE Q211)
+- v1.304 — what a mission opens: opensOf, the debrief's Opened block, "opens:" on the Missions tab (2026-11-11, flow, QUEUE Q570) → [notes/flow.md](notes/flow.md)
+- v1.305 — a completion notice you can't miss: its own card, queued, until Enter or a click (2026-11-11, flow, QUEUE Q569) → [notes/flow.md](notes/flow.md)
+- v1.306 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
