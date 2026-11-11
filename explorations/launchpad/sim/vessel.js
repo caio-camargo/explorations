@@ -913,6 +913,9 @@ function physStep(s,dt){
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
+  // RCS's command too, here, with the same feed-forward (R26): after the aero pass s.simTA is the next step's, and a call
+  // there left the feed-forward out, so RCS was told to push the aero moment back in that the gimbals were cancelling
+  const alR=s.rcs?qrot(qi,ctrlAccel(s,true)):null;
   const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0*s.throttle):[];
   // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
   const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
@@ -959,7 +962,7 @@ function physStep(s,dt){
      s.tauA=T>0&&s.aoa<Math.PI/3&&cmp<0&&fade>0?mul(ax,fade*cmp/al):null;s.simTA=simT+dt}}
   else s.tauA=null;
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
-  if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true)),ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
+  if(s.rcs&&alR){const ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
     rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   seaForces(s,dt);   // and the sea holds it up (world session, Q274)

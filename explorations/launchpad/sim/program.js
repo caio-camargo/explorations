@@ -171,7 +171,7 @@ function progFresh(keepFrom){const o={};
 // More's reset program and career.mjs's rows all start here.
 function programNew(set){const F=Object.assign(progFresh(PROG),set||{});if(F.designs)F.designs.launched=[];
   for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,F);
-  HOME=PROG.home||0;RIVALS=raceSchedule();REVERT0=null;DEBRIEF_LAST=null;ensureBoard()}
+  HOME=PROG.home||0;RIVALS=raceSchedule();REVERT0=null;FLOOR_HOLD=null;DEBRIEF_LAST=null;ensureBoard()}
 // one serializer (R1c): the save, the revert and simulator snapshot taken at liftoff, a flight from orbit's, and the
 // recorder all go through progJSON / progRestore. JSON loses some values without a word: Infinity and NaN become null,
 // a function, Map, Set or typed array doesn't come back as itself, undefined in an array becomes null (R16: a Selene
@@ -439,6 +439,25 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
     if(s.landed&&s.alive&&sci&&(s.touchV||0)<3&&!R.nyxLand){R.nyxLand=true;logNote(s,'nyxland',R.dv)}}
   else R.nyxRun=0}
 const missionOpen=M=>(M.req||[]).every(r=>PROG.done[r]);
+// what completing mission `id` opens (QUEUE Q570, Caio 2026-11-11: "nothing on screen says so"): the missions whose last
+// missing req it is, the contract types it gates (CT[k].req; some then also wait on the world, CT[k].open: a station to
+// supply, a satellite to meet), the parts and rover parts it unlocks (PART_GATE, RV_GATE). Read against today's
+// PROG.done with `id` counted done, so it answers before the mission (what it would open) and after (what it opened).
+function opensOf(id){const has=r=>r===id||!!PROG.done[r];
+  return{missions:MISSIONS.filter(M=>M.id!==id&&!PROG.done[M.id]&&(M.req||[]).includes(id)&&M.req.every(has)).map(M=>M.id),
+    contracts:Object.keys(CT).filter(k=>CT[k].req===id),
+    parts:Object.keys(PART_GATE).filter(k=>PART_GATE[k]===id&&PARTS[k]),
+    rover:Object.entries(RV_GATE).flatMap(([kind,o])=>Object.keys(o).filter(k=>o[k]===id).map(k=>kind+':'+k))}}
+// the same with names, for the screens: several missions' openings merged, each once. A mission another of `ids`
+// already did doesn't count as opened. Each list [{id, t}] (t: the name to show)
+function opensNames(ids){const o={missions:[],contracts:[],parts:[],rover:[]},add=(L,id,t)=>{if(!L.some(x=>x.id===id))L.push({id,t})},RVN={ch:RV_CH,wh:RV_WH,it:RV_IT};
+  for(const id of ids){const x=opensOf(id);for(const m of x.missions)if(!ids.includes(m))add(o.missions,m,MISSIONS.find(M=>M.id===m).name);
+    for(const k of x.contracts)add(o.contracts,k,CT_KIND[k]||k);for(const k of x.parts)add(o.parts,k,PARTS[k].name);
+    for(const r of x.rover){const[kind,k]=r.split(':'),nm=((RVN[kind]||{})[k]||{}).name||k;add(o.rover,r,kind==='it'?`rover ${nm.toLowerCase()}`:nm)}}
+  return o}
+// one line of it: "3 missions · 8 kinds of contract · 7 parts" (full: each with its names); '' when it opens nothing
+function opensLine(o,full){const n=(L,one,many)=>L.length?`${L.length>1?`${L.length} ${many}`:`1 ${one}`}${full?` (${L.map(x=>x.t).join(', ')})`:''}`:'';
+  return[n(o.missions,'mission','missions'),n(o.contracts,'kind of contract','kinds of contract'),n([...o.parts,...o.rover],'part','parts')].filter(Boolean).join(' · ')}
 function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,bands:{},orbit:false,orbitSci:false,lift:0,
   sf:{},bio:false,bioOK:true,bioWhy:'',bioSpace:false,bioOrbits:0,g:0,gMax:0,cabin:290,approved:true,drops:[],cert0:{},recSci:false,pet:'',
   apexSci:0,qPart:{},orb:null,landDist:Infinity,cdone:[],dv:0,newLog:[],qMax:0,far:0,vEntry:0,hotT:0,hotPart:'',khSeen:{}}}
@@ -456,7 +475,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
+  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(!R.sim)FLOOR_HOLD=R;if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -535,9 +554,9 @@ const OWN_TONE={openSuper:'Live on every channel; the press room erupts.',closed
   rising:'The nation takes its place among the leaders.',frugal:'For less than a new motorway bridge, the science desk notes.',
   resource:'A world record, the palace announces, on the largest screen in the capital.',security:'State media: a successful test, the site reports.'};
 function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
-    income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
+    income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null,id:M.id});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
-    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
+    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
 // ---- overflight (QUEUE Q181, W23; NOTES § "Plan: overflight politics"): **low flight only.** While the vessel is below
 // OVER_H, not yet in orbit (its periapsis inside the atmosphere: an ascent, a hop, a descent) and within OVER_D of its
 // launch point, whose land is under it is sampled about once a second (R.over). Orbit is free to pass over, whatever its
@@ -604,10 +623,10 @@ function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCos
 // flight whole: no registry entry, no pay, no log, the launch's cost and days given back, as KSP's revert to launch. Kept
 // here, never on the flight's record (satRegister and the cruise entries keep R). A flight with no snapshot (a save
 // loaded mid-flight) is dropped unsettled: nothing registered or paid, but nothing given back.
-let REVERT0=null;
+let REVERT0=null,FLOOR_HOLD=null;   // (R15) FLOOR_HOLD: the open flight's record, from liftoff to its settlement; floorCheck waits for it
 function missionDiscard(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return false;
   if(REVERT0&&REVERT0.R===R)progRestore(REVERT0.prog);
-  R.ended=true;R.reverted=true;REVERT0=null;return true}
+  R.ended=true;R.reverted=true;REVERT0=null;if(FLOOR_HOLD===R)FLOOR_HOLD=null;return true}
 // The simulator (Q449, Q282 slice 1; NOTES economy § "Plan: the simulator replaces revert", W42 on its defaults). A run is
 // a normal flight with R.sim set, started before liftoff: liftoff snapshots the program as for a revert (REVERT0) but
 // charges nothing and waits for nothing (no prep, pad, study or weather); news is collected into the run's log and saves
@@ -655,7 +674,7 @@ function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   coverLoss(s,R);   // a failed attempt at the next step is mostly covered (W12)
   const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);R.dmg=dmg;if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
   if(R.orbit){const net=R.cost-(R.refund||0);PROG.recs=PROG.recs||{};if(!(PROG.recs.orbit<=net)){if(PROG.recs.orbit!=null)HOOK.news(`Record: cheapest trip to orbit yet, ${fmtM(net)} net`,'ok');PROG.recs.orbit=net}}
-  floorCheck();
+  if(FLOOR_HOLD===R)FLOOR_HOLD=null;floorCheck();
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
   missionEval(s);R.debrief=debriefOf(s,R,ups);HOOK.save();return{ups,streak:PROG.streak,debrief:R.debrief}}

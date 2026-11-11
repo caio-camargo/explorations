@@ -684,12 +684,14 @@ function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in
 // the air it integrates drag from a CdA(Mach) table measured by the aero pass at the angle the vessel is holding to the
 // airflow right now (5° bins), plus the parachute rules. The path is kept in the planet's rotating frame.
-function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on).length+':'+A;if(s.dragTab&&s.dragTab.key===key)return s.dragTab.tab;const ar=A*Math.PI/180;
+// R21: the cache holds while the outline aeroPass reads is the same object: rebuildShape makes a new s.lines whenever it
+// changes (a fairing jettisoned, bay doors opening or done closing, a stage dropped); the part count alone missed the first two
+function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on).length+':'+A;if(s.dragTab&&s.dragTab.key===key&&s.dragTab.lines===s.lines)return s.dragTab.tab;const ar=A*Math.PI/180;
   const tab=[],ca=s.chuteA,saved=s.parts.map(p=>[p.F.slice(),p.L.slice(),p.Q]);s.chuteA=0;geom(s);
   for(let M=0;M<=12.01;M+=0.5){for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}const v=Math.max(M,0.05)*SND(5000),rho=0.5;
     const vb=[v*Math.sin(ar),v*Math.cos(ar),0];aeroPass(s,vb,[0,0,0],rho,M,false);let F=[0,0,0];for(const p of s.parts)if(p.on)F=add(F,p.F);
     tab.push(Math.max(0,-dot(F,vb)/v)/(0.5*rho*v*v))}   // the drag component only; lift from a trim angle is not modelled
-  s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
+  s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,lines:s.lines,tab};return tab}
 // generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
   const mu=b.mu,top=b.R+(b.atm||0),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0,tAir=null;   // pathT: each point's time (Q266); tAir: when it enters the air, falling (Q489)

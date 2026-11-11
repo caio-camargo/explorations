@@ -7062,4 +7062,89 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   or three vertices, for anger, fear, surprise. The ridge now runs through three kept points with a height slider
   each; six mood buttons. Seen: six different brows on the average man; afraid and sad are close. Only the ridge
   moves. FACES 0.1.16 § 10, README 0.1.30. **Next:** Caio's look.
+- **Follow-up 11 (2026-11-11): the lids and the eyes (faces5).** Caio: "yes, this is good. let's proceed with lids
+  and eyes". The lid's front edge (a ring of 28 points an eye) is built as a six-cornered opening just outside the
+  eyeball, kept when the planes are cut; two lid sliders, set by the moods; an iris-size slider. Fixed on the way:
+  the cut ran on the unstyled head since follow-up 8 (a call lost in a comment); faces moved sideways by MakeHuman's
+  head sliders had one blank, proud eye (now centred on the eyes, each eye round its own centre). Seen: eyes inside
+  the lids on the whole sheet; six moods distinct. FACES 0.1.17 § 10, README 0.1.31. **Next:** Caio's look; then
+  the lips, or the lid's crease following the lid.
 
+### 2026-11-11 — Launchpad vehicle session: R21, the stale drag cache (v1.301)
+- **Summary:** `dragTable` (`sim/flight.js`) cached the impact predictor's CdA table by part count and AoA bin, so a fairing
+  jettison or bay doors kept the old table (Satellite after jettison: 1.70 m² cached vs 3.30 true at Mach 1). The cache
+  now also holds the `s.lines` it was measured on (`rebuildShape` replaces it on every outline change). Keying on `profOf`
+  was tried and rejected (it disagrees with `s.lines` while bay doors finish closing). New test `vehicle-41`, which fails
+  on the old code; `--smoke` all passed (788).
+- **Files:** `sim/flight.js`, `test.mjs` (api: `dragTable`, `fairJettison`, `bayDoors`, `bayTick`), `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.301, `NOTES.md`, `QUEUE.md` (R21 ✓), `ACTIVE_WORK.md`.
+- **Next:** none for R21. No TESTING row (not visible on screen; the robot check covers it).
+
+
+## 2026-11-11 — review 2 (Fable 5.2, worktree launchpad-audit): the review fixes audited, R2/R3 plans, R13/R23 repros, the app layer (R25–R34)
+
+- **Asked:** Caio, after asking whether Fable is worth using beyond the 11-09 review: go ahead with the recommended
+  uses (audit the merged fixes, plan R2 and R3, turn the "read" items into repros, audit the app layer).
+- **Done:** `explorations/launchpad/REVIEW-2026-11-11.md`; scripts in `explorations/launchpad/review/2026-11-11/`;
+  QUEUE *Proposed* R25–R34, notes on R2, R3, R13, R23. No game code or test edited. Two background agents did the
+  repros and the app audit; their top findings were rerun here before being written down.
+- **Found:** the merged fixes (R1a–c, R4, R14, R17, R21) hold. A fresh SIM before every test section passes today
+  (271 sections, 701 checks; 11 checks change value). Five more swallowed lines (`views.js:78`, `tests/core.mjs` ×4).
+  Two "latent" items are live: RCS adds back the aero moment (R26, P1), a fleet vessel passes through the planet
+  under warp (R27). The app layer loads headless and gave 12 confirmed defects (R28–R33); R34 makes the harness a test.
+  R13's adaptive-resolution item is refuted (fixed in v1.290).
+- **Not checked:** nothing on the GPU or in a browser; `tests/look.mjs` and the five SLOW sections under a fresh SIM;
+  R10, R15, R16 (not merged yet); dispatch, watch mode, docking and field rovers in the app were read, not run.
+  Timings in the review were taken on a loaded machine and are rough.
+- **Lesson:** a timing taken while other sessions run tests is not evidence: one SIM build measured 0.5 s and 20 s
+  minutes apart. And Git Bash heredocs here drop one level of backslashes: write scripts that contain them with the
+  file tool.
+- **Files:** `explorations/launchpad/REVIEW-2026-11-11.md` (new), `explorations/launchpad/review/2026-11-11/` (new),
+  `QUEUE.md`, `ROADMAP.md` (reviews row), `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** the orchestrator ranks R25–R34 (R26 first); Caio's call on whether a reload during a flight from orbit
+  should lose the craft (R29b).
+
+- **PARKED 2026-11-11 (review 2 session):** R29b, whether a reload during a flight from orbit loses the craft. Parked at: recommendation given to Caio (restore the vessel to its state when control was taken, same as Revert, from one snapshot kept in the save), no decision yet, nothing written into the R29 row. Caio moved to the gameplay loop (mission completion feedback, forward momentum).
+- **Follow-up (same session): R26 (P1), RCS fought the gimbals (v1.303).** `physStep` asked `ctrlAccel` for RCS's
+  command after the aero pass had moved `s.simTA` on, so that call lost the Q382 aero feed-forward and RCS was told to
+  push the cancelled aero moment back in (a Beeper with Docking's RCS: 30.0 of 30.0 kg of gas on the climb). The RCS
+  command is now computed beside the first call: 0.06 kg on the same climb (review's `r23e.mjs`: median 1.000 → 0.000).
+  New test `vehicle-42` (fails on the old code); `--smoke` all passed (790). Files: `sim/vessel.js`, `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.303, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`. Changes `TAPE_V` (source hash): older tapes
+  replay stale. **Next for vehicle:** R22 (four physics fixes), R28 with flow.
+
+## 2026-11-11 — flow, the gameplay loop (Opus 5.5, worktree launchpad-loop): Q570, Q569, Q548 (v1.305–v1.307), Q547 merged (v1.304)
+
+- **Asked:** Caio: work on Q569, Q570 and Q548. Q548 needed Q547 (built, unmerged): Caio chose to merge it with them.
+- **Done:** Q547 merged and renumbered (v1.285 → v1.304, `econ-35` → `econ-37`). **Q570 v1.305:** `opensOf(id)` and its
+  names/line (sim/program.js), `CT_KIND`, `offerTypes`; the debrief's *Opened* block (links to the Missions tab, part cards)
+  and *opens:* on each open mission. **Q569 v1.306:** completions go through a new `HOOK.done` to `app/notice.js` (`#done`):
+  name, win, pay, what it opened, what's left; queued, until Enter or a click, held mid-burn, dropped when its flight ends,
+  shown at the desk for world missions. **Q548 v1.307:** the Mission card (`cardJobs`, `jobsLeft`, `missionRows`), one
+  message per condition change, End flight when the flight's work is done.
+- **Checked:** tests `econ-38`, `flow-54`, `flow-55` (new); full `node test.mjs` after merging origin/main: 854 checks, all passed; in Chrome on a local server:
+  the Missions tab, a Sounding flown by script steps (card, messages, notices queued, *Done*, Recover vessel), the debrief's
+  Opened block and its link. The browser check found the frame loop dying on the first frame (`doneTick` called before
+  notice.js loaded): guarded.
+- **Not checked:** played by hand (TESTING 364–366); an orbital flight's *done* → End flight in orbit.
+- **Next:** Q549 (the aim: "This flight is for") replaces `cardJobs`' guess with ticked jobs; Q558's proofs build on the notice.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the loop and progression reviewed with Caio; PROGRESSION.md, D28, Q571–Q576
+
+- **Asked:** Caio, after the loop slices landed: reconsider the game loop and progression "now that the game has more
+  shape", so building, testing and progression feel exciting; he is concerned about forward momentum and wants to
+  reach stations and bases.
+- **Found (read and `career.mjs`, not played):** epochs are a label; 68 of 84 parts open on day one; the beeper is the
+  one big unlock (5 missions, 8 contract types, 7 parts); contact gates automation and data only, never a hand-flown
+  vessel; stations and bases are in the code, unplayed behind the first hour.
+- **Decided by Caio (D28):** parts unlock visibly with an overlay; contact limits uncrewed flight; the office becomes
+  tables of models (site model, globe, orrery), superseding W35's "no 3D behind the rooms"; epochs become chapters.
+- **Done:** `explorations/launchpad/PROGRESSION.md` (new, 0.1.0); DECISIONS D28; QUEUE Q571 (chapter starts), Q572
+  (unlock overlay), Q573 and Q574 (plans: the unlock map; contact limits), Q575 (mock-up: the tables), Q576 (chapters
+  as events); ROADMAP's documents table; INDEX.
+- **Not checked:** the chapter table's balance (Q573 measures it); where the first-hour flights lose contact (Q574
+  measures it first); whether a globe can be drawn in the desk scene (Q575).
+- **PARKED still:** R29b (reload during a flight from orbit), as logged above.
+- **Next:** Q571 and Q572 can start now; Q573 and Q574 are plans (their builds are mechanisms under W48's freeze);
+  Q575's mock-up goes to Caio as a W row.
