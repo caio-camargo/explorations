@@ -7128,3 +7128,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   notice.js loaded): guarded.
 - **Not checked:** played by hand (TESTING 364–366); an orbital flight's *done* → End flight in orbit.
 - **Next:** Q549 (the aim: "This flight is for") replaces `cardJobs`' guess with ticked jobs; Q558's proofs build on the notice.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the loop and progression reviewed with Caio; PROGRESSION.md, D28, Q571–Q576
+
+- **Asked:** Caio, after the loop slices landed: reconsider the game loop and progression "now that the game has more
+  shape", so building, testing and progression feel exciting; he is concerned about forward momentum and wants to
+  reach stations and bases.
+- **Found (read and `career.mjs`, not played):** epochs are a label; 68 of 84 parts open on day one; the beeper is the
+  one big unlock (5 missions, 8 contract types, 7 parts); contact gates automation and data only, never a hand-flown
+  vessel; stations and bases are in the code, unplayed behind the first hour.
+- **Decided by Caio (D28):** parts unlock visibly with an overlay; contact limits uncrewed flight; the office becomes
+  tables of models (site model, globe, orrery), superseding W35's "no 3D behind the rooms"; epochs become chapters.
+- **Done:** `explorations/launchpad/PROGRESSION.md` (new, 0.1.0); DECISIONS D28; QUEUE Q571 (chapter starts), Q572
+  (unlock overlay), Q573 and Q574 (plans: the unlock map; contact limits), Q575 (mock-up: the tables), Q576 (chapters
+  as events); ROADMAP's documents table; INDEX.
+- **Not checked:** the chapter table's balance (Q573 measures it); where the first-hour flights lose contact (Q574
+  measures it first); whether a globe can be drawn in the desk scene (Q575).
+- **PARKED still:** R29b (reload during a flight from orbit), as logged above.
+- **Next:** Q571 and Q572 can start now; Q573 and Q574 are plans (their builds are mechanisms under W48's freeze);
+  Q575's mock-up goes to Caio as a W row.
