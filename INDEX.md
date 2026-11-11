@@ -18,6 +18,7 @@
 | [`ACTIVE_WORK.md`](ACTIVE_WORK.md) | Concurrent work coordination (Profile A — see `docs/coordination.md`) |
 | [`SESSION_LOG.md`](SESSION_LOG.md) | Cross-session persistence log |
 | [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md) | Running log of what works and what doesn't |
+| [`.github/workflows/launchpad-tests.yml`](.github/workflows/launchpad-tests.yml) | CI: Launchpad's `check_numbers.mjs` and full `node test.mjs` (Node 24) on every push that touches it; the merge gate since 2026-11-11 (QUEUE § "How a session uses this", *Testing*) |
 | [`archive/SETUP_CHECKLIST.md`](archive/SETUP_CHECKLIST.md) | One-time setup steps — completed 2026-08-10, archived |
 | [`archive/launchpad-split-2026-10-08.mjs`](archive/launchpad-split-2026-10-08.mjs) | The one-time script that split Launchpad's `index.html` into `sim/`/`app/` (2026-10-08), kept for the record |
 | [`archive/active-work-cleared-2026-11.md`](archive/active-work-cleared-2026-11.md) | ACTIVE_WORK.md's clearing notes to 2026-11-02, moved out by the orchestrator (Launchpad review R24, 2026-11-10); the launchpad queue's finished rows are in `explorations/launchpad/archive/queue-2026-11.md`, linked from QUEUE.md |

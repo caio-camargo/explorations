@@ -783,7 +783,7 @@
   const A = new Function(src + 'return {PROG,HOOK,freshSeed,ensureBoard};')(), seed0 = A.PROG.wseed, seeds = Array.from({ length: 20 }, () => A.freshSeed());
   A.HOOK.save = () => {}; A.PROG.wseed = seeds[0]; A.ensureBoard(); const B = { PROG: { offers: A.PROG.offers } }; A.PROG.offers = null; A.PROG.wseed = seeds[1]; A.ensureBoard(); const C = A;
   const st = readFileSync(new URL('./app/state.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
-  const iSet = st.indexOf('progLoaded=true'), iNew = st.indexOf('if(!progLoaded)PROG.wseed=freshSeed()'), iBoard = st.indexOf('ensureBoard()', iNew);
+  const iSet = st.indexOf('progLoaded=true'), iNew = st.indexOf('if(!progLoaded&&!why){PROG.wseed=freshSeed();'), iBoard = st.indexOf('progDerive()', iNew);   // (R10: progDerive deals the board)
   const board = D => JSON.stringify(D.PROG.offers.map(o => [o.type, o.client, o.p.pay]));
   // Reset is programNew since R1b: it draws a seed each time
   const resetSeeds = () => { const X = new Function(src + 'return {PROG,HOOK,programNew};')(); X.HOOK.save = () => {}; X.programNew(); const s1 = X.PROG.wseed; X.programNew(); return Number.isInteger(s1) && s1 !== 12345 && X.PROG.wseed !== s1; };

@@ -51,6 +51,7 @@ const wearOf=(p,touch)=>{const dk=1-0.25*(p.d?devLv(p.d.key,'dur'):0);return(1-0
 function vesselCost(parts){let c=0,dry=0;for(const p of parts){const q=partPrice(p);c+=q+(p.cap.fuel||0)*FUEL_PRICE;dry+=q}return{cost:c,dry}}
 const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
 const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
+const PROG_BASE=structuredClone(PROG);   // (R10) what a save that lacks one of these fields loads onto, as the page always did
 // a new save's world seed (Q529): the page draws one when there is no save to load, and Reset program draws one; the
 // SIM itself starts on 12345, so headless tests stay repeatable (a test that wants another world sets PROG.wseed)
 const freshSeed=()=>(Math.random()*4294967296)>>>0;
@@ -190,6 +191,31 @@ function progJSON(){const o={};for(const k in PROG)if(!(PROG_SCHEMA[k]&&PROG_SCH
   return JSON.stringify(o)}
 // back to a snapshot (progJSON's text, or a parsed save): every field the snapshot lacks goes
 function progRestore(j){const p=typeof j==='string'?JSON.parse(j):progClone(j);for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,p)}
+// ---- loading a save (R10, review 2026-11-09 § 2: `{"home":99}`, `{"done":null}`, `{"rel":null}` each threw on every reload,
+// with no reset reachable). progLoad(j) is the one loader: the page (app/state.js, after migrateSave) and the recorder's
+// replay (recLoad) both go through it. (1) progRepair puts back any field whose kind differs from its PROG_SCHEMA default
+// (an object where the table has an object, a finite number where it has a number; a null default takes anything), and
+// a home that is no power. (2) progDerive: what the SIM builds from a save (HOME, the rivals' schedule, the board).
+// (3) progProbe: one day of the world run on the save with news, messages and saves muted, then put back exactly, so a
+// save that would throw in the first frame throws here instead. If any step throws, PROG is a new program and the error
+// is returned (the page keeps the bad text as a backup and says so); null means loaded. PROG_REPAIRED names the repairs.
+let PROG_REPAIRED=[];
+const progKind=v=>v===null?'null':Array.isArray(v)?'array':typeof v==='number'?(isFinite(v)?'number':'nonfinite'):typeof v;
+function progRepair(){const out=[];
+  for(const k in PROG_SCHEMA){if(!(k in PROG))continue;const d=PROG_SCHEMA[k][0];if(d===null||d===undefined||typeof d==='function')continue;
+    const want=progKind(d),got=progKind(PROG[k]);if(got!==want){out.push(`${k} (${got})`);PROG[k]=progClone(d)}}
+  if(PROG.home!=null&&!(Number.isInteger(PROG.home)&&POWERS[PROG.home])){out.push(`home (${PROG.home})`);PROG.home=PROG_SCHEMA.home[0]}
+  return out}
+function progDerive(home){for(const q of PROG.sats||[])delete q.docked;debRestore();   // the last Debrief comes back (Q100)
+  HOME=home??PROG.home??0;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();
+  if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{}}
+function progProbe(home){const snap=progJSON(),H={news:HOOK.news,msg:HOOK.msg,save:HOOK.save,log:HOOK.log},tr={};   // (transient fields, newerSave, aren't in the snapshot: kept aside)
+  for(const k in PROG)if(PROG_SCHEMA[k]&&PROG_SCHEMA[k][1]==='transient')tr[k]=PROG[k];
+  HOOK.news=HOOK.msg=HOOK.save=HOOK.log=()=>{};
+  try{advanceDays(1)}finally{Object.assign(HOOK,H);progRestore(snap);progDerive(home);Object.assign(PROG,tr)}}
+function progLoad(j,home){PROG_REPAIRED=[];
+  try{progRestore(Object.assign(structuredClone(PROG_BASE),typeof j==='string'?JSON.parse(j):j));PROG_REPAIRED=progRepair();progDerive(home);progProbe(home);return null}
+  catch(e){progRestore(PROG_BASE);programNew();return e}}   // (from the base: the bad save's designs could throw in programNew too)
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
