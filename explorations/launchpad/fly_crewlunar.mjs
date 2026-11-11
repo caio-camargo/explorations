@@ -102,9 +102,11 @@ export function crewLunar(api, say = () => {}) {
     s.throttle = 0; fixPe(SELENE.mu, SELENE.R, 15e3); const e = elements(s.r, s.v, SELENE.mu); R.ascent = { pe: e.pe - SELENE.R, left: api.dvPlan(s, 0).map(x => x.dv) }; log('BACK IN SELENE ORBIT', ((e.pe - SELENE.R) / 1e3).toFixed(0), '×', ((e.ap - SELENE.R) / 1e3).toFixed(0), 'km; Δv left', api.dvPlan(s, 0).map(x => x.dv.toFixed(0)).join(' / ')); }
   // --- 6. home: pick the burn point and size for a Tellus periapsis 45 km up, burn, correct on the way, re-enter shield-first
   const tellPe = p => { const L = p.find((x, i) => i > 0 && x.b === TELLUS); return L ? L.el.pe - TELLUS.R : null; };
-  { const e = elements(s.r, s.v, SELENE.mu), Pd = e.period; let best = null;
+  // only burns the return stage can pay for, with ~60 m/s kept for the correction on the way (R22: the search had picked a
+  // 600 m/s burn with 561 left once staging pushed the craft a metre a second differently; the tank ran dry mid-burn)
+  { const e = elements(s.r, s.v, SELENE.mu), Pd = e.period, dvMax = Math.min(700, api.dvPlan(s, 0).reduce((a, x) => a + x.dv, 0) - 60); let best = null;
     for (let i = 0; i < 48; i++) { const dt = Pd * i / 48, [r, v] = api.kepler(s.r, s.v, dt, SELENE.mu);
-      for (let dv = 300; dv <= 700; dv += 10) { const p = api.predictFrom({ b: SELENE, r, v: add(v, mul(norm(v), dv)), t: api.t + dt }), pe = tellPe(p); if (pe == null) continue;
+      for (let dv = 300; dv <= dvMax; dv += 10) { const p = api.predictFrom({ b: SELENE, r, v: add(v, mul(norm(v), dv)), t: api.t + dt }), pe = tellPe(p); if (pe == null) continue;
         const sc = Math.abs(pe - 45e3) + 20 * dv; if (!best || sc < best.sc) best = { sc, dt, dv, pe }; } }
     log('trans-Tellus burn: in', (best.dt / 60).toFixed(0), 'min, ~', best.dv, 'm/s, predicted Tellus pe', (best.pe / 1e3).toFixed(0), 'km');
     const [r1, v1] = api.kepler(s.r, s.v, best.dt, SELENE.mu), vinf2 = dot(v1, v1) + 2 * best.dv * len(v1) + best.dv ** 2 - 2 * SELENE.mu / len(r1);   // target specific energy ×2
