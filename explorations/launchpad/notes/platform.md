@@ -887,7 +887,7 @@ orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `
   `JSON.stringify(PROG)` is caught); `progLossy` finds all seven kinds planted; 300 days of play lose nothing; the
   tester is told once about R16's bound; a restore drops a field added after the snapshot, and `newerSave` isn't written.
 
-## v1.308 — chapter starts: begin at first orbit, the first station or Selene (2026-11-11, QA, QUEUE Q571; PROGRESSION § 6)
+## v1.309 — chapter starts: begin at first orbit, the first station or Selene (2026-11-11, QA, QUEUE Q571; PROGRESSION § 6)
 
 - **Why:** Caio can't playtest stations and bases because every playtest starts at hour one.
 - **On the title menu:** under New program, a *Start at* line: **First orbit done**, **First station up**, **Landed on
@@ -920,4 +920,4 @@ orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `
 - **Seen in a browser** (headless Chrome on the GPU, by script): each start from the title, Continue to the desk (NEXT, the
   Missions tab with the done firsts struck, the registry), the career save byte-for-byte untouched, Back to your career.
   In the desktop Chrome the tab froze after the station start once, while the local server was starved (4.6 s per file);
-  with the server restarted it loaded in 1 s at 8 ms a frame headless. Not played by hand (TESTING 367).
+  with the server restarted it loaded in 1 s at 8 ms a frame headless. Not played by hand (TESTING 368).

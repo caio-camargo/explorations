@@ -113,7 +113,7 @@ case.
 ## 6. Order of work
 
 1. **Chapter starts** (Q571): saves at *first orbit done*, *first station up*, *landed on Selene*, with a prudent
-   player's funds, so Caio can play the middle of the game now. ✓ v1.308: the title's *Start at* line (`node chapters.mjs` remakes them).
+   player's funds, so Caio can play the middle of the game now. ✓ v1.309: the title's *Start at* line (`node chapters.mjs` remakes them).
 2. **The unlock overlay** (Q572) on today's 13 gated parts.
 3. **Plans**: the unlock map and chapters (Q573), contact limits (Q574). **Mock-up**: the tables (Q575).
 4. Builds, after Caio's answers and W48's freeze: the map's data and presets, chapters as events (Q576), contact
