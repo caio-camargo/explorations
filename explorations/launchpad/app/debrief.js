@@ -24,7 +24,12 @@ function renderDebrief(){const D=debShown,el=$('debBody');
   const cap=t=>t[0].toUpperCase()+t.slice(1),at=f=>`<span class="was">T+${fmtT(f.met)}${f.h!=null?` · ${fmtKm(f.h)}`:''}</span>`;
   const W=D.loss?sec('What happened',D.loss.chain.map(f=>ln(`${cap(f.why)}`,at(f))).join('')+ln(`<b>${cap(D.loss.end.why)}</b>`,at(D.loss.end),'bad')
     +(D.loss.help?`<div class="help">What would help: ${D.loss.help}</div>`:'')):'';
-  const L=W+sec('Money',D.money.map(m=>ln(m.l,money(m.v))).join('')+(D.net!=null?ln('Net for the program',money(D.net),'tot'):''))
+  // (Q570) what this flight's missions opened, under the ledger: each name goes to its tab, a part shows its card
+  const Op=D.opened,lk=(x,a)=>`<a class="lnk" ${a}>${tipEsc(x.t)}</a>`,OP=Op&&opensLine(Op)?sec('Opened',
+    (Op.missions.length?ln(`Missions: ${Op.missions.map(x=>lk(x,'data-debtab="missions"')).join(', ')}`):'')
+    +(Op.contracts.length?ln(`Contracts: ${Op.contracts.map(x=>lk(x,'data-debtab="inbox" title="offers come to the in-tray"')).join(', ')}`):'')
+    +(Op.parts.length+Op.rover.length?ln(`Parts: ${[...Op.parts.map(x=>lk(x,`data-pcard="${x.id}"`)),...Op.rover.map(x=>tipEsc(x.t))].join(', ')}`):'')):'';
+  const L=W+sec('Money',D.money.map(m=>ln(m.l,money(m.v))).join('')+(D.net!=null?ln('Net for the program',money(D.net),'tot'):''))+OP
     +sec('Logbook',D.records.map(r=>ln(`${r.l} <span class="was">(${r.was?`was ${r.was}`:'first measured'})</span>`,r.v)).join(''));
   const R=sec('Missions',D.missions.map(m=>ln(`✓ ${m.l}`,m.first?'<span class="neg">first</span>':'')).join(''))
     +sec('Certified by telemetry',D.certs.map(c=>ln(c.l,`${pct(c.a)} → ${pct(c.b)}`)).join(''))
@@ -45,7 +50,11 @@ $('bDebAgain').onclick=()=>debAgain();
 // the HUD offers the way out once the flight is over: landed or lost
 // (Q263; PLAYTEST #63) landed or splashed at home and still, it reads Recover vessel, as in KSP: the Debrief counts the recovery
 const debRecover=()=>!!(S&&S.alive&&S.landed&&S.body===TELLUS);
-function debEndBtn(){const b=$('bEnd');if(!b)return;const R=S&&S.rec,over=mode==='flight'&&R&&R.launched&&!R.ended&&(!S.alive||S.landed&&simT>5);b.classList.toggle('hidden',!over);
+function debEndBtn(){const b=$('bEnd');if(!b)return;const R=S&&S.rec,over=mode==='flight'&&R&&R.launched&&!R.ended&&(!S.alive||S.landed&&simT>5||(mcLeft()||{}).k==='done');b.classList.toggle('hidden',!over);   // (Q548) or its work done
   const rec=over&&debRecover(),t=rec?'Recover vessel ▸ [Enter]':'End flight ▸ [Enter]';if(b.textContent!==t){b.textContent=t;b.classList.toggle('rec',rec);
     b.title=rec?`recover it and end the flight: the debrief${S.water?' (from the sea)':''}`:'the flight is over: see how it went'}}
 $('bEnd').onclick=()=>go('debrief');
+// (Q570) the Opened block's links: a mission or contract kind opens its tab on the Program; a part, its card
+$('debBody').addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-debtab]');if(!t)return;progTab=t.dataset.debtab;go('program')});
+$('debBody').addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-pcard]');if(t&&tipOK()&&PARTS[t.dataset.pcard])tipShow('card',partCardHTML(t.dataset.pcard),{r:t.getBoundingClientRect(),side:true})});
+$('debBody').addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-pcard]')&&tipOK())tipHide('card')});

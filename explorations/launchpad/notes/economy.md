@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-10
+**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3534,3 +3534,69 @@ also needs `landed` or `bio`.
 **Test** `econ-35`: a satellite dispatch with a Qualify and an air-sample contract also on the books: no throw, the
 satellite contract paid, the other two still open. Fails on the old line with *Cannot read properties of undefined
 (reading 'kestrel')*.
+
+## v1.302 — no government top-up while a flight is open (2026-11-11, economy session, QUEUE R15)
+
+**The bug** (review 2026-11-09 § 2, R15, confirmed there): liftoff debits the rocket, ops and site fee, then the study,
+pad and prep waits and, at the end, the flight's own days run through `advanceDays` → `econTick` → `floorCheck`. A
+program below 25 M after paying for its rocket was topped up to the floor *before* the flight's contract pay, mission
+pay and refurbishment came in: the review's 110 M agency flying a 108.8 M Heavy ended at 85.5 M instead of 61.6 M, and
+each of those top-ups counted toward `PROG.bailouts` (three take a bigger stake) and cost opinion.
+
+**The fix:** `FLOOR_HOLD` (sim/program.js, beside `REVERT0`) holds the open flight's record from liftoff (not a simulator
+run) until `missionEnd` has settled pay, refunds and damages; `econTick` skips its `floorCheck` while it is set (`floorCheck` itself
+still checks at once when called), and `missionEnd` clears it just before its own `floorCheck`. A revert (`missionDiscard`) and a load clear it. The rescue offer for a
+private program waits the same way. Dispatches are unchanged: they debit and settle inside one `dispatchTick`.
+
+**Measured** (`node career.mjs 3 3`, 18 rows): bailouts per career 0.98 → 0.15; final funds 678 → 659 M (the top-ups
+were free money). Test `econ-36` (fails on the old line).
+
+**Not done, the other half of R15:** a funds gate inside the sim at liftoff. The launch button (`app/editor.js`) and the
+Rollout refuse hardware + site fee over the funds and only warn for ops, by design (the Rollout's text: it flies into the
+red, and below the floor someone steps in, now at the end of the flight). A sim-side refusal at liftoff would need a
+place to refuse from; left as it is.
+## v1.304 — a job's conditions as data (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1, notes/flow.md § "Plan: the aim and the mission card")
+
+**What it is.** Until now a contract was judged by one opaque `ok(R, p, s)` on the flight record, so nothing could ask
+*which* condition was unmet or whether one could no longer be met. Now every `CT` type and every `MISSIONS` entry also
+carries three functions (`sim/contracts.js`, the block after `CT`; assigned onto the existing entries, so `CT` and
+`MISSIONS` read as before):
+- `needs(p)`: what the design must carry, `[{id, t, has(ship)}]` (an instrument package, a biocapsule, a parachute or
+  legs, a camera, an antenna, a docking port, a cargo bay, a crew capsule, an escape tower, *m* t of mass simulators, the
+  part under test).
+- `conds(p)`: what the flight must do, `[{id, t, state(R, s) → 'met' | 'lost' | 'open' | 'pending', now?(R, s)}]`. A
+  sounding contract (`apex`, 40–55 km) is *apex 40–55 km* (open while climbing, "now 47 km"; met once in the band and
+  falling; lost past 55 km, for good) and *recovered* (pending in flight; met at `recSci`; lost when it lands without the
+  package). `sat`/`recon`: *an instrument package in orbit*, *periapsis and apoapsis 300 ± 25 km* ("now 296 × 310 km"),
+  *inclination 45 ± 3°*. `bioHop`/`touristHop`: *to space*, *never over 5 g* (lost at `gMax > g`, met on landing),
+  *home safe*. `ballistic`: *from Dunnzar Cape* (lost once launched elsewhere), *down within 40 km of the target*.
+  Anything still open when the flight is over (`R.ended`, or the vessel dead) is lost.
+- `legs(p)`: where it goes, in the aim's legs (`{k:'hop', alt}`, `{k:'orbit', b, alt, inc}`, `{k:'land', b, …}`,
+  `{k:'meet', id}`, `{k:'flyby', b}`, `{k:'home'}`, `{k:'stay'}`), as the plan maps them.
+
+Readers for slices 2–3: `jobConds(x, R, s)` (each cond's id, label, state and `now` text; `now` never throws),
+`jobMet(x, R, s)` and `jobNeeds(x, ship)`, where `x` is an active contract `{type, p}`, a mission, or `'m:'+id`.
+
+**Coverage.** The 17 flight-judged types (all but `image` and the `sel*`/`st*` ones) and the 23 flight missions have
+real conds. The 10 between-flight types and the 6 world missions carry one cond, *judged at home*, always pending on a
+flight (their `ok` is false there too); their progress line ("1 of 3 readings") needs the contract's `c.base` and is
+left to the slice that shows it. `air` reads `PROG.atm` (four band conds, pending until a package lands) and `range`
+`PROG.streak` (pending, never lost on a flight's end). `procKey` now skips `stack.aim` (the plan's note), so saving an
+aim won't orphan a design's procedures. Nothing reads any of this on screen yet; `ok()` still judges and pays.
+
+**What didn't map one to one** (mirrored, not changed; `ok` stays the authority):
+- *recovered* is `recSci`, any intact landing on Tellus, including one a power keeps (plan question 3 is still open).
+- `test`'s `ok` reads only `qPart`, which counts only with a package aboard; the cond says "instrumented".
+- `ballistic`'s "at sea" isn't checked: the target lies at sea and the radius is 40 km.
+- The `hop`/`orbiter` missions don't need `R.bio` the way `bioHop` does; `weather` reads `R.apex`, not `apexSci`.
+- The sounding cond's "falling" uses the vessel (`s`); with no vessel, or once landed, in the band is met. Since
+  `recSci` implies landed, "all met ⇔ ok" holds on any record a flight makes.
+
+**Tests:** econ-37. For every flight-judged type (three generated contracts each; rdv/service/retrieve hand-made), a met
+record, each one-field step short of it (and the vessel's, for service and retrieve), and 800 fuzzed records with every
+field at or next to each threshold: all conds met ⇔ `ok`, 0 mismatches. The flight missions are checked the same way on
+fuzzed records, and all of them are met somewhere in the fuzz. Labels and `now` never read "undefined"/"NaN". There are
+scripted checks too: the sounding run's open → met → pending → met path and its lost cases, over-g lost after landing,
+the ballistic site check, an orbit lost once the flight is over, the range pending, the judged-at-home conds, well-formed
+legs and needs on the Hopper, and `procKey` ignoring `aim`. One check: loosening a cond (`<` for `<=` on the
+inclination) makes it fail with 31 mismatches.

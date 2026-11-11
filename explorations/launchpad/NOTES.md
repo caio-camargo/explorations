@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.48 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.51 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -133,6 +133,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.273 — every preset's standard climb, staged as designed, makes orbit unrescued; the Crewed Lunar "levelling off" was the test flier carrying its dry boosters; the Lunar class's upper stages are 0.39–0.75 g in vacuum (no preset changed) (2026-11-07, vehicle worker, QUEUE Q537)
 - Plan: solid motors as a main-stage choice: per-engine throttle, a grain set on the pad, solids per era, the Assembly's checks for a stage that can't stop (2026-11-07, vehicle worker, QUEUE Q252, PLAYTEST #51; plan only)
 - v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
+- v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
+- v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -278,6 +280,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.261 — the world's dice are the calendar's (2026-11-06, economy worker, QUEUE Q526, from Q446)
 - v1.270 — the money curve after day-sized ticks: tourism and military offers back to a trickle; a new save draws its own world (2026-11-06, economy worker, QUEUE Q528, Q529)
 - v1.300 — a dispatched flight settles its contract on a whole flight record: a "Qualify the X" or air-sample contract on the books no longer crashes the world tick (2026-11-10, worker, QUEUE R14, P1) → [notes/economy.md](notes/economy.md)
+- v1.302 — no government top-up while a flight is open: the floor waits for the flight to settle (2026-11-11, economy, QUEUE R15) → [notes/economy.md](notes/economy.md)
+- v1.304 — a job's conditions as data: needs, conds and legs on every contract type and mission, all conds met ⇔ ok (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -374,6 +378,9 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.285 — the map's Layers panel closes when you leave the map (2026-11-07, flow, QUEUE Q443; PLAYTEST #115)
 - v1.286 — two planets close on the map share one label (`Hesper, Hyperion`) instead of one losing its name (2026-11-08, flow, QUEUE Q192)
 - v1.288 — the pad calendar's window bar: hatched amber, dashed, "held for its window"; bars no longer run past their day (border-box) (2026-11-09, flow, QUEUE Q211)
+- v1.305 — what a mission opens: opensOf, the debrief's Opened block, "opens:" on the Missions tab (2026-11-11, flow, QUEUE Q570) → [notes/flow.md](notes/flow.md)
+- v1.306 — a completion notice you can't miss: its own card, queued, until Enter or a click (2026-11-11, flow, QUEUE Q569) → [notes/flow.md](notes/flow.md)
+- v1.307 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -459,4 +466,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.294 — the solar wing's cells: each wing panel 4 × 4 modules of small cells (grey interconnects, white substrate between modules, a contact bar and fingers), each cell its own blue and its own cover-glass tilt, violet at a grazing look; the body cells the same (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.294)
 - v1.297 — the cells' grid lines keep their true coverage from afar (`linc`), so a wing stays blue as you zoom out; the wing's panels unfold together over 6 s (was one after another over 4 s) (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.297; committed as "v1.295", renumbered)
 - v1.296 — one serializer: `progJSON`/`progRestore` for the save, revert, simulator, flights from orbit and the recorder; the tester is told of values JSON would lose (R16 named) (2026-11-10, review fixes, QUEUE R1c)
-- v1.301 — a bad save no longer bricks the page: `progLoad` repairs kinds from `PROG_SCHEMA`, probes a muted day, falls back to a new program; the bad text kept as `-bad`; quota errors said; a second tab stops saving (2026-11-11, platform, QUEUE R10)
+- v1.308 — a bad save no longer bricks the page: `progLoad` repairs kinds from `PROG_SCHEMA`, probes a muted day, falls back to a new program; the bad text kept as `-bad`; quota errors said; a second tab stops saving (2026-11-11, platform, QUEUE R10)

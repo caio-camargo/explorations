@@ -887,7 +887,7 @@ orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `
   `JSON.stringify(PROG)` is caught); `progLossy` finds all seven kinds planted; 300 days of play lose nothing; the
   tester is told once about R16's bound; a restore drops a field added after the snapshot, and `newerSave` isn't written.
 
-## v1.301 — a bad save no longer bricks the page (2026-11-11, platform, QUEUE R10)
+## v1.308 — a bad save no longer bricks the page (2026-11-11, platform, QUEUE R10)
 
 The review (2026-11-09 § 2) found three saves that threw on every reload with no reset reachable: `{"ver":1,"home":99}`,
 `{"done":null}`, `{"rel":null}`. Reproduced headless: each loaded, then threw on the first world tick (`align` of an

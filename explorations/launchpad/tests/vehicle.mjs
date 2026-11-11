@@ -1033,3 +1033,42 @@
     !neg.length && M.Hopper > 0.15 && M.Beeper > 0.15,
     (neg.length ? `unstable: ${neg.join(', ')} · ` : '') + Object.entries(M).map(([n, m]) => `${n} ${m.toFixed(2)}`).join(', '));
 }
+
+// vehicle-41. The drag table follows the craft's outline (vehicle, QUEUE R21; REVIEW-2026-11-09 § 2): `dragTable` was cached
+// by part count and AoA bin, so a fairing jettison (the shell gone, its count unchanged) or a bay's doors kept the old
+// table, and the impact predictor ran ~1.8× light on drag until the next staging. Now the cache also holds the outline it was
+// measured on (`s.lines`, which `rebuildShape` replaces on every change), so the doors count while open and until shut.
+{
+  const fresh = (s, a) => { s.dragTab = null; return api.dragTable(s, a); }, same = (a, b) => a.every((x, i) => Math.abs(x - b[i]) < 1e-9);
+  const s = api.newShip(api.PRESETS.Satellite), F = s.events.find(e => e.fair), i5 = [2, 4, 6, 10].map(k => k * 2);   // Mach 1, 2, 3, 5
+  const before = api.dragTable(s, 0), b5 = api.dragTable(s, 5); api.fairJettison(s, F.fair);
+  const cached = api.dragTable(s, 0), after = fresh(s, 0), again = api.dragTable(s, 0);
+  let bay = null; const bn = 'a bay ship (the stack of core § 29)';
+  { const b = api.newShip(['core', 't1', 'bay', 'pod', 't2', 'kestrel']), shut = api.dragTable(b, 0); api.bayDoors(b, true); const op = api.dragTable(b, 0), opF = fresh(b, 0);
+    const t0 = api.t; api.bayDoors(b, false); const closing = api.dragTable(b, 0); api.t += 5; api.bayTick(b); const back = api.dragTable(b, 0); api.t = t0; bay = { shut, op, opF, closing, back }; }
+  const f = t => i5.map(k => t[k].toFixed(2)).join(', ');
+  check('vehicle-41: the drag table is rebuilt when the outline changes: after a fairing jettison it equals a fresh one (and stays cached at that), and a bay\'s open roof likewise; the AoA bins still keep their own',
+    same(cached, after) && !same(before, after) && again === after && !same(before, b5) && (!bay || same(bay.op, bay.opF) && !same(bay.shut, bay.op) && same(bay.closing, bay.op) && same(bay.back, bay.shut)),
+    `Satellite CdA at Mach 1, 2, 3, 5: fairing on ${f(before)}; jettisoned ${f(cached)} (fresh ${f(after)})` + (bay ? ` · ${bn}: shut ${f(bay.shut)}, open ${f(bay.op)} (fresh ${f(bay.opF)}), still closing ${f(bay.closing)}, shut ${f(bay.back)}` : ' · no preset carries a bay'));
+}
+
+// vehicle-42. RCS doesn't fight the gimbals' feed-forward (vehicle, QUEUE R26, P1; REVIEW-2026-11-11 § 6, review/2026-11-11/r23e.mjs):
+// physStep asked `ctrlAccel` for RCS's command after the aero pass had moved `s.simTA` on, so that call lost the aero
+// feed-forward the first one had used, and RCS was told to push the cancelled aero moment back in. The Beeper with Docking's
+// RCS rings and bottles, flown up on SAS along a pitch program: it burned all 30 kg of gas on the climb; now a few grams.
+{
+  const keepS = api.S, keepT = api.t;
+  const d = api.toV2(api.PRESETS.Beeper), find = n => n.k === 't2' ? n : n.c.map(find).find(Boolean), tk = find(d.root);
+  tk.c.push({ k: 'rcs', at: { y: 0.2, a: 0, n: 4, cy: 0.1 }, c: [] }, { k: 'rcs', at: { y: 1.8, a: 0, n: 4, cy: 0.1 }, c: [] }, { k: 'gas', at: { y: 1, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] });
+  api.t = 0; const s = api.newShip(d), T = api.TELLUS, gas = () => s.parts.reduce((a, p) => a + (p.res && p.res.gas || 0), 0) * 1000;
+  api.advPhys(s); s.sas = true; s.sasMode = 'stab'; s.throttle = 1; api.stage(s); s.rcs = true;
+  const g0 = gas(), AS = T.atm / 7e4; let h = 0;
+  for (let i = 0; i < 30000 && s.alive; i++) { const fr = api.localFrame(s.r); h = api.len(s.r) - T.R; if (h > T.atm) break;
+    const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180;
+    s.hold = api.norm(api.add(api.mul(fr.e, Math.cos(r)), api.mul(fr.up, Math.sin(r))));
+    if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s); s.rcs = true; api.advPhys(s); }
+  const used = g0 - gas();
+  check('vehicle-42: RCS on through a Beeper\'s climb (Docking\'s RCS added) keeps its gas: under 1 kg of 30 used to the edge of the air, alive',
+    s.alive && h > T.atm && g0 > 20 && used < 1, `gas used ${used.toFixed(2)} of ${g0.toFixed(1)} kg, reached ${(h / 1e3).toFixed(0)} km, alive ${s.alive} (was 30.0 of 30.0)`);
+  api.S = keepS; api.t = keepT;
+}
