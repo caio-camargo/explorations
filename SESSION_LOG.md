@@ -7058,4 +7058,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   bridge's corner. Now a second kept line (the upper lid's crease, from the next point down the bridge's edge), both
   lines level: the plane is a band ending in an edge. Seen: calm faces on the sheet. Rough: eyeballs stand proud.
   FACES 0.1.15 § 10, README 0.1.29. **Next:** Caio's look; then the lids (the eyeballs), or the lips.
+- **Follow-up 10 (2026-11-11): the brow's expression (faces5).** Caio: better, but all resolute; wants angle and two
+  or three vertices, for anger, fear, surprise. The ridge now runs through three kept points with a height slider
+  each; six mood buttons. Seen: six different brows on the average man; afraid and sad are close. Only the ridge
+  moves. FACES 0.1.16 § 10, README 0.1.30. **Next:** Caio's look.
 

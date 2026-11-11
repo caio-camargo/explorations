@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.15 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Version**: 0.1.16 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
 **Status**: **a second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
@@ -431,4 +431,19 @@ Seen (GPU; `brow-band-closeup.png`, `brow-band-front.png`, `sheet-brow-band.png`
 level dark band from the bridge's edge outward; the faces on the sheet read calm, not angry. Rough: the eyeballs
 stand prouder of the lids than before; the crease line is short (it stops over the eye's middle); the forehead
 above the bridge is still a fan of triangles meeting at its top. Not checked: as above.
+
+**Step 3, the brow's expression: three kept points** (2026-11-11; Caio: "better, but now they all look resolute.
+that should be one option, naturally, but so should others ... some variation in angle plus maybe two vertices,
+maybe three? to be able to convey anger, fear, surprise"). The ridge no longer starts at the bridge's corner: it
+is a line of two straight pieces through three points the cutting never removes (inner end, just above the
+bridge's corner; middle; outer end), each at its own height over the bridge's top. The lid's crease stays level, so
+the band under the brow grows and shrinks with the ridge. Sliders (0 to 1 is 0 to .05 head heights): *Brow: inner
+end low–high* (house .32), *middle* (.44), *outer end* (.24); the tilt slider is gone. Buttons in the editor set the
+three together: neutral (.32 .44 .24), resolute (.08 .08 .08), angry (0 .26 .46), afraid (.7 .58 .2), surprised
+(.62 .92 .6), sad (.62 .4 .06). The sheet's faces take the editor's brow.
+Seen (GPU; `brow-moods.png`, the average man, front): the six read differently; angry (a V) and resolute (level)
+are clear, surprised lifts the whole band, afraid and sad both lift the inner end and are hard to tell apart.
+Rough: only the ridge moves (the forehead above, the lids and the eye's opening do not, and MakeHuman's own brow
+expressions are overridden where the ridge is built); every person gets the same brow heights. Not checked: the
+moods on the sheet and in three-quarter view, at 48 px, and at other plane counts.
 

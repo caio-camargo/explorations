@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.29 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.30 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -352,6 +352,8 @@ straight ridge*, *Brow overhang*, *Brow: outer end down–up*. Stills: `brow-rid
 `brow-natural-front.png`, `sheet-brow.png`. Corrected 2026-11-11 (the first ridge made every face scowl): the plane
 under the brow is now a level band between the ridge and the upper lid's crease, ending on the bridge's edge.
 Stills: `brow-band-closeup.png`, `brow-band-front.png`, `sheet-brow-band.png`.
+**The brow's expression** (2026-11-11): the ridge runs through three kept points (inner end, middle, outer end) with a
+height slider each, and buttons for neutral, resolute, angry, afraid, surprised, sad. Still: `brow-moods.png`.
 
 **Pick:** _(Caio: is this the direction?)_
 
