@@ -154,6 +154,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Caio + Claude (platform, Opus) | 2026-11-11 | **R10** a bad save must not brick the page: `raceSchedule()`/`ensureBoard()` inside the try, a backup of an unparsable save, quota errors surfaced, a two-tab guard. Worktree `launchpad-r10`, branch `r10` | `app/state.js` (load/save), `tests/platform.mjs` |
 | Caio + Claude (economy, Opus) | 2026-11-11 | **R15** the government top-up mid-flight; a funds gate at launch in the sim. Worktree `launchpad-r15`, branch `r15` | `sim/contracts.js` (`floorCheck`, `econTick`), `sim/program.js` (launch debit), `tests/economy.mjs` |
 | Caio + Claude (faces, Fable) | 2026-11-10 | **The 3D face creator, diagnosed and rebuilt** (Caio's ask; the parked D12 face engine, not the ligne-claire head). A new lab beside the old one: one subdivided control cage instead of glued SDF solids. Worktree `launchpad-faces`, branch `faces`. The old lab stays untouched | `explorations/launchpad/mockups/faces2/` (new), `mockups/README.md` § faces, `FACES.md` (a diagnosis section). Reads `intake/` (never commits it) |
 | Caio + Claude (look & sound, parts & pad) | 2026-11-10 | **Q565** the solar wing's surface (cell texture for `wpanel`, `bpanel`). Worktree `launchpad-visuals`, branch `visuals`, port 8776 | `app/gl.js` (MESH_FS: a new kind branch; `wpanel`/`bpanel` cases; `KIND`), `tests/look.mjs` |
