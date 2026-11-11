@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.53 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.54 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -284,7 +284,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.302 — no government top-up while a flight is open: the floor waits for the flight to settle (2026-11-11, economy, QUEUE R15) → [notes/economy.md](notes/economy.md)
 - v1.304 — a job's conditions as data: needs, conds and legs on every contract type and mission, all conds met ⇔ ok (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1)
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
-- v1.309 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
+- v1.311 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -470,3 +470,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.297 — the cells' grid lines keep their true coverage from afar (`linc`), so a wing stays blue as you zoom out; the wing's panels unfold together over 6 s (was one after another over 4 s) (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.297; committed as "v1.295", renumbered)
 - v1.296 — one serializer: `progJSON`/`progRestore` for the save, revert, simulator, flights from orbit and the recorder; the tester is told of values JSON would lose (R16 named) (2026-11-10, review fixes, QUEUE R1c)
 - v1.308 — a bad save no longer bricks the page: `progLoad` repairs kinds from `PROG_SCHEMA`, probes a muted day, falls back to a new program; the bad text kept as `-bad`; quota errors said; a second tab stops saving (2026-11-11, platform, QUEUE R10)
+- v1.309 — chapter starts: *Start at* first orbit, the first station or Selene, saves made by career.mjs's scripted player (`chapters.mjs`, `starts/`), their own slot (2026-11-11, QA, QUEUE Q571)

@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -917,3 +917,37 @@ undefined power, `Object.keys(null)`, `null['0-1']`); so do `offers: 5` and `act
   load repaired and play 3 days; `sats:[5]`, `offers:5`, non-JSON and a bare string are kept as `-bad` and a new program
   starts; storage full holds the save; quota said once; another tab's write stops this tab's saves; the played-save
   equality above. platform-2's slice of the page now ends at `// Loading (R10)`.
+## v1.309 — chapter starts: begin at first orbit, the first station or Selene (2026-11-11, QA, QUEUE Q571; PROGRESSION § 6)
+
+- **Why:** Caio can't playtest stations and bases because every playtest starts at hour one.
+- **On the title menu:** under New program, a *Start at* line: **First orbit done**, **First station up**, **Landed on
+  Selene**. Picking one loads `starts/<id>.js` (a script tag, so it works from a file too), writes its save into its own
+  slot (`CHAPTER_KEY`, `launchpad-program-chapter`; `PROG_SLOT` in app/state.js, read from `launchpad-slot`) and reloads; the career's
+  save is never read or written. In that slot Continue says *a chapter start* and New program becomes **Back to your
+  career**. The player's library and level (`PROG_SCHEMA`'s `library`/`pref` fields) come along. In tester mode a start
+  replaces the tester's program instead, flags and all; outside it there are no tester flags.
+- **How they're made:** `node chapters.mjs` plays one career with career.mjs's scripted player (the prudent one: a reserve,
+  declines offers but a rescue loan) through the game's own economy, race, opinion and calendar, and snapshots `progJSON`
+  at each milestone, so each start carries on from the one before. career.mjs is now also a module: `run(arch, start,
+  seed, opts)` with `until`, `days`, `keep` (carry on), `goals` (missions it goes for, a bonus on their value: *Measure the
+  air* and, after orbit, the escape tower's two tests, the station and the Selene firsts) and `registry` (what an orbit
+  leaves, its last stage, is posed on its orbit and the Selene lander on the near side, then the game's own `satRegister`
+  files them). New plans: `PLANS.abort` (a crew capsule under its tower on the Passenger's booster) and `PLANS.station`
+  (a habitat, a port on top and one on its side, a probe core, on the Heavy). The default rows are unchanged
+  (`PACE=1 node career.mjs 3 2` prints the same before and after). Deterministic: the same files every run.
+- **What they hold (seed 1, a random world that came out a rising power, a national agency):** *First orbit done* day 60,
+  2 flights, 180M, the weather, the air and the beeper done, Beeper 1 up. *First station up* day 494, 12 flights, 172M,
+  10 firsts (the hop and one orbit, the tower qualified), Beeper 1 and the habitat (the game names it *Object 1*).
+  *Landed on Selene* day 805, 15 flights, 581M, 13 firsts (the far side, the impactor, the soft landing), *Selene lander 1*.
+  The flights are abstracted as career.mjs always has (a record per plan, a success probability): fast and cheap next
+  to a person's career, and contracts are few (1–3).
+- **When the save schema moves:** `node chapters.mjs` and commit `starts/`. `--dry` prints the summary only.
+- **Test** `qa-8`: each start loads as the page loads a save, carries only `PROG_SCHEMA` fields and nothing `progLossy`
+  flags, survives a `progJSON` round trip, has its milestones without a tester mark, its registry (a beeper up; a habitat
+  with two free ports by `stFind`; a lander on Selene), runs 40 days, and launches what its next mission takes (the
+  *Structural test flight* on the Sounding preset; *Heavy lift I* on the scripted player's Orbiter with ballast: no
+  `NEXT_PRESET` for it). The title menu lists the same three, into their own slot.
+- **Seen in a browser** (headless Chrome on the GPU, by script): each start from the title, Continue to the desk (NEXT, the
+  Missions tab with the done firsts struck, the registry), the career save byte-for-byte untouched, Back to your career.
+  In the desktop Chrome the tab froze after the station start once, while the local server was starved (4.6 s per file);
+  with the server restarted it loaded in 1 s at 8 ms a frame headless. Not played by hand (TESTING 368).

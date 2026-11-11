@@ -3735,7 +3735,7 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
 - Prices and funds beyond first orbit under the new order (TV before stations, Selene after Heavy lift II): the runner
   was run in `PACE` mode only.
 - The `test` contract, dispatch and procedures against a closed part in a stored design (read, not run).
-## v1.309 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
+## v1.311 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
 
 **The bug** (review 2026-11-09 § 2, R16, confirmed there): `seisLocate` (sim/rovers.js) started the core bracket at
 `hi: Infinity`. JSON turns that into `null` (every save, and every simulator run, since the run is put back from a
