@@ -7070,3 +7070,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   the lids on the whole sheet; six moods distinct. FACES 0.1.17 § 10, README 0.1.31. **Next:** Caio's look; then
   the lips, or the lid's crease following the lid.
 
+### 2026-11-11 — Launchpad vehicle session: R21, the stale drag cache (v1.301)
+- **Summary:** `dragTable` (`sim/flight.js`) cached the impact predictor's CdA table by part count and AoA bin, so a fairing
+  jettison or bay doors kept the old table (Satellite after jettison: 1.70 m² cached vs 3.30 true at Mach 1). The cache
+  now also holds the `s.lines` it was measured on (`rebuildShape` replaces it on every outline change). Keying on `profOf`
+  was tried and rejected (it disagrees with `s.lines` while bay doors finish closing). New test `vehicle-41`, which fails
+  on the old code; `--smoke` all passed (788).
+- **Files:** `sim/flight.js`, `test.mjs` (api: `dragTable`, `fairJettison`, `bayDoors`, `bayTick`), `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.301, `NOTES.md`, `QUEUE.md` (R21 ✓), `ACTIVE_WORK.md`.
+- **Next:** none for R21. No TESTING row (not visible on screen; the robot check covers it).
