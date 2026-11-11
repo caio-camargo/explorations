@@ -1072,3 +1072,37 @@
     s.alive && h > T.atm && g0 > 20 && used < 1, `gas used ${used.toFixed(2)} of ${g0.toFixed(1)} kg, reached ${(h / 1e3).toFixed(0)} km, alive ${s.alive} (was 30.0 of 30.0)`);
   api.S = keepS; api.t = keepT;
 }
+
+// vehicle-43. Three physics fixes (vehicle, QUEUE R22; REVIEW-2026-11-09 § 2): (a) `fall()` no longer predicts an impact in the
+// past when the craft is outbound on an escape (the crossing is behind it: cruiseStep's `dt>=0` guard); (b) a pure ignition that
+// fails to light stays the next event and runs none of its other effects (chute, fairing, spin motors, groups), which had run
+// again on the retry; (d) `ascentRun` takes the level's air once (the drag table already has it: Easy's drag was 0.75² of
+// Normal's). (c), `detach()`'s momentum, is parked on branch `r22-detach` (notes/vehicle.md § v1.310).
+{
+  const T = api.TELLUS, keepS = api.S, keepT = api.t, P = api.PROG, keepP = { flights: P.flights, lvl: P.lvl };
+  // (a) 200 km up, outbound at 1.2 × escape speed, angled 60° off vertical: the periapsis is under the air, the entry behind
+  const r = [T.R + 2e5, 0, 0], ve = Math.sqrt(2 * T.mu / (T.R + 2e5)) * 1.2, v = [ve * 0.5, ve * 0.866, 0], el = api.elements(r, v, T.mu);
+  const fa = api.fall(T, r, v, 1000, () => 0);
+  // (b) the Satellite's upper-stage engine as an extra pure-ignition event that also arms the chute; rolled until it fails
+  const s = api.newShip(api.PRESETS.Satellite), kE = s.parts.find(p => p.on && p.d.kind === 'engine' && p.seg !== s.parts.find(q => q.on && q.d.kind === 'engine').seg)?.seg;
+  const TS = api.TEST, nf = TS.nofail; TS.nofail = false; delete P.lvl;
+  let failed = null, at = null;
+  if (kE != null) { s.events.push({ decouple: [], ignite: [kE], chute: true }); const ix = s.events.length - 1;
+    for (let f = 1; f < 400 && !failed; f++) { P.flights = f; s.evIdx = ix; s.chute = false; s.segs[kE].ignited = false; api.stage(s);
+      if (s.evIdx === ix) failed = { f, chute: s.chute }; }
+    TS.nofail = true; if (failed) { api.stage(s); at = { idx: s.evIdx, chute: s.chute, lit: !!s.segs[kE].ignited }; } }
+  TS.nofail = nf;
+  // (d) the drag the ascent estimate integrates: Easy over Normal, at the level's air once
+  const asc = lv => { if (lv) P.lvl = lv; else delete P.lvl; const x = api.newShip(api.PRESETS.Orbiter); x.dragTab = null; return api.dragTable(x, 0)[4]; };
+  const n0 = asc(null), e0 = asc('easy'); delete P.lvl;
+  const fsrc = readFileSync(new URL('./sim/flight.js', import.meta.url), 'utf8'), a0 = fsrc.indexOf('function ascentRun('), ar = fsrc.slice(a0, fsrc.indexOf('return out}', fsrc.indexOf('const tab=', a0)));
+  const arOnce = ar.length > 500 && /dragTable/.test(ar) && !/lvl\(\)\.air/.test(ar);
+  Object.assign(P, keepP); if (keepP.lvl == null) delete P.lvl; api.S = keepS; api.t = keepT;
+  check('vehicle-43: (a) no impact in the past outbound on an escape; (b) a failed pure ignition stays the next event and arms nothing until it lights; (d) the ascent estimate takes Easy\'s air once',
+    el.e > 1 && el.pe < T.R + T.atm && fa == null
+      && failed && failed.chute === false && at && at.lit && at.chute
+      && Math.abs(e0 / n0 - api.LEVELS.easy.air) < 0.02 && arOnce,
+    `(a) e ${el.e.toFixed(2)}, pe ${((el.pe - T.R) / 1e3).toFixed(0)} km: ${fa == null ? 'no impact' : `impact at t ${fa.t?.toFixed?.(0)}`}` +
+    ` · (b) ${failed ? `failed on flight ${failed.f}, chute ${failed.chute ? 'ARMED' : 'not armed'}; retried: ${at.lit ? 'lit' : 'not lit'}, chute ${at.chute ? 'armed' : 'not armed'}` : 'no failure found'}` +
+    ` · (d) CdA at Mach 2, Easy / Normal ${(e0 / n0).toFixed(3)} (air ${api.LEVELS.easy.air}); ascentRun ${arOnce ? 'without' : 'WITH'} its own air factor`);
+}
