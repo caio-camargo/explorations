@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -50,20 +50,23 @@ of the part"). After the flight report, one card per grant, in order of weight:
   routine;
 - several grants queue; any key moves on; the list stays in the report's **Opened** block (Q570's `opensOf`).
 
-**Chapters.** An epoch becomes a chapter with a question, a visible finish and a grant. First draft, for the economy
-plan (Q573) to measure against the M1 finish line (first orbit in 4–6 flights) and the presets:
+**Chapters.** An epoch becomes a chapter with a question, a visible finish and a grant. The map of which part opens
+with which mission is planned and measured in [`notes/economy.md`](notes/economy.md) § "Plan: the unlock map and
+chapters" (Q573); this is its summary.
 
-| Chapter | The question | Starts with | Opens along the way | Capstone → grant |
-|---|---|---|---|---|
-| 1 Sounding rockets | can we reach space and bring it back? | Sparrow, tanks 1–4 t, fins, nose cone, parachute, instrument package, decoupler | biocapsule (*Above the weather*) | *Structural test flight* → **Kestrel, tank 8 t, steerable fins** |
-| 2 Once around | can we stay up? | | Petrel and the reaction wheel (*Passenger: the hop*); pod and heat shield | *The beeper* → **mission control opens; the satellite bench** (probe cores, batteries, body cells, cameras, whip antenna, fairing); **the globe table** |
-| 3 Satellites that work | can what we launch earn its place? | | solar wing, boom antenna, apogee engine, kick motors, spheres (*Weather satellite*); **Condor** (*Heavy lift I*) | *TV for the capital* or *Navigation constellation* → **routines** (dispatch of a flown ascent); **docking ports, RCS** |
-| 4a A house in the sky | can people live up there? | | habitat; crew capsule and escape tower (the abort tests); arm and cargo bay; laboratory | *Thirty days aboard* → **the yard** (assembly in orbit, LATE_GAME § Yards) |
-| 4b Selene | can we reach another world? | **Albatross and the 2.5 m family** (*Heavy lift II*) | landing legs, Wren (*The far side*); rover parts as today (`RV_GATE`) | *Soft landing* → **the base beacon**; with 4a, *Crew on Selene* → **bases** |
-| 5 Nyx and beyond | | | RTG, onboard computer (their eras, as today) | as LATE_GAME § "The arc after Selene" |
+| Chapter | The question | Opens along the way | Capstone → grant |
+|---|---|---|---|
+| 1 Sounding rockets | can we reach space and bring it back? | biocapsule, tank 4 t, steerable fins (*Above the weather*); boosters (*Range certification*); pod, heat shield (*the hop*) | *Structural test flight* → **the orbital kit**: Kestrel, Petrel, tank 8 t, reaction wheel |
+| 2 Once around | can we stay up? | crew capsule, escape tower (*one orbit*); **Condor** (*Heavy lift I*); **Albatross and the 2.5 m family** (*Heavy lift II*) | *The beeper* → **mission control, the globe, the satellite bench** (20 parts, one card) |
+| 3 Satellites that work | can what we launch earn its place? | solar wing, boom antenna, apogee engine, kick motors (*Weather satellite*) | *TV for the capital* → **docking**: ports, RCS, the habitat |
+| 4a A house in the sky | can people live up there? | arm, cargo bay (*A station*); laboratory (*A crew aboard*); crews fly (the max-q abort) | *Thirty days aboard* → **the yard** (LATE_GAME § Yards) |
+| 4b Selene | can we reach another world? | landing legs, Wren, rovers (*The far side*); base beacon (*Soft landing*) | *Crew on Selene* → **bases** |
+| 5 Nyx | what else is out there? | RTG, onboard computer (their eras) | *An orbit that lasts* → LATE_GAME § "The arc after Selene" |
 
-Chapters 4a and 4b run side by side; a base needs both. The two Heavy lift missions, which today only pay, become the
-gates for the big engines.
+The start is twelve parts: a Sparrow, two tanks, fins, a nose cone, a parachute, an instrument package, a decoupler.
+Chapters 4a and 4b run side by side, both after chapter 3 (stations after TV; the far side after the weather satellite
+and Heavy lift II); a base needs both. First orbit now needs the structural test. **Measured:** the scripted player
+already flew it, so first orbit stays at 4.2 flights on average (max 6).
 
 **Chapters as events.** The Missions tab shows the current chapter's finish and its grant. A capstone gets the poster
 headline (Q479) before its unlock cards. The desk wall (it already holds the firsts, `app/desk.js:41`) is the trophy
@@ -121,8 +124,19 @@ case.
 
 ## 7. Open questions (each with a default; the named item brings it back)
 
-| # | Question | Default | Item |
+| # | Question | Default | Where |
 |---|---|---|---|
+| 1 | Does an engine unlock outright, or as a development program (opens *on paper*, qualified after stand firings)? | outright, arriving unproven | W50 |
+| 2 | The structural test's bar: the Sounding passes 25 kPa by 0.2 kPa, and the flight now stands before the Kestrel | 20 kPa | W50 |
+| 3 | The order the map fixes: the structural test before orbit, TV before stations, two tonnes to orbit before Selene | yes | W50 |
+| 4 | The Petrel with the Kestrel, or after the hop? | with the Kestrel (no preset changes) | W50 |
+| 5 | Does contact limit the first orbit on Normal? | yes if a stored burn can be taught in the Mission card; else from chapter 3 | Q574 |
+| 6 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
+
+**Answered by the plans:** first orbit stays 4–6 flights with the gate (Q573, measured); a part already flown stays
+open, so old saves keep what they have used (Q573, rule 1).
+
+---|---|---|---|
 | 1 | Does an engine unlock outright, or as a development program (opens *on paper*, qualified after stand firings)? | outright, arriving unproven | Q573 |
 | 2 | Is first orbit still 4–6 flights with chapter 1's gate in front of the Kestrel? | yes: hold the finish line, move the gate if not | Q573 |
 | 3 | Does contact limit the first orbit on Normal? | yes if a stored burn can be taught in the Mission card; else from chapter 3 | Q574 |
@@ -135,3 +149,5 @@ case.
 - **0.1.0 (2026-11-11):** written from Caio's review of the loop (the same day's conversation): visible unlocks with
   an overlay, contact limits on uncrewed flight, chapters with capstones, the office as three tables; W35's "no 3D
   behind the rooms" superseded (D28).
+- **0.1.1 (2026-11-11):** § 3's chapter table and § 7 from Q573's plan (measured): the hop in chapter 1, the Petrel with
+  the Kestrel, the Heavy lift missions in chapter 2, stations after TV, Selene after Heavy lift II.
