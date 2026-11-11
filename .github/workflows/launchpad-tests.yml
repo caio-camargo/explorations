@@ -2,6 +2,8 @@
 # The merge gate: a session pushes its branch, waits with `gh run watch`, merges when this passes.
 # Locally sessions keep `--smoke` and `--only <lane>`; the full run happens here, off the shared machine.
 # Same command as the local gate (`node test.mjs`, one process), so a result here means the same thing.
+# By hand, any branch, any test.mjs options, any Node:
+#   gh workflow run launchpad-tests.yml --ref <branch> -f args="--only space-33" -f node=22
 name: launchpad tests
 
 on:
@@ -10,13 +12,22 @@ on:
       - 'explorations/launchpad/**'
       - '.github/workflows/launchpad-tests.yml'
   workflow_dispatch:
+    inputs:
+      args:
+        description: 'test.mjs options (empty = the full suite)'
+        default: ''
+      node:
+        description: 'Node version'
+        default: '24'
 
 concurrency:
-  group: launchpad-tests-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}   # a branch's newer push replaces its run; main's runs all finish
+  # pushes: one run per branch (a branch's newer push replaces its run; main's runs all finish); by hand: each its own
+  group: launchpad-tests-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'push' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   full:
+    name: node test.mjs ${{ inputs.args }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     defaults:
@@ -28,8 +39,10 @@ jobs:
           fetch-depth: 0   # check_numbers.mjs compares the branch with origin/main
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ inputs.node || '24' }}
       - name: numbers (check_numbers.mjs)
         run: node check_numbers.mjs
-      - name: full suite (node test.mjs)
-        run: node test.mjs
+      - name: test suite (node test.mjs)
+        env:
+          ARGS: ${{ inputs.args }}
+        run: node test.mjs $ARGS

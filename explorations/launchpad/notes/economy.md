@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3600,3 +3600,138 @@ scripted checks too: the sounding run's open → met → pending → met path an
 the ballistic site check, an orbit lost once the flight is over, the range pending, the judged-at-home conds, well-formed
 legs and needs on the Hopper, and `procKey` ignoring `aim`. One check: loosening a cond (`<` for `<=` on the
 inclination) makes it fail with 31 mismatches.
+
+## Plan: the unlock map and chapters (2026-11-11, review 2 session, Fable; QUEUE Q573; PROGRESSION § 3, D28; plan only)
+
+Nothing built. The map below is checked against the game's own data and the career runner; the scripts are in
+`review/2026-11-11/q573/`. What it rests on: `PART_GATE` and `partOpen` (`sim/program.js:35-41`, Q190) already close a
+part until a mission is done, refuse the launch (`partLaunchWhy`) and dim the part in the builder; the map is more rows
+in that table, five `req` changes and two contract `req` changes. No new mechanism.
+
+**Measured (v1.307)**
+
+| Question | Result | Script |
+|---|---|---|
+| Does the gate cost flights? | No. The scripted player already flies weather, the structural test, the hop, then the beeper: 4.2 flights to orbit on average (max 6), 89 of 90 runs, with the gate and without. With every first failing once: 6.1 (max 7) gated, 6.4 (max 9) today. Bailouts before orbit unchanged (0.01; 0.19 with failures) | `mkcareer.cjs`, `PACE=1 GATE=0\|1\|2`, 3 years × 5 seeds × 18 starts |
+| Can the chapter-1 kit reach orbit anyway? | Not found: five Sparrow-only stacks of two and three stages (4.9–5.7 km/s in vacuum, 27–35 M), nine turn shapes each, top out at 45–88 km apoapsis, none with a periapsis above −550 km. Not a proof | `m2.mjs` |
+| Is the Petrel needed for the first orbit? | No. Kestrel + tank 8 t under a Sparrow + tank 2 t reaches 152 × 102 km with 1,700 m/s left for 40 M (the Beeper preset: 1,447 m/s left, 52 M) | `m2.mjs` |
+| Can a Sparrow do the structural test (25 kPa)? | Barely. Straight up at full throttle the Sounding preset reaches **25.2 kPa**; without fins 27.4; on a 2 t tank 19.2; on a 4 t tank 11.2. Tilted 45° the preset reaches 28.9. The runner's structural-test rocket today is a Kestrel (76.8 kPa) | `m1.mjs` |
+| Is the map consistent? | Yes after two contract changes: all 84 parts placed (12 at the start, 69 on 14 missions, 3 by era); every mission's needs and its `NEXT_PRESET` are open when the mission opens; `service` and `stExpand` (req the beeper, need a port and a habitat) move to req TV | `m3.mjs` |
+
+**The map** (mission → what it opens; ↑ marks a part moved from today's `PART_GATE`)
+
+| Mission | Parts | Card |
+|---|---|---|
+| *(start)* | Sparrow; tanks 1 t, 2 t; nose cone; parachute; instrument package; decoupler; fin ring, radial fin; mass simulator; balance weight; spin-up motors | 12 parts |
+| Above the weather | biocapsule; tank 4 t; steerable fin ring, steerable fin | 4 |
+| Structural test flight | **Kestrel**; tank 8 t; **Petrel**; interstage decoupler; reaction wheel | "the orbital kit" |
+| Range certification | radial decoupler (boosters) | 1 |
+| Passenger: the hop | command pod; heat shield | 2 |
+| The beeper | probe cores ×3; batteries ×4; body solar cells; cameras ×2; cone and whip antennas; side instrument package; fairing; octagonal frames ×3; payload adapters ×3 | "the satellite bench", one family card (20 parts); mission control; the globe |
+| Passenger: one orbit | crew capsule; escape tower (as today) | 2 |
+| Heavy lift I | **Condor** | 1 |
+| Heavy lift II | **Albatross**; tanks 16 t, 32 t; adapter; 2.5 m decoupler, fin rings, nose cone, fairing | "the 2.5 m family", one card (9) |
+| Weather satellite | solar wing ↑; boom antenna ↑; apogee engine; hydrazine thrusters; propellant spheres ×2; kick motors ×3; small reaction wheels ×2 | "high orbits", one card (11) |
+| TV for the capital | docking ports ×2 ↑; RCS quad; gas bottle; claw ↑; habitat ↑ | "docking", one card (6) |
+| A station | arm; cargo bay (as today) | 2 |
+| A crew aboard | laboratory (as today) | 1 |
+| The far side | landing leg ↑; Wren; the rover mounts; rover parts as `RV_GATE` | 4 + rovers |
+| Soft landing on Selene | base beacon (as today) | 1 |
+
+Onboard computers and the RTG stay with their computing era.
+
+**`req` changes the map needs**
+
+| Mission or contract | Today | Proposed | Why |
+|---|---|---|---|
+| The beeper | weather | weather, structural test | the Kestrel opens with the structural test |
+| Passenger: the hop | structural test | weather, structural test | the biocapsule opens with weather |
+| TV for the capital | the beeper | weather satellite | its preset needs the solar wing and the apogee engine |
+| A station | the beeper | TV | the habitat and ports open with TV: stations become chapter 4a |
+| The far side | the beeper | weather satellite, Heavy lift II | the Probe preset is an Albatross; today the far side opens with the first orbit |
+| `service`, `stExpand` contracts | the beeper | TV | they need a port, a habitat |
+
+After this the fan-out at the beeper is 2 missions (Heavy lift I, weather satellite) and 6 contract types, where today
+it is 5 and 8.
+
+**Presets by chapter** (the missions each waits for): Sounding at the start; Passenger after weather; Beeper and
+Passenger Orbiter after the structural test; Hopper and Orbiter after the hop; Heavy and Asparagus after the hop and
+range; Satellite after the weather satellite; TV Satellite after the weather satellite and range; Probe after Heavy
+lift II; Lunar, Big Lunar, Sample Return after the far side; Crewed Lunar after the far side and one orbit; Docking
+after TV and onboard computers. **The Hopper is the first preset in the list and is closed until the hop is flown**: the picker has to say what each preset waits for (slice 2).
+
+**Rules**
+
+1. **A part already flown stays open**: `partOpen` returns ok when `PROG.kh[kinOf(k)]` exists (know-how is written
+   by a flight, `sim/program.js:724`, or by a development job on a part you make). An old save keeps everything it has flown; a part it never flew follows
+   the map. No migration, no version flag.
+2. **Unlock, then prove.** A new part arrives at its starting certification (`cert0`) and know-how (`use0`), as today.
+   The unlock card (Q572) says so and offers the test stand when one is built.
+3. **Families are one card.** `PART_FAMILY` names groups that open together (the satellite bench, the 2.5 m family,
+   high orbits, docking); a family's card shows its models side by side.
+4. **Closed parts are not offered.** The `test` contract draws its part from a fixed list of ten that includes Kestrel,
+   Condor and Petrel (`sim/contracts.js:30`): draw from the open ones.
+5. **No gates outside a program** (`khOn`) and none with the tester's *All tools*, as today. The simulator follows the
+   program.
+6. **Chapters are data**: `CHAPTERS` in the sim, each `{id, name, question, missions, capstone, grants}`, read by the
+   Missions tab and the capstone ceremony (Q576). The epoch number on a mission stays for the tester's epoch picker.
+
+**Chapters** (final draft; replaces PROGRESSION § 3's table)
+
+| Chapter | Missions | Capstone | Grants beyond parts |
+|---|---|---|---|
+| 1 Sounding rockets | Above the weather, Measure the air, Structural test flight, Range certification, Passenger: the hop | Structural test flight | the orbital kit; tighter impact predictions (Measure the air, as today) |
+| 2 Once around | The beeper, Passenger: one orbit, Heavy lift I, Heavy lift II | The beeper | mission control; the globe; the satellite bench |
+| 3 Satellites that work | Weather satellite, TV for the capital, Disaster watch, Navigation constellation | TV for the capital | income that stays; docking |
+| 4a A house in the sky | A station, A crew aboard, A lab in orbit, Thirty days aboard, the two abort tests | Thirty days aboard | crews fly (max-q abort, as today); the yard (LATE_GAME) |
+| 4b Selene | The far side, Impactor, Soft landing, Sample return, Crew around Selene, Crew on Selene | Crew on Selene | rovers; bases |
+| 5 Nyx | the four Nyx missions | An orbit that lasts | as LATE_GAME § "The arc after Selene" |
+
+The hop moves to chapter 1 (a Sparrow flies it: the Passenger preset reaches 145 km). Fifteen missions open no part.
+Some already grant something else (Measure the air's predictions, the max-q abort's crews); the rest are rungs, and
+Q576 gives each a line of what it proves.
+
+**What changes outside the sim**
+
+- `playtest.mjs m1` flies two flights today (a Sounding, then the Beeper, `playtest.mjs:442`). With the map it needs
+  the structural test between them, and the Sounding's 0.2 kPa margin becomes the first hour's margin.
+- `career.mjs`'s structural-test plan flies a Kestrel (`FIRST_PLAN.loads`): it becomes a Sparrow, as `mkcareer.cjs`
+  does.
+- Q571's chapter-start saves are made by playing: regenerate them after slice 1.
+- PLAYROUTE sitting 1 flies Sounding, Passenger, Hopper, Beeper: the Hopper moves after the hop.
+
+**Slices**
+
+| # | Slice | Lane | Size |
+|---|---|---|---|
+| 1 | The map as data: `PART_GATE` to the table above, the six `req` changes, rule 1 (flown stays open), rule 4 (`test` draws open parts), the structural test's bar (question 2); `m3.mjs`'s checks as a section of `tests/economy.mjs` (every part placed; each mission's needs and `NEXT_PRESET` open at its `req` closure; each contract type's needs open at its `req`); `career.mjs`'s structural test on a Sparrow, `PACE=1` unchanged within a flight | economy | M |
+| 2 | The builder under the map: the preset picker dims a preset and says what it waits for; closed parts fold under *Not open yet (n)* by chapter (69 dimmed parts at the start are noise); a family's parts share one reason line | vehicle | S |
+| 3 | `PART_FAMILY`, a `why` line per part or family for the unlock card (Q572), `CHAPTERS` for Q576 | economy | S |
+| 4 | The robot's route: `m1` with the structural test (three flights), `m2` and the rows that set missions by hand rechecked, PLAYROUTE sitting 1, Q571's saves regenerated | QA | S–M |
+
+Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 works before and after.
+
+**Questions for Caio** (one W row; defaults hold if silent)
+
+1. **Outright or a development program?** Default **outright, arriving unproven**. The alternative (an engine opens
+   *on paper* and is qualified by stand firings before it can fly) needs a stand (40 M, 60 days today) in the first
+   hour, or a second rule for engines only.
+2. **The structural test's bar.** Default **20 kPa** (25 today): the Sounding passes at 25.2, and under the map this
+   flight stands between the player and the Kestrel. The builder's design case can stay at 25.
+3. **The order this fixes.** First orbit needs the structural test; stations come after TV; Selene after two tonnes to
+   orbit and a working satellite. Default **yes**.
+4. **The Petrel with the Kestrel, or after the hop?** Default **with the Kestrel** (no preset changes). After the hop
+   would make first orbit cheaper (40 M on a Sparrow upper stage) and the Petrel a felt upgrade, but the Beeper and
+   Passenger Orbiter presets, their tapes and the robot's route would change.
+
+**Not checked**
+
+- Any of this in play: the runner abstracts each flight to a success probability, so it cannot say whether a new
+  player gets the Sounding to 25 kPa.
+- Whether a cleverer Sparrow-only rocket reaches orbit (boosters are closed until range certification; none tried
+  with radial stages).
+- The Probe preset as the only way to the far side: a Condor design might do it, which would let the far side wait
+  for Heavy lift I only.
+- Prices and funds beyond first orbit under the new order (TV before stations, Selene after Heavy lift II): the runner
+  was run in `PACE` mode only.
+- The `test` contract, dispatch and procedures against a closed part in a stored design (read, not run).
