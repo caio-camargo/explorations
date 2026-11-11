@@ -3,7 +3,7 @@
 # Locally sessions keep `--smoke` and `--only <lane>`; the full run happens here, off the shared machine.
 # Same command as the local gate (`node test.mjs`, one process), so a result here means the same thing.
 # By hand, any branch, any test.mjs options, any Node:
-#   gh workflow run launchpad-tests.yml --ref <branch> -f args="--only space-33" -f node=24
+#   gh workflow run launchpad-tests.yml --ref <branch> -f args="--only space-33" -f node=22
 name: launchpad tests
 
 on:
@@ -18,7 +18,7 @@ on:
         default: ''
       node:
         description: 'Node version'
-        default: '22'
+        default: '24'
 
 concurrency:
   # pushes: one run per branch (a branch's newer push replaces its run; main's runs all finish); by hand: each its own
@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0   # check_numbers.mjs compares the branch with origin/main
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ inputs.node || '22' }}
+          node-version: ${{ inputs.node || '24' }}
       - name: numbers (check_numbers.mjs)
         run: node check_numbers.mjs
       - name: test suite (node test.mjs)
