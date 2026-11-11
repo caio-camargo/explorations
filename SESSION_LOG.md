@@ -7148,3 +7148,25 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **PARKED still:** R29b (reload during a flight from orbit), as logged above.
 - **Next:** Q571 and Q572 can start now; Q573 and Q574 are plans (their builds are mechanisms under W48's freeze);
   Q575's mock-up goes to Caio as a W row.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the plans for Q573 (the unlock map) and Q574 (contact limits), measured
+
+- **Asked:** Caio: "can you start on 573 and 574 then?" (plans only).
+- **Done:** `notes/economy.md` § "Plan: the unlock map and chapters"; `notes/space.md` § "Plan: contact limits uncrewed
+  flight" (written by a fork of this session; its Beeper run and the tracking-ship run were repeated here before it was
+  adopted); `PROGRESSION.md` 0.1.2 (§ 3, § 4, § 7); QUEUE Q577–Q580 and Q581–Q587, W50 and W51; scripts in
+  `explorations/launchpad/review/2026-11-11/q573/` and `q574/`. No game code or test edited.
+- **Found (Q573):** the gate in front of the Kestrel costs the scripted player no flight (4.2 to first orbit, max 6,
+  with and without); Sparrow-only stacks did not reach orbit in the shapes tried; the Petrel is not needed for a first
+  orbit (Kestrel under a Sparrow: 40 M, 1,700 m/s left); the Sounding passes the structural test by 0.2 kPa; the map
+  places all 84 parts and needs six `req` changes.
+- **Found (Q574):** every first-orbit burn is beyond the pad station's horizon (the Beeper's by 78 s); a stored timed
+  burn circularises as well as a guided one; six buildable stations give 23 % contact at 150 km; `linkOf` reads
+  "plasma blackout" for 23–42 s around the ascent cutoff on all four presets with the tests' ascent.
+- **Not checked:** anything in play or by hand; sites other than the default; the far side on anything but the Probe;
+  funds beyond first orbit under the new order; the rest of the fork's runs beyond the two repeated.
+- **Lesson:** PROGRESSION § 4 assumed ground stations and relays would give control at the stick. Measured, they do
+  not in low orbit; the dish and relay chains (Q338, Q217) are what make comms satellites matter.
+- **PARKED still:** R29b.
+- **Next:** Caio answers W50 and W51 (defaults hold); Q577 and Q581 are the first builds; Q582–Q585 wait on W48.
