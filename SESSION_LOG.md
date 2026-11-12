@@ -7530,3 +7530,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `momentum3` (check_numbers ok; the launchpad tree byte-identical to CI-green run 43168291024, so no new run: the
   workflow's path filter skips a docs-only push), ff-merged. Local smoke there: green but for vehicle-43 (b), Q604's flake.
   Loop slices row cleared.
+- **2, R5 → main:** the red smoke on `r5` was **not** the shared world map: with the map unshared the same shard failed
+  the same way. R5's new `SLOW` weights dealt Q328 (vehicle-16) into a process after sections that leave `simT` large; the
+  section built its craft and *then* set `api.t = 0`, so the planet turned under the pad and the first step hit the
+  ground at 6 km/s. Fixed in the test (clock before `newShip`), and the same pattern in §16's launch-window check. Merged
+  main, smoke green, CI green (43282472938), ff-merged. notes/platform.md § Test shards; QUEUE R5 ✓; platform row cleared.
