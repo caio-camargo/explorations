@@ -2265,3 +2265,22 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
   Retrograde re-picked kept, the flag cleared past 6 m/s, procedures and other modes untouched; the wiring. Run with
   control-3, control-5, vehicle-24, flow-36 and the retrograde returns (14, 37f, vehicle-3): all pass. The full smoke is
   owed (Caio's batch). TESTING row 383.
+## v1.327 — the era maps show the night side (2026-11-07, orchestrator worker, QUEUE Q546; PLAYTEST #152)
+
+- **Asked:** Caio: "the monochrome computer display on the map doesn't include a terminator/indication of which side is
+  night".
+- **Cause:** `drawEraMap`'s terminal style drew each body as a limb circle and a wireframe, with no day or night. The
+  notebook did hatch a night side, but as a half-disc cut through the centre square to the sun's screen direction, which
+  is wrong whenever the sun is in front of or behind the body (a crescent drew as a half).
+- **What changed:** `eraNight(b, cen, c, rp, camW, project)` (app/program-ui.js) finds the night region as the map sees
+  it: the visible arc of the terminator (the great circle square to `SUN`, sampled at 96 points, its ends pushed out to the
+  limb), closed round the limb the dark way (the side of the anti-sun point); none when the terminator is out of view on
+  the day side, the whole disc when it's out of view on the night side. The **terminal** dims its wireframe there
+  (the display's black at 62 %), lays scanlines in its own green at the display's 3-px pitch, and draws the terminator as
+  a glowing green line: one colour, as the era. The **notebook** keeps its pencil hatching (diagonal strokes) but clipped
+  to the same true night region, and pencils the terminator in with the hand's tremor (`wob`). Sized by `ovPx()`.
+  Bodies under 3 px across get none.
+- **Checks:** test `flow-62` (computed with a pinhole camera 10 radii out: the night share of the disc is 0, 11.5, 49.9,
+  88.4, 100 % at sun-camera angles 0°, 45°, 90°, 135°, 180°, against the phase's 0, 14.6, 50, 85.4, 100; the wiring of both
+  styles). Screenshots (RTX): `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/before_map/eval_{3,4,5,6}.png` (no night side), `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/after_map/eval_{3,4,5,6}.png`
+  (Selene and Tellus half and gibbous in shadow on the terminal; the notebook's hatching). TESTING 384.

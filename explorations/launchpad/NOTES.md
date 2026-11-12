@@ -394,6 +394,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.307 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
 - v1.319 — the Mission card stays up in flight (short in the climb, burns and landings; every mission the vessel could meet); a mission done turns green in its place, one line and a chime, no centred box in flight (2026-11-12, Q600, D42)
 - v1.325 — near the ground, retrograde hands over to stability: under 3 m/s within 50 m a craft on SAS retrograde switches to Stability (upright if leaning past 3°), says so once, never switches back (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
+- v1.327 — the era maps show the night side: the terminal dims and scanlines it in green with the terminator as a line; the notebook hatches the true night region, not a half-disc (2026-11-07, orchestrator worker, QUEUE Q546, PLAYTEST #152)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -450,6 +451,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.291 — a sharpening upscale: the canvas at device pixels, Catmull-Rom and a clamped sharpen, the grain at device pixels (2026-11-09, review session, QUEUE Q560)
 - v1.295 — staging: the camera eases onto the craft (a spring over the centre-of-mass jump), and a stronger separation: flash, two gas rings, flecks, all falling with the craft (2026-11-10, review session, Q564) → [notes/look.md](notes/look.md)
 - v1.298 — the whole exhaust trail: puffs live 7–9 min, the trail is thinned as its puffs widen so the list holds it from the pad up, a least size on screen (2026-11-10, review session, Q566) → [notes/look.md](notes/look.md)
+- v1.326 — the landing dust is round, not a square: windowed to zero inside its raymarch box (it summed into a pale square at the box's sides); the splash in air too (2026-11-07, orchestrator worker, QUEUE Q543, PLAYTEST #149)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

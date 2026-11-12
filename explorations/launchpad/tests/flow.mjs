@@ -1612,3 +1612,31 @@
   check('flow-60: each family member has its own line (the bench\'s 20 cards say 20 things; the builder keeps the family\'s); a sound per card; a career under way opens on the desk, the title in the Esc menu',
     !bare.length && bee.length === 20 && lines.size === 20 && builder && snd && load, `no line: ${bare.join(',') || '-'} · bench lines ${lines.size}/${bee.length} · builder ${builder} · sound ${snd} · load ${load}`);
 }
+// flow-62. The era maps show each body's night side (flow, era maps, QUEUE Q546, PLAYTEST #152). eraNight (app/program-ui.js)
+// turns the terminator (the great circle square to SUN) into the night region as the map sees it: its visible arc, closed
+// round the limb the dark way. Computed with a pinhole camera 10 radii out: the night share of the disc follows the phase
+// ((1 − cos α)/2 for the angle α between the sun and the camera), none with the sun behind the camera, all of it with the
+// sun behind the body. Source: the terminal dims and scanlines it in its green with the terminator as a line; the
+// notebook hatches the same region in pencil.
+{
+  const H = html.replace(/\r\n/g, '\n'), cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const fn = cut(H, 'function eraNight(', '\nconst wob=');
+  const SUN = norm([1, 0.12, 0.05]), eraNight = new Function('SUN', 'sub', 'add', 'mul', 'madd', 'dot', 'norm', 'cross', 'len', fn + ';return eraNight')(SUN, sub, add, mul, (a, b, s) => add(a, mul(b, s)), dot, norm, cross, len);
+  const W = 1000, Hh = 800, tanY = Math.tan(0.4), B = { R: 1 }, cen = [0, 0, 0], rows = [];
+  const shot = alpha => {   // the camera 10 R out at angle alpha from the sun
+    const e = norm(cross(SUN, [0, 0, 1])), dir = add(mul(SUN, Math.cos(alpha)), mul(norm(cross(e, SUN)), Math.sin(alpha))), camW = mul(dir, 10);
+    const F = mul(dir, -1), R = norm(cross(F, [0, 1, 0])), U = cross(R, F), f = (Hh / 2) / tanY;
+    const project = p => { const d = sub(p, camW), z = dot(d, F); return z > 0 ? [W / 2 + f * dot(d, R) / z, Hh / 2 - f * dot(d, U) / z] : null; };
+    const c = project(cen), rp = (Hh / 2) * Math.tan(Math.asin(1 / 10)) / tanY, n = eraNight(B, cen, c, rp, camW, project);
+    let share = n === null ? 0 : n.all ? 1 : 0;
+    if (n && !n.all) { let a = 0; for (let i = 0; i < n.poly.length; i++) { const p = n.poly[i], q = n.poly[(i + 1) % n.poly.length]; a += p[0] * q[1] - q[0] * p[1]; } share = Math.abs(a / 2) / (Math.PI * rp * rp); }
+    return { share, arc: n && n.arc ? n.arc.length : 0 };
+  };
+  for (const deg of [0, 45, 90, 135, 180]) { const a = deg * Math.PI / 180, r = shot(a), want = (1 - Math.cos(a)) / 2; rows.push({ deg, ...r, want, ok: Math.abs(r.share - want) < 0.05 && (deg % 180 === 0 || r.arc > 2) }); }
+  const ed = cut(H, 'function drawEraMap(', '\nfunction gateMsg(');
+  const wired = /const nt=rp>=3\*k\?eraNight\(b,cen,c,rp,camW,project\):null;/.test(ed) && /if\(era===2\)\{o\.fillStyle='rgba\(2,10,3,\.62\)'/.test(ed)
+    && /o\.fillStyle='rgba\(57,255,110,\.16\)';\s*for\(let y=Math\.floor\(\(c\[1\]-rp\)\/\(3\*k\)\)\*3\*k;/.test(ed) && /o\.strokeStyle='rgba\(57,255,110,\.85\)'/.test(ed)
+    && /o\.strokeStyle='rgba\(29,42,82,\.22\)'/.test(ed) && !/\(xa-c\[0\]\)\*sx/.test(ed);
+  check('flow-62: the era maps show the night side: its share of the disc follows the phase (none with the sun behind the camera, half side-on, all with the sun behind the body); the terminal dims and scanlines it in green with the terminator as a line, the notebook hatches it in pencil',
+    !!fn && rows.every(r => r.ok) && wired, rows.map(r => `${r.deg}°: ${(r.share * 100).toFixed(1)} % (want ${(r.want * 100).toFixed(1)}), arc ${r.arc}`).join(' · ') + ` · wired ${wired}`);
+}
