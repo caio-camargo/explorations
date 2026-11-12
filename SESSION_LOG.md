@@ -7206,3 +7206,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   by area, and a table "Decided, but nothing carries it" (11 rows, for the orchestrator). **REVIEW-2026-11-11 § 8**: 20
   design questions (8 where two records disagree), with recommendations, none answered. Q583 gained a check (the
   logbook locks maneuver nodes until an orbit is measured). Coverage was by key word; no code run.
+
+## 2026-11-11 — economy, the unlock map slice 1 (Opus 5.5, worktree launchpad-loop): Q577 (v1.311)
+
+- **Asked:** Caio: start on Q577 if unclaimed.
+- **Done:** `PART_GATE` is the Q573 map (12 parts at the start, 69 on 14 missions, 3 by era); the six `req` changes, and
+  one more: *A crew aboard* waits for the max-q abort (a crew only flies after it; the plan's m3 read mission needs from
+  `CT_JOB` instead of `M_JOB`, so its mission check was empty and missed this); a flown part stays open (`partFlown`);
+  the qualification contract draws open parts; the structural test at 20 kPa (`LOADS_Q`). career.mjs: the structural
+  test on the Sounding, closed designs skipped, abstract weather and TV satellites; PACE 4.2 flights to orbit, 89/90.
+  Q571's chapter starts regenerated. Test `econ-39`; 13 older checks that set missions by hand follow the map. TESTING 369.
+- **Checked:** the full suite (`node test.mjs --jobs 2`): all pass after the fixes.
+- **Not checked:** played by hand (does a new player get the Sounding past 20 kPa?).
+- **Next:** Q578 (the builder: closed presets say what they wait for; the Hopper, first in the list, is closed until the
+  hop), Q579 (families, reasons, chapters), Q580 (the robot's m1 route needs the structural test; PLAYROUTE sitting 1).
