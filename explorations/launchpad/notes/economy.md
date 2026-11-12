@@ -3811,7 +3811,7 @@ careers: none. By reading: the other stored-Infinity candidates stay off `PROG` 
 the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist` with `isFinite`; station and power
 `days` are computed, not stored). `career.mjs` doesn't reach the late game (R19), so tester mode's warning
 (`progJSON`, R1c) stays the net for what this missed. Test `econ-40` (fails on the old line).
-## v1.315 — unlock map slice 4: the robot's route (2026-11-11, QA, QUEUE Q580; the plan Q573, slice 1 v1.311 above)
+## v1.316 — unlock map slice 4: the robot's route (2026-11-11, QA, QUEUE Q580; the plan Q573, slice 1 v1.311 above)
 
 - **m1 stays two flights.** The Sounding flown straight up at full throttle reaches 25.2 kPa with its instrument package,
   so the one flight does *Above the weather* and the *Structural test flight* (bar 20 kPa) together, and the beeper is

@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2485,3 +2485,42 @@ frame time in the app; how the Assembly's stability maths reads a wing.
 
 **Not checked (before the flight above):** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
 contact code.
+
+## v1.315 — three of R22's four physics fixes; `detach()`'s momentum parked (2026-11-11, vehicle session, QUEUE R22; REVIEW-2026-11-09 § 2)
+
+All four confirmed by the review. Three ship; `vehicle-43` checks them and fails on the old code at each. The fourth is built
+and parked (below).
+
+- **`fall()` predicted an impact in the past** outbound on an escape. With the periapsis under the air, it took the time
+  to the entry crossing from `timeToNu`, which on a hyperbola outbound is negative (the crossing is behind). Test case:
+  200 km up, 1.2 × escape speed, 60° off vertical (e 1.70, pe −96 km): "impact" at t 711 s for a craft at t 1000 s. Now
+  `dt<0` means no impact, the guard `cruiseStep` already had.
+- **A failed pure ignition re-ran its event's other effects.** `stage()` stepped `evIdx` back so the ignition could be
+  retried, but went on to the spin motors, fairing, chute and action groups, which then ran a second time on the retry.
+  Now a failed pure ignition returns before them: nothing else happens until it lights. Test: an extra ignite+chute event
+  rolled until the engine fails (flight 31): the chute was armed on the failure, now it waits for the retry.
+- **`ascentRun` took Easy's air twice**: its drag table comes from `aeroPass`, which already scales by `lvl().air`, and
+  the integrator multiplied by it again (0.75² ≈ 0.56 of Normal's drag instead of 0.75). Dropped from the integrator; the
+  table's Easy/Normal ratio is 0.762 (fins and the base at the true air).
+
+`stage` and `fall` are in `TAPE_V`'s hash: tapes recorded before replay stale.
+
+**PARKED: `detach()`'s momentum** (branch `r22-detach`, pushed; parked at: built and tested, three scripted missions fail).
+
+*The bug:* the debris branch gave the dropped stage its kick and the craft no reaction, and neither branch moved the craft's
+velocity with its centre of mass (`s.r` moved by `sh`, `s.v` stayed). The vessel branch gave the part the whole kick and the craft −kick × dm/M, which for a heavy stage under a light one is several m/s for nothing.
+*On the branch:* on both branches of `detach` the kick is how fast the two pieces part, shared by mass (the part M/(M+dm)
+of it, the craft the rest, backwards), and the craft's velocity is its new centre's, v + ω × sh. Orbiter's first drop:
+momentum error 1.0 m/s × M → 3e−14; the craft now gains 1.06 m/s from the push (it had 0).
+
+**For space, on the branch:** `bayRelease` (`sim/space.js`) shared its 0.3 m/s out by mass itself before calling `detach`; there it
+passes `BAY_PUSH` as is (the bay checks: 0.3000 m/s apart, momentum kept).
+
+**Why parked:** every staging now gives the craft about a metre a second it didn't get before, and the three long scripted
+flights of the full suite are on knife edges: *Crewed Lunar flies a crew to Selene and home*, *procedures v2: the flown
+mission is recorded*, and *mission ladders: the same Nyx orbit flown prograde does not last*. With `detach` reverted all
+three pass again. In `fly_crewlunar.mjs` the trans-Tellus search picked a 600 m/s burn with 561 m/s left and the tank ran
+dry; capping the search at what the stage can pay (on the branch) brings it home on a 4.1 g entry, but it now touches down at
+7 m/s among rainforest trees and is lost (Q383). **To land it:** make the three flights robust to a metre a second at
+staging (the burn search capped, a correction after the last staging, a splashdown aimed at sea or Q383 settled), then
+merge the branch and add its momentum check (`vehicle-44` there).

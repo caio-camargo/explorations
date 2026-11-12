@@ -135,6 +135,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
+- v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
@@ -286,7 +287,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.304 — a job's conditions as data: needs, conds and legs on every contract type and mission, all conds met ⇔ ok (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1)
 - v1.311 — the unlock map as data: `PART_GATE` by mission (12 parts at the start), six req changes and a crew aboard after the max-q abort, a flown part stays open, the structural test at 20 kPa (2026-11-11, economy, QUEUE Q577) → [notes/economy.md](notes/economy.md)
 - v1.313 — the economy on intent: satellite markets saturate; a privatization once, a stake once per power (2026-11-11, economy, QUEUE R18, W47's defaults) → [notes/economy.md](notes/economy.md)
-- v1.315 — the robot's route under the unlock map: m1 two flights (the Sounding passes the structural test), each career rolls its own ignition dice (every new career lost the Beeper's Petrel before), the NEXT line says what else a mission needs, m2 flies the hop and its own weather satellite (2026-11-11, QA, QUEUE Q580) → [notes/economy.md](notes/economy.md)
+- v1.316 — the robot's route under the unlock map: m1 two flights (the Sounding passes the structural test), each career rolls its own ignition dice (every new career lost the Beeper's Petrel before), the NEXT line says what else a mission needs, m2 flies the hop and its own weather satellite (2026-11-11, QA, QUEUE Q580) → [notes/economy.md](notes/economy.md)
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 
