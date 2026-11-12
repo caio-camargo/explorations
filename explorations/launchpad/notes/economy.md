@@ -3793,7 +3793,7 @@ Caio; no answer yet, so its defaults: **saturate, once-only**.
 
 **Left as is, for Caio:** `careerMove` sets funds to the offer and zeroes the debt. Read as intended: the team leaves
 the old program's books (and its debt) behind, and the "bad" branch is a hail mary. Say if a defection should carry
-the debt.
+the debt. **Caio, 2026-11-11: a defection clears the debt. Stays as built.**
 
 ## v1.314 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
 
