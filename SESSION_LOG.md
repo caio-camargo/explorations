@@ -7274,3 +7274,60 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `INDEX.md`.
 - **Next:** Q591 (P1, the flaky staging check: seed `sepFx`'s puffs in the test). R9 has no *Import save* yet (Export
   only, and only from the fault panel; a menu entry would help bug reports). The `PROG.x||<literal>` reads retire by lane.
+
+### 2026-11-11: review 2 session (Fable), Caio's second round of answers (docs only)
+- **Recorded:** **D38** solids neither throttle nor stop (thrust set on the design table only, a part-filled solid
+  allowed, no termination ports); W53 narrowed to what is left; Q550's row says what changes before merge. **D39** eras
+  end on milestones, not dates; **Q597** plans it (economy). **D40** the face engine is live again (D26's parking lifted;
+  the ligne-claire head stays until the trial is judged). REVIEW-2026-11-11 § 8: rows 8 and 13 struck; Caio's notes on
+  11 (he has played an hour), 12 (money: scaling operations, a lean), 15 (rivals: no answer yet), 17 (sound: parked).
+- **New:** PLAYROUTE § "What your play still has to answer": a checklist of the decisions waiting on Caio's play.
+- **PARKED still:** R29b. Caio's lean 2026-11-11: "maybe it's a difficulty setting... commitment vs reload any time
+  modes"; not decided. It would ride the levels (`lvl().revert`).
+- **Running:** two read-only checks (a glide flown end to end, for Q592; the Hard-mode logbook gate, for Q583).
+- **Checked, the two runs:** the Hard-mode logbook gate is real once contact is built (Q583's row carries the fix;
+  read from code, not flown). The glide flown end to end (`review/2026-11-11/glide_e2e.mjs`): today's plates are not
+  enough for a winged return (no Mach term, no stall, cold wings; under SAS the craft dives and the turn rate goes NaN
+  with plates a player cannot build today); numbers in notes/vehicle.md § "Scope: winged flight", Q592's row updated.
+
+## 2026-11-11 — platform (Opus 5.5, worktree launchpad-q591): Q591, the flaky staging check
+
+- **Asked:** Caio: go ahead (the next item after R9: Q591, P1, the flake that failed CI at random).
+- **Done:** aerofx-54 (`tests/look.mjs`) draws `sepFx`'s puffs from world.js's `rng(1)` (Math.random swapped around the
+  call, restored in `finally`). Measured first over 300 seeds: `d0` (the ring's offset without the fall) ran 2.62–3.93 m
+  and was ≤ 3 in 11 %; `dG` (the claim, with the fall) never passed 0.96 m against a 1.5 m bar. Now 0.36 m and 3.4 m on
+  every run. QUEUE Q591 ✓; the "known flake, rerun on red" note now says it's fixed.
+- **Checked:** the check three times locally (identical numbers); CI green on the full suite (run 43141409821).
+- **Files:** launchpad `tests/look.mjs`, `QUEUE.md`; root `ACTIVE_WORK.md`.
+- **Next:** R9's *Import save* and an *Export save* menu entry; lane-by-lane retirement of `PROG.x||<literal>` reads.
+
+## 2026-11-11 — economy (Opus 5.5, worktrees launchpad-r15/r16/r18): R15 (v1.302), R18 (v1.313), R16 (v1.314)
+
+- **Asked:** Caio: an economy session, do R15; then the next items while the testing flow moved to CI (R16, R18).
+- **Done, R15 (v1.302):** no government top-up while a flight is open. `FLOOR_HOLD` (sim/program.js) is set at liftoff
+  and cleared in `missionEnd` (before its own `floorCheck`), `missionDiscard` and `programNew`; `econTick` skips
+  `floorCheck` while it is set. `career.mjs 3 3`: bailouts per career 0.98 → 0.15. Test econ-36.
+- **Done, R18 (v1.313), on W47's defaults (saturate, once-only):** `mktShare(n)`: each further satellite in a market
+  (TV for the capital, imagery) adds half the one before (5 TV satellites: 200 → 77.5 M per 100 days).
+  `PROG.ipoSold` / `PROG.stakeBy` (new schema rows): the privatization once, a stake once per power; `careerMove`
+  resets both. With `ACCEPT=ipo,stake`: mean final funds 2,111 → 1,747 M at 6 years. Test econ-41.
+- **Done, R16 (v1.314):** Selene's core bracket starts `hi:null`, not `Infinity` (JSON saved it as null, and
+  `null<Infinity` made "Bound Selene's core" pay 132 M on reload); old saves normalised. Sweep: `progLossy` over 18
+  career end states and a code read found no other non-JSON value in `PROG`. Test econ-40.
+- **Checked:** CI green (r16 run 43141109553 carried R18 too), economy lane locally; `check_numbers` clean. Renumbered
+  three times as Q571, Q577, R1d and R9 landed (R18 v1.310 → 1.313, R16 v1.303 → 1.311 → 1.314; TESTING 371, 372).
+  The last two merges of `main` (Q592's docs, Q591's look test) went in without a fresh CI run: no overlap.
+- **Not checked:** R16's sweep doesn't see the late game (career.mjs stops short: R19). Neither change played by hand
+  (TESTING 371, 372).
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `sim/space.js`, `sim/rovers.js`, `sim/logbook.js`,
+  `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`.
+- **Next:** Caio: should a defection carry the old program's debt (`careerMove` zeroes it)? W47 still unanswered;
+  the defaults are built and easy to turn (`MKT_K`, the two flags). R19 (career.mjs into the late game).
+- **Prototype, the wing formula** (Caio: "go ahead"; scripts only, no game code): `review/2026-11-11/wing_proto.mjs`
+  patches the sim in memory. With aspect ratio, a stall, a Mach term and plate heating the numbers come out near a
+  shuttle's (lift-to-drag 1.0 hypersonic, 3.1 subsonic at aspect ratio 3, touchdown 109 m/s after a flare) and the
+  game's own SAS flies it to the ground when the wing sits at the centre of mass with a steerable tail. The NaN is the
+  plates' roll damping integrated explicitly (`rollnan.mjs`): **Q598**, with a fix that changes no flight of today.
+  Written up in notes/vehicle.md § "Prototype: the wing formula"; Q592's row updated.
+- **Not checked:** a touchdown on wheels and a rollout; wind; the formula against a real wing's measured polar; frame
+  time in the app; the fix's test in the suite (it is a script).

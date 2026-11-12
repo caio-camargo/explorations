@@ -14,6 +14,31 @@ TESTING rows. The rows hold the full "looks right if" text. This file is only th
   a new career to the beeper on presets, the flight reports and no overlapping boxes), so a person's first hour is what's left. Do
   it first. The other sittings can go in any order. Each one says how long it takes.
 
+## What your play still has to answer (2026-11-11, review 2 session)
+
+Caio has played more than an hour and filed what he noticed (PLAYTEST). These are the decisions that still wait on
+something only play can show. Each is one short try and one answer. Play a **fresh career on Normal, no tester
+flags**, unless the row says otherwise. Tell any session the number and your answer; it records it.
+
+| # | Try this | The question it answers | Waits on it |
+|---|---|---|---|
+| 1 | Lose a rocket on a real flight, then press **Revert**. Next flight, fly the same design in the **simulator** first | Would you miss Revert on Normal if only the simulator were left? | D35 (revert stays until you say) |
+| 2 | Order a second rocket while one is being stacked | Does waiting for the hall annoy you enough to pay for a second bay, or do you like going back to the build screen between flights? | W54, the hall's bays |
+| 3 | Play to the first orbit and watch the news | Did a rival take a first before you? Did it feel like a race or like a loss you could not avoid? (The robot lost the first race in all 54 careers.) | REVIEW § 8 row 15, rivals |
+| 4 | Finish any mission | Do you know at once that it is done, what it opened, and what to fly next? | Q569, Q570 (built); Q571, Q572 |
+| 5 | In the builder, look for a part that is closed | Does a closed part read as a goal (you know which mission opens it) or as a wall? | D34, Q577, Q578 |
+| 6 | Fly the first flight with **Guided** on, the second with it off | Is Guided help, or does it fly the rocket for you? Should it be on by default? | Q553's five questions |
+| 7 | In orbit, save, then reload the page | What did you expect to find: the craft where it was, the craft at the moment you took control, or the craft lost? | R29b (parked) |
+| 8 | One flight on **Hard** | Is Hard a different game or the same one with less slack? | D25, the levels |
+| 9 | Five minutes with sound on (F4): liftoff, staging, wind, re-entry | One word per sound: keep, change, or cut | REVIEW § 8 row 17 (parked until you have heard it) |
+| 10 | Open the crew screen, then go straight to a flight | Do the drawn crew and the photographic world belong to the same game? | REVIEW § 8 row 18, two looks |
+| 11 | Put a TV satellite a little off its target orbit | Should it pay part, for the hours it does the job? | W46 |
+| 12 | Open `mockups/bodies/index.html` and `mockups/sky/index.html` | Pick per view (bodies); subtle or showpiece galaxy, which sun (sky) | W29, W39 |
+| 13 | With `?tester`, jump a rich career to year 3 | Is there anything left you want to buy? | REVIEW § 8 row 12, money after year 3 |
+
+Not on this list because play cannot answer them yet: solids (Q550 is not merged), contact limits (not built), the
+winged return (a plan).
+
 **Where to play:** <https://caio-camargo.github.io/explorations/explorations/launchpad/index.html> (what's on `main`), or
 locally `python -m http.server 8799 --directory C:/Users/caioa/dev/explorations/explorations` and
 `http://localhost:8799/launchpad/index.html`. Add **`?tester`** for sittings 2–8. The tester has its own save and never
@@ -36,7 +61,7 @@ Plain URL, no `?tester`. If you have a career save, play it in a private window 
 | 2 | You're at **the director's desk** (the Program): the letterhead, the in-tray on the left (**IN · n**: decisions, offers, the news), the folder's tabs in the middle, the wall on the right. Take one or two contracts from the board | **196**, 79 (*needs a human: rewarding*), 99 |
 | 3 | **TO THE DESIGN TABLE ▶ [B]**: the design is a scale model on a drafting table. Most parts are dimmed at the start (*opens with …*): a new career has the Sounding's kit and little else (the unlock map, v1.311). Preset **Sounding** → read the cost line and the Δv table, **BUILD AND LAUNCH ▶ [L]** (the Rollout on the real pad: read its checks), LAUNCH **straight up at full throttle**: that one flight does *Above the weather* and the *Structural test flight* (max-q 20 kPa; the robot's reaches 25). Watch the know-how and the logbook after you land; back at the desk, the wall has your liftoff photo. Then look at the design table again: the Kestrel, the Petrel and the 8 t tank are open | **197**, 23, 22, 84, **157**, 152, **369** |
 | 4 | **Passenger** first (it flies *Passenger: the hop*), then **Hopper** hops: its capsule and heat shield open with the hop, so before it the Rollout refuses the Hopper and says what it waits for. Fly with ignition failures on (that's the career default). Read the Hopper's *Touchdown* line on the Design table first; if one topples after landing, does the message tell you why? | 15, 9, **215** |
-| 5 | **Beeper** to orbit for *The beeper* (its Petrel's first flight can fail to light: the robot's beeper did on every new career until v1.313 gave each career its own dice; if yours does, fly it again), then **Passenger Orbiter**: once round and home for *Passenger: one orbit* (both v1.73 presets, the Orbiter's launcher with the payload in the pod's place). Gyro-era SAS (Stability + pitch keys only). Count the tries | **1**, **101**, 147 |
+| 5 | **Beeper** to orbit for *The beeper* (its Petrel's first flight can fail to light: the robot's beeper did on every new career until v1.315 gave each career its own dice; if yours does, fly it again), then **Passenger Orbiter**: once round and home for *Passenger: one orbit* (both v1.73 presets, the Orbiter's launcher with the payload in the pod's place). Gyro-era SAS (Stability + pitch keys only). Count the tries | **1**, **101**, 147 |
 | 6 | Between launches: the stacking days, "Coming up", Wait; follow the NEXT line (the sticky note); read the news in the in-tray. Once the beeper is up, press **C** at the desk: **mission control**. Can you find it on the ground track? | 78, 91, **156**, 141, **213** |
 | 7 | End flights three ways: land at home (the button reads **Recover vessel**), crash, end in orbit (☰ → End flight). Each ends at **the flight report** on the desk: can you tell what you earned or lost from its ledger? Esc mid-flight on one of them; Revert one once; reload the page once and open *Last flight* | **97**, **127**, **198**, 205, 136, 172 |
 | 7b | ☰ → Settings: sound, graphics (Low/High), readouts; reload | 155, 216 |

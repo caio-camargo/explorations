@@ -1004,3 +1004,40 @@
     `ok at 20.0 kPa: ${ok(20000)}, at 19.9: ${ok(19900)}`);
   P.done = {}; P.kh = {};
 }
+
+// econ-41. Economy on intent (economy, QUEUE R18, W47's defaults, review 2026-11-09 § 2): a market saturates (each
+// further satellite selling TV or imagery adds half the one before: `mktShare`), a privatization is sold once per
+// career, and each foreign power buys a stake once (the same friend used to come back for a second 15 %).
+{
+  const A = new Function(src + 'return {PROG,HOOK,mktShare,decisionTick,resolveDecision,programNew,chooseStart,rng,own,POWERS,pairKey,careerMove};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const tot = n => n * A.mktShare(n), sat = [1, 2, 3, 5, 10].map(tot);
+  Object.assign(P, { done: { a: {}, b: {}, c: {} }, day: 500 });
+  const friend = A.POWERS.find(p => p.i !== P.home); P.rel[A.pairKey(P.home, friend.i)] = 0.9;
+  for (const p of A.POWERS) if (p.i !== P.home && p !== friend) P.rel[A.pairKey(P.home, p.i)] = -0.5;
+  const R = A.rng(7); let ipos = 0, stakes = 0;
+  for (let n = 0; n < 400; n++) { P.day += 30; A.decisionTick(30, R, 30);
+    for (const d of [...P.decisions]) { if (d.kind === 'ipo') { ipos++; A.resolveDecision(d.id, 'yes'); } else if (d.kind === 'stake') { stakes++; A.resolveDecision(d.id, 'yes'); } else A.resolveDecision(d.id, d.opts ? d.opts[d.opts.length - 1][0] : 'no'); } }
+  const fr = A.own().st[friend.i] || 0;
+  A.careerMove({ kind: 'hire', co: 'Testco', amt: 100 }); const reset = P.ipoSold === false && !Object.keys(P.stakeBy).length;
+  check('econ-41: satellite markets saturate (1, 2, 3, 5, 10 satellites earn 1, 1.5, 1.75, 1.94, 2.0× one); in 33 years of offers, one privatization and one stake from the one friendly power (15 %, not 30 %); a career move starts the books over',
+    Math.abs(sat[0] - 1) < 1e-12 && Math.abs(sat[1] - 1.5) < 1e-12 && Math.abs(sat[3] - 1.9375) < 1e-12 && sat[4] < 2 && ipos === 1 && stakes === 1 && Math.abs(fr - 0.15) < 1e-9 && reset,
+    `totals ${sat.map(x => x.toFixed(3)).join(' ')}; ipos ${ipos}, stakes ${stakes}, friend's share ${(fr * 100).toFixed(0)} %, reset ${reset}`);
+}
+
+// econ-40. No `Infinity` in the saved core bracket (economy, QUEUE R16, review 2026-11-09 § 2): `seisLocate` started
+// Selene's core bracket at `hi: Infinity`; a save (or the simulator's snapshot) turns that into `null`, `null < Infinity`
+// is true, `coreW` went negative and "Bound Selene's core" paid at once. Now `hi: null` means no bound yet; readers take
+// both null and an old in-memory Infinity as unbounded.
+{
+  const A = new Function(src + 'return {PROG,HOOK,selSci,selN,progJSON,progRestore,progLossy,LOGF,CT};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {};
+  const S = A.selSci(); S.quakes = [{ id: 1 }]; S.core = { lo: 3e5, hi: null, n: 1 };
+  const lossy = A.progLossy(P), w0 = A.selN().coreW; A.progRestore(A.progJSON()); const w1 = A.selN().coreW;
+  P.sel.core.hi = Infinity; const wInf = A.selN().coreW; A.progRestore(A.progJSON()); const w2 = A.selN().coreW;
+  const fmt = A.LOGF.find(f => f.id === 'secore').fmt, txt = fmt({ lo: 3e5, hi: null, n: 1 });
+  const dn = A.CT.selCore.done({ p: { w: 300 } }, A.selN()); P.sel.core = { lo: 3e5, hi: 5e5, n: 2 }; const wB = A.selN().coreW;
+  check('econ-40: Selene\'s core bracket survives a save: unbounded stays unbounded (null or an old Infinity), "Bound Selene\'s core" is not done by a reload; a real bracket still measures',
+    !lossy.length && w0 === Infinity && w1 === Infinity && wInf === Infinity && w2 === Infinity && !dn && /no S-wave shadow/.test(txt) && Math.abs(wB - 200) < 1e-9,
+    `done ${dn}; lossy [${lossy.join(', ')}]; widths ${w0} ${w1} ${wInf} ${w2}, bracket ${wB}; log "${txt.slice(0, 40)}"`);
+}

@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3772,7 +3772,46 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
   sitting 1 (Q580); the builder's view of closed presets (Q578); families and reasons (Q579). Not played by hand
   (TESTING 369): whether a new player gets the Sounding past 20 kPa.
 
-## v1.313 — unlock map slice 4: the robot's route (2026-11-11, QA, QUEUE Q580; the plan Q573, slice 1 v1.311 above)
+## v1.313 — the economy on intent: markets saturate, the big sales come once (2026-11-11, economy session, QUEUE R18, W47's defaults)
+
+**What the review found** (2026-11-09 § 2, R18): satellite income was linear in satellites (`utilTick`: 5 TV satellites
+= 200 M per 100 days against a 19.8 M budget day; imagery in `satTick` likewise), and the privatization and foreign-stake
+offers came back after being taken (5–6 IPOs ≈ 1,140 M in a career; the same friend could buy 15 % twice). W47 asked
+Caio; no answer yet, so its defaults: **saturate, once-only**.
+
+**Built:**
+- `mktShare(n)` (sim/program.js): each further satellite selling into a market adds `MKT_K` = 0.5 of the one before;
+  every satellite in it gets the mean share. n satellites earn (1 − 0.5ⁿ)/0.5 of one: 1, 1.5, 1.75, 1.94, never 2.
+  Two markets: TV for the capital (`utilTick`, the satellites `isTV` this tick) and imagery (`satTick`, the camera
+  satellites with an antenna). 5 TV satellites: 200 → 77.5 M per 100 days.
+- `PROG.ipoSold`: the privatization is offered until sold, then never again. `PROG.stakeBy`: each foreign power buys a
+  stake once (my reading of "once per career" for stakes: once per power, so a second friend can still come).
+  Both start over on a career move (defection or hire: new books). Two `PROG_SCHEMA` rows.
+
+**Measured:** `career.mjs 3 3` as is: identical (it declines these offers and flies no satellites). With
+`ACCEPT=ipo,stake`: mean final funds 827 → 752 M at 3 years, 2,111 → 1,747 M at 6. Test `econ-41`.
+
+**Left as is, for Caio:** `careerMove` sets funds to the offer and zeroes the debt. Read as intended: the team leaves
+the old program's books (and its debt) behind, and the "bad" branch is a hail mary. Say if a defection should carry
+the debt. **Caio, 2026-11-11: a defection clears the debt. Stays as built.**
+
+## v1.314 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
+
+**The bug** (review 2026-11-09 § 2, R16, confirmed there): `seisLocate` (sim/rovers.js) started the core bracket at
+`hi: Infinity`. JSON turns that into `null` (every save, and every simulator run, since the run is put back from a
+snapshot); `null < Infinity` is true, so `selN().coreW` came out as `(0 − lo)/1e3`, negative, and "Bound Selene's core"
+(`coreW <= 300`) paid 132 M at once. The logbook's line read "radius 300 km–0.0 km" the same way.
+
+**The fix:** `hi: null` is "no bound yet", in the state and in the logbook note; `seisLocate` reads it as Infinity when it
+narrows; `selN` and the logbook take both null and an older in-memory Infinity as unbounded. A save already carrying
+`null` is now read right, so no migration.
+
+**The sweep for other non-JSON values in `PROG`:** `career.mjs 3 3` with `progLossy(PROG)` at the end of each of the 18
+careers: none. By reading: the other stored-Infinity candidates stay off `PROG` (the flight record's `landDist`, kept on
+the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist` with `isFinite`; station and power
+`days` are computed, not stored). `career.mjs` doesn't reach the late game (R19), so tester mode's warning
+(`progJSON`, R1c) stays the net for what this missed. Test `econ-40` (fails on the old line).
+## v1.315 — unlock map slice 4: the robot's route (2026-11-11, QA, QUEUE Q580; the plan Q573, slice 1 v1.311 above)
 
 - **m1 stays two flights.** The Sounding flown straight up at full throttle reaches 25.2 kPa with its instrument package,
   so the one flight does *Above the weather* and the *Structural test flight* (bar 20 kPa) together, and the beeper is

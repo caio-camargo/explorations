@@ -385,7 +385,7 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
 // Selene science counts (R4), for the sel contracts: readings by unit and from the far side, panoramas, stations, located
 // quakes, the core bracket's width (km)
 function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
-  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
+  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi!=null&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}   // (R16) hi null: no bound yet (a save turns Infinity into null)
 function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
   income(pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');
@@ -530,11 +530,11 @@ function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relO
 function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
   const has=k=>PROG.decisions.some(x=>x.kind===k),firsts=Object.keys(PROG.done).length,V=valuation();
   // investors circle an established public program
-  if(!has('ipo')&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
+  if(!has('ipo')&&!PROG.ipoSold&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
     offerDecision({kind:'ipo',amt,title:`Investors offer ${fmtM(amt)} for a 25% stake`,text:`A privatization: cash now, more commercial work and freedom, a smaller budget day. ${POWERS[HOME].align[0]>0?'The market-minded public would approve.':'Many at home will call it selling the family silver.'}`,
       opts:[['yes','Sell the stake'],['no','Decline']]})}
   // a friendly power wants in
-  const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3);
+  const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3&&!(PROG.stakeBy||{})[p.i]);   // (R18, W47) once per power
   if(!has('stake')&&fr.length&&firsts>=1&&R()<1-Math.exp(-dd/500)){const p=fr[R()*fr.length|0],amt=Math.round(V*0.15);
     offerDecision({kind:'stake',power:p.i,amt,title:`${p.name} offers ${fmtM(amt)} for a 15% stake`,text:`Their money and a share of their budget days, plus their contracts. Their rivals will notice, and so will opinion at home.`,
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
@@ -558,7 +558,7 @@ function badness(){const o=own();return((PROG.bailRecent||0)>=1.5?1:0)+(opOf(HOM
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
 // government work, drop incidents, ground stations, the race) follows. The pad itself stays where it is for now, flying
 // under lease (launch sites belong to the terrain work).
-function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];
+function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];PROG.ipoSold=false;PROG.stakeBy={};/* (R18) new books: the once-only offers start over */
   if(d.kind==='defect'){const j=d.power;PROG.history.push({day:PROG.day,from:progName(),move:`defected to ${POWERS[j].name}`});
     HOME=j;PROG.home=j;PROG.own={kind:'agency',st:{[j]:1},pv:0,chosen:true,debt:0};PROG.funds=d.amt;PROG.bailouts=0;
     PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15*(1.3-natOf(j)));PROG.cancelled=false;PROG.bmult=1;for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
@@ -571,8 +571,8 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
   if(d.kind==='rescue'){const need=Math.max(0,FUNDS_FLOOR-PROG.funds);
     if(key==='stake'){shiftShare(d.power,0.3);PROG.funds+=need+30;opAdd(d.power,4);HOOK.news(`${POWERS[d.power].name} takes 30% of the program`,'warn')}
     else{o.debt=(o.debt||0)+need*1.3;PROG.funds+=need;HOOK.news(`Investors lend ${fmtM(need)}; ${fmtM(o.debt)} to repay from future income`,'warn')}}
-  else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
+  else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.ipoSold=true;PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
-  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2*natK());
+  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);(PROG.stakeBy=PROG.stakeBy||{})[d.power]=1;PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}

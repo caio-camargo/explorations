@@ -85,6 +85,8 @@ const PROG_SCHEMA={
   day:[0,'career','days since the founding (Tellus days)'],
   funds:[FUNDS0,'career','money, M'],
   bailouts:[0,'career','government top-ups taken'],
+  ipoSold:[false,'career','a privatization sold (R18, W47: once per career)'],
+  stakeBy:[{},'career','foreign powers that bought a stake, by index (R18, W47: once per power)'],
   bailRecent:[0,'career','top-ups, fading from memory (×e^(−days/300))'],
   led:[{},'career','the money ledger by line, for the Debrief'],
   leasePaid:[0,'career','station lease paid, M, all time'],
@@ -305,6 +307,9 @@ const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[kinOf(k)]??cert0(kinOf(k)));   //
 const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
 const NYX_TRACK_H=12,TV_RATE=0.4,NAV_MIN=0.95,NAV_WAIT=1800;
+// (R18, W47) a market saturates: each further satellite selling into it (TV for the capital, imagery) adds MKT_K of the
+// one before, so n satellites earn (1−K^n)/(1−K) of one (K=0.5: 5 earn 1.94×, never more than 2×); each gets the mean share
+const MKT_K=0.5,mktShare=n=>n>1?(1-MKT_K**n)/((1-MKT_K)*n):1;
 const STAT_R=Math.cbrt(TELLUS.mu*(DAY_S/(2*Math.PI))**2);   // stationary orbit radius (a day-long period)   // hours of tracking where Nyx's pull matters, to weigh it (bodies session)
 const LOADS_Q=20000;   // the structural test's bar (W50, Q577: 25 kPa before; the builder's design case stays 25)
 const MISSIONS=[
@@ -422,7 +427,8 @@ function obsTick(){const E=compEra();for(const q of satsUp()){if(q.junk)continue
 function stFind(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=typeof stationOf==='function'?stationOf(q):null;if(s&&f(s,q))return{q,s}}return null}
 function utilTick(d){const T=PROG.day*DAY_S;obsTick();
   for(const q of satsUp()){const s=q.shape&&stationOf(q);if(s&&s.crew>0&&s.sup>0)q.crewDays=(q.crewDays||0)+d}   // crewed days aboard (Q163)
-  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q)*satDuty(q),'sats');if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
+  const up=satsUp(),tvs=up.filter(q=>isTV(q,T)),kTV=mktShare(tvs.length);
+  for(const q of up){const tv=tvs.includes(q);if(tv)income(d*TV_RATE*satQual(q)*satDuty(q)*kTV,'sats');if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
