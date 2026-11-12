@@ -3829,7 +3829,14 @@ the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist
   open with it) and the TV Satellite after the range certification too (its radial decoupler). So m2 now flies the
   Passenger hop after m1 (a third clean flight that drops a stage: the range is certified at its end) and its first
   weather satellite on its own design, the Satellite with four sets of body cells where the wings were (`PT.wxDesign`;
-  `M2_FLIGHT` takes a design). Result: not run yet (a long row; the machine was short on memory).
+  `M2_FLIGHT` takes a design). Run on 2026-11-12 (three tries; the robot fixed on
+  the way: the hop now lights its engine before waiting to land, and the runs are ordered until three are clean in a row,
+  at most six, since a run can break up on the routine's own dice): m1, the hop, the range, the weather satellite on its
+  own design, TV, the routine, three clean ordered runs and *Repeat by itself* all pass. **Still red:** `clean3` and
+  `autoRuns`. Years later the first automatic run broke up in the climb (the routine's dice, `sim/procedures.js:355`);
+  that resets the count, the route says "3 more clean runs by order first", and m2 only waits from then on, so it never
+  repeats again (4 of 5 kept up at day 4,000). That is the routine's rule, not the map: a *Proposed* line asks whether one
+  bad roll should switch Repeat off for good
 - **Rows that set missions by hand:** the robot's rows run with *All tools* (no part gates) unless they say otherwise;
   the ones that play a real career (51, 75, 102, 156, 194, charter) pass, and their values read as before. 156's NEXT line
   carries the new text.

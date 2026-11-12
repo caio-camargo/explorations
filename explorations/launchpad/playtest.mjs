@@ -611,7 +611,7 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   `PT.m2.after1 = PT.state(); ({wxsat: missionOpen(MISSIONS.find(m => m.id === 'wxsat')), tv: missionOpen(MISSIONS.find(m => m.id === 'tv'))})`,
   // the hop on the Passenger preset (Q580): a third flight in a row that drops a stage, so the range is certified before
   // the TV Satellite, whose radial decoupler opens with it (the unlock map, v1.311); a player has flown it by then too
-  ...M2_FLIGHT('Passenger hop', 'Passenger', `(async () => ({fly: await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive}))()`),
+  ...M2_FLIGHT('Passenger hop', 'Passenger', `(async () => { S.throttle = 1; stage(S); return {fly: await PT.fly(() => (S.rec.launched && S.landed && simT > 5) || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, hop: !!PROG.done.hop} })()`),   // lit first: on the pad it is already "landed"
   // the weather satellite: a near-polar orbit (80–100° counts), 3° east of north so the planet's spin helps instead of being
   // cancelled (~82°), then up to ~300 km so it lasts (at ~106 km it re-enters within weeks)
   // (Q580) the Satellite preset with its two solar wings (open with the weather satellite) swapped for four sets of body cells
@@ -623,8 +623,9 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, a coast until the
   // transfer burn arrives over the capital (statXfer, the card's *plan it*; Q516: burning at once ends where the capital can't see it), then up
   ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap(), left: PT.dvLeft(), release: PT.release()}))()`),
-  // three runs ordered by hand, each waited out with [N]
-  ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
+  // runs ordered by hand, each waited out with [N], until three clean in a row (Q580: a run can break up in the climb,
+  // which starts the count again, and a player orders another; at most six)
+  ...[1, 2, 3, 4, 5, 6].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; if (r.clean >= 3) return {order: 'three clean already'}; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
      b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,
     `PT.waitN(() => { const r = PT.route(); return !r || !(PROG.dispatch || []).some(x => x.route === r.id && (x.status === 'queued' || x.status === 'deviated')) }, 40)`]),
   {shot: 'after_runs'},
