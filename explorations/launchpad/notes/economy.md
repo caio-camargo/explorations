@@ -3777,7 +3777,7 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
 **What the review found** (2026-11-09 § 2, R18): satellite income was linear in satellites (`utilTick`: 5 TV satellites
 = 200 M per 100 days against a 19.8 M budget day; imagery in `satTick` likewise), and the privatization and foreign-stake
 offers came back after being taken (5–6 IPOs ≈ 1,140 M in a career; the same friend could buy 15 % twice). W47 asked
-Caio; no answer yet, so its defaults: **saturate, once-only**.
+Caio; no answer yet, so its defaults: **saturate, once-only**. **Caio, 2026-11-12: agreed, as built; the numbers are for playtest balancing (DECISIONS W47).**
 
 **Built:**
 - `mktShare(n)` (sim/program.js): each further satellite selling into a market adds `MKT_K` = 0.5 of the one before;
