@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.249 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
+**Version**: 0.1.250 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -230,6 +230,7 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q279 | **Engine ignitions and throttle ranges** (D15 1, KSPISMS.md): each engine a number of ignitions and a throttle range, improving with the eras; solids neither throttle nor stop (with Q252); ullage handled by staging | M2 | M | ⚙ | ready (after Q252's plan) |
 | Q280 | **SAS renamed by era** (D15 2): gyro *rate damping*, analog *attitude hold*, guidance computer *autopilot*; modes unchanged; the switch styled as the era's panel (with flow, W14) | M1 | S | 🖥 | ready |
 | Q284 | Rename the **Asparagus** preset to **Crossfeed** (D15 6), and any player text that says "on rails" | M1 | S | ⚙ | ready |
+| Q602 | **The chute opens by its airflow** (PLAYTEST **#166**, Caio 2026-11-12; vehicle, with look for the canopy): inflation by distance travelled, not a fixed m²/s (a canopy fills in a few diameters, so ~D/v seconds), and its shape by dynamic pressure (streaming and half-limp below a few tens of Pa, full above); the reefing cap kept as a ceiling, not a floor, in thin air; the canopy mesh drawn from the inflation, not the area; the drag-table and `fall()` predictors (`sim/flight.js:332, 721`) follow the same rule. Before/after: one drop at 20 km and one near the ground on Tellus; career.mjs and the landing tests unchanged within noise. Tearing above a rated q is **a mechanism (W48: code after R2 and R3 are built)**: a separate line when the freeze lifts | M2 | S | 🖥 | **ready** (refines the existing chute) |
 
 ### space — bodies, orbits, registry, procedures, docking, stations, rovers, the link (was bodies + sats + planning)
 Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`, port 8777; on `pc_de_varginha`), `launchpad-planning2` (branch `planning`, port 8775).
