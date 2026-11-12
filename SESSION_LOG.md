@@ -7600,3 +7600,6 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** launchpad `lint.mjs` (new), `tests/platform.mjs`, `tests/core.mjs`, `views.js`, `app/debrief.js`,
   `builder.js`, `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R3, R25 ✓; two Proposed lines), `TESTING.md`; root `INDEX.md`, `ACTIVE_WORK.md`.
 - **Next:** R5 is merged, so **R2** (REVIEW-2026-11-11.md § 3, test sections isolated) is next for platform.
+- **3, correction:** the line above was written before the ff-merge, which `main` moving refused twice (flow's copy pass
+  and platform's R3 took v1.325, v1.329, v1.330 and TESTING 383, 386, 387 meanwhile). R28 is now **v1.336, TESTING 392,
+  test vehicle-46**, on `main` after CI 43291812071 (numbers taken well ahead to stop the renumbering).
