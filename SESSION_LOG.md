@@ -7495,3 +7495,38 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** why TV satellites leave the capital's sky in long careers (drift the routine doesn't count?); frugal's held
   dispatches; a `stationcrew` plan so the runner sees crew and station contracts; more seeds of `LATE=1` off the shared
   machine.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slices 1 and 2 (text only)
+- **Caio:** "claude tends to be prolix... a lot of explanations can be tooltips, and even then many are twice as long
+  as they need to be"; he asked for a Fable session to review the copy. **D43**: the screen is not a manual; the
+  budgets are UI.md § 2.1. PLAYTEST #167. **Q603**: the pass, one screen a slice.
+- **v1.322, slice 1, the design table:** 117 strings in `builder.js`, `app/editor.js`, `index.html`; the three
+  instruction lines (under Parts, staging, action groups) are tooltips on their headings; part cards cut. Text only.
+- **Slice 2, the flight, same version:** the first-flight hints and the "too flat" cautions (`app/cockpit.js`), the
+  flight bar's tooltips, Help's rows (`app/screens.js`): 29 strings. The hints stay until Guided teaches.
+- **Tests:** full suite green on slice 1 (898 checks); smoke on both green but for **vehicle-43 (b), a flake** (it
+  found no failed ignition that run; passes alone with and without the change): **Q604**. **Platform:** the suite
+  has a known flake again. After the merge with `origin/main`: smoke green but for the timing check 6b (2,327 µs a
+  warp frame under other sessions' load, 97 µs alone). `review/2026-11-12/copy_words.cjs` lists long text in the panels.
+- **Not checked:** nothing seen in a browser (TESTING 380).
+- **Next:** slice 3, the Program (contracts, missions, mission control). **PARKED still:** R29b; Q592's plan.
+- Files: `explorations/launchpad/builder.js`, `app/editor.js`, `app/cockpit.js`, `app/screens.js`, `index.html`, `UI.md`, `DECISIONS.md`, `QUEUE.md`,
+  `PLAYTEST.md`, `TESTING.md`, `NOTES.md`, `notes/flow.md`, `review/2026-11-12/copy_words.cjs`; root `ACTIVE_WORK.md`.
+
+## 2026-11-12 — QA, a routine's failed run asks the player (Opus 5.5, worktree launchpad-loop): D44 (v1.323)
+
+- **Asked:** Caio, on m2's red: "a failure should alert the player, who decides what to do".
+- **Done:** three clean runs certify a route once (`r.cert`); a failed automatic run holds the routine and puts a decision
+  in the in-tray (*Keep repeating* / *Stop repeating*); the Fleet line says *held after a failed run*; Repeat, once earned,
+  never needs the clean-run ladder again. Before, the failure quietly reset the route to three more clean runs by order.
+  m2 answers *Keep repeating*. `econ-44`; DECISIONS D44; TESTING 381.
+- **Checked:** `econ-44` and the economy shard; `m2` passes end to end in headless Chrome (5 of 5 up at day 4,000) though
+  no automatic run failed in that run, so the decision was checked by the test, not in the page; CI full run green.
+- **Not checked:** played by hand. The decision's texts follow D43 (short), but nobody has read them on screen.
+
+## 2026-11-12 — launchpad session (Opus 5.5): merges and finishes (momentum3, R5, R28, R22d, R29, docs)
+
+- **1, momentum3 → main (v1.324):** `main` had moved by this session's claim only (ACTIVE_WORK.md); merged it into
+  `momentum3` (check_numbers ok; the launchpad tree byte-identical to CI-green run 43168291024, so no new run: the
+  workflow's path filter skips a docs-only push), ff-merged. Local smoke there: green but for vehicle-43 (b), Q604's flake.
+  Loop slices row cleared.

@@ -77,6 +77,23 @@ const PART_WHY={bio:'A passenger to space and back: the first one will be an ani
   crew:'A capsule for two people (dummies until the escape tower is qualified).',les:'An escape tower: it pulls the capsule clear of a failing rocket.',
   condor:'The Condor: a heavy first stage, half a tonne to orbit.',arm:'A robotic arm: catch a visitor and berth it.',bay:'A cargo bay: carry something up and let it go.',
   lab:'A laboratory: science aboard the station.',beacon:'A base beacon: marks where a base will stand.',
+  // (loop slices, after Q572) a line for each member of a family, so its card says what that part is for
+  kestrel:'The Kestrel: a first-stage engine with real thrust, the heart of an orbital rocket.',petrel:'The Petrel: a vacuum engine for the upper stage, made to finish the climb to orbit.',
+  t8:'An 8 t tank: enough propellant under a Kestrel for a real first stage.',istage:'An interstage decoupler: drops a spent stage and covers the engine above it.',rwheel:'A reaction wheel: turns the craft with no fuel and no air.',
+  core:'A probe core: a satellite that flies itself, with a battery for a few days.',core6:'A 0.6 m probe core, for small satellites.',core3:'A 0.3 m probe core, for the smallest satellites.',
+  batt:'A 1 kWh battery: keeps a satellite alive through the night side.',sbatt:'A battery for the side of a stage.',batt6:'A 0.6 m battery, for small satellites.',batt3:'A 0.3 m battery, for the smallest satellites.',
+  bpanel:'Solar cells on the body: power from the Sun for as long as it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
+  ant:'A cone antenna: a satellite that talks to the ground.',whip:'A whip antenna: the lightest way to be heard.',ssci:'An instrument package for the side of a stage: science on any craft.',
+  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',octl:'A long octagonal frame: room for more on one bus.',
+  octl6:'A long 0.6 m frame, for small satellites.',padapt:'A payload adapter: seats a satellite on its rocket and lets it go.',padapt6:'A 0.6 m payload adapter.',padapt3:'A 0.3 m payload adapter.',
+  albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m down to 1.25 m: a small upper stage on a big one.',
+  dec25:'A 2.5 m decoupler.',fins25:'A 2.5 m fin ring: keeps a big rocket pointing into the wind.',cfins25:'A steerable 2.5 m fin ring.',cone25:'A 2.5 m nose cone.',fair25:'A 2.5 m payload fairing: room for big satellites.',
+  wpanel:'A solar wing: far more power than body cells, unfolded in space.',bant:'A boom antenna: heard from much farther out.',apogee:'An apogee engine: the last burn into a high orbit.',
+  hthr:'Hydrazine thrusters: small, precise pushes to hold a slot.',sph4:'A small propellant sphere, for an apogee engine or thrusters.',sph7:'A larger propellant sphere.',
+  kick30:'A small solid kick motor: one hard shove, at the right moment.',kick80:'A medium solid kick motor.',kick200:'A large solid kick motor.',rwheel6:'A 0.6 m reaction wheel, for satellites.',rwheel3:'A 0.3 m reaction wheel, for the smallest satellites.',
+  port:'A docking port: two craft become one.',rport:'A docking port for the side of a module.',rcs:'An RCS quad: small pushes in every direction, for docking.',gas:'A gas bottle: the RCS quads\' cold gas.',
+  claw:'A claw: grabs what has no port.',hab:'A habitat module: somewhere to live in orbit.',
+  leg:'A landing leg: stand on another world.',wren:'The Wren: a throttling engine made to land on Selene.',rvfold:'A folded rover on its side mount: it unfolds on the ground.',rvdeck:'A rover deck with ramps: drive off the lander.',
   ocomp:'An onboard computer: a probe that flies its own burns.',scomp:'An onboard computer for the side of a stage.',rtg:'An RTG: power day and night, far from the Sun.'};
 const partWhy=k=>{const f=famOf(k);return f?PART_FAMILY[f].why:PART_WHY[k]||''};
 // the chapters (plan Q573, final draft; PROGRESSION § 3): every mission in one. The capstone closes it and grants the
@@ -1195,8 +1212,18 @@ const routeLife=q=>slotRate(q)>0?Math.min(skLife(q),decayLife(q)):skLife(q)+deca
 const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&routeLife(q)>ROUTE_LEAD);
 const routeBusy=r=>(PROG.dispatch||[]).find(x=>x.route===r.id&&(x.status==='queued'||x.status==='deviated'));
 // whether it may repeat by itself, and why not
-function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;
-  if(r.paused)return'paused after a failed run: order one by hand';return''}
+function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(!routeCert(r)&&r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;
+  if(r.paused)return'held after a failed run: answer it in the in-tray, or switch Repeat off and on';return''}
+// (Q580, Caio 2026-11-12: "a failure should alert the player, who decides what to do") three clean runs certify a route
+// once; an automatic run that fails then holds the routine and asks (a decision in the in-tray): keep repeating, or stop
+// and order runs by hand. Before, the failure silently sent the route back to three more clean runs by order.
+const routeCert=r=>!!(r.cert||r.clean>=ROUTE_CLEAN);
+function routeFailAsk(r,why){if((PROG.decisions||[]).some(d=>d.kind==='routine'&&d.route===r.id))return;
+  offerDecision({kind:'routine',route:r.id,life:60,title:`${r.name}: an automatic run failed`,
+    text:`${why}. The routine is holding: ${routeSats(r).length} of ${r.keep} up. Keep repeating, or stop it and order runs yourself?`,
+    opts:[['keep','Keep repeating'],['stop','Stop repeating']]})}
+function routeFailAnswer(d,key){const r=routeOf(d.route);if(!r)return;r.paused=false;if(key!=='keep')r.auto=false;
+  HOOK.news(key==='keep'?`${r.name}: the routine repeats again`:`${r.name}: Repeat is off; order runs from the Fleet tab`,'')}
 function routeQuote(r){const c=routeC(r.id);return c?dispatchQuote(c,r.stack):{ok:false,why:'no such route'}}
 function orderRoute(id,auto){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};const q=routeQuote(r);if(!q.ok)return q;
   PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
@@ -1205,11 +1232,13 @@ function orderRoute(id,auto){const r=routeOf(id);if(!r)return{ok:false,why:'no s
 // a run's outcome: clean = it reached the route's orbit (within 15 % of its height, 2° of its plane) and left a satellite up
 function routeRun(D,res){const r=routeOf(D.route);if(!r)return;r.runs++;const o=res.orb,q=D.satId!=null&&(PROG.sats||[]).find(x=>x.id===D.satId);
   const near=o&&Math.abs((o.pe+o.ap)/2e3-r.alt)<=0.15*r.alt&&Math.abs((o.inc??r.inc)-r.inc)<=2;if(q)q.route=r.id;
-  if(res.ok&&near&&q){r.clean++;r.paused=false;HOOK.news(`${D.title}: ${q.name} is up (${routeSats(r).length} of ${r.keep})`,'ok')}
-  else{r.clean=0;r.paused=r.auto;HOOK.news(`${D.title} ${res.ok?`missed the route's orbit (${o?`${o.pe/1e3|0}×${o.ap/1e3|0} km`:'no orbit'})`:`failed: ${res.why||'lost'}`}${r.auto?'; the routine pauses until a clean run':''}`,'bad')}}
+  if(res.ok&&near&&q){r.clean++;if(r.clean>=ROUTE_CLEAN)r.cert=true;r.paused=false;HOOK.news(`${D.title}: ${q.name} is up (${routeSats(r).length} of ${r.keep})`,'ok')}
+  else{if(routeCert(r))r.cert=true;const was=r.auto&&!r.paused,why=res.ok?`missed the route's orbit (${o?`${o.pe/1e3|0}×${o.ap/1e3|0} km`:'no orbit'})`:`failed: ${res.why||'lost'}`;r.clean=0;r.paused=r.auto;
+    HOOK.news(`${D.title} ${why}${r.auto?'; the routine holds: your call, in the in-tray':''}`,'bad');if(was&&routeCert(r))routeFailAsk(r,`${D.title} ${why}`)}}
 function routeTick(){for(const r of PROG.routes||[]){if(!r.auto||routeAutoWhy(r)||routeBusy(r))continue;if(routeSats(r).length>=r.keep)continue;
   const q=orderRoute(r.id,true);if(!q.ok&&!r.held){r.held=1;HOOK.news(`Routine held: ${r.name}. ${q.why}`,'warn')}else if(q.ok)r.held=0}}
-function setRouteAuto(id,on){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};if(on){const w=routeAutoWhy(r);if(w)return{ok:false,why:w}}r.auto=!!on;HOOK.save();return{ok:true}}
+function setRouteAuto(id,on){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};if(on){r.paused=false;const w=routeAutoWhy(r);if(w)return{ok:false,why:w}}else r.paused=false;r.auto=!!on;
+  PROG.decisions=(PROG.decisions||[]).filter(d=>!(d.kind==='routine'&&d.route===r.id));HOOK.save();return{ok:true}}
 function dropRoute(id){const r=routeOf(id);if(!r)return false;PROG.routes=PROG.routes.filter(x=>x!==r);for(const q of PROG.sats||[])if(q.route===id)delete q.route;HOOK.save();return true}
 // the line under a satellite in the Fleet tab: make a routine from it, or its routine's state and controls
 function routeLine(q){const r=q.route!=null&&routeOf(q.route);
@@ -1217,7 +1246,7 @@ function routeLine(q){const r=q.route!=null&&routeOf(q.route);
   return routeCtl(r)}
 // a routine's state and controls (also the Fleet's own line for a route with nothing up, flow Q415)
 function routeCtl(r){const B=routeBusy(r),w=routeAutoWhy(r),up=routeSats(r).length;
-  return` · <span class="dim">routine: ${up} of ${r.keep} up${B?`, run ${r.runs+1} ${B.status==='deviated'?'needs you':`launches in ${Math.ceil(B.launch-PROG.day)} d`}`:''}</span>`+
+  return` · <span class="dim">routine: ${up} of ${r.keep} up${r.paused?'</span> <span class="warn">held after a failed run</span><span class="dim">':''}${B?`, run ${r.runs+1} ${B.status==='deviated'?'needs you':`launches in ${Math.ceil(B.launch-PROG.day)} d`}`:''}</span>`+
     ` <button data-rkeep="${r.id}" data-k="${r.keep+1}">keep ${r.keep+1}</button>${r.keep>1?` <button data-rkeep="${r.id}" data-k="${r.keep-1}">keep ${r.keep-1}</button>`:''}`+
     `${B?'':` <button data-rorder="${r.id}">Order a run</button>`} <button data-rauto="${r.id}" ${!r.auto&&w?`disabled title="${w}"`:''}>${r.auto?'Stop repeating':'Repeat by itself'}</button> <button data-rdrop="${r.id}">End</button>`}
 // ---- dry runs as the trajectory office's study (QUEUE Q46; the bodies session's procAdopt does the flying): the office

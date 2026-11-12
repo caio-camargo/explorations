@@ -1546,3 +1546,20 @@
     !!chap && routine && !!first && !!rival && era0 === 0 && !!era && app,
     `chapter ${chap && chap.big.hl} · first ${first && first.big.hl} · rival ${rival && rival.big.kick}: ${rival && rival.big.hl} · era ${era && era.big.hl} · routine ok ${routine} · app ${app}`);
 }
+
+// flow-60. After the unlock cards (loop slices; Q572's follow-ups, Q370): every part of a family has its own line, so the
+// satellite bench's twenty cards say twenty things (the family's line stays the builder's reason); each card plays a sound
+// (sndUnlock: a part rises, a chapter is a fanfare, a mission done the notice's beeps); a load with a career under way opens
+// on the desk, a new career (and the tester) on the title, which the Esc menu keeps.
+{
+  const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,unlockCards,PART_FAMILY,famParts,PART_WHY,partWhy};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const fams = Object.keys(A.PART_FAMILY), bare = fams.flatMap(f => A.famParts(f).filter(k => !A.PART_WHY[k]));
+  P.done = { weather: {}, loads: {}, beeper: {} }; const bee = A.unlockCards(['beeper']).filter(c => c.k === 'part'), lines = new Set(bee.map(c => c.why));
+  const builder = A.partWhy('core') === A.PART_FAMILY.bench.why;
+  const H = html.replace(/\r\n/g, '\n');
+  const snd = /function sndUnlock\(k\)\{/.test(H) && /sndUnlock\(c\.k\)/.test(H);
+  const load = /addEventListener\('load',\(\)=>\{if\(!needCharter\(\)&&!TEST\.on&&screenNow\(\)==='title'\)go\('program'\)\}\)/.test(H) && /b\('title','Title screen'\)/.test(H);
+  check('flow-60: each family member has its own line (the bench\'s 20 cards say 20 things; the builder keeps the family\'s); a sound per card; a career under way opens on the desk, the title in the Esc menu',
+    !bare.length && bee.length === 20 && lines.size === 20 && builder && snd && load, `no line: ${bare.join(',') || '-'} · bench lines ${lines.size}/${bee.length} · builder ${builder} · sound ${snd} · load ${load}`);
+}

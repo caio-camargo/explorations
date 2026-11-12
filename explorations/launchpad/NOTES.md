@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.58 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.60 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -288,9 +288,11 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.311 — the unlock map as data: `PART_GATE` by mission (12 parts at the start), six req changes and a crew aboard after the max-q abort, a flown part stays open, the structural test at 20 kPa (2026-11-11, economy, QUEUE Q577) → [notes/economy.md](notes/economy.md)
 - v1.313 — the economy on intent: satellite markets saturate; a privatization once, a stake once per power (2026-11-11, economy, QUEUE R18, W47's defaults) → [notes/economy.md](notes/economy.md)
 - v1.317 — the robot's route under the unlock map: m1 two flights (the Sounding passes the structural test), each career rolls its own ignition dice (every new career lost the Beeper's Petrel before), the NEXT line says what else a mission needs, m2 flies the hop and its own weather satellite (2026-11-11, QA, QUEUE Q580) → [notes/economy.md](notes/economy.md)
+- v1.323 — a routine's failed automatic run holds and asks the player (keep repeating or stop); Repeat, once earned by three clean runs, stays earned (2026-11-12, QA, Q580 follow-up, D44) → [notes/economy.md](notes/economy.md)
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
+- v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -483,3 +485,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.316 — export and import a save from Settings › Saved program: Export any time, Import asks twice and waits for the end of a flight; a file that isn't a program or stops the game changes nothing, one that loads replaces the slot (the old one kept as `-before-import`) and reloads (2026-11-12, platform, Q599)
 - v1.318 — the loop's slices: part families, reasons and chapters as data (D34: no closed part on the stand, in development or on a line); presets say what they wait for and closed parts fold under *Not open yet* by chapter; after a flight, one card per mission done, part and mission opened, the part turning as a model (D42); the Missions tab by chapter, a chapter's poster, the trophy case (2026-11-12, loop slices, QUEUE Q579, Q578, Q572, Q576)
 - v1.320 — poster headlines for big moments: a first, a rival's first, a chapter closed and a new era reach the news with a poster; the desk's paper prints a recent one as a poster, in the era's palette, as does the Debrief's headline; v1.318 flown by the robot (`playtest.mjs cards`) (2026-11-12, loop slices, QUEUE Q479)
+- v1.324 — a line per part on the unlock cards, a sound per card; a career under way opens on the desk, the title in the Esc menu (2026-11-12, loop slices, QUEUE Q370)

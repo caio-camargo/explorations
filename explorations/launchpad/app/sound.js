@@ -115,6 +115,11 @@ function sndGroan(b){const c=AUD.ctx,t=c.currentTime+(b.delay||0)+0.05,o=c.creat
 // a Quindar tone (Q362): the 2,525 Hz beep that keyed Apollo's voice loop, as contact comes back after the blackout
 // (Q600) a job done in flight: two soft rising tones, under the engines, not over them
 function sndDone(){AUD.ev.done=(AUD.ev.done||0)+1;if(!AUD.on||!AUD.ctx)return;sndBeep(784,0.12,0.12);sndBeep(1175,0.22,0.1,0.11)}
+// (loop slices, after Q572) the unlock cards: a mission done is the notice's two beeps; a part a rising three-note arpeggio;
+// a room or a mission opened two soft notes; the next chapter a four-note fanfare. Stand-ins until look & sound makes them
+function sndUnlock(k){AUD.ev.unlock=(AUD.ev.unlock||0)+1;if(!AUD.on||!AUD.ctx)return;
+  if(k==='done')return sndDone();const N=k==='chapter'?[[523,0],[659,.12],[784,.24],[1047,.4]]:k==='part'?[[659,0],[831,.09],[988,.18]]:[[698,0],[880,.12]];
+  for(const[f,d]of N)sndBeep(f,k==='chapter'&&d>.3?0.45:0.18,0.09,d)}
 function sndBeep(f,dur,gain,delay=0){const c=AUD.ctx,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();o.frequency.value=f;
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+0.01);g.gain.setValueAtTime(gain,t+dur-0.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+dur+0.02)}
 function sndState(){const b=S.body,h=len(S.r)-b.R,inAir=b.atm&&h<b.atm,E=S.alive?activeEngines(S):[];let T=0,Ts=0;

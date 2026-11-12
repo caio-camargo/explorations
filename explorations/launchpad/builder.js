@@ -28,9 +28,9 @@ const DPR=()=>ovPx();   // (flow, Q539) CSS px in the 3D view's pixels, whatever
 // deployable parts (Q328): set out or put away here, and the craft rolls out that way (n.dep on the design node)
 const DEPW={leg:['down','up'],wing:['out','in'],bay:['open','shut']},depOf=k=>{const d=PARTS[k];return d.kind==='leg'?'leg':unfolds(d)?'wing':d.kind==='bay'?'bay':null};
 // how a part deploys in flight (flow, QUEUE Q400): the part panel's line and the part card's row
-const DEP_HOW={leg:'Y, or Legs down on the flight bar (top right): put them down before touchdown',
-  wing:'P, or the Unfold button on the flight bar (top right): once the air is thin, after the fairing drops; open in thick air, it tears off',
-  bay:"B, or Open bay on the flight bar (top right): once the air is thin; shut, it shields what's inside"};
+const DEP_HOW={leg:'Y, or Legs down on the flight bar: before touchdown',
+  wing:'P, or Unfold on the flight bar: in thin air only, or it tears off',
+  bay:'B, or Open bay on the flight bar: in thin air only'};
 const depNodes=()=>isEmpty(stackDef)?[]:[...new Set(S.parts.filter(p=>p.on&&!p.inst.rdec&&!p.dn.payOf&&depOf(p.dn.k)).map(p=>p.dn))];   // a payload's are set on the bench
 
 // ---- design access. A preset stays in the old array format (so its saved autopilot tape still matches) until the
@@ -95,7 +95,7 @@ function placeRoot(keep){const f=floatAt(),h=st.held;if(!f||!h)return;
   if(!fresh&&t!=null&&isFinite(t))cam.edY=t+S.yBot-st.gap}   // the camera's target keeps its height over the plate
 function parkHeld(keep){if(isEmpty(stackDef))return placeRoot(keep);const f=floatAt(),r=rootPart();if(!f||!r)return;if(collides(f.G)){note('Blocked: it would overlap a part');return}
   snapshot();const D=design(),h=st.held;delete h.at;(D.park||(D.park=[])).push({n:h,p:[+(f.v[0]-r.pos[0]).toFixed(3),+(f.v[1]-r.y0).toFixed(3),+(f.v[2]-r.pos[2]).toFixed(3)]});
-  st.held=null;st.ghostKey='';st.parkKey='';editorChanged();note(`${name(h.k)} parked in the air: not part of the rocket until you attach it again`)}
+  st.held=null;st.ghostKey='';st.parkKey='';editorChanged();note(`${name(h.k)} parked: not attached`)}
 
 // ---- geometry: vessel frame (y along the stack, the ship's own coordinates) ↔ world ↔ screen
 const V=()=>HOOK.view;
@@ -158,7 +158,7 @@ function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?n
   ensureIds(D);if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
 function pickUp(p,copy){const n=dnOf(p),D=design();
   if(!copy&&n===D.root&&kids(n).length){snapshot();const pk=D.park;D.root=null;if(pk)D.park=pk;st.held=n;st.sel=null;st.ghostKey='';editorChanged();   // the whole rocket (Q327); parked parts wait, placed relative to the root
-    note('The whole rocket: click where it should hang · right-click drops it (Ctrl+Z brings it back)');return}
+    note('Holding the whole rocket · right-click drops it');return}
   if(copy){st.held=noIds(cl(n));delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
   snapshot();detachNode(n);st.held=n;st.sel=null;st.ghostKey='';editorChanged()}
 function grab(k){st.held={k,c:[]};if(PARTS[k].kind==='rover'&&typeof rvPack==='function')st.held.rvd=rvPack();st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
@@ -167,7 +167,7 @@ function grab(k){st.held={k,c:[]};if(PARTS[k].kind==='rover'&&typeof rvPack==='f
 // blocks up to date (paySync); "Done, and pick it up" hands you the block to put on the rocket
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function grabPay(e){if(!e||!e.d||!e.d.root){note('An empty payload: open it on the bench and build it first');return}
-  st.held=payNode(e);st.sel=null;st.ghostKey='';refresh();note(`${e.name}: click a glowing node (inside a fairing, on top of the stage that carries it)`)}
+  st.held=payNode(e);st.sel=null;st.ghostKey='';refresh();note(`${e.name}: place it on a glowing node`)}
 function benchOpen(e){if(st.bench)return;if(!e)e=payNew(null,null);
   st.bench={id:e.id,back:{def:stackDef,undo:st.undo,redo:st.redo,gap:st.gap,pin:st.pin}};st.undo=[];st.redo=[];st.held=null;st.sel=null;st.pin=null;st.gap=0;
   stackDef=cl(e.d&&e.d.root?e.d:{v:2,root:null});st.reframe=true;editorChanged();palette();note(`Payload bench: ${e.name}. Build it here; Done takes it back to the rocket`)}
@@ -200,9 +200,9 @@ let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target
 function mountsHTML(){return`<div class="bmounts"><span>radial mounts</span>${SYM.map(n=>`<button data-sym="${n}" class="${st.sym===n?'on':''}">×${n}</button>`).join('')}<span class="dim">[X]</span></div>`}
 function statusHTML(){
   if(st.msg&&performance.now()-noteT<6000)return`<span class="acc">${st.msg}</span>`+(st.held?mountsHTML():'');
-  if(st.held)return`holding <b>${name(st.held.k)}</b>${nodes(st.held).length>1?` +${nodes(st.held).length-1}`:''} · ${isEmpty(stackDef)?'click where it should hang':'click a glowing node or a surface, or in the air to park it'} · right-click drops it`+mountsHTML();
-  const pk=parkedInst().length;if(pk&&!isEmpty(stackDef))return`<span class="warn">${pk} part${pk>1?'s':''} parked in the air</span>, not attached: click to pick ${pk>1?'them':'it'} up and attach, or Del · a launch leaves ${pk>1?'them':'it'} here`;
-  return isEmpty(stackDef)?'pick a part to start: the first one placed is the root (a command pod, usually)':'pick a part below, or click one on the rocket to move it · right-click a part for its options'}
+  if(st.held)return`holding <b>${name(st.held.k)}</b>${nodes(st.held).length>1?` +${nodes(st.held).length-1}`:''} · right-click drops it`+mountsHTML();
+  const pk=parkedInst().length;if(pk&&!isEmpty(stackDef))return`<span class="warn">${pk} part${pk>1?'s':''} not attached</span> · left behind at launch`;
+  return isEmpty(stackDef)?'pick a part to start':''}
 
 // ---- per-frame: hover and ghost. Recomputed on mouse move; meshes cached by a key so they rebuild only on change.
 function update(){
@@ -273,86 +273,86 @@ function overlay(o){
 // card beside the palette and in the tooltip on the design. A part with no sentence here gets its kind's; a 2.5 m part
 // (big(): d.base) its 1.25 m sibling's. New parts: add a line, or the kind's sentence stands in.
 const PART_INFO={
-  cone:'A pointed nose: less drag through the air, and it shields what sits under it from the heat of the climb.',
-  chute:'Slows a falling craft to a safe touchdown once it is low and slow enough; it only opens in air.',
-  pod:'A one-seat command pod: a pilot steers it, and it carries its own small reaction wheels.',
-  crew:'A two-seat capsule for longer flights; with an escape tower on top it can carry people on unproven rockets.',
-  les:'A tower of solid motors that pulls the capsule clear of a failing rocket; dropped once the climb is safe.',
-  tank:'Holds propellant for the engines below it. Most of a rocket is tank; empty ones are dead weight to drop.',
-  shield:'An ablative heat shield: it burns away slowly so the part above survives coming home fast.',
-  dec:'Splits the rocket in two when its stage fires: everything below it falls away.',
-  istage:'A decoupler with a skirt that wraps the engine above it, keeping that engine out of the airflow until it is dropped.',
-  fair:'A payload fairing: its shell keeps what stands on it out of the air and its heat on the way up, then drops in two halves at its stage. Set its length to fit.',
-  scam:'The imaging camera as a box on the side, looking outward: same camera, no stack height; it moves the balance off the axis.',
-  oct:'A narrow octagonal frame, 0.8 m across, to build a satellite round: side boxes, antennas and panels sit on its faces.',
+  cone:'A pointed nose: less drag, and it shields what is under it from heat.',
+  chute:'Slows a fall to a safe touchdown. Opens only in air, low and slow.',
+  pod:'A one-seat pod with small reaction wheels: a pilot steers it.',
+  crew:'A two-seat capsule for longer flights.',
+  les:'Solid motors that pull the capsule off a failing rocket.',
+  tank:'Propellant for the engines below it. Empty, it is dead weight to drop.',
+  shield:'Burns away slowly so the part above survives coming home fast.',
+  dec:'Splits the rocket when its stage fires: what is below falls away.',
+  istage:'A decoupler whose skirt covers the engine above it until it drops.',
+  fair:'A shell that shields the payload on the climb, then drops in two halves.',
+  scam:'The imaging camera as a side box: no stack height, but off balance.',
+  oct:'An octagonal frame, 0.8 m across, to build a satellite around.',
   octl:'The octagonal frame, 1 m long.',
-  ssci:'The instrument package as a box on the side: same instruments, no stack height.',
+  ssci:'The instrument package as a box on the side.',
   sbatt:'A 1 kWh battery as a box on the side.',
   scomp:'The onboard computer as a box on the side.',
-  whip:'A whip antenna on the side: the plain radio, tough enough for the climb.',
-  bant:'A boom antenna, folded for launch: P swings it out once the air is thin, and it hears home about five times better than a whip. Out in thick air it tears off.',
+  whip:'A plain whip antenna, tough enough for the climb.',
+  bant:'A folding boom antenna: five times a whip\'s gain. Unfold (P) in thin air.',
   adapt:'Joins a 2.5 m stack below to a 1.25 m stack above.',
-  padapt:'The ring a payload stands on inside the rocket. It comes with every payload block, and it is the separation ring: staging it releases the payload and drops the stage under it.',
-  bwt:'A plain mass on the side, to bring a lopsided payload\'s centre of mass back onto the axis. The bench sizes it for you.',
-  kick30:'A small solid motor for a light satellite: once lit it burns to the end, full thrust, no stopping. The early way into the final orbit.',
-  kick80:'A solid kick motor for a few hundred kilos of satellite: it fires once, all of it, to circularise or raise an orbit.',
-  kick200:'The biggest kick motor: from a transfer orbit to the final one for a mid-size satellite. One shot; point it first.',
-  hthr:'Four small hydrazine thrusters: gentle, restartable pushes to trim an orbit and hold a station, from propellant spheres.',
-  apogee:'A small restartable rocket engine for a satellite\'s own big burns, like the one into a stationary orbit, from propellant spheres.',
-  sph4:'A small propellant sphere for a satellite\'s thrusters or apogee engine.',
-  sph7:'A larger propellant sphere: enough for a satellite\'s climb from a transfer orbit to a stationary one.',
-  pay:'A satellite designed on the payload bench, carried as one block: open it on the bench to change it.',
+  padapt:'The ring a payload stands on. Staging it releases the payload.',
+  bwt:'A side weight that puts a lopsided payload back on balance.',
+  kick30:'A small solid motor for a light satellite. Once lit, it burns out.',
+  kick80:'A solid kick motor for a few hundred kilos of satellite. It fires once.',
+  kick200:'The biggest kick motor, for a mid-size satellite. One shot: point it first.',
+  hthr:'Four small restartable thrusters to trim an orbit or hold a station.',
+  apogee:'A small restartable engine for a satellite\'s own big burns.',
+  sph4:'A small propellant sphere for thrusters or an apogee engine.',
+  sph7:'A larger propellant sphere: enough to climb to a stationary orbit.',
+  pay:'A satellite from the payload bench, carried as one block.',
   rdec:'Holds a side part on and lets it go when its stage fires.',
-  fins:'A ring of fixed fins at the tail: it keeps the rocket pointing into the airflow, like an arrow\'s feathers.',
-  rfin:'A single fin for the side of a part; place several around the body to keep the rocket straight in air. Right-click it for a bigger size.',
-  cfin:'A fin that turns: it steers the rocket in air, strongest when it is moving fast low down. Right-click it for a bigger size.',
-  cfins:'A ring of fins that turn: it steers and keeps the rocket straight in air.',
-  rcs:'Small cold-gas thrusters for fine turns and nudges in space; they need a gas bottle.',
+  fins:'Fixed fins at the tail: they keep the rocket pointing into the airflow.',
+  rfin:'One fin for a part\'s side: place several. Right-click for a bigger one.',
+  cfin:'A fin that turns: it steers in air. Right-click for a bigger one.',
+  cfins:'A ring of turning fins: it steers and steadies the rocket in air.',
+  rcs:'Cold-gas thrusters for fine turns and nudges in space.',
   gas:'Compressed gas for the RCS thrusters.',
-  rwheel:'Spinning wheels inside turn the craft without fuel, until they reach their top speed.',
-  spin:'Small solids that spin the stage up like a top when it lights, so it holds its direction without steering.',
-  core:'The brain of a craft with nobody aboard: it lets a probe be flown and steered.',
-  sci:'Instruments that measure the flight and send it home; it brings air samples back if recovered.',
-  bio:'A sealed capsule for a living passenger, with limits of its own: g-forces, cabin heat and air.',
-  ballast:'A dead block of known mass, for proving how much a rocket can lift.',
-  cam:'Takes pictures of the ground from orbit; they earn once an antenna sends them down.',
-  ant:'Sends data and pictures home while the craft can see a ground station.',
+  rwheel:'Wheels that turn the craft without fuel, up to their top speed.',
+  spin:'Small solids that spin a stage so it holds its direction unsteered.',
+  core:'The brain of a craft with nobody aboard: it lets a probe be flown.',
+  sci:'Instruments that send the flight home. Recovered, they bring back air samples.',
+  bio:'A sealed capsule for a living passenger, with limits on g and heat.',
+  ballast:'A block of known mass, to prove what a rocket can lift.',
+  cam:'Takes pictures of the ground from orbit. They pay once sent down.',
+  ant:'Sends data home while a ground station is in view.',
   engine:'Burns propellant from the tanks above it to push the rocket.',
-  wren:'A small, efficient engine for landers and light upper stages; too weak to lift a rocket off the ground.',
+  wren:'A small, efficient engine for landers and upper stages. Too weak for liftoff.',
   sparrow:'A small engine that works well in air: sounding rockets and early hops.',
-  petrel:'Built for vacuum: very efficient in space, nearly useless at sea level. An upper-stage engine.',
-  kestrel:'A strong first-stage engine that works well at sea level: the workhorse that lifts rockets off the pad.',
+  petrel:'An upper-stage engine: efficient in vacuum, nearly useless at sea level.',
+  kestrel:'A strong first-stage engine: the workhorse off the pad.',
   condor:'A heavy first-stage engine for big rockets.',
   albatross:'A 2.5 m first-stage engine for the heaviest rockets.',
-  port:'Two docking ports that meet slowly and lined up lock together, joining two craft into one.',
+  port:'Locks to another port when they meet slowly and lined up.',
   rport:'A docking port on the side of a part, facing outward.',
-  claw:'Grabs whatever it touches slowly enough, anywhere on it: for catching things that have no docking port.',
+  claw:'Grabs whatever it touches slowly: for things with no docking port.',
   arm:'A robotic arm that can grab and move things near the craft.',
   hab:'Living quarters for three, with two months of supplies for one person.',
   lab:'A laboratory module where a crew does science in orbit.',
-  bay:'A hollow bay with doors that carries payloads inside, shielded during the climb.',
-  leg:'Folds flat for launch and swings out to stand the craft up on landing (key Y).',
-  rover:'Carries a rover to the surface; pick which rover in the part\'s options.',
+  bay:'A bay with doors: payloads ride inside, shielded on the climb.',
+  leg:'Folds flat for launch and swings out for landing (Y).',
+  rover:'Carries a rover to the surface. Pick the rover in its options.',
   beacon:'Marks a landing site as a base that later flights can return to.',
-  comp:'An onboard computer: on a craft without crew it runs the guidance modes (prograde, retrograde, and so on).',
+  comp:'An onboard computer: it runs the guidance modes on a craft without crew.',
   batt:'Stores electricity for the night side and for peaks.',
   solar:'Makes electricity in sunlight.',
-  wpanel:'A solar wing that unfolds in space (key P) and follows the sun; open it in thick air and it tears off.',
+  wpanel:'A solar wing that follows the sun. Unfold it (P) in thin air only.',
   bpanel:'Solar cells fixed on the skin: a little power, always there.',
   rtg:'Steady power from decaying isotopes, day or night, wherever it is: costly.'};
 const partInfo=d=>PART_INFO[d.key]||d.base&&PART_INFO[d.base]||PART_INFO[d.kind]||'';
 // what a part pairs with (flow, QUEUE Q340; PROBES § 8): the part card's last line, on the palette card and on the craft's hover
 const PART_PAIRS={
-  cone:'the top of a stack: anything blunt up there pays for it in drag and heat',
-  chute:'a capsule or a probe that comes home; a heat shield under it if it comes back from orbit',
-  pod:'a heat shield and a parachute to come home; an escape tower on an unproven rocket',
+  cone:'the top of a stack: a blunt top costs drag and heat',
+  chute:'a capsule or a probe coming home; a heat shield if from orbit',
+  pod:'a heat shield and a parachute; an escape tower on an unproven rocket',
   les:'a crew capsule on top of an unproven rocket',
-  tank:'an engine under it; a decoupler under the stage, to drop it once it\'s empty',
+  tank:'an engine under it; a decoupler to drop it once empty',
   shield:'a capsule above it and a parachute to finish the landing',
   dec:'an engine on each side of the split: one stage below, the next above',
   istage:'an upper-stage engine sitting inside its skirt',
-  fair:'a payload on its ring; a longer shell if anything pokes out (the Assembly says what)',
-  frame:'side boxes (camera, battery, instruments, computer), an antenna and solar panels on its faces',
+  fair:'a payload on its ring; a longer shell if anything pokes out',
+  frame:'side boxes, an antenna and solar panels on its faces',
   adapt:'a 2.5 m stage below, a 1.25 m stack above',
   padapt:'a payload block, inside a fairing',
   bwt:'the payload bench\'s balance check',
@@ -365,20 +365,20 @@ const PART_PAIRS={
   sph7:'an apogee engine, or hydrazine thrusters',
   pay:'a fairing over it, and a stage under it',
   rdec:'a booster or a side tank, with a nose cone on top',
-  fins:'heavy parts high up: the further ahead the balance point, the better fins work',
+  fins:'heavy parts high up, so the balance point sits well ahead of them',
   rfin:'three or four around the tail (radial mounts), heavy parts high up',
   rcs:'a gas bottle; a probe core or a pilot to fire it',
   gas:'RCS thrusters',
-  rwheel:'RCS for the big turns: wheels slow down once they reach their top speed',
+  rwheel:'RCS for the big turns: wheels stop helping at their top speed',
   spin:'an upper stage with no steering of its own',
-  core:'a battery and an antenna: it has to be heard from home to be flown',
+  core:'a battery, and an antenna to hear home',
   comp:'a probe core and a battery; on a satellite, it runs the pointing',
-  sci:'an antenna to send the readings, or a parachute to bring the samples back',
-  bio:'a parachute and a heat shield: the passenger only counts if it comes back alive',
-  cam:'an antenna to send the pictures, and power: solar panels and a battery for the night side',
+  sci:'an antenna to send readings, or a parachute to bring samples back',
+  bio:'a parachute and a heat shield: the passenger must come back alive',
+  cam:'an antenna, solar panels, and a battery for the night side',
   ant:'power to run it, and a ground station in view (the Network)',
-  bant:'power to run it; open it (P) once the air is thin, after the fairing drops',
-  engine:'tanks above it; a decoupler under it when it isn\'t the bottom stage',
+  bant:'power; open it (P) after the fairing drops',
+  engine:'tanks above it; a decoupler under it unless it is the bottom stage',
   wren:'landing legs and a lander\'s tanks: it throttles low enough to hover',
   petrel:'an upper stage over a first stage that does the climbing',
   kestrel:'big tanks above it, boosters on the side for heavier loads',
@@ -391,11 +391,11 @@ const PART_PAIRS={
   leg:'a lander engine (the Wren), and a wide part to spread them around',
   rover:'landing legs, so it stands to roll off',
   beacon:'a lander that stays on the surface',
-  ballast:'a test flight: put it where the payload will go, to prove the rocket lifts that much',
+  ballast:'a test flight, in the payload\'s place',
   batt:'solar panels or an RTG to fill it',
   solar:'a battery for the night side',
-  wpanel:'a battery for the night side; open it once the fairing is gone and the air is thin',
-  rtg:'anything that draws power, day and night: no battery needed for the shadow'};
+  wpanel:'a battery for the night side',
+  rtg:'anything that draws power day and night; no battery needed'};
 const partPairs=d=>PART_PAIRS[d.key]||d.base&&PART_PAIRS[d.base]||PART_PAIRS[d.kind]||'';
 function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   if(d.kind==='tank')L.push(['propellant',n(d.wet-d.dry,'t')],['mass',`${n(d.wet,'t')} full, ${n(d.dry,'t')} empty`]);else L.push(['mass',n(d.m,'t',3)]);
@@ -411,7 +411,7 @@ function partSpecs(d){const L=[],n=(v,u,f=2)=>`${+v.toFixed(f)} ${u}`;
   try{const pr=partPrice({d,jr:0})+((d.res0&&d.res0.fuel)||0)*FUEL_PRICE;if(isFinite(pr))L.push(['price',fmtM(pr)+(d.kind==='tank'?' with its propellant':'')])}catch(e){}
   return L}
 function partCardHTML(k){const d=PARTS[k],lk=typeof partOpen==='function'?partOpen(k):{ok:true};
-  return`<b>${d.name}</b><div class="pcs">${partInfo(d)}</div>`+(lk.ok?'':`<div class="warn">Not open yet: it ${lk.why}. You can design with it; a launch with it is refused.</div>`)+
+  return`<b>${d.name}</b><div class="pcs">${partInfo(d)}</div>`+(lk.ok?'':`<div class="warn">Not open yet: it ${lk.why}.</div>`)+
     `<table>${partSpecs(d).map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}${d.era!=null&&typeof COMP_ERAS!=='undefined'&&COMP_ERAS[d.era]?`<tr><td>era</td><td>${COMP_ERAS[d.era].name}</td></tr>`:''}</table>`+
     (partPairs(d)?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(d)}</div>`:'')}
 // the part's card beside the parts list, and the hover over a part on the craft: both in the one tooltip (#termTip,
@@ -439,20 +439,20 @@ function panel(){
     bn.innerHTML=`<div class="bhd2">Payload bench</div><div class="blsave"><input id="pbName" maxlength="40" value="${esc(e?e.name:'')}" title="its name"></div>`;
     const inp=bn.querySelector('#pbName');inp.onkeydown=ev=>ev.stopPropagation();inp.oninput=()=>{if(e){e.name=inp.value.trim()||e.name;HOOK.save&&HOOK.save()}};
     const g=document.createElement('div');g.className='bgrp';bn.appendChild(g);
-    btn(g,'✓ done',false,()=>benchClose(false),'save it and go back to the rocket (blocks of it on the rocket follow)');
-    btn(g,'✓ done, and pick it up',false,()=>benchClose(true),'save it, go back to the rocket and hold it, to put it on a stage inside a fairing').disabled=isEmpty(stackDef)}
+    btn(g,'✓ done',false,()=>benchClose(false),'save it and go back to the rocket');
+    btn(g,'✓ done, and pick it up',false,()=>benchClose(true),'save it and hold it, ready to place on the rocket').disabled=isEmpty(stackDef)}
   const bar=document.createElement('div');bar.className='bbar';box.appendChild(bar);
-  const sy=document.createElement('div');sy.className='bgrp';sy.innerHTML='<span class="dim">radial mounts</span>';for(const n of SYM)btn(sy,'×'+n,st.sym===n,()=>{st.sym=n;st.ghostKey='';refresh()},'a part placed on the side of another goes on this many times, evenly around it [X / Shift+X]');bar.appendChild(sy);
+  const sy=document.createElement('div');sy.className='bgrp';sy.innerHTML='<span class="dim">radial mounts</span>';for(const n of SYM)btn(sy,'×'+n,st.sym===n,()=>{st.sym=n;st.ghostKey='';refresh()},'copies of a side part, evenly around [X]');bar.appendChild(sy);
   const t2=document.createElement('div');t2.className='bgrp';bar.appendChild(t2);
-  btn(t2,'snap',st.snap,()=>{st.snap=!st.snap;refresh()},'snap radial angles to 15° and line ends to the host\'s part boundaries [C]');
-  btn(t2,'radial decoupler',st.dec,()=>{st.dec=!st.dec;refresh()},'radial parts go on through a decoupler, so they become a stage you can drop [R]');
-  if(!st.bench&&S.parts.some(p=>p.on&&p.profF))btn(t2,'hide fairing',st.fairHide,()=>{st.fairHide=!st.fairHide;refresh()},'hide the shell of the payload fairing to see and place what rides inside; it hides by itself while you hold a part [V]');   // Q512
-  btn(t2,'loads',st.loads,()=>{st.loads=!st.loads;refresh()},'joint loads (worst of liftoff and max-q, against certified ratings) at every joint');
+  btn(t2,'snap',st.snap,()=>{st.snap=!st.snap;refresh()},'snap side parts to 15° and to part edges [C]');
+  btn(t2,'radial decoupler',st.dec,()=>{st.dec=!st.dec;refresh()},'side parts go on a decoupler, to drop as a stage [R]');
+  if(!st.bench&&S.parts.some(p=>p.on&&p.profF))btn(t2,'hide fairing',st.fairHide,()=>{st.fairHide=!st.fairHide;refresh()},'hide the fairing shell to see inside [V]');   // Q512
+  btn(t2,'loads',st.loads,()=>{st.loads=!st.loads;refresh()},'the load on every joint, against its rating');
   const t3=document.createElement('div');t3.className='bgrp';bar.appendChild(t3);
   btn(t3,'↶ undo',false,()=>restore(st.undo,st.redo),'Ctrl+Z').disabled=!st.undo.length;
   btn(t3,'↷ redo',false,()=>restore(st.redo,st.undo),'Ctrl+Y').disabled=!st.redo.length;
-  if(!st.bench)btn(t3,'save design…',false,()=>{const i=el('blName');if(!i)return;i.scrollIntoView({block:'center'});i.focus()},'name it and keep it under Your designs (every launch also keeps its design under Launched)').disabled=isEmpty(stackDef);
-  btn(t3,'✕ clear design',false,clearDesign,'remove every part and start from scratch (Ctrl+Z brings them back)').disabled=isEmpty(stackDef);
+  if(!st.bench)btn(t3,'save design…',false,()=>{const i=el('blName');if(!i)return;i.scrollIntoView({block:'center'});i.focus()},'keep it under Your designs').disabled=isEmpty(stackDef);
+  btn(t3,'✕ clear design',false,clearDesign,'remove every part (Ctrl+Z undoes)').disabled=isEmpty(stackDef);
   const dn=depNodes();if(dn.length){const t4=document.createElement('div');t4.className='bgrp';t4.innerHTML='<span class="dim">deploy</span>';bar.appendChild(t4);
     const all=on=>edit(()=>{design();for(const n of dn)if(on)n.dep=true;else delete n.dep});
     btn(t4,'extend all',dn.every(n=>n.dep),()=>all(true),'legs down, solar wings out, bay doors open, as they will roll out');
@@ -472,18 +472,18 @@ function panel(){
     {const r=row('');btn(r,'pick up',false,()=>{const p=ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});btn(r,'delete',false,()=>del(n))}
     return}
   if(PARTS[n.k].kind==='fair'&&!st.bench){const top=kids(n).find(c=>c.at==='u'),pr=parentOf(D.root,n);if(top&&!isPay(top)||!top&&pr&&n.at==='d'&&!isPay(pr)){const r=row('payload');
-    btn(r,'make the parts inside a payload',false,()=>makePay(n),'lift what this fairing encloses onto the payload bench: the rocket carries it as one block, and the same payload can fly on any rocket')}}
+    btn(r,'make the parts inside a payload',false,()=>makePay(n),'move what this fairing holds to the payload bench: one block, for any rocket')}}
   if(par){const w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null),r=row('joint');
     if(w){const s=document.createElement('span');s.className=w.f>1?'bad':w.f>.7?'warn':'ok';s.textContent=` ${(w.f*100).toFixed(0)}% ${w.p.anaKind||''} `;r.appendChild(s)
       if(w.f>.7&&w.p.parent&&typeof fixText==='function'){s.classList.add('term');Object.assign(s.dataset,{wt:`The joint ${w.p.d.name} / ${w.p.parent.d.name} at ${(w.f*100).toFixed(0)}% of its rating`,   // (Q391) the chip explains itself
-        wd:w.f>1?'Past its certified rating on the standard ascent: ratings start at 70% of what the part really takes, so it may hold, but the further past, the likelier it breaks.':'Near its certified rating: a turn or a gust on the way up adds to it.',wf:fixText(jointFix({p:w.p},false))})}}
+        wd:w.f>1?'Past its certified rating: it may hold; the further past, the likelier it breaks.':'Near its certified rating: a turn or a gust adds to it.',wf:fixText(jointFix({p:w.p},false))})}}
     btn(r,JR[n.j||0].name,!!n.j,()=>edit(()=>{n.j=((n.j||0)+1)%3;if(!n.j)delete n.j}),'cycle: standard → reinforced (2× strength) → heavy (4×), each adds mass')}
   if(PARTS[n.k].kind==='fair'){const d=PARTS[n.k],L=n.fl&&d.fls.includes(n.fl)?n.fl:d.fl0,f=ps.find(p=>p.profF),inn=f?S.parts.filter(q=>q.on&&q.inFair===f).length:0,r=row('length');
     for(const v of d.fls)btn(r,v+' m',v===L,()=>edit(()=>{if(v===d.fl0)delete n.fl;else n.fl=v}),`a ${v} m shell (${(d.fm*v).toFixed(2)} t)`);
     const i=document.createElement('span');i.className='dim';i.textContent=` encloses ${inn} part${inn===1?'':'s'}`;r.appendChild(i)}
   if(PARTS[n.k].kind==='rfin'){const r=row('size');   // fin sizes (Q348)
     FIN_SZ.forEach((z,i)=>{const d=finDef(PARTS[n.k],i);btn(r,z.n,(n.fz||0)===i,()=>edit(()=>{if(i)n.fz=i;else delete n.fz}),`${z.n} span × ${d.chord.toFixed(2)} m chord, ${(d.m*1000).toFixed(0)} kg each`)})}
-  if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
+  if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'the stage below feeds the engines above it, and drains first')}
   {const w=depOf(n.k);if(w){const r=row('deployed');btn(r,n.dep?DEPW[w][0]:DEPW[w][1],!!n.dep,()=>edit(()=>{if(n.dep)delete n.dep;else n.dep=true}),'set it out or put it away here: the craft rolls out the way you leave it');
     const h=document.createElement('div');h.className='sub';h.textContent=`In flight: ${DEP_HOW[w]}.`;sel.appendChild(h)}}   // (Q400) how it deploys
   if(agKind(PARTS[n.k])&&!st.bench){const r=row('groups'),L=D.ag||[];   // its action groups (Q329): in or out of each
@@ -491,7 +491,7 @@ function panel(){
     if(L.length<AG_MAX)btn(r,'+ new group',false,()=>agNew(n),'a new action group with this part in it')}
   if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
-    if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');
+    if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'on a decoupler they drop as a stage; fixed, they stay on');
       if(a.dec)btn(r,a.x?'crossfeed ✓':'no crossfeed',!!a.x,()=>edit(()=>{if(a.x)delete a.x;else a.x=true}),'the radial parts feed the engines they hang on too, and run dry first')}
     {const r=row('move');const hp=PARTS[par.k].h;
       btn(r,'▲',false,()=>edit(()=>{a.y=+Math.min(hp,a.y+.1).toFixed(3)}),'up 0.1 m');btn(r,'▼',false,()=>edit(()=>{a.y=+Math.max(0,a.y-.1).toFixed(3)}),'down 0.1 m');
@@ -499,11 +499,11 @@ function panel(){
   // cant: only an engine on a radial line has an outward direction to tilt toward
   const eng=PARTS[n.k].kind==='engine'?ps.find(p=>p.phi!=null):null;
   if(eng){const r=row('cant'),c=n.cant||0,v=document.createElement('span');v.textContent=` ${c.toFixed(2)}° `;
-    if(c)v.title=`${((1-Math.cos(c*Math.PI/180))*100).toFixed(1)}% of each engine's thrust goes sideways (cancels between symmetric copies)`;
+    if(c)v.title=`${((1-Math.cos(c*Math.PI/180))*100).toFixed(1)}% of each engine's thrust goes sideways`;
     const set=x=>edit(()=>{x=Math.round(clamp(x,-30,30)*100)/100;if(x)n.cant=x;else delete n.cant});
     btn(r,'−',false,()=>set(c-1),'cant 1° less (below 0 the nozzle tilts inward)');r.appendChild(v);btn(r,'+',false,()=>set(c+1),'cant 1° more: the nozzle tilts outward, the thrust leans in toward the axis');
-    btn(r,'balance',false,()=>{const a=aimCant(eng);if(Math.abs(a-c)<0.01)note('Balanced: the engines burning with this one already push through the centre of mass');else set(a)},
-      'cant so that all the engines burning with this one push through the centre of mass: no turning moment for the controls to fight')}
+    btn(r,'balance',false,()=>{const a=aimCant(eng);if(Math.abs(a-c)<0.01)note('Balanced already');else set(a)},
+      'cant these engines to push through the centre of mass')}
   // a rover mount: which rover is packed on it (a copy of the design as it is now; the Rover yard makes the designs)
   if(PARTS[n.k].kind==='rover'&&typeof rvDesigns==='function'){const r=row('rover'),L=rvDesigns(),s=document.createElement('select');
     s.style.cssText='font:inherit;background:rgba(0,0,0,.3);color:inherit;border:1px solid rgba(127,209,255,.22);max-width:160px';
@@ -511,9 +511,9 @@ function panel(){
     s.value=n.rvd?String(Math.max(-1,L.findIndex(d=>d.name===n.rvd.name))):'';
     s.onchange=()=>{s.blur();edit(()=>{if(s.value===''||s.value==='-1')delete n.rvd;else{const d=JSON.parse(JSON.stringify(L[+s.value]));delete d.test;n.rvd=d}})};r.appendChild(s);
     const why=n.rvd&&ps[0]?rvMountWhy(ps[0],n.rvd):'',w=document.createElement('div');w.className=why?'warn':'sub';
-    w.textContent=why||(n.rvd?`${Math.round(rvGeom(n.rvd).m)} kg, packed as it was then: changes in the Rover yard need it packed again`:'nothing packed');sel.appendChild(w)}
+    w.textContent=why||(n.rvd?`${Math.round(rvGeom(n.rvd).m)} kg, as packed: pack it again after changes in the Rover yard`:'nothing packed');sel.appendChild(w)}
   const path=rootPath(D.root,n);if(par&&path&&path.slice(1).every(x=>x.at==='u'||x.at==='d'))
-    {const r=row('root');btn(r,'make root',false,()=>edit(()=>reroot(path)),'re-hang the design from this part, so a subtree with the old root in it can be picked up (the rocket itself does not change)')}
+    {const r=row('root');btn(r,'make root',false,()=>edit(()=>reroot(path)),'re-hang the design from this part (the rocket does not change)')}
   {const r=row('');btn(r,'pick up',false,()=>{const p=ps.find(p=>!p.inst.rdec)||ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});
     btn(r,'delete'+(sub?` (+${sub})`:''),false,()=>{if(n===D.root&&!confirm('Delete the root part and everything on it?'))return;del(n)})}}
 // ---- staging editor. Stages in firing order (1 fires first, with Space in flight); each chip is one action — a drop (a
@@ -536,8 +536,8 @@ function stgEdit(L,from,to){L=L.map(s=>s.slice());if(from.stage!=null&&to.row===
 function staging(box){
   st.hiAtom=null;st.hiKey='';   // the chips are rebuilt: a removed chip never fires mouseleave, so its highlight would stick
   const A=assemble(stackDef),S0=A.stages,wrap=document.createElement('div');wrap.className='bstg';box.appendChild(wrap);
-  wrap.innerHTML=`<div class="bhd2"><span>staging</span> <span class="dim">${A.custom?'custom':'automatic'}</span></div>`+
-    (S0.length?`<div class="dim shint">drag an action onto a stage to fire it there, or between stages for a stage of its own; drag a stage's number to merge or move it</div>`:'');
+  wrap.innerHTML=`<div class="bhd2"><span title="Drag an action onto a stage, or between two for a new stage. Drag a stage's number to move it.">staging</span> <span class="dim">${A.custom?'custom':'automatic'}</span></div>`+
+    '';
   if(A.custom)btn(wrap.firstChild,'automatic',false,()=>edit(()=>{delete design().stg}),'forget the custom order and stage automatically again');
   const go=(from,to)=>edit(()=>{const D=design();D.stg=stgEdit(assemble(D).stages.map(s=>s.map(a=>a.id)),from,to)});
   let drag=null;   // what is being dragged: {atom:[i,j]} or {stage:i}
@@ -559,19 +559,19 @@ function staging(box){
   // action groups (vehicle, Q329, PLAYTEST #80): the design's own (keys 1–9 in flight, in this order) and the stock two;
   // a part joins one from its options (right-click it); drag a group onto a stage and it fires with that stage too
   const AG=A.ag||[],gw=document.createElement('div');gw.className='bstg';box.appendChild(gw);
-  gw.innerHTML=`<div class="bhd2"><span>action groups</span></div>`;
-  btn(gw.firstChild,'+ group',false,()=>agNew(st.sel),'a new action group, with the selected part if it deploys; parts join from their options (right-click a part)').disabled=(dView().ag||[]).length>=AG_MAX;
+  gw.innerHTML=`<div class="bhd2"><span title="One key, or one stage, moves every part in a group (legs, wings, antennas, bay doors, chutes).">action groups</span></div>`;
+  btn(gw.firstChild,'+ group',false,()=>agNew(st.sel),'new action group; add parts from their right-click options').disabled=(dView().ag||[]).length>=AG_MAX;
   const O={tog:'toggle',out:'extend',in:'retract'},NX={tog:'out',out:'in',in:'tog'};
   for(const g of AG){const r=document.createElement('div');r.className='agrow';gw.appendChild(r);
-    const c=document.createElement('span');c.className='schip g';c.innerHTML=`<span>${g.key.toUpperCase()}${g.stock?' · '+esc(g.name):' ⠿'}</span>`;c.title=`${g.name}: its key in flight; drag onto a stage and it fires with that stage too`;start(c,{group:g.id});r.appendChild(c);
+    const c=document.createElement('span');c.className='schip g';c.innerHTML=`<span>${g.key.toUpperCase()}${g.stock?' · '+esc(g.name):' ⠿'}</span>`;c.title=`${g.name}: its key in flight · drag onto a stage to fire it there`;start(c,{group:g.id});r.appendChild(c);
     const np=S.parts.filter(p=>p.on&&agKind(p.d)&&(g.id==='sol'?unfolds(p.d):g.id==='legs'?p.d.kind==='leg':!!p.dn&&!p.dn.payOf&&g.n.includes(p.dn.id))).length,cnt=document.createElement('span');
     cnt.className=np?'dim':'warn';cnt.textContent=` ${np} part${np===1?'':'s'}${g.stock?' · stock':''}`;
     if(g.stock){r.appendChild(cnt);continue}
     const G=()=>(design().ag||[]).find(x=>String(x.id)===g.id),inp=document.createElement('input');
     inp.value=g.name;inp.maxLength=24;inp.title='its name';inp.onkeydown=e=>e.stopPropagation();inp.onchange=()=>edit(()=>{const x=G();if(x)x.name=inp.value.trim()||x.name});r.appendChild(inp);
-    btn(r,O[g.op],false,()=>edit(()=>{const x=G();if(x)x.op=NX[x.op||'tog']}),'toggle (away if any is out, else out) · extend · retract: click to change');r.appendChild(cnt);
-    btn(r,'✕',false,()=>edit(()=>{const D=design();D.ag=(D.ag||[]).filter(x=>String(x.id)!==g.id);if(!D.ag.length)delete D.ag;if(D.stg)D.stg=D.stg.map(s=>s.filter(a=>a!=='g:'+g.id)).filter(s=>s.length)}),'delete the group (and take it out of its stage)')}
-  if(!AG.some(g=>!g.stock)){const h=document.createElement('div');h.className='dim shint';h.textContent='Parts that deploy (legs, wings, antennas, bay doors, chutes) can be grouped: one key, one button, or a stage moves them all.';gw.appendChild(h)}}
+    btn(r,O[g.op],false,()=>edit(()=>{const x=G();if(x)x.op=NX[x.op||'tog']}),'toggle · extend · retract: click to change');r.appendChild(cnt);
+    btn(r,'✕',false,()=>edit(()=>{const D=design();D.ag=(D.ag||[]).filter(x=>String(x.id)!==g.id);if(!D.ag.length)delete D.ag;if(D.stg)D.stg=D.stg.map(s=>s.filter(a=>a!=='g:'+g.id)).filter(s=>s.length)}),'delete the group')}
+}
 // a new action group (Q329), with the node n in it if it deploys
 function agNew(n){edit(()=>{const D=design(),L=D.ag||(D.ag=[]),id=L.reduce((m,g)=>Math.max(m,+g.id||0),0)+1;
   L.push({id,name:`Group ${L.length+1}`,op:'tog',n:n&&!isPay(n)&&agKind(pdef(n.k))?[n.id]:[]})})}
@@ -598,7 +598,7 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
   for(const[cat,kinds]of CAT){if(!Object.values(PARTS).some(d=>listed(d)&&kinds.includes(d.kind)&&isOpen(d.key)))continue;const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
     for(const k in PARTS){const d=PARTS[k];if(listed(d)&&kinds.includes(d.kind)&&isOpen(k))partBtn(k,pal,false)}}
   {const shut=typeof closedParts==='function'?closedParts(Object.keys(PARTS).filter(k=>listed(PARTS[k])&&CAT.some(c=>c[1].includes(PARTS[k].kind)))):[],n=shut.reduce((a,c)=>a+c.groups.reduce((b,g)=>b+g.keys.length,0),0);
-    if(n){const h=document.createElement('div');h.className='pcat plock';h.textContent=`${st.lockOpen?'▾':'▸'} Not open yet (${n})`;h.title='parts that open with a mission or an era: you can design with them; a launch with one is refused';
+    if(n){const h=document.createElement('div');h.className='pcat plock';h.textContent=`${st.lockOpen?'▾':'▸'} Not open yet (${n})`;h.title='opened by a mission or an era: fine in a design, refused at launch';
       h.onclick=()=>{st.lockOpen=!st.lockOpen;palette()};pal.appendChild(h);
       if(st.lockOpen)for(const c of shut){const ch=document.createElement('div');ch.className='pch';ch.textContent=c.name;pal.appendChild(ch);
         for(const g of c.groups){const r=document.createElement('div');r.className='pwhy';r.textContent=g.line;pal.appendChild(r);for(const k of g.keys)partBtn(k,pal,true)}}}}
@@ -610,7 +610,7 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
   // (Q578) a preset with a part not open yet is dimmed and says the first mission it waits for (the Hopper waits for the hop)
   for(const k in PRESETS){const b=document.createElement('button'),W=typeof stackWaits==='function'?stackWaits(PRESETS[k]):[];b.style.margin='0 4px 4px 0';
     if(W.length){b.classList.add('lock');b.innerHTML=`${k} <span class="pw">🔒 ${W[0].short}${W.length>1?` +${W.length-1}`:''}</span>`;
-      b.title=`Waits for ${W.map(w=>w.era!=null?`the ${w.short.toLowerCase()} era`:`“${w.short}”`).join(', ')}: load it and change it if you like; a launch with a part not open yet is refused`}
+      b.title=`Waits for ${W.map(w=>w.era!=null?`the ${w.short.toLowerCase()} era`:`“${w.short}”`).join(', ')}: it loads, but cannot launch until they open`}
     else b.textContent=k;
     b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}
   library(pre)}

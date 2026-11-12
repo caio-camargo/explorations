@@ -15,7 +15,7 @@ function unlockShow(cards){if(!cards||!cards.length)return false;if(UNL.on){UNL.
   UNL={q:cards.slice(),i:0,on:true};unlockEl().classList.remove('hidden');unlockRender();return true}
 function unlockRender(){const el=unlockEl(),c=UNL.q[UNL.i];if(!c){unlockClose();return}
   const q=s=>el.querySelector(s),n=UNL.q.length,cv=q('.um'),ps=c.parts||[];
-  el.querySelector('.uc').className=`uc k-${c.k}`;
+  el.querySelector('.uc').className=`uc k-${c.k}`;if(typeof sndUnlock==='function'){try{sndWake();sndUnlock(c.k)}catch(e){}}   // a sound per card
   q('.uk').textContent=(UNL_KICK[c.k]||'Unlocked')+(c.fam?` · ${c.fam.name}, ${c.fam.i+1} of ${c.fam.n}`:'');
   q('.un').textContent=c.name;q('.uw').textContent=c.why||'';
   q('.ul').innerHTML=c.k==='done'?(c.pay!=null?`<span class="up">+${fmtM(c.pay)}</span>`:'')
