@@ -2141,7 +2141,32 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
   sizes; a family part's line is the family's (20 identical lines for the bench); no sound yet (look & sound); the model's
   colours against the design table's real grade.
 
-## v1.319 — poster headlines for big moments; v1.318 flown by the robot (2026-11-12, loop slices session, QUEUE Q479; UI.md § 4.1 item 3)
+## v1.319 — the Mission card stays up in flight; a mission done turns green there (2026-11-12, flow item by the platform session, QUEUE Q600; D42; PLAYTEST #162, #164)
+
+Caio, playing v1.306–v1.307: the centred "Mission complete" box came when he cut the thrust (#162: `doneHeld` held it
+while the engines burned, Q558), and the missions he saw before launch were gone during the flight (#164: the dark
+cockpit folded the Mission card in every critical phase, and it listed three missions at most). D42: quiet in flight,
+loud after it.
+- **The card stays**: `'mission'` is first in `CP_CARDS` (app/cockpit.js). In a critical phase (`cpPhase`: the climb, a
+  burn, a landing) it is short (`mcShort`, app/hud.js): one line per job, its first open condition with the reading
+  now ("Sounding experiment, 40–55 km · apex 40–55 km, now 31 km"), or the lost one in red; the *Now* line stays. Pinned,
+  it stays full. Quiet, it is the full card as before.
+- **Every mission** open at launch the vessel could meet is listed (`MC_MISSIONS`, the cap of three, is gone from
+  `cardJobs`, sim/next.js). The card folds by height like the others when the window is short.
+- **Done in place**: the jobs keep the order the flight first listed them in (`mcOrder`, per `rec`), so a job done turns
+  green where it stood ("✓ Above the weather · done, +15.0M", the whole line green) instead of jumping to the top.
+  `debPaid` now records a contract's id (sim/contracts.js), so a paid contract matches its live row.
+- **No box in flight**: `HOOK.done` in flight (`n.flight` and mode flight) goes to `doneFlight` (app/notice.js): one line in
+  `#msg` for 6 s, "✓ Mission complete: Beeper · +30.0M" ("First in the world: …", "Contract done: …"), and a chime
+  (`sndDone`, app/sound.js: two soft rising tones, 784 and 1175 Hz). `doneHeld` is gone. The box (`#done`) stays for world
+  missions and contracts judged at home, at the desk, until Q572's overlays; the fanfare after a flight is Q572's.
+- Tests: flow-55 rewritten (in flight a line and a chime and no box; a flight's completion after it dropped; the desk's
+  box as before), flow-58 new (kept in a burn with Δv while the rest fold, via `hudCardsOn`, now its own function; the
+  short rows; done in place, green, with pay; `mcOrder`), flow-54 (all the missions; in the dark cockpit), flow-40 (the Δv
+  card still among `CP_CARDS`).
+- Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 378).
+
+## v1.320 — poster headlines for big moments; v1.318 flown by the robot (2026-11-12, loop slices session, QUEUE Q479; UI.md § 4.1 item 3)
 
 - **Big moments carry a poster.** `HOOK.news(t, cls, big)` takes a third argument `{kick, hl, rival?}` on four calls only:
   our first in the world (`missionComplete`), a rival's first (`raceTick`), a chapter closed (`missionComplete` on a

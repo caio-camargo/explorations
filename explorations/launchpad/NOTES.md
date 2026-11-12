@@ -389,6 +389,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.305 — what a mission opens: opensOf, the debrief's Opened block, "opens:" on the Missions tab (2026-11-11, flow, QUEUE Q570) → [notes/flow.md](notes/flow.md)
 - v1.306 — a completion notice you can't miss: its own card, queued, until Enter or a click (2026-11-11, flow, QUEUE Q569) → [notes/flow.md](notes/flow.md)
 - v1.307 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
+- v1.319 — the Mission card stays up in flight (short in the climb, burns and landings; every mission the vessel could meet); a mission done turns green in its place, one line and a chime, no centred box in flight (2026-11-12, Q600, D42)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -480,4 +481,4 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.312 — a frame that throws no longer ends the game: `frame()` always schedules the next one; `app/fault.js` catches errors and lost promises with a panel (Reload, Export save, the old save R10 kept, Keep playing) (2026-11-11, platform, QUEUE R9)
 - v1.316 — export and import a save from Settings › Saved program: Export any time, Import asks twice and waits for the end of a flight; a file that isn't a program or stops the game changes nothing, one that loads replaces the slot (the old one kept as `-before-import`) and reloads (2026-11-12, platform, Q599)
 - v1.318 — the loop's slices: part families, reasons and chapters as data (D34: no closed part on the stand, in development or on a line); presets say what they wait for and closed parts fold under *Not open yet* by chapter; after a flight, one card per mission done, part and mission opened, the part turning as a model (D42); the Missions tab by chapter, a chapter's poster, the trophy case (2026-11-12, loop slices, QUEUE Q579, Q578, Q572, Q576)
-- v1.319 — poster headlines for big moments: a first, a rival's first, a chapter closed and a new era reach the news with a poster; the desk's paper prints a recent one as a poster, in the era's palette, as does the Debrief's headline; v1.318 flown by the robot (`playtest.mjs cards`) (2026-11-12, loop slices, QUEUE Q479)
+- v1.320 — poster headlines for big moments: a first, a rival's first, a chapter closed and a new era reach the news with a poster; the desk's paper prints a recent one as a poster, in the era's palette, as does the Debrief's headline; v1.318 flown by the robot (`playtest.mjs cards`) (2026-11-12, loop slices, QUEUE Q479)

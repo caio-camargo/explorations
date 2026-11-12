@@ -7415,3 +7415,24 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `ACTIVE_WORK.md`.
 - **Next:** TESTING 375–377 by hand; the follow-ups under QUEUE *Proposed* (a sound, per-part lines, Q600 and the desk
   notice). M1 closes when Caio replays the first hour (D41).
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-q600): Q600 (v1.319), the Mission card in flight (a flow item, D42)
+
+- **Asked:** Caio: work on Q600 (PLAYTEST #162 "Mission complete" at the thrust cut; #164 the missions gone in flight).
+- **Done:** the Mission card in `CP_CARDS` (app/cockpit.js), short in a critical phase (one line per job, its open
+  condition and reading; pinned: full); every mission the vessel could meet (`MC_MISSIONS` cap gone, sim/next.js); jobs
+  keep their first order (`mcOrder`), so a job done turns green in place with its pay (`debPaid` records a contract's id,
+  sim/contracts.js). In flight `HOOK.done` → `doneFlight`: a `#msg` line for 6 s and `sndDone` (two soft tones,
+  app/sound.js); `doneHeld` gone; the centred box at the desk only. `hudCardsOn()` split out of `renderCards`.
+- **Checked:** flow-55 rewritten, flow-58 new, flow-54 and flow-40 updated; flow and economy sections locally; the page,
+  headless (harness.cjs): the card drawn short in a critical phase with the rest folded, a completion in flight a line
+  and a chime with no box, the desk's box still; CI green twice (43156354034; 43158377058 after the loop slices' merge).
+- **Numbers:** the loop slices took v1.318, TESTING 375–377 and flow-56/57 meanwhile: Q600 is v1.319, TESTING 378,
+  flow-58; a 🖥 check filed (row 1 of the table) for the card over a real climb.
+- **Not checked:** on a GPU at real size (the 🖥 check; TESTING 378 by hand).
+- **Note:** the main clone has uncommitted edits to `builder.js`, `app/editor.js`, `index.html` (seemingly the vehicle
+  session's R28); left untouched.
+- **Files:** launchpad `app/hud.js`, `app/cockpit.js`, `app/notice.js`, `app/sound.js`, `sim/next.js`,
+  `sim/contracts.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`, `PLAYTEST.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** the 🖥 check and TESTING 378; Q572's overlays could take the desk's box too (world missions judged at home).
