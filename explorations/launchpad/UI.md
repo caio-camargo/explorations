@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-29
+**Version**: 0.2.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-12
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -83,6 +83,29 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
 13. **One language per place:** the office (Program, Debrief, logbook) is paperwork; the cockpit (flight, rollout)
     is the instrument panel; the map is the pencil chart. No dark generic panels anywhere (W14's mix).
 14. **A verdict, then the fix (D22).** Every check reads as a plain verdict and what to do about it: "tumbles if it coasts in thick air: fins low, or keep burning to 40 km", never "coasting flips". Where it can, the 3D view shows it too: the joint that breaks ringed in red, an arrow from the centre of pressure to the centre of mass when unstable, the hovered stage lit.
+
+## 2.1 Copy: the screen is not a manual (D43, 2026-11-12)
+
+Caio: "claude tends to be prolix... a lot of explanations can be tooltips, and even then many are twice as long as
+they need to be." Every string a player reads follows these; Q603 is the pass that brings the game to them.
+
+| Kind of text | What it may say | Budget |
+|---|---|---|
+| **Standing text** (always on the screen) | A label, a state, a number. Never how to use the screen | 6 words, more only for a number or a name it carries |
+| **A prompt** (the one next step, shown while it applies) | What to do now | 6 words; one per screen |
+| **A tooltip** | What the control does, and its key | One clause, 12 words |
+| **A part's sentence** (its card) | What it is, and the one thing to know | 14 words |
+| **A why-card** (hover on a warning) | Headline, one sentence of cause, the fixes | 20 words for the cause |
+| **A message** (`#msg`, a note) | What happened | 10 words |
+| **Teaching** | Why a thing is so, how a flight is flown | Not on the screen: the glossary (`TERMS`), or Guided (Q491) |
+
+1. **Say it once.** A fact in the tooltip is not also in the standing line, and a rule told on one card is not retold
+   on the next (the ratings paragraph stood under the readout and in three tooltips).
+2. **Cut the consequence the player will see.** "Right-click drops it" stays; "(Ctrl+Z brings it back)" goes.
+3. **No doc names on a screen.** No "PROBES S2", no queue numbers, no file names.
+4. **A warning keeps its number.** Trim words, never the figure or the part's name.
+5. **Measure:** `node review/2026-11-12/copy_words.cjs` lists every run of 8 or more words in the panels and every
+   tooltip of 15 or more.
 
 ## 3. Each screen's reads (the spec)
 
@@ -187,3 +210,4 @@ controls, caution and warning (nasa.gov ALSJ) · Launch status check, flight con
 documents) · Oxygen Not Included overlays (wiki.gg) · Mini Metro (killscreen.com) · Factorio Friday Facts 216, 243,
 277 · HighFleet review (pcgamer.com) · KSP2 UI feedback threads (forum.kerbalspaceprogram.com) · CK3 nested tooltips
 (gamingonlinux.com; Paradox Tinto Talks #77).
+- 0.2.1 (2026-11-12): § 2.1, the copy rule (D43).

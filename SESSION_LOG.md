@@ -7495,3 +7495,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** why TV satellites leave the capital's sky in long careers (drift the routine doesn't count?); frugal's held
   dispatches; a `stationcrew` plan so the runner sees crew and station contracts; more seeds of `LATE=1` off the shared
   machine.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slices 1 and 2 (text only)
+- **Caio:** "claude tends to be prolix... a lot of explanations can be tooltips, and even then many are twice as long
+  as they need to be"; he asked for a Fable session to review the copy. **D43**: the screen is not a manual; the
+  budgets are UI.md § 2.1. PLAYTEST #167. **Q603**: the pass, one screen a slice.
+- **v1.322, slice 1, the design table:** 117 strings in `builder.js`, `app/editor.js`, `index.html`; the three
+  instruction lines (under Parts, staging, action groups) are tooltips on their headings; part cards cut. Text only.
+- **Slice 2, the flight, same version:** the first-flight hints and the "too flat" cautions (`app/cockpit.js`), the
+  flight bar's tooltips, Help's rows (`app/screens.js`): 29 strings. The hints stay until Guided teaches.
+- **Tests:** full suite green on slice 1 (898 checks); smoke on both green but for **vehicle-43 (b), a flake** (it
+  found no failed ignition that run; passes alone with and without the change): **Q604**. **Platform:** the suite
+  has a known flake again. After the merge with `origin/main`: smoke green but for the timing check 6b (2,327 µs a
+  warp frame under other sessions' load, 97 µs alone). `review/2026-11-12/copy_words.cjs` lists long text in the panels.
+- **Not checked:** nothing seen in a browser (TESTING 380).
+- **Next:** slice 3, the Program (contracts, missions, mission control). **PARKED still:** R29b; Q592's plan.
+- Files: `explorations/launchpad/builder.js`, `app/editor.js`, `app/cockpit.js`, `app/screens.js`, `index.html`, `UI.md`, `DECISIONS.md`, `QUEUE.md`,
+  `PLAYTEST.md`, `TESTING.md`, `NOTES.md`, `notes/flow.md`, `review/2026-11-12/copy_words.cjs`; root `ACTIVE_WORK.md`.
