@@ -7,7 +7,10 @@ import { flyLadder, handAscent, flySite, siteOf } from './fly_ladder.mjs';
 // shards (platform session): `node test.mjs --list | --only 12,docking | --smoke | --times`, see shards.mjs
 // Since Q68 every run goes through shards.mjs, which splices in tests/*.mjs; the module it builds arrives on stdin, where
 // process.argv[1] is unset, so this line doesn't fire there.
-if (process.argv[1]) process.exit(await (await import('./shards.mjs')).main(process.argv.slice(2), import.meta.url));
+// (R5) process.exit drops what stdout hasn't written yet when it is a pipe (CI's log, `| grep`): --jobs' per-process output
+// and the times were cut off on CI. Wait for an empty write to come back first: writes go out in order.
+const flushOut = () => new Promise(r => process.stdout.write('', r));
+if (process.argv[1]) { const code = await (await import('./shards.mjs')).main(process.argv.slice(2), import.meta.url); await flushOut(); process.exit(code); }
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
@@ -28,4 +31,4 @@ const check = (name, ok, detail) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${na
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
-process.exit(fails ? 1 : 0);
+await flushOut(); process.exit(fails ? 1 : 0);
