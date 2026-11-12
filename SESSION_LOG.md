@@ -7200,3 +7200,9 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 
 - **And:** Caio asked for a backlog for stray ideas: **explorations/launchpad/BACKLOG.md** (D31; rules: never work,
   only Caio promotes), seeded with aeroplanes and spaceplanes; pointers in ROADMAP § Documents, QUEUE § Proposed, INDEX.
+
+- **The backlog sweep** (Caio: "sweep the older notes for past ideas... keep an eye out for major design questions"):
+  six read-only agents read notes/, the catalogs, the reviews and mockups/README. **BACKLOG.md 0.1.1**: about 85 ideas
+  by area, and a table "Decided, but nothing carries it" (11 rows, for the orchestrator). **REVIEW-2026-11-11 § 8**: 20
+  design questions (8 where two records disagree), with recommendations, none answered. Q583 gained a check (the
+  logbook locks maneuver nodes until an orbit is measured). Coverage was by key word; no code run.
