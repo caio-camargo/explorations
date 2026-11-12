@@ -312,6 +312,14 @@ whole reset, or use an own SIM instance (`new Function(src + …)`, as the sats 
 **Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
 cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
 
+**R5, 2026-11-12 (the clock before the craft).** R5's new `SLOW` weights dealt vehicle-16 (Q328, deploy in the Assembly)
+into a smoke process after sections that leave `simT` large. The section built its craft, then set `api.t = 0`:
+`newShip` lands a craft on the pad *at the current time*, so moving the clock afterwards turned the planet under it and
+the first step struck the ground at 6 km/s ("flown: lost, wings 2 left at 0.00 kPa"). Not the shared world map (6ebd3225):
+with the map unshared the same shard failed the same way. Q328 and §16's launch-window check now set the clock first, as
+every other section does. **Everyone:** `api.t = 0` goes *before* `api.newShip`, never after, unless the section then
+places the craft itself (`s.r`, `s.v`, not landed). Still open in smoke: vehicle-43 (b), QUEUE Q604.
+
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 
 `index.html` was one 6,700-line, 780 KB script that every lane edited, so every merge conflicted inside it. Its script is

@@ -49,7 +49,7 @@ names for engines, no Mk1, Kerbal, KSC or Mun.
 5. **Revert to launch** after a real failure undercuts pillar 7 ("a lost crew weighs"). **Propose:** a **simulator**:
    fly any mission first in the simulator, no money, no news, revert at will; it flies the program's *believed*
    numbers, never the true ratings, and costs time (D17.2) (early programs lived in simulators); ~~a real
-   flight can't be reverted~~. *(Held 2026-11-11: revert stays on Easy and Normal until Caio has played the first hour; only Hard has none. DECISIONS D35.)*
+   flight can't be reverted~~. *(Held 2026-11-11: revert stays on Easy and Normal; only Hard has none. DECISIONS D35, made permanent by W55 2026-11-12.)*
 6. **Names:** the *Asparagus* preset (a KSP community word) becomes *Crossfeed*; "Kerbol" goes from SYSTEM.md; the
    1.25/2.5 m diameter steps are KSP's numbers (flag only: real stages vary; a later look at sizes).
 
