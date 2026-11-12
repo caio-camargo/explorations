@@ -721,7 +721,7 @@ function bayRelease(s){const bays=s.parts.filter(p=>p.on&&p.d.kind==='bay');if(!
   for(const b of bays){const list=b.children.filter(c=>c.on&&c.inBay===b).flatMap(subtree);if(!list.length)continue;
     if(doorF(b)<1){HOOK.msg('Open the bay doors first');continue}
     if(list.includes(s.root)){HOOK.msg("The vessel's own command part is in the bay");continue}
-    const dm=list.reduce((a,p)=>a+partMass(p),0)*1000,ms=s.mass-dm;detach(s,list,[0,BAY_PUSH*ms/(ms+dm),0],0,true);n++}   // 0.3 m/s apart, momentum shared
+    detach(s,list,[0,BAY_PUSH,0],0,true);n++}   // 0.3 m/s apart: detach shares it by mass (R22)
   if(!n&&bays.every(b=>!b.children.some(c=>c.on&&c.inBay===b)))HOOK.msg('Nothing in the bay');return n>0}
 function bayOp(s,op){return op==='open'?bayDoors(s,true):op==='close'?bayDoors(s,false):op==='rel'?bayRelease(s):false}
 // contact: the bay is hollow (walls, floor, and a roof only while shut), so a payload can leave without touching it

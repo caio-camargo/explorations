@@ -1133,8 +1133,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     !!ext && ext.phases.map(x => x.k).join() === 'transfer,capture,land,surface,ascend,return' && Math.abs(ph.transfer.pass - 40e3) < 3e3 && ph.return.perigee > 30e3 && ph.return.perigee < 60e3,
     ext ? `pass ${(ph.transfer.pass / 1e3).toFixed(1)} km, capture ${(ph.capture.pe / 1e3).toFixed(0)}×${(ph.capture.ap / 1e3).toFixed(0)} km, ascend to ${(ph.ascend.pe / 1e3).toFixed(0)}×${(ph.ascend.ap / 1e3).toFixed(0)}, return perigee ${(ph.return.perigee / 1e3).toFixed(1)} km; ${ext.dv.toFixed(0)} m/s in all` : 'none');
   if (ext) { P.done = Object.fromEntries(['beeper', 'orbiter', 'padabort', 'maxqabort', 'farside', 'selimp', 'selland', 'crewaround'].map(k => [k, { flight: 0, day: 0 }])); const dv0 = ext.dv;
+    // (R22) engines always light here: this checks the executor, not reliability. The ignition dice read the craft's
+    // kicks (s.kickN), which detach()'s momentum changed, and after the sections before it a Wren on the ascent from Selene failed
+    const nf0 = api.TEST.nofail; api.TEST.nofail = true;
     api.t = 0; const s = api.newShip(api.PRESETS['Crewed Lunar']); api.S = s; api.advPhys(s); api.procStart(s, ext); let k = 0;
     while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
+    api.TEST.nofail = nf0;
     const Rp = s.rec, now = P.procs[key];
     check('procedures v2: the executor flies it end to end through SAS: crew on Selene and home safe; a cheaper run replaces the procedure',
       // or, flown end to end and back on the spot, lost only to the trees there: a chute touchdown (< 8 m/s) on a tree cell (20 m

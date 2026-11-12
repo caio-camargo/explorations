@@ -1239,3 +1239,21 @@ return out`);
     off.map(k => `${k} ${r[k].parts.join('→')}${r[k].held ? ' held ' + r[k].held : ''}`).join(', ') + ` · assembly ${A.parts.join('→')} held ${A.held}` +
     ` · title keys: still holding ${K.title.still}, undo ${K.title.undo.join('→')}, X ${K.title.sym ? 'quiet' : 'acted'}; on the Assembly X ${K.assemblyX ? 'acts' : 'quiet'} · markers ${ov}`);
 }
+
+// vehicle-47. `detach()` keeps momentum (vehicle, QUEUE R22, the parked fourth: notes/vehicle.md § v1.315): the kick is how fast
+// the pieces part, shared by mass on both branches (the debris branch had given the craft no reaction), and the craft's velocity
+// follows its centre of mass. Parked on branch r22-detach until the long scripted flights tolerate it.
+{
+  const keepS = api.S, keepT = api.t;
+  // (c) momentum through a stage drop (debris branch) and a crew pod leaving its stage (vessel branch)
+  const mom = (list, k) => list.reduce((a, x) => a.map((c, i) => c + x.m * x.v[i]), [0, 0, 0])[k];
+  const drop = name => { const D = [], H = api.HOOK, d0 = H.debris, s0 = H.sep; H.debris = o => D.push({ m: o.mass, v: o.v }); H.sep = () => {};
+    api.t = 0; const c = api.newShip(api.PRESETS[name]); api.advPhys(c); c.w = [0, 0.05, 0.02]; api.geom(c);
+    const before = [{ m: c.mass, v: c.v.slice() }]; const ev = c.events.find(e => e.decouple.length); c.evIdx = c.events.indexOf(ev); api.stage(c);
+    H.debris = d0; H.sep = s0; const after = [{ m: c.mass, v: c.v }, ...D];
+    return { dp: Math.hypot(...[0, 1, 2].map(k => mom(after, k) - mom(before, k))) / before[0].m, n: D.length, dv: api.len(api.sub(c.v, before[0].v)) }; };
+  const orb = drop('Orbiter');
+  api.S = keepS; api.t = keepT;
+  check('vehicle-47: a stage drop keeps momentum (the craft takes the reaction, its velocity follows its centre of mass)',
+    orb.n > 0 && orb.dp < 1e-6, `Orbiter's drop: ${orb.n} debris, momentum change ${orb.dp.toExponential(1)} m/s × M, craft Δv ${orb.dv.toFixed(2)} m/s`);
+}

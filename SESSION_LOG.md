@@ -7603,3 +7603,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **3, correction:** the line above was written before the ff-merge, which `main` moving refused twice (flow's copy pass
   and platform's R3 took v1.325, v1.329, v1.330 and TESTING 383, 386, 387 meanwhile). R28 is now **v1.336, TESTING 392,
   test vehicle-46**, on `main` after CI 43291812071 (numbers taken well ahead to stop the renumbering).
+- **4, MISTAKE (caught, reverted):** R22 was ff-merged to `main` (53fb176e) on a **red** CI run (43294316246): my wait
+  command ran the merge without checking the watch's exit code. Reverted at once on `main` (b1426692, tree back to
+  101788c7; `main`'s own CI run covers it). Cause of the red: in the full run's order, procedures v2's executor flight lost a
+  Wren to an ignition failure on the ascent from Selene (the dice read `s.kickN`, which `detach()`'s momentum changes); the
+  executor flight now runs with `TEST.nofail` (it checks the executor, not reliability). Re-merging only on a green run.
+- **4, R22's fourth fix → main (v1.337), on green CI 43297667940:** `detach()` keeps momentum (kick shared by mass, velocity
+  follows the CoM; vehicle-47). The scripts made robust, `detach()` untouched: **Crewed Lunar** predicts its landing at the
+  return correction (a stand-in on rails, then the fall with the craft's drag: 3.5° N 157.5° E predicted, 4.2° N 157.4° E
+  flown) and, when it isn't open sea within 2°, raises the lowest point to 150 km and goes round once more (measured: no late
+  burn reaches the sea, only the arrival time moves the longitude); flown: two laps, splashdown at sea 6.5 m/s, 4.8 days.
+  **procedures v2** records again; its executor flight runs with `TEST.nofail` (the ignition dice read `s.kickN`).
+  **The Nyx control** is an orbit reaching 200 km (wrecked in ~27 h on both branches); at 60–110 km direction decides
+  nothing reliably (80 km prograde: 61 h on main, 8 days with the kick), noted in Q344. Q383 noted. QUEUE R22 ✓.
