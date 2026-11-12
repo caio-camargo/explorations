@@ -136,6 +136,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
+- v1.325 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
