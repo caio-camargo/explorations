@@ -185,3 +185,37 @@
     names === IDS.map(id => id + ':' + w.CHAPTER_SAVES[id].meta.name).join(',') && /data-chapter="\$\{c\.id\}"/.test(T) && /CHAPTER_KEY='launchpad-program-chapter',PROG_KEY=TEST\.on\?'launchpad-program-tester':PROG_SLOT\?CHAPTER_KEY:'launchpad-program-v1'/.test(S)
       && /localStorage\.setItem\(TEST\.on\?PROG_KEY:CHAPTER_KEY/.test(T) && /HOOK\.save=\(\)=>\{\};location\.reload\(\)/.test(T), names);
 }
+
+// qa-9. The first hour under the unlock map (QA, QUEUE Q580): the robot's m1 found every new career losing its beeper the
+// same way, the Petrel failing to light on flight 2: the ignition dice read the flight number and the part, not the career.
+// Each career rolls on its world's seed now, so a beeper's first flight fails about as often as IGN_FAIL says, and not for
+// everyone at once. The NEXT line no longer says the weather opens the beeper by itself (it waits for the structural test
+// too, Q577). Own SIM copy, like qa-1.
+{
+  const D = new Function(src + 'return {TEST,PROG,PRESETS,HOOK,newShip,igniteOK,nextStep,khUse,IGN_FAIL,partLaunchWhy,chooseStart,resetHome:()=>{HOME=0;RIVALS=raceSchedule()}};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], raceLost: {} });
+  D.chooseStart('agency'); P.flights = 1; P.kh = {};
+  let fails = 0; const N = 400;
+  for (let n = 0; n < N; n++) { P.wseed = (n * 2654435761) >>> 0; const s = D.newShip(D.PRESETS.Beeper), p = s.parts.find(q => q.d.key === 'petrel');
+    if (!D.igniteOK(s, p.seg)) fails++; }
+  const f = D.IGN_FAIL * (1 - D.khUse('petrel')) ** 2;   // what the dice should give: the Petrel starts with some know-how (use0)
+  check('the first hour: a new career\'s beeper (flight 2) loses its Petrel to the dice in some careers, about as many as know-how says, not all or none', fails > 0 && fails / N > 0.4 * f && fails / N < 1.8 * f,
+    `${fails} of ${N} new careers (${(100 * fails / N).toFixed(1)}%; know-how says ${(100 * f).toFixed(1)}%)`);
+  P.done = {}; const a = D.nextStep(); P.done.weather = { flight: 1 }; const b = D.nextStep(); P.done = {};
+  check('the first hour: the NEXT line says the weather opens the beeper and the hop together with the structural test', a && a.id === 'weather' && /opens .*beeper.*\(they also need Structural test flight\)/.test(a.why)
+    && b && b.id === 'loads' && /opens .*beeper/.test(b.why) && !/also need/.test(b.why), `${a && a.why} · then ${b && b.why}`);
+  // the route's designs (PLAYROUTE sitting 1, the robot's m1 and m2), each with what is done when it flies: every part open.
+  // The plan's "presets by chapter": the Satellite preset waits for the weather satellite, so m2 flies the first one on
+  // its own design (playtest.mjs PT.wxDesign: the Satellite with body cells for its wings), and the TV Satellite for the range too
+  const wx = JSON.parse(JSON.stringify(D.PRESETS.Satellite)), bc = n => { for (const c of n.c || []) { if (c.k === 'wpanel') { c.k = 'bpanel'; c.at.n = 4; } bc(c); } }; bc(wx.root);
+  const E = ['weather', 'loads'], ROUTE = [['Sounding', 'Sounding', []], ['Passenger', 'Passenger', E], ['Beeper', 'Beeper', E], ['Hopper', 'Hopper', [...E, 'hop']],
+    ['Passenger Orbiter', 'Passenger Orbiter', [...E, 'hop']], ['m2 weather satellite', wx, [...E, 'beeper']], ['Satellite', 'Satellite', [...E, 'beeper', 'wxsat']],
+    ['TV Satellite', 'TV Satellite', [...E, 'beeper', 'range', 'wxsat']]];
+  const why = (st, done) => { P.done = Object.fromEntries(done.map(id => [id, { flight: 1 }])); return D.partLaunchWhy(D.newShip(typeof st === 'string' ? D.PRESETS[st] : st).parts); };
+  D.TEST.tools = false; const shut = ROUTE.map(([k, st, done]) => [k, why(st, done)]).filter(([, w]) => w);
+  const early = [why('Hopper', E), why('Satellite', [...E, 'beeper']), why('TV Satellite', [...E, 'beeper', 'wxsat'])]; P.done = {};
+  check('the first hour: each design on the route has its parts open when the route flies it (and the Hopper, the Satellite and the TV Satellite not before)',
+    !shut.length && /command pod/.test(early[0]) && /solar wing/.test(early[1]) && /radial decoupler/.test(early[2]),
+    shut.length ? shut.map(([k, w]) => `${k}: ${w}`).join(' · ') : `${ROUTE.length} designs open in order · before: ${early.join(' · ')}`);
+}

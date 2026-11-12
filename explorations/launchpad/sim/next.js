@@ -13,9 +13,11 @@ function nextStep(){const day=PROG.day||0,left=t=>`${Math.max(0,t-day).toFixed(0
   const c=(PROG.active||[]).slice().sort((a,b)=>a.deadline-b.deadline)[0];
   if(c)return{kind:'contract',title:cTitle(c),why:`accepted, pays ${fmtM(c.p.pay)}: ${left(c.deadline)} left`,tab:'contracts'};
   const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));
-  if(open.length){const M=missionsInOrder(open)[0],opens=MISSIONS.filter(x=>(x.req||[]).includes(M.id)).map(x=>x.name);
+  if(open.length){const M=missionsInOrder(open)[0],after=MISSIONS.filter(x=>!PROG.done[x.id]&&(x.req||[]).includes(M.id)),opens=after.map(x=>x.name);
+    // (Q580) a mission that also waits for another says so: since the unlock map the beeper and the hop wait for the weather and the structural test both
+    const also=[...new Set(after.flatMap(x=>x.req.filter(r=>r!==M.id&&!PROG.done[r])))].map(r=>(MISSIONS.find(x=>x.id===r)||{}).name).filter(Boolean);
     const race=RACE.includes(M.id)&&raceLost(M.id)==null?'; nobody has done it yet: be first':'';
-    return{kind:'mission',id:M.id,title:M.name,why:`pays ${fmtM(M.pay)}${opens.length?`, opens ${opens.join(' and ')}`:''}${race}`,
+    return{kind:'mission',id:M.id,title:M.name,why:`pays ${fmtM(M.pay)}${opens.length?`, opens ${opens.join(' and ')}${also.length?` (${after.length>1?'they also need':'it also needs'} ${also.join(' and ')})`:''}`:''}${race}`,
       how:NEXT_HOW[M.id]||(NEXT_PRESET[M.id]?`the ${NEXT_PRESET[M.id]} preset`:''),preset:NEXT_PRESET[M.id]||null,tab:'missions'}}
   const o=(PROG.offers||[]).slice().sort((a,b)=>b.p.pay-a.p.pay)[0];
   if(o)return{kind:'offer',title:cTitle(o),why:`the best offer on the board, pays ${fmtM(o.p.pay)}`,tab:'inbox'};

@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3811,3 +3811,33 @@ careers: none. By reading: the other stored-Infinity candidates stay off `PROG` 
 the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist` with `isFinite`; station and power
 `days` are computed, not stored). `career.mjs` doesn't reach the late game (R19), so tester mode's warning
 (`progJSON`, R1c) stays the net for what this missed. Test `econ-40` (fails on the old line).
+## v1.317 — unlock map slice 4: the robot's route (2026-11-11, QA, QUEUE Q580; the plan Q573, slice 1 v1.311 above)
+
+- **m1 stays two flights.** The Sounding flown straight up at full throttle reaches 25.2 kPa with its instrument package,
+  so the one flight does *Above the weather* and the *Structural test flight* (bar 20 kPa) together, and the beeper is
+  open after it. The row now reports the max-q against the bar (`maxq`) and checks `loads`. Passes: 2 flights, no boxes.
+- **Found: every new career lost its beeper the same way.** `m1` failed on `main` before v1.311 too (the commit before
+  Q577, same result): on flight 2 the Beeper's Petrel "failed to ignite". `igniteOK`'s dice read the flight number, the
+  kick count and the part's index, never the career, so every player who flew the Sounding and then the Beeper lost the
+  Petrel (a 2 % chance at the Petrel's starting know-how, drawn once for everyone). The roll now also reads the world's
+  seed (`PROG.wseed`, random per career since Q529; headless runs keep 12345). The robot flies the beeper once more after
+  an ignition failure, as a player would, and lists it (`retry`); not exercised yet, since no run since has rolled one.
+- **The NEXT line** said the weather "opens The beeper and Passenger: the hop"; since Q577 they wait for the structural
+  test too. `nextStep` now lists what else they need: *opens The beeper and Passenger: the hop (they also need
+  Structural test flight)* (sim/next.js).
+- **m2 under the map.** The plan's preset order puts the Satellite preset after the weather satellite (its solar wings
+  open with it) and the TV Satellite after the range certification too (its radial decoupler). So m2 now flies the
+  Passenger hop after m1 (a third clean flight that drops a stage: the range is certified at its end) and its first
+  weather satellite on its own design, the Satellite with four sets of body cells where the wings were (`PT.wxDesign`;
+  `M2_FLIGHT` takes a design). Result: not run yet (a long row; the machine was short on memory).
+- **Rows that set missions by hand:** the robot's rows run with *All tools* (no part gates) unless they say otherwise;
+  the ones that play a real career (51, 75, 102, 156, 194, charter) pass, and their values read as before. 156's NEXT line
+  carries the new text.
+- **PLAYROUTE sitting 1** (0.2.2): step 3 flies the Sounding straight up for both missions and looks at the design table
+  after; step 4 flies the Passenger before the Hopper (the Hopper's command pod opens with the hop); step 5 says what to
+  do if the Beeper's Petrel fails to light.
+- **Test `qa-9`:** the beeper's ignition roll differs by career (about what know-how says: 9 of 400 careers, 2.0 %
+  expected); the NEXT line's new text; each design on the route open when the route flies it, and the Hopper, the
+  Satellite and the TV Satellite not before.
+- **For Caio (a design question the plan answered, now visible):** a new player has no preset for the weather satellite;
+  they build one on the bench, and the Satellite preset opens after. Q578's picker should say so.

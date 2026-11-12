@@ -439,7 +439,11 @@ ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'g
 
 // M1's finish line (QUEUE Q55, ROADMAP § M1): a new career, no tester flags, from the first-run gate to the first orbit
 // and its debrief. Written before M1 is done, so it FAILS until the flow lane's M1 items land; each check names its item.
-// Two flights: a Sounding for "Above the weather", then the beeper (an instrument package in orbit). No preset carries
+// Two flights: a Sounding for "Above the weather", then the beeper (an instrument package in orbit). Since the unlock map
+// (Q577) the beeper waits for the *Structural test flight* too (20 kPa with an instrument package): the Sounding flown
+// straight up at full throttle passes it on the same flight, so the route stays two flights and the row reports the max-q
+// it reached against the bar (Q580). An engine that fails to light on its first flight (know-how, 8 % each) loses the
+// beeper the way it would lose a player's: the robot flies it once more, as a player would, and says so. No preset carries
 // one to orbit until PLAYTEST #24 added the Beeper preset; the robot flies it (or, on an old page, the Orbiter with the package for the pod). The ascent
 // is fly_ladder.mjs's handAscent (PT.ascent(flatKm): the turn ends at flatKm, 38 there): attitude set directly, so it proves the career path, not that the rocket is flyable.
 // Boxes: every visible panel on each screen, pairwise; any overlap ≥ 40 px² at 1280×800 is listed.
@@ -487,19 +491,24 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
   // Esc pauses (Q39): the sim clock stands still while the Esc menu is open
   {say: 'Esc mid-flight: the game should pause'}, {key: 'Escape'}, `PT.m1.tE = simT; true`, {wait: 2500}, `PT.m1.escRun = +(simT - PT.m1.tE).toFixed(2); ({escRun: PT.m1.escRun, menu: PT.vis('#escm')})`, {shot: 'esc'}, {key: 'Escape'},
   {say: 'Back to the flight: up above the weather, then down under the parachute'},
-  `(async () => ({fly: await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}}))()`,
+  `(async () => ({fly: await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}, maxq: (PT.m1.q1 = +(S.rec.sciQ / 1e3).toFixed(1)), bar: LOADS_Q / 1e3}))()`,
   {say: 'Landed: to the Program screen for the Debrief'},
   `go('program'); PT.m1.deb1 = PT.debrief(); ({debrief: PT.m1.deb1, ...PT.state(), boxes: PT.boxes(), news: PT.logSince(0).slice(-8)})`, {shot: 'after_sounding'},
   // flight 2: the beeper
   {say: 'Second contract, "The beeper": an instrument package in orbit. The Beeper preset in the Assembly'},
-  `go('assembly'); stackDef = JSON.parse(JSON.stringify(PRESETS.Beeper || PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k))); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
+  `go('assembly'); stackDef = JSON.parse(JSON.stringify(PRESETS.Beeper || PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k))); editorChanged(); PT.m1.n2 = PT.log.length; ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
   {click: '#bRoll'}, {say: 'Roll out, launch, fly it to orbit'}, {click: '#launch'}, `(async () => ({screen: screenNow(), ascent: await PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}}))()`,
+  // one more try, only when an engine failed to light (a dice roll, not the robot's flying): a player would fly it again
+  `(async () => { PT.m1.retry = []; const lit = PT.logSince(PT.m1.n2).filter(l => /failed to ignite/.test(l)); if (S.rec.orbit || !lit.length) return {retry: false};
+     PT.m1.retry = lit.map(l => l.slice(l.indexOf(': ') + 2)); go('program'); go('assembly'); stackDef = JSON.parse(JSON.stringify(PRESETS.Beeper)); editorChanged(); PT.click('#bRoll'); PT.click('#launch');
+     return {retry: PT.m1.retry, screen: screenNow(), ascent: await PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}} })()`,
   `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
   {say: 'The map (M): the orbit it reached'}, `go('map'); render(); PT.m1.boxes.map = PT.boxes(); ({line: PT.text('#navtxt'), ball: PT.vis('#nav')})`, {shot: 'orbit_map'}, `go('flight'); render(); true`,   // slice 4c: the heading line
   {say: 'End of the flight: the Program screen and its Debrief'}, `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
-  checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`,
+  checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, loads: `!!PROG.done.loads`, maxq: `PT.m1.q1 + ' kPa (bar ' + LOADS_Q / 1e3 + ')'`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`, retry: `PT.m1.retry`,
     escPauses: `PT.m1.escRun`, debrief: `[PT.m1.deb1, PT.m1.deb2]`, boxes: `Object.entries(PT.m1.boxes).filter(([k, v]) => v.length).map(([k, v]) => k + ': ' + v.join(', '))`},
   expect: {tester: v => !v, weather: v => v === true, beeper: v => v === true,
+    loads: v => v === true,                        // Q577: the beeper waits for the structural test; the Sounding passes it
     escPauses: v => v === 0,                       // flow Q39
     debrief: v => v[0] === true && v[1] === true,  // flow Q2
     boxes: v => v.length === 0}};                  // M1: no box covers another at 1280×800
@@ -514,6 +523,7 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
 // routine keeps it up. ~4 program years (the mainframes allow repeating from day ~1455), in steps of at most 150 waits.
 const M2_HELPERS = String.raw`
 PT.m2 = {adv: 0, stops: [], declined: [], letGo: 0, autoOn: null, sats0: null, led: {}, upMin: null, autoRuns: 0, flights: []};
+PT.wxDesign = () => { const d = JSON.parse(JSON.stringify(PRESETS.Satellite)), f = n => { for (const c of n.c || []) { if (c.k === 'wpanel') { c.k = 'bpanel'; c.at.n = 4 } f(c) } }; f(d.root); return d };
 PT.point = Y => { const f = localFrame(S.r), ref = Math.abs(dot(Y, f.n)) > 0.9 ? f.e : f.n, X = norm(cross(Y, ref)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0] };
 PT.incl = () => { const el = elements(S.r, S.v, TELLUS.mu); return +(Math.acos(Math.max(-1, Math.min(1, el.h[1] / el.hl))) * 57.29578).toFixed(1) };
 // PT.ascent toward a heading (az degrees from north: 0 polar, 90 east), circularised along the path it flies
@@ -587,18 +597,25 @@ PT.waitN = (until, max = 150) => { let n = 0; const M = PT.m2;
   M.autoRuns = (PROG.dispatch || []).filter(D => D.auto && D.status === 'done').length;
   return {waits: M.adv, ...PT.netNow()} };
 true`;
-// a flight as a player makes it: the preset in the Assembly, [N] until the program can pay for it, rolled out and launched
-const M2_FLIGHT = (name, preset, fly) => [{say: name + ': the ' + preset + ' preset in the Assembly, rolled out and launched'},
-  `go('assembly'); PT.preset(${JSON.stringify(preset)}); PT.m2.cost = vesselCost(S.parts).cost; ({cost: +PT.m2.cost.toFixed(1), funds: +PROG.funds.toFixed(1)})`,
+// a flight as a player makes it: the preset in the Assembly, [N] until the program can pay for it, rolled out and launched.
+// design (optional): a JS expression for a design of the player's own instead of the preset (Q580: under the unlock map
+// the Satellite preset opens with the weather satellite, so the first one is built from the bench's parts)
+const M2_FLIGHT = (name, preset, fly, design) => { const load = design ? `stackDef = JSON.parse(JSON.stringify(${design})); editorChanged();` : `PT.preset(${JSON.stringify(preset)});`;
+  return [{say: name + ': ' + (design ? 'its own design (' + preset + ')' : 'the ' + preset + ' preset') + ' in the Assembly, rolled out and launched'},
+  `go('assembly'); ${load} PT.m2.cost = vesselCost(S.parts).cost; ({cost: +PT.m2.cost.toFixed(1), funds: +PROG.funds.toFixed(1), closed: partLaunchWhy(S.parts)})`,
   `({wait: PT.waitN(() => PROG.funds >= PT.m2.cost * 1.1, 40)})`,
-  `go('assembly'); PT.preset(${JSON.stringify(preset)}); true`, {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), launched: mode === 'flight' && !!S.rec, funds: +PROG.funds.toFixed(1)})`, fly, `PT.showUI(); true`, {shot: name.toLowerCase().replace(/\W+/g, '_')},
-  `go('program'); PT.m2.flights.push(${JSON.stringify(name)}); ({debrief: PT.debrief(), ...PT.state(), sats: (PROG.sats || []).map(q => q.name + (q.route != null ? ' (route)' : ''))})`];
+  `go('assembly'); ${load} true`, {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), launched: mode === 'flight' && !!S.rec, funds: +PROG.funds.toFixed(1)})`, fly, `PT.showUI(); true`, {shot: name.toLowerCase().replace(/\W+/g, '_')},
+  `go('program'); PT.m2.flights.push(${JSON.stringify(name)}); ({debrief: PT.debrief(), ...PT.state(), streak: PROG.streak, sats: (PROG.sats || []).map(q => q.name + (q.route != null ? ' (route)' : ''))})`] };
 ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time by [N] only (M2 finish line)', gate: true, flags: null, steps: [
   ...ROWS.m1.steps, M2_HELPERS,
   `PT.m2.after1 = PT.state(); ({wxsat: missionOpen(MISSIONS.find(m => m.id === 'wxsat')), tv: missionOpen(MISSIONS.find(m => m.id === 'tv'))})`,
+  // the hop on the Passenger preset (Q580): a third flight in a row that drops a stage, so the range is certified before
+  // the TV Satellite, whose radial decoupler opens with it (the unlock map, v1.311); a player has flown it by then too
+  ...M2_FLIGHT('Passenger hop', 'Passenger', `(async () => ({fly: await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive}))()`),
   // the weather satellite: a near-polar orbit (80–100° counts), 3° east of north so the planet's spin helps instead of being
   // cancelled (~82°), then up to ~300 km so it lasts (at ~106 km it re-enters within weeks)
-  ...M2_FLIGHT('Weather satellite', 'Satellite', `(()=>({polar: PT.ascentAz(3), raise: PT.raise(TELLUS.R + 300e3)}))()`),
+  // (Q580) the Satellite preset with its two solar wings (open with the weather satellite) swapped for four sets of body cells
+  ...M2_FLIGHT('Weather satellite', 'Satellite, body cells for wings', `(()=>({polar: PT.ascentAz(3), raise: PT.raise(TELLUS.R + 300e3)}))()`, `PT.wxDesign()`),
   // the routine, from it, in the Fleet tab: keep one up
   {say: 'A routine from the Fleet tab: keep the weather satellite up'},
   `(()=>{ go('program'); PT.click('[data-ptab="fleet"]'); const bs = [...document.querySelectorAll('[data-mkroute]')]; if (bs[0]) bs[0].click();
@@ -615,7 +632,7 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   ...Array.from({length: 12}, () => `PT.waitN(() => PROG.day > 4000 || (PT.m2.autoOn != null && PROG.day > PT.m2.autoOn + 400 && PT.m2.autoRuns > 0), 150)`),
   `go('program'); PT.click('[data-ptab="fleet"]'); ({...PT.netNow(), m2: PT.m2, sats: PT.satsNow(), tvNews: PT.logSince(0).filter(l => /propellant|capital's sky|trimmed|TV/.test(l)).slice(-12), news: PT.logSince(0).slice(-12)})`, {shot: 'fleet_end'},
   `go('mission'); renderMission(); true`, {shot: 'mission_end'}],
-  checks: {m1: `!!PROG.done.weather && !!PROG.done.beeper`, wxsat: `!!PROG.done.wxsat`, tv: `!!PROG.done.tv`, route: `!!PT.route()`,
+  checks: {m1: `!!PROG.done.weather && !!PROG.done.beeper`, range: `!!PROG.done.range`, wxsat: `!!PROG.done.wxsat`, tv: `!!PROG.done.tv`, route: `!!PT.route()`,
     clean3: `PT.route() ? PT.route().clean : 0`, repeating: `PT.route() ? PT.route().auto : false`, autoRuns: `PT.m2.autoRuns`,
     keptUp: `PT.route() ? routeSats(PT.route()).length + ' of ' + PT.route().keep + ' up, at least ' + PT.m2.upMin + ' while repeating' : 'no route'`,
     earning: `(PROG.sats || []).filter(q => !q.junk && isTV(q, PROG.day * DAY_S)).length`, satsIncome: `+((PROG.led || {}).sats || 0).toFixed(1)`,

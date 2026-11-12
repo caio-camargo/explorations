@@ -7370,3 +7370,26 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   **Orchestrator:** the loop's open slices (Q572 the unlock overlay, Q576 chapters as events, Q578, Q579) rank first;
   whether M1 closes was not said, ROADMAP is unchanged.
 - **PARKED still:** R29b.
+
+## 2026-11-12 — QA, the robot's route under the unlock map (Opus 5.5, worktree launchpad-loop): Q580 (v1.317)
+
+- **Asked:** Caio: pick something else while he can't play. Q580 (slice 4 of the unlock map, right after my Q577).
+- **Done:** `m1` stays two flights: the Sounding straight up reaches 25.2 kPa, so one flight does the weather and the
+  structural test (the row reports max-q against the 20 kPa bar). **Found:** `m1` failed on `main` before Q577 too: every
+  new career's flight 2 lost the Beeper's Petrel to the same ignition roll (the dice never read the career). `igniteOK`
+  now also reads `PROG.wseed`; the robot flies the beeper once more after an ignition failure. The NEXT line no longer
+  says the weather opens the beeper by itself ("they also need Structural test flight"). `m2` flies the Passenger hop
+  (range certified before the TV Satellite) and its first weather satellite on its own design (the Satellite preset waits
+  for the weather satellite, per the plan). PLAYROUTE 0.2.2 sitting 1; `qa-9`; flow-23 given a known Sparrow; TESTING 374.
+- **Checked:** `m1` ✓ in headless Chrome (2 flights, no boxes), rows 51, 75, 102, 156, 194, charter ✓; `qa-9`; CI's
+  full run on `loop` green. The local full run was stopped by the machine running low on memory.
+- **Not checked:** `m2` (a ~4-year row; not run for memory); the beeper retry path (no run rolled a failure); played by hand.
+- **For Caio:** a new player has no preset for the weather satellite (the plan's order: the Satellite preset opens with
+  it), so they build one on the bench; Q578's picker should say so. Version numbers moved three times during the merge
+  (R18, R22, Q599 took 1.313–1.316).
+- **Next:** run `node playtest.mjs m2` on a quiet machine; Q578/Q579 (now ready per D41), Q572.
+- **Caio played the loop's first slices (2026-11-12):** the notice came when he cut the thrust (by design: it waits
+  for the engines, Q558); "Opens 5 parts" named none; the missions are not on screen during the flight (the Mission
+  card folds away in every critical phase). **D42**: a mission done is quiet in flight (green on the Mission card, at
+  the moment, staying) and loud after it (every unlock by name, one overlay each). PLAYTEST #162–#164; **Q600** (P1,
+  flow); Q572's row carries the fanfare. **Loop slices session:** Q572 is yours and changed under you: read its row.
