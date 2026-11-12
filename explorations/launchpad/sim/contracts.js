@@ -27,7 +27,7 @@ const CT={
   sample:{src:['sci'],gen:R=>{const k=R()*ATM_BANDS|0;return{k,pay:8+3*k,dur:60+R()*60}},
     title:p=>`Air sample, ${p.k*10}–${p.k*10+10} km`,brief:p=>`Bring home an instrument package that flew through the ${p.k*10}–${p.k*10+10} km band.`,
     ok:(R,p)=>R.recSci&&!!R.bands[p.k]},
-  test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'],k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
+  test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'].filter(k=>partOpen(k).ok);if(!ks.length)return null;const k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
     title:p=>`Qualify the ${PARTS[p.k].name}`,brief:p=>`Fly a ${PARTS[p.k].name} through max-q of ${p.q} kPa or more with an instrument package aboard.`,
     ok:(R,p)=>(R.qPart[p.k]||0)>=p.q*1000},
   landing:{src:['gov'],gen:R=>{const dk=10*(3+(R()*4|0));return{dk,pay:15+(60-dk)/2,dur:60+R()*60}},
@@ -92,7 +92,7 @@ const CT={
     ok:()=>false,done:(c,N)=>N.far-c.base.far>=c.p.n},
   // servicing a valuable satellite (Q126): one of ours that earns (TV, or imagery with good contact) and has fallen an
   // era behind. Its users pay for the visit; it earns in full again. A flight that docks with it completes it.
-  service:{src:['gov','com'],req:'beeper',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*1.6,dur:300+R()*200}},
+  service:{src:['gov','com'],req:'tv',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*1.6,dur:300+R()*200}},
     title:p=>`Service ${p.name}`,brief:p=>`Rendezvous and dock with ${p.name}, ${p.n} computing era${p.n>1?'s':''} behind, and bring its electronics up to date. Its users pay for the visit, and it earns in full again.`,
     ok:(R,p,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat),after:c=>{const q=(PROG.sats||[]).find(x=>x.id===c.p.sat);if(q){q.era=compEra();q.eraSeen=q.era;HOOK.news(`${q.name} serviced: up to date, earning in full again`,'ok')}}},
   // station work (QUEUE Q162; NOTES § "Plan: station, base, relay and rendezvous contracts", slice 1, W22's defaults):
@@ -105,7 +105,7 @@ const CT={
       return{st:x.q.id,name:x.q.name,n,pay:4*n*1.6,dur:60+3*n}},
     title:p=>`${p.n} lab-days on ${p.name}`,brief:p=>`${p.n} days of crewed lab work on ${p.name} (two people per lab at most), with supplies to keep them working.`,why:p=>`${p.name} has a lab and a crew`,
     baseOf:p=>({lab:stState(p.st,'labDays')}),ok:()=>false,done:c=>stState(c.p.st,'labDays')-c.base.lab>=c.p.n-1e-9},
-  stExpand:{src:['com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
+  stExpand:{src:['com'],req:'tv',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
       return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
     title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
     baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
@@ -203,7 +203,7 @@ const crewLost=R=>!!R.crewInit&&!!R.crewed&&!R.crewOK;
 const M_JOB={
   weather:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:10},L_HOME],conds:[jC('apex','above 10 km',R=>R.apex>=1e4,{now:R=>`apex ${jKm(R.apex)}`}),jRec()]},
   air:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:40},L_HOME],conds:[0,1,2,3].map(k=>jC('band'+k,`the ${k*10}–${k*10+10} km band analysed`,()=>!!PROG.atm[k],{wait:1}))},
-  loads:{needs:[N_SCI],legs:[{k:'hop',q:25},L_HOME],conds:[jC('q','max-q 25 kPa with an instrument package',R=>R.sciQ>=25000,{now:R=>R.sciQ>0?`so far ${(R.sciQ/1e3).toFixed(1)} kPa`:''})]},
+  loads:{needs:[N_SCI],legs:[{k:'hop',q:LOADS_Q/1e3},L_HOME],conds:[jC('q',`max-q ${LOADS_Q/1e3} kPa with an instrument package`,R=>R.sciQ>=LOADS_Q,{now:R=>R.sciQ>0?`so far ${(R.sciQ/1e3).toFixed(1)} kPa`:''})]},
   range:{needs:[],legs:[{k:'hop'}],conds:[jC('streak','three clean flights in a row',()=>PROG.streak>=3,{wait:1,keep:1,now:()=>`${PROG.streak||0} of 3`})]},
   beeper:{needs:[N_SCI],legs:[L_ORBIT()],conds:[jC('orbit',`an instrument package in a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.orbitSci)]},
   hop:{needs:[N_BIO,N_CHUTE],legs:[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:[jC('safety','flight safety signs off',R=>!!R.approved,{lost:R=>!R.approved}),
@@ -385,7 +385,7 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
 // Selene science counts (R4), for the sel contracts: readings by unit and from the far side, panoramas, stations, located
 // quakes, the core bracket's width (km)
 function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
-  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
+  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi!=null&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}   // (R16) hi null: no bound yet (a save turns Infinity into null)
 function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
   income(pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');
@@ -530,11 +530,11 @@ function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relO
 function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
   const has=k=>PROG.decisions.some(x=>x.kind===k),firsts=Object.keys(PROG.done).length,V=valuation();
   // investors circle an established public program
-  if(!has('ipo')&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
+  if(!has('ipo')&&!PROG.ipoSold&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
     offerDecision({kind:'ipo',amt,title:`Investors offer ${fmtM(amt)} for a 25% stake`,text:`A privatization: cash now, more commercial work and freedom, a smaller budget day. ${POWERS[HOME].align[0]>0?'The market-minded public would approve.':'Many at home will call it selling the family silver.'}`,
       opts:[['yes','Sell the stake'],['no','Decline']]})}
   // a friendly power wants in
-  const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3);
+  const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3&&!(PROG.stakeBy||{})[p.i]);   // (R18, W47) once per power
   if(!has('stake')&&fr.length&&firsts>=1&&R()<1-Math.exp(-dd/500)){const p=fr[R()*fr.length|0],amt=Math.round(V*0.15);
     offerDecision({kind:'stake',power:p.i,amt,title:`${p.name} offers ${fmtM(amt)} for a 15% stake`,text:`Their money and a share of their budget days, plus their contracts. Their rivals will notice, and so will opinion at home.`,
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
@@ -558,7 +558,7 @@ function badness(){const o=own();return((PROG.bailRecent||0)>=1.5?1:0)+(opOf(HOM
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
 // government work, drop incidents, ground stations, the race) follows. The pad itself stays where it is for now, flying
 // under lease (launch sites belong to the terrain work).
-function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];
+function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];PROG.ipoSold=false;PROG.stakeBy={};/* (R18) new books: the once-only offers start over */
   if(d.kind==='defect'){const j=d.power;PROG.history.push({day:PROG.day,from:progName(),move:`defected to ${POWERS[j].name}`});
     HOME=j;PROG.home=j;PROG.own={kind:'agency',st:{[j]:1},pv:0,chosen:true,debt:0};PROG.funds=d.amt;PROG.bailouts=0;
     PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15*(1.3-natOf(j)));PROG.cancelled=false;PROG.bmult=1;for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
@@ -571,8 +571,8 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
   if(d.kind==='rescue'){const need=Math.max(0,FUNDS_FLOOR-PROG.funds);
     if(key==='stake'){shiftShare(d.power,0.3);PROG.funds+=need+30;opAdd(d.power,4);HOOK.news(`${POWERS[d.power].name} takes 30% of the program`,'warn')}
     else{o.debt=(o.debt||0)+need*1.3;PROG.funds+=need;HOOK.news(`Investors lend ${fmtM(need)}; ${fmtM(o.debt)} to repay from future income`,'warn')}}
-  else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
+  else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.ipoSold=true;PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
-  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2*natK());
+  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);(PROG.stakeBy=PROG.stakeBy||{})[d.power]=1;PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}

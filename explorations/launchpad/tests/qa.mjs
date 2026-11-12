@@ -20,9 +20,9 @@
     `${D.COMP_ERAS[e1].name} on day ${d1.toFixed(0)}, ${D.COMP_ERAS[e2].name} on day ${P.day.toFixed(0)}`);
   const dEra = P.day; D.testGoto(dEra - 1); const e2b = D.compEra(); D.testGoto(dEra);
   check('tester: the era skip stops on the first day of the era (a day earlier is still the one before)', e2b === 1, `day ${dEra - 1}: era ${e2b}`);
-  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('weather', true); const open1 = D.missionOpen(bp), mark = P.done.weather;
+  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('loads', true); D.testMission('weather', true); /* (Q577: the beeper waits for both) */ const open1 = D.missionOpen(bp), mark = P.done.weather;
   D.testMission('weather', false); const open2 = D.missionOpen(bp), none = D.testMission('nope', true);
-  check('tester: one mission at a time: ticking "Above the weather" opens the beeper, unticking closes it; unknown ids refused',
+  check('tester: one mission at a time: ticking "Above the weather" (with the structural test) opens the beeper, unticking closes it; unknown ids refused',
     !open0 && open1 && mark && mark.test === true && !open2 && !P.done.weather && none === false);
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('tester menu: day, era, funds and mission controls are drawn, and disabled in flight', ['id="testDayIn"', 'data-test-era=', 'id="testFundsIn"', 'data-test-mis='].every(s => pg.includes(s)) && /data-test-mis="\$\{M\.id\}"[^`]*\$\{dis\}/.test(pg));
@@ -169,7 +169,7 @@
     D.load(JSON.parse(JSON.stringify(C.save))); const P = D.PROG, J = JSON.parse(D.progJSON()), round = Object.keys(C.save).every(k => JSON.stringify(J[k]) === JSON.stringify(C.save[k]));
     const done = WANT[id].every(k => P.done[k] && !P.done[k].test) && !Object.values(P.done).some(d => d.test), cheat = Object.entries(D.TEST).some(([k, v]) => v === true);
     const reg = id === 'orbit' ? D.satsUp().some(q => q.sci) : id === 'station' ? !!D.stFind(s => s.berths > 0 && s.ports >= 2) : D.landedUp().some(q => q.bodyName === 'Selene');
-    const M0 = D.missionsInOrder(D.MISSIONS.filter(M => !P.done[M.id] && D.missionOpen(M)))[0], nx = C.meta.next || {};
+    const L0 = D.missionsInOrder(D.MISSIONS.filter(M => !P.done[M.id] && D.missionOpen(M))), nx = C.meta.next || {}, M0 = L0.find(M => M.id === nx.id);   // open, and in NEXT's order (Q577: the first with a design)
     const st = nx.preset ? D.PRESETS[nx.preset] : nx.stack, s = D.newShip(st), cost = D.vesselCost(s.parts).cost, locked = D.partLaunchWhy(s.parts);
     s.landed = false; D.S = s; D.missionTick(s, 0, false); const launched = !!(s.rec && s.rec.launched);
     let ran = true; try { D.advanceDays(40); } catch (e) { ran = false; }

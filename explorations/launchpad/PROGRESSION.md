@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -54,6 +54,9 @@ of the part"). After the flight report, one card per grant, in order of weight:
   routine;
 - several grants queue; any key moves on; the list stays in the report's **Opened** block (Q570's `opensOf`).
 
+**What the map closes** (DECISIONS D34): which parts exist. A closed part can't be bought abroad for now; know-how,
+production lines and buying abroad keep how well and how cheaply an open part is made.
+
 **Chapters.** An epoch becomes a chapter with a question, a visible finish and a grant. The map of which part opens
 with which mission is planned and measured in [`notes/economy.md`](notes/economy.md) § "Plan: the unlock map and
 chapters" (Q573); this is its summary.
@@ -103,7 +106,7 @@ stored command is **an armed node**, by the avionics the vessel launched with:
   the wait; they do not give control.
 
 **So the rule comes with two things:**
-- **A launch range** (default; W51): the pad plus a tracking ship 700 km downrange. Eastward launches then stay in
+- **A launch range** (W51, answered: yes): the pad plus a tracking ship 700 km downrange. Eastward launches then stay in
   contact through insertion, the first orbit plays as today, and the rule first bites on the passenger's return, the
   weather satellite's polar insertion and the TV transfer. Hard has no ship; Easy never limits.
 - **Relays that reach.** Today a relay is one hop, whip to whip, about 300 km. The dish (Q338) and relay chains (Q217)
@@ -150,11 +153,10 @@ behind Selene, or without an antenna), where today's link assumes deep-space ant
 
 | # | Question | Default | Where |
 |---|---|---|---|
-| 5 | Does contact limit the first orbit on Normal? | yes, with a launch range (the pad and a tracking ship 700 km downrange) | W51 |
 | 6 | The globe: a textured sphere from the era map, or the real planet shader in a small viewport? | the textured sphere | Q575 |
 
 **Answered by Caio (W50, 2026-11-11):** engines open outright and a qualification mission proves them (Q588); the
-structural test's bar is 20 kPa; the map's order stands; the Petrel opens with the Kestrel.
+structural test's bar is 20 kPa; the map's order stands; the Petrel opens with the Kestrel. **W51:** contact limits the first orbit on Normal, with the tracking ship.
 
 **Answered by the plans:** first orbit stays 4–6 flights with the gate (Q573, measured); a part already flown stays
 open, so old saves keep what they have used (Q573, rule 1).
@@ -171,3 +173,5 @@ open, so old saves keep what they have used (Q573, rule 1).
 - **0.1.2 (2026-11-11):** § 4 from Q574's plan (measured): the stored command is an armed node with a staging tail, the
   launch range, plasma never refuses a command, relays need the dish to matter.
 - **0.1.3 (2026-11-11):** D29 (any flight can fulfil any mission); W50 answered (qualification missions, Q588).
+- **0.1.5 (2026-11-11):** W51 answered (the launch range).
+- **0.1.7 (2026-11-11):** D34 in § 3: the map closes which parts exist; no import of a closed part for now.
