@@ -1,5 +1,5 @@
 # Launchpad — the presets-only playtest route
-**Version**: 0.2.3 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-11-12 · **Status**: draft, ready to play
+**Version**: 0.2.4 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-11-12 · **Status**: draft, ready to play
 **Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the presets** (fourteen since the Beeper, Passenger Orbiter and Docking were added), so Caio can play before
 the construction screen is easy for a newcomer (QUEUE Q54; it covers W8, the human playtest for M1). Each step names its
 TESTING rows. The rows hold the full "looks right if" text. This file is only the order and the setup.
@@ -10,7 +10,7 @@ TESTING rows. The rows hold the full "looks right if" text. This file is only th
   has already measured a row (`(robot)` in TESTING), that row is listed only when it says *needs a human*.
 - **Marking:** put the result in the row's `#` cell in TESTING.md: `✓ n`, `~ n` plus a word, or `✗ n → P#…`. Or just
   tell the playtest intake session what you noticed ("you are the playtest feedback session"), and it files the items.
-- Sitting 1 is the one M1 is about. **The robot's half of M1 passes** (re-run 2026-10-12 on v1.135, through the rooms: `playtest.mjs m1`,
+- Sitting 1 is the one M1 was about (M1 closed 2026-11-12 on Caio's play, W49; the sitting still checks the momentum work). **The robot's half of M1 passes** (re-run 2026-10-12 on v1.135, through the rooms: `playtest.mjs m1`,
   a new career to the beeper on presets, the flight reports and no overlapping boxes), so a person's first hour is what's left. Do
   it first. The other sittings can go in any order. Each one says how long it takes.
 

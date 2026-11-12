@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.6 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
+**Version**: 1.9.7 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-12 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -63,10 +63,10 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | | Milestone | Finish line | State |
 |---|---|---|---|
 | M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | ✓ **done 2026-10-09** (Q29 clean; last bugs Q74, Q77, Q112 in v1.73–v1.74; #9, #11 left to M1/M5 by W13's default) |
-| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **Caio plays the first hour as a new player would** (a fresh career, no tester flags; 2026-10-11: there's no outside player, and the game's measure is that Caio enjoys playing it), and where he got stuck or bored is written in PLAYTEST | **current** (since 2026-10-09); **robot run ✓ 2026-10-09** (QA: `playtest.mjs m1` passes on the Beeper preset: Esc pauses, a Debrief after each flight, no box overlaps); pacing ✓ (Q118, Q93, Q144; re-run after Q188 and Q279); still open: Caio's first hour |
-| M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, **kept up by a routine repeat satellite launch** (a dispatch; resupply moves to M3 with crew, DECISIONS D17.1), using "advance to next event" only | **next** (code open since 2026-10-09) |
-| M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | design only |
-| M4 | **Big projects** (after chapter 5, Nyx: the depot and industry LATE_GAME puts in epoch 6) | A depot and a datacenter built over several flights, sized by waste heat, earning | design only |
+| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **Caio plays the first hour as a new player would** (a fresh career, no tester flags; 2026-10-11: there's no outside player, and the game's measure is that Caio enjoys playing it), and where he got stuck or bored is written in PLAYTEST | ✓ **done 2026-11-12** (W49: on Caio's play, D41; robot run ✓ 2026-10-09; pacing ✓) |
+| M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, **kept up by a routine repeat satellite launch** (a dispatch; resupply moves to M3 with crew, DECISIONS D17.1), using "advance to next event" only | ✓ **done 2026-11-05** (the robot's `m2`; marked with W49) |
+| M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | **current** (W49, 2026-11-12); code after R2 (W48) |
+| M4 | **Big projects** (after chapter 5, Nyx: the depot and industry LATE_GAME puts in epoch 6) | A depot and a datacenter built over several flights, sized by waste heat, earning | **next** (W49); code after R2 (W48) |
 | M5 | **Sun and planets** (epoch 6) | A probe to another planet planned on a porkchop, coasting in the background while the program carries on | design only |
 
 ### M1 — the first hour (by lane)
@@ -166,7 +166,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`DECISIONS.md`](DECISIONS.md) | every decision, one line each |
 | Reviews: [`REVIEW-2026-10-11.md`](REVIEW-2026-10-11.md), [`REVIEW-2026-11-09.md`](REVIEW-2026-11-09.md), [`REVIEW-2026-11-11.md`](REVIEW-2026-11-11.md) (review 2: the fixes audited, R2/R3 plans, repros, the app layer, tasks R25–R34; scripts in [`review/2026-11-11/`](review/2026-11-11/)) | a whole-project review (one per milestone); 11-09 audits the code and tests (tasks R1–R24) |
 
-### M3–M5 — design only for now (📝 items, any lane)
+### M3–M5 — what each holds (M3 current and M4 next since W49, code after R2; M5 📝 only)
 
 - **M3:** Selene terrain plan (Q18) · landing on a chosen crater (Q13) · rovers on real ground · crew rotation · the
   pre-flight **mission planner**, first slice (Selene windows and the free return; NOTES § "Planning before the flight") ·
