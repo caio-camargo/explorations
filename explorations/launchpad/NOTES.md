@@ -389,6 +389,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.305 — what a mission opens: opensOf, the debrief's Opened block, "opens:" on the Missions tab (2026-11-11, flow, QUEUE Q570) → [notes/flow.md](notes/flow.md)
 - v1.306 — a completion notice you can't miss: its own card, queued, until Enter or a click (2026-11-11, flow, QUEUE Q569) → [notes/flow.md](notes/flow.md)
 - v1.307 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
+- v1.319 — the Mission card stays up in flight (short in the climb, burns and landings; every mission the vessel could meet); a mission done turns green in its place, one line and a chime, no centred box in flight (2026-11-12, Q600, D42)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
