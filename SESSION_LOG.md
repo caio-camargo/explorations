@@ -7300,3 +7300,26 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Checked:** the check three times locally (identical numbers); CI green on the full suite (run 43141409821).
 - **Files:** launchpad `tests/look.mjs`, `QUEUE.md`; root `ACTIVE_WORK.md`.
 - **Next:** R9's *Import save* and an *Export save* menu entry; lane-by-lane retirement of `PROG.x||<literal>` reads.
+
+## 2026-11-11 — economy (Opus 5.5, worktrees launchpad-r15/r16/r18): R15 (v1.302), R18 (v1.313), R16 (v1.314)
+
+- **Asked:** Caio: an economy session, do R15; then the next items while the testing flow moved to CI (R16, R18).
+- **Done, R15 (v1.302):** no government top-up while a flight is open. `FLOOR_HOLD` (sim/program.js) is set at liftoff
+  and cleared in `missionEnd` (before its own `floorCheck`), `missionDiscard` and `programNew`; `econTick` skips
+  `floorCheck` while it is set. `career.mjs 3 3`: bailouts per career 0.98 → 0.15. Test econ-36.
+- **Done, R18 (v1.313), on W47's defaults (saturate, once-only):** `mktShare(n)`: each further satellite in a market
+  (TV for the capital, imagery) adds half the one before (5 TV satellites: 200 → 77.5 M per 100 days).
+  `PROG.ipoSold` / `PROG.stakeBy` (new schema rows): the privatization once, a stake once per power; `careerMove`
+  resets both. With `ACCEPT=ipo,stake`: mean final funds 2,111 → 1,747 M at 6 years. Test econ-41.
+- **Done, R16 (v1.314):** Selene's core bracket starts `hi:null`, not `Infinity` (JSON saved it as null, and
+  `null<Infinity` made "Bound Selene's core" pay 132 M on reload); old saves normalised. Sweep: `progLossy` over 18
+  career end states and a code read found no other non-JSON value in `PROG`. Test econ-40.
+- **Checked:** CI green (r16 run 43141109553 carried R18 too), economy lane locally; `check_numbers` clean. Renumbered
+  three times as Q571, Q577, R1d and R9 landed (R18 v1.310 → 1.313, R16 v1.303 → 1.311 → 1.314; TESTING 371, 372).
+  The last two merges of `main` (Q592's docs, Q591's look test) went in without a fresh CI run: no overlap.
+- **Not checked:** R16's sweep doesn't see the late game (career.mjs stops short: R19). Neither change played by hand
+  (TESTING 371, 372).
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `sim/space.js`, `sim/rovers.js`, `sim/logbook.js`,
+  `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`.
+- **Next:** Caio: should a defection carry the old program's debt (`careerMove` zeroes it)? W47 still unanswered;
+  the defaults are built and easy to turn (`MKT_K`, the two flags). R19 (career.mjs into the late game).
