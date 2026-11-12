@@ -336,6 +336,8 @@
   check('platform-11: each SLOW row picks one section of SLOW_S s or more; none twice; the smoke set pulls none back in; economy stays in smoke (R5)',
     !bad.length && out.length === SH.SLOW_ROWS.length && !back.length && econ >= 10 && keep.length > P.secs.length / 2,
     `${SH.SLOW_ROWS.length} rows (${bad.map(x => `${x.q}: ${x.n} sections`).join(', ') || 'each one section'}); ${out.length} out; smoke ${r.picked.length} of ${P.secs.length}; pulled back ${back.map(s => s.label).join(', ') || 'none'}; economy in smoke ${econ}`);
+}
+
 // platform-12. The lint step (QUEUE R3; plan REVIEW-2026-11-11.md § 4): lint.mjs, run as its own process (Node's acorn
 // needs --expose-internals, which can't be set from inside the suite). (a) No line's `//` comment swallows code: R4's
 // five lines and R25's five are fixtures it must flag, and prose like "baked by atlasBake (SIM);" must pass. (b) The
