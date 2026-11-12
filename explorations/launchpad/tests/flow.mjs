@@ -471,7 +471,7 @@
 // a ledger (PROG.led), not lumped as "days passing", and still adds up to what the program gained or lost.
 {
   const P = api.PROG; api.HOOK.news = () => {}; const P0 = JSON.stringify(P);   // (put back at the end: a started program turns know-how on for later sections)
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 3, funds: 200, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {}, day: 95 });
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 3, funds: 200, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: { sparrow: { use: 1, reg: {} } }, log: {}, day: 95 });   // (Q580) a Sparrow we know: it lights whatever the career's dice, the failures here are written by hand
   // a loss: a joint breaks at 9 s, then the nose hits the ground
   api.t = 0; let s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let n = 0;
   while (s.alive && api.t < 9 && n++ < 200000) api.advPhys(s);
