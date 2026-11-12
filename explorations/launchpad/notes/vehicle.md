@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2412,6 +2412,76 @@ winged runway shuttle already deferred in notes/space.md § "Stations, modules a
 - *With the game's SAS and the pod's wheels:* it cannot hold 15° (mean error 12 to 13°), dives nose first to 50 to 59 kPa and 13 to 48 g, and the turn rate goes NaN (at 25 km and Mach 5 for 5×2 m, at 1.4 km for 3×2 m). With SAS off the 5×2 m craft breaks at the tank-to-pod joint in bending. Likely cause, not verified: big plates at high dynamic pressure are too stiff for the 0.02 s step. A player cannot build these plates today (fins stop at 2 m span).
 - *What the plates need, against a shuttle (about 1 hypersonic, 4.5 subsonic, 100 m/s at touchdown):* a **Mach term** (hypersonic is 3 where it should be 1); a **stall** (40° still flies, at 34 m/s); **aspect ratio** (span and chord enter only as area); **wing heating**; **elevons** and a guard or sub-steps for the rotation; **wing mass by size** (0.25 t at any size gives about 100 kg/m² against a shuttle's 500, which is why entry peaks at 1 g and touchdown is slow).
 - *Not checked:* the NaN's root cause; steerable fins as elevons; a ground contact or rollout (runs stop at 3 m, most over sea); roll stability; wind; frame time in the app; a shuttle-like wing loading.
+
+### Prototype: the wing formula (2026-11-11, review 2 session; scripts only, nothing in the game)
+
+`review/2026-11-11/wing_proto.mjs` patches the sim's source in memory (three replacements) and flies it with the real
+physics step. A plate marked `d.wing` gets the formula below; any other fin runs today's line, and a stock fin ring
+through 120 s of entry comes out **the same to the last bit**.
+
+**The formula** (normal-force coefficient of one plate; `s` = sin of its angle to the flow, AR = 2 × span / chord for a
+mirrored pair):
+- *Subsonic:* attached lift `k0·s·cos`, with `k0 = 2π·AR / (2 + √(4 + AR²))` (Helmbold); a **stall** at 14° for AR ≥ 4,
+  later for stubbier wings (+3.5° per unit of AR under 4), over a 6° band; past it a separated flat plate
+  (`1.364 · 2π·s / (4 + π·s)`, 1.2 broadside).
+- *Supersonic:* `min(k0, 4/√(M² − 1))·s·cos + cpMax(M)·s²`: the linear lift falls with Mach and the impact term takes
+  over. Blended from Mach 0.9 to 1.3.
+- *Drag:* today's 0.012 friction, plus a blunt leading edge's wave drag above Mach 1 (thickness 6 % of chord, half for sweep).
+- *Heat:* the windward face as a blunt body one chord across, plus the leading edge (radius 3 % of chord).
+- *Mass:* 40 kg per m² of plate (a shuttle's wing group with tiles is about 38).
+Six constants (`WING` in the script): thickness, leading-edge radius, sweep, stall angle, its low-AR bonus, its band.
+
+**Lift-to-drag, 3 × 2 m plates on a pod and tank** (old line → new):
+
+| Mach | 5° | 10° | 15° | 20° | 40° |
+|---|---|---|---|---|---|
+| 0.3 | 3.2 → 3.1 | 3.5 → 3.4 | 2.9 → 2.8 | 2.4 → 2.2 (stalled) | 1.1 → 1.1 |
+| 2 | 2.7 → 1.2 | 3.1 → 1.9 | 2.7 → 2.0 | 2.3 → 1.9 | 1.1 → 1.1 |
+| 15 | 2.7 → 0.3 | 3.1 → 0.7 | 2.7 → 1.1 | 2.3 → 1.2 | 1.1 → 1.0 |
+
+At 5 × 2 m (AR 5) the subsonic best is 4.4 at 5°. Lift at 20° falls from 1.25 to 0.9 (AR 3) or 0.6 (AR 5): a stall.
+
+**Flown from 120 km** (attitude set every step; 40° above Mach 5, 12° below Mach 2):
+
+| Craft | Wing loading | Track | Peak g | L/D above M 5 / subsonic | Wings peak | Touchdown |
+|---|---|---|---|---|---|---|
+| pod + 1 t tank, 2.8 t | 233 kg/m² | 3,213 km | 1.1 | 0.97 / 3.1 | 1,046 K | 77 m/s forward, 4.3 m/s sink |
+| pod + 4 t tank, 5.8 t | 483 kg/m² | 3,428 km | 1.1 | 0.99 / 3.1 | 1,134 K | 109 m/s forward, 4.3 m/s sink |
+| the same at 15° all the way | 483 kg/m² | 4,527 km | 1.0 | 1.30 / 3.1 | 1,215 K | (not flared) |
+| the same, banked 45° | 483 kg/m² | 2,817 km | 1.7 | 0.99 / 3.1 | 1,151 K | (not flared) |
+
+A ballistic pod lands 1,813 km on at 3.1 g. The touchdown needs an approach flown fast (6°, about 160 m/s at 1 km) and a
+flare from 250 m; held at 12° to the ground the same craft arrives at 93 m/s with 21 m/s of sink, with nothing left to
+flare on. So the stall makes the approach a skill, as on a real glider. Wings need a hot skin: 1,050 to 1,200 K rules out
+bare metal (the script gives them 1,900 K).
+
+**Under the game's own SAS** (wheels 10 kN·m, heat off; the centre of mass and the wing's centre measured along the stack):
+
+| Layout | Wing ahead of the centre of mass by | Result |
+|---|---|---|
+| wing ring at the tail | −1.7 m | cannot lift the nose: dives, 91 kPa, lost |
+| wing between pod and tank, steerable tail ring | +2.15 m | flips, 12 g |
+| wing between two tanks, steerable tail ring | +0.25 m | **held to the ground, mean error 0.0°**, 3,463 km, no NaN |
+| the same, no tail ring | +0.15 m | lost: the wheels alone are not enough |
+| the same with its tail, tanks dry | −0.2 m | flies 3,631 km, mean error 10°, worst 47° |
+| tanks dry, wing one tank further up | +1.1 m | mean error 7°, lift-to-drag 1.2 subsonic: wallows |
+
+So the control law is not the problem: **balance is**. The wing has to sit within about 0.3 m of the centre of mass, the
+centre of mass moves 0.45 m as the tanks empty, and the craft needs elevons (the steerable ring did the job). That is the
+Assembly's check to write: where the wing sits against the centre of mass, full and dry.
+
+**The NaN** (`review/2026-11-11/rollnan.mjs`): not the wing formula. The plates' rate damping is integrated explicitly, so
+roll overshoots once c·dt/I passes 2, with c = Σ ½ρv·A·3.5·r². Stock fins sit at 0.02 to 0.18; four 2 m fins on a 2 t
+craft at 500 m/s near sea level sit at 2.08; 3 × 2 m plates pass it at 250 m/s. The guard tried: the damping taken
+implicitly for the excess over 0.5 only, Δω = τ·dt / (I + max(0, c·dt − 0.5·I)). It holds 5 × 2 m plates steady at
+every speed tried and leaves today's flights the same to the last bit. Filed as Q598.
+
+**Cost:** 9 to 15 µs a step, as before; no sub-steps needed. (Two runs of twelve showed 240 and 360 µs a step once and
+14 µs when repeated: the machine was busy, not the craft.)
+
+**Not checked:** a touchdown on wheels and a rollout (runs stop 3 m up); wind and gusts; roll and yaw control in a bank
+under SAS (the banked run set the attitude); the formula against a measured wing polar; a delta or a body that lifts;
+frame time in the app; how the Assembly's stability maths reads a wing.
 
 **Not checked (before the flight above):** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
 contact code.

@@ -7323,3 +7323,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`.
 - **Next:** Caio: should a defection carry the old program's debt (`careerMove` zeroes it)? W47 still unanswered;
   the defaults are built and easy to turn (`MKT_K`, the two flags). R19 (career.mjs into the late game).
+- **Prototype, the wing formula** (Caio: "go ahead"; scripts only, no game code): `review/2026-11-11/wing_proto.mjs`
+  patches the sim in memory. With aspect ratio, a stall, a Mach term and plate heating the numbers come out near a
+  shuttle's (lift-to-drag 1.0 hypersonic, 3.1 subsonic at aspect ratio 3, touchdown 109 m/s after a flare) and the
+  game's own SAS flies it to the ground when the wing sits at the centre of mass with a steerable tail. The NaN is the
+  plates' roll damping integrated explicitly (`rollnan.mjs`): **Q598**, with a fix that changes no flight of today.
+  Written up in notes/vehicle.md § "Prototype: the wing formula"; Q592's row updated.
+- **Not checked:** a touchdown on wheels and a rollout; wind; the formula against a real wing's measured polar; frame
+  time in the app; the fix's test in the suite (it is a script).
