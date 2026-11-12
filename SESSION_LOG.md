@@ -7388,3 +7388,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   it), so they build one on the bench; Q578's picker should say so. Version numbers moved three times during the merge
   (R18, R22, Q599 took 1.313–1.316).
 - **Next:** run `node playtest.mjs m2` on a quiet machine; Q578/Q579 (now ready per D41), Q572.
+- **Caio played the loop's first slices (2026-11-12):** the notice came when he cut the thrust (by design: it waits
+  for the engines, Q558); "Opens 5 parts" named none; the missions are not on screen during the flight (the Mission
+  card folds away in every critical phase). **D42**: a mission done is quiet in flight (green on the Mission card, at
+  the moment, staying) and loud after it (every unlock by name, one overlay each). PLAYTEST #162–#164; **Q600** (P1,
+  flow); Q572's row carries the fanfare. **Loop slices session:** Q572 is yours and changed under you: read its row.
