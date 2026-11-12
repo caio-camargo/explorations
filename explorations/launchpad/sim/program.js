@@ -59,6 +59,60 @@ function partOpen(k){const d=PARTS[k];if(!d||!khOn()||TEST.tools)return{ok:true,
   const id=PART_GATE[k];if(!id||PROG.done[id]||partFlown(k))return{ok:true,why:''};const M=MISSIONS.find(m=>m.id===id);return{ok:false,why:`opens with “${M?M.name:id}”`,short:M?M.name:id,id}}
 function partLaunchWhy(parts){const L=[];for(const p of parts||[]){const o=partOpen(p.d.key);if(!o.ok&&!L.some(x=>x.k===p.d.key))L.push({k:p.d.key,name:p.d.name,why:o.why})}
   return L.length?`Not open yet: ${L.map(x=>`${x.name.toLowerCase()} (${x.why})`).join('; ')}`:''}
+// ---- families, reasons and chapters (economy, QUEUE Q579; the plan Q573, rules 3 and 6). Data for the unlock cards (Q572),
+// the builder's closed list (Q578) and the Missions tab (Q576). A family is every part one mission opens, named: it is
+// one card and one reason line. `why` says what it makes possible (a family's, else the part's own).
+const PART_FAMILY={
+  kit:{m:'loads',name:'The orbital kit',why:'Real engines, an 8 t tank and a reaction wheel: a rocket that can reach orbit.'},
+  bench:{m:'beeper',name:'The satellite bench',why:'Probe cores, batteries, cameras, antennas and fairings: satellites that do a job, built on the payload bench.'},
+  big:{m:'lift2',name:'The 2.5 m family',why:'The Albatross and its 2.5 m tanks: tonnes to orbit, and the road to Selene.'},
+  high:{m:'wxsat',name:'High orbits',why:'A solar wing, an apogee engine and kick motors: polar and stationary orbits, and power that lasts.'},
+  dock:{m:'tv',name:'Docking',why:'Ports, RCS and a habitat: two craft become one, and a station can grow.'},
+  land:{m:'farside',name:'Landers',why:'Landing legs, the Wren and rover mounts: set down on Selene and drive off.'}};
+const famOf=k=>{const m=PART_GATE[k];for(const f in PART_FAMILY)if(PART_FAMILY[f].m===m)return f;return null};
+const famParts=f=>Object.keys(PART_GATE).filter(k=>PART_GATE[k]===PART_FAMILY[f].m&&PARTS[k]);
+const PART_WHY={bio:'A passenger to space and back: the first one will be an animal.',t4:'A 4 t tank: a Sparrow that climbs well past 100 km.',
+  cfins:'Fins that steer: hold a heading through the thick air.',cfin:'One steerable fin, for the side of a stage.',rdec:'Boosters on the side: more thrust off the pad, dropped when they are spent.',
+  pod:'A command pod: a vessel that is steered, and steered home.',shield:'A heat shield: come home from higher and faster.',
+  crew:'A capsule for two people (dummies until the escape tower is qualified).',les:'An escape tower: it pulls the capsule clear of a failing rocket.',
+  condor:'The Condor: a heavy first stage, half a tonne to orbit.',arm:'A robotic arm: catch a visitor and berth it.',bay:'A cargo bay: carry something up and let it go.',
+  lab:'A laboratory: science aboard the station.',beacon:'A base beacon: marks where a base will stand.',
+  ocomp:'An onboard computer: a probe that flies its own burns.',scomp:'An onboard computer for the side of a stage.',rtg:'An RTG: power day and night, far from the Sun.'};
+const partWhy=k=>{const f=famOf(k);return f?PART_FAMILY[f].why:PART_WHY[k]||''};
+// the chapters (plan Q573, final draft; PROGRESSION § 3): every mission in one. The capstone closes it and grants the
+// lines in `grants` (what is built today; the yard, the globe and bases come with their own work). The epoch number on a
+// mission stays, for the tester's epoch picker.
+const CHAPTERS=[
+  {id:'c1',n:'1',name:'Sounding rockets',question:'Can we reach space and bring it back?',missions:['weather','air','loads','range','hop'],capstone:'loads',grants:['the orbital kit','tighter impact predictions']},
+  {id:'c2',n:'2',name:'Once around',question:'Can we stay up?',missions:['beeper','orbiter','lift1','lift2'],capstone:'beeper',grants:['mission control','the satellite bench']},
+  {id:'c3',n:'3',name:'Satellites that work',question:'Can what we launch earn its place?',missions:['wxsat','tv','diswatch','nav'],capstone:'tv',grants:['income that stays','docking']},
+  {id:'c4a',n:'4a',name:'A house in the sky',question:'Can people live up there?',missions:['station1','stationcrew','stationlab','station30','padabort','maxqabort'],capstone:'station30',grants:['crews fly (the max-q abort)']},
+  {id:'c4b',n:'4b',name:'Selene',question:'Can we reach another world?',missions:['farside','selimp','selland','selsample','crewaround','crewland'],capstone:'crewland',grants:['landers','rovers']},
+  {id:'c5',n:'5',name:'Nyx',question:'What else is out there?',missions:['nyxfind','nyxfly','nyxorb','nyxland'],capstone:'nyxorb',grants:['Nyx on the map']}];
+const chapterOf=id=>CHAPTERS.find(c=>c.missions.includes(id))||null;
+const chapterDone=c=>!!PROG.done[c.capstone];
+// a chapter is under way when one of its missions is open or done and its capstone is not; 4a and 4b run side by side
+const chaptersNow=()=>CHAPTERS.filter(c=>!chapterDone(c)&&c.missions.some(id=>{const M=MISSIONS.find(x=>x.id===id);return M&&(PROG.done[id]||missionOpen(M))}));
+// rooms a mission opens (the card's "same card for a room"): mission control comes with the first thing of ours out there
+const ROOM_GRANT={beeper:{id:'mc',name:'Mission control',why:'The fleet, the ground track, planned burns and dispatches: somewhere to watch what we have out there (C from the office).'}};
+// (Q578) the part keys a design carries, any format (the old top-to-bottom lists, v2 trees, payload blocks inside)
+function stackKeys(st){const K=new Set(),walk=x=>{if(typeof x==='string'){if(PARTS[x])K.add(x);return}if(!x||typeof x!=='object')return;
+    if(Array.isArray(x)){x.forEach(walk);return}if(typeof x.k==='string'&&PARTS[x.k])K.add(x.k);for(const v of Object.values(x))if(v&&typeof v==='object')walk(v)};walk(st);return[...K]}
+// what a design waits for: one entry per mission or era its closed parts open with, each {id|era, short, keys}; [] if it can fly
+function stackWaits(st){const W=[];for(const k of stackKeys(st)){const o=partOpen(k);if(o.ok)continue;const key=o.id||'era'+o.era;let w=W.find(x=>x.key===key);
+    if(!w)W.push(w={key,id:o.id,era:o.era,short:o.short,why:o.why,keys:[]});w.keys.push(k)}
+  const ord=w=>w.id?CHAPTERS.findIndex(c=>c.missions.includes(w.id))*100+chapterOrd(w.id):1e4+w.era;return W.sort((a,b)=>ord(a)-ord(b))}
+// (Q578) the closed parts, grouped the way the builder folds them: by chapter (an era last), then by the mission that opens
+// them, a family under one reason line. keys filters which parts count (the builder's listed ones). [{ch, name, groups:[{id|era,
+// line, fam, keys}]}]
+function closedParts(keys){const L=[],grp=(chId,name)=>{let c=L.find(x=>x.ch===chId);if(!c)L.push(c={ch:chId,name,groups:[]});return c};
+  for(const k of keys||Object.keys(PARTS)){const o=partOpen(k);if(o.ok)continue;
+    const C=o.id?chapterOf(o.id):null,c=o.id?grp(C?C.id:'?',C?`Chapter ${C.n} · ${C.name}`:'Later'):grp('era',"Later: the computer's eras"),gk=o.id||'era'+o.era;
+    let g=c.groups.find(x=>x.key===gk);const f=o.id&&famOf(k);
+    if(!g)c.groups.push(g={key:gk,id:o.id,era:o.era,fam:f,line:`${o.why[0].toUpperCase()+o.why.slice(1)}${f?`: ${PART_FAMILY[f].name[0].toLowerCase()+PART_FAMILY[f].name.slice(1)}`:''}`,keys:[]});g.keys.push(k)}
+  const ord=x=>x.ch==='era'?99:CHAPTERS.findIndex(c=>c.id===x.ch);L.sort((a,b)=>ord(a)-ord(b));
+  for(const c of L)c.groups.sort((a,b)=>c.ch==='era'?a.era-b.era:c.ch==='?'?0:chapterOrd(a.id)-chapterOrd(b.id));return L}
+const chapterOrd=id=>{const C=chapterOf(id);return C?C.missions.indexOf(id):99};
 function rvLaunchWhy(parts){for(const p of parts||[]){if(p.d.kind!=='rover'||!p.dn||!p.dn.rvd)continue;const L=rvLocked(p.dn.rvd);
   if(L.length)return`The rover ${p.dn.rvd.name||''} can't fly yet: ${L.map(x=>`${x.name.toLowerCase()} ${x.why}`).join('; ')}`.replace('  ',' ')}return''}
 const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRICE[p.d.key]??3)*(p.d.pk||1)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -165,6 +219,7 @@ const PROG_SCHEMA={
   // logbook, debrief, the place
   log:[{},'career','the logbook\'s records'],
   lastDebrief:[undefined,'career','the last Debrief, kept with the save'],
+  cardQ:[[],'career','missions done between flights whose unlock cards the desk has not shown yet (Q572)'],
   site:[undefined,'career','the launch site picked (absent: home\'s)'],
   // Selene's ground: rovers, science
   rvOut:[[],'career','rovers left in the field'],
@@ -580,7 +635,8 @@ const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on c
 const OWN_TONE={openSuper:'Live on every channel; the press room erupts.',closedSuper:'The bulletin, read after the fact: "accomplished as planned."',
   rising:'The nation takes its place among the leaders.',frugal:'For less than a new motorway bridge, the science desk notes.',
   resource:'A world record, the palace announces, on the largest screen in the capital.',security:'State media: a successful test, the site reports.'};
-function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
+function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};if(!rec)PROG.cardQ=[...(PROG.cardQ||[]),M.id];   // (Q572) done between flights: its unlock cards wait for the desk
+  const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
     income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null,id:M.id});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
@@ -795,7 +851,8 @@ const standReady=()=>!!(PROG.stand2&&PROG.day>=PROG.stand2.ready);
 function buildStand(){if(PROG.stand2||PROG.funds<STAND_COST)return false;PROG.funds-=STAND_COST;PROG.stand2={ready:PROG.day+STAND_DAYS,job:null,done:0};
   HOOK.news(`Ground broken for a test stand: ready in ${STAND_DAYS} days`,'ok');HOOK.save();return true}
 function testQuote(k,mode){const t=tierOf(k),days=mode==='destroy'?5+5*t:10+10*t,unit=(PRICE[k]??3)*sourceOf(k).k;return{days,cost:unit+STAND_DAY*days}}
-function startTest(k,mode){if(!standReady()||PROG.stand2.job)return false;const q=testQuote(k,mode);if(PROG.funds<q.cost)return false;
+function startTest(k,mode){if(!standReady()||PROG.stand2.job||!partOpen(k).ok)return false;   // (D34, Q579) no closed part on the stand: a run would write its know-how, and a part flown or fired stays open
+  const q=testQuote(k,mode);if(PROG.funds<q.cost)return false;
   PROG.funds-=q.cost;PROG.stand2.job={k,mode,end:PROG.day+q.days};HOOK.news(`On the test stand: ${PARTS[k].name}, ${mode==='destroy'?'to destruction':'qualification run'} (${q.days} days)`,'');HOOK.save();return true}
 // ---- development projects: improving a part we make (home industry or our own line; not imports, and not a licensed
 // design, which belongs to the licensor). Goals that don't touch the physics: cheaper (unit price −12 % per level),
@@ -809,7 +866,7 @@ const devLv=(k,g)=>((PROG.dev||{})[k]||{})[g]||0;
 const devPriceK=k=>{const x=sourceOf(k);return x.how==='home'||(x.how==='line'&&x.line.lic==null)?1-0.12*devLv(k,'cheap'):1};
 function devQuote(k,g){const lv=devLv(k,g),t=tierOf(k),x=sourceOf(k),mine=x.how==='home'||(x.how==='line'&&x.line.lic==null);
   const cost=(PRICE[k]??3)*3*(1+t)*(1+lv),days=Math.round((30+20*t)*(1+0.5*lv)),need=DEV_USE[lv];
-  const why=g==='rel'&&PARTS[k]?.kind!=='engine'?'reliability only matters for engines (for now)':!mine?(x.how==='line'?'a licensed design belongs to the licensor':'we can only develop what we make'):lv>=DEV_MAX?'fully developed':khUse(k)<need?`needs know-how ${(need*100).toFixed(0)}% (now ${(khUse(k)*100).toFixed(0)}%)`:'';
+  const lk=partOpen(k),why=!lk.ok?`not open yet: it ${lk.why}`:g==='rel'&&PARTS[k]?.kind!=='engine'?'reliability only matters for engines (for now)':!mine?(x.how==='line'?'a licensed design belongs to the licensor':'we can only develop what we make'):lv>=DEV_MAX?'fully developed':khUse(k)<need?`needs know-how ${(need*100).toFixed(0)}% (now ${(khUse(k)*100).toFixed(0)}%)`:'';
   return{lv,cost,days,ok:!why,why}}
 function startDev(k,g){if(PROG.devJob)return false;const q=devQuote(k,g);if(!q.ok||PROG.funds<q.cost)return false;PROG.funds-=q.cost;
   PROG.devJob={k,g,end:PROG.day+q.days};HOOK.news(`Design bureau: ${DEV_GOALS[g].toLowerCase()} ${PARTS[k].name} (mark ${q.lv+2}), ${q.days} days`,'');HOOK.save();return true}
@@ -1198,8 +1255,9 @@ function prodLine(k){const L=(PROG.lines||{})[kinOf(k)];return L&&L.power===HOME
 const prodLineK=L=>(1.25-0.5*L.m)+(L.lic!=null?LINE_ROYALTY:0);
 function prodQuote(k){const t=tierOf(k),base=(PRICE[k]??3)*4*(1+t),days=40+30*t,x=sourceOf(k),lic=x.how==='import'?x.from:null;
   const can=khUse(k)>=0.4,licOK=lic!=null&&relOf(HOME,lic)>0.2&&!sanctioned(lic);
-  return{own:{cost:base,days,ok:can,why:can?'':'we need to know it better first (fly it: know-how 40 %+)'},lic:{cost:base*0.6,days:Math.round(days*0.7),ok:licOK,from:lic,
-    why:lic==null?'no foreign maker to license from':!licOK?`${POWERS[lic].root} won't license it`:''}}}
+  const lk=partOpen(k),shut=lk.ok?'':`not open yet: it ${lk.why}`;   // (D34, Q579) no closed part is made or licensed
+  return{own:{cost:base,days,ok:can&&!shut,why:shut||(can?'':'we need to know it better first (fly it: know-how 40 %+)')},lic:{cost:base*0.6,days:Math.round(days*0.7),ok:licOK&&!shut,from:lic,
+    why:shut?shut:lic==null?'no foreign maker to license from':!licOK?`${POWERS[lic].root} won't license it`:''}}}
 function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q.cost)return false;const L0=(PROG.lines||{})[k];if(L0&&L0.power===HOME)return false;
   PROG.funds-=Q.cost;(PROG.lines=PROG.lines||{})[k]={power:HOME,lic:mode==='lic'?Q.from:null,start:PROG.day,ready:PROG.day+Q.days,m:mode==='lic'?0.3:0.05,units:0};
   if(mode==='lic')opAdd(Q.from,3);else opAdd(HOME,2*natK());

@@ -527,7 +527,7 @@
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const ct = page.slice(page.indexOf('function contractsHTML'), page.indexOf('function contractsHTML') + 4000);
   const offers = ct.includes('<details class="ms of"><summary><b>${cTitle(c)}</b>') && ct.includes('Why: ${c.why}') && ct.includes('data-acc="${c.id}"') && ct.includes('data-dec="${c.id}"');
-  const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('ep>epNow+1&&Ms.every(') && rp.includes('mission${Ms.length>1?');
+  const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('!fin&&!live(C)&&ci>cNow') && rp.includes('mission${Ms.length>1?');   // (Q576) by chapter now
   const wall = page.slice(page.indexOf('function deskWall'), page.indexOf('function deskWall') + 400), frame = wall.includes('if(ph)h+=deskPhotoCard(ph)') && !wall.includes('no flights yet');
   const lh = H.includes("#deskLH .org .n{font:22px/1");
   const line = page.slice(page.indexOf('const xferDays='), page.indexOf('\n', page.indexOf('const xferDays=')));
@@ -1342,7 +1342,7 @@
 // (one message) → "bring it home" with the recovery ◐ in the landing verdict's words → landed with the package: both the
 // contract and the weather mission paid, the card reads done and End flight shows. Past 55 km the apex is ✗ (one
 // message), and stays so. A hopper without the instrument package gets no apex job; a stage dropped later doesn't take it
-// off. In the dark cockpit's cards since Q600 (flow-56); messages say each change once, none at the first look.
+// off. In the dark cockpit's cards since Q600 (flow-58); messages say each change once, none at the first look.
 {
   const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,TELLUS,recNew,newShip,PRESETS,cardJobs,jobsLeft,jobConds,MC_HOME,missionEval,elements,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, T = D.TELLUS, done = []; D.HOOK.news = () => {}; D.HOOK.save = () => {}; D.HOOK.done = n => done.push(n);
@@ -1388,7 +1388,7 @@
 
 // flow-55. The completion notice (flow, QUEUE Q569; since Q600 and D42, "quiet in flight, loud after it"). In flight a
 // mission or contract done is one line in #msg ("✓ Mission complete: Beeper · +30.0M", "First in the world" for a first)
-// and a chime (sndDone), and no centred box: the Mission card turns its row green (flow-56). At the desk (world missions
+// and a chime (sndDone), and no centred box: the Mission card turns its row green (flow-58). At the desk (world missions
 // and contracts judged at home) the box (#done) comes as before: name, win line, pay and what it opened (Q570); a hint
 // fired after it does not remove it; a second queues ("1 more"); Enter or a click dismisses one at a time. A flight's
 // completion that reaches the queue after its flight has ended is dropped (the debrief says it).
@@ -1433,7 +1433,49 @@
     `in flight ${fl1}/${fl2} ("${E.msg.textContent}", ${env.chimes} chimes) · first ${firstSaid} · dropped ${dropped} · desk ${one} · hint kept ${hint} · queued ${queued} · next ${next} · empty ${empty} · wired ${lanes}`);
 }
 
-// flow-56. The Mission card stays up in flight (flow, QUEUE Q600; D42; PLAYTEST #162, #164). The card is one of the dark
+// flow-56. The unlock overlay (flow, QUEUE Q572; PROGRESSION § 3; D42: "i should see each one"): what a flight's missions
+// did and opened, one card each: each mission done (with its pay), then every part by name (a family's in a row, engines
+// first, each card naming its family and its place in it), a room, the single parts, the rover parts, each mission
+// opened, and the next chapter when a capstone closed one. The beeper: done, the satellite bench's 20 parts, mission
+// control, the missions it opened; the structural test: the orbital kit, Kestrel first; Heavy lift I: the Condor. The
+// Debrief keeps them (D.cards) and shows them once over the report; missions done between flights wait in PROG.cardQ for
+// the desk; leaving the room closes them.
+{
+  const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,unlockCards,PARTS};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  P.done = { weather: { day: 0 }, loads: { day: 1 } }; const kit = A.unlockCards(['loads'], { loads: 20 });
+  P.done.beeper = { day: 2 }; const bee = A.unlockCards(['beeper']);
+  P.done.lift1 = { day: 3 }; const con = A.unlockCards(['lift1']);
+  const ks = c => c.map(x => `${x.k}:${x.id}`).join(' '), parts = c => c.filter(x => x.k === 'part');
+  const kp = parts(kit), bp = parts(bee);
+  const kitOK = kit[0].k === 'done' && kit[0].pay === 20 && kp.length === 5 && kp[0].id === 'kestrel' && kp.every((x, i) => x.fam && x.fam.id === 'kit' && x.fam.i === i && x.fam.n === 5)
+    && kit.some(c => c.k === 'mission' && c.id === 'beeper') && kit[kit.length - 1].k === 'chapter' && kit[kit.length - 1].id === 'c2';
+  const ri = bee.findIndex(c => c.k === 'room'), mi = bee.findIndex(c => c.k === 'mission');
+  const beeOK = bee[0].k === 'done' && bp.length === 20 && new Set(bp.map(x => x.id)).size === 20 && bp.every(x => x.fam && x.fam.id === 'bench' && x.name && x.why)
+    && ri > bee.indexOf(bp[19]) && bee[ri].id === 'mc' && mi > ri && bee.filter(c => c.k === 'mission').some(c => c.id === 'lift1') && bee.every(c => c.name);
+  const conOK = parts(con).length === 1 && parts(con)[0].id === 'condor' && !parts(con)[0].fam && con[0].k === 'done';
+  const H = html.replace(/\r\n/g, '\n'), sim = H.slice(0, H.indexOf('// ==== SIM END'));
+  const wired = /D\.cards=unlockCards\(ids,/.test(sim) && /^\/\/ app\/unlock\.js — the unlock overlay/m.test(H) && /unlockDebrief\(D\)/.test(H) && /unlockDesk\(\)/.test(H)
+    && /function pmStart\(cv,keys\)/.test(H) && /partsMesh\(ps\)/.test(H) && /deskLight\(m,\{lamp:/.test(H) && /UNL\.on\)unlockClose\(\)/.test(H) && /PROG\.cardQ=\[\.\.\.\(PROG\.cardQ\|\|\[\]\),M\.id\]/.test(sim);
+  check('flow-56: one unlock card each: the mission done with its pay, then each part by name (the orbital kit: five, Kestrel first, each naming its family; the beeper: twenty, then mission control, then the missions it opened); Heavy lift I the Condor; the next chapter last; the Debrief keeps and shows them once, the desk shows those done between flights, and the part turns as a model in the design table\'s light',
+    kitOK && beeOK && conOK && wired, `loads: ${ks(kit)} · beeper: ${bee.length} cards, ${ks(bee.filter(c => c.k !== 'part'))} · lift1: ${ks(con)} · wired ${wired}`);
+}
+
+// flow-57. Chapters as events (flow, QUEUE Q576; PROGRESSION § 3): a flight that flies a capstone is debriefed under the
+// chapter's poster (`capstoneOf`); the Missions tab is headed by chapter (its question, its finish and grant), and the
+// tab sorter still files it under Missions; the desk wall holds the trophy case (a frame per chapter closed).
+{
+  const A = new Function(src + 'return {capstoneOf,CHAPTERS};')();
+  const c1 = A.capstoneOf(['weather', 'loads']), none = A.capstoneOf(['weather', 'air']);
+  const H = html.replace(/\r\n/g, '\n');
+  const tab = /\/\^\(Epoch\|✔ Chapter\|Chapter\)\/\.test\(h\)\?'missions'/.test(H) && /Chapter \$\{C\.n\} · \$\{C\.name\}/.test(H) && /Finish: \$\{MN\(C\.capstone\)\}/.test(H);
+  const poster = /D\.chapter=capstoneOf\(ids\)/.test(H) && /Chapter \$\{ch\.n\} complete/.test(H) && /'poster chap'/.test(H);
+  const wall = /h\+=trophyCase\(\)/.test(H) && /function trophyKeep\(D\)/.test(H) && /TROPHY CASE/.test(H);
+  check('flow-57: a capstone closes its chapter (the structural test, chapter 1; weather and the air close nothing); the Missions tab by chapter with its finish; the Debrief\'s poster for a chapter; the trophy case on the desk wall',
+    c1 && c1.id === 'c1' && c1.capstone === 'Structural test flight' && none === null && tab && poster && wall, `capstone ${c1 && c1.name} · none ${none} · tab ${tab} · poster ${poster} · wall ${wall}`);
+}
+
+// flow-58. The Mission card stays up in flight (flow, QUEUE Q600; D42; PLAYTEST #162, #164). The card is one of the dark
 // cockpit's (CP_CARDS): during a burn hudCardsOn (app/hud.js, the cards renderCards draws) keeps it and the Δv card and
 // folds the rest; quiet, the rest come back. In a critical phase its rows are short: one per job, the job's first open
 // condition with the reading now (pinned: full). The jobs keep the order the flight first listed them in (mcOrder), so a
@@ -1477,7 +1519,7 @@
     + CPc + cards + 'return {on:()=>hudCardsOn().map(x=>x.c.id).join(",")};')({ ph: () => env.phase, some, none });
   env.phase = 'burn'; const burn = K.on(); env.phase = null; const quiet = K.on();
   const inBurn = burn === 'mission,dv' && quiet === 'mission,dv,payload,fleet';
-  check('flow-56: the Mission card stays up in flight: kept in a burn (with Δv; the rest fold), short in a critical phase (one line per job, its open condition and reading); a job done turns green in its place with its pay (Q600, D42)',
+  check('flow-58: the Mission card stays up in flight: kept in a burn (with Δv; the rest fold), short in a critical phase (one line per job, its open condition and reading); a job done turns green in its place with its pay (Q600, D42)',
     shortOK && kept && order && inBurn,
     `short ${shortOK} (${short.length} rows vs ${full.length} full: ${jobRows.map(plain).join(' | ')}) · done in place ${kept} (${after.map(plain).join(' | ')}) · order ${order} (${o1}, ${o2}) · cards in a burn "${burn}", quiet "${quiet}"`);
 }

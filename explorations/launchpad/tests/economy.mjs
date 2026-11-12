@@ -1041,3 +1041,26 @@
     !lossy.length && w0 === Infinity && w1 === Infinity && wInf === Infinity && w2 === Infinity && !dn && /no S-wave shadow/.test(txt) && Math.abs(wB - 200) < 1e-9,
     `done ${dn}; lossy [${lossy.join(', ')}]; widths ${w0} ${w1} ${wInf} ${w2}, bracket ${wB}; log "${txt.slice(0, 40)}"`);
 }
+
+// econ-42. Families, reasons and chapters as data (economy, QUEUE Q579; plan Q573 rules 3 and 6; D34): a family is every
+// part one mission opens, named (one unlock card, one reason line); every gated part has a "what it makes possible" line;
+// every mission sits in one chapter, whose capstone is one of its own; no closed part goes on the stand, into development
+// or onto a production line (a run would write its know-how, and a part fired or flown stays open); a mission done
+// between flights waits in PROG.cardQ for the desk's cards.
+{
+  const A = new Function(src + 'return {PROG,HOOK,PARTS,PART_GATE,PART_FAMILY,famOf,famParts,partWhy,CHAPTERS,chapterOf,chaptersNow,MISSIONS,programNew,chooseStart,partOpen,startTest,prodQuote,devQuote,missionComplete,PROG_SCHEMA};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.HOOK.done = () => {}; A.programNew(); A.chooseStart('agency');
+  const gated = Object.keys(A.PARTS).filter(k => A.PART_GATE[k] || A.PARTS[k].era != null), noWhy = gated.filter(k => !A.partWhy(k));
+  const fams = Object.keys(A.PART_FAMILY), famBad = fams.filter(f => { const ps = A.famParts(f), m = A.PART_FAMILY[f].m;
+    return ps.length < 2 || ps.some(k => A.famOf(k) !== f) || Object.keys(A.PART_GATE).some(k => A.PART_GATE[k] === m && A.PARTS[k] && !ps.includes(k)) || !A.PART_FAMILY[f].name || !A.PART_FAMILY[f].why; });
+  const inCh = A.CHAPTERS.flatMap(c => c.missions), chBad = A.CHAPTERS.filter(c => !c.missions.includes(c.capstone) || !c.question || !c.grants.length || !c.name);
+  const cover = A.MISSIONS.every(M => inCh.filter(id => id === M.id).length === 1) && inCh.length === A.MISSIONS.length;
+  const now0 = A.chaptersNow().map(c => c.id).join(); P.done = { weather: { day: 0 }, loads: { day: 0 } }; const now1 = A.chaptersNow().map(c => c.id).join();
+  P.done = {}; P.funds = 5000; P.stand2 = { ready: 0, job: null, done: 0 };
+  const shut = !A.partOpen('kestrel').ok, stand = A.startTest('kestrel', 'qual') === false && !P.stand2.job && !(P.kh || {}).kestrel, standOK = A.startTest('sparrow', 'qual') === true;
+  const pq = A.prodQuote('kestrel'), dq = A.devQuote('kestrel', 'cheap'), prod = !pq.own.ok && !pq.lic.ok && /not open yet/.test(pq.own.why) && /not open yet/.test(pq.lic.why) && !dq.ok && /not open yet/.test(dq.why);
+  P.cardQ = []; A.missionComplete(A.MISSIONS.find(m => m.id === 'diswatch'), null); const q = P.cardQ.join() === 'diswatch' && !!A.PROG_SCHEMA.cardQ;
+  check('econ-42: families match the map (each is one mission\'s parts, named, with its line); every gated part says what it makes possible; every mission in one chapter, each capstone its own; a fresh program is in chapter 1, after the structural test in chapter 2; no closed part on the stand, in development or on a line; a world mission queues its cards',
+    !noWhy.length && fams.length >= 5 && !famBad.length && !chBad.length && cover && now0 === 'c1' && now1 === 'c2' && shut && stand && standOK && prod && q,
+    `no why: ${noWhy.join(',') || '-'}; families ${fams.map(f => `${f} ${A.famParts(f).length}`).join(', ')} (bad: ${famBad.join(',') || '-'}); chapters bad ${chBad.map(c => c.id).join(',') || '-'}, cover ${cover}; now ${now0} → ${now1}; stand ${stand}/${standOK}; line/dev ${prod}; cardQ ${q}`);
+}

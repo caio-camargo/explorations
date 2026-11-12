@@ -14,10 +14,12 @@ function renderDebrief(){const D=debShown,el=$('debBody');
   $('debHead').innerHTML=`<span>FLIGHT REPORT · No. ${D.flight}</span><span>${D.design?`design: ${D.design} · `:''}${fmtDate(D.day)} · ${fmtT(D.met)} flown</span>`;
   // the headline: a loss of life first, then a first in the world, a lost vehicle, a beaten record
   const first=D.missions.find(m=>m.first),rec=D.records.find(r=>r.was),crewLost=D.crew&&!D.crew.ok;
-  const[kick,hl,cls]=crewLost?['A loss','Crew lost','poster black']:first?['First in the world',first.l,'poster']:o.k==='lost'?['','Vehicle lost','poster']
+  // (Q576) a chapter closed (its capstone flown) takes the poster before a first: the chapter's name, the capstone under it
+  const ch=D.chapter;
+  const[kick,hl,cls]=crewLost?['A loss','Crew lost','poster black']:ch?[`Chapter ${ch.n} complete${first?' · first in the world':''}`,ch.name,'poster chap']:first?['First in the world',first.l,'poster']:o.k==='lost'?['','Vehicle lost','poster']
     :rec?['New record',`${rec.l}: ${rec.v}`,'poster']:['',o.t,''];
   let h=(kick?`<div class="kick">${kick.toUpperCase()}</div>`:'')+`<div class="hl ${cls}">${hl}</div>`
-    +`<div class="lead">${cls?`<b>${o.t}</b>: `:''}${o.d}.`
+    +`<div class="lead">${ch&&!crewLost?`<b>${ch.capstone}</b> · `:''}${cls?`<b>${o.t}</b>: `:''}${o.d}.`
     +(D.crew?` <span class="${D.crew.ok?'ok':'bad'}">${D.crew.line}.</span>`:'')   // (Q191)
     +(D.passenger?` ${D.passenger.ok?`${D.passenger.who} came through.`:`${D.passenger.who} ${D.passenger.why}.`}`:'')+`</div>`;
   // a loss explained (Q293): the failures on the way, in order, then the end, and what would help next time
@@ -43,7 +45,9 @@ function renderDebrief(){const D=debShown,el=$('debBody');
   $('debWall').innerHTML=deskPhotoCard(ph&&ph.flight===D.flight?ph:null,D.fromOrbit?'no liftoff':'no photo',D.fromOrbit?'this flight began in orbit':`flight ${D.flight}`)
     +(nw?deskClipping(nw,'clipn'):'');
   const again=!D.fromOrbit;$('bDebAgain').disabled=!again;$('bDebAgain').title=again?'':'This flight started in orbit: there is no pad to fly it from again';
-  for(const[id,to]of[['bDebProg','program'],['bDebAsm','assembly']])$(id).classList.toggle('big',debNext===to);$('bDebAgain').classList.toggle('big',false)}
+  for(const[id,to]of[['bDebProg','program'],['bDebAsm','assembly']])$(id).classList.toggle('big',debNext===to);$('bDebAgain').classList.toggle('big',false);
+  if(ch&&typeof trophyKeep==='function')trophyKeep(D);   // (Q576) the capstone's photo goes to the trophy case
+  if(typeof unlockDebrief==='function')unlockDebrief(D)}   // (Q572) what it opened, as cards over the report
 // Fly again: back to the pad with the same design, through the usual LAUNCH (its checks: funds, site, safety)
 function debAgain(){const D=debShown;if(!D||D.fromOrbit)return;go('assembly');if(screenNow()==='assembly')$('launch').click()}
 $('bDebAgain').onclick=()=>debAgain();

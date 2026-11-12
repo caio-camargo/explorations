@@ -7393,3 +7393,25 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   card folds away in every critical phase). **D42**: a mission done is quiet in flight (green on the Mission card, at
   the moment, staying) and loud after it (every unlock by name, one overlay each). PLAYTEST #162–#164; **Q600** (P1,
   flow); Q572's row carries the fanfare. **Loop slices session:** Q572 is yours and changed under you: read its row.
+
+## 2026-11-12 — loop slices (Opus 5.5, worktree launchpad-momentum): Q579, Q578, Q572, Q576 (v1.318), D41's loop
+
+- **Asked:** Caio: work on the new gameplay-loop items Q572, Q578, Q579, Q576. Mid-session: "there has been a change to
+  item 572" (D42: every part and mission opened by name, one overlay each): built that way.
+- **Done (v1.318, one version for the four):** Q579 families, `why` lines, `CHAPTERS`, D34 guards (stand, development,
+  lines); Q578 presets say what they wait for, closed parts fold under *Not open yet (n)* by chapter; Q572 one card per
+  mission done, part (naming its family and place) and mission opened, room, rover parts and next chapter, the part
+  turning as a model in the design table's light, D to the table with it in hand, world missions' cards at the desk
+  (`PROG.cardQ`); Q576 Missions tab by chapter, the chapter poster in the Debrief, the trophy case on the desk wall.
+  Tests econ-42, vehicle-44, flow-56, flow-57; core 26/30/31 and flow-25 updated (they used closed parts / the epoch count).
+- **Checked:** CI green (43154998184) before the last merge of `main` (a QUEUE-only change); smoke locally; in Chrome
+  with hand-built states and Debrief records: the cards, the turning Kestrel, D to the table, the closed list, the picker,
+  the Missions tab, the trophy case. Two syntax slips caught there (a `//` swallowing code, an apostrophe).
+- **Not checked:** a really flown flight end to end (TESTING 375–377); other window sizes; no sound on the cards yet;
+  family members share their family's line.
+- **Files:** launchpad `sim/program.js`, `sim/debrief.js`, `builder.js`, `app/unlock.js` (new), `app/model-desk.js`,
+  `app/debrief.js`, `app/editor.js`, `app/screens.js`, `app/desk.js`, `index.html`, `chapters.mjs`, `tests/economy.mjs`,
+  `tests/vehicle.mjs`, `tests/flow.mjs`, `tests/core.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** TESTING 375–377 by hand; the follow-ups under QUEUE *Proposed* (a sound, per-part lines, Q600 and the desk
+  notice). M1 closes when Caio replays the first hour (D41).

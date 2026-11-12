@@ -1710,7 +1710,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 26. Production lines (economy): learning to manufacture is different from buying.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], funds: 2000 });
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: { loads: {}, lift1: {} }, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], funds: 2000 });
     api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
   // you can't reverse-engineer what you don't know; a license is possible straight away
   fresh('frugal'); const q0 = api.prodQuote('kestrel'), ownEarly = api.startProdLine('kestrel', 'own'); P.kh = { kestrel: { use: 0.5, reg: {} } }; const q1 = api.prodQuote('kestrel');
@@ -1731,7 +1731,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 30. The test stand (economy): ground testing for know-how and certification, at a price.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  api.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null });
+  api.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: { loads: {}, lift1: {} }, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null });
   api.chooseStart('agency'); P.funds = 500;
   const early = api.startTest('kestrel', 'qual'), built = api.buildStand(), stillBuilding = api.startTest('kestrel', 'qual'); api.advanceDays(61);
   const u0 = api.khUse('kestrel'), c0 = api.certOf('kestrel'), f0 = P.funds, q = api.testQuote('kestrel', 'qual'), ok = api.startTest('kestrel', 'qual'), busy = api.startTest('t2', 'qual');
@@ -1750,7 +1750,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 31. Development projects (economy): improving parts we make, for money, time and know-how.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null, dev: {}, devJob: null });
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: { loads: {}, lift1: {} }, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null, dev: {}, devJob: null });
     api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
   // only what we make, and only once we know it
   fresh('frugal'); const imp = api.devQuote('kestrel', 'cheap'); P.lines = { kestrel: { power: api.home, lic: null, start: 0, ready: 0, m: 0.05, units: 0 } };   // a brand-new own line: we make it, but don't know it yet

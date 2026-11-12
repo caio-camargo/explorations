@@ -2098,7 +2098,50 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
   you like*, two notices queued, Recover vessel. **Not judged:** whether three missions plus a contract is too much card
   early on (*Measure the air* lists its four bands, all ◐ until a landing analyses them).
 
-## v1.318 — the Mission card stays up in flight; a mission done turns green there (2026-11-12, flow item by the platform session, QUEUE Q600; D42; PLAYTEST #162, #164)
+## v1.318 — the loop's slices: families and chapters as data, the builder under the map, the unlock cards, chapters as events (2026-11-12, loop slices session, QUEUE Q579, Q578, Q572, Q576; D41, D42; plan Q573)
+
+- **Q579 (economy, sim/program.js), data only.** `PART_FAMILY` (the orbital kit, the satellite bench, the 2.5 m family,
+  high orbits, docking, and *landers* for the far side's four, one more than the plan) names every part one mission opens;
+  `famOf`, `famParts`. `PART_WHY` and `partWhy(k)`: a "what it makes possible" line for every gated or era part (a
+  family's line for its members). `CHAPTERS` (`{id, n, name, question, missions, capstone, grants}`, the plan's final
+  draft; every mission in one; `grants` lists only what is built: no yard, globe or bases yet), `chapterOf`,
+  `chapterDone`, `chaptersNow` (4a and 4b side by side). `ROOM_GRANT` (the beeper: mission control). **D34:** a closed part
+  can't go on the stand (`startTest`; it would write know-how, and a part fired stays open), into development (`devQuote`)
+  or onto a line, own or licensed (`prodQuote`); the stand's list leaves it out. Test econ-42.
+- **Q578 (vehicle, builder.js).** `stackKeys(st)` reads any design format (old lists, v2 trees, payload blocks);
+  `stackWaits(st)` lists what a design waits for, in chapter order. The preset picker dims a waiting preset with its first
+  wait (*Hopper 🔒 Structural test flight +1*; the full list on hover). The palette lists open parts by category; the
+  closed ones fold under **▸ Not open yet (n)** (click to open), by chapter, each mission's parts under one reason line
+  (*Opens with "The beeper": the satellite bench*), eras last (`closedParts`). Test vehicle-44.
+- **Q572 (flow, app/unlock.js, sim/debrief.js; D42: one each).** `unlockCards(ids, pay)` turns what missions did and opened
+  into cards: each mission done (its win line, its pay), then **every part by name, one card each** (a family's in a row,
+  engines first, the card naming the family and its place: *Part unlocked · The satellite bench, 3 of 20*), a room, the
+  single parts, the rover parts, each mission it opened, and the next chapter when a capstone closed one. The Debrief keeps
+  them (`D.cards`) and shows them once, 0.45 s after it opens (`cardsShown` is kept with the save); missions done between
+  flights queue in `PROG.cardQ` (new `PROG_SCHEMA` row; `chapters.mjs` empties it) and show at the desk without the
+  *done* card, since the desk's centred notice still says that (Q600). Any key or a click: the next; Esc: all gone; **D**:
+  the design table with the part in hand (`BLD.grab`). Leaving the room closes them. **The model** (app/model-desk.js,
+  `pmStart`/`pmDraw`): the part built alone by `newShip([k])`, meshed by `partsMesh`, drawn with the mesh shader and
+  `deskLight` into its own target (RGBA16F where the GPU has it), read back and tone-mapped in JS (x/(1+x), gamma 2.2) into
+  a 448×350 canvas shown at 320×250, turning at ~20 frames a second (a draw and its read-back cost ~34 ms here). Only in
+  rooms, where `frame()` draws no 3D. Test flow-56.
+- **Q576 (flow).** The Missions tab is headed by chapter: *Chapter 2 · Once around*, its question, *Finish: The beeper →
+  mission control, the satellite bench*, the capstone marked ◆; a chapter with nothing open or done past the current one is
+  a count; `progTabOf` files *Chapter* headings under Missions. A flight that flies a capstone is debriefed under a blue
+  poster (*Chapter 2 complete · first in the world / ONCE AROUND*) ahead of a first (`capstoneOf`, `D.chapter`). The desk
+  wall's **trophy case**: a frame per chapter closed, the flight's photo where this browser kept one
+  (`launchpad-trophies`, beside the last photo; `trophyKeep` at the Debrief), else a plaque with the chapter's number.
+  Test flow-57.
+- **Checked in Chrome** (a fresh agency, states set by hand): the desk's cards for the structural test (the Kestrel turning
+  in the lamp's light), the Debrief's 26 cards for the beeper (done +60M, 20 parts, mission control, rover parts, Heavy
+  lift I, Weather satellite, chapter 3), **D** to the table with the camera in hand, the closed list, the picker, the
+  Missions tab, the trophy case. Caught there: a `//` comment that swallowed `unlockShow` (R4's pattern) and an
+  apostrophe in a single-quoted string.
+- **Not checked:** a real flown flight end to end (the Debrief was a record built by hand); the overlay at other window
+  sizes; a family part's line is the family's (20 identical lines for the bench); no sound yet (look & sound); the model's
+  colours against the design table's real grade.
+
+## v1.319 — the Mission card stays up in flight; a mission done turns green there (2026-11-12, flow item by the platform session, QUEUE Q600; D42; PLAYTEST #162, #164)
 
 Caio, playing v1.306–v1.307: the centred "Mission complete" box came when he cut the thrust (#162: `doneHeld` held it
 while the engines burned, Q558), and the missions he saw before launch were gone during the flight (#164: the dark
@@ -2118,7 +2161,7 @@ loud after it.
   (`sndDone`, app/sound.js: two soft rising tones, 784 and 1175 Hz). `doneHeld` is gone. The box (`#done`) stays for world
   missions and contracts judged at home, at the desk, until Q572's overlays; the fanfare after a flight is Q572's.
 - Tests: flow-55 rewritten (in flight a line and a chime and no box; a flight's completion after it dropped; the desk's
-  box as before), flow-56 new (kept in a burn with Δv while the rest fold, via `hudCardsOn`, now its own function; the
+  box as before), flow-58 new (kept in a burn with Δv while the rest fold, via `hudCardsOn`, now its own function; the
   short rows; done in place, green, with pay; `mcOrder`), flow-54 (all the missions; in the dark cockpit), flow-40 (the Δv
   card still among `CP_CARDS`).
-- Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 375).
+- Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 378).

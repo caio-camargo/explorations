@@ -12,6 +12,7 @@ const ROOMS=new Set(['title','program','debrief','mission']);
 const inRoom=()=>ROOMS.has(screenNow());
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atTitle?'title':atDeb?'debrief':atMC?'mission':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
+  if(typeof UNL!=='undefined'&&UNL.on)unlockClose();   // (Q572) the unlock cards belong to the room they showed in
   if(from==='assembly'&&typeof BLD!=='undefined'&&BLD.bench())BLD.benchClose(false);   // leaving the Assembly from the payload bench: it's saved, the rocket comes back (Q416)
   if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S){flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
     const D=S.rec&&S.rec.debrief;   // ...and a flight that flew is debriefed on the way out, once
@@ -196,7 +197,7 @@ if(TEST.on){$('testerBadge').classList.remove('hidden');testBadge();testTopUp()}
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
 const progTabOf=h=>/^(Offers|Coming up|News)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
-  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field|Routines)/.test(h)?'fleet':/^The world/.test(h)?'world':
+  /^(Epoch|✔ Chapter|Chapter)/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field|Routines)/.test(h)?'fleet':/^The world/.test(h)?'world':
   /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
