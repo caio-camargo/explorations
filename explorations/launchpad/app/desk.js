@@ -58,6 +58,15 @@ const deskPhotoCard=(ph,none,cap)=>ph?`<div class="photo" style="transform:rotat
   :`<div class="photo empty" style="transform:rotate(2deg)"><i class="pin"></i><div class="img">${none}</div><div class="cap">${cap}</div></div>`;
 // the papers print our own news first, then the latest that isn't a warning
 function deskNews(L){const H=POWERS[HOME],ours=x=>[progName(),H&&H.root,H&&H.name].some(n=>n&&x.t.includes(n));
+  const big=L.find(x=>x.big&&(PROG.day||0)-x.day<=POSTER_DAYS);if(big)return big;   // (Q479) a big moment of the last weeks leads the paper
   return L.find(x=>ours(x)&&x.cls!=='warn'&&x.cls!=='bad')||L.find(x=>!x.cls||x.cls==='good')||L[0]}
 const deskPaper=()=>`The ${POWERS[HOME]?POWERS[HOME].root:'Coastal'} Herald`;
-const deskClipping=(nw,cls='clip',more='')=>`<div class="${cls}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div><div class="hd">${nw.t}</div>${more}</div>`;
+const deskClipping=(nw,cls='clip',more='')=>nw.big?posterClip(nw,cls,more):`<div class="${cls}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div><div class="hd">${nw.t}</div>${more}</div>`;
+// (flow, QUEUE Q479; UI.md § 4.1 item 3) poster headlines for big moments: a first, a rival's first, a new chapter, a new
+// computing era. The paper prints one as a poster (a kicker, one big headline, the story under it) for POSTER_DAYS; the
+// Debrief's headline (app/debrief.js) uses the same palette. The palette follows the computing era, as UI.md's table:
+// human computers flat cream, navy and red (pe1); mainframes browns and oranges, rounder type (pe2); onboard computers
+// and after a photo-dark band and bold sans (pe3). Not for routine flights: only HOOK.news calls with a poster.
+const POSTER_DAYS=30,posterEra=()=>'pe'+Math.min(3,1+(typeof compEra==='function'?compEra():0));
+const posterClip=(nw,cls,more)=>`<div class="${cls} poster ${posterEra()}${nw.big.rival?' rival':''}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div>`
+  +`<div class="pk">${tipEsc(nw.big.kick)}</div><div class="ph">${tipEsc(nw.big.hl)}</div><div class="hd">${nw.t}</div>${more}</div>`;

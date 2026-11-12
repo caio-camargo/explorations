@@ -1087,12 +1087,13 @@
   // (b) the Satellite's upper-stage engine as an extra pure-ignition event that also arms the chute; rolled until it fails
   const s = api.newShip(api.PRESETS.Satellite), kE = s.parts.find(p => p.on && p.d.kind === 'engine' && p.seg !== s.parts.find(q => q.on && q.d.kind === 'engine').seg)?.seg;
   const TS = api.TEST, nf = TS.nofail; TS.nofail = false; delete P.lvl;
+  const keepK = { kh: P.kh, dev: P.dev, lines: P.lines }; P.kh = {}; P.dev = {}; P.lines = {};   // (loop slices, 2026-11-12) an engine known, developed or made by an earlier section in the shard hardly ever fails: start green
   let failed = null, at = null;
   if (kE != null) { s.events.push({ decouple: [], ignite: [kE], chute: true }); const ix = s.events.length - 1;
     for (let f = 1; f < 400 && !failed; f++) { P.flights = f; s.evIdx = ix; s.chute = false; s.segs[kE].ignited = false; api.stage(s);
       if (s.evIdx === ix) failed = { f, chute: s.chute }; }
     TS.nofail = true; if (failed) { api.stage(s); at = { idx: s.evIdx, chute: s.chute, lit: !!s.segs[kE].ignited }; } }
-  TS.nofail = nf;
+  TS.nofail = nf; Object.assign(P, keepK);
   // (d) the drag the ascent estimate integrates: Easy over Normal, at the level's air once
   const asc = lv => { if (lv) P.lvl = lv; else delete P.lvl; const x = api.newShip(api.PRESETS.Orbiter); x.dragTab = null; return api.dragTable(x, 0)[4]; };
   const n0 = asc(null), e0 = asc('easy'); delete P.lvl;

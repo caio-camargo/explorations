@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3173,7 +3173,7 @@ costs **time, not money**. CREW § Skill: simulator time is what trains crew qua
    for CREW's qualifications in M3 and for a "flown in the simulator" mark on the design). A short **simulator
    debrief**: how far it got, margins (Δv left, peak load as a share of the believed rating, landing speed), what broke
    and why, and the line "these are the program's believed numbers".
-5. ~~**Real flights can't be reverted**~~ *(Held 2026-11-11: revert stays on Easy and Normal until Caio has played the first hour; only Hard has none. DECISIONS D35.)* The R key and the button go (the tester keeps them, `TEST`). Before liftoff
+5. ~~**Real flights can't be reverted**~~ *(Held 2026-11-11: revert stays on Easy and Normal; only Hard has none. DECISIONS D35, made permanent by W55 2026-11-12.)* The R key and the button go (the tester keeps them, `TEST`). Before liftoff
    nothing is charged, so leaving the pad stays free. *End flight* and recovery are unchanged.
 
 **Time, not money (default):** a run costs one calendar day per hour of simulated flight, at least half a day per
@@ -3829,7 +3829,14 @@ the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist
   open with it) and the TV Satellite after the range certification too (its radial decoupler). So m2 now flies the
   Passenger hop after m1 (a third clean flight that drops a stage: the range is certified at its end) and its first
   weather satellite on its own design, the Satellite with four sets of body cells where the wings were (`PT.wxDesign`;
-  `M2_FLIGHT` takes a design). Result: not run yet (a long row; the machine was short on memory).
+  `M2_FLIGHT` takes a design). Run on 2026-11-12 (three tries; the robot fixed on
+  the way: the hop now lights its engine before waiting to land, and the runs are ordered until three are clean in a row,
+  at most six, since a run can break up on the routine's own dice): m1, the hop, the range, the weather satellite on its
+  own design, TV, the routine, three clean ordered runs and *Repeat by itself* all pass. **Still red:** `clean3` and
+  `autoRuns`. Years later the first automatic run broke up in the climb (the routine's dice, `sim/procedures.js:355`);
+  that resets the count, the route says "3 more clean runs by order first", and m2 only waits from then on, so it never
+  repeats again (4 of 5 kept up at day 4,000). That is the routine's rule, not the map: a *Proposed* line asks whether one
+  bad roll should switch Repeat off for good
 - **Rows that set missions by hand:** the robot's rows run with *All tools* (no part gates) unless they say otherwise;
   the ones that play a real career (51, 75, 102, 156, 194, charter) pass, and their values read as before. 156's NEXT line
   carries the new text.
@@ -3841,3 +3848,64 @@ the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist
   Satellite and the TV Satellite not before.
 - **For Caio (a design question the plan answered, now visible):** a new player has no preset for the weather satellite;
   they build one on the bench, and the Satellite preset opens after. Q578's picker should say so.
+
+## v1.321 — one formula each; `career.mjs` sees the late game (2026-11-12, economy session, QUEUE R19)
+
+**What the review found** (2026-11-09 § 2, R19): the career runner never reached dispatch, routines, studies, the
+simulator, earning satellites, stations or crew, so every balance number stopped at the early game; and the formulas it
+leaned on were copies: the ignition odds three times (the runner's without development's "reliable" factor), the
+stacking days three times, the operations fee four times, a literal `*1.6` in 15 pays.
+
+**Shared formulas** (no behaviour change in the game):
+- `opsOf(cost)` and `stackDays(cost, v)` (sim/program.js, beside `prepDays`): missionTick, the dispatch quote and fire,
+  the supply-run quote and Rollout's two readouts call them.
+- `ignFail(k)` (beside `IGN_FAIL`): `igniteOK` rolls it, the dispatch's odds use it, and career.mjs's `ignitionFails`
+  now calls it, so a developed engine is as reliable in the runner as in the game.
+- `PAY_MIL` and `PAY_FAR` (sim/contracts.js, 1.6 each): the military premium (recon, ballistic test, classified
+  payload) and the premium on work past the first orbit since v1.66 (Selene science, a station's resupply, lab-days and
+  modules, servicing, rendezvous, retrieval). Named apart because they are different reasons, though equal today.
+
+**`LATE=1 node career.mjs`:** the scripted player goes for the chapters' goals (weather and TV satellites, both aborts,
+the station, both heavy lifts, the far side, Selene impact and landing), keeps a registry (so satellites earn through
+`utilTick`/`satTick`, saturation included; a TV satellite parked over the capital, as a player parks it), and automates:
+a design that reached orbit has an ascent procedure (abstracted: no pitch table, so the game's `dispatchRoll` resolves
+it; a dispatch that reaches orbit registers its satellite), satellite and reconnaissance contracts are dispatched
+instead of flown, a design is studied before its first dispatch, and the TV and weather satellites get routines (keep
+2, ordered by hand until three clean runs, then left to repeat). The default output is unchanged (checked:
+`ARCHS=openSuper node career.mjs 3 2`, identical to `main`).
+
+**Measured** (`LATE=1 node career.mjs 6 1 base agency,company`, one seed, so read as a shape, not a mean):
+
+| | agency | company |
+|---|---|---|
+| final funds, 6 years | 125–2,236 M (four of six over 1,000) | 25–223 M |
+| TV / station / Selene landing | 5 / 5 / 5 of 6 | 5 / 3 / 1 of 6 |
+| satellite income, career | 0–663 M | 0–485 M |
+| dispatches (done) | 8–16 (0–13) | 6–13 (0–9) |
+| routines, runs, repeating | 1–2, 4–8, 1–2 | 1–2, 2–11, 0–2 |
+
+- **Agencies get rich late** (the budget day plus satellites; contract income on top); companies end near the floor
+  with the same flights. Satellite income is a quarter to a third of the final funds of an agency that gets there, saturation on.
+- **TV satellites leave the capital's sky:** at the end most careers have none showing TV though one was parked there.
+  Not chased here: whether it is drift the routine doesn't replace (the routine counts satellites up, not TV ones).
+- **frugal and resource** reach little: frugal's dispatches never complete (0 of 11 and 0 of 6: held for money or
+  stood down), resource never flies TV.
+
+**Not modelled:** the simulator, crew rotations, station resupply and lab-days (they need a crewed station: no
+`stationcrew` plan), supply runs to a Selene base; flights still succeed at fixed odds by plan. Test `econ-43` (the
+shared formulas, and no copies left in the sim, Rollout or career.mjs).
+
+## v1.323 — a routine's failed run asks the player (2026-11-12, QA, QUEUE Q580 follow-up; DECISIONS D44)
+
+- **Caio's call** on m2's last red: "a failure should alert the player, who decides what to do". Before, an automatic run
+  that failed (about 1 in 4 broke up in the climb on the routine's own dice in m2's runs) set `clean` to 0, and
+  `routeAutoWhy` then asked for three more clean runs by order before Repeat could come back, which the robot (and a
+  player who wasn't watching the Fleet tab) never did; the news line said "the routine pauses until a clean run".
+- **Now:** three clean runs certify a route once (`r.cert`, `routeCert`); an automatic run that fails holds the routine
+  (`r.paused`) and offers a decision (`kind:'routine'`, 60 days): *Keep repeating* (Repeat goes on) or *Stop repeating*
+  (Repeat off; order runs from the Fleet tab, and switch Repeat on again whenever, with no new ladder). The news reads
+  "Your call: …"; the Fleet line shows *held after a failed run*; switching Repeat off and on also clears the hold. A
+  failure of an ordered run with Repeat off is news only, as before.
+- **The robot:** m2 answers *Keep repeating* (a player keeping a network up would). Result: m2 passes (2026-11-12): three clean runs, Repeat on, 5 of 5 up at day 4,000, 1 automatic run; no automatic run failed in this one, so the decision itself was checked by econ-44, not in the page.
+- **Test `econ-44`:** a failed automatic run holds and asks; *keep* resumes; *stop* turns Repeat off; an ordered run's
+  failure doesn't ask; Repeat comes back without new clean runs.

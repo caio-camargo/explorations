@@ -77,6 +77,23 @@ const PART_WHY={bio:'A passenger to space and back: the first one will be an ani
   crew:'A capsule for two people (dummies until the escape tower is qualified).',les:'An escape tower: it pulls the capsule clear of a failing rocket.',
   condor:'The Condor: a heavy first stage, half a tonne to orbit.',arm:'A robotic arm: catch a visitor and berth it.',bay:'A cargo bay: carry something up and let it go.',
   lab:'A laboratory: science aboard the station.',beacon:'A base beacon: marks where a base will stand.',
+  // (loop slices, after Q572) a line for each member of a family, so its card says what that part is for
+  kestrel:'The Kestrel: a first-stage engine with real thrust, the heart of an orbital rocket.',petrel:'The Petrel: a vacuum engine for the upper stage, made to finish the climb to orbit.',
+  t8:'An 8 t tank: enough propellant under a Kestrel for a real first stage.',istage:'An interstage decoupler: drops a spent stage and covers the engine above it.',rwheel:'A reaction wheel: turns the craft with no fuel and no air.',
+  core:'A probe core: a satellite that flies itself, with a battery for a few days.',core6:'A 0.6 m probe core, for small satellites.',core3:'A 0.3 m probe core, for the smallest satellites.',
+  batt:'A 1 kWh battery: keeps a satellite alive through the night side.',sbatt:'A battery for the side of a stage.',batt6:'A 0.6 m battery, for small satellites.',batt3:'A 0.3 m battery, for the smallest satellites.',
+  bpanel:'Solar cells on the body: power from the Sun for as long as it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
+  ant:'A cone antenna: a satellite that talks to the ground.',whip:'A whip antenna: the lightest way to be heard.',ssci:'An instrument package for the side of a stage: science on any craft.',
+  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',octl:'A long octagonal frame: room for more on one bus.',
+  octl6:'A long 0.6 m frame, for small satellites.',padapt:'A payload adapter: seats a satellite on its rocket and lets it go.',padapt6:'A 0.6 m payload adapter.',padapt3:'A 0.3 m payload adapter.',
+  albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m down to 1.25 m: a small upper stage on a big one.',
+  dec25:'A 2.5 m decoupler.',fins25:'A 2.5 m fin ring: keeps a big rocket pointing into the wind.',cfins25:'A steerable 2.5 m fin ring.',cone25:'A 2.5 m nose cone.',fair25:'A 2.5 m payload fairing: room for big satellites.',
+  wpanel:'A solar wing: far more power than body cells, unfolded in space.',bant:'A boom antenna: heard from much farther out.',apogee:'An apogee engine: the last burn into a high orbit.',
+  hthr:'Hydrazine thrusters: small, precise pushes to hold a slot.',sph4:'A small propellant sphere, for an apogee engine or thrusters.',sph7:'A larger propellant sphere.',
+  kick30:'A small solid kick motor: one hard shove, at the right moment.',kick80:'A medium solid kick motor.',kick200:'A large solid kick motor.',rwheel6:'A 0.6 m reaction wheel, for satellites.',rwheel3:'A 0.3 m reaction wheel, for the smallest satellites.',
+  port:'A docking port: two craft become one.',rport:'A docking port for the side of a module.',rcs:'An RCS quad: small pushes in every direction, for docking.',gas:'A gas bottle: the RCS quads\' cold gas.',
+  claw:'A claw: grabs what has no port.',hab:'A habitat module: somewhere to live in orbit.',
+  leg:'A landing leg: stand on another world.',wren:'The Wren: a throttling engine made to land on Selene.',rvfold:'A folded rover on its side mount: it unfolds on the ground.',rvdeck:'A rover deck with ramps: drive off the lander.',
   ocomp:'An onboard computer: a probe that flies its own burns.',scomp:'An onboard computer for the side of a stage.',rtg:'An RTG: power day and night, far from the Sun.'};
 const partWhy=k=>{const f=famOf(k);return f?PART_FAMILY[f].why:PART_WHY[k]||''};
 // the chapters (plan Q573, final draft; PROGRESSION § 3): every mission in one. The capstone closes it and grants the
@@ -303,6 +320,9 @@ function progLoad(j,home){PROG_REPAIRED=[];PROG_UNKNOWN=[];
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
+// R19: the one formula each for a launch's operations fee and its stacking days (missionTick, dispatch, supply runs,
+// Rollout and career.mjs all call these; no copies)
+const opsOf=cost=>OPS_FIX+OPS_FRAC*cost,stackDays=(cost,v)=>prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')];
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
 // the world moves in pieces that end on whole days (Q526): the piece that reaches day n rolls that day's dice (worldTick).
 // halt() (advanceTo's) can end the wait after a piece: on the day a decision came. The orbits then move once over the
@@ -557,7 +577,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(!R.sim)FLOOR_HOLD=R;if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
+  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(!R.sim)FLOOR_HOLD=R;if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=opsOf(R.cost);R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:stackDays(R.cost,s);R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -639,7 +659,9 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
   const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
     income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null,id:M.id});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
-    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
+    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok',racing&&lost==null?{kick:'First in the world',hl:M.name}:null);
+    {const C=typeof chapterOf==='function'&&chapterOf(M.id);if(C&&C.capstone===M.id)HOOK.news(`Chapter ${C.n} complete: ${C.name}. ${C.question} Yes.`,'ok',{kick:`Chapter ${C.n} complete`,hl:C.name})}   // (Q479) a new chapter, the papers' poster too
+    HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
 // ---- overflight (QUEUE Q181, W23; NOTES § "Plan: overflight politics"): **low flight only.** While the vessel is below
 // OVER_H, not yet in orbit (its periapsis inside the atmosphere: an ascent, a hop, a descent) and within OVER_D of its
 // launch point, whose land is under it is sampled about once a second (R.over). Orbit is free to pass over, whatever its
@@ -823,6 +845,9 @@ const TIER_NAME=['structure and tanks','small engines','big engines and avionics
 // with 0.5 + 0.5·use of the instrument package). Effects start once the program has started (a start chosen, or a
 // flight flown), so plain physics in the sim is unaffected. Know-how belongs to the team: it carries over on defection.
 const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.05,IGN_FAIL=0.08;
+// R19: the odds an engine fails to light, the one formula (igniteOK rolls it, the dispatch's odds and career.mjs use it):
+// development's "reliable" steps ×0.6 each, know-how squared, a young production line rougher
+function ignFail(k){const L=prodLine(k);return 0.6**devLv(k,'rel')*IGN_FAIL*(1-khUse(k))**2*(L?2-L.m:1)}
 const khOn=()=>PROG.flights>0||!!(PROG.own&&PROG.own.chosen);
 function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t],x=sourceOf(k);return x.how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):x.how==='line'?Math.min(0.95,b+0.2+0.2*x.line.m):b}
 const khUse=k=>TEST.kh?1:((PROG.kh||{})[kinOf(k)]?.use)??use0(kinOf(k));   // (tester: full know-how)
@@ -942,7 +967,7 @@ function orderStudy(s){const q=studyQuote(s);if(!q.ok||PROG.funds<q.cost)return 
 // days a launch of this design waits for its study (0 if none is pending)
 const studyWait=s=>{const j=studyJob(s);return j?Math.max(0,j.end-PROG.day):0};
 function compTick(){const Q=PROG.studyQ||[];while(Q.length&&Q[0].end<=PROG.day+1e-9){const j=Q.shift();PROG.studies=PROG.studies||{};PROG.studies[j.key]={err:j.err,day:j.end,era:j.era}}
-  const e=compEra();if(PROG.compEra==null)PROG.compEra=e;else if(e>PROG.compEra){PROG.compEra=e;const E=COMP_ERAS[e];HOOK.news(`A new computing era reaches the program: ${E.name.toLowerCase()} (${E.blurb})`,'ok');HOOK.save()}}
+  const e=compEra();if(PROG.compEra==null)PROG.compEra=e;else if(e>PROG.compEra){PROG.compEra=e;const E=COMP_ERAS[e];HOOK.news(`A new computing era reaches the program: ${E.name.toLowerCase()} (${E.blurb})`,'ok',{kick:'A new era',hl:E.name});HOOK.save()}}
 function computeHTML(){const E=COMP_ERAS[compEra()],W=COMP_ERAS[worldEra()],Q=PROG.studyQ||[],lag=compLag();
   return`<div class="ep">Compute</div><div class="sub"><b>${E.name}</b> <span class="dim">· ${E.blurb}</span><br>`+
     `<span class="dim">The world: ${W.name.toLowerCase()} · world price index ${W.cpi} · our power ${lag<0.05?'keeps up':`runs ${lag.toFixed(1)} yr behind`}${facLv('centre')?`, the centre puts us ${FAC.centre.ahead[facLv('centre')]} yr ahead of it`:''}</span><br>`+
@@ -1006,7 +1031,7 @@ function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];i
     extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(Math.cos(i0*rad)-Math.cos(T.inc*rad)),margin=(proc.margin!=null?proc.margin:proc.left!=null?proc.left:dvRemaining(v).tot-proc.dv)-extra;
   const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
   const eng=v.parts.filter(p=>p.on&&p.d.kind==='engine'),last=Math.max(...eng.map(p=>p.seg??0));
-  let pT=1;for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)
+  let pT=1;for(const p of eng){const f=ignFail(p.d.key);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)
   pI*=pT;
   for(const p of v.parts){if(!p.on)continue;const c1=certOf(p.d.key);pS*=1-0.02*(1-c1);uc+=1-c1;uk+=1-khUse(p.d.key);nk++}
   const pr=pM*pI*pS,unc=(nk?0.4*uc/nk+0.4*uk/nk:0)+(proc.prov?PROV_UNC:0);   // a borrowed procedure (a dry run) is less certain
@@ -1047,11 +1072,11 @@ function dispatchOptions(c){if(!DISPATCH_TYPES.includes(c.type))return[];const o
 function procSiteOf(stack){const pr=(PROG.procs||{})[procKey(stack)];return(pr&&pr.site&&siteById(pr.site))||homeSites()[0]||curSite()}
 function dispatchSite(stack){const t=procSiteOf(stack),a=siteAccessOf(t);return{t,ok:a.ok,why:a.ok?'':a.why,fee:a.ok?a.fee||0:0}}
 function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),lk=partLaunchWhy(v.parts);if(lk)return{ok:false,why:lk};const cost=vesselCost(v.parts).cost,
-  prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  prep=stackDays(cost,v),f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const busy=(PROG.dispatch||[]).some(x=>(x.status==='queued'||x.status==='deviated')&&(c.route!=null?x.route===c.route:x.cid===c.id));
   const ds=dispatchSite(stack);if(!ds.ok)return{...e,ok:false,why:ds.why};
   const rule=procWindow(e.proc,'any'),win=nextWindow(rule,start+prep);
-  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
+  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+opsOf(cost)+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
 function orderDispatch(c,stack){const q=dispatchQuote(c,stack);if(!q.ok)return false;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
   PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)} (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
@@ -1124,9 +1149,9 @@ function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'no
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
   const ds=dispatchSite(stack);if(!ds.ok)return{ok:false,why:ds.why};
-  const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=stackDays(cost,v),f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const rule=procWindow((PROG.procs||{})[procKey(stack)],'light',{body:base.bodyName,pf:base.pf,name:base.name}),win=nextWindow(rule,start+prep);   // land in daylight (Q185)
-  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
+  return{ok:true,why:'',cost:cost+opsOf(cost)+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
 function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)return q;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
   PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)}`,'');HOOK.save();return{...q,ok:true}}
@@ -1147,7 +1172,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
   const c=D.base!=null?null:D.route!=null?routeC(D.route):(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const dsx=dispatchSite(D.stack);if(!dsx.ok){D.status='cancelled';D.why=dsx.why;HOOK.news(`Dispatch stood down: ${D.title}. ${dsx.why}`,'warn');continue}
   const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch=nextWindow(D.rule,D.launch+1).day;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
-  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
+  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=opsOf(cost)+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   if(D.watch&&D.cid!=null&&PROG.day<D.launch+WATCH_WAIT)continue;   // (flow, Q43) waiting for you to watch it; half a day without you and it flies itself
   D.watch=false;  PROG.funds-=cost+ops;ledAdd('dispatch',-(cost+ops));importNews(v);prodUnits(v);PROG.flights++;
   const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
@@ -1187,8 +1212,18 @@ const routeLife=q=>slotRate(q)>0?Math.min(skLife(q),decayLife(q)):skLife(q)+deca
 const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===r.id&&!q.junk&&routeLife(q)>ROUTE_LEAD);
 const routeBusy=r=>(PROG.dispatch||[]).find(x=>x.route===r.id&&(x.status==='queued'||x.status==='deviated'));
 // whether it may repeat by itself, and why not
-function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;
-  if(r.paused)return'paused after a failed run: order one by hand';return''}
+function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(!routeCert(r)&&r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;
+  if(r.paused)return'held after a failed run: answer it in the in-tray, or switch Repeat off and on';return''}
+// (Q580, Caio 2026-11-12: "a failure should alert the player, who decides what to do") three clean runs certify a route
+// once; an automatic run that fails then holds the routine and asks (a decision in the in-tray): keep repeating, or stop
+// and order runs by hand. Before, the failure silently sent the route back to three more clean runs by order.
+const routeCert=r=>!!(r.cert||r.clean>=ROUTE_CLEAN);
+function routeFailAsk(r,why){if((PROG.decisions||[]).some(d=>d.kind==='routine'&&d.route===r.id))return;
+  offerDecision({kind:'routine',route:r.id,life:60,title:`${r.name}: an automatic run failed`,
+    text:`${why}. The routine is holding: ${routeSats(r).length} of ${r.keep} up. Keep repeating, or stop it and order runs yourself?`,
+    opts:[['keep','Keep repeating'],['stop','Stop repeating']]})}
+function routeFailAnswer(d,key){const r=routeOf(d.route);if(!r)return;r.paused=false;if(key!=='keep')r.auto=false;
+  HOOK.news(key==='keep'?`${r.name}: the routine repeats again`:`${r.name}: Repeat is off; order runs from the Fleet tab`,'')}
 function routeQuote(r){const c=routeC(r.id);return c?dispatchQuote(c,r.stack):{ok:false,why:'no such route'}}
 function orderRoute(id,auto){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};const q=routeQuote(r);if(!q.ok)return q;
   PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
@@ -1197,11 +1232,13 @@ function orderRoute(id,auto){const r=routeOf(id);if(!r)return{ok:false,why:'no s
 // a run's outcome: clean = it reached the route's orbit (within 15 % of its height, 2° of its plane) and left a satellite up
 function routeRun(D,res){const r=routeOf(D.route);if(!r)return;r.runs++;const o=res.orb,q=D.satId!=null&&(PROG.sats||[]).find(x=>x.id===D.satId);
   const near=o&&Math.abs((o.pe+o.ap)/2e3-r.alt)<=0.15*r.alt&&Math.abs((o.inc??r.inc)-r.inc)<=2;if(q)q.route=r.id;
-  if(res.ok&&near&&q){r.clean++;r.paused=false;HOOK.news(`${D.title}: ${q.name} is up (${routeSats(r).length} of ${r.keep})`,'ok')}
-  else{r.clean=0;r.paused=r.auto;HOOK.news(`${D.title} ${res.ok?`missed the route's orbit (${o?`${o.pe/1e3|0}×${o.ap/1e3|0} km`:'no orbit'})`:`failed: ${res.why||'lost'}`}${r.auto?'; the routine pauses until a clean run':''}`,'bad')}}
+  if(res.ok&&near&&q){r.clean++;if(r.clean>=ROUTE_CLEAN)r.cert=true;r.paused=false;HOOK.news(`${D.title}: ${q.name} is up (${routeSats(r).length} of ${r.keep})`,'ok')}
+  else{if(routeCert(r))r.cert=true;const was=r.auto&&!r.paused,why=res.ok?`missed the route's orbit (${o?`${o.pe/1e3|0}×${o.ap/1e3|0} km`:'no orbit'})`:`failed: ${res.why||'lost'}`;r.clean=0;r.paused=r.auto;
+    HOOK.news(`${D.title} ${why}${r.auto?'; the routine holds: your call, in the in-tray':''}`,'bad');if(was&&routeCert(r))routeFailAsk(r,`${D.title} ${why}`)}}
 function routeTick(){for(const r of PROG.routes||[]){if(!r.auto||routeAutoWhy(r)||routeBusy(r))continue;if(routeSats(r).length>=r.keep)continue;
   const q=orderRoute(r.id,true);if(!q.ok&&!r.held){r.held=1;HOOK.news(`Routine held: ${r.name}. ${q.why}`,'warn')}else if(q.ok)r.held=0}}
-function setRouteAuto(id,on){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};if(on){const w=routeAutoWhy(r);if(w)return{ok:false,why:w}}r.auto=!!on;HOOK.save();return{ok:true}}
+function setRouteAuto(id,on){const r=routeOf(id);if(!r)return{ok:false,why:'no such route'};if(on){r.paused=false;const w=routeAutoWhy(r);if(w)return{ok:false,why:w}}else r.paused=false;r.auto=!!on;
+  PROG.decisions=(PROG.decisions||[]).filter(d=>!(d.kind==='routine'&&d.route===r.id));HOOK.save();return{ok:true}}
 function dropRoute(id){const r=routeOf(id);if(!r)return false;PROG.routes=PROG.routes.filter(x=>x!==r);for(const q of PROG.sats||[])if(q.route===id)delete q.route;HOOK.save();return true}
 // the line under a satellite in the Fleet tab: make a routine from it, or its routine's state and controls
 function routeLine(q){const r=q.route!=null&&routeOf(q.route);
@@ -1209,7 +1246,7 @@ function routeLine(q){const r=q.route!=null&&routeOf(q.route);
   return routeCtl(r)}
 // a routine's state and controls (also the Fleet's own line for a route with nothing up, flow Q415)
 function routeCtl(r){const B=routeBusy(r),w=routeAutoWhy(r),up=routeSats(r).length;
-  return` · <span class="dim">routine: ${up} of ${r.keep} up${B?`, run ${r.runs+1} ${B.status==='deviated'?'needs you':`launches in ${Math.ceil(B.launch-PROG.day)} d`}`:''}</span>`+
+  return` · <span class="dim">routine: ${up} of ${r.keep} up${r.paused?'</span> <span class="warn">held after a failed run</span><span class="dim">':''}${B?`, run ${r.runs+1} ${B.status==='deviated'?'needs you':`launches in ${Math.ceil(B.launch-PROG.day)} d`}`:''}</span>`+
     ` <button data-rkeep="${r.id}" data-k="${r.keep+1}">keep ${r.keep+1}</button>${r.keep>1?` <button data-rkeep="${r.id}" data-k="${r.keep-1}">keep ${r.keep-1}</button>`:''}`+
     `${B?'':` <button data-rorder="${r.id}">Order a run</button>`} <button data-rauto="${r.id}" ${!r.auto&&w?`disabled title="${w}"`:''}>${r.auto?'Stop repeating':'Repeat by itself'}</button> <button data-rdrop="${r.id}">End</button>`}
 // ---- dry runs as the trajectory office's study (QUEUE Q46; the bodies session's procAdopt does the flying): the office
@@ -1265,7 +1302,7 @@ function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(TEST.nofail||!lvl().fail||!khOn()||!s.rec)return true;   // (Easy: engines always light, Q476)
-  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
+  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const f=ignFail(p.d.key);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719+(SIM?SIM.seed*0.0137:0)+(PROG.wseed%65536)*0.0071)*43758.5453)%1+1)%1;   // a simulator run rolls on its own seed; each career on its world's (Q580: without it every new player's second flight lost the same engine)
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
       HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);debFail(s,'ignite',`the ${p.d.name} failed to light (know-how ${(khBar(p.d.key)*100).toFixed(0)}%)`);return false}}

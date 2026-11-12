@@ -883,7 +883,7 @@
   const padOK = pad.length >= 2 && num(pad, 'This stage', /^(\d+) m\/s \((\d+) vac\)/) && pad.some(r => r[0] === 'Then');
   const hv = num(low, 'This stage', /^(\d+) m\/s \((\d+) vac\)/), lowOK = hv && hv[0] < hv[1] && low.some(r => r[0] === 'Full burn');
   const orb = num(coast, 'To orbit', /^(\d+) m\/s · .* burn · \+(\d+)$/), orbOK = !!orb && orb[0] > 0;
-  const wired = page.includes("title:'<span style=\"text-transform:none\">Δv</span>',rows:dvRows}") && page.includes("CP_CARDS=['ascent','descent','target','dv']");
+  const wired = page.includes("title:'<span style=\"text-transform:none\">Δv</span>',rows:dvRows}") && /const CP_CARDS=\[[^\]]*'dv'/.test(page);
   check('flow-40: a Δv card in flight: this stage at this air\'s exhaust speed with its burn time, the stages after it, and the burn to orbit against what\'s left; kept in the dark cockpit',
     padOK && lowOK && orbOK && wired, `pad: ${txt(pad)} · 1 km: ${low ? txt(low) : '—'} · coasting: ${coast ? txt(coast) : '—'} · wired ${wired}`);
 }
@@ -1337,12 +1337,12 @@
 // flow-54. The Mission card in flight (flow, QUEUE Q548; notes/flow.md § "Plan: the aim and the mission card", slice 2;
 // Caio 2026-11-11: "a hard time understanding when I have finished a mission"). cardJobs lists what this flight could do:
 // the accepted contracts judged on a flight whose needs the vessel carries, and the missions open at launch it could
-// meet (NEXT's order, three at most), each with Q547's conds; what it has done, folded. jobsLeft says where it stands.
+// meet (NEXT's order; all of them since Q600), each with Q547's conds; what it has done, folded. jobsLeft says where it stands.
 // A scripted sounding flight with a 40–55 km apex contract: open with "now 31 km" while climbing → ✓ at 47 km falling
 // (one message) → "bring it home" with the recovery ◐ in the landing verdict's words → landed with the package: both the
 // contract and the weather mission paid, the card reads done and End flight shows. Past 55 km the apex is ✗ (one
 // message), and stays so. A hopper without the instrument package gets no apex job; a stage dropped later doesn't take it
-// off. Not in the dark cockpit's cards; messages say each change once, none at the first look.
+// off. In the dark cockpit's cards since Q600 (flow-58); messages say each change once, none at the first look.
 {
   const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,TELLUS,recNew,newShip,PRESETS,cardJobs,jobsLeft,jobConds,MC_HOME,missionEval,elements,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, T = D.TELLUS, done = []; D.HOOK.news = () => {}; D.HOOK.save = () => {}; D.HOOK.done = n => done.push(n);
@@ -1371,7 +1371,7 @@
   const paid = done.map(n => n.k + ':' + n.name).join(', ');
   const fin = J3.filter(j => j.done).length === 2 && L3 && L3.k === 'done' && L3.t === 'done: end the flight when you like' && r3[0][0].includes('Now')
     && r3.some(r => r[1].includes('· done, +')) && m3.length === 0 && done.length === 2 && done.some(n => n.k === 'mission' && n.id === 'weather' && n.flight) && done.some(n => n.k === 'contract' && n.flight);
-  const listed = J0.map(j => j.key).join(','), first = J0[0] && J0[0].key === 'contract:7' && J0.filter(j => j.k === 'mission').length <= 3 && J0.some(j => j.key === 'mission:weather');
+  const listed = J0.map(j => j.key).join(','), first = J0[0] && J0[0].key === 'contract:7' && J0.some(j => j.key === 'mission:weather') && !page.includes('MC_MISSIONS');
   // past the band: lost, said once, stays lost; the flight then has nothing to bring home for it
   const s2 = fly('Sounding', true); at(s2, 30e3, 900); A.watch(); at(s2, 61e3, 400, 61e3); A.watch(); const m4 = msgs.splice(0); at(s2, 40e3, -300); A.watch(); const m5 = msgs.splice(0);
   const c4 = job(s2, 'contract:7'), lost = c4 && c4.conds[0].state === 'lost' && m4.length === 1 && m4[0].endsWith(': apex 40–55 km ✗') && m5.length === 0 && job(s2, 'contract:7').conds[0].state === 'lost';
@@ -1379,18 +1379,19 @@
   const s3 = fly('Hopper', true), noSci = !job(s3, 'contract:7');
   const s4 = fly('Sounding', true); D.cardJobs(s4); for (const p of s4.parts) if (p.d.kind === 'sci') p.on = false; const kept = !!job(s4, 'contract:7');
   const CP = page.slice(page.indexOf('const CP_CARDS='), page.indexOf(';', page.indexOf('const CP_CARDS=')));
-  const wired = page.includes("{id:'mission',title:'Mission',rows:missionRows}") && !CP.includes("'mission'") && page.includes('hlGauges();dryHint();missionWatch();')
+  const wired = page.includes("{id:'mission',title:'Mission',rows:missionRows}") && CP.includes("'mission'") && page.includes('hlGauges();dryHint();missionWatch();')
     && page.includes("(!S.alive||S.landed&&simT>5||(mcLeft()||{}).k==='done')");
-  check('flow-54: the Mission card: a sounding flight\'s apex contract open → ✓ (said once) → bring it home with the landing verdict → done (contract and weather paid, End flight); past 55 km ✗ once and stays; needs from the pad; not in the dark cockpit',
+  check('flow-54: the Mission card: a sounding flight\'s apex contract open → ✓ (said once) → bring it home with the landing verdict → done (contract and weather paid, End flight); past 55 km ✗ once and stays; needs from the pad; in the dark cockpit (Q600)',
     open && met && quiet && fin && first && lost && noSci && kept && wired,
     `jobs ${listed} · open ${open} · met ${met} ("${m1.join(' | ')}", ${L2 && L2.t}) · quiet ${quiet} · done ${fin} (${L3 && L3.t}; paid ${paid}) · lost ${lost} ("${m4.join(' | ')}") · hopper ${noSci} · dropped ${kept} · wired ${wired}`);
 }
 
-// flow-55. The completion notice (flow, QUEUE Q569; Caio 2026-11-11, the gameplay loop): its own element (#done), not
-// HOOK.msg's 3-second line. A mission done shows its name, win line, pay and what it opened (Q570); a hint fired after it
-// does not remove it; a second completion queues ("1 more"); Enter or a click dismisses one at a time; one that comes
-// mid-burn waits for the engines to stop, and once up a burn doesn't hide it; a flight's notices go when the flight ends,
-// a world mission's stays at the desk. Its "left" line is the Mission card's (end the flight / bring it home).
+// flow-55. The completion notice (flow, QUEUE Q569; since Q600 and D42, "quiet in flight, loud after it"). In flight a
+// mission or contract done is one line in #msg ("✓ Mission complete: Beeper · +30.0M", "First in the world" for a first)
+// and a chime (sndDone), and no centred box: the Mission card turns its row green (flow-58). At the desk (world missions
+// and contracts judged at home) the box (#done) comes as before: name, win line, pay and what it opened (Q570); a hint
+// fired after it does not remove it; a second queues ("1 more"); Enter or a click dismisses one at a time. A flight's
+// completion that reaches the queue after its flight has ended is dropped (the debrief says it).
 {
   const D = new Function(src + 'return {PROG,MISSIONS,opensLine,opensNames};')();
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
@@ -1398,33 +1399,38 @@
   const hm = page.slice(page.indexOf('HOOK.msg=t=>{'), page.indexOf('\n', page.indexOf('HOOK.msg=t=>{')));
   const mk = () => { const e = { style: {}, innerHTML: '', textContent: '', cls: new Set(['hidden']) };
     e.classList = { add: c => e.cls.add(c), remove: c => e.cls.delete(c), contains: c => e.cls.has(c), toggle: (c, on) => on ? e.cls.add(c) : e.cls.delete(c) }; return e; };
-  const E = { msg: mk(), done: mk() }, env = { S: { alive: true, throttle: 0 }, burning: false, left: { k: 'done', t: 'done: end the flight when you like' } };
+  const E = { msg: mk(), done: mk() }, env = { S: { alive: true, throttle: 0 }, chimes: 0, left: { k: 'done', t: 'done: end the flight when you like' } };
   const N = new Function('env', 'D', 'let mode="flight",msgTimer=0,evt=false,simT=0;const HOOK={},$=id=>env.E[id],document={getElementById:id=>env.E[id]},msgLayout=()=>{},'
-    + 'activeEngines=()=>env.burning?[1]:[],mcLeft=()=>env.left,opensLine=D.opensLine,opensNames=D.opensNames,tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M";let S=env.S;'
-    + hm + '\n' + code + 'return {HOOK,doneTick,doneDismiss,DONE_Q,set mode(m){mode=m}};')(Object.assign(env, { E }), D);
+    + 'activeEngines=()=>[],mcLeft=()=>env.left,opensLine=D.opensLine,opensNames=D.opensNames,tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M",sndDone=()=>env.chimes++;let S=env.S;'
+    + hm + '\n' + code + 'return {HOOK,doneTick,doneDismiss,DONE_Q,get msgTimer(){return msgTimer},set mode(m){mode=m}};')(Object.assign(env, { E }), D);
   D.PROG.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 }, beeper: { flight: 2, day: 9 } };
   const shown = () => !E.done.cls.has('hidden');
-  N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: true });
+  // in flight: a line and a chime, no box, nothing queued; a first says so; a contract too
+  env.S.throttle = 1; N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: true });
+  const fl1 = !shown() && N.DONE_Q.length === 0 && E.msg.textContent === '✓ Mission complete: Beeper · +30.0M' && env.chimes === 1 && N.msgTimer === 6;
+  N.HOOK.done({ k: 'mission', id: 'lift1', name: 'Heavy lift I', win: '', pay: 40, first: true, flight: true });
+  N.HOOK.done({ k: 'contract', id: 3, name: 'Satellite to 300 km', win: 'for Avalon', pay: 55, flight: true });
+  const fl2 = !shown() && N.DONE_Q.length === 0 && E.msg.textContent === '✓ Contract done: Satellite to 300 km · +55.0M' && env.chimes === 3;
+  const firstSaid = (() => { N.HOOK.done({ k: 'mission', id: 'x', name: 'Orbit', pay: 1, first: true, flight: true }); return E.msg.textContent.startsWith('✓ First in the world: Orbit'); })();
+  env.S.throttle = 0;
+  // a flight's completion after the flight: dropped
+  N.mode = 'editor'; N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', pay: 30, flight: true }); const dropped = !shown() && N.DONE_Q.length === 0;
+  // at the desk: the box
+  N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: false });
   const t1 = E.done.innerHTML, one = shown() && t1.includes('MISSION COMPLETE') && t1.includes('Beeper') && t1.includes('A signal from orbit') && t1.includes('+30.0M')
-    && t1.includes('Opens 2 missions · 6 kinds of contract · 21 parts') && t1.includes('Done: end the flight when you like') && !t1.includes('more after this');
+    && t1.includes('Opens 2 missions · 6 kinds of contract · 21 parts') && !t1.includes('Done: end') && !t1.includes('more after this');
   N.HOOK.msg('Pitch over now: follow the ◇'); const hint = E.msg.textContent.startsWith('Pitch over') && shown() && E.done.innerHTML === t1;
-  N.HOOK.done({ k: 'contract', id: 3, name: 'Satellite to 300 km', win: 'for Avalon', pay: 55, flight: true }); const queued = shown() && E.done.innerHTML.includes('1 more after this') && E.done.innerHTML.includes('Beeper');
-  N.doneDismiss(); const next = shown() && E.done.innerHTML.includes('CONTRACT DONE') && E.done.innerHTML.includes('Satellite to 300 km') && !E.done.innerHTML.includes('more after');
+  N.HOOK.done({ k: 'contract', id: 3, name: 'Survey data', win: 'for Avalon', pay: 55, flight: false }); const queued = shown() && E.done.innerHTML.includes('1 more after this') && E.done.innerHTML.includes('Beeper');
+  N.doneDismiss(); const next = shown() && E.done.innerHTML.includes('CONTRACT DONE') && E.done.innerHTML.includes('Survey data') && !E.done.innerHTML.includes('more after');
   N.doneDismiss(); const empty = !shown() && N.DONE_Q.length === 0;
-  env.burning = true; env.S.throttle = 1; N.HOOK.done({ k: 'mission', id: 'lift1', name: 'Heavy lift I', win: '', pay: 40, flight: true }); const held = !shown() && N.DONE_Q.length === 1;
-  env.S.throttle = 0; env.burning = false; N.doneTick(1); const after = shown() && E.done.innerHTML.includes('Heavy lift I');
-  env.S.throttle = 1; env.burning = true; N.doneTick(1); const stays = shown(); env.S.throttle = 0; env.burning = false;
-  N.mode = 'editor'; N.doneTick(1); const ended = !shown() && N.DONE_Q.length === 0;
-  N.HOOK.done({ k: 'mission', id: 'diswatch', name: 'Disaster watch', win: 'pictures within hours', pay: 60, flight: false }); N.doneTick(1); N.doneTick(1);
-  const desk = shown() && E.done.innerHTML.includes('Disaster watch') && !E.done.innerHTML.includes('Done: end');
-  N.doneDismiss(); const gone = !shown();
   const sim = H.slice(0, H.indexOf('// ==== SIM END'));
   const wired = page.includes('<div id="done" class="hidden"') || H.includes('<div id="done" class="hidden"');
-  const lanes = wired && H.includes('<script>') && page.includes('doneTick(dtR);') && sim.includes("HOOK.done({k:'mission',id:M.id,name:M.name") && !sim.includes('HOOK.msg(`Mission complete')
-    && !sim.includes('HOOK.msg(`Contract complete') && sim.includes("HOOK.done({k:'contract',id:c.id,name:cTitle(c)") && sim.includes('done(){} };') && page.includes("addEventListener('keydown',e=>{if(e.key!=='Enter'");
-  check('flow-55: the completion notice: its own element with name, win, pay, what it opened and what is left; a hint after it leaves it; queued, dismissed one by one; waits out a burn and stays through one; gone with its flight; a world mission at the desk',
-    one && hint && queued && next && empty && held && after && stays && ended && desk && gone && lanes,
-    `shown ${one} · hint kept ${hint} · queued ${queued} · next ${next} · empty ${empty} · held ${held}/${after}/${stays} · flight ended ${ended} · desk ${desk}/${gone} · wired ${lanes}`);
+  const lanes = wired && page.includes('doneTick(dtR);') && sim.includes("HOOK.done({k:'mission',id:M.id,name:M.name") && !sim.includes('HOOK.msg(`Mission complete')
+    && !sim.includes('HOOK.msg(`Contract complete') && sim.includes("HOOK.done({k:'contract',id:c.id,name:cTitle(c)") && sim.includes('done(){} };') && page.includes("addEventListener('keydown',e=>{if(e.key!=='Enter'")
+    && !page.includes('doneHeld') && page.includes('function sndDone(){');
+  check('flow-55: a completion in flight is a line and a chime, no box (D42, Q600); a flight\'s that comes after it is dropped; at the desk the box: name, win, pay, what it opened; a hint leaves it; queued, dismissed one by one',
+    fl1 && fl2 && firstSaid && dropped && one && hint && queued && next && empty && lanes,
+    `in flight ${fl1}/${fl2} ("${E.msg.textContent}", ${env.chimes} chimes) · first ${firstSaid} · dropped ${dropped} · desk ${one} · hint kept ${hint} · queued ${queued} · next ${next} · empty ${empty} · wired ${lanes}`);
 }
 
 // flow-56. The unlock overlay (flow, QUEUE Q572; PROGRESSION § 3; D42: "i should see each one"): what a flight's missions
@@ -1467,4 +1473,93 @@
   const wall = /h\+=trophyCase\(\)/.test(H) && /function trophyKeep\(D\)/.test(H) && /TROPHY CASE/.test(H);
   check('flow-57: a capstone closes its chapter (the structural test, chapter 1; weather and the air close nothing); the Missions tab by chapter with its finish; the Debrief\'s poster for a chapter; the trophy case on the desk wall',
     c1 && c1.id === 'c1' && c1.capstone === 'Structural test flight' && none === null && tab && poster && wall, `capstone ${c1 && c1.name} · none ${none} · tab ${tab} · poster ${poster} · wall ${wall}`);
+}
+
+// flow-58. The Mission card stays up in flight (flow, QUEUE Q600; D42; PLAYTEST #162, #164). The card is one of the dark
+// cockpit's (CP_CARDS): during a burn hudCardsOn (app/hud.js, the cards renderCards draws) keeps it and the Δv card and
+// folds the rest; quiet, the rest come back. In a critical phase its rows are short: one per job, the job's first open
+// condition with the reading now (pinned: full). The jobs keep the order the flight first listed them in (mcOrder), so a
+// job done turns green where it stood: a sounding flight's apex contract and weather mission, done at the landing, read
+// ✓ in green with their pay in the places they had at the pad.
+{
+  const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,TELLUS,recNew,newShip,PRESETS,cardJobs,jobsLeft,jobConds,MC_HOME,missionEval,elements,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, T = D.TELLUS; D.HOOK.news = () => {}; D.HOOK.save = () => {}; D.HOOK.done = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, done: {}, own: null, decisions: [], site: null }); D.chooseStart('agency');
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const code = page.slice(page.indexOf('const MC_MARK='), page.indexOf('const HUD_CARDS=['));
+  const env = { phase: null, V: { v: { recovered: true, refund: 1 }, t: 'recovered by our ships, ~6 h' } };
+  const A = new Function('env', 'let S=null;const mode="flight",{cardJobs,jobsLeft,MC_HOME,elements,HOOK}=env,toolOK=()=>true,impVerdict=()=>env.V,verdictInk=()=>"#7dffa8",tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M",cpPhase=()=>env.env.phase;'
+    + code + 'return {rows:missionRows,mcOrder,set S(v){S=v}};')({ ...D, env, V: env.V, HOOK: { msg: () => {} } });
+  P.done = {}; P.active = [{ id: 7, type: 'apex', src: 'sci', client: 0, p: { lo: 40, hi: 55, pay: 14, dur: 90 }, deadline: 999 }];
+  const s = D.newShip(D.PRESETS.Sounding); s.rec = D.recNew(); Object.assign(s.rec, { launched: true, open0: D.MISSIONS.filter(m => !(m.req || []).length).map(m => m.id) });
+  s.alive = true; s.landed = false; A.S = s;
+  const at = (h, vy, apex) => { s.r = [0, T.R + h, 0]; s.v = [300, vy, 0]; Object.assign(s.rec, { apexSci: apex ?? Math.max(s.rec.apexSci, h), apex: Math.max(s.rec.apex, apex ?? h) }); };
+  const plain = r => r[1].replace(/<[^>]+>/g, '');
+  at(31e3, 900); const J0 = D.cardJobs(s);
+  env.phase = null; const full = A.rows(); env.phase = 'ascent'; const short = A.rows();
+  const jobRows = short.filter(r => !r[0].includes('Now'));
+  const shortOK = jobRows.length === J0.length && full.length > short.length && J0.every((j, i) => plain(jobRows[i]).startsWith(j.title))
+    && plain(jobRows[0]).includes('apex 40–55 km, now 31 km') && jobRows[0][0].includes('○');
+  // done at the landing: green, with pay, in their places
+  at(52e3, -50, 52e3); s.landed = true; s.rec.landed = true; s.rec.recSci = true; s.v = [0, 0, 0]; D.missionEval(s); env.phase = 'landing';
+  const after = A.rows().filter(r => !r[0].includes('Now')), keys0 = J0.map(j => j.key);
+  const done = after.filter(r => r[0].includes('✓'));
+  const kept = after.length === J0.length && done.length === 2 && plain(after[keys0.indexOf('contract:7')]).includes('· done, +')
+    && plain(after[keys0.indexOf('mission:weather')]).includes('· done, +') && done.every(r => r[1].startsWith('<span class="ok">'));
+  // mcOrder alone: a later job done (listed first by cardJobs) keeps its place
+  const R0 = {}, j = (k, d) => ({ key: k, done: !!d }), o1 = A.mcOrder(R0, [j('a'), j('b'), j('c')]).map(x => x.key).join(''), o2 = A.mcOrder(R0, [j('c', 1), j('a'), j('b'), j('d')]).map(x => x.key).join('');
+  const order = o1 === 'abc' && o2 === 'abcd';
+  // the cards on screen in a burn: hudCardsOn with every row function stubbed
+  const cards = page.slice(page.indexOf('const HUD_CARDS=['), page.indexOf('function renderCards('));
+  const CPc = page.slice(page.indexOf('const CP_CARDS='), page.indexOf(';', page.indexOf('const CP_CARDS=')) + 1);
+  const none = () => [], some = () => [['a', 'b']];
+  const K = new Function('env', 'const mode="flight",view="flight",S={alive:true,landed:false,v:[0,0,0],r:[1,0,0]},GAUGES=true,impact=null,localStorage={getItem:()=>null},performance={now:()=>0},'
+    + 'dot=()=>0,toolOK=()=>true,ascentOn=()=>false,cpPhase=()=>env.ph(),missionRows=env.some,dvRows=env.some,fleetRows=env.some,payloadRows=env.some,statRows=env.none,agRows=env.none,rvRows=env.none,'
+    + 'tgtRows=env.none,dockRows=env.none,tipRows=env.none,bayRows=env.none,armRows=env.none,spinRows=env.none,wheelRows=env.none,rcsRows=env.none,aoaRow=()=>[],aeroRow=()=>[],heatRow=()=>[],structRow=()=>[],impactRow=()=>[],landRow=env.none;'
+    + CPc + cards + 'return {on:()=>hudCardsOn().map(x=>x.c.id).join(",")};')({ ph: () => env.phase, some, none });
+  env.phase = 'burn'; const burn = K.on(); env.phase = null; const quiet = K.on();
+  const inBurn = burn === 'mission,dv' && quiet === 'mission,dv,payload,fleet';
+  check('flow-58: the Mission card stays up in flight: kept in a burn (with Δv; the rest fold), short in a critical phase (one line per job, its open condition and reading); a job done turns green in its place with its pay (Q600, D42)',
+    shortOK && kept && order && inBurn,
+    `short ${shortOK} (${short.length} rows vs ${full.length} full: ${jobRows.map(plain).join(' | ')}) · done in place ${kept} (${after.map(plain).join(' | ')}) · order ${order} (${o1}, ${o2}) · cards in a burn "${burn}", quiet "${quiet}"`);
+}
+
+// flow-59. Poster headlines for big moments (flow, QUEUE Q479; UI.md § 4.1 item 3): a first, a rival's first, a new chapter
+// and a new computing era reach the news with a poster ({kick, hl}); routine news has none. The desk's paper prints a poster
+// from the last POSTER_DAYS as a poster (kicker, one big headline, the story under it); the Debrief's headline and the
+// paper's poster take the era's poster palette (pe1 human computers, pe2 mainframes, pe3 onboard computers and after).
+{
+  const A = new Function(src + 'return {PROG,HOOK,MISSIONS,programNew,chooseStart,missionComplete,raceTick,get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v},compTick,POWERS,get home(){return HOME}};')(), P = A.PROG;
+  const got = []; A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.done = () => {}; A.HOOK.news = (t, c, big) => got.push({ t, big });
+  A.programNew(); A.chooseStart('agency'); got.length = 0;
+  const M = id => A.MISSIONS.find(m => m.id === id);
+  P.done = { weather: { day: 0 } }; A.missionComplete(M('loads'), null); const chap = got.find(x => x.big && /Chapter 1 complete/.test(x.big.kick));
+  const routine = got.filter(x => !x.big).length > 0 && !got.some(x => x.big && /Structural/.test(x.big.hl));
+  got.length = 0; A.missionComplete(M('beeper'), null); const first = got.find(x => x.big && x.big.kick === 'First in the world' && x.big.hl === 'The beeper');
+  got.length = 0; const riv = A.POWERS.find(p => p.i !== A.home); A.RIVALS = { hop: { i: riv.i, day: 0 } }; P.raceLost = {}; P.day = 1; A.raceTick();
+  const rival = got.find(x => x.big && x.big.rival && x.big.kick === `${riv.name} first`);
+  got.length = 0; P.compEra = null; A.compTick(); const era0 = got.length; P.compEra = -1; A.compTick(); const era = got.find(x => x.big && x.big.kick === 'A new era');
+  const H = html.replace(/\r\n/g, '\n');
+  const app = /HOOK\.news=\(t,cls='',big=null\)=>\{NEWS\.unshift\(\{t,cls,day:PROG\.day\|\|0,\.\.\.\(big\?\{big\}:\{\}\)\}\)/.test(H) && /x\.big&&\(PROG\.day\|\|0\)-x\.day<=POSTER_DAYS/.test(H)
+    && /nw\.big\?posterClip\(nw,cls,more\)/.test(H) && /posterEra=\(\)=>'pe'\+Math\.min\(3,1\+/.test(H) && /' '\+posterEra\(\)/.test(H) && /\.poster\.pe3/.test(H);
+  check('flow-59: big moments carry a poster in the news (a new chapter, a first, a rival\'s first, a new era; routine news none); the desk\'s paper prints a recent one as a poster, and posters take the era\'s palette',
+    !!chap && routine && !!first && !!rival && era0 === 0 && !!era && app,
+    `chapter ${chap && chap.big.hl} · first ${first && first.big.hl} · rival ${rival && rival.big.kick}: ${rival && rival.big.hl} · era ${era && era.big.hl} · routine ok ${routine} · app ${app}`);
+}
+
+// flow-60. After the unlock cards (loop slices; Q572's follow-ups, Q370): every part of a family has its own line, so the
+// satellite bench's twenty cards say twenty things (the family's line stays the builder's reason); each card plays a sound
+// (sndUnlock: a part rises, a chapter is a fanfare, a mission done the notice's beeps); a load with a career under way opens
+// on the desk, a new career (and the tester) on the title, which the Esc menu keeps.
+{
+  const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,unlockCards,PART_FAMILY,famParts,PART_WHY,partWhy};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const fams = Object.keys(A.PART_FAMILY), bare = fams.flatMap(f => A.famParts(f).filter(k => !A.PART_WHY[k]));
+  P.done = { weather: {}, loads: {}, beeper: {} }; const bee = A.unlockCards(['beeper']).filter(c => c.k === 'part'), lines = new Set(bee.map(c => c.why));
+  const builder = A.partWhy('core') === A.PART_FAMILY.bench.why;
+  const H = html.replace(/\r\n/g, '\n');
+  const snd = /function sndUnlock\(k\)\{/.test(H) && /sndUnlock\(c\.k\)/.test(H);
+  const load = /addEventListener\('load',\(\)=>\{if\(!needCharter\(\)&&!TEST\.on&&screenNow\(\)==='title'\)go\('program'\)\}\)/.test(H) && /b\('title','Title screen'\)/.test(H);
+  check('flow-60: each family member has its own line (the bench\'s 20 cards say 20 things; the builder keeps the family\'s); a sound per card; a career under way opens on the desk, the title in the Esc menu',
+    !bare.length && bee.length === 20 && lines.size === 20 && builder && snd && load, `no line: ${bare.join(',') || '-'} · bench lines ${lines.size}/${bee.length} · builder ${builder} · sound ${snd} · load ${load}`);
 }

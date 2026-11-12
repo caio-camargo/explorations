@@ -256,6 +256,15 @@ details.ms.of>summary{cursor:pointer;list-style:none}details.ms.of>summary::-web
 #debBody .kick{font:bold 12px 'Courier Prime',monospace;letter-spacing:.3em;color:var(--bad);margin-top:10px}
 #debBody .hl{font:30px/1.1 'Special Elite',Courier,monospace;color:#1d2a44;margin:10px 150px 2px 0}
 #debBody .hl.poster{font:58px/.95 'Bebas Neue',Impact,sans-serif;letter-spacing:3px;color:var(--bad);margin-top:2px;text-transform:uppercase}#debBody .hl.poster.black{color:#1a1714}#debBody .hl.poster.chap{color:#1d4f8f}
+/* (Q479) poster headlines for big moments, in the era's poster palette (UI.md § 4.1): pe1 flat cream, navy and red; pe2 browns
+   and oranges, rounder type; pe3 a photo-dark band and bold sans. The desk's paper and the Debrief's headline */
+#deskWall .clip.poster,#deb .clipn.poster{padding:7px 10px 9px}#deskWall .clip.poster .pk,#deb .clipn.poster .pk{font:11px 'Bebas Neue',Impact,sans-serif;letter-spacing:.2em;margin-top:5px}
+#deskWall .clip.poster .ph,#deb .clipn.poster .ph{font:34px/.95 'Bebas Neue',Impact,sans-serif;letter-spacing:1px;text-transform:uppercase;margin:2px 0 4px}#deskWall .clip.poster .hd,#deb .clipn.poster .hd{font:12px/1.2 Georgia,serif}
+.poster.pe1 .pk{color:#b3262a}.poster.pe1 .ph{color:#1d4f8f}.poster.pe1.rival .ph{color:#b3262a}
+.poster.pe2{background:#efd9b4}.poster.pe2 .pk{color:#c0561c}.poster.pe2 .ph{color:#5a3214;font-family:'Arial Rounded MT Bold','Trebuchet MS',sans-serif;font-weight:bold;letter-spacing:0}
+.poster.pe3{background:#16181c;color:#e8e8e8}.poster.pe3 .pp{border-bottom-color:#666}.poster.pe3 .pk{color:#ff5a3c}.poster.pe3 .ph{color:#fff;font-family:'Arial Black','Helvetica Neue',Arial,sans-serif;font-weight:900;letter-spacing:-.5px}
+#debBody .hl.poster.pe2{color:#c0561c;font-family:'Arial Rounded MT Bold','Trebuchet MS',sans-serif;font-weight:bold;letter-spacing:0}#debBody .hl.poster.pe2.chap{color:#5a3214}
+#debBody .hl.poster.pe3{background:#16181c;color:#fff;font-family:'Arial Black','Helvetica Neue',Arial,sans-serif;font-weight:900;letter-spacing:-1px;padding:4px 10px 6px}#debBody .hl.poster.pe3.chap{color:#9cc7ff}
 #debBody .lead{font-size:13.5px;margin:6px 0 4px}#debBody .lead .ok{color:var(--ok)}#debBody .lead .bad{color:var(--bad)}
 #debBody .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
 #debBody .dh{font:bold 12.5px 'Courier Prime',monospace;letter-spacing:.18em;text-transform:uppercase;color:#1d2a44;margin:16px 0 4px}
@@ -333,9 +342,9 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 
 <div id="editor" class="ui">
   <div class="panel left">
-    <h1>LAUNCHPAD <button id="bLog" style="float:right;letter-spacing:0;font-size:11px">Logbook</button></h1><div class="sub">design table · pick a part, then place it on the rocket</div>
+    <h1>LAUNCHPAD <button id="bLog" style="float:right;letter-spacing:0;font-size:11px">Logbook</button></h1><div class="sub">design table</div>
     <div id="hqStrip"></div>
-    <h2>Parts</h2><div id="target"></div><div id="palette"></div>
+    <h2 title="Click a part, then click the rocket to place it. Right-click a part on the rocket for its options.">Parts</h2><div id="target"></div><div id="palette"></div>
     <h2>Presets</h2><div id="presets"></div>
   </div>
   <div class="panel right">
@@ -377,12 +386,12 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
   <div id="cards" class="hidden"></div>
-  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><span id="warpL"></span><button id="warpUp" data-warp="1">▶</button></span><button id="bMap">Map [M]</button><select id="mapFocus" title="what the map is centred on: Tab next · Home the ship · double-click a body or craft"></select><button id="bLay" title="what the map shows">Layers</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bWings" class="hidden" title="unfold the solar wings and boom antennas, or fold them; in thick air (over ~1 kPa) they tear off">Wings out (P)</button><button id="bLegs" class="hidden" title="landing legs down or up">Legs down (Y)</button><button id="bBay" class="hidden" title="cargo bay doors open or closed: open, the payload meets the air and its heat">Open bay (B)</button><button id="bRevert">Revert</button><button id="bEditor">Design table</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
+  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><span id="warpL"></span><button id="warpUp" data-warp="1">▶</button></span><button id="bMap">Map [M]</button><select id="mapFocus" title="the map's centre · Tab: next · Home: the ship"></select><button id="bLay" title="what the map shows">Layers</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bWings" class="hidden" title="unfold or fold the wings and antennas; they tear off in thick air">Wings out (P)</button><button id="bLegs" class="hidden" title="landing legs down or up">Legs down (Y)</button><button id="bBay" class="hidden" title="open or close the cargo bay doors">Open bay (B)</button><button id="bRevert">Revert</button><button id="bEditor">Design table</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit on its best ascent so far">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div id="mapLay" class="hidden"></div>
   <div id="navwrap">
     <div id="gslot" class="hidden"></div>
     <div id="thr"><div id="thrf"></div></div>
-    <div style="position:relative"><div id="navtxt"><span id="navhdg"></span> <span id="navref" title="the navball's speed: against the ground or in orbit. Auto blends them from 40 to 60 km; click to hold one (auto · surface · orbit)"></span></div><canvas id="nav" width="180" height="180"></canvas></div>
+    <div style="position:relative"><div id="navtxt"><span id="navhdg"></span> <span id="navref" title="the navball's speed: auto · surface · orbit (click to change)"></span></div><canvas id="nav" width="180" height="180"></canvas></div>
     <div id="hlg"><div class="g" id="gHeat"><div class="f"></div><i></i><i class="r"></i><b>H</b></div><div class="g" id="gLoad"><div class="f"></div><i></i><i class="r"></i><b>L</b></div></div>
     <div id="sas"></div>
   </div>

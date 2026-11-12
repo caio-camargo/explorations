@@ -7415,3 +7415,118 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `ACTIVE_WORK.md`.
 - **Next:** TESTING 375–377 by hand; the follow-ups under QUEUE *Proposed* (a sound, per-part lines, Q600 and the desk
   notice). M1 closes when Caio replays the first hour (D41).
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-q600): Q600 (v1.319), the Mission card in flight (a flow item, D42)
+
+- **Asked:** Caio: work on Q600 (PLAYTEST #162 "Mission complete" at the thrust cut; #164 the missions gone in flight).
+- **Done:** the Mission card in `CP_CARDS` (app/cockpit.js), short in a critical phase (one line per job, its open
+  condition and reading; pinned: full); every mission the vessel could meet (`MC_MISSIONS` cap gone, sim/next.js); jobs
+  keep their first order (`mcOrder`), so a job done turns green in place with its pay (`debPaid` records a contract's id,
+  sim/contracts.js). In flight `HOOK.done` → `doneFlight`: a `#msg` line for 6 s and `sndDone` (two soft tones,
+  app/sound.js); `doneHeld` gone; the centred box at the desk only. `hudCardsOn()` split out of `renderCards`.
+- **Checked:** flow-55 rewritten, flow-58 new, flow-54 and flow-40 updated; flow and economy sections locally; the page,
+  headless (harness.cjs): the card drawn short in a critical phase with the rest folded, a completion in flight a line
+  and a chime with no box, the desk's box still; CI green twice (43156354034; 43158377058 after the loop slices' merge).
+- **Numbers:** the loop slices took v1.318, TESTING 375–377 and flow-56/57 meanwhile: Q600 is v1.319, TESTING 378,
+  flow-58; a 🖥 check filed (row 1 of the table) for the card over a real climb.
+- **Not checked:** on a GPU at real size (the 🖥 check; TESTING 378 by hand).
+- **Note:** the main clone has uncommitted edits to `builder.js`, `app/editor.js`, `index.html` (seemingly the vehicle
+  session's R28); left untouched.
+- **Files:** launchpad `app/hud.js`, `app/cockpit.js`, `app/notice.js`, `app/sound.js`, `sim/next.js`,
+  `sim/contracts.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`, `PLAYTEST.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** the 🖥 check and TESTING 378; Q572's overlays could take the desk's box too (world missions judged at home).
+
+## 2026-11-12 — loop slices, 2nd round (Opus 5.5, worktree launchpad-momentum, branch momentum2): v1.318 flown, Q479 (v1.320)
+
+- **Asked:** Caio: "go ahead with 1 and 2": prove v1.318 on a real flight, then Q479 (poster headlines for big moments).
+- **Done, 1:** a new robot row `playtest.mjs cards` (m1's two real flights, the unlock checks spliced in after each Debrief).
+  Passed: the Sounding closes weather and the structural test (25.2 kPa) and shows 14 cards under *Chapter 1 complete*; the
+  beeper 26 under *Chapter 2 complete · first in the world* (+108M); a real Space advances, the camera turns, a real D
+  takes it to the table; the trophy case holds both chapters with their flight photos; the Missions tab by chapter.
+  TESTING 375–377 marked robot-passed (by hand still).
+- **Done, 2 (Q479, v1.320):** big moments reach the news with a poster (`HOOK.news`'s third argument): our first, a rival's
+  first, a chapter closed, a new computing era. The desk's Herald (and the Debrief's clipping) prints a recent one as a
+  poster; posters and the Debrief's headline take the era's palette (pe1 cream/navy/red, pe2 browns/oranges, pe3 dark band,
+  bold sans). Test flow-59 (Q600 took flow-58, v1.319 and TESTING 378 meanwhile: renumbered).
+- **Also:** vehicle-43's ignition roll starts from no know-how (it failed once in a smoke shard after earlier sections).
+- **Checked:** CI green (43160205516); the robot row; smoke. **Mistake, caught:** a `//` comment appended mid-line swallowed
+  the rest of `raceTick` (third time in two days), and a robot run that started meanwhile loaded the broken page; rerun clean.
+- **Main clone:** it holds someone else's uncommitted edits (`app/editor.js`, `builder.js`, `index.html`: shorter readout
+  wording), so `main` was fast-forwarded with `git push origin momentum2:main` and the clone left untouched: **whoever is
+  working there: pull before committing.**
+- **Not checked:** the pe2/pe3 palettes on screen; a rival's first on the desk by eye.
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `app/state.js`, `app/desk.js`, `app/debrief.js`, `index.html`,
+  `playtest.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** TESTING 375–379 by hand; the *Proposed* follow-ups (a card sound, per-part lines); then Q370 or Q47.
+
+## 2026-11-12 — QA, Q580 follow-up: the robot's m2 run (Opus 5.5, worktree launchpad-loop)
+
+- **Asked:** Caio: go ahead (run `m2`, left open at v1.317).
+- **Done:** three m2 runs; two robot fixes in `playtest.mjs`: the Passenger hop now lights its engine before waiting to
+  land (it "landed" on the pad, so the range was never certified and the TV Satellite was refused), and routine runs are
+  ordered until three are clean in a row (at most six). notes/economy.md § v1.317 has the result; a *Proposed* line in QUEUE.
+- **Result:** everything the unlock map touches passes (m1, the hop, the range, the weather satellite on its own design,
+  TV, the routine, three clean runs, Repeat on). Still red: `clean3`, `autoRuns`: the first automatic run broke up on the
+  routine's dice, which turns Repeat off until three more clean runs are ordered by hand, and m2 only waits. A rule question
+  for economy/Caio, not the map. One run had page scripts missing mid-run (the local server under load); rerun clean.
+- **Checked:** CI full run green on `loop`; pushed to `main` from the worktree (`git push origin loop:main`) because the main
+  clone has another session's uncommitted edits (editor.js, builder.js, index.html), left untouched.
+
+## 2026-11-12 — economy (Opus 5.5, worktree launchpad-r19): W47 answered; R19 (v1.321)
+
+- **Asked:** Caio: a defection clears the debt (as built); W47's context, then answered (saturation, privatization once,
+  a stake once per power, numbers to playtest); then R19.
+- **Recorded:** DECISIONS W47 (economy section), out of QUEUE's open questions; TESTING 371 asks the balance questions;
+  notes/economy.md v1.313 carries both answers.
+- **Done, R19 (v1.321):** one formula each: `opsOf`, `stackDays`, `ignFail` (sim/program.js), `PAY_MIL`/`PAY_FAR`
+  (sim/contracts.js), called from missionTick, dispatch, supply runs, Rollout and career.mjs; no behaviour change.
+  `LATE=1 node career.mjs`: the chapters' goals, a registry (satellites earn, TV parked over the capital), abstracted
+  ascent procedures so contracts are dispatched (the game's dispatchRoll), studies before a dispatch, routines for the
+  TV and weather satellites. Test econ-43.
+- **Measured** (one seed, 6 years): agencies end at 125–2,236 M (four of six over 1,000), companies 25–223 M; satellite
+  income a quarter to a third of a rich agency's funds; frugal's dispatches never complete; most careers end with no
+  TV satellite still over the capital.
+- **Checked:** default runner output identical to `main` (`ARCHS=openSuper career.mjs 3 2`); economy lane locally; CI.
+- **Not modelled:** the simulator, crew rotations, station resupply and lab-days, Selene supply runs; fixed flight odds.
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `app/rollout.js`, `career.mjs`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `DECISIONS.md`, `TESTING.md`; root `ACTIVE_WORK.md`.
+- **Next:** why TV satellites leave the capital's sky in long careers (drift the routine doesn't count?); frugal's held
+  dispatches; a `stationcrew` plan so the runner sees crew and station contracts; more seeds of `LATE=1` off the shared
+  machine.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slices 1 and 2 (text only)
+- **Caio:** "claude tends to be prolix... a lot of explanations can be tooltips, and even then many are twice as long
+  as they need to be"; he asked for a Fable session to review the copy. **D43**: the screen is not a manual; the
+  budgets are UI.md § 2.1. PLAYTEST #167. **Q603**: the pass, one screen a slice.
+- **v1.322, slice 1, the design table:** 117 strings in `builder.js`, `app/editor.js`, `index.html`; the three
+  instruction lines (under Parts, staging, action groups) are tooltips on their headings; part cards cut. Text only.
+- **Slice 2, the flight, same version:** the first-flight hints and the "too flat" cautions (`app/cockpit.js`), the
+  flight bar's tooltips, Help's rows (`app/screens.js`): 29 strings. The hints stay until Guided teaches.
+- **Tests:** full suite green on slice 1 (898 checks); smoke on both green but for **vehicle-43 (b), a flake** (it
+  found no failed ignition that run; passes alone with and without the change): **Q604**. **Platform:** the suite
+  has a known flake again. After the merge with `origin/main`: smoke green but for the timing check 6b (2,327 µs a
+  warp frame under other sessions' load, 97 µs alone). `review/2026-11-12/copy_words.cjs` lists long text in the panels.
+- **Not checked:** nothing seen in a browser (TESTING 380).
+- **Next:** slice 3, the Program (contracts, missions, mission control). **PARKED still:** R29b; Q592's plan.
+- Files: `explorations/launchpad/builder.js`, `app/editor.js`, `app/cockpit.js`, `app/screens.js`, `index.html`, `UI.md`, `DECISIONS.md`, `QUEUE.md`,
+  `PLAYTEST.md`, `TESTING.md`, `NOTES.md`, `notes/flow.md`, `review/2026-11-12/copy_words.cjs`; root `ACTIVE_WORK.md`.
+
+## 2026-11-12 — QA, a routine's failed run asks the player (Opus 5.5, worktree launchpad-loop): D44 (v1.323)
+
+- **Asked:** Caio, on m2's red: "a failure should alert the player, who decides what to do".
+- **Done:** three clean runs certify a route once (`r.cert`); a failed automatic run holds the routine and puts a decision
+  in the in-tray (*Keep repeating* / *Stop repeating*); the Fleet line says *held after a failed run*; Repeat, once earned,
+  never needs the clean-run ladder again. Before, the failure quietly reset the route to three more clean runs by order.
+  m2 answers *Keep repeating*. `econ-44`; DECISIONS D44; TESTING 381.
+- **Checked:** `econ-44` and the economy shard; `m2` passes end to end in headless Chrome (5 of 5 up at day 4,000) though
+  no automatic run failed in that run, so the decision was checked by the test, not in the page; CI full run green.
+- **Not checked:** played by hand. The decision's texts follow D43 (short), but nobody has read them on screen.
+
+## 2026-11-12 — launchpad session (Opus 5.5): merges and finishes (momentum3, R5, R28, R22d, R29, docs)
+
+- **1, momentum3 → main (v1.324):** `main` had moved by this session's claim only (ACTIVE_WORK.md); merged it into
+  `momentum3` (check_numbers ok; the launchpad tree byte-identical to CI-green run 43168291024, so no new run: the
+  workflow's path filter skips a docs-only push), ff-merged. Local smoke there: green but for vehicle-43 (b), Q604's flake.
+  Loop slices row cleared.

@@ -1064,3 +1064,40 @@
     !noWhy.length && fams.length >= 5 && !famBad.length && !chBad.length && cover && now0 === 'c1' && now1 === 'c2' && shut && stand && standOK && prod && q,
     `no why: ${noWhy.join(',') || '-'}; families ${fams.map(f => `${f} ${A.famParts(f).length}`).join(', ')} (bad: ${famBad.join(',') || '-'}); chapters bad ${chBad.map(c => c.id).join(',') || '-'}, cover ${cover}; now ${now0} → ${now1}; stand ${stand}/${standOK}; line/dev ${prod}; cardQ ${q}`);
 }
+
+// econ-43. One formula each, no copies (economy, QUEUE R19, review 2026-11-09 § 2): a launch's operations fee
+// (`opsOf`), its stacking days (`stackDays`), an engine's odds of not lighting (`ignFail`, with development's "reliable"
+// steps, which career.mjs's copy lacked) and the two pay premiums (`PAY_MIL`, `PAY_FAR`, were a literal *1.6 in 15 pays).
+{
+  const A = new Function(src + 'return {PROG,HOOK,ignFail,IGN_FAIL,khUse,opsOf,OPS_FIX,OPS_FRAC,stackDays,prepDays,khVessel,FAC,facLv,newShip,PRESETS,vesselCost,PAY_MIL,PAY_FAR,CT,rng,programNew,chooseStart};')();
+  const P = A.PROG; A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const k = 'petrel', f0 = A.ignFail(k), want = A.IGN_FAIL * (1 - A.khUse(k)) ** 2; P.dev = { [k]: { rel: 2 } }; const f2 = A.ignFail(k); P.dev = {};
+  const v = A.newShip(A.PRESETS.Orbiter), c = A.vesselCost(v.parts).cost, ops = A.opsOf(c), days = A.stackDays(c, v);
+  const opsOK = Math.abs(ops - (A.OPS_FIX + A.OPS_FRAC * c)) < 1e-12, daysOK = Math.abs(days - A.prepDays(c) * (1 + 0.5 * (1 - A.khVessel(v))) * A.FAC.hall.eff[A.facLv('hall')]) < 1e-12;
+  const rd = f => readFileSync(new URL('./' + f, import.meta.url), 'utf8'), sim = ['sim/program.js', 'sim/contracts.js', 'app/rollout.js', 'career.mjs'].map(f => [f, rd(f)]);
+  const copies = sim.flatMap(([f, s]) => [/OPS_FIX\s*\+\s*OPS_FRAC/, /IGN_FAIL\s*\*/, /prepDays\([^)]*\)\s*\*\s*\(1\s*\+\s*0\.5/, /\*\s*1\.6(?=[,}])/].filter(re => (s.match(new RegExp(re.source, 'g')) || []).length > (f === 'sim/program.js' && re.source !== '\*\s*1\.6(?=[,}])' ? 1 : 0)).map(re => f + ' ' + re.source));
+  const R = A.rng(3), mil = A.CT.recon.gen(R), mil2 = A.CT.milLift.gen(R);
+  check('econ-43: one formula each: ignFail is the know-how odds and two "reliable" steps take it to 0.36×; opsOf and stackDays are the launch\'s fee and days; no copies left in the sim, Rollout or career.mjs; the pay premiums are named (1.6 each)',
+    Math.abs(f0 - want) < 1e-12 && Math.abs(f2 - 0.36 * f0) < 1e-12 && opsOK && daysOK && !copies.length && A.PAY_MIL === 1.6 && A.PAY_FAR === 1.6 && mil && mil2 && Math.abs(mil2.pay - 22 * mil2.m * 1.6) < 1e-9,
+    `ignFail ${f0.toFixed(4)} (want ${want.toFixed(4)}), rel 2: ${f2.toFixed(4)}; ops ${ops.toFixed(2)}, days ${days.toFixed(1)}; copies: ${copies.join(' · ') || 'none'}`);
+}
+
+// econ-44. A failed automatic run asks the player (QA, QUEUE Q580; Caio 2026-11-12: "a failure should alert the player,
+// who decides what to do"): three clean runs certify a route once; when an automatic run then fails, the routine holds and
+// a decision waits in the in-tray, keep repeating or stop. Before, the failure quietly sent the route back to three more
+// clean runs by order, and the robot's m2 (which only waits) never saw it repeat again. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,routeRun,routeAutoWhy,setRouteAuto,resolveDecision,routeCtl};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  Object.assign(P, { day: 2600, decisions: [], dispatch: [], sats: [], routes: [{ id: 1, name: 'Lookouts at 300 km, 82°', stack: [], alt: 300, inc: 82, keep: 2, auto: false, paused: false, runs: 3, clean: 3 }] });
+  const r = P.routes[0], fail = n => D.routeRun({ route: 1, title: `Lookouts, run ${n}`, satId: null }, { ok: false, why: 'it broke up in the climb' });
+  const on = D.setRouteAuto(1, true).ok;
+  fail(4); const d1 = P.decisions.find(d => d.kind === 'routine'), held = r.paused && r.auto, why1 = D.routeAutoWhy(r), ctl = D.routeCtl(r);
+  D.resolveDecision(d1.id, 'keep'); const kept = r.auto && !r.paused && D.routeAutoWhy(r) === '';
+  fail(5); const d2 = P.decisions.find(d => d.kind === 'routine'); D.resolveDecision(d2.id, 'stop'); const stopped = !r.auto && !r.paused;
+  fail(6); const quiet = !P.decisions.some(d => d.kind === 'routine');   // Repeat off: an ordered run's failure is just news
+  const again = D.setRouteAuto(1, true).ok && r.auto;                    // certified once: Repeat can come back without the ladder
+  check('routine (Q580): a failed automatic run holds the routine and asks (keep repeating or stop); the answer is kept; Repeat, once earned, needs no new clean runs',
+    on && !!d1 && held && /in-tray/.test(why1) && !/clean run/.test(why1) && /held after a failed run/.test(ctl) && d1.opts.map(o => o[0]).join() === 'keep,stop' && kept && !!d2 && stopped && quiet && again,
+    `${d1 && d1.title}: "${d1 && d1.text}" · held: "${why1}" · ${news.filter(t => /Your call|routine/.test(t)).slice(0, 3).join(' | ')}`);
+}
