@@ -2188,3 +2188,18 @@ loud after it.
   robot run started while the file was broken loaded the broken page; the rerun was clean.
 - **Not checked:** the pe2 and pe3 palettes on screen (only pe1 was seen: the first hour is in the human-computers era); a
   rival's first on the desk by eye.
+
+## v1.322 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
+
+- **A line per part.** Every member of a family has its own `PART_WHY` line (55 of them: the Kestrel's *the heart of an
+  orbital rocket*, the whip antenna's *the lightest way to be heard*...), so the satellite bench's 20 cards say 20 things.
+  The family's line stays the builder's reason (`partWhy` reads the family first); the card reads the part's.
+- **A sound per card** (`sndUnlock(k)`, app/sound.js; stand-ins for look & sound): a mission done is the notice's two
+  beeps, a part a rising three-note arpeggio, a room or a mission opened two soft notes, the next chapter a four-note
+  fanfare. `AUD.ev.unlock` counts them.
+- **Q370, on the queue's default:** the page still opens on the title, and a career under way goes on to the desk at the
+  window's `load` (after every script: the desk reads later files, the file split's rule 1). A new career and the tester stay
+  on the title; the Esc menu's *Title screen* brings it back. Cards waiting in `PROG.cardQ` show at the desk on arrival.
+- **Checked:** flow-18 (updated) and flow-60; headless with `review/2026-11-11/app/q370_check.cjs` (the page in a vm, a
+  founded career reloaded: it lands on the desk with its queued cards up, Esc › Title works, no errors). **Not checked in
+  Chrome:** the machine was too loaded for the browser to answer (two tabs froze); nor the sounds by ear.

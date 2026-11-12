@@ -77,6 +77,23 @@ const PART_WHY={bio:'A passenger to space and back: the first one will be an ani
   crew:'A capsule for two people (dummies until the escape tower is qualified).',les:'An escape tower: it pulls the capsule clear of a failing rocket.',
   condor:'The Condor: a heavy first stage, half a tonne to orbit.',arm:'A robotic arm: catch a visitor and berth it.',bay:'A cargo bay: carry something up and let it go.',
   lab:'A laboratory: science aboard the station.',beacon:'A base beacon: marks where a base will stand.',
+  // (loop slices, after Q572) a line for each member of a family, so its card says what that part is for
+  kestrel:'The Kestrel: a first-stage engine with real thrust, the heart of an orbital rocket.',petrel:'The Petrel: a vacuum engine for the upper stage, made to finish the climb to orbit.',
+  t8:'An 8 t tank: enough propellant under a Kestrel for a real first stage.',istage:'An interstage decoupler: drops a spent stage and covers the engine above it.',rwheel:'A reaction wheel: turns the craft with no fuel and no air.',
+  core:'A probe core: a satellite that flies itself, with a battery for a few days.',core6:'A 0.6 m probe core, for small satellites.',core3:'A 0.3 m probe core, for the smallest satellites.',
+  batt:'A 1 kWh battery: keeps a satellite alive through the night side.',sbatt:'A battery for the side of a stage.',batt6:'A 0.6 m battery, for small satellites.',batt3:'A 0.3 m battery, for the smallest satellites.',
+  bpanel:'Solar cells on the body: power from the Sun for as long as it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
+  ant:'A cone antenna: a satellite that talks to the ground.',whip:'A whip antenna: the lightest way to be heard.',ssci:'An instrument package for the side of a stage: science on any craft.',
+  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',octl:'A long octagonal frame: room for more on one bus.',
+  octl6:'A long 0.6 m frame, for small satellites.',padapt:'A payload adapter: seats a satellite on its rocket and lets it go.',padapt6:'A 0.6 m payload adapter.',padapt3:'A 0.3 m payload adapter.',
+  albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m down to 1.25 m: a small upper stage on a big one.',
+  dec25:'A 2.5 m decoupler.',fins25:'A 2.5 m fin ring: keeps a big rocket pointing into the wind.',cfins25:'A steerable 2.5 m fin ring.',cone25:'A 2.5 m nose cone.',fair25:'A 2.5 m payload fairing: room for big satellites.',
+  wpanel:'A solar wing: far more power than body cells, unfolded in space.',bant:'A boom antenna: heard from much farther out.',apogee:'An apogee engine: the last burn into a high orbit.',
+  hthr:'Hydrazine thrusters: small, precise pushes to hold a slot.',sph4:'A small propellant sphere, for an apogee engine or thrusters.',sph7:'A larger propellant sphere.',
+  kick30:'A small solid kick motor: one hard shove, at the right moment.',kick80:'A medium solid kick motor.',kick200:'A large solid kick motor.',rwheel6:'A 0.6 m reaction wheel, for satellites.',rwheel3:'A 0.3 m reaction wheel, for the smallest satellites.',
+  port:'A docking port: two craft become one.',rport:'A docking port for the side of a module.',rcs:'An RCS quad: small pushes in every direction, for docking.',gas:'A gas bottle: the RCS quads\' cold gas.',
+  claw:'A claw: grabs what has no port.',hab:'A habitat module: somewhere to live in orbit.',
+  leg:'A landing leg: stand on another world.',wren:'The Wren: a throttling engine made to land on Selene.',rvfold:'A folded rover on its side mount: it unfolds on the ground.',rvdeck:'A rover deck with ramps: drive off the lander.',
   ocomp:'An onboard computer: a probe that flies its own burns.',scomp:'An onboard computer for the side of a stage.',rtg:'An RTG: power day and night, far from the Sun.'};
 const partWhy=k=>{const f=famOf(k);return f?PART_FAMILY[f].why:PART_WHY[k]||''};
 // the chapters (plan Q573, final draft; PROGRESSION § 3): every mission in one. The capstone closes it and grants the

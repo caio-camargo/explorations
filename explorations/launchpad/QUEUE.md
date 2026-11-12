@@ -154,7 +154,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q377 | The map's layers, after Q261 (v1.167): **ground tracks** as a layer (today only on mission control's wall), and a key for the panel | M2 | S | 🖥 | ready |
 | Q378 | The map's focus, after Q262 (v1.169): rivals' satellites in the Focus list once Q375 makes them targets; keep the focus when the map is left and reopened | M2 | S | 🖥 | after Q375 |
 | Q381 | The site picker's **downrange warning** (`downrangeWarning`) coloured by the neighbour's relation and naming the cost (overflight costs since v1.171, Q181) Also (Q380, v1.213): overflight rights are a button in the site picker; make it a decision: a card, or Rollout naming the powers under the planned track with their consent (W23) | M2 | S | 🖥 | ready |
-| Q370 | **Skip the title on load when a save exists** (today every load stops there, one Enter from the desk). **Default if Caio is silent:** a load with a save opens on the desk; the title and charter stay reachable from the Esc menu (Q241 R3, v1.163) | M1 | S | 🖥 | **→ loop slices (Opus) 2026-11-12** (on the default) |
+| Q370 | **Skip the title on load when a save exists** (today every load stops there, one Enter from the desk). **Default if Caio is silent:** a load with a save opens on the desk; the title and charter stay reachable from the Esc menu (Q241 R3, v1.163) | M1 | S | 🖥 | **✓ v1.322** (loop slices, 2026-11-12, on the default) |
 | Q309 | **Mission control during a flight**: open it for the other craft, one key away (the Q239 plan); today it opens from the Program only (Q241 R4, v1.131) | M2 | S | 🖥 | ready |
 | Q310 | Mission control's Dispatch console: a **RECOVERY line** (ships at sea, Q274's recovery); and the pad calendar's labels overlap when a booking and its window are both short (Q241 R4, v1.131) | M2 | S | 🖥 | ready |
 
@@ -486,7 +486,7 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
-- flow + look & sound — Q572 follow-ups: a sound for the unlock card; a per-part `why` line for family members (the satellite bench's 20 cards share one line) — loop slices v1.318
+- ~~flow + look & sound — Q572 follow-ups: a sound for the unlock card; a per-part `why` line for family members~~ ✓ v1.322 (the sounds are stand-ins: look & sound to replace) — loop slices
 - flow — Q600 with Q572: the desk's centred notice for world missions could become the overlay's *Mission complete* card (`unlockDesk` drops that card today so it isn't said twice) — loop slices v1.318
 - QA — ~~TESTING 375–377 on a really flown structural test and beeper~~ ✓ the robot's new `playtest.mjs cards` row, v1.320; by hand still — loop slices
 - QA — run `playtest.mjs cards` beside `m1` when the loop changes (m1's flights with the unlock cards, poster and trophy case checked) — loop slices v1.320
