@@ -7362,3 +7362,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `notes/platform.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`.
 - **Next:** TESTING 373 by hand. Not done: drag-and-drop, an entry in the Esc menu itself. The `PROG.x||<literal>` reads
   retire by lane.
+
+### 2026-11-12: review 2 session (Fable), Caio's answers (docs only)
+- **W53 answered** (DECISIONS W53; removed from QUEUE): a burning solid that is dropped flies off under its own thrust;
+  the other defaults stand. With D38 all six are answered; Q550's row lists what it must match before it merges.
+- **D41**: Caio's verdict on the first hour ("enjoyed it ok... the gameplay momentum is the biggest issue right now").
+  **Orchestrator:** the loop's open slices (Q572 the unlock overlay, Q576 chapters as events, Q578, Q579) rank first;
+  whether M1 closes was not said, ROADMAP is unchanged.
+- **PARKED still:** R29b.
