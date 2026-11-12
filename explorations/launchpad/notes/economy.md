@@ -3173,7 +3173,7 @@ costs **time, not money**. CREW § Skill: simulator time is what trains crew qua
    for CREW's qualifications in M3 and for a "flown in the simulator" mark on the design). A short **simulator
    debrief**: how far it got, margins (Δv left, peak load as a share of the believed rating, landing speed), what broke
    and why, and the line "these are the program's believed numbers".
-5. ~~**Real flights can't be reverted**~~ *(Held 2026-11-11: revert stays on Easy and Normal until Caio has played the first hour; only Hard has none. DECISIONS D35.)* The R key and the button go (the tester keeps them, `TEST`). Before liftoff
+5. ~~**Real flights can't be reverted**~~ *(Held 2026-11-11: revert stays on Easy and Normal; only Hard has none. DECISIONS D35, made permanent by W55 2026-11-12.)* The R key and the button go (the tester keeps them, `TEST`). Before liftoff
    nothing is charged, so leaving the pad stays free. *End flight* and recovery are unchanged.
 
 **Time, not money (default):** a run costs one calendar day per hour of simulated flight, at least half a day per
