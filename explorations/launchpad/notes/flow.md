@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2234,3 +2234,34 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
 - **Checked:** flow-18 (updated) and flow-60; headless with `review/2026-11-11/app/q370_check.cjs` (the page in a vm, a
   founded career reloaded: it lands on the desk with its queued cards up, Esc › Title works, no errors). **Not checked in
   Chrome:** the machine was too loaded for the browser to answer (two tabs froze); nor the sounds by ear.
+## v1.325 — near the ground, retrograde hands over to stability (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
+- **Why (Caio, landing on Nyx):** "when the rocket is near land and navigation is in retrograde, it should toggle back to
+  stability mode bc or else it's very easy for it to accidentally flip." Retrograde is undefined as the speed goes to zero:
+  in the last metres of a powered landing the velocity is a few tenths of a m/s in any direction, retrograde swings with
+  it (it points down the moment the craft rises), and SAS chases it over. Under 0.5 m/s `velFrame` is null and SAS falls
+  back to a stale `s.hold`, another jump.
+- **Built (`sasNearGround`, sim/vessel.js; run by `physStep` before the control law):** a craft on SAS retrograde, not
+  landed and not under a procedure, under **`SAS_HAND_V` = 3 m/s** (`speedRef`'s frame, the surface's near the ground)
+  within **`SAS_HAND_H` = 50 m** of the ground (`groundGap`) switches to Stability. The hold: **the local vertical if it
+  leans more than `SAS_HAND_TILT` = 3°, else the attitude it has** (no needless twitch). Upright rather than the lean it
+  had, because a lander touches down on its legs and a lean held with the engine on is a sideways push; the procedures'
+  own landing (`procStep`) already flies its last 30 m on a near-upright Stability hold, not retrograde. One line, once:
+  "Near the ground: retrograde → stability"; `HOOK.sas` (new; the page: `renderSAS`) lights the buttons. It never switches
+  back; Retrograde picked again there is kept (`s.sasHand`) until the craft is clear again (over 6 m/s or 100 m), so the
+  next descent hands over again. Speed is checked first, so `groundGap` is only sampled under 6 m/s. In the tape
+  fingerprint (`TAPE_V`): old tapes retire, as with any change to the stepping.
+- **Thresholds, measured** (a scripted descent: the `sci`/`core`/`t1`/`wren` probe lander from 120 m at 6 m/s down with
+  0–2 m/s drift, a sink-rate law on the throttle like the procedures', engine off at contact): the craft passes 3 m/s at
+  ~22 m, where retrograde is still steady (its tilt is the drift's angle, ≤ 6°). Without the hand-over a straight descent
+  lands leaning up to 19° on Nyx (2 m/s drift); with a 3 m hover for 8 s first, retrograde swings 15–46° on Nyx and
+  24–31° on Selene for 0.3–2 m/s of drift (Nyx, 1 m/s: 46°, landed leaning 9°). With it: ≤ 3.8° in the last 10 m on Nyx
+  and ≤ 0.3° on Selene, resting upright (≤ 2.8°), in every case.
+- **Not done:** the drift left at the hand-over is no longer cancelled by retrograde (a pilot translates it out or tilts
+  by hand); a hold that does both is vehicle notes' "manual landing hold", still its own item. Q545's thrust on the
+  ground (unmerged when this was built) is not relied on.
+- **Checks:** test `flow-61` (own sim): the hover descent on Nyx and Selene with the hand-over off leans past 20° in the
+  last 10 m (46° / 27°); with it the hand-over comes under 3 m/s within 50 m (~22 m), one message, one redraw, no switch
+  back, ≤ 5° in the last 10 m (3.8° / 0.2°), at rest upright; the hold's choice (upright past 3°, else its own attitude),
+  Retrograde re-picked kept, the flag cleared past 6 m/s, procedures and other modes untouched; the wiring. Run with
+  control-3, control-5, vehicle-24, flow-36 and the retrograde returns (14, 37f, vehicle-3): all pass. The full smoke is
+  owed (Caio's batch). TESTING row 383.

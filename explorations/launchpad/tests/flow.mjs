@@ -732,7 +732,7 @@
   s.navRef = 'orb'; const ho = at(10000), hoOK = ang(ho.v, s.v) < 1e-9 && !ho.srf;
   const c = api.controls(s); s.navRef = null; api.setControls(s, c); const back = s.navRef === 'orb';
   s.navRef = null; const c0 = api.controls(s), plain = !('ref' in c0); s.navRef = 'srf'; api.setControls(s, c0); const cleared = s.navRef === null;
-  const tapeV = html.includes('procStep,speedRef,sasTarget,velFrame].map');
+  const tapeV = /procStep,speedRef,sasTarget,velFrame[,\]]/.test(html);   // Q544 appends sasNearGround
   const ui = html.includes('<span id="navref"') && html.includes("$('navref').onclick=()=>navRefNext()") && html.includes('rt=navRefLabel(S,sr)');
   check('flow-35: the navball blends surface → orbit speed over 40–60 km (prograde slides, SAS follows), the label holds either frame, the tape carries it',
     step < 0.6 && mono && ends && sasOK && hsOK && hoOK && back && plain && cleared && tapeV && ui,
@@ -1303,6 +1303,55 @@
     `disc ${lim.toFixed(0)} px, bodyRadPx ${rp.toFixed(0)} px; name ${(c[1] - txtY).toFixed(0)} px over the centre; the old anchor ${oldOff.toFixed(2)} radii from it`);
 }
 
+// flow-61. Near the ground, retrograde hands over to stability (flow, QUEUE Q544; PLAYTEST #150, Caio: "when the rocket is
+// near land and navigation is in retrograde, it should toggle back to stability mode bc or else it's very easy for it to
+// accidentally flip"). A scripted powered descent on SAS retrograde (120 m, 6 m/s down, 1 m/s drift; a 3 m hover for 8 s,
+// then down at ~0.9 m/s) on Nyx and Selene. With the hand-over off, retrograde swings once the speed is a few tenths of a
+// m/s and the lander leans 25–50° in the last 10 m. With it, under 3 m/s within 50 m SAS switches to Stability (upright if it
+// leans past 3°), says so once, stays there to touchdown, and the lander stays within a few degrees of upright. Own sim.
+{
+  const D = new Function(src + 'return {set HAND(v){SAS_HAND_H=v},newShip,toV2,HOOK,SELENE,NYX,fromPF,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,contactStep,DT,recNew,len,norm,add,mul,cross,dot,sub,qrot,groundGap,speedRef,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const M = [], H0 = 50; let sasN = 0; Object.assign(D.HOOK, { msg: m => M.push(m), sas: () => sasN++, boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
+  const DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)];
+  const flat = B => { for (let la = -30; la <= 30; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const u = U(la, lo); if (D.surfaceHit(D.surfaceAt(B, u), u, B) > 0) continue; if (D.terrainSlope(B, u) < 0.02) return u; } };
+  const des = D.toV2(['sci', 'core', 't1', 'wren']), HAND = /Near the ground: retrograde → stability/;
+  // a lander h m up, falling at vz with drift sideways, pointed retrograde, SAS on retrograde, its engine lit
+  const place = (B, h, vz, drift) => { D.t = 0; const u = flat(B), s = D.newShip(des); D.S = s; Object.assign(s, { landed: false, body: B, sas: true, sasMode: 'retro', throttle: 0, hold: null });
+    s.rec = D.recNew(); s.rec.launched = true; s.segs.forEach(g => { g.ignited = true; }); M.length = 0; sasN = 0;
+    s.r = D.fromPF(B, D.mul(u, B.R + D.groundAlt(B, u) + h), 0); const up = D.norm(s.r), e = D.norm(D.cross([0, 1, 0], up));
+    s.v = D.add(D.surfVel(B, s.r), D.add(D.mul(up, -vz), D.mul(e, drift))); const Y = D.norm(D.mul(D.sub(s.v, D.surfVel(B, s.r)), -1)), X = D.norm(D.cross(Y, e));
+    s.q = D.qFromBasis(X, Y, D.cross(X, Y)); s.w = [0, 0, 0]; return s; };
+  const tiltOf = s => Math.acos(Math.min(1, D.dot(D.qrot(s.q, [0, 1, 0]), D.norm(s.r)))) / DG;
+  // the descent: a sink-rate law on the throttle (as the procedures' landing flies it), engine off at first contact
+  const fly = (B, on) => { D.HAND = on ? H0 : -1e9; const s = place(B, 120, 6, 1); let n = 0, t10 = 0, tA = 0, hov0 = null, at = null, back = false;
+    while (s.alive && !s.landed && n++ < 200 / D.DT) {
+      const gap = D.groundGap(s), up = D.norm(s.r), vr = D.speedRef(s).v, vz = D.dot(vr, up), g = B.mu / D.dot(s.r, s.r), ct = Math.max(0.3, D.dot(D.qrot(s.q, [0, 1, 0]), up));
+      if (gap < 4 && hov0 == null) hov0 = D.t; const vd = hov0 != null && D.t < hov0 + 8 ? 0.6 * (3 - gap) : -Math.min(8, 0.6 + 0.1 * Math.max(0, gap));
+      s.throttle = s.inContact ? 0 : Math.min(1, Math.max(0, (g + 1.5 * (vd - vz)) / (18000 / s.mass * ct)));
+      const tl = tiltOf(s); if (gap < 10) t10 = Math.max(t10, tl); if (at) { tA = Math.max(tA, tl); if (s.sasMode !== 'stab') back = true; }
+      D.physStep(s, D.DT); D.contactStep(s, D.DT); if (!at && s.sasHand) at = { gap, v: D.len(vr), tilt: tl }; }
+    return { s, t10, tA, at, back, msgs: M.filter(m => HAND.test(m)).length, sasN, end: tiltOf(s) }; };
+  const runs = [D.NYX, D.SELENE].map(B => ({ B, off: fly(B, false), on: fly(B, true) }));
+  const txt = r => `${r.s.alive ? r.s.landed ? 'landed' : 'flying' : r.s.lossWhy}, ≤${r.t10.toFixed(1)}° in the last 10 m, ${r.end.toFixed(1)}° at rest`;
+  check('flow-61: with the hand-over off, a lander on retrograde hold leans past 20° in its last 10 m on Nyx and on Selene (retrograde swings as the speed goes to zero)',
+    runs.every(r => r.off.t10 > 20 && r.off.msgs === 0), runs.map(r => `${r.B.name}: ${txt(r.off)}`).join(' · '));
+  check('flow-61: with it, under 3 m/s within 50 m SAS hands retrograde over to Stability, once, says so once, redraws the buttons, never switches back; the lander stays within 5° of upright and rests upright',
+    runs.every(({ on: r }) => r.s.alive && r.s.landed && !r.s.tipped && r.at && r.at.gap < H0 && r.at.v < 3 && r.msgs === 1 && r.sasN === 1 && !r.back && r.s.sasMode === 'stab' && r.t10 < 5 && r.tA < Math.max(5, r.at.tilt + 1) && r.end < 3),
+    runs.map(({ B, on: r }) => `${B.name}: at ${r.at ? `${r.at.gap.toFixed(0)} m, ${r.at.v.toFixed(1)} m/s, leaning ${r.at.tilt.toFixed(1)}°` : 'never'}; ≤${r.tA.toFixed(1)}° after; ${txt(r)}; ${r.msgs} message(s)`).join(' · '));
+  // the hold it picks: leaning past 3°, the local vertical; within it, the attitude it has. Retrograde picked again there is
+  // the pilot's call (no second hand-over) until the craft is clear (over 6 m/s or 100 m); a procedure is left alone
+  D.HAND = H0; let s = place(D.NYX, 20, 2, 1); D.physStep(s, D.DT); const upH = s.sasMode === 'stab' && D.dot(s.hold, D.norm(s.r)) > 0.99999;
+  s.sasMode = 'retro'; for (let i = 0; i < 20; i++) D.physStep(s, D.DT); const kept = s.sasMode === 'retro' && M.filter(m => HAND.test(m)).length === 1;
+  s.v = D.add(s.v, D.mul(D.norm(s.r), 10)); D.physStep(s, D.DT); const clear = !s.sasHand;
+  s = place(D.NYX, 20, 2, 0); const Y0 = D.qrot(s.q, [0, 1, 0]); D.physStep(s, D.DT); const own = s.sasMode === 'stab' && D.dot(s.hold, Y0) > 0.99999;
+  s = place(D.NYX, 20, 2, 1); s.proc = { done: false }; D.physStep(s, D.DT); const proc = s.sasMode === 'retro' && !s.sasHand;
+  s = place(D.NYX, 20, 2, 1); s.sasMode = 'pro'; D.physStep(s, D.DT); const pro = s.sasMode === 'pro';
+  check('flow-61: the hold is upright when leaning past 3°, the attitude it has within it; Retrograde re-picked near the ground is kept (no second message) until clear; procedures and other modes are left alone',
+    upH && kept && clear && own && proc && pro, `upright ${upH}, own attitude ${own}, re-picked kept ${kept}, cleared ${clear}, procedure ${proc}, prograde ${pro}`);
+  const Hs = html.replace(/\r\n/g, '\n');
+  check('flow-61: wired: the page redraws the SAS buttons on HOOK.sas; physStep runs the hand-over before the control law; it is in the tape fingerprint',
+    Hs.includes('HOOK.sas=()=>renderSAS();') && Hs.includes('  sasNearGround(s);   // (Q544)') && /sasTarget,velFrame,sasNearGround\]/.test(Hs));
+}
 // flow-52. Two planets close on the map's ring share one label (flow, QUEUE Q192; v1.99's open end). The overlap rule
 // (PLAYTEST #31) dropped one planet's label in a conjunction and left a nameless dot; mergePlanetTexts (app/render.js)
 // now joins them, `Hesper, Astraea`, and three in a row join the same way. Planets apart keep their own labels, and a

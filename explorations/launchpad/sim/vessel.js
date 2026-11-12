@@ -684,6 +684,24 @@ function sasTarget(s){
 function velFrame(s){const vr=speedRef(s).v;if(len(vr)<0.5)return null;
   const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return{pro,nrm:null,rad:null};
   const nrm=norm(h);return{pro,nrm,rad:norm(cross(s.v,nrm))}}
+// near the ground, retrograde hands over to stability (flow, Q544; PLAYTEST #150, Caio: "it's very easy for it to
+// accidentally flip"). Retrograde is undefined as the speed goes to zero: in the last metres of a powered landing the
+// velocity is a few tenths of a m/s in any direction, retrograde swings with it (pointing down once the craft rises), and the
+// SAS chases it over. So under SAS_HAND_V (speedRef's frame: the surface's) within SAS_HAND_H of the ground, a craft on
+// retrograde switches to Stability: upright (the local vertical) if it leans more than SAS_HAND_TILT, else the attitude it
+// has. Upright, not the attitude it has: a lander touches down on its legs, and a lean held with the engine on is a sideways
+// push. Once per approach: it doesn't switch back, and Retrograde picked again there is the pilot's call (s.sasHand, cleared
+// past twice the speed or the height). Not under a procedure: those set their own modes.
+let SAS_HAND_V=3,SAS_HAND_H=50,SAS_HAND_TILT=3;
+function sasNearGround(s){
+  if(s.landed||s.proc||!s.sas&&!s.sasHand||!s.sasHand&&s.sasMode!=='retro')return;
+  const v=len(speedRef(s).v);if(v>2*SAS_HAND_V){s.sasHand=false;return}
+  if(!s.sasHand&&v>=SAS_HAND_V)return;
+  const gap=groundGap(s);if(s.sasHand){if(gap>2*SAS_HAND_H)s.sasHand=false;return}
+  if(gap>=SAS_HAND_H)return;
+  const up=norm(s.r),Y=qrot(s.q,[0,1,0]);
+  s.sasMode='stab';s.hold=dot(Y,up)<Math.cos(SAS_HAND_TILT*Math.PI/180)?up:Y;s.sasHand=true;
+  if(s===S){HOOK.msg('Near the ground: retrograde → stability');HOOK.sas()}}
 let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
 // control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM
 function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
@@ -912,6 +930,7 @@ function physStep(s,dt){
   // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
+  sasNearGround(s);   // (Q544) before the control law: a hand-over flies from this step
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
   // RCS's command too, here, with the same feed-forward (R26): after the aero pass s.simTA is the next step's, and a call
   // there left the feed-forward out, so RCS was told to push the aero moment back in that the gimbals were cancelling
