@@ -2140,3 +2140,51 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
 - **Not checked:** a real flown flight end to end (the Debrief was a record built by hand); the overlay at other window
   sizes; a family part's line is the family's (20 identical lines for the bench); no sound yet (look & sound); the model's
   colours against the design table's real grade.
+
+## v1.319 — the Mission card stays up in flight; a mission done turns green there (2026-11-12, flow item by the platform session, QUEUE Q600; D42; PLAYTEST #162, #164)
+
+Caio, playing v1.306–v1.307: the centred "Mission complete" box came when he cut the thrust (#162: `doneHeld` held it
+while the engines burned, Q558), and the missions he saw before launch were gone during the flight (#164: the dark
+cockpit folded the Mission card in every critical phase, and it listed three missions at most). D42: quiet in flight,
+loud after it.
+- **The card stays**: `'mission'` is first in `CP_CARDS` (app/cockpit.js). In a critical phase (`cpPhase`: the climb, a
+  burn, a landing) it is short (`mcShort`, app/hud.js): one line per job, its first open condition with the reading
+  now ("Sounding experiment, 40–55 km · apex 40–55 km, now 31 km"), or the lost one in red; the *Now* line stays. Pinned,
+  it stays full. Quiet, it is the full card as before.
+- **Every mission** open at launch the vessel could meet is listed (`MC_MISSIONS`, the cap of three, is gone from
+  `cardJobs`, sim/next.js). The card folds by height like the others when the window is short.
+- **Done in place**: the jobs keep the order the flight first listed them in (`mcOrder`, per `rec`), so a job done turns
+  green where it stood ("✓ Above the weather · done, +15.0M", the whole line green) instead of jumping to the top.
+  `debPaid` now records a contract's id (sim/contracts.js), so a paid contract matches its live row.
+- **No box in flight**: `HOOK.done` in flight (`n.flight` and mode flight) goes to `doneFlight` (app/notice.js): one line in
+  `#msg` for 6 s, "✓ Mission complete: Beeper · +30.0M" ("First in the world: …", "Contract done: …"), and a chime
+  (`sndDone`, app/sound.js: two soft rising tones, 784 and 1175 Hz). `doneHeld` is gone. The box (`#done`) stays for world
+  missions and contracts judged at home, at the desk, until Q572's overlays; the fanfare after a flight is Q572's.
+- Tests: flow-55 rewritten (in flight a line and a chime and no box; a flight's completion after it dropped; the desk's
+  box as before), flow-58 new (kept in a burn with Δv while the rest fold, via `hudCardsOn`, now its own function; the
+  short rows; done in place, green, with pay; `mcOrder`), flow-54 (all the missions; in the dark cockpit), flow-40 (the Δv
+  card still among `CP_CARDS`).
+- Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 378).
+
+## v1.320 — poster headlines for big moments; v1.318 flown by the robot (2026-11-12, loop slices session, QUEUE Q479; UI.md § 4.1 item 3)
+
+- **Big moments carry a poster.** `HOOK.news(t, cls, big)` takes a third argument `{kick, hl, rival?}` on four calls only:
+  our first in the world (`missionComplete`), a rival's first (`raceTick`), a chapter closed (`missionComplete` on a
+  capstone: *Chapter 2 complete: Once around. Can we stay up? Yes.*) and a new computing era (`compTick`). Routine news has
+  none. `NEWS` keeps it (app/state.js).
+- **The paper prints it as a poster.** `deskNews` lets a poster from the last `POSTER_DAYS` (30) lead the Herald on the desk
+  wall and beside the Debrief; `posterClip` (app/desk.js) sets a kicker, one Bebas headline and the story under it.
+- **The era's poster palette** (`posterEra()`: pe1 human computers, pe2 mainframes, pe3 onboard computers and after, per
+  UI.md's table): pe1 flat cream, navy and red; pe2 browns and oranges in a rounder type; pe3 a dark band and bold sans.
+  The Debrief's poster headline (a first, a loss, a chapter) takes it too. Test flow-58.
+- **v1.318 on real flights** (`node playtest.mjs cards`, a new row: m1's two flights with the cards checked after each
+  Debrief): the Sounding flight closes *Above the weather* and the structural test (25.2 kPa) and shows 14 cards under the
+  *Chapter 1 complete* poster (two missions done, the orbital kit, the four parts *Above the weather* opens, the beeper and
+  the hop, chapter 2); the beeper shows 26 under *Chapter 2 complete · first in the world*, +108M; a real Space moves on,
+  the camera turns, a real D brings it to the table in hand; the trophy case holds both chapters with their flight photos;
+  the Missions tab reads by chapter. TESTING 375–377's robot half is done.
+- **Caught on the way:** a `//` comment appended after a statement swallowed the rest of `raceTick`'s line (the third time
+  this pattern bit in two days: R4's, `unlockDesk`'s, this one): **append comments only at the true end of a line.** A
+  robot run started while the file was broken loaded the broken page; the rerun was clean.
+- **Not checked:** the pe2 and pe3 palettes on screen (only pe1 was seen: the first hour is in the human-computers era); a
+  rival's first on the desk by eye.

@@ -346,7 +346,7 @@ function raceNews(id,r){const a=POWERS[r.i].arch,d=RIVAL_ANN[a];if(d==null||PROG
   (PROG.raceAnn=PROG.raceAnn||{})[id]=1;const M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,'');
   HOOK.news(d>0?`${POWERS[r.i].name} announces an attempt at ${nm}, in about ${Math.max(1,Math.round(r.day-PROG.day))} day${Math.round(r.day-PROG.day)>1?'s':''}`:`Rumours from ${POWERS[r.i].root}: a probable attempt at ${nm} soon`,'warn')}
 function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(r&&PROG.raceLost[id]==null)raceNews(id,r);if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
-  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news((RIVAL_WIN[POWERS[r.i].arch]||((n,m)=>`${n} gets there first: ${m}!`))(POWERS[r.i].name,M.name.replace(/^Passenger: /,'')),relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
+  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news((RIVAL_WIN[POWERS[r.i].arch]||((n,m)=>`${n} gets there first: ${m}!`))(POWERS[r.i].name,M.name.replace(/^Passenger: /,'')),relOf(HOME,r.i)<0?'bad':'warn',{kick:`${POWERS[r.i].name} first`,hl:M.name.replace(/^Passenger: /,''),rival:true});if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}   // (Q479) a rival's first carries the papers' poster
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
@@ -445,7 +445,7 @@ function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===i
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(!c)continue;const T=CT[c.type];if(!T.ok(R,c.p,s))continue;if(T.after)T.after(c,s);   // a leak's sanctions can shrink the list mid-loop
-    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);debPaid(R,'contract',cTitle(c),pay);PROG.cdone=(PROG.cdone||0)+1;
+    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);debPaid(R,'contract',cTitle(c),pay,{id:c.id});PROG.cdone=(PROG.cdone||0)+1;
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}

@@ -513,6 +513,26 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
     debrief: v => v[0] === true && v[1] === true,  // flow Q2
     boxes: v => v.length === 0}};                  // M1: no box covers another at 1280×800
 
+// The unlock cards on real flights (loop slices, v1.318: QUEUE Q572, Q576; TESTING 375-377): m1's two flights, and after each
+// Debrief the cards it shows (D42: one per mission done, part, room, mission opened, next chapter), a real key to the next
+// card, the turning model, Esc; after the beeper, D takes a part to the design table, and the desk wall's trophy case.
+const CARD_STEPS = n => [{wait: 1200},
+  `PT.cards = PT.cards || {}; PT.cards[${n}] = {on: UNL.on, n: UNL.q.length, kinds: UNL.q.map(c => c.k + ':' + c.id).join(' '), kick: PT.text('#debBody .kick'), hl: PT.text('#debBody .hl'), card: PT.text('#unlock .uc')}; PT.cards[${n}]`,
+  {shot: `cards${n}_first`}, {key: ' '}, {wait: 700},
+  `({i: UNL.i, card: PT.text('#unlock .uc'), model: PM.models.map(m => m.k), drawn: !document.querySelector('#unlock .um').classList.contains('hidden')})`, {shot: `cards${n}_part`}, {wait: 1500}, {shot: `cards${n}_part_later`}];
+ROWS.cards = {title: 'the unlock cards, the chapter poster and the trophy case on m1\'s real flights (v1.318)', gate: true, flags: null,
+  steps: ROWS.m1.steps.flatMap(st => st && st.shot === 'after_sounding' ? [st, ...CARD_STEPS(1), {key: 'Escape'}, `({on: UNL.on, screen: screenNow()})`]
+    : st && st.shot === 'after_orbit' ? [st, ...CARD_STEPS(2), `PT.cards.toTable = (() => { const c = UNL.q[UNL.i]; return c && c.parts[0] })(); true`, {key: 'd'}, {wait: 500},
+        `({screen: screenNow(), held: BLD.st.held && BLD.st.held.k, want: PT.cards.toTable, on: UNL.on})`, {shot: 'cards2_table'},
+        `PT.cards.held = BLD.st.held && BLD.st.held.k; BLD.drop(); go('program'); true`, {wait: 800}, `({wall: PT.text('#deskWall .trophies'), on: UNL.on})`, {shot: 'trophies'},
+        `progTab = 'missions'; renderProgram(); ({missions: PT.text('#prog').slice(0, 900)})`, {shot: 'missions_tab'}] : [st]),
+  checks: {beeper: `!!PROG.done.beeper`, cards1: `PT.cards[1]`, cards2: `PT.cards[2]`, held: `[PT.cards.toTable, PT.cards.held]`, trophies: `PT.text('#deskWall .trophies')`},
+  expect: {beeper: v => v === true,
+    cards1: v => !!v && v.on && /done:weather/.test(v.kinds) && /part:kestrel/.test(v.kinds) && /chapter:c2/.test(v.kinds) && /CHAPTER 1 COMPLETE/i.test(v.kick || ''),
+    cards2: v => !!v && v.on && /done:beeper/.test(v.kinds) && /room:mc/.test(v.kinds) && /CHAPTER 2 COMPLETE/i.test(v.kick || ''),
+    held: v => !!v[0] && v[0] === v[1],
+    trophies: v => /SOUNDING ROCKETS/i.test(v || '') && /ONCE AROUND/i.test(v || '')}};
+
 // M2's finish line (QUEUE Q233, ROADMAP § M2, DECISIONS D17.1), written first like Q55 for M1: it FAILS until M2 lands, and
 // each failed check names what's missing. A new career plays m1's two flights (no tester flags, nothing seeded), then the
 // two epoch-3 satellites a player would: a Weather satellite (the Satellite preset flown north into a polar orbit) and TV
@@ -611,7 +631,7 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   `PT.m2.after1 = PT.state(); ({wxsat: missionOpen(MISSIONS.find(m => m.id === 'wxsat')), tv: missionOpen(MISSIONS.find(m => m.id === 'tv'))})`,
   // the hop on the Passenger preset (Q580): a third flight in a row that drops a stage, so the range is certified before
   // the TV Satellite, whose radial decoupler opens with it (the unlock map, v1.311); a player has flown it by then too
-  ...M2_FLIGHT('Passenger hop', 'Passenger', `(async () => ({fly: await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive}))()`),
+  ...M2_FLIGHT('Passenger hop', 'Passenger', `(async () => { S.throttle = 1; stage(S); return {fly: await PT.fly(() => (S.rec.launched && S.landed && simT > 5) || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, hop: !!PROG.done.hop} })()`),   // lit first: on the pad it is already "landed"
   // the weather satellite: a near-polar orbit (80–100° counts), 3° east of north so the planet's spin helps instead of being
   // cancelled (~82°), then up to ~300 km so it lasts (at ~106 km it re-enters within weeks)
   // (Q580) the Satellite preset with its two solar wings (open with the weather satellite) swapped for four sets of body cells
@@ -623,8 +643,9 @@ ROWS.m2 = {title: 'satellites that work: weather + TV kept up by a routine, time
   // TV: the TV Satellite preset (v1.215; the plain Satellite runs dry short of it), east to a low orbit, a coast until the
   // transfer burn arrives over the capital (statXfer, the card's *plan it*; Q516: burning at once ends where the capital can't see it), then up
   ...M2_FLIGHT('TV satellite', 'TV Satellite', `(()=>({low: PT.ascentAz(90), wait: PT.statWait(), raise: PT.raise(STAT_R, true), over: PT.overCap(), left: PT.dvLeft(), release: PT.release()}))()`),
-  // three runs ordered by hand, each waited out with [N]
-  ...[1, 2, 3].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
+  // runs ordered by hand, each waited out with [N], until three clean in a row (Q580: a run can break up in the climb,
+  // which starts the count again, and a player orders another; at most six)
+  ...[1, 2, 3, 4, 5, 6].flatMap(i => [`(()=>{ const r = PT.route(); if (!r) return 'no route'; if (r.clean >= 3) return {order: 'three clean already'}; go('program'); PT.click('[data-ptab="fleet"]'); const b = document.querySelector('[data-rorder="' + r.id + '"]'); if (!b) return {order: 'no Order a run button', why: routeQuote(r).why};
      b.click(); const D = (PROG.dispatch || []).filter(x => x.route === r.id).at(-1); return {ordered: !!D, launch: D && +D.launch.toFixed(1), msg: (document.getElementById('msg') || {}).innerText} })()`,
     `PT.waitN(() => { const r = PT.route(); return !r || !(PROG.dispatch || []).some(x => x.route === r.id && (x.status === 'queued' || x.status === 'deviated')) }, 40)`]),
   {shot: 'after_runs'},
