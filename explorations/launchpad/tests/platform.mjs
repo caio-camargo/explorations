@@ -275,7 +275,7 @@
     `static ${staticOK} (first app script ${firstApp && firstApp[1]}); shows ${shows} (${A.FAULT.n} faults); keep hides ${hid}, same error stays hidden ${stayed}, new one back ${back}; old-save button ${badBtn}`);
 }
 
-// platform-10. Export and import a save (QUEUE Q598, R9's follow-up; Settings › Saved program). The page's load/save block
+// platform-10. Export and import a save (QUEUE Q599, R9's follow-up; Settings › Saved program). The page's load/save block
 // (app/state.js, as platform-7 runs it) with a fake localStorage: a played program's file imports into another tab's
 // program, replaces the slot's save, keeps the replaced one as -before-import and stops the tab saving until the reload. A
 // file that isn't JSON, isn't a program, or stops the game, and a full storage, leave the program and the store as they
@@ -316,7 +316,7 @@
   const staticOK = /data-save-act="export"/.test(st) && /data-save-act="import"/.test(st) && /if\(!impArm\)\{impArm=true/.test(st)
     && /impBlocked=\(\)=>mode==='flight'\|\|mode==='drive'/.test(st) && /sessionStorage\.setItem\('launchpad-import-said'/.test(st)
     && /sessionStorage\.getItem\('launchpad-import-said'\)/.test(st) && /saveHTML\(\)/.test(st) && /id==='settings'&&typeof impArm/.test(sc);
-  check('platform-10: a save exported from one program imports into another (the slot replaced, the old one kept, no save over it before the reload); a file that isn\'t a program or stops the game, or a full storage, changes nothing (Q598)',
+  check('platform-10: a save exported from one program imports into another (the slot replaced, the old one kept, no save over it before the reload); a file that isn\'t a program or stops the game, or a full storage, changes nothing (Q599)',
     good && noSave && reopened && refuse.every(x => x.ok) && fullOK && staticOK,
     `import ${good} (day ${r.day} of ${fileDay}; kept ${r.kept}); held ${noSave}; reopens ${reopened}; refused: ${refuse.map(x => `${x.raw} ${x.ok ? 'ok' : `✗ (${x.why})`}`).join('; ')}; storage full ${fullOK}; static ${staticOK}`);
 }

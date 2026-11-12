@@ -988,7 +988,7 @@ error handler at all (review 2026-11-09 § 2).
   save* when R10 kept an unloadable one (`launchpad-save-unloadable.json`), *Keep playing* (hides it until an error it
   hasn't shown). The first time each error is seen it goes to the console; every fault goes to the tester's log
   (`logEv('error', …)`).
-- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (there is no Import yet: a save
+- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (Import came in v1.315, Q599; before, a save
   file goes back by `localStorage.setItem` in the console).
 - Not done: a frame that throws every time keeps throwing (the panel counts it); no automatic pause.
 - **Checked in the page, headless** (scratch run of `review/2026-11-11/app/harness.cjs`, the R34 harness, 64 s boot on
@@ -998,3 +998,30 @@ error handler at all (review 2026-11-09 § 2).
 - Test platform-9: the static shape of `frame`/`frameBody` and the script order; `app/fault.js` run against a stub
   document (the panel's content, the count, Keep playing, a new error bringing it back, the old-save button only with a
   `-bad` copy).
+
+## v1.315 — export and import a save from Settings (2026-11-12, platform, QUEUE Q599)
+
+R9 gave the fault panel an *Export save*, but only a crash could show it, and nothing put a file back (it took
+`localStorage.setItem` in the console). Settings (Esc › Settings) now has a **Saved program** section:
+- *Export save*: `progJSON()` as `launchpad-save-day<N>.json` (fault.js's `exportSave`), any time, mid-flight too.
+  *Export the unloadable save* shows when R10 kept one (`<key>-bad`).
+- *Import save…*: asks twice ("Click again: choose the file"; the line under it says the file replaces the career, a
+  chapter start or the tester's sandbox, whichever slot the page has open), then a file picker. Disabled during a flight
+  or a drive (the page reloads after an import, and a flight in progress doesn't survive a reload). Closing Settings
+  disarms it.
+- `importSave(text)` (app/state.js, after the `storage` listener, so platform-7's slice of the page runs it): the file
+  must be a JSON object with a `day` (asked before migrating, which would add one), then the boot's path: `migrateSave`,
+  `progLoad` (repair, derive, probe). One that isn't a program or stops the game: the program is reloaded from its own
+  text and nothing is written. One that loads: the program it replaces goes to `<key>-before-import` (when there is
+  room; it says so when there isn't), the import is written to the slot, `progHeld` is set so this tab can't save the
+  old program back, and the page reloads. What the import said (its date, damaged parts reset, a newer game's save, no
+  room for the old one) is told after the reload (`sessionStorage` 'launchpad-import-said').
+- **Checked in the page, headless** (`review/2026-11-11/app/harness.cjs`, a scratch script): boot 0 errors; the section
+  renders; Export hands `saveFile` the program; Import arms on one click, picks on the second, disarms when Settings
+  closes; a 30-days-on program through a fake file input: the day goes 0 → 30, the slot holds it, `-before-import`
+  kept, the tab held, a reload asked for; a `{"funds":5}` file: "can't be imported: the file is not a saved program.
+  Your program is as it was"; 0 errors.
+- Test platform-10: a played program's file into another tab (slot replaced, old kept, held, the next boot opens it);
+  bad JSON, a string, an array, an object without a day and a save that stops the game, and a full storage, all
+  leave the program and the store unchanged; the static shape of the Settings section.
+- Not done: no drag-and-drop; the Esc menu itself has no entry (Settings is one click in).
