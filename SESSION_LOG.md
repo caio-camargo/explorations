@@ -7460,3 +7460,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `playtest.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
   `ACTIVE_WORK.md`.
 - **Next:** TESTING 375–379 by hand; the *Proposed* follow-ups (a card sound, per-part lines); then Q370 or Q47.
+
+## 2026-11-12 — QA, Q580 follow-up: the robot's m2 run (Opus 5.5, worktree launchpad-loop)
+
+- **Asked:** Caio: go ahead (run `m2`, left open at v1.317).
+- **Done:** three m2 runs; two robot fixes in `playtest.mjs`: the Passenger hop now lights its engine before waiting to
+  land (it "landed" on the pad, so the range was never certified and the TV Satellite was refused), and routine runs are
+  ordered until three are clean in a row (at most six). notes/economy.md § v1.317 has the result; a *Proposed* line in QUEUE.
+- **Result:** everything the unlock map touches passes (m1, the hop, the range, the weather satellite on its own design,
+  TV, the routine, three clean runs, Repeat on). Still red: `clean3`, `autoRuns`: the first automatic run broke up on the
+  routine's dice, which turns Repeat off until three more clean runs are ordered by hand, and m2 only waits. A rule question
+  for economy/Caio, not the map. One run had page scripts missing mid-run (the local server under load); rerun clean.
+- **Checked:** CI full run green on `loop`; pushed to `main` from the worktree (`git push origin loop:main`) because the main
+  clone has another session's uncommitted edits (editor.js, builder.js, index.html), left untouched.
