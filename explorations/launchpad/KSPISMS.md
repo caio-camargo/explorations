@@ -1,5 +1,5 @@
 # KSPISMS — what the game inherited from KSP, and what to do about it
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-11
 **Status**: **D15 answered 2026-10-11 (Caio): yes on all six.** Build items in QUEUE *Proposed*; 4 written into CREW.md 0.2.8, 6 (Kerbol) into SYSTEM.md 1.1.1.
 **Purpose**: Caio learned the genre from Kerbal Space Program and asked (2026-10-11) that nothing idiosyncratic to KSP
 come in unexamined. An audit of the docs and code (21 checks), sorted into what stays and what to change. Re-run the
@@ -48,8 +48,8 @@ names for engines, no Mk1, Kerbal, KSC or Mun.
    and time in a type** rather than rank. Touches approved CREW Part 2, so it's Caio's call.
 5. **Revert to launch** after a real failure undercuts pillar 7 ("a lost crew weighs"). **Propose:** a **simulator**:
    fly any mission first in the simulator, no money, no news, revert at will; it flies the program's *believed*
-   numbers, never the true ratings, and costs time (D17.2) (early programs lived in simulators); a real
-   flight can't be reverted.
+   numbers, never the true ratings, and costs time (D17.2) (early programs lived in simulators); ~~a real
+   flight can't be reverted~~. *(Held 2026-11-11: revert stays on Easy and Normal; only Hard has none. DECISIONS D35, made permanent by W55 2026-11-12.)*
 6. **Names:** the *Asparagus* preset (a KSP community word) becomes *Crossfeed*; "Kerbol" goes from SYSTEM.md; the
    1.25/2.5 m diameter steps are KSP's numbers (flag only: real stages vary; a later look at sizes).
 

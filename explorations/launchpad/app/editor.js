@@ -5,14 +5,19 @@
 const $=id=>document.getElementById(id);
 // the construction screen lives in builder.js (BLD)
 function renderEditor(){BLD.init();editorChanged();renderSites()}
-function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',3:'Epoch 3 · satellites that work',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
-  const epNow=Math.min(...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep),9);   // (Q286) the first epoch with work left
-  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;const Ms=MISSIONS.filter(m=>m.ep===ep);
-    if(ep>epNow+1&&Ms.every(M=>!PROG.done[M.id]&&!missionOpen(M))){html+=`<div class="ms lock">🔒 ${Ms.length} mission${Ms.length>1?'s':''}, once ${EP[ep-1].replace(/^Epoch \d+ · /,'')} is under way</div>`;continue}   // (Q286, UI.md § 3) beyond the next epoch: a count
-    for(const M of Ms){const done=PROG.done[M.id],open=missionOpen(M);
-      if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
-      else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
-      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div>${(o=>o?`<div class="sub dim">opens: ${o}</div>`:'')(opensLine(opensNames([M.id]),true))}</div>`}}   // (Q570) what it opens
+function renderProgram(){const el=$('program');if(!el)return;let html='';
+  // (Q576) the missions by chapter (CHAPTERS, sim/program.js): its question, its finish and what it grants where the epoch
+  // heading was; a chapter with nothing open or done, beyond the first one with work left, is a count (Q286, UI.md § 3)
+  const MN=id=>(MISSIONS.find(m=>m.id===id)||{}).name||id,live=C=>C.missions.some(id=>{const M=MISSIONS.find(m=>m.id===id);return M&&(PROG.done[id]||missionOpen(M))});
+  const cNow=CHAPTERS.findIndex(c=>!chapterDone(c));
+  CHAPTERS.forEach((C,ci)=>{const Ms=C.missions.map(id=>MISSIONS.find(m=>m.id===id)).filter(Boolean),fin=chapterDone(C);
+    html+=`<div class="ep chap${fin?' fin':''}">${fin?'✔ ':''}Chapter ${C.n} · ${C.name}</div>`;
+    if(!fin&&!live(C)&&ci>cNow){html+=`<div class="ms lock">🔒 ${Ms.length} mission${Ms.length>1?'s':''}, once chapter ${CHAPTERS[ci-1].n} is under way</div>`;return}
+    html+=`<div class="sub chq">${C.question} <span class="dim">Finish: ${MN(C.capstone)} → ${C.grants.join(', ')}</span></div>`;
+    for(const M of Ms){const done=PROG.done[M.id],open=missionOpen(M),cap=M.id===C.capstone?' <span class="cap" title="the chapter’s finish">◆</span>':'';
+      if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b>${cap}</div>`;
+      else if(!open)html+=`<div class="ms lock">🔒 ${M.name}${cap} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(MN).join(', ')}</span></div>`;
+      else html+=`<div class="ms"><b>${M.name}</b>${cap} <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div>${(o=>o?`<div class="sub dim">opens: ${o}</div>`:'')(opensLine(opensNames([M.id]),true))}</div>`}});   // (Q570) what it opens
   const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
@@ -25,7 +30,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   {const used=Object.keys(PROG.kh||{}).sort((a,b)=>khBar(b)-khBar(a)),bar=k=>`<span class="acc">${'▮'.repeat(Math.round(khBar(k)*8))}${'▯'.repeat(8-Math.round(khBar(k)*8))}</span>`,
      prod=k=>{const x=sourceOf(k);return x.how==='line'?`${x.line.lic!=null?'licensed':'own'} line, maturity ${(x.line.m*100).toFixed(0)}%`:x.how==='home'?'home-made':x.how==='grey'?'<span class="bad">grey market</span>':x.how==='giant'?`from ${x.name} (${POWERS[x.from].root})`:`from ${POWERS[x.from].root}`};
    if(used.length)html+=`<div class="ep">${term('kh','Know-how')}</div><div class="sub">${used.slice(0,10).map(k=>`${bar(k)} ${PARTS[k].name} <span class="dim">· ${prod(k)}</span>`).join('<br>')}</div>`}
-  {const S2=PROG.stand2,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]);
+  {const S2=PROG.stand2,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]&&partOpen(k).ok);   // (D34) a closed part isn't offered
    html+=`<div class="ep">Test stand</div><div class="sub">`+(!S2?`<button data-stand="build" ${PROG.funds>=STAND_COST?'':'disabled'}>Build a test stand ${fmtM(STAND_COST)}, ${STAND_DAYS} d</button> <span class="dim">ground tests: know-how and certification without flying</span>`:
      PROG.day<S2.ready?`Under construction, ready in ${(S2.ready-PROG.day).toFixed(0)} days`:S2.job?`Testing the ${PARTS[S2.job.k].name} (${S2.job.mode==='destroy'?'to destruction':'qualification'}), ${(S2.job.end-PROG.day).toFixed(0)} days left`:
      ks.slice(0,8).map(k=>{const q=testQuote(k,'qual'),r=testQuote(k,'destroy');return`${PARTS[k].name} <button data-test="${k}:qual" ${PROG.funds>=q.cost?'':'disabled'}>Qualify ${fmtM(q.cost)}, ${q.days} d</button> <button data-test="${k}:destroy" ${PROG.funds>=r.cost&&certOf(k)<1?'':'disabled'}>To destruction ${fmtM(r.cost)}, ${r.days} d</button>`}).join('<br>'))+`</div>`}
@@ -43,7 +48,8 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
        return `<div style="margin-top:3px">${PARTS[k].name} <span class="dim">(bought abroad)</span><br>${b('own',q.own,'Own line')} ${b('lic',q.lic,q.lic.from!=null?`License from ${POWERS[q.lic.from].root}`:'License')}${!q.own.ok?`<br><span class="dim">${q.own.why}</span>`:''}</div>`}).join('')+`</div>`}}
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}${selKnowHTML()}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
-  el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(confirm('Forget all missions and everything the program has learned?')){resetProgram();go('title')}}}
+  el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(confirm('Forget all missions and everything the program has learned?')){resetProgram();go('title')}};
+  if(typeof unlockDesk==='function')unlockDesk()}   // (Q572) missions done between flights: their cards, at the desk
 function resetProgram(){programNew();HOOK.save();editorChanged()}   // (also the title screen's New program, Q241 R3; one reset for the game and career.mjs, R1b)
 // how much sideways drift it stands at touchdown, legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s). Q325:
 // for what lands (after its drops) on the body it lands on: a landing procedure's body and staging, else Tellus, and Selene
@@ -52,7 +58,7 @@ function resetProgram(){programNew();HOOK.save();editorChanged()}   // (also the
 function trimHTML(s){const T=trimOf(s);if(!T)return'';const p=Math.round(T.f*100),cl=T.f<0.2?'ok':T.f<0.6?'warn':'bad',cm=(T.miss*100).toFixed(T.miss<0.1?1:0);
   const W={t:`Stage ${T.k}: the thrust misses the centre of mass by ${cm} cm`,d:isFinite(T.f)?`The engine pushes off-centre, so the craft wants to turn: holding it straight takes ${p}% of its gimbal and wheels, and leaves that much less for steering.${T.f>1?' Over 100%: it can\'t hold it, and turns while it burns.':''}`:'Nothing on it can steer against the off-centre push: it turns as soon as the engine lights.',
     fix:['balance it: the same part on the other side (radial mounts ×2)','a counterweight opposite the heavy side part','deploy what unfolds after the burn, not before','more steering: an engine that gimbals, or a reaction wheel']};
-  return`<div style="margin-top:4px">${term('trim','Trim')} ${whyMark(cl,isFinite(T.f)?p+'%':'no steering',W)} <span class="dim">${T.miss<0.005?'the thrust runs through the centre of mass':`stage ${T.k}: the thrust misses the centre of mass by ${cm} cm`}; the share of gimbal and wheels spent holding course</span></div>`}
+  return`<div style="margin-top:4px">${term('trim','Trim')} ${whyMark(cl,isFinite(T.f)?p+'%':'no steering',W)} <span class="dim">${T.miss<0.005?'thrust through the centre of mass':`stage ${T.k}: thrust ${cm} cm off the centre of mass`}</span></div>`}
 // fit (Q340, PROBES § 8): what stands on a fairing's ring, under its nose, but isn't inside the shell. Only when something pokes out
 function fitHTML(s){const out=[];for(const f of s.parts){if(!f.on||f.d.kind!=='fair'||!f.profF)continue;const top=f.y0+f.profF[f.profF.length-1][1];
     for(const q of s.parts)if(q.on&&q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&q.y0<top&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<1.6*f.d.r&&!out.includes(q))out.push(q)}
@@ -63,16 +69,16 @@ function fitHTML(s){const out=[];for(const f of s.parts){if(!f.on||f.d.kind!=='f
 function standHTML(s){const g=b=>b.mu/b.R**2,f=v=>v>9.95?'10+':v.toFixed(1),
   to=p=>((p.phases||[]).find(x=>x.k==='transfer')||{}).to,pr=(typeof procsOf==='function'?procsOf(stackDef):[]).find(p=>procLandsOn(p,to(p))),ph=pr&&pr.phases.find(x=>x.k==='land'),B=pr&&BODIES.find(b=>b.name===to(pr))||TELLUS,
   L=landStance(s,g(B),ph?ph.ev:undefined),moon=!pr&&L.legs?landStance(s,g(SELENE)):null,on=L.legs?'its legs':L.on?`its ${L.on}`:'its base',
-  what=L.n===L.of?'as built':`what's left after its drops (${L.n} of ${L.of} parts)`,cl=L.legs&&Math.min(L.v,moon?moon.v:9)<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
+  what=L.n===L.of?'as built':`after its drops (${L.n} of ${L.of} parts)`,cl=L.legs&&Math.min(L.v,moon?moon.v:9)<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
   const W={t:`Tips over drifting faster than ${f(Math.min(L.v,moon?moon.v:9))} m/s sideways`,d:'A tall lander on a narrow stance falls over if it touches down still drifting; under 1.5 m/s of sideways speed is a hard landing to fly.',
     fix:['wider legs: legs on a wider part, or more of them','a lower stack: drop what it doesn\'t need before landing','kill the sideways drift before touchdown, and come down slower']};
-  return`<div style="margin-top:4px">Touchdown ${whyMark(cl,`stands drifting up to ${f(L.v)} m/s`,W)} <span class="dim">sideways on ${B.name}${moon?`, ${f(moon.v)} on ${SELENE.name}`:''}: ${what}, on ${on}${pr?', as its landing procedure flies it':''}; faster, it tips over${L.legs?'':'. Legs widen the stance'}</span></div>`}
+  return`<div style="margin-top:4px">Touchdown ${whyMark(cl,`stands drifting up to ${f(L.v)} m/s`,W)} <span class="dim">sideways on ${B.name}${moon?`, ${f(moon.v)} on ${SELENE.name}`:''}: ${what}, on ${on}</span></div>`}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
 // later stages in the air (Q342): each one that lights while there's air, against what it takes to hold its course there
 function airHTML(A){if(!A||!A.length)return'';return A.map(a=>{const ok=a.holds,cl=ok?(a.vane||a.tau<=0.7*a.auth?'ok':'warn'):'bad',k=x=>(x/1000).toFixed(x<9500?1:0);
-  if(a.vane)return`<div>Stage ${a.k} in the air ${whyMark(cl,'holds')} <span class="dim">lights at ~${(a.h/1000).toFixed(0)} km, ${(a.q/1000).toFixed(1)} kPa on a standard ascent · stable: it turns into the airflow</span></div>`;
+  if(a.vane)return`<div>Stage ${a.k} in the air ${whyMark(cl,'holds')} <span class="dim">lights at ~${(a.h/1000).toFixed(0)} km, ${(a.q/1000).toFixed(1)} kPa · stable</span></div>`;
   const W={t:`Stage ${a.k} lights in the air, at ~${(a.h/1000).toFixed(0)} km`,d:ok?`It holds, with little to spare: ${airWhy(a).replace(/^h/,'H')}. A gust or a steeper turn takes the rest.`:`${airWhy(a).replace(/^h/,'H')}: it can't, and goes off its path.`,fix:airFix(a)};
-  return`<div>Stage ${a.k} in the air ${whyMark(cl,ok?'holds':'flips off its path',W)} <span class="dim">lights at ~${(a.h/1000).toFixed(0)} km, ${(a.q/1000).toFixed(1)} kPa on a standard ascent · ${ok?`need ${k(a.tau)} kN·m, has ${k(a.auth)}`:airWhy(a)}${a.cal<0?` · its centre of pressure ${(-a.cal).toFixed(1)} calibers ahead of its centre of mass${a.fair?' (the fairing up front)':''}`:''}</span>${ok?(a.cal<0&&a.q>3000?'<div class="sub">Unstable there: separate pointing prograde. '+(a.lim<30?`Held more than ~${a.lim.toFixed(0)}° off its path it may go over${a.lim<7.5*a.auth/a.tau-0.4?' (its reaction wheels fill)':''}.`:'Ten degrees off, it needs twice the steering.')+'</div>':''):`<div class="sub">${airFix(a)}</div>`}</div>`}).join('')}
+  return`<div>Stage ${a.k} in the air ${whyMark(cl,ok?'holds':'flips off its path',W)} <span class="dim">lights at ~${(a.h/1000).toFixed(0)} km, ${(a.q/1000).toFixed(1)} kPa · ${ok?`need ${k(a.tau)} kN·m, has ${k(a.auth)}`:airWhy(a)}${a.cal<0?` · unstable by ${(-a.cal).toFixed(1)} calibers${a.fair?' (the fairing)':''}`:''}</span>${ok?(a.cal<0&&a.q>3000?'<div class="sub">Unstable there: separate pointing prograde. '+(a.lim<30?`Held more than ~${a.lim.toFixed(0)}° off its path it may go over${a.lim<7.5*a.auth/a.tau-0.4?' (its reaction wheels fill)':''}.`:'Ten degrees off, it needs twice the steering.')+'</div>':''):`<div class="sub">${airFix(a)}</div>`}</div>`}).join('')}
 function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
   // short of authority, a stable design just turns into the wind; an unstable one goes over
@@ -97,7 +103,7 @@ function benchHTML(empty){if(empty)return'<div class="dim">an empty payload: sta
   const b=BLD.bench(),C=payChecks(stackDef,b&&b.back&&isV2(b.back.def)?b.back.def:null,b?b.id:null),sym={ok:'✓',warn:'!',bad:'✕'};
   return`<h2 style="margin-top:0">Payload checks</h2>`+C.rows.map(r=>`<div class="${r.cl}" style="margin-top:3px">${sym[r.cl]} ${r.t}${r.fix?`<div class="sub">${r.fix}</div>`:''}${r.k==='bal'&&r.cl!=='ok'?'<button data-bal="1" style="margin-top:2px">add a balance weight</button>':''}</div>`).join('')+
     `<div style="margin-top:8px">${(C.mass*1000).toFixed(0)} kg · ${fmtM(C.cost)} <span class="dim">(the payload alone)</span></div>
-    <div class="sub">Pointing and temperatures are checked once the attitude law comes (PROBES S2). Done takes it back to the rocket; every block of it there follows.</div>`}
+`}
 function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.Wg||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s,powerAim()),f=x=>x.toFixed(0);
   const okA=B.avg>=B.use,okB=B.battWh>=B.needWh,c=x=>x?'ok':'bad';
   const WA={t:`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`,d:'Averaged over a whole orbit, night side included, it makes less than it uses: the battery drains a little every orbit until it runs flat and the craft goes quiet.',fix:['more solar panels, or a solar wing','an RTG, which works day and night','fewer parts drawing power']},
@@ -134,7 +140,7 @@ function editorChanged(){
   {const r=$('bRoll');if(r){r.disabled=!!bench;r.style.opacity=bench?.45:'';r.textContent=bench?'ON THE PAYLOAD BENCH':'BUILD AND LAUNCH ▶ [L]';r.title=bench?'on the payload bench: Done goes back to the rocket':'build it for real: the launch site, the checks, then LAUNCH'}
     const h=$('statsHd');if(h)h.style.display=bench?'none':''}
   if(bench){$('stats').innerHTML=benchHTML(empty);BLD.frameCam();renderProgram();return}
-  if(empty){$('stats').innerHTML='<div class="dim">empty — pick a command pod from the parts list</div>';return}
+  if(empty){$('stats').innerHTML='<div class="dim">empty</div>';return}
   const{stages,mass}=stageStats(stackDef);let tot=0,html='';
   stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok',x=s.twr.toFixed(2);
     const W=i===0?(s.twr<1?{t:`Stage 1 can't lift itself: thrust ${x}× its weight`,d:'Under 1 it sits on the pad with its engines running.',fix:['a stronger engine, or boosters on the side','less propellant in this stage','a lighter upper stage or payload']}
@@ -148,7 +154,7 @@ function editorChanged(){
     ${powerLine(S)}
     ${lifeLine(S)}
     <div class="sub">${logHintHTML()}</div>`;
-  if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?whyMark('warn','No reaction wheels: it steers only with engines burning, steerable fins in the air, or RCS.',{t:'Nothing turns it on a coast in space',d:'Engines steer only while they burn and fins only in air: between burns it can\'t point where the next burn needs it.',fix:['a reaction wheel','RCS thrusters and a gas bottle']},'div'):whyMark('warn','No reaction wheels, gimbals, steerable fins or RCS: no control at all.',{t:'It can\'t steer at all',d:'It flies wherever the air and the thrust send it: no turn toward orbit, no pointing for a burn.',fix:['an engine that gimbals','a reaction wheel','steerable fins for the climb','RCS thrusters and a gas bottle']},'div');
+  if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?whyMark('warn','No reaction wheels: no steering on a coast.',{t:'Nothing turns it on a coast in space',d:'Engines steer only while they burn and fins only in air: between burns it can\'t point where the next burn needs it.',fix:['a reaction wheel','RCS thrusters and a gas bottle']},'div'):whyMark('warn','No steering at all.',{t:'It can\'t steer at all',d:'It flies wherever the air and the thrust send it: no turn toward orbit, no pointing for a burn.',fix:['an engine that gimbals','a reaction wheel','steerable fins for the climb','RCS thrusters and a gas bottle']},'div');
   BLD.frameCam();
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
   const stW=(v,when)=>({t:v<0?`Unstable ${when}: ${(-v).toFixed(2)} calibers the wrong way`:`Barely stable ${when}: ${v.toFixed(2)} calibers`,
@@ -158,20 +164,18 @@ function editorChanged(){
   const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
   const jW=(w,when,own)=>({t:`${w.p?`The joint ${w.p.d.name} / ${w.p.parent.d.name}`:'A joint'} at ${(w.frac*100).toFixed(0)}% of its rating ${when}`,
     d:w.frac>1?'Past its certified rating: ratings start at 70% of what the part really takes, so it may hold, but the further past, the likelier it breaks.':'Near its certified rating: a turn or a gust on the way up adds to it.',fix:jointFix(w,own)});
-  html+=`<h2>Aerodynamics &amp; structure</h2>
+  html+=`<h2 title="Joint loads are against certified ratings: 70% of what a part takes, until an instrument package has flown with it.">Aerodynamics &amp; structure</h2>
     <div>${term('stab','Stability')} <span class="dim">in calibers</span><br>
     full ${stM(cal(a.ful),'full on the pad')} · stage-1 dry ${stM(cal(a.emp),'with stage 1 burned out')} · M1.6 ${stM(cal(a.sup),'at M1.6, past the speed of sound')}</div>
     <div style="margin-top:4px">Liftoff ${whyMark(lc(a.lift.cert.frac),`${(a.lift.cert.frac*100).toFixed(0)}%`,jW(a.lift.cert,'at liftoff',false))} <span class="dim">${jn(a.lift.cert)}</span></div>
-    <div>${term('maxq','Max-q')} ${(a.mq.q/1000).toFixed(0)} kPa · M${a.mq.M.toFixed(1)} · 5° ${whyMark(lc(a.mq.cert.frac),`${(a.mq.cert.frac*100).toFixed(0)}%`,jW(a.mq.cert,'at max-q, 5° off the airflow',a.mq.own))} <span class="dim">${a.mq.own?'its own peak on a standard ascent (past the 25 kPa design case) · ':''}${jn(a.mq.cert)}</span>${a.mq.cert.frac>0.7?`<div class="sub">${a.mq.cert.frac>1?jointFix(a.mq.cert,a.mq.own):'Near its rating (a turn or a gust adds to it): '+jointFix(a.mq.cert,a.mq.own).replace(/^./,c=>c.toLowerCase())}</div>`:''}
+    <div>${term('maxq','Max-q')} ${(a.mq.q/1000).toFixed(0)} kPa · M${a.mq.M.toFixed(1)} · 5° ${whyMark(lc(a.mq.cert.frac),`${(a.mq.cert.frac*100).toFixed(0)}%`,jW(a.mq.cert,'at max-q, 5° off the airflow',a.mq.own))} <span class="dim">${a.mq.own?'its own peak · ':''}${jn(a.mq.cert)}</span>${a.mq.cert.frac>0.7?`<div class="sub">${a.mq.cert.frac>1?jointFix(a.mq.cert,a.mq.own):'Near its rating (a turn or a gust adds to it): '+jointFix(a.mq.cert,a.mq.own).replace(/^./,c=>c.toLowerCase())}</div>`:''}
 </div>
     ${trimHTML(S)}
     ${fitHTML(S)}
     ${standHTML(S)}
     ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
     ${airHTML(a.air)}
-    <div class="sub">${Math.min(cal(a.ful),cal(a.emp),cal(a.sup))<0?`Negative stability: it flips unless something steers it: the engines
-    while they burn, steerable fins while there's air (the Control block says which hold). `:''}Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
-    been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
+    ${Math.min(cal(a.ful),cal(a.emp),cal(a.sup))<0?'<div class="sub">Unstable: it flips unless something steers it.</div>':''}`;
   renderProgram();
   $('stats').innerHTML=html;if(atRoll)renderRollout()}   // (a site picked in the Rollout rebuilds the ship: refresh the checks)
 $('stats').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.bal){BLD.addBalance();return}if(e.target.dataset&&e.target.dataset.study){if(!orderStudy(S))HOOK.msg('Not possible right now');editorChanged()}});   // economy: trajectory studies

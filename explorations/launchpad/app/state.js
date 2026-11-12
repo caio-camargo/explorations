@@ -85,7 +85,7 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
 let settling=false;const NEWS=[];let newsSeen=0;
 let landPick=null;   // a landing site picked on the map ({body, pf}; Q62): ▶ Procedure lands there
 {const raw=missionEnd;missionEnd=function(s){settling=true;try{return raw(s)}finally{settling=false}}}
-{const raw=HOOK.news;HOOK.news=(t,cls='')=>{NEWS.unshift({t,cls,day:PROG.day||0});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
+{const raw=HOOK.news;HOOK.news=(t,cls='',big=null)=>{NEWS.unshift({t,cls,day:PROG.day||0,...(big?{big}:{})});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
 function newsHTML(){if(!NEWS.length)return'';const fresh=Math.min(newsSeen,NEWS.length);
   return `<div class="ep">News</div>`+NEWS.slice(0,Math.max(6,fresh)).slice(0,12).map((n,i)=>`<div class="nw${i<fresh?' new':''}"><span class="dim">day ${Math.floor(n.day)+1}</span> ${typeof newsMark==='function'?newsMark(n.t):''}<span class="${n.cls}">${n.t}</span></div>`).join('')}
 // Two placements the flight HUD keeps (fixes session, PLAYTEST #15, #16), run on every screen change, each HUD update and
@@ -244,6 +244,19 @@ HOOK.save=()=>{if(progHeld)return;try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);local
     HOOK.msg(/quota/i.test(`${e.name} ${e.message}`)?'Could not save: browser storage is full. Free some (old autopilot tapes, other sites\' data) or progress is lost on reload':`Could not save the program (${e.message})`)}}};
 addEventListener('storage',e=>{if(e.key!==PROG_KEY||progHeld)return;progHeld=true;
   const t='This program was saved in another tab: this tab no longer saves. Reload it to carry on here';HOOK.msg(t);HOOK.news(t,'bad')});
+// Importing a save file (R9's follow-up; Settings › Saved program, app/settings.js). The file goes through the boot's path:
+// migrated, then progLoad repairs, derives and probes it. One that isn't a program or stops the game leaves the program as
+// it was (reloaded from its own text). One that loads replaces this slot's save: the program it replaces is kept as
+// PROG_PREV when there is room, and this tab stops saving, so nothing writes the old program back before the page reloads.
+const PROG_PREV=PROG_KEY+'-before-import';
+function importSave(text){let j=null;try{j=JSON.parse(text)}catch(e){}   // (a program has a day: asked before migrating, which sets one)
+  if(!j||typeof j!=='object'||Array.isArray(j)||!('day' in j))return{ok:false,why:'the file is not a saved program'};j=migrateSave(j);
+  const keep=progJSON(),e=progLoad(j),newer=!!PROG.newerSave;delete PROG.newerSave;
+  if(e){progLoad(keep);return{ok:false,why:`it stops the game: ${e.message}`}}
+  const out=progJSON(),rep=PROG_REPAIRED.slice(),day=PROG.day;let kept=true;
+  try{localStorage.setItem(PROG_PREV,keep)}catch(_){kept=false}
+  try{localStorage.setItem(PROG_KEY,out)}catch(x){progLoad(keep);return{ok:false,why:/quota/i.test(`${x.name} ${x.message}`)?'browser storage is full':x.message}}
+  progHeld=true;return{ok:true,rep,newer,kept,day}}
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
 function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pendingDrops[i];if(simT<d.impact.t)continue;pendingDrops.splice(i,1);

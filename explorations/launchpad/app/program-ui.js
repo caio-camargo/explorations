@@ -482,5 +482,8 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
     `${term('dv','Δv')} <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`)
     +(planImp.f&&planCache&&planImp.key===planCache.key&&toolOK('impact')?`<br>lands: <span style="color:${verdictInk(planImp.v)}">${tipEsc(planImp.v.text)}</span>`:'');   // (Q488) where the plan comes down (the map works it out)
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
-renderEditor();go('title');   // (Q241 R3) the page opens on the title screen
+renderEditor();go('title');   // (Q241 R3) the page opens on the title screen...
+// (Q370) ...and a career under way goes on to the desk once every script has loaded (the desk reads later files: the file
+// split's rule 1); a new career, and the tester, stay on the title. The Esc menu's Title screen brings it back
+addEventListener('load',()=>{if(!needCharter()&&!TEST.on&&screenNow()==='title')go('program')});
 requestAnimationFrame(frame);

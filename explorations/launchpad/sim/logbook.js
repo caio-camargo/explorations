@@ -32,7 +32,7 @@ const LOGF=[
   {id:'semare',sec:'On Selene',label:'Mare basalt (spectrometer)',fmt:v=>`FeO ${v.FeO.toFixed(1)} ± ${v.se.toFixed(1)} %, TiO₂ ${v.TiO2.toFixed(1)} %, Al₂O₃ ${v.Al2O3.toFixed(0)} % · ${v.n} reading${v.n>1?'s':''}`,key:v=>v.n,best:'max',hint:'no rover has read a dark-plains rock'},
   {id:'sehigh',sec:'On Selene',label:'Highland rock (spectrometer)',fmt:v=>`FeO ${v.FeO.toFixed(1)} ± ${v.se.toFixed(1)} %, TiO₂ ${v.TiO2.toFixed(1)} %, Al₂O₃ ${v.Al2O3.toFixed(0)} % · ${v.n} reading${v.n>1?'s':''}`,key:v=>v.n,best:'max',hint:'no rover has read a bright-uplands rock'},
   {id:'sepano',sec:'On Selene',label:'Best panorama of the surface',fmt:v=>`${(v.q*100).toFixed(0)} % (sun ${v.el.toFixed(0)}° up, on ${v.unit==='mare'?'mare':'highland'})`,key:v=>v.q,best:'max',hint:'no rover camera has sent a panorama home'},
-  {id:'secore',sec:'On Selene',label:"Selene's core (seismic network)",fmt:v=>v.hi<Infinity?`radius ${fmtKm(v.lo)}–${fmtKm(v.hi)} · ${v.n} quake${v.n>1?'s':''} located`:`no S-wave shadow yet${v.lo?`: larger than ${fmtKm(v.lo)}`:''} · ${v.n} quake${v.n>1?'s':''} located`,key:v=>v.n,best:'max',hint:'no seismometers on Selene'},
+  {id:'secore',sec:'On Selene',label:"Selene's core (seismic network)",fmt:v=>v.hi!=null&&v.hi<Infinity?`radius ${fmtKm(v.lo)}–${fmtKm(v.hi)} · ${v.n} quake${v.n>1?'s':''} located`:`no S-wave shadow yet${v.lo?`: larger than ${fmtKm(v.lo)}`:''} · ${v.n} quake${v.n>1?'s':''} located`,key:v=>v.n,best:'max',hint:'no seismometers on Selene'},
 ];
 function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
   let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}

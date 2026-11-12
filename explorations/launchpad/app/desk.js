@@ -38,15 +38,35 @@ function deskWall(){let h='';const ph=deskPhoto();
   if(ph)h+=deskPhotoCard(ph);   // (Q286, UI.md § 3) no empty frame until there's a photo
   const nw=deskNews(NEWS);
   if(nw)h+=deskClipping(nw);
+  h+=trophyCase();   // (Q576) a chapter's capstone: its photo and its date
   const firsts=RACE.filter(id=>PROG.done[id]&&raceLost(id)==null).map(id=>({M:MISSIONS.find(m=>m.id===id),at:PROG.done[id]})).filter(x=>x.M)
     .sort((a,b)=>b.at.day-a.at.day).slice(0,2);
   for(const[i,f]of firsts.entries())h+=`<div class="cert" style="transform:rotate(${i?-1:1.5}deg)"><div class="t">FIRST: ${f.M.name}</div><div class="s">awarded to ${progName()}<br>flight ${f.at.flight} · ${fmtDate(f.at.day)}</div></div>`;
   return h}
+// ---- the trophy case (flow, QUEUE Q576; PROGRESSION § 3): one frame per chapter closed, with the photo of the flight
+// that closed it (kept per browser beside the last photo, PHOTO_KEY: it isn't game state) and its date. A capstone done
+// between flights, or before this browser kept photos, gets a plaque instead.
+const TROPHY_KEY='launchpad-trophies';
+function trophies(){try{const t=JSON.parse(localStorage.getItem(TROPHY_KEY)||'null');return t&&t.prog===progName()?t.list||{}:{}}catch(e){return{}}}
+function trophyKeep(D){const C=D&&D.chapter;if(!C)return;const L=trophies();if(L[C.id])return;const ph=deskPhoto();
+  L[C.id]={flight:D.flight,day:D.day,url:ph&&ph.flight===D.flight?ph.url:null};try{localStorage.setItem(TROPHY_KEY,JSON.stringify({prog:progName(),list:L}))}catch(e){}}
+function trophyCase(){const L=trophies(),done=CHAPTERS.filter(c=>chapterDone(c));if(!done.length)return'';
+  return`<div class="trophies"><div class="th">TROPHY CASE</div><div class="tg">${done.map(c=>{const t=L[c.id],at=PROG.done[c.capstone]||{},M=MISSIONS.find(m=>m.id===c.capstone);
+    return`<div class="tf" title="${tipEsc(c.question)} ${tipEsc(M?M.name:'')}: ${fmtDate(at.day||0)}">${t&&t.url?`<img src="${t.url}" alt="">`:`<div class="pl">${c.n}</div>`}<div class="tc">${tipEsc(c.name)}</div><div class="td">${fmtDate(at.day||0)}</div></div>`}).join('')}</div></div>`}
 // the pinned photo, or its empty frame; the Debrief pins the same card (Q241 R2)
 const deskPhotoCard=(ph,none,cap)=>ph?`<div class="photo" style="transform:rotate(2deg)"><i class="pin"></i><img src="${ph.url}" alt="flight ${ph.flight}"><div class="cap">Flight ${ph.flight} · ${ph.design}</div></div>`
   :`<div class="photo empty" style="transform:rotate(2deg)"><i class="pin"></i><div class="img">${none}</div><div class="cap">${cap}</div></div>`;
 // the papers print our own news first, then the latest that isn't a warning
 function deskNews(L){const H=POWERS[HOME],ours=x=>[progName(),H&&H.root,H&&H.name].some(n=>n&&x.t.includes(n));
+  const big=L.find(x=>x.big&&(PROG.day||0)-x.day<=POSTER_DAYS);if(big)return big;   // (Q479) a big moment of the last weeks leads the paper
   return L.find(x=>ours(x)&&x.cls!=='warn'&&x.cls!=='bad')||L.find(x=>!x.cls||x.cls==='good')||L[0]}
 const deskPaper=()=>`The ${POWERS[HOME]?POWERS[HOME].root:'Coastal'} Herald`;
-const deskClipping=(nw,cls='clip',more='')=>`<div class="${cls}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div><div class="hd">${nw.t}</div>${more}</div>`;
+const deskClipping=(nw,cls='clip',more='')=>nw.big?posterClip(nw,cls,more):`<div class="${cls}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div><div class="hd">${nw.t}</div>${more}</div>`;
+// (flow, QUEUE Q479; UI.md § 4.1 item 3) poster headlines for big moments: a first, a rival's first, a new chapter, a new
+// computing era. The paper prints one as a poster (a kicker, one big headline, the story under it) for POSTER_DAYS; the
+// Debrief's headline (app/debrief.js) uses the same palette. The palette follows the computing era, as UI.md's table:
+// human computers flat cream, navy and red (pe1); mainframes browns and oranges, rounder type (pe2); onboard computers
+// and after a photo-dark band and bold sans (pe3). Not for routine flights: only HOOK.news calls with a poster.
+const POSTER_DAYS=30,posterEra=()=>'pe'+Math.min(3,1+(typeof compEra==='function'?compEra():0));
+const posterClip=(nw,cls,more)=>`<div class="${cls} poster ${posterEra()}${nw.big.rival?' rival':''}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div>`
+  +`<div class="pk">${tipEsc(nw.big.kick)}</div><div class="ph">${tipEsc(nw.big.hl)}</div><div class="hd">${nw.t}</div>${more}</div>`;

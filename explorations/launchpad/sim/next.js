@@ -13,9 +13,11 @@ function nextStep(){const day=PROG.day||0,left=t=>`${Math.max(0,t-day).toFixed(0
   const c=(PROG.active||[]).slice().sort((a,b)=>a.deadline-b.deadline)[0];
   if(c)return{kind:'contract',title:cTitle(c),why:`accepted, pays ${fmtM(c.p.pay)}: ${left(c.deadline)} left`,tab:'contracts'};
   const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));
-  if(open.length){const M=missionsInOrder(open)[0],opens=MISSIONS.filter(x=>(x.req||[]).includes(M.id)).map(x=>x.name);
+  if(open.length){const M=missionsInOrder(open)[0],after=MISSIONS.filter(x=>!PROG.done[x.id]&&(x.req||[]).includes(M.id)),opens=after.map(x=>x.name);
+    // (Q580) a mission that also waits for another says so: since the unlock map the beeper and the hop wait for the weather and the structural test both
+    const also=[...new Set(after.flatMap(x=>x.req.filter(r=>r!==M.id&&!PROG.done[r])))].map(r=>(MISSIONS.find(x=>x.id===r)||{}).name).filter(Boolean);
     const race=RACE.includes(M.id)&&raceLost(M.id)==null?'; nobody has done it yet: be first':'';
-    return{kind:'mission',id:M.id,title:M.name,why:`pays ${fmtM(M.pay)}${opens.length?`, opens ${opens.join(' and ')}`:''}${race}`,
+    return{kind:'mission',id:M.id,title:M.name,why:`pays ${fmtM(M.pay)}${opens.length?`, opens ${opens.join(' and ')}${also.length?` (${after.length>1?'they also need':'it also needs'} ${also.join(' and ')})`:''}`:''}${race}`,
       how:NEXT_HOW[M.id]||(NEXT_PRESET[M.id]?`the ${NEXT_PRESET[M.id]} preset`:''),preset:NEXT_PRESET[M.id]||null,tab:'missions'}}
   const o=(PROG.offers||[]).slice().sort((a,b)=>b.p.pay-a.p.pay)[0];
   if(o)return{kind:'offer',title:cTitle(o),why:`the best offer on the board, pays ${fmtM(o.p.pay)}`,tab:'inbox'};
@@ -27,16 +29,16 @@ function missionsInOrder(L){if(!L.length)return[];const ep0=Math.min(...L.map(M=
 // ---- the Mission card's jobs (flow, QUEUE Q548; notes/flow.md § "Plan: the aim and the mission card", slice 2). Until
 // the aim (Q549) says what a flight is for: every accepted contract judged on a flight (a cond that isn't "judged at
 // home") whose needs this vessel carried when first asked (at the pad: a dropped stage doesn't take the job off the
-// card), then the missions open at launch (rec.open0, W11) it could meet, in NEXT's order, up to MC_MISSIONS; first, what
+// card), then the missions open at launch (rec.open0, W11) it could meet, in NEXT's order (all of them, Q600); first, what
 // this flight has done (rec.paid). Each {key, k:'contract'|'mission', title, pay, done, conds: jobConds (Q547)}.
-const MC_MISSIONS=3,MC_HOME=['rec','safe','home'];   // the conds that bring it home: recovered, home safe, landed at home
+const MC_HOME=['rec','safe','home'];   // the conds that bring it home: recovered, home safe, landed at home
 const MC_FIT=new WeakMap();   // rec → {job key: carries its needs}, decided once per flight
 function cardJobs(s){const R=s&&s.rec;if(!R)return[];const J=[];if(!MC_FIT.has(R))MC_FIT.set(R,{});const fit=MC_FIT.get(R);
   for(const p of R.paid||[])if(p.k==='mission'||p.k==='contract')J.push({key:p.k+':'+(p.id??p.l),k:p.k,title:p.l,pay:p.pay,done:true,conds:[]});
   const live=(key,x)=>{const C=jobConds(x,R,s);if(!C.some(c=>!c.home))return null;if(!(key in fit))fit[key]=jobNeeds(x,s).every(n=>n.ok);return fit[key]?C:null};
   for(const c of PROG.active||[]){const key='contract:'+c.id,C=live(key,c);if(C)J.push({key,k:'contract',title:cTitle(c),pay:c.p.pay,done:false,conds:C})}
-  let n=0;for(const M of missionsInOrder(MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)&&(!R.open0||R.open0.includes(M.id))))){if(n>=MC_MISSIONS)break;
-    const key='mission:'+M.id,C=live(key,M);if(C){J.push({key,k:'mission',title:M.name,pay:M.pay,done:false,conds:C});n++}}
+  for(const M of missionsInOrder(MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)&&(!R.open0||R.open0.includes(M.id))))){   // (Q600) all of them, not three
+    const key='mission:'+M.id,C=live(key,M);if(C)J.push({key,k:'mission',title:M.name,pay:M.pay,done:false,conds:C})}
   return J}
 // where the flight stands (Q548; Caio 2026-11-11: "a hard time understanding when I have finished a mission"). Jobs with a
 // cond lost don't count. 'home': a job wants only bringing home (all else met); 'todo': a job under way (a cond met, one

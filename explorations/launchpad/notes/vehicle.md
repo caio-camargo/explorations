@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2146,6 +2146,8 @@ numbers elsewhere changed. `node test.mjs --smoke --jobs 2`: all passed.
 
 ## Plan: solid motors as a main-stage choice (Q252; 2026-11-07, vehicle worker, PLAYTEST #51, D15.1; nothing built)
 
+**Changed by D38 (Caio 2026-11-11):** D15.1 stands. The thrust setting below is a design-table setting only, fixed for the flight; a solid may also be loaded with less than full propellant (new); there are no thrust-termination ports (question 6: never). A burning solid that is dropped flies off under its own thrust until burnout (mechanic 5 changes: the plan had it go dead; DECISIONS W53, 2026-11-12). The other defaults stand.
+
 **The ask** (Caio 2026-10-10: "a good mechanic if real"; 2026-10-13, raised to M1: "the same solid/liquid fuel separation
 as ksp... either forgotten or added far down the queue"). It is real: once lit, a solid burns to the end. Its thrust curve
 is cast into the grain. Only some late military motors have thrust-termination ports. Pillars 2 (a design problem: a stage
@@ -2369,7 +2371,122 @@ tapes recorded before replay stale (as with any physics change).
 
 **Test:** `vehicle-42` (the repro's flight, without the instrumentation; fails on the old code at 30.0 kg).
 
-## v1.310 — three of R22's four physics fixes; `detach()`'s momentum parked (2026-11-11, vehicle session, QUEUE R22; REVIEW-2026-11-09 § 2)
+## Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate, nothing built or queued)
+
+Caio, while holding scope: "I just want to scope what it would take to add flight simulation like KSP has". Read as
+KSP's planes: wings, a runway, aircraft and spaceplanes. This is an estimate from reading the code and one
+measurement; item counts are guesses in queue-item units (one agent session each).
+
+**What is already there.** The physics is a rigid body in three dimensions with forces per part (`aeroPass`,
+`sim/vessel.js:787`). Fins are flat plates that lift, steerable fins already join the control solve (`finCols`), and
+the navball, hold modes and ground contact exist.
+
+**Measured** (`review/2026-11-11/glide.mjs`; a capsule and a 1 t tank, the fin ring's four plates resized, nose first):
+
+| Plates | Best lift-to-drag | At |
+|---|---|---|
+| Stock fin ring, 0.9 × 0.9 m | 1.7 | 15° |
+| 3 × 2 m | 3.5 | 10° |
+| 5 × 2 m | 4.0 (4.5 with a nose cone) | 5° |
+
+That is a shuttle's glide (about 4.5 subsonic), and nowhere near an aeroplane's (10 to 17). The plate formula has no
+stall, no aspect ratio and no change with Mach, so the same 4 holds at Mach 3, where a real shuttle has about 1.
+
+**What is missing, by tier.**
+
+| Tier | What the player gets | What it needs | Size |
+|---|---|---|---|
+| 1. Winged return | A craft launched upright on a rocket that glides home and lands on a strip | Wing parts in mirrored pairs (elevons are today's steerable fins); stall, aspect ratio and Mach in the plate formula; lift in the landing predictor (`dragTable` keeps drag only, `sim/flight.js:693`); wheels on a vessel and a landing on its side that isn't a topple (Q508's rule calls it one today); a strip at each site; airspeed, sink rate and a glide cue on the HUD; a glide ratio and landing speed in the Assembly's checks (its stability maths assumes a symmetric rocket) | about 6 to 8 items |
+| 2. Aeroplanes | Take off from a runway, cruise, land | A horizontal assembly (parts can't tilt; rovers got their own designer for this reason); an air-breathing engine family (thrust by speed and air density, intakes); the takeoff roll; time warp in the air for a long cruise; the world drawn at low level and high speed for minutes (frame time not measured); trim and an autopilot; missions that want a plane; a scripted pilot for the robot | about 10 to 14 more, and a new room |
+| 3. Spaceplanes | A plane that reaches orbit | Combined engines, heating on wings, and a balance pass: orbit here is 3.4 km/s, so a single stage to orbit is far easier than on Earth and would undercut staging | about 4 to 6 more |
+
+**Recommendation.** Tier 1 only, as one of Q589's candidates (it is the lifting entry grown up): it serves "coming
+home, more than a parachute" and reuses most of what exists. Tier 2 is a second vehicle game (a new builder, a new
+engine family, new demands on the world) and does not serve the loop PROGRESSION.md is fixing; park it with the
+winged runway shuttle already deferred in notes/space.md § "Stations, modules and moonbases".
+
+**Decided (D30, Caio 2026-11-11):** tier 1 is wanted (planned as Q592); tiers 2 and 3 are backlog.
+
+**Flown end to end (2026-11-11, `review/2026-11-11/glide_e2e.mjs`; the real physics step, headless):** pod + 1 t tank + a resized fin ring, 2,090 kg, entering at 120 km, 0.99 of circular speed, −1.5°. **Today's plates are not enough.**
+- *With the attitude set every step:* a ballistic pod lands 1,813 km on at 3.1 g. Wings 3×2 m at 15° fly 7,635 km at 1.0 g (lift-to-drag 2.7 at every Mach, 2.9 subsonic); 5×2 m at 10° fly 10,043 km (3.6, 3.8). Tellus is 8,005 km round, so the best glides circle it. A 45° bank gives 870 to 925 km of cross-range. A flare ends at 31 to 33 m/s forward with 9 to 12.5 m/s of sink. Wings peak at 375 to 443 K: the plate loop adds no heat to them. About 10 µs a step.
+- *With the game's SAS and the pod's wheels:* it cannot hold 15° (mean error 12 to 13°), dives nose first to 50 to 59 kPa and 13 to 48 g, and the turn rate goes NaN (at 25 km and Mach 5 for 5×2 m, at 1.4 km for 3×2 m). With SAS off the 5×2 m craft breaks at the tank-to-pod joint in bending. Likely cause, not verified: big plates at high dynamic pressure are too stiff for the 0.02 s step. A player cannot build these plates today (fins stop at 2 m span).
+- *What the plates need, against a shuttle (about 1 hypersonic, 4.5 subsonic, 100 m/s at touchdown):* a **Mach term** (hypersonic is 3 where it should be 1); a **stall** (40° still flies, at 34 m/s); **aspect ratio** (span and chord enter only as area); **wing heating**; **elevons** and a guard or sub-steps for the rotation; **wing mass by size** (0.25 t at any size gives about 100 kg/m² against a shuttle's 500, which is why entry peaks at 1 g and touchdown is slow).
+- *Not checked:* the NaN's root cause; steerable fins as elevons; a ground contact or rollout (runs stop at 3 m, most over sea); roll stability; wind; frame time in the app; a shuttle-like wing loading.
+
+### Prototype: the wing formula (2026-11-11, review 2 session; scripts only, nothing in the game)
+
+`review/2026-11-11/wing_proto.mjs` patches the sim's source in memory (three replacements) and flies it with the real
+physics step. A plate marked `d.wing` gets the formula below; any other fin runs today's line, and a stock fin ring
+through 120 s of entry comes out **the same to the last bit**.
+
+**The formula** (normal-force coefficient of one plate; `s` = sin of its angle to the flow, AR = 2 × span / chord for a
+mirrored pair):
+- *Subsonic:* attached lift `k0·s·cos`, with `k0 = 2π·AR / (2 + √(4 + AR²))` (Helmbold); a **stall** at 14° for AR ≥ 4,
+  later for stubbier wings (+3.5° per unit of AR under 4), over a 6° band; past it a separated flat plate
+  (`1.364 · 2π·s / (4 + π·s)`, 1.2 broadside).
+- *Supersonic:* `min(k0, 4/√(M² − 1))·s·cos + cpMax(M)·s²`: the linear lift falls with Mach and the impact term takes
+  over. Blended from Mach 0.9 to 1.3.
+- *Drag:* today's 0.012 friction, plus a blunt leading edge's wave drag above Mach 1 (thickness 6 % of chord, half for sweep).
+- *Heat:* the windward face as a blunt body one chord across, plus the leading edge (radius 3 % of chord).
+- *Mass:* 40 kg per m² of plate (a shuttle's wing group with tiles is about 38).
+Six constants (`WING` in the script): thickness, leading-edge radius, sweep, stall angle, its low-AR bonus, its band.
+
+**Lift-to-drag, 3 × 2 m plates on a pod and tank** (old line → new):
+
+| Mach | 5° | 10° | 15° | 20° | 40° |
+|---|---|---|---|---|---|
+| 0.3 | 3.2 → 3.1 | 3.5 → 3.4 | 2.9 → 2.8 | 2.4 → 2.2 (stalled) | 1.1 → 1.1 |
+| 2 | 2.7 → 1.2 | 3.1 → 1.9 | 2.7 → 2.0 | 2.3 → 1.9 | 1.1 → 1.1 |
+| 15 | 2.7 → 0.3 | 3.1 → 0.7 | 2.7 → 1.1 | 2.3 → 1.2 | 1.1 → 1.0 |
+
+At 5 × 2 m (AR 5) the subsonic best is 4.4 at 5°. Lift at 20° falls from 1.25 to 0.9 (AR 3) or 0.6 (AR 5): a stall.
+
+**Flown from 120 km** (attitude set every step; 40° above Mach 5, 12° below Mach 2):
+
+| Craft | Wing loading | Track | Peak g | L/D above M 5 / subsonic | Wings peak | Touchdown |
+|---|---|---|---|---|---|---|
+| pod + 1 t tank, 2.8 t | 233 kg/m² | 3,213 km | 1.1 | 0.97 / 3.1 | 1,046 K | 77 m/s forward, 4.3 m/s sink |
+| pod + 4 t tank, 5.8 t | 483 kg/m² | 3,428 km | 1.1 | 0.99 / 3.1 | 1,134 K | 109 m/s forward, 4.3 m/s sink |
+| the same at 15° all the way | 483 kg/m² | 4,527 km | 1.0 | 1.30 / 3.1 | 1,215 K | (not flared) |
+| the same, banked 45° | 483 kg/m² | 2,817 km | 1.7 | 0.99 / 3.1 | 1,151 K | (not flared) |
+
+A ballistic pod lands 1,813 km on at 3.1 g. The touchdown needs an approach flown fast (6°, about 160 m/s at 1 km) and a
+flare from 250 m; held at 12° to the ground the same craft arrives at 93 m/s with 21 m/s of sink, with nothing left to
+flare on. So the stall makes the approach a skill, as on a real glider. Wings need a hot skin: 1,050 to 1,200 K rules out
+bare metal (the script gives them 1,900 K).
+
+**Under the game's own SAS** (wheels 10 kN·m, heat off; the centre of mass and the wing's centre measured along the stack):
+
+| Layout | Wing ahead of the centre of mass by | Result |
+|---|---|---|
+| wing ring at the tail | −1.7 m | cannot lift the nose: dives, 91 kPa, lost |
+| wing between pod and tank, steerable tail ring | +2.15 m | flips, 12 g |
+| wing between two tanks, steerable tail ring | +0.25 m | **held to the ground, mean error 0.0°**, 3,463 km, no NaN |
+| the same, no tail ring | +0.15 m | lost: the wheels alone are not enough |
+| the same with its tail, tanks dry | −0.2 m | flies 3,631 km, mean error 10°, worst 47° |
+| tanks dry, wing one tank further up | +1.1 m | mean error 7°, lift-to-drag 1.2 subsonic: wallows |
+
+So the control law is not the problem: **balance is**. The wing has to sit within about 0.3 m of the centre of mass, the
+centre of mass moves 0.45 m as the tanks empty, and the craft needs elevons (the steerable ring did the job). That is the
+Assembly's check to write: where the wing sits against the centre of mass, full and dry.
+
+**The NaN** (`review/2026-11-11/rollnan.mjs`): not the wing formula. The plates' rate damping is integrated explicitly, so
+roll overshoots once c·dt/I passes 2, with c = Σ ½ρv·A·3.5·r². Stock fins sit at 0.02 to 0.18; four 2 m fins on a 2 t
+craft at 500 m/s near sea level sit at 2.08; 3 × 2 m plates pass it at 250 m/s. The guard tried: the damping taken
+implicitly for the excess over 0.5 only, Δω = τ·dt / (I + max(0, c·dt − 0.5·I)). It holds 5 × 2 m plates steady at
+every speed tried and leaves today's flights the same to the last bit. Filed as Q598.
+
+**Cost:** 9 to 15 µs a step, as before; no sub-steps needed. (Two runs of twelve showed 240 and 360 µs a step once and
+14 µs when repeated: the machine was busy, not the craft.)
+
+**Not checked:** a touchdown on wheels and a rollout (runs stop 3 m up); wind and gusts; roll and yaw control in a bank
+under SAS (the banked run set the attitude); the formula against a measured wing polar; a delta or a body that lifts;
+frame time in the app; how the Assembly's stability maths reads a wing.
+
+**Not checked (before the flight above):** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
+contact code.
+
+## v1.315 — three of R22's four physics fixes; `detach()`'s momentum parked (2026-11-11, vehicle session, QUEUE R22; REVIEW-2026-11-09 § 2)
 
 All four confirmed by the review. Three ship; `vehicle-43` checks them and fails on the old code at each. The fourth is built
 and parked (below).
@@ -2407,4 +2524,3 @@ dry; capping the search at what the stage can pay (on the branch) brings it home
 7 m/s among rainforest trees and is lost (Q383). **To land it:** make the three flights robust to a metre a second at
 staging (the burn search capped, a correction after the last staging, a splashdown aimed at sea or Q383 settled), then
 merge the branch and add its momentum check (`vehicle-44` there).
-

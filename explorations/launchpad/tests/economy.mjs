@@ -224,7 +224,7 @@
   const D = new Function(src + 'return {dispatchQuote,dispatchSite,baseRunQuote,siteAccess,procKey,SITES,PROG,HOOK,pairKey,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, lines: {}, own: null, decisions: [], active: [], offers: [], fac: {}, dispatch: [],
-    done: { beeper: { flight: 0, day: 0 } }, flights: 3, funds: 2000 }); D.chooseStart('agency');
+    done: { weather: { flight: 0, day: 0 }, loads: { flight: 0, day: 0 }, beeper: { flight: 0, day: 0 } }, flights: 3, funds: 2000 }); D.chooseStart('agency');
   const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], key = D.procKey(st), abroad = D.SITES.find(t => t.power != null && t.power !== 0 && t.kind !== 'sea');
   const c = { id: 941, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 };
   P.procs = { [key]: { kind: 'orbit', dv: 4300, target: { pe: 160e3, ap: 160e3 }, site: null } }; const qHome = D.dispatchQuote(c, st);
@@ -366,7 +366,7 @@
   const D = new Function(src + 'return {utilTick,stationOf,TELLUS,PROG,HOOK,MISSIONS,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, cdone: 0, staged: {},
-    done: { weather: { day: 1, flight: 1 }, beeper: { day: 2, flight: 2 } } }); D.chooseStart('agency');
+    done: Object.fromEntries(['weather', 'loads', 'beeper', 'wxsat', 'tv', 'hop', 'orbiter', 'padabort', 'maxqabort'].map((k, i) => [k, { day: 1 + i, flight: 1 + i }])) }); D.chooseStart('agency');   // a station after TV, a crew after the max-q abort (Q577)
   const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0);
   const hab = { k: 'hab', i: 0, pos: [0, 0, 0], y0: 0, h: 3.2 }, top = { k: 'port', i: 1, pos: [0, 0, 0], y0: 3.2, h: 0.3 }, side = { k: 'rport', i: 2, pos: [0, 0, 0], y0: 1, h: 0.6, phi: 0 };
   const st = { id: 61, name: 'Station 1', r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [hab, top, side], attached: [] };
@@ -800,7 +800,7 @@
 {
   const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,procKey,orderDispatch,advanceDays};')(), P = A.PROG, news = [];
   A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = m => news.push(m); A.programNew(); A.chooseStart('agency');
-  Object.assign(P, { funds: 2000, day: 10, flights: 3, done: { beeper: { flight: 0, day: 0 } } });
+  Object.assign(P, { funds: 2000, day: 10, flights: 3, done: { weather: { flight: 0, day: 0 }, loads: { flight: 0, day: 0 }, beeper: { flight: 0, day: 0 } } });   // the Kestrel kit opens with the structural test (Q577)
   const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], orb = { pe: 150e3, ap: 152e3, inc: 0, sci: true };
   P.procs = { [A.procKey(st)]: { kind: 'orbit', target: { pe: 150e3, ap: 152e3 }, dv: 4445 } };
   const sat = { id: 921, type: 'sat', src: 'com', client: 0, p: { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 },
@@ -928,7 +928,7 @@
 // unlocks (PART_GATE, RV_GATE). For each of the 29 missions, in two programs (only its ancestors done; everything done but
 // it and what follows from it), opensOf, asked before and after, equals the before/after diff of missionOpen, of
 // offerTypes over every source (the world's own gates, CT.open, set aside: they wait on a station or a satellite, not on
-// the mission) and of partOpen / rvPartOpen. The beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover
+// the mission) and of partOpen / rvPartOpen. The beeper opens 2 missions, 6 kinds of contract, 20 parts (since Q577's map; 5, 8 and 7 before) and the rover
 // antenna; opensNames merges several missions' lists (one done by another isn't "opened") and opensLine says it in a line.
 {
   const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,PARTS,RV_GATE,opensOf,opensNames,opensLine,offerTypes,missionOpen,partOpen,rvPartOpen,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
@@ -950,13 +950,154 @@
     for (const g of [got(O), got(O2)]) { runs++; if (JSON.stringify(want) !== JSON.stringify(g)) bad.push(`${m.id} (${state}): want ${JSON.stringify(want)} got ${JSON.stringify(g)}`); }
     if (want.m || want.c || want.p || want.r) any++; }
   for (const k in D.CT) if (D.CT[k].open0) { D.CT[k].open = D.CT[k].open0; delete D.CT[k].open0; }
-  P.done = { weather: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
+  P.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
   P.done = {}; const two = D.opensNames(['weather', 'beeper']), none = D.opensLine(D.opensNames(['nyxland']));
-  const facts = B.missions.length === 5 && B.contracts.length === 8 && B.parts.length === 7 && B.rover.join() === 'it:ant'
-    && line === '5 missions · 8 kinds of contract · 8 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
+  const facts = B.missions.length === 2 && B.contracts.length === 6 && B.parts.length === 20 && B.rover.join() === 'it:ant'
+    && line === '2 missions · 6 kinds of contract · 21 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
     && N.contracts.every(x => x.t && !/^[a-z]+[A-Z]/.test(x.t)) && none === ''
-    && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 5 && two.contracts.length === 9;
-  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover antenna; opensNames merges; opensLine',
+    && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 2 && two.contracts.length === 7;   // (the unlock map, Q577: the satellite bench; the hop and the beeper wait for the structural test)
+  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 2 missions, 6 kinds of contract, 20 parts (the satellite bench, Q577) and the rover antenna; opensNames merges; opensLine',
     M.length === 29 && !bad.length && any >= 20 && facts,
     `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
+}
+
+// econ-39. The unlock map as data (economy, QUEUE Q577; the plan Q573, notes/economy.md § "Plan: the unlock map and
+// chapters"; review/2026-11-11/q573/m3.mjs's checks): every part is open at the start, gated by a mission or by its era;
+// with only a mission's req closure done, its needs and its NEXT_PRESET are open; each contract type's needs are open at
+// its req; a part already flown stays open; the qualification contract draws only open parts; the structural test's bar.
+{
+  const D = new Function(src + 'return {PROG,HOOK,PARTS,PART_GATE,MISSIONS,CT,CT_JOB,NEXT_PRESET,PRESETS,newShip,partOpen,partLaunchWhy,kinOf,rng,LOADS_Q,M_JOB,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, flights: 1, decisions: [], offers: [], active: [] }); D.chooseStart('agency');
+  const START = ['sparrow', 't1', 't2', 'cone', 'chute', 'sci', 'dec', 'fins', 'rfin', 'ballast', 'bwt', 'spin'], keys = Object.keys(D.PARTS);
+  const era = keys.filter(k => D.PARTS[k].era != null), gated = keys.filter(k => D.PART_GATE[k]), free = keys.filter(k => D.PARTS[k].era == null && !D.PART_GATE[k]);
+  const ids = new Set(D.MISSIONS.map(M => M.id)), badGate = gated.filter(k => !ids.has(D.PART_GATE[k])), badKey = Object.keys(D.PART_GATE).filter(k => !D.PARTS[k]);
+  check('unlock map: twelve parts at the start, the rest on a mission or an era, every gate a real mission and a real part',
+    free.slice().sort().join() === START.slice().sort().join() && gated.length === 69 && era.length + gated.length + free.length === keys.length && !badGate.length && !badKey.length,
+    `${keys.length} parts: ${free.length} at the start, ${gated.length} on ${new Set(gated.map(k => D.PART_GATE[k])).size} missions, ${era.length} by era${badGate.length ? '; bad gates ' + badGate : ''}${badKey.length ? '; no such part ' + badKey : ''}`);
+  const M = Object.fromEntries(D.MISSIONS.map(x => [x.id, x])), clos = ids0 => { const S = new Set(); const go = id => { for (const r of M[id].req || []) if (!S.has(r)) { S.add(r); go(r); } }; ids0.forEach(go); return S; };
+  const at = S => { P.done = Object.fromEntries([...S].map(id => [id, { day: 0, flight: 1 }])); P.kh = {}; return { parts: keys.filter(k => D.partOpen(k).ok).map(k => ({ d: D.PARTS[k], on: true })) }; };
+  const needsOf = (J, p) => { try { return (typeof J.needs === 'function' ? J.needs(p) : J.needs) || []; } catch (e) { return []; } };
+  const has = (n, v) => n.id === 'mass' ? v.parts.some(p => p.d.kind === 'ballast') : n.has(v);   // (a mass need is a quantity: the simulators being open is the gate)
+  const badM = [];
+  for (const X of D.MISSIONS) { const v = at(clos([X.id])), J = D.M_JOB[X.id] || {}, miss = needsOf(J, {}).filter(n => !has(n, v)).map(n => n.id), pk = D.NEXT_PRESET[X.id], pw = pk ? D.partLaunchWhy(D.newShip(D.PRESETS[pk]).parts) : '';
+    if (miss.length || pw) badM.push(`${X.id}: ${miss.join(',')}${pw ? ' ' + pk + ' ' + pw : ''}`); }
+  const badC = [];
+  for (const t in D.CT) { const T = D.CT[t], S = T.req ? clos([T.req]) : new Set(); if (T.req) S.add(T.req); const v = at(S), J = D.CT_JOB[t] || T;
+    const miss = needsOf(J, { k: 'sparrow', m: 0.5, kind: 'hab', sat: 1, name: 'x' }).filter(n => !has(n, v)).map(n => n.id); if (miss.length) badC.push(`${t} (req ${T.req || '-'}): ${miss}`); }
+  check('unlock map: with only its req closure done, each mission\'s needs and NEXT_PRESET are open; each contract type\'s needs at its req', !badM.length && !badC.length,
+    [...badM, ...badC].join(' · ') || `${D.MISSIONS.length} missions, ${Object.keys(D.CT).length} contract types`);
+  const req = id => (M[id].req || []).slice().sort().join('+');
+  check('unlock map: the six req changes (beeper and hop after weather and the structural test, TV after the weather satellite, a station after TV, the far side after the weather satellite and Heavy lift II, servicing and modules after TV); and a crew aboard after the max-q abort (a crew flies only after it)',
+    req('beeper') === 'loads+weather' && req('hop') === 'loads+weather' && req('tv') === 'wxsat' && req('station1') === 'tv' && req('farside') === 'lift2+wxsat' && req('stationcrew') === 'maxqabort+station1' && D.CT.service.req === 'tv' && D.CT.stExpand.req === 'tv',
+    ['beeper', 'hop', 'tv', 'station1', 'farside', 'stationcrew'].map(id => id + '←' + req(id)).join(' '));
+  at(new Set()); const shut = !D.partOpen('kestrel').ok && /Structural test flight/.test(D.partOpen('kestrel').why);
+  P.kh = { kestrel: { use: 0.3, reg: {} } }; const flown = D.partOpen('kestrel').ok, other = !D.partOpen('petrel').ok;
+  const side = keys.find(k => D.PARTS[k].kin && D.PART_GATE[k]); let kin = true; if (side) { P.kh = { [D.kinOf(side)]: { use: 0.3, reg: {} } }; kin = D.partOpen(side).ok; }
+  check('unlock map: a part already flown stays open (an old save keeps it); one never flown follows the map', shut && flown && other && kin, `kestrel closed, open once flown; petrel still closed${side ? `; ${side} open by its kin ${D.kinOf(side)}` : ''}`);
+  at(new Set()); const R = D.rng(7), drawn = new Set(); for (let i = 0; i < 200; i++) { const o = D.CT.test.gen(R); if (o) drawn.add(o.p ? o.p.k : o.k); }
+  at(new Set(['weather', 'loads'])); const R2 = D.rng(7), drawn2 = new Set(); for (let i = 0; i < 200; i++) { const o = D.CT.test.gen(R2); if (o) drawn2.add(o.p ? o.p.k : o.k); }
+  check('unlock map: the qualification contract draws only open parts (the Kestrel after the structural test, never the Condor before Heavy lift I)',
+    [...drawn].every(k => START.includes(k)) && drawn2.has('kestrel') && !drawn2.has('condor'), `start: ${[...drawn]} · after the structural test: ${[...drawn2]}`);
+  const L = M.loads, ok = q => L.ok({ sciQ: q });
+  check('unlock map: the structural test\'s bar is 20 kPa (W50), in the mission and its job\'s condition', D.LOADS_Q === 20000 && ok(20000) && !ok(19900) && /20 kPa/.test(L.brief) && /20 kPa/.test(D.M_JOB.loads.conds[0].t || ''),
+    `ok at 20.0 kPa: ${ok(20000)}, at 19.9: ${ok(19900)}`);
+  P.done = {}; P.kh = {};
+}
+
+// econ-41. Economy on intent (economy, QUEUE R18, W47's defaults, review 2026-11-09 § 2): a market saturates (each
+// further satellite selling TV or imagery adds half the one before: `mktShare`), a privatization is sold once per
+// career, and each foreign power buys a stake once (the same friend used to come back for a second 15 %).
+{
+  const A = new Function(src + 'return {PROG,HOOK,mktShare,decisionTick,resolveDecision,programNew,chooseStart,rng,own,POWERS,pairKey,careerMove};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const tot = n => n * A.mktShare(n), sat = [1, 2, 3, 5, 10].map(tot);
+  Object.assign(P, { done: { a: {}, b: {}, c: {} }, day: 500 });
+  const friend = A.POWERS.find(p => p.i !== P.home); P.rel[A.pairKey(P.home, friend.i)] = 0.9;
+  for (const p of A.POWERS) if (p.i !== P.home && p !== friend) P.rel[A.pairKey(P.home, p.i)] = -0.5;
+  const R = A.rng(7); let ipos = 0, stakes = 0;
+  for (let n = 0; n < 400; n++) { P.day += 30; A.decisionTick(30, R, 30);
+    for (const d of [...P.decisions]) { if (d.kind === 'ipo') { ipos++; A.resolveDecision(d.id, 'yes'); } else if (d.kind === 'stake') { stakes++; A.resolveDecision(d.id, 'yes'); } else A.resolveDecision(d.id, d.opts ? d.opts[d.opts.length - 1][0] : 'no'); } }
+  const fr = A.own().st[friend.i] || 0;
+  A.careerMove({ kind: 'hire', co: 'Testco', amt: 100 }); const reset = P.ipoSold === false && !Object.keys(P.stakeBy).length;
+  check('econ-41: satellite markets saturate (1, 2, 3, 5, 10 satellites earn 1, 1.5, 1.75, 1.94, 2.0× one); in 33 years of offers, one privatization and one stake from the one friendly power (15 %, not 30 %); a career move starts the books over',
+    Math.abs(sat[0] - 1) < 1e-12 && Math.abs(sat[1] - 1.5) < 1e-12 && Math.abs(sat[3] - 1.9375) < 1e-12 && sat[4] < 2 && ipos === 1 && stakes === 1 && Math.abs(fr - 0.15) < 1e-9 && reset,
+    `totals ${sat.map(x => x.toFixed(3)).join(' ')}; ipos ${ipos}, stakes ${stakes}, friend's share ${(fr * 100).toFixed(0)} %, reset ${reset}`);
+}
+
+// econ-40. No `Infinity` in the saved core bracket (economy, QUEUE R16, review 2026-11-09 § 2): `seisLocate` started
+// Selene's core bracket at `hi: Infinity`; a save (or the simulator's snapshot) turns that into `null`, `null < Infinity`
+// is true, `coreW` went negative and "Bound Selene's core" paid at once. Now `hi: null` means no bound yet; readers take
+// both null and an old in-memory Infinity as unbounded.
+{
+  const A = new Function(src + 'return {PROG,HOOK,selSci,selN,progJSON,progRestore,progLossy,LOGF,CT};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {};
+  const S = A.selSci(); S.quakes = [{ id: 1 }]; S.core = { lo: 3e5, hi: null, n: 1 };
+  const lossy = A.progLossy(P), w0 = A.selN().coreW; A.progRestore(A.progJSON()); const w1 = A.selN().coreW;
+  P.sel.core.hi = Infinity; const wInf = A.selN().coreW; A.progRestore(A.progJSON()); const w2 = A.selN().coreW;
+  const fmt = A.LOGF.find(f => f.id === 'secore').fmt, txt = fmt({ lo: 3e5, hi: null, n: 1 });
+  const dn = A.CT.selCore.done({ p: { w: 300 } }, A.selN()); P.sel.core = { lo: 3e5, hi: 5e5, n: 2 }; const wB = A.selN().coreW;
+  check('econ-40: Selene\'s core bracket survives a save: unbounded stays unbounded (null or an old Infinity), "Bound Selene\'s core" is not done by a reload; a real bracket still measures',
+    !lossy.length && w0 === Infinity && w1 === Infinity && wInf === Infinity && w2 === Infinity && !dn && /no S-wave shadow/.test(txt) && Math.abs(wB - 200) < 1e-9,
+    `done ${dn}; lossy [${lossy.join(', ')}]; widths ${w0} ${w1} ${wInf} ${w2}, bracket ${wB}; log "${txt.slice(0, 40)}"`);
+}
+
+// econ-42. Families, reasons and chapters as data (economy, QUEUE Q579; plan Q573 rules 3 and 6; D34): a family is every
+// part one mission opens, named (one unlock card, one reason line); every gated part has a "what it makes possible" line;
+// every mission sits in one chapter, whose capstone is one of its own; no closed part goes on the stand, into development
+// or onto a production line (a run would write its know-how, and a part fired or flown stays open); a mission done
+// between flights waits in PROG.cardQ for the desk's cards.
+{
+  const A = new Function(src + 'return {PROG,HOOK,PARTS,PART_GATE,PART_FAMILY,famOf,famParts,partWhy,CHAPTERS,chapterOf,chaptersNow,MISSIONS,programNew,chooseStart,partOpen,startTest,prodQuote,devQuote,missionComplete,PROG_SCHEMA};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.HOOK.done = () => {}; A.programNew(); A.chooseStart('agency');
+  const gated = Object.keys(A.PARTS).filter(k => A.PART_GATE[k] || A.PARTS[k].era != null), noWhy = gated.filter(k => !A.partWhy(k));
+  const fams = Object.keys(A.PART_FAMILY), famBad = fams.filter(f => { const ps = A.famParts(f), m = A.PART_FAMILY[f].m;
+    return ps.length < 2 || ps.some(k => A.famOf(k) !== f) || Object.keys(A.PART_GATE).some(k => A.PART_GATE[k] === m && A.PARTS[k] && !ps.includes(k)) || !A.PART_FAMILY[f].name || !A.PART_FAMILY[f].why; });
+  const inCh = A.CHAPTERS.flatMap(c => c.missions), chBad = A.CHAPTERS.filter(c => !c.missions.includes(c.capstone) || !c.question || !c.grants.length || !c.name);
+  const cover = A.MISSIONS.every(M => inCh.filter(id => id === M.id).length === 1) && inCh.length === A.MISSIONS.length;
+  const now0 = A.chaptersNow().map(c => c.id).join(); P.done = { weather: { day: 0 }, loads: { day: 0 } }; const now1 = A.chaptersNow().map(c => c.id).join();
+  P.done = {}; P.funds = 5000; P.stand2 = { ready: 0, job: null, done: 0 };
+  const shut = !A.partOpen('kestrel').ok, stand = A.startTest('kestrel', 'qual') === false && !P.stand2.job && !(P.kh || {}).kestrel, standOK = A.startTest('sparrow', 'qual') === true;
+  const pq = A.prodQuote('kestrel'), dq = A.devQuote('kestrel', 'cheap'), prod = !pq.own.ok && !pq.lic.ok && /not open yet/.test(pq.own.why) && /not open yet/.test(pq.lic.why) && !dq.ok && /not open yet/.test(dq.why);
+  P.cardQ = []; A.missionComplete(A.MISSIONS.find(m => m.id === 'diswatch'), null); const q = P.cardQ.join() === 'diswatch' && !!A.PROG_SCHEMA.cardQ;
+  check('econ-42: families match the map (each is one mission\'s parts, named, with its line); every gated part says what it makes possible; every mission in one chapter, each capstone its own; a fresh program is in chapter 1, after the structural test in chapter 2; no closed part on the stand, in development or on a line; a world mission queues its cards',
+    !noWhy.length && fams.length >= 5 && !famBad.length && !chBad.length && cover && now0 === 'c1' && now1 === 'c2' && shut && stand && standOK && prod && q,
+    `no why: ${noWhy.join(',') || '-'}; families ${fams.map(f => `${f} ${A.famParts(f).length}`).join(', ')} (bad: ${famBad.join(',') || '-'}); chapters bad ${chBad.map(c => c.id).join(',') || '-'}, cover ${cover}; now ${now0} → ${now1}; stand ${stand}/${standOK}; line/dev ${prod}; cardQ ${q}`);
+}
+
+// econ-43. One formula each, no copies (economy, QUEUE R19, review 2026-11-09 § 2): a launch's operations fee
+// (`opsOf`), its stacking days (`stackDays`), an engine's odds of not lighting (`ignFail`, with development's "reliable"
+// steps, which career.mjs's copy lacked) and the two pay premiums (`PAY_MIL`, `PAY_FAR`, were a literal *1.6 in 15 pays).
+{
+  const A = new Function(src + 'return {PROG,HOOK,ignFail,IGN_FAIL,khUse,opsOf,OPS_FIX,OPS_FRAC,stackDays,prepDays,khVessel,FAC,facLv,newShip,PRESETS,vesselCost,PAY_MIL,PAY_FAR,CT,rng,programNew,chooseStart};')();
+  const P = A.PROG; A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const k = 'petrel', f0 = A.ignFail(k), want = A.IGN_FAIL * (1 - A.khUse(k)) ** 2; P.dev = { [k]: { rel: 2 } }; const f2 = A.ignFail(k); P.dev = {};
+  const v = A.newShip(A.PRESETS.Orbiter), c = A.vesselCost(v.parts).cost, ops = A.opsOf(c), days = A.stackDays(c, v);
+  const opsOK = Math.abs(ops - (A.OPS_FIX + A.OPS_FRAC * c)) < 1e-12, daysOK = Math.abs(days - A.prepDays(c) * (1 + 0.5 * (1 - A.khVessel(v))) * A.FAC.hall.eff[A.facLv('hall')]) < 1e-12;
+  const rd = f => readFileSync(new URL('./' + f, import.meta.url), 'utf8'), sim = ['sim/program.js', 'sim/contracts.js', 'app/rollout.js', 'career.mjs'].map(f => [f, rd(f)]);
+  const copies = sim.flatMap(([f, s]) => [/OPS_FIX\s*\+\s*OPS_FRAC/, /IGN_FAIL\s*\*/, /prepDays\([^)]*\)\s*\*\s*\(1\s*\+\s*0\.5/, /\*\s*1\.6(?=[,}])/].filter(re => (s.match(new RegExp(re.source, 'g')) || []).length > (f === 'sim/program.js' && re.source !== '\*\s*1\.6(?=[,}])' ? 1 : 0)).map(re => f + ' ' + re.source));
+  const R = A.rng(3), mil = A.CT.recon.gen(R), mil2 = A.CT.milLift.gen(R);
+  check('econ-43: one formula each: ignFail is the know-how odds and two "reliable" steps take it to 0.36×; opsOf and stackDays are the launch\'s fee and days; no copies left in the sim, Rollout or career.mjs; the pay premiums are named (1.6 each)',
+    Math.abs(f0 - want) < 1e-12 && Math.abs(f2 - 0.36 * f0) < 1e-12 && opsOK && daysOK && !copies.length && A.PAY_MIL === 1.6 && A.PAY_FAR === 1.6 && mil && mil2 && Math.abs(mil2.pay - 22 * mil2.m * 1.6) < 1e-9,
+    `ignFail ${f0.toFixed(4)} (want ${want.toFixed(4)}), rel 2: ${f2.toFixed(4)}; ops ${ops.toFixed(2)}, days ${days.toFixed(1)}; copies: ${copies.join(' · ') || 'none'}`);
+}
+
+// econ-44. A failed automatic run asks the player (QA, QUEUE Q580; Caio 2026-11-12: "a failure should alert the player,
+// who decides what to do"): three clean runs certify a route once; when an automatic run then fails, the routine holds and
+// a decision waits in the in-tray, keep repeating or stop. Before, the failure quietly sent the route back to three more
+// clean runs by order, and the robot's m2 (which only waits) never saw it repeat again. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,routeRun,routeAutoWhy,setRouteAuto,resolveDecision,routeCtl};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  Object.assign(P, { day: 2600, decisions: [], dispatch: [], sats: [], routes: [{ id: 1, name: 'Lookouts at 300 km, 82°', stack: [], alt: 300, inc: 82, keep: 2, auto: false, paused: false, runs: 3, clean: 3 }] });
+  const r = P.routes[0], fail = n => D.routeRun({ route: 1, title: `Lookouts, run ${n}`, satId: null }, { ok: false, why: 'it broke up in the climb' });
+  const on = D.setRouteAuto(1, true).ok;
+  fail(4); const d1 = P.decisions.find(d => d.kind === 'routine'), held = r.paused && r.auto, why1 = D.routeAutoWhy(r), ctl = D.routeCtl(r);
+  D.resolveDecision(d1.id, 'keep'); const kept = r.auto && !r.paused && D.routeAutoWhy(r) === '';
+  fail(5); const d2 = P.decisions.find(d => d.kind === 'routine'); D.resolveDecision(d2.id, 'stop'); const stopped = !r.auto && !r.paused;
+  fail(6); const quiet = !P.decisions.some(d => d.kind === 'routine');   // Repeat off: an ordered run's failure is just news
+  const again = D.setRouteAuto(1, true).ok && r.auto;                    // certified once: Repeat can come back without the ladder
+  check('routine (Q580): a failed automatic run holds the routine and asks (keep repeating or stop); the answer is kept; Repeat, once earned, needs no new clean runs',
+    on && !!d1 && held && /in-tray/.test(why1) && !/clean run/.test(why1) && /held after a failed run/.test(ctl) && d1.opts.map(o => o[0]).join() === 'keep,stop' && kept && !!d2 && stopped && quiet && again,
+    `${d1 && d1.title}: "${d1 && d1.text}" · held: "${why1}" · ${news.filter(t => /Your call|routine/.test(t)).slice(0, 3).join(' | ')}`);
 }

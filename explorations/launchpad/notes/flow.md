@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2097,3 +2097,140 @@ and says *held for its window*; hovering it still gives the whole line (`Comsat 
   messages, the notice for the structural test flight over a crash, and after a chute landing *Done: end the flight when
   you like*, two notices queued, Recover vessel. **Not judged:** whether three missions plus a contract is too much card
   early on (*Measure the air* lists its four bands, all ◐ until a landing analyses them).
+
+## v1.318 — the loop's slices: families and chapters as data, the builder under the map, the unlock cards, chapters as events (2026-11-12, loop slices session, QUEUE Q579, Q578, Q572, Q576; D41, D42; plan Q573)
+
+- **Q579 (economy, sim/program.js), data only.** `PART_FAMILY` (the orbital kit, the satellite bench, the 2.5 m family,
+  high orbits, docking, and *landers* for the far side's four, one more than the plan) names every part one mission opens;
+  `famOf`, `famParts`. `PART_WHY` and `partWhy(k)`: a "what it makes possible" line for every gated or era part (a
+  family's line for its members). `CHAPTERS` (`{id, n, name, question, missions, capstone, grants}`, the plan's final
+  draft; every mission in one; `grants` lists only what is built: no yard, globe or bases yet), `chapterOf`,
+  `chapterDone`, `chaptersNow` (4a and 4b side by side). `ROOM_GRANT` (the beeper: mission control). **D34:** a closed part
+  can't go on the stand (`startTest`; it would write know-how, and a part fired stays open), into development (`devQuote`)
+  or onto a line, own or licensed (`prodQuote`); the stand's list leaves it out. Test econ-42.
+- **Q578 (vehicle, builder.js).** `stackKeys(st)` reads any design format (old lists, v2 trees, payload blocks);
+  `stackWaits(st)` lists what a design waits for, in chapter order. The preset picker dims a waiting preset with its first
+  wait (*Hopper 🔒 Structural test flight +1*; the full list on hover). The palette lists open parts by category; the
+  closed ones fold under **▸ Not open yet (n)** (click to open), by chapter, each mission's parts under one reason line
+  (*Opens with "The beeper": the satellite bench*), eras last (`closedParts`). Test vehicle-44.
+- **Q572 (flow, app/unlock.js, sim/debrief.js; D42: one each).** `unlockCards(ids, pay)` turns what missions did and opened
+  into cards: each mission done (its win line, its pay), then **every part by name, one card each** (a family's in a row,
+  engines first, the card naming the family and its place: *Part unlocked · The satellite bench, 3 of 20*), a room, the
+  single parts, the rover parts, each mission it opened, and the next chapter when a capstone closed one. The Debrief keeps
+  them (`D.cards`) and shows them once, 0.45 s after it opens (`cardsShown` is kept with the save); missions done between
+  flights queue in `PROG.cardQ` (new `PROG_SCHEMA` row; `chapters.mjs` empties it) and show at the desk without the
+  *done* card, since the desk's centred notice still says that (Q600). Any key or a click: the next; Esc: all gone; **D**:
+  the design table with the part in hand (`BLD.grab`). Leaving the room closes them. **The model** (app/model-desk.js,
+  `pmStart`/`pmDraw`): the part built alone by `newShip([k])`, meshed by `partsMesh`, drawn with the mesh shader and
+  `deskLight` into its own target (RGBA16F where the GPU has it), read back and tone-mapped in JS (x/(1+x), gamma 2.2) into
+  a 448×350 canvas shown at 320×250, turning at ~20 frames a second (a draw and its read-back cost ~34 ms here). Only in
+  rooms, where `frame()` draws no 3D. Test flow-56.
+- **Q576 (flow).** The Missions tab is headed by chapter: *Chapter 2 · Once around*, its question, *Finish: The beeper →
+  mission control, the satellite bench*, the capstone marked ◆; a chapter with nothing open or done past the current one is
+  a count; `progTabOf` files *Chapter* headings under Missions. A flight that flies a capstone is debriefed under a blue
+  poster (*Chapter 2 complete · first in the world / ONCE AROUND*) ahead of a first (`capstoneOf`, `D.chapter`). The desk
+  wall's **trophy case**: a frame per chapter closed, the flight's photo where this browser kept one
+  (`launchpad-trophies`, beside the last photo; `trophyKeep` at the Debrief), else a plaque with the chapter's number.
+  Test flow-57.
+- **Checked in Chrome** (a fresh agency, states set by hand): the desk's cards for the structural test (the Kestrel turning
+  in the lamp's light), the Debrief's 26 cards for the beeper (done +60M, 20 parts, mission control, rover parts, Heavy
+  lift I, Weather satellite, chapter 3), **D** to the table with the camera in hand, the closed list, the picker, the
+  Missions tab, the trophy case. Caught there: a `//` comment that swallowed `unlockShow` (R4's pattern) and an
+  apostrophe in a single-quoted string.
+- **Not checked:** a real flown flight end to end (the Debrief was a record built by hand); the overlay at other window
+  sizes; a family part's line is the family's (20 identical lines for the bench); no sound yet (look & sound); the model's
+  colours against the design table's real grade.
+
+## v1.319 — the Mission card stays up in flight; a mission done turns green there (2026-11-12, flow item by the platform session, QUEUE Q600; D42; PLAYTEST #162, #164)
+
+Caio, playing v1.306–v1.307: the centred "Mission complete" box came when he cut the thrust (#162: `doneHeld` held it
+while the engines burned, Q558), and the missions he saw before launch were gone during the flight (#164: the dark
+cockpit folded the Mission card in every critical phase, and it listed three missions at most). D42: quiet in flight,
+loud after it.
+- **The card stays**: `'mission'` is first in `CP_CARDS` (app/cockpit.js). In a critical phase (`cpPhase`: the climb, a
+  burn, a landing) it is short (`mcShort`, app/hud.js): one line per job, its first open condition with the reading
+  now ("Sounding experiment, 40–55 km · apex 40–55 km, now 31 km"), or the lost one in red; the *Now* line stays. Pinned,
+  it stays full. Quiet, it is the full card as before.
+- **Every mission** open at launch the vessel could meet is listed (`MC_MISSIONS`, the cap of three, is gone from
+  `cardJobs`, sim/next.js). The card folds by height like the others when the window is short.
+- **Done in place**: the jobs keep the order the flight first listed them in (`mcOrder`, per `rec`), so a job done turns
+  green where it stood ("✓ Above the weather · done, +15.0M", the whole line green) instead of jumping to the top.
+  `debPaid` now records a contract's id (sim/contracts.js), so a paid contract matches its live row.
+- **No box in flight**: `HOOK.done` in flight (`n.flight` and mode flight) goes to `doneFlight` (app/notice.js): one line in
+  `#msg` for 6 s, "✓ Mission complete: Beeper · +30.0M" ("First in the world: …", "Contract done: …"), and a chime
+  (`sndDone`, app/sound.js: two soft rising tones, 784 and 1175 Hz). `doneHeld` is gone. The box (`#done`) stays for world
+  missions and contracts judged at home, at the desk, until Q572's overlays; the fanfare after a flight is Q572's.
+- Tests: flow-55 rewritten (in flight a line and a chime and no box; a flight's completion after it dropped; the desk's
+  box as before), flow-58 new (kept in a burn with Δv while the rest fold, via `hudCardsOn`, now its own function; the
+  short rows; done in place, green, with pay; `mcOrder`), flow-54 (all the missions; in the dark cockpit), flow-40 (the Δv
+  card still among `CP_CARDS`).
+- Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 378).
+
+## v1.320 — poster headlines for big moments; v1.318 flown by the robot (2026-11-12, loop slices session, QUEUE Q479; UI.md § 4.1 item 3)
+
+- **Big moments carry a poster.** `HOOK.news(t, cls, big)` takes a third argument `{kick, hl, rival?}` on four calls only:
+  our first in the world (`missionComplete`), a rival's first (`raceTick`), a chapter closed (`missionComplete` on a
+  capstone: *Chapter 2 complete: Once around. Can we stay up? Yes.*) and a new computing era (`compTick`). Routine news has
+  none. `NEWS` keeps it (app/state.js).
+- **The paper prints it as a poster.** `deskNews` lets a poster from the last `POSTER_DAYS` (30) lead the Herald on the desk
+  wall and beside the Debrief; `posterClip` (app/desk.js) sets a kicker, one Bebas headline and the story under it.
+- **The era's poster palette** (`posterEra()`: pe1 human computers, pe2 mainframes, pe3 onboard computers and after, per
+  UI.md's table): pe1 flat cream, navy and red; pe2 browns and oranges in a rounder type; pe3 a dark band and bold sans.
+  The Debrief's poster headline (a first, a loss, a chapter) takes it too. Test flow-58.
+- **v1.318 on real flights** (`node playtest.mjs cards`, a new row: m1's two flights with the cards checked after each
+  Debrief): the Sounding flight closes *Above the weather* and the structural test (25.2 kPa) and shows 14 cards under the
+  *Chapter 1 complete* poster (two missions done, the orbital kit, the four parts *Above the weather* opens, the beeper and
+  the hop, chapter 2); the beeper shows 26 under *Chapter 2 complete · first in the world*, +108M; a real Space moves on,
+  the camera turns, a real D brings it to the table in hand; the trophy case holds both chapters with their flight photos;
+  the Missions tab reads by chapter. TESTING 375–377's robot half is done.
+- **Caught on the way:** a `//` comment appended after a statement swallowed the rest of `raceTick`'s line (the third time
+  this pattern bit in two days: R4's, `unlockDesk`'s, this one): **append comments only at the true end of a line.** A
+  robot run started while the file was broken loaded the broken page; the rerun was clean.
+- **Not checked:** the pe2 and pe3 palettes on screen (only pe1 was seen: the first hour is in the human-computers era); a
+  rival's first on the desk by eye.
+
+## v1.322 — the design table's and the flight's copy, cut to the rule (2026-11-12, review 2 session (Fable), QUEUE Q603 slices 1 and 2; D43; PLAYTEST #167)
+
+Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
+
+- **Standing lines gone into tooltips.** The line under *Parts* (19 words on how to pick and place) is now the heading's
+  tooltip; with a rocket on the table `#target` is empty, with none it reads *pick a part to start*. The line under
+  *staging* (28 words) and the one under *action groups* (22) are each their heading's tooltip. The screen's subtitle
+  is *design table*.
+- **While holding:** *holding X · right-click drops it* (was a 20-word line naming every place a click can go).
+  Parked parts: *n parts not attached · left behind at launch*.
+- **Part cards** (`PART_INFO`, `PART_PAIRS`, builder.js): 48 of 67 sentences rewritten, none over 14 words now; a
+  closed part's card says *Not open yet: it opens with …* once. `DEP_HOW` keeps its "key, or button: when" shape (the
+  card splits it at the colon).
+- **Tooltips** on the toolbar, the part options, the groups and the presets: one clause each.
+- **The readout** (app/editor.js): Trim, Touchdown and the stages in the air lose their explaining tails (the glossary
+  and the why-cards carry them); the ratings paragraph under the readout is the *Aerodynamics & structure* heading's
+  tooltip; the payload bench no longer shows a note to developers ("PROBES S2").
+- **The flight (slice 2).** The first-flight hints (app/cockpit.js) say the same steps in about half the words (*To
+  reach orbit, turn: at 100 m/s tap W to lean east, then SAS Prograde. Keep the nose near the ◇.*); they stay until
+  Guided (Q491) takes the teaching. The two "too flat" cautions end at *nose up to the ◇*. The flight bar's five long
+  tooltips and twelve of Help's rows are one clause each.
+- **Counted:** 146 strings. The part cards' sentences: 1,102 words to 751, the longest from 34 to 14; their *Pairs
+  with* lines 601 to 522.
+- **Tests:** the full suite passed on slice 1 (898 checks); the smoke set on both slices passed but for vehicle-43 (b),
+  which found no failed ignition that run and passes alone, with and without this change (a flake, filed). After the
+  merge with `origin/main` the smoke set passed but for the timing check *6b: a perturbed orbit at 100,000× warp stays
+  cheap* (2,327 µs a frame while other sessions' tests ran; 97 µs alone).
+- **Not checked:** not seen in a browser (no GPU this session): whether a heading reads as hoverable, how the empty
+  `#target` line sits, and how the cards wrap. TESTING 380. The why-cards' own sentences (app/editor.js `W`) are
+  slice 4.
+
+## v1.324 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
+
+- **A line per part.** Every member of a family has its own `PART_WHY` line (55 of them: the Kestrel's *the heart of an
+  orbital rocket*, the whip antenna's *the lightest way to be heard*...), so the satellite bench's 20 cards say 20 things.
+  The family's line stays the builder's reason (`partWhy` reads the family first); the card reads the part's.
+- **A sound per card** (`sndUnlock(k)`, app/sound.js; stand-ins for look & sound): a mission done is the notice's two
+  beeps, a part a rising three-note arpeggio, a room or a mission opened two soft notes, the next chapter a four-note
+  fanfare. `AUD.ev.unlock` counts them.
+- **Q370, on the queue's default:** the page still opens on the title, and a career under way goes on to the desk at the
+  window's `load` (after every script: the desk reads later files, the file split's rule 1). A new career and the tester stay
+  on the title; the Esc menu's *Title screen* brings it back. Cards waiting in `PROG.cardQ` show at the desk on arrival.
+- **Checked:** flow-18 (updated) and flow-60; headless with `review/2026-11-11/app/q370_check.cjs` (the page in a vm, a
+  founded career reloaded: it lands on the desk with its queued cards up, Esc › Title works, no errors). **Not checked in
+  Chrome:** the machine was too loaded for the browser to answer (two tabs froze); nor the sounds by ear.

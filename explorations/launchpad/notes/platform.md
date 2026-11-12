@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -951,3 +951,77 @@ undefined power, `Object.keys(null)`, `null['0-1']`); so do `offers: 5` and `act
   Missions tab with the done firsts struck, the registry), the career save byte-for-byte untouched, Back to your career.
   In the desktop Chrome the tab froze after the station start once, while the local server was starved (4.6 s per file);
   with the server restarted it loaded in 1 s at 8 ms a frame headless. Not played by hand (TESTING 368).
+
+## v1.310 — the loader fills a save from the schema (2026-11-11, platform, QUEUE R1d)
+
+The last slice of the `PROG` schema plan (step 4). `progLoad` (v1.308) now builds a save on `progFresh()` (every row's
+default), then PROG's starting literal, then the save. An old save gets every field; a field read with `||default` no
+longer needs the `||`. The literal goes second so a save from before `wseed` keeps world 12345, which it always loaded
+with (`progFresh` would draw a new world). No `SAVE_V` bump: filling defaults changes nothing a save means.
+- **The audit first** (a scratch script over `sim/`, `app/`, `builder.js`, `career.mjs`): for each row with a non-null
+  default, every read that could tell absent from the default (`!PROG.k`, `== null`, `=== undefined`, `'k' in PROG`,
+  `&&`, a ternary, `if(PROG.k)`). 13 fields, ~25 reads; all read the same either way (0 and false are falsy like absent;
+  `{}`/`[]` reads are `PROG.k&&PROG.k.sub` or `.length`). The one difference: `home` is now always set, so the load always
+  computes the rivals' forecast (it did once a home was chosen; `rivTick` would build it on the first day anyway).
+  Null-default rows: the two `!= null` reads (`cyc`, `commPh`) treat null as absent. Nothing iterates over `PROG`'s keys
+  but the serializer.
+- **Fields the game doesn't know** are kept as they are (the plan's question 2, default) and named in the tester's
+  verbose log (`PROG_UNKNOWN`, a `save` line).
+- **Not done (by design):** the `||` reads stay. Retire them lazily, by lane, when a file is touched; platform-6 keeps the
+  ones left equal to the table.
+- Test platform-8: a sparse save (`funds: 5` and an unknown field) loads with every row that has a default present and of
+  its default's kind, funds 5, world 12345, the unknown field kept and logged; a save's own values (`done`, `bailouts`,
+  `wseed`) are kept. platform-7's played-save check (a played save loads as a plain restore would) still passes: a
+  program from `programNew` already has every field.
+
+## v1.312 — a frame that throws no longer ends the game (2026-11-11, platform, QUEUE R9)
+
+Before: `frame()` (app/loop.js) called `requestAnimationFrame(frame)` as its last line, so one exception anywhere in a
+frame (the sim, the HUD, the render) skipped it and the game froze for good, with nothing on screen; the page had no
+error handler at all (review 2026-11-09 § 2).
+- `frame(now)` is now `try{frameBody(now)}catch(e){gameFault(e,'frame')}requestAnimationFrame(frame)`: the next frame
+  is scheduled whatever happened. `frameBody` is the old body.
+- **`app/fault.js`** (new, loaded first of the app scripts, so it also catches an app script that throws while loading):
+  `window` `error` and `unhandledrejection` handlers and `gameFault(e, src)`. A panel at the bottom: "Something went wrong.
+  The game is still running but may misbehave; export your save before you reload", the message, where (`app/loop.js:53`,
+  from the stack), how many times; *Reload*, *Export save* (`progJSON()` as `launchpad-save-day<N>.json`), *Export the old
+  save* when R10 kept an unloadable one (`launchpad-save-unloadable.json`), *Keep playing* (hides it until an error it
+  hasn't shown). The first time each error is seen it goes to the console; every fault goes to the tester's log
+  (`logEv('error', …)`).
+- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (Import came in v1.316, Q599; before, a save
+  file goes back by `localStorage.setItem` in the console).
+- Not done: a frame that throws every time keeps throwing (the panel counts it); no automatic pause.
+- **Checked in the page, headless** (scratch run of `review/2026-11-11/app/harness.cjs`, the R34 harness, 64 s boot on
+  the shared machine): boot 0 errors; `testTopUp` made to throw, 5 frames: 5 faults, none escaped, the next frame
+  scheduled each time, the panel shows "boom in a frame · app/loop.js:53 · 5×" with its buttons; restored, the game runs
+  on; a window `error` and a rejected promise both reach it; *Keep playing* hides it.
+- Test platform-9: the static shape of `frame`/`frameBody` and the script order; `app/fault.js` run against a stub
+  document (the panel's content, the count, Keep playing, a new error bringing it back, the old-save button only with a
+  `-bad` copy).
+
+## v1.316 — export and import a save from Settings (2026-11-12, platform, QUEUE Q599)
+
+R9 gave the fault panel an *Export save*, but only a crash could show it, and nothing put a file back (it took
+`localStorage.setItem` in the console). Settings (Esc › Settings) now has a **Saved program** section:
+- *Export save*: `progJSON()` as `launchpad-save-day<N>.json` (fault.js's `exportSave`), any time, mid-flight too.
+  *Export the unloadable save* shows when R10 kept one (`<key>-bad`).
+- *Import save…*: asks twice ("Click again: choose the file"; the line under it says the file replaces the career, a
+  chapter start or the tester's sandbox, whichever slot the page has open), then a file picker. Disabled during a flight
+  or a drive (the page reloads after an import, and a flight in progress doesn't survive a reload). Closing Settings
+  disarms it.
+- `importSave(text)` (app/state.js, after the `storage` listener, so platform-7's slice of the page runs it): the file
+  must be a JSON object with a `day` (asked before migrating, which would add one), then the boot's path: `migrateSave`,
+  `progLoad` (repair, derive, probe). One that isn't a program or stops the game: the program is reloaded from its own
+  text and nothing is written. One that loads: the program it replaces goes to `<key>-before-import` (when there is
+  room; it says so when there isn't), the import is written to the slot, `progHeld` is set so this tab can't save the
+  old program back, and the page reloads. What the import said (its date, damaged parts reset, a newer game's save, no
+  room for the old one) is told after the reload (`sessionStorage` 'launchpad-import-said').
+- **Checked in the page, headless** (`review/2026-11-11/app/harness.cjs`, a scratch script): boot 0 errors; the section
+  renders; Export hands `saveFile` the program; Import arms on one click, picks on the second, disarms when Settings
+  closes; a 30-days-on program through a fake file input: the day goes 0 → 30, the slot holds it, `-before-import`
+  kept, the tab held, a reload asked for; a `{"funds":5}` file: "can't be imported: the file is not a saved program.
+  Your program is as it was"; 0 errors.
+- Test platform-10: a played program's file into another tab (slot replaced, old kept, held, the next boot opens it);
+  bad JSON, a string, an array, an object without a day and a save that stops the game, and a full storage, all
+  leave the program and the store unchanged; the static shape of the Settings section.
+- Not done: no drag-and-drop; the Esc menu itself has no entry (Settings is one click in).
