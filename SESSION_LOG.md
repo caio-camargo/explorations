@@ -7249,3 +7249,28 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `BACKLOG.md`, `PROGRESSION.md`, `REVIEW-2026-11-11.md`, `KSPISMS.md`, `notes/space.md`, `notes/economy.md`.
 - **Next:** Caio's W52 (late-game milestones), W53 (solids), W54 (the hall's bays), W49; Q591 (the flaky gate) first.
 
+
+## 2026-11-11 — platform (Opus 5.5, worktrees launchpad-r10/r1d/r9): R10 (v1.308), R1d (v1.310), R9 (v1.312)
+
+- **Asked:** Caio: a platform session, do R10; then, while the testing flow was being rebuilt, the next items (R1d, R9).
+- **Done, R10 (v1.308):** a bad save no longer bricks the page. `progLoad(j,home)` in sim/program.js is the one loader
+  (page and `recLoad`): `progRepair` resets fields of the wrong kind, `progDerive` rebuilds what follows from a save,
+  `progProbe` runs one muted day and restores; any throw restores `PROG_BASE` and starts a new program. app/state.js
+  copies an unloadable save to `PROG_KEY+'-bad'` first (no room: the tab never saves), says quota errors once a minute,
+  and stops saving when another tab writes the save. Test platform-7 runs the page's load/save block on a fake storage.
+- **Done, R1d (v1.310):** the loader fills a save from the schema (`progFresh()` + `PROG_BASE` + the save), so a save
+  without a field gets the default (world 12345 keeps its `wseed`); unknown fields are kept and logged (`PROG_UNKNOWN`).
+  Audit: no read in the code tells "absent" from the default (13 fields, ~25 reads); the `PROG.x||…` reads retire lazily,
+  by lane. Test platform-8.
+- **Done, R9 (v1.312):** a frame that throws no longer ends the game: `frame()` is a try/catch around `frameBody` and
+  always schedules the next frame. New `app/fault.js` (first app script): `gameFault` for frames, window errors and
+  unhandled rejections; a panel with Reload, Export save, Export the old save (R10's `-bad` copy) and Keep playing;
+  every fault to `logEv('error',…)`. Checked headless (5 throwing frames caught). Test platform-9; sound-1 reads `frameBody`.
+- **Checked:** CI green on each branch before merge (R10 run 2, r9 run 43135539681); `check_numbers` clean. Renumbered
+  twice for collisions (Q571 took v1.309, Q577 v1.311): R1d v1.310, R9 v1.312, TESTING 367 and 370.
+- **Not checked:** the panel by a human (TESTING 370); a real quota-full browser (TESTING 367).
+- **Files:** launchpad `sim/program.js`, `sim/record.js`, `app/state.js`, `app/loop.js`, `app/fault.js` (new),
+  `index.html`, `tests/platform.mjs`, `tests/economy.mjs`, `tests/look.mjs`, `notes/platform.md`, `NOTES.md`,
+  `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `INDEX.md`.
+- **Next:** Q591 (P1, the flaky staging check: seed `sepFx`'s puffs in the test). R9 has no *Import save* yet (Export
+  only, and only from the fault panel; a menu entry would help bug reports). The `PROG.x||<literal>` reads retire by lane.
