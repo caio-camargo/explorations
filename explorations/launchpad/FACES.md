@@ -1,6 +1,6 @@
 # FACES — the face engine
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-06
-**Status**: **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
+**Version**: 0.1.18 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-11-10
+**Status**: **live again (D40, Caio 2026-11-11: D26's parking is lifted; the ligne-claire head stays the crew's look until this trial is judged).** **A second construction (§ 7) and a borrowed shape library (§ 8) are on trial (2026-11-10)**; the first lab was **parked 2026-11-06 (D26)**: Caio found the face creator too thorny; the crew get the ligne-claire head
 (CREW Part 1). Kept as it was left, for a later return to the face question. Before that: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -208,3 +208,268 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   a nose root shaped like the bridge, blended into the brow. 71 genes. Next for hair: more eras, partings, facial hair.
 - **Thunderbirds quiff done properly** (profile-first: vertical front, curve back); the other six styles still rough.
   **Age**: wrinkles and under-eye bags as genes the Age macro drives. Nose length limited above the lip. 73 genes.
+
+## 7. The second construction (2026-11-10, Caio: "diagnose or rebuild it")
+
+**What was wrong with the first lab** (`mockups/faces/`), measured and read from its code:
+
+- **Not speed.** On the RTX 3050 its shader compiles in 2.4 s and a 12-face grid draws in 0.7 s.
+- **The head was assembled, not one surface.** About twenty signed-distance solids (ellipsoids for skull, jaw, chin and
+  brow; a wedge, a ball and two more balls for the nose; blocks for lips; a sphere in a bored hole for each eye) joined
+  by smooth unions and cut by planes. Nothing made the forehead run into the brow and the bridge as one plane, which
+  is what the deco references are. The nose read as a plank with a ball on it, the hair as a cap.
+- **Genes were offsets on those solids, so they collided.** Fourteen comments in the shader are repairs for one gene
+  breaking another ("so no keel", "never reaches the mouth", "never in a hole"). Each new gene needed couplings with
+  the old ones; that is the thorniness.
+- **The stretches broke the distance field**, patched with one hand-tuned step factor per face (`uL`).
+- **Saved faces drifted.** DNA stored each gene as a fraction of its range, so retuning a range changed every preset.
+- **The spread was wrong.** The twelve roster archetypes look like one man in twelve paint jobs; the pushed
+  signatures look like monsters. Little lies between.
+
+**The second lab** ([`mockups/faces2/index.html`](mockups/faces2/index.html)) keeps § 2–3's ideas (house head, genes,
+signatures, DNA) and replaces the construction:
+
+1. **One control cage.** A lattice of 22 rings × 20 columns. Rows are the face's lines (brow edge, lid margins, nose
+   tip, lip borders, jaw line); columns are its landmarks (midline, nose edge, inner eye corner, pupil, outer corner,
+   face corner, side, ear, back). The house head is a typed table of the face's points (`FACE`); the skull and neck
+   come from a section formula.
+2. **Catmull–Clark subdivision with semi-sharp creases** makes the skin (three levels, 75k triangles, 20–60 ms per
+   change). The *Planes* gene puts a floor under every edge's sharpness: 0 is a soft modelled head, 3 the cage's bare
+   planes. Brow, nose ridge, lip borders and jaw line carry their own creases (*Feature edges*).
+3. **A gene moves named cage points.** Rows keep their order, so a long nose cannot reach the lip and nothing needs a
+   repair. Proportions (forehead, nose length, nose to mouth, chin) remap heights between landmarks. 55 genes.
+4. **Eyes** are balls behind an opening in the cage; **hair** is a shell grown from the cage with a carved edge;
+   **ears** are a small cage of their own. A rasterised mesh with a shadow map, so the head turns under the mouse.
+5. **DNA by name** (`F2:jw=1.2,np=.03`): only genes that differ from the house head, in real units.
+6. It is a mesh, so D12.3's option (b) (the 3D figure wears the same head) comes without marching cubes.
+
+**State:** a first pass, one sitting. Checked by eye on the GPU: the house head in ¾, front, profile and close-up, at
+*Planes* 0.45 and 1.6, and one sheet of twelve generated faces (stills in `output/launchpad/mockups/faces2/`).
+**Not checked:** each gene at both ends of its range; the 48 px thumbnails; any face against a reference picture.
+**Known rough:** the eyes stare (no lid thickness, no lash line); a pinch at the inner eye corner; ears are plain
+slabs; the hairline waves where the shell steps down the cage; nostrils are not modelled; no expressions, no
+breeding tab, no archetypes yet (the first lab's are in its file, in the old gene space).
+
+## 8. A borrowed shape library: MakeHuman (2026-11-10, Caio: "start with something already validated")
+
+**How faces2 compares with other creators.** One surface with a fixed layout, deformed by parameters, is what every
+3D creator in § 2 does; faces2 is that. What differs is the source of the shapes: theirs come from artists or scans,
+ours were typed by hand. And faces2's cage is a plain grid, where made heads run rings of edges round the eyes and mouth.
+
+**MakeHuman** (github.com/makehumancommunity/makehuman) supplies exactly those two things. Its base mesh, targets and
+expressions are **CC0 1.0** (public domain; its `LICENSE.md` § C, read 2026-11-10; the program's code is AGPL and is
+not used). [`mockups/faces3/bake_mh.py`](mockups/faces3/bake_mh.py) cuts the head out of it: 4,516 points, 114
+feature sliders (left and right merged), macros for sex, age, three populations and weight, and 34 expression units,
+in `mh-head.js` (0.72 MB). [`mockups/faces3/index.html`](mockups/faces3/index.html) draws it with faces2's light and
+paint, a hair shell, a generator, and *Exaggerate* (a face's difference from the average face, multiplied).
+
+**Seen** (GPU, by eye; stills in `output/launchpad/mockups/faces3/`):
+- The average head is a sound human head at once: ears, lids, nostrils, lips. One slider change takes 8–30 ms.
+- Expressions work on any face (an old man's smile, with its folds: `old-man-smile.png`). That is stage F7, for free.
+- Sex, age, population and weight give plainly different people (`sheet.png`).
+- **It is realistic, not carved.** None of the deco or puppet style is in it.
+- **Exaggerating everything fails.** At ×2 the sheet is monsters (`sheet-exaggerate-2.png`): § 3's rule (push one to
+  three features, keep the rest quiet) holds here too.
+- Rough: the generator moves all 107 feature sliders at once and leaves dents; the hair shell's edge is jagged (it
+  follows the mesh's quads); the painted eyebrows land in the wrong place; the neck's cut edge is ragged.
+
+**Not checked:** the sliders one by one; the 48 px thumbnails; the other two expression sets (African, Asian; the
+bake takes the European one).
+
+**Open: where the style comes from.** Three ways, not yet tried: (a) faces2's cage riding on this head (each cage
+point bound to a place on MakeHuman's surface, so the library moves the cage and the cage keeps the planes);
+(b) a few stylising shapes of our own on MakeHuman's mesh (a bigger eye, a simpler nose, a squarer jaw) with the
+signature generator; (c) leave the shape alone and stylise by light and paint only.
+
+**Tried and failed: style by an automatic filter** (2026-11-10). faces3 gained *Simplify* (Taubin smoothing of the
+skin) and *Carve* (the faces' normals gathered into a few directions, then the points moved to fit them; Sun et al.
+2007), with *Plane size*. Seen on the GPU (`carve-filter.png`, `carve-filter-sheet.png`): Simplify does remove detail,
+but it removes the features with it. The lids flatten and the eyes sink, the lips part, and every face drifts toward
+one smooth mannequin. Carve adds almost no visible planes on top, and Plane size changes nothing that shows: after
+smoothing there are no strong edges left for it to keep, and the subdivision that follows rounds what it makes.
+**Why it fails:** a filter cannot know which edges are the style. In the references the planes sit on chosen lines
+(brow into nose, lip borders, jaw, cheekbone); a filter keeps whichever edges happen to be sharpest. The sliders stay
+in the lab at 0. This leaves way (a): planes placed by design, in the cage.
+
+## 9. The cage on MakeHuman's head (2026-11-10, way (a) of § 8)
+
+[`mockups/faces4/index.html`](mockups/faces4/index.html): MakeHuman decides who the person is; faces2's cage decides
+how they are drawn. The binding is made once, on the average head, when the page loads (about a second):
+
+1. **Landmarks on MakeHuman's profile**, found by casting rays at the midline: nose tip, nose base, lip borders (from
+   a lip mask the bake takes from the lip-volume shapes), the slit, the chin's crease and point, nose root, brow.
+   The cage's rows are moved to those heights.
+2. **The eye's opening**, found by looking from the front for where the eyeball is nearer than the skin; the cage's
+   four lid points go to its corners, top and bottom. **The mouth's corner** and **the nose's wing** are MakeHuman
+   vertices (the outermost lip point; the point the nose-flaring shape moves most). **The jaw's edge** under each
+   column is where the surface falls away to the neck.
+3. Every cage point is then dropped onto the surface (from the front for the face, toward the head's axis elsewhere)
+   and stored as a place on one MakeHuman triangle. Any MakeHuman shape or expression then moves the cage.
+4. The cage's points are control points and the skin falls inside them, so each change runs four fitting passes that
+   move the points until the skin passes through its targets.
+
+MakeHuman's ears are drawn as they are; the eyes are balls where MakeHuman puts them; hair is faces2's shell.
+
+**Seen** (GPU, by eye; stills in `output/launchpad/mockups/faces4/`): the mechanism works. Sex, age, population and
+weight give different carved heads (`sheet.png`, `sheet-carved.png`); *Planes* works on all of them; the lips and the
+chin come through well; a change takes 20–90 ms. Two bugs found by measuring each cage point's distance from its
+target: rays down the exact midline slipped between triangles (41 points off, then none), and rays from below entered
+through the neck's open end.
+**Not good yet:**
+- **Ripples across the mid-face**: bands under the eyes and over the cheeks, where the eye's rows (placed by the
+  opening) and the same rows further out (placed by the profile) do not line up.
+- **The nose is weak from the front**: MakeHuman's nose is a real, small nose, and five cage rows do not hold its
+  ridge. The brow has no strong edge either, so the deco "brow into nose" line is not there.
+- **Expressions mostly fade**: a smile shows faintly; raised brows barely. The cage is too coarse to carry them.
+- The eyes are small and the eyebrow paint sits high.
+**Not checked:** sliders one by one; 48 px; the fit's accuracy beyond "no point further than 0.06 from its target".
+
+**What this makes possible, not yet done:** the style can now be added in the cage's own terms, on top of any
+person: faces2's genes (brow forward, nose root filled for a straight profile, a squarer jaw, bigger eyes) as a
+fixed "house style" offset, since the cage's points have names.
+
+## 10. The face simplified into planes (2026-11-10)
+
+Caio on faces4 (§ 9): "not the right direction. it's more a question of simplifying the face into planes."
+So the cage is set aside, and MakeHuman's face is kept as it is and reduced.
+
+[`mockups/faces5/index.html`](mockups/faces5/index.html): the skin's 9,000 small triangles are merged into a few
+hundred big ones, each shaded flat. The merging is edge collapse by quadric error (Garland & Heckbert 1997), run once
+on the average head when the page loads (0.3 s, 4,372 points down to 36), left and right together. A collapse always
+moves a point onto its neighbour, so every remaining corner is one of MakeHuman's own points and still follows every
+slider and every expression. *Planes* picks how far down the recorded sequence to go (about 120 to 9,000 planes;
+the house setting is about 540). *Edge lines* darkens each plane toward its border. Eyes stay round; the hair is
+the scalp's own planes stood off the skull.
+
+Why this works where § 8's Carve filter did not: that one smoothed first, moved points toward flatness, and was then
+subdivided and shaded smooth, so nothing flat was left to see. Here nothing is smoothed and every plane is drawn flat.
+
+**Seen** (GPU, by eye; stills in `output/launchpad/mockups/faces5/`): it reads as a head cut into planes, and the
+planes fall on the face's structure (brow, nose ridge and wings, cheekbone, jaw) without being told to. Twelve
+generated people stay different people (`sheet.png`). An expression carries: a smile on an older man (`man-smile.png`).
+A change takes 1–5 ms.
+**Rough:** where the lids' points were merged away an eyeball can stand proud of its socket; the lip colour follows
+whole planes, so its outline is jagged; the hair is thin and its edge steps; the neck's cut is ragged; no eyebrows
+(the paint from faces3 lands in the wrong place, so it is off).
+**Not checked:** sliders one by one; 48 px; very low plane counts on faces other than the average.
+
+**House style, step 1: the flat nose bridge** (2026-11-10; Caio: "in the art-deco / Mr. Incredible style the bridge
+is flat: a stylization which isn't captured in a naive rendering into planes"). Cutting planes only keeps what the
+mesh already has, so the style needs a second kind of step: **a shape imposed on MakeHuman's points before the planes
+are cut.** `noseStyle` in faces5: from between the brows to the tip, every point within the strip's half-width is put
+at the ridge's own depth (a plateau, not an arch), and the points near the strip's border are moved out onto it, so
+the strip ends in an edge. The planes are then cut on the average head *already in the house style*, so the collapse
+keeps that edge. Sliders: *Nose bridge: round–flat* (house 1), *Bridge width* (1.2), *Nose profile: natural–straight*
+(.5; pulls the ridge toward the line from brow to tip, the nose's sides following).
+Seen (GPU; `nose-flat-closeup.png` against `nose-round-closeup.png`, `sheet-flat-nose.png`): from the front the bridge
+is one strip from brow to tip on every generated face; without it several triangles meet along the ridge.
+Rough: *straight* at 1 makes a wedge that juts from the forehead (too much past about .7); the strip's top, between
+the brows, gives some faces a frown; the tip's flat front is small. Not checked: the strip on extreme noses (the
+hump, flare and tip sliders at their ends).
+
+**Step 1 redone: the bridge as one built plane** (2026-11-10; Caio: "the nose definitely did not work, the bridge
+needs to be one plane, or at least start as one"). The plateau above was still a patch of triangles that only
+roughly agreed. Now the plane is *built, not found*: MakeHuman's mesh is a regular grid along the nose, so the strip
+is the middle column of points and two columns each side, from the brow line (the first row at or under eye height
++ .062) to the tip, 16 rows, 80 points. Each point has a fixed place on the plane (how far down, how far across); on
+every face the plane runs straight from that face's own brow-line point to its own nose tip, so the profile is one
+line and the natural dip between the eyes is filled. The outer columns are the plane's two straight edges; the
+points beside them follow, so the nose's sides run up to the edges. **Two rules keep it one plane when the planes
+are cut:** a point of the strip merges only into another point of the strip, and a point on one of the strip's four
+edges never leaves that edge (so the four corners never move). And **edges between planes that face the same way are
+no longer drawn** (anywhere on the skin), so triangles lying in one plane read as one plane.
+Sliders: *Nose bridge: natural–one plane* (house 1; in between it is a blend and not flat), *Bridge width* (1.2),
+*Bridge: even–wider at the tip* (.3). *Nose profile: natural–straight* is gone: one plane is always straight.
+Seen (GPU; `nose-plane-closeup.png`, `nose-plane-front.png`, `nose-plane-many-planes.png`, `sheet-nose-plane.png`):
+at the house setting the strip is down to its four corners and two middle points, drawn as one four-cornered plane
+from brow to tip, with one large plane down each side of the nose; it holds at more planes (.6) and fewer (.15), and
+on the sheet of twelve. Rough: under the tip the nose drops away with almost no wings or nostrils at the house plane
+count; the brow line above the plane is still whatever the cutting left. Not checked: extreme nose sliders; the
+width slider at its ends; expressions that move the nose.
+
+**Step 2: the nose's underside as a second built plane** (2026-11-10; Caio on the bridge: "yes, much better, this is
+the idea"). `underInit` in faces5: a four-cornered plane from the bridge's bottom edge (the tip) back to the base of
+the nose, as wide there as the wings. The mesh is not a grid under the nose, so the patch is found once on the
+average head: the skin near that plane, grown outward from the tip (142 points). MakeHuman's nostrils are deep
+tubes; what the patch encloses is cut out and closed over (12 points, 2 holes). The patch's rim (36 points) is put
+on the plane's four edges, corner to corner, and the same two rules keep it one plane. On each face the back edge
+sits at that face's own nose base (the deepest midline point under the tip), its depth halfway between that point
+and the wing, its half-width .95 of the wing's widest point (the point MakeHuman's nostril-width slider moves most).
+It shares the bridge's slider (*Nose bridge: natural–one plane*).
+Seen (GPU; `nose-under-closeup.png`, `nose-under-front.png`, `nose-under-many-planes.png`, `sheet-nose-under.png`):
+the nose is a prism of four planes (bridge, two sides, underside), the underside one dark trapezoid from the front;
+it holds at .15, .36 and .6 on the planes slider and on the sheet of twelve. Rough: no nostrils and no bulge of the
+wings (the sides run straight from the bridge's edge to the underside's edge). Not checked: nose sliders at their
+ends, the nose expressions, how the upper lip meets the back edge on faces with a short lip.
+**Parked the same day** (Caio: "i think the earlier nose was better, simpler. we can stick with that for now"): the
+underside plane is off; the nose is the bridge plane alone, and the cutting shapes the rest. The code stays in
+faces5; `?under=1` brings it back.
+
+**Step 3: the brow as one straight ridge** (2026-11-10; Caio: "brow ok"). `browStyle` in faces5: from each top corner
+of the bridge, one row of the grid up and then outward along that row to past the eye (5 points a side). Seen from
+the front they are put on one straight line from the bridge's corner to the brow's outer end (the end's height is
+halfway between its own and the corner's, so the line rises a little outward), and pushed forward so the ridge
+overhangs the eye; each keeps its face's own depth, so a heavy brow stays heavy. When the planes are cut, a point of
+the line merges only along the line and its two ends stay. Sliders: *Brow: natural–one straight ridge* (house 1),
+*Brow overhang* (.4, up to .03 head heights), *Brow: outer end down–up* (0).
+Seen (GPU; `brow-ridge-closeup.png`, `brow-ridge-front.png` against `brow-natural-front.png`, `sheet-brow.png`): the
+brow is one straight edge running out of the bridge's top corner, the socket under it one dark plane; without it
+the edge dips in a V over the eye. On the sheet of twelve every face has it. Rough: the difference from the
+natural brow is modest at the house setting; the line ends just past the eye and the temple beyond is whatever the
+cutting left; the forehead above is a fan of triangles. Not checked: the overhang and tilt sliders at their ends,
+the brow sliders and expressions of MakeHuman (raise, frown) with the ridge on.
+
+**Step 3 corrected: the brow as a level band** (2026-11-11; Caio: "they all look pretty angry because of the triangle
+pointing down at the eye, so i don't think that's the right point for a vertex"). The dark plane under the brow ran
+to a point at the bridge's top corner, its lower edge climbing to it from the eye: a scowl on every face. **A plane
+that should read as a band must end in an edge, not a point.** Now there are two lines a side, both starting on the
+bridge's side edge: the brow's ridge from the top corner (as before), and the crease over the upper lid from the
+next point down that edge (the grid row there runs outward over the eye; 2 points a side past the bridge). Both are
+level from their point on the bridge (the tilt slider turns them together), and both are kept when the planes are
+cut, their ends fixed. The brow's outer end no longer takes half its own height: level is the house setting.
+Seen (GPU; `brow-band-closeup.png`, `brow-band-front.png`, `sheet-brow-band.png`): the plane under the brow is a
+level dark band from the bridge's edge outward; the faces on the sheet read calm, not angry. Rough: the eyeballs
+stand prouder of the lids than before; the crease line is short (it stops over the eye's middle); the forehead
+above the bridge is still a fan of triangles meeting at its top. Not checked: as above.
+
+**Step 3, the brow's expression: three kept points** (2026-11-11; Caio: "better, but now they all look resolute.
+that should be one option, naturally, but so should others ... some variation in angle plus maybe two vertices,
+maybe three? to be able to convey anger, fear, surprise"). The ridge no longer starts at the bridge's corner: it
+is a line of two straight pieces through three points the cutting never removes (inner end, just above the
+bridge's corner; middle; outer end), each at its own height over the bridge's top. The lid's crease stays level, so
+the band under the brow grows and shrinks with the ridge. Sliders (0 to 1 is 0 to .05 head heights): *Brow: inner
+end low–high* (house .32), *middle* (.44), *outer end* (.24); the tilt slider is gone. Buttons in the editor set the
+three together: neutral (.32 .44 .24), resolute (.08 .08 .08), angry (0 .26 .46), afraid (.7 .58 .2), surprised
+(.62 .92 .6), sad (.62 .4 .06). The sheet's faces take the editor's brow.
+Seen (GPU; `brow-moods.png`, the average man, front): the six read differently; angry (a V) and resolute (level)
+are clear, surprised lifts the whole band, afraid and sad both lift the inner end and are hard to tell apart.
+Rough: only the ridge moves (the forehead above, the lids and the eye's opening do not, and MakeHuman's own brow
+expressions are overridden where the ridge is built); every person gets the same brow heights. Not checked: the
+moods on the sheet and in three-quarter view, at 48 px, and at other plane counts.
+
+**Step 4: the lids and the eyes** (2026-11-11; Caio on the brow's three points: "yes, this is good. let's proceed
+with lids and eyes"). `lidInit` / `lidStyle` in faces5. MakeHuman's skin runs round the eyeball in rings: the lid's
+inner fold (inside the ball), two more rings of thickness, then the lid's front edge, the first ring wholly outside
+the ball (28 points an eye). That fourth ring is the built shape: **a six-cornered opening**, the face's own two
+corners plus two points on the upper lid and two on the lower, joined by straight pieces and laid on a ball 1.09
+times the eyeball's radius, so the lids always cover it. The upper and lower heights are the face's own, times a
+slider each: *Upper lid: low–high* (0 to 1 is .3 to 1.9 times its own rise; house .5 is its own) and *Lower lid:
+low–high* (1.6 to .3 times its own drop). The three rings inside move with the edge; three rings outside follow,
+fading. When the planes are cut the six corners stay, and the edge's other points merge only along their own lid.
+*Eyes: natural–built lids* (house 1) blends it. The six mood buttons now set the lids with the brow: neutral
+(.5 .5), resolute (.42 .58), angry (.3 .8), afraid (.9 .6), surprised (1 .3), sad (.28 .5). *Iris size* (Paint,
+house .36; it was .52 and filled the whole opening) so the white shows when the eye is wide.
+Three faults found and fixed on the way. (1) The cut was being made on the natural average head: the call that
+styles it first had slid into a comment when the underside was parked (follow-up 8). (2) MakeHuman's head sliders
+can move the whole head sideways; the eye's paint and the built shapes assumed the middle at x = 0, so on such faces
+one eyeball was drawn blank and outside its lids (visible on earlier sheets as a white ball). `frame` now puts the
+middle of the two eyeballs at x = 0, and each eye is painted and built round its own centre. (3) The eye's normals
+used the previous face's eye centre.
+Seen (GPU; `lid-moods.png`, the average man, front; `sheet-lids.png`, `sheet-lids-surprised.png`; `lids-range.png`):
+the eyeballs sit inside the lids on every face of the sheet; the six moods read differently, and afraid (wide) and
+sad (drooped) are no longer alike; the opening holds nearly closed, wide open, at 216 and 2,382 planes, and with
+big close-set eyes. Rough: the upper lid's peak is nearer one point than two; in three-quarter view a sliver of the
+ball can show under the outer corner; the lid's crease is still the short level line of step 3 and does not follow
+the lid; the iris always looks straight ahead. Not checked: MakeHuman's own eye expressions with the built lids,
+the 48 px tiles beyond a glance, each mood on many faces.
+

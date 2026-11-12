@@ -66,7 +66,7 @@ function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   const day0=Math.ceil(PROG.day-1e-9);advanceDays(day0-PROG.day);   // a flight starts on a whole day, from orbit as from the pad
   if(ORB_ABS)ORB_T0=day0*DAY_S;
-  const snap=JSON.stringify(PROG),s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
+  const snap=progJSON(),s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
   const R=s.rec=recNew();REVERT0={R,prog:snap};Object.assign(R,{launched:true,day0,cost:0,ops:OPS_FIX,fromOrbit:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});PROG.funds-=R.ops;
   if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
@@ -78,7 +78,7 @@ function testStart(spec){if(!TEST.on||BLD.isEmpty(stackDef)){HOOK.msg('Tester: p
   if(!chk.ok){HOOK.msg(`Tester: ${chk.why}`);return false}
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   advanceDays(day0-PROG.day);if(ORB_ABS)ORB_T0=day0*DAY_S;
-  const snap=JSON.stringify(PROG),s=newShip(stackDef),R=s.rec=recNew();REVERT0={R,prog:snap};
+  const snap=progJSON(),s=newShip(stackDef),R=s.rec=recNew();REVERT0={R,prog:snap};
   Object.assign(R,{launched:true,day0,cost:0,ops:0,fromOrbit:true,tester:{...spec},crewInit:1,crewed:false,crewOK:true,cg:0,cgMax:0,ccab:290});
   const out=placeCraft(s,{...spec,T:day0*DAY_S});s.name=designLabel(stackDef,s)||'Tester craft';
   if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(stackDef,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;
@@ -482,5 +482,8 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
     `${term('dv','Δv')} <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`)
     +(planImp.f&&planCache&&planImp.key===planCache.key&&toolOK('impact')?`<br>lands: <span style="color:${verdictInk(planImp.v)}">${tipEsc(planImp.v.text)}</span>`:'');   // (Q488) where the plan comes down (the map works it out)
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
-renderEditor();go('title');   // (Q241 R3) the page opens on the title screen
+renderEditor();go('title');   // (Q241 R3) the page opens on the title screen...
+// (Q370) ...and a career under way goes on to the desk once every script has loaded (the desk reads later files: the file
+// split's rule 1); a new career, and the tester, stay on the title. The Esc menu's Title screen brings it back
+addEventListener('load',()=>{if(!needCharter()&&!TEST.on&&screenNow()==='title')go('program')});
 requestAnimationFrame(frame);

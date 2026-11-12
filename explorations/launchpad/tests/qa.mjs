@@ -20,9 +20,9 @@
     `${D.COMP_ERAS[e1].name} on day ${d1.toFixed(0)}, ${D.COMP_ERAS[e2].name} on day ${P.day.toFixed(0)}`);
   const dEra = P.day; D.testGoto(dEra - 1); const e2b = D.compEra(); D.testGoto(dEra);
   check('tester: the era skip stops on the first day of the era (a day earlier is still the one before)', e2b === 1, `day ${dEra - 1}: era ${e2b}`);
-  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('weather', true); const open1 = D.missionOpen(bp), mark = P.done.weather;
+  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('loads', true); D.testMission('weather', true); /* (Q577: the beeper waits for both) */ const open1 = D.missionOpen(bp), mark = P.done.weather;
   D.testMission('weather', false); const open2 = D.missionOpen(bp), none = D.testMission('nope', true);
-  check('tester: one mission at a time: ticking "Above the weather" opens the beeper, unticking closes it; unknown ids refused',
+  check('tester: one mission at a time: ticking "Above the weather" (with the structural test) opens the beeper, unticking closes it; unknown ids refused',
     !open0 && open1 && mark && mark.test === true && !open2 && !P.done.weather && none === false);
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('tester menu: day, era, funds and mission controls are drawn, and disabled in flight', ['id="testDayIn"', 'data-test-era=', 'id="testFundsIn"', 'data-test-mis='].every(s => pg.includes(s)) && /data-test-mis="\$\{M\.id\}"[^`]*\$\{dis\}/.test(pg));
@@ -149,4 +149,73 @@
     r5.ok && b0 === 'Tellus' && s5.body === P.SELENE && P.t < 600 && Math.abs(pe5 - 100) < 30,
     `from ${b0}, in Selene's sphere after ${P.t.toFixed(0)} s, periapsis ${pe5.toFixed(1)} km (asked 100)`);
   P.TEST.on = false;
+}
+
+// qa-8. Chapter starts (QA, QUEUE Q571; PROGRESSION.md § 6): starts/<id>.js are saves made by `node chapters.mjs`
+// (career.mjs's scripted player on the real economy, its registry through satRegister). Each loads as the page loads a
+// save, carries only PROG_SCHEMA fields and nothing JSON loses, has its milestone done without a tester mark, its
+// registry (the Beeper; a habitat with two free ports; a lander on Selene), runs 40 days, and can launch what its next
+// mission takes. The title menu lists the same three, in their own slot. A failure here after a schema change: run
+// `node chapters.mjs` and commit starts/.
+{
+  const IDS = ['orbit', 'station', 'selene'], WANT = { orbit: ['beeper'], station: ['beeper', 'station1', 'maxqabort'], selene: ['beeper', 'station1', 'maxqabort', 'selland'] };
+  const res = [];
+  for (const id of IDS) {
+    const D = new Function(src + 'return {PROG,PROG_SCHEMA,progLossy,progJSON,HOOK,TEST,MISSIONS,missionOpen,missionsInOrder,NEXT_PRESET,PRESETS,newShip,vesselCost,partLaunchWhy,missionTick,advanceDays,stFind,satsUp,landedUp,ensureBoard,load:j=>{Object.assign(PROG,j);HOME=PROG.home||0;RIVALS=raceSchedule();ensureBoard()},set S(v){S=v}}')();
+    D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+    const w = {}; new Function('window', readFileSync(new URL(`./starts/${id}.js`, import.meta.url), 'utf8'))(w); const C = (w.CHAPTER_SAVES || {})[id];
+    if (!C) { res.push({ id, ok: false, why: 'no save' }); continue; }
+    const extra = Object.keys(C.save).filter(k => !D.PROG_SCHEMA[k] || D.PROG_SCHEMA[k][1] === 'transient'), lossy = D.progLossy(C.save);
+    D.load(JSON.parse(JSON.stringify(C.save))); const P = D.PROG, J = JSON.parse(D.progJSON()), round = Object.keys(C.save).every(k => JSON.stringify(J[k]) === JSON.stringify(C.save[k]));
+    const done = WANT[id].every(k => P.done[k] && !P.done[k].test) && !Object.values(P.done).some(d => d.test), cheat = Object.entries(D.TEST).some(([k, v]) => v === true);
+    const reg = id === 'orbit' ? D.satsUp().some(q => q.sci) : id === 'station' ? !!D.stFind(s => s.berths > 0 && s.ports >= 2) : D.landedUp().some(q => q.bodyName === 'Selene');
+    const L0 = D.missionsInOrder(D.MISSIONS.filter(M => !P.done[M.id] && D.missionOpen(M))), nx = C.meta.next || {}, M0 = L0.find(M => M.id === nx.id);   // open, and in NEXT's order (Q577: the first with a design)
+    const st = nx.preset ? D.PRESETS[nx.preset] : nx.stack, s = D.newShip(st), cost = D.vesselCost(s.parts).cost, locked = D.partLaunchWhy(s.parts);
+    s.landed = false; D.S = s; D.missionTick(s, 0, false); const launched = !!(s.rec && s.rec.launched);
+    let ran = true; try { D.advanceDays(40); } catch (e) { ran = false; }
+    const ok = !extra.length && !lossy.length && round && done && !cheat && reg && M0 && M0.id === nx.id && cost <= C.save.funds && !locked.length && launched && ran && isFinite(P.funds);
+    res.push({ id, ok, why: `${C.meta.name}: day ${Math.round(C.save.day)}, ${C.save.flights} flights, ${C.save.funds.toFixed(0)}M; next ${nx.id} (${nx.preset || 'stack'}, ${cost.toFixed(0)}M${locked.length ? ', locked ' + locked.map(x => x.k) : ''}${launched ? '' : ', not launched'})`
+      + (extra.length ? ` extra ${extra}` : '') + (lossy.length ? ` lossy ${lossy}` : '') + (round ? '' : ' not lossless') + (done ? '' : ' milestones') + (reg ? '' : ' registry') + (ran ? '' : ' days threw') });
+  }
+  check('chapter starts: each loads, carries only schema fields, has its milestone and registry, no tester marks, runs on, and can launch its next mission', res.every(r => r.ok), res.map(r => r.why).join(' · '));
+  const T = readFileSync(new URL('./app/title.js', import.meta.url), 'utf8'), S = readFileSync(new URL('./app/state.js', import.meta.url), 'utf8');
+  const names = [...T.matchAll(/\{id:'(\w+)',name:'([^']+)'\}/g)].map(m => m[1] + ':' + m[2]).join(','), w = {};
+  for (const id of IDS) new Function('window', readFileSync(new URL(`./starts/${id}.js`, import.meta.url), 'utf8'))(w);
+  check('chapter starts: the title menu lists the three (names as the saves have them), each into its own slot',
+    names === IDS.map(id => id + ':' + w.CHAPTER_SAVES[id].meta.name).join(',') && /data-chapter="\$\{c\.id\}"/.test(T) && /CHAPTER_KEY='launchpad-program-chapter',PROG_KEY=TEST\.on\?'launchpad-program-tester':PROG_SLOT\?CHAPTER_KEY:'launchpad-program-v1'/.test(S)
+      && /localStorage\.setItem\(TEST\.on\?PROG_KEY:CHAPTER_KEY/.test(T) && /HOOK\.save=\(\)=>\{\};location\.reload\(\)/.test(T), names);
+}
+
+// qa-9. The first hour under the unlock map (QA, QUEUE Q580): the robot's m1 found every new career losing its beeper the
+// same way, the Petrel failing to light on flight 2: the ignition dice read the flight number and the part, not the career.
+// Each career rolls on its world's seed now, so a beeper's first flight fails about as often as IGN_FAIL says, and not for
+// everyone at once. The NEXT line no longer says the weather opens the beeper by itself (it waits for the structural test
+// too, Q577). Own SIM copy, like qa-1.
+{
+  const D = new Function(src + 'return {TEST,PROG,PRESETS,HOOK,newShip,igniteOK,nextStep,khUse,IGN_FAIL,partLaunchWhy,chooseStart,resetHome:()=>{HOME=0;RIVALS=raceSchedule()}};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], raceLost: {} });
+  D.chooseStart('agency'); P.flights = 1; P.kh = {};
+  let fails = 0; const N = 400;
+  for (let n = 0; n < N; n++) { P.wseed = (n * 2654435761) >>> 0; const s = D.newShip(D.PRESETS.Beeper), p = s.parts.find(q => q.d.key === 'petrel');
+    if (!D.igniteOK(s, p.seg)) fails++; }
+  const f = D.IGN_FAIL * (1 - D.khUse('petrel')) ** 2;   // what the dice should give: the Petrel starts with some know-how (use0)
+  check('the first hour: a new career\'s beeper (flight 2) loses its Petrel to the dice in some careers, about as many as know-how says, not all or none', fails > 0 && fails / N > 0.4 * f && fails / N < 1.8 * f,
+    `${fails} of ${N} new careers (${(100 * fails / N).toFixed(1)}%; know-how says ${(100 * f).toFixed(1)}%)`);
+  P.done = {}; const a = D.nextStep(); P.done.weather = { flight: 1 }; const b = D.nextStep(); P.done = {};
+  check('the first hour: the NEXT line says the weather opens the beeper and the hop together with the structural test', a && a.id === 'weather' && /opens .*beeper.*\(they also need Structural test flight\)/.test(a.why)
+    && b && b.id === 'loads' && /opens .*beeper/.test(b.why) && !/also need/.test(b.why), `${a && a.why} · then ${b && b.why}`);
+  // the route's designs (PLAYROUTE sitting 1, the robot's m1 and m2), each with what is done when it flies: every part open.
+  // The plan's "presets by chapter": the Satellite preset waits for the weather satellite, so m2 flies the first one on
+  // its own design (playtest.mjs PT.wxDesign: the Satellite with body cells for its wings), and the TV Satellite for the range too
+  const wx = JSON.parse(JSON.stringify(D.PRESETS.Satellite)), bc = n => { for (const c of n.c || []) { if (c.k === 'wpanel') { c.k = 'bpanel'; c.at.n = 4; } bc(c); } }; bc(wx.root);
+  const E = ['weather', 'loads'], ROUTE = [['Sounding', 'Sounding', []], ['Passenger', 'Passenger', E], ['Beeper', 'Beeper', E], ['Hopper', 'Hopper', [...E, 'hop']],
+    ['Passenger Orbiter', 'Passenger Orbiter', [...E, 'hop']], ['m2 weather satellite', wx, [...E, 'beeper']], ['Satellite', 'Satellite', [...E, 'beeper', 'wxsat']],
+    ['TV Satellite', 'TV Satellite', [...E, 'beeper', 'range', 'wxsat']]];
+  const why = (st, done) => { P.done = Object.fromEntries(done.map(id => [id, { flight: 1 }])); return D.partLaunchWhy(D.newShip(typeof st === 'string' ? D.PRESETS[st] : st).parts); };
+  D.TEST.tools = false; const shut = ROUTE.map(([k, st, done]) => [k, why(st, done)]).filter(([, w]) => w);
+  const early = [why('Hopper', E), why('Satellite', [...E, 'beeper']), why('TV Satellite', [...E, 'beeper', 'wxsat'])]; P.done = {};
+  check('the first hour: each design on the route has its parts open when the route flies it (and the Hopper, the Satellite and the TV Satellite not before)',
+    !shut.length && /command pod/.test(early[0]) && /solar wing/.test(early[1]) && /radial decoupler/.test(early[2]),
+    shut.length ? shut.map(([k, w]) => `${k}: ${w}`).join(' · ') : `${ROUTE.length} designs open in order · before: ${early.join(' · ')}`);
 }

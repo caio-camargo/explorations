@@ -583,6 +583,9 @@ float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i
 // lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
 float lin(float x,float per,float hw,float fw){float d=abs(fract(x/per+.5)-.5)*per,l=1.-smoothstep(hw,hw+fw*1.5,d);return mix(2.*hw/per,l,smoothstep(per*.5,per*.12,fw));}
 // sqw: square wave, 1 on the first half of each unit cycle of x (fw = footprint in cycles)
+// (Q565) a line that keeps its true coverage: under a pixel wide it is drawn a pixel wide and dimmed by the ratio, so
+// thin lines fade with distance instead of holding a 1–2 px width (lin keeps ~1.5 px and paints a fine grid too bright)
+float linc(float x,float per,float hw,float fw){float d=abs(fract(x/per+.5)-.5)*per,w=max(hw,fw*.5);return mix((1.-smoothstep(w-fw*.5,w+fw*.5,d))*hw/w,2.*hw/per,smoothstep(per*.3,per,fw));}
 float sqw(float x,float fw){fw=min(fw,.25);return mix(.5,smoothstep(.25-fw,.25+fw,abs(fract(x-.25)-.5)),smoothstep(.5,.2,fw));}
 // band: inside [a,b]
 float band(float x,float a,float b,float fw){fw=fw*.75+1e-5;return smoothstep(a-fw,a+fw,x)*(1.-smoothstep(b-fw,b+fw,x));}
@@ -689,6 +692,21 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb=mix(alb,vec3(.02),1.-sqw((v+vO.x*.5)/.12,fv/.12+.01));}
   else if(k==14&&side){                                    // reinforcement collar: a bolt row
    alb=mix(alb,vec3(.6),dots(s,v,h*.5,.06,.01,fp));}
+  else if(k==17){                                          // (Q565) solar cells: vU = metres on the broad face (rboxUV), its width, its height
+   if(vU.z<0.){alb=pow(vec3(.5,.49,.46),vec3(2.2));m=0;metal=0.;rough=.6;}   // the box's narrow edges: the white substrate
+   else{vec2 q=vU.xy,fw=vec2(fwidth(q.x),fwidth(q.y))+1e-6;float W=vU.z;
+    // a wing panel is 4 × 4 modules with 6 mm of substrate between them; a body tile is one module. Cells ~2.4 × 4.6 cm,
+    // portrait, 0.6 mm apart, a silver contact bar along each one's foot and fine fingers up it
+    vec2 mp=W>.3?vec2(W,vU.w)/4.:vec2(W,vU.w),nc=max(vec2(1.),floor(mp/vec2(.024,.046)+.5)),cp=mp/nc,id=floor(q/cp),cf=fract(q/cp)*cp;
+    float mg=W>.3?max(linc(q.x,mp.x,.003,fw.x),linc(q.y,mp.y,.003,fw.y)):0.,cg=max(linc(q.x,cp.x,.0003,fw.x),linc(q.y,cp.y,.0003,fw.y)),gap=max(mg,cg*.8);
+    float bar=band(cf.y,.0008,.0024,fw.y)*(1.-gap),fg=linc(q.x+cp.x*.25,cp.x/8.,.00012,fw.x)*(1.-gap)*(1.-bar);
+    float r1=hh(id+vec2(13.1,7.7)),r2=hh(id.yx+vec2(3.3,1.9)),r3=hh(id+vec2(41.,17.)),fd=smoothstep(.012,.003,max(fw.x,fw.y));
+    vec3 cb=alb*mix(vec3(.82,.88,1.),vec3(1.12,.94,1.1),r1)*(.86+.28*r2*fd+.14*(1.-fd));   // each cell its own blue; the spread averages out from afar
+    float gz=1.-abs(dot(normalize(vN),V));cb*=mix(vec3(1.),vec3(1.7,1.,1.45),gz*gz*gz);   // the coating turns violet at a grazing look
+    cb=mix(cb,vec3(.3,.31,.33),fg*.7);
+    vec3 gc=mix(pow(vec3(.3,.32,.38),vec3(2.2)),pow(vec3(.62,.61,.57),vec3(2.2)),step(cg*.8,mg));   // between cells the dark interconnects; between modules the substrate
+    alb=mix(mix(cb,gc,gap),vec3(.62,.63,.65),bar);metal=bar;rough=mix(.05,.55,gap);m=gap>.5?0:4;
+    vec3 Tt=normalize(cross(vec3(0.,1.,0.),nO)+1e-5);nO+=(Tt*(r3-.5)+vec3(0.,1.,0.)*(hh(id+vec2(5.,29.))-.5))*.07*fd*(1.-gap);}}   // each cover glass sits at its own tilt, so the sun's glint breaks up cell by cell
  }
  // Steppe (Q102): grey-green enamel panel by panel, dark seams where Cape has its roll pattern; olive-tinted bells
  if(uSeam>0.&&sch==1&&k>0){float wl=dot(alb,vec3(.3,.59,.11));
@@ -1398,6 +1416,13 @@ function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,
   const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])pv(out,q[i],n,col)}}
 function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
   out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,...a.slice(i+6,i+VX))}}
+// (Q565) a box of solar cells: as rbox, but kind SOLAR_K and, in the u/v slots, the position in metres from the corner of
+// its broad face (its thinnest axis is the face's normal; v runs up when y isn't that axis), the face's width and height
+// in the R/h slots; R = -1 on the box's narrow edges. No school or hue bits: a school's repaint must not touch the cells
+const SOLAR_K=17;
+function rboxUV(out,c,hx,hy,hz,col,phi){const a=[],H=[hx,hy,hz],t=H.indexOf(Math.min(hx,hy,hz)),va=t===1?2:1,ua=[0,1,2].find(i=>i!==t&&i!==va);box(a,[0,0,0],hx,hy,hz,col);
+  for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi),broad=Math.abs(a[i+3+t])>.5;
+    out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,...a.slice(i+6,i+10),a[i+ua]+H[ua],a[i+va]+H[va],broad?2*H[ua]:-1,2*H[va],SOLAR_K,PK.i)}}
 // a swept, tapered fin at angle a around the part axis: root chord ch on the hull (radius r0), tip chord ×0.45 flush with
 // the trailing edge, thickness 2t; the leading edge is a bare-metal strip, the faces take the paint
 function fin(out,o,a,r0,sp,ch,t,col){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
@@ -1475,7 +1500,7 @@ function fairSeams(out,pr,o){for(const a of[0,Math.PI]){const c=Math.cos(a),sn=M
 // doorT for bay doors), and the drawing follows its fraction in sim time, so it pauses and warps with the game: a wing's
 // boom slides out and its panels unfold one after another (4 s), a boom antenna swings up and out, then extends (3 s), a
 // leg swings down (1.6 s). No stamp (set in the Assembly, a loaded save): at once. 0 stowed … 1 out
-const DEP_S={wing:4,ant:3,leg:1.6};
+const DEP_S={wing:6,ant:3,leg:1.6};   // (Q565, Caio) the wing 4 → 6 s, its panels opening together
 function depF(p){const on=!!p.dep;if(p.depT==null)return on?1:0;const T=p.d.kind==='leg'?DEP_S.leg:p.d.wing?DEP_S.wing:DEP_S.ant,f=clamp((simT-p.depT)/T,0,1);return on?f:1-f}
 const depKey=s=>s?s.parts.filter(p=>p.on&&p.depT!=null).map(p=>Math.round(depF(p)*40)).join():'';
 function partBody(out,p){
@@ -1595,9 +1620,9 @@ function partBody(out,p){
     // framed panels (its plane holds n and y, as power.js assumes)
     case'wpanel':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r],CELL=[.08,.11,.28,4];
       const f=depF(p);if(f>0){const L=d.span,w=L/4,b0=.13+.47*sstep(0,.25,f),u=clamp((f-.25)/.75,0,1);tube(out,P(.02,h/2),P(b0-.05,h/2),.03,C.ST,6);rbox(out,P(b0-.03,h/2),.03,h*.5,.025,C.D,a);   // boom, yoke
-        // (Q411) the panels unfold one after another, an accordion hinged at alternate edges
-        let H=P(b0,h/2);for(let k=0;k<4;k++){const g=sstep(0,1,u*4-k),th=(1-g)*Math.PI/2*(k%2?-1:1),dr=[Math.cos(a+th),0,Math.sin(a+th)],fo=(1-g)*k*.02,c=[H[0]+dr[0]*w/2+n[0]*fo,H[1],H[2]+dr[2]*w/2+n[2]*fo];
-          rbox(out,c,w/2-.015,h/2-.02,.008,CELL,a+th);rbox(out,c,w/2,h/2,.004,C.ST,a+th);H=[H[0]+dr[0]*w,H[1],H[2]+dr[2]*w]}   // cells on a frame
+        // (Q411) the panels unfold as an accordion hinged at alternate edges; (Q565, Caio) all together, not one after another
+        let H=P(b0,h/2);for(let k=0;k<4;k++){const g=sstep(0,1,u),th=(1-g)*Math.PI/2*(k%2?-1:1),dr=[Math.cos(a+th),0,Math.sin(a+th)],fo=(1-g)*k*.02,c=[H[0]+dr[0]*w/2+n[0]*fo,H[1],H[2]+dr[2]*w/2+n[2]*fo];
+          rboxUV(out,c,w/2-.015,h/2-.02,.008,CELL,a+th);rbox(out,c,w/2,h/2,.004,C.ST,a+th);H=[H[0]+dr[0]*w,H[1],H[2]+dr[2]*w]}   // cells on a frame
         if(u>=1){rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}}   // the wing's edge spars, once flat
       else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover
     // solar cells on the body: tiles that follow a 0.625 m hull's curve (4 columns × 4 rows), on a thin steel backing
@@ -1638,7 +1663,7 @@ function partBody(out,p){
       lathe(out,[[0,.05,C.D],[.12,.05,C.D],[.12,h-.05,C.D],[0,h-.05,C.D]],c,12,[false,false]);for(let k=0;k<4;k++)fin(out,c,k*Math.PI/2,.12,.08,h-.1,.01,C.D)}break;
     case'bpanel':{const a=p.phi||0,R=.625,cx=x-Math.cos(a)*R,cz=z-Math.sin(a)*R,CELL=[.08,.11,.28,4];
       for(let k=0;k<4;k++){const ak=a+(k-1.5)*.17,c=Math.cos(ak),s=Math.sin(ak);rbox(out,[cx+c*(R+.008),y+h/2,cz+s*(R+.008)],.004,h/2,.054,C.ST,ak);
-        for(let j=0;j<4;j++)rbox(out,[cx+c*(R+.014),y+(j+.5)*h/4,cz+s*(R+.014)],.004,h/8-.012,.046,CELL,ak)}}break;
+        for(let j=0;j<4;j++)rboxUV(out,[cx+c*(R+.014),y+(j+.5)*h/4,cz+s*(R+.014)],.004,h/8-.012,.046,CELL,ak)}}break;
     // battery: a ribbed ring of cells, an orange stripe, two terminal boxes
     case'batt':{const pr=[[.625,0,C.D],[.625,.02,C.D]];for(let k=0;k<5;k++){const y0=.02+k*.022;pr.push([.61,y0,C.K],[.61,y0+.011,C.K],[.625,y0+.011,C.D],[.625,y0+.022,C.D])}
       pr.push([.625,.13,C.O],[.625,h,C.O]);lathe(out,pr,o);for(const a of[.6,3.7])rbox(out,[x+Math.cos(a)*.64,y+h*.55,z+Math.sin(a)*.64],.025,.04,.06,C.D,a)}break;
@@ -1836,21 +1861,21 @@ function shdBake(){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th)
 let BLOOM=true;   // false: no glow (Low; A/B). The frame still goes through the HDR target and the composite (Q314)
 const HDR_RT=!!gl.getExtension('EXT_color_buffer_float');   // RGBA16F targets; without it, RGBA8 (light above 1 clips)
 const SCN={w:0,h:0,on:false};
-function texRT(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
-  gl.texImage2D(gl.TEXTURE_2D,0,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,HDR_RT?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
+function texRT(w,h,ldr){const t=gl.createTexture(),f16=HDR_RT&&!ldr;gl.bindTexture(gl.TEXTURE_2D,t);   // ldr: 8 bits (the graded frame, Q560)
+  gl.texImage2D(gl.TEXTURE_2D,0,f16?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,f16?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,fb,w,h}}
 // the scene target for this frame size (multisampled colour + depth/stencil, a resolve texture, the bloom chain)
 function sceneTarget(w,h){if(SCN.w===w&&SCN.h===h)return SCN;
-  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
+  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,SCN.out,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
   const ns=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)),rc=gl.createRenderbuffer(),rd=gl.createRenderbuffer(),ms=gl.createFramebuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER,rc);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h);
   gl.bindRenderbuffer(gl.RENDERBUFFER,rd);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.DEPTH24_STENCIL8,w,h);
   gl.bindFramebuffer(gl.FRAMEBUFFER,ms);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rc);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rd);
   const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
-  const res=texRT(w,h),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,chain,ok});return SCN}
+  const res=texRT(w,h),out=texRT(w,h,true),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,out,chain,ok});return SCN}
 // the framebuffer the 3D frame is being drawn into (passes that render elsewhere mid-frame come back to it)
 const sceneFB=()=>SCN.on?SCN.ms:null;
 function bloomBegin(w,h){SCN.on=false;const T=sceneTarget(w,h);if(!T.ok)return;SCN.on=true;gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms)}
@@ -1889,6 +1914,27 @@ function expoTick(T){const c=T.chain[3],now=performance.now(),dt=Math.min(.25,(n
 // the exposure settled at once, for the reference views and stills (a blocking read; never in play)
 function expoNow(){const T=SCN;if(!T.chain||!HDR_RT)return;const c=T.chain[3],a=new Float32Array(c.w*c.h*4);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,c.fb);gl.readPixels(0,0,c.w,c.h,gl.RGBA,gl.FLOAT,a);EXPO.L=expoMean(a,c.w,c.h)??EXPO.L;if(EXPO.L)EXPO.t=expoTarget(EXPO.L,EXPO.H);if(EXPO.auto)EXPO.E=EXPO.t}
+// (Q560) the upscale. When the scaler has the 3D view below the screen's pixels, the graded frame used to be stretched by
+// the browser (bilinear: soft, and blocky on edges). Now the canvas stays at device pixels and this pass brings the
+// frame up: Catmull-Rom through nine bilinear taps (it keeps edges where bilinear smears them), then a sharpen against
+// the local mean, held inside the range of the four nearest texels so no edge rings or haloes. Done on the graded
+// 8-bit frame, where a step in value is a step the eye sees. The film grain is laid here, at device pixels: grain the
+// size of an upscaled texel reads as blocks. uSh: the sharpen (more the further the frame is stretched).
+const UPS_FS=`#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS;uniform vec2 uSz;uniform float uSh,uGr,uT;
+void main(){vec2 uv=vNdc*.5+.5,sp=uv*uSz,tc=floor(sp-.5)+.5,f=sp-tc,px=1./uSz;
+ vec2 w0=f*(-.5+f*(1.-.5*f)),w1=1.+f*f*(-2.5+1.5*f),w2=f*(.5+f*(2.-1.5*f)),w3=f*f*(-.5+.5*f),w12=w1+w2;
+ vec2 t0=(tc-1.)*px,t3=(tc+2.)*px,t12=(tc+w2/w12)*px;
+ vec3 c=texture(uS,vec2(t0.x,t0.y)).rgb*w0.x*w0.y+texture(uS,vec2(t12.x,t0.y)).rgb*w12.x*w0.y+texture(uS,vec2(t3.x,t0.y)).rgb*w3.x*w0.y
+  +texture(uS,vec2(t0.x,t12.y)).rgb*w0.x*w12.y+texture(uS,vec2(t12.x,t12.y)).rgb*w12.x*w12.y+texture(uS,vec2(t3.x,t12.y)).rgb*w3.x*w12.y
+  +texture(uS,vec2(t0.x,t3.y)).rgb*w0.x*w3.y+texture(uS,vec2(t12.x,t3.y)).rgb*w12.x*w3.y+texture(uS,vec2(t3.x,t3.y)).rgb*w3.x*w3.y;
+ vec3 a=texture(uS,tc*px).rgb,b=texture(uS,(tc+vec2(1.,0.))*px).rgb,d=texture(uS,(tc+vec2(0.,1.))*px).rgb,e=texture(uS,(tc+1.)*px).rgb;
+ vec3 lo=min(min(a,b),min(d,e)),hi=max(max(a,b),max(d,e));
+ c=clamp(c+uSh*(c-(a+b+d+e)*.25),lo,hi);
+ vec2 g=gl_FragCoord.xy+uT;float n=fract(sin(dot(g,vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(g,vec2(39.3468,11.135)))*24634.6345)-1.;
+ float Y=dot(c,vec3(.2126,.7152,.0722));o=vec4(c+n*uGr*(.35+2.6*Y*(1.-Y)),1.);}`;
+let UPSCALE=true;   // false: the old way, the canvas at the 3D view's size and the browser's stretch (A/B)
+const PUPS=mkProg(QUAD_VS,UPS_FS);
 function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,T.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.res.fb);gl.blitFramebuffer(0,0,w,h,0,0,w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
@@ -1898,13 +1944,18 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   else{const dst=T.chain[3];gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,T.res.t);   // Low: the 1/16 level in one pass (sparser taps; only the exposure reads it)
     gl.uniform2f(u.uPx,4/w,4/h);gl.uniform1f(u.uTh,0);gl.uniform1i(u.uMx,2);gl.drawArrays(gl.TRIANGLES,0,3)}
   expoTick(T);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
+  const up=cv.width!==w||cv.height!==h;   // (Q560) the canvas is larger than the 3D view: grade into T.out, then the upscale pass
+  gl.bindFramebuffer(gl.FRAMEBUFFER,up?T.out.fb:null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
   gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,fxNow()%997);
-  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,GRADE.gr);
+  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,up?0:GRADE.gr);
   gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
-  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
+  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);
+  if(up){const q=PUPS.u;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(PUPS.p);gl.bindTexture(gl.TEXTURE_2D,T.out.t);
+    gl.uniform1i(q.uS,0);gl.uniform2f(q.uSz,w,h);gl.uniform1f(q.uSh,Math.min(1,1.6*(1-w/cv.width)));gl.uniform1f(q.uGr,GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);
+    gl.drawArrays(gl.TRIANGLES,0,3);gl.viewport(0,0,w,h)}
+  gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
 // ---- fin-tip vapor: each fin tip's recent path, planet-fixed, with how much vapor it shed there. A fin sheds a tip
 // vortex in proportion to its load: the cross-flow component along its normal (so in a turn two fins of a ring trail
 // and two don't), dynamic pressure and angle of attack; condensation needs humid low air and subsonic-to-low-supersonic
@@ -2085,7 +2136,7 @@ const GC={panel:'#17191c',bezel:'#2b2e33',face:'#e8e1cc',faceDim:'#c9c1a9',ink:'
 // (flow, UI slice 4b) the strip's place is #gslot, the left of the bottom cluster (gauges | throttle | navball | SAS);
 // app/hud.js shows the slot while the Ascent condition holds, so in space the cluster narrows. Scaled to the slot's width.
 function gaugeRect(){const g=document.getElementById('gslot');if(!g||g.closest('.hidden')||!g.offsetParent||getComputedStyle(g).visibility==='hidden')return null;   // the HUD hidden: no gauges
-  const r=g.getBoundingClientRect(),k=cv.width/cv.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
+  const r=g.getBoundingClientRect(),k=W/cv.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
 function gaugeFont(px,s,w=600){return `${w} ${Math.round(px*s)}px Bahnschrift,"DIN Alternate","Arial Narrow",Arial,sans-serif`}
 function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S.r)-b.R;
   // the data
@@ -2295,7 +2346,7 @@ function cutoffPuff(e){if(S.body!==TELLUS)return;const P=PROPS[pfxOf(e.d).prop]|
     fxPuff(madd(at,j,e.d.exit),add(S.v,add(mul(dn,6+10*R()),mul(j,4))),{s0:e.d.exit*(1+R()),grow:2+3*R()*(1+2*(1-pa)),a0:.35+.3*(P.tail||.3),life:2+3*R()*pa+1,hot:.4})}}
 // a puff that travels with a velocity (inertial frame, Tellus-centred) instead of hanging in the air: separation gas,
 // cutoff puffs, sparks. hot = how much it glows (sparks ~1)
-function fxPuff(r,v,o){if(smoke.length>4000)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,rise:0,seed:Math.random()*97})}
+function fxPuff(r,v,o){if(smoke.length>4000)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,g:o.g,rise:0,seed:Math.random()*97})}
 
 // [igniter colour × flash strength, richness] for an engine's current age since ignition
 function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9,ao=sp?simT-sp.off:1e9;if(a>3&&ao>3)return[0,0,0,0];const T=P.igT||.1,

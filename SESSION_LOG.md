@@ -6577,6 +6577,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Addendum 20 (design desk, 2026-11-06):** Caio dropped the face creator ("too thorny"): **D26** the head is ligne claire (heads sheet a); FACES.md parked, W33 closed; Q531 the head build proposed. EVA had no design or code: **EVA.md 0.1.0** scopes it (uses from history; movement as one physical body fed by clicks or keys; Froude gaits, tethers, walkback; slices E1–E4); W45 asks three questions with defaults; Q532 (E1) proposed.
 - **Addendum 21 (design desk, 2026-11-06):** Caio took W45's defaults and asked for a movement test ground first: **D27**; EVA.md 0.1.1 § 6a specifies E0 (gravities, a course with stairs, a ladder and a 0 g hall, debug tools, a headless twin); E0 proposed in QUEUE, E1 after it.
 - **Addendum 22 (design desk, 2026-11-07):** PLAYTEST #148 (tester: infinite fuel, start in orbit of any body, beside a target, landed on Selene); a mission exercise for Caio (station rendezvous and docking, city imaging, the polar weather satellite) answered in chat from what exists.
+- **Addendum 23 (design desk, 2026-11-08):** PLAYTEST #153: screens change instantly; two tiers proposed (fast everyday transitions, rare skippable ceremonies incl. founding), mock-up first.
+- **Addendum 24 (design desk, 2026-11-09):** PLAYTEST #156: the payoff at a mission's target (gauges on the way, a diegetic proof per mission, tiers by weight, near misses explained); W46 partial pay for near-missed orbits (default yes).
 
 ## 2026-10-30/31 — look & sound (sky & bodies): Q493 Selene's flashing grain (v1.242), Q324 Selene up close (v1.249)
 
@@ -6767,3 +6769,764 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `TESTING.md` (346), `QUEUE.md` (Q530 ✓), `ACTIVE_WORK.md`.
 - **Tests:** `--smoke` (318 sections) all passed; flow-16, space-8/9/34 pass. Headless only, no game run.
 - **Next:** with cruises split-stable, `advanceDays` could move the orbits per day piece (Q526's note); nothing needs it.
+
+## 2026-11-07 — flow (explorations-8f): east on the navball at launch (Q507, v1.284; PLAYTEST #140)
+
+- **Done:** Caio's (a): E stays at the bottom; on the pad and the climb's first 15° it is 18 px amber, kept on the rim
+  when leaning west (it was hidden behind the ball). Found looking: near vertical all four compass letters were cut in
+  half by the rim; pulled inside now, at any attitude.
+- **Checked:** `shot.mjs` on the GPU (lock taken and released): vertical, 10° W/E, 30° E/W. No headless check (drawing).
+- **Files:** `app/render.js` (`drawNavball`), `notes/flow.md`, `NOTES.md`, `TESTING.md` (349), `PLAYTEST.md` (#140 ✓),
+  `QUEUE.md` (Q507 ✓), `ACTIVE_WORK.md`.
+- **Numbering:** v1.281–283 and TESTING 347–348 are on unmerged worker branches (Q543–Q546), so this took v1.284 / 349.
+- **Next:** Caio's look at TESTING 349.
+
+## 2026-11-07 — flow (explorations-8f): the map's Layers panel closes off the map (Q443, v1.285; PLAYTEST #115)
+
+- **Done:** one line in `go()` (app/screens.js): `#mapLay` closes whenever the new screen isn't the map.
+- **Checked:** `node playtest.mjs layers` passes (`panel: false`), GPU lock taken and released.
+- **Files:** `app/screens.js`, `notes/flow.md`, `NOTES.md`, `PLAYTEST.md` (#115 ✓), `QUEUE.md` (Q443 ✓), `ACTIVE_WORK.md`.
+- **Seen:** the main clone was mid-merge by another session (Q491's plan) when I pulled; left alone, it finished on its own.
+
+## 2026-11-08 — flow (explorations-8f): two planets close on the map share one label (Q192, v1.286)
+
+- **Done:** `mergePlanetTexts` (app/render.js) joins overlapping planet labels into one, names only (`Hesper, Hyperion`),
+  before the overlap rule places them; before, the second planet in a conjunction was an unnamed dot.
+- **Checked:** test flow-52 (both mutations caught), smoke 763/0; robot row `planetlabels` on the GPU (lock taken and
+  released): day 31 `Hesper, Hyperion`, day 42 `Hesper, Enyo`, unmerged for comparison.
+- **Files:** `app/render.js`, `tests/flow.mjs`, `playtest.mjs` (row `planetlabels`), `notes/flow.md`, `NOTES.md`,
+  `TESTING.md` (350), `QUEUE.md` (Q192 ✓), `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 350 whenever; next unclaimed ready items: Q212, Q211.
+
+## 2026-11-08 — space (explorations-8f): the builder says what a satellite's battery will do (Q212, v1.287)
+
+- **Done:** under the builder's power line, a design that runs down says how long and what after: "As a satellite here:
+  its battery lasts 4 days, then it goes quiet (no cells)" / "... then it works in sunlight only, 60 % of the time" /
+  "... runs out in every shadow, so it works N % of the time". `satPowFuture` (sim/power.js) uses satDuty's own rule.
+- **Checked:** test space-35 against the registry (satPowTick), mutation caught; smoke 764/0; the Docking preset's line in
+  the Assembly on the GPU (lock taken and released).
+- **Files:** `sim/power.js`, `app/editor.js`, `tests/space.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md` (351),
+  `QUEUE.md` (Q212 ✓), `ACTIVE_WORK.md`.
+- **Next:** Q211 (the pad calendar's window bar) is the next unclaimed ready item.
+
+## 2026-11-08 — flow (transitions): the screen-transitions mock-up (Q555, PLAYTEST #153)
+
+- **Done:** gave #153 its number (Q555) and built the mock-up Caio asked for first: `mockups/transitions/index.html`.
+  Everyday moves (door between rooms, paper for the debrief, a camera move Assembly → pad; 150–500 ms knob), the opening
+  and the founding (seal, filed, front page, dawn, desk; full once, short after), any input skips, *Short transitions*
+  and reduced motion as fades, synthesised sounds. `screens/` gained `&bare=1` (no caption) to be embedded.
+- **Checked:** every sequence, skipped and not, ends in the right room with nothing left half-way (state checks in
+  Chrome, no errors); headless stills of four founding beats (fixed: the folder's tab peeking, a daylight "dawn").
+  Timed headless at full speed: doors 250 ms, paper 305, camera 1104, opening 3.8 s, founding 8.6 s (1.8 after). Found
+  and fixed: hidden layers at opacity 0 aren't rasterised (first fades 3–4× late) and an animated filter on the dawn
+  (2.5 s late): layers kept at .001, a warm-up pass at load, the dawn as opacity-only layers. Not watched live at speed
+  (the Chrome window here was throttled to 2 fps): the feel is Caio's try.
+- **Files:** `explorations/launchpad/mockups/transitions/index.html` (new), `mockups/screens/index.html`,
+  `mockups/README.md`, `QUEUE.md` (Q555), `PLAYTEST.md` (#153), `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio tries it and calls the durations and the founding's beats; then the build (go() gains a transition
+  layer, ttlFound the ceremony; look & sound the real sounds and the pad camera).
+
+## 2026-11-09 — flow (explorations-8f): the pad calendar's window bar (Q211, v1.288)
+
+- **Done:** `.cbar.window` (hatched amber, dashed, both palettes) saying "held for its window"; `.cbar` is border-box,
+  so a bar ends on its day instead of ~10 px later under the next one.
+- **Checked:** test flow-53 (mutation caught), smoke 765/0; mission control's Pads page on the GPU (lock taken and
+  released) with a dispatch ready on day 25 for a day-70 window.
+- **Files:** `index.html` (CSS), `app/network.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md` (352),
+  `QUEUE.md` (Q211 ✓), `ACTIVE_WORK.md`.
+- **Next:** Q310 (the calendar's short-bar labels; the tick labels over the bars) fits next.
+
+## 2026-11-09 — review (Fable 5.2, main clone): a code and process audit of Launchpad, tasks R1–R24
+
+- **Done:** four read-only audits (physics sim, app and renderer, economy and saves, the test suite) and a pass over
+  process and repo state, at `6bdf2ed` (v1.288); written up as `explorations/launchpad/REVIEW-2026-11-09.md` with
+  file:line evidence and what was reproduced headless. 24 tasks added to QUEUE *Proposed* for the orchestrator to rank.
+  No game code changed.
+- **Checked:** smoke 774/0 in 191 s, full 844/0 in 345 s (`--jobs 4`); 14 mutations on a scratch copy.
+- **Seen:** the test audit ran 9 smoke runs at once for ~10 min (about 22:35–22:46) and took RAM to 0.2 GB; a session
+  running then may have seen failures that weren't its own.
+- **Files:** `explorations/launchpad/REVIEW-2026-11-09.md` (new), `QUEUE.md` (Proposed), `ROADMAP.md` (catalog row),
+  `INDEX.md`, `playbooks/project-review.md` (step 2b).
+- **Next:** the orchestrator ranks R1–R24 (R4 first: five one-line fixes); Caio's calls: R18's defaults, and no new
+  mechanism until R1–R4 and the confirmed bugs are in.
+
+## 2026-11-09 — review fixes (Opus, worktree launchpad-review): five lines a comment swallowed (R4, v1.289)
+
+- **Done:** split back onto their own lines the five live statements the review found inside end-of-line `//`
+  comments: the lit SAS mode button (`app/editor.js`), the Inbox badge count (`app/screens.js`), the seam/marks reset
+  after debris (`app/render.js`), the builder overlay's `o.save()` and font (`builder.js`), Erebus's blade mask
+  (`sim/ground.js`).
+- **Checked:** smoke all passed (twice); `ground-7` gained a blades check: 79 of 4000 points with the fix, B max 0 without
+  (fails on the old line). The four browser-side lines weren't looked at in Chrome: TESTING 353 for Caio's eye.
+- **Seen:** `.git/objects/d2/8aa2d0f1a733a1d202ca0dd821e11dd0ef9efe (1)` (2026-10-07, Drive-era duplicate) makes git print
+  "bad sha1 file"; harmless, left in place.
+- **Files:** `app/editor.js`, `app/screens.js`, `app/render.js`, `builder.js`, `sim/ground.js`, `tests/world.mjs`,
+  `notes/platform.md`, `NOTES.md`, `TESTING.md` (353), `QUEUE.md` (R4 ✓), `ACTIVE_WORK.md`.
+- **Next:** R1, R5–R8, R2, R3 in the review's order; R3's lint should use these five as fixtures.
+
+## 2026-11-09 — review session (Fable 5.2, worktree `launchpad-sharp`): the pixelation (Q559 v1.290, Q560 v1.291)
+
+- **Done:** Caio: "a lot of pixelation when I play" (Chrome, High, GPU steady at 45-55 %). **Q559:** the resolution
+  scaler aimed at 7 ms of a 16.7 ms frame and grew back only under 3.85 ms; now an 11 ms budget, steps sized by their
+  predicted cost (`resNext`), and a probe upward when there are no timer queries. **Q560:** the canvas stays at device
+  pixels and a pass brings the scaled view up (Catmull-Rom, a clamped sharpen, the grain at device pixels); skipped at
+  100 %. Q561-Q563 filed (footprint filtering, a temporal plan, half-res smoke and vapor).
+- **Checked:** tests aerofx-51 (the scaler against a cost model; the old grow rule fails it) and aerofx-52 (the
+  filter's weights); smoke passes. On the GPU (lock taken and released): views 30 and 100 forced to 50 %, old and new,
+  no console errors; stills in `output/launchpad/sharp/`. **Not checked:** the scaler live over a whole flight, the
+  no-timer probe on a browser without the extension, the iGPU, the pass's own cost.
+- **Everyone:** `W`/`H` are the 3D view's pixels and no longer the canvas's: use `W/cv.clientWidth`.
+- **Also filed:** PLAYTEST #157 (a dark band in the upper air on the night side and at the terminator), #158 (a free
+  camera for the tester); #135 seen again.
+- **Files:** `app/render.js`, `app/gl.js`, `app/screens.js`, `app/map-layers.js`, `playtest.mjs`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md` (354, 355), `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 354 and 355; #157 needs reference stills of the night limb.
+
+## 2026-11-09 — review fixes (Opus, main clone): the plan for one `PROG` schema (R1; plan only)
+
+- **Done:** `notes/platform.md` § "Plan: one `PROG` schema". Inventory at v1.289: 87 `PROG` fields, 302 `||` reads, four
+  places that rebuild it with their own lists (`resetProgram` 44 fields, `career.mjs` 48, the loader, the whole-object
+  snapshots). The design: `PROG_SCHEMA` (`d`, `keep`, `why`), `progFresh`/`programNew`, one `progJSON` that reports
+  non-JSON values, the loader filling from the schema, a five-part check. Slices R1a–R1d in QUEUE *Proposed*.
+- **Defaults for Caio** (silence keeps them): designs, payloads and rovers survive *New program*; unknown save fields are
+  kept; the charter preselects the last difficulty and still asks.
+- **Files:** `notes/platform.md`, `NOTES.md`, `QUEUE.md`, `SESSION_LOG.md`. No game code.
+- **Next:** R1a (the schema and the static check), or R5–R8 in the review's order.
+
+## 2026-11-10 — review fixes (Opus, worktree launchpad-review): the `PROG` schema, first slice (R1a, v1.292)
+
+- **Done:** `PROG_SCHEMA` in sim/program.js (87 rows: default, keep, why) and `progFresh(keepFrom)`; nothing calls it
+  yet. Removed the desk ledger's dead `PROG.funds||0` guard (the only `||` default that disagreed).
+- **Checked:** test platform-6 (fields ↔ rows, `||` defaults, the start and reset literals, progFresh); mutations caught
+  (a row removed, a default changed); smoke all passed.
+- **Files:** `sim/program.js`, `app/desk.js`, `tests/platform.mjs`, `notes/platform.md`, `NOTES.md`, `QUEUE.md`
+  (R1a ✓), `ACTIVE_WORK.md`.
+- **Next:** R1b (`programNew` for resetProgram and career.mjs, fixes R17; re-measure career.mjs's baseline).
+
+## 2026-11-10 — review fixes (Opus, worktree launchpad-review): one reset for New program and career.mjs (R1b, v1.293; R17)
+
+- **Done:** `programNew(set)` in sim/program.js: clears `PROG`, fills it from the table, keeps designs (launch history
+  emptied) and the level, rebuilds HOME, RIVALS, the board, clears REVERT0 and DEBRIEF_LAST. `resetProgram` and
+  `career.mjs`'s `run()` call it. R17 fixed with it.
+- **Checked:** platform-6's two new checks (reset after 300 days = a fresh program; a career.mjs row alone = after
+  others), both mutations caught; three old source-text checks moved to the table; smoke and the full suite passed.
+  career.mjs baseline before/after: mean final 691 → 654 M (notes/economy.md).
+- **Files:** `sim/program.js`, `app/editor.js`, `career.mjs`, `tests/platform.mjs`, `tests/economy.mjs`, `tests/look.mjs`,
+  `notes/platform.md`, `notes/economy.md`, `NOTES.md`, `TESTING.md` (356), `QUEUE.md` (R1b ✓, R17 ✓), `ACTIVE_WORK.md`.
+- **Next:** R1c (one serializer for the save and the snapshots; reports non-JSON values, finds R16), then R1d.
+
+## 2026-11-10 — look & sound, parts & pad (Opus, worktree `launchpad-visuals`): the solar wing's cells (Q565, v1.294)
+
+- **Done:** Caio: the solar wings' texture is very plain. Filed and took Q565. `rboxUV` gives the cell boxes their own
+  kind and panel-local metres; `MESH_FS` k == 17 draws 4 × 4 modules of small cells per wing panel (interconnects,
+  white substrate between modules, a contact bar and fingers), a blue and a cover-glass tilt per cell, violet at
+  grazing; the body cells the same. Cell gaps first came out white (read as window frames), darkened.
+- **Checked:** aerofx-53 (two mutations caught); every `aerofx` test passes; stills before/after in the builder
+  (`output/launchpad/solar/`, machine-local). **Not checked:** in orbit under the sun, the iGPU, GPU cost; the full
+  smoke skipped (0.1–0.6 GB free all session).
+- **Default for Caio:** both faces of a wing are cells (the sim counts both); a white back is a small change.
+- **Files:** `app/gl.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (357), `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at the stills and TESTING 357; a view of a wing in orbit for refset if this area gets more work.
+
+## 2026-11-10 — review session (Fable, worktree launchpad-sharp): staging eases the camera, a stronger separation (Q564, v1.295)
+
+- **Done:** PLAYTEST #159 and #160 (Caio, the same day). `detach` reports the centre-of-mass jump (`HOOK.cmShift`) and
+  the flight camera closes it as a critically damped spring (`CAML`, `camLagStep`: about a second). `sepFx`: puffs fall
+  with the craft (`fxPuff` takes `g`), a flash, a second fast gas ring, flecks in thin air, more opacity in vacuum, and
+  a piece that leaves as a vessel shows it too (`HOOK.sep`).
+- **Checked:** test `aerofx-54` (a staged Orbiter in a 300 km orbit: the target holds over a 5.1 m jump, the ring is
+  0.3 m off the seam after 1 s against 3.3 m without the fall; removing the hook fails it); smoke all passed. On the
+  GPU: the first frames only (the cloud at the seam, the target easing).
+- **Not checked:** the gas and flecks over the following seconds, and `drawSmoke`'s use of `g` (the test computes the
+  positions itself). Free memory fell to 0.3 GB under other sessions' work and headless Chrome stalled on page load,
+  so the GPU run was stopped. TESTING row 358 is the check.
+- **Files:** `sim/vessel.js`, `sim/core.js`, `app/state.js`, `app/gl.js`, `app/render.js`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 358; then Q561 (footprint filtering), #157 (the night limb's dark band).
+
+## 2026-11-10 — review fixes (Opus, worktree launchpad-review): one serializer for PROG (R1c, v1.296)
+
+- **Done:** `progJSON`/`progRestore` and `progLossy` in sim/program.js; the save, `REVERT0` and `missionDiscard`, the two
+  flights from orbit, and the recorder use them. Tester mode names values JSON would lose, once each.
+- **Checked:** platform-6's new check (a mutation putting the save back on JSON.stringify is caught); smoke and the full
+  suite passed. On the way, smoke failed to compile: another session's merge had lost a brace in tests/look.mjs; it
+  was already fixed on main (`3a091b09`) by the time I looked.
+- **Files:** `sim/program.js`, `sim/record.js`, `app/state.js`, `app/program-ui.js`, `tests/platform.mjs`,
+  `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R1c ✓), `ACTIVE_WORK.md`.
+- **Next:** R1d (the loader fills a save from the table), then R16 (the core bound's Infinity).
+- **Follow-up, v1.297** (committed as "v1.295" in `0ebf6c0`: Q564 had taken v1.295 and TESTING 358 minutes before; renumbered,
+  TESTING 359). Caio: the module lines kept their width zoomed out and the wing went white; and the panels should unfold
+  all at once, a bit slower. `linc` (lines under a pixel dimmed to their true coverage) in the cell branch; all panels on
+  one hinge curve, `DEP_S.wing` 4 → 6 s. Zoom series 3–40 m and mid-unfold stills checked; aerofx-41, -53 pass.
+  **Vehicle:** your branch moved `DEP_S` into sim/flight.js; keep wing 6 when you merge.
+
+
+## 2026-11-10 — review session (Fable, worktree launchpad-sharp): the whole exhaust trail (Q566, v1.298)
+
+- **Done:** PLAYTEST #161 (Caio's design note: the full trail from the pad visible as the rocket leaves the air).
+  Trail puffs live 7–9 min (was under 3); `trailThin` retires puffs as the trail widens so the list (6000) holds it
+  from the pad up; a full list drops fading puffs first; `drawSmoke` draws sub-pixel puffs at 1.5 px, thinner.
+- **Checked:** test `aerofx-55` (a model ascent: 14 379 puffs laid, at most 3 221 held, whole at 300 s, no step over
+  0.6 of a radius; nine engines 5 445; mutations caught); smoke all passed.
+- **Not checked:** nothing on the GPU (another session held the lock; 0.6 GB of memory free). `drawSmoke`'s changes
+  ran on a stub GL only (in `aerofx-55`). The cost of longer-lived wide puffs when the camera looks down the trail. TESTING row 360.
+- **Lesson:** a command chain that pipes the smoke run through `grep | tail` does not stop on a failure; the merge of
+  v1.295 was pushed with a broken test file for one commit that way. Check the run's last line before merging.
+- **Files:** `app/state.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`,
+  `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 358 and 360; Q561, #157.
+
+## 2026-11-10 — generic worker (Opus, worktree launchpad-q202): the Hopper and the Beeper roll out stable (Q202, v1.299)
+
+- **Done:** PLAYTEST #36 (P3). Measured every preset's Rollout margin: only the Hopper (−0.047) and the Beeper (−0.053)
+  went negative, both supersonic. A second fin ring on each (the Passenger Orbiter's fix): +0.26 and +1.39 calibers, 1.5M
+  dearer, ~100 m/s less Δv. Not chosen: a neutral band in Rollout (hides real marginal designs), dropping the Beeper's cone.
+- **Checked:** full `node test.mjs`: one failure, vehicle-39's Beeper pin (1559 → 1468 m/s, expected; updated); new test
+  `vehicle-40` (every preset ≥ 0 calibers). vehicle-3/4/39/40 rerun: all passed.
+- **Not checked:** nothing on the GPU; the Rollout screen by eye (TESTING row 361).
+- **Files:** `sim/vessel.js` (PRESETS), `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `PLAYTEST.md`,
+  `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** Caio's look at TESTING 361. The paused `vehicle` branch also touches `tests/vehicle.mjs` (it has two
+  vehicle-38s of its own); its merge may need vehicle-40's numbering checked.
+
+## 2026-11-10 — faces (Fable, worktree launchpad-faces): the 3D face creator diagnosed, a second construction (faces2)
+
+- **Asked:** Caio: "serious trouble with the face modeler"; diagnose or rebuild the 3D face creator (not the ligne-claire head).
+- **Diagnosis:** not speed (first lab: 2.4 s compile, 0.7 s for a 12-face grid). The head was about twenty SDF solids
+  glued together, its 74 genes offsets on those solids that needed a repair each time two met. FACES.md § 7.
+- **Built:** `mockups/faces2/index.html`: one control cage (rows and columns are the face's lines), Catmull–Clark with
+  semi-sharp creases, genes that move named cage points, ball eyes, a hair shell, DNA by gene name. Edit and Sheet tabs.
+- **Checked:** by eye on the GPU: house head (¾, front, profile, close-up; Planes 0.45 and 1.6) and one sheet of
+  twelve. A bug found that way: the eyeballs were wound backwards and lit from inside.
+- **Not checked:** each gene at its range ends; 48 px thumbnails; any face against a reference. Rough spots listed in FACES § 7.
+- **Files:** launchpad `mockups/faces2/index.html` (new), `FACES.md` 0.1.6 (§ 7), `mockups/README.md` 0.1.22 (§ faces2);
+  `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/faces2/`. The first lab is untouched.
+- **Next:** Caio's look at faces2 (continue this construction?). Then eyes (lids, lashes), ears, hair masses, range tests.
+- **Follow-up, same session: MakeHuman's shape library (faces3).** Caio asked how faces2 compares with other face
+  creators, then chose to start from a validated library. MakeHuman's mesh, targets and expressions are CC0 (licence
+  read). `mockups/faces3/`: `bake_mh.py` (head cut out: 4,516 points, 114 sliders, macros, 34 expression units),
+  `mh-head.js` (0.72 MB), `index.html`. **Seen on the GPU:** a sound human head at once, working expressions, varied
+  people; realistic, not carved; exaggerating every slider gives monsters. **Not checked:** sliders one by one, 48 px.
+  **Open with Caio:** where the style comes from (FACES § 8: the cage riding on this head, our own stylising shapes,
+  or light and paint only). Files: `mockups/faces3/*` (new), `FACES.md` 0.1.7, `mockups/README.md` 0.1.23.
+
+
+## 2026-11-10 — generic worker (Opus, worktree launchpad-r14): a dispatch beside a Qualify contract no longer crashes the world tick (R14, v1.300)
+
+- **Done:** review R14 (P1). `dispatchTick` settled a dispatch with a stub record; `contractEval` runs every active
+  contract's check on it, so `CT.test.ok` (`R.qPart`) and `CT.sample.ok` (`R.bands`) threw in the world tick. The record
+  is now `{...recNew(), orb, dv, dispatched}`. All 27 contract types checked against it: only `sat` passes, none throws.
+- **Checked:** new test `econ-35` (fails on the old line, passes now); full `node test.mjs`: all passed.
+- **Not checked:** the game by hand (TESTING row 362).
+- **Files:** `sim/program.js`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** the other confirmed review bugs: R15 (top-up mid-flight), R16 (`Infinity` in saves), R21, R22.
+- **Follow-up 2: style by an automatic filter, a negative result.** *Simplify* and *Carve* sliders in faces3 (smoothing,
+  then normal filtering). Seen: features dissolve into a smooth mannequin and no planes appear. Recorded in FACES 0.1.8
+  § 8. Next: the faces2 cage riding on MakeHuman's head, so planes sit on chosen lines.
+- **Follow-up 3: the cage on MakeHuman's head (faces4).** `mockups/faces4/index.html`: the cage's rows moved to
+  landmarks found on MakeHuman's profile, eye opening, mouth corner, nose wing and jaw edge; every cage point stored as
+  a place on a MakeHuman triangle; a fit so the skin passes through the targets. **Seen:** it works (varied carved
+  heads, Planes, 20–90 ms); the mid-face ripples, the nose is weak from the front, expressions mostly fade.
+  FACES 0.1.9 § 9, README 0.1.24. **Next:** line up the eye rows with the cheek, more rows on the nose, then a house
+  style as cage offsets (faces2's genes). Claim stays open.
+- **Follow-up 4: planes (faces5).** Caio on faces4: not the direction; simplify the face into planes. `mockups/faces5/`:
+  MakeHuman's skin reduced by quadric edge collapse (once, on the average head, symmetric), drawn flat; corners stay
+  MakeHuman points, so sliders and expressions carry. **Seen:** reads as a head in planes, people stay distinct, 1–5 ms.
+  Rough: lids, lip outline, hair, neck edge, no brows. FACES 0.1.10 § 10, README 0.1.25. **Next:** Caio's look.
+- **Follow-up 5: the flat nose bridge (faces5).** Caio: the direction is right; the deco / Mr. Incredible flat bridge
+  is a stylisation plain plane-cutting misses. `noseStyle`: a plateau strip from brow to tip imposed on MakeHuman's
+  points, and the planes cut on the styled average. Seen: one flat strip on every generated face. FACES 0.1.11 § 10.
+  **Next:** Caio's look; then the same kind of step for other features (brow line, lips, lids), by his notes.
+- **Follow-up 6: the bridge as one built plane (faces5).** Caio: "the nose definitely did not work, the bridge needs
+  to be one plane, or at least start as one". The plateau was a patch of triangles. Now: a strip of the mesh's own
+  grid (5 columns, 16 rows, brow line to tip) placed on one plane per face; the cutting may merge the strip's points
+  only into each other and never off its edges; edges inside one plane are not drawn. Seen: one four-cornered plane
+  at every plane count tried and on the sheet. Rough: wings and nostrils under the tip. FACES 0.1.12 § 10, README
+  0.1.26. `faces5/index.html` is now edited directly (the scratch generator is behind it). **Next:** Caio's look.
+- **Follow-up 7: the nose's underside, a second built plane (faces5).** Caio on the bridge: "yes, much better, this
+  is the idea". A patch of skin under the nose (found on the average head; nostril tubes cut out and closed) placed
+  on one plane from the tip to the nose's base, its rim on four edges. Seen: the nose is a prism of four planes at
+  every plane count tried and on the sheet. Rough: no nostrils, no wing bulge. FACES 0.1.13 § 10, README 0.1.27.
+  **Next:** Caio's look; candidates: the brow line, the lips, the lids.
+- **Follow-up 8: underside parked, the brow ridge (faces5).** Caio: "the earlier nose was better, simpler. we can
+  stick with that for now, and yes, brow ok". PARKED: the nose's underside plane, parked at: working, off by default,
+  `?under=1`. New: the brow's points on one straight line from the bridge's top corner to past the eye, pushed
+  forward, protected when the planes are cut. Seen: a straight brow edge on every face of the sheet; modest change
+  at the house setting. FACES 0.1.14 § 10, README 0.1.28. **Next:** Caio's look; then lips or lids.
+- **Follow-up 9 (2026-11-11): the brow as a level band (faces5).** Caio: right direction, but "they all look pretty
+  angry because of the triangle pointing down at the eye". The plane under the brow ended in a point at the
+  bridge's corner. Now a second kept line (the upper lid's crease, from the next point down the bridge's edge), both
+  lines level: the plane is a band ending in an edge. Seen: calm faces on the sheet. Rough: eyeballs stand proud.
+  FACES 0.1.15 § 10, README 0.1.29. **Next:** Caio's look; then the lids (the eyeballs), or the lips.
+- **Follow-up 10 (2026-11-11): the brow's expression (faces5).** Caio: better, but all resolute; wants angle and two
+  or three vertices, for anger, fear, surprise. The ridge now runs through three kept points with a height slider
+  each; six mood buttons. Seen: six different brows on the average man; afraid and sad are close. Only the ridge
+  moves. FACES 0.1.16 § 10, README 0.1.30. **Next:** Caio's look.
+- **Follow-up 11 (2026-11-11): the lids and the eyes (faces5).** Caio: "yes, this is good. let's proceed with lids
+  and eyes". The lid's front edge (a ring of 28 points an eye) is built as a six-cornered opening just outside the
+  eyeball, kept when the planes are cut; two lid sliders, set by the moods; an iris-size slider. Fixed on the way:
+  the cut ran on the unstyled head since follow-up 8 (a call lost in a comment); faces moved sideways by MakeHuman's
+  head sliders had one blank, proud eye (now centred on the eyes, each eye round its own centre). Seen: eyes inside
+  the lids on the whole sheet; six moods distinct. FACES 0.1.17 § 10, README 0.1.31. **Next:** Caio's look; then
+  the lips, or the lid's crease following the lid.
+
+### 2026-11-11 — Launchpad vehicle session: R21, the stale drag cache (v1.301)
+- **Summary:** `dragTable` (`sim/flight.js`) cached the impact predictor's CdA table by part count and AoA bin, so a fairing
+  jettison or bay doors kept the old table (Satellite after jettison: 1.70 m² cached vs 3.30 true at Mach 1). The cache
+  now also holds the `s.lines` it was measured on (`rebuildShape` replaces it on every outline change). Keying on `profOf`
+  was tried and rejected (it disagrees with `s.lines` while bay doors finish closing). New test `vehicle-41`, which fails
+  on the old code; `--smoke` all passed (788).
+- **Files:** `sim/flight.js`, `test.mjs` (api: `dragTable`, `fairJettison`, `bayDoors`, `bayTick`), `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.301, `NOTES.md`, `QUEUE.md` (R21 ✓), `ACTIVE_WORK.md`.
+- **Next:** none for R21. No TESTING row (not visible on screen; the robot check covers it).
+
+
+## 2026-11-11 — review 2 (Fable 5.2, worktree launchpad-audit): the review fixes audited, R2/R3 plans, R13/R23 repros, the app layer (R25–R34)
+
+- **Asked:** Caio, after asking whether Fable is worth using beyond the 11-09 review: go ahead with the recommended
+  uses (audit the merged fixes, plan R2 and R3, turn the "read" items into repros, audit the app layer).
+- **Done:** `explorations/launchpad/REVIEW-2026-11-11.md`; scripts in `explorations/launchpad/review/2026-11-11/`;
+  QUEUE *Proposed* R25–R34, notes on R2, R3, R13, R23. No game code or test edited. Two background agents did the
+  repros and the app audit; their top findings were rerun here before being written down.
+- **Found:** the merged fixes (R1a–c, R4, R14, R17, R21) hold. A fresh SIM before every test section passes today
+  (271 sections, 701 checks; 11 checks change value). Five more swallowed lines (`views.js:78`, `tests/core.mjs` ×4).
+  Two "latent" items are live: RCS adds back the aero moment (R26, P1), a fleet vessel passes through the planet
+  under warp (R27). The app layer loads headless and gave 12 confirmed defects (R28–R33); R34 makes the harness a test.
+  R13's adaptive-resolution item is refuted (fixed in v1.290).
+- **Not checked:** nothing on the GPU or in a browser; `tests/look.mjs` and the five SLOW sections under a fresh SIM;
+  R10, R15, R16 (not merged yet); dispatch, watch mode, docking and field rovers in the app were read, not run.
+  Timings in the review were taken on a loaded machine and are rough.
+- **Lesson:** a timing taken while other sessions run tests is not evidence: one SIM build measured 0.5 s and 20 s
+  minutes apart. And Git Bash heredocs here drop one level of backslashes: write scripts that contain them with the
+  file tool.
+- **Files:** `explorations/launchpad/REVIEW-2026-11-11.md` (new), `explorations/launchpad/review/2026-11-11/` (new),
+  `QUEUE.md`, `ROADMAP.md` (reviews row), `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** the orchestrator ranks R25–R34 (R26 first); Caio's call on whether a reload during a flight from orbit
+  should lose the craft (R29b).
+
+- **PARKED 2026-11-11 (review 2 session):** R29b, whether a reload during a flight from orbit loses the craft. Parked at: recommendation given to Caio (restore the vessel to its state when control was taken, same as Revert, from one snapshot kept in the save), no decision yet, nothing written into the R29 row. Caio moved to the gameplay loop (mission completion feedback, forward momentum).
+- **Follow-up (same session): R26 (P1), RCS fought the gimbals (v1.303).** `physStep` asked `ctrlAccel` for RCS's
+  command after the aero pass had moved `s.simTA` on, so that call lost the Q382 aero feed-forward and RCS was told to
+  push the cancelled aero moment back in (a Beeper with Docking's RCS: 30.0 of 30.0 kg of gas on the climb). The RCS
+  command is now computed beside the first call: 0.06 kg on the same climb (review's `r23e.mjs`: median 1.000 → 0.000).
+  New test `vehicle-42` (fails on the old code); `--smoke` all passed (790). Files: `sim/vessel.js`, `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.303, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`. Changes `TAPE_V` (source hash): older tapes
+  replay stale. **Next for vehicle:** R22 (four physics fixes), R28 with flow.
+- **Follow-up (same session, closed 2026-11-12): R22, three of four physics fixes (v1.315).** `fall()` gave an impact in the
+  past outbound on an escape (now null when the crossing is behind the craft); a pure ignition that failed to light still ran
+  the event's chute, fairing, spin motors and groups, then again on the retry (now nothing until it lights); `ascentRun`
+  multiplied Easy's air into a drag table that already had it. New test `vehicle-43` (fails on the old code at each); the
+  full suite passed after merging main (one earlier run: only 6b's warp timing, a load flake that passes alone). Numbered
+  v1.310 on the branch, renumbered v1.315 when platform took v1.310. Files: `sim/flight.js`, `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.315, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **PARKED 2026-11-12 (vehicle session):** R22's fourth fix, `detach()` keeping momentum. Parked at: built and tested on
+  branch `r22-detach` (pushed, worktree `launchpad-r22d`, test `vehicle-44`); three long scripted flights fail with it
+  (Crewed Lunar ends in rainforest trees at 7 m/s, Q383; procedures v2; the Nyx ladder). Make them robust to ~1 m/s at
+  staging, then merge. **Next for vehicle:** that, or R28 with flow.
+
+## 2026-11-11 — flow, the gameplay loop (Opus 5.5, worktree launchpad-loop): Q570, Q569, Q548 (v1.305–v1.307), Q547 merged (v1.304)
+
+- **Asked:** Caio: work on Q569, Q570 and Q548. Q548 needed Q547 (built, unmerged): Caio chose to merge it with them.
+- **Done:** Q547 merged and renumbered (v1.285 → v1.304, `econ-35` → `econ-37`). **Q570 v1.305:** `opensOf(id)` and its
+  names/line (sim/program.js), `CT_KIND`, `offerTypes`; the debrief's *Opened* block (links to the Missions tab, part cards)
+  and *opens:* on each open mission. **Q569 v1.306:** completions go through a new `HOOK.done` to `app/notice.js` (`#done`):
+  name, win, pay, what it opened, what's left; queued, until Enter or a click, held mid-burn, dropped when its flight ends,
+  shown at the desk for world missions. **Q548 v1.307:** the Mission card (`cardJobs`, `jobsLeft`, `missionRows`), one
+  message per condition change, End flight when the flight's work is done.
+- **Checked:** tests `econ-38`, `flow-54`, `flow-55` (new); full `node test.mjs` after merging origin/main: 854 checks, all passed; in Chrome on a local server:
+  the Missions tab, a Sounding flown by script steps (card, messages, notices queued, *Done*, Recover vessel), the debrief's
+  Opened block and its link. The browser check found the frame loop dying on the first frame (`doneTick` called before
+  notice.js loaded): guarded.
+- **Not checked:** played by hand (TESTING 364–366); an orbital flight's *done* → End flight in orbit.
+- **Next:** Q549 (the aim: "This flight is for") replaces `cardJobs`' guess with ticked jobs; Q558's proofs build on the notice.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the loop and progression reviewed with Caio; PROGRESSION.md, D28, Q571–Q576
+
+- **Asked:** Caio, after the loop slices landed: reconsider the game loop and progression "now that the game has more
+  shape", so building, testing and progression feel exciting; he is concerned about forward momentum and wants to
+  reach stations and bases.
+- **Found (read and `career.mjs`, not played):** epochs are a label; 68 of 84 parts open on day one; the beeper is the
+  one big unlock (5 missions, 8 contract types, 7 parts); contact gates automation and data only, never a hand-flown
+  vessel; stations and bases are in the code, unplayed behind the first hour.
+- **Decided by Caio (D28):** parts unlock visibly with an overlay; contact limits uncrewed flight; the office becomes
+  tables of models (site model, globe, orrery), superseding W35's "no 3D behind the rooms"; epochs become chapters.
+- **Done:** `explorations/launchpad/PROGRESSION.md` (new, 0.1.0); DECISIONS D28; QUEUE Q571 (chapter starts), Q572
+  (unlock overlay), Q573 and Q574 (plans: the unlock map; contact limits), Q575 (mock-up: the tables), Q576 (chapters
+  as events); ROADMAP's documents table; INDEX.
+- **Not checked:** the chapter table's balance (Q573 measures it); where the first-hour flights lose contact (Q574
+  measures it first); whether a globe can be drawn in the desk scene (Q575).
+- **PARKED still:** R29b (reload during a flight from orbit), as logged above.
+- **Next:** Q571 and Q572 can start now; Q573 and Q574 are plans (their builds are mechanisms under W48's freeze);
+  Q575's mock-up goes to Caio as a W row.
+
+
+## 2026-11-11 — review 2 session (Fable 5.2, main clone, docs only): the plans for Q573 (the unlock map) and Q574 (contact limits), measured
+
+- **Asked:** Caio: "can you start on 573 and 574 then?" (plans only).
+- **Done:** `notes/economy.md` § "Plan: the unlock map and chapters"; `notes/space.md` § "Plan: contact limits uncrewed
+  flight" (written by a fork of this session; its Beeper run and the tracking-ship run were repeated here before it was
+  adopted); `PROGRESSION.md` 0.1.2 (§ 3, § 4, § 7); QUEUE Q577–Q580 and Q581–Q587, W50 and W51; scripts in
+  `explorations/launchpad/review/2026-11-11/q573/` and `q574/`. No game code or test edited.
+- **Found (Q573):** the gate in front of the Kestrel costs the scripted player no flight (4.2 to first orbit, max 6,
+  with and without); Sparrow-only stacks did not reach orbit in the shapes tried; the Petrel is not needed for a first
+  orbit (Kestrel under a Sparrow: 40 M, 1,700 m/s left); the Sounding passes the structural test by 0.2 kPa; the map
+  places all 84 parts and needs six `req` changes.
+- **Found (Q574):** every first-orbit burn is beyond the pad station's horizon (the Beeper's by 78 s); a stored timed
+  burn circularises as well as a guided one; six buildable stations give 23 % contact at 150 km; `linkOf` reads
+  "plasma blackout" for 23–42 s around the ascent cutoff on all four presets with the tests' ascent.
+- **Not checked:** anything in play or by hand; sites other than the default; the far side on anything but the Probe;
+  funds beyond first orbit under the new order; the rest of the fork's runs beyond the two repeated.
+- **Lesson:** PROGRESSION § 4 assumed ground stations and relays would give control at the stick. Measured, they do
+  not in low orbit; the dish and relay chains (Q338, Q217) are what make comms satellites matter.
+- **PARKED still:** R29b.
+- **Next:** Caio answers W50 and W51 (defaults hold); Q577 and Q581 are the first builds; Q582–Q585 wait on W48.
+
+- **Later the same session:** Caio answered W50 ("in general ok"; a development program may be new missions if not
+  repetitive) and stated a principle, now **D29: any flight can fulfil any mission**. QUEUE: W50 moved to DECISIONS,
+  Q577 ready, **Q588** (plan: qualification missions) and **Q589** (design: coming home, more than a parachute, from
+  his side note on airbrakes). PROGRESSION 0.1.3. W51 still open (default holds).
+
+## 2026-11-11 — QA, chapter starts (Opus 5.5, worktree launchpad-loop): Q571 (v1.309)
+
+- **Asked:** Caio: work on Q571 (three starting saves so the middle of the game can be played).
+- **Done:** `chapters.mjs` plays one career with career.mjs's scripted player (career.mjs is now also a module: `run`
+  with `until`, `keep`, `goals`, `registry`; new plans for the escape-tower tests and a station; default rows unchanged)
+  and writes `starts/{orbit,station,selene}.js`; the title menu's *Start at* line loads one into its own slot
+  (`PROG_SLOT`, `launchpad-program-chapter`), *Back to your career* returns. Test `qa-8`; TESTING 368.
+- **Checked:** `qa-8`; the shards that read what changed (core, qa, platform, economy) after merging main; the full run was stopped by the machine running low on memory at 588 checks (one failure there, a source scan of save keys, fixed); CI runs the full suite on push; headless Chrome by script: each start from the title,
+  Continue to the desk, the career save untouched, back to the career.
+- **Not checked:** played by hand. The desktop Chrome tab froze once after the station start while the local server was
+  starved; headless with a fresh server it loads in ~1 s.
+- **Next:** Q572 (the unlock overlay). The starts are abstracted careers (fast, few contracts): if they feel too rich or
+  too thin, tune `chapters.mjs` (goals, seed) and regenerate.
+
+- **Later again:** Caio answered **W51** (the default: contact limits the first orbit, with the tracking ship); Q582 now
+  waits only on Q581 and W48's freeze. He asked what planes like KSP's would take: sized in
+  explorations/launchpad/notes/vehicle.md § "Scope: winged flight" (three tiers; today's plates give a lift-to-drag
+  of about 4 at wing size, `review/2026-11-11/glide.mjs`). Nothing queued: he is holding scope.
+
+- **And:** Caio on winged flight: tier 1 (the winged return) is good, aeroplanes and spaceplanes are backlog: **D30**,
+  **Q592** (plan: the winged return, vehicle).
+
+- **And:** Caio asked for a backlog for stray ideas: **explorations/launchpad/BACKLOG.md** (D31; rules: never work,
+  only Caio promotes), seeded with aeroplanes and spaceplanes; pointers in ROADMAP § Documents, QUEUE § Proposed, INDEX.
+
+- **The backlog sweep** (Caio: "sweep the older notes for past ideas... keep an eye out for major design questions"):
+  six read-only agents read notes/, the catalogs, the reviews and mockups/README. **BACKLOG.md 0.1.1**: about 85 ideas
+  by area, and a table "Decided, but nothing carries it" (11 rows, for the orchestrator). **REVIEW-2026-11-11 § 8**: 20
+  design questions (8 where two records disagree), with recommendations, none answered. Q583 gained a check (the
+  logbook locks maneuver nodes until an orbit is measured). Coverage was by key word; no code run.
+
+## 2026-11-11 — economy, the unlock map slice 1 (Opus 5.5, worktree launchpad-loop): Q577 (v1.311)
+
+- **Asked:** Caio: start on Q577 if unclaimed.
+- **Done:** `PART_GATE` is the Q573 map (12 parts at the start, 69 on 14 missions, 3 by era); the six `req` changes, and
+  one more: *A crew aboard* waits for the max-q abort (a crew only flies after it; the plan's m3 read mission needs from
+  `CT_JOB` instead of `M_JOB`, so its mission check was empty and missed this); a flown part stays open (`partFlown`);
+  the qualification contract draws open parts; the structural test at 20 kPa (`LOADS_Q`). career.mjs: the structural
+  test on the Sounding, closed designs skipped, abstract weather and TV satellites; PACE 4.2 flights to orbit, 89/90.
+  Q571's chapter starts regenerated. Test `econ-39`; 13 older checks that set missions by hand follow the map. TESTING 369.
+- **Checked:** the full suite (`node test.mjs --jobs 2`): all pass after the fixes.
+- **Not checked:** played by hand (does a new player get the Sounding past 20 kPa?).
+- **Next:** Q578 (the builder: closed presets say what they wait for; the Hopper, first in the list, is closed until the
+  hop), Q579 (families, reasons, chapters), Q580 (the robot's m1 route needs the structural test; PLAYROUTE sitting 1).
+
+## 2026-11-11 — orchestrator (Opus 5.5, main clone, PC_de_Varginha): testing off the shared machine; Caio's answers to REVIEW § 8 recorded
+
+- **Asked:** Caio: be the local orchestrator (a second one runs on the other computer); later, can testing stop blocking
+  sessions; then record his eight answers to REVIEW-2026-11-11 § 8 and make the queue match.
+- **Done, coordination:** 11 dead claim rows to `archive/active-work-cleared-2026-11.md`; QUEUE refreshes every 30 min
+  (R25–R34 ranked, R26 first; Q569/Q570/Q548 states; Q576 ready; R10's version collision flagged; R10/R16 marked quiet).
+- **Done, testing:** `.github/workflows/launchpad-tests.yml`: `check_numbers.mjs` and the full `node test.mjs` on every
+  push that touches Launchpad (free on a public repo; ~13–15 min); by hand with any options and Node. It is the merge
+  gate now (ACTIVE_WORK recipe, QUEUE *Testing* and a flag); GPU checks go to a new *🖥 checks* table the test bench
+  drains first (docs/session-roles.md). CI runs **Node 24**: space-33's EVA walk passes on 24 and fails on 22 run alone
+  (Q590, LESSONS #50). One flaky check found by CI: aerofx-54's random `d0` (Q591, P1; flag: rerun `--failed`).
+- **Done, REVIEW § 8:** DECISIONS **D32** (the late game is the target; W52 proposes M6–M9, no code), **D33** (a rover's
+  unheated night costs nothing; W44's clause withdrawn; Q459 and SW1 reworded; the cost to BACKLOG), **D34** (the unlock
+  map supersedes "no tech tree, no hard locks" for which parts exist; no imports of closed parts, W40 included),
+  **D35** (revert stays on Easy and Normal; D15.5 and W42 held; Q451 withdrawn; KSPISMS and the simulator plan marked),
+  **D36** (Selene and Nyx firsts in the race → Q593), **D37** (Q550 waits on **W53**, the six solids defaults),
+  **W48** answered (code frozen for mechanisms until R2 and R3 are built; Q582–Q585, Q594, Q596 say so). Row 8: Q583
+  still carries the logbook check. ROADMAP: M4's label, M3–M5 lines, an "After M5" line. BACKLOG's "Decided, but
+  nothing carries it" drained: Q593–Q596 filed, four rows given milestones (M3, M4, M5), the hall's bays to Caio
+  (**W54**); the cycler, sails, orbital factory and solar observatory moved to ROADMAP as decided designs.
+- **Checked:** `check_numbers.mjs` clean (next free Q597, W55); every edit asserted against its anchor; the ripple
+  search for the old revert and night-cost wording.
+- **Not checked:** REVIEW § 8 rows 2, 6 (rest), 8, 10 (rest), 11–20 are still open for Caio.
+- **Files:** `.github/workflows/launchpad-tests.yml` (new), `ACTIVE_WORK.md`, `INDEX.md`, `LESSONS_LEARNED.md`,
+  `docs/session-roles.md`, `archive/active-work-cleared-2026-11.md`; launchpad `QUEUE.md`, `DECISIONS.md`, `ROADMAP.md`,
+  `BACKLOG.md`, `PROGRESSION.md`, `REVIEW-2026-11-11.md`, `KSPISMS.md`, `notes/space.md`, `notes/economy.md`.
+- **Next:** Caio's W52 (late-game milestones), W53 (solids), W54 (the hall's bays), W49; Q591 (the flaky gate) first.
+
+
+## 2026-11-11 — platform (Opus 5.5, worktrees launchpad-r10/r1d/r9): R10 (v1.308), R1d (v1.310), R9 (v1.312)
+
+- **Asked:** Caio: a platform session, do R10; then, while the testing flow was being rebuilt, the next items (R1d, R9).
+- **Done, R10 (v1.308):** a bad save no longer bricks the page. `progLoad(j,home)` in sim/program.js is the one loader
+  (page and `recLoad`): `progRepair` resets fields of the wrong kind, `progDerive` rebuilds what follows from a save,
+  `progProbe` runs one muted day and restores; any throw restores `PROG_BASE` and starts a new program. app/state.js
+  copies an unloadable save to `PROG_KEY+'-bad'` first (no room: the tab never saves), says quota errors once a minute,
+  and stops saving when another tab writes the save. Test platform-7 runs the page's load/save block on a fake storage.
+- **Done, R1d (v1.310):** the loader fills a save from the schema (`progFresh()` + `PROG_BASE` + the save), so a save
+  without a field gets the default (world 12345 keeps its `wseed`); unknown fields are kept and logged (`PROG_UNKNOWN`).
+  Audit: no read in the code tells "absent" from the default (13 fields, ~25 reads); the `PROG.x||…` reads retire lazily,
+  by lane. Test platform-8.
+- **Done, R9 (v1.312):** a frame that throws no longer ends the game: `frame()` is a try/catch around `frameBody` and
+  always schedules the next frame. New `app/fault.js` (first app script): `gameFault` for frames, window errors and
+  unhandled rejections; a panel with Reload, Export save, Export the old save (R10's `-bad` copy) and Keep playing;
+  every fault to `logEv('error',…)`. Checked headless (5 throwing frames caught). Test platform-9; sound-1 reads `frameBody`.
+- **Checked:** CI green on each branch before merge (R10 run 2, r9 run 43135539681); `check_numbers` clean. Renumbered
+  twice for collisions (Q571 took v1.309, Q577 v1.311): R1d v1.310, R9 v1.312, TESTING 367 and 370.
+- **Not checked:** the panel by a human (TESTING 370); a real quota-full browser (TESTING 367).
+- **Files:** launchpad `sim/program.js`, `sim/record.js`, `app/state.js`, `app/loop.js`, `app/fault.js` (new),
+  `index.html`, `tests/platform.mjs`, `tests/economy.mjs`, `tests/look.mjs`, `notes/platform.md`, `NOTES.md`,
+  `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `INDEX.md`.
+- **Next:** Q591 (P1, the flaky staging check: seed `sepFx`'s puffs in the test). R9 has no *Import save* yet (Export
+  only, and only from the fault panel; a menu entry would help bug reports). The `PROG.x||<literal>` reads retire by lane.
+
+### 2026-11-11: review 2 session (Fable), Caio's second round of answers (docs only)
+- **Recorded:** **D38** solids neither throttle nor stop (thrust set on the design table only, a part-filled solid
+  allowed, no termination ports); W53 narrowed to what is left; Q550's row says what changes before merge. **D39** eras
+  end on milestones, not dates; **Q597** plans it (economy). **D40** the face engine is live again (D26's parking lifted;
+  the ligne-claire head stays until the trial is judged). REVIEW-2026-11-11 § 8: rows 8 and 13 struck; Caio's notes on
+  11 (he has played an hour), 12 (money: scaling operations, a lean), 15 (rivals: no answer yet), 17 (sound: parked).
+- **New:** PLAYROUTE § "What your play still has to answer": a checklist of the decisions waiting on Caio's play.
+- **PARKED still:** R29b. Caio's lean 2026-11-11: "maybe it's a difficulty setting... commitment vs reload any time
+  modes"; not decided. It would ride the levels (`lvl().revert`).
+- **Running:** two read-only checks (a glide flown end to end, for Q592; the Hard-mode logbook gate, for Q583).
+- **Checked, the two runs:** the Hard-mode logbook gate is real once contact is built (Q583's row carries the fix;
+  read from code, not flown). The glide flown end to end (`review/2026-11-11/glide_e2e.mjs`): today's plates are not
+  enough for a winged return (no Mach term, no stall, cold wings; under SAS the craft dives and the turn rate goes NaN
+  with plates a player cannot build today); numbers in notes/vehicle.md § "Scope: winged flight", Q592's row updated.
+
+## 2026-11-11 — platform (Opus 5.5, worktree launchpad-q591): Q591, the flaky staging check
+
+- **Asked:** Caio: go ahead (the next item after R9: Q591, P1, the flake that failed CI at random).
+- **Done:** aerofx-54 (`tests/look.mjs`) draws `sepFx`'s puffs from world.js's `rng(1)` (Math.random swapped around the
+  call, restored in `finally`). Measured first over 300 seeds: `d0` (the ring's offset without the fall) ran 2.62–3.93 m
+  and was ≤ 3 in 11 %; `dG` (the claim, with the fall) never passed 0.96 m against a 1.5 m bar. Now 0.36 m and 3.4 m on
+  every run. QUEUE Q591 ✓; the "known flake, rerun on red" note now says it's fixed.
+- **Checked:** the check three times locally (identical numbers); CI green on the full suite (run 43141409821).
+- **Files:** launchpad `tests/look.mjs`, `QUEUE.md`; root `ACTIVE_WORK.md`.
+- **Next:** R9's *Import save* and an *Export save* menu entry; lane-by-lane retirement of `PROG.x||<literal>` reads.
+
+## 2026-11-11 — economy (Opus 5.5, worktrees launchpad-r15/r16/r18): R15 (v1.302), R18 (v1.313), R16 (v1.314)
+
+- **Asked:** Caio: an economy session, do R15; then the next items while the testing flow moved to CI (R16, R18).
+- **Done, R15 (v1.302):** no government top-up while a flight is open. `FLOOR_HOLD` (sim/program.js) is set at liftoff
+  and cleared in `missionEnd` (before its own `floorCheck`), `missionDiscard` and `programNew`; `econTick` skips
+  `floorCheck` while it is set. `career.mjs 3 3`: bailouts per career 0.98 → 0.15. Test econ-36.
+- **Done, R18 (v1.313), on W47's defaults (saturate, once-only):** `mktShare(n)`: each further satellite in a market
+  (TV for the capital, imagery) adds half the one before (5 TV satellites: 200 → 77.5 M per 100 days).
+  `PROG.ipoSold` / `PROG.stakeBy` (new schema rows): the privatization once, a stake once per power; `careerMove`
+  resets both. With `ACCEPT=ipo,stake`: mean final funds 2,111 → 1,747 M at 6 years. Test econ-41.
+- **Done, R16 (v1.314):** Selene's core bracket starts `hi:null`, not `Infinity` (JSON saved it as null, and
+  `null<Infinity` made "Bound Selene's core" pay 132 M on reload); old saves normalised. Sweep: `progLossy` over 18
+  career end states and a code read found no other non-JSON value in `PROG`. Test econ-40.
+- **Checked:** CI green (r16 run 43141109553 carried R18 too), economy lane locally; `check_numbers` clean. Renumbered
+  three times as Q571, Q577, R1d and R9 landed (R18 v1.310 → 1.313, R16 v1.303 → 1.311 → 1.314; TESTING 371, 372).
+  The last two merges of `main` (Q592's docs, Q591's look test) went in without a fresh CI run: no overlap.
+- **Not checked:** R16's sweep doesn't see the late game (career.mjs stops short: R19). Neither change played by hand
+  (TESTING 371, 372).
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `sim/space.js`, `sim/rovers.js`, `sim/logbook.js`,
+  `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`.
+- **Next:** Caio: should a defection carry the old program's debt (`careerMove` zeroes it)? W47 still unanswered;
+  the defaults are built and easy to turn (`MKT_K`, the two flags). R19 (career.mjs into the late game).
+- **Prototype, the wing formula** (Caio: "go ahead"; scripts only, no game code): `review/2026-11-11/wing_proto.mjs`
+  patches the sim in memory. With aspect ratio, a stall, a Mach term and plate heating the numbers come out near a
+  shuttle's (lift-to-drag 1.0 hypersonic, 3.1 subsonic at aspect ratio 3, touchdown 109 m/s after a flare) and the
+  game's own SAS flies it to the ground when the wing sits at the centre of mass with a steerable tail. The NaN is the
+  plates' roll damping integrated explicitly (`rollnan.mjs`): **Q598**, with a fix that changes no flight of today.
+  Written up in notes/vehicle.md § "Prototype: the wing formula"; Q592's row updated.
+- **Not checked:** a touchdown on wheels and a rollout; wind; the formula against a real wing's measured polar; frame
+  time in the app; the fix's test in the suite (it is a script).
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-saveio): Q599 (v1.316), export and import a save
+
+- **Asked:** Caio: go ahead with the export/import save menu (R9's follow-up).
+- **Done:** Esc › Settings › **Saved program**: *Export save* (any time), *Export the unloadable save* (when R10 kept
+  one), *Import save…* (two clicks; disabled in a flight or a drive; closing Settings disarms). `importSave(text)` in
+  app/state.js: a JSON object with a `day` (asked before migrating), then `migrateSave` and `progLoad`; a file that isn't
+  a program or stops the game reloads the program from its own text and writes nothing; one that loads keeps the
+  replaced program as `<key>-before-import`, writes the slot, holds the tab and reloads; what it said is told after the
+  reload (sessionStorage). Test platform-10.
+- **Checked:** the flow in the page, headless (harness.cjs, scratch script: render, export, two-click import, disarm,
+  a 30-days-on file imported, a junk file refused, 0 errors); CI green twice (43145652597, and 43147054700 after merging
+  R22's game code); `check_numbers` clean.
+- **Numbers:** claimed as Q598 (taken by review 2's roll-damping NaN; the orchestrator renumbered it Q599); v1.315 went to
+  R22 meanwhile, so v1.316; TESTING 373.
+- **Mistake, caught:** the first edits were made in the main clone; moved to the `saveio` worktree by patch before any commit.
+- **Files:** launchpad `app/state.js`, `app/settings.js`, `app/screens.js`, `index.html`, `tests/platform.mjs`,
+  `notes/platform.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`.
+- **Next:** TESTING 373 by hand. Not done: drag-and-drop, an entry in the Esc menu itself. The `PROG.x||<literal>` reads
+  retire by lane.
+
+### 2026-11-12: review 2 session (Fable), Caio's answers (docs only)
+- **W53 answered** (DECISIONS W53; removed from QUEUE): a burning solid that is dropped flies off under its own thrust;
+  the other defaults stand. With D38 all six are answered; Q550's row lists what it must match before it merges.
+- **D41**: Caio's verdict on the first hour ("enjoyed it ok... the gameplay momentum is the biggest issue right now").
+  **Orchestrator:** the loop's open slices (Q572 the unlock overlay, Q576 chapters as events, Q578, Q579) rank first;
+  whether M1 closes was not said, ROADMAP is unchanged.
+- **PARKED still:** R29b.
+
+## 2026-11-12 — QA, the robot's route under the unlock map (Opus 5.5, worktree launchpad-loop): Q580 (v1.317)
+
+- **Asked:** Caio: pick something else while he can't play. Q580 (slice 4 of the unlock map, right after my Q577).
+- **Done:** `m1` stays two flights: the Sounding straight up reaches 25.2 kPa, so one flight does the weather and the
+  structural test (the row reports max-q against the 20 kPa bar). **Found:** `m1` failed on `main` before Q577 too: every
+  new career's flight 2 lost the Beeper's Petrel to the same ignition roll (the dice never read the career). `igniteOK`
+  now also reads `PROG.wseed`; the robot flies the beeper once more after an ignition failure. The NEXT line no longer
+  says the weather opens the beeper by itself ("they also need Structural test flight"). `m2` flies the Passenger hop
+  (range certified before the TV Satellite) and its first weather satellite on its own design (the Satellite preset waits
+  for the weather satellite, per the plan). PLAYROUTE 0.2.2 sitting 1; `qa-9`; flow-23 given a known Sparrow; TESTING 374.
+- **Checked:** `m1` ✓ in headless Chrome (2 flights, no boxes), rows 51, 75, 102, 156, 194, charter ✓; `qa-9`; CI's
+  full run on `loop` green. The local full run was stopped by the machine running low on memory.
+- **Not checked:** `m2` (a ~4-year row; not run for memory); the beeper retry path (no run rolled a failure); played by hand.
+- **For Caio:** a new player has no preset for the weather satellite (the plan's order: the Satellite preset opens with
+  it), so they build one on the bench; Q578's picker should say so. Version numbers moved three times during the merge
+  (R18, R22, Q599 took 1.313–1.316).
+- **Next:** run `node playtest.mjs m2` on a quiet machine; Q578/Q579 (now ready per D41), Q572.
+- **Caio played the loop's first slices (2026-11-12):** the notice came when he cut the thrust (by design: it waits
+  for the engines, Q558); "Opens 5 parts" named none; the missions are not on screen during the flight (the Mission
+  card folds away in every critical phase). **D42**: a mission done is quiet in flight (green on the Mission card, at
+  the moment, staying) and loud after it (every unlock by name, one overlay each). PLAYTEST #162–#164; **Q600** (P1,
+  flow); Q572's row carries the fanfare. **Loop slices session:** Q572 is yours and changed under you: read its row.
+
+## 2026-11-12 — loop slices (Opus 5.5, worktree launchpad-momentum): Q579, Q578, Q572, Q576 (v1.318), D41's loop
+
+- **Asked:** Caio: work on the new gameplay-loop items Q572, Q578, Q579, Q576. Mid-session: "there has been a change to
+  item 572" (D42: every part and mission opened by name, one overlay each): built that way.
+- **Done (v1.318, one version for the four):** Q579 families, `why` lines, `CHAPTERS`, D34 guards (stand, development,
+  lines); Q578 presets say what they wait for, closed parts fold under *Not open yet (n)* by chapter; Q572 one card per
+  mission done, part (naming its family and place) and mission opened, room, rover parts and next chapter, the part
+  turning as a model in the design table's light, D to the table with it in hand, world missions' cards at the desk
+  (`PROG.cardQ`); Q576 Missions tab by chapter, the chapter poster in the Debrief, the trophy case on the desk wall.
+  Tests econ-42, vehicle-44, flow-56, flow-57; core 26/30/31 and flow-25 updated (they used closed parts / the epoch count).
+- **Checked:** CI green (43154998184) before the last merge of `main` (a QUEUE-only change); smoke locally; in Chrome
+  with hand-built states and Debrief records: the cards, the turning Kestrel, D to the table, the closed list, the picker,
+  the Missions tab, the trophy case. Two syntax slips caught there (a `//` swallowing code, an apostrophe).
+- **Not checked:** a really flown flight end to end (TESTING 375–377); other window sizes; no sound on the cards yet;
+  family members share their family's line.
+- **Files:** launchpad `sim/program.js`, `sim/debrief.js`, `builder.js`, `app/unlock.js` (new), `app/model-desk.js`,
+  `app/debrief.js`, `app/editor.js`, `app/screens.js`, `app/desk.js`, `index.html`, `chapters.mjs`, `tests/economy.mjs`,
+  `tests/vehicle.mjs`, `tests/flow.mjs`, `tests/core.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** TESTING 375–377 by hand; the follow-ups under QUEUE *Proposed* (a sound, per-part lines, Q600 and the desk
+  notice). M1 closes when Caio replays the first hour (D41).
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-q600): Q600 (v1.319), the Mission card in flight (a flow item, D42)
+
+- **Asked:** Caio: work on Q600 (PLAYTEST #162 "Mission complete" at the thrust cut; #164 the missions gone in flight).
+- **Done:** the Mission card in `CP_CARDS` (app/cockpit.js), short in a critical phase (one line per job, its open
+  condition and reading; pinned: full); every mission the vessel could meet (`MC_MISSIONS` cap gone, sim/next.js); jobs
+  keep their first order (`mcOrder`), so a job done turns green in place with its pay (`debPaid` records a contract's id,
+  sim/contracts.js). In flight `HOOK.done` → `doneFlight`: a `#msg` line for 6 s and `sndDone` (two soft tones,
+  app/sound.js); `doneHeld` gone; the centred box at the desk only. `hudCardsOn()` split out of `renderCards`.
+- **Checked:** flow-55 rewritten, flow-58 new, flow-54 and flow-40 updated; flow and economy sections locally; the page,
+  headless (harness.cjs): the card drawn short in a critical phase with the rest folded, a completion in flight a line
+  and a chime with no box, the desk's box still; CI green twice (43156354034; 43158377058 after the loop slices' merge).
+- **Numbers:** the loop slices took v1.318, TESTING 375–377 and flow-56/57 meanwhile: Q600 is v1.319, TESTING 378,
+  flow-58; a 🖥 check filed (row 1 of the table) for the card over a real climb.
+- **Not checked:** on a GPU at real size (the 🖥 check; TESTING 378 by hand).
+- **Note:** the main clone has uncommitted edits to `builder.js`, `app/editor.js`, `index.html` (seemingly the vehicle
+  session's R28); left untouched.
+- **Files:** launchpad `app/hud.js`, `app/cockpit.js`, `app/notice.js`, `app/sound.js`, `sim/next.js`,
+  `sim/contracts.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`, `PLAYTEST.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** the 🖥 check and TESTING 378; Q572's overlays could take the desk's box too (world missions judged at home).
+
+## 2026-11-12 — loop slices, 2nd round (Opus 5.5, worktree launchpad-momentum, branch momentum2): v1.318 flown, Q479 (v1.320)
+
+- **Asked:** Caio: "go ahead with 1 and 2": prove v1.318 on a real flight, then Q479 (poster headlines for big moments).
+- **Done, 1:** a new robot row `playtest.mjs cards` (m1's two real flights, the unlock checks spliced in after each Debrief).
+  Passed: the Sounding closes weather and the structural test (25.2 kPa) and shows 14 cards under *Chapter 1 complete*; the
+  beeper 26 under *Chapter 2 complete · first in the world* (+108M); a real Space advances, the camera turns, a real D
+  takes it to the table; the trophy case holds both chapters with their flight photos; the Missions tab by chapter.
+  TESTING 375–377 marked robot-passed (by hand still).
+- **Done, 2 (Q479, v1.320):** big moments reach the news with a poster (`HOOK.news`'s third argument): our first, a rival's
+  first, a chapter closed, a new computing era. The desk's Herald (and the Debrief's clipping) prints a recent one as a
+  poster; posters and the Debrief's headline take the era's palette (pe1 cream/navy/red, pe2 browns/oranges, pe3 dark band,
+  bold sans). Test flow-59 (Q600 took flow-58, v1.319 and TESTING 378 meanwhile: renumbered).
+- **Also:** vehicle-43's ignition roll starts from no know-how (it failed once in a smoke shard after earlier sections).
+- **Checked:** CI green (43160205516); the robot row; smoke. **Mistake, caught:** a `//` comment appended mid-line swallowed
+  the rest of `raceTick` (third time in two days), and a robot run that started meanwhile loaded the broken page; rerun clean.
+- **Main clone:** it holds someone else's uncommitted edits (`app/editor.js`, `builder.js`, `index.html`: shorter readout
+  wording), so `main` was fast-forwarded with `git push origin momentum2:main` and the clone left untouched: **whoever is
+  working there: pull before committing.**
+- **Not checked:** the pe2/pe3 palettes on screen; a rival's first on the desk by eye.
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `app/state.js`, `app/desk.js`, `app/debrief.js`, `index.html`,
+  `playtest.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** TESTING 375–379 by hand; the *Proposed* follow-ups (a card sound, per-part lines); then Q370 or Q47.
+
+## 2026-11-12 — QA, Q580 follow-up: the robot's m2 run (Opus 5.5, worktree launchpad-loop)
+
+- **Asked:** Caio: go ahead (run `m2`, left open at v1.317).
+- **Done:** three m2 runs; two robot fixes in `playtest.mjs`: the Passenger hop now lights its engine before waiting to
+  land (it "landed" on the pad, so the range was never certified and the TV Satellite was refused), and routine runs are
+  ordered until three are clean in a row (at most six). notes/economy.md § v1.317 has the result; a *Proposed* line in QUEUE.
+- **Result:** everything the unlock map touches passes (m1, the hop, the range, the weather satellite on its own design,
+  TV, the routine, three clean runs, Repeat on). Still red: `clean3`, `autoRuns`: the first automatic run broke up on the
+  routine's dice, which turns Repeat off until three more clean runs are ordered by hand, and m2 only waits. A rule question
+  for economy/Caio, not the map. One run had page scripts missing mid-run (the local server under load); rerun clean.
+- **Checked:** CI full run green on `loop`; pushed to `main` from the worktree (`git push origin loop:main`) because the main
+  clone has another session's uncommitted edits (editor.js, builder.js, index.html), left untouched.
+
+## 2026-11-12 — economy (Opus 5.5, worktree launchpad-r19): W47 answered; R19 (v1.321)
+
+- **Asked:** Caio: a defection clears the debt (as built); W47's context, then answered (saturation, privatization once,
+  a stake once per power, numbers to playtest); then R19.
+- **Recorded:** DECISIONS W47 (economy section), out of QUEUE's open questions; TESTING 371 asks the balance questions;
+  notes/economy.md v1.313 carries both answers.
+- **Done, R19 (v1.321):** one formula each: `opsOf`, `stackDays`, `ignFail` (sim/program.js), `PAY_MIL`/`PAY_FAR`
+  (sim/contracts.js), called from missionTick, dispatch, supply runs, Rollout and career.mjs; no behaviour change.
+  `LATE=1 node career.mjs`: the chapters' goals, a registry (satellites earn, TV parked over the capital), abstracted
+  ascent procedures so contracts are dispatched (the game's dispatchRoll), studies before a dispatch, routines for the
+  TV and weather satellites. Test econ-43.
+- **Measured** (one seed, 6 years): agencies end at 125–2,236 M (four of six over 1,000), companies 25–223 M; satellite
+  income a quarter to a third of a rich agency's funds; frugal's dispatches never complete; most careers end with no
+  TV satellite still over the capital.
+- **Checked:** default runner output identical to `main` (`ARCHS=openSuper career.mjs 3 2`); economy lane locally; CI.
+- **Not modelled:** the simulator, crew rotations, station resupply and lab-days, Selene supply runs; fixed flight odds.
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `app/rollout.js`, `career.mjs`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `DECISIONS.md`, `TESTING.md`; root `ACTIVE_WORK.md`.
+- **Next:** why TV satellites leave the capital's sky in long careers (drift the routine doesn't count?); frugal's held
+  dispatches; a `stationcrew` plan so the runner sees crew and station contracts; more seeds of `LATE=1` off the shared
+  machine.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slices 1 and 2 (text only)
+- **Caio:** "claude tends to be prolix... a lot of explanations can be tooltips, and even then many are twice as long
+  as they need to be"; he asked for a Fable session to review the copy. **D43**: the screen is not a manual; the
+  budgets are UI.md § 2.1. PLAYTEST #167. **Q603**: the pass, one screen a slice.
+- **v1.322, slice 1, the design table:** 117 strings in `builder.js`, `app/editor.js`, `index.html`; the three
+  instruction lines (under Parts, staging, action groups) are tooltips on their headings; part cards cut. Text only.
+- **Slice 2, the flight, same version:** the first-flight hints and the "too flat" cautions (`app/cockpit.js`), the
+  flight bar's tooltips, Help's rows (`app/screens.js`): 29 strings. The hints stay until Guided teaches.
+- **Tests:** full suite green on slice 1 (898 checks); smoke on both green but for **vehicle-43 (b), a flake** (it
+  found no failed ignition that run; passes alone with and without the change): **Q604**. **Platform:** the suite
+  has a known flake again. After the merge with `origin/main`: smoke green but for the timing check 6b (2,327 µs a
+  warp frame under other sessions' load, 97 µs alone). `review/2026-11-12/copy_words.cjs` lists long text in the panels.
+- **Not checked:** nothing seen in a browser (TESTING 380).
+- **Next:** slice 3, the Program (contracts, missions, mission control). **PARKED still:** R29b; Q592's plan.
+- Files: `explorations/launchpad/builder.js`, `app/editor.js`, `app/cockpit.js`, `app/screens.js`, `index.html`, `UI.md`, `DECISIONS.md`, `QUEUE.md`,
+  `PLAYTEST.md`, `TESTING.md`, `NOTES.md`, `notes/flow.md`, `review/2026-11-12/copy_words.cjs`; root `ACTIVE_WORK.md`.
+
+## 2026-11-12 — QA, a routine's failed run asks the player (Opus 5.5, worktree launchpad-loop): D44 (v1.323)
+
+- **Asked:** Caio, on m2's red: "a failure should alert the player, who decides what to do".
+- **Done:** three clean runs certify a route once (`r.cert`); a failed automatic run holds the routine and puts a decision
+  in the in-tray (*Keep repeating* / *Stop repeating*); the Fleet line says *held after a failed run*; Repeat, once earned,
+  never needs the clean-run ladder again. Before, the failure quietly reset the route to three more clean runs by order.
+  m2 answers *Keep repeating*. `econ-44`; DECISIONS D44; TESTING 381.
+- **Checked:** `econ-44` and the economy shard; `m2` passes end to end in headless Chrome (5 of 5 up at day 4,000) though
+  no automatic run failed in that run, so the decision was checked by the test, not in the page; CI full run green.
+- **Not checked:** played by hand. The decision's texts follow D43 (short), but nobody has read them on screen.
+
+## 2026-11-12 — launchpad session (Opus 5.5): merges and finishes (momentum3, R5, R28, R22d, R29, docs)
+
+- **1, momentum3 → main (v1.324):** `main` had moved by this session's claim only (ACTIVE_WORK.md); merged it into
+  `momentum3` (check_numbers ok; the launchpad tree byte-identical to CI-green run 43168291024, so no new run: the
+  workflow's path filter skips a docs-only push), ff-merged. Local smoke there: green but for vehicle-43 (b), Q604's flake.
+  Loop slices row cleared.

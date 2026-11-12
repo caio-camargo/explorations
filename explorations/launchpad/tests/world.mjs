@@ -270,6 +270,10 @@
   for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
     const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
   check('ground-7: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+  // (R4) the blades' mask was once swallowed by the comment before it: the map's B channel stayed 0, no 'blades' anywhere
+  const bl = of('blades'), bMax = M.B.reduce((a, b) => Math.max(a, b), 0);
+  check('ground-7: bladed terrain past the basin\'s rim, in its arc (the B channel is baked, some ground reads "blades")', bMax > .9 && bl.length > 10,
+    `B max ${bMax.toFixed(2)}; ${bl.length} of ${P.length} points are blades`);
 }
 
 // ground-8. The seeded small bodies (world session, GROUND.md G7): a recipe factory, smallBodyGround({kind, R, seed}), for

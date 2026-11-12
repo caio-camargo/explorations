@@ -356,8 +356,8 @@ function seisLocate(q){const P=PROG.sel,st=Object.keys(q.got).map(id=>({p:P.seis
       const dx=C.map(row=>row.reduce((t,v,m)=>t+v*g[m],0));x=x.map((v,m)=>v+dx[m]);if(len(dx.slice(0,3))<1)break}
     const e=res(x).reduce((t,v)=>t+v*v,0);if(len(x.slice(0,3))<SELENE.R&&(!best||e<best.e))best={x,e}}
   if(!best)return;const C=inv4(nrm(jac(best.x))),sig=C?QT_SD*Math.sqrt(Math.max(0,C[0][0]+C[1][1]+C[2][2])):Infinity;if(!(sig<LOC_MAX))return;
-  q.loc={x:best.x.slice(0,3),sig};const c=P.core||(P.core={lo:0,hi:Infinity,n:0});c.n++;
-  for(const s of st){const m=rayMin(q.loc.x,s.p);if(s.s)c.hi=Math.min(c.hi,m+2*sig);else c.lo=Math.max(c.lo,m-2*sig)}   // ±2σ: the located quake is only so sure
+  q.loc={x:best.x.slice(0,3),sig};const c=P.core||(P.core={lo:0,hi:null,n:0});c.n++;if(!(c.hi<Infinity))c.hi=null;   // (R16) hi null = no bound yet: JSON turns Infinity into null, and null<x is true
+  for(const s of st){const m=rayMin(q.loc.x,s.p);if(s.s)c.hi=Math.min(c.hi??Infinity,m+2*sig);else c.lo=Math.max(c.lo,m-2*sig)}   // ±2σ: the located quake is only so sure
   logNote(null,'secore',{lo:c.lo,hi:c.hi,n:c.n},'the seismic network')}
 function inv4(A){const n=4,M=A.map((r,i)=>[...r,...[0,1,2,3].map(j=>i===j?1:0)]);for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
   if(Math.abs(M[p][c])<1e-30)return null;[M[c],M[p]]=[M[p],M[c]];const d=M[c][c];for(let j=0;j<2*n;j++)M[c][j]/=d;

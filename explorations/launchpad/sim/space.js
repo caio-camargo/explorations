@@ -1144,11 +1144,11 @@ function satTick(d,R,dd=d){satPowTick(d);stationTick(d);const sats=satsUp().filt
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
   // Since Q172 the sale is per bit received: the camera fills the recorder, each pass drains it at the link's rate.
-  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
+  {const GS0=stationsAll(),T1=PROG.day*DAY_S,kImg=typeof mktShare==='function'?mktShare(sats.filter(q=>q.ant).length):1;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120*on);
       const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const cap=k*120*on,o=Math.min(q.owe||0,cap),x=Math.min(q.rec,cap-o);q.owe=(q.owe||0)-o;q.rec-=x;got+=x}}
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
-     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1),'sats');if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
+     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1)*kImg/* the market saturates (R18) */,'sats');if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R&&R()<1-Math.exp(-dd/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');

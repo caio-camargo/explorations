@@ -7,15 +7,23 @@
 // affordable, bailouts before orbit). FAILFIRST=1: the first try at every first fails; FAILFIRST=orbit: only the first orbital attempt fails, the worst
 // single failure ("nothing unaffordable after one failure").
 // OFFERS=1: one line per row with funds, bailouts, career offers and offers posted by source, then a mean line (Q528).
+// LATE=1 (R19): the late game: satellites, a station, Selene; a registry, so satellites earn; dispatch, studies and
+// routines. One line per row: funds, the late firsts, what is up, satellite income, the automation. See § LATE below.
+// As a module (Q571, chapters.mjs): `run(arch, start, seed, opts)` plays one career and returns its numbers, PROG left as
+// it ended. opts: until(PROG) stops it, days, goals (mission ids it goes for: their plans in MORE_PLAN, a bonus on
+// their value), registry (what stays up or lands joins the registry through the game's own satRegister). Nothing
+// prints unless it is run as a script.
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { pageSource } from './page.mjs';
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 genOffer=(g=>(k,R)=>{const o=g(k,R);if(o&&HOOK.offer)HOOK.offer(o);return o})(genOffer);   // career.mjs counts offers posted, by source
-return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,withdrawContract,payFloor,curSite,rvPrice,sciGot,selSci,selN,SELENE,PARTS,DAY_S,
+income=(g=>(x,k)=>{if(HOOK.income)HOOK.income(x,k);return g(x,k)})(income);   /* R19: and income by ledger line (sats, contracts) */
+return {programNew,missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,withdrawContract,payFloor,curSite,rvPrice,sciGot,selSci,selN,SELENE,PARTS,DAY_S,
   PROG,CT,MISSIONS,START,newShip,vesselCost,POWERS,ARCH,flav,opOf,own,ownKind,stateShare,raceLost,RACE,RIVALS,sanctioned,capOf,offerRisk,missionOpen,
-  TELLUS,HOOK,rng,raceSchedule,PRESETS,PARTS,PRICE,norm,cross,khUse,FAC,facLv,facQuote,buildFac,standReady,buildStand,testQuote,startTest,STAND_COST,devQuote,startDev,devLv,prodLine,prodQuote,startProdLine,sourceOf,tierOf,IGN_FAIL,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
+  TELLUS,HOOK,rng,raceSchedule,STAT_R,placeDrop,placeSteps,placeCirc,placePose,placeLand,progJSON,stFind,nextStep,missionsInOrder,partLaunchWhy,vesselCost2:vesselCost,NEXT_PRESET,toV2,dvPlan,DV_ORBIT_EST,PRESETS,PARTS,PRICE,norm,cross,khUse,FAC,facLv,facQuote,buildFac,standReady,buildStand,testQuote,startTest,STAND_COST,devQuote,startDev,devLv,prodLine,prodQuote,startProdLine,sourceOf,tierOf,IGN_FAIL,ignFail,isTV,satsUp,satRegister,dispatchRoll,dispatchQuote,orderDispatch,DISPATCH_TYPES,procKey,PROC_V,dvRemaining,DV_ORBIT_EST,makeRoute,orderRoute,setRouteAuto,routeAutoWhy,orderStudy,studyQuote,stationOf,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
 const { PROG: P, CT, TELLUS } = api;
 const YEARS = +(process.argv[2] || 3), SEEDS = +(process.argv[3] || 3), VARIANT = process.argv[4] || 'base', DAYS = 400 * YEARS, ATMK = TELLUS.atm / 1e3;
 const news = [], posted = {}; api.HOOK.news = t => news.push(t); api.HOOK.offer = o => { posted[o.src] = (posted[o.src] || 0) + 1; }; api.HOOK.msg = () => {}; api.HOOK.save = () => {};
@@ -23,6 +31,12 @@ const news = [], posted = {}; api.HOOK.news = t => news.push(t); api.HOOK.offer 
 // ---- designs: what each costs (real presets) and the flight record it produces
 const SOUND_S = ['chute', 'sci', 't1', 'fins', 'sparrow'], SOUND_B = ['chute', 'sci', 't2', 'fins', 'sparrow'], QUAL = ['chute', 'sci', 't2', 'fins', 'kestrel'];
 const cost = st => api.vesselCost(api.newShip(st).parts).cost;
+// Q571: a crew capsule under its escape tower on the Passenger's booster; a habitat with a docking port on top and one
+// on its side, a probe core to hold it, on the Heavy (the Beeper's upper stage, two boosters)
+const WX_S = ['cone', 'cam', 'ant', 'core', 'batt', 'rwheel', 't2', 'petrel', 'dec', 't8', 'fins', 'fins', 'kestrel'];
+const ABORT_S = ['les', 'chute', 'crew', 'dec', 't4', 'fins', 'sparrow'];
+const STATION_S = (() => { const d = api.toV2(['port', 'hab', 'core', 'batt', 'rwheel', 't2', 'petrel', 'dec', 't8', 'fins', { k: 'kestrel', rad: { n: 2, dec: true, stack: ['cone', 't4', 'fins', 'kestrel'] } }]);
+  const h = (function f(n) { return n.k === 'hab' ? n : (n.c || []).map(f).find(Boolean); })(d.root); h.c.push({ k: 'rport', at: { y: 1.6, a: 0, n: 1, cy: 0.5 }, c: [] }); return d; })();
 const stackKeys = st => Array.isArray(st) ? st : api.newShip(st).parts.map(p => p.d.key);   // a v2 preset (the Probe since Q164): its parts' keys
 const PLANS = {
   sound: a => ({ kind: 'sound', stack: a > 20 ? SOUND_B : SOUND_S, apex: a, p: 0.93, dur: 900 }),
@@ -34,7 +48,17 @@ const PLANS = {
   // Selene (Q130): the Probe preset flies the moon firsts (fly_ladder.mjs proves it), abstracted like everything else
   moon: flag => ({ kind: 'moon', stack: 'Probe', flag, p: 0.8, dur: 5 * 86400 }),
   rover: () => ({ kind: 'rover', stack: 'Probe', flag: 'selLand', p: 0.75, dur: 5 * 86400 }),
+  // Q571 (chapter starts): the escape tower's two tests on a crew capsule, and a habitat with two free ports on the Heavy
+  abort: q => ({ kind: 'abort', stack: ABORT_S, q, p: 0.88, dur: 600 }),
+  // Q577: the weather satellite (a camera, an antenna and a probe core on the Beeper's launcher, polar) and TV (the TV
+  // Satellite preset, stationary): the station and the far side wait for them now
+  wxsat: () => ({ kind: 'sat', stack: WX_S, alt: 400, inc: 90, flag: 'weather', p: 0.85, dur: 3600, drops: 2 }),
+  tvsat: () => ({ kind: 'sat', stack: 'TV Satellite', alt: (api.STAT_R - TELLUS.R) / 1e3, inc: 0, flag: 'tv', p: 0.8, dur: 86400, drops: 2 }),
+  station: () => ({ kind: 'station', stack: STATION_S, alt: 300, inc: 0, m: 0, p: 0.85, dur: 3600, drops: 2 }),
 };
+// the unlock map (Q577): a design with a part not open yet can't launch (partLaunchWhy, as the page refuses it)
+const shutMemo = new Map();
+const closed = pl => { const { st } = planCost(pl), key = JSON.stringify(st) + '|' + Object.keys(P.done).length + '|' + Object.keys(P.kh || {}).length; if (!shutMemo.has(key)) shutMemo.set(key, !!api.partLaunchWhy(api.newShip(st).parts)); return shutMemo.get(key); };
 function planCost(pl) {
   let st = typeof pl.stack === 'string' ? api.PRESETS[pl.stack] : pl.stack;
   // the vehicle lane's proven presets (Q144, PLAYTEST #24): the Beeper for an instrument package in orbit, the Passenger
@@ -60,6 +84,9 @@ function outcome(pl, R, rnd) {
   if (pl.kind === 'hop') { R.apex = 98e3; R.bioSpace = true; R.gMax = pl.g; pad(); return 'land'; }
   if (pl.kind === 'orbit') { const e = (rnd() * 15 + 2) * 1e3; R.orbit = R.orbitSci = true; R.orb = { pe: pl.alt * 1e3 - e, ap: pl.alt * 1e3 + e * rnd(), inc: pl.inc + (rnd() - 0.5), sci: true }; R.lift = pl.m; return 'orbit'; }
   if (pl.kind === 'moon' || pl.kind === 'rover') { R[pl.flag] = true; return 'away'; }
+  if (pl.kind === 'abort') { R.abort = { alt: pl.q ? 9e3 : 0, q: pl.q * 1e3 }; R.capHome = true; R.cgMax = 6.5; R.apex = pl.q ? 11e3 : 1.4e3; pad(); return 'land'; }
+  if (pl.kind === 'sat') { R.orbit = true; R[pl.flag] = true; R.orb = { pe: pl.alt * 1e3, ap: pl.alt * 1e3, inc: pl.inc }; return 'orbit'; }
+  if (pl.kind === 'station') { const e = (rnd() * 15 + 2) * 1e3; R.orbit = true; R.orb = { pe: pl.alt * 1e3 - e, ap: pl.alt * 1e3 + e * rnd(), inc: pl.inc + (rnd() - 0.5) }; return 'orbit'; }
   if (pl.kind === 'passOrbit') { R.orbit = true; R.bioSpace = true; R.bioOrbits = 1.2; R.gMax = 4.3; pad(); return 'land'; }
 }
 // what a candidate flight would satisfy, by running the game's own checks on the record it would produce
@@ -68,7 +95,7 @@ function wouldDo(pl) {
   const k = outcome(pl, R, () => 0.5); if (k === 'orbit') R.landed = false;
   let pay = 0; for (const c of P.active) if (CT[c.type].ok(R, c.p)) pay += c.p.pay;
   // firsts are worth more than their reward: they unlock contract types and the next firsts (a player goes for them)
-  for (const M of api.MISSIONS) if (!P.done[M.id] && api.missionOpen(M)) { try { if (M.ok(R)) pay += M.pay * (api.RACE.includes(M.id) ? 1.8 : 1) + 60; } catch (e) {} }
+  for (const M of api.MISSIONS) if (!P.done[M.id] && api.missionOpen(M)) { try { if (M.ok(R) || ((M.world || GOALS.has(M.id)) && pl.first === M.id)) pay += M.pay * (api.RACE.includes(M.id) ? 1.8 : 1) + 60 + (GOALS.has(M.id) ? GOAL_BONUS : 0); } catch (e) {} }
   return pay;
 }
 function fitContract(c) {
@@ -86,8 +113,12 @@ function fitContract(c) {
     default: return null;   // imaging needs a camera satellite: outside this runner
   }
 }
-const FIRST_PLAN = { farside: () => PLANS.moon('farSent'), selimp: () => PLANS.moon('selImpact'), selland: () => PLANS.moon('selLand'), weather: () => PLANS.sound(15), air: () => PLANS.sound(45), loads: () => PLANS.qual('kestrel', 40), range: () => PLANS.hop(7.5),
+const FIRST_PLAN = { farside: () => PLANS.moon('farSent'), selimp: () => PLANS.moon('selImpact'), selland: () => PLANS.moon('selLand'), weather: () => PLANS.sound(15), air: () => PLANS.sound(45), loads: () => ({ kind: 'qual', stack: SOUND_S, q: 25, apex: 11, p: 0.9, dur: 700 }),   // the Sounding straight up: 25.2 kPa (Q573 m1), past the 20 kPa bar; the Kestrel opens with it (Q577)
+  range: () => PLANS.hop(7.5),
   beeper: () => PLANS.orbit(150, 0), hop: () => PLANS.hop(7.5), orbiter: () => PLANS.passOrbit(5), lift1: () => PLANS.orbit(150, 0, 0.5), lift2: () => PLANS.orbit(150, 0, 2) };
+// Q571: firsts the scripted player flies only when run with opts.goals naming them (the default rows stay as they were)
+const MORE_PLAN = { padabort: () => PLANS.abort(0), maxqabort: () => PLANS.abort(18), station1: () => PLANS.station(), wxsat: () => PLANS.wxsat(), tv: () => PLANS.tvsat() };
+let GOALS = new Set(), GOAL_BONUS = 0, REGISTRY = false;
 
 // the regimes each part went through, as the game's own khMark would record them for this kind of flight
 function khFill(s, R, pl, ok) {
@@ -97,10 +128,10 @@ function khFill(s, R, pl, ok) {
     set.maxq = 1; if (high) set.vac = 1; if (orbit) set.orbit = 1; if (landed && high) set.heat = 1; if (landed) set.land = 1;
     if (p.d.kind === 'engine') { set.burn = 1; if (high && !first.has(p.seg)) set.vburn = 1; } }
 }
-// an upper-stage engine that won't light loses the flight (a first-stage one just scrubs and is retried)
+// an upper-stage engine that won't light loses the flight (a first-stage one just scrubs and is retried); the odds are the
+// game's own ignFail (R19: was a copy without development's "reliable" factor)
 function ignitionFails(s) { const first = new Set((s.events[0] && s.events[0].ignite) || []); let okP = 1;
-  for (const p of s.parts) { if (p.d.kind !== 'engine' || first.has(p.seg)) continue; const L = api.prodLine(p.d.key);
-    okP *= 1 - api.IGN_FAIL * (1 - api.khUse(p.d.key)) ** 2 * (L ? 2 - L.m : 1); }
+  for (const p of s.parts) { if (p.d.kind !== 'engine' || first.has(p.seg)) continue; okP *= 1 - api.ignFail(p.d.key); }
   return 1 - okP; }
 // a Selene science program (Q130, ROVERS=1): after the soft landing, one science rover on a Probe; while it lives it sends a
 // spectrometer reading every RV_READ days (a tenth of them from the dark plains, as the geology has it) and a panorama
@@ -147,13 +178,75 @@ function fly(pl, rnd, m) {
     const u = R.launchPf ? api.norm(R.launchPf) : [1, 0, 0], a = (300 + 600 * rnd()) * 1e3 / TELLUS.R, t = rnd() * 6.2832, e1 = api.norm(api.cross(u, [0, 1, 0])), e2 = api.cross(u, e1);
     const pf = u.map((c, k) => (c * Math.cos(a) + (e1[k] * Math.cos(t) + e2[k] * Math.sin(t)) * Math.sin(a)) * TELLUS.R);
     api.missionDrop(s, { kind: x < 0.85 ? 'sea' : x < 0.97 ? 'land' : 'near', power: null, pf, parts }); }
-  api.t = pl.dur; api.missionEnd(s);
+  api.t = pl.dur;
+  if (REGISTRY && ok) regPose(s, pl);
+  if (LATE && ok && (pl.kind === 'orbit' || pl.kind === 'sat' || pl.kind === 'station')) keepProc(st, s, pl);
+  api.missionEnd(s);
   if (process.env.WHY && !ok && pl.first) console.log(`  lost ${pl.first} d${Math.round(P.day)} cost ${s.rec.cost.toFixed(0)} max ${(P.recs.maxCost||0).toFixed(0)} cover ${(s.rec.cover||0).toFixed(0)} covers ${JSON.stringify(Object.keys(P.recs.cover||{}))}`);
   if (!ok && pl.first && process.env.KEEP) P.funds += +process.env.KEEP * planCost(pl).c;   // experiment: a sponsor covers part of a failed first
   if (ok) { const b = back[pl.kind] || (back[pl.kind] = { n: 0, sum: 0 }); b.n++; b.sum += R.refund || 0; }
   return ok;
 }
 
+// Q571 (opts.registry): what the flight leaves behind, posed where the record says it went, so the game's own satRegister
+// files it at missionEnd: an orbit's last stage on a circular orbit at the plan's height and inclination (the Beeper,
+// boilerplate, a station), the soft lander standing on Selene's near side. Hops, sounding rockets and returns leave nothing
+function regPose(s, pl) {   // (the node and the phase from the flight count: the same career gives the same registry)
+  const last = () => api.placeDrop(s, api.placeSteps(s.stack).length - 1);
+  if (pl.kind === 'orbit' || pl.kind === 'station' || pl.kind === 'sat') { last(); const alt = s.rec.orb ? (s.rec.orb.pe + s.rec.orb.ap) / 2 : pl.alt * 1e3, T = P.day * api.DAY_S;
+    const at = u => { const [r, v] = api.placeCirc(TELLUS, alt, pl.inc || 0, (P.flights * 137.5) % 360, u); api.placePose(s, TELLUS, r, v); };
+    at((P.flights * 222.5) % 360);
+    // R19: a TV satellite is parked over the capital, as a player parks it (the first slot from which isTV holds)
+    if (pl.flag === 'tv') for (let u = 0; u < 360; u += 5) { at(u); if (api.isTV({ ant: 1, r: s.r, v: s.v, epoch: T }, T)) break; }
+    s.alive = true; }
+  else if (pl.kind === 'moon' && pl.flag === 'selLand') { last(); api.placeLand(s, api.SELENE, 0, 180); s.alive = true; }
+}
+
+// ---- LATE=1 (R19): the late game. The scripted player goes for the satellite, station, abort and Selene firsts (the
+// chapters' goals), keeps what stays up in the registry (so satellites earn, through the game's utilTick and satTick),
+// and automates: once a design has reached orbit it has an ascent procedure (abstracted: no pitch table, so the game's
+// own dispatchRoll resolves its dispatches), satellite and reconnaissance contracts are dispatched instead of flown,
+// each design is studied by the trajectory office before its first dispatch, and the TV and weather satellites get a
+// routine (ordered by hand until ROUTE_CLEAN clean runs, then left to repeat). Not modelled: the simulator, crew
+// rotations, station resupply and lab-days (they need a crewed station), supply runs to a Selene base.
+const LATE = !!+(process.env.LATE || 0), LATE_GOALS = ['air', 'wxsat', 'tv', 'padabort', 'maxqabort', 'station1', 'lift1', 'lift2', 'farside', 'selimp', 'selland'], LATE_RESERVE = 40;
+const lateM = () => ({ procs: 0, disp: 0, dispOk: 0, dispLost: 0, studies: 0, routes: 0, runs: 0, autos: 0, inc: {} });
+// what a flight that reached orbit leaves the program: an ascent procedure for its design, as procKeep would keep it
+function keepProc(st, s, pl) {
+  const key = api.procKey(st); P.procs = P.procs || {}; if (P.procs[key]) return;
+  const o = s.rec.orb || { pe: pl.alt * 1e3, ap: pl.alt * 1e3, inc: pl.inc || 0 }, tot = api.dvRemaining(api.newShip(st)).tot;
+  P.procs[key] = { v: api.PROC_V, kind: 'orbit', site: api.curSite().id, az: Math.PI / 2, pitch: null, thr: [], vel: [], early: [], cutAp: o.ap, target: { pe: o.pe, ap: o.ap, inc: o.inc },
+    dv: api.DV_ORBIT_EST, left: tot - api.DV_ORBIT_EST, by: pl.first || pl.kind, day: P.day, flight: P.flights, runner: true };
+  LM.procs++;
+}
+// a dispatch that reaches orbit leaves its satellite in the registry (the game's dispatchRun does it by flying the procedure)
+function lateDispatchRun(D, v, c) {
+  const res = api.dispatchRoll(D, v, c); if (!res.ok || !res.orb) return res;
+  const s = api.newShip(D.stack); api.S = s; api.t = 0; api.placeDrop(s, api.placeSteps(s.stack).length - 1);
+  const T = P.day * api.DAY_S, at = u => { const [r, vv] = api.placeCirc(TELLUS, (res.orb.pe + res.orb.ap) / 2, res.orb.inc, (D.id * 137.5) % 360, u); api.placePose(s, TELLUS, r, vv); };
+  at((D.id * 222.5) % 360); if (s.parts.some(p => p.d.kind === 'ant') && Math.abs((res.orb.pe + res.orb.ap) / 2 - (api.STAT_R - TELLUS.R)) < 200e3)   // a stationary one goes over the capital
+    for (let u = 0; u < 360; u += 5) { at(u); if (api.isTV({ ant: 1, r: s.r, v: s.v, epoch: T }, T)) break; }
+  s.alive = true; s.landed = false; const RR = { day0: P.day, T: P.day * api.DAY_S }; api.satRegister(s, RR); if (RR.satId != null) D.satId = RR.satId;
+  return res;
+}
+// each turn: dispatch what can be dispatched, studied first; keep the routines going
+function lateTurn() {
+  for (const c of P.active) {
+    if (!api.DISPATCH_TYPES.includes(c.type) || (P.dispatch || []).some(D => D.cid === c.id && (D.status === 'queued' || D.status === 'deviated'))) continue;
+    const pl = fitContract(c); if (!pl) continue; const { st } = planCost(pl), q = api.dispatchQuote(c, st);
+    if (!q.ok || P.funds < q.cost + LATE_RESERVE) continue;
+    const s = api.newShip(st), sq = api.studyQuote(s); if (sq.ok && P.funds > q.cost + sq.cost + LATE_RESERVE && api.orderStudy(s)) LM.studies++;
+    if (api.orderDispatch(c, st)) LM.disp++;
+  }
+  for (const q of api.satsUp()) { const kind = q.tvOn ? 'tv' : q.cam && q.ant ? 'wx' : null;
+    if (kind && q.route == null && !(P.routes || []).some(r => r.kind === kind)) { const m = api.makeRoute(q, 2); if (m.ok) { m.route.kind = kind; LM.routes++; } } }
+  for (const r of P.routes || []) {
+    if (!r.auto && !api.routeAutoWhy(r)) { if (api.setRouteAuto(r.id, true).ok) LM.autos++; continue; }
+    if (r.auto || (P.dispatch || []).some(D => D.route === r.id && D.status === 'queued')) continue;
+    if (api.satsUp().filter(q => q.route === r.id).length < r.keep || r.clean < 3) { const o = api.orderRoute(r.id, false); if (o.ok) LM.runs++; }
+  }
+}
+let LM = lateM();
 // a prudent investor: keeps a reserve, qualifies only parts it doesn't know yet, develops only parts it flies a lot
 const INV = (process.env.INV || 'fac,stand,test,dev').split(','), RESERVE = +(process.env.RESERVE || 250), KH_TEST = 0.7, DEV_MIN = 5;
 function invest(m) {
@@ -163,28 +256,30 @@ function invest(m) {
   if (INV.includes('test') && api.standReady() && !P.stand2.job) { const k = used.filter(k => api.khUse(k) < KH_TEST).sort((a, b) => api.khUse(a) - api.khUse(b))[0]; if (k) { const q = api.testQuote(k, 'qual'); if (P.funds > q.cost + RESERVE && api.startTest(k, 'qual')) { m.testSpend += q.cost; m.tests++; } } }
   if (INV.includes('dev') && !P.devJob) for (const k of used.filter(k => m.used[k] >= DEV_MIN)) for (const g of ['cheap', 'rel', 'dur']) { const q = api.devQuote(k, g); if (q.ok && P.funds > q.cost + RESERVE && api.startDev(k, g)) { m.devSpend += q.cost; m.devs++; return; } }
 }
-function run(arch, start, seed) {
-  api.resetWorld(); seenParts.clear(); failed.clear(); for (const k in back) delete back[k];
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: null, active: [], cdone: 0, stand: {}, recs: {},
-    cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
-    nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {}, fac: {}, stand2: null, dev: {}, devJob: null, studies: {}, studyQ: [], compEra: null, staged: {}, sel: null, procs: {} });
-  api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); for (const k in posted) delete posted[k]; api.ensureBoard(); news.length = 0;
+export function run(arch, start, seed, opts = {}) {
+  GOALS = new Set(opts.goals || (LATE ? LATE_GOALS : [])); GOAL_BONUS = opts.goalBonus ?? 150; REGISTRY = !!opts.registry || LATE; const days = opts.days ?? DAYS;
+  LM = lateM(); api.HOOK.income = (x, k) => { LM.inc[k] = (LM.inc[k] || 0) + x; }; api.HOOK.dispatchRun = LATE ? lateDispatchRun : undefined;
+  seenParts.clear(); failed.clear(); for (const k in back) delete back[k];
+  if (!opts.keep) {   // opts.keep (Q571): carry on the program as the last run left it (the next chapter)
+  api.programNew({ homeArch: arch, wseed: 1000 + seed * 77 });   // the game's own reset (R1b): a row no longer inherits the rows before it
+  api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); for (const k in posted) delete posted[k]; api.ensureBoard(); news.length = 0; }
   const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0, wd: 0, rover: null, rvSpend: 0, reads: 0, panos: 0, selDay: null, rvTries: 0, accepted: 0 };
-  while (P.day < DAYS && m.fl < 600) {
+  while (P.day < days && m.fl < 600 && !(opts.until && opts.until(P))) {
     // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
     for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (ACCEPT.includes(d.kind)) { api.resolveDecision(d.id, 'yes'); m.accepted++; } else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
     // take the best-paying offers we have a design for, avoiding certain home sanctions
     for (const c of [...P.offers].sort((a, b) => b.p.pay - a.p.pay)) {
       if (P.active.length >= api.capOf()) break; if (api.CT[c.type].sel) { if (m.rover && !m.rover.dead) api.acceptOffer(c.id); continue; }   // Selene science: no flight, the rover does it
-      const pl = fitContract(c); if (!pl) continue;
+      const pl = fitContract(c); if (!pl || closed(pl)) continue;
       if (api.offerRisk(c).now.includes(api.home)) continue; if (planCost(pl).c > P.funds) continue; api.acceptOffer(c.id);   // only work it can pay for now
     }
     // the flight worth most (pay of everything it would complete, minus cost) that we can afford
-    const cands = [...P.active.map(fitContract), ...api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => { const pl = FIRST_PLAN[M.id]?.(); if (pl) pl.first = M.id; return pl; })].filter(Boolean);
+    if (LATE) lateTurn();
+    const cands = [...P.active.filter(c => !(P.dispatch || []).some(D => D.cid === c.id && (D.status === 'queued' || D.status === 'deviated'))).map(fitContract),...api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => { const pl = (FIRST_PLAN[M.id] || (GOALS.has(M.id) && MORE_PLAN[M.id]) || null)?.(); if (pl) pl.first = M.id; return pl; })].filter(Boolean);
     if (ROVERS && P.done.selland && !m.rover && !m.roverTried) { const pl = PLANS.rover(), c = planCost(pl).c;
       if (P.funds > c + RV_RESERVE) { const f0 = P.funds, ok = fly(pl, rnd, m); m.fl++; m.rvSpend += f0 - P.funds; if (ok) m.rover = { day: P.day, next: P.day, name: SCI_ROVER.name }; else m.fail++; m.roverTried = !ok && m.rvTries++ >= 1; continue; } }
     roverScience(m);
-    let best = null; for (const pl of cands) { const c = planCost(pl).c; if (c > P.funds) continue; const v = (wouldDo(pl) + refundOf(pl)) * pl.p - c; if (!best || v > best.v) best = { pl, v }; }
+    let best = null; for (const pl of cands) { const c = planCost(pl).c; if (c > P.funds || closed(pl)) continue; const v = (wouldDo(pl) + refundOf(pl)) * pl.p - c; if (!best || v > best.v) best = { pl, v }; }
     if (process.env.TRACE && m.orbDay == null) console.log(`d${Math.round(P.day)} $${P.funds.toFixed(0)} debt${(api.own().debt||0).toFixed(0)} ${best && best.v > -5 ? (best.pl.first || best.pl.kind) + ' v' + best.v.toFixed(0) + ' c' + planCost(best.pl).c.toFixed(0) : 'none'} | board ${P.offers.map(c => c.type + ':' + c.p.pay.toFixed(0) + '/' + (fitContract(c) ? planCost(fitContract(c)).c.toFixed(0) : 'x')).join(' ')} | active ${P.active.map(c => c.type).join(',')} | open ${api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => M.id).join(',')}`);
     if (best && best.v > -5) { const ok = fly(best.pl, rnd, m); m.fl++; if (!ok) m.fail++;
       for (const k of new Set(stackKeys(planCost(best.pl).st))) m.used[k] = (m.used[k] || 0) + 1;
@@ -206,11 +301,15 @@ function run(arch, start, seed) {
   m.sanc = news.filter(t => /imposes sanctions/.test(t)).length;
   m.selDone = news.filter(t => /^Contract done for .*: (Read Selene|A panorama of Selene|A seismic network|Locate \d+ moonquakes|Bound Selene|Science from Selene)/.test(t));
   m.selPay = m.selDone.reduce((a, t) => a + (+((t.match(/\(\+([\d.]+)M\)/) || [])[1] || 0)), 0); m.selDay = P.done.selland ? Math.round(P.done.selland.day) : null;
-  return { ...m, posted: { ...posted }, final: P.funds, kh: avg(Object.keys(P.kh || {}).map(k => api.khUse(k))) || 0, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
+  const DS = P.dispatch || []; LM.dispOk = DS.filter(D => D.cid != null && D.status === 'done').length; LM.dispLost = DS.filter(D => D.cid != null && (D.status === 'failed' || D.status === 'lost')).length;
+  LM.runsDone = (P.routes || []).reduce((a, r) => a + r.runs, 0); LM.sats = api.satsUp().length; LM.tv = api.satsUp().filter(q => q.tvOn).length; LM.stations = api.satsUp().filter(q => (q.shape || []).some(o => o.k === 'hab')).length;
+  return { ...m, late: { ...LM, inc: { ...LM.inc } }, posted: { ...posted }, final: P.funds, kh: avg(Object.keys(P.kh || {}).map(k => api.khUse(k))) || 0, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
     race: api.RACE.map(id => P.done[id] ? (api.raceLost(id) != null ? '2' : '1') : (api.raceLost(id) != null ? 'L' : '-')).join(''), home: api.home };
 }
 
 function avg(xs) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0; }
+export { api, planCost, news, FIRST_PLAN, MORE_PLAN };
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {   // run as a script (not imported by chapters.mjs)
 const f0 = x => x.toFixed(0).padStart(5);
 console.log(`career runner [${VARIANT}]: ${YEARS} years (${DAYS} days), ${SEEDS} seeds each · race: 1 first, 2 second, L lost (not done), - open (beeper/hop/orbiter)`);
 if (PACE) { const pc = k => f0(planCost(FIRST_PLAN[k]()).c); console.log(`first-flight prices (M): weather${pc('weather')} loads${pc('loads')} hop${pc('hop')} beeper${pc('beeper')} orbiter${pc('orbiter')} · start funds ${Object.entries(api.START).map(([k, v]) => k + ' ' + v.funds).join(', ')}${FAILFIRST ? ' · FAILFIRST=' + FAILFIRST : ''}`); }
@@ -226,7 +325,10 @@ for (const arch of (process.env.ARCHS || Object.keys(api.ARCH).join(',')).split(
     console.log(`${arch.padEnd(12)} ${start.padEnd(10)} soft landing ${sd.length}/${rs.length} day ${sd.length ? f0(avg(sd.map(r => r.selDay))) : '   — '}  rover ${rv.length}/${rs.length} (spent ${f0(avg(rs.map(r => r.rvSpend)))})  Selene contracts ${(avg(rs.map(r => r.selDone.length))).toFixed(1).padStart(4)} paying ${f0(avg(rs.map(r => r.selPay)))}  readings ${f0(avg(rs.map(r => r.reads)))}  accepted ${(avg(rs.map(r => r.accepted))).toFixed(1)}  final ${f0(avg(rs.map(r => r.final)))}`); continue; }
   if (PACE) { const got = rs.filter(r => r.orbDay != null), a = f => got.length ? f0(avg(got.map(f))) : '   — ';
     console.log(`${arch.padEnd(12)} ${start.padEnd(10)} orbit ${got.length}/${rs.length}  flights ${a(r => r.orbFl)}  day ${a(r => r.orbDay)} (max ${f0(Math.max(0, ...got.map(r => r.orbDay)))})  longest wait ${f0(avg(rs.map(r => r.wait)))} d  bailouts before ${(avg(rs.map(r => r.bailPre))).toFixed(1).padStart(4)}  min funds ${f0(avg(rs.map(r => r.minF)))}  withdrawn ${(avg(rs.map(r => r.wd))).toFixed(1)}`); continue; }
+  if (LATE) { const L = k => avg(rs.map(r => r.late[k] || 0)), I = k => avg(rs.map(r => r.late.inc[k] || 0)), d = id => { const x = rs.map(r => r.firsts[id]).filter(v => v != null); return x.length + '/' + rs.length + (x.length ? ' d' + avg(x).toFixed(0) : ''); };
+    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1)} | tv ${d('tv')} station ${d('station1')} selland ${d('selland')} | up ${L('sats').toFixed(1)} (TV ${L('tv').toFixed(1)}, habs ${L('stations').toFixed(1)}) | income: sats ${f0(I('sats'))} | dispatched ${L('disp').toFixed(1)} (done ${L('dispOk').toFixed(1)}, lost ${L('dispLost').toFixed(1)}) studies ${L('studies').toFixed(1)} routines ${L('routes').toFixed(1)} runs ${L('runsDone').toFixed(1)} auto ${L('autos').toFixed(1)}`); continue; }
   if (process.env.SPEND) { console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} fl ${f0(avg(rs.map(r => r.fl)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1)} | lines ${f0(avg(rs.map(r => r.lineSpend)))} facilities ${f0(avg(rs.map(r => r.facSpend)))} (${(avg(rs.map(r => r.fac))).toFixed(1)}) tests ${f0(avg(rs.map(r => r.testSpend)))} (${(avg(rs.map(r => r.tests))).toFixed(0)}) dev ${f0(avg(rs.map(r => r.devSpend)))} (${(avg(rs.map(r => r.devs))).toFixed(0)}) kh ${f0(100 * avg(rs.map(r => r.kh)))}%`); continue; }
   console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')} | ${(avg(rs.map(r => r.ign))).toFixed(1).padStart(4)} ${f0(100 * avg(rs.map(r => r.kh)))} ${(avg(rs.map(r => r.lines))).toFixed(1).padStart(5)} ${f0(avg(rs.map(r => r.lineSpend)))}  ${(avg(rs.map(r => r.support))).toFixed(1).padStart(5)}`);
 }
 if (OFFERS) console.log(`MEAN over ${ALL.length} careers: final ${f0(avg(ALL.map(r => r.final)))} bail ${(avg(ALL.map(r => r.bail))).toFixed(2)} careers ${(avg(ALL.map(r => r.careers))).toFixed(2)} contracts ${f0(avg(ALL.map(r => r.cd)))} firsts ${(avg(ALL.map(r => Object.keys(r.firsts).length))).toFixed(2)} | offers ${SRCS.map(k => k + ' ' + (avg(ALL.map(r => r.posted[k] || 0))).toFixed(1)).join(' ')}`);
+}

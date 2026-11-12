@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -751,3 +751,277 @@ the menu with the Lunar on the table, and the Lunar's Petrel + Wren in a 40 km p
 
 **Left**: no keep-it switch (a satellite placed this way can't stay in the sandbox's register); RCS gas isn't in the tests
 (no preset carries RCS); no "landed elsewhere on Tellus" start; *Entering its sphere* is a flyby, not a captured free return.
+
+## v1.289 — five lines a `//` comment swallowed (2026-11-09, review fixes, QUEUE R4; REVIEW-2026-11-09)
+
+A note on the end of a line, then live code with no line break: the code was part of the comment. Each split back
+onto its own line, nothing else changed:
+- `app/editor.js` (since v1.236, Q436): the SAS mode button in use gets `.on` again.
+- `app/screens.js` (since v1.160): `progInbox` is counted again, so the Inbox badge (the tab, the HQ strip) shows.
+- `app/render.js`: `uSeam` and `setMarks` are reset after the debris pass, before the satellites and the rest.
+- `builder.js`: `overlay()` runs `o.save()` and sets its font again (`o.restore()` had run without a save).
+- `sim/ground.js`: Erebus's blade mask (`B`) is baked again; before, the channel stayed 0 and no ground read *blades*.
+  Erebus isn't live (stub body), so nothing flown changes.
+- Test: `ground-7` gained a blades check (79 of 4000 points; fails on the old line: B max 0). The four browser lines
+  have no test of their own; R3's lint (a `//` comment followed by statements) is the guard for the kind.
+
+## Plan: one `PROG` schema (2026-11-09, review fixes, QUEUE R1; REVIEW-2026-11-09; plan only)
+
+**The ask** (the review's R1): one table of `PROG`'s fields, their defaults and which survive a new program, that
+`resetProgram`, the save and its migration, `missionDiscard`'s snapshot and `career.mjs`'s reset all derive from; and a
+check that fails when code uses a field the table lacks.
+
+**What's there today** (read from the code at v1.289, a scratch inventory over `sim/`, `app/`, `builder.js`, `career.mjs`):
+- **87 fields** are used as `PROG.x`. `PROG` starts as a 10-field literal (`sim/program.js:53`); the rest appear on first
+  write, and **302 reads** guard with `PROG.x||default` (the review counted 279 with a narrower pattern). No code reaches
+  `PROG` through an alias; the only bracket uses are the whole-object restores below.
+- **Four places rebuild it, each with its own list:**
+  | Where | How | Gap |
+  |---|---|---|
+  | `resetProgram` (`app/editor.js:47`), the title's *New program* and More's *reset program* | `Object.assign` of 44 fields; `HOME=0`, `RIVALS`, `ensureBoard` | **43 fields survive** (R17): `sats, stations, procs, routes, sanc, raceLost, log, led, riv, back, cseq, giant, casc, frag, …` |
+  | `career.mjs` `run()` (line 168) | its own `Object.assign` of 48 | misses `cseq, bailRecent, back, giant, led, riv, …` (a row's numbers depend on the rows before it); has `sats, stations, procs, sanc, raceLost, sel` that `resetProgram` lacks; lacks `dispatch, gseed` |
+  | the loader (`app/state.js:187`) | `Object.assign(PROG, migrated save)`, then fixes `funds, day, rel, op` | a field the save lacks stays absent: the 302 `||` reads absorb it |
+  | `missionDiscard` (`sim/program.js:439`), the simulator, flights from orbit (`app/program-ui.js:70,81`), the recorder (`sim/record.js:50`) | whole-object `JSON.stringify` / `jclone` snapshot and restore | complete, but lossy: `Infinity` becomes `null` (R16's 132 M core payout) and nothing says so |
+- `SAVE_V=1`, one migration (0 → 1, the loader's old fix-ups).
+
+**The design.**
+1. **`PROG_SCHEMA`** in `sim/program.js`, next to `PROG`: one row per field, `{d, keep, why}`.
+   - `d` is the default: a JSON value (cloned on use), a function (`wseed: freshSeed`), or `undefined` = **absent is
+     meaningful** (`lvl` absent is Normal; `giant`, `site`, `frag`, `navCov`, `gseed` are built on first use).
+   - `keep` says what *New program* does with it: `'career'` (back to `d`; 81 fields), `'library'` (survives: the
+     player's designs, see question 1), `'pref'` (survives as the charter's preselection: `lvl`), `'transient'` (never
+     saved: `newerSave`), `'meta'` (`ver`, written by the save).
+   - `why` is the field's one-line meaning, the comment that today is scattered over 23 files.
+   The defaults come from the `||` reads (they agree today wherever they're a literal; the ones the scratch pass couldn't
+   read, marked `?`, get looked at by hand in slice 1).
+2. **`progFresh(keepFrom)`**: a new program object from the schema; with `keepFrom`, the `library`/`pref` fields are
+   carried over. **`programNew(opts)`** = clear `PROG`, assign `progFresh(PROG)`, then the world globals (`HOME=0`,
+   `RIVALS=raceSchedule()`, `ensureBoard()`). `resetProgram` becomes `programNew(); HOOK.save(); editorChanged()`;
+   `career.mjs`'s `run()` calls `api.programNew()` and then sets only what a row varies (`homeArch`, `wseed`, the start).
+   The initial `PROG` is `progFresh()` too, so a first career and a reset one start alike.
+3. **One serializer, `progJSON()` / `progRestore(json)`**, used by the save, `REVERT0`, the simulator, flights from orbit
+   and the recorder. It drops `transient` fields, and **in tester mode and in tests it walks the object and reports any
+   non-JSON value** (`Infinity`, `NaN`, `undefined` in an array, a function, a `Map`/`Set`) with its path: R16's sweep,
+   and a guard for the next one. In the plain game it only serializes.
+4. **The loader fills from the schema:** `Object.assign(PROG, progFresh(), migrated)`, so an old save gets every field's
+   default and the reads stop needing `||`. Unknown keys in a save are kept (question 2). No `SAVE_V` bump: filling
+   defaults changes nothing a save means; the bump stays for when a field changes meaning, as now.
+5. **The check** (a new `platform-N` section, in smoke):
+   (a) static: every `PROG.<name>` in `sim/`, `app/`, `builder.js` and `career.mjs` is a schema row, and every row is
+   used somewhere; (b) static: a `PROG.x||<literal>` read whose literal differs from the row's `d` fails; (c) dirty a
+   program (fly the robot's career a few hundred days in the SIM), `programNew()`, and `PROG` deep-equals `progFresh()`
+   except the `library`/`pref` fields (R17's repro: `sanctioned(1)`, `raceLost('beeper')`); (d) the same dirty program
+   through `progJSON` reports no non-JSON values; (e) `career.mjs` with the same row twice in one process gives the same
+   numbers (today 408 / 346 / 277 M depend on the rows before).
+
+**Slices** (platform lane; Opus is enough for each):
+- **R1a** the schema, `progFresh`, `why` for each row, checks (a), (b); no behaviour change (the initial `PROG` is
+  already a subset). Decide the `?` defaults by hand.
+- **R1b** `programNew` for `resetProgram` and `career.mjs` (fixes **R17**); checks (c), (e). `career.mjs`'s table
+  changes, since rows stop inheriting the ones before: re-measure and write down the new baseline (NOTES economy).
+- **R1c** `progJSON`/`progRestore` everywhere a snapshot is taken; the non-JSON report; check (d). It finds R16's
+  `core.hi:Infinity` (R16 fixes the value; R1c only reports).
+- **R1d** the loader fills from the schema. Then, lazily and by lane (additive first), retire `||` reads as files are
+  touched; check (b) keeps the ones left honest.
+
+**Fits with:** R2 (test sections run isolated) gets its fresh program from `progFresh()`/`programNew()`; R16 and R17
+are found or fixed on the way; R19's shared formulas are separate.
+
+**Questions for Caio** (silence keeps the default):
+1. **Do the player's designs survive *New program*?** (`designs.saved`, `payloads`, `rovers`.) *Default: yes,* like a
+   craft library outside the save; the new program's design history (`designs.launched`) starts empty.
+2. **A save with fields this game doesn't know** (from a newer build, or one since removed): *default: kept as they are*
+   (no data loss when going back and forth between builds); the tester's log lists them.
+3. **Difficulty on *New program*:** *default: the charter preselects the last one and still asks* (today's behaviour,
+   since `lvl` already survives).
+
+## v1.292 — the `PROG` schema, first slice (2026-11-10, review fixes, QUEUE R1a; § "Plan: one `PROG` schema")
+
+`PROG_SCHEMA` in sim/program.js, after `freshSeed`: all 87 fields, one row each, `[default, keep, why]`, grouped (money,
+world, missions, know-how, fleet, logbook, Selene, library). `progFresh(keepFrom)` builds a fresh program from it and
+carries the `library` (designs, payloads, rovers) and `pref` (lvl) fields over from `keepFrom`. Nothing calls it yet:
+no behaviour changes (R1b moves `resetProgram` and `career.mjs` onto it).
+- **Everyone: a new `PROG` field needs a row**, or test platform-6 fails. A `PROG.x||<literal>` read must use the row's
+  default unless that default is null or absent.
+- Defaults: a field `resetProgram` sets keeps its reset value; the other 43 take their `||` reads' default, or stay
+  absent (`riv, giant, frag, navCov, site, sel, lastDebrief, electionWarned`): built on first use, or meaningful absent.
+- Found by the check: the desk's ledger read `PROG.funds||0` (the table: 60). The guard could never fire (the loader
+  repairs `funds`), so it went.
+- Test platform-6: every field used is a row and every row used; the `||` defaults agree; PROG's starting literal and
+  `resetProgram`'s agree with the table; `progFresh` gives fresh objects and carries the library over. Mutations
+  caught: a row removed, a default changed (both the `??` read and `resetProgram` disagree).
+
+## v1.293 — one reset for New program and career.mjs (2026-11-10, review fixes, QUEUE R1b; fixes R17)
+
+`programNew(set)` (sim/program.js, after `progFresh`): every field back to the table's default (it clears `PROG` first,
+so nothing from the old career survives), the player's designs and the level carried over (`designs.launched`
+emptied), then `HOME`, `RIVALS`, `REVERT0`, `DEBRIEF_LAST` and the board. `set` is for fields chosen before the world is
+built. `resetProgram` (the title's New program, More's reset program) is now `programNew(); HOOK.save(); editorChanged()`;
+`career.mjs`'s `run()` calls `api.programNew({homeArch, wseed})` instead of its own 48-field list.
+- **R17 fixed:** before, 43 fields survived a reset: satellites, stations, sanctions, lost races, procedures, routines,
+  the logbook, the ledger, the rivals, contracts due back, the commercial giant, debris. Also gone now: the launch site
+  picked (back to home's) and the last Debrief.
+- **career.mjs rows are independent:** frugal/agency ended at 408 M in the full table, 346 M alone, 345 M after one
+  other row. Now a row is the same wherever it runs. The new baseline (`node career.mjs 3 3`): mean final funds
+  654 M (was 691), lowest row 100 M (resource/company, was 147), mean flights 25.3 (same), failure rate 19.9 % (was 19.3).
+  Rows move both ways (rising/agency 799 → 717, resource/agency 397 → 701): before, each row started from whatever the
+  rows before had left (their sanctions, races, contracts due back), so no single old number was "right".
+- Tests: platform-6 gains two checks: New program after 300 days of play equals a new program in a fresh SIM (same
+  seed), the designs and level aside; and a career.mjs row alone equals the same row after others (mutations caught:
+  the old career.mjs reset, a programNew that doesn't clear first). Three source-text checks that read resetProgram's
+  old list now check the table and programNew: economy's *cover kept in PROG.recs*, econ-34 (*Reset draws a seed*),
+  look's *a reset draws a new galaxy*.
+
+## v1.296 — one serializer for the save and every snapshot (2026-11-10, review fixes, QUEUE R1c)
+
+`progJSON()` / `progRestore(j)` (sim/program.js, after `programNew`) replace the six ways `PROG` was copied: the save
+(`HOOK.save`), the revert/simulator snapshot at liftoff (`REVERT0`) and `missionDiscard`'s restore, the two flights from
+orbit (app/program-ui.js), and the recorder (`recStart`, `recProg`, `recLoad`, `progHash`). `progJSON` leaves out
+`transient` fields (`newerSave`); `progRestore` clears `PROG` first, so a field the snapshot lacks goes.
+- **What JSON loses**, listed by path by `progLossy(v)`: Infinity and NaN (they come back null), functions, Maps, Sets,
+  Dates, typed arrays, holes (undefined) in arrays. **In tester mode** `progJSON` says each new one once ("Tester: the
+  save loses PROG.sel.core.hi=Infinity") and warns in the console. In the plain game it only serializes.
+- It doesn't fix values: R16 (`sim/rovers.js:359`, `core.hi:Infinity`) is still there, now named in the tester's
+  messages the first time Selene's core gets a bound.
+- Test platform-6: no snapshot of `PROG` taken any other way (a mutation putting the save back on
+  `JSON.stringify(PROG)` is caught); `progLossy` finds all seven kinds planted; 300 days of play lose nothing; the
+  tester is told once about R16's bound; a restore drops a field added after the snapshot, and `newerSave` isn't written.
+
+## v1.308 — a bad save no longer bricks the page (2026-11-11, platform, QUEUE R10)
+
+The review (2026-11-09 § 2) found three saves that threw on every reload with no reset reachable: `{"ver":1,"home":99}`,
+`{"done":null}`, `{"rel":null}`. Reproduced headless: each loaded, then threw on the first world tick (`align` of an
+undefined power, `Object.keys(null)`, `null['0-1']`); so do `offers: 5` and `active: null`.
+- **`progLoad(j, home)`** (sim/program.js, after `progRestore`) is the one loader; the page and the recorder's `recLoad`
+  both call it. (1) The save goes onto `PROG_BASE` (PROG's starting literal, so a save missing `done`/`cert`/`atm` gets
+  them, as the old `Object.assign` did). (2) `progRepair`: a field whose kind differs from its `PROG_SCHEMA` default is
+  put back to the default (object, array, finite number, string, boolean; a null default takes anything), and a `home`
+  that is no power goes to 0. `PROG_REPAIRED` names them; the page says "Parts of the saved program were damaged and are
+  reset: done (null)". (3) `progDerive`: HOME, the rivals, the board, the old finite fix-ups. (4) **`progProbe`**: one day of
+  the world on the save with news, messages and saves muted, then put back exactly (transient fields kept aside), so a
+  save that would throw in the first frame throws here. Any throw: `PROG` becomes a new program and the error comes back.
+  A played save (200 days) loads exactly as a plain restore, and 30 days on from it match: the probe leaves no trace.
+  Cost: under 1 ms.
+- **The page** (app/state.js): a save that won't parse, isn't a program, or fails `progLoad` is copied to
+  `launchpad-program-v1-bad` (`-tester-bad` in tester mode) **before** anything can save over it; a new program starts and
+  the player is told (message and a *bad* news line). With no room for the copy, the tab never saves (`progHeld`), so the
+  old save stays.
+- **Saving**: `HOOK.save` no longer swallows a failure: "Could not save: browser storage is full…" (quota) or the error,
+  at most once a minute, and not at all where storage was unreadable at boot (private windows).
+- **Two tabs**: the browser's `storage` event tells a tab when another one wrote the save; that tab stops saving and says
+  so ("reload it to carry on here"). Whichever tab saves first keeps the program; the other can't write an older program
+  over it.
+- Not done: no way in the game to download the `-bad` copy (R9's *Export save* is the place); `offers` (null default) isn't
+  kind-checked, the probe catches it. R1d (fill a save from the schema) is still open; `progRepair` only fixes kinds.
+- Test platform-7 runs the page's own load/save block against the SIM with a fake `localStorage`: the five broken shapes
+  load repaired and play 3 days; `sats:[5]`, `offers:5`, non-JSON and a bare string are kept as `-bad` and a new program
+  starts; storage full holds the save; quota said once; another tab's write stops this tab's saves; the played-save
+  equality above. platform-2's slice of the page now ends at `// Loading (R10)`.
+## v1.309 — chapter starts: begin at first orbit, the first station or Selene (2026-11-11, QA, QUEUE Q571; PROGRESSION § 6)
+
+- **Why:** Caio can't playtest stations and bases because every playtest starts at hour one.
+- **On the title menu:** under New program, a *Start at* line: **First orbit done**, **First station up**, **Landed on
+  Selene**. Picking one loads `starts/<id>.js` (a script tag, so it works from a file too), writes its save into its own
+  slot (`CHAPTER_KEY`, `launchpad-program-chapter`; `PROG_SLOT` in app/state.js, read from `launchpad-slot`) and reloads; the career's
+  save is never read or written. In that slot Continue says *a chapter start* and New program becomes **Back to your
+  career**. The player's library and level (`PROG_SCHEMA`'s `library`/`pref` fields) come along. In tester mode a start
+  replaces the tester's program instead, flags and all; outside it there are no tester flags.
+- **How they're made:** `node chapters.mjs` plays one career with career.mjs's scripted player (the prudent one: a reserve,
+  declines offers but a rescue loan) through the game's own economy, race, opinion and calendar, and snapshots `progJSON`
+  at each milestone, so each start carries on from the one before. career.mjs is now also a module: `run(arch, start,
+  seed, opts)` with `until`, `days`, `keep` (carry on), `goals` (missions it goes for, a bonus on their value: *Measure the
+  air* and, after orbit, the escape tower's two tests, the station and the Selene firsts) and `registry` (what an orbit
+  leaves, its last stage, is posed on its orbit and the Selene lander on the near side, then the game's own `satRegister`
+  files them). New plans: `PLANS.abort` (a crew capsule under its tower on the Passenger's booster) and `PLANS.station`
+  (a habitat, a port on top and one on its side, a probe core, on the Heavy). The default rows are unchanged
+  (`PACE=1 node career.mjs 3 2` prints the same before and after). Deterministic: the same files every run.
+- **What they hold (seed 1, a random world that came out a rising power, a national agency):** *First orbit done* day 60,
+  2 flights, 180M, the weather, the air and the beeper done, Beeper 1 up. *First station up* day 494, 12 flights, 172M,
+  10 firsts (the hop and one orbit, the tower qualified), Beeper 1 and the habitat (the game names it *Object 1*).
+  *Landed on Selene* day 805, 15 flights, 581M, 13 firsts (the far side, the impactor, the soft landing), *Selene lander 1*.
+  The flights are abstracted as career.mjs always has (a record per plan, a success probability): fast and cheap next
+  to a person's career, and contracts are few (1–3).
+- **When the save schema moves:** `node chapters.mjs` and commit `starts/`. `--dry` prints the summary only.
+- **Test** `qa-8`: each start loads as the page loads a save, carries only `PROG_SCHEMA` fields and nothing `progLossy`
+  flags, survives a `progJSON` round trip, has its milestones without a tester mark, its registry (a beeper up; a habitat
+  with two free ports by `stFind`; a lander on Selene), runs 40 days, and launches what its next mission takes (the
+  *Structural test flight* on the Sounding preset; *Heavy lift I* on the scripted player's Orbiter with ballast: no
+  `NEXT_PRESET` for it). The title menu lists the same three, into their own slot.
+- **Seen in a browser** (headless Chrome on the GPU, by script): each start from the title, Continue to the desk (NEXT, the
+  Missions tab with the done firsts struck, the registry), the career save byte-for-byte untouched, Back to your career.
+  In the desktop Chrome the tab froze after the station start once, while the local server was starved (4.6 s per file);
+  with the server restarted it loaded in 1 s at 8 ms a frame headless. Not played by hand (TESTING 368).
+
+## v1.310 — the loader fills a save from the schema (2026-11-11, platform, QUEUE R1d)
+
+The last slice of the `PROG` schema plan (step 4). `progLoad` (v1.308) now builds a save on `progFresh()` (every row's
+default), then PROG's starting literal, then the save. An old save gets every field; a field read with `||default` no
+longer needs the `||`. The literal goes second so a save from before `wseed` keeps world 12345, which it always loaded
+with (`progFresh` would draw a new world). No `SAVE_V` bump: filling defaults changes nothing a save means.
+- **The audit first** (a scratch script over `sim/`, `app/`, `builder.js`, `career.mjs`): for each row with a non-null
+  default, every read that could tell absent from the default (`!PROG.k`, `== null`, `=== undefined`, `'k' in PROG`,
+  `&&`, a ternary, `if(PROG.k)`). 13 fields, ~25 reads; all read the same either way (0 and false are falsy like absent;
+  `{}`/`[]` reads are `PROG.k&&PROG.k.sub` or `.length`). The one difference: `home` is now always set, so the load always
+  computes the rivals' forecast (it did once a home was chosen; `rivTick` would build it on the first day anyway).
+  Null-default rows: the two `!= null` reads (`cyc`, `commPh`) treat null as absent. Nothing iterates over `PROG`'s keys
+  but the serializer.
+- **Fields the game doesn't know** are kept as they are (the plan's question 2, default) and named in the tester's
+  verbose log (`PROG_UNKNOWN`, a `save` line).
+- **Not done (by design):** the `||` reads stay. Retire them lazily, by lane, when a file is touched; platform-6 keeps the
+  ones left equal to the table.
+- Test platform-8: a sparse save (`funds: 5` and an unknown field) loads with every row that has a default present and of
+  its default's kind, funds 5, world 12345, the unknown field kept and logged; a save's own values (`done`, `bailouts`,
+  `wseed`) are kept. platform-7's played-save check (a played save loads as a plain restore would) still passes: a
+  program from `programNew` already has every field.
+
+## v1.312 — a frame that throws no longer ends the game (2026-11-11, platform, QUEUE R9)
+
+Before: `frame()` (app/loop.js) called `requestAnimationFrame(frame)` as its last line, so one exception anywhere in a
+frame (the sim, the HUD, the render) skipped it and the game froze for good, with nothing on screen; the page had no
+error handler at all (review 2026-11-09 § 2).
+- `frame(now)` is now `try{frameBody(now)}catch(e){gameFault(e,'frame')}requestAnimationFrame(frame)`: the next frame
+  is scheduled whatever happened. `frameBody` is the old body.
+- **`app/fault.js`** (new, loaded first of the app scripts, so it also catches an app script that throws while loading):
+  `window` `error` and `unhandledrejection` handlers and `gameFault(e, src)`. A panel at the bottom: "Something went wrong.
+  The game is still running but may misbehave; export your save before you reload", the message, where (`app/loop.js:53`,
+  from the stack), how many times; *Reload*, *Export save* (`progJSON()` as `launchpad-save-day<N>.json`), *Export the old
+  save* when R10 kept an unloadable one (`launchpad-save-unloadable.json`), *Keep playing* (hides it until an error it
+  hasn't shown). The first time each error is seen it goes to the console; every fault goes to the tester's log
+  (`logEv('error', …)`).
+- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (Import came in v1.316, Q599; before, a save
+  file goes back by `localStorage.setItem` in the console).
+- Not done: a frame that throws every time keeps throwing (the panel counts it); no automatic pause.
+- **Checked in the page, headless** (scratch run of `review/2026-11-11/app/harness.cjs`, the R34 harness, 64 s boot on
+  the shared machine): boot 0 errors; `testTopUp` made to throw, 5 frames: 5 faults, none escaped, the next frame
+  scheduled each time, the panel shows "boom in a frame · app/loop.js:53 · 5×" with its buttons; restored, the game runs
+  on; a window `error` and a rejected promise both reach it; *Keep playing* hides it.
+- Test platform-9: the static shape of `frame`/`frameBody` and the script order; `app/fault.js` run against a stub
+  document (the panel's content, the count, Keep playing, a new error bringing it back, the old-save button only with a
+  `-bad` copy).
+
+## v1.316 — export and import a save from Settings (2026-11-12, platform, QUEUE Q599)
+
+R9 gave the fault panel an *Export save*, but only a crash could show it, and nothing put a file back (it took
+`localStorage.setItem` in the console). Settings (Esc › Settings) now has a **Saved program** section:
+- *Export save*: `progJSON()` as `launchpad-save-day<N>.json` (fault.js's `exportSave`), any time, mid-flight too.
+  *Export the unloadable save* shows when R10 kept one (`<key>-bad`).
+- *Import save…*: asks twice ("Click again: choose the file"; the line under it says the file replaces the career, a
+  chapter start or the tester's sandbox, whichever slot the page has open), then a file picker. Disabled during a flight
+  or a drive (the page reloads after an import, and a flight in progress doesn't survive a reload). Closing Settings
+  disarms it.
+- `importSave(text)` (app/state.js, after the `storage` listener, so platform-7's slice of the page runs it): the file
+  must be a JSON object with a `day` (asked before migrating, which would add one), then the boot's path: `migrateSave`,
+  `progLoad` (repair, derive, probe). One that isn't a program or stops the game: the program is reloaded from its own
+  text and nothing is written. One that loads: the program it replaces goes to `<key>-before-import` (when there is
+  room; it says so when there isn't), the import is written to the slot, `progHeld` is set so this tab can't save the
+  old program back, and the page reloads. What the import said (its date, damaged parts reset, a newer game's save, no
+  room for the old one) is told after the reload (`sessionStorage` 'launchpad-import-said').
+- **Checked in the page, headless** (`review/2026-11-11/app/harness.cjs`, a scratch script): boot 0 errors; the section
+  renders; Export hands `saveFile` the program; Import arms on one click, picks on the second, disarms when Settings
+  closes; a 30-days-on program through a fake file input: the day goes 0 → 30, the slot holds it, `-before-import`
+  kept, the tab held, a reload asked for; a `{"funds":5}` file: "can't be imported: the file is not a saved program.
+  Your program is as it was"; 0 errors.
+- Test platform-10: a played program's file into another tab (slot replaced, old kept, held, the next boot opens it);
+  bad JSON, a string, an array, an object without a day and a save that stops the game, and a full storage, all
+  leave the program and the store unchanged; the static shape of the Settings section.
+- Not done: no drag-and-drop; the Esc menu itself has no entry (Settings is one click in).

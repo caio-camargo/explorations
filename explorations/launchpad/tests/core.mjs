@@ -401,7 +401,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('range certification: a near-town drop resets the streak; flights with no drops don\'t count; three clean in a row completes it', after3 === 0 && !!P.done.range && P.streak === 3,
     `streak after a near miss ${after3}, final ${P.streak}, flights ${P.flights}`);
   // the passenger hop: a Kestrel's kick is too much for the passenger; the Sparrow preset goes to space and home safe
-  const hop = st => { fresh(); P.done.loads = { flight: 0 }; const x = launch(st); let arm = false, k = 0;
+  const hop = st => { fresh(); P.done.loads = { flight: 0 }; P.done.weather = { flight: 0 }; /* the hop's req (Q577) */ const x = launch(st); let arm = false, k = 0;
     let stg = 0; const dropBooster = st.includes('dec');   // burnout: drop the booster (if it can be dropped); falling: arm the chute
     while (x.alive && !(x.rec.launched && x.landed) && k++ < 400000) {
       if (dropBooster && stg === 0 && x.rec.launched && x.thrust === 0) { api.stage(x); stg = 1; }
@@ -419,7 +419,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('orbital-speed return: a bare biocapsule tumbles and overheats; held shield-first by a pod, the passenger lands safe', !bare.rec.bioOK && held.rec.bioOK && held.landed,
     `bare: ${bare.rec.bioWhy}; held: ${held.rec.gMax.toFixed(1)} g, cabin ${held.rec.cabin.toFixed(0)} K, landed ${held.landed}`);
   // orbit benchmarks: the beeper and the lift records, from a ship placed in a circular orbit and coasted on rails
-  fresh(); P.done.weather = { flight: 0 };
+  fresh(); P.done.weather = { flight: 0 }; P.done.loads = { flight: 0 };   // the beeper's req (Q577)
   const orb = st => { const x = api.newShip(st); api.S = x; api.t = 0; x.landed = false; const r0 = TELLUS.R + (ATM + 20000); x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; x.rec.launched = true; api.advRails(x, 60, 1000); return x; };
   orb(['sci', 'ballast', 'ballast']); const b1 = !!P.done.beeper, l1 = !!P.done.lift1;
   orb(['sci', 'ballast', 'ballast', 'ballast', 'ballast']);
@@ -549,7 +549,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('ballistic test: counts only near the target and only with the instrument package aboard', CTb.ok({ endPf: mul(near, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(far, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(near, TELLUS.R), endSci: false }, { u: tgt, rad: 40 }),
     `${(Math.acos(dot(near, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off counts, ${(Math.acos(dot(far, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off doesn't`);
   // the race: first in the world pays 1.5×; after a rival gets there, half
-  const firstPay = lost => { fresh(); P.homeArch = 'openSuper'; P.day = 0; P.done.weather = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); P.homeArch = null; return P.funds - f; };
+  const firstPay = lost => { fresh(); P.homeArch = 'openSuper'; P.day = 0; P.done.weather = {}; P.done.loads = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); P.homeArch = null; return P.funds - f; };
   const pFirst = firstPay(false), pSecond = firstPay(true), beeperPay = api.MISSIONS.find(m => m.id === 'beeper').pay;
   check('the race: the first satellite pays more when we are first (1.7× for an open superpower), half when a rival got there first; rivals have schedules', Math.abs(pFirst - (1 + 2 * api.ARCH.openSuper.pri.prestige) * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
     `first ${pFirst}M, second ${pSecond}M; rivals expected: ${api.RACE.map(id => `${id} ${PW[api.RIVALS[id].i].root} day ${api.RIVALS[id].day}`).join(', ')}`);
@@ -980,7 +980,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the far side: find a time when Selene's far side is sunlit (Selene between Tellus and the sun), orbit past it at 1.5 R
   let tF = 0; while (dot(toT(tF), SUN_DIR) > -0.6) tF += 3600;
   const uF = norm(add(mul(toT(tF), -1), SUN_DIR)), wF = norm(cross(uF, [0, 1, 0])), rF = 1.5 * SELENE.R;
-  reset(['beeper']); let s = craft(['ant', 'cam', 't2', 'petrel'], SELENE, mul(uF, rF), mul(wF, Math.sqrt(SELENE.mu / rF)), tF);
+  reset(['beeper', 'wxsat', 'lift2']); let s = craft(['ant', 'cam', 't2', 'petrel'], SELENE, mul(uF, rF), mul(wF, Math.sqrt(SELENE.mu / rF)), tF);
   let photoT = null; while (api.t < tF + 6 * 3600 && !P.done.farside) { api.advRails(s, 60, 100); if (s.rec.farPhoto && photoT === null) photoT = api.t; }
   check('out there: the far side is photographed behind Selene and comes home once Tellus is in sight', !!P.done.farside && photoT !== null && P.done.farside && news.some(m => /far side reach home/.test(m)),
     `photo at +${photoT !== null ? ((photoT - tF) / 60).toFixed(0) : '—'} min, downlink by +${((api.t - tF) / 60).toFixed(0)} min (orbit ${(2 * Math.PI * Math.sqrt(rF ** 3 / SELENE.mu) / 60).toFixed(0)} min)`);
@@ -1048,9 +1048,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // TV: stationary, over the capital's longitude; it pays every day it stays there, and a sloppy one drifts away
   const cap = api.capital(), T0 = P.day * api.DAY_S, ua = api.rotY(norm([cap.u[0], 0, cap.u[2]]), api.absTh(T0));   // over the capital's longitude, now
   const stat = (k = 1) => { const R0 = api.STAT_R, vS = Math.sqrt(TELLUS.mu / R0) * k; return [mul(ua, R0), mul([ua[2], 0, -ua[0]], vS)]; };   // prograde about +Y
-  reset(['beeper']); [r, v] = stat(); s = craft(powered(['ant', 'core', 't2', 'petrel']), r, v); api.advRails(s, 60, 100); const tvOK = !!P.done.tv;
+  reset(['beeper', 'wxsat']); [r, v] = stat(); s = craft(powered(['ant', 'core', 't2', 'petrel']), r, v); api.advRails(s, 60, 100); const tvOK = !!P.done.tv;
   api.satRegister(s, s.rec); const q = P.sats[0], f0 = P.funds; api.utilTick(10); const paid = P.funds - f0;
-  reset(['beeper']); [r, v] = stat(1.002); s = craft(['ant', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const sloppy = !!P.done.tv; api.satRegister(s, s.rec);
+  reset(['beeper', 'wxsat']); [r, v] = stat(1.002); s = craft(['ant', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const sloppy = !!P.done.tv; api.satRegister(s, s.rec);
   let lostDay = null; for (let d = 0; d < 200 && lostDay === null; d++) { P.day += 1; api.utilTick(1); if (news.some(m => /drifted out of the capital/.test(m))) lostDay = d; }
   check('epoch 3: TV for the capital from a stationary orbit pays daily; one 0.2 % too fast misses the mark and drifts out of the sky', tvOK && Math.abs(paid - 10 * 0.4) < 1e-9 && !sloppy && lostDay !== null,
     `capital ${cap.name} (${(Math.asin(cap.u[1]) * 57.3).toFixed(0)}°), ${(api.STAT_R / 1e3 - TELLUS.R / 1e3).toFixed(0)} km up: ${tvOK ? 'done' : 'not done'}, ${paid.toFixed(1)}M over 10 days; the sloppy one ${sloppy ? 'counted (wrong)' : 'not counted'}, out of sight after ${lostDay} days`);
@@ -1710,7 +1710,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 26. Production lines (economy): learning to manufacture is different from buying.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], funds: 2000 });
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: { loads: {}, lift1: {} }, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], funds: 2000 });
     api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
   // you can't reverse-engineer what you don't know; a license is possible straight away
   fresh('frugal'); const q0 = api.prodQuote('kestrel'), ownEarly = api.startProdLine('kestrel', 'own'); P.kh = { kestrel: { use: 0.5, reg: {} } }; const q1 = api.prodQuote('kestrel');
@@ -1731,7 +1731,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 30. The test stand (economy): ground testing for know-how and certification, at a price.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  api.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null });
+  api.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: { loads: {}, lift1: {} }, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null });
   api.chooseStart('agency'); P.funds = 500;
   const early = api.startTest('kestrel', 'qual'), built = api.buildStand(), stillBuilding = api.startTest('kestrel', 'qual'); api.advanceDays(61);
   const u0 = api.khUse('kestrel'), c0 = api.certOf('kestrel'), f0 = P.funds, q = api.testQuote('kestrel', 'qual'), ok = api.startTest('kestrel', 'qual'), busy = api.startTest('t2', 'qual');
@@ -1750,7 +1750,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 31. Development projects (economy): improving parts we make, for money, time and know-how.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
-  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null, dev: {}, devJob: null });
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: { loads: {}, lift1: {} }, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null, dev: {}, devJob: null });
     api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
   // only what we make, and only once we know it
   fresh('frugal'); const imp = api.devQuote('kestrel', 'cheap'); P.lines = { kestrel: { power: api.home, lic: null, start: 0, ready: 0, m: 0.05, units: 0 } };   // a brand-new own line: we make it, but don't know it yet
@@ -1880,9 +1880,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const craft = (b, r, v) => { api.t = 0; const s = api.newShip(['ant', 'cam', 't2', 'petrel']); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; return s; };
   const M = api.MISSIONS.find(m => m.id === 'farside');
   // what completing it pays with no staging
-  reset(['beeper']); const fA = P.funds; api.missionComplete(M, null); const whole = P.funds - fA;
+  reset(['beeper', 'wxsat', 'lift2']); const fA = P.funds; api.missionComplete(M, null); const whole = P.funds - fA;
   // on course: just outside Selene's sphere of influence, closing at 300 m/s
-  reset(['beeper']); const [pS, vS] = bodyRel(SELENE, 0), u = norm(pS), soi = soiAt(SELENE, 0), f0 = P.funds;
+  reset(['beeper', 'wxsat', 'lift2']); const [pS, vS] = bodyRel(SELENE, 0), u = norm(pS), soi = soiAt(SELENE, 0), f0 = P.funds;
   const s = craft(TELLUS, sub(pS, mul(u, soi * 1.2)), add(vS, mul(u, 300))); api.missionTick(s, 0, false); const fBound = P.funds - f0;
   s.body = SELENE; s.r = mul(u, -soi * 0.9); s.v = mul(u, 300); api.missionTick(s, 0, false); const fArrive = P.funds - f0 - fBound;
   delete P.done.farside; api.missionComplete(M, null); const total = P.funds - f0;
@@ -1930,7 +1930,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 39. Deviation (economy): a dispatch that can't meet its goal hands the flight over; time stops for it; ignored, it's lost.
 {
   const P = api.PROG, saved = JSON.stringify(P); const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
-  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: {}, staged: {} });
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { weather: { flight: 0, day: 0 }, loads: { flight: 0, day: 0 }, beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: {}, staged: {} });
   api.chooseStart('agency'); P.funds = 2000; P.day = 10;
   const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']; P.procs = { [api.procKey(st)]: { kind: 'orbit', target: { pe: 110e3, ap: 118e3 }, dv: 4445 } };
   const c = { id: 911, type: 'sat', src: 'com', client: 0, p: { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
@@ -2222,7 +2222,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the page: the save slot follows the mode, and the menu's key shows in Help only in tester mode
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const writes = [...page.matchAll(/localStorage\.setItem\(([^,]+),/g)].map(m => m[1]).filter(k => /program/i.test(k) || k === 'PROG_KEY');
-  check('tester: the program saves to PROG_KEY only, a separate slot in tester mode', /const PROG_KEY=TEST\.on\?'launchpad-program-tester':'launchpad-program-v1'/.test(page) && writes.length && writes.every(k => k === 'PROG_KEY'),
+  check('tester: the program saves to PROG_KEY only, a separate slot in tester mode', /PROG_KEY=TEST\.on\?'launchpad-program-tester':PROG_SLOT\?CHAPTER_KEY:'launchpad-program-v1'/.test(page) && writes.length && writes.every(k => k === 'PROG_KEY' || k === 'TEST.on?PROG_KEY:CHAPTER_KEY'),   // + a chapter start's own slot (Q571)
     `program writes: ${writes.join(', ')}`);
   check('tester: the F2 row is hidden from Help outside tester mode', /\{k:\['f2'\][^}]*tester:true\}/.test(page) && /L\.filter\(r=>!r\.tester\|\|TEST\.on\)/.test(page));
 }

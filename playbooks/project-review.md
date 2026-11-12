@@ -29,6 +29,12 @@ the run itself and its lessons).
    - **C, design debt and doc health:** contradictions between docs and with DECISIONS; stale content and headers;
      decisions never played or measured; which later designs recent decisions touch; doc sizes and missing pointers.
      (Once `check_docs.mjs` exists, run it first and give C its output.)
+   - **2b, the code against itself** (added 2026-11-09, from
+     [`REVIEW-2026-11-09.md`](../explorations/launchpad/REVIEW-2026-11-09.md)): four more read-only audits, each told
+     to *reproduce* what it suspects headless and to mark confirmed vs read: the physics sim, the app and renderer,
+     the economy and saves, and the test suite (run it, sample assertions, mutate a scratch copy). Best run by a model
+     that didn't write the code. Scripts go in the scratchpad; **run test batches at most 3 at a time** (9 smoke runs
+     at once took the machine's RAM to 0.2 GB).
 3. **Merge into `REVIEW-<date>.md`:** the short version (4–5 bullets); milestones and blockers (a table per
    milestone, bottlenecks ranked); pillar gaps ranked; design debt and doc health; next steps ranked (build, then
    design); the calls for Caio with defaults.
