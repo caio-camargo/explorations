@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2407,5 +2407,11 @@ winged runway shuttle already deferred in notes/space.md § "Stations, modules a
 
 **Decided (D30, Caio 2026-11-11):** tier 1 is wanted (planned as Q592); tiers 2 and 3 are backlog.
 
-**Not checked:** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
+**Flown end to end (2026-11-11, `review/2026-11-11/glide_e2e.mjs`; the real physics step, headless):** pod + 1 t tank + a resized fin ring, 2,090 kg, entering at 120 km, 0.99 of circular speed, −1.5°. **Today's plates are not enough.**
+- *With the attitude set every step:* a ballistic pod lands 1,813 km on at 3.1 g. Wings 3×2 m at 15° fly 7,635 km at 1.0 g (lift-to-drag 2.7 at every Mach, 2.9 subsonic); 5×2 m at 10° fly 10,043 km (3.6, 3.8). Tellus is 8,005 km round, so the best glides circle it. A 45° bank gives 870 to 925 km of cross-range. A flare ends at 31 to 33 m/s forward with 9 to 12.5 m/s of sink. Wings peak at 375 to 443 K: the plate loop adds no heat to them. About 10 µs a step.
+- *With the game's SAS and the pod's wheels:* it cannot hold 15° (mean error 12 to 13°), dives nose first to 50 to 59 kPa and 13 to 48 g, and the turn rate goes NaN (at 25 km and Mach 5 for 5×2 m, at 1.4 km for 3×2 m). With SAS off the 5×2 m craft breaks at the tank-to-pod joint in bending. Likely cause, not verified: big plates at high dynamic pressure are too stiff for the 0.02 s step. A player cannot build these plates today (fins stop at 2 m span).
+- *What the plates need, against a shuttle (about 1 hypersonic, 4.5 subsonic, 100 m/s at touchdown):* a **Mach term** (hypersonic is 3 where it should be 1); a **stall** (40° still flies, at 34 m/s); **aspect ratio** (span and chord enter only as area); **wing heating**; **elevons** and a guard or sub-steps for the rotation; **wing mass by size** (0.25 t at any size gives about 100 kg/m² against a shuttle's 500, which is why entry peaks at 1 g and touchdown is slow).
+- *Not checked:* the NaN's root cause; steerable fins as elevons; a ground contact or rollout (runs stop at 3 m, most over sea); roll stability; wind; frame time in the app; a shuttle-like wing loading.
+
+**Not checked (before the flight above):** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
 contact code.

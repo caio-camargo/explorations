@@ -7285,3 +7285,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **PARKED still:** R29b. Caio's lean 2026-11-11: "maybe it's a difficulty setting... commitment vs reload any time
   modes"; not decided. It would ride the levels (`lvl().revert`).
 - **Running:** two read-only checks (a glide flown end to end, for Q592; the Hard-mode logbook gate, for Q583).
+- **Checked, the two runs:** the Hard-mode logbook gate is real once contact is built (Q583's row carries the fix;
+  read from code, not flown). The glide flown end to end (`review/2026-11-11/glide_e2e.mjs`): today's plates are not
+  enough for a winged return (no Mach term, no stall, cold wings; under SAS the craft dives and the turn rate goes NaN
+  with plates a player cannot build today); numbers in notes/vehicle.md § "Scope: winged flight", Q592's row updated.
