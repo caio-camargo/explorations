@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.59 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
+**Version**: v2.0.60 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -288,6 +288,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.311 — the unlock map as data: `PART_GATE` by mission (12 parts at the start), six req changes and a crew aboard after the max-q abort, a flown part stays open, the structural test at 20 kPa (2026-11-11, economy, QUEUE Q577) → [notes/economy.md](notes/economy.md)
 - v1.313 — the economy on intent: satellite markets saturate; a privatization once, a stake once per power (2026-11-11, economy, QUEUE R18, W47's defaults) → [notes/economy.md](notes/economy.md)
 - v1.317 — the robot's route under the unlock map: m1 two flights (the Sounding passes the structural test), each career rolls its own ignition dice (every new career lost the Beeper's Petrel before), the NEXT line says what else a mission needs, m2 flies the hop and its own weather satellite (2026-11-11, QA, QUEUE Q580) → [notes/economy.md](notes/economy.md)
+- v1.323 — a routine's failed automatic run holds and asks the player (keep repeating or stop); Repeat, once earned by three clean runs, stays earned (2026-11-12, QA, Q580 follow-up, D44) → [notes/economy.md](notes/economy.md)
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)

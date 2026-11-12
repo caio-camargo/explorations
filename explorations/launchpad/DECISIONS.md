@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.21 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-12
+**Version**: 1.0.22 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-12
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -78,6 +78,7 @@ The full text of every question as it was asked (options, reasons) is in
 | D34 | 2026-11-11 | **The unlock map supersedes "no tech tree, no hard locks" for which parts exist** (Caio, REVIEW-2026-11-11 § 8 row 1; the principle agreed 2026-10-07, notes/economy.md § "Mission design"): a mission opens a part (D28, W50); industry (know-how, production lines, buying abroad) keeps how well and how cheaply a part is made. **A closed part cannot be imported for now**, so the commercial giant's sales (W40) are of open parts only | D28, W50, W40, PROGRESSION § 3, QUEUE Q577, Q579; notes/economy.md § "Mission design" (marked) |
 | D36 | 2026-11-11 | **The Selene and Nyx firsts join the race, as W4 says** (Caio, REVIEW-2026-11-11 § 8 row 4): the build races three early firsts (`RACE`, sim/contracts.js); rival schedules for the later firsts start no earlier than chapter 4 | QUEUE Q593; W4; BACKLOG ("Decided, but nothing carries it") |
 | W47 | 2026-11-12 | **The economy on intent: markets saturate, the big sales come once** (Caio: "agreed on saturation, these proposed specifics for now, to be playtested for balancing"; privatization once, "or at least for long enough that this isn't an exploit"; "once per power is ok on foreign stakes, also to be playtested"; a defection clears the debt): each further satellite in a market adds half the one before (`MKT_K` = 0.5; TV and imagery separate); the privatization is offered until sold, then never; a stake once per foreign power; a career move starts the books over (debt cleared). **The numbers are placeholders for playtest balancing** | economy v1.313 (R18): `mktShare`, `PROG.ipoSold`, `PROG.stakeBy`, `careerMove`; TESTING 371 |
+| D44 | 2026-11-12 | **A routine's failed run asks the player** (Caio, on m2's red: "a failure should alert the player, who decides what to do"): three clean runs ordered by hand certify a route once; when an automatic run then fails, the routine holds and a decision waits in the in-tray, *Keep repeating* or *Stop repeating*. Repeat, once earned, never needs the three clean runs again. Was: the failure quietly sent the route back to three more clean runs by order (v1.323) | `sim/program.js` routines, `sim/contracts.js` decisions, `playtest.mjs` m2, econ-44, TESTING 381 |
 
 ## Satellites, space, the world
 

@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.251 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-12 · **Status**: live
+**Version**: 0.1.252 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-12 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -492,4 +492,4 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - flow — Q600 with Q572: the desk's centred notice for world missions could become the overlay's *Mission complete* card (`unlockDesk` drops that card today so it isn't said twice) — loop slices v1.318
 - QA — ~~TESTING 375–377 on a really flown structural test and beeper~~ ✓ the robot's new `playtest.mjs cards` row, v1.320; by hand still — loop slices
 - QA — run `playtest.mjs cards` beside `m1` when the loop changes (m1's flights with the unlock cards, poster and trophy case checked) — loop slices v1.320
-- economy + QA — Q580: one automatic routine run that breaks up in the climb (its dice, ~1 in 4 runs in m2's three tries) switches *Repeat by itself* off until three more clean runs are ordered by hand; m2 only waits with [N], so its finish line goes red on a roll. Decide: should a single failure stop Repeat (and does the player hear that it stopped)? Then m2 either re-orders as a player would or the rule changes — QA 2026-11-12
+- ~~economy + QA — Q580: one automatic routine run that breaks up in the climb (its dice, ~1 in 4 runs in m2's three tries) switches *Repeat by itself* off until three more clean runs are ordered by hand; m2 only waits with [N], so its finish line goes red on a roll. Decide: should a single failure stop Repeat (and does the player hear that it stopped)? Then m2 either re-orders as a player would or the rule changes — QA 2026-11-12~~ ✓ **v1.323** (D44, Caio 2026-11-12: the player is alerted and decides; QA)

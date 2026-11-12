@@ -602,7 +602,8 @@ PT.netNow = () => { const r = PT.route(); return {day: +PROG.day.toFixed(1), fun
 // and the routine's Repeat by itself switched on the first time it's allowed. Stops after max waits or when until() holds
 PT.waitN = (until, max = 150) => { let n = 0; const M = PT.m2;
   while (n++ < max && !until()) {
-    for (const d of [...(PROG.decisions || [])]) { const o = (d.opts || []).at(-1); if (o) { resolveDecision(d.id, o[0]); M.declined.push(d.title || d.kind) } }
+    for (const d of [...(PROG.decisions || [])]) { if (d.kind === 'routine') { resolveDecision(d.id, 'keep'); (M.kept = M.kept || []).push(d.title); continue }   // (Q580) a failed automatic run asks: the robot keeps the routine repeating
+      const o = (d.opts || []).at(-1); if (o) { resolveDecision(d.id, o[0]); M.declined.push(d.title || d.kind) } }
     for (const D of PROG.dispatch || []) if (D.status === 'deviated') { loseDeviation(D.id, 'let go'); M.letGo++ }
     // (Q519) first the keep raised one past what's up (the Fleet's *keep n+1*), as a player would: the routine was made from
     // one satellite (keep 1), but it and the three ordered runs are all still up and holding, so at keep 1 it never needs to repeat
