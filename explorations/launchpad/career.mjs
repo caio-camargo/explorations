@@ -7,6 +7,8 @@
 // affordable, bailouts before orbit). FAILFIRST=1: the first try at every first fails; FAILFIRST=orbit: only the first orbital attempt fails, the worst
 // single failure ("nothing unaffordable after one failure").
 // OFFERS=1: one line per row with funds, bailouts, career offers and offers posted by source, then a mean line (Q528).
+// LATE=1 (R19): the late game: satellites, a station, Selene; a registry, so satellites earn; dispatch, studies and
+// routines. One line per row: funds, the late firsts, what is up, satellite income, the automation. See § LATE below.
 // As a module (Q571, chapters.mjs): `run(arch, start, seed, opts)` plays one career and returns its numbers, PROG left as
 // it ended. opts: until(PROG) stops it, days, goals (mission ids it goes for: their plans in MORE_PLAN, a bonus on
 // their value), registry (what stays up or lands joins the registry through the game's own satRegister). Nothing

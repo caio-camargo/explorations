@@ -290,6 +290,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.317 — the robot's route under the unlock map: m1 two flights (the Sounding passes the structural test), each career rolls its own ignition dice (every new career lost the Beeper's Petrel before), the NEXT line says what else a mission needs, m2 flies the hop and its own weather satellite (2026-11-11, QA, QUEUE Q580) → [notes/economy.md](notes/economy.md)
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
+- v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 

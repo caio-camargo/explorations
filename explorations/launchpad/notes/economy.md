@@ -3848,3 +3848,49 @@ the vessel; satRegister copies only `T` and `day0`; the debrief guards `landDist
   Satellite and the TV Satellite not before.
 - **For Caio (a design question the plan answered, now visible):** a new player has no preset for the weather satellite;
   they build one on the bench, and the Satellite preset opens after. Q578's picker should say so.
+
+## v1.321 — one formula each; `career.mjs` sees the late game (2026-11-12, economy session, QUEUE R19)
+
+**What the review found** (2026-11-09 § 2, R19): the career runner never reached dispatch, routines, studies, the
+simulator, earning satellites, stations or crew, so every balance number stopped at the early game; and the formulas it
+leaned on were copies: the ignition odds three times (the runner's without development's "reliable" factor), the
+stacking days three times, the operations fee four times, a literal `*1.6` in 15 pays.
+
+**Shared formulas** (no behaviour change in the game):
+- `opsOf(cost)` and `stackDays(cost, v)` (sim/program.js, beside `prepDays`): missionTick, the dispatch quote and fire,
+  the supply-run quote and Rollout's two readouts call them.
+- `ignFail(k)` (beside `IGN_FAIL`): `igniteOK` rolls it, the dispatch's odds use it, and career.mjs's `ignitionFails`
+  now calls it, so a developed engine is as reliable in the runner as in the game.
+- `PAY_MIL` and `PAY_FAR` (sim/contracts.js, 1.6 each): the military premium (recon, ballistic test, classified
+  payload) and the premium on work past the first orbit since v1.66 (Selene science, a station's resupply, lab-days and
+  modules, servicing, rendezvous, retrieval). Named apart because they are different reasons, though equal today.
+
+**`LATE=1 node career.mjs`:** the scripted player goes for the chapters' goals (weather and TV satellites, both aborts,
+the station, both heavy lifts, the far side, Selene impact and landing), keeps a registry (so satellites earn through
+`utilTick`/`satTick`, saturation included; a TV satellite parked over the capital, as a player parks it), and automates:
+a design that reached orbit has an ascent procedure (abstracted: no pitch table, so the game's `dispatchRoll` resolves
+it; a dispatch that reaches orbit registers its satellite), satellite and reconnaissance contracts are dispatched
+instead of flown, a design is studied before its first dispatch, and the TV and weather satellites get routines (keep
+2, ordered by hand until three clean runs, then left to repeat). The default output is unchanged (checked:
+`ARCHS=openSuper node career.mjs 3 2`, identical to `main`).
+
+**Measured** (`LATE=1 node career.mjs 6 1 base agency,company`, one seed, so read as a shape, not a mean):
+
+| | agency | company |
+|---|---|---|
+| final funds, 6 years | 125–2,236 M (four of six over 1,000) | 25–223 M |
+| TV / station / Selene landing | 5 / 5 / 5 of 6 | 5 / 3 / 1 of 6 |
+| satellite income, career | 0–663 M | 0–485 M |
+| dispatches (done) | 8–16 (0–13) | 6–13 (0–9) |
+| routines, runs, repeating | 1–2, 4–8, 1–2 | 1–2, 2–11, 0–2 |
+
+- **Agencies get rich late** (the budget day plus satellites; contract income on top); companies end near the floor
+  with the same flights. Satellite income is a quarter to a third of the final funds of an agency that gets there, saturation on.
+- **TV satellites leave the capital's sky:** at the end most careers have none showing TV though one was parked there.
+  Not chased here: whether it is drift the routine doesn't replace (the routine counts satellites up, not TV ones).
+- **frugal and resource** reach little: frugal's dispatches never complete (0 of 11 and 0 of 6: held for money or
+  stood down), resource never flies TV.
+
+**Not modelled:** the simulator, crew rotations, station resupply and lab-days (they need a crewed station: no
+`stationcrew` plan), supply runs to a Selene base; flights still succeed at fixed odds by plan. Test `econ-43` (the
+shared formulas, and no copies left in the sim, Rollout or career.mjs).
