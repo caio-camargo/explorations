@@ -7616,3 +7616,10 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   **procedures v2** records again; its executor flight runs with `TEST.nofail` (the ignition dice read `s.kickN`).
   **The Nyx control** is an orbit reaching 200 km (wrecked in ~27 h on both branches); at 60–110 km direction decides
   nothing reliably (80 km prograde: 61 h on main, 8 days with the kick), noted in Q344. Q383 noted. QUEUE R22 ✓.
+- **5, R29 + R29b → main (v1.338, D45), on green CI 43299199178:** Revert from a flight from orbit discards it and flies
+  the same entry again (the craft in orbit at the moment control was taken, never the pad with the table's design); a pad
+  flight's Revert with the table empty says so instead of throwing. `flyEntry` keeps the vessel in `PROG.flyHeld` (schema
+  row; cleared by `missionEnd`/`missionDiscard`); at load `flyHeldLoad()` puts it back on Easy and Normal, and on Hard
+  (`revert:false`) it is lost with a news line (the save holds no flight to carry on from). `LEVELS.hard.d` says so.
+  Test space-36 (headless page: Normal's Revert twice, the table empty, a reload; Hard's reload). DECISIONS D45, TESTING
+  393, PLAYROUTE step 7, QUEUE R29 ✓. **R29b is no longer parked** (decided by Caio 2026-11-12, built here).
