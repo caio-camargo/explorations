@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2368,3 +2368,42 @@ block later uses it. The calls stay in the same order (the second still sets `s.
 tapes recorded before replay stale (as with any physics change).
 
 **Test:** `vehicle-42` (the repro's flight, without the instrumentation; fails on the old code at 30.0 kg).
+
+## Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate, nothing built or queued)
+
+Caio, while holding scope: "I just want to scope what it would take to add flight simulation like KSP has". Read as
+KSP's planes: wings, a runway, aircraft and spaceplanes. This is an estimate from reading the code and one
+measurement; item counts are guesses in queue-item units (one agent session each).
+
+**What is already there.** The physics is a rigid body in three dimensions with forces per part (`aeroPass`,
+`sim/vessel.js:787`). Fins are flat plates that lift, steerable fins already join the control solve (`finCols`), and
+the navball, hold modes and ground contact exist.
+
+**Measured** (`review/2026-11-11/glide.mjs`; a capsule and a 1 t tank, the fin ring's four plates resized, nose first):
+
+| Plates | Best lift-to-drag | At |
+|---|---|---|
+| Stock fin ring, 0.9 × 0.9 m | 1.7 | 15° |
+| 3 × 2 m | 3.5 | 10° |
+| 5 × 2 m | 4.0 (4.5 with a nose cone) | 5° |
+
+That is a shuttle's glide (about 4.5 subsonic), and nowhere near an aeroplane's (10 to 17). The plate formula has no
+stall, no aspect ratio and no change with Mach, so the same 4 holds at Mach 3, where a real shuttle has about 1.
+
+**What is missing, by tier.**
+
+| Tier | What the player gets | What it needs | Size |
+|---|---|---|---|
+| 1. Winged return | A craft launched upright on a rocket that glides home and lands on a strip | Wing parts in mirrored pairs (elevons are today's steerable fins); stall, aspect ratio and Mach in the plate formula; lift in the landing predictor (`dragTable` keeps drag only, `sim/flight.js:693`); wheels on a vessel and a landing on its side that isn't a topple (Q508's rule calls it one today); a strip at each site; airspeed, sink rate and a glide cue on the HUD; a glide ratio and landing speed in the Assembly's checks (its stability maths assumes a symmetric rocket) | about 6 to 8 items |
+| 2. Aeroplanes | Take off from a runway, cruise, land | A horizontal assembly (parts can't tilt; rovers got their own designer for this reason); an air-breathing engine family (thrust by speed and air density, intakes); the takeoff roll; time warp in the air for a long cruise; the world drawn at low level and high speed for minutes (frame time not measured); trim and an autopilot; missions that want a plane; a scripted pilot for the robot | about 10 to 14 more, and a new room |
+| 3. Spaceplanes | A plane that reaches orbit | Combined engines, heating on wings, and a balance pass: orbit here is 3.4 km/s, so a single stage to orbit is far easier than on Earth and would undercut staging | about 4 to 6 more |
+
+**Recommendation.** Tier 1 only, as one of Q589's candidates (it is the lifting entry grown up): it serves "coming
+home, more than a parachute" and reuses most of what exists. Tier 2 is a second vehicle game (a new builder, a new
+engine family, new demands on the world) and does not serve the loop PROGRESSION.md is fixing; park it with the
+winged runway shuttle already deferred in notes/space.md § "Stations, modules and moonbases".
+
+**Decided (D30, Caio 2026-11-11):** tier 1 is wanted (planned as Q592); tiers 2 and 3 are backlog.
+
+**Not checked:** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
+contact code.

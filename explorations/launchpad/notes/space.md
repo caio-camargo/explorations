@@ -1,5 +1,5 @@
 # Launchpad notes — Space
-**Version**: 1.0.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
+**Version**: 1.0.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-08
 **Purpose**: The build log for orbits and the system on rails, bodies, satellites and the registry, decay, station-keeping, debris, links and data, missions in flight, the automation ladder, stations, rovers.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2025,7 +2025,7 @@ written, the flight was counted. A revert now goes back to launch, as KSP's does
   or starting a procedure or a tape still settles the flight in progress, as before.
 - **Test:** `space-20` (`tests/space.mjs`): an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
   liftoff state and `missionEnd` returns null after.
-- **Next:** D15 (5) replaces revert with a simulator for real flights; this is the revert that simulator will wrap.
+- **Next:** D15 (5) replaces revert with a simulator for real flights (held by DECISIONS D35, 2026-11-11: revert stays on Easy and Normal); this is the revert that simulator will wrap.
 
 ## v1.124 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
 
@@ -2191,8 +2191,9 @@ Selene teaches that you follow the dawn near the poles. On the slow world, any r
 Selene first (M3–M4, as each lane's milestone allows):
 
 - **SW1, sleep, not death (space, M3, S).** A cold rover with a flat battery goes to sleep instead of dying. At dawn its
-  panels wake it; each unheated night costs a third of its battery's capacity (`p.dmg`, v1.210's mechanism), so the
-  third unheated night kills it. A heater kept on battery, or an RTG, keeps it whole. Its fleet line says "asleep, wakes
+  panels wake it; ~~each unheated night costs a third of its battery's capacity (`p.dmg`, v1.210's mechanism), so the
+  third unheated night kills it. A heater kept on battery, or an RTG, keeps it whole.~~ **No cost (DECISIONS D33,
+  2026-11-11): the lost night is the only price, as D5 and Q189 say; the cost idea is in BACKLOG.** Its fleet line says "asleep, wakes
   in 31 h". Precedent: Yutu-2 and SLIM woke after lunar nights; most landers never did. Question 2.
 - **SW2, the night in a base's numbers (space + economy, M3, S).** A base gets the same sleep: its labs stop, its line
   says "night in 3 days: needs 9 kWh, has 4". A crewed base going dark is an emergency (crew need heat): it warns a
@@ -2230,7 +2231,7 @@ longitude, the plane windows, the terminator speed by latitude).
 
 1. **Eccentricity:** *default Mercury's real 0.2056* (the sun stops and backs up 1.1° over 9 days near
    perihelion, as on Mercury). 0.2 makes it barely visible; 0.22 makes a 3° show.
-2. **A cold rover:** *default sleep, wake at dawn, each unheated night costs a third of its battery*. Alternative: keep
+2. **A cold rover:** *default sleep, wake at dawn, each unheated night costs a third of its battery*. **Answered by D33 (2026-11-11): sleep and wake, no cost.** Alternative: keep
    R3's final freeze.
 3. **Drive orders off-screen:** *default abstract* (path × speed, slope and contact checks, no physics).
 4. **Selene's fixed sun at 6.8°** (until Q177 moves it): *default leave it*: SW4 finds ice in the dark south cap now,
@@ -2823,6 +2824,8 @@ has no range ship (the pad alone). The level is already part of a tape's and a s
 Order: Q581, Q582, Q583, Q584, Q585; Q586 beside Q584; Q587 any time after Q582.
 
 ### For Caio (one W row)
+
+**Answered by Caio 2026-11-11: (a), with the tracking ship (DECISIONS W51).**
 
 > **W51: Does contact limit the first orbit on Normal?** (Q574; default if silent: **yes, with a launch range**)
 > Measured: with the pad's station alone every first-orbit burn is out of contact (the Beeper's by 78 s), and the

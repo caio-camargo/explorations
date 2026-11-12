@@ -348,7 +348,8 @@ style) would give visible variety that reflects each power's flavour.
 **Spending money: development, investments, flagships (design with Caio, 2026-10-07).** The balance pass (v1.28) showed
 strong programs ending year 3 with ~1,000M and nothing to spend it on. The fix is things worth buying, not more
 pressure.
-- **No tech tree of unlocks.** Parts can already be bought abroad, so locking them behind research would be
+- **No tech tree of unlocks.** *(Superseded for which parts exist by DECISIONS D34, 2026-11-11: a mission opens a part;
+  know-how and industry keep how well and how cheaply; a closed part can't be imported for now.)* Parts can already be bought abroad, so locking them behind research would be
   inconsistent. Instead, what a program owns is **its own designs and how well it knows them**.
 - **Engineering history per part:** every part type accumulates a record across your flights (loads survived, burn
   time at sea level and in vacuum, re-entry heating, restarts). Certification is already a first case of this.
@@ -406,7 +407,7 @@ pressure.
      **provisional**, pending simulation and then playtesting.
   4. **The world frontier is a later layer (yes),** designed with the planning session. Build order: know-how →
      production lines → the frontier.
-  - No hard locks anywhere: everything stays buyable and flyable. The frontier and know-how only change how well, and
+  - No hard locks anywhere: everything stays buyable and flyable *(superseded for which parts exist: DECISIONS D34)*. The frontier and know-how only change how well, and
     at what risk.
 
 **What interplanetary means for the architecture (for later, not now):**
@@ -3172,7 +3173,7 @@ costs **time, not money**. CREW § Skill: simulator time is what trains crew qua
    for CREW's qualifications in M3 and for a "flown in the simulator" mark on the design). A short **simulator
    debrief**: how far it got, margins (Δv left, peak load as a share of the believed rating, landing speed), what broke
    and why, and the line "these are the program's believed numbers".
-5. **Real flights can't be reverted**: the R key and the button go (the tester keeps them, `TEST`). Before liftoff
+5. ~~**Real flights can't be reverted**~~ *(Held 2026-11-11: revert stays on Easy and Normal until Caio has played the first hour; only Hard has none. DECISIONS D35.)* The R key and the button go (the tester keeps them, `TEST`). Before liftoff
    nothing is charged, so leaving the pad stays free. *End flight* and recovery are unchanged.
 
 **Time, not money (default):** a run costs one calendar day per hour of simulated flight, at least half a day per
@@ -3190,7 +3191,7 @@ true margin only shows in a real flight, and a real loss stays.
    `simH`; a joint loaded between its believed and true ratings breaks in the sim and not in a real flight; no money.
 2. **The screen** (flow, 🖥): *Simulate* beside *Launch* (and in Rollout), a SIMULATOR banner on the HUD, revert on R
    inside it, the simulator debrief, *Leave the simulator*.
-3. **Revert retired** from real flights (flow + QA): the key and button gone outside the tester; PLAYROUTE, TESTING 96
+3. ~~**Revert retired** from real flights~~ (Q451, withdrawn by DECISIONS D35) (flow + QA): the key and button gone outside the tester; PLAYROUTE, TESTING 96
    and 127, and the robot (`playtest.mjs`) paths that revert updated.
 4. **Simulate a leg** (space + flow): start in orbit beside a ghost copy of a registry object (rendezvous, docking,
    landing practice), from `R.fromOrbit`'s path.
@@ -3200,7 +3201,7 @@ true margin only shows in a real flight, and a real loss stays.
 **Questions for Caio (W42; defaults if silent):** (1) the time cost: a day per simulated hour, half a day at least per
 run (**default**), or a flat day per run; (2) each run draws its own believed world (**default**), or always the
 pessimistic edge (the certified rating, the densest air); (3) ignition failures in the sim at the believed rate
-(**default**), or a "no failures" practice switch; (4) revert gone from real flights entirely (**default**, D15.5), or
+(**default**), or a "no failures" practice switch; (4) revert gone from real flights entirely (**default**, D15.5; held by D35: it stays on Easy and Normal), or
 kept for the first N flights of a new program as a tutorial crutch; (5) the simulator the same in every era (**default**),
 or cheaper in time with compute (from the mainframes on). The error bars stay knowledge, never compute.
 
@@ -3735,7 +3736,66 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
 - Prices and funds beyond first orbit under the new order (TV before stations, Selene after Heavy lift II): the runner
   was run in `PACE` mode only.
 - The `test` contract, dispatch and procedures against a closed part in a stored design (read, not run).
-## v1.311 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
+
+## v1.311 — the unlock map, slice 1: the map as data (2026-11-11, economy, QUEUE Q577; the plan Q573 above)
+
+- **`PART_GATE`** (sim/program.js) is the plan's table, written by mission: twelve parts at the start, 69 on 14 missions
+  (the orbital kit with the structural test, the satellite bench with the beeper, the 2.5 m family with Heavy lift II,
+  high orbits with the weather satellite, docking with TV, …), three by era. No new mechanism: `partOpen`,
+  `partLaunchWhy` and the builder's dimming are Q190's.
+- **A part already flown stays open** (`partFlown`: `PROG.kh` of the part or its `kinOf`). An old save keeps what it has
+  flown; nothing to migrate.
+- **`req` changes:** the beeper and the hop wait for weather and the structural test; TV for the weather satellite; a
+  station for TV; the far side for the weather satellite and Heavy lift II; the `service` and `stExpand` contracts for
+  TV. **One more than the plan:** *A crew aboard* now waits for the max-q abort too. A crew only flies after it
+  (`R.crewed` reads `PROG.done.maxqabort`), so the mission used to show open with no way to do it. The plan's m3.mjs
+  missed this because it read mission needs from `CT_JOB` (contracts) instead of `M_JOB`, so its mission check was empty.
+- **The qualification contract** draws only open parts (`CT.test.gen`; none open: no offer).
+- **The structural test's bar is 20 kPa** (`LOADS_Q`, W50): the mission, its brief and its job condition. The builder's
+  design case stays 25 kPa.
+- **career.mjs:** the structural test flies the Sounding (25.2 kPa straight up, the plan's m1), and the scripted player
+  skips any design with a part not open yet (`partLaunchWhy`, as the page refuses it). `PACE=1 node career.mjs 3 5`:
+  89 of 90 reach orbit in 4 or 5 flights (mean 4.2: the plan's gated figure, within a flight of today's).
+- **Chapter starts regenerated** (`node chapters.mjs`, Q571; Q580's last line): career.mjs has abstracted weather and TV
+  satellites now (`PLANS.wxsat`, `PLANS.tvsat`), since a station waits for TV and the far side for both. *First orbit done*
+  day 172, 6 flights (the structural test, the hop and one orbit before the beeper); *First station up* day 471 with
+  Lookout 1 and TV 1; *Landed on Selene* day 886 after both heavy lifts. Each start's next mission is the first in NEXT's
+  order that has a design (Disaster watch, a world mission, is skipped); the Selene start's is Sample return on its
+  preset. (Heavy lift's mass simulators sit at the bottom of the runner's stack, so what stays up is named *Object*.)
+- **Tests:** `econ-39` (the plan's m3 checks, with `M_JOB`: every part placed; each mission's needs and `NEXT_PRESET` open
+  at its req closure; each contract type's needs at its req; the req changes; flown stays open; the qualification draw;
+  the bar). Checks that set missions by hand now set the new reqs (core: the hop, the orbit benchmarks, the race, the far
+  side, TV, staged pay, deviation; `econ-10`, `econ-17`, `econ-35`, `flow-16`, `qa-1`); `vehicle`'s part-gates check reads the map
+  (only the Sounding on day 1); `econ-38` and `flow-55` count what the beeper opens now (2 missions, 6 kinds of contract,
+  20 parts and the rover antenna: was 5, 8 and 7); `qa-8` takes the next mission as recorded. Full suite: all pass.
+- **Not done here:** the robot's route (`playtest.mjs m1` needs the structural test before the Beeper) and PLAYROUTE
+  sitting 1 (Q580); the builder's view of closed presets (Q578); families and reasons (Q579). Not played by hand
+  (TESTING 369): whether a new player gets the Sounding past 20 kPa.
+
+## v1.313 — the economy on intent: markets saturate, the big sales come once (2026-11-11, economy session, QUEUE R18, W47's defaults)
+
+**What the review found** (2026-11-09 § 2, R18): satellite income was linear in satellites (`utilTick`: 5 TV satellites
+= 200 M per 100 days against a 19.8 M budget day; imagery in `satTick` likewise), and the privatization and foreign-stake
+offers came back after being taken (5–6 IPOs ≈ 1,140 M in a career; the same friend could buy 15 % twice). W47 asked
+Caio; no answer yet, so its defaults: **saturate, once-only**.
+
+**Built:**
+- `mktShare(n)` (sim/program.js): each further satellite selling into a market adds `MKT_K` = 0.5 of the one before;
+  every satellite in it gets the mean share. n satellites earn (1 − 0.5ⁿ)/0.5 of one: 1, 1.5, 1.75, 1.94, never 2.
+  Two markets: TV for the capital (`utilTick`, the satellites `isTV` this tick) and imagery (`satTick`, the camera
+  satellites with an antenna). 5 TV satellites: 200 → 77.5 M per 100 days.
+- `PROG.ipoSold`: the privatization is offered until sold, then never again. `PROG.stakeBy`: each foreign power buys a
+  stake once (my reading of "once per career" for stakes: once per power, so a second friend can still come).
+  Both start over on a career move (defection or hire: new books). Two `PROG_SCHEMA` rows.
+
+**Measured:** `career.mjs 3 3` as is: identical (it declines these offers and flies no satellites). With
+`ACCEPT=ipo,stake`: mean final funds 827 → 752 M at 3 years, 2,111 → 1,747 M at 6. Test `econ-41`.
+
+**Left as is, for Caio:** `careerMove` sets funds to the offer and zeroes the debt. Read as intended: the team leaves
+the old program's books (and its debt) behind, and the "bad" branch is a hail mary. Say if a defection should carry
+the debt.
+
+## v1.314 — Selene's core bracket survives a save (2026-11-11, economy session, QUEUE R16)
 
 **The bug** (review 2026-11-09 § 2, R16, confirmed there): `seisLocate` (sim/rovers.js) started the core bracket at
 `hi: Infinity`. JSON turns that into `null` (every save, and every simulator run, since the run is put back from a
