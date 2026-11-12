@@ -732,7 +732,7 @@
   s.navRef = 'orb'; const ho = at(10000), hoOK = ang(ho.v, s.v) < 1e-9 && !ho.srf;
   const c = api.controls(s); s.navRef = null; api.setControls(s, c); const back = s.navRef === 'orb';
   s.navRef = null; const c0 = api.controls(s), plain = !('ref' in c0); s.navRef = 'srf'; api.setControls(s, c0); const cleared = s.navRef === null;
-  const tapeV = html.includes('procStep,speedRef,sasTarget,velFrame].map');
+  const tapeV = /procStep,speedRef,sasTarget,velFrame[,\]]/.test(html);   // Q544 appends sasNearGround
   const ui = html.includes('<span id="navref"') && html.includes("$('navref').onclick=()=>navRefNext()") && html.includes('rt=navRefLabel(S,sr)');
   check('flow-35: the navball blends surface → orbit speed over 40–60 km (prograde slides, SAS follows), the label holds either frame, the tape carries it',
     step < 0.6 && mono && ends && sasOK && hsOK && hoOK && back && plain && cleared && tapeV && ui,
