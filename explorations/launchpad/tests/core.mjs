@@ -570,7 +570,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('a flight ending in orbit registers a satellite, over the same ground in the program\'s absolute frame', P.sats.length === 1 && q.cam === 1 && q.ant === 1 && len(sub(pfA, pfFlight)) < 1e-6,
     `${q.name}: planet-fixed mismatch ${len(sub(pfA, pfFlight)).toExponential(1)} m`);
   // the launch window: lift-off happens on a whole program day
-  fresh(); P.day = 2.3; s = api.newShip(api.PRESETS.Sounding); api.S = s; api.t = 0; s.throttle = 1; api.stage(s); for (let k = 0; k < 200 && !s.rec.launched; k++) api.advPhys(s);
+  // (R5) the clock before newShip: it lands the craft where the pad is at the current time
+  fresh(); P.day = 2.3; api.t = 0; s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); for (let k = 0; k < 200 && !s.rec.launched; k++) api.advPhys(s);
   check('lift-off waits for the daily launch window: the flight starts on a whole program day', s.rec.launched && Number.isInteger(s.rec.day0) && s.rec.day0 >= 2.3 + api.prepDays(s.rec.cost), `stacking ends day ${(2.3 + api.prepDays(s.rec.cost)).toFixed(2)} → lift-off day ${s.rec.day0}`);
   // clouds: the CPU port is a coverage in [0,1] that moves with time, and some of the sky is clear
   let clear = 0, sum = 0, moved = 0; for (let i = 0; i < 400; i++) { const z = Math.sin(i * 1.7), ph = i * 2.4, qq = Math.sqrt(1 - z * z), u = [qq * Math.cos(ph), z, qq * Math.sin(ph)], c = api.cloudAt(u, 1e5), c2 = api.cloudAt(u, 1e5 + 5 * api.DAY_S);
