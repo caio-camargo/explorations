@@ -7551,3 +7551,29 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (1dc71349) too: ignition failures read 0 % in the full run, all pass alone; CI is green. A cross-section leak (R2).
 - **Next:** Q550 (`origin/q550-solids-slice-1`) waits on W53. Caio: the dust, the night side and righting a lander are
   TESTING 383–385.
+- **3, R28 → main (v1.325):** the wip commit was complete (`here()` gates the builder's mouse, keys, update, draw, overlay
+  and tooltip; render's markers use `screenNow()==='assembly'`); vehicle-45, core-32 and `app/A_rollout_click.cjs` pass
+  (Rollout: 9 parts → 9, nothing held). Added notes/vehicle.md § v1.325, NOTES index, TESTING 383, QUEUE R28 ✓. Merged
+  main, smoke green, CI green (43284565792), ff-merged. **Pushed as branch `r28`:** `origin/vehicle` holds five older commits
+  (v1.247/v1.248, Q502/Q457, 2026-10-31) that aren't on `main`; not force-pushed over, flagged for Caio. Vehicle row cleared.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slice 3: the Program (v1.329, text only)
+- **Asked:** continue Q603 with slice 3 (contracts, missions, mission control); D43 and UI.md § 2.1; explanations into
+  tooltips; edit app/program-ui.js only once momentum3 (v1.324) was on `main` (it was, at the start).
+- **Done (v1.329):** 82 strings in `sim/program.js`, `sim/contracts.js`, `app/program-ui.js`, `app/mission.js`,
+  `app/editor.js` (`renderProgram`). Mission briefs are the goal and its numbers (about 760 words to 440; the longest 64
+  to under 30); a contract's reason is the tooltip on its name (no *Why:* line); decisions in about half the words; the
+  fleet's debris, fragments and station-keeping lines, the computing era's blurb, the test stand, supply run, routine and
+  dispatch hints, and mission control's empty consoles carry their how-to as tooltips; unlock-card lines ≤ 14 words;
+  *a Interstage decoupler* fixed. What was cut that teaches is listed for Q491 in notes/flow.md § v1.329.
+- **Tests:** two test lines updated (econ "why", flow's contract-board check: the reason in the tooltip). Smoke after
+  the last merge green but for **vehicle-43 (b)** (Q604's flake); econ + flow lanes green but for **flow-38**, which fails
+  the same way after the economy sections **on `main` too** and passes alone (added to Q604). CI full run green
+  (43286624601); the launchpad tree unchanged since. Renumbered twice at merge (v1.325 → v1.329, TESTING 383 → 386).
+- **Not checked:** nothing seen in a browser (TESTING 386).
+- **Noticed:** the launchpad session's log says R28 took v1.325 and TESTING 383, but `main` has only Q544's under those
+  numbers; R28's notes section may not have landed.
+- **Next:** Q603 slice 4 (Rollout and the why-cards, the glossary). The flight's cards and Esc/tester menus (slice 2's
+  remainder) are still open.
+- Files: launchpad `sim/program.js`, `sim/contracts.js`, `app/program-ui.js`, `app/mission.js`, `app/editor.js`,
+  `tests/economy.mjs`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

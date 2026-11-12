@@ -20,7 +20,7 @@ const mcHM=d=>{const f=((d%1)+1)%1,m=Math.floor(f*1440);return`${String(Math.flo
 // is off), which breaks the dispatch: the rest is a flight of yours, settled as one, with no revert.
 const mcDue=x=>x.status==='queued'&&!!x.watch&&(PROG.day||0)>=x.launch-1e-9;
 const mcWatchBtns=x=>x.base!=null?'':mcDue(x)?`<button data-dwgo="${x.id}">Watch now</button> <button data-dwfly="${x.id}">Let it fly</button>`
-  :`<button data-dwatch="${x.id}" title="${x.watch?'Watching: the clock stops at its launch. Click to let it fly by itself':'Stop the clock at its launch and watch it fly'}">${x.watch?'Watching ✓':'Watch'}</button>`;
+  :`<button data-dwatch="${x.id}" title="${x.watch?'the clock stops at its launch; click to let it fly alone':'stop the clock at its launch and watch it fly'}">${x.watch?'Watching ✓':'Watch'}</button>`;
 function watchStart(id){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.status==='queued');if(!D)return false;const c=(PROG.active||[]).find(x=>x.id===D.cid);
   const w=watchPlan(D,c);if(!w.ok){HOOK.msg(`Can't watch it: ${w.why}`);return false}
   if(w.site)PROG.site=w.site.id;
@@ -28,7 +28,7 @@ function watchStart(id){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.status=
   S=newShip(D.stack);recTape=tapeNew(D.stack,S.site);recTape.byProc=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;   // as resetShip, with the dispatch's design
   Object.assign(S.rec,{watch:D.id,noRevert:true});S.watchDoom=w.doom;D.status='watching';D.watch=false;
   procStart(S,w.proc,w.target);S.proc.noRelight=w.noRelight;go('flight');cam.dist=Math.max(18,S.len*1.6);
-  HOOK.msg(`Watching ${D.title}: ${w.proc.by}'s procedure flies it · any control key takes over (the dispatch is then yours, no revert)`);HOOK.save();return true}
+  HOOK.msg(`Watching ${D.title}: ${w.proc.by}'s procedure flies it · a control key takes over, no revert`);HOOK.save();return true}
 // each frame: where a watched dispatch stands. Left alone to the end it's flown (the contract settles as any flight's,
 // when you leave it); lost; or handed to you (you took over, or the procedure stopped). A watched flight no longer on
 // screen (you left the pad, or reloaded) goes back on the pad if it never lifted off, else it was yours.
@@ -38,7 +38,7 @@ function watchTick(){for(const D of PROG.dispatch||[]){if(D.status!=='watching')
   if(S.alive&&S.watchDoom&&simT>=S.watchDoom.t)lose(S,S.watchDoom.why,3);
   if(!S.alive){D.status='failed';D.flown=PROG.day;D.why=S.lossWhy||'it was lost';HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad')}
   else if(S.proc&&S.proc.done){const el=elements(S.r,S.v,S.body.mu);D.status='done';D.flown=PROG.day;D.orb={pe:el.pe-S.body.R,ap:el.ap-S.body.R};
-    HOOK.news(`Watched: ${D.title} reached ${D.orb.pe/1e3|0}×${D.orb.ap/1e3|0} km; the contract settles when you leave the flight`,'ok')}
+    HOOK.news(`Watched: ${D.title} reached ${D.orb.pe/1e3|0}×${D.orb.ap/1e3|0} km; it settles when you leave the flight`,'ok')}
   else if(!S.proc){D.status='handed';D.why=S.procDev?S.procDev.why:'you took control';HOOK.news(`${D.title}: ${S.procDev?'the procedure stopped':'you took control'}; the flight is yours (no revert)`,'warn')}
   else continue;HOOK.save()}}
 function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*DAY_S,ev=upcoming(),nx=ev[0],sat=id=>(PROG.sats||[]).find(q=>q.id===id);
@@ -58,7 +58,7 @@ function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*
   // FLIGHT: the fleet, soonest first
   const F=(N.fleet||[]).slice().sort((a,b)=>(a.t??1e9)-(b.t??1e9)),dOf=id=>(PROG.dispatch||[]).find(x=>x.id===id);
   const fRow=f=>{const q=f.id!=null?sat(f.id):null,cr=q&&q.cruise?cruiseNext(q,T):null,x=f.dev!=null?dOf(f.dev):null,due=x&&mcDue(x);
-    const next=due?'on the pad, launching: needs you to watch it':cr?cr.text+(cr.days!=null?`, in ${mcIn(cr.days)}`:''):f.next||'';
+    const next=due?'on the pad: needs you to watch it':cr?cr.text+(cr.days!=null?`, in ${mcIn(cr.days)}`:''):f.next||'';
     const pay=cr&&cr.to?cruisePayNote(q,cr.to):'';   // Q167: what arriving pays
     const act=f.dev!=null&&/^needs you/.test(f.next)?`<button data-devtake="${f.dev}">Take it</button> <button data-devlose="${f.dev}">Let go</button>`:x&&x.status==='queued'?mcWatchBtns(x):q&&flyable(q)?`<button data-fly="${q.id}">Fly</button>`:'';
     return`<div class="mrow"><div class="hd"><b>${f.name}</b><span>${act}</span></div><div class="dim">${f.kind} · ${f.where}</div><div class="${/needs you/.test(next)?'bad':/adrift|re-enters in|falling|strike/.test(next)?'warn':''}">${next}</div>${pay?`<div class="ok">${pay}</div>`:''}</div>`};
@@ -75,10 +75,10 @@ function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*
   const traj=burns.length?burns.map(({q,n,d})=>{const why=n.mc?'':handOffWhy(q),more=q.nodes.length-1,p=why&&autoAllowed('burn').ok?nodeNextPass(q):null;
       return`<div class="mrow"><b>${q.name}</b> · ${len(n.dv).toFixed(0)} m/s in ${mcIn(d)}${more>0?` <span class="dim">(+${more} more)</span>`:''}<br>`
         +(n.mc?'<span class="ok">mission control flies it</span>':'<span class="warn">yours to fly</span>')
-        +(p&&!p.why?` <button data-mcpass="${q.id}" title="The same burn ${p.k} orbit${p.k>1?'s':''} later, at the same place in its orbit${more>0?'; the later burns move with it':''}">Fly at the next contact</button>`
-          +`<div class="dim">No station sees it at the burn. Next contact: ${p.k} orbit${p.k>1?'s':''} later (+${mcIn((p.T-n.T)/DAY_S)})${p.st?`, over ${p.st.name}`:''}.</div>`
+        +(p&&!p.why?` <button data-mcpass="${q.id}" title="the same burn ${p.k} orbit${p.k>1?'s':''} later, same place${more>0?'; later burns move with it':''}">Fly at the next contact</button>`
+          +`<div class="dim">No contact at the burn. Next: ${p.k} orbit${p.k>1?'s':''} later (+${mcIn((p.T-n.T)/DAY_S)})${p.st?`, over ${p.st.name}`:''}.</div>`
           :why?`<div class="dim">mission control ${why}</div>`:` <button data-mc="${q.id}">${n.mc?'Take it back':'Hand to mission control'}</button>`)+`</div>`}).join('')
-    :'<div class="dim">No burns planned. Plan one in flight, on the map: click the orbit, drag the handles.</div>';
+    :'<div class="dim" title="plan one on the flight map: click the orbit, drag the handles">No burns planned.</div>';
   // DISPATCH: queued launches, ones that need you, the last results
   const DQ=PROG.dispatch||[],q0=DQ.filter(x=>x.status==='queued').sort((a,b)=>a.launch-b.launch),dv=DQ.filter(x=>x.status==='deviated'),
     past=DQ.filter(x=>!['queued','deviated'].includes(x.status)).sort((a,b)=>(b.flown??b.ordered??0)-(a.flown??a.ordered??0)).slice(0,4);
@@ -86,7 +86,7 @@ function renderMission(){if(!$('mc'))return;const N=netData(),D=PROG.day||0,T=D*
     dv.map(x=>`<div class="mrow bad">${x.title}: needs you<div>${x.dev&&x.dev.why||'a deviation'} <button data-devtake="${x.id}">Take it</button> <button data-devlose="${x.id}">Let go</button></div></div>`).join('')
     +q0.map(x=>`<div class="mrow${mcDue(x)?' bad':''}"><div class="hd"><span>${x.title}</span><span>${mcWatchBtns(x)}</span></div><div class="dim">${designName(x.stack)||'our design'} · pad ${x.pad+1} · ${mcDue(x)?'launching now':`launch in ${mcIn(x.launch-D)}`}${x.ready!=null&&x.ready<x.launch-0.05&&x.ready<=D?' (waiting for its window)':''}</div>${x.watch&&!mcDue(x)?'<div class="dim">Watching it: the clock stops at its launch.</div>':''}</div>`).join('')
     +(past.length?`<div class="k">Last results</div>`+past.map(x=>`<div class="mrow"><span class="${x.status==='done'?'ok':x.status==='handed'?'':'bad'}">${{done:'flown',failed:'lost',cancelled:'stood down',handed:'handed to you',watching:'on screen'}[x.status]||x.status}</span> ${x.title}${x.why?`<div class="dim">${x.why}</div>`:''}</div>`).join(''):'')
-    :'<div class="dim">Nothing dispatched. A contract with a flown procedure can be dispatched from the Program\'s Contracts.</div>';
+    :'<div class="dim" title="a contract with a flown procedure is dispatched from Contracts">Nothing dispatched.</div>';
   $('mcCons').innerHTML=mcCon('Flight',flight,devN?mcLamp('Needs you','red'):drift?mcLamp('Decaying','on'):mcLamp('All nominal','grn'))
     +mcCon('Network',net,netFlag?mcLamp('Burn out of contact','red'):gap>0?mcLamp(`Gap ${gap.toFixed(1)} h`,'on'):L.length?mcLamp('Full contact','grn'):mcLamp('Standing by'))
     +mcCon('Trajectory',traj,burns.some(b=>!b.n.mc)?mcLamp('Yours to fly','on'):burns.length?mcLamp('Handed off','grn'):mcLamp('No burns'))

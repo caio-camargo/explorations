@@ -294,6 +294,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
 - v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
+- v1.329 — the Program's copy, cut to the rule: mission briefs, contracts, decisions, the fleet, mission control (Q603 slice 3; UI.md § 2.1)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -487,7 +488,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.310 — the loader fills a save from the schema: every field present, a save from before `wseed` keeps world 12345, unknown fields kept and logged; the `||` reads retire lazily (2026-11-11, platform, QUEUE R1d)
 - v1.312 — a frame that throws no longer ends the game: `frame()` always schedules the next one; `app/fault.js` catches errors and lost promises with a panel (Reload, Export save, the old save R10 kept, Keep playing) (2026-11-11, platform, QUEUE R9)
 - v1.316 — export and import a save from Settings › Saved program: Export any time, Import asks twice and waits for the end of a flight; a file that isn't a program or stops the game changes nothing, one that loads replaces the slot (the old one kept as `-before-import`) and reloads (2026-11-12, platform, Q599)
-- v1.329 — the lint step: `lint.mjs` (swallowed code after `//`, no-undef across the page's shared scope) in `--smoke` as platform-12; R25's five lines and the Debrief's part-card hover fixed (2026-11-12, platform, QUEUE R3)
+- v1.330 — the lint step: `lint.mjs` (swallowed code after `//`, no-undef across the page's shared scope) in `--smoke` as platform-12; R25's five lines and the Debrief's part-card hover fixed (2026-11-12, platform, QUEUE R3)
 - v1.318 — the loop's slices: part families, reasons and chapters as data (D34: no closed part on the stand, in development or on a line); presets say what they wait for and closed parts fold under *Not open yet* by chapter; after a flight, one card per mission done, part and mission opened, the part turning as a model (D42); the Missions tab by chapter, a chapter's poster, the trophy case (2026-11-12, loop slices, QUEUE Q579, Q578, Q572, Q576)
 - v1.320 — poster headlines for big moments: a first, a rival's first, a chapter closed and a new era reach the news with a poster; the desk's paper prints a recent one as a poster, in the era's palette, as does the Debrief's headline; v1.318 flown by the robot (`playtest.mjs cards`) (2026-11-12, loop slices, QUEUE Q479)
 - v1.324 — a line per part on the unlock cards, a sound per card; a career under way opens on the desk, the title in the Esc menu (2026-11-12, loop slices, QUEUE Q370)

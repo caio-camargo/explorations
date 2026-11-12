@@ -2284,3 +2284,41 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
   88.4, 100 % at sun-camera angles 0°, 45°, 90°, 135°, 180°, against the phase's 0, 14.6, 50, 85.4, 100; the wiring of both
   styles). Screenshots (RTX): `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/before_map/eval_{3,4,5,6}.png` (no night side), `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/after_map/eval_{3,4,5,6}.png`
   (Selene and Tellus half and gibbous in shadow on the terminal; the notebook's hatching). TESTING 384.
+
+
+## v1.329 — the Program's copy, cut to the rule (2026-11-12, review 2 session (Fable), QUEUE Q603 slice 3; D43; PLAYTEST #167)
+
+Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1. 82 strings in `sim/program.js`,
+`sim/contracts.js`, `app/program-ui.js`, `app/mission.js` and the Program's part of `app/editor.js` (`renderProgram`).
+
+- **Missions** (`MISSIONS[].brief`): 21 of the 29 briefs now say the goal and its numbers, nothing else (all 29: about
+  760 words to 440; the longest was 64, none is over 30 now; every number kept). The power sentence that three satellite missions repeated is
+  gone (the design table's Power line says it); *Passenger: one orbit* says *the same limits*. A brief is also the
+  Debrief's *why* for a mission, so the Debrief is shorter too.
+- **Contracts:** a contract's reason (*New since you did …*, *Boom times …*) is the tooltip on its name, no longer a
+  *Why:* line (UI.md § 3 cuts them); *none taken* keeps its hint as a tooltip; *Withdraw*'s tooltip is one clause.
+  Twelve briefs lose their tails (*so the client can look it over*, *A free port is waiting*, *a low sun shows the
+  relief*); *Qualify the X* reads *The X through max-q …* (it said *a Interstage decoupler*).
+- **Decisions** (rescue, privatization, stake, defection, hire, a failed routine): each says the offer and its numbers
+  in about half the words.
+- **Fleet and facilities:** the debris line is a count and a mass (what it is, as a tooltip); the fragment bands,
+  station-keeping and TV lines lose their explanations; the computing era's blurb is the era name's tooltip; a
+  facility's level is its state (*2 pads: launches in parallel*, *studies ×0.6 time, 1 yr ahead of our power*).
+  The test stand's explanation, the supply run's *lands at the beacon if it has the Δv*, a routine's *Make a routine*
+  and dispatch's *no stored procedure* hint are tooltips.
+- **Mission control:** *No burns planned.* and *Nothing dispatched.* carry how-to as tooltips; the next-contact line
+  and its button are one clause each; watching a dispatch says *a control key takes over, no revert*.
+- **Unlock cards:** three family lines, the mission control room's line and four parts' lines (Petrel, probe core,
+  body cells, the 2.5 m adapter) are 14 words or fewer, like every part's sentence.
+- **Messages:** a satellite falling a computing generation behind, the leadership's spectacular, a license signed.
+- **Tests:** economy-why and flow's contract-board check read the reason in the tooltip now (two test lines).
+- **Counted** (`review/2026-11-12/copy_words.cjs`, the panels after a career's start; its board is random): 1,596 words
+  of text to 1,518; the Program's long runs are now the charter's and the Settings' lines (slice 6).
+- **For Guided (Q491), cut from the screen:** each band sampled narrows the impact predictor; a Sparrow on a light
+  rocket reaches 20 kPa straight up at full throttle; a polar orbit from an equatorial pad pays for the plane change; a
+  satellite needs solar cells to work between flights (a probe core's battery lasts days); Selene blocks the radio
+  behind it (downlink once Tellus is in sight, or bring the camera home); an aurora sounding wants a high-latitude site
+  or a long lob; a low sun shows a panorama's relief; Nyx is weighed from tracking residuals; Tellus's tide out at Nyx
+  (watch which way round you go); Nyx's escape speed is 346 m/s (easy to land, easy to bounce); plan a burn on the
+  flight map (click the orbit, drag the handles).
+- **Not checked:** not seen in a browser (no GPU this session): how a contract's name reads as hoverable. TESTING 386.
