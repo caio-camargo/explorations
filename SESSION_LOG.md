@@ -7603,3 +7603,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **3, correction:** the line above was written before the ff-merge, which `main` moving refused twice (flow's copy pass
   and platform's R3 took v1.325, v1.329, v1.330 and TESTING 383, 386, 387 meanwhile). R28 is now **v1.336, TESTING 392,
   test vehicle-46**, on `main` after CI 43291812071 (numbers taken well ahead to stop the renumbering).
+- **4, MISTAKE (caught, reverted):** R22 was ff-merged to `main` (53fb176e) on a **red** CI run (43294316246): my wait
+  command ran the merge without checking the watch's exit code. Reverted at once on `main` (b1426692, tree back to
+  101788c7; `main`'s own CI run covers it). Cause of the red: in the full run's order, procedures v2's executor flight lost a
+  Wren to an ignition failure on the ascent from Selene (the dice read `s.kickN`, which `detach()`'s momentum changes); the
+  executor flight now runs with `TEST.nofail` (it checks the executor, not reliability). Re-merging only on a green run.
