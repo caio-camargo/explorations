@@ -5,7 +5,7 @@
 // bodies-1. The Selene and Nyx ladders, flown from the pad by procedures on the Probe and Sample Return presets (bodies
 // session; the flights are fly_ladder.mjs). Only each mission's prerequisites are done; the mission's own check decides.
 // The executor's options get exercised: the far side lit on arrival, near-side impact and landing, a retrograde capture at
-// Nyx (and the same orbit prograde, which Tellus's tide should wreck), and a sample brought home.
+// Nyx (and a control: an orbit too wide for Nyx, which Tellus's tide wrecks), and a sample brought home.
 {
   const P = api.PROG, saved = JSON.stringify(P), rows = flyLadder(api), row = id => rows.find(r => r.id === id) || {};
   const fmt = r => `${r.at}, ${r.days} days, ${r.dv} m/s in all, ${r.left} m/s left${r.touch ? `, touchdown ${r.touch} m/s` : ''}; ${r.cost}M`;
@@ -14,7 +14,7 @@
     ['nyxfly', 'a Nyx flyby with camera and antenna'], ['nyxorb', 'a retrograde orbit round Nyx that lasts two Nyx orbits'], ['nyxland', 'a soft landing on Nyx']])
     check(`mission ladders: ${id} flown from the pad by procedure (${row(id).preset}): ${what}`, row(id).ok === true, fmt(row(id)));
   const pro = row('nyxorb:pro');
-  check('mission ladders: the same Nyx orbit flown prograde does not last (Tellus\'s tide wrecks it: which way round matters)', pro.ok === false && pro.days < 4.3, fmt(pro));
+  check('mission ladders: a Nyx orbit reaching 200 km does not last (Tellus\'s tide wrecks it; which way round is Q344)', pro.ok === false && pro.days < 4.3, fmt(pro));
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 
@@ -1063,4 +1063,42 @@
     Math.abs(n.F.days - n.R.d) < 0.06 && n.F.duty === 0 && n.R.duty === 0 && Math.abs(s.F.days - s.R.d) < 0.06 && Math.abs(s.F.duty - s.R.duty) < 1e-12 && s.F.duty > 0 && s.F.duty < 1
       && t.F.days === Infinity && t.R.d === 0 && Math.abs(t.F.duty - t.R.duty) < 1e-12 && t.F.duty < 1 && probe.days === Infinity && probe.duty === 1,
     Object.entries(res).map(([k, v]) => `${k}: says ${v.F.days.toFixed(2)} d then ${(v.F.duty * 100).toFixed(0)} %, registry ${v.R.d.toFixed(2)} d then ${(v.R.duty * 100).toFixed(0)} %`).join('; ') + `; Probe ${probe.days} d`);
+}
+
+// space-36. Flights from orbit, Revert and a reload (QUEUE R29 + R29b, DECISIONS D45; REVIEW-2026-11-11 § 6). Fly a satellite
+// of ours from the Fleet, then: Revert goes back to the moment control was taken (the same craft, in orbit), not to the pad
+// with the design table's craft (which Space then launched with none of the launch checks), and never throws, even with the
+// table empty; a reload mid-flight on Normal puts the satellite back in the registry as it was when control was taken
+// (it had been deleted from the save); on Hard (commitment) the craft is lost, with a line in the news. In review 2's
+// headless page (review/2026-11-11/app/harness.cjs; t2_flyrevert.cjs and t4_newprog_reload.cjs were the repros).
+{
+  const { createRequire } = await import('module');
+  const { boot } = createRequire(import.meta.url)('./review/2026-11-11/app/harness.cjs');
+  const mk = H => x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+  const KEY = 'launchpad-program-tester';
+  // a satellite of ours (a tester start made an ordinary flight, as the repros do), then Program › Fleet › Fly
+  const fly = level => { const H = boot({ search: '?tester' }), r = mk(H); r('ttlFound()'); r("go('assembly')"); r(`PROG.lvl=${JSON.stringify(level)}`);
+    r("testStart({body:'Tellus',where:'orbit',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:3000})"); H.frame(10);
+    r("S.rec.tester=null;REVERT0=null;go('debrief');go('program')"); r('HOOK.save()');
+    const id = r('PROG.sats[0].id'); H.click({ fly: String(id) }); H.frame(20);
+    return { H, r, id, name: r('S.name'), flying: r('screenNow()') === 'flight' && r('S.rec.fromOrbit') === true,
+      savedOut: !JSON.parse(H.store.get(KEY)).sats.some(q => q.id === id) && JSON.parse(H.store.get(KEY)).flyHeld?.q?.id === id }; };
+  const reload = F => { F.atTake = JSON.stringify(JSON.parse(F.H.store.get(KEY)).flyHeld?.q); const H = boot({ search: '?tester', storage: Object.fromEntries(F.H.store) }), r = mk(H); H.timers();
+    return { r, errs: H.errs.length, sats: JSON.parse(r('JSON.stringify(PROG.sats)')), held: r('PROG.flyHeld'), news: JSON.parse(r('JSON.stringify(NEWS.map(n=>n.t))')) }; };
+  // Normal: Revert, then Revert again with the table empty; then a reload mid-flight
+  const N = fly('normal'), alt = r => +N.r('((len(S.r)-S.body.R)/1e3).toFixed(1)');
+  N.r('revertFlight()'); N.H.frame(10);
+  const rv = { name: N.r('S.name'), km: alt(), landed: N.r('S.landed'), screen: N.r('screenNow()'), sats: N.r('PROG.sats.length'), held: N.r('PROG.flyHeld&&PROG.flyHeld.q.id') };
+  N.r("stackDef={root:null}"); const thr = N.r("revertFlight();'ok'"); N.H.frame(5); const rv2 = { ok: thr === 'ok', name: N.r('S.name'), km: alt(), errs: N.H.errs.length };
+  const NR = reload(N), back = NR.sats.find(q => q.id === N.id);
+  // Hard: no Revert; a reload mid-flight loses the craft, said in the news
+  const Hd = fly('hard'), hardRevert = Hd.r('revertOK()'), HR = reload(Hd), lost = !HR.sats.some(q => q.id === Hd.id), said = HR.news.some(t => /is lost/.test(t) && t.includes(Hd.name));
+  const revertOK = N.flying && N.savedOut && rv.name === N.name && rv.km > 250 && rv.landed === false && rv.screen === 'flight' && rv.sats === 0 && rv.held === N.id;
+  const emptyOK = rv2.ok && rv2.name === N.name && rv2.km > 250 && !rv2.errs;
+  const normalOK = !NR.errs && !!back && JSON.stringify(back) === N.atTake && !NR.held;
+  const hardOK = Hd.flying && Hd.savedOut && hardRevert === false && !HR.errs && lost && said && !HR.held;
+  check('space-36: a flight from orbit: Revert goes back to when control was taken (in orbit, never the pad), even with the table empty; a reload mid-flight puts the satellite back on Normal and loses it on Hard, with a line in the news (R29, R29b)',
+    revertOK && emptyOK && normalOK && hardOK,
+    `Normal: flying ${N.name} (${N.flying}, out of the save ${N.savedOut}); Revert → ${rv.name} at ${rv.km} km, landed ${rv.landed}, on ${rv.screen}; with the table empty → ${rv2.ok ? rv2.name + ' at ' + rv2.km + ' km' : rv2.ok} · ` +
+    `reload: ${back ? 'back in the registry' + (JSON.stringify(back) === N.atTake ? ' as it was when control was taken' : ' CHANGED') : 'GONE'} · Hard: revert ${hardRevert}; reload: ${lost ? 'lost' : 'kept'}, news "${HR.news.find(t => /is lost/.test(t)) || '-'}"`);
 }

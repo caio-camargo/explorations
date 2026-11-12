@@ -137,6 +137,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
 - v1.336 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
+- v1.337 — `detach()` keeps momentum (R22's fourth fix): Crewed Lunar's return predicts its landing and goes round again until it's open sea; the Nyx control is an orbit too wide to last (2026-11-12, launchpad session, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 
@@ -201,6 +202,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.280 — a wait cut mid-transfer keeps its encounter: a cruise between events coasts with the predictor's own stepper (coastTo), not a fixed 600 s RK4 that drifted ~15,000 km a day off a low perigee (2026-11-07, space session, QUEUE Q530)
 - v1.287 — the builder's power line says what the battery will do as a satellite: "lasts 4 days, then it goes quiet" (2026-11-08, space, QUEUE Q212; from v1.108)
 - Plan: contact limits uncrewed flight (Q574): flown, every first-orbit burn is out of the pad's sight (the Beeper's by 78 s) and a stored timed burn circularises as well as a guided one; `cmdLink`, the launch range (a tracking ship 700 km downrange), armed nodes by avionics, what is refused where; slices Q581–Q587 and W51 (2026-11-11, review 2 session; plan only)
+- v1.338 — flights from orbit: Revert goes back to when control was taken, never the pad; a reload mid-flight puts the vessel back (Easy, Normal) or loses it (Hard) (2026-11-12, launchpad session, QUEUE R29 + R29b, D45)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

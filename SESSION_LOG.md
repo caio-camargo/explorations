@@ -7608,3 +7608,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   101788c7; `main`'s own CI run covers it). Cause of the red: in the full run's order, procedures v2's executor flight lost a
   Wren to an ignition failure on the ascent from Selene (the dice read `s.kickN`, which `detach()`'s momentum changes); the
   executor flight now runs with `TEST.nofail` (it checks the executor, not reliability). Re-merging only on a green run.
+- **4, R22's fourth fix → main (v1.337), on green CI 43297667940:** `detach()` keeps momentum (kick shared by mass, velocity
+  follows the CoM; vehicle-47). The scripts made robust, `detach()` untouched: **Crewed Lunar** predicts its landing at the
+  return correction (a stand-in on rails, then the fall with the craft's drag: 3.5° N 157.5° E predicted, 4.2° N 157.4° E
+  flown) and, when it isn't open sea within 2°, raises the lowest point to 150 km and goes round once more (measured: no late
+  burn reaches the sea, only the arrival time moves the longitude); flown: two laps, splashdown at sea 6.5 m/s, 4.8 days.
+  **procedures v2** records again; its executor flight runs with `TEST.nofail` (the ignition dice read `s.kickN`).
+  **The Nyx control** is an orbit reaching 200 km (wrecked in ~27 h on both branches); at 60–110 km direction decides
+  nothing reliably (80 km prograde: 61 h on main, 8 days with the kick), noted in Q344. Q383 noted. QUEUE R22 ✓.
+- **5, R29 + R29b → main (v1.338, D45), on green CI 43299199178:** Revert from a flight from orbit discards it and flies
+  the same entry again (the craft in orbit at the moment control was taken, never the pad with the table's design); a pad
+  flight's Revert with the table empty says so instead of throwing. `flyEntry` keeps the vessel in `PROG.flyHeld` (schema
+  row; cleared by `missionEnd`/`missionDiscard`); at load `flyHeldLoad()` puts it back on Easy and Normal, and on Hard
+  (`revert:false`) it is lost with a news line (the save holds no flight to carry on from). `LEVELS.hard.d` says so.
+  Test space-36 (headless page: Normal's Revert twice, the table empty, a reload; Hard's reload). DECISIONS D45, TESTING
+  393, PLAYROUTE step 7, QUEUE R29 ✓. **R29b is no longer parked** (decided by Caio 2026-11-12, built here).
