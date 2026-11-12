@@ -1240,10 +1240,10 @@
       && !up0.under.length && !up0.broke.length && !up0.hurt.length,
     `${s.alive ? `under: ${T.under.join(' · ')}; damaged: ${T.hurt.join(', ') || 'none'}; broken: ${T.broke.join(', ') || 'none'}; both whips: ${T2.under.join(' · ')}` : s.lossWhy}`);
   const H = html;
-  check('flow-50: wired: the "On its side" card (tipRows), the Fleet tab\'s "on its side", no own trajectory on the map once landed, the blocked line says "drop a stage"',
+  check('flow-50: wired: the "On its side" card (tipRows), the Fleet tab\'s "on its side", no own trajectory on the map once landed; (Q545) no "Stuck" line or refusal any more, a "Righting" hint instead',
     H.includes("{id:'tipped',title:'On its side',rows:()=>tipRows()}") && H.includes('function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);')
       && H.includes("${q.bodyName}${q.tipped?' · <span class=\"warn\">on its side</span>':''}") && H.includes('if(!S.landed)drawPatches(gateLegs(predCache.p,labels)')
-      && H.includes("TIP_NO=\"It lies on its side: it can't lift off or drop a stage"));
+      && !H.includes('TIP_NO') && !H.includes("['Stuck',") && H.includes("['Righting','<span class=\"dim\">thrust, RCS or the wheels can stand it up</span>']"));
 }
 
 // flow-51. A wing under a toppled lander stays folded; the map's body names sit on their bodies (flow, QUEUE Q540, Q541;

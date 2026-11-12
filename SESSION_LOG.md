@@ -7535,3 +7535,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   section built its craft and *then* set `api.t = 0`, so the planet turned under the pad and the first step hit the
   ground at 6 km/s. Fixed in the test (clock before `newShip`), and the same pattern in §16's launch-window check. Merged
   main, smoke green, CI green (43282472938), ff-merged. notes/platform.md § Test shards; QUEUE R5 ✓; platform row cleared.
+
+## 2026-11-12 — orchestrator, worker-branch machine (Opus 5.5): Q544, Q543+Q546, Q545 landed
+
+- **Asked:** Caio resumed on this machine (the queue is kept by the orchestrator on `PC_de_Varginha`); this session took
+  only the landing of its own built-but-untested worker branches.
+- **Done:** merged main into each branch, renumbered, CI on the branch, then onto `main`: **Q544 v1.325** (retrograde
+  hands over to stability near the ground; TESTING 383, flow-61), **Q543 v1.326 + Q546 v1.327** (round landing dust; the
+  era maps' night side; TESTING 384, aerofx-56, flow-62), **Q545 v1.328** (thrust on the ground moves the craft; TESTING
+  385, vehicle-45). Merge fixes in Q544: `HOOK` keeps `done(){}` last (flow-55 reads it), flow-35's tape check allows
+  `sasNearGround` after `velFrame` (the worker's targeted run had missed flow-35).
+- **Checked:** CI green on all three branches (43283877050, 43283947878, 43283959057); targeted `--only` on main after
+  each merge; `check_numbers` clean.
+- **Found:** local `--smoke --jobs 2` on this machine fails `reliability`, `flow-38`, `vehicle-43` on unchanged main
+  (1dc71349) too: ignition failures read 0 % in the full run, all pass alone; CI is green. A cross-section leak (R2).
+- **Next:** Q550 (`origin/q550-solids-slice-1`) waits on W53. Caio: the dust, the night side and righting a lander are
+  TESTING 383–385.
