@@ -2590,7 +2590,7 @@ on its side and a gentle push; rest, tap, awake under thrust). Changed: `vehicle
 registered before), `flow-50` (no `TIP_NO`, no "Stuck" row, the "Righting" row). vehicle-1, flow-51 and Q264's topple
 tests unchanged and passing.
 
-## v1.329 — the builder acts only on the Assembly (2026-11-12, launchpad session for vehicle, QUEUE R28; REVIEW-2026-11-11 § 6, R13g)
+## v1.330 — the builder acts only on the Assembly (2026-11-12, launchpad session for vehicle, QUEUE R28; REVIEW-2026-11-11 § 6, R13g)
 
 `mode==='editor'` is the title, the Rollout, the Program, the Mission card and the Debrief as well as the Assembly, and the
 builder tested only that (the keys also excluded four of the screens, not the title). So a left click on the rocket at the
@@ -2605,4 +2605,4 @@ and the builder's keys acted from the title.
   screens changes nothing; on the Assembly it picks the part up (9 → 6, one edit); with a part held, Delete, Ctrl+Z and X
   are quiet from the title and X acts back on the Assembly. Core-32 (Help lists the assembly's keys) reads the new guard.
   The repro now prints *rollout: parts 9 after 9, held null*.
-- **Not checked:** in a browser (TESTING 386).
+- **Not checked:** in a browser (TESTING 387).
