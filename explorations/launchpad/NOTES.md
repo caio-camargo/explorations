@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.60 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
+**Version**: v2.0.61 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -136,8 +136,9 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
-- v1.325 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
+- v1.329 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
+- v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -394,6 +395,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.306 — a completion notice you can't miss: its own card, queued, until Enter or a click (2026-11-11, flow, QUEUE Q569) → [notes/flow.md](notes/flow.md)
 - v1.307 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
 - v1.319 — the Mission card stays up in flight (short in the climb, burns and landings; every mission the vessel could meet); a mission done turns green in its place, one line and a chime, no centred box in flight (2026-11-12, Q600, D42)
+- v1.325 — near the ground, retrograde hands over to stability: under 3 m/s within 50 m a craft on SAS retrograde switches to Stability (upright if leaning past 3°), says so once, never switches back (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
+- v1.327 — the era maps show the night side: the terminal dims and scanlines it in green with the terminator as a line; the notebook hatches the true night region, not a half-disc (2026-11-07, orchestrator worker, QUEUE Q546, PLAYTEST #152)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -450,6 +453,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.291 — a sharpening upscale: the canvas at device pixels, Catmull-Rom and a clamped sharpen, the grain at device pixels (2026-11-09, review session, QUEUE Q560)
 - v1.295 — staging: the camera eases onto the craft (a spring over the centre-of-mass jump), and a stronger separation: flash, two gas rings, flecks, all falling with the craft (2026-11-10, review session, Q564) → [notes/look.md](notes/look.md)
 - v1.298 — the whole exhaust trail: puffs live 7–9 min, the trail is thinned as its puffs widen so the list holds it from the pad up, a least size on screen (2026-11-10, review session, Q566) → [notes/look.md](notes/look.md)
+- v1.326 — the landing dust is round, not a square: windowed to zero inside its raymarch box (it summed into a pale square at the box's sides); the splash in air too (2026-11-07, orchestrator worker, QUEUE Q543, PLAYTEST #149)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 

@@ -1254,3 +1254,26 @@
     whole && alive && A.peak < SMOKE_MAX * .6 && B.peak > SMOKE_MAX && TRAIL_GAP < .7 && Math.min(...N.list.map(q => q.pf[0])) < 30 && N.list.length > 100 && drawOk,
     `${A.laid} puffs laid; at most ${A.peak} held with thinning (the list takes ${SMOKE_MAX}), ${B.peak} without; at 300 s ${L.length} puffs from ${L[0].pf[0].toFixed(0)} m to ${(L.at(-1).pf[0] / 1000).toFixed(1)} km, the widest step ${gap.toFixed(2)} of a puff's half-width (at ${(gAt / 1000).toFixed(1)} km); nine engines: at most ${N.peak} held, the trail still starts at ${Math.min(...N.list.map(q => q.pf[0])).toFixed(0)} m; drawn: ${drew || `a 50 m puff at 100 km is ${far[0].toFixed(0)} m at opacity ${far[1].toFixed(2)} (was 0.40), at 1 km ${near[0]} m at ${near[1].toFixed(2)}, retired 1.5 s ago ${fade.toFixed(2)}, ${G.smoke.length} of 4 left`}`);
 }
+// aerofx-56. The landing dust is round, not a square (look & sound effects beat, QUEUE Q543, PLAYTEST #149). The dust sheet
+// (DUST_FS) and the hot-gas splash (IMP_FS) are raymarched inside a box; their density fell off exponentially and never
+// reached zero, so a grazing ray summed the remainder at the box's sides into a pale square round the lander. Both are now
+// windowed to zero inside their box: the dust's radial window ends at 1.5 uRd (box half-width 1.6 Rd) and a height window
+// under the lid (2 + .12 Rd) caps it; the splash ends at 9 re (its box's half-width). No cut-off threshold
+// (if(d<.002)continue drew a contour of its own).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const dust = pg.slice(pg.indexOf('const DUST_FS=`'), pg.indexOf('`;', pg.indexOf('const DUST_FS=`'))), imp = pg.slice(pg.indexOf('const IMP_FS=`'), pg.indexOf('`;', pg.indexOf('const IMP_FS=`')));
+  const dd = pg.slice(pg.indexOf('function drawDust('), pg.indexOf('\nconst IPA='));
+  const has = {
+    radial: /fall=exp\(-2\.6\*rho\/uRd\)\*smoothstep\(1\.5\*uRd,\.75\*uRd,rho\)\*smoothstep\(Hb,\.5\*Hb,p\.y\)/.test(dust),
+    lid: /float Hb=2\.\+\.12\*uRd,H=min\(\.45\+\.09\*rho,\.25\*Hb\)/.test(dust) && /Hb=2\+\.12\*Rd/.test(dd),
+    box: /lo=\[ip\[0\]-Rd\*1\.6,0,ip\[2\]-Rd\*1\.6\],hi=\[ip\[0\]\+Rd\*1\.6,Hb,ip\[2\]\+Rd\*1\.6\]/.test(dd),
+    noCutoff: !/if\(d<\.002\)continue/.test(dust),
+    splash: /sp\+=uIP\[k\]\.z\*exp\(-rk\/\(re\*3\.2\)\)\*smoothstep\(re\*9\.,re\*6\.,rk\)\*/.test(imp) && /Rs=h\.re\*9/.test(pg)
+  };
+  // computed: the window at the box's side and corner and at half the reach, and the old fall at the side
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }, Rd = 50, win = rho => ss(1.5 * Rd, .75 * Rd, rho);
+  const edge = win(1.6 * Rd), corner = win(1.6 * Rd * Math.SQRT2), mid = win(.5 * Rd), old = Math.exp(-2.6 * 1.6);
+  check('the landing dust and the splash fade to nothing inside their boxes: radial and lid windows, no cut-off threshold, so no square edge (the old fall left 1.6 % at the box side)',
+    Object.values(has).every(Boolean) && edge === 0 && corner === 0 && mid === 1, Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · ') + ` · window: side ${edge}, corner ${corner}, half-reach ${mid}; old fall at the side ${(old * 100).toFixed(1)} %`);
+}
