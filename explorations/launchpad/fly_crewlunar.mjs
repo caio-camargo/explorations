@@ -6,7 +6,8 @@
 // found with the predictor (40 km pass) / capture into a low orbit, periapsis raised at apoapsis / braking at periapsis,
 // then a suicide burn (the lander is dropped high if it can't finish the descent) / ascent on the return stage (pitch over
 // by 3 km: no air) / the burn home, chosen by scanning burn point and size for a 45 km Tellus perigee / a correction aimed
-// at the integrated path's lowest point / drop the return stage, shield first, chute.
+// at the integrated path's lowest point, aimed at open sea (R22: a lap more round Tellus when the landing would be on land) /
+// drop the return stage, shield first, chute.
 export function crewLunar(api, say = () => {}) {
   const { TELLUS, SELENE, len, norm, add, sub, mul, dot, cross, elements } = api;
   const log = (...a) => say(`[${(api.t / 3600).toFixed(2)} h] ` + a.join(' ')), R = {};
@@ -116,8 +117,27 @@ export function crewLunar(api, say = () => {}) {
   while (s.body !== TELLUS && s.alive) coast(600);
   coast(4 * 3600);
   const perigee = p => (p[0].path ? p[0].minR : p[0].el.pe) - TELLUS.R;   // the integrated path's lowest point (the moons' tides move it ~30 km on the way in)
-  { const sol = solve(dv => { const p = api.predictFrom({ b: TELLUS, r: s.r, v: add(s.v, dv), t: api.t }); return Math.abs(perigee(p) - 45e3) + 0.01 * len(dv); }, 4, 300);
-    R.retCorr = len(sol.dv); log('return correction', len(sol.dv).toFixed(1), 'm/s; predicted lowest point', (sol.err / 1e3).toFixed(1), 'km off 45'); burn(sol.dv, 0.3); log('after: predicted lowest point', (perigee(api.predict(s)) / 1e3).toFixed(1), 'km'); }
+  // (R22) the correction also picks where the capsule comes down: under its main chute it touches down at ~7 m/s, which the
+  // sea takes and a forest may not (Q383), and where it lands is luck of the whole flight (a metre a second at any staging moves
+  // it). On the way in only the latitude can still be moved cheaply (the lowest point), not the longitude, which is the arrival
+  // time. So a stand-in is flown on rails from here (the moons' tides included) to 3,000 km up and its fall predicted with this
+  // craft's drag (good to about a degree); if that isn't open sea within 2° all round, the correction raises the lowest point
+  // out of the air instead, the craft goes round once more (Tellus turns under it meanwhile) and the next approach is tried
+  const pgAt = dv => perigee(api.predictFrom({ b: TELLUS, r: s.r, v: add(s.v, dv), t: api.t }));
+  const landAt = dv => { const t0 = api.t, p = api.newShip(['chute', 'pod']); Object.assign(p, { landed: false, body: TELLUS, r: s.r.slice(), v: add(s.v, dv), sas: false }); let k = 0;
+    while (k++ < 4000 && p.body === TELLUS && len(p.r) - TELLUS.R > 3e6) api.rails(p, Math.max(5, Math.min(600, 0.5 * (len(p.r) - TELLUS.R - 3e6) / len(p.v))));
+    const st = { b: TELLUS, r: p.r, v: p.v, t: api.t }; api.t = t0; const f = p.body === TELLUS ? api.predictImpact(s, 0, st) : null; return f && f.pf; };
+  const sea = pf => { if (!pf) return false; const u = norm(pf), la = Math.asin(u[1]), lo = Math.atan2(u[2], u[0]);
+    for (const a of [-2, 0, 2]) for (const b of [-2, 0, 2]) { const L = la + a * Math.PI / 180, O = lo + b * Math.PI / 180; if (api.isLand([Math.cos(L) * Math.cos(O), Math.sin(L), Math.cos(L) * Math.sin(O)])) return false; } return true; };
+  const deg = pf => { if (!pf) return '?'; const u = norm(pf); return `${(Math.asin(u[1]) * 57.3).toFixed(1)}°, ${(Math.atan2(u[2], u[0]) * 57.3).toFixed(1)}°`; };
+  R.retCorr = 0; R.laps = 0;
+  for (let lap = 0; lap <= 3; lap++) { const sol = solve(dv => Math.abs(pgAt(dv) - 45e3) + 0.01 * len(dv), 4, 300), at = landAt(sol.dv);
+    if (sea(at) || lap === 3) { R.retCorr += len(sol.dv); log('return correction', len(sol.dv).toFixed(1), 'm/s; predicted lowest point', (sol.err / 1e3).toFixed(1), 'km off 45; lands at', deg(at), sea(at) ? '(open sea)' : '(not sea: the last try)');
+      burn(sol.dv, 0.3); log('after: predicted lowest point', (perigee(api.predict(s)) / 1e3).toFixed(1), 'km'); break; }
+    const up = solve(dv => Math.abs(pgAt(dv) - 150e3) + 0.01 * len(dv), 4, 300); R.retCorr += len(up.dv); R.laps++;
+    log(`would land at ${deg(at)}, not open sea: lowest point raised to 150 km for another lap (${len(up.dv).toFixed(1)} m/s)`); burn(up.dv, 0.3);
+    let out = false; while (s.alive && !(out && dot(s.r, s.v) < 0)) { if (dot(s.r, s.v) > 0) out = true; coast(600); }   // round past the top
+    coast(2 * 3600); }
   while (s.alive && len(s.r) - TELLUS.R > 3e6) coast(600);
   while (s.alive && s.evIdx < s.events.length && s.parts.some(p => p.on && p.d.kind === 'engine')) { log('staging: drop the return stage'); api.stage(s); }
   while (s.alive && s.evIdx < s.events.length) api.stage(s);   // arm the chute
@@ -134,7 +154,7 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('fly_crewlun
   const { pageSource } = await import('./page.mjs');
   const html = pageSource();
   const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-  const api = new Function(src + `return {PRESETS,TELLUS,SELENE,newShip,stage,advPhys,advRails,railsOK,localFrame,qFromBasis,qrot,elements,timeToNu,kepler,predict,predictFrom,dvRemaining,dvPlan,activeEngines,bodyRel,surfVel,HOOK,PROG,DT,len,norm,add,sub,mul,dot,cross,
+  const api = new Function(src + `return {predictImpact,isLand,rails,PRESETS,TELLUS,SELENE,newShip,stage,advPhys,advRails,railsOK,localFrame,qFromBasis,qrot,elements,timeToNu,kepler,predict,predictFrom,dvRemaining,dvPlan,activeEngines,bodyRel,surfVel,HOOK,PROG,DT,len,norm,add,sub,mul,dot,cross,
     get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};`)();
   const R = crewLunar(api, m => console.log(m)); console.log(JSON.stringify(R, (k, v) => typeof v === 'number' ? +v.toFixed(2) : v));
 }
