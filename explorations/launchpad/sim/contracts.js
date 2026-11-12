@@ -20,6 +20,10 @@ function fieldBiomes(){if(fieldMemo)return fieldMemo;const u0=SITES[0].u,own=bio
   for(let k=1;k<=60;k++)for(let a=0;a<24;a++){const id=biomeAt(alongAz(u0,a*Math.PI/12,k*20e3/TELLUS.R)).id;if(near[id]==null)near[id]=k*20}
   fieldMemo=FIELD_IDS.filter(b=>b!==own&&near[b]!=null).map(b=>({b,km:near[b]}));if(!fieldMemo.length)fieldMemo=[{b:own===10?7:10,km:1200}];return fieldMemo}
 const polarKm=()=>Math.max(0,AURORA_LAT-Math.asin(Math.abs(SITES[0].u[1])))*TELLUS.R/1e3;
+// R19: the pay premiums, named (were a literal *1.6 in 15 pays): military work (notes/economy.md § the military contracts),
+// and the work beyond the first orbit priced alike since v1.66: Selene science, a station's resupply, lab-days and
+// modules, servicing, rendezvous, retrieval
+const PAY_MIL=1.6,PAY_FAR=1.6;
 const CT={
   apex:{src:['sci'],gen:R=>{const lo=10*(1+(R()*6|0));return{lo,hi:lo+15,pay:6+lo/5,dur:60+R()*60}},
     title:p=>`Sounding experiment, ${p.lo}–${p.hi} km`,brief:p=>`An instrument package with an apex between ${p.lo} and ${p.hi} km, recovered.`,
@@ -27,7 +31,7 @@ const CT={
   sample:{src:['sci'],gen:R=>{const k=R()*ATM_BANDS|0;return{k,pay:8+3*k,dur:60+R()*60}},
     title:p=>`Air sample, ${p.k*10}–${p.k*10+10} km`,brief:p=>`Bring home an instrument package that flew through the ${p.k*10}–${p.k*10+10} km band.`,
     ok:(R,p)=>R.recSci&&!!R.bands[p.k]},
-  test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'],k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
+  test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'].filter(k=>partOpen(k).ok);if(!ks.length)return null;const k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
     title:p=>`Qualify the ${PARTS[p.k].name}`,brief:p=>`Fly a ${PARTS[p.k].name} through max-q of ${p.q} kPa or more with an instrument package aboard.`,
     ok:(R,p)=>(R.qPart[p.k]||0)>=p.q*1000},
   landing:{src:['gov'],gen:R=>{const dk=10*(3+(R()*4|0));return{dk,pay:15+(60-dk)/2,dur:60+R()*60}},
@@ -61,66 +65,194 @@ const CT={
     title:p=>`Orbital holiday, under ${p.g} g`,brief:p=>`A tourist through one full orbit and home, never over ${p.g} g.`,
     ok:(R,p)=>R.landed&&R.bio&&R.bioOK&&R.bioOrbits>=1&&R.gMax<=p.g},
   // military: well paid, secret, and it may leak (see contractEval)
-  recon:{src:['mil'],req:'beeper',gen:R=>{const alt=10*Math.round(11+R()*7),inc=5*Math.round(12+R()*6);return{alt,tol:20,inc,itol:5,pay:(45+inc*0.6)*1.6,dur:90+R()*60}},
+  recon:{src:['mil'],req:'beeper',gen:R=>{const alt=10*Math.round(11+R()*7),inc=5*Math.round(12+R()*6);return{alt,tol:20,inc,itol:5,pay:(45+inc*0.6)*PAY_MIL,dur:90+R()*60}},
     title:p=>`Reconnaissance orbit, ${p.alt} km at ${p.inc}°`,brief:p=>`An instrument package in orbit at ${p.alt}±${p.tol} km, inclination ${p.inc}±${p.itol}°. Classified.`,
     ok:(R,p)=>{const o=R.orb;return!!o&&o.sci&&o.pe>=(p.alt-p.tol)*1e3&&o.ap<=(p.alt+p.tol)*1e3&&Math.abs(o.inc-p.inc)<=p.itol}},
   // the target lies downrange of the program's current site (QUEUE Q7), and the test counts only when flown from there:
   // a ballistic test belongs to its range. Contracts saved before Q7 have no p.site and count from anywhere.
   ballistic:{src:['mil'],req:'weather',gen:R=>{const t=curSite();for(let k=0;k<200;k++){const rg=300+R()*600,u=alongAz(t.u,R()*6.2832,rg*1e3/TELLUS.R);
-      if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*1.6,dur:60+R()*60,site:t.id,sname:t.name}}return null},
+      if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*PAY_MIL,dur:60+R()*60,site:t.id,sname:t.name}}return null},
     title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Launch from ${p.sname||'the pad'} and bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km away (marked on the map). Classified.`,
     ok:(R,p)=>!!R.endPf&&R.endSci&&(!p.site||R.site===p.site)&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
   // Selene science from rovers and seismometers (QUEUE Q10; the sats session's R4): judged between flights on what has
   // reached home since the contract was taken (c.base, from selN), by selTick. ok() is false: no flight completes these.
-  selRead:{src:['sci'],req:'selland',sel:true,gen:R=>{const unit=R()<.5?'mare':'high',n=3+(R()*4|0);return{unit,n,pay:(20+10*n)*1.6,dur:150+R()*150}},
+  selRead:{src:['sci'],req:'selland',sel:true,gen:R=>{const unit=R()<.5?'mare':'high',n=3+(R()*4|0);return{unit,n,pay:(20+10*n)*PAY_FAR,dur:150+R()*150}},
     title:p=>`Read Selene's ${p.unit==='mare'?'dark plains':'bright uplands'}`,brief:p=>`${p.n} spectrometer readings of ${p.unit==='mare'?'mare basalt (the dark plains)':'highland rock (the bright uplands)'}, received at home. Needs a rover with a spectrometer.`,
     ok:()=>false,done:(c,N)=>N[c.p.unit]-c.base[c.p.unit]>=c.p.n},
-  selPano:{src:['sci','com'],req:'selland',sel:true,gen:R=>{const q=Math.round((.6+R()*.35)*20)/20;return{q,pay:(40+120*(q-.6))*1.6,dur:120+R()*120}},
+  selPano:{src:['sci','com'],req:'selland',sel:true,gen:R=>{const q=Math.round((.6+R()*.35)*20)/20;return{q,pay:(40+120*(q-.6))*PAY_FAR,dur:120+R()*120}},
     title:p=>`A panorama of Selene, ${(p.q*100).toFixed(0)} %`,brief:p=>`A panorama of the surface of quality ${(p.q*100).toFixed(0)} % or better (a low sun shows the relief), received at home. Needs a rover with a camera mast.`,
     ok:()=>false,done:(c,N)=>selSci().panos.slice(c.base.pano).some(x=>x.q>=c.p.q-1e-9)},
-  selSeis:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis<4,gen:R=>({n:4,pay:120*1.6,dur:250+R()*150}),
+  selSeis:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis<4,gen:R=>({n:4,pay:120*PAY_FAR,dur:250+R()*150}),
     title:p=>'A seismic network on Selene',brief:p=>`${p.n} seismometers set out on Selene, far enough apart to locate moonquakes. Needs a rover with seismometer packs.`,
     ok:()=>false,done:(c,N)=>N.seis-c.base.seis>=c.p.n},
-  selQuake:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis>=3,gen:R=>{const n=2+(R()*3|0);return{n,pay:(30+15*n)*1.6,dur:200+R()*200}},
+  selQuake:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis>=3,gen:R=>{const n=2+(R()*3|0);return{n,pay:(30+15*n)*PAY_FAR,dur:200+R()*200}},
     title:p=>`Locate ${p.n} moonquakes`,brief:p=>`Locate ${p.n} moonquakes with our seismic network on Selene (three stations or more hear each).`,
     ok:()=>false,done:(c,N)=>N.quakes-c.base.quakes>=c.p.n},
-  selCore:{src:['sci'],req:'selland',sel:true,open:()=>selN().quakes>=1&&!(selN().coreW<=300),gen:R=>({w:300,pay:150*1.6,dur:300+R()*200}),
+  selCore:{src:['sci'],req:'selland',sel:true,open:()=>selN().quakes>=1&&!(selN().coreW<=300),gen:R=>({w:300,pay:150*PAY_FAR,dur:300+R()*200}),
     title:p=>`Bound Selene's core to ${p.w} km`,brief:p=>`Bracket the radius of Selene's core to within ${p.w} km, from located moonquakes and which stations hear their S-waves.`,
     ok:()=>false,done:(c,N)=>N.coreW<=c.p.w},
-  selFar:{src:['sci'],req:'selland',sel:true,gen:R=>{const n=1+(R()*2|0);return{n,pay:(60+25*n)*1.6,dur:200+R()*200}},
+  selFar:{src:['sci'],req:'selland',sel:true,gen:R=>{const n=1+(R()*2|0);return{n,pay:(60+25*n)*PAY_FAR,dur:200+R()*200}},
     title:p=>`Science from Selene's far side`,brief:p=>`${p.n} spectrometer reading${p.n>1?'s':''} from the far side, received at home. The far side never sees Tellus: it needs a relay.`,
     ok:()=>false,done:(c,N)=>N.far-c.base.far>=c.p.n},
   // servicing a valuable satellite (Q126): one of ours that earns (TV, or imagery with good contact) and has fallen an
   // era behind. Its users pay for the visit; it earns in full again. A flight that docks with it completes it.
-  service:{src:['gov','com'],req:'beeper',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*1.6,dur:300+R()*200}},
+  service:{src:['gov','com'],req:'tv',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*PAY_FAR,dur:300+R()*200}},
     title:p=>`Service ${p.name}`,brief:p=>`Rendezvous and dock with ${p.name}, ${p.n} computing era${p.n>1?'s':''} behind, and bring its electronics up to date. Its users pay for the visit, and it earns in full again.`,
     ok:(R,p,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat),after:c=>{const q=(PROG.sats||[]).find(x=>x.id===c.p.sat);if(q){q.era=compEra();q.eraSeen=q.era;HOOK.news(`${q.name} serviced: up to date, earning in full again`,'ok')}}},
   // station work (QUEUE Q162; NOTES § "Plan: station, base, relay and rendezvous contracts", slice 1, W22's defaults):
   // judged between flights on the station's state since the contract was taken (c.base from baseOf), like Selene science
   stResupply:{src:['gov','com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.crew>0&&s.days<ST_LOW),gen:R=>{const x=stPick(s=>s.crew>0&&s.days<ST_LOW);if(!x)return null;
-      const kg=Math.max(100,Math.round(x.s.crew*SUP_DAY*1000*60/50)*50);return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kg,pay:(30+0.12*kg)*(x.s.days<15?1.5:1)*1.6,dur:Math.max(5,Math.floor(x.s.days)),days:Math.floor(x.s.days)}},
+      const kg=Math.max(100,Math.round(x.s.crew*SUP_DAY*1000*60/50)*50);return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kg,pay:(30+0.12*kg)*(x.s.days<15?1.5:1)*PAY_FAR,dur:Math.max(5,Math.floor(x.s.days)),days:Math.floor(x.s.days)}},
     title:p=>`Resupply ${p.name}`,brief:p=>`Deliver ${p.kg} kg of supplies to ${p.name} (${p.base?'land a module that carries them within 500 m of its beacon':'dock a module that carries them'}) before its ${p.days} days run out.`,why:p=>`${p.name} has ${p.days} days of supplies left`,
     baseOf:p=>({sup:stState(p.st,'sup')}),ok:()=>false,done:c=>stState(c.p.st,'sup')-c.base.sup>=c.p.kg/1000-1e-9},
   stLab:{src:['sci','com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.labs>0&&s.crew>0),gen:R=>{const x=stPick(s=>s.labs>0&&s.crew>0);if(!x)return null;const n=10+(R()*4|0)*10;
-      return{st:x.q.id,name:x.q.name,n,pay:4*n*1.6,dur:60+3*n}},
+      return{st:x.q.id,name:x.q.name,n,pay:4*n*PAY_FAR,dur:60+3*n}},
     title:p=>`${p.n} lab-days on ${p.name}`,brief:p=>`${p.n} days of crewed lab work on ${p.name} (two people per lab at most), with supplies to keep them working.`,why:p=>`${p.name} has a lab and a crew`,
     baseOf:p=>({lab:stState(p.st,'labDays')}),ok:()=>false,done:c=>stState(c.p.st,'labDays')-c.base.lab>=c.p.n-1e-9},
-  stExpand:{src:['com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
-      return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
+  stExpand:{src:['com'],req:'tv',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
+      return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*PAY_FAR,dur:250+R()*150}},
     title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
     baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
   // flight-judged (Q180, slice 4): a rendezvous needs a near pass during the flight (rdvTick); a retrieval needs the
   // satellite home, stowed in a closed bay (Caio 2026-10-09: the bay is the dependency, so offers wait for the first docking)
-  rdv:{src:['gov','com'],req:'beeper',open:()=>!!rdvTarget(),gen:R=>{const q=rdvTarget();if(!q)return null;return{sat:q.id,name:q.name,junk:!!q.junk,pay:80*1.6,dur:200+R()*150}},
+  rdv:{src:['gov','com'],req:'beeper',open:()=>!!rdvTarget(),gen:R=>{const q=rdvTarget();if(!q)return null;return{sat:q.id,name:q.name,junk:!!q.junk,pay:80*PAY_FAR,dur:200+R()*150}},
     title:p=>`Rendezvous with ${p.name}`,brief:p=>`Fly within ${RDV_D} m of ${p.name} and hold there, under ${RDV_V} m/s relative, so the client can look it over${p.junk?' (spent hardware, tumbling or not)':''}.`,
     why:p=>p.junk?`${p.name} is spent hardware nobody has looked at`:`${p.name} has gone quiet`,ok:(R,p)=>!!(R.rdv&&R.rdv[p.sat])},
-  retrieve:{src:['gov'],req:'stationcrew',open:()=>!!retrieveTarget(),gen:R=>{const q=retrieveTarget();if(!q)return null;return{sat:q.id,name:q.name,worth:Math.round(shapeWorth(q)*10)/10,pay:150*1.6,dur:400+R()*200}},
+  retrieve:{src:['gov'],req:'stationcrew',open:()=>!!retrieveTarget(),gen:R=>{const q=retrieveTarget();if(!q)return null;return{sat:q.id,name:q.name,worth:Math.round(shapeWorth(q)*10)/10,pay:150*PAY_FAR,dur:400+R()*200}},
     title:p=>`Bring ${p.name} home`,brief:p=>`Grapple ${p.name}, stow it in a cargo bay, close the doors and land it at home. Its hardware comes back to you too (about ${fmtM(p.worth)} refurbished).`,
     why:p=>`${p.name} is dead in orbit and worth bringing back`,ok:(R,p,s)=>!!s&&s.alive&&s.landed&&s.body===TELLUS&&(s.att||[]).some(a=>a.kind==='bay'&&isSat(a.e,p.sat)&&s.parts[a.hpi]&&doorF(s.parts[a.hpi])===0),
     after:(c,s)=>{const R=s.rec,w=c.p.worth;if(w>0){income(w);debPaid(R,'refurb',`${c.p.name}'s hardware`,w);HOOK.news(`${c.p.name}'s hardware refurbished: +${fmtM(w)}`,'ok')}}},
-  milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
+  milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*PAY_MIL,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
+// ---- a job's conditions as data (economy worker, QUEUE Q547; notes/flow.md § "Plan: the aim and the mission card",
+// slice 1). Beside its ok(), every contract type and every mission says what the design must carry, needs(p) →
+// [{id, t, has(ship) → bool}]; what the flight must do, conds(p) → [{id, t, state(R, s) → 'met' | 'lost' | 'open' |
+// 'pending', now?(R, s) → text}]; and where it goes, legs(p) → the aim's legs ({k:'orbit'|'hop'|'flyby'|'land'|'meet'|
+// 'home'|'stay', b, alt (km), inc, …}). ok() still judges and pays; the conds are cut so that every cond met ⇔ ok on a
+// flight record (econ-37). 'lost': this flight can't meet it any more (past the band, over the g, launched elsewhere,
+// down in the wrong place, or the flight is over); 'pending': it waits on the landing (recovered). The between-flight
+// types (sel*, st*, image) and the world missions carry one cond, judged at home (always pending on a flight: ok is false
+// there too). Nothing reads these yet but the tests; the Mission card (Q548) and "This flight is for" (Q549) will.
+const jOver=(R,s)=>!!R.ended||!!s&&s.alive===false;
+const jUp=(R,s)=>!R.landed&&!!s&&s.alive!==false&&!s.landed&&!!s.r&&!!s.v&&dot(s.v,s.r)>0;   // still climbing
+// a cond: met(R, s) decides it; o.lost (beyond the flight being over), o.wait (pending, not open, while unmet), o.now,
+// o.keep (never lost just because the flight is over: judged on the program, as the range's streak)
+function jC(id,t,met,o={}){return{id,t,state:(R,s)=>met(R,s)?'met':o.lost&&o.lost(R,s)||!o.keep&&jOver(R,s)?'lost':o.wait?'pending':'open',...(o.now?{now:o.now}:{})}}
+const jHome=t=>({id:'home',t:t||'judged at home',home:true,state:()=>'pending'});
+const jRec=()=>jC('rec','recovered',R=>!!R.recSci,{lost:R=>!!R.landed&&!R.recSci,wait:1});
+const jG=(g,k='gMax',end=R=>!!R.landed)=>jC('g',`never over ${g} g`,R=>R[k]<=g&&end(R),{lost:R=>R[k]>g,now:R=>R[k]>0?`so far ${R[k].toFixed(1)} g`:''});
+const jKm=x=>`${kmS(x)} km`;
+// needs: a part of a kind aboard (newShip's parts, or a flying vessel's)
+const jHas=(v,f)=>!!v&&(v.parts||[]).some(p=>p.on!==false&&p.d&&f(p.d));
+const jN=(id,t,f)=>({id,t,has:v=>jHas(v,f)}),jK=(id,k,t)=>jN(id,t,d=>d.kind===k);
+const N_SCI=jK('sci','sci','an instrument package'),N_BIO=jK('bio','bio','a biocapsule'),N_CAM=jK('cam','cam','a camera'),N_ANT=jK('ant','ant','an antenna'),
+  N_CHUTE=jN('chute','a parachute (to come home intact)',d=>d.kind==='chute'||d.kind==='leg'),N_DOCK=jK('dock','port','a docking port'),N_BAY=jK('bay','bay','a cargo bay'),
+  N_CREW=jN('crew','a crew capsule',d=>d.kind==='pod'&&d.crew>0),N_LES=jK('les','les','an escape tower'),N_HAB=jK('hab','hab','a habitat module'),N_LAB=jK('lab','lab','a laboratory module');
+const N_MASS=m=>({id:'mass',t:`${m} t of mass simulators`,has:v=>!!v&&(v.parts||[]).reduce((a,p)=>a+(p.on!==false&&p.d&&p.d.kind==='ballast'?p.d.m:0),0)>=m-1e-9});
+const N_PART=k=>jN('part:'+k,`a ${PARTS[k]?PARTS[k].name:k}`,d=>d.key===k||kinOf(d.key)===k);
+const L_HOME={k:'home',how:'land'},L_ORBIT=(alt=null,inc='pad')=>({k:'orbit',b:'Tellus',alt,inc});
+const cityInc=ci=>{const c=CITIES[ci];return c?Math.min(90,Math.ceil(Math.asin(Math.abs(c.u[1]))*180/Math.PI)+1):'pad'};
+const ballDist=(R,p)=>Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R;
+const satConds=p=>[jC('orbit','an instrument package in orbit',R=>!!R.orb&&!!R.orb.sci),
+  jC('height',`periapsis and apoapsis ${p.alt} ± ${p.tol} km`,R=>!!R.orb&&R.orb.pe>=(p.alt-p.tol)*1e3&&R.orb.ap<=(p.alt+p.tol)*1e3,{now:R=>R.orb?`now ${kmS(R.orb.pe)} × ${kmS(R.orb.ap)} km`:''}),
+  jC('inc',`inclination ${p.inc} ± ${p.itol}°`,R=>!!R.orb&&Math.abs(R.orb.inc-p.inc)<=p.itol,{now:R=>R.orb?`now ${R.orb.inc.toFixed(1)}°`:''})];
+const bioConds=(p,orbit)=>[orbit?jC('orbit','one full orbit',R=>!!R.bio&&R.bioOrbits>=1,{lost:R=>!R.bioOK,now:R=>R.bioOrbits>0?`${Math.min(100,R.bioOrbits*100).toFixed(0)} % of an orbit`:''})
+    :jC('space',`to space (${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.bio&&!!R.bioSpace,{lost:R=>!R.bioOK,now:R=>`apex ${jKm(R.apex)}`}),
+  jG(p.g),jC('safe','home safe',R=>!!R.landed&&!!R.bioOK,{lost:R=>!R.bioOK,now:R=>R.bioWhy||''})];
+const L_SEL={k:'land',b:'Selene'},stLeg=p=>p.base?{k:'land',b:'Selene',at:p.st}:{k:'meet',id:p.st},massCond=p=>jC('mass',`${p.m} t of mass simulators in a stable orbit`,R=>R.lift>=p.m-1e-9,{now:R=>R.lift>0?`${R.lift} t up`:''});
+const CT_JOB={
+  apex:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop',alt:p.hi},L_HOME],
+    conds:p=>[jC('apex',`apex ${p.lo}–${p.hi} km`,(R,s)=>R.apexSci>=p.lo*1e3&&R.apexSci<=p.hi*1e3&&!jUp(R,s),{lost:R=>R.apexSci>p.hi*1e3,now:R=>`now ${jKm(R.apexSci)}`}),jRec()]},
+  sample:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop',alt:p.k*10+10},L_HOME],
+    conds:p=>[jC('band',`through the ${p.k*10}–${p.k*10+10} km band`,R=>!!R.bands[p.k],{now:R=>`apex ${jKm(R.apexSci)}`}),jRec()]},
+  test:{needs:p=>[N_PART(p.k),N_SCI],legs:p=>[{k:'hop',q:p.q},L_HOME],
+    conds:p=>[jC('q',`max-q ${p.q} kPa on the ${PARTS[p.k]?PARTS[p.k].name:p.k}, instrumented`,R=>((R.qPart||{})[p.k]||0)>=p.q*1000,{now:R=>((R.qPart||{})[p.k]||0)>0?`so far ${(R.qPart[p.k]/1e3).toFixed(1)} kPa`:''})]},
+  landing:{needs:()=>[N_CHUTE],legs:p=>[{k:'hop',alt:20},{k:'land',b:'Tellus',site:null,km:p.dk}],
+    conds:p=>[jC('high','above 20 km',R=>R.apex>=2e4,{now:R=>`apex ${jKm(R.apex)}`}),
+      jC('land',`down within ${p.dk} km of the pad`,R=>!!R.landed&&R.landDist<=p.dk*1e3,{lost:R=>!!R.landed,now:R=>R.landed?`${jKm(R.landDist)} away`:''})]},
+  bioHop:{needs:()=>[N_BIO,N_CHUTE],legs:()=>[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:p=>bioConds(p,false)},
+  sat:{needs:()=>[N_SCI],legs:p=>[L_ORBIT(p.alt,p.inc)],conds:satConds},
+  image:{needs:()=>[N_CAM,N_ANT],legs:p=>[L_ORBIT(null,cityInc(p.ci))],conds:()=>[jHome('judged as the pictures come down')]},
+  field:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop'},{k:'land',b:'Tellus',biome:p.b}],
+    conds:p=>[jC('ground',`down on ${BIOMES[p.b]}`,R=>!!R.landed&&R.landBiome===p.b,{lost:R=>!!R.landed,now:R=>R.landed?`down on ${BIOMES[R.landBiome]}`:''}),jRec()]},
+  aurora:{needs:()=>[N_SCI,N_CHUTE],legs:p=>[{k:'hop',alt:AURORA_ALT/1e3,lat:p.lat},L_HOME],
+    conds:p=>[jC('aurora',`above ${AURORA_ALT/1e3} km poleward of ${(+p.lat).toFixed(0)}°`,R=>!!R.aurora),jRec()]},
+  lift:{needs:p=>[N_MASS(p.m)],legs:()=>[L_ORBIT()],conds:p=>[massCond(p)]},
+  touristHop:{needs:()=>[N_BIO,N_CHUTE],legs:()=>[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:p=>bioConds(p,false)},
+  touristOrbit:{needs:()=>[N_BIO,N_CHUTE],legs:()=>[L_ORBIT(),L_HOME],conds:p=>bioConds(p,true)},
+  recon:{needs:()=>[N_SCI],legs:p=>[L_ORBIT(p.alt,p.inc)],conds:satConds},
+  ballistic:{needs:()=>[N_SCI],legs:p=>[{k:'hop'},{k:'land',b:'Tellus',site:p.u,km:p.rad,how:'sea'}],
+    conds:p=>[jC('site',`from ${p.sname||'the pad'}`,R=>!p.site||R.site===p.site,{lost:R=>!!R.launched}),
+      jC('down',`an instrument package down within ${p.rad} km of the target`,R=>!!R.endPf&&!!R.endSci&&ballDist(R,p)<=p.rad*1e3,{lost:R=>!!R.endPf,now:R=>R.endPf?`${jKm(ballDist(R,p))} off`:''})]},
+  selRead:{needs:()=>[],legs:()=>[L_SEL],conds:()=>[jHome()]},
+  selPano:{needs:()=>[],legs:()=>[L_SEL],conds:()=>[jHome()]},
+  selSeis:{needs:()=>[],legs:()=>[L_SEL],conds:()=>[jHome()]},
+  selQuake:{needs:()=>[],legs:()=>[],conds:()=>[jHome()]},
+  selCore:{needs:()=>[],legs:()=>[],conds:()=>[jHome()]},
+  selFar:{needs:()=>[],legs:()=>[{k:'land',b:'Selene',far:true}],conds:()=>[jHome()]},
+  service:{needs:()=>[N_DOCK],legs:p=>[{k:'meet',id:p.sat}],conds:p=>[jC('dock',`docked with ${p.name}`,(R,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat))]},
+  stResupply:{needs:()=>[],legs:p=>[stLeg(p)],conds:()=>[jHome()]},
+  stLab:{needs:()=>[],legs:p=>[{k:'meet',id:p.st}],conds:()=>[jHome()]},
+  stExpand:{needs:p=>[p.kind==='lab'?N_LAB:N_HAB],legs:p=>[stLeg(p)],conds:()=>[jHome()]},
+  rdv:{needs:()=>[],legs:p=>[{k:'meet',id:p.sat}],conds:p=>[jC('near',`within ${RDV_D} m of ${p.name}, under ${RDV_V} m/s`,R=>!!(R.rdv&&R.rdv[p.sat]))]},
+  retrieve:{needs:()=>[N_BAY],legs:p=>[{k:'meet',id:p.sat},L_HOME],
+    conds:p=>[jC('bay',`${p.name} stowed in a closed bay`,(R,s)=>!!s&&(s.att||[]).some(a=>a.kind==='bay'&&isSat(a.e,p.sat)&&!!s.parts[a.hpi]&&doorF(s.parts[a.hpi])===0)),
+      jC('home','landed at home',(R,s)=>!!(s&&s.alive&&s.landed&&s.body===TELLUS))]},
+  milLift:{needs:p=>[N_MASS(p.m)],legs:()=>[L_ORBIT()],conds:p=>[massCond(p)]},
+};
+for(const k in CT_JOB)Object.assign(CT[k],CT_JOB[k]);
+// the missions (firsts), the same three; their conds read the record as their ok(R, s) does (and air and range the program)
+const crewLost=R=>!!R.crewInit&&!!R.crewed&&!R.crewOK;
+const M_JOB={
+  weather:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:10},L_HOME],conds:[jC('apex','above 10 km',R=>R.apex>=1e4,{now:R=>`apex ${jKm(R.apex)}`}),jRec()]},
+  air:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:40},L_HOME],conds:[0,1,2,3].map(k=>jC('band'+k,`the ${k*10}–${k*10+10} km band analysed`,()=>!!PROG.atm[k],{wait:1}))},
+  loads:{needs:[N_SCI],legs:[{k:'hop',q:LOADS_Q/1e3},L_HOME],conds:[jC('q',`max-q ${LOADS_Q/1e3} kPa with an instrument package`,R=>R.sciQ>=LOADS_Q,{now:R=>R.sciQ>0?`so far ${(R.sciQ/1e3).toFixed(1)} kPa`:''})]},
+  range:{needs:[],legs:[{k:'hop'}],conds:[jC('streak','three clean flights in a row',()=>PROG.streak>=3,{wait:1,keep:1,now:()=>`${PROG.streak||0} of 3`})]},
+  beeper:{needs:[N_SCI],legs:[L_ORBIT()],conds:[jC('orbit',`an instrument package in a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.orbitSci)]},
+  hop:{needs:[N_BIO,N_CHUTE],legs:[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:[jC('safety','flight safety signs off',R=>!!R.approved,{lost:R=>!R.approved}),
+    jC('space',`to space (${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.bioSpace,{lost:R=>!R.bioOK,now:R=>`apex ${jKm(R.apex)}`}),
+    jC('safe',`home safe (under ${G_LIM} g, cabin under ${CABIN_MAX} K)`,R=>!!R.landed&&!!R.bioOK,{lost:R=>!R.bioOK,now:R=>R.bioWhy||''})]},
+  orbiter:{needs:[N_BIO,N_CHUTE],legs:[L_ORBIT(),L_HOME],conds:[jC('safety','flight safety signs off',R=>!!R.approved,{lost:R=>!R.approved}),
+    jC('orbit','one full orbit',R=>R.bioOrbits>=1,{lost:R=>!R.bioOK,now:R=>R.bioOrbits>0?`${Math.min(100,R.bioOrbits*100).toFixed(0)} % of an orbit`:''}),
+    jC('safe',`home safe, within ${AIR_S/3600} h of air`,R=>!!R.landed&&!!R.bioOK,{lost:R=>!R.bioOK,now:R=>R.bioWhy||''})]},
+  lift1:{needs:[N_MASS(0.5)],legs:[L_ORBIT()],conds:[massCond({m:0.5})]},
+  lift2:{needs:[N_MASS(2)],legs:[L_ORBIT()],conds:[massCond({m:2})]},
+  wxsat:{needs:[N_CAM,N_ANT],legs:[L_ORBIT(null,'polar')],conds:[jC('polar','a camera and an antenna in a polar orbit (80–100°)',R=>!!R.weather,{now:R=>R.orb?`now ${R.orb.inc.toFixed(0)}°`:''})]},
+  tv:{needs:[N_ANT],legs:[L_ORBIT(Math.round(STAT_R/1e3-TELLUS.R/1e3),'stat')],conds:[jC('stat',"an antenna in a stationary orbit, in the capital's sky",R=>!!R.tv)]},
+  diswatch:{needs:[N_CAM,N_ANT],legs:[L_ORBIT()],conds:[jHome()]},
+  nav:{needs:[N_ANT],legs:[L_ORBIT()],conds:[jHome()]},
+  station1:{needs:[N_HAB,N_DOCK],legs:[L_ORBIT(),{k:'stay'}],conds:[jHome()]},
+  stationcrew:{needs:[N_CREW,N_DOCK],legs:[{k:'meet',id:'station'}],conds:[jHome()]},
+  stationlab:{needs:[N_LAB,N_DOCK],legs:[{k:'meet',id:'station'}],conds:[jHome()]},
+  station30:{needs:[],legs:[{k:'meet',id:'station'}],conds:[jHome()]},
+  farside:{needs:[N_CAM],legs:[{k:'flyby',b:'Selene'}],conds:[jC('photo','the sunlit far side photographed',R=>!!R.farPhoto||!!R.farSent),
+    jC('sent','the pictures home',R=>!!R.farSent,{now:R=>R.farPhoto&&!R.farSent&&R.farGot>0?`${Math.min(99,R.farGot/FAR_BITS*100).toFixed(0)} % down`:''})]},
+  selimp:{needs:[N_SCI,N_ANT],legs:[{k:'land',b:'Selene',hard:true}],conds:[jC('impact','into Selene on the near side, heard to the end',R=>!!R.selImpact)]},
+  selland:{needs:[N_SCI,N_ANT],legs:[L_SEL],conds:[jC('land','down on the near side under 4 m/s, phoning home',R=>!!R.selLand)]},
+  selsample:{needs:[N_SCI,N_CHUTE],legs:[L_SEL,L_HOME],conds:[jC('sample','an instrument package down on Selene',R=>!!R.selSampled),
+    jC('rec','recovered at home',R=>!!R.landed&&!!R.recSci,{lost:R=>!!R.landed&&!R.recSci,wait:1})]},
+  padabort:{needs:[N_CREW,N_LES,N_CHUTE],legs:[{k:'hop',alt:0},L_HOME],conds:[jC('abort','an abort from the pad (under 200 m)',R=>!!R.abort&&R.abort.alt<200,{lost:R=>!!R.abort&&!(R.abort.alt<200)}),
+    jC('home','the capsule home intact',R=>!!R.capHome),jG(G_LIM,'cgMax',R=>!!R.capHome)]},
+  maxqabort:{needs:[N_CREW,N_LES,N_CHUTE],legs:[{k:'hop',q:15},L_HOME],conds:[jC('abort','an abort at 15 kPa or more',R=>!!R.abort&&R.abort.q>=15000,{lost:R=>!!R.abort&&!(R.abort.q>=15000),now:R=>R.qMax>0?`max-q so far ${(R.qMax/1e3).toFixed(1)} kPa`:''}),
+    jC('home','the capsule home intact',R=>!!R.capHome),jG(G_LIM,'cgMax',R=>!!R.capHome)]},
+  crewaround:{needs:[N_CREW,N_CHUTE],legs:[{k:'flyby',b:'Selene'},L_HOME],conds:[jC('crew','a crew aboard',R=>!!R.crewed,{lost:R=>!!R.crewInit&&!R.crewed}),
+    jC('sel',"into Selene's sphere of influence",R=>!!R.crewSel,{lost:crewLost}),jC('safe','home safe',R=>!!R.crewOK&&!!R.capHome,{lost:crewLost,now:R=>R.crewWhy||''})]},
+  crewland:{needs:[N_CREW,N_CHUTE],legs:[L_SEL,L_HOME],conds:[jC('crew','a crew aboard',R=>!!R.crewed,{lost:R=>!!R.crewInit&&!R.crewed}),
+    jC('land','down on Selene under 4 m/s',R=>!!R.crewSelLand,{lost:crewLost}),jC('safe','home safe',R=>!!R.crewOK&&!!R.capHome,{lost:crewLost,now:R=>R.crewWhy||''})]},
+  nyxfind:{needs:[N_SCI,N_ANT],legs:[{k:'stay'}],conds:[jC('track',`tracked ${NYX_TRACK_H} h where Nyx's pull counts`,R=>!!R.nyxFound,{lost:R=>!!R.launched&&!R.nyxLook,now:R=>R.nyxTrack>0?`${(R.nyxTrack/3600).toFixed(1)} of ${NYX_TRACK_H} h`:''})]},
+  nyxfly:{needs:[N_CAM,N_ANT],legs:[{k:'flyby',b:'Nyx'}],conds:[jC('fly',"into Nyx's sphere of influence, camera and antenna working",R=>!!R.nyxFly)]},
+  nyxorb:{needs:[N_SCI],legs:[{k:'orbit',b:'Nyx',alt:null,inc:null}],conds:[jC('orb',`in orbit around Nyx for ${(4*Math.PI/NYX.n/3600).toFixed(0)} h`,R=>R.nyxOrbT>=4*Math.PI/NYX.n,{now:R=>R.nyxOrbT>0?`${(R.nyxOrbT/3600).toFixed(1)} h so far`:''})]},
+  nyxland:{needs:[N_SCI],legs:[{k:'land',b:'Nyx'}],conds:[jC('land','down on Nyx under 3 m/s',R=>!!R.nyxLand)]},
+};
+for(const M of MISSIONS){const J=M_JOB[M.id];if(J)Object.assign(M,{needs:()=>J.needs,conds:()=>J.conds,legs:()=>J.legs})}
+// a job: an active contract ({type, p}) or a mission (M, its id, or 'm:'+id). Its conds' states on a record; all met?; its needs on a ship
+const jobT=x=>typeof x==='string'?MISSIONS.find(M=>'m:'+M.id===x||M.id===x)||null:x&&x.type?CT[x.type]:x;
+const jobP=x=>x&&x.type?x.p:undefined;
+const jNow=(c,R,s)=>{try{return c.now(R,s)||''}catch(e){return''}};   // a reading never breaks the card
+function jobConds(x,R,s){const T=jobT(x);return T&&T.conds?T.conds(jobP(x)).map(c=>({id:c.id,t:c.t,state:c.state(R,s),now:c.now?jNow(c,R,s):'',home:!!c.home})):[]}
+const jobMet=(x,R,s)=>{const C=jobConds(x,R,s);return C.length>0&&C.every(c=>c.state==='met')};
+function jobNeeds(x,v){const T=jobT(x);return T&&T.needs?T.needs(jobP(x)).map(n=>({id:n.id,t:n.t,ok:!!n.has(v)})):[]}
 // ---- sanctions: a power that sanctions the program sends no offers, cancels its contracts and withholds its share of
 // budget day until the sanction lapses. Home sanctions too: military work for home's enemies (always found out) and,
 // in intense tension (relation < −0.75), commercial work for them (export controls).
@@ -214,7 +346,7 @@ function raceNews(id,r){const a=POWERS[r.i].arch,d=RIVAL_ANN[a];if(d==null||PROG
   (PROG.raceAnn=PROG.raceAnn||{})[id]=1;const M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,'');
   HOOK.news(d>0?`${POWERS[r.i].name} announces an attempt at ${nm}, in about ${Math.max(1,Math.round(r.day-PROG.day))} day${Math.round(r.day-PROG.day)>1?'s':''}`:`Rumours from ${POWERS[r.i].root}: a probable attempt at ${nm} soon`,'warn')}
 function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(r&&PROG.raceLost[id]==null)raceNews(id,r);if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
-  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news((RIVAL_WIN[POWERS[r.i].arch]||((n,m)=>`${n} gets there first: ${m}!`))(POWERS[r.i].name,M.name.replace(/^Passenger: /,'')),relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
+  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news((RIVAL_WIN[POWERS[r.i].arch]||((n,m)=>`${n} gets there first: ${m}!`))(POWERS[r.i].name,M.name.replace(/^Passenger: /,'')),relOf(HOME,r.i)<0?'bad':'warn',{kick:`${POWERS[r.i].name} first`,hl:M.name.replace(/^Passenger: /,''),rival:true});if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}   // (Q479) a rival's first carries the papers' poster
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
@@ -257,10 +389,11 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
 // Selene science counts (R4), for the sel contracts: readings by unit and from the far side, panoramas, stations, located
 // quakes, the core bracket's width (km)
 function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
-  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
+  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi!=null&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}   // (R16) hi null: no bound yet (a save turns Infinity into null)
 function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
   income(pay,'contracts');PROG.cdone=(PROG.cdone||0)+1;
-  standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');HOOK.save()}
+  standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');
+  HOOK.done({k:'contract',id:c.id,name:cTitle(c),win:`for ${POWERS[c.client].name}`,pay,flight:false});HOOK.save()}   // (Q569) judged at home: the notice at the desk
 function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].sel);if(!A.length)return;const N=selN();for(const c of A){c.base=c.base||(CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN());if(CT[c.type].done(c,N))selDone(c)}}
 // a satellite worth servicing: ours, earning (TV in view, or imagery with 30 % contact or more), an era behind or more,
 // and not already on the board or taken
@@ -288,7 +421,16 @@ function stPick(f){const L=typeof satsUp==='function'?[...satsUp(),...landedUp()
 // a station's measure for a contract: supplies (t), lab-days, or the number of modules of a kind (lab, hab), docked ones included
 function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stOf(q);if(k==='sup')return s?s.sup:0;
   const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
-function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
+// the contract types a source can offer today: its mission done (req) and the world ready for it (open: a station to
+// supply, a satellite to meet). Q570's test reads it against opensOf
+const offerTypes=src=>Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));
+// what each type is, as a kind of work (QUEUE Q570: "Opened" lists types, not offers; a title needs an offer's numbers)
+const CT_KIND={apex:'sounding experiments',sample:'air samples',test:'part qualifications',landing:'recovery demonstrations',bioHop:'biology flights',
+  sat:'satellites to order',image:'city imaging',field:'field stations',aurora:'aurora flights',lift:'heavy lift to orbit',touristHop:'tourist flights to space',
+  touristOrbit:'orbital holidays',recon:'reconnaissance orbits',ballistic:'ballistic tests',selRead:"readings of Selene's ground",selPano:'panoramas of Selene',
+  selSeis:'seismic networks on Selene',selQuake:'moonquake hunts',selCore:"Selene's core",selFar:"Selene's far side science",service:'satellite servicing',
+  stResupply:'station resupply',stLab:'lab-days on a station',stExpand:'station modules',rdv:'rendezvous',retrieve:'satellite retrieval',milLift:'classified payloads'};
+function genOffer(src,R){const types=offerTypes(src);if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv)*(1-giantShare()):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.max(payFloor(type),Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10);   // clients pay for what they care about; never under the floor
@@ -303,17 +445,18 @@ function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===i
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(!c)continue;const T=CT[c.type];if(!T.ok(R,c.p,s))continue;if(T.after)T.after(c,s);   // a leak's sanctions can shrink the list mid-loop
-    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);debPaid(R,'contract',cTitle(c),pay);PROG.cdone=(PROG.cdone||0)+1;
+    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);debPaid(R,'contract',cTitle(c),pay,{id:c.id});PROG.cdone=(PROG.cdone||0)+1;
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
-    HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
+    HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.done({k:'contract',id:c.id,name:cTitle(c),win:`for ${POWERS[c.client].name}`,pay,flight:!R.dispatched});HOOK.save()}}   // (Q569) the notice
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
 // R: this tick's dice, or null between a day's rolls (Q526: then only the smooth parts move); dd: the days the dice stand
 // for (1 from worldTick); S(salt): a stream per subsystem (worldTick's), else they share R (tests call these with one R)
 function econTick(d,R,dd=d,S=null){const Rs=salt=>S?S(salt):R;ensureBoard();selTick();standTick();devTick();facTick();compTick();dispatchTick();
   if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;ledAdd('upkeep',-(OVERHEAD+OVERHEAD_CAP*capOf())*d);   // running the program, from its first launch on (more as it grows)
-    floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
+    if(!FLOOR_HOLD)floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue.
+    // (R15) not while a flight is open (FLOOR_HOLD): its waits and days tick here before its own pay and refunds come in; missionEnd checks once settled
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
   const c0=PROG.cycle||0;if(R||PROG.cyc!=null){PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R?(R()-.5)*0.15*Math.sqrt(dd/10):0);if(R)PROG.cycJ=(R()-.5)*0.1;   // the jitter is a day's
     PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(PROG.cycJ||0),-1,1)}
@@ -383,7 +526,7 @@ function floorCheck(){if(PROG.funds>=FUNDS_FLOOR)return;const o=own();
   if(!(PROG.decisions||[]).some(d=>d.kind==='rescue'))offerDecision(rescueDecision())}
 // ---- decisions: offers that wait for an answer between flights
 function offerDecision(d){if(!d)return;PROG.decisions=PROG.decisions||[];PROG.dseq=(PROG.dseq||0)+1;d.id=PROG.dseq;d.expires=PROG.day+(d.life||40);PROG.decisions.push(d);
-  HOOK.news(`Offer: ${d.title}`,'warn');HOOK.save()}
+  HOOK.news(`${d.kind==='routine'?'Your call':'Offer'}: ${d.title}`,'warn');HOOK.save()}
 function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relOf(HOME,b.i))-(opOf(a.i)+30*relOf(HOME,a.i)))[0],need=FUNDS_FLOOR-PROG.funds;
   return{kind:'rescue',power:fr.i,life:60,title:`${fr.name} offers a rescue`,
     text:`Funds are below ${fmtM(FUNDS_FLOOR)}. ${fr.name} will put in ${fmtM(need+30)} for a 30% stake and a board seat. Or investors lend ${fmtM(need)}, to be repaid ×1.3 from half of all future income.`,
@@ -391,11 +534,11 @@ function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relO
 function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
   const has=k=>PROG.decisions.some(x=>x.kind===k),firsts=Object.keys(PROG.done).length,V=valuation();
   // investors circle an established public program
-  if(!has('ipo')&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
+  if(!has('ipo')&&!PROG.ipoSold&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
     offerDecision({kind:'ipo',amt,title:`Investors offer ${fmtM(amt)} for a 25% stake`,text:`A privatization: cash now, more commercial work and freedom, a smaller budget day. ${POWERS[HOME].align[0]>0?'The market-minded public would approve.':'Many at home will call it selling the family silver.'}`,
       opts:[['yes','Sell the stake'],['no','Decline']]})}
   // a friendly power wants in
-  const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3);
+  const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3&&!(PROG.stakeBy||{})[p.i]);   // (R18, W47) once per power
   if(!has('stake')&&fr.length&&firsts>=1&&R()<1-Math.exp(-dd/500)){const p=fr[R()*fr.length|0],amt=Math.round(V*0.15);
     offerDecision({kind:'stake',power:p.i,amt,title:`${p.name} offers ${fmtM(amt)} for a 15% stake`,text:`Their money and a share of their budget days, plus their contracts. Their rivals will notice, and so will opinion at home.`,
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
@@ -419,7 +562,7 @@ function badness(){const o=own();return((PROG.bailRecent||0)>=1.5?1:0)+(opOf(HOM
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
 // government work, drop incidents, ground stations, the race) follows. The pad itself stays where it is for now, flying
 // under lease (launch sites belong to the terrain work).
-function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];
+function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];PROG.ipoSold=false;PROG.stakeBy={};/* (R18) new books: the once-only offers start over */
   if(d.kind==='defect'){const j=d.power;PROG.history.push({day:PROG.day,from:progName(),move:`defected to ${POWERS[j].name}`});
     HOME=j;PROG.home=j;PROG.own={kind:'agency',st:{[j]:1},pv:0,chosen:true,debt:0};PROG.funds=d.amt;PROG.bailouts=0;
     PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15*(1.3-natOf(j)));PROG.cancelled=false;PROG.bmult=1;for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
@@ -432,8 +575,9 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
   if(d.kind==='rescue'){const need=Math.max(0,FUNDS_FLOOR-PROG.funds);
     if(key==='stake'){shiftShare(d.power,0.3);PROG.funds+=need+30;opAdd(d.power,4);HOOK.news(`${POWERS[d.power].name} takes 30% of the program`,'warn')}
     else{o.debt=(o.debt||0)+need*1.3;PROG.funds+=need;HOOK.news(`Investors lend ${fmtM(need)}; ${fmtM(o.debt)} to repay from future income`,'warn')}}
-  else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
+  else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.ipoSold=true;PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
-  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2*natK());
+  else if(d.kind==='routine')routeFailAnswer(d,key);   // (Q580) a failed automatic run: keep repeating or stop
+  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);(PROG.stakeBy=PROG.stakeBy||{})[d.power]=1;PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}

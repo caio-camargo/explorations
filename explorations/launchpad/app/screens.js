@@ -12,6 +12,7 @@ const ROOMS=new Set(['title','program','debrief','mission']);
 const inRoom=()=>ROOMS.has(screenNow());
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atTitle?'title':atDeb?'debrief':atMC?'mission':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
+  if(typeof UNL!=='undefined'&&UNL.on)unlockClose();   // (Q572) the unlock cards belong to the room they showed in
   if(from==='assembly'&&typeof BLD!=='undefined'&&BLD.bench())BLD.benchClose(false);   // leaving the Assembly from the payload bench: it's saved, the rocket comes back (Q416)
   if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S){flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
     const D=S.rec&&S.rec.debrief;   // ...and a flight that flew is debriefed on the way out, once
@@ -38,6 +39,7 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;mapFoc=null;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
   $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll||atMC||atTitle);$('ttl').classList.toggle('hidden',!atTitle);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('mc').classList.toggle('hidden',!atMC);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');document.body.classList.toggle('room',inRoom());
+  if(view!=='map')ovClose('mapLay');   // (flow, Q443; PLAYTEST #115) the map's Layers panel is the map's: it shut over the flight and the rooms
   if(atMC)renderMission();   // (after the room shows: the ground track sizes its canvas to the wall)
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
@@ -50,25 +52,25 @@ const KEYS={
     {k:['w','s','a','d'],l:'W S A D',d:'pitch / yaw · driving a rover: drive and steer'},{k:['q','e'],l:'Q E',d:'roll'},{k:['t'],l:'T',d:'SAS on/off (modes: buttons)'},{l:'SAS marks',d:'',marks:1},
     {k:['v'],l:'V',d:'RCS on/off'},{k:['i','k','j','l','u','o'],l:'I K · J L · U O',d:'RCS translate: along the nose · sideways · sideways'},
     {k:[',','.','/'],l:', . /',d:'warp down / up / 1×'},{k:['m'],l:'M',d:'map'},{k:['g'],l:'G',d:'cycle the target'},
-    {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['p'],l:'P',d:'solar wings out/folded'},{k:['1','2','3','4','5','6','7','8','9'],l:'1–9',d:'action groups: the ones made on the design table (the Action groups card)'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
-    {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['enter'],l:'Enter',d:'recover the vessel or end the flight once it is over (landed or lost): the debrief',act:()=>{const b=$('bEnd');if(b&&!b.classList.contains('hidden'))go('debrief')}},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
+    {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['p'],l:'P',d:'solar wings out/folded'},{k:['1','2','3','4','5','6','7','8','9'],l:'1–9',d:'action groups'},{k:['[',']'],l:'[ ]',d:'switch vessel (this flight, or yours within 2.5 km) · ] a deployed rover, [ back'},
+    {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['enter'],l:'Enter',d:'recover the vessel or end the flight: the debrief',act:()=>{const b=$('bEnd');if(b&&!b.classList.contains('hidden'))go('debrief')}},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
-    {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
-  map:[{k:['tab'],l:'Tab',d:'centre on the next thing: the ship, the bodies, our satellites, other vessels in this flight (or the Focus list)'},{k:['home'],l:'Home',d:'centre on the ship again'},{l:'double-click',d:'centre on a body or a craft'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
-    {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
+    {l:'Autopilot',d:'Esc › Save as autopilot; the same design then offers ▶ Autopilot'}],
+  map:[{k:['tab'],l:'Tab',d:'centre on the next body or craft'},{k:['home'],l:'Home',d:'centre on the ship again'},{l:'double-click',d:'centre on a body or a craft'},{l:'click',d:'place a maneuver node · target a satellite · pick a landing site'},
+    {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off'}],
   title:[{k:['enter'],l:'Enter',d:'continue the program · found it (the charter, signed)',act:()=>{if(needCharter())ttlFound();else go('program')}},{l:'click',d:'tick a line of the charter'}],
   mission:[{k:['p'],l:'P',d:'Program: back to the office',go:'program'},{k:['n'],l:'N',d:'wait until the next event',act:()=>{const b=document.querySelector('#mcNext [data-adv]');if(b)b.click()}},
     {k:['w'],l:'W',d:'the wall: the ground track · the calendar of the pads · the network nodes',act:()=>{mcPage=MC_PAGES[(MC_PAGES.indexOf(mcPage)+1)%MC_PAGES.length];renderMission()}},{l:'hover',d:'a booking or an event: what it is'}],
   rollout:[{k:['l'],l:'L',d:'launch (the checks above decide)',act:()=>$('launch').click()},{k:['b'],l:'B',d:'back to the design table',go:'assembly'}],
   debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Design table: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
-  program:[{k:['b'],l:'B',d:'build: go to the design table',go:'assembly'},{k:['c','n'],l:'C',d:'mission control: the fleet, the network, planned burns, dispatches (once something of ours is out there)',go:'mission'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
+  program:[{k:['b'],l:'B',d:'build: go to the design table',go:'assembly'},{k:['c','n'],l:'C',d:'mission control',go:'mission'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox: what needs an answer'}],
   assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['l'],l:'L',d:'roll out: the site, the checks, then launch',go:'rollout'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
-    {k:['r'],l:'R',d:'radial decoupler'},{k:['v'],l:'V',d:'hide the payload fairing (it hides by itself while you hold a part)'},{k:['t'],l:'T',d:'top view: straight down the axis, to see the centre of mass off it (T again: back)'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
+    {k:['r'],l:'R',d:'radial decoupler'},{k:['v'],l:'V',d:'hide the payload fairing'},{k:['t'],l:'T',d:'top view (T again: back)'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
     {k:['delete','backspace'],l:'Del',d:'delete'},{k:['z','y'],l:'Ctrl+Z · Ctrl+Y',d:'undo · redo (Ctrl+Shift+Z too)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}],
   rover:[{k:['w','s'],l:'W / S',d:'drive forward / back'},{k:['a','d'],l:'A / D',d:'steer (front and rear wheels, opposite ways)'},{k:[' '],l:'Space',d:'brake (stopped, it holds itself)'},
-    {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom (it swings back behind the rover as it drives)'}]};
+    {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom'}]};
 const SCREEN_NAME={title:'Title',program:'Program',assembly:'Design table',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout',mission:'Mission control'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.marks?sasLegend():r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.filter(r=>!r.tester||TEST.on).map(row).join('')}</table>`;
@@ -78,7 +80,7 @@ function toggleHelp(){if($('help').classList.contains('hidden'))renderHelp();ovT
 // Overlays stack: Esc closes the one opened last. Panels opened by their own buttons (the logbook's) still count.
 const OVS=['escm','help','logbook','tester','settings'],OV=[];
 const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.filter(x=>x!==id),id);if(id==='escm')renderEsc();if(id==='tester')renderTester();if(id==='settings')renderSettings()},
-  ovClose=id=>{$(id).classList.add('hidden');const i=OV.indexOf(id);if(i>=0)OV.splice(i,1);if(id==='escm')escArm=null},
+  ovClose=id=>{$(id).classList.add('hidden');const i=OV.indexOf(id);if(i>=0)OV.splice(i,1);if(id==='escm')escArm=null;if(id==='settings'&&typeof impArm!=='undefined')impArm=false},
   ovToggle=id=>$(id).classList.contains('hidden')?ovOpen(id):ovClose(id),
   ovTop=()=>[...OV].reverse().find(id=>!$(id).classList.contains('hidden'))||OVS.find(id=>!$(id).classList.contains('hidden'));
 // The Esc menu. Leaving a flight that is still going asks twice: the second click is the confirmation.
@@ -195,7 +197,7 @@ if(TEST.on){$('testerBadge').classList.remove('hidden');testBadge();testTopUp()}
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
 const progTabOf=h=>/^(Offers|Coming up|News)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
-  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field|Routines)/.test(h)?'fleet':/^The world/.test(h)?'world':
+  /^(Epoch|✔ Chapter|Chapter)/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field|Routines)/.test(h)?'fleet':/^The world/.test(h)?'world':
   /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
@@ -207,7 +209,8 @@ function progLayout(){const kids=[...$('program').children];if(!kids.length)retu
     else if(n.querySelector('[data-dk]'))box.inbox.unshift(n);   // a decision with a deadline: first thing you see
     else if(cur==='inbox'&&/^Standing/.test(n.textContent))box.contracts.splice(1,0,n);
     else box[cur].push(n)}
-  progGate=needCharter();   // (the charter is the title screen now, Q241 R3; the desk never shows unfounded)progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
+  progGate=needCharter();   // (the charter is the title screen now, Q241 R3; the desk never shows unfounded)
+  progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
   const nx=progGate?null:nextStep(),pn=$('progNext');pn.classList.toggle('hidden',!nx);   // what to do next (Q40), above the tabs
   if(nx)pn.innerHTML=`<b>NEXT</b> ${nx.title} <span class="dim">· ${nx.why}</span>${nx.how?` <span class="acc">· try ${nx.how}</span>`:''}<button data-ptab="${nx.tab}">${PROG_TABS.find(t=>t[0]===nx.tab)[1]} ▸</button>`;
   $('bBuild').disabled=progGate;$('bDebLast').classList.toggle('hidden',!DEBRIEF_LAST||progGate);$('bMC').classList.toggle('hidden',!netOpen()||progGate);
@@ -230,7 +233,7 @@ function pickLandSite(m){const V=HOOK.view;if(!V)return;const d=norm(add(V.Fw,ad
   landPick=hit;updateAutoBtn();HOOK.msg(`Landing site on ${hit.body}: ${sitePlace(hit.pf)} · ▶ Procedure lands there`)}
 let drag=null,downAt=null,hDrag=null,nDrag=false;
 // map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
-const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*ovPx();
+const toCv=e=>[e.clientX*W/cv.clientWidth,e.clientY*H/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*ovPx();
 function pickOrbit(m){let best=null,bd=1e9;for(const q of mapUI.pick){const d=Math.hypot(q.x-m[0],q.y-m[1]);if(d<bd){bd=d;best=q}}return bd<16*ovPx()?best:null}
 cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX,e.clientY];
   if(view==='map'&&mode==='flight'){const m=toCv(e),h=mapUI.handles.find(h=>near(m,[h.x,h.y],11));

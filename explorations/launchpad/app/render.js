@@ -7,6 +7,10 @@ let W=1,H=1;
 // whatever the adaptive resolution RS does. Every overlay mark and text is sized by it: min(dpr,1.5) alone grew them by 1/RS
 // on a slow GPU (x2.9 at RS 0.35). At RS 1 it is min(dpr,1.5), as before
 function ovPx(w=W,iw=innerWidth){return w/iw}
+// (flow, Q541) a body's limb radius on the view, in drawing units: its angular radius seen from d away, on a view h tall whose
+// half-height is tanY at unit depth (0 from inside). The map's body names sit just over it, their dot on the centre; the
+// notebook's and terminal's limb circles use it too
+function bodyRadPx(R,d,h,tanY){return d>R?(h/2)*Math.tan(Math.asin(R/d))/tanY:0}
 // ---- adaptive resolution: GPU timer queries (async, never stall) drive a render-scale multiplier
 const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0,RS_MAX=1;   // RS_MAX: the graphics quality's resolution cap (Settings, flow)
 const GPU_NAME=(()=>{const e=gl.getExtension('WEBGL_debug_renderer_info');const r=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
@@ -23,14 +27,39 @@ function gpuTimerBegin(){if(!TQ||PROF.on)return;if(tqPending.length<4){tqCur=gl.
 function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);tqPending.push(tqCur);tqCur=null}
   while(tqPending.length&&gl.getQueryParameter(tqPending[0],gl.QUERY_RESULT_AVAILABLE)){const q=tqPending.shift();
     if(!gl.getParameter(TQ.GPU_DISJOINT_EXT)){const ms=gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;gpuMs=gpuMs==null?ms:gpuMs*.85+ms*.15}gl.deleteQuery(q)}}
-function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames under ~22 ms)
-  const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
-  if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<RS_MAX)RS=Math.min(RS_MAX,RS*1.12)}
+// (Q559, PLAYTEST: "a lot of pixelation") the scaler. It used to aim at 7 ms of a 16.7 ms frame and grow back only under
+// 3.85 ms, so one heavy moment left the view at 45-55 % with half the GPU idle. Now: a budget of GPU_BUDGET ms (60 fps with
+// room for the CPU's share and the compositor), and steps sized by what they will cost. GPU time goes as the pixel count
+// (rs squared), so a step's load is predicted: shrink to land at 0.9 of the budget (at most 30 % a step), grow 12 % only
+// when the grown frame would still be under 0.92. The two can't chase each other: a shrink lands at 0.9, and growing
+// from there predicts 1.13. resNext is pure (tests/look.mjs, res-1).
+const RS_MIN=0.35,GPU_BUDGET=11;
+function resNext(rs,load,cap){
+  if(rs>cap)return cap;if(load>1.05)return Math.max(RS_MIN,rs*Math.max(.7,Math.sqrt(.9/load)));
+  const up=Math.min(cap,rs*1.12);
+  return up>rs&&load*(up/rs)**2<.92?up:rs}
+// Without timer queries the only signal is the frame interval, and under vsync that never says how much room is left.
+// So: shrink when frames run long (over 1.3 refresh periods), and when they have held the refresh for a while, try one
+// step up; a probe that makes frames run long is taken back and the wait before the next one doubles (4 s to 64 s).
+const RSP={per:1/60,dt:1/60,wait:4,t:0,up:false};
+function adaptRes(dtR){
+  rsT+=dtR;
+  if(gpuMs!=null){slowAvg=slowAvg*.9+gpuMs/GPU_BUDGET*.1;if(rsT<0.6)return;rsT=0;
+    const r=resNext(RS,slowAvg,RS_MAX);if(r!==RS){slowAvg*=(r/RS)**2;RS=r}return}
+  if(dtR<0.1){RSP.dt=RSP.dt*.9+dtR*.1;RSP.per=Math.min(RSP.per*1.0005,Math.max(dtR,1/240))}   // the refresh period: the shortest frame lately
+  RSP.t+=dtR;if(rsT<0.6)return;rsT=0;const late=RSP.dt>RSP.per*1.3;
+  if(late&&RS>RS_MIN){RS=Math.max(RS_MIN,RS*.82);if(RSP.up)RSP.wait=Math.min(64,RSP.wait*2);RSP.up=false;RSP.t=0}
+  else if(!late&&RS<RS_MAX&&RSP.t>RSP.wait){RS=Math.min(RS_MAX,RS*1.12);RSP.up=true;RSP.t=0}
+  else if(!late&&RSP.up&&RSP.t>2){RSP.up=false;RSP.wait=4}}   // the probe held: the next one comes soon
 function render(){spoolFrame();
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();profMark('setup');
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
-  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}W=w;H=h;
+  // (Q560) the canvas stays at device pixels and the frame is brought up to it by the upscale pass (gl.js, UPS_FS), unless
+  // the scene target failed (then the frame is drawn straight to the canvas, at the view's size, as before). W and H are
+  // the 3D view's pixels, as ever: a page position is x*W/cv.clientWidth, never cv.width
+  {const d1=dpr/RS,up=UPSCALE&&sceneTarget(w,h).ok,cw=up?Math.round(innerWidth*d1):w,ch=up?Math.round(innerHeight*d1):h;   // d1: the capped device ratio
+    if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch}}W=w;H=h;
   // (flow, Q258; PLAYTEST #58) the overlay (labels, the era maps, the gauges) is drawn at device pixels, not at the 3D view's
   // adaptive resolution: it's cheap 2D, and upscaled it read as low-res. Drawing stays in the 3D view's pixels (OV_K scales).
   {const od=Math.min(devicePixelRatio||1,2),ow=Math.round(innerWidth*od),oh=Math.round(innerHeight*od);if(ov.width!==ow||ov.height!==oh){ov.width=ow;ov.height=oh}}
@@ -41,7 +70,7 @@ function render(){spoolFrame();
     const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
     camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
   else{
-    let tgt;const CB=mode==='drive'&&RV?RV.body:mode==='flight'&&RVA?RVA.body:S.body;if(mode==='drive'&&RV)tgt=rvWorld(RV);else if(mode==='flight'&&RVA)tgt=rvPoseW(RVA).p;else if(S.alive)tgt=shipWorld();else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
+    let tgt;const CB=mode==='drive'&&RV?RV.body:mode==='flight'&&RVA?RVA.body:S.body;if(mode==='drive'&&RV)tgt=rvWorld(RV);else if(mode==='flight'&&RVA)tgt=rvPoseW(RVA).p;else if(S.alive){tgt=shipWorld();if(mode==='flight')tgt=add(tgt,camLag())}else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
     if(mode==='editor'&&!HOOK.edStill)cam.yaw+=0.002;
     const f=localFrame(sub(tgt,bodyPos(CB,simT)));if(mode==='editor'&&cam.edY)tgt=madd(tgt,f.up,cam.edY);
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
@@ -154,7 +183,8 @@ function render(){spoolFrame();
       const mm=makeMesh(buf);drawMesh(mm,mat4([1,0,0],[0,1,0],[0,0,1],[0,0,0]),vp);mm.free()}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}
-  for(const d of debris)if(d.chA>0&&!d.float)debrisCanopies(d,camW,drawMesh);   // (Q335) a falling stage under its chutesgl.uniform1f(m.uSeam,0);setMarks(m,[]);
+  for(const d of debris)if(d.chA>0&&!d.float)debrisCanopies(d,camW,drawMesh);   // (Q335) a falling stage under its chutes
+  gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
   if(mode==='flight'||mode==='drive')for(const q of landedUp()){const b=landedBody(q);if(!b||!q.shape||S.rec&&S.rec.satId===q.id)continue;const lp=add(bodyPos(b,simT),fromPF(b,q.pf,simT));if(len(sub(lp,camW))>1e5)continue;
     const lq=qmul(qBody(b,simT),q.ql),lc=satCM(q),lm=satMesh(q);setMarks(m,lm.parts);gl.uniform1f(m.uSeam,1);drawMesh(lm.mesh,modelQ(lq,sub(lp,camW),mul(lc,-1)),lp);
@@ -259,8 +289,9 @@ function render(){spoolFrame();
       else if(L.mark==='txt'){}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.lineWidth=k;octx.setLineDash([4*k,4*k]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3*k,0,7);octx.fill()}
-      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10)*k,c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?(L.px*1.6+8)*k:L.mark==='body'?bodyRadPx(L.R,len(sub(L.p,camW)),H,tanY)+8*k:10*k),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})
       if(L.t2)texts.push({t:L.t2,x:s[0],y:s[1]+22*k,c:L.c2||L.c,o:0,plate:1})}   // (Q488) a second line under the mark: the landing verdict
+    mergePlanetTexts(texts,t=>octx.measureText(t).width+4*k,13*k);
     // (flow, Q536) the Recovery legend's box is taken first, so labels keep off it (and the powers' names keep off the marks'
     // own labels, MAP_PUT); the landing verdict (plate) is never skipped: it takes the first free spot (under the X, lower,
     // above its title; slid aside) and sits on a plate
@@ -301,6 +332,15 @@ function render(){spoolFrame();
   {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);if(mv)renderMapFocus();hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
+// (flow, Q192; v1.99's open end) two planets close on the map's ring: their labels would overlap and the overlap rule would
+// drop one (the dot stays), so they become one label with both names, `Hesper, Astraea`, over the first; three in a row
+// merge the same way. Labels are {t,x,y,o}; planets are o 5, and the name is what comes before ' · '. w(t) is a text's
+// width, h its height. Changes texts in place.
+function mergePlanetTexts(texts,w,h){const P=texts.filter(T=>T.o===5&&T.t);for(const T of P)T.names=[T.t.split(' · ')[0]];
+  const box=T=>{const a=w(T.t)/2;return[T.x-a,T.y-h,T.x+a,T.y]},hit=(a,b)=>a[0]<b[2]&&b[0]<a[2]&&a[1]<b[3]&&b[1]<a[3];
+  for(let again=true;again;){again=false;
+    for(const A of P)if(!A.gone)for(const B of P)if(B!==A&&!B.gone&&hit(box(A),box(B))){A.names.push(...B.names);B.gone=true;A.t=A.names.join(', ');A.x=(A.x+B.x)/2;again=true}}
+  for(let i=texts.length-1;i>=0;i--)if(texts[i].gone)texts.splice(i,1)}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
 function patchRange(pt){const el=pt.el;
   if(pt.end){let n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=el.nu)n1+=6.2832;return[el.nu,n1]}
@@ -438,7 +478,7 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
   for(const q of landedUp()){const b=landedBody(q);if(!b||q.id!==S.target&&!mapShow('sats'))continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.id===S.target||nm&&q.beacon?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
   if(landPick){const b=BODIES.find(x=>x.name===landPick.body),u=b&&fromPF(b,landPick.pf,simT);if(u&&dot(sub(camW,add(bodyPos(b,simT),u)),u)>0)labels.push({p:add(bodyPos(b,simT),u),mark:'impact',t:'landing site',c:'#ffb347'})}   // (Q62)
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
-  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:!nm?'':knownBody(b)?b.name:'?',c:'#9ab'})))}
+  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:bodyPos(b,simT),mark:'body',R:b.R,t:!nm?'':knownBody(b)?b.name:'?',c:'#9ab'})))}   // (Q541) at the centre; the name over the limb (was 1.3 R above in world y: off the disc when zoomed in)
 
 // (flow, Q435; PLAYTEST #110) the navball's frame in words: SURFACE, ORBIT, SURFACE ▸ ORBIT through the blend; "held" when
 // the player chose one (a click: auto → surface → orbit)
@@ -497,8 +537,14 @@ function drawNavball(){
       for(const[cl,w]of[['rgba(0,0,0,.6)',5],[gc,2.5]]){nctx.strokeStyle=cl;nctx.lineWidth=w;nctx.beginPath();nctx.moveTo(...P(-4,-7));nctx.lineTo(...P(3,0));nctx.lineTo(...P(-4,7));nctx.stroke()}}}
   // the compass points on the horizon: N marked in red (Q254)
   nctx.font='bold 13px ui-monospace,Consolas,monospace';nctx.textAlign='center';nctx.textBaseline='middle';
-  for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const sy=dot(d,Y);if(sy<-0.02)continue;
-    const x=NS/2+dot(d,Z)*Rr,y=NS/2+dot(d,X)*Rr;nctx.lineWidth=3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
+  // (flow, Q507; PLAYTEST #140, Caio's (a)) east stays at the bottom at launch (the belly faces east, W leans that way, the
+  // ground comes in from below), and says so: on the pad and up the climb while the nose is within 15° of vertical, the E
+  // is bigger and amber. Near vertical every point sits on the rim, where the letters were cut in half: pulled inside it.
+  // Leaning the wrong way (west) puts E just behind the ball: it stays on the rim then, up to the 15°, saying where east is
+  const eL=dot(Y,f.up)>0.966&&(S.landed||!!tg&&tg.ph==='climb');
+  for(const[l,d,c]of[['N',f.n,'#ff4a3a'],['E',f.e,eL?'#ffb000':'#f4f4f4'],['S',mul(f.n,-1),'#f4f4f4'],['W',mul(f.e,-1),'#f4f4f4']]){const big=eL&&l==='E',sy=dot(d,Y);if(sy<(big?-0.27:-0.02))continue;
+    const ix=dot(d,Z),iy=dot(d,X),ir=Math.hypot(ix,iy),rIn=(Rr-(big?11:8))/Rr,k=ir>rIn||sy<0?rIn/Math.max(ir,1e-3):1,x=NS/2+ix*k*Rr,y=NS/2+iy*k*Rr;
+    nctx.font=`bold ${big?18:13}px ui-monospace,Consolas,monospace`;nctx.lineWidth=big?4:3;nctx.strokeStyle='rgba(0,0,0,.7)';nctx.strokeText(l,x,y);nctx.fillStyle=c;nctx.fillText(l,x,y)}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
   const ht=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${Math.round(pit)+0}°${tg?` ${guideTxt(tg)}${fl?' ▲':''}`:''}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`,rt=navRefLabel(S,sr);

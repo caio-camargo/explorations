@@ -31,7 +31,7 @@ function netCalHTML(N){const D=PROG.day||0,x=d=>`${(100*Math.max(0,Math.min(NET_
   const ticks=[];for(let d=30;d<NET_DAYS;d+=30)ticks.push(`<i class="tk" style="left:${x(D+d)}"><b>${d} d</b></i>`);
   const ev=(typeof upcoming==='function'?upcoming():[]).filter(e=>e.day<=D+NET_DAYS);
   return`<div class="cal">`+
-    (N.pads||[]).map(p=>`<div class="crow"><span class="cl">Pad ${p.pad+1}</span><div class="ctr">${ticks.join('')}${p.bars.map(b=>`<div class="cbar ${b.kind}" style="left:${x(b.from)};width:calc(${x(b.to)} - ${x(b.from)})" title="${b.title}">${b.title}</div>`).join('')}${p.bars.length?'':'<span class="cfree">free</span>'}</div></div>`).join('')+
+    (N.pads||[]).map(p=>`<div class="crow"><span class="cl">Pad ${p.pad+1}</span><div class="ctr">${ticks.join('')}${p.bars.map(b=>`<div class="cbar ${b.kind}" style="left:${x(b.from)};width:calc(${x(b.to)} - ${x(b.from)})" title="${b.title}">${b.kind==='window'?'held for its window':b.title}</div>`).join('')}${p.bars.length?'':'<span class="cfree">free</span>'}</div></div>`).join('')+
     `<div class="crow"><span class="cl">Events</span><div class="ctr">${ticks.join('')}${ev.map(e=>`<i class="cev" style="left:${x(e.day)}" title="${e.text} · in ${Math.ceil(e.day-D)} d"></i>`).join('')}</div></div></div>`+
     (ev.length?`<div class="sub" style="margin-top:4px">${ev.slice(0,4).map(e=>`in ${Math.ceil(e.day-D)} d: ${e.text}`).join(' · ')}</div>`:'')}
 // links home and coverage (space session, QUEUE Q173): each orbiting entry's share of the next day with a path home, its

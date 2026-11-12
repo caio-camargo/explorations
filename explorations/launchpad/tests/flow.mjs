@@ -318,7 +318,7 @@
   const r0 = R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002; let tr = null;
   for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
     if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, L }; }
-  const run = open0 => { Object.assign(P, { sats: [], day: 0, decisions: [], active: [], dispatch: [], offers: [], staged: {}, funds: 500, done: { weather: { flight: 1, day: 0 }, beeper: { flight: 1, day: 0 } } }); news.length = 0;
+  const run = open0 => { Object.assign(P, { sats: [], day: 0, decisions: [], active: [], dispatch: [], offers: [], staged: {}, funds: 500, done: Object.fromEntries(['weather', 'loads', 'beeper', 'wxsat', 'lift1', 'lift2'].map(k => [k, { flight: 1, day: 0 }])) }); news.length = 0;   // the far side's req (Q577)
     const M = D.MISSIONS.find(x => x.to === 'Selene' && D.missionOpen(x) && !x.crew), s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: tr.r, v: tr.v });
     D.satRegister(s, { day0: 0, open0: open0(M) }); const q = P.sats.at(-1), cr = D.cruiseNext(q, 0), note = cr.to ? D.cruisePayNote(q, cr.to) : '', ev = D.upcoming().find(x => x.kind === 'cruise'), f0 = P.funds;
     D.advanceTo(tr.L[0].endT / D.DAY_S + 1); return { M, q, cr, note, ev, paid: P.funds - f0, st: P.staged[M.id] || {} }; };
@@ -471,7 +471,7 @@
 // a ledger (PROG.led), not lumped as "days passing", and still adds up to what the program gained or lost.
 {
   const P = api.PROG; api.HOOK.news = () => {}; const P0 = JSON.stringify(P);   // (put back at the end: a started program turns know-how on for later sections)
-  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 3, funds: 200, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {}, day: 95 });
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 3, funds: 200, bailouts: 0, offers: [], active: [], back: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: { sparrow: { use: 1, reg: {} } }, log: {}, day: 95 });   // (Q580) a Sparrow we know: it lights whatever the career's dice, the failures here are written by hand
   // a loss: a joint breaks at 9 s, then the nose hits the ground
   api.t = 0; let s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let n = 0;
   while (s.alive && api.t < 9 && n++ < 200000) api.advPhys(s);
@@ -527,7 +527,7 @@
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const ct = page.slice(page.indexOf('function contractsHTML'), page.indexOf('function contractsHTML') + 4000);
   const offers = ct.includes('<details class="ms of"><summary><b>${cTitle(c)}</b>') && ct.includes('Why: ${c.why}') && ct.includes('data-acc="${c.id}"') && ct.includes('data-dec="${c.id}"');
-  const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('ep>epNow+1&&Ms.every(') && rp.includes('mission${Ms.length>1?');
+  const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('!fin&&!live(C)&&ci>cNow') && rp.includes('mission${Ms.length>1?');   // (Q576) by chapter now
   const wall = page.slice(page.indexOf('function deskWall'), page.indexOf('function deskWall') + 400), frame = wall.includes('if(ph)h+=deskPhotoCard(ph)') && !wall.includes('no flights yet');
   const lh = H.includes("#deskLH .org .n{font:22px/1");
   const line = page.slice(page.indexOf('const xferDays='), page.indexOf('\n', page.indexOf('const xferDays=')));
@@ -883,7 +883,7 @@
   const padOK = pad.length >= 2 && num(pad, 'This stage', /^(\d+) m\/s \((\d+) vac\)/) && pad.some(r => r[0] === 'Then');
   const hv = num(low, 'This stage', /^(\d+) m\/s \((\d+) vac\)/), lowOK = hv && hv[0] < hv[1] && low.some(r => r[0] === 'Full burn');
   const orb = num(coast, 'To orbit', /^(\d+) m\/s · .* burn · \+(\d+)$/), orbOK = !!orb && orb[0] > 0;
-  const wired = page.includes("title:'<span style=\"text-transform:none\">Δv</span>',rows:dvRows}") && page.includes("CP_CARDS=['ascent','descent','target','dv']");
+  const wired = page.includes("title:'<span style=\"text-transform:none\">Δv</span>',rows:dvRows}") && /const CP_CARDS=\[[^\]]*'dv'/.test(page);
   check('flow-40: a Δv card in flight: this stage at this air\'s exhaust speed with its burn time, the stages after it, and the burn to orbit against what\'s left; kept in the dark cockpit',
     padOK && lowOK && orbOK && wired, `pad: ${txt(pad)} · 1 km: ${low ? txt(low) : '—'} · coasting: ${coast ? txt(coast) : '—'} · wired ${wired}`);
 }
@@ -1246,7 +1246,324 @@
       && H.includes("TIP_NO=\"It lies on its side: it can't lift off or drop a stage"));
 }
 
-// flow-51. The era maps show each body's night side (flow, era maps, QUEUE Q546, PLAYTEST #152). eraNight (app/program-ui.js)
+// flow-51. A wing under a toppled lander stays folded; the map's body names sit on their bodies (flow, QUEUE Q540, Q541;
+// from Q527). On its side, P unfolded a wing lying under the hull (drawn into the ground). Now a deployable pressed under it
+// (p.buried) stays folded and says why ("the solar wing is pinned under it"); the others unfold, by P, a group or a stage.
+// (Staging and thrust on its side are left to the simulation: Q545.) The map put a body's dot and name at bodyPos + 1.3 R in
+// world y: zoomed in, off the disc; now the dot is the centre and the name sits over the limb (bodyRadPx, app/render.js).
+// The same drop as flow-50, its own sim.
+{
+  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,fromPF,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,DT,footPoints,tipSpeed,recNew,len,norm,add,mul,cross,wingOp,legOp,agFire,stage,pinned,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const M = []; Object.assign(D.HOOK, { msg: m => M.push(m), boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
+  const B = D.SELENE, DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)];
+  let u = null; for (let la = -30; la <= 30 && !u; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const w = U(la, lo); if (D.surfaceHit(D.surfaceAt(B, w), w, B) > 0) continue; if (D.terrainSlope(B, w) < 0.02) { u = w; break; } }
+  const des = D.toV2(['sci', 'core', 't1', 'wren']), fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+  fd(des.root, 't1').c.push({ k: 'whip', at: { y: 0.5, a: 0, n: 1 }, c: [] }, { k: 'whip', at: { y: 0.5, a: Math.PI, n: 1 }, c: [] }, { k: 'wpanel', at: { y: 0.3, a: 0, n: 1 }, c: [] }, { k: 'wpanel', at: { y: 0.3, a: Math.PI, n: 1 }, c: [] });
+  D.t = 0; const s = D.newShip(des); D.S = s; Object.assign(s, { landed: false, body: B, sas: false, throttle: 0 }); s.rec = D.recNew(); s.rec.launched = true;
+  const vt = D.tipSpeed(s, B.mu / B.R ** 2), fy = Math.min(...D.footPoints(s).map(f => f.pt[1])) - s.cm[1];
+  s.r = D.fromPF(B, D.mul(u, B.R + D.groundAlt(B, u) - fy + 0.2), 0); const up = D.norm(s.r), e = D.norm(D.cross([0, 1, 0], up));
+  s.v = D.add(D.surfVel(B, s.r), D.add(D.mul(up, -1), D.mul(e, 1.5 * vt))); s.q = D.qFromBasis(e, up, D.cross(e, up)); s.w = [0, 0, 0];
+  for (let i = 0; i < 40 / D.DT && s.alive && !s.landed; i++) D.physStep(s, D.DT);
+  const W = s.parts.filter(p => p.on && p.d.key === 'wpanel'), Wb = W.find(p => p.buried), Wu = W.find(p => !p.buried);
+  // P: the free wing unfolds, the buried one stays folded and the message says why; folded again; then both pinned: nothing moves
+  M.length = 0; const n1 = D.wingOp(s, 'out'), m1 = M.join(' | '), ok1 = n1 === 1 && !!Wu && !!Wu.dep && !!Wb && !Wb.dep && /the solar wing is pinned under it/.test(m1);
+  let n2 = -1, m2 = '', n3 = -1, ok2 = false, ok3 = false;
+  if (Wu && Wb) { D.wingOp(s, 'in'); Wu.buried = true; M.length = 0; n2 = D.wingOp(s, 'out'); m2 = M.join(' | '); ok2 = n2 === 0 && W.every(p => !p.dep) && /^2 solar wings are pinned under it: they stay folded$/.test(m2);
+    M.length = 0; n3 = D.agFire(s, 'sol'); ok3 = n3 === 0 && W.every(p => !p.dep) && /pinned under it/.test(M.join());   // the stock group (P's) and the Unfold button take the same path
+    Wu.buried = false; }
+  check('flow-51: on its side, a wing pressed under the hull stays folded and says why ("the solar wing is pinned under it"); the free one unfolds; with both under it, P and the Solar panels group move nothing',
+    s.alive && !!s.tipped && ok1 && ok2 && ok3, `${s.alive ? `P: ${n1} out, "${m1}"; both under: "${m2}"; group: ${n3}` : s.lossWhy}`);
+  // a stage of action groups only (Solar panels): the free wing unfolds, the buried one doesn't; an upright craft pins nothing
+  const i0 = s.evIdx, harm = { decouple: [], ignite: [], ag: ['sol'] };
+  s.events.splice(i0, 0, harm); M.length = 0; D.stage(s); const okH = s.evIdx === i0 + 1 && !!Wu && !!Wu.dep && !!Wb && !Wb.dep && /pinned under it/.test(M.join());
+  s.events.splice(i0, 1); s.evIdx = i0; D.wingOp(s, 'in');
+  const s2 = D.newShip(des); s2.landed = true; s2.parts.forEach(p => { p.buried = true; }); const okU = !s2.parts.some(p => D.pinned(s2, p));
+  check('flow-51: a staged action group on its side unfolds the free wing and leaves the pinned one; a buried flag without s.tipped pins nothing',
+    okH && okU, `stage ${okH} · upright ${okU}`);
+  const H = html.replace(/\r\n/g, '\n');
+  check('flow-51: wired: the Unfold button says when all it could unfold is pinned; legs and action groups leave pinned parts folded',
+    H.includes("pin=!out&&f.length&&f.every(p=>pinned(S,p)),t=pin?`${nm} pinned under it`") && H.includes("if(dn&&pinned(s,p))pin.push(p);else{p.dep=dn;p.depT=simT;n++}")
+      && H.includes("if(out&&(unfolds(p.d)||p.d.kind==='leg')&&pinned(s,p)){pin.push(p);continue}"));
+  // Q541, computed: a body seen close and off-axis from a tilted camera, projected as render() does. The dot is the projected
+  // centre; the name sits 8 px over the limb (bodyRadPx: the disc's true radius on screen); the old anchor, 1.3 R up in world y,
+  // was well off the disc
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const bodyRadPx = new Function(cut(H, 'function bodyRadPx(', '\n') + ';return bodyRadPx')();
+  const V = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], nz = a => { const l = Math.hypot(...a); return a.map(x => x / l); };
+  const Wd = 1280, Hd = 800, tanY = Math.tan(0.45), tanX = tanY * Wd / Hd, Rb = 1.0e6, cen = [3e8, 0, 1e8], camW = [cen[0] - 2.2e6, cen[1] + 2.6e6, cen[2] + 1.4e6];
+  const Fw = nz(V([cen[0] + 4e5, cen[1], cen[2] - 3e5], camW)), Rr = nz(cr(Fw, [0, 1, 0])), Uu = cr(Rr, Fw);
+  const project = p => { const q = V(p, camW), z = dt(q, Fw); return z <= 0 ? null : [Wd / 2 * (1 + dt(q, Rr) / (z * tanX)), Hd / 2 * (1 - dt(q, Uu) / (z * tanY))]; };
+  const c = project(cen), d = Math.hypot(...V(cen, camW)), rp = bodyRadPx(Rb, d, Hd, tanY);
+  let lim = 0; const vd = nz(V(cen, camW)), a1 = nz(cr(vd, [0, 1, 0])), a2 = cr(a1, vd), ca = Rb / d, sa = Math.sqrt(1 - ca * ca);   // the limb: the tangent circle seen from the camera
+  for (let i = 0; i < 360; i++) { const t = i * DG, P = [0, 1, 2].map(j => cen[j] - vd[j] * Rb * ca + (a1[j] * Math.cos(t) + a2[j] * Math.sin(t)) * Rb * sa), q = project(P); lim += Math.hypot(q[0] - c[0], q[1] - c[1]) / 360; }
+  const old = project([cen[0], cen[1] + 1.3 * Rb, cen[2]]), oldOff = Math.hypot(old[0] - c[0], old[1] - c[1]) / lim, txtY = c[1] - (rp + 8);
+  check('flow-51: the map\'s body label: its dot is the body\'s projected centre and its name 8 px over the limb (bodyRadPx within 3 % of the drawn disc, close and off-axis); the old anchor, 1.3 R up in world y, sat off the disc',
+    H.includes("...BODIES.map(b=>({p:bodyPos(b,simT),mark:'body',R:b.R,") && H.includes("L.mark==='body'?bodyRadPx(L.R,len(sub(L.p,camW)),H,tanY)+8*k") && H.includes('const rp=bodyRadPx(b.R,d,H,tanY);')
+      && Math.abs(rp / lim - 1) < 0.03 && txtY < c[1] - lim && txtY > c[1] - lim - 20 && oldOff > 1.1,
+    `disc ${lim.toFixed(0)} px, bodyRadPx ${rp.toFixed(0)} px; name ${(c[1] - txtY).toFixed(0)} px over the centre; the old anchor ${oldOff.toFixed(2)} radii from it`);
+}
+
+// flow-52. Two planets close on the map's ring share one label (flow, QUEUE Q192; v1.99's open end). The overlap rule
+// (PLAYTEST #31) dropped one planet's label in a conjunction and left a nameless dot; mergePlanetTexts (app/render.js)
+// now joins them, `Hesper, Astraea`, and three in a row join the same way. Planets apart keep their own labels, and a
+// label that isn't a planet's is never merged. Computed on mergePlanetTexts with 7 px per character, 13 px high.
+{
+  const H = html.replace(/\r\n/g, '\n'), i = H.indexOf('function mergePlanetTexts('), fsrc = i < 0 ? '' : H.slice(i, H.indexOf('\nfunction ', i + 10));
+  const merge = fsrc ? new Function(fsrc + 'return mergePlanetTexts;')() : null, w = t => t.length * 7, P = (n, x, y) => ({ t: `${n} · ~150 days there`, x, y, o: 5 });
+  const run = T => { merge(T, w, 13); return T.map(t => t.t); };
+  const two = merge && run([P('Hesper', 300, 200), P('Astraea', 330, 205), P('Enyo', 700, 200)]);
+  const three = merge && run([P('Hesper', 300, 200), P('Astraea', 360, 200), P('Erebus', 420, 200)]);
+  const other = merge && run([{ t: 'Selene', x: 300, y: 200, o: 1 }, P('Hesper', 305, 200)]);
+  check('flow-52: two planets close on the map share one label (`Hesper, Astraea`), three in a row too; planets apart keep theirs, and a body\'s label is never merged into a planet\'s',
+    !!merge && /^\s*mergePlanetTexts\(texts,/m.test(H) && two.join('|') === 'Hesper, Astraea|Enyo · ~150 days there' && three.join('|') === 'Hesper, Astraea, Erebus'
+      && other.join('|') === 'Selene|Hesper · ~150 days there',
+    merge ? `${two.join(' / ')}; ${three.join(' / ')}; ${other.join(' / ')}` : 'no mergePlanetTexts');
+}
+
+// flow-53. The pad calendar's window bar (flow, QUEUE Q211; from Q185 v1.104): a dispatch built and held on the pad for
+// its window has its own bar, hatched amber and dashed (.cbar.window, both palettes), saying "held for its window" (its
+// title keeps the whole line); and a bar's padding and border no longer add to its width (box-sizing), so a booking
+// ends on its day and doesn't run under the next bar. Computed on netCalHTML (app/network.js) with a stub PROG.
+{
+  const H = html.replace(/\r\n/g, '\n'), i = H.indexOf('function netCalHTML('), fsrc = i < 0 ? '' : H.slice(i, H.indexOf('\n//', i));
+  const cal = fsrc ? new Function('PROG', 'NET_DAYS', 'upcoming', fsrc + 'return netCalHTML;')({ day: 0 }, 180, () => []) : null;
+  const out = cal ? cal({ pads: [{ pad: 0, bars: [{ from: 0, to: 25, kind: 'dispatch', title: 'Comsat 2 · Satellite' }, { from: 25, to: 70, kind: 'window', title: 'Comsat 2 · Satellite: waiting for its window' }] }] }) : '';
+  const css = /\.cbar\{[^}]*box-sizing:border-box/.test(H) && /\n\.cbar\.window\{[^}]*dashed/.test(H) && /#mcCal \.cbar\.window\{/.test(H);
+  check('flow-53: the pad calendar draws a dispatch held for its window as its own bar ("held for its window", hatched amber, dashed, in both palettes), and bars end on their day (border-box)',
+    css && /class="cbar window"[^>]*title="Comsat 2 · Satellite: waiting for its window">held for its window</.test(out) && /class="cbar dispatch"[^>]*>Comsat 2 · Satellite</.test(out),
+    `css ${css}; ${(out.match(/class="cbar [^"]*"[^>]*>[^<]*/g) || []).map(s => s.replace(/style="[^"]*" /, '')).join(' | ') || 'no netCalHTML'}`);
+}
+
+// flow-54. The Mission card in flight (flow, QUEUE Q548; notes/flow.md § "Plan: the aim and the mission card", slice 2;
+// Caio 2026-11-11: "a hard time understanding when I have finished a mission"). cardJobs lists what this flight could do:
+// the accepted contracts judged on a flight whose needs the vessel carries, and the missions open at launch it could
+// meet (NEXT's order; all of them since Q600), each with Q547's conds; what it has done, folded. jobsLeft says where it stands.
+// A scripted sounding flight with a 40–55 km apex contract: open with "now 31 km" while climbing → ✓ at 47 km falling
+// (one message) → "bring it home" with the recovery ◐ in the landing verdict's words → landed with the package: both the
+// contract and the weather mission paid, the card reads done and End flight shows. Past 55 km the apex is ✗ (one
+// message), and stays so. A hopper without the instrument package gets no apex job; a stage dropped later doesn't take it
+// off. In the dark cockpit's cards since Q600 (flow-58); messages say each change once, none at the first look.
+{
+  const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,TELLUS,recNew,newShip,PRESETS,cardJobs,jobsLeft,jobConds,MC_HOME,missionEval,elements,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, T = D.TELLUS, done = []; D.HOOK.news = () => {}; D.HOOK.save = () => {}; D.HOOK.done = n => done.push(n);
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, done: {}, own: null, decisions: [], site: null }); D.chooseStart('agency');
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const code = page.slice(page.indexOf('const MC_MARK='), page.indexOf('const HUD_CARDS=['));
+  const msgs = [], V = { v: { recovered: true, refund: 1 }, t: 'recovered by our ships, ~6 h' };
+  const A = new Function('env', 'let S=null;const mode="flight",{cardJobs,jobsLeft,MC_HOME,elements,HOOK}=env,toolOK=()=>true,impVerdict=()=>env.V,verdictInk=()=>"#7dffa8",tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M";'
+    + code + 'return {rows:missionRows,watch:missionWatch,left:mcLeft,set S(v){S=v}};')({ ...D, V, HOOK: { msg: m => msgs.push(m) } });
+  const fly = (preset, contract) => {
+    P.done = {}; P.active = contract ? [{ id: 7, type: 'apex', src: 'sci', client: 0, p: { lo: 40, hi: 55, pay: 14, dur: 90 }, deadline: 999 }] : [];
+    const s = D.newShip(D.PRESETS[preset]); s.rec = D.recNew(); Object.assign(s.rec, { launched: true, open0: D.MISSIONS.filter(m => !(m.req || []).length).map(m => m.id) });
+    s.alive = true; s.landed = false; A.S = s; return s; };
+  const at = (s, h, vy, apex) => { s.r = [0, T.R + h, 0]; s.v = [300, vy, 0]; Object.assign(s.rec, { apexSci: apex ?? Math.max(s.rec.apexSci, h), apex: Math.max(s.rec.apex, apex ?? h) }); };
+  const row = (rows, t) => (rows.find(r => r[0].startsWith('<span') && r[1].includes(t)) || [])[0] || '', job = (s, k) => D.cardJobs(s).find(j => j.key === k);
+  // the sounding flight
+  const s = fly('Sounding', true); const J0 = D.cardJobs(s);
+  at(s, 31e3, 900); A.watch(); const r1 = A.rows(), c1 = job(s, 'contract:7');
+  const open = c1 && c1.conds[0].state === 'open' && c1.conds[0].now === 'now 31 km' && row(r1, 'apex 40–55 km').includes('○') && r1.some(r => r[1].includes('now 31 km'));
+  at(s, 52e3, -50, 52e3); s.rec.apexSci = 52e3; A.watch(); const m1 = msgs.splice(0), L2 = D.jobsLeft(D.cardJobs(s)), r2 = A.rows();
+  const met = m1.length === 1 && m1[0] === 'Apex 40–55 km ✓' && L2 && L2.k === 'home' && /^bring it home: .*recovered$/.test(L2.t)
+    && row(r2, 'apex 40–55 km').includes('✓') && row(r2, 'recovered').includes('◐') && r2.some(r => r[1].includes('recovered by our ships, ~6 h')) && r2[0][0].includes('Now');
+  at(s, 20e3, -200); A.watch(); const quiet = msgs.splice(0).length === 0;
+  s.landed = true; s.rec.landed = true; s.rec.recSci = true; s.v = [0, 0, 0]; D.missionEval(s); A.watch();
+  const J3 = D.cardJobs(s), L3 = A.left(), r3 = A.rows(), m3 = msgs.splice(0);
+  const paid = done.map(n => n.k + ':' + n.name).join(', ');
+  const fin = J3.filter(j => j.done).length === 2 && L3 && L3.k === 'done' && L3.t === 'done: end the flight when you like' && r3[0][0].includes('Now')
+    && r3.some(r => r[1].includes('· done, +')) && m3.length === 0 && done.length === 2 && done.some(n => n.k === 'mission' && n.id === 'weather' && n.flight) && done.some(n => n.k === 'contract' && n.flight);
+  const listed = J0.map(j => j.key).join(','), first = J0[0] && J0[0].key === 'contract:7' && J0.some(j => j.key === 'mission:weather') && !page.includes('MC_MISSIONS');
+  // past the band: lost, said once, stays lost; the flight then has nothing to bring home for it
+  const s2 = fly('Sounding', true); at(s2, 30e3, 900); A.watch(); at(s2, 61e3, 400, 61e3); A.watch(); const m4 = msgs.splice(0); at(s2, 40e3, -300); A.watch(); const m5 = msgs.splice(0);
+  const c4 = job(s2, 'contract:7'), lost = c4 && c4.conds[0].state === 'lost' && m4.length === 1 && m4[0].endsWith(': apex 40–55 km ✗') && m5.length === 0 && job(s2, 'contract:7').conds[0].state === 'lost';
+  // needs: the Hopper has no instrument package: no apex job; the Sounding's package dropped after the first look stays listed
+  const s3 = fly('Hopper', true), noSci = !job(s3, 'contract:7');
+  const s4 = fly('Sounding', true); D.cardJobs(s4); for (const p of s4.parts) if (p.d.kind === 'sci') p.on = false; const kept = !!job(s4, 'contract:7');
+  const CP = page.slice(page.indexOf('const CP_CARDS='), page.indexOf(';', page.indexOf('const CP_CARDS=')));
+  const wired = page.includes("{id:'mission',title:'Mission',rows:missionRows}") && CP.includes("'mission'") && page.includes('hlGauges();dryHint();missionWatch();')
+    && page.includes("(!S.alive||S.landed&&simT>5||(mcLeft()||{}).k==='done')");
+  check('flow-54: the Mission card: a sounding flight\'s apex contract open → ✓ (said once) → bring it home with the landing verdict → done (contract and weather paid, End flight); past 55 km ✗ once and stays; needs from the pad; in the dark cockpit (Q600)',
+    open && met && quiet && fin && first && lost && noSci && kept && wired,
+    `jobs ${listed} · open ${open} · met ${met} ("${m1.join(' | ')}", ${L2 && L2.t}) · quiet ${quiet} · done ${fin} (${L3 && L3.t}; paid ${paid}) · lost ${lost} ("${m4.join(' | ')}") · hopper ${noSci} · dropped ${kept} · wired ${wired}`);
+}
+
+// flow-55. The completion notice (flow, QUEUE Q569; since Q600 and D42, "quiet in flight, loud after it"). In flight a
+// mission or contract done is one line in #msg ("✓ Mission complete: Beeper · +30.0M", "First in the world" for a first)
+// and a chime (sndDone), and no centred box: the Mission card turns its row green (flow-58). At the desk (world missions
+// and contracts judged at home) the box (#done) comes as before: name, win line, pay and what it opened (Q570); a hint
+// fired after it does not remove it; a second queues ("1 more"); Enter or a click dismisses one at a time. A flight's
+// completion that reaches the queue after its flight has ended is dropped (the debrief says it).
+{
+  const D = new Function(src + 'return {PROG,MISSIONS,opensLine,opensNames};')();
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const code = page.slice(page.indexOf('// ---- the completion notice'), page.indexOf('// ---- end of the completion notice'));
+  const hm = page.slice(page.indexOf('HOOK.msg=t=>{'), page.indexOf('\n', page.indexOf('HOOK.msg=t=>{')));
+  const mk = () => { const e = { style: {}, innerHTML: '', textContent: '', cls: new Set(['hidden']) };
+    e.classList = { add: c => e.cls.add(c), remove: c => e.cls.delete(c), contains: c => e.cls.has(c), toggle: (c, on) => on ? e.cls.add(c) : e.cls.delete(c) }; return e; };
+  const E = { msg: mk(), done: mk() }, env = { S: { alive: true, throttle: 0 }, chimes: 0, left: { k: 'done', t: 'done: end the flight when you like' } };
+  const N = new Function('env', 'D', 'let mode="flight",msgTimer=0,evt=false,simT=0;const HOOK={},$=id=>env.E[id],document={getElementById:id=>env.E[id]},msgLayout=()=>{},'
+    + 'activeEngines=()=>[],mcLeft=()=>env.left,opensLine=D.opensLine,opensNames=D.opensNames,tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M",sndDone=()=>env.chimes++;let S=env.S;'
+    + hm + '\n' + code + 'return {HOOK,doneTick,doneDismiss,DONE_Q,get msgTimer(){return msgTimer},set mode(m){mode=m}};')(Object.assign(env, { E }), D);
+  D.PROG.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 }, beeper: { flight: 2, day: 9 } };
+  const shown = () => !E.done.cls.has('hidden');
+  // in flight: a line and a chime, no box, nothing queued; a first says so; a contract too
+  env.S.throttle = 1; N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: true });
+  const fl1 = !shown() && N.DONE_Q.length === 0 && E.msg.textContent === '✓ Mission complete: Beeper · +30.0M' && env.chimes === 1 && N.msgTimer === 6;
+  N.HOOK.done({ k: 'mission', id: 'lift1', name: 'Heavy lift I', win: '', pay: 40, first: true, flight: true });
+  N.HOOK.done({ k: 'contract', id: 3, name: 'Satellite to 300 km', win: 'for Avalon', pay: 55, flight: true });
+  const fl2 = !shown() && N.DONE_Q.length === 0 && E.msg.textContent === '✓ Contract done: Satellite to 300 km · +55.0M' && env.chimes === 3;
+  const firstSaid = (() => { N.HOOK.done({ k: 'mission', id: 'x', name: 'Orbit', pay: 1, first: true, flight: true }); return E.msg.textContent.startsWith('✓ First in the world: Orbit'); })();
+  env.S.throttle = 0;
+  // a flight's completion after the flight: dropped
+  N.mode = 'editor'; N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', pay: 30, flight: true }); const dropped = !shown() && N.DONE_Q.length === 0;
+  // at the desk: the box
+  N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: false });
+  const t1 = E.done.innerHTML, one = shown() && t1.includes('MISSION COMPLETE') && t1.includes('Beeper') && t1.includes('A signal from orbit') && t1.includes('+30.0M')
+    && t1.includes('Opens 2 missions · 6 kinds of contract · 21 parts') && !t1.includes('Done: end') && !t1.includes('more after this');
+  N.HOOK.msg('Pitch over now: follow the ◇'); const hint = E.msg.textContent.startsWith('Pitch over') && shown() && E.done.innerHTML === t1;
+  N.HOOK.done({ k: 'contract', id: 3, name: 'Survey data', win: 'for Avalon', pay: 55, flight: false }); const queued = shown() && E.done.innerHTML.includes('1 more after this') && E.done.innerHTML.includes('Beeper');
+  N.doneDismiss(); const next = shown() && E.done.innerHTML.includes('CONTRACT DONE') && E.done.innerHTML.includes('Survey data') && !E.done.innerHTML.includes('more after');
+  N.doneDismiss(); const empty = !shown() && N.DONE_Q.length === 0;
+  const sim = H.slice(0, H.indexOf('// ==== SIM END'));
+  const wired = page.includes('<div id="done" class="hidden"') || H.includes('<div id="done" class="hidden"');
+  const lanes = wired && page.includes('doneTick(dtR);') && sim.includes("HOOK.done({k:'mission',id:M.id,name:M.name") && !sim.includes('HOOK.msg(`Mission complete')
+    && !sim.includes('HOOK.msg(`Contract complete') && sim.includes("HOOK.done({k:'contract',id:c.id,name:cTitle(c)") && sim.includes('done(){} };') && page.includes("addEventListener('keydown',e=>{if(e.key!=='Enter'")
+    && !page.includes('doneHeld') && page.includes('function sndDone(){');
+  check('flow-55: a completion in flight is a line and a chime, no box (D42, Q600); a flight\'s that comes after it is dropped; at the desk the box: name, win, pay, what it opened; a hint leaves it; queued, dismissed one by one',
+    fl1 && fl2 && firstSaid && dropped && one && hint && queued && next && empty && lanes,
+    `in flight ${fl1}/${fl2} ("${E.msg.textContent}", ${env.chimes} chimes) · first ${firstSaid} · dropped ${dropped} · desk ${one} · hint kept ${hint} · queued ${queued} · next ${next} · empty ${empty} · wired ${lanes}`);
+}
+
+// flow-56. The unlock overlay (flow, QUEUE Q572; PROGRESSION § 3; D42: "i should see each one"): what a flight's missions
+// did and opened, one card each: each mission done (with its pay), then every part by name (a family's in a row, engines
+// first, each card naming its family and its place in it), a room, the single parts, the rover parts, each mission
+// opened, and the next chapter when a capstone closed one. The beeper: done, the satellite bench's 20 parts, mission
+// control, the missions it opened; the structural test: the orbital kit, Kestrel first; Heavy lift I: the Condor. The
+// Debrief keeps them (D.cards) and shows them once over the report; missions done between flights wait in PROG.cardQ for
+// the desk; leaving the room closes them.
+{
+  const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,unlockCards,PARTS};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  P.done = { weather: { day: 0 }, loads: { day: 1 } }; const kit = A.unlockCards(['loads'], { loads: 20 });
+  P.done.beeper = { day: 2 }; const bee = A.unlockCards(['beeper']);
+  P.done.lift1 = { day: 3 }; const con = A.unlockCards(['lift1']);
+  const ks = c => c.map(x => `${x.k}:${x.id}`).join(' '), parts = c => c.filter(x => x.k === 'part');
+  const kp = parts(kit), bp = parts(bee);
+  const kitOK = kit[0].k === 'done' && kit[0].pay === 20 && kp.length === 5 && kp[0].id === 'kestrel' && kp.every((x, i) => x.fam && x.fam.id === 'kit' && x.fam.i === i && x.fam.n === 5)
+    && kit.some(c => c.k === 'mission' && c.id === 'beeper') && kit[kit.length - 1].k === 'chapter' && kit[kit.length - 1].id === 'c2';
+  const ri = bee.findIndex(c => c.k === 'room'), mi = bee.findIndex(c => c.k === 'mission');
+  const beeOK = bee[0].k === 'done' && bp.length === 20 && new Set(bp.map(x => x.id)).size === 20 && bp.every(x => x.fam && x.fam.id === 'bench' && x.name && x.why)
+    && ri > bee.indexOf(bp[19]) && bee[ri].id === 'mc' && mi > ri && bee.filter(c => c.k === 'mission').some(c => c.id === 'lift1') && bee.every(c => c.name);
+  const conOK = parts(con).length === 1 && parts(con)[0].id === 'condor' && !parts(con)[0].fam && con[0].k === 'done';
+  const H = html.replace(/\r\n/g, '\n'), sim = H.slice(0, H.indexOf('// ==== SIM END'));
+  const wired = /D\.cards=unlockCards\(ids,/.test(sim) && /^\/\/ app\/unlock\.js — the unlock overlay/m.test(H) && /unlockDebrief\(D\)/.test(H) && /unlockDesk\(\)/.test(H)
+    && /function pmStart\(cv,keys\)/.test(H) && /partsMesh\(ps\)/.test(H) && /deskLight\(m,\{lamp:/.test(H) && /UNL\.on\)unlockClose\(\)/.test(H) && /PROG\.cardQ=\[\.\.\.\(PROG\.cardQ\|\|\[\]\),M\.id\]/.test(sim);
+  check('flow-56: one unlock card each: the mission done with its pay, then each part by name (the orbital kit: five, Kestrel first, each naming its family; the beeper: twenty, then mission control, then the missions it opened); Heavy lift I the Condor; the next chapter last; the Debrief keeps and shows them once, the desk shows those done between flights, and the part turns as a model in the design table\'s light',
+    kitOK && beeOK && conOK && wired, `loads: ${ks(kit)} · beeper: ${bee.length} cards, ${ks(bee.filter(c => c.k !== 'part'))} · lift1: ${ks(con)} · wired ${wired}`);
+}
+
+// flow-57. Chapters as events (flow, QUEUE Q576; PROGRESSION § 3): a flight that flies a capstone is debriefed under the
+// chapter's poster (`capstoneOf`); the Missions tab is headed by chapter (its question, its finish and grant), and the
+// tab sorter still files it under Missions; the desk wall holds the trophy case (a frame per chapter closed).
+{
+  const A = new Function(src + 'return {capstoneOf,CHAPTERS};')();
+  const c1 = A.capstoneOf(['weather', 'loads']), none = A.capstoneOf(['weather', 'air']);
+  const H = html.replace(/\r\n/g, '\n');
+  const tab = /\/\^\(Epoch\|✔ Chapter\|Chapter\)\/\.test\(h\)\?'missions'/.test(H) && /Chapter \$\{C\.n\} · \$\{C\.name\}/.test(H) && /Finish: \$\{MN\(C\.capstone\)\}/.test(H);
+  const poster = /D\.chapter=capstoneOf\(ids\)/.test(H) && /Chapter \$\{ch\.n\} complete/.test(H) && /'poster chap'/.test(H);
+  const wall = /h\+=trophyCase\(\)/.test(H) && /function trophyKeep\(D\)/.test(H) && /TROPHY CASE/.test(H);
+  check('flow-57: a capstone closes its chapter (the structural test, chapter 1; weather and the air close nothing); the Missions tab by chapter with its finish; the Debrief\'s poster for a chapter; the trophy case on the desk wall',
+    c1 && c1.id === 'c1' && c1.capstone === 'Structural test flight' && none === null && tab && poster && wall, `capstone ${c1 && c1.name} · none ${none} · tab ${tab} · poster ${poster} · wall ${wall}`);
+}
+
+// flow-58. The Mission card stays up in flight (flow, QUEUE Q600; D42; PLAYTEST #162, #164). The card is one of the dark
+// cockpit's (CP_CARDS): during a burn hudCardsOn (app/hud.js, the cards renderCards draws) keeps it and the Δv card and
+// folds the rest; quiet, the rest come back. In a critical phase its rows are short: one per job, the job's first open
+// condition with the reading now (pinned: full). The jobs keep the order the flight first listed them in (mcOrder), so a
+// job done turns green where it stood: a sounding flight's apex contract and weather mission, done at the landing, read
+// ✓ in green with their pay in the places they had at the pad.
+{
+  const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,TELLUS,recNew,newShip,PRESETS,cardJobs,jobsLeft,jobConds,MC_HOME,missionEval,elements,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, T = D.TELLUS; D.HOOK.news = () => {}; D.HOOK.save = () => {}; D.HOOK.done = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, done: {}, own: null, decisions: [], site: null }); D.chooseStart('agency');
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const code = page.slice(page.indexOf('const MC_MARK='), page.indexOf('const HUD_CARDS=['));
+  const env = { phase: null, V: { v: { recovered: true, refund: 1 }, t: 'recovered by our ships, ~6 h' } };
+  const A = new Function('env', 'let S=null;const mode="flight",{cardJobs,jobsLeft,MC_HOME,elements,HOOK}=env,toolOK=()=>true,impVerdict=()=>env.V,verdictInk=()=>"#7dffa8",tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M",cpPhase=()=>env.env.phase;'
+    + code + 'return {rows:missionRows,mcOrder,set S(v){S=v}};')({ ...D, env, V: env.V, HOOK: { msg: () => {} } });
+  P.done = {}; P.active = [{ id: 7, type: 'apex', src: 'sci', client: 0, p: { lo: 40, hi: 55, pay: 14, dur: 90 }, deadline: 999 }];
+  const s = D.newShip(D.PRESETS.Sounding); s.rec = D.recNew(); Object.assign(s.rec, { launched: true, open0: D.MISSIONS.filter(m => !(m.req || []).length).map(m => m.id) });
+  s.alive = true; s.landed = false; A.S = s;
+  const at = (h, vy, apex) => { s.r = [0, T.R + h, 0]; s.v = [300, vy, 0]; Object.assign(s.rec, { apexSci: apex ?? Math.max(s.rec.apexSci, h), apex: Math.max(s.rec.apex, apex ?? h) }); };
+  const plain = r => r[1].replace(/<[^>]+>/g, '');
+  at(31e3, 900); const J0 = D.cardJobs(s);
+  env.phase = null; const full = A.rows(); env.phase = 'ascent'; const short = A.rows();
+  const jobRows = short.filter(r => !r[0].includes('Now'));
+  const shortOK = jobRows.length === J0.length && full.length > short.length && J0.every((j, i) => plain(jobRows[i]).startsWith(j.title))
+    && plain(jobRows[0]).includes('apex 40–55 km, now 31 km') && jobRows[0][0].includes('○');
+  // done at the landing: green, with pay, in their places
+  at(52e3, -50, 52e3); s.landed = true; s.rec.landed = true; s.rec.recSci = true; s.v = [0, 0, 0]; D.missionEval(s); env.phase = 'landing';
+  const after = A.rows().filter(r => !r[0].includes('Now')), keys0 = J0.map(j => j.key);
+  const done = after.filter(r => r[0].includes('✓'));
+  const kept = after.length === J0.length && done.length === 2 && plain(after[keys0.indexOf('contract:7')]).includes('· done, +')
+    && plain(after[keys0.indexOf('mission:weather')]).includes('· done, +') && done.every(r => r[1].startsWith('<span class="ok">'));
+  // mcOrder alone: a later job done (listed first by cardJobs) keeps its place
+  const R0 = {}, j = (k, d) => ({ key: k, done: !!d }), o1 = A.mcOrder(R0, [j('a'), j('b'), j('c')]).map(x => x.key).join(''), o2 = A.mcOrder(R0, [j('c', 1), j('a'), j('b'), j('d')]).map(x => x.key).join('');
+  const order = o1 === 'abc' && o2 === 'abcd';
+  // the cards on screen in a burn: hudCardsOn with every row function stubbed
+  const cards = page.slice(page.indexOf('const HUD_CARDS=['), page.indexOf('function renderCards('));
+  const CPc = page.slice(page.indexOf('const CP_CARDS='), page.indexOf(';', page.indexOf('const CP_CARDS=')) + 1);
+  const none = () => [], some = () => [['a', 'b']];
+  const K = new Function('env', 'const mode="flight",view="flight",S={alive:true,landed:false,v:[0,0,0],r:[1,0,0]},GAUGES=true,impact=null,localStorage={getItem:()=>null},performance={now:()=>0},'
+    + 'dot=()=>0,toolOK=()=>true,ascentOn=()=>false,cpPhase=()=>env.ph(),missionRows=env.some,dvRows=env.some,fleetRows=env.some,payloadRows=env.some,statRows=env.none,agRows=env.none,rvRows=env.none,'
+    + 'tgtRows=env.none,dockRows=env.none,tipRows=env.none,bayRows=env.none,armRows=env.none,spinRows=env.none,wheelRows=env.none,rcsRows=env.none,aoaRow=()=>[],aeroRow=()=>[],heatRow=()=>[],structRow=()=>[],impactRow=()=>[],landRow=env.none;'
+    + CPc + cards + 'return {on:()=>hudCardsOn().map(x=>x.c.id).join(",")};')({ ph: () => env.phase, some, none });
+  env.phase = 'burn'; const burn = K.on(); env.phase = null; const quiet = K.on();
+  const inBurn = burn === 'mission,dv' && quiet === 'mission,dv,payload,fleet';
+  check('flow-58: the Mission card stays up in flight: kept in a burn (with Δv; the rest fold), short in a critical phase (one line per job, its open condition and reading); a job done turns green in its place with its pay (Q600, D42)',
+    shortOK && kept && order && inBurn,
+    `short ${shortOK} (${short.length} rows vs ${full.length} full: ${jobRows.map(plain).join(' | ')}) · done in place ${kept} (${after.map(plain).join(' | ')}) · order ${order} (${o1}, ${o2}) · cards in a burn "${burn}", quiet "${quiet}"`);
+}
+
+// flow-59. Poster headlines for big moments (flow, QUEUE Q479; UI.md § 4.1 item 3): a first, a rival's first, a new chapter
+// and a new computing era reach the news with a poster ({kick, hl}); routine news has none. The desk's paper prints a poster
+// from the last POSTER_DAYS as a poster (kicker, one big headline, the story under it); the Debrief's headline and the
+// paper's poster take the era's poster palette (pe1 human computers, pe2 mainframes, pe3 onboard computers and after).
+{
+  const A = new Function(src + 'return {PROG,HOOK,MISSIONS,programNew,chooseStart,missionComplete,raceTick,get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v},compTick,POWERS,get home(){return HOME}};')(), P = A.PROG;
+  const got = []; A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.done = () => {}; A.HOOK.news = (t, c, big) => got.push({ t, big });
+  A.programNew(); A.chooseStart('agency'); got.length = 0;
+  const M = id => A.MISSIONS.find(m => m.id === id);
+  P.done = { weather: { day: 0 } }; A.missionComplete(M('loads'), null); const chap = got.find(x => x.big && /Chapter 1 complete/.test(x.big.kick));
+  const routine = got.filter(x => !x.big).length > 0 && !got.some(x => x.big && /Structural/.test(x.big.hl));
+  got.length = 0; A.missionComplete(M('beeper'), null); const first = got.find(x => x.big && x.big.kick === 'First in the world' && x.big.hl === 'The beeper');
+  got.length = 0; const riv = A.POWERS.find(p => p.i !== A.home); A.RIVALS = { hop: { i: riv.i, day: 0 } }; P.raceLost = {}; P.day = 1; A.raceTick();
+  const rival = got.find(x => x.big && x.big.rival && x.big.kick === `${riv.name} first`);
+  got.length = 0; P.compEra = null; A.compTick(); const era0 = got.length; P.compEra = -1; A.compTick(); const era = got.find(x => x.big && x.big.kick === 'A new era');
+  const H = html.replace(/\r\n/g, '\n');
+  const app = /HOOK\.news=\(t,cls='',big=null\)=>\{NEWS\.unshift\(\{t,cls,day:PROG\.day\|\|0,\.\.\.\(big\?\{big\}:\{\}\)\}\)/.test(H) && /x\.big&&\(PROG\.day\|\|0\)-x\.day<=POSTER_DAYS/.test(H)
+    && /nw\.big\?posterClip\(nw,cls,more\)/.test(H) && /posterEra=\(\)=>'pe'\+Math\.min\(3,1\+/.test(H) && /' '\+posterEra\(\)/.test(H) && /\.poster\.pe3/.test(H);
+  check('flow-59: big moments carry a poster in the news (a new chapter, a first, a rival\'s first, a new era; routine news none); the desk\'s paper prints a recent one as a poster, and posters take the era\'s palette',
+    !!chap && routine && !!first && !!rival && era0 === 0 && !!era && app,
+    `chapter ${chap && chap.big.hl} · first ${first && first.big.hl} · rival ${rival && rival.big.kick}: ${rival && rival.big.hl} · era ${era && era.big.hl} · routine ok ${routine} · app ${app}`);
+}
+
+// flow-60. After the unlock cards (loop slices; Q572's follow-ups, Q370): every part of a family has its own line, so the
+// satellite bench's twenty cards say twenty things (the family's line stays the builder's reason); each card plays a sound
+// (sndUnlock: a part rises, a chapter is a fanfare, a mission done the notice's beeps); a load with a career under way opens
+// on the desk, a new career (and the tester) on the title, which the Esc menu keeps.
+{
+  const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,unlockCards,PART_FAMILY,famParts,PART_WHY,partWhy};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const fams = Object.keys(A.PART_FAMILY), bare = fams.flatMap(f => A.famParts(f).filter(k => !A.PART_WHY[k]));
+  P.done = { weather: {}, loads: {}, beeper: {} }; const bee = A.unlockCards(['beeper']).filter(c => c.k === 'part'), lines = new Set(bee.map(c => c.why));
+  const builder = A.partWhy('core') === A.PART_FAMILY.bench.why;
+  const H = html.replace(/\r\n/g, '\n');
+  const snd = /function sndUnlock\(k\)\{/.test(H) && /sndUnlock\(c\.k\)/.test(H);
+  const load = /addEventListener\('load',\(\)=>\{if\(!needCharter\(\)&&!TEST\.on&&screenNow\(\)==='title'\)go\('program'\)\}\)/.test(H) && /b\('title','Title screen'\)/.test(H);
+  check('flow-60: each family member has its own line (the bench\'s 20 cards say 20 things; the builder keeps the family\'s); a sound per card; a career under way opens on the desk, the title in the Esc menu',
+    !bare.length && bee.length === 20 && lines.size === 20 && builder && snd && load, `no line: ${bare.join(',') || '-'} · bench lines ${lines.size}/${bee.length} · builder ${builder} · sound ${snd} · load ${load}`);
+}
+// flow-62. The era maps show each body's night side (flow, era maps, QUEUE Q546, PLAYTEST #152). eraNight (app/program-ui.js)
 // turns the terminator (the great circle square to SUN) into the night region as the map sees it: its visible arc, closed
 // round the limb the dark way. Computed with a pinhole camera 10 radii out: the night share of the disc follows the phase
 // ((1 − cos α)/2 for the angle α between the sun and the camera), none with the sun behind the camera, all of it with the
@@ -1271,6 +1588,6 @@
   const wired = /const nt=rp>=3\*k\?eraNight\(b,cen,c,rp,camW,project\):null;/.test(ed) && /if\(era===2\)\{o\.fillStyle='rgba\(2,10,3,\.62\)'/.test(ed)
     && /o\.fillStyle='rgba\(57,255,110,\.16\)';\s*for\(let y=Math\.floor\(\(c\[1\]-rp\)\/\(3\*k\)\)\*3\*k;/.test(ed) && /o\.strokeStyle='rgba\(57,255,110,\.85\)'/.test(ed)
     && /o\.strokeStyle='rgba\(29,42,82,\.22\)'/.test(ed) && !/\(xa-c\[0\]\)\*sx/.test(ed);
-  check('flow-51: the era maps show the night side: its share of the disc follows the phase (none with the sun behind the camera, half side-on, all with the sun behind the body); the terminal dims and scanlines it in green with the terminator as a line, the notebook hatches it in pencil',
+  check('flow-62: the era maps show the night side: its share of the disc follows the phase (none with the sun behind the camera, half side-on, all with the sun behind the body); the terminal dims and scanlines it in green with the terminator as a line, the notebook hatches it in pencil',
     !!fn && rows.every(r => r.ok) && wired, rows.map(r => `${r.deg}°: ${(r.share * 100).toFixed(1)} % (want ${(r.want * 100).toFixed(1)}), arc ${r.arc}`).join(' · ') + ` · wired ${wired}`);
 }

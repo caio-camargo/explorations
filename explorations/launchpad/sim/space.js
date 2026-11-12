@@ -340,7 +340,7 @@ function cruiseStep(q,T1){const o=ORB_T0;ORB_T0=0;let guard=0;
     if(L.endKind==='impact'&&L.endT<=T1){PROG.sats=PROG.sats.filter(x=>x!==q);HOOK.news(`${q.name} struck ${B.name}`,'bad');return}
     if(tEnd<T1&&legs[1]){const n=legs[1];q.r=n.r.slice();q.v=n.v.slice();q.epoch=n.t;if(n.b===TELLUS)delete q.bodyName;else q.bodyName=n.b.name;
       HOOK.news(L.endKind==='enc'?`${q.name} has entered ${n.b.name}'s sphere of influence`:`${q.name} has left ${B.name}'s pull: now around ${n.b.name}`,'ok');if(L.endKind==='enc')stagedCruise(q,n.b)}   // arriving pays (Q167)
-    else{if(pertNear(B,el)){let r=q.r,v=q.v,t=q.epoch;const h=Math.min(600,el.e<1?el.period/120:600);while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}q.r=r;q.v=v}
+    else{if(pertNear(B,el))[q.r,q.v]=coastTo(B,q.r,q.v,q.epoch,T1);   // the predictor's own stepper (Q530: a fixed 600 s RK4 drifted ~15,000 km in a day off a low perigee, so a wait cut mid-transfer lost the encounter)
       else[q.r,q.v]=kepler(q.r,q.v,T1-q.epoch,B.mu);q.epoch=T1}
     const B2=orbBody(q),e2=elements(q.r,q.v,B2.mu);
     if(settled(B2,e2)){delete q.cruise;q.skRate=null;HOOK.news(`${q.name} has settled into an orbit around ${B2.name} (${kmS(e2.pe-B2.R)}–${kmS(e2.ap-B2.R)} km)`,'ok');return}}}
@@ -1144,11 +1144,11 @@ function satTick(d,R,dd=d){satPowTick(d);stationTick(d);const sats=satsUp().filt
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
   // Since Q172 the sale is per bit received: the camera fills the recorder, each pass drains it at the link's rate.
-  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
+  {const GS0=stationsAll(),T1=PROG.day*DAY_S,kImg=typeof mktShare==='function'?mktShare(sats.filter(q=>q.ant).length):1;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120*on);
       const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const cap=k*120*on,o=Math.min(q.owe||0,cap),x=Math.min(q.rec,cap-o);q.owe=(q.owe||0)-o;q.rec-=x;got+=x}}
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
-     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1),'sats');if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
+     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1)*kImg/* the market saturates (R18) */,'sats');if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R&&R()<1-Math.exp(-dd/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');

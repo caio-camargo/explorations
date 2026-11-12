@@ -66,7 +66,7 @@ function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   const day0=Math.ceil(PROG.day-1e-9);advanceDays(day0-PROG.day);   // a flight starts on a whole day, from orbit as from the pad
   if(ORB_ABS)ORB_T0=day0*DAY_S;
-  const snap=JSON.stringify(PROG),s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
+  const snap=progJSON(),s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
   const R=s.rec=recNew();REVERT0={R,prog:snap};Object.assign(R,{launched:true,day0,cost:0,ops:OPS_FIX,fromOrbit:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});PROG.funds-=R.ops;
   if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
@@ -78,7 +78,7 @@ function testStart(spec){if(!TEST.on||BLD.isEmpty(stackDef)){HOOK.msg('Tester: p
   if(!chk.ok){HOOK.msg(`Tester: ${chk.why}`);return false}
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   advanceDays(day0-PROG.day);if(ORB_ABS)ORB_T0=day0*DAY_S;
-  const snap=JSON.stringify(PROG),s=newShip(stackDef),R=s.rec=recNew();REVERT0={R,prog:snap};
+  const snap=progJSON(),s=newShip(stackDef),R=s.rec=recNew();REVERT0={R,prog:snap};
   Object.assign(R,{launched:true,day0,cost:0,ops:0,fromOrbit:true,tester:{...spec},crewInit:1,crewed:false,crewOK:true,cg:0,cgMax:0,ccab:290});
   const out=placeCraft(s,{...spec,T:day0*DAY_S});s.name=designLabel(stackDef,s)||'Tester craft';
   if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(stackDef,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;
@@ -278,7 +278,7 @@ function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
   const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
   // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude; both mark the night side (Q546)
   for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
-    const rp=(H/2)*Math.tan(Math.asin(b.R/d))/tanY;if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
+    const rp=bodyRadPx(b.R,d,H,tanY);if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
     o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k*OV_K}   // shadowBlur ignores the transform (Q258)
     o.beginPath();for(let i=0;i<=72;i++){const t=i/72*6.2832,[x,y]=era===1?wob(c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t),i):[c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t)];i?o.lineTo(x,y):o.moveTo(x,y)}o.stroke();
     const th=bodyTheta(b,simT),vis=p=>dot(sub(p,cen),sub(camW,p))>0,P=(lat,lon)=>add(cen,rotY([b.R*Math.cos(lat)*Math.cos(lon),b.R*Math.sin(lat),b.R*Math.cos(lat)*Math.sin(lon)],th));
@@ -413,8 +413,9 @@ function updateHUD(){
   renderCards();gaugeSlot();if(typeof cockpit==='function')cockpit();   // (Q286) news held, master caution
   // the unfolding parts' button (vehicle, Caio 2026-10-13: "a button with P in parentheses"): what P does, shown when the craft has any
   {const u=S.alive&&S.parts.filter(p=>p.on&&unfolds(p.d)),bw=$('bWings');bw.classList.toggle('hidden',!(u&&u.length));
-    if(u&&u.length){const wg=u.some(p=>p.d.wing),an=u.some(p=>!p.d.wing),nm=wg&&an?'Wings and antennas':wg?'Wings':'Antennas',out=wingsOut(S),t=`${out?'Fold':'Unfold'} ${nm.toLowerCase()} (P)`;
-      if(bw.textContent!==t)bw.textContent=t;bw.classList.toggle('on',out)}}
+    if(u&&u.length){const wg=u.some(p=>p.d.wing),an=u.some(p=>!p.d.wing),nm=wg&&an?'Wings and antennas':wg?'Wings':'Antennas',out=wingsOut(S),f=u.filter(p=>!p.dep),
+        pin=!out&&f.length&&f.every(p=>pinned(S,p)),t=pin?`${nm} pinned under it`:`${out?'Fold':'Unfold'} ${nm.toLowerCase()} (P)`;   // (Q540) all it could unfold lies under a toppled hull
+      if(bw.textContent!==t)bw.textContent=t;bw.classList.toggle('on',out);bw.classList.toggle('no',!!pin)}}
   // legs and the cargo bay the same way (vehicle, Q400: PLAYTEST #97, "no visible way to deploy folded parts")
   {const tog=(id,has,on,txt)=>{const e=$(id);e.classList.toggle('hidden',!has);if(has){const t=txt(on);if(e.textContent!==t)e.textContent=t;e.classList.toggle('on',on)}};
     tog('bLegs',S.alive&&S.parts.some(p=>p.on&&p.d.kind==='leg'),S.alive&&legsDown(S),on=>on?'Legs up (Y)':'Legs down (Y)');
@@ -501,5 +502,8 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
     `${term('dv','Δv')} <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`)
     +(planImp.f&&planCache&&planImp.key===planCache.key&&toolOK('impact')?`<br>lands: <span style="color:${verdictInk(planImp.v)}">${tipEsc(planImp.v.text)}</span>`:'');   // (Q488) where the plan comes down (the map works it out)
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
-renderEditor();go('title');   // (Q241 R3) the page opens on the title screen
+renderEditor();go('title');   // (Q241 R3) the page opens on the title screen...
+// (Q370) ...and a career under way goes on to the desk once every script has loaded (the desk reads later files: the file
+// split's rule 1); a new career, and the tester, stay on the title. The Esc menu's Title screen brings it back
+addEventListener('load',()=>{if(!needCharter()&&!TEST.on&&screenNow()==='title')go('program')});
 requestAnimationFrame(frame);

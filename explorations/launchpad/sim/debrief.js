@@ -46,6 +46,29 @@ function debOutcome(s,R){const B=s.body,km=v=>fmtKm(Math.max(0,v));
   if(el.pe>B.R+(B.atm||0))return{k:'orbit',t:B===TELLUS?'In orbit':`In orbit of ${B.name}`,d:`${km(el.pe-B.R)} × ${km(el.ap-B.R)}`};
   const q=R.satId!=null&&(PROG.sats||[]).find(x=>x.id===R.satId);if(q&&q.cruise)return{k:'cruise',t:'In flight',d:'carries on between flights (Program → In flight)'};   // space Q49
   return{k:'flying',t:'Ended in flight',d:'left on a path that comes down: written off'}}
+// ---- the unlock cards (flow, QUEUE Q572; PROGRESSION § 3, Caio: "you end the mission, they appear as an overlay, *Part
+// unlocked!*, with a picture of the part"; D42: "i should see each one, maybe in successive modals/overlays"). What
+// missions `ids` did and opened, one card each, in order: each mission done (its win line; `pay` from the flight's record
+// when given), then every part by name: a family's parts in a row (engines first, then the heaviest; the bigger family
+// first), each card naming its family and its place in it; a room; the single parts (heaviest first); the rover parts;
+// each mission it opened; the next chapter when a capstone closed one. Each {k: done|part|room|rover|mission|chapter, id,
+// name, why, parts:[keys], fam?: {id, name, i, n}, pay?}. A part already flown still gets its card: the card is the news.
+function unlockCards(ids,pay){const O=opensNames(ids),C=[],fams={},single=[],MS=id=>MISSIONS.find(m=>m.id===id);
+  for(const id of ids){const M=MS(id);if(M)C.push({k:'done',id,name:M.name,why:M.win?M.win[0].toUpperCase()+M.win.slice(1)+'.':'',parts:[],pay:pay&&pay[id]!=null?pay[id]:null})}
+  for(const x of O.parts){const f=famOf(x.id);if(f)(fams[f]||(fams[f]=[])).push(x.id);else single.push(x.id)}
+  const mass=k=>{const d=PARTS[k];return(d.kind==='engine'?1e3:0)+(d.wet??d.m??0)};   // engines first: they are what a family is for
+  for(const f of Object.keys(fams).sort((a,b)=>fams[b].length-fams[a].length)){const L=fams[f].sort((a,b)=>mass(b)-mass(a));
+    L.forEach((k,i)=>C.push({k:'part',id:k,name:PARTS[k].name,why:PART_WHY[k]||PART_FAMILY[f].why,parts:[k],fam:{id:f,name:PART_FAMILY[f].name,i,n:L.length}}))}
+  for(const id of ids)if(ROOM_GRANT[id])C.push({k:'room',id:ROOM_GRANT[id].id,name:`${ROOM_GRANT[id].name} opens`,why:ROOM_GRANT[id].why,parts:[]});
+  for(const k of single.sort((a,b)=>mass(b)-mass(a)))C.push({k:'part',id:k,name:PARTS[k].name,why:partWhy(k),parts:[k]});
+  if(O.rover.length)C.push({k:'rover',id:'rover',name:'Rover parts',why:`For the rover yard: ${O.rover.map(x=>x.t).join(', ')}.`,parts:[]});
+  for(const x of O.missions){const M=MS(x.id);if(M)C.push({k:'mission',id:x.id,name:M.name,why:M.brief,parts:[],pay:M.pay})}
+  for(const id of ids){const c=chapterOf(id);if(!c||c.capstone!==id)continue;const i=CHAPTERS.indexOf(c);
+    for(const n of CHAPTERS.slice(i+1).filter(x=>!chapterDone(x)&&x.missions.some(m=>{const M=MS(m);return M&&missionOpen(M)})).slice(0,2))
+      C.push({k:'chapter',id:n.id,name:`Chapter ${n.n}: ${n.name}`,why:n.question,parts:[],done:c.name})}
+  return C}
+// (Q576) the chapter a flight's missions closed, for the poster headline: {id, n, name, capstone (the mission's name)}
+function capstoneOf(ids){for(const id of ids){const c=chapterOf(id);if(c&&c.capstone===id){const M=MISSIONS.find(m=>m.id===id);return{id:c.id,n:c.n,name:c.name,capstone:M?M.name:id}}}return null}
 // (never throws: a debrief that fails to build must not stop the flight from settling)
 function debriefOf(s,R,ups){try{DEBRIEF_LAST=debBuild(s,R,ups);PROG.lastDebrief=DEBRIEF_LAST;return DEBRIEF_LAST}catch(e){console.error('debrief',e);return null}}   // kept with the save (Q100)
 // after a save loads: the last flight's Debrief is there again (QUEUE Q100; space overflow)
@@ -63,7 +86,8 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
   // money: what we know line by line; the rest is the days that passed (budget, upkeep, income, debt)
   const M=D.money,add=(l,v,k)=>{if(Math.abs(v)>=0.05)M.push({l,v,k})};
   add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');add('Site lease',-(R.siteFee||0),'cost');add('Sponsor covers the failed attempt',R.cover||0,'cover');
-  for(const p of R.paid||[]){add(p.k==='contract'?`Contract: ${p.l}`:p.k==='stage'?`${p.l} (share)`:p.l,p.pay,p.k);if(p.k==='mission')D.missions.push({l:p.l,pay:p.pay,first:!!p.first})}
+  for(const p of R.paid||[]){add(p.k==='contract'?`Contract: ${p.l}`:p.k==='stage'?`${p.l} (share)`:p.l,p.pay,p.k);if(p.k==='mission')D.missions.push({l:p.l,pay:p.pay,first:!!p.first,id:p.id})}
+  {const ids=D.missions.map(m=>m.id).filter(Boolean);if(ids.length){D.opened=opensNames(ids);D.cards=unlockCards(ids,Object.fromEntries(D.missions.filter(m=>m.id).map(m=>[m.id,m.pay])));D.chapter=capstoneOf(ids)}}   // (Q570) what this flight's missions opened; (Q572) its cards; (Q576) a chapter closed
   add(`Refurbishment${R.recovery?` (${R.recovery})`:''}`,R.refund||0,'refund');add('Damages to towns',-(R.dmg||0),'dmg');
   if(b){D.net=PROG.funds-b.funds;const nd=Math.max(0,PROG.day-b.day),L0=b.led||{},L1=PROG.led||{},own=(R.paid||[]).reduce((a,p)=>a+p.pay,0);
     D.days=nd;

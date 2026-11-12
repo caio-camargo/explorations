@@ -41,8 +41,8 @@
     tr[0].m.air > m1.m.air && m1.m.buf > 0.5 && Math.abs(tr.reduce((b, x) => x.m.wind > b.m.wind ? x : b).t - mq.t) < 15 && k30.m.air < 0.25 * tr[0].m.air && k80.m.air < 0.02 && k80.m.str > 0,
     `${tr.length} samples; max-q ${(mq.q / 1e3).toFixed(1)} kPa at T+${mq.t.toFixed(0)}`);
   const P = H.slice(H.indexOf('// ==== SIM END'));
-  check('sound is wired: F4 in KEYS.all, sndTick called from frame() and not from render()',
-    /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frame\(now\)\{[^]*?sndTick\(dtR\)[^]*?requestAnimationFrame\(frame\)\}/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
+  check('sound is wired: F4 in KEYS.all, sndTick called from frameBody() (the frame, R9) and not from render()',
+    /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frameBody\(now\)\{[^]*?sndTick\(dtR\)/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
 }
 
 // aerofx-1. The plasma shell needs speed, not just heat (look & sound effects beat, QUEUE Q20 / PLAYTEST #17): the
@@ -134,7 +134,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
-  const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')(), P = {};
+  const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED,PROG_SCHEMA}')(), P = {};
   const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + body('galSights') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
     SIMF.rng, SIMF.norm, SIMF.add, SIMF.sub, SIMF.mul, SIMF.dot, SIMF.WSEED, P);
   const a = G.galaxy(), s1 = P.gseed, b = G.galaxy(), w = G.makeGal(SIMF.WSEED), o = G.makeGal(s1 + 1);
@@ -142,7 +142,7 @@
   const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
   check('galaxy per program: drawn once and kept, different seeds differ, a reset draws a new one; views pin WSEED',
     s1 > 0 && a === b && a.seed === s1 && Math.abs(dot(w.gx, o.gx)) < 0.9999 && s2 > 0 && s2 !== s1 && c.seed === s2
-      && vj.includes('PROG.gseed = WSEED') && ed.includes('Object.assign(PROG,{gseed:null,') && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
+      && vj.includes('PROG.gseed = WSEED') && ed.includes('function resetProgram(){programNew()') && SIMF.PROG_SCHEMA.gseed[0] === null && SIMF.PROG_SCHEMA.gseed[1] === 'career' && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
     `seeds ${s1} → reset ${s2}; WSEED vs other gx·gx ${dot(w.gx, o.gx).toFixed(3)}`);
   // QUEUE Q116 (PLAYTEST #32): near an airless body the lighting's fill comes from its sunlit ground, about its own up:
   // on Selene's day side the ground term is lit; on its night side it is dark; far out in space there is none
@@ -517,7 +517,7 @@
   const pr = page.match(/hypergolic:\{[^}]*so:\[([^\]]*)\][^}]*pf:([\d.]+)\}/), so = pr && pr[1].split(',').map(Number);
   const brown = pr && +pr[2] > 0 && so[2] > so[1] && so[1] > so[0];
   const hg = cs => .5 * (.51 / Math.pow(1.49 - 1.4 * cs, 1.5) + 1) / 12.566, fwd = hg(1) / hg(-1);
-  const trail = /rho<0\.006\)return;/.test(page) && /smoke\.length>4000\)smoke\.shift\(\);/.test(page) && /life:110\+Math\.random\(\)\*60,/.test(page)
+  const trail = /rho<0\.006\)return;/.test(page) && /smoke\.length>SMOKE_MAX\)smokeDrop\(smoke\);/.test(page) && /life:TRAIL_LIFE\*\(1\+\.3\*Math\.random\(\)\),/.test(page)   /* (Q566) the trail's life and list: aerofx-55 */
     && /Math\.exp\(-\(\(\(h-11000\)\/4000\)\*\*2\)\),th=h\/6000/.test(page) && !/q\.wf/.test(page);
   check('flames slice 1: vacuum glow cools with expansion, sunlight scatters forward (none in shadow), turbulent core, Mach disk, kerolox curtain, a brown hypergolic puff; a longer, sheared contrail',
     shader && wired && brown && fwd > 10 && trail, `shader ${shader} · wired ${wired} · hypergolic puff ${brown} (so ${so}) · forward/back scattering ${fwd.toFixed(0)}× · contrail ${trail}`);
@@ -962,7 +962,7 @@
 }
 
 // aerofx-41. Deploying animates (look & sound effects beat, QUEUE Q411): the sim stamps p.depT when a wing, boom antenna
-// or leg starts out or back (wingOp, legOp); depF follows it in sim time (wing 4 s, antenna 3 s, leg 1.6 s), at once with
+// or leg starts out or back (wingOp, legOp); depF follows it in sim time (wing 6 s since Q565, antenna 3 s, leg 1.6 s), at once with
 // no stamp; the wing's panels unfold one after another, the antenna swings then extends, the leg swings down; the ship's
 // mesh is rebuilt while a fraction moves.
 {
@@ -970,12 +970,12 @@
   const src = page.slice(page.indexOf('const DEP_S='), page.indexOf('const depKey='));
   const F = (simT, p) => new Function('simT', 'clamp', src + 'return depF')(simT, (x, a, b) => Math.min(b, Math.max(a, x)))(p);
   const W = { d: { kind: 'solar', wing: true } }, L = { d: { kind: 'leg' } };
-  const vals = [F(5, { ...W, dep: true }), F(2, { ...W, dep: true, depT: 0 }), F(4, { ...W, dep: true, depT: 0 }), F(0.8, { ...L, dep: true, depT: 0 }), F(0.8, { ...L, dep: false, depT: 0 }), F(9, { ...L, dep: false, depT: 0 })];
+  const vals = [F(5, { ...W, dep: true }), F(3, { ...W, dep: true, depT: 0 }), F(6, { ...W, dep: true, depT: 0 }), F(0.8, { ...L, dep: true, depT: 0 }), F(0.8, { ...L, dep: false, depT: 0 }), F(9, { ...L, dep: false, depT: 0 })];
   const fr = vals[0] === 1 && vals[1] === .5 && vals[2] === 1 && vals[3] === .5 && vals[4] === .5 && vals[5] === 0;
   const stamp = /p\.dep=o;p\.depT=simT;n\+\+;/.test(H) && /\{p\.dep=dn;p\.depT=simT;n\+\+\}/.test(H);
-  const draw = (page.match(/const f=depF\(p\);if\(f>0\)\{/g) || []).length === 3 && /let H=P\(b0,h\/2\);for\(let k=0;k<4;k\+\+\)\{const g=sstep\(0,1,u\*4-k\)/.test(page)
+  const draw = (page.match(/const f=depF\(p\);if\(f>0\)\{/g) || []).length === 3 && /let H=P\(b0,h\/2\);for\(let k=0;k<4;k\+\+\)\{const g=sstep\(0,1,u\),/.test(page)
     && /const k=bayKey\(S\)\+'\|'\+depKey\(S\);/.test(page) && /bayKey\(v\)\+'\|'\+depKey\(v\)/.test(page);
-  check('deploying animates: stamped by the sim, followed in sim time (at once without a stamp), panel by panel; the mesh rebuilt while it moves', fr && stamp && draw,
+  check('deploying animates: stamped by the sim, followed in sim time (at once without a stamp), the panels together; the mesh rebuilt while it moves', fr && stamp && draw,
     `fractions ${vals.join(', ')} · stamps ${stamp} · drawing ${draw}`);
 }
 
@@ -1124,7 +1124,137 @@
     bad.slice(0, 18).join(' | ') || '18 suits, rest exact, no tear over 6 cm');
 }
 
-// aerofx-51. The landing dust is round, not a square (look & sound effects beat, QUEUE Q543, PLAYTEST #149). The dust sheet
+// aerofx-51. The resolution scaler uses the frame it has (review session, QUEUE Q559; Caio: "a lot of pixelation"). The
+// old rule aimed at 7 ms and grew back only under 3.85 ms, so a heavy moment left the view at half resolution with half
+// the GPU idle. resNext is run here against a GPU whose cost is a fixed part plus one that goes as the pixel count.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const RS_MIN='), j = pg.indexOf('// Without timer queries', i);
+  const { resNext, RS_MIN, GPU_BUDGET } = new Function(pg.slice(i, j) + ';return{resNext,RS_MIN,GPU_BUDGET}')();
+  // one 0.6 s step of the game's loop: the load the scaler sees is the smoothed GPU time over the budget
+  const run = (rs, cap, costs) => { const tr = []; let avg = null;
+    for (const [n, fixed, perPx] of costs) for (let k = 0; k < n; k++) { const ms = fixed + perPx * rs * rs; avg = avg == null ? ms : avg * .3 + ms * .7; rs = resNext(rs, avg / GPU_BUDGET, cap); tr.push([rs, fixed + perPx * rs * rs]); }
+    return tr; };
+  const heavy = run(1, 1, [[40, 2, 20]]), endH = heavy.at(-1), still = heavy.slice(-20).every(x => x[0] === endH[0]);   // 22 ms at full size
+  const back = run(endH[0], 1, [[40, 1, 5]]), tBack = back.findIndex(x => x[0] === 1);                                 // then 6 ms at full size
+  const low = run(1, .6, [[5, 1, 5]]).at(-1), floor = run(1, 1, [[60, 30, 60]]).at(-1);
+  const light = run(1, 1, [[20, 1, 8]]).every(x => x[0] === 1);                                                          // 9 ms: never touched
+  check('the scaler uses the frame it has (Q559): a 22 ms scene settles and stays between 70 % and 105 % of the budget; when the scene lightens the view is back at full size within 6 s; a 9 ms scene is never scaled; the Low cap and the floor hold',
+    still && endH[1] > .7 * GPU_BUDGET && endH[1] < 1.05 * GPU_BUDGET && tBack >= 0 && tBack < 10 && light && low[0] <= .6 && Math.abs(floor[0] - RS_MIN) < 1e-9,
+    `heavy: ${(endH[0] * 100).toFixed(0)} % at ${endH[1].toFixed(1)} ms${still ? '' : ' (still moving)'}; back to 100 % after ${tBack < 0 ? 'never' : (tBack + 1) * .6 + ' s'}; Low ${(low[0] * 100).toFixed(0)} %; floor ${(floor[0] * 100).toFixed(0)} %`);
+}
+
+// aerofx-52. The upscale pass's filter (review session, QUEUE Q560). UPS_FS can't run here, but its Catmull-Rom weights
+// can: lifted from the shader's text and evaluated, they must sum to 1 at every sub-texel position (no brightening or
+// darkening as the scaler moves), rebuild a straight ramp exactly, and overshoot a hard step (which is the sharpening
+// the clamp to the four nearest texels then keeps from ringing).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const UPS_FS='), sh = pg.slice(i, pg.indexOf('`;', i)), m = /vec2 (w0=.*?),w12=w1\+w2;/.exec(sh);
+  const wf = m && new Function('f', 'const ' + m[1].replace(/(\d)\.(?!\d)/g, '$1') + ';return[w0,w1,w2,w3]');
+  let sum = 0, ramp = 0, over = 0;
+  if (wf) for (let f = 0; f <= 1; f += .05) { const w = wf(f); sum = Math.max(sum, Math.abs(w[0] + w[1] + w[2] + w[3] - 1));
+    ramp = Math.max(ramp, Math.abs(-w[0] + w[2] + 2 * w[3] - f)); over = Math.max(over, -w[0], -w[3]); }   // texels at -1, 0, 1, 2; a step just before or after the pair rebuilds as 1 - w0 or 1 - w3
+  check('the upscale filter is a true Catmull-Rom (Q560): weights sum to 1, a ramp comes back exact, a step overshoots (the clamp holds it), and the pass clamps to the four nearest texels',
+    !!wf && sum < 1e-12 && ramp < 1e-12 && over > .03 && over < .12 && /c=clamp\(c\+uSh\*\(c-\(a\+b\+d\+e\)\*\.25\),lo,hi\)/.test(sh),
+    wf ? `sum off by ${sum.toExponential(1)}, ramp by ${ramp.toExponential(1)}, step overshoot ${(over * 100).toFixed(1)} %` : 'weights not found in UPS_FS');
+}
+
+// aerofx-53. The solar wing's cells (look & sound parts & pad, QUEUE Q565): rboxUV gives a box of cells its own kind
+// (SOLAR_K, no school bits, so a school's repaint can't grey the cells) and, on its broad faces, the position in metres
+// from the face's corner with the face's size; the narrow edges carry R = -1. The wing panel (thin along z) and the body
+// tile (thin along x) both map; MESH_FS has the branch, and no part kind collides with SOLAR_K.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const src = page.slice(page.indexOf('const VX=16'), page.indexOf('const KIND=')) + page.slice(page.indexOf('function pv('), page.indexOf('// surface of revolution')) +
+    page.slice(page.indexOf('function box('), page.indexOf('// a swept, tapered fin'));
+  const { rboxUV, SOLAR_K, KIND } = new Function('rotY', src + ';const KIND=' + /const KIND=(\{[^}]*\})/.exec(page)[1] + ';return{rboxUV,SOLAR_K,KIND}')(
+    (v, th) => { const c = Math.cos(th), s = Math.sin(th); return [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]] });
+  const map = (hx, hy, hz, phi) => { const o = []; rboxUV(o, [1, 2, 3], hx, hy, hz, [.1, .1, .3, 4], phi); const V = [];
+    for (let i = 0; i < o.length; i += 16) V.push({ u: o[i + 10], v: o[i + 11], R: o[i + 12], h: o[i + 13], k: o[i + 14], y: o[i + 1] - 2 }); return V };
+  const ok = (V, W, Hh) => { const b = V.filter(x => x.R > 0), e = V.filter(x => x.R < 0);
+    return b.length === 12 && e.length === 24 && V.every(x => x.k === SOLAR_K) && b.every(x => Math.abs(x.R - W) < 1e-9 && Math.abs(x.h - Hh) < 1e-9 && x.u > -1e-9 && x.u < W + 1e-9 && Math.abs(x.v - (x.y + Hh / 2)) < 1e-9)
+      && new Set(b.map(x => x.u.toFixed(6))).size === 2 };
+  const wing = ok(map(.285, .28, .008, .7), .57, .56), tile = ok(map(.004, .088, .046, 2.1), .092, .176);
+  const shader = /else if\(k==17\)\{/.test(page) && SOLAR_K === 17 && !Object.values(KIND).includes(SOLAR_K);
+  const used = /rboxUV\(out,c,w\/2-\.015,h\/2-\.02,\.008,CELL,a\+th\)/.test(page) && /rboxUV\(out,\[cx\+c\*\(R\+\.014\)/.test(page);
+  check('the solar wing\'s cells (Q565): rboxUV maps the broad faces in metres for the wing panel and the body tile, edges flagged, its own kind with a shader branch, used by both parts',
+    wing && tile && shader && used, `wing ${wing} · body tile ${tile} · shader ${shader} · used ${used}`);
+}
+
+// aerofx-54. Staging (review session, QUEUE Q564; PLAYTEST #159 "the camera instantly recenters on the craft", #160 "more
+// oomph"). The camera looks at the centre of mass, which jumps when parts leave: detach reports the jump (HOOK.cmShift)
+// and the page eases over it (camLagStep, a critically damped spring). The separation's puffs fall with the craft: an
+// Orbiter is staged in a 300 km orbit, flown on for a second, and the gas ring must still be centred on the seam.
+// (Q591) sepFx draws its puffs with Math.random, and `d0 > 3` (the ring's offset without the fall) sat on that draw: over
+// 300 seeds d0 ran 2.62–3.93 m and was ≤ 3 in 11 % (CI failed on it), while the claim itself (dG, with the fall) never
+// passed 0.96 m. The puffs are drawn from world.js's rng(1) here (d0 3.4 m, dG 0.36 m), so the check gives one answer.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const CAML='), j = pg.indexOf('HOOK.sep=sepFx;', i);
+  const D = new Function(src + `const PUFFS=[];function fxPuff(r,v,o){PUFFS.push({r,v,o})}` + pg.slice(i, j) +
+    `;return{CAML,camLagStep,sepFx,PUFFS,newShip,stage,advPhys,PRESETS,HOOK,TELLUS,DT,rng,set S(v){S=v},set t(v){simT=v}}`)();
+  const T = D.TELLUS, sep = alt => { D.t = 0; D.PUFFS.length = 0; const s = D.newShip(D.PRESETS.Orbiter); D.S = s; s.landed = false; s.throttle = 0; s.sas = false;
+    const r = T.R + alt; s.r = [r, 0, 0]; s.v = [0, 0, Math.sqrt(T.mu / r)]; D.CAML.s = s; D.CAML.x = [0, 0, 0]; D.CAML.v = [0, 0, 0];
+    const r0 = s.r.slice(); let at = null; D.HOOK.msg = () => {}; D.HOOK.debris = d => { at = at || d; const real = Math.random; Math.random = D.rng(1); try { D.sepFx(d) } finally { Math.random = real } };   // (Q591) seeded puffs
+    for (let k = 0; k < 6 && !at; k++) D.stage(s);
+    return { s, r0, at } };
+  const o = sep(300e3), jump = sub(o.s.r, o.r0), seen = add(o.s.r, D.CAML.x);
+  const held = !!o.at && len(jump) > 1 && len(sub(seen, o.r0)) < 1e-6;   // the camera's target has not moved, though the craft's centre has
+  // the spring: 60 frames a second from the jump
+  const x0 = len(D.CAML.x), tr = []; for (let k = 0; k < 72; k++) tr.push(len(D.camLagStep(D.CAML, 1 / 60)));
+  const soft = tr[0] > .99 * x0, mono = tr.every((x, k) => x <= (k ? tr[k - 1] : x0) + 1e-12), there = tr[65] < .05 * x0 && tr[29] > .1 * x0;
+  // the puffs: each carries the fall; the gas ring (hot .25) a second later, against the craft flown on for that second
+  const P = D.PUFFS.slice(), g = T.mu / (T.R + 300e3) ** 2, allG = P.length > 100 && P.every(p => p.o.g && Math.abs(len(p.o.g) / g - 1) < .01);
+  const ring = P.filter(p => p.o.hot === .25), flecks = P.filter(p => p.o.life >= 3 && !p.o.grow).length, flash = P.filter(p => p.o.hot === 3).length;
+  const seam = ring.reduce((a, p) => add(a, mul(p.r, 1 / ring.length)), [0, 0, 0]), rS = o.s.r.slice();
+  for (let k = 0; k < Math.round(1 / D.DT); k++) D.advPhys(o.s);
+  const cen = fall => ring.reduce((a, p) => add(a, mul(add(add(p.r, p.v), fall ? mul(p.o.g, .5) : [0, 0, 0]), 1 / ring.length)), [0, 0, 0]);
+  const off = fall => len(sub(sub(cen(fall), o.s.r), sub(seam, rS))), dG = off(true), d0 = off(false);
+  // on the way up, in thick air: no flecks (the wind would take them) and no fall added
+  const lo = sep(2000), loP = D.PUFFS, loOk = !!lo.at && loP.length > 60 && !loP.some(p => p.o.life >= 3 && !p.o.grow) && loP.every(p => len(p.o.g) < .5 * g);
+  check('staging: the camera holds its target over the jump and eases to the craft in about a second; the separation gas stays on the seam in orbit, with a flash and drifting flecks (Q564)',
+    held && soft && mono && there && allG && ring.length === 28 && flecks === 36 && flash === 1 && dG < 1.5 && d0 > 3 && loOk,
+    `the centre jumped ${len(jump).toFixed(1)} m, the target ${len(sub(seen, o.r0)).toExponential(0)} m; first frame keeps ${(tr[0] / x0 * 100).toFixed(1)} %, ${(tr[29] / x0 * 100).toFixed(0)} % left at 0.5 s, ${(tr[65] / x0 * 100).toFixed(1)} % at 1.1 s; ` +
+    `${P.length} puffs (${flecks} flecks); the ring is ${dG.toFixed(2)} m off the seam after 1 s (${d0.toFixed(1)} m without the fall); at 2 km ${loP.length} puffs, flecks ${loP.filter(p => p.o.life >= 3 && !p.o.grow).length}`);
+}
+
+// aerofx-55. The whole exhaust trail (review session, QUEUE Q566; PLAYTEST #161, Caio: "the player should be able to see
+// the full smoke trail from the launch pad as the rocket leaves the atmosphere"). A three-engine rocket climbs at 12 m/s²
+// and lays its trail by emitSmoke's rule (a puff every 0.35 widths of 2.5 m + 3.5 % of the speed, born at half that, to
+// 33 km); trailThin runs every second, as in the game, for 300 s (the craft is out of the air by ~200 s).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const TRAIL_LIFE='), j = pg.indexOf('function emitSmoke(dt){', i);
+  const { TRAIL_LIFE, TRAIL_GAP, SMOKE_MAX, trailThin, smokeDrop } = new Function(pg.slice(i, j) + ';return{TRAIL_LIFE,TRAIL_GAP,SMOKE_MAX,trailThin,smokeDrop}')();
+  let rs = 7; const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  const run = (thin, eng = 3) => { let list = [], acc = 0, peak = 0, laid = 0;
+    for (let k = 0; k < 300 * 50; k++) { const t = k / 50, sp = 12 * t, h = 6 * t * t;
+      if (h < 33000) { const s0 = 2.5 + sp * .035, gap = Math.max(.008, .35 * s0 / Math.max(sp, 1)); acc += 1 / 50;
+        while (acc > gap) { acc -= gap; for (let e = 0; e < eng; e++) { if (thin && list.length > SMOKE_MAX) smokeDrop(list); list.push({ tr: 1, pf: [h + (R() - .5) * s0 * .45, e * 1.2 + (R() - .5) * s0 * .45, (R() - .5) * s0 * .45], t0: t, s0: s0 * (.8 + .4 * R()) * .5, grow: 4 + 3 * R(), life: TRAIL_LIFE * (1 + .3 * R()) }); laid++ } } }
+      if (thin && k % 25 === 24) { trailThin(list, t); list = list.filter(q => t - q.t0 <= q.life && !(q.kt && t - q.kt > 3)) }
+      peak = Math.max(peak, list.length) }
+    return { list: list.filter(q => !q.kt), peak, laid } };
+  const A = run(true), B = run(false), N = run(true, 9), T = 300, sz = q => q.s0 + q.grow * Math.sqrt(T - q.t0), L = A.list.slice().sort((a, b) => a.pf[0] - b.pf[0]);
+  // the trail as it stands at 300 s: it starts at the pad, ends at 33 km, and no step along it is wider than a puff's half-width
+  let gap = 0, gAt = 0; for (let k = 1; k < L.length; k++) { const g = (L[k].pf[0] - L[k - 1].pf[0]) / Math.min(sz(L[k]), sz(L[k - 1])); if (g > gap) { gap = g; gAt = L[k].pf[0] } }
+  const whole = L.length > 100 && L[0].pf[0] < 30 && L.at(-1).pf[0] > 32500 && gap < .7, alive = L.every(q => T - q.t0 < q.life) && TRAIL_LIFE >= 400;
+  // drawSmoke itself, on a GL that does nothing: a far puff is brought up to 1.5 px and thinned by the same ratio, a near
+  // one is left alone, a retired one is half gone after 1.5 s and out of the list after 3
+  const k0 = pg.indexOf('let smokeV='), k1 = pg.indexOf('const rcsSeen', k0);
+  const G = new Function(src + `const smoke=[],H=1000,FC=1,SUN=[1,0,0],PLT={p:[0,0,0,0],c:[0,0,0],p2:[0,0,0,0],c2:[0,0,0]},smokeVAO=0,smokeBuf=0,PSMOKE={p:0,u:{}},PMESH={p:0};
+    const gl=new Proxy({},{get:()=>()=>{}}),lightEnv=()=>({sun:[1,1,1],sky:[0,0,0],gnd:[0,0,0]});` + pg.slice(k0, k1) +
+    `;return{smoke,drawSmoke,get P(){return smokeP},TELLUS,toPF,set t(v){simT=v}}`)();
+  G.t = 0; const cam = [G.TELLUS.R + 100e3, 0, 0], puff = (d, o = {}) => ({ pf: G.toPF(G.TELLUS, [G.TELLUS.R + 100e3 - d, 0, 0], 0), t0: 0, s0: 50, grow: 0, a0: .4, life: 1000, rise: 0, seed: 1, ux: 1, uy: 0, uz: 0, wx: 0, wy: 0, wz: 0, ...o });
+  G.t = 0; G.smoke.push(puff(100e3), puff(1000), puff(1000, { kt: -1.5 }), puff(1000, { kt: -3.5 })); let drew = '';
+  try { G.drawSmoke(new Float32Array(16), cam, [0, 0, 1], [0, 1, 0]) } catch (e) { drew = String(e) }
+  const far = [G.P[3], G.P[4]], near = [G.P[9], G.P[10]], fade = G.P[16];
+  const drawOk = !drew && G.smoke.length === 3 && Math.abs(far[0] - 82) < .5 && Math.abs(far[1] - .4 * 50 / 82) < .005 && near[0] === 50 && Math.abs(near[1] - .4) < 1e-9 && Math.abs(fade - .2) < 1e-9;
+  check('the exhaust trail lasts the climb (Q566): thinned as its puffs widen it fits the list from the pad to 33 km, as solid as it was laid, 300 s after liftoff; unthinned it would overflow and lose the pad end',
+    whole && alive && A.peak < SMOKE_MAX * .6 && B.peak > SMOKE_MAX && TRAIL_GAP < .7 && Math.min(...N.list.map(q => q.pf[0])) < 30 && N.list.length > 100 && drawOk,
+    `${A.laid} puffs laid; at most ${A.peak} held with thinning (the list takes ${SMOKE_MAX}), ${B.peak} without; at 300 s ${L.length} puffs from ${L[0].pf[0].toFixed(0)} m to ${(L.at(-1).pf[0] / 1000).toFixed(1)} km, the widest step ${gap.toFixed(2)} of a puff's half-width (at ${(gAt / 1000).toFixed(1)} km); nine engines: at most ${N.peak} held, the trail still starts at ${Math.min(...N.list.map(q => q.pf[0])).toFixed(0)} m; drawn: ${drew || `a 50 m puff at 100 km is ${far[0].toFixed(0)} m at opacity ${far[1].toFixed(2)} (was 0.40), at 1 km ${near[0]} m at ${near[1].toFixed(2)}, retired 1.5 s ago ${fade.toFixed(2)}, ${G.smoke.length} of 4 left`}`);
+}
+// aerofx-56. The landing dust is round, not a square (look & sound effects beat, QUEUE Q543, PLAYTEST #149). The dust sheet
 // (DUST_FS) and the hot-gas splash (IMP_FS) are raymarched inside a box; their density fell off exponentially and never
 // reached zero, so a grazing ray summed the remainder at the box's sides into a pale square round the lander. Both are now
 // windowed to zero inside their box: the dust's radial window ends at 1.5 uRd (box half-width 1.6 Rd) and a height window

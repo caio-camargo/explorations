@@ -1,7 +1,30 @@
 # Launchpad — mock-ups
-**Version**: 0.1.20 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-13 · **Status**: for Caio to pick
+**Version**: 0.1.31 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
+
+## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
+
+Open `transitions/index.html` **served** (e.g. `python -m http.server` in `explorations/launchpad/`, then
+`/mockups/transitions/`), Chrome, sound on. Motion is judged by feel, so try it rather than the stills
+(`output/launchpad/mockups/transitions/`: the seal, filed, the front page, dawn). The rooms are `screens/`'s stills in
+iframes (`&bare=1`); the sounds are Web Audio stand-ins for look & sound's. It walks every room once behind a cover at
+load (~2 s), and keeps hidden layers at opacity .001: a layer at 0 isn't rasterised, so its first fade ran 3–4× late.
+Animate only opacity and transform (an animated filter or blend over the whole picture repainted every frame: the dawn
+ran 2.5 s late). **The build should keep both lessons.** Durations measured headless: doors 250, paper 305, camera 1104 ms.
+
+| What | How it plays | Knob |
+|---|---|---|
+| **Everyday moves** (1–6) | **door** between rooms (the old room dims, the new one settles from 102 %); **paper** for the debrief (a sheet laid on the desk, taken off it); **camera** Assembly → pad (one zoom out from the rocket, ~1.1 s, a rumble) | *Everyday* 150–500 ms (default 250) |
+| **Opening** (O) | the wordmark over the night pad while the world's names roll (where the ~1.5 s generation would hide), then the menu and the charter slide in; 3.8 s | full once, then 0.9 s |
+| **Founding** (the charter's button, Enter) | signed, the seal stamped (thump, the charter jolts, an ink ring), *In force*, filed in a folder, the front page spins in (*The Fenfen Courier*), dawn over the site, the desk; 8.6 s | full once (or skipped once), then 1.8 s: seal, front page, desk |
+| **Any key or click** | finishes whatever is moving at once, landing where it was going | |
+| **Short transitions** | every move a 150 ms fade, the ceremonies' same beats as fades; on by itself under `prefers-reduced-motion` | |
+
+Not in it: firsts and eras (the same front page, Q53's posters), the pad camera on the real 3D scene (the photo stands in;
+it shows a rocket where the founding's dawn should be an empty site). *Slow ×4* is for looking at a beat.
+
+**Pick:** _(Caio: the durations, door vs plain fade, the founding's length and beats; the knobs as they stand if silent)_
 
 ## identity/ — one visual identity for the screens (QUEUE Q73 → Q53, PLAYTEST #13)
 
@@ -308,6 +331,64 @@ them), open eyes (a carved upper-lid ledge, painted iris, a catchlight), lips wr
 base with nostril wings, a shorter thicker neck (Thunderbirds' ratio) and a broader jaw, painted warmth and tinted lips.
 
 **Pick:** _(Caio)_
+
+## faces5/ — MakeHuman's face simplified into planes ([`FACES.md`](../FACES.md) § 10)
+
+`faces5/index.html` (2026-11-10): faces3's MakeHuman head (it loads `../faces3/mh-head.js`) with its skin merged into
+a few hundred flat planes; every corner is still a MakeHuman point, so all sliders and expressions work. **Edit**:
+*Planes: few–many*, *Edge lines*, the person and feature sliders. **Sheet**: twelve generated people.
+URL: `?mode=edit|sheet`, `?dna=F5:...`, `?seed=`. Stills: `output/launchpad/mockups/faces5/` (`average.png`,
+`average-few-planes.png`, `sheet.png`, `man-smile.png`).
+**The nose bridge is one built plane** (house style, step 1): a four-cornered strip from the brow line to the tip that
+the plane-cutting may not break up; *Nose bridge: natural–one plane*, *Bridge width*, *Bridge: even–wider at the
+tip*. Stills: `nose-plane-closeup.png`, `nose-plane-front.png`, `nose-plane-many-planes.png`, `sheet-nose-plane.png`
+(the earlier `nose-flat-*` stills are the first attempt, which Caio rejected).
+**The nose's underside is a second built plane** (step 2): from the tip back to the nose's base, the nostrils closed
+over; with the bridge and the two sides the nose is a prism of four planes. Stills: `nose-under-closeup.png`,
+`nose-under-front.png`, `nose-under-many-planes.png`, `sheet-nose-under.png`. **Parked** (Caio preferred the bridge
+alone); `?under=1` shows it.
+**The brow is one straight ridge** (step 3) out of the bridge's top corner, overhanging the eye: *Brow: natural–one
+straight ridge*, *Brow overhang*, *Brow: outer end down–up*. Stills: `brow-ridge-closeup.png`, `brow-ridge-front.png`,
+`brow-natural-front.png`, `sheet-brow.png`. Corrected 2026-11-11 (the first ridge made every face scowl): the plane
+under the brow is now a level band between the ridge and the upper lid's crease, ending on the bridge's edge.
+Stills: `brow-band-closeup.png`, `brow-band-front.png`, `sheet-brow-band.png`.
+**The brow's expression** (2026-11-11): the ridge runs through three kept points (inner end, middle, outer end) with a
+height slider each, and buttons for neutral, resolute, angry, afraid, surprised, sad. Still: `brow-moods.png`.
+**The lids and the eyes** (step 4, 2026-11-11): the lid's edge is a built six-cornered opening laid just outside the
+eyeball, so the ball no longer stands proud; *Upper lid* and *Lower lid* sliders, set by the mood buttons with the
+brow; *Iris size*. Each eye is built round its own centre (faces whose head MakeHuman had moved sideways had one
+blank eye). Stills: `lid-moods.png`, `sheet-lids.png`, `sheet-lids-surprised.png`, `lids-range.png`,
+`sheet-before-lids.png`.
+
+**Pick:** _(Caio: is this the direction?)_
+
+## faces4/ — MakeHuman's people drawn through the cage ([`FACES.md`](../FACES.md) § 9)
+
+`faces4/index.html` (2026-11-10): faces2's cage bound to faces3's MakeHuman head (it loads `../faces3/mh-head.js`).
+MakeHuman's sliders and macros move the cage; the cage keeps *Planes* and the creases. **Edit** (a *cage* box shows
+the lattice) and **Sheet**. URL: `?mode=edit|sheet`, `?dna=F4:...`, `?seed=`. Stills: `output/launchpad/mockups/faces4/`
+(`average.png`, `average-closeup.png`, `sheet.png`, `sheet-carved.png`, `man-smile.png`). The mechanism works; the
+mid-face ripples and the nose is weak (FACES § 9).
+
+## faces3/ — the face engine on MakeHuman's shape library ([`FACES.md`](../FACES.md) § 8)
+
+`faces3/index.html` (2026-11-10): MakeHuman's head, feature sliders, sex / age / population / weight macros and
+expression units (CC0, public domain) under faces2's light and paint. `mh-head.js` is the baked data; `bake_mh.py`
+makes it from a MakeHuman checkout. **Edit**: about 160 sliders in folded groups, *Exaggerate*, a view that turns.
+**Sheet**: twelve generated people. URL: `?mode=edit|sheet`, `?dna=F3:...`, `?seed=`. Stills:
+`output/launchpad/mockups/faces3/` (`average.png`, `sheet.png`, `sheet-exaggerate-2.png`, `old-man-smile.png`).
+Realistic, not yet carved; FACES § 8 lists what was seen and the open style question.
+
+## faces2/ — the face engine, second construction ([`FACES.md`](../FACES.md) § 7)
+
+`faces2/index.html` (2026-11-10): the same idea as `faces/` below (a house head, genes, generated faces) on a different
+construction: one control cage whose rows and columns are the face's own lines, subdivided into the skin
+(Catmull–Clark with creases). **Edit**: 55 sliders by region, a ¾ view that turns under the mouse, front, profile,
+48 px; *Planes* runs from a soft modelled head to bare carved planes; a *cage* box shows the lattice. **Sheet**: twelve
+generated faces. URL: `?mode=edit|sheet`, `?dna=F2:...`, `?seed=`. Stills: `output/launchpad/mockups/faces2/`
+(`house.png`, `house-closeup.png`, `house-carved.png`, `cage.png`, `sheet.png`). A first pass; FACES § 7 lists what is rough.
+
+**Pick:** _(Caio: is this construction the one to continue?)_
 
 ## faces/ — the face engine's lab (D12 → [`FACES.md`](../FACES.md) § 4, stages F0–F1)
 
