@@ -7112,6 +7112,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   New test `vehicle-42` (fails on the old code); `--smoke` all passed (790). Files: `sim/vessel.js`, `tests/vehicle.mjs`,
   `notes/vehicle.md` § v1.303, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`. Changes `TAPE_V` (source hash): older tapes
   replay stale. **Next for vehicle:** R22 (four physics fixes), R28 with flow.
+- **Follow-up (same session, closed 2026-11-12): R22, three of four physics fixes (v1.315).** `fall()` gave an impact in the
+  past outbound on an escape (now null when the crossing is behind the craft); a pure ignition that failed to light still ran
+  the event's chute, fairing, spin motors and groups, then again on the retry (now nothing until it lights); `ascentRun`
+  multiplied Easy's air into a drag table that already had it. New test `vehicle-43` (fails on the old code at each); the
+  full suite passed after merging main (one earlier run: only 6b's warp timing, a load flake that passes alone). Numbered
+  v1.310 on the branch, renumbered v1.315 when platform took v1.310. Files: `sim/flight.js`, `tests/vehicle.mjs`,
+  `notes/vehicle.md` § v1.315, `NOTES.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **PARKED 2026-11-12 (vehicle session):** R22's fourth fix, `detach()` keeping momentum. Parked at: built and tested on
+  branch `r22-detach` (pushed, worktree `launchpad-r22d`, test `vehicle-44`); three long scripted flights fail with it
+  (Crewed Lunar ends in rainforest trees at 7 m/s, Q383; procedures v2; the Nyx ladder). Make them robust to ~1 m/s at
+  staging, then merge. **Next for vehicle:** that, or R28 with flow.
 
 ## 2026-11-11 — flow, the gameplay loop (Opus 5.5, worktree launchpad-loop): Q570, Q569, Q548 (v1.305–v1.307), Q547 merged (v1.304)
 
