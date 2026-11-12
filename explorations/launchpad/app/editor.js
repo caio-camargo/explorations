@@ -5,14 +5,19 @@
 const $=id=>document.getElementById(id);
 // the construction screen lives in builder.js (BLD)
 function renderEditor(){BLD.init();editorChanged();renderSites()}
-function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',3:'Epoch 3 · satellites that work',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
-  const epNow=Math.min(...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep),9);   // (Q286) the first epoch with work left
-  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;const Ms=MISSIONS.filter(m=>m.ep===ep);
-    if(ep>epNow+1&&Ms.every(M=>!PROG.done[M.id]&&!missionOpen(M))){html+=`<div class="ms lock">🔒 ${Ms.length} mission${Ms.length>1?'s':''}, once ${EP[ep-1].replace(/^Epoch \d+ · /,'')} is under way</div>`;continue}   // (Q286, UI.md § 3) beyond the next epoch: a count
-    for(const M of Ms){const done=PROG.done[M.id],open=missionOpen(M);
-      if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
-      else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
-      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div>${(o=>o?`<div class="sub dim">opens: ${o}</div>`:'')(opensLine(opensNames([M.id]),true))}</div>`}}   // (Q570) what it opens
+function renderProgram(){const el=$('program');if(!el)return;let html='';
+  // (Q576) the missions by chapter (CHAPTERS, sim/program.js): its question, its finish and what it grants where the epoch
+  // heading was; a chapter with nothing open or done, beyond the first one with work left, is a count (Q286, UI.md § 3)
+  const MN=id=>(MISSIONS.find(m=>m.id===id)||{}).name||id,live=C=>C.missions.some(id=>{const M=MISSIONS.find(m=>m.id===id);return M&&(PROG.done[id]||missionOpen(M))});
+  const cNow=CHAPTERS.findIndex(c=>!chapterDone(c));
+  CHAPTERS.forEach((C,ci)=>{const Ms=C.missions.map(id=>MISSIONS.find(m=>m.id===id)).filter(Boolean),fin=chapterDone(C);
+    html+=`<div class="ep chap${fin?' fin':''}">${fin?'✔ ':''}Chapter ${C.n} · ${C.name}</div>`;
+    if(!fin&&!live(C)&&ci>cNow){html+=`<div class="ms lock">🔒 ${Ms.length} mission${Ms.length>1?'s':''}, once chapter ${CHAPTERS[ci-1].n} is under way</div>`;return}
+    html+=`<div class="sub chq">${C.question} <span class="dim">Finish: ${MN(C.capstone)} → ${C.grants.join(', ')}</span></div>`;
+    for(const M of Ms){const done=PROG.done[M.id],open=missionOpen(M),cap=M.id===C.capstone?' <span class="cap" title="the chapter’s finish">◆</span>':'';
+      if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b>${cap}</div>`;
+      else if(!open)html+=`<div class="ms lock">🔒 ${M.name}${cap} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(MN).join(', ')}</span></div>`;
+      else html+=`<div class="ms"><b>${M.name}</b>${cap} <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div>${(o=>o?`<div class="sub dim">opens: ${o}</div>`:'')(opensLine(opensNames([M.id]),true))}</div>`}});   // (Q570) what it opens
   const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
@@ -25,7 +30,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   {const used=Object.keys(PROG.kh||{}).sort((a,b)=>khBar(b)-khBar(a)),bar=k=>`<span class="acc">${'▮'.repeat(Math.round(khBar(k)*8))}${'▯'.repeat(8-Math.round(khBar(k)*8))}</span>`,
      prod=k=>{const x=sourceOf(k);return x.how==='line'?`${x.line.lic!=null?'licensed':'own'} line, maturity ${(x.line.m*100).toFixed(0)}%`:x.how==='home'?'home-made':x.how==='grey'?'<span class="bad">grey market</span>':x.how==='giant'?`from ${x.name} (${POWERS[x.from].root})`:`from ${POWERS[x.from].root}`};
    if(used.length)html+=`<div class="ep">${term('kh','Know-how')}</div><div class="sub">${used.slice(0,10).map(k=>`${bar(k)} ${PARTS[k].name} <span class="dim">· ${prod(k)}</span>`).join('<br>')}</div>`}
-  {const S2=PROG.stand2,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]);
+  {const S2=PROG.stand2,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]&&partOpen(k).ok);   // (D34) a closed part isn't offered
    html+=`<div class="ep">Test stand</div><div class="sub">`+(!S2?`<button data-stand="build" ${PROG.funds>=STAND_COST?'':'disabled'}>Build a test stand ${fmtM(STAND_COST)}, ${STAND_DAYS} d</button> <span class="dim">ground tests: know-how and certification without flying</span>`:
      PROG.day<S2.ready?`Under construction, ready in ${(S2.ready-PROG.day).toFixed(0)} days`:S2.job?`Testing the ${PARTS[S2.job.k].name} (${S2.job.mode==='destroy'?'to destruction':'qualification'}), ${(S2.job.end-PROG.day).toFixed(0)} days left`:
      ks.slice(0,8).map(k=>{const q=testQuote(k,'qual'),r=testQuote(k,'destroy');return`${PARTS[k].name} <button data-test="${k}:qual" ${PROG.funds>=q.cost?'':'disabled'}>Qualify ${fmtM(q.cost)}, ${q.days} d</button> <button data-test="${k}:destroy" ${PROG.funds>=r.cost&&certOf(k)<1?'':'disabled'}>To destruction ${fmtM(r.cost)}, ${r.days} d</button>`}).join('<br>'))+`</div>`}
@@ -43,7 +48,8 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
        return `<div style="margin-top:3px">${PARTS[k].name} <span class="dim">(bought abroad)</span><br>${b('own',q.own,'Own line')} ${b('lic',q.lic,q.lic.from!=null?`License from ${POWERS[q.lic.from].root}`:'License')}${!q.own.ok?`<br><span class="dim">${q.own.why}</span>`:''}</div>`}).join('')+`</div>`}}
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}${selKnowHTML()}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
-  el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(confirm('Forget all missions and everything the program has learned?')){resetProgram();go('title')}}}
+  el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(confirm('Forget all missions and everything the program has learned?')){resetProgram();go('title')}};
+  if(typeof unlockDesk==='function')unlockDesk()}   // (Q572) missions done between flights: their cards, at the desk
 function resetProgram(){programNew();HOOK.save();editorChanged()}   // (also the title screen's New program, Q241 R3; one reset for the game and career.mjs, R1b)
 // how much sideways drift it stands at touchdown, legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s). Q325:
 // for what lands (after its drops) on the body it lands on: a landing procedure's body and staging, else Tellus, and Selene

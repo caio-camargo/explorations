@@ -1107,3 +1107,24 @@
     ` · (b) ${failed ? `failed on flight ${failed.f}, chute ${failed.chute ? 'ARMED' : 'not armed'}; retried: ${at.lit ? 'lit' : 'not lit'}, chute ${at.chute ? 'armed' : 'not armed'}` : 'no failure found'}` +
     ` · (d) CdA at Mach 2, Easy / Normal ${(e0 / n0).toFixed(3)} (air ${api.LEVELS.easy.air}); ascentRun ${arOnce ? 'without' : 'WITH'} its own air factor`);
 }
+
+// vehicle-44. The builder under the unlock map (vehicle, QUEUE Q578; plan Q573 slice 2): a preset with a part not open yet
+// says what it waits for (`stackWaits`, chapter order: the Hopper waits for the structural test and the hop; the Sounding
+// for nothing); the closed parts fold by chapter (`closedParts`), each mission's under one reason line, a family's named
+// in it; every closed part once; none when everything is open. The palette and the preset picker read them.
+{
+  const A = new Function(src + 'return {PROG,HOOK,PARTS,PRESETS,programNew,chooseStart,stackKeys,stackWaits,closedParts,partOpen,MISSIONS,PART_FAMILY};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const hop = A.stackWaits(A.PRESETS.Hopper).map(w => w.id), snd = A.stackWaits(A.PRESETS.Sounding), sat = A.stackKeys(A.PRESETS.Satellite);
+  const C = A.closedParts(), flat = C.flatMap(c => c.groups.flatMap(g => g.keys)), shut = Object.keys(A.PARTS).filter(k => !A.partOpen(k).ok);
+  const once = flat.length === shut.length && new Set(flat).size === flat.length && shut.every(k => flat.includes(k));
+  const c1 = C[0] && /^Chapter 1/.test(C[0].name), eraLast = C[C.length - 1] && C[C.length - 1].ch === 'era';
+  const kit = C.flatMap(c => c.groups).find(g => g.id === 'loads'), kitOK = kit && /orbital kit/.test(kit.line) && kit.keys.includes('kestrel') && kit.keys.includes('petrel');
+  for (const M of A.MISSIONS) P.done[M.id] = { day: 0 }; P.compEra = 9;
+  const none = A.closedParts().filter(c => c.ch !== 'era').length === 0 && A.stackWaits(A.PRESETS.Hopper).length === 0;
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const wired = /closedParts\(/.test(bsrc) && /Not open yet \(\$\{n\}\)/.test(bsrc) && /stackWaits\(PRESETS\[k\]\)/.test(bsrc) && /st\.lockOpen/.test(bsrc);
+  check('vehicle-44: presets say what they wait for (Hopper: structural test, then the hop; Sounding: nothing; payload blocks read too); closed parts fold by chapter, each once, a family named on its line, eras last; none when everything is open; the palette and the picker read them',
+    hop.join() === 'loads,hop' && !snd.length && sat.length > 3 && once && c1 && eraLast && kitOK && none && wired,
+    `Hopper waits ${hop.join(', ')}; Sounding ${snd.length}; Satellite keys ${sat.length}; closed ${shut.length} in ${C.length} chapters (once ${once}, ch1 first ${c1}, eras last ${eraLast}, kit ${kitOK}); all open ${none}; wired ${wired}`);
+}

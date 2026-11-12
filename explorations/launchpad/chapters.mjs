@@ -28,6 +28,7 @@ for (const [i, ch] of CHAPTERS.entries()) {
   const m = run(ARCH, START, SEED, { keep: i > 0, goals: ch.goals, until: ch.until, registry: true, days: YEARS * 400 });
   if (!ch.until(P)) throw new Error(`chapter ${ch.id}: the scripted player didn't get there in ${YEARS} years (day ${Math.round(P.day)}, done ${Object.keys(P.done).join(',')})`);
   const save = JSON.parse(api.progJSON()); save.ver = 1;   // SAVE_V (app/state.js)
+  save.cardQ = [];   // (Q572) the run's world missions: no unlock cards waiting at a chapter start
   const sats = (P.sats || []).filter(q => !q.junk).map(q => q.name + (q.bodyName ? ` (${q.bodyName})` : '')), nx = api.nextStep();
   // the next mission to fly, and what to fly for it: its NEXT_PRESET, else the design the scripted player flies for it
   // (the first in NEXT's order that has one: a world mission such as Disaster watch is met between flights)

@@ -587,20 +587,32 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!d.payOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
   const listed=d=>!d.radialOnly&&!d.payOnly&&(!st.bench||benchPart(d));   // the bench lists a satellite's parts only (Q506)
-  for(const[cat,kinds]of CAT){if(!Object.values(PARTS).some(d=>listed(d)&&kinds.includes(d.kind)))continue;const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
-    for(const k in PARTS){const d=PARTS[k];if(!listed(d)||!kinds.includes(d.kind))continue;
-      const b=document.createElement('button'),lk=typeof partOpen==='function'?partOpen(k):{ok:true};   // Q190: a part not open yet is listed, dimmed, with its reason
+  // (vehicle, Q578; plan Q573 slice 2) the open parts by category; the closed ones fold under "Not open yet (n)", by chapter, each
+  // mission's parts under one reason line (a family's name with it). Still designable: a launch with one is refused (Q190)
+  const isOpen=k=>typeof partOpen!=='function'||partOpen(k).ok,partBtn=(k,box,lock)=>{const d=PARTS[k],b=document.createElement('button');
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
-      b.innerHTML=`${d.name}<span>${lk.ok?spec:'🔒 '+lk.short}</span>`;if(!lk.ok)b.classList.add('lock');
+      b.innerHTML=`${d.name}<span>${spec}</span>`;if(lock)b.classList.add('lock');
       b.onmouseenter=()=>cardAt(b,k);b.onmouseleave=()=>cardAt(null);
       if(st.held&&st.held.k===k&&!kids(st.held).length)b.classList.add('on');
-      b.onclick=()=>st.held&&st.held.k===k&&!kids(st.held).length?drop():grab(k);pal.appendChild(b)}}
+      b.onclick=()=>st.held&&st.held.k===k&&!kids(st.held).length?drop():grab(k);box.appendChild(b)};
+  for(const[cat,kinds]of CAT){if(!Object.values(PARTS).some(d=>listed(d)&&kinds.includes(d.kind)&&isOpen(d.key)))continue;const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
+    for(const k in PARTS){const d=PARTS[k];if(listed(d)&&kinds.includes(d.kind)&&isOpen(k))partBtn(k,pal,false)}}
+  {const shut=typeof closedParts==='function'?closedParts(Object.keys(PARTS).filter(k=>listed(PARTS[k])&&CAT.some(c=>c[1].includes(PARTS[k].kind)))):[],n=shut.reduce((a,c)=>a+c.groups.reduce((b,g)=>b+g.keys.length,0),0);
+    if(n){const h=document.createElement('div');h.className='pcat plock';h.textContent=`${st.lockOpen?'▾':'▸'} Not open yet (${n})`;h.title='parts that open with a mission or an era: you can design with them; a launch with one is refused';
+      h.onclick=()=>{st.lockOpen=!st.lockOpen;palette()};pal.appendChild(h);
+      if(st.lockOpen)for(const c of shut){const ch=document.createElement('div');ch.className='pch';ch.textContent=c.name;pal.appendChild(ch);
+        for(const g of c.groups){const r=document.createElement('div');r.className='pwhy';r.textContent=g.line;pal.appendChild(r);for(const k of g.keys)partBtn(k,pal,true)}}}}
   const pre=el('presets');pre.innerHTML='';
   if(st.bench){const h=document.createElement('div');h.className='pcat';h.textContent='Starters';pre.appendChild(h);
     for(const k in PAY_STARTERS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.title='start from this one and change it (Ctrl+Z goes back)';b.onclick=()=>{snapshot();loadDesign(PAY_STARTERS[k])};pre.appendChild(b)}
     return}
   {const b=document.createElement('button');b.textContent='✕ Empty';b.title='start from scratch: clear the design (Ctrl+Z brings it back)';b.style.margin='0 4px 4px 0';b.disabled=isEmpty(stackDef);b.onclick=clearDesign;pre.appendChild(b)}
-  for(const k in PRESETS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}
+  // (Q578) a preset with a part not open yet is dimmed and says the first mission it waits for (the Hopper waits for the hop)
+  for(const k in PRESETS){const b=document.createElement('button'),W=typeof stackWaits==='function'?stackWaits(PRESETS[k]):[];b.style.margin='0 4px 4px 0';
+    if(W.length){b.classList.add('lock');b.innerHTML=`${k} <span class="pw">🔒 ${W[0].short}${W.length>1?` +${W.length-1}`:''}</span>`;
+      b.title=`Waits for ${W.map(w=>w.era!=null?`the ${w.short.toLowerCase()} era`:`“${w.short}”`).join(', ')}: load it and change it if you like; a launch with a part not open yet is refused`}
+    else b.textContent=k;
+    b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}
   library(pre)}
 // ---- your designs: save the one on the stand under a name; every launch files its design under "Launched" (designLaunched)
 function library(box){if(typeof designLib!=='function'||typeof PROG==='undefined')return;const L=designLib(),w=document.createElement('div');w.className='blib';box.appendChild(w);
@@ -647,7 +659,8 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .blsave{display:flex;gap:4px;margin:2px 0 4px}.blsave input{flex:1;min-width:0;font:inherit;font-size:11px;background:rgba(0,0,0,.3);color:inherit;border:1px solid var(--line);padding:1px 4px}
 .blrow{display:flex;gap:4px;align-items:center;margin:2px 0}.blrow button:first-child{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.blrow .dim{font-size:10.5px;white-space:nowrap}.blrow button[data-libdel]{padding:0 5px}
 .pcat{color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin:8px 0 2px}
-#palette button.lock{opacity:.5}#palette button.lock span{color:var(--warn)}
+#palette button.lock{opacity:.5}#palette button.lock span{color:var(--warn)}#presets button.lock{opacity:.6}#presets button.lock .pw{color:var(--warn);font-size:10.5px}
+.plock{cursor:pointer;color:var(--warn)}.plock:hover{filter:brightness(1.3)}.pch{color:var(--dim);font-size:10.5px;letter-spacing:.08em;margin:8px 0 1px;border-bottom:1px solid var(--line)}.pwhy{color:var(--dim);font-size:10.5px;margin:3px 0 1px}
 .bbar{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.bgrp{display:flex;gap:3px;flex-wrap:wrap;align-items:center}.bgrp .dim{margin-right:3px}
 .bbar button,.bsel button{padding:1px 6px;font-size:11px}.bbar button:disabled{opacity:.35;cursor:default}
 .bsel{border-top:1px solid var(--line);padding-top:6px}.bhd{font-size:13px}.brow{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:4px}.brow>.dim{min-width:70px}
