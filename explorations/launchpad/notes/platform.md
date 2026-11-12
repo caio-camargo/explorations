@@ -988,7 +988,7 @@ error handler at all (review 2026-11-09 § 2).
   save* when R10 kept an unloadable one (`launchpad-save-unloadable.json`), *Keep playing* (hides it until an error it
   hasn't shown). The first time each error is seen it goes to the console; every fault goes to the tester's log
   (`logEv('error', …)`).
-- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (Import came in v1.315, Q599; before, a save
+- `saveFile(text, name)` is the download helper; `exportSave()` can go on a menu later (Import came in v1.316, Q599; before, a save
   file goes back by `localStorage.setItem` in the console).
 - Not done: a frame that throws every time keeps throwing (the panel counts it); no automatic pause.
 - **Checked in the page, headless** (scratch run of `review/2026-11-11/app/harness.cjs`, the R34 harness, 64 s boot on
@@ -999,7 +999,7 @@ error handler at all (review 2026-11-09 § 2).
   document (the panel's content, the count, Keep playing, a new error bringing it back, the old-save button only with a
   `-bad` copy).
 
-## v1.315 — export and import a save from Settings (2026-11-12, platform, QUEUE Q599)
+## v1.316 — export and import a save from Settings (2026-11-12, platform, QUEUE Q599)
 
 R9 gave the fault panel an *Export save*, but only a crash could show it, and nothing put a file back (it took
 `localStorage.setItem` in the console). Settings (Esc › Settings) now has a **Saved program** section:
