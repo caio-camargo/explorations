@@ -14,7 +14,7 @@ function rollPhase(){if(!atRoll||mode!=='editor'||padSchoolOf(curSite())!==1)ret
   if(curSite()!==rollSite){rollSite=curSite();rollT0=now}const t=(now-rollT0)/1000,u=(a,d)=>sstep(0,1,clamp((t-a)/d,0,1));
   return{t,roll:u(0,ROLL_S[0]),up:u(ROLL_S[0],ROLL_S[1]),arms:u(ROLL_S[0]+ROLL_S[1],ROLL_S[2])}}
 function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=(t,W)=>out.push(['warn',t,W]),bad=(t,W)=>out.push(['bad',t,W]);   // (Q391) a warning or a stop can carry its explanation, W={t, d, fix} as whyMark takes it (app/terms.js): hover the check
-  const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts),c=vesselCost(S.parts).cost,fee=a.fee||0,ops=OPS_FIX+OPS_FRAC*c,w=siteWeather(t,(PROG.day||0)*DAY_S);
+  const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts),c=vesselCost(S.parts).cost,fee=a.fee||0,ops=opsOf(c),w=siteWeather(t,(PROG.day||0)*DAY_S);
   if(c+fee>PROG.funds+1e-9)bad(`Over budget: ${fmtM(c)}${fee?` + ${fmtM(fee)} site fee`:''}, the program has ${fmtM(PROG.funds)}`,{t:'Over budget',d:'The launch is refused until the program can pay for the hardware and the site.',fix:['cheaper parts: fewer or smaller engines and tanks','a site of our own (no fee)','wait for money: contracts and the budget fill the account']});
   else if(c+fee+ops>PROG.funds+1e-9)warn(`The ops fee (${fmtM(ops)}) takes the program below zero`,{t:'The account goes below zero',d:'It flies, but the range, tracking and crews take the program into the red until money comes in; below the floor the government or the investors step in, at a price.',fix:['cheaper parts','wait for money first']});else ok(`Affordable: ${fmtM(c+fee+ops)} of ${fmtM(PROG.funds)}`);
   {const lk=partLaunchWhy(S.parts);if(lk)bad(lk,{t:'A part that isn\'t open yet',d:'Parts that come with a mission or a computing era can be designed with before then, but not launched.',fix:['an open part in its place','fly the mission that opens it (the parts list says which)']})}   // a part not open yet (vehicle, Q190)
@@ -33,8 +33,8 @@ function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=(t,W)=>out.push
   const nd=(PROG.decisions||[]).length;if(nd)warn(`${nd} decision${nd>1?'s':''} waiting in the Program's Inbox`,{t:'Decisions waiting',d:'They expire if nobody answers, and some change what this flight is worth.',fix:'answer them in the Program\'s Inbox (P) first.'});
   return out}
 function renderRollout(){const el=$('rollBody');if(!el||BLD.isEmpty(stackDef))return;
-  const t=curSite(),c=vesselCost(S.parts),fee=siteAccessOf(t).fee||0,ops=OPS_FIX+OPS_FRAC*c.cost,
-    days=(TEST.fast?0:prepDays(c.cost)*(1+0.5*(1-khVessel(S)))*FAC.hall.eff[facLv('hall')])+studyWait(S)+padWait(),   // as missionTick reckons it at liftoff
+  const t=curSite(),c=vesselCost(S.parts),fee=siteAccessOf(t).fee||0,ops=opsOf(c.cost),
+    days=(TEST.fast?0:stackDays(c.cost,S))+studyWait(S)+padWait(),   // as missionTick reckons it at liftoff
     ck=rollChecks(),icon={ok:'✔',warn:'⚠',bad:'⛔'},row=(l,v)=>`<tr><td>${l}</td><td>${v}</td></tr>`,nx=nextStep();
   $('rollDesign').textContent=`${designName(stackDef)} · ${fmtDate(PROG.day||0)}`;
   // a check's closing parenthesis (where a number comes from) folds into an ⓘ tooltip, so each check stays a line or two (Q151)

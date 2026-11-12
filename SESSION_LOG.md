@@ -7473,3 +7473,42 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   for economy/Caio, not the map. One run had page scripts missing mid-run (the local server under load); rerun clean.
 - **Checked:** CI full run green on `loop`; pushed to `main` from the worktree (`git push origin loop:main`) because the main
   clone has another session's uncommitted edits (editor.js, builder.js, index.html), left untouched.
+
+## 2026-11-12 — economy (Opus 5.5, worktree launchpad-r19): W47 answered; R19 (v1.321)
+
+- **Asked:** Caio: a defection clears the debt (as built); W47's context, then answered (saturation, privatization once,
+  a stake once per power, numbers to playtest); then R19.
+- **Recorded:** DECISIONS W47 (economy section), out of QUEUE's open questions; TESTING 371 asks the balance questions;
+  notes/economy.md v1.313 carries both answers.
+- **Done, R19 (v1.321):** one formula each: `opsOf`, `stackDays`, `ignFail` (sim/program.js), `PAY_MIL`/`PAY_FAR`
+  (sim/contracts.js), called from missionTick, dispatch, supply runs, Rollout and career.mjs; no behaviour change.
+  `LATE=1 node career.mjs`: the chapters' goals, a registry (satellites earn, TV parked over the capital), abstracted
+  ascent procedures so contracts are dispatched (the game's dispatchRoll), studies before a dispatch, routines for the
+  TV and weather satellites. Test econ-43.
+- **Measured** (one seed, 6 years): agencies end at 125–2,236 M (four of six over 1,000), companies 25–223 M; satellite
+  income a quarter to a third of a rich agency's funds; frugal's dispatches never complete; most careers end with no
+  TV satellite still over the capital.
+- **Checked:** default runner output identical to `main` (`ARCHS=openSuper career.mjs 3 2`); economy lane locally; CI.
+- **Not modelled:** the simulator, crew rotations, station resupply and lab-days, Selene supply runs; fixed flight odds.
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `app/rollout.js`, `career.mjs`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `DECISIONS.md`, `TESTING.md`; root `ACTIVE_WORK.md`.
+- **Next:** why TV satellites leave the capital's sky in long careers (drift the routine doesn't count?); frugal's held
+  dispatches; a `stationcrew` plan so the runner sees crew and station contracts; more seeds of `LATE=1` off the shared
+  machine.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slices 1 and 2 (text only)
+- **Caio:** "claude tends to be prolix... a lot of explanations can be tooltips, and even then many are twice as long
+  as they need to be"; he asked for a Fable session to review the copy. **D43**: the screen is not a manual; the
+  budgets are UI.md § 2.1. PLAYTEST #167. **Q603**: the pass, one screen a slice.
+- **v1.322, slice 1, the design table:** 117 strings in `builder.js`, `app/editor.js`, `index.html`; the three
+  instruction lines (under Parts, staging, action groups) are tooltips on their headings; part cards cut. Text only.
+- **Slice 2, the flight, same version:** the first-flight hints and the "too flat" cautions (`app/cockpit.js`), the
+  flight bar's tooltips, Help's rows (`app/screens.js`): 29 strings. The hints stay until Guided teaches.
+- **Tests:** full suite green on slice 1 (898 checks); smoke on both green but for **vehicle-43 (b), a flake** (it
+  found no failed ignition that run; passes alone with and without the change): **Q604**. **Platform:** the suite
+  has a known flake again. After the merge with `origin/main`: smoke green but for the timing check 6b (2,327 µs a
+  warp frame under other sessions' load, 97 µs alone). `review/2026-11-12/copy_words.cjs` lists long text in the panels.
+- **Not checked:** nothing seen in a browser (TESTING 380).
+- **Next:** slice 3, the Program (contracts, missions, mission control). **PARKED still:** R29b; Q592's plan.
+- Files: `explorations/launchpad/builder.js`, `app/editor.js`, `app/cockpit.js`, `app/screens.js`, `index.html`, `UI.md`, `DECISIONS.md`, `QUEUE.md`,
+  `PLAYTEST.md`, `TESTING.md`, `NOTES.md`, `notes/flow.md`, `review/2026-11-12/copy_words.cjs`; root `ACTIVE_WORK.md`.

@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2189,7 +2189,38 @@ loud after it.
 - **Not checked:** the pe2 and pe3 palettes on screen (only pe1 was seen: the first hour is in the human-computers era); a
   rival's first on the desk by eye.
 
-## v1.322 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
+## v1.322 — the design table's and the flight's copy, cut to the rule (2026-11-12, review 2 session (Fable), QUEUE Q603 slices 1 and 2; D43; PLAYTEST #167)
+
+Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
+
+- **Standing lines gone into tooltips.** The line under *Parts* (19 words on how to pick and place) is now the heading's
+  tooltip; with a rocket on the table `#target` is empty, with none it reads *pick a part to start*. The line under
+  *staging* (28 words) and the one under *action groups* (22) are each their heading's tooltip. The screen's subtitle
+  is *design table*.
+- **While holding:** *holding X · right-click drops it* (was a 20-word line naming every place a click can go).
+  Parked parts: *n parts not attached · left behind at launch*.
+- **Part cards** (`PART_INFO`, `PART_PAIRS`, builder.js): 48 of 67 sentences rewritten, none over 14 words now; a
+  closed part's card says *Not open yet: it opens with …* once. `DEP_HOW` keeps its "key, or button: when" shape (the
+  card splits it at the colon).
+- **Tooltips** on the toolbar, the part options, the groups and the presets: one clause each.
+- **The readout** (app/editor.js): Trim, Touchdown and the stages in the air lose their explaining tails (the glossary
+  and the why-cards carry them); the ratings paragraph under the readout is the *Aerodynamics & structure* heading's
+  tooltip; the payload bench no longer shows a note to developers ("PROBES S2").
+- **The flight (slice 2).** The first-flight hints (app/cockpit.js) say the same steps in about half the words (*To
+  reach orbit, turn: at 100 m/s tap W to lean east, then SAS Prograde. Keep the nose near the ◇.*); they stay until
+  Guided (Q491) takes the teaching. The two "too flat" cautions end at *nose up to the ◇*. The flight bar's five long
+  tooltips and twelve of Help's rows are one clause each.
+- **Counted:** 146 strings. The part cards' sentences: 1,102 words to 751, the longest from 34 to 14; their *Pairs
+  with* lines 601 to 522.
+- **Tests:** the full suite passed on slice 1 (898 checks); the smoke set on both slices passed but for vehicle-43 (b),
+  which found no failed ignition that run and passes alone, with and without this change (a flake, filed). After the
+  merge with `origin/main` the smoke set passed but for the timing check *6b: a perturbed orbit at 100,000× warp stays
+  cheap* (2,327 µs a frame while other sessions' tests ran; 97 µs alone).
+- **Not checked:** not seen in a browser (no GPU this session): whether a heading reads as hoverable, how the empty
+  `#target` line sits, and how the cards wrap. TESTING 380. The why-cards' own sentences (app/editor.js `W`) are
+  slice 4.
+
+## v1.323 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
 
 - **A line per part.** Every member of a family has its own `PART_WHY` line (55 of them: the Kestrel's *the heart of an
   orbital rocket*, the whip antenna's *the lightest way to be heard*...), so the satellite bench's 20 cards say 20 things.
