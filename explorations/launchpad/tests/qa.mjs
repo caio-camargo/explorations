@@ -20,9 +20,9 @@
     `${D.COMP_ERAS[e1].name} on day ${d1.toFixed(0)}, ${D.COMP_ERAS[e2].name} on day ${P.day.toFixed(0)}`);
   const dEra = P.day; D.testGoto(dEra - 1); const e2b = D.compEra(); D.testGoto(dEra);
   check('tester: the era skip stops on the first day of the era (a day earlier is still the one before)', e2b === 1, `day ${dEra - 1}: era ${e2b}`);
-  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('weather', true); const open1 = D.missionOpen(bp), mark = P.done.weather;
+  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('loads', true); D.testMission('weather', true); /* (Q577: the beeper waits for both) */ const open1 = D.missionOpen(bp), mark = P.done.weather;
   D.testMission('weather', false); const open2 = D.missionOpen(bp), none = D.testMission('nope', true);
-  check('tester: one mission at a time: ticking "Above the weather" opens the beeper, unticking closes it; unknown ids refused',
+  check('tester: one mission at a time: ticking "Above the weather" (with the structural test) opens the beeper, unticking closes it; unknown ids refused',
     !open0 && open1 && mark && mark.test === true && !open2 && !P.done.weather && none === false);
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('tester menu: day, era, funds and mission controls are drawn, and disabled in flight', ['id="testDayIn"', 'data-test-era=', 'id="testFundsIn"', 'data-test-mis='].every(s => pg.includes(s)) && /data-test-mis="\$\{M\.id\}"[^`]*\$\{dis\}/.test(pg));

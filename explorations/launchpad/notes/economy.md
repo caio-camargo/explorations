@@ -3763,7 +3763,10 @@ Slice 1 lands first and alone changes play; 2–4 follow in any order. Q572 work
   preset. (Heavy lift's mass simulators sit at the bottom of the runner's stack, so what stays up is named *Object*.)
 - **Tests:** `econ-39` (the plan's m3 checks, with `M_JOB`: every part placed; each mission's needs and `NEXT_PRESET` open
   at its req closure; each contract type's needs at its req; the req changes; flown stays open; the qualification draw;
-  the bar); six core checks that set missions by hand now set the new reqs; `qa-8` takes the next mission as recorded.
+  the bar). Checks that set missions by hand now set the new reqs (core: the hop, the orbit benchmarks, the race, the far
+  side, TV, staged pay, deviation; `econ-10`, `econ-17`, `econ-35`, `flow-16`, `qa-1`); `vehicle`'s part-gates check reads the map
+  (only the Sounding on day 1); `econ-38` and `flow-55` count what the beeper opens now (2 missions, 6 kinds of contract,
+  20 parts and the rover antenna: was 5, 8 and 7); `qa-8` takes the next mission as recorded. Full suite: all pass.
 - **Not done here:** the robot's route (`playtest.mjs m1` needs the structural test before the Beeper) and PLAYROUTE
   sitting 1 (Q580); the builder's view of closed presets (Q578); families and reasons (Q579). Not played by hand
   (TESTING 369): whether a new player gets the Sounding past 20 kPa.

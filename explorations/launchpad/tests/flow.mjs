@@ -318,7 +318,7 @@
   const r0 = R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002; let tr = null;
   for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
     if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, L }; }
-  const run = open0 => { Object.assign(P, { sats: [], day: 0, decisions: [], active: [], dispatch: [], offers: [], staged: {}, funds: 500, done: { weather: { flight: 1, day: 0 }, beeper: { flight: 1, day: 0 } } }); news.length = 0;
+  const run = open0 => { Object.assign(P, { sats: [], day: 0, decisions: [], active: [], dispatch: [], offers: [], staged: {}, funds: 500, done: Object.fromEntries(['weather', 'loads', 'beeper', 'wxsat', 'lift1', 'lift2'].map(k => [k, { flight: 1, day: 0 }])) }); news.length = 0;   // the far side's req (Q577)
     const M = D.MISSIONS.find(x => x.to === 'Selene' && D.missionOpen(x) && !x.crew), s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: tr.r, v: tr.v });
     D.satRegister(s, { day0: 0, open0: open0(M) }); const q = P.sats.at(-1), cr = D.cruiseNext(q, 0), note = cr.to ? D.cruisePayNote(q, cr.to) : '', ev = D.upcoming().find(x => x.kind === 'cruise'), f0 = P.funds;
     D.advanceTo(tr.L[0].endT / D.DAY_S + 1); return { M, q, cr, note, ev, paid: P.funds - f0, st: P.staged[M.id] || {} }; };
@@ -1402,11 +1402,11 @@
   const N = new Function('env', 'D', 'let mode="flight",msgTimer=0,evt=false,simT=0;const HOOK={},$=id=>env.E[id],document={getElementById:id=>env.E[id]},msgLayout=()=>{},'
     + 'activeEngines=()=>env.burning?[1]:[],mcLeft=()=>env.left,opensLine=D.opensLine,opensNames=D.opensNames,tipEsc=s=>String(s),fmtM=v=>v.toFixed(1)+"M";let S=env.S;'
     + hm + '\n' + code + 'return {HOOK,doneTick,doneDismiss,DONE_Q,set mode(m){mode=m}};')(Object.assign(env, { E }), D);
-  D.PROG.done = { weather: { flight: 1, day: 0 }, beeper: { flight: 2, day: 9 } };
+  D.PROG.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 }, beeper: { flight: 2, day: 9 } };
   const shown = () => !E.done.cls.has('hidden');
   N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: true });
   const t1 = E.done.innerHTML, one = shown() && t1.includes('MISSION COMPLETE') && t1.includes('Beeper') && t1.includes('A signal from orbit') && t1.includes('+30.0M')
-    && t1.includes('Opens 5 missions · 8 kinds of contract · 8 parts') && t1.includes('Done: end the flight when you like') && !t1.includes('more after this');
+    && t1.includes('Opens 2 missions · 6 kinds of contract · 21 parts') && t1.includes('Done: end the flight when you like') && !t1.includes('more after this');
   N.HOOK.msg('Pitch over now: follow the ◇'); const hint = E.msg.textContent.startsWith('Pitch over') && shown() && E.done.innerHTML === t1;
   N.HOOK.done({ k: 'contract', id: 3, name: 'Satellite to 300 km', win: 'for Avalon', pay: 55, flight: true }); const queued = shown() && E.done.innerHTML.includes('1 more after this') && E.done.innerHTML.includes('Beeper');
   N.doneDismiss(); const next = shown() && E.done.innerHTML.includes('CONTRACT DONE') && E.done.innerHTML.includes('Satellite to 300 km') && !E.done.innerHTML.includes('more after');

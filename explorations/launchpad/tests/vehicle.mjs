@@ -392,10 +392,11 @@
   const P = api.PROG, T = api.TEST, keep = { done: P.done, flights: P.flights, day: P.day, tools: T.tools };
   const why = st => api.partLaunchWhy(api.newShip(st).parts), M = id => api.MISSIONS.find(m => m.id === id);
   P.done = {}; P.flights = 1; P.day = 0; T.tools = false;
-  const early = ['Hopper', 'Orbiter', 'Beeper', 'Passenger Orbiter', 'Sounding', 'Passenger'].filter(n => why(api.PRESETS[n]));
+  const day1 = why(api.PRESETS.Sounding), early0 = ['Hopper', 'Orbiter', 'Beeper', 'Passenger Orbiter', 'Passenger'].filter(n => !why(api.PRESETS[n]));   // the unlock map (Q577): only the Sounding on day 1
   const bay0 = api.partOpen('bay'), arm0 = api.partOpen('arm'), comp0 = api.partOpen('ocomp'), rtg0 = api.partOpen('rtg'), dock0 = why(api.PRESETS.Docking);
-  P.done = { beeper: true }; const port1 = api.partOpen('port').ok && api.partOpen('hab').ok && !api.partOpen('bay').ok, dock1 = why(api.PRESETS.Docking);
-  P.done = { beeper: true, station1: true }; const bay2 = api.partOpen('bay').ok && api.partOpen('arm').ok && !api.partOpen('lab').ok;
+  P.done = { weather: true, loads: true, hop: true, orbiter: true }; const early = ['Hopper', 'Orbiter', 'Beeper', 'Passenger Orbiter', 'Sounding', 'Passenger'].filter(n => why(api.PRESETS[n]));
+  P.done = { weather: true, loads: true, beeper: true, wxsat: true, tv: true }; const port1 = api.partOpen('port').ok && api.partOpen('hab').ok && !api.partOpen('bay').ok, dock1 = why(api.PRESETS.Docking);
+  P.done = { tv: true, station1: true }; const bay2 = api.partOpen('bay').ok && api.partOpen('arm').ok && !api.partOpen('lab').ok;
   T.tools = true; const tl = api.partOpen('lab').ok && api.partOpen('ocomp').ok && !why(api.PRESETS.Docking);
   T.tools = false; P.flights = 0; const sb = !why(api.PRESETS.Docking) || !!(P.own && P.own.chosen);
   Object.assign(P, { done: keep.done, flights: keep.flights, day: keep.day }); T.tools = keep.tools;
@@ -404,10 +405,10 @@
   const bad = Object.entries(api.PART_GATE).filter(([k, id]) => !M(id) || !api.PARTS[k]).map(([k]) => k);
   const order = [['hab', 'station1'], ['port', 'station1'], ['lab', 'stationlab'], ['crew', 'padabort'], ['les', 'padabort'], ['beacon', 'selland']]
     .filter(([k, m]) => api.PART_GATE[k] !== m && !reqs(m).includes(api.PART_GATE[k])).map(([k]) => k);
-  check('part gates: early presets fly from day 1; the cargo bay and the arm open with "A station", the docking port with "The beeper", the computer and RTG with their era; tester tools and a sandbox ignore gates',
-    !early.length && !bay0.ok && /A station/.test(bay0.why) && !arm0.ok && !comp0.ok && !rtg0.ok && /docking port/.test(dock0) && /onboard computer/.test(dock0)
+  check('part gates: the Sounding flies from day 1 and the other early presets once chapter 1 and one orbit are done (Q577); the cargo bay and the arm open with "A station", the docking port with "TV for the capital", the computer and RTG with their era; tester tools and a sandbox ignore gates',
+    !day1 && !early0.length && !early.length && !bay0.ok && /A station/.test(bay0.why) && !arm0.ok && !comp0.ok && !rtg0.ok && /docking port/.test(dock0) && /onboard computer/.test(dock0)
       && port1 && !/docking port/.test(dock1) && /onboard computer/.test(dock1) && bay2 && tl && sb && !bad.length && !order.length,
-    `early presets blocked: ${early.join(', ') || 'none'}; day 1 Docking: "${dock0}"; after the beeper: "${dock1}"; bad gates ${bad.join(',') || 'none'}; out of order ${order.join(',') || 'none'}`);
+    `day 1: Sounding ${day1 || 'open'}, others open on day 1: ${early0.join(', ') || 'none'}; after chapter 1 blocked: ${early.join(', ') || 'none'}; day 1 Docking: "${dock0}"; after the beeper: "${dock1}"; bad gates ${bad.join(',') || 'none'}; out of order ${order.join(',') || 'none'}`);
 }
 
 // vehicle-11. Every part says what it does (vehicle session, QUEUE Q248; PLAYTEST #46): the palette's card has a sentence

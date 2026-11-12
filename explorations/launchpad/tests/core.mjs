@@ -401,7 +401,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('range certification: a near-town drop resets the streak; flights with no drops don\'t count; three clean in a row completes it', after3 === 0 && !!P.done.range && P.streak === 3,
     `streak after a near miss ${after3}, final ${P.streak}, flights ${P.flights}`);
   // the passenger hop: a Kestrel's kick is too much for the passenger; the Sparrow preset goes to space and home safe
-  const hop = st => { fresh(); P.done.loads = { flight: 0 }; P.done.weather = { flight: 0 };   // the hop's req (Q577) const x = launch(st); let arm = false, k = 0;
+  const hop = st => { fresh(); P.done.loads = { flight: 0 }; P.done.weather = { flight: 0 }; /* the hop's req (Q577) */ const x = launch(st); let arm = false, k = 0;
     let stg = 0; const dropBooster = st.includes('dec');   // burnout: drop the booster (if it can be dropped); falling: arm the chute
     while (x.alive && !(x.rec.launched && x.landed) && k++ < 400000) {
       if (dropBooster && stg === 0 && x.rec.launched && x.thrust === 0) { api.stage(x); stg = 1; }
@@ -1930,7 +1930,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 39. Deviation (economy): a dispatch that can't meet its goal hands the flight over; time stops for it; ignored, it's lost.
 {
   const P = api.PROG, saved = JSON.stringify(P); const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
-  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: {}, staged: {} });
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { weather: { flight: 0, day: 0 }, loads: { flight: 0, day: 0 }, beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: {}, staged: {} });
   api.chooseStart('agency'); P.funds = 2000; P.day = 10;
   const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']; P.procs = { [api.procKey(st)]: { kind: 'orbit', target: { pe: 110e3, ap: 118e3 }, dv: 4445 } };
   const c = { id: 911, type: 'sat', src: 'com', client: 0, p: { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];

@@ -224,7 +224,7 @@
   const D = new Function(src + 'return {dispatchQuote,dispatchSite,baseRunQuote,siteAccess,procKey,SITES,PROG,HOOK,pairKey,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, lines: {}, own: null, decisions: [], active: [], offers: [], fac: {}, dispatch: [],
-    done: { beeper: { flight: 0, day: 0 } }, flights: 3, funds: 2000 }); D.chooseStart('agency');
+    done: { weather: { flight: 0, day: 0 }, loads: { flight: 0, day: 0 }, beeper: { flight: 0, day: 0 } }, flights: 3, funds: 2000 }); D.chooseStart('agency');
   const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], key = D.procKey(st), abroad = D.SITES.find(t => t.power != null && t.power !== 0 && t.kind !== 'sea');
   const c = { id: 941, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 };
   P.procs = { [key]: { kind: 'orbit', dv: 4300, target: { pe: 160e3, ap: 160e3 }, site: null } }; const qHome = D.dispatchQuote(c, st);
@@ -366,7 +366,7 @@
   const D = new Function(src + 'return {utilTick,stationOf,TELLUS,PROG,HOOK,MISSIONS,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
   const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], back: [], flights: 5, cdone: 0, staged: {},
-    done: { weather: { day: 1, flight: 1 }, beeper: { day: 2, flight: 2 } } }); D.chooseStart('agency');
+    done: Object.fromEntries(['weather', 'loads', 'beeper', 'wxsat', 'tv', 'hop', 'orbiter', 'padabort', 'maxqabort'].map((k, i) => [k, { day: 1 + i, flight: 1 + i }])) }); D.chooseStart('agency');   // a station after TV, a crew after the max-q abort (Q577)
   const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0);
   const hab = { k: 'hab', i: 0, pos: [0, 0, 0], y0: 0, h: 3.2 }, top = { k: 'port', i: 1, pos: [0, 0, 0], y0: 3.2, h: 0.3 }, side = { k: 'rport', i: 2, pos: [0, 0, 0], y0: 1, h: 0.6, phi: 0 };
   const st = { id: 61, name: 'Station 1', r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [hab, top, side], attached: [] };
@@ -800,7 +800,7 @@
 {
   const A = new Function(src + 'return {PROG,HOOK,programNew,chooseStart,procKey,orderDispatch,advanceDays};')(), P = A.PROG, news = [];
   A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = m => news.push(m); A.programNew(); A.chooseStart('agency');
-  Object.assign(P, { funds: 2000, day: 10, flights: 3, done: { beeper: { flight: 0, day: 0 } } });
+  Object.assign(P, { funds: 2000, day: 10, flights: 3, done: { weather: { flight: 0, day: 0 }, loads: { flight: 0, day: 0 }, beeper: { flight: 0, day: 0 } } });   // the Kestrel kit opens with the structural test (Q577)
   const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], orb = { pe: 150e3, ap: 152e3, inc: 0, sci: true };
   P.procs = { [A.procKey(st)]: { kind: 'orbit', target: { pe: 150e3, ap: 152e3 }, dv: 4445 } };
   const sat = { id: 921, type: 'sat', src: 'com', client: 0, p: { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 },
@@ -928,7 +928,7 @@
 // unlocks (PART_GATE, RV_GATE). For each of the 29 missions, in two programs (only its ancestors done; everything done but
 // it and what follows from it), opensOf, asked before and after, equals the before/after diff of missionOpen, of
 // offerTypes over every source (the world's own gates, CT.open, set aside: they wait on a station or a satellite, not on
-// the mission) and of partOpen / rvPartOpen. The beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover
+// the mission) and of partOpen / rvPartOpen. The beeper opens 2 missions, 6 kinds of contract, 20 parts (since Q577's map; 5, 8 and 7 before) and the rover
 // antenna; opensNames merges several missions' lists (one done by another isn't "opened") and opensLine says it in a line.
 {
   const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,PARTS,RV_GATE,opensOf,opensNames,opensLine,offerTypes,missionOpen,partOpen,rvPartOpen,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
@@ -950,13 +950,13 @@
     for (const g of [got(O), got(O2)]) { runs++; if (JSON.stringify(want) !== JSON.stringify(g)) bad.push(`${m.id} (${state}): want ${JSON.stringify(want)} got ${JSON.stringify(g)}`); }
     if (want.m || want.c || want.p || want.r) any++; }
   for (const k in D.CT) if (D.CT[k].open0) { D.CT[k].open = D.CT[k].open0; delete D.CT[k].open0; }
-  P.done = { weather: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
+  P.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
   P.done = {}; const two = D.opensNames(['weather', 'beeper']), none = D.opensLine(D.opensNames(['nyxland']));
-  const facts = B.missions.length === 5 && B.contracts.length === 8 && B.parts.length === 7 && B.rover.join() === 'it:ant'
-    && line === '5 missions · 8 kinds of contract · 8 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
+  const facts = B.missions.length === 2 && B.contracts.length === 6 && B.parts.length === 20 && B.rover.join() === 'it:ant'
+    && line === '2 missions · 6 kinds of contract · 21 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
     && N.contracts.every(x => x.t && !/^[a-z]+[A-Z]/.test(x.t)) && none === ''
-    && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 5 && two.contracts.length === 9;
-  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover antenna; opensNames merges; opensLine',
+    && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 2 && two.contracts.length === 7;   // (the unlock map, Q577: the satellite bench; the hop and the beeper wait for the structural test)
+  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 2 missions, 6 kinds of contract, 20 parts (the satellite bench, Q577) and the rover antenna; opensNames merges; opensLine',
     M.length === 29 && !bad.length && any >= 20 && facts,
     `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
 }
