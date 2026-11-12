@@ -146,7 +146,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q477 | **Q53 slice 1: the flight HUD as the instrument panel** (UI.md 0.2.0 § 4.1 item 1; with look & sound): bezels, amber VT323 readouts, backlit legend buttons, the navball in a bezel; with Q436's symbol keys; the rollout and rover yard too | M1 | M | 🖥 | ready (after Q436) | · Caio approved 2026-10-29
 | Q478 | **Q53 slice 2: one era class on `body`** (UI.md § 4.1 item 2): every place's tokens by computing era (office typed → printout → laser; cockpit amber → green → glass), not only the map. With Q480 | M1 | S | 🖥 | ready | · Caio approved 2026-10-29
 | Q480 | **Q53 slice 5: one token sheet by place** (`--office-*`, `--panel-*`, `--chart-*`, `--poster-*` per era), replacing copied hexes; do with Q478 | M1 | S | 🖥 | ready (with Q478) | · Caio approved 2026-10-29
-| Q479 | **Q53 slice 3: poster headlines for big moments** (a first, a rival's first, a new epoch; with look & sound) | M1 | S | 🖥 | **→ loop slices (Opus) 2026-11-12** | · Caio approved 2026-10-29
+| Q479 | **Q53 slice 3: poster headlines for big moments** (a first, a rival's first, a new epoch; with look & sound) | M1 | S | 🖥 | **✓ v1.319** (loop slices, 2026-11-12) | · Caio approved 2026-10-29
 | Q418 | After Q286 (v1.186, v1.189): **a phase card that changes by phase** (landing: height and descent rate big; burn: Δv to go; UI.md § 3 Flight); the desk's one-line offers wrap in the narrow tray (Take/Pass on a second line): look again when the rooms land (Q239) Also PLAYTEST **#112** (test bench, TESTING 271): at 1280×800 three of four offers wrap and Aurora sounding's buttons hang below its card | M1 | S | 🖥 | ready |
 | Q354 | The network page's **node boxes open a panel** on click: stock and need per good, what it waits for, the honest next action; with N3's routes (Q170, v1.151) | M2 | S | 🖥 | ready |
 | Q355 | A relay node's **coverage bar** on the network page (the N2 plan's line; `N.cover` has it per body) (Q170, v1.151) | M2 | S | 🖥 | ready |
@@ -486,4 +486,5 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
 - flow + look & sound — Q572 follow-ups: a sound for the unlock card; a per-part `why` line for family members (the satellite bench's 20 cards share one line) — loop slices v1.318
 - flow — Q600 with Q572: the desk's centred notice for world missions could become the overlay's *Mission complete* card (`unlockDesk` drops that card today so it isn't said twice) — loop slices v1.318
-- QA — TESTING 375–377 on a really flown structural test and beeper (the Chrome check used hand-built Debrief records) — loop slices v1.318
+- QA — ~~TESTING 375–377 on a really flown structural test and beeper~~ ✓ the robot's new `playtest.mjs cards` row, v1.319; by hand still — loop slices
+- QA — run `playtest.mjs cards` beside `m1` when the loop changes (m1's flights with the unlock cards, poster and trophy case checked) — loop slices v1.319

@@ -18,7 +18,7 @@ function renderDebrief(){const D=debShown,el=$('debBody');
   const ch=D.chapter;
   const[kick,hl,cls]=crewLost?['A loss','Crew lost','poster black']:ch?[`Chapter ${ch.n} complete${first?' · first in the world':''}`,ch.name,'poster chap']:first?['First in the world',first.l,'poster']:o.k==='lost'?['','Vehicle lost','poster']
     :rec?['New record',`${rec.l}: ${rec.v}`,'poster']:['',o.t,''];
-  let h=(kick?`<div class="kick">${kick.toUpperCase()}</div>`:'')+`<div class="hl ${cls}">${hl}</div>`
+  let h=(kick?`<div class="kick">${kick.toUpperCase()}</div>`:'')+`<div class="hl ${cls}${cls&&typeof posterEra==='function'?' '+posterEra():''}">${hl}</div>`   // (Q479) the era's poster palette
     +`<div class="lead">${ch&&!crewLost?`<b>${ch.capstone}</b> · `:''}${cls?`<b>${o.t}</b>: `:''}${o.d}.`
     +(D.crew?` <span class="${D.crew.ok?'ok':'bad'}">${D.crew.line}.</span>`:'')   // (Q191)
     +(D.passenger?` ${D.passenger.ok?`${D.passenger.who} came through.`:`${D.passenger.who} ${D.passenger.why}.`}`:'')+`</div>`;
