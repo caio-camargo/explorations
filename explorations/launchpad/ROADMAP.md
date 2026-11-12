@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.4 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
+**Version**: 1.9.5 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-12 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -153,6 +153,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`FACES.md`](FACES.md) | the face engine (parked, D26) |
 | [`EVA.md`](EVA.md) | astronauts outside: what EVA is for, how crew move, slices E1–E4 |
 | [`PROGRESSION.md`](PROGRESSION.md) | the loop between flights: visible unlocks, chapters, contact limits on uncrewed flight, the office as tables of models |
+| [`BACKLOG.md`](BACKLOG.md) | ideas worth keeping that are not work; only Caio promotes one to QUEUE (D31) |
 | [`MIDGAME.md`](MIDGAME.md) | from single flights to routines: the automation ladder, the launch rail, windows, satellites |
 | [`LATE_GAME.md`](LATE_GAME.md) | the network, outposts, the tech ceiling, capstones, debris |
 | [`GROUND.md`](GROUND.md) | every body's ground: generators, recipes, slices |
@@ -276,7 +277,7 @@ perf readout (NOTES § v1.1); `views.js` reference scenes for before/after.
 Docs drifted because one decision was written in up to four places, replaced text stayed printed, status lines were
 kept by hand, and NOTES grew without order. The rules:
 1. **Each kind of doc has one job.** Design catalogs (above): the design *as it is now*, edited in place. **DECISIONS.md:**
-   every decision, one line, append-only. **QUEUE.md:** live work and open questions only. **NOTES:** how things were
+   every decision, one line, append-only. **QUEUE.md:** live work and open questions only. **BACKLOG.md:** ideas out of scope, one row each, never work (D31). **NOTES:** how things were
    built, one file per area in `notes/` (NOTES.md is their index). **ROADMAP.md:** pillars, milestones, lanes, rules. **INDEX.md:** where each doc is and what it's for (no
    versions or statuses: those live in the doc's own header).
 2. **One home per fact.** Elsewhere, a one-line summary and a link, never a restatement.

@@ -7194,3 +7194,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   waits only on Q581 and W48's freeze. He asked what planes like KSP's would take: sized in
   explorations/launchpad/notes/vehicle.md § "Scope: winged flight" (three tiers; today's plates give a lift-to-drag
   of about 4 at wing size, `review/2026-11-11/glide.mjs`). Nothing queued: he is holding scope.
+
+- **And:** Caio on winged flight: tier 1 (the winged return) is good, aeroplanes and spaceplanes are backlog: **D30**,
+  **Q592** (plan: the winged return, vehicle).
+
+- **And:** Caio asked for a backlog for stray ideas: **explorations/launchpad/BACKLOG.md** (D31; rules: never work,
+  only Caio promotes), seeded with aeroplanes and spaceplanes; pointers in ROADMAP § Documents, QUEUE § Proposed, INDEX.
+
+- **The backlog sweep** (Caio: "sweep the older notes for past ideas... keep an eye out for major design questions"):
+  six read-only agents read notes/, the catalogs, the reviews and mockups/README. **BACKLOG.md 0.1.1**: about 85 ideas
+  by area, and a table "Decided, but nothing carries it" (11 rows, for the orchestrator). **REVIEW-2026-11-11 § 8**: 20
+  design questions (8 where two records disagree), with recommendations, none answered. Q583 gained a check (the
+  logbook locks maneuver nodes until an orbit is measured). Coverage was by key word; no code run.
