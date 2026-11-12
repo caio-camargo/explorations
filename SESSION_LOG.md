@@ -7436,3 +7436,27 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `sim/contracts.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`, `PLAYTEST.md`; root
   `ACTIVE_WORK.md`.
 - **Next:** the 🖥 check and TESTING 378; Q572's overlays could take the desk's box too (world missions judged at home).
+
+## 2026-11-12 — loop slices, 2nd round (Opus 5.5, worktree launchpad-momentum, branch momentum2): v1.318 flown, Q479 (v1.320)
+
+- **Asked:** Caio: "go ahead with 1 and 2": prove v1.318 on a real flight, then Q479 (poster headlines for big moments).
+- **Done, 1:** a new robot row `playtest.mjs cards` (m1's two real flights, the unlock checks spliced in after each Debrief).
+  Passed: the Sounding closes weather and the structural test (25.2 kPa) and shows 14 cards under *Chapter 1 complete*; the
+  beeper 26 under *Chapter 2 complete · first in the world* (+108M); a real Space advances, the camera turns, a real D
+  takes it to the table; the trophy case holds both chapters with their flight photos; the Missions tab by chapter.
+  TESTING 375–377 marked robot-passed (by hand still).
+- **Done, 2 (Q479, v1.320):** big moments reach the news with a poster (`HOOK.news`'s third argument): our first, a rival's
+  first, a chapter closed, a new computing era. The desk's Herald (and the Debrief's clipping) prints a recent one as a
+  poster; posters and the Debrief's headline take the era's palette (pe1 cream/navy/red, pe2 browns/oranges, pe3 dark band,
+  bold sans). Test flow-59 (Q600 took flow-58, v1.319 and TESTING 378 meanwhile: renumbered).
+- **Also:** vehicle-43's ignition roll starts from no know-how (it failed once in a smoke shard after earlier sections).
+- **Checked:** CI green (43160205516); the robot row; smoke. **Mistake, caught:** a `//` comment appended mid-line swallowed
+  the rest of `raceTick` (third time in two days), and a robot run that started meanwhile loaded the broken page; rerun clean.
+- **Main clone:** it holds someone else's uncommitted edits (`app/editor.js`, `builder.js`, `index.html`: shorter readout
+  wording), so `main` was fast-forwarded with `git push origin momentum2:main` and the clone left untouched: **whoever is
+  working there: pull before committing.**
+- **Not checked:** the pe2/pe3 palettes on screen; a rival's first on the desk by eye.
+- **Files:** launchpad `sim/program.js`, `sim/contracts.js`, `app/state.js`, `app/desk.js`, `app/debrief.js`, `index.html`,
+  `playtest.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `notes/flow.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`.
+- **Next:** TESTING 375–379 by hand; the *Proposed* follow-ups (a card sound, per-part lines); then Q370 or Q47.
