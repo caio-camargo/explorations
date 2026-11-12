@@ -79,7 +79,7 @@ function toggleHelp(){if($('help').classList.contains('hidden'))renderHelp();ovT
 // Overlays stack: Esc closes the one opened last. Panels opened by their own buttons (the logbook's) still count.
 const OVS=['escm','help','logbook','tester','settings'],OV=[];
 const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.filter(x=>x!==id),id);if(id==='escm')renderEsc();if(id==='tester')renderTester();if(id==='settings')renderSettings()},
-  ovClose=id=>{$(id).classList.add('hidden');const i=OV.indexOf(id);if(i>=0)OV.splice(i,1);if(id==='escm')escArm=null},
+  ovClose=id=>{$(id).classList.add('hidden');const i=OV.indexOf(id);if(i>=0)OV.splice(i,1);if(id==='escm')escArm=null;if(id==='settings'&&typeof impArm!=='undefined')impArm=false},
   ovToggle=id=>$(id).classList.contains('hidden')?ovOpen(id):ovClose(id),
   ovTop=()=>[...OV].reverse().find(id=>!$(id).classList.contains('hidden'))||OVS.find(id=>!$(id).classList.contains('hidden'));
 // The Esc menu. Leaving a flight that is still going asks twice: the second click is the confirmation.
