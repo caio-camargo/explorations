@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.61 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
+**Version**: v2.0.62 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -136,6 +136,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
+- v1.336 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 
@@ -200,7 +201,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.280 — a wait cut mid-transfer keeps its encounter: a cruise between events coasts with the predictor's own stepper (coastTo), not a fixed 600 s RK4 that drifted ~15,000 km a day off a low perigee (2026-11-07, space session, QUEUE Q530)
 - v1.287 — the builder's power line says what the battery will do as a satellite: "lasts 4 days, then it goes quiet" (2026-11-08, space, QUEUE Q212; from v1.108)
 - Plan: contact limits uncrewed flight (Q574): flown, every first-orbit burn is out of the pad's sight (the Beeper's by 78 s) and a stored timed burn circularises as well as a guided one; `cmdLink`, the launch range (a tracking ship 700 km downrange), armed nodes by avionics, what is refused where; slices Q581–Q587 and W51 (2026-11-11, review 2 session; plan only)
-- v1.332 — flights from orbit: Revert goes back to when control was taken, never the pad; a reload mid-flight puts the vessel back (Easy, Normal) or loses it (Hard) (2026-11-12, launchpad session, QUEUE R29 + R29b, D45)
+- v1.338 — flights from orbit: Revert goes back to when control was taken, never the pad; a reload mid-flight puts the vessel back (Easy, Normal) or loses it (Hard) (2026-11-12, launchpad session, QUEUE R29 + R29b, D45)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 
@@ -489,6 +490,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.310 — the loader fills a save from the schema: every field present, a save from before `wseed` keeps world 12345, unknown fields kept and logged; the `||` reads retire lazily (2026-11-11, platform, QUEUE R1d)
 - v1.312 — a frame that throws no longer ends the game: `frame()` always schedules the next one; `app/fault.js` catches errors and lost promises with a panel (Reload, Export save, the old save R10 kept, Keep playing) (2026-11-11, platform, QUEUE R9)
 - v1.316 — export and import a save from Settings › Saved program: Export any time, Import asks twice and waits for the end of a flight; a file that isn't a program or stops the game changes nothing, one that loads replaces the slot (the old one kept as `-before-import`) and reloads (2026-11-12, platform, Q599)
+- v1.330 — the lint step: `lint.mjs` (swallowed code after `//`, no-undef across the page's shared scope) in `--smoke` as platform-12; R25's five lines and the Debrief's part-card hover fixed (2026-11-12, platform, QUEUE R3)
 - v1.318 — the loop's slices: part families, reasons and chapters as data (D34: no closed part on the stand, in development or on a line); presets say what they wait for and closed parts fold under *Not open yet* by chapter; after a flight, one card per mission done, part and mission opened, the part turning as a model (D42); the Missions tab by chapter, a chapter's poster, the trophy case (2026-11-12, loop slices, QUEUE Q579, Q578, Q572, Q576)
 - v1.320 — poster headlines for big moments: a first, a rival's first, a chapter closed and a new era reach the news with a poster; the desk's paper prints a recent one as a poster, in the era's palette, as does the Debrief's headline; v1.318 flown by the robot (`playtest.mjs cards`) (2026-11-12, loop slices, QUEUE Q479)
 - v1.324 — a line per part on the unlock cards, a sound per card; a career under way opens on the desk, the title in the Esc menu (2026-11-12, loop slices, QUEUE Q370)

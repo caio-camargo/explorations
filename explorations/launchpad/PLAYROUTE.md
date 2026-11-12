@@ -28,7 +28,7 @@ flags**, unless the row says otherwise. Tell any session the number and your ans
 | 4 | Finish any mission | Do you know at once that it is done, what it opened, and what to fly next? | Q569, Q570 (built); Q571, Q572 |
 | 5 | In the builder, look for a part that is closed | Does a closed part read as a goal (you know which mission opens it) or as a wall? | D34, Q577, Q578 |
 | 6 | Fly the first flight with **Guided** on, the second with it off | Is Guided help, or does it fly the rocket for you? Should it be on by default? | Q553's five questions |
-| 7 | In orbit, save, then reload the page | What did you expect to find: the craft where it was, the craft at the moment you took control, or the craft lost? | D45: Easy and Normal, the craft at the moment you took control; Hard, lost (TESTING 388) |
+| 7 | In orbit, save, then reload the page | What did you expect to find: the craft where it was, the craft at the moment you took control, or the craft lost? | D45: Easy and Normal, the craft at the moment you took control; Hard, lost (TESTING 393) |
 | 8 | One flight on **Hard** | Is Hard a different game or the same one with less slack? | D25, the levels |
 | 9 | Five minutes with sound on (F4): liftoff, staging, wind, re-entry | One word per sound: keep, change, or cut | REVIEW § 8 row 17 (parked until you have heard it) |
 | 10 | Open the crew screen, then go straight to a flight | Do the drawn crew and the photographic world belong to the same game? | REVIEW § 8 row 18, two looks |

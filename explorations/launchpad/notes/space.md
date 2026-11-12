@@ -2851,7 +2851,7 @@ is planned over the pad, an orbit ahead).
 - Whether a replay with `cmdStep` matches its tape (the test in Q583 decides `TAPE_V`).
 - Docking and EVA under the rule (an uncrewed docking is already an onboard-computer routine).
 
-## v1.332 — flights from orbit: Revert and a reload (2026-11-12, launchpad session, QUEUE R29 + R29b, DECISIONS D45; REVIEW-2026-11-11 § 6)
+## v1.338 — flights from orbit: Revert and a reload (2026-11-12, launchpad session, QUEUE R29 + R29b, DECISIONS D45; REVIEW-2026-11-11 § 6)
 
 Review 2 found two holes in Program › Fleet › *Fly* (`flyEntry`), both confirmed headless (`review/2026-11-11/app/`):
 
@@ -2873,4 +2873,4 @@ Review 2 found two holes in Program › Fleet › *Fly* (`flyEntry`), both confi
 **Checked:** `space-36` in review 2's headless page: Normal: Revert returns *Object 1* at 300 km on the flight screen,
 again with the table emptied (no throw); a reload puts it back in the registry identical to the snapshot; Hard: no
 Revert, a reload loses it with the news line. The two repros print the new behaviour. **Not checked:** in a browser
-(TESTING 388).
+(TESTING 393).

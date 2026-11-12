@@ -7577,3 +7577,29 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   remainder) are still open.
 - Files: launchpad `sim/program.js`, `sim/contracts.js`, `app/program-ui.js`, `app/mission.js`, `app/editor.js`,
   `tests/economy.mjs`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-r3): R3, the lint step (v1.330)
+
+- **Asked:** build R3 as planned in REVIEW-2026-11-11.md § 4; fix what it finds or list it; leave `shards.mjs` to R5.
+- **Done (v1.330):** `explorations/launchpad/lint.mjs` (no dependency; `node --expose-internals lint.mjs`), test
+  **platform-12** in `--smoke` and the full run (0.6 s): (a) code swallowed by a `//` comment, made strict (a call needs
+  no space before its paren, so the prototype's five prose false positives are gone; R4's five and R25's five lines are
+  fixtures that must be flagged, six prose lines must not); (b) no-undef across the page's shared scope (index.html's
+  scripts in order, the inline one, then views.js), duplicate top-level names, load-time use of a later let/const. Names
+  read only behind `typeof` (LIFT, recMenu, DEBUG_PROC) are listed, not failed; `window.x =` declares x.
+- **Fixed what it found:** R25's five lines (views.js:78, reference view 13 now cuts the throttle, holds retro, sets
+  `markT`; tests/core.mjs 1030/1072/1108/1202 restores). **New defect:** app/debrief.js (Q570, v1.304) called builder.js's
+  `tipOK`/`partCardHTML`, which live inside `BLD`: hovering a part link in the Debrief's *Opened* block threw (confirmed
+  in the headless harness: both `undefined` globally). `BLD` exports `partCardHTML`; TESTING 387.
+- **Not built:** (c) the shader-uniform check (needs a GL-stub run and line-number attribution in render.js; its one hit
+  is R33): a *Proposed* line, best inside R34's `tests/app.mjs`. **Not done:** reference view 13 not re-shot (Proposed, look).
+- **Checked:** lint fails as it should on an injected swallowed line and undefined name; smoke green but for
+  vehicle-43 (b) (Q604's flake) and once 6b (timing under load); CI full run green on `r3` (3c1b07c5), ff-merged.
+  Main moved three times during the merge (R5, Q543–Q545, Q603 slice 3): renumbered v1.325 → v1.329 → v1.330, TESTING
+  383 → 386 → 387; the R5 merge's conflict in tests/platform.mjs briefly dropped platform-11's closing brace (caught by smoke, fixed).
+- **Files:** launchpad `lint.mjs` (new), `tests/platform.mjs`, `tests/core.mjs`, `views.js`, `app/debrief.js`,
+  `builder.js`, `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R3, R25 ✓; two Proposed lines), `TESTING.md`; root `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** R5 is merged, so **R2** (REVIEW-2026-11-11.md § 3, test sections isolated) is next for platform.
+- **3, correction:** the line above was written before the ff-merge, which `main` moving refused twice (flow's copy pass
+  and platform's R3 took v1.325, v1.329, v1.330 and TESTING 383, 386, 387 meanwhile). R28 is now **v1.336, TESTING 392,
+  test vehicle-46**, on `main` after CI 43291812071 (numbers taken well ahead to stop the renumbering).

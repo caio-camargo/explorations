@@ -2589,3 +2589,20 @@ moved; a lander that rights itself flies on, so a toppled lander is no longer a 
 on its side and a gentle push; rest, tap, awake under thrust). Changed: `vehicle-38` (thrust on its side now moves it,
 registered before), `flow-50` (no `TIP_NO`, no "Stuck" row, the "Righting" row). vehicle-1, flow-51 and Q264's topple
 tests unchanged and passing.
+
+## v1.336 — the builder acts only on the Assembly (2026-11-12, launchpad session for vehicle, QUEUE R28; REVIEW-2026-11-11 § 6, R13g)
+
+`mode==='editor'` is the title, the Rollout, the Program, the Mission card and the Debrief as well as the Assembly, and the
+builder tested only that (the keys also excluded four of the screens, not the title). So a left click on the rocket at the
+Rollout picked a part up and edited the design unseen (review 2's `app/A_rollout_click.cjs`: 9 parts → 6, one undo step),
+and the builder's keys acted from the title.
+
+- One test, `here()` in builder.js: `mode==='editor'` and `screenNow()==='assembly'` (headless, with no screens, it's on).
+  It gates the mouse (down, move, up, wheel, context menu), the keys, `update()`, `draw()`, `overlay()` and the part
+  tooltip. A mouse-up off the Assembly clears a press begun there.
+- `render()`'s markers (centre of mass, thrust, lift) use the same test (`building=screenNow()==='assembly'`).
+- **Checked:** `vehicle-46` runs the builder in review 2's headless harness: a click on the rocket on each of the five other
+  screens changes nothing; on the Assembly it picks the part up (9 → 6, one edit); with a part held, Delete, Ctrl+Z and X
+  are quiet from the title and X acts back on the Assembly. Core-32 (Help lists the assembly's keys) reads the new guard.
+  The repro now prints *rollout: parts 9 after 9, held null*.
+- **Not checked:** in a browser (TESTING 392).
