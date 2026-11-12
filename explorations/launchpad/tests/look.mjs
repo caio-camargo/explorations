@@ -1186,14 +1186,17 @@
 // oomph"). The camera looks at the centre of mass, which jumps when parts leave: detach reports the jump (HOOK.cmShift)
 // and the page eases over it (camLagStep, a critically damped spring). The separation's puffs fall with the craft: an
 // Orbiter is staged in a 300 km orbit, flown on for a second, and the gas ring must still be centred on the seam.
+// (Q591) sepFx draws its puffs with Math.random, and `d0 > 3` (the ring's offset without the fall) sat on that draw: over
+// 300 seeds d0 ran 2.62–3.93 m and was ≤ 3 in 11 % (CI failed on it), while the claim itself (dG, with the fall) never
+// passed 0.96 m. The puffs are drawn from world.js's rng(1) here (d0 3.4 m, dG 0.36 m), so the check gives one answer.
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   const i = pg.indexOf('const CAML='), j = pg.indexOf('HOOK.sep=sepFx;', i);
   const D = new Function(src + `const PUFFS=[];function fxPuff(r,v,o){PUFFS.push({r,v,o})}` + pg.slice(i, j) +
-    `;return{CAML,camLagStep,sepFx,PUFFS,newShip,stage,advPhys,PRESETS,HOOK,TELLUS,DT,set S(v){S=v},set t(v){simT=v}}`)();
+    `;return{CAML,camLagStep,sepFx,PUFFS,newShip,stage,advPhys,PRESETS,HOOK,TELLUS,DT,rng,set S(v){S=v},set t(v){simT=v}}`)();
   const T = D.TELLUS, sep = alt => { D.t = 0; D.PUFFS.length = 0; const s = D.newShip(D.PRESETS.Orbiter); D.S = s; s.landed = false; s.throttle = 0; s.sas = false;
     const r = T.R + alt; s.r = [r, 0, 0]; s.v = [0, 0, Math.sqrt(T.mu / r)]; D.CAML.s = s; D.CAML.x = [0, 0, 0]; D.CAML.v = [0, 0, 0];
-    const r0 = s.r.slice(); let at = null; D.HOOK.msg = () => {}; D.HOOK.debris = d => { at = at || d; D.sepFx(d) };
+    const r0 = s.r.slice(); let at = null; D.HOOK.msg = () => {}; D.HOOK.debris = d => { at = at || d; const real = Math.random; Math.random = D.rng(1); try { D.sepFx(d) } finally { Math.random = real } };   // (Q591) seeded puffs
     for (let k = 0; k < 6 && !at; k++) D.stage(s);
     return { s, r0, at } };
   const o = sep(300e3), jump = sub(o.s.r, o.r0), seen = add(o.s.r, D.CAML.x);
