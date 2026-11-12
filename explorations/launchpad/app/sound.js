@@ -113,6 +113,8 @@ function sndGroan(b){const c=AUD.ctx,t=c.currentTime+(b.delay||0)+0.05,o=c.creat
   fl.type='lowpass';fl.frequency.value=Math.min(600,b.lp);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.35*b.gain,t+0.12);g.gain.exponentialRampToValueAtTime(1e-4,t+0.95);
   o.connect(fl);fl.connect(g);g.connect(AUD.master);o.start(t);w.start(t);o.stop(t+1);w.stop(t+1)}
 // a Quindar tone (Q362): the 2,525 Hz beep that keyed Apollo's voice loop, as contact comes back after the blackout
+// (Q600) a job done in flight: two soft rising tones, under the engines, not over them
+function sndDone(){AUD.ev.done=(AUD.ev.done||0)+1;if(!AUD.on||!AUD.ctx)return;sndBeep(784,0.12,0.12);sndBeep(1175,0.22,0.1,0.11)}
 function sndBeep(f,dur,gain,delay=0){const c=AUD.ctx,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();o.frequency.value=f;
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+0.01);g.gain.setValueAtTime(gain,t+dur-0.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+dur+0.02)}
 function sndState(){const b=S.body,h=len(S.r)-b.R,inAir=b.atm&&h<b.atm,E=S.alive?activeEngines(S):[];let T=0,Ts=0;
