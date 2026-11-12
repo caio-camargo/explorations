@@ -711,5 +711,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 // the payload fairing's shell at the design table (vehicle, Q512, PLAYTEST #147): hidden while a part is held, or by the
 // player's toggle (V); the ring stays. The Rollout and flight draw it whole
 const fairHidden=()=>!st.bench&&(st.fairHide||!!st.held);
-return{fairHidden,addBalance,bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
+return{partCardHTML,fairHidden,addBalance,bench:()=>st.bench,benchOpen,benchClose,grabPay,makePay,stgEdit,parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
 })();

@@ -1027,7 +1027,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // landing on Nyx
   s = land(NYX, norm([0.3, 0.9, 0.2]), ['sci', 't2', 'petrel'], ['beeper', 'farside', 'nyxfind', 'nyxfly'], 5);
   check('out there: landing on Nyx under 3 m/s', !!P.done.nyxland && !!P.log.nyxland, `touchdown ${(s.touchV || 0).toFixed(2)} m/s`);
-  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back api.HOOK.news = () => {};
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};   // the whole program state back
 }
 
 // 24. Epoch 3, satellites that work (bodies session): weather, TV for the capital, disaster watch, navigation.
@@ -1069,7 +1069,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   reg(1000e3, 0, Math.PI); reg(1000e3, Math.PI / 2, Math.PI); api.utilTick(1); const four = P.navCov;
   check('epoch 3: navigation: 2 satellites leave gaps; 4 in two polar planes, phased in pairs, fix anyone within half an hour', !twoOK && !!P.done.nav && four >= 0.95,
     `2 satellites: ${(two * 100).toFixed(0)}% · 4: ${(four * 100).toFixed(1)}% of places and moments`);
-  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one api.HOOK.news = () => {};
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};   // the whole program state back: later sections see what they would have without this one
 }
 
 // 25. Crew (bodies session, epoch 4): the escape tower, abort tests, then people. Flown through the real flight code.
@@ -1105,7 +1105,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the landing mission's condition reads the flight record
   const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
   check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');
-  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);   // the whole program state back: later sections see what they would have without this one
 }
 
 // 26. The Crewed Lunar preset (bodies session): to orbit on a tuned turn, tower gone, enough left for Selene and home.
@@ -1199,7 +1199,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   news.length = 0; s = hand(80000 * AS); const kept = P.procs[key] === proc;
   check('procedures: a worse flight of the design leaves the stored procedure alone', kept && s.rec.dv > proc.dv && !news.some(m => /Procedure improved/.test(m)), `a lazier turn: ${s.rec.dv.toFixed(0)} m/s vs kept ${proc.dv.toFixed(0)}`);
   check('tapes: the tape version is a fingerprint of the physics (no more hand-bumped string)', /^lp-[0-9a-z]+$/.test(api.TAPE_V) && api.TAPE_V !== 'lp-1.12', api.TAPE_V);
-  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one api.HOOK.news = () => {};
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};   // the whole program state back: later sections see what they would have without this one
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
