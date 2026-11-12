@@ -101,7 +101,7 @@
   const ws = P.offers.map(o => o.why);
   check('why: every offer on a real board carries a one-line reason', ws.length > 0 && ws.every(w => typeof w === 'string' && w.length > 5 && w.length < 80 && !w.includes('\n')), ws.join(' | '));
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
-  check('why: the Contracts tab shows it', pg.includes('Why: ${c.why}'));
+  check('why: the Contracts tab shows it, as the tooltip on its name (Q603)', pg.includes('title="${c.why}"') && pg.includes('<b${tip(c)}>${cTitle(c)}</b>'));
 }
 
 // econ-5. Dry runs as the trajectory office's study (economy session, QUEUE Q46): dryQuote prices it like a study (era,

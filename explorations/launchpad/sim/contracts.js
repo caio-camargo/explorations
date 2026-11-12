@@ -32,10 +32,10 @@ const CT={
     title:p=>`Air sample, ${p.k*10}–${p.k*10+10} km`,brief:p=>`Bring home an instrument package that flew through the ${p.k*10}–${p.k*10+10} km band.`,
     ok:(R,p)=>R.recSci&&!!R.bands[p.k]},
   test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'].filter(k=>partOpen(k).ok);if(!ks.length)return null;const k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
-    title:p=>`Qualify the ${PARTS[p.k].name}`,brief:p=>`Fly a ${PARTS[p.k].name} through max-q of ${p.q} kPa or more with an instrument package aboard.`,
+    title:p=>`Qualify the ${PARTS[p.k].name}`,brief:p=>`The ${PARTS[p.k].name} through max-q of ${p.q} kPa or more, an instrument package aboard.`,
     ok:(R,p)=>(R.qPart[p.k]||0)>=p.q*1000},
   landing:{src:['gov'],gen:R=>{const dk=10*(3+(R()*4|0));return{dk,pay:15+(60-dk)/2,dur:60+R()*60}},
-    title:p=>`Recovery demonstration`,brief:p=>`Fly above 20 km and land whatever comes back within ${p.dk} km of the pad.`,
+    title:p=>`Recovery demonstration`,brief:p=>`Above 20 km, and whatever comes back lands within ${p.dk} km of the pad.`,
     ok:(R,p)=>R.landed&&R.apex>=2e4&&R.landDist<=p.dk*1e3},
   bioHop:{src:['sci','gov'],req:'hop',gen:R=>{const g=5+(R()*3|0);return{g,pay:35+5*(8-g),dur:80+R()*60}},
     title:p=>`Biology flight, under ${p.g} g`,brief:p=>`A biocapsule to space and home safe, never over ${p.g} g (1 s average).`,
@@ -46,14 +46,14 @@ const CT={
     ok:(R,p)=>{const o=R.orb;return!!o&&o.sci&&o.pe>=(p.alt-p.tol)*1e3&&o.ap<=(p.alt+p.tol)*1e3&&Math.abs(o.inc-p.inc)<=p.itol},
     bonus:(R,p)=>{const o=R.orb,e=Math.max(Math.abs(o.pe/1e3-p.alt),Math.abs(o.ap/1e3-p.alt))/p.tol;return 0.3*clamp(1-e,0,1)}},
   image:{src:['sci','com','gov'],req:'beeper',gen:R=>{const ci=R()*CITIES.length|0,res=[2,3,5,8][R()*4|0];return{ci,res,pay:12+36/res,dur:40+R()*50}},
-    title:p=>`${p.dis?p.dis+': ':''}Image ${CITIES[p.ci].name}`,brief:p=>`Photograph ${CITIES[p.ci].name} at ${p.res} m or better, in daylight under clear skies, and downlink it. Needs a satellite with a camera and an antenna in an orbit that passes over.`,
+    title:p=>`${p.dis?p.dis+': ':''}Image ${CITIES[p.ci].name}`,brief:p=>`Photograph ${CITIES[p.ci].name} at ${p.res} m or better, in clear daylight, and downlink it: a camera and an antenna passing over.`,
     ok:()=>false},
   // geography (terrain session): land an instrument package on a given kind of ground, or fly one through the auroral zone
   field:{src:['sci'],gen:R=>{const f=fieldBiomes(),x=f[R()*f.length|0];return{b:x.b,km:x.km,pay:Math.round(10+x.km/25),dur:80+R()*60}},
-    title:p=>`Field station: ${BIOMES[p.b]}`,brief:p=>`Land an instrument package on ${BIOMES[p.b]} (the nearest is about ${p.km} km from the pad) and recover it.`,
+    title:p=>`Field station: ${BIOMES[p.b]}`,brief:p=>`An instrument package landed on ${BIOMES[p.b]} (the nearest ~${p.km} km away) and recovered.`,
     ok:(R,p)=>R.landed&&R.recSci&&R.landBiome===p.b},
   aurora:{src:['sci'],gen:R=>({lat:AURORA_LAT*180/Math.PI,pay:Math.round(14+polarKm()/40),dur:80+R()*60}),
-    title:()=>`Aurora sounding`,brief:p=>`An instrument package above ${AURORA_ALT/1e3} km poleward of ${p.lat}° (from a high-latitude site, or a long lob), recovered.`,
+    title:()=>`Aurora sounding`,brief:p=>`An instrument package above ${AURORA_ALT/1e3} km poleward of ${p.lat}°, recovered.`,
     ok:R=>R.recSci&&!!R.aurora},
   lift:{src:['com','gov'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*7|0));return{m,pay:22*m,dur:90+R()*90}},
     title:p=>`${p.m} t to orbit`,brief:p=>`${p.m} t of mass simulators in a stable orbit.`,ok:(R,p)=>R.lift>=p.m-1e-9},
@@ -72,7 +72,7 @@ const CT={
   // a ballistic test belongs to its range. Contracts saved before Q7 have no p.site and count from anywhere.
   ballistic:{src:['mil'],req:'weather',gen:R=>{const t=curSite();for(let k=0;k<200;k++){const rg=300+R()*600,u=alongAz(t.u,R()*6.2832,rg*1e3/TELLUS.R);
       if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*PAY_MIL,dur:60+R()*60,site:t.id,sname:t.name}}return null},
-    title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Launch from ${p.sname||'the pad'} and bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km away (marked on the map). Classified.`,
+    title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`From ${p.sname||'the pad'}, an instrument package down at sea within ${p.rad} km of a point ${p.rg} km away (on the map). Classified.`,
     ok:(R,p)=>!!R.endPf&&R.endSci&&(!p.site||R.site===p.site)&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
   // Selene science from rovers and seismometers (QUEUE Q10; the sats session's R4): judged between flights on what has
   // reached home since the contract was taken (c.base, from selN), by selTick. ok() is false: no flight completes these.
@@ -80,7 +80,7 @@ const CT={
     title:p=>`Read Selene's ${p.unit==='mare'?'dark plains':'bright uplands'}`,brief:p=>`${p.n} spectrometer readings of ${p.unit==='mare'?'mare basalt (the dark plains)':'highland rock (the bright uplands)'}, received at home. Needs a rover with a spectrometer.`,
     ok:()=>false,done:(c,N)=>N[c.p.unit]-c.base[c.p.unit]>=c.p.n},
   selPano:{src:['sci','com'],req:'selland',sel:true,gen:R=>{const q=Math.round((.6+R()*.35)*20)/20;return{q,pay:(40+120*(q-.6))*PAY_FAR,dur:120+R()*120}},
-    title:p=>`A panorama of Selene, ${(p.q*100).toFixed(0)} %`,brief:p=>`A panorama of the surface of quality ${(p.q*100).toFixed(0)} % or better (a low sun shows the relief), received at home. Needs a rover with a camera mast.`,
+    title:p=>`A panorama of Selene, ${(p.q*100).toFixed(0)} %`,brief:p=>`A panorama of the surface of quality ${(p.q*100).toFixed(0)} % or better, received at home. Needs a rover with a camera mast.`,
     ok:()=>false,done:(c,N)=>selSci().panos.slice(c.base.pano).some(x=>x.q>=c.p.q-1e-9)},
   selSeis:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis<4,gen:R=>({n:4,pay:120*PAY_FAR,dur:250+R()*150}),
     title:p=>'A seismic network on Selene',brief:p=>`${p.n} seismometers set out on Selene, far enough apart to locate moonquakes. Needs a rover with seismometer packs.`,
@@ -92,12 +92,12 @@ const CT={
     title:p=>`Bound Selene's core to ${p.w} km`,brief:p=>`Bracket the radius of Selene's core to within ${p.w} km, from located moonquakes and which stations hear their S-waves.`,
     ok:()=>false,done:(c,N)=>N.coreW<=c.p.w},
   selFar:{src:['sci'],req:'selland',sel:true,gen:R=>{const n=1+(R()*2|0);return{n,pay:(60+25*n)*PAY_FAR,dur:200+R()*200}},
-    title:p=>`Science from Selene's far side`,brief:p=>`${p.n} spectrometer reading${p.n>1?'s':''} from the far side, received at home. The far side never sees Tellus: it needs a relay.`,
+    title:p=>`Science from Selene's far side`,brief:p=>`${p.n} spectrometer reading${p.n>1?'s':''} from the far side, received at home. Needs a relay.`,
     ok:()=>false,done:(c,N)=>N.far-c.base.far>=c.p.n},
   // servicing a valuable satellite (Q126): one of ours that earns (TV, or imagery with good contact) and has fallen an
   // era behind. Its users pay for the visit; it earns in full again. A flight that docks with it completes it.
   service:{src:['gov','com'],req:'tv',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*PAY_FAR,dur:300+R()*200}},
-    title:p=>`Service ${p.name}`,brief:p=>`Rendezvous and dock with ${p.name}, ${p.n} computing era${p.n>1?'s':''} behind, and bring its electronics up to date. Its users pay for the visit, and it earns in full again.`,
+    title:p=>`Service ${p.name}`,brief:p=>`Rendezvous and dock with ${p.name}, ${p.n} computing era${p.n>1?'s':''} behind, and bring its electronics up to date: it earns in full again.`,
     ok:(R,p,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat),after:c=>{const q=(PROG.sats||[]).find(x=>x.id===c.p.sat);if(q){q.era=compEra();q.eraSeen=q.era;HOOK.news(`${q.name} serviced: up to date, earning in full again`,'ok')}}},
   // station work (QUEUE Q162; NOTES § "Plan: station, base, relay and rendezvous contracts", slice 1, W22's defaults):
   // judged between flights on the station's state since the contract was taken (c.base from baseOf), like Selene science
@@ -111,19 +111,19 @@ const CT={
     baseOf:p=>({lab:stState(p.st,'labDays')}),ok:()=>false,done:c=>stState(c.p.st,'labDays')-c.base.lab>=c.p.n-1e-9},
   stExpand:{src:['com'],req:'tv',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
       return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*PAY_FAR,dur:250+R()*150}},
-    title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
+    title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it.`,why:p=>`${p.name} has a free port`,
     baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
   // flight-judged (Q180, slice 4): a rendezvous needs a near pass during the flight (rdvTick); a retrieval needs the
   // satellite home, stowed in a closed bay (Caio 2026-10-09: the bay is the dependency, so offers wait for the first docking)
   rdv:{src:['gov','com'],req:'beeper',open:()=>!!rdvTarget(),gen:R=>{const q=rdvTarget();if(!q)return null;return{sat:q.id,name:q.name,junk:!!q.junk,pay:80*PAY_FAR,dur:200+R()*150}},
-    title:p=>`Rendezvous with ${p.name}`,brief:p=>`Fly within ${RDV_D} m of ${p.name} and hold there, under ${RDV_V} m/s relative, so the client can look it over${p.junk?' (spent hardware, tumbling or not)':''}.`,
+    title:p=>`Rendezvous with ${p.name}`,brief:p=>`Fly within ${RDV_D} m of ${p.name} and hold there, under ${RDV_V} m/s relative${p.junk?' (spent hardware, tumbling or not)':''}.`,
     why:p=>p.junk?`${p.name} is spent hardware nobody has looked at`:`${p.name} has gone quiet`,ok:(R,p)=>!!(R.rdv&&R.rdv[p.sat])},
   retrieve:{src:['gov'],req:'stationcrew',open:()=>!!retrieveTarget(),gen:R=>{const q=retrieveTarget();if(!q)return null;return{sat:q.id,name:q.name,worth:Math.round(shapeWorth(q)*10)/10,pay:150*PAY_FAR,dur:400+R()*200}},
     title:p=>`Bring ${p.name} home`,brief:p=>`Grapple ${p.name}, stow it in a cargo bay, close the doors and land it at home. Its hardware comes back to you too (about ${fmtM(p.worth)} refurbished).`,
     why:p=>`${p.name} is dead in orbit and worth bringing back`,ok:(R,p,s)=>!!s&&s.alive&&s.landed&&s.body===TELLUS&&(s.att||[]).some(a=>a.kind==='bay'&&isSat(a.e,p.sat)&&s.parts[a.hpi]&&doorF(s.parts[a.hpi])===0),
     after:(c,s)=>{const R=s.rec,w=c.p.worth;if(w>0){income(w);debPaid(R,'refurb',`${c.p.name}'s hardware`,w);HOOK.news(`${c.p.name}'s hardware refurbished: +${fmtM(w)}`,'ok')}}},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*PAY_MIL,dur:90+R()*60}},
-    title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
+    title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Classified.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
 // ---- a job's conditions as data (economy worker, QUEUE Q547; notes/flow.md § "Plan: the aim and the mission card",
 // slice 1). Beside its ok(), every contract type and every mission says what the design must carry, needs(p) →
@@ -529,18 +529,18 @@ function offerDecision(d){if(!d)return;PROG.decisions=PROG.decisions||[];PROG.ds
   HOOK.news(`${d.kind==='routine'?'Your call':'Offer'}: ${d.title}`,'warn');HOOK.save()}
 function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relOf(HOME,b.i))-(opOf(a.i)+30*relOf(HOME,a.i)))[0],need=FUNDS_FLOOR-PROG.funds;
   return{kind:'rescue',power:fr.i,life:60,title:`${fr.name} offers a rescue`,
-    text:`Funds are below ${fmtM(FUNDS_FLOOR)}. ${fr.name} will put in ${fmtM(need+30)} for a 30% stake and a board seat. Or investors lend ${fmtM(need)}, to be repaid ×1.3 from half of all future income.`,
+    text:`Funds under ${fmtM(FUNDS_FLOOR)}. ${fr.name} puts in ${fmtM(need+30)} for 30% and a board seat; or investors lend ${fmtM(need)}, repaid ×1.3 from half of all income.`,
     opts:[['stake','Take the stake'],['loan','Take the loan']]}}
 function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
   const has=k=>PROG.decisions.some(x=>x.kind===k),firsts=Object.keys(PROG.done).length,V=valuation();
   // investors circle an established public program
   if(!has('ipo')&&!PROG.ipoSold&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
-    offerDecision({kind:'ipo',amt,title:`Investors offer ${fmtM(amt)} for a 25% stake`,text:`A privatization: cash now, more commercial work and freedom, a smaller budget day. ${POWERS[HOME].align[0]>0?'The market-minded public would approve.':'Many at home will call it selling the family silver.'}`,
+    offerDecision({kind:'ipo',amt,title:`Investors offer ${fmtM(amt)} for a 25% stake`,text:`Cash now, more commercial work, a smaller budget day. ${POWERS[HOME].align[0]>0?'The public would approve.':'Home will call it selling the family silver.'}`,
       opts:[['yes','Sell the stake'],['no','Decline']]})}
   // a friendly power wants in
   const fr=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)>0.25&&(o.st[p.i]||0)<0.3&&!(PROG.stakeBy||{})[p.i]);   // (R18, W47) once per power
   if(!has('stake')&&fr.length&&firsts>=1&&R()<1-Math.exp(-dd/500)){const p=fr[R()*fr.length|0],amt=Math.round(V*0.15);
-    offerDecision({kind:'stake',power:p.i,amt,title:`${p.name} offers ${fmtM(amt)} for a 15% stake`,text:`Their money and a share of their budget days, plus their contracts. Their rivals will notice, and so will opinion at home.`,
+    offerDecision({kind:'stake',power:p.i,amt,title:`${p.name} offers ${fmtM(amt)} for a 15% stake`,text:`Their money, a share of their budget days, their contracts. Their rivals and home will notice.`,
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
   // career moves: when things go badly (a hail mary) or very well (a step up), the team itself gets offers
   const bad=badness(),good=firsts>=5&&opOf(HOME)>60&&!bad;
@@ -548,11 +548,11 @@ function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]
     if(R()<0.5){const sc=p=>p.econ*p.tech*opOf(p.i)*(flav(p.i).money==='commodity'?1.6:1),c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>sc(b)-sc(a))[0];
       if(c){const amt=Math.round(40+V*(good?0.5:0.3));
         offerDecision({kind:'defect',power:c.i,amt,life:30,title:`${c.name} wants your whole team`,
-          text:`${good?'They have watched your program and want it for themselves':'Things are going badly at home, and they have noticed'}: defect, and the program becomes theirs, with ${fmtM(amt)} to start. What the team knows comes along (certified parts, the air, everything flown). ${POWERS[HOME].name} will not forgive it.`,
+          text:`${good?'They want your program':'Things are going badly at home, and they noticed'}: defect, and it is theirs, with ${fmtM(amt)} to start and all the team knows. ${POWERS[HOME].name} will not forgive it.`,
           opts:[['yes',`Defect to ${c.root}`],['no','Stay']]})}}
     else{const nm=`${SYL[R()*SYL.length|0]}${SYL[R()*SYL.length|0]}`,co=nm[0].toUpperCase()+nm.slice(1)+[' Orbital',' Dynamics',' Launch Systems',' Rocketworks'][R()*4|0],amt=Math.round(50+V*(good?0.45:0.25));
       offerDecision({kind:'hire',co,amt,life:30,title:`${co} offers to hire the team`,
-        text:`A private company buys the program outright: ${fmtM(amt)} of capital${own().debt>0?', the debts paid off':''}, no budget day, no government to answer to. What the team knows comes along. ${POWERS[HOME].name} will call it a brain drain.`,
+        text:`A private company buys the program: ${fmtM(amt)} of capital${own().debt>0?', the debts paid':''}, no budget day, no government. The team's knowledge comes along. ${POWERS[HOME].name} will call it a brain drain.`,
         opts:[['yes',`Join ${co}`],['no','Decline']]})}}}
 // how badly the program is doing: each of these counts once
 function cancelTick(){if(!PROG.cancelled||(PROG.decisions||[]).some(x=>x.kind==='defect'||x.kind==='hire'))return;

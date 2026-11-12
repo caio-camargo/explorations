@@ -526,7 +526,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const ct = page.slice(page.indexOf('function contractsHTML'), page.indexOf('function contractsHTML') + 4000);
-  const offers = ct.includes('<details class="ms of"><summary><b>${cTitle(c)}</b>') && ct.includes('Why: ${c.why}') && ct.includes('data-acc="${c.id}"') && ct.includes('data-dec="${c.id}"');
+  const offers = ct.includes('<details class="ms of"><summary><b${tip(c)}>${cTitle(c)}</b>') && ct.includes('title="${c.why}"') && ct.includes('data-acc="${c.id}"') && ct.includes('data-dec="${c.id}"');
   const rp = page.slice(page.indexOf('function renderProgram'), page.indexOf('function renderProgram') + 2500), epochs = rp.includes('!fin&&!live(C)&&ci>cNow') && rp.includes('mission${Ms.length>1?');   // (Q576) by chapter now
   const wall = page.slice(page.indexOf('function deskWall'), page.indexOf('function deskWall') + 400), frame = wall.includes('if(ph)h+=deskPhotoCard(ph)') && !wall.includes('no flights yet');
   const lh = H.includes("#deskLH .org .n{font:22px/1");
