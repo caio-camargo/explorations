@@ -2,9 +2,9 @@
 //   node test.mjs                       the full suite, as always
 //   node test.mjs --list                every section: label, file:line, title
 //   node test.mjs --only 12,#53,docking  sections by label (all that carry it), --list position, or a word in the header
-//   node test.mjs --smoke               all but the SLOW sections below, under a minute
+//   node test.mjs --smoke               all but the SLOW sections below: ~1 min with --jobs 4 (R5)
 //   node test.mjs --skip 27,docking     all but these (same selectors as --only; combines with --only)
-//   node test.mjs --times               the full suite with the seconds each section takes
+//   node test.mjs --times               the full suite with the seconds each section takes, and what SLOW should gain or lose
 //   … --jobs 4                          with --only/--skip/--smoke/--times/--isolation: N processes at once
 //   node test.mjs --isolation [--jobs 4] [--only …]  each section run alone vs the full run: which checks change
 // A section is a top-level comment at column 0 like "// 12. Title" or "// control-3. Title", up to the next one.
@@ -17,12 +17,23 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-// The smoke set is everything but the long flights: on 2026-10-08 the full suite took 286 s, of which the crewed Selene
-// landing (§27) took 111 s and the ladders (bodies-1) 102 s. Five sections over 5 s make 233 s; the other 77 make 53 s.
-// Selectors as for --only (titles here, since labels repeat). Re-time with `--times` when the suite grows; keep the
-// smoke run under a minute by adding the next slowest section here, not by dropping areas.
-export const SLOW = ['crewed selene landing and return', 'ladders, flown from the pad', 'the program (v1.12)',
-  'procedures flown headless', 'procedures (bodies session)'];
+// The smoke set is everything but the sections that take SLOW_S seconds or more. Re-measured for R5 (2026-11-12, CI's
+// ubuntu runner, `--times`, run 43166921161, after the tests began sharing one world map, test.mjs): 359 sections,
+// 674 s; these 22 take 549 s of it, the other 337 sections ~125 s. The runner's speed varies by a third from run to run
+// (§27: 113 s, then 150 s), so the bar is relative: 4 s on that run. The first list (2026-10-08, 82 sections) held five
+// flights; the suite grew past it (191 s by the review of 2026-11-09). Each row is [selector, seconds measured]: the
+// selector as for --only (a label when only one section has it, else a phrase of its title); the seconds weigh `--jobs`'
+// processes. `--times` names the sections to add (SLOW_S or more, not listed) and drop (under a third of it). Keep areas
+// in smoke by cutting a slow section's cost, not by listing whole areas: 40 economy sections stay in. platform-11 checks
+// the list's shape.
+export const SLOW_S = 4;
+export const SLOW_ROWS = [
+  ['crewed selene landing and return', 150.4], ['bodies-1', 131.3], ['bodies-3', 56.3], ['vehicle-39', 32.1], ['platform-1', 28.4],
+  ['procedures (bodies session)', 21.3], ['the program (v1.12)', 16.3], ['bodies-2', 14.7], ['flow-41', 14.7], ['econ-7', 10],
+  ['vehicle-30', 9.1], ['flow-49', 8.6], ['econ-30', 7.9], ['ground-6', 6.8], ['vehicle-25', 6.6], ['space-33', 6.5],
+  ['vehicle-3', 5.5], ['aerodynamics + structure (v1.2)', 4.9], ['re-entry heating (v1.7)', 4.8], ['space-6', 4.5],
+  ['flow-46', 4.2], ['econ-25', 4.1]];
+export const SLOW = SLOW_ROWS.map(r => r[0]);
 
 const HEAD = /^\/\/ ([0-9]+[a-z]?|[a-z]+-[0-9]+)\. (.*)$/, END = '// ==== END OF SECTIONS', MARK = '// ==== SECTIONS: tests/';
 // the section files, in run order (QUEUE Q68): the first suite, then the lanes in ROADMAP's order. A new file goes here.
@@ -147,17 +158,25 @@ export async function main(argv, url) {
     const rows = picked.map(s => ({ s, ms: r.secs.get(s.ord)?.ms ?? NaN }));
     if (opt('--times') !== null) rows.sort((a, b) => b.ms - a.ms);
     for (const { s, ms } of rows) console.log(`${fmt(ms)}  ${s.label.padEnd(10)} ${s.title.slice(0, 90)}`);
+    if (opt('--times') !== null) {   // (R5) the list keeps itself honest: what this run says SLOW should gain or lose
+      const slow = new Set(select(P.secs, SLOW, false).picked), add = rows.filter(x => !slow.has(x.s) && x.ms >= SLOW_S * 1000),
+        drop = rows.filter(x => slow.has(x.s) && x.ms < SLOW_S * 1000 / 3);
+      console.log(add.length || drop.length ? `\nSLOW (shards.mjs) should gain ${add.map(x => `${x.s.label} (${fmt(x.ms).trim()})`).join(', ') || 'nothing'}; lose ${drop.map(x => `${x.s.label} (${fmt(x.ms).trim()})`).join(', ') || 'nothing'}`
+        : `\nSLOW (shards.mjs) holds every section of ${SLOW_S} s or more, and none under ${SLOW_S / 3} s`);
+    }
   }
   if (jobs > 1) console.log(r.code ? `\nFAILED (${r.fails} checks)` : '\nall passed');
   return r.code;
 }
 
-// --jobs N: the picked sections dealt into N child processes (the SLOW ones first, one per process), each with what it
-// pulls in; output is printed per process when all are done. Sound because every section passes alone (--isolation).
+// --jobs N: the picked sections dealt into N child processes, heaviest first into the lightest process (a SLOW section
+// weighs its measured seconds, any other ~0.4 s, R5), each with what it pulls in; output is printed per process when all
+// are done. Sound because every section passes alone (--isolation).
 async function parallel(P, picked, url, jobs) {
-  const slow = new Set(select(P.secs, SLOW, false).picked), bins = Array.from({ length: jobs }, () => ({ w: 0, s: [] }));
-  for (const s of [...picked].sort((a, b) => slow.has(b) - slow.has(a))) {
-    const b = bins.reduce((m, x) => x.w < m.w ? x : m); b.s.push(s); b.w += slow.has(s) ? 50 : 1;
+  const W = new Map(); for (const [q, t] of SLOW_ROWS) for (const s of select(P.secs, [q], false).picked) W.set(s, t);
+  const w = s => W.get(s) ?? 0.4, bins = Array.from({ length: jobs }, () => ({ w: 0, s: [] }));
+  for (const s of [...picked].sort((a, b) => w(b) - w(a))) {
+    const b = bins.reduce((m, x) => x.w < m.w ? x : m); b.s.push(s); b.w += w(s);
   }
   const rs = await Promise.all(bins.filter(b => b.s.length).map(b => {
     const own = new Set(b.s); withDeps(P.secs, own);

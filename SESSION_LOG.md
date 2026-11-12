@@ -7530,3 +7530,76 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `momentum3` (check_numbers ok; the launchpad tree byte-identical to CI-green run 43168291024, so no new run: the
   workflow's path filter skips a docs-only push), ff-merged. Local smoke there: green but for vehicle-43 (b), Q604's flake.
   Loop slices row cleared.
+- **2, R5 → main:** the red smoke on `r5` was **not** the shared world map: with the map unshared the same shard failed
+  the same way. R5's new `SLOW` weights dealt Q328 (vehicle-16) into a process after sections that leave `simT` large; the
+  section built its craft and *then* set `api.t = 0`, so the planet turned under the pad and the first step hit the
+  ground at 6 km/s. Fixed in the test (clock before `newShip`), and the same pattern in §16's launch-window check. Merged
+  main, smoke green, CI green (43282472938), ff-merged. notes/platform.md § Test shards; QUEUE R5 ✓; platform row cleared.
+
+## 2026-11-12 — orchestrator, worker-branch machine (Opus 5.5): Q544, Q543+Q546, Q545 landed
+
+- **Asked:** Caio resumed on this machine (the queue is kept by the orchestrator on `PC_de_Varginha`); this session took
+  only the landing of its own built-but-untested worker branches.
+- **Done:** merged main into each branch, renumbered, CI on the branch, then onto `main`: **Q544 v1.325** (retrograde
+  hands over to stability near the ground; TESTING 383, flow-61), **Q543 v1.326 + Q546 v1.327** (round landing dust; the
+  era maps' night side; TESTING 384, aerofx-56, flow-62), **Q545 v1.328** (thrust on the ground moves the craft; TESTING
+  385, vehicle-45). Merge fixes in Q544: `HOOK` keeps `done(){}` last (flow-55 reads it), flow-35's tape check allows
+  `sasNearGround` after `velFrame` (the worker's targeted run had missed flow-35).
+- **Checked:** CI green on all three branches (43283877050, 43283947878, 43283959057); targeted `--only` on main after
+  each merge; `check_numbers` clean.
+- **Found:** local `--smoke --jobs 2` on this machine fails `reliability`, `flow-38`, `vehicle-43` on unchanged main
+  (1dc71349) too: ignition failures read 0 % in the full run, all pass alone; CI is green. A cross-section leak (R2).
+- **Next:** Q550 (`origin/q550-solids-slice-1`) waits on W53. Caio: the dust, the night side and righting a lander are
+  TESTING 383–385.
+- **3, R28 → main (v1.325):** the wip commit was complete (`here()` gates the builder's mouse, keys, update, draw, overlay
+  and tooltip; render's markers use `screenNow()==='assembly'`); vehicle-45, core-32 and `app/A_rollout_click.cjs` pass
+  (Rollout: 9 parts → 9, nothing held). Added notes/vehicle.md § v1.325, NOTES index, TESTING 383, QUEUE R28 ✓. Merged
+  main, smoke green, CI green (43284565792), ff-merged. **Pushed as branch `r28`:** `origin/vehicle` holds five older commits
+  (v1.247/v1.248, Q502/Q457, 2026-10-31) that aren't on `main`; not force-pushed over, flagged for Caio. Vehicle row cleared.
+
+### 2026-11-12: review 2 session (Fable), the copy pass, slice 3: the Program (v1.329, text only)
+- **Asked:** continue Q603 with slice 3 (contracts, missions, mission control); D43 and UI.md § 2.1; explanations into
+  tooltips; edit app/program-ui.js only once momentum3 (v1.324) was on `main` (it was, at the start).
+- **Done (v1.329):** 82 strings in `sim/program.js`, `sim/contracts.js`, `app/program-ui.js`, `app/mission.js`,
+  `app/editor.js` (`renderProgram`). Mission briefs are the goal and its numbers (about 760 words to 440; the longest 64
+  to under 30); a contract's reason is the tooltip on its name (no *Why:* line); decisions in about half the words; the
+  fleet's debris, fragments and station-keeping lines, the computing era's blurb, the test stand, supply run, routine and
+  dispatch hints, and mission control's empty consoles carry their how-to as tooltips; unlock-card lines ≤ 14 words;
+  *a Interstage decoupler* fixed. What was cut that teaches is listed for Q491 in notes/flow.md § v1.329.
+- **Tests:** two test lines updated (econ "why", flow's contract-board check: the reason in the tooltip). Smoke after
+  the last merge green but for **vehicle-43 (b)** (Q604's flake); econ + flow lanes green but for **flow-38**, which fails
+  the same way after the economy sections **on `main` too** and passes alone (added to Q604). CI full run green
+  (43286624601); the launchpad tree unchanged since. Renumbered twice at merge (v1.325 → v1.329, TESTING 383 → 386).
+- **Not checked:** nothing seen in a browser (TESTING 386).
+- **Noticed:** the launchpad session's log says R28 took v1.325 and TESTING 383, but `main` has only Q544's under those
+  numbers; R28's notes section may not have landed.
+- **Next:** Q603 slice 4 (Rollout and the why-cards, the glossary). The flight's cards and Esc/tester menus (slice 2's
+  remainder) are still open.
+- Files: launchpad `sim/program.js`, `sim/contracts.js`, `app/program-ui.js`, `app/mission.js`, `app/editor.js`,
+  `tests/economy.mjs`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-r3): R3, the lint step (v1.330)
+
+- **Asked:** build R3 as planned in REVIEW-2026-11-11.md § 4; fix what it finds or list it; leave `shards.mjs` to R5.
+- **Done (v1.330):** `explorations/launchpad/lint.mjs` (no dependency; `node --expose-internals lint.mjs`), test
+  **platform-12** in `--smoke` and the full run (0.6 s): (a) code swallowed by a `//` comment, made strict (a call needs
+  no space before its paren, so the prototype's five prose false positives are gone; R4's five and R25's five lines are
+  fixtures that must be flagged, six prose lines must not); (b) no-undef across the page's shared scope (index.html's
+  scripts in order, the inline one, then views.js), duplicate top-level names, load-time use of a later let/const. Names
+  read only behind `typeof` (LIFT, recMenu, DEBUG_PROC) are listed, not failed; `window.x =` declares x.
+- **Fixed what it found:** R25's five lines (views.js:78, reference view 13 now cuts the throttle, holds retro, sets
+  `markT`; tests/core.mjs 1030/1072/1108/1202 restores). **New defect:** app/debrief.js (Q570, v1.304) called builder.js's
+  `tipOK`/`partCardHTML`, which live inside `BLD`: hovering a part link in the Debrief's *Opened* block threw (confirmed
+  in the headless harness: both `undefined` globally). `BLD` exports `partCardHTML`; TESTING 387.
+- **Not built:** (c) the shader-uniform check (needs a GL-stub run and line-number attribution in render.js; its one hit
+  is R33): a *Proposed* line, best inside R34's `tests/app.mjs`. **Not done:** reference view 13 not re-shot (Proposed, look).
+- **Checked:** lint fails as it should on an injected swallowed line and undefined name; smoke green but for
+  vehicle-43 (b) (Q604's flake) and once 6b (timing under load); CI full run green on `r3` (3c1b07c5), ff-merged.
+  Main moved three times during the merge (R5, Q543–Q545, Q603 slice 3): renumbered v1.325 → v1.329 → v1.330, TESTING
+  383 → 386 → 387; the R5 merge's conflict in tests/platform.mjs briefly dropped platform-11's closing brace (caught by smoke, fixed).
+- **Files:** launchpad `lint.mjs` (new), `tests/platform.mjs`, `tests/core.mjs`, `views.js`, `app/debrief.js`,
+  `builder.js`, `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R3, R25 ✓; two Proposed lines), `TESTING.md`; root `INDEX.md`, `ACTIVE_WORK.md`.
+- **Next:** R5 is merged, so **R2** (REVIEW-2026-11-11.md § 3, test sections isolated) is next for platform.
+- **3, correction:** the line above was written before the ff-merge, which `main` moving refused twice (flow's copy pass
+  and platform's R3 took v1.325, v1.329, v1.330 and TESTING 383, 386, 387 meanwhile). R28 is now **v1.336, TESTING 392,
+  test vehicle-46**, on `main` after CI 43291812071 (numbers taken well ahead to stop the renumbering).

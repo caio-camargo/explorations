@@ -1111,9 +1111,10 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
  const int N=28;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/max(uRe,.3);
  vec3 C=vec3(0.),Tr=vec3(1.);
  for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float h=p.y;if(h<0.)break;
-  // the splash round each impact (uIP[k] = x, z, jet strength); q, rho: the nearest, for the swirl and the cooling
+  // the splash round each impact (uIP[k] = x, z, jet strength); q, rho: the nearest, for the swirl and the cooling.
+  // (Q543) Windowed to zero inside its box (drawImpact: half-width 9 re), so no square edge, as the landing dust
   float a=p.z,re=uRe,sp=0.,rho=1e9;vec2 q=vec2(0.);
-  for(int k=0;k<4;k++){if(k>=uNH)break;vec2 qk=p.xz-uIP[k].xy;float rk=length(qk);sp+=uIP[k].z*exp(-rk/(re*3.2))*exp(-h/(re*(.45+.2*rk/re)));if(rk<rho){rho=rk;q=qk;}}
+  for(int k=0;k<4;k++){if(k>=uNH)break;vec2 qk=p.xz-uIP[k].xy;float rk=length(qk);sp+=uIP[k].z*exp(-rk/(re*3.2))*smoothstep(re*9.,re*6.,rk)*exp(-h/(re*(.45+.2*rk/re)));if(rk<rho){rho=rk;q=qk;}}
   sp*=1.-.6*uCh;
   float cm=uCh*smoothstep(3.6,2.4,abs(p.x))*smoothstep(-1.,4.,a),thc=1.3+.1*max(a,0.),ch=cm*exp(-max(a,0.)/35.)*exp(-h/thc);
   if(sp+ch<.003)continue;
@@ -1155,10 +1156,15 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
  float T=1.,L=0.;
  for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));if(p.y<0.)break;
   vec2 q=p.xz-uIP.xy;float rho=length(q);vec2 dr=q/max(rho,1e-3);
-  float H=.45+.09*rho,clr=smoothstep(uIP.w*.6,uIP.w*1.4,rho),fall=exp(-2.6*rho/uRd);
+  // (Q543, PLAYTEST #149) the sheet fades to nothing inside the box: a radial window that reaches zero at 1.5 × the reach (the
+  // box's inscribed circle is 1.6 uRd) and a cap on the thickness under its lid. Before, the exponential fall still held
+  // ~1.6 % of the centre's density at the box's sides, and a grazing ray summed that over tens of metres: the box's
+  // square footprint showed as a pale wall round the lander. (Box: drawDust, half-width 1.6 uRd, height 2 + .12 uRd.)
+  float Hb=2.+.12*uRd,H=min(.45+.09*rho,.25*Hb),clr=smoothstep(uIP.w*.6,uIP.w*1.4,rho),fall=exp(-2.6*rho/uRd)*smoothstep(1.5*uRd,.75*uRd,rho)*smoothstep(Hb,.5*Hb,p.y);
+  if(fall<1e-5)continue;
   float n1=texture(uN,vec3(dr*2.2,rho*.05-uT*2.2)).r,n2=texture(uN,vec3(dr*5.3+.3,rho*.12-uT*4.)).r,strk=smoothstep(.38,.78,n1*.6+n2*.4);
-  float d=uIP.z*clr*fall*exp(-p.y/H)*(.1+2.2*strk);if(d<.002)continue;
-  float a=1.-exp(-d*2.4*ds);L+=T*a;T*=1.-a;if(T<.03)break;}
+  float d=uIP.z*clr*fall*exp(-p.y/H)*(.1+2.2*strk);
+  float a=1.-exp(-d*1.6*ds);L+=T*a;T*=1.-a;if(T<.03)break;}
  if(T>.997)discard;
  float ph=.55+.45*smoothstep(-.2,1.,dot(-rd,uSunL));   // dust scatters forward: brighter looking toward the sun
  vec3 c=uAlb*(uLit*ph+.02)*(L/max(1.-T,1e-4));

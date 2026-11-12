@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.60 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
+**Version**: v2.0.62 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -136,7 +136,9 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
+- v1.336 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
+- v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -293,6 +295,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
 - v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
+- v1.329 — the Program's copy, cut to the rule: mission briefs, contracts, decisions, the fleet, mission control (Q603 slice 3; UI.md § 2.1)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -393,6 +396,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.306 — a completion notice you can't miss: its own card, queued, until Enter or a click (2026-11-11, flow, QUEUE Q569) → [notes/flow.md](notes/flow.md)
 - v1.307 — the Mission card in flight: each job's conditions live, when the flight is done, End flight then (2026-11-11, flow, QUEUE Q548) → [notes/flow.md](notes/flow.md)
 - v1.319 — the Mission card stays up in flight (short in the climb, burns and landings; every mission the vessel could meet); a mission done turns green in its place, one line and a chime, no centred box in flight (2026-11-12, Q600, D42)
+- v1.325 — near the ground, retrograde hands over to stability: under 3 m/s within 50 m a craft on SAS retrograde switches to Stability (upright if leaning past 3°), says so once, never switches back (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
+- v1.327 — the era maps show the night side: the terminal dims and scanlines it in green with the terminator as a line; the notebook hatches the true night region, not a half-disc (2026-11-07, orchestrator worker, QUEUE Q546, PLAYTEST #152)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
@@ -449,6 +454,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.291 — a sharpening upscale: the canvas at device pixels, Catmull-Rom and a clamped sharpen, the grain at device pixels (2026-11-09, review session, QUEUE Q560)
 - v1.295 — staging: the camera eases onto the craft (a spring over the centre-of-mass jump), and a stronger separation: flash, two gas rings, flecks, all falling with the craft (2026-11-10, review session, Q564) → [notes/look.md](notes/look.md)
 - v1.298 — the whole exhaust trail: puffs live 7–9 min, the trail is thinned as its puffs widen so the list holds it from the pad up, a least size on screen (2026-11-10, review session, Q566) → [notes/look.md](notes/look.md)
+- v1.326 — the landing dust is round, not a square: windowed to zero inside its raymarch box (it summed into a pale square at the box's sides); the splash in air too (2026-11-07, orchestrator worker, QUEUE Q543, PLAYTEST #149)
 
 ## Platform & QA: [`notes/platform.md`](notes/platform.md)
 
@@ -483,6 +489,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.310 — the loader fills a save from the schema: every field present, a save from before `wseed` keeps world 12345, unknown fields kept and logged; the `||` reads retire lazily (2026-11-11, platform, QUEUE R1d)
 - v1.312 — a frame that throws no longer ends the game: `frame()` always schedules the next one; `app/fault.js` catches errors and lost promises with a panel (Reload, Export save, the old save R10 kept, Keep playing) (2026-11-11, platform, QUEUE R9)
 - v1.316 — export and import a save from Settings › Saved program: Export any time, Import asks twice and waits for the end of a flight; a file that isn't a program or stops the game changes nothing, one that loads replaces the slot (the old one kept as `-before-import`) and reloads (2026-11-12, platform, Q599)
+- v1.330 — the lint step: `lint.mjs` (swallowed code after `//`, no-undef across the page's shared scope) in `--smoke` as platform-12; R25's five lines and the Debrief's part-card hover fixed (2026-11-12, platform, QUEUE R3)
 - v1.318 — the loop's slices: part families, reasons and chapters as data (D34: no closed part on the stand, in development or on a line); presets say what they wait for and closed parts fold under *Not open yet* by chapter; after a flight, one card per mission done, part and mission opened, the part turning as a model (D42); the Missions tab by chapter, a chapter's poster, the trophy case (2026-11-12, loop slices, QUEUE Q579, Q578, Q572, Q576)
 - v1.320 — poster headlines for big moments: a first, a rival's first, a chapter closed and a new era reach the news with a poster; the desk's paper prints a recent one as a poster, in the era's palette, as does the Debrief's headline; v1.318 flown by the robot (`playtest.mjs cards`) (2026-11-12, loop slices, QUEUE Q479)
 - v1.324 — a line per part on the unlock cards, a sound per card; a career under way opens on the desk, the title in the Esc menu (2026-11-12, loop slices, QUEUE Q370)

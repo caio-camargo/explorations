@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2524,3 +2524,85 @@ dry; capping the search at what the stage can pay (on the branch) brings it home
 7 m/s among rainforest trees and is lost (Q383). **To land it:** make the three flights robust to a metre a second at
 staging (the burn search capped, a correction after the last staging, a splashdown aimed at sea or Q383 settled), then
 merge the branch and add its momentum check (`vehicle-44` there).
+## v1.328 — thrust on the ground moves the craft: a toppled lander can right itself, or wreck itself (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
+
+**The ask** (Caio, 2026-11-07): "firing the rocket with the craft on the ground should cause it to move — if the player can
+work it, they should be able to set it right using thrusters and/or rcs, and if they want to just turn on thrusters and
+destroy the craft they should be able to as well. but destruction should come from the simulation, not be automatic."
+Since v1.260 a toppled craft was pinned (`s.tipped`: throttle cut, liftoff and drops refused, "righting it waits for a
+crew or a visit").
+
+**The contact model now** (`sim/flight.js` § "thrust on the ground moves the craft"; the ground contact itself is the
+terrain session's spring-damper with stiction, unchanged):
+
+- **Asleep:** a landed craft is still pinned where it came to rest (`s.landed`, no forces), so it can't jitter or creep.
+- **Woken** (`rouse`): thrust on a craft lying on its side; the keys turning or pushing it with its wheels or RCS
+  (`ctlKeys`) on any craft landed away from its pad (`s.landedAt` or a registry craft); thrust leaning 15° or more; a stage
+  dropped off a craft on its side. It is a free body again (`s.roused`), seated with its lowest point just touching.
+- **Its whole outline touches** (`hullPts`): every stack line's profile sampled ≤ 0.5 m apart, 8 points round each ring,
+  plus the fins' tips; those within reach of the ground join the feet in `groundContact`, each a spring-damper with
+  friction, its gains capped as one of n sharing the craft's effective mass (n counts the touching points). So it pivots on
+  the edge it rests on, slides, rolls, rights itself or tumbles as the forces say. An upright liftoff is as before.
+- **What breaks it** is only the sim's rules: a hull point striking the ground (`groundHits`) at the speed it comes down
+  onto it, and when sliding at its slide speed in a boulder field (the cells that add to a touchdown) or at `SKID` 0.1 of it
+  on open ground (so a slide breaks parts from ~60 m/s), with the topple's law (damage from `TIP_SAFE` 2 m/s, broken at
+  `TIP_BREAK` 6 + softness); the joints' loads (`structLoads`) from the contact forces; and once it has left the ground for
+  0.3 s, the next touch is a touchdown with its verdict. The craft is lost only when its root breaks ("destroyed: its probe
+  core hit Selene at 36 m/s"). While woken there is no "nose in the ground" loss and no `tipFall` (the hull takes it).
+- **Asleep again** (`settle`): still for `C_REST` with no thrust and no keys (SAS alone may fire RCS). Upright, it is
+  landed ("Standing again on Selene" when it was on its side; `s.tipped` and every `p.buried` cleared). Past `C_TOPPLE`,
+  it lies on its side again: `s.tipped` recomputed (`tipNote`: broken and damaged parts so far), the parts underneath
+  `p.buried` anew (`buryParts`, tipOver's rule), "At rest on its side on Selene". Clear of the ground (`s.len` + 20 m up)
+  it is an ordinary flight again.
+
+**Removed:** `TIP_NO` and its refusals (the landed branch's throttle cut, `stage`'s refusal of a decoupling event),
+`tipOver`'s throttle cut, the HUD's "Stuck: no liftoff · righting it waits…" row (now "Righting: thrust, RCS or the wheels
+can stand it up"; the card's Under it / Broken / Damaged rows stay). Kept: Q540's pinned deployables (`pinned`: landed and
+on its side), the rover deploy's refusal ("the lander lies on its side (stand it up first)"). `procMission` counts a woken
+craft in contact as still down (no takeoff/landing pair for a nudge).
+
+**Measured** (vehicle-38's probe lander and the Hopper, tank at 30 %, toppled by drifting at 1.5–2.5× their tip speed;
+headless, a pilot on the keys with SAS off turning the nose up at ≤ 0.4 rad/s, then letting go):
+
+| | rights itself (still, < 2°) | settled, standing | full throttle: 10 m up |
+|---|---|---|---|
+| lander (2 kN·m wheels), Selene | 6.2 s | 6.8 s | 0.9 s |
+| lander, Nyx | 6.1 s | 7.0 s | 0.8 s |
+| lander with 8 RCS quads, wheels out, Nyx | 6.2 s (4 kg of gas) | 7.2 s | 1.0 s |
+| Hopper (10 kN·m), Nyx | 6.2 s | 7.6 s | 0.5 s |
+| Hopper, Selene | can't: its weight's torque about the edge beats the wheels | — | — |
+
+RCS alone can't lift the lander on Selene (8 quads of 150 N). Full throttle on its side: the lander on Selene slides
+32 m into a boulder cell at 36 m/s and breaks (lost with its probe core); on Nyx 198 m, lost the same way at 63 m/s; the
+Hopper on Selene goes the same way (pod at 59 m/s); on Nyx it bounds 2.9–4.4 km, spinning up to 3.5 rad/s, every part
+damaged. A 3 s push at 15 % slides the lander ~50 m; it comes to rest on its side 13 s later, one whip buried. At rest:
+asleep 60 s it moves 0; tapped with the keys it wakes and sleeps again in 0.5 s; awake under thrust half its weight for
+60 s it moves 0.7 mm, its top speed 1.9 mm/s in the first 30 s and 0.0 after (no energy gain).
+
+**Not here:** plume heating of the ground or the hull (no plume model); legs or wings changing how a toppled craft first
+lies (`tipOver` still lays it on its widest body; woken, the feet and fins take part); the wheels' hold on the ground (a
+pilot has to brake the swing by hand: SAS "stab" holds no attitude it wasn't settled at). **For flow:** the HUD's "On its
+side" card's "Righting" line could name the keys; a rocking lander shows no card while it moves. **For economy:** nothing
+moved; a lander that rights itself flies on, so a toppled lander is no longer a write-off.
+
+**Checks:** `vehicle-45` (righting on Selene/Nyx with wheels, RCS on Nyx, the Hopper on Nyx, not on Selene; full throttle
+on its side and a gentle push; rest, tap, awake under thrust). Changed: `vehicle-38` (thrust on its side now moves it,
+registered before), `flow-50` (no `TIP_NO`, no "Stuck" row, the "Righting" row). vehicle-1, flow-51 and Q264's topple
+tests unchanged and passing.
+
+## v1.336 — the builder acts only on the Assembly (2026-11-12, launchpad session for vehicle, QUEUE R28; REVIEW-2026-11-11 § 6, R13g)
+
+`mode==='editor'` is the title, the Rollout, the Program, the Mission card and the Debrief as well as the Assembly, and the
+builder tested only that (the keys also excluded four of the screens, not the title). So a left click on the rocket at the
+Rollout picked a part up and edited the design unseen (review 2's `app/A_rollout_click.cjs`: 9 parts → 6, one undo step),
+and the builder's keys acted from the title.
+
+- One test, `here()` in builder.js: `mode==='editor'` and `screenNow()==='assembly'` (headless, with no screens, it's on).
+  It gates the mouse (down, move, up, wheel, context menu), the keys, `update()`, `draw()`, `overlay()` and the part
+  tooltip. A mouse-up off the Assembly clears a press begun there.
+- `render()`'s markers (centre of mass, thrust, lift) use the same test (`building=screenNow()==='assembly'`).
+- **Checked:** `vehicle-46` runs the builder in review 2's headless harness: a click on the rocket on each of the five other
+  screens changes nothing; on the Assembly it picks the part up (9 → 6, one edit); with a part held, Delete, Ctrl+Z and X
+  are quiet from the title and X acts back on the Assembly. Core-32 (Help lists the assembly's keys) reads the new guard.
+  The repro now prints *rollout: parts 9 after 9, held null*.
+- **Not checked:** in a browser (TESTING 392).

@@ -63,10 +63,10 @@ function partLaunchWhy(parts){const L=[];for(const p of parts||[]){const o=partO
 // the builder's closed list (Q578) and the Missions tab (Q576). A family is every part one mission opens, named: it is
 // one card and one reason line. `why` says what it makes possible (a family's, else the part's own).
 const PART_FAMILY={
-  kit:{m:'loads',name:'The orbital kit',why:'Real engines, an 8 t tank and a reaction wheel: a rocket that can reach orbit.'},
-  bench:{m:'beeper',name:'The satellite bench',why:'Probe cores, batteries, cameras, antennas and fairings: satellites that do a job, built on the payload bench.'},
+  kit:{m:'loads',name:'The orbital kit',why:'Real engines, an 8 t tank and a reaction wheel: a rocket for orbit.'},
+  bench:{m:'beeper',name:'The satellite bench',why:'Probe cores, batteries, cameras, antennas and fairings: satellites that do a job.'},
   big:{m:'lift2',name:'The 2.5 m family',why:'The Albatross and its 2.5 m tanks: tonnes to orbit, and the road to Selene.'},
-  high:{m:'wxsat',name:'High orbits',why:'A solar wing, an apogee engine and kick motors: polar and stationary orbits, and power that lasts.'},
+  high:{m:'wxsat',name:'High orbits',why:'A solar wing, an apogee engine and kick motors: polar and stationary orbits.'},
   dock:{m:'tv',name:'Docking',why:'Ports, RCS and a habitat: two craft become one, and a station can grow.'},
   land:{m:'farside',name:'Landers',why:'Landing legs, the Wren and rover mounts: set down on Selene and drive off.'}};
 const famOf=k=>{const m=PART_GATE[k];for(const f in PART_FAMILY)if(PART_FAMILY[f].m===m)return f;return null};
@@ -78,15 +78,15 @@ const PART_WHY={bio:'A passenger to space and back: the first one will be an ani
   condor:'The Condor: a heavy first stage, half a tonne to orbit.',arm:'A robotic arm: catch a visitor and berth it.',bay:'A cargo bay: carry something up and let it go.',
   lab:'A laboratory: science aboard the station.',beacon:'A base beacon: marks where a base will stand.',
   // (loop slices, after Q572) a line for each member of a family, so its card says what that part is for
-  kestrel:'The Kestrel: a first-stage engine with real thrust, the heart of an orbital rocket.',petrel:'The Petrel: a vacuum engine for the upper stage, made to finish the climb to orbit.',
+  kestrel:'The Kestrel: a first-stage engine with real thrust, the heart of an orbital rocket.',petrel:'The Petrel: a vacuum engine for the upper stage, to finish the climb.',
   t8:'An 8 t tank: enough propellant under a Kestrel for a real first stage.',istage:'An interstage decoupler: drops a spent stage and covers the engine above it.',rwheel:'A reaction wheel: turns the craft with no fuel and no air.',
-  core:'A probe core: a satellite that flies itself, with a battery for a few days.',core6:'A 0.6 m probe core, for small satellites.',core3:'A 0.3 m probe core, for the smallest satellites.',
+  core:'A probe core: a satellite that flies itself, a few days on its battery.',core6:'A 0.6 m probe core, for small satellites.',core3:'A 0.3 m probe core, for the smallest satellites.',
   batt:'A 1 kWh battery: keeps a satellite alive through the night side.',sbatt:'A battery for the side of a stage.',batt6:'A 0.6 m battery, for small satellites.',batt3:'A 0.3 m battery, for the smallest satellites.',
-  bpanel:'Solar cells on the body: power from the Sun for as long as it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
+  bpanel:'Solar cells on the body: power from the Sun while it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
   ant:'A cone antenna: a satellite that talks to the ground.',whip:'A whip antenna: the lightest way to be heard.',ssci:'An instrument package for the side of a stage: science on any craft.',
   fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',octl:'A long octagonal frame: room for more on one bus.',
   octl6:'A long 0.6 m frame, for small satellites.',padapt:'A payload adapter: seats a satellite on its rocket and lets it go.',padapt6:'A 0.6 m payload adapter.',padapt3:'A 0.3 m payload adapter.',
-  albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m down to 1.25 m: a small upper stage on a big one.',
+  albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m to 1.25 m: a small upper stage on a big one.',
   dec25:'A 2.5 m decoupler.',fins25:'A 2.5 m fin ring: keeps a big rocket pointing into the wind.',cfins25:'A steerable 2.5 m fin ring.',cone25:'A 2.5 m nose cone.',fair25:'A 2.5 m payload fairing: room for big satellites.',
   wpanel:'A solar wing: far more power than body cells, unfolded in space.',bant:'A boom antenna: heard from much farther out.',apogee:'An apogee engine: the last burn into a high orbit.',
   hthr:'Hydrazine thrusters: small, precise pushes to hold a slot.',sph4:'A small propellant sphere, for an apogee engine or thrusters.',sph7:'A larger propellant sphere.',
@@ -111,7 +111,7 @@ const chapterDone=c=>!!PROG.done[c.capstone];
 // a chapter is under way when one of its missions is open or done and its capstone is not; 4a and 4b run side by side
 const chaptersNow=()=>CHAPTERS.filter(c=>!chapterDone(c)&&c.missions.some(id=>{const M=MISSIONS.find(x=>x.id===id);return M&&(PROG.done[id]||missionOpen(M))}));
 // rooms a mission opens (the card's "same card for a room"): mission control comes with the first thing of ours out there
-const ROOM_GRANT={beeper:{id:'mc',name:'Mission control',why:'The fleet, the ground track, planned burns and dispatches: somewhere to watch what we have out there (C from the office).'}};
+const ROOM_GRANT={beeper:{id:'mc',name:'Mission control',why:'The fleet, the ground track, burns and dispatches, in one room (C at the office).'}};
 // (Q578) the part keys a design carries, any format (the old top-to-bottom lists, v2 trees, payload blocks inside)
 function stackKeys(st){const K=new Set(),walk=x=>{if(typeof x==='string'){if(PARTS[x])K.add(x);return}if(!x||typeof x!=='object')return;
     if(Array.isArray(x)){x.forEach(walk);return}if(typeof x.k==='string'&&PARTS[x.k])K.add(x.k);for(const v of Object.values(x))if(v&&typeof v==='object')walk(v)};walk(st);return[...K]}
@@ -388,35 +388,35 @@ const MKT_K=0.5,mktShare=n=>n>1?(1-MKT_K**n)/((1-MKT_K)*n):1;
 const STAT_R=Math.cbrt(TELLUS.mu*(DAY_S/(2*Math.PI))**2);   // stationary orbit radius (a day-long period)   // hours of tracking where Nyx's pull matters, to weigh it (bodies session)
 const LOADS_Q=20000;   // the structural test's bar (W50, Q577: 25 kPa before; the builder's design case stays 25)
 const MISSIONS=[
-  {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
+  {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'An instrument package above 10 km, home under a parachute.',
    win:'first data from above the clouds',ok:R=>R.recSci&&R.apex>=1e4},
-  {id:'air',pay:25,ep:1,name:'Measure the air',brief:'Recover instrument packages that sampled every 10 km band up to 40 km. Each band sampled narrows the impact predictor.',
+  {id:'air',pay:25,ep:1,name:'Measure the air',brief:'Recover instrument packages from every 10 km band up to 40 km.',
    win:'the lower atmosphere is mapped',ok:()=>[0,1,2,3].every(k=>PROG.atm[k]),prog:()=>`${[0,1,2,3].filter(k=>PROG.atm[k]).length}/4 bands`},
-  {id:'loads',pay:20,ep:1,name:'Structural test flight',brief:'Take an instrument package through max-q of 20 kPa or more. A Sparrow on a light rocket can, straight up at full throttle; it opens the bigger engines.',
+  {id:'loads',pay:20,ep:1,name:'Structural test flight',brief:'An instrument package through max-q of 20 kPa or more.',
    win:'the engineers finally have numbers',ok:R=>R.sciQ>=LOADS_Q},
-  {id:'range',pay:30,ep:1,name:'Range certification',brief:'Three flights in a row that drop stages, with every one landing clear of towns.',
+  {id:'range',pay:30,ep:1,name:'Range certification',brief:'Three flights in a row that drop stages, all clear of towns.',
    win:'the range is certified for bigger rockets',ok:()=>PROG.streak>=3,prog:()=>`${PROG.streak}/3 clean flights`},
-  {id:'beeper',pay:60,ep:2,req:['weather','loads'],name:'The beeper',brief:`Put an instrument package into a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km). The whole world will be listening.`,
+  {id:'beeper',pay:60,ep:2,req:['weather','loads'],name:'The beeper',brief:`An instrument package in a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km).`,
    win:'something of ours goes round the world',ok:R=>R.orbitSci},
-  {id:'hop',pay:50,ep:2,req:['weather','loads'],name:'Passenger: the hop',brief:`A biocapsule to space (${(TELLUS.atm/1e3).toFixed(0)} km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
+  {id:'hop',pay:50,ep:2,req:['weather','loads'],name:'Passenger: the hop',brief:`A biocapsule to space (${(TELLUS.atm/1e3).toFixed(0)} km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K, joints within their certified ratings.`,
    win:'the passenger is fine, and very famous',ok:R=>R.landed&&R.bioOK&&R.bioSpace&&R.approved},
-  {id:'orbiter',pay:100,ep:2,req:['hop'],name:'Passenger: one orbit',brief:`A biocapsule through one full orbit and home safe, within ${AIR_S/3600} h of air. Same flight-safety rules.`,
+  {id:'orbiter',pay:100,ep:2,req:['hop'],name:'Passenger: one orbit',brief:`A biocapsule round one full orbit and home safe, within ${AIR_S/3600} h of air; the same limits.`,
    win:'a passenger has gone round the world and come home',ok:R=>R.landed&&R.bioOK&&R.bioOrbits>=1&&R.approved},
   {id:'lift1',pay:40,ep:2,req:['beeper'],name:'Heavy lift I',brief:'Half a tonne of mass simulators in a stable orbit.',win:'0.5 t in orbit',ok:R=>R.lift>=0.5-1e-9},
   {id:'lift2',pay:80,ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
   // epoch 3, utility (bodies session): satellites that do a job. Flight missions read outThere(); world ones (world:true)
   // are checked between flights by utilTick(), from the registry.
-  {id:'wxsat',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.',
+  {id:'wxsat',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°).',
    win:'the whole planet\'s weather, every day',ok:R=>R.weather},
-  {id:'tv',pay:120,ep:3,req:['wxsat'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.`,
+  {id:'tv',pay:120,ep:3,req:['wxsat'],name:'TV for the capital',brief:`An antenna in a stationary orbit (${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up, period one day to 0.2 %, nearly circular, under 2°), 15°+ up in the capital's sky. Pays ${TV_RATE}M a day while it stays.`,
    win:'the capital watches the launch on TV',ok:R=>R.tv},
-  {id:'diswatch',pay:60,ep:3,req:['wxsat'],world:true,name:'Disaster watch',brief:'Deliver pictures of a disaster within 12 hours of the call (take the job, and have a camera satellite with an antenna up, and a ground station it can reach).',
+  {id:'diswatch',pay:60,ep:3,req:['wxsat'],world:true,name:'Disaster watch',brief:'Pictures of a disaster within 12 hours of the call: a camera satellite with an antenna, a ground station in reach.',
    win:'pictures before the evening news',ok:()=>false,okW:()=>(PROG.disDone||[]).some(x=>x.t-x.posted*DAY_S<=12*3600)},
-  {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments). It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.`,
+  {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Satellites with antennas, so one passes 10°+ up within half an hour anywhere on Tellus (${NAV_MIN*100}% of places and moments).`,
    win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
   // the first station (QUEUE Q163; Q9's plan slice 2, W22 default 1: firsts, not contracts; not in the race): judged
   // between flights on the registry's stations (stationOf), so it can be built over several flights
-  {id:'station1',pay:80,ep:3,req:['tv'],world:true,name:'A station',brief:'A habitat module in a stable orbit with two free docking ports: somewhere to visit.',
+  {id:'station1',pay:80,ep:3,req:['tv'],world:true,name:'A station',brief:'A habitat module in a stable orbit with two free docking ports.',
    win:'a house in the sky',ok:()=>false,okW:()=>!!stFind(s=>s.berths>0&&s.ports>=2)},
   // (Q577) a crew flies only after the max-q abort (R.crewed), so A crew aboard waits for it: it used to open with the station
   {id:'stationcrew',pay:100,ep:3,req:['station1','maxqabort'],world:true,name:'A crew aboard',brief:'A crew docked and living aboard our station.',
@@ -426,29 +426,29 @@ const MISSIONS=[
   {id:'station30',pay:120,ep:3,req:['stationlab'],world:true,name:'Thirty days aboard',brief:'Thirty crewed days on our station, with supplies to live on.',
    win:'people live in space',ok:()=>false,okW:()=>!!stFind((s,q)=>(q.crewDays||0)>=30),prog:()=>{const x=stFind(s=>s.crew>0);return x?`${Math.floor(x.q.crewDays||0)} of 30 days`:''}},
   // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
-  {id:'farside',pay:240,ep:4,req:['wxsat','lift2'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
+  {id:'farside',pay:240,ep:4,req:['wxsat','lift2'],name:'The far side',brief:'Photograph Selene\'s sunlit far side (a camera within three Selene radii) and get the pictures home.',
    win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
-  {id:'selimp',pay:240,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
+  {id:'selimp',pay:240,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene\'s near side.',
    win:'telemetry to the very end, then silence',ok:R=>R.selImpact},
-  {id:'selland',pay:250,ep:4,req:['selimp'],name:'Soft landing on Selene',brief:'Land an instrument package with an antenna on Selene, under 4 m/s, on the side facing Tellus so it can phone home.',
+  {id:'selland',pay:250,ep:4,req:['selimp'],name:'Soft landing on Selene',brief:'Land an instrument package with an antenna on Selene\'s near side, under 4 m/s.',
    win:'a machine of ours stands on another world',ok:R=>R.selLand},
   {id:'selsample',pay:400,ep:4,req:['selland'],name:'Sample return',brief:'Land an instrument package on Selene, then bring it back to Tellus and recover it.',
    win:'a handful of Selene on a lab bench',ok:R=>R.selSampled&&R.landed&&R.recSci},
-  {id:'padabort',pay:60,ep:4,req:['orbiter'],name:'Pad abort test',brief:'With a crew capsule (test dummies aboard) under an escape tower on a rocket, abort from the pad (Backspace): the tower must carry the capsule high enough for the chute, under 8 g, and it must land intact.',
+  {id:'padabort',pay:60,ep:4,req:['orbiter'],name:'Pad abort test',brief:'Abort from the pad (Backspace): the tower lifts a capsule of dummies high enough for its chute, under 8 g; it lands intact.',
    win:'the tower works from a standing start',ok:R=>R.abort&&R.abort.alt<200&&R.capHome&&R.cgMax<=G_LIM},
-  {id:'maxqabort',pay:90,ep:4,req:['padabort'],name:'Max-q abort test',brief:'Abort in flight at 15 kPa or more of dynamic pressure, the worst moment there is, and bring the capsule home intact under 8 g. This qualifies the tower: after it, capsules fly with a crew.',
+  {id:'maxqabort',pay:90,ep:4,req:['padabort'],name:'Max-q abort test',brief:'Abort in flight at 15 kPa or more; the capsule home intact, under 8 g. Then crews fly.',
    win:'the escape system is qualified for people',ok:R=>R.abort&&R.abort.q>=15000&&R.capHome&&R.cgMax<=G_LIM},
-  {id:'crewaround',pay:440,ep:4,req:['maxqabort','farside'],name:'Crew around Selene',brief:`A crew capsule with two people into Selene's sphere of influence and home safe: under 8 g, cabin under ${CABIN_MAX} K, within 10 days of air.`,
+  {id:'crewaround',pay:440,ep:4,req:['maxqabort','farside'],name:'Crew around Selene',brief:`A crew of two into Selene's sphere of influence and home safe: under 8 g, cabin under ${CABIN_MAX} K, 10 days of air.`,
    win:'the first people to see the far side',ok:R=>R.crewed&&R.crewOK&&R.crewSel&&R.capHome},
   {id:'crewland',pay:600,ep:4,req:['crewaround','selland'],name:'Crew on Selene',brief:'Land a crew on Selene (under 4 m/s), then bring them home safe, same limits.',
    win:'footprints on Selene',ok:R=>R.crewed&&R.crewOK&&R.crewSelLand&&R.capHome},
-  {id:'nyxfind',pay:240,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it. Only a flight launched for this is tracked that closely.`,
+  {id:'nyxfind',pay:240,ep:5,req:['farside'],name:'Something out there',brief:`Track an instrument package with an antenna for ${NYX_TRACK_H} h where Nyx pulls a thousandth of Tellus or more, on a flight launched for it.`,
    win:'Nyx weighed, and its orbit on the map',ok:R=>R.nyxFound},
   {id:'nyxfly',pay:240,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
    win:'a dark, cratered rock, close up',ok:R=>R.nyxFly},
-  {id:'nyxorb',pay:250,ep:5,req:['nyxfly'],name:'An orbit that lasts',brief:`Keep an instrument package in orbit around Nyx for two of Nyx's own orbits (${(4*Math.PI/NYX.n/3600).toFixed(0)} h). Tellus's tide is strong out there: watch which way round you go.`,
+  {id:'nyxorb',pay:250,ep:5,req:['nyxfly'],name:'An orbit that lasts',brief:`An instrument package in orbit around Nyx for two of Nyx's orbits (${(4*Math.PI/NYX.n/3600).toFixed(0)} h).`,
    win:'an orbit around Nyx that lasts',ok:R=>R.nyxOrbT>=4*Math.PI/NYX.n},
-  {id:'nyxland',pay:300,ep:5,req:['nyxfly'],name:'Landing on Nyx',brief:`Land an instrument package on Nyx under 3 m/s. Its escape speed is only 346 m/s: easy to land, easy to bounce.`,
+  {id:'nyxland',pay:300,ep:5,req:['nyxfly'],name:'Landing on Nyx',brief:`Land an instrument package on Nyx under 3 m/s.`,
    win:'a lander on the dark moon',ok:R=>R.nyxLand},
 ];
 // ---- "out there" (bodies session): what the Selene and Nyx missions read from a flight. Line of sight and sunlight are
@@ -496,7 +496,7 @@ const OBS_K=0.35;
 const satEra=q=>q.era??(q.era=compEra());
 const satQual=q=>1/(1+OBS_K*Math.max(0,compEra()-satEra(q)));
 function obsTick(){const E=compEra();for(const q of satsUp()){if(q.junk)continue;satEra(q);if(E>q.era&&(q.eraSeen??q.era)<E){q.eraSeen=E;const n=E-q.era;
-  if(q.ant||q.cam)HOOK.news(`${COMP_ERAS[E].name} arrive: ${q.name} is now ${n} generation${n>1?'s':''} behind and earns ${Math.round(satQual(q)*100)} %. A new one would earn it all, or service it`,'warn')}}}
+  if(q.ant||q.cam)HOOK.news(`${COMP_ERAS[E].name} arrive: ${q.name} is ${n} generation${n>1?'s':''} behind, earning ${Math.round(satQual(q)*100)} %: replace or service it`,'warn')}}}
 // between flights: TV pays while it's in the capital's sky; world missions are checked
 // a station with its state, for the station firsts (Q163): the first registered craft whose stationOf passes f(s, q)
 function stFind(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=typeof stationOf==='function'?stationOf(q):null;if(s&&f(s,q))return{q,s}}return null}
@@ -902,8 +902,8 @@ function startDev(k,g){if(PROG.devJob)return false;const q=devQuote(k,g);if(!q.o
 //    for 35 / 60 % of their dry price (scaled by wear, as refurbishment), 2M of ship time each; a little know-how too
 const FAC={hall:{name:'Integration hall',lv:[{cost:90,days:60},{cost:220,days:120}],eff:[1,0.8,0.65],what:l=>`stacking ×${[1,0.8,0.65][l]}`},
   fleet:{name:'Recovery fleet',lv:[{cost:50,days:90},{cost:120,days:120}],range:[0,800e3,1500e3],sal:[0,0.35,0.6],what:l=>l?`salvages stages at sea within ${[0,800,1500][l]} km, ${[0,35,60][l]}% of value`:'none'},
-  pads:{name:'Launch pads',lv:[{cost:80,days:120},{cost:160,days:180}],what:l=>`${1+l} pad${l?'s':''}: dispatched and hand-flown launches in parallel`},
-  centre:{name:'Computing centre',lv:[{cost:40,days:90},{cost:120,days:180}],ahead:[0,1,2],speed:[1,0.6,0.4],what:l=>l?`studies ×${[1,0.6,0.4][l]} time, ${[0,1,2][l]} yr ahead of our power's computing`:'none: the trajectory office rents what it can'}};
+  pads:{name:'Launch pads',lv:[{cost:80,days:120},{cost:160,days:180}],what:l=>`${1+l} pad${l?'s: launches in parallel':''}`},
+  centre:{name:'Computing centre',lv:[{cost:40,days:90},{cost:120,days:180}],ahead:[0,1,2],speed:[1,0.6,0.4],what:l=>l?`studies ×${[1,0.6,0.4][l]} time, ${[0,1,2][l]} yr ahead of our power`:'none'}};
 const facLv=id=>{const f=(PROG.fac||{})[id];return f?f.lv:0};
 function facQuote(id){const lv=facLv(id),f=(PROG.fac||{})[id],step=FAC[id].lv[lv];return step?{...step,ok:!(f&&f.building),why:f&&f.building?'already building':''}:{ok:false,why:'fully built'}}
 function buildFac(id){const q=facQuote(id);if(!q.ok||PROG.funds<q.cost)return false;PROG.fac=PROG.fac||{};const f=PROG.fac[id]||(PROG.fac[id]={lv:0});
@@ -946,7 +946,7 @@ const COMP_ERAS=[
   {id:'main',name:'Mainframes',yr:3,study:{cost:5,days:8},err:[0.15,0.04],cpi:20,blurb:'a machine the size of a room, time-shared and queued'},
   {id:'board',name:'Onboard computers',yr:7,study:{cost:3,days:3},err:[0.05,0],cpi:5,blurb:'guidance computers fly with the vehicle'},
   {id:'cheap',name:'Cheap compute',yr:14,study:{cost:1,days:0.5},err:[0,0],cpi:1,blurb:'planning is instant and exact'},
-  {id:'ai',name:'The AI boom',yr:25,study:{cost:1,days:0.5},err:[0,0],cpi:4,blurb:'the world wants all the compute there is; datacenters hunt for power and cooling'}];
+  {id:'ai',name:'The AI boom',yr:25,study:{cost:1,days:0.5},err:[0,0],cpi:4,blurb:'datacenters want all the compute there is'}];
 const COMP_NUDGE=0.25;   // world years per computing-centre level built (anyone's: ours, for now)
 function compLag(i=HOME){const F=flav(i),own=4*(1-indOf(i)),sup=POWERS.some(p=>p.i!==i&&indOf(p.i)>=0.9&&!(i===HOME&&sanctioned(p.i))&&relOf(i,p.i)>-0.2);
   return Math.min(own,sup?0.5+1.5*(1-F.open):4)}
@@ -969,7 +969,7 @@ const studyWait=s=>{const j=studyJob(s);return j?Math.max(0,j.end-PROG.day):0};
 function compTick(){const Q=PROG.studyQ||[];while(Q.length&&Q[0].end<=PROG.day+1e-9){const j=Q.shift();PROG.studies=PROG.studies||{};PROG.studies[j.key]={err:j.err,day:j.end,era:j.era}}
   const e=compEra();if(PROG.compEra==null)PROG.compEra=e;else if(e>PROG.compEra){PROG.compEra=e;const E=COMP_ERAS[e];HOOK.news(`A new computing era reaches the program: ${E.name.toLowerCase()} (${E.blurb})`,'ok',{kick:'A new era',hl:E.name});HOOK.save()}}
 function computeHTML(){const E=COMP_ERAS[compEra()],W=COMP_ERAS[worldEra()],Q=PROG.studyQ||[],lag=compLag();
-  return`<div class="ep">Compute</div><div class="sub"><b>${E.name}</b> <span class="dim">· ${E.blurb}</span><br>`+
+  return`<div class="ep">Compute</div><div class="sub"><b title="${E.blurb}">${E.name}</b><br>`+
     `<span class="dim">The world: ${W.name.toLowerCase()} · world price index ${W.cpi} · our power ${lag<0.05?'keeps up':`runs ${lag.toFixed(1)} yr behind`}${facLv('centre')?`, the centre puts us ${FAC.centre.ahead[facLv('centre')]} yr ahead of it`:''}</span><br>`+
     `Predictions: ${E.err[0]?`±${Math.round(E.err[0]*100)}% unstudied, ±${Math.round(E.err[1]*100)}% studied`:'exact'} · ${Object.keys(PROG.studies||{}).length} designs studied`+
     (Q.length?`<br>In the office: ${Q.map(j=>`ready day ${Math.ceil(j.end-PROG.day)}`).join(', ')}`:'')+`</div>`}
@@ -1158,7 +1158,7 @@ function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)retu
 // the base's line in the Fleet tab: a supply run with the design in Assembly, or why not, or the one on its way
 function baseRunLine(base,stack){const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.base===base.id);
   if(D)return`<div class="sub dim">Supply run: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d</div>`;
-  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design on the design table'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d${winNote(q.win)}, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
+  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}" title="it lands at the beacon if it has the Δv">Supply run with ${designName(stack)||'this design'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d${winNote(q.win)}, ${fmtM(q.cost)}</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
 // the run itself (dispatchTick, launch day): physics decides; a landing within BASE_R of the beacon joins the base
 function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed&&q.beacon);if(!base)return{ok:false,why:'the base is gone'};
   const proc=baseRunProc(D.stack,base);if(!proc)return{ok:false,why:'no ascent procedure'};const B=BODIES.find(b=>b.name===base.bodyName);
@@ -1213,14 +1213,14 @@ const routeSats=r=>(typeof satsUp==='function'?satsUp():[]).filter(q=>q.route===
 const routeBusy=r=>(PROG.dispatch||[]).find(x=>x.route===r.id&&(x.status==='queued'||x.status==='deviated'));
 // whether it may repeat by itself, and why not
 function routeAutoWhy(r){const a=autoAllowed('deploy');if(!a.ok)return a.why;if(!routeCert(r)&&r.clean<ROUTE_CLEAN)return`${ROUTE_CLEAN-r.clean} more clean run${ROUTE_CLEAN-r.clean>1?'s':''} by order first`;
-  if(r.paused)return'held after a failed run: answer it in the in-tray, or switch Repeat off and on';return''}
+  if(r.paused)return'held after a failed run: answer it in the in-tray';return''}
 // (Q580, Caio 2026-11-12: "a failure should alert the player, who decides what to do") three clean runs certify a route
 // once; an automatic run that fails then holds the routine and asks (a decision in the in-tray): keep repeating, or stop
 // and order runs by hand. Before, the failure silently sent the route back to three more clean runs by order.
 const routeCert=r=>!!(r.cert||r.clean>=ROUTE_CLEAN);
 function routeFailAsk(r,why){if((PROG.decisions||[]).some(d=>d.kind==='routine'&&d.route===r.id))return;
   offerDecision({kind:'routine',route:r.id,life:60,title:`${r.name}: an automatic run failed`,
-    text:`${why}. The routine is holding: ${routeSats(r).length} of ${r.keep} up. Keep repeating, or stop it and order runs yourself?`,
+    text:`${why}. Holding with ${routeSats(r).length} of ${r.keep} up: keep repeating, or order runs yourself?`,
     opts:[['keep','Keep repeating'],['stop','Stop repeating']]})}
 function routeFailAnswer(d,key){const r=routeOf(d.route);if(!r)return;r.paused=false;if(key!=='keep')r.auto=false;
   HOOK.news(key==='keep'?`${r.name}: the routine repeats again`:`${r.name}: Repeat is off; order runs from the Fleet tab`,'')}
@@ -1242,7 +1242,7 @@ function setRouteAuto(id,on){const r=routeOf(id);if(!r)return{ok:false,why:'no s
 function dropRoute(id){const r=routeOf(id);if(!r)return false;PROG.routes=PROG.routes.filter(x=>x!==r);for(const q of PROG.sats||[])if(q.route===id)delete q.route;HOOK.save();return true}
 // the line under a satellite in the Fleet tab: make a routine from it, or its routine's state and controls
 function routeLine(q){const r=q.route!=null&&routeOf(q.route);
-  if(!r){const f=routeFrom(q);return f.ok?` · <button data-mkroute="${q.id}" title="keep satellites like this one up in this orbit: order the runs yourself, and after ${ROUTE_CLEAN} clean ones, let it repeat">Make a routine</button>`:''}
+  if(!r){const f=routeFrom(q);return f.ok?` · <button data-mkroute="${q.id}" title="keep this orbit filled: order runs; after ${ROUTE_CLEAN} clean ones it can repeat">Make a routine</button>`:''}
   return routeCtl(r)}
 // a routine's state and controls (also the Fleet's own line for a route with nothing up, flow Q415)
 function routeCtl(r){const B=routeBusy(r),w=routeAutoWhy(r),up=routeSats(r).length;
@@ -1265,8 +1265,8 @@ function orderDryRun(stack,target){const q=dryQuote(stack);if(!q.ok)return q;if(
   HOOK.save();return{...r,cost:q.cost,days:q.days}}
 function dispatchLine(c,stack){const O=dispatchOptions(c);if(!O.length&&!DISPATCH_TYPES.includes(c.type))return'';const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.cid===c.id);
   if(D)return`<div class="sub dim">Dispatched: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d (~${Math.round(D.est.p*100)}%)</div>`;
-  const dq=dryQuote(stack),dry=dq.ok?`<div class="sub dim"><button data-dry="${c.id}" title="the trajectory office tries our ${dq.n} stored procedure${dq.n>1?'s':''} on the design on the design table">Try our procedures on ${designName(stack)||'the design on the design table'}</button> ${dq.days} d, ${fmtM(dq.cost)}</div>`:'';   // Q46
-  if(!O.length)return`<div class="sub dim">Dispatch: no stored procedure can fly this yet (fly one to orbit by hand)</div>`+dry;
+  const dq=dryQuote(stack),dry=dq.ok?`<div class="sub dim"><button data-dry="${c.id}" title="the trajectory office tries our ${dq.n} stored procedure${dq.n>1?'s':''} on it">Try our procedures on ${designName(stack)||'this design'}</button> ${dq.days} d, ${fmtM(dq.cost)}</div>`:'';   // Q46
+  if(!O.length)return`<div class="sub dim" title="fly one to orbit by hand first">Dispatch: no stored procedure flies this yet</div>`+dry;
   const o=O[0],q=dispatchQuote(c,o.stack),pc=x=>Math.round(x*100);
   return`<div class="sub">Dispatch ${designName(o.stack)||'our design'}: success ~${pc(o.e.p)}% (${pc(o.e.lo)}–${pc(o.e.hi)}%), launches in ${Math.ceil(q.launch-PROG.day)} d on pad ${q.pad+1}, ${fmtM(q.cost)} `+
     `<button data-disp="${c.id}" ${q.ok?'':'disabled'}>Dispatch</button></div>`+dry}
@@ -1293,12 +1293,12 @@ const prodLineK=L=>(1.25-0.5*L.m)+(L.lic!=null?LINE_ROYALTY:0);
 function prodQuote(k){const t=tierOf(k),base=(PRICE[k]??3)*4*(1+t),days=40+30*t,x=sourceOf(k),lic=x.how==='import'?x.from:null;
   const can=khUse(k)>=0.4,licOK=lic!=null&&relOf(HOME,lic)>0.2&&!sanctioned(lic);
   const lk=partOpen(k),shut=lk.ok?'':`not open yet: it ${lk.why}`;   // (D34, Q579) no closed part is made or licensed
-  return{own:{cost:base,days,ok:can&&!shut,why:shut||(can?'':'we need to know it better first (fly it: know-how 40 %+)')},lic:{cost:base*0.6,days:Math.round(days*0.7),ok:licOK&&!shut,from:lic,
+  return{own:{cost:base,days,ok:can&&!shut,why:shut||(can?'':'fly it first: know-how 40 %+')},lic:{cost:base*0.6,days:Math.round(days*0.7),ok:licOK&&!shut,from:lic,
     why:shut?shut:lic==null?'no foreign maker to license from':!licOK?`${POWERS[lic].root} won't license it`:''}}}
 function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q.cost)return false;const L0=(PROG.lines||{})[k];if(L0&&L0.power===HOME)return false;
   PROG.funds-=Q.cost;(PROG.lines=PROG.lines||{})[k]={power:HOME,lic:mode==='lic'?Q.from:null,start:PROG.day,ready:PROG.day+Q.days,m:mode==='lic'?0.3:0.05,units:0};
   if(mode==='lic')opAdd(Q.from,3);else opAdd(HOME,2*natK());
-  HOOK.news(mode==='lic'?`License signed: ${POWERS[Q.from].root}'s ${PARTS[k].name} will be built under license (${Q.days} days to tool up)`:`A production line for the ${PARTS[k].name}: ${Q.days} days to tool up`,'ok');HOOK.save();return true}
+  HOOK.news(mode==='lic'?`License signed: ${POWERS[Q.from].root}'s ${PARTS[k].name}, ${Q.days} days to tool up`:`A production line for the ${PARTS[k].name}: ${Q.days} days to tool up`,'ok');HOOK.save();return true}
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(TEST.nofail||!lvl().fail||!khOn()||!s.rec)return true;   // (Easy: engines always light, Q476)
@@ -1360,7 +1360,7 @@ function flavTick(d,R,dd=d){PROG.nat=PROG.nat||{};
       HOOK.news(o>55?'Re-elected: the government doubles down on space':o<40?'New government trims the space budget':'Election: the space budget survives, unchanged',o>55?'ok':o<40?'bad':'')}}
   // the leadership's demand for a spectacular (closed programs)
   if(F.open<0.5){if(PROG.demand&&PROG.day>PROG.demand.by){opAdd(HOME,-10);HOOK.news('The leadership is displeased: no spectacular by the anniversary','bad');PROG.demand=null}
-    if(!PROG.demand&&stateShare()>=0.5&&R&&R()<1-Math.exp(-dd/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular by the anniversary, 60 days from now: a first, or a contract worth 40M+','warn')}}
+    if(!PROG.demand&&stateShare()>=0.5&&R&&R()<1-Math.exp(-dd/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular in 60 days: a first, or a 40M+ contract','warn')}}
   // regime change can cancel a security state's program
   if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R&&R()<1-Math.exp(-dd/600))cancelProgram(R)}
 function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import'||(x[1].how==='giant'&&x[1].from!==HOME));

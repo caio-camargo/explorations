@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -311,6 +311,14 @@ whole reset, or use an own SIM instance (`new Function(src + …)`, as the sats 
 
 **Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
 cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
+
+**R5, 2026-11-12 (the clock before the craft).** R5's new `SLOW` weights dealt vehicle-16 (Q328, deploy in the Assembly)
+into a smoke process after sections that leave `simT` large. The section built its craft, then set `api.t = 0`:
+`newShip` lands a craft on the pad *at the current time*, so moving the clock afterwards turned the planet under it and
+the first step struck the ground at 6 km/s ("flown: lost, wings 2 left at 0.00 kPa"). Not the shared world map (6ebd3225):
+with the map unshared the same shard failed the same way. Q328 and §16's launch-window check now set the clock first, as
+every other section does. **Everyone:** `api.t = 0` goes *before* `api.newShip`, never after, unless the section then
+places the craft itself (`s.r`, `s.v`, not landed). Still open in smoke: vehicle-43 (b), QUEUE Q604.
 
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 
@@ -1025,3 +1033,32 @@ R9 gave the fault panel an *Export save*, but only a crash could show it, and no
   bad JSON, a string, an array, an object without a day and a save that stops the game, and a full storage, all
   leave the program and the store unchanged; the static shape of the Settings section.
 - Not done: no drag-and-drop; the Esc menu itself has no entry (Settings is one click in).
+
+## v1.330 — the lint step: swallowed code and the shared scope (2026-11-12, platform, QUEUE R3; R25)
+
+Built as planned in [`REVIEW-2026-11-11.md`](../REVIEW-2026-11-11.md) § 4, (a) and (b). **`lint.mjs`** (launchpad
+folder, no dependency): `node --expose-internals lint.mjs` prints the findings and exits 1 on one; `--json` for tools.
+Test **platform-12** runs it as a child process (the flag can't be set inside the suite), so it is in `--smoke` and the
+full run; 0.6 s.
+- **(a) Code swallowed by a `//` comment** (review/2026-11-11/swallow.mjs, made strict): a comment tail that starts like
+  a statement, ends in `;` or `}` and parses. A call needs no space before its `(` ("baked by atlasBake (SIM);" is
+  prose), which drops the prototype's five false positives. Reads `sim/`, `app/`, `builder.js`, `views.js`, `tests/`
+  and the `.mjs` tools. Fixtures in `lint.mjs` (`FIXTURES`): R4's five old lines and R25's five must be flagged, six
+  prose lines must not; platform-12 fails if either list breaks.
+- **(b) `no-undef` across the shared scope** (review/2026-11-11/app/scan.cjs): index.html's scripts in page order (the
+  inline one too), then `views.js` (the reference shots inject it after load), parsed by Node's internal acorn as one
+  global scope. Fails on a name used or assigned and declared nowhere, a top-level name declared twice, a load-time use
+  of a later `let`/`const`. `window.x = …` declares `x`. A name read only behind `typeof` is optional and only listed:
+  today `LIFT` and `recMenu` (dead or never defined, R32), and `DEBUG_PROC`. If a Node release moves
+  `internal/deps/acorn`, platform-12 fails saying so: point `lint.mjs` at the new path.
+- **Found and fixed:** R25's five lines (`views.js:78`: reference view 13 now really cuts the throttle, holds retrograde
+  and sets `markT`; `tests/core.mjs` 1030, 1072, 1108, 1202: the `HOOK.news` restores, and at 1108 `HOOK.msg` back to the
+  suite's log, so the failure log carries flight messages again from that section on). **One new defect:**
+  `app/debrief.js` (Q570, v1.304) called `tipOK()` and `partCardHTML()`, which live inside `BLD` in builder.js, not in
+  the shared scope: hovering a part link in the Debrief's *Opened* block threw a ReferenceError (into R9's fault
+  handler). `BLD` now exports `partCardHTML`; the Debrief tests `typeof tipShow`. TESTING 383.
+- **Not built:** (c), uniforms a shader reads and nothing sets (`app/B_reach.cjs`). It needs the page run against a GL
+  stub (`B_glrun.cjs`) and attributes `render.js`'s loop over programs by line numbers (93–117), so it would break on the
+  next edit there; its one hit is R33. A *Proposed* line in QUEUE.
+- **Not done:** reference view 13 not re-shot (the shot changes: the capsule now flies throttle-off on retro hold); a
+  look session with the GPU.

@@ -684,6 +684,24 @@ function sasTarget(s){
 function velFrame(s){const vr=speedRef(s).v;if(len(vr)<0.5)return null;
   const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return{pro,nrm:null,rad:null};
   const nrm=norm(h);return{pro,nrm,rad:norm(cross(s.v,nrm))}}
+// near the ground, retrograde hands over to stability (flow, Q544; PLAYTEST #150, Caio: "it's very easy for it to
+// accidentally flip"). Retrograde is undefined as the speed goes to zero: in the last metres of a powered landing the
+// velocity is a few tenths of a m/s in any direction, retrograde swings with it (pointing down once the craft rises), and the
+// SAS chases it over. So under SAS_HAND_V (speedRef's frame: the surface's) within SAS_HAND_H of the ground, a craft on
+// retrograde switches to Stability: upright (the local vertical) if it leans more than SAS_HAND_TILT, else the attitude it
+// has. Upright, not the attitude it has: a lander touches down on its legs, and a lean held with the engine on is a sideways
+// push. Once per approach: it doesn't switch back, and Retrograde picked again there is the pilot's call (s.sasHand, cleared
+// past twice the speed or the height). Not under a procedure: those set their own modes.
+let SAS_HAND_V=3,SAS_HAND_H=50,SAS_HAND_TILT=3;
+function sasNearGround(s){
+  if(s.landed||s.proc||!s.sas&&!s.sasHand||!s.sasHand&&s.sasMode!=='retro')return;
+  const v=len(speedRef(s).v);if(v>2*SAS_HAND_V){s.sasHand=false;return}
+  if(!s.sasHand&&v>=SAS_HAND_V)return;
+  const gap=groundGap(s);if(s.sasHand){if(gap>2*SAS_HAND_H)s.sasHand=false;return}
+  if(gap>=SAS_HAND_H)return;
+  const up=norm(s.r),Y=qrot(s.q,[0,1,0]);
+  s.sasMode='stab';s.hold=dot(Y,up)<Math.cos(SAS_HAND_TILT*Math.PI/180)?up:Y;s.sasHand=true;
+  if(s===S){HOOK.msg('Near the ground: retrograde → stability');HOOK.sas()}}
 let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
 // control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM
 function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
@@ -866,7 +884,7 @@ function detach(s,list,kick,spin,asVessel){
   else{junkNote(s,list,add(s.r,off),vd,dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:vd,q:s.q.slice(),
     w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:D,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
   s.r=add(s.r,sh);HOOK.cmShift(s,sh);   // the page eases its camera over this jump (Q564)
-  if(s.landed)s.landed=false;
+  if(s.landed){if(s.tipped&&!s.water)rouse(s);else s.landed=false}   // a stage dropped off a craft on its side: it moves as the ground lets it (Q545)
   HOOK.rebuild()}
 // ---- engine gimbal (control session). Each engine's nozzle swivels up to d.gim degrees, at most d.gimR °/s. p.gv is its
 // deflection: a vessel-frame vector across its thrust axis, |gv| = sin(angle); the thrust points along tdir + gv, so the
@@ -916,6 +934,7 @@ function physStep(s,dt){
   // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
+  sasNearGround(s);   // (Q544) before the control law: a hand-over flies from this step
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
   // RCS's command too, here, with the same feed-forward (R26): after the aero pass s.simTA is the next step's, and a call
   // there left the feed-forward out, so RCS was told to push the aero moment back in that the gimbals were cancelling
@@ -943,9 +962,10 @@ function physStep(s,dt){
   for(const p of s.parts)if(p.on&&p.spinT>0){const k=Math.min(dt,p.spinT)/dt;p.L[1]+=k*p.d.spinJ/p.d.burn;p.spinT-=dt;if(p.spinT<=0){p.spinT=0;p.spent=true}}   // spin motors: a pure couple about the axis
   s.thrust=T;
   const Y=qrot(s.q,[0,1,0]);
-  if(s.landed){const W=s.mass*b.mu/(rl*rl);
-    if(s.tipped&&T>0){s.throttle=0;HOOK.msg(TIP_NO)}   // on its side (Q508): the engines can't lift it
-    if(!s.tipped&&T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
+  if(s.landed){const W=s.mass*b.mu/(rl*rl),cu=dot(Y,norm(r));
+    // (Q545) thrust or the keys move a craft on its side; the keys (wheels, RCS), or thrust leaning 15° or more, one landed away from its pad
+    if(!s.water&&(s.tipped?T>0||ctlKeys(s):(s.landedAt!=null||s.reg)&&T*cu<=W&&(ctlKeys(s)||T>0&&cu<0.966)))rouse(s);
+    else if(!s.tipped&&T*cu>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
     else{simT+=dt;syncLanded(s);s.gload=1;s.maxLoad=0;return}}
   if(s.node&&T>0)nodeBurn(s,Y,T,dt);
   const vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);

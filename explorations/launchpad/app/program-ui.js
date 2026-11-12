@@ -31,13 +31,13 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const risk=c=>{const r=offerRisk(c);return[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)]};
   const body=(c,act)=>`<span class="dim">${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
-    (c.why?`<div class="sub dim">Why: ${c.why}</div>`:'')+`<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b> <button data-wd="${c.id}" title="frees the slot now; like a missed deadline, the client asks again in a few months">Withdraw</button>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
+    `<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b> <button data-wd="${c.id}" title="frees the slot; the client asks again in a few months">Withdraw</button>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
     (w=>w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:'')(risk(c));
   // (Q286, UI.md § 3) an offer is one line: name, pay, days left, Take and Pass (⚠ when taking it risks sanctions); a click opens the rest
-  const row=(c,act)=>act?`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· </span>${body(c,act)}</div>`
-    :`<details class="ms of"><summary><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${Math.max(0,c.expires-PROG.day).toFixed(0)} d</span>${risk(c).length?' <span class="bad" title="taking it risks sanctions: open it">⚠</span>':''} <span class="ofb"><button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button></span></summary>${body(c,act)}</details>`;
+  const tip=c=>c.why?` title="${c.why}"`:'',row=(c,act)=>act?`<div class="ms"><b${tip(c)}>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· </span>${body(c,act)}</div>`
+    :`<details class="ms of"><summary><b${tip(c)}>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${Math.max(0,c.expires-PROG.day).toFixed(0)} d</span>${risk(c).length?' <span class="bad" title="taking it risks sanctions: open it">⚠</span>':''} <span class="ofb"><button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button></span></summary>${body(c,act)}</details>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
-    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
+    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub" title="one flight can complete several">none taken</div>')+
     `<div class="ep">Offers</div>`+(PROG.offers.length?PROG.offers.map(c=>row(c,false)).join(''):'<div class="sub">none right now</div>')+
     `<div class="sub">Standing: ${Object.keys(SRC).map(k=>`${SRC[k].name.toLowerCase()} ${standOf(k).toFixed(0)}`).join(' · ')}</div>`+
     (Object.keys(PROG.sanc||{}).filter(i=>sanctioned(+i)).map(i=>`<div class="sub bad">Sanctioned by ${POWERS[+i].name} for ${(PROG.sanc[i]-PROG.day).toFixed(0)} more days</div>`).join(''))+
@@ -97,8 +97,8 @@ document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.datase
 // station-keeping (space, Q50) and decay (Q25): how long its propellant holds its orbit, since when it drifts, or when it
 // re-enters; nothing if no tide or air pulls on it
 function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
-  if(q.adrift!=null){if(fall)return` · <span class="dim">nothing to hold it up: ${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`:''}
-  if(!(k>0))return'';if(q.tvOn&&!q.bodyName)return` · on the capital's screens ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day to hold, and a tilt trim), then its tanks are dry`;   // Q520
+  if(q.adrift!=null){if(fall)return` · <span class="dim">${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, out of propellant</span>`:''}
+  if(!(k>0))return'';if(q.tvOn&&!q.bodyName)return` · on the capital's screens ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day), then dry`;   // Q520
   return` · holds its orbit ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day)${fall?`, then ${fall}`:''}`}
 function moonSatsHTML(){const L=moonSats().filter(q=>!q.junk),T=tNow();if(!L.length)return'';
   return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
@@ -110,9 +110,9 @@ function landedHTML(){const L=landedUp();if(!L.length)return'';
 // the fragment bands (space, Q147): how many, the thickest band and what it means for a 2 m satellite there
 function fragHTML(){const F=PROG.frag;if(!F)return'';const n=F.reduce((a,x)=>a+x,0);if(n<100)return'';const b=F.indexOf(Math.max(...F)),lo=Math.round((TELLUS.atm+b*BAND_W)/1e3),
   K=PRESSURE_K[pressureOf('debris')]||0,r=4*2*2*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b))*DAY_S*YEAR_D*K,c=Object.entries(PROG.casc||{}).filter(x=>x[1]>=2).map(x=>Math.round((TELLUS.atm+x[0]*BAND_W)/1e3));
-  return`<div class="sub dim">fragments of 1 cm and more: about ${Math.round(n).toLocaleString()}, thickest at ${lo}–${lo+50} km${r>0?` (a 2 m satellite there: one hit in about ${Math.round(1/r).toLocaleString()} years)`:''}${c.length?`; feeding itself: ${c.map(x=>`${x}–${x+50} km`).join(', ')}`:''}</div>`}
+  return`<div class="sub dim">fragments of 1 cm+: about ${Math.round(n).toLocaleString()}, thickest at ${lo}–${lo+50} km${r>0?` (one hit per ${Math.round(1/r).toLocaleString()} years on a 2 m satellite)`:''}${c.length?`; cascading: ${c.map(x=>`${x}–${x+50} km`).join(', ')}`:''}</div>`}
 function satsHTML0(){const all=satsUp(),L=all.filter(q=>!q.junk),J=all.filter(q=>q.junk);const T=tNow();
-  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim">and ${J.length} piece${J.length>1?'s':''} of debris (spent stages and dead satellites, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t; G targets them in flight)</div>`:'')+fragHTML()+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
+  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim" title="spent stages and dead satellites; G targets them in flight">and ${J.length} piece${J.length>1?'s':''} of debris, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t</div>`:'')+fragHTML()+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${q.pw&&satDuty(q)<1?` · <span class="warn">batteries flat: ${satDuty(q)>0?`works ${Math.round(satDuty(q)*100)} % of the time, in sunlight`:'silent'}</span>`:''}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time${q.rate?` at ${q.rate>=1e3?(q.rate/1e3).toFixed(0)+' kbit/s':q.rate.toFixed(0)+' bit/s'}, recorder ${Math.round((q.rec||0)/REC_CAP*100)}% full`:''}`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}${routeLine(q)}</div>`}).join('')+routesBareHTML(L)}
 // a routine whose satellites have all come down keeps its line and its controls: it's for exactly this moment (flow, Q415, PLAYTEST #105)
@@ -128,7 +128,7 @@ document.addEventListener('click',e=>{const ci=e.target.dataset&&e.target.datase
 // ============================================================ program UI: the logbook (planning session)
 const logF=id=>(PROG.log||{})[id];
 function logHintHTML(){const o=logF('orbit'),l=logF('land');
-  return`Low orbit: ${o?`<b>${fmtDv(o.v)}</b> (best, ${o.by})`:'<i>unknown, nobody has made it yet</i>'} · Selene landing: ${l?`<b>${fmtDv(l.v)}</b> from the pad (best, ${l.by})`:'<i>unknown</i>'} · <a id="lbHint" style="cursor:pointer;text-decoration:underline">logbook</a>`}
+  return`Low orbit: ${o?`<b>${fmtDv(o.v)}</b> (best, ${o.by})`:'<i>unknown</i>'} · Selene landing: ${l?`<b>${fmtDv(l.v)}</b> from the pad (best, ${l.by})`:'<i>unknown</i>'} · <a id="lbHint" style="cursor:pointer;text-decoration:underline">logbook</a>`}
 const modernUI=()=>{try{return localStorage.getItem('launchpad-modern-ui')==='1'}catch(e){return false}};
 function renderLog(){const el=$('logbook'),era=modernUI()?0:eraOf(),cls=['lb-modern','lb-notebook','lb-terminal'][era];el.className=cls;
   const title=['Logbook','Program notebook','PROGRAM LOG — TERMINAL 1'][era],U=x=>era===2?x.toUpperCase():x;
@@ -146,7 +146,7 @@ document.addEventListener('click',e=>{if(e.target.id==='lbHint')toggleLog();cons
   go('assembly');BLD.load(JSON.parse(JSON.stringify(ent.stack)));
   // the record flight becomes this design's autopilot, unless the design already has one
   if(ent.tape)try{if(!localStorage.getItem(tapeKey()))localStorage.setItem(tapeKey(),JSON.stringify({v:ent.tape.v,stack:ent.stack,ops:ent.tape.ops,site:ent.tape.site}))}catch(x){}
-  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?ent.tape.v===tapeV()?' with its record flight as the autopilot':' (its record flight was flown on older physics and can\'t replay exactly; its procedure, if any, still can)':''}`)});
+  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?ent.tape.v===tapeV()?' with its record flight as the autopilot':' (its record flight is from older physics: it won\'t replay exactly)':''}`)});
 // a record set by a flight keeps that flight's tape (from the pad), so the record can be flown again
 HOOK.logged=ids=>{const T=player?tapeCut(player):recTape;if(!T||!T.ops||T.ops.length>40000)return;
   for(const id of ids){const e=(PROG.log||{})[id];if(e&&e.stack)e.tape={v:T.v,ops:JSON.parse(JSON.stringify(T.ops)),site:T.site}}HOOK.save()};
@@ -255,6 +255,20 @@ function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=
   o.font=fnt;o.textAlign='center'}
 function eraInk(era,c){const[r,g,b,a]=rgbOf(c),warm=r>g+40&&r>b+40;
   return era===1?(warm?`rgba(176,54,42,${Math.max(.6,a)})`:`rgba(29,42,82,${Math.max(.55,a)})`):(warm?`rgba(214,255,120,${Math.max(.7,a)})`:`rgba(57,255,110,${Math.max(.55,a)})`)}
+// (Q546, PLAYTEST #152) a body's night side as the era map sees it: the visible arc of the terminator (the great circle
+// square to SUN; screen points, its ends pushed out to the limb) closed round the limb the dark way. null: no night in view;
+// {all:true}: the whole disc is night (the terminator hidden behind the limb, the camera over the dark side)
+function eraNight(b,cen,c,rp,camW,project){const oc=norm(sub(camW,cen)),e1=norm(cross(SUN,Math.abs(SUN[1])<.9?[0,1,0]:[1,0,0])),e2=cross(SUN,e1),N=96,vs=[],ps=[];
+  const none=()=>dot(oc,SUN)>0?null:{all:true,arc:[],poly:[]};
+  for(let i=0;i<N;i++){const t=i/N*6.2832,p=add(cen,add(mul(e1,b.R*Math.cos(t)),mul(e2,b.R*Math.sin(t))));vs.push(dot(sub(p,cen),sub(camW,p))>0);ps.push(p)}
+  const s=vs.findIndex((v,i)=>v&&!vs[(i+N-1)%N]);if(s<0)return none();
+  const arc=[];for(let i=0;i<N&&vs[(s+i)%N];i++){const q=project(ps[(s+i)%N]);if(q)arc.push(q)}if(arc.length<2)return none();
+  const ang=q=>Math.atan2(q[1]-c[1],q[0]-c[0]),rim=a=>[c[0]+rp*Math.cos(a),c[1]+rp*Math.sin(a)],aA=ang(arc[0]),aB=ang(arc[arc.length-1]);
+  arc.unshift(rim(aA));arc.push(rim(aB));
+  const ns=sub(mul(oc,dot(SUN,oc)),SUN),qn=len(ns)>1e-6?project(madd(cen,norm(ns),b.R)):null,an=qn?ang(qn):aB+Math.PI,T=6.2832,md=x=>(x%T+T)%T;
+  const d1=md(aA-aB),up=md(an-aB)<d1,span=up?d1:T-d1,n=Math.max(2,Math.ceil(span/.08)),poly=arc.slice();
+  for(let i=1;i<n;i++)poly.push(rim(aB+(up?1:-1)*span*i/n));
+  return{all:false,arc,poly}}
 const wob=(x,y,i)=>[x+Math.sin(i*1.7+y*.05)*.7,y+Math.cos(i*2.3+x*.05)*.7];   // a hand's tremor, steady from frame to frame
 function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
   // the sheet
@@ -262,7 +276,7 @@ function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
     for(let x=0;x<W;x+=24*k){o.moveTo(x,0);o.lineTo(x,H)}for(let y=0;y<H;y+=24*k){o.moveTo(0,y);o.lineTo(W,y)}o.stroke()}
   else{o.fillStyle='#020a03';o.fillRect(0,0,W,H);o.fillStyle='rgba(255,255,255,.025)';for(let y=0;y<H;y+=3*k)o.fillRect(0,y,W,k)}
   const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
-  // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
+  // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude; both mark the night side (Q546)
   for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
     const rp=bodyRadPx(b.R,d,H,tanY);if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
     o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k*OV_K}   // shadowBlur ignores the transform (Q258)
@@ -273,13 +287,19 @@ function drawEraMap(era,camW,project,tanY){const k=ovPx(),o=octx;
     if(era===2){for(let la=-60;la<=60;la+=30)line(t=>P(la*Math.PI/180,t*6.2832),64);for(let lo=0;lo<360;lo+=30)line(t=>P((t-.5)*Math.PI,lo*Math.PI/180),48)}
     else line(t=>P(0,t*6.2832),64);   // the notebook just pencils in the equator
     o.stroke();o.shadowBlur=0;
-    if(era===1){const sq=project(add(cen,mul(SUN,b.R)));if(sq){let sx=sq[0]-c[0],sy=sq[1]-c[1];const sl=Math.hypot(sx,sy)||1;sx/=sl;sy/=sl;
-      o.save();o.beginPath();o.arc(c[0],c[1],rp,0,7);o.clip();o.beginPath();o.rect(c[0]-rp-2,c[1]-rp-2,2*rp+4,2*rp+4);o.clip();
-      o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=k;o.beginPath();
-      for(let t=-rp*1.5;t<rp*1.5;t+=6*k){const x0=c[0]+t,y0=c[1]-rp*1.5,x1=c[0]+t+rp*1.2,y1=c[1]+rp*1.5;   // diagonal strokes, kept on the night half
-        for(let u=0;u<1;u+=.05){const xa=x0+(x1-x0)*u,ya=y0+(y1-y0)*u,xb=x0+(x1-x0)*(u+.05),yb=y0+(y1-y0)*(u+.05);
-          if((xa-c[0])*sx+(ya-c[1])*sy<0&&(xb-c[0])*sx+(yb-c[1])*sy<0){o.moveTo(xa,ya);o.lineTo(xb,yb)}}}
-      o.stroke();o.restore()}}}
+    // (Q546, PLAYTEST #152) the night side, clipped to where it really is (eraNight): the terminal dims its wireframe there,
+    // lays scanlines in its own green and draws the terminator as a glowing line; the notebook hatches it in pencil
+    // (diagonal strokes, as before Q546, but on the true night region, not a half-disc) and pencils the terminator in
+    const nt=rp>=3*k?eraNight(b,cen,c,rp,camW,project):null;
+    if(nt){o.save();o.beginPath();if(nt.all)o.arc(c[0],c[1],rp,0,7);else nt.poly.forEach((q,i)=>i?o.lineTo(q[0],q[1]):o.moveTo(q[0],q[1]));o.closePath();o.clip();
+      if(era===2){o.fillStyle='rgba(2,10,3,.62)';o.fillRect(c[0]-rp-2,c[1]-rp-2,2*rp+4,2*rp+4);o.fillStyle='rgba(57,255,110,.16)';
+        for(let y=Math.floor((c[1]-rp)/(3*k))*3*k;y<c[1]+rp;y+=3*k)o.fillRect(c[0]-rp-2,y,2*rp+4,k)}   // on the display's own scanline pitch
+      else{o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=k;o.beginPath();
+        for(let t=-rp*1.5;t<rp*1.5;t+=6*k){o.moveTo(c[0]+t,c[1]-rp*1.5);o.lineTo(c[0]+t+rp*1.2,c[1]+rp*1.5)}o.stroke()}   // diagonal strokes
+      o.restore();
+      if(nt.arc.length>1){o.beginPath();nt.arc.forEach((q,i)=>{const[x,y]=era===1?wob(q[0],q[1],i):q;i?o.lineTo(x,y):o.moveTo(x,y)});
+        if(era===2){o.strokeStyle='rgba(57,255,110,.85)';o.lineWidth=1.1*k;o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=5*k*OV_K}else{o.strokeStyle='rgba(29,42,82,.4)';o.lineWidth=.9*k}
+        o.stroke();o.shadowBlur=0}}}
   if(atlasMode)atlasInk(era,camW,project,tanY,k);   // coasts and borders (terrain session)
   else if(mapShow('recovery'))atlasInk(era,camW,project,tanY,k);   // (Q488) the Recovery layer in ink: the borders it follows (the welcome is under each name)
   // every line the map computed (orbits, plans, Selene, satellites, impact traces), in two inks
@@ -332,7 +352,7 @@ document.addEventListener('click',e=>{const op=e.target.dataset&&e.target.datase
 // (flow, Q527) a lander on its side (Q508): what is out under the hull and why, what the fall broke or damaged, and why it stays
 function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);
   return[...(T.under.length?[['Under it',T.under.join(' · ')]]:[]),...(T.broke.length?[['Broken',`<span class="bad">${T.broke.join(', ')}</span>`]]:[]),
-    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Stuck','<span class="dim">no liftoff · righting it waits for a crew or a visit</span>']]}
+    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Righting','<span class="dim">thrust, RCS or the wheels can stand it up</span>']]}
 function bayRows(){const B=S.parts.filter(p=>p.on&&p.d.kind==='bay');if(!B.length)return[];const f=Math.min(...B.map(doorF)),op=B.some(b=>b.open),
     load=B.some(b=>b.children.some(c=>c.on&&c.inBay===b)),st=f===0?'shut':f===1?'open':`${op?'opening':'closing'} ${(f*100).toFixed(0)}%`;
   return[['Bay',`${st} <button data-bay="${op?'close':'open'}">${op?'close':'open'} [B]</button>${load&&f===1?' <button data-bay="rel">release payload</button>':load?'':' <span class="dim">empty</span>'}`]]}

@@ -60,5 +60,5 @@ function debEndBtn(){const b=$('bEnd');if(!b)return;const R=S&&S.rec,over=mode==
 $('bEnd').onclick=()=>go('debrief');
 // (Q570) the Opened block's links: a mission or contract kind opens its tab on the Program; a part, its card
 $('debBody').addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-debtab]');if(!t)return;progTab=t.dataset.debtab;go('program')});
-$('debBody').addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-pcard]');if(t&&tipOK()&&PARTS[t.dataset.pcard])tipShow('card',partCardHTML(t.dataset.pcard),{r:t.getBoundingClientRect(),side:true})});
-$('debBody').addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-pcard]')&&tipOK())tipHide('card')});
+$('debBody').addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-pcard]');if(t&&typeof tipShow==='function'&&PARTS[t.dataset.pcard])tipShow('card',BLD.partCardHTML(t.dataset.pcard),{r:t.getBoundingClientRect(),side:true})});
+$('debBody').addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-pcard]')&&typeof tipShow==='function')tipHide('card')});

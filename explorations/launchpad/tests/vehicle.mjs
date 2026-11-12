@@ -501,12 +501,15 @@
     const d = api.toV2(['core', 't1', 'bay', 'pod', 't2', 'kestrel']), t = fd(d.root, 't2');
     t.c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] }, { k: 'wpanel', at: { y: 1, a: 0, n: 2 }, c: [] });
     if (dep) for (const k of ['leg', 'wpanel', 'bay']) fd(d.root, k).dep = true; return d; };
+  // the clock first: newShip lands the craft at the pad's place at the current time, so a clock set to 0 afterwards puts the
+  // planet somewhere else under it (R5: after an earlier section left simT large, the first step struck the ground at 6 km/s)
+  api.t = 0;
   const d0 = mk(false), d1 = mk(true), s0 = api.newShip(d0), s1 = api.newShip(d1), of = (s, f) => s.parts.filter(p => f(p.d));
   const L = of(s1, d => d.kind === 'leg'), Wg = of(s1, d => d.wing), B = of(s1, d => d.kind === 'bay')[0];
   const wn = d => api.launchWarnings(d).filter(([k, x]) => /at launch/.test(x)).length;
   const stowed = !s0.parts.some(p => p.dep || p.open) && wn(d0) === 0;
   const out = L.length === 4 && L.every(p => p.dep) && Wg.length === 2 && Wg.every(p => p.dep) && B.open && !s1.parts.some(p => p.inBay && p.inBay.open === false);
-  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; api.t = 0; api.S = s1; api.stage(s1); s1.throttle = 1;
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; api.S = s1; api.stage(s1); s1.throttle = 1;
   let qx = 0; for (let i = 0; i < 60 / api.DT && s1.alive && Wg.some(p => p.on); i++) { api.advPhys(s1); qx = Math.max(qx, s1.qdyn); }
   api.HOOK.msg = msg0;
   check('deploy in the Assembly (Q328): legs, wings and doors roll out as left, the Rollout warns, procedures kept; wings torn off on the way up',
@@ -959,7 +962,7 @@
 // it stays in the registry as a landed object. A tall stack that falls hard (the Lunar preset on Selene, the Hopper on
 // Tellus) still breaks.
 {
-  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,TELLUS,PRESETS,PROG,fromPF,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,DT,footPoints,tipSpeed,debOutcome,antOf,outThere,recNew,landRegister,stage,len,norm,add,mul,cross,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,TELLUS,PRESETS,PROG,fromPF,toPF,sub,groundAlt,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,physStep,DT,footPoints,tipSpeed,debOutcome,antOf,outThere,recNew,landRegister,stage,len,norm,add,mul,cross,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
   const msgs = []; Object.assign(D.HOOK, { msg: m => msgs.push(m), boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
   const DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)];
   const flat = B => { for (let la = -30; la <= 30; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const u = U(la, lo); if (B === D.TELLUS && D.groundAlt(B, u) < 5) continue;
@@ -975,12 +978,15 @@
   const s = drop(D.SELENE, des, 1.5), whips = s.parts.filter(p => p.on && p.d.key === 'whip'), ant = D.antOf(s.parts), ant0 = D.antOf(D.newShip(des).parts);
   const dm = s.parts.filter(p => p.on && p.dmg > 0).length, out = s.alive ? D.debOutcome(s, s.rec) : { t: '', d: s.lossWhy };
   D.outThere(s, 1, false); const sampled = !!s.rec.selSampled, talks = !!(s.rec.selLand || s.rec.farLandNews);
-  msgs.length = 0; D.stage(s); s.throttle = 1; for (let i = 0; i < 50; i++) D.physStep(s, D.DT); const held = s.landed && !!s.tipped && msgs.some(m => /on its side/.test(m));
+  const lies = s.alive && s.landed && !!s.tipped && dm > 0 && whips.filter(p => p.buried).length === 1, tv = s.tipped ? s.tipped.v : NaN;
   D.PROG.sats = []; D.landRegister(s, s.rec); const q = D.PROG.sats[0];
-  check('topple (Q508): a lander tipping over on Selene lies on its side, alive and damaged; one whip under the hull, the other talks; instruments count; no liftoff; registered landed; the Debrief says toppled',
-    s.alive && s.landed && !!s.tipped && dm > 0 && whips.filter(p => p.buried).length === 1 && ant.P * 2 === ant0.P && sampled && talks && held
+  // (Q545) since then thrust moves it: the Wren lit on its side wakes it, pushing it along the ground; nothing refuses
+  const pf0 = D.toPF(D.SELENE, s.r, D.t); msgs.length = 0; D.stage(s); s.throttle = 0.3; for (let i = 0; i < 50; i++) D.physStep(s, D.DT);
+  const moved = !s.landed && !!s.roused && D.len(D.sub(D.toPF(D.SELENE, s.r, D.t), pf0)) > 0.05 && !msgs.some(m => /can't lift off/.test(m));
+  check('topple (Q508): a lander tipping over on Selene lies on its side, alive and damaged; one whip under the hull, the other talks; instruments count; registered landed; the Debrief says toppled; (Q545) thrust then moves it',
+    lies && ant.P * 2 === ant0.P && sampled && talks && moved
       && /^Toppled over on Selene/.test(out.t) && /side/.test(out.d) && !/destroyed/.test(out.d) && !!q && q.landed && !!q.tipped,
-    `${s.alive ? `tipped, top hit at ${s.tipped ? s.tipped.v.toFixed(1) : '?'} m/s, ${dm} parts damaged, ${whips.filter(p => p.buried).length} of 2 whips buried` : s.lossWhy}; sampled ${sampled}, link ${talks}, liftoff held ${held}; "${out.t}: ${out.d}"; registry ${q ? `${q.name} landed ${q.landed} tipped ${q.tipped}` : 'none'}`);
+    `${lies ? `tipped, top hit at ${tv.toFixed(1)} m/s, ${dm} parts damaged, ${whips.filter(p => p.buried).length} of 2 whips buried` : s.lossWhy || 'not lying'}; sampled ${sampled}, link ${talks}, thrust moves it ${moved}; "${out.t}: ${out.d}"; registry ${q ? `${q.name} landed ${q.landed} tipped ${q.tipped}` : 'none'}`);
   const lun = drop(D.SELENE, D.PRESETS.Lunar, 3), hop = drop(D.TELLUS, D.PRESETS.Hopper, 1.15);
   check('topple (Q508): a hard fall still breaks: the Lunar stack over on Selene, the Hopper over on Tellus, each lost with its pod\'s hit speed',
     !lun.alive && /hit the ground at \d+ m\/s/.test(lun.lossWhy || '') && !hop.alive && /toppled over.*hit the ground at \d+ m\/s/.test(hop.lossWhy || ''),
@@ -1129,8 +1135,112 @@
     hop.join() === 'loads,hop' && !snd.length && sat.length > 3 && once && c1 && eraLast && kitOK && none && wired,
     `Hopper waits ${hop.join(', ')}; Sounding ${snd.length}; Satellite keys ${sat.length}; closed ${shut.length} in ${C.length} chapters (once ${once}, ch1 first ${c1}, eras last ${eraLast}, kit ${kitOK}); all open ${none}; wired ${wired}`);
 }
+// vehicle-45. Thrust on the ground moves the craft (vehicle, QUEUE Q545; PLAYTEST #151): a landed craft sleeps (pinned, no
+// jitter) until thrust on its side, or the keys turning it with its wheels or RCS, wake it (rouse); then it is a free body
+// held by the ground at its feet and its whole outline (hullPts), with friction. (1) A toppled lander (vehicle-38's, tank at
+// 30 %) rights itself with its wheels on Selene and Nyx, with RCS alone on Nyx; so does the Hopper on Nyx (on Selene its
+// wheels can't lift it); it stands again (s.tipped cleared) and lifts off. (2) Full throttle on its side shoves it along the
+// ground; what breaks, breaks by the sim's strike law (groundHits: a boulder field at its slide speed) and the craft is lost
+// only with its root; a gentle push slides it and it comes to rest on its side again, its buried parts recomputed. (3) At
+// rest it doesn't drift: asleep 60 s, nothing moves; woken by a tap and left, it settles again; awake under thrust short of
+// its weight for 60 s it moves < 1 cm and gains no speed. Its own sim (vehicle-38's drop); nothing shared to restore.
+{
+  const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,NYX,PRESETS,INP,fromPF,toPF,groundAlt,groundR,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,qrot,qconj,physStep,DT,footPoints,tipSpeed,recNew,stage,bodyOmega,len,norm,add,sub,mul,dot,cross,clamp,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; Object.assign(D.HOOK, { msg: m => msgs.push(m), boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
+  const DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)], K = ['pitch', 'yaw', 'roll'];
+  const flat = B => { for (let la = -30; la <= 30; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const u = U(la, lo); const su = D.surfaceAt(B, u); if (D.surfaceHit(su, u, B) > 0) continue; if (D.terrainSlope(B, u) < 0.02) return u; } };
+  // set it down upright 0.2 m up, falling at 1 m/s and drifting k× the speed it tips over at (k 0: it stands), SAS off
+  const drop = (B, stack, k) => { D.t = 0; const u = flat(B), s = D.newShip(stack); D.S = s; Object.assign(s, { landed: false, body: B, sas: false, throttle: 0 }); msgs.length = 0;
+    for (const p of s.parts) if (p.res.fuel != null) p.res.fuel *= 0.3;
+    s.rec = D.recNew(); s.rec.launched = true; const vt = D.tipSpeed(s, B.mu / B.R ** 2), fy = Math.min(...D.footPoints(s).map(f => f.pt[1])) - s.cm[1];
+    s.r = D.fromPF(B, D.mul(u, B.R + D.groundAlt(B, u) - fy + 0.2), 0); const up = D.norm(s.r), e = D.norm(D.cross([0, 1, 0], up));
+    s.v = D.add(D.surfVel(B, s.r), D.add(D.mul(up, -1), D.mul(e, k * vt))); s.q = D.qFromBasis(e, up, D.cross(e, up)); s.w = [0, 0, 0];
+    for (let i = 0; i < 40 / D.DT && s.alive && !s.landed; i++) D.physStep(s, D.DT); D.stage(s); return s; };
+  const tilt = s => Math.acos(D.clamp(D.dot(D.qrot(s.q, [0, 1, 0]), D.norm(s.r)), -1, 1)) / DG, spin = s => D.len(D.sub(s.w, [0, D.bodyOmega(s.body), 0]));
+  const agl = s => D.len(s.r) - D.groundR(s.body, D.toPF(s.body, s.r, D.t)), pfOf = s => D.toPF(s.body, s.r, D.t);
+  // a pilot on the keys (SAS off): turn the nose up at ≤ 0.4 rad/s, braking as it comes
+  const steerUp = s => { const up = D.norm(s.r), Y = D.qrot(s.q, [0, 1, 0]), a = D.cross(Y, up), al = D.len(a), ang = Math.atan2(al, D.dot(Y, up));
+    const wd = D.mul(al > 1e-9 ? D.mul(a, 1 / al) : [0, 0, 0], Math.min(0.4, 0.8 * ang)), e = D.qrot(D.qconj(s.q), D.mul(D.sub(wd, D.sub(s.w, [0, D.bodyOmega(s.body), 0])), 4));
+    D.INP.yaw = D.clamp(e[0], -1, 1); D.INP.pitch = -D.clamp(e[2], -1, 1); D.INP.roll = 0; };
+  const lander = rcs => { const d = D.toV2(['sci', 'core', 't1', 'wren']), fd = (n, k) => n.k === k ? n : (n.c || []).map(c => fd(c, k)).find(Boolean);
+    fd(d.root, 't1').c.push({ k: 'whip', at: { y: 0.5, a: 0, n: 1 }, c: [] }, { k: 'whip', at: { y: 0.5, a: Math.PI, n: 1 }, c: [] });
+    if (rcs) fd(d.root, 't1').c.push({ k: 'rcs', at: { y: 1.0, a: 0, n: 4, cy: 0.1 }, c: [] }, { k: 'rcs', at: { y: 0.1, a: 0, n: 4, cy: 0.1 }, c: [] }, { k: 'gas', at: { y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] });
+    return d; };
+  // (1) on its side, right it with the keys, let it settle, then full throttle
+  const right = (B, stack, rcs) => { const s = drop(B, stack, B === D.NYX ? 2.5 : 1.5), was = !!s.tipped && s.alive; if (!was) return { was, s };
+    if (rcs) { s.rcs = true; s.parts.find(p => p.d.key === 'core').dmg = 0.99; }   // the wheels out (1 % left): RCS alone
+    msgs.length = 0; const t0 = D.t; let up = null, set = null, lift = null, stood = null;
+    for (let i = 0; i < 60 / D.DT && s.alive; i++) {
+      if (up == null) { if (tilt(s) > 2 || spin(s) > 0.03) steerUp(s); else { up = D.t - t0; for (const k of K) D.INP[k] = 0; s.sas = true; } }
+      else if (set == null && s.landed) { set = D.t - t0; stood = !s.tipped && s.parts.every(p => !p.buried); s.throttle = 1; }
+      else if (set != null && agl(s) > 10) { lift = D.t - t0 - set; break; }
+      D.physStep(s, D.DT); }
+    for (const k of K) D.INP[k] = 0; return { was, s, up, set, lift, stood, said: msgs.some(m => /^Standing again on/.test(m)) }; };
+  const R1 = { 'lander, Selene': right(D.SELENE, lander()), 'lander, Nyx': right(D.NYX, lander()), 'RCS lander (wheels out), Nyx': right(D.NYX, lander(true), true), 'Hopper, Nyx': right(D.NYX, D.PRESETS.Hopper) };
+  const hs = right(D.SELENE, D.PRESETS.Hopper), f1 = r => r.was ? `up in ${r.up?.toFixed(1)} s, settled ${r.set?.toFixed(1)} s${r.stood ? '' : ' (not standing)'}, 10 m up ${r.lift?.toFixed(1)} s after full throttle` : 'did not topple';
+  check('vehicle-45: (Q545) a toppled lander rights itself with its wheels on Selene and Nyx, with RCS alone on Nyx; the Hopper on Nyx; each stands again (no longer on its side) and lifts off; the Hopper\'s wheels can\'t lift it on Selene',
+    Object.values(R1).every(r => r.was && r.s.alive && r.up != null && r.up < 15 && r.stood && r.said && r.lift != null && r.lift < 5) && hs.was && hs.s.alive && hs.up == null && !!hs.s.tipped,
+    Object.entries(R1).map(([k, r]) => `${k}: ${f1(r)}`).join(' · ') + ` · Hopper, Selene: ${hs.was ? (hs.up == null ? `still on its side${hs.s.tipped ? '' : '?'}` : 'righted?!') : 'did not topple'}`);
+  // (2) full throttle on its side for 20 s; a gentle push for 3 s, then left
+  const blast = (B, stack) => { const s = drop(B, stack, B === D.NYX ? 2.5 : 1.5), was = !!s.tipped && s.alive, p0 = pfOf(s), d0 = new Map(s.parts.map(p => [p, p.dmg || 0])); msgs.length = 0; s.throttle = 1; let w = 0, far = 0;
+    for (let i = 0; i < 20 / D.DT && s.alive; i++) { D.physStep(s, D.DT); w = Math.max(w, spin(s)); far = Math.max(far, D.len(D.sub(pfOf(s), p0))); }
+    const hurt = s.parts.filter(p => (p.dmg || 0) > d0.get(p) + 1e-9), why = hurt.every(p => p.dmg >= 1 && !p.on || p === s.root && /hit /.test(s.lossWhy || "") || msgs.some(m => m.startsWith(`The ${p.d.name.toLowerCase()} hit `)) || p.dmg < 0.2);
+    return { was, s, w, far, hurt, why }; };
+  const push = (B, stack) => { const s = drop(B, stack, B === D.NYX ? 2.5 : 1.5), was = !!s.tipped && s.alive, p0 = pfOf(s); s.throttle = 0.15; for (let i = 0; i < 3 / D.DT; i++) D.physStep(s, D.DT); s.throttle = 0; msgs.length = 0;
+    let rest = null; for (let i = 0; i < 40 / D.DT && s.alive && rest == null; i++) { D.physStep(s, D.DT); if (s.landed) rest = D.t; }
+    return { was, s, far: D.len(D.sub(pfOf(s), p0)), rest, said: msgs.some(m => /^At rest on its side on/.test(m)), buried: s.parts.filter(p => p.on && p.buried).length }; };
+  const B1 = { 'lander, Selene': blast(D.SELENE, lander()), 'Hopper, Nyx': blast(D.NYX, D.PRESETS.Hopper) }, P1 = push(D.SELENE, lander());
+  const f2 = r => `${r.was ? '' : '(did not topple) '}${r.s.alive ? 'alive' : r.s.lossWhy}; ran ${r.far.toFixed(0)} m, spun up to ${r.w.toFixed(2)} rad/s; ${r.hurt.length} parts damaged${r.why ? '' : ' (unexplained!)'}`;
+  check('vehicle-45: (Q545) full throttle on its side shoves it along the ground, damage only by the sim\'s strike law (lost only with its root); pushed gently it slides and comes to rest on its side again, buried parts recomputed',
+    Object.values(B1).every(r => r.was && r.far > 20 && r.why && (r.s.alive || /^destroyed: its .+ hit .+ at \d+ m\/s|^destroyed: hit /.test(r.s.lossWhy || ''))) && P1.was && P1.s.alive && P1.far > 0.3 && P1.rest != null && !!P1.s.tipped && P1.s.landed && P1.said,
+    Object.entries(B1).map(([k, r]) => `${k}: ${f2(r)}`).join(' · ') + ` · pushed at 15 % for 3 s: slid ${P1.far.toFixed(1)} m, at rest after ${P1.rest != null ? (P1.rest - 3).toFixed(1) : '?'} s on its side ${!!P1.s.tipped}, ${P1.buried} buried`);
+  // (3) upright at rest: asleep 60 s; a tap of the keys wakes it, then it settles; awake under 50 % of its weight in thrust for 60 s
+  const s = drop(D.SELENE, lander(), 0), ok0 = s.alive && s.landed && !s.tipped, pA = pfOf(s); for (let i = 0; i < 60 / D.DT; i++) D.physStep(s, D.DT); const asleep = D.len(D.sub(pfOf(s), pA));
+  D.INP.pitch = 0.2; D.physStep(s, D.DT); D.INP.pitch = 0; const woke = !s.landed && !!s.roused; let back = null; for (let i = 0; i < 30 / D.DT && back == null; i++) { D.physStep(s, D.DT); if (s.landed) back = i * D.DT; }
+  const wake = (B => { const W = s.mass * B.mu / D.len(s.r) ** 2, T = 18e3; s.throttle = 0.5 * W / T; D.INP.pitch = 0.01; D.physStep(s, D.DT); D.INP.pitch = 0;
+    for (let i = 0; i < 2 / D.DT; i++) D.physStep(s, D.DT); const p0 = pfOf(s); let v1 = 0, v2 = 0;
+    for (let i = 0; i < 60 / D.DT; i++) { D.physStep(s, D.DT); const v = D.len(D.sub(s.v, D.surfVel(B, s.r))); if (i < 30 / D.DT) v1 = Math.max(v1, v); else v2 = Math.max(v2, v); }
+    return { awake: !s.landed, moved: D.len(D.sub(pfOf(s), p0)), v1, v2 }; })(D.SELENE);
+  check('vehicle-45: (Q545) upright at rest on Selene nothing drifts: asleep 60 s it doesn\'t move; a tap of the keys wakes it and it settles again; awake under thrust half its weight for 60 s it moves < 1 cm and gains no speed',
+    ok0 && asleep < 1e-6 && woke && back != null && back < 20 && wake.awake && wake.moved < 0.01 && wake.v2 <= wake.v1 + 1e-4 && wake.v2 < 0.005,
+    `${ok0 ? "" : "(did not stand) "}asleep 60 s: ${(asleep * 100).toFixed(2)} cm; tapped: woke ${woke}, asleep again after ${back?.toFixed(1)} s; awake at 50 % of its weight${wake.awake ? "" : " (asleep?)"}: moved ${(wake.moved * 100).toFixed(2)} cm in 60 s, top speed ${(wake.v1 * 1000).toFixed(1)} then ${(wake.v2 * 1000).toFixed(1)} mm/s`);
+}
 
-// vehicle-46. `detach()` keeps momentum (vehicle, QUEUE R22, the parked fourth: notes/vehicle.md § v1.315): the kick is how fast
+// vehicle-46. The builder acts only on the Assembly (vehicle + flow, QUEUE R28; REVIEW-2026-11-11 § 6, R13g): a click on the
+// rocket at the Rollout (or the title, the Program, the Mission card, the Debrief) had picked a part up and edited the design,
+// and the builder's keys acted from the title. Run in review 2's headless harness (builder.js and the sim, DOM and GL stubbed).
+{
+  const { createRequire } = await import('module');
+  const run = createRequire(import.meta.url)('./review/2026-11-11/app/A_harness.cjs');
+  const r = run(`
+const cvs=document.getElementById('gl');
+function aim(){const q=S.q;HOOK.view={camW:qrot(q,[30,0,0]),Fw:qrot(q,[-1,0,0]),R:qrot(q,[0,0,1]),U:qrot(q,[0,1,0]),tanX:.6,tanY:.5,W:1000,H:800}}
+function click(){aim();const e={target:cvs,clientX:500,clientY:400,button:0,preventDefault(){},stopPropagation(){this.stopped=true}};
+  fire('mousemove',e);fire('mousedown',e);fire('mouseup',e);return e}
+const key=(k,ctrl)=>fire('keydown',{key:k,ctrlKey:!!ctrl,target:{tagName:'BODY'},preventDefault(){}});
+const fresh=()=>{atTitle=atRoll=atHQ=atDeb=atMC=false;stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter));S=newShip(stackDef);editorChanged();BLD.st.held=null;BLD.st.sel=null;BLD.st.undo.length=0};
+BLD.init();const out={};
+for(const [scr,set] of [['title',()=>atTitle=true],['rollout',()=>atRoll=true],['program',()=>atHQ=true],['debrief',()=>atDeb=true],['mission',()=>atMC=true],['assembly',()=>{}]]){
+  fresh();set();const n0=S.parts.length,e0=EDN,e=click();
+  out[scr]={screen:screenNow(),parts:[n0,S.parts.length],held:BLD.st.held?BLD.st.held.k:null,edits:EDN-e0,stopped:!!e.stopped}}
+// keys: a part held on the Assembly, then the title: Delete, Ctrl+Z and X do nothing there; back on the Assembly they act
+fresh();click();const held=BLD.st.held&&BLD.st.held.k,u0=BLD.st.undo.length,sym0=BLD.st.sym;atTitle=true;const e1=EDN;
+key('Delete');key('z',true);key('x');
+out.keys={held,title:{still:BLD.st.held&&BLD.st.held.k,undo:[u0,BLD.st.undo.length],sym:BLD.st.sym===sym0,edits:EDN-e1}};
+atTitle=false;key('x');out.keys.assemblyX=BLD.st.sym!==sym0;
+return out`);
+  const off = ['title', 'rollout', 'program', 'debrief', 'mission'], o = r[off[0]];
+  const quiet = off.every(k => { const x = r[k]; return x.screen === k && x.parts[0] === x.parts[1] && !x.held && !x.edits && !x.stopped; });
+  const A = r.assembly, asm = A.parts[1] < A.parts[0] && !!A.held && A.edits === 1 && A.stopped;
+  const K = r.keys, keys = !!K.held && K.title.still === K.held && K.title.undo[0] === K.title.undo[1] && K.title.sym && !K.title.edits && K.assemblyX;
+  const rsrc = readFileSync(new URL('./app/render.js', import.meta.url), 'utf8'), ov = /const building=screenNow\(\)==='assembly';/.test(rsrc);
+  check('vehicle-46: the builder acts only on the Assembly: a click on the rocket elsewhere picks nothing up, its keys are quiet from the title; on the Assembly both act',
+    quiet && asm && keys && ov,
+    off.map(k => `${k} ${r[k].parts.join('→')}${r[k].held ? ' held ' + r[k].held : ''}`).join(', ') + ` · assembly ${A.parts.join('→')} held ${A.held}` +
+    ` · title keys: still holding ${K.title.still}, undo ${K.title.undo.join('→')}, X ${K.title.sym ? 'quiet' : 'acted'}; on the Assembly X ${K.assemblyX ? 'acts' : 'quiet'} · markers ${ov}`);
+}
+
+// vehicle-47. `detach()` keeps momentum (vehicle, QUEUE R22, the parked fourth: notes/vehicle.md § v1.315): the kick is how fast
 // the pieces part, shared by mass on both branches (the debris branch had given the craft no reaction), and the craft's velocity
 // follows its centre of mass. Parked on branch r22-detach until the long scripted flights tolerate it.
 {
@@ -1144,6 +1254,6 @@
     return { dp: Math.hypot(...[0, 1, 2].map(k => mom(after, k) - mom(before, k))) / before[0].m, n: D.length, dv: api.len(api.sub(c.v, before[0].v)) }; };
   const orb = drop('Orbiter');
   api.S = keepS; api.t = keepT;
-  check('vehicle-46: a stage drop keeps momentum (the craft takes the reaction, its velocity follows its centre of mass)',
+  check('vehicle-47: a stage drop keeps momentum (the craft takes the reaction, its velocity follows its centre of mass)',
     orb.n > 0 && orb.dp < 1e-6, `Orbiter's drop: ${orb.n} debris, momentum change ${orb.dp.toExponential(1)} m/s × M, craft Δv ${orb.dv.toFixed(2)} m/s`);
 }

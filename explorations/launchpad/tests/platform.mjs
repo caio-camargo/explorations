@@ -320,3 +320,37 @@
     good && noSave && reopened && refuse.every(x => x.ok) && fullOK && staticOK,
     `import ${good} (day ${r.day} of ${fileDay}; kept ${r.kept}); held ${noSave}; reopens ${reopened}; refused: ${refuse.map(x => `${x.raw} ${x.ok ? 'ok' : `✗ (${x.why})`}`).join('; ')}; storage full ${fullOK}; static ${staticOK}`);
 }
+
+// platform-11. Smoke stays smoke (QUEUE R5; review 2026-11-09 § 2). `--smoke` is the suite less SLOW (shards.mjs), the
+// sections that took SLOW_S seconds or more when last timed. Each SLOW row's selector picks exactly one section (a label
+// that became shared, or a renamed title, would drop a section silently or keep a slow one in), none is listed twice, the
+// smoke set pulls none of them back in through a shared top-level name, and economy keeps sections in smoke. Timing is
+// `--times`' job (it names what to add and drop); this guards the list's shape.
+{
+  const SH = await import(new URL('./shards.mjs', import.meta.url));
+  const P = SH.parse(readFileSync(new URL('./test.mjs', import.meta.url), 'utf8'), new URL('./test.mjs', import.meta.url).href);
+  const each = SH.SLOW_ROWS.map(([q, t]) => ({ q, t, n: SH.select(P.secs, [q], false).picked.length }));
+  const bad = each.filter(x => x.n !== 1 || !(x.t >= SH.SLOW_S)), out = SH.select(P.secs, SH.SLOW, false).picked;
+  const keep = P.secs.filter(s => !out.includes(s)), r = SH.select(P.secs, keep.map(s => '#' + s.ord));
+  const back = r.picked.filter(s => out.includes(s)), econ = r.picked.filter(s => /^econ-/.test(s.label)).length;
+  check('platform-11: each SLOW row picks one section of SLOW_S s or more; none twice; the smoke set pulls none back in; economy stays in smoke (R5)',
+    !bad.length && out.length === SH.SLOW_ROWS.length && !back.length && econ >= 10 && keep.length > P.secs.length / 2,
+    `${SH.SLOW_ROWS.length} rows (${bad.map(x => `${x.q}: ${x.n} sections`).join(', ') || 'each one section'}); ${out.length} out; smoke ${r.picked.length} of ${P.secs.length}; pulled back ${back.map(s => s.label).join(', ') || 'none'}; economy in smoke ${econ}`);
+}
+
+// platform-12. The lint step (QUEUE R3; plan REVIEW-2026-11-11.md § 4): lint.mjs, run as its own process (Node's acorn
+// needs --expose-internals, which can't be set from inside the suite). (a) No line's `//` comment swallows code: R4's
+// five lines and R25's five are fixtures it must flag, and prose like "baked by atlasBake (SIM);" must pass. (b) The
+// page's scripts (index.html's, in order, plus views.js) as one global scope: no name used or assigned and declared
+// nowhere (app/debrief.js called builder.js's tipOK/partCardHTML, which live inside BLD), none declared twice, no
+// load-time use of a later let/const. A name read only behind `typeof` is optional (LIFT, recMenu: R32). If a Node
+// release moves its acorn, this fails with that message: don't skip it, point lint.mjs at the new path.
+{
+  const { spawnSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
+  const run = spawnSync(process.execPath, ['--expose-internals', fileURLToPath(new URL('./lint.mjs', import.meta.url)), '--json'], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  let r = null; try { r = JSON.parse(run.stdout); } catch { }
+  const L = r && (await import(new URL('./lint.mjs', import.meta.url))).failures(r);
+  check('platform-12: lint: no code swallowed by a // comment (10 fixtures flagged, prose not); the page\'s shared scope has no undefined name, no double declaration, no load-time use of a later let/const (R3)',
+    !!r && run.status === 0 && !L.length,
+    r ? `${r.scope.files} scripts, ${r.scope.globals} top-level names; optional ${r.scope.optional.join(', ') || 'none'}; ${L.slice(0, 6).join('; ') || 'clean'}` : `lint.mjs gave no report (exit ${run.status}): ${(run.stderr || '').trim().split('\n').slice(0, 3).join(' | ')}`);
+}
