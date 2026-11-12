@@ -303,6 +303,9 @@ function progLoad(j,home){PROG_REPAIRED=[];PROG_UNKNOWN=[];
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
+// R19: the one formula each for a launch's operations fee and its stacking days (missionTick, dispatch, supply runs,
+// Rollout and career.mjs all call these; no copies)
+const opsOf=cost=>OPS_FIX+OPS_FRAC*cost,stackDays=(cost,v)=>prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')];
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
 // the world moves in pieces that end on whole days (Q526): the piece that reaches day n rolls that day's dice (worldTick).
 // halt() (advanceTo's) can end the wait after a piece: on the day a decision came. The orbits then move once over the
@@ -557,7 +560,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(!R.sim)FLOOR_HOLD=R;if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
+  if(!R.launched){if(s.landed)return;REVERT0={R,prog:progJSON()};if(!R.sim)FLOOR_HOLD=R;if(s.stack)designLaunched(s.stack,s);/* vehicle: the design goes in the program's library */R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=opsOf(R.cost);R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;if(!R.sim)PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast||R.watch||R.sim?0:stackDays(R.cost,s);R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=R.watch||R.sim?0:studyWait(s);R.padWait=R.watch||R.sim?0:padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);if(!R.sim)advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=R.sim?0:weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window   (flow, Q43: a watched dispatch was stacked in the queue: no prep, pad or study wait)
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -823,6 +826,9 @@ const TIER_NAME=['structure and tanks','small engines','big engines and avionics
 // with 0.5 + 0.5·use of the instrument package). Effects start once the program has started (a start chosen, or a
 // flight flown), so plain physics in the sim is unaffected. Know-how belongs to the team: it carries over on defection.
 const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.05,IGN_FAIL=0.08;
+// R19: the odds an engine fails to light, the one formula (igniteOK rolls it, the dispatch's odds and career.mjs use it):
+// development's "reliable" steps ×0.6 each, know-how squared, a young production line rougher
+function ignFail(k){const L=prodLine(k);return 0.6**devLv(k,'rel')*IGN_FAIL*(1-khUse(k))**2*(L?2-L.m:1)}
 const khOn=()=>PROG.flights>0||!!(PROG.own&&PROG.own.chosen);
 function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t],x=sourceOf(k);return x.how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):x.how==='line'?Math.min(0.95,b+0.2+0.2*x.line.m):b}
 const khUse=k=>TEST.kh?1:((PROG.kh||{})[kinOf(k)]?.use)??use0(kinOf(k));   // (tester: full know-how)
@@ -1006,7 +1012,7 @@ function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];i
     extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(Math.cos(i0*rad)-Math.cos(T.inc*rad)),margin=(proc.margin!=null?proc.margin:proc.left!=null?proc.left:dvRemaining(v).tot-proc.dv)-extra;
   const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
   const eng=v.parts.filter(p=>p.on&&p.d.kind==='engine'),last=Math.max(...eng.map(p=>p.seg??0));
-  let pT=1;for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)
+  let pT=1;for(const p of eng){const f=ignFail(p.d.key);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)
   pI*=pT;
   for(const p of v.parts){if(!p.on)continue;const c1=certOf(p.d.key);pS*=1-0.02*(1-c1);uc+=1-c1;uk+=1-khUse(p.d.key);nk++}
   const pr=pM*pI*pS,unc=(nk?0.4*uc/nk+0.4*uk/nk:0)+(proc.prov?PROV_UNC:0);   // a borrowed procedure (a dry run) is less certain
@@ -1047,11 +1053,11 @@ function dispatchOptions(c){if(!DISPATCH_TYPES.includes(c.type))return[];const o
 function procSiteOf(stack){const pr=(PROG.procs||{})[procKey(stack)];return(pr&&pr.site&&siteById(pr.site))||homeSites()[0]||curSite()}
 function dispatchSite(stack){const t=procSiteOf(stack),a=siteAccessOf(t);return{t,ok:a.ok,why:a.ok?'':a.why,fee:a.ok?a.fee||0:0}}
 function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),lk=partLaunchWhy(v.parts);if(lk)return{ok:false,why:lk};const cost=vesselCost(v.parts).cost,
-  prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  prep=stackDays(cost,v),f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const busy=(PROG.dispatch||[]).some(x=>(x.status==='queued'||x.status==='deviated')&&(c.route!=null?x.route===c.route:x.cid===c.id));
   const ds=dispatchSite(stack);if(!ds.ok)return{...e,ok:false,why:ds.why};
   const rule=procWindow(e.proc,'any'),win=nextWindow(rule,start+prep);
-  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
+  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+opsOf(cost)+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
 function orderDispatch(c,stack){const q=dispatchQuote(c,stack);if(!q.ok)return false;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
   PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)} (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
@@ -1124,9 +1130,9 @@ function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'no
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
   const ds=dispatchSite(stack);if(!ds.ok)return{ok:false,why:ds.why};
-  const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=stackDays(cost,v),f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const rule=procWindow((PROG.procs||{})[procKey(stack)],'light',{body:base.bodyName,pf:base.pf,name:base.name}),win=nextWindow(rule,start+prep);   // land in daylight (Q185)
-  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
+  return{ok:true,why:'',cost:cost+opsOf(cost)+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
 function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)return q;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
   PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)}`,'');HOOK.save();return{...q,ok:true}}
@@ -1147,7 +1153,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
   const c=D.base!=null?null:D.route!=null?routeC(D.route):(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const dsx=dispatchSite(D.stack);if(!dsx.ok){D.status='cancelled';D.why=dsx.why;HOOK.news(`Dispatch stood down: ${D.title}. ${dsx.why}`,'warn');continue}
   const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch=nextWindow(D.rule,D.launch+1).day;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
-  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
+  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=opsOf(cost)+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   if(D.watch&&D.cid!=null&&PROG.day<D.launch+WATCH_WAIT)continue;   // (flow, Q43) waiting for you to watch it; half a day without you and it flies itself
   D.watch=false;  PROG.funds-=cost+ops;ledAdd('dispatch',-(cost+ops));importNews(v);prodUnits(v);PROG.flights++;
   const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
@@ -1265,7 +1271,7 @@ function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(TEST.nofail||!lvl().fail||!khOn()||!s.rec)return true;   // (Easy: engines always light, Q476)
-  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
+  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const f=ignFail(p.d.key);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719+(SIM?SIM.seed*0.0137:0)+(PROG.wseed%65536)*0.0071)*43758.5453)%1+1)%1;   // a simulator run rolls on its own seed; each career on its world's (Q580: without it every new player's second flight lost the same engine)
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
       HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);debFail(s,'ignite',`the ${p.d.name} failed to light (know-how ${(khBar(p.d.key)*100).toFixed(0)}%)`);return false}}
