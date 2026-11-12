@@ -7551,3 +7551,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (1dc71349) too: ignition failures read 0 % in the full run, all pass alone; CI is green. A cross-section leak (R2).
 - **Next:** Q550 (`origin/q550-solids-slice-1`) waits on W53. Caio: the dust, the night side and righting a lander are
   TESTING 383–385.
+- **3, R28 → main (v1.325):** the wip commit was complete (`here()` gates the builder's mouse, keys, update, draw, overlay
+  and tooltip; render's markers use `screenNow()==='assembly'`); vehicle-45, core-32 and `app/A_rollout_click.cjs` pass
+  (Rollout: 9 parts → 9, nothing held). Added notes/vehicle.md § v1.325, NOTES index, TESTING 383, QUEUE R28 ✓. Merged
+  main, smoke green, CI green (43284565792), ff-merged. **Pushed as branch `r28`:** `origin/vehicle` holds five older commits
+  (v1.247/v1.248, Q502/Q457, 2026-10-31) that aren't on `main`; not force-pushed over, flagged for Caio. Vehicle row cleared.
