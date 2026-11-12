@@ -5,7 +5,7 @@
 // bodies-1. The Selene and Nyx ladders, flown from the pad by procedures on the Probe and Sample Return presets (bodies
 // session; the flights are fly_ladder.mjs). Only each mission's prerequisites are done; the mission's own check decides.
 // The executor's options get exercised: the far side lit on arrival, near-side impact and landing, a retrograde capture at
-// Nyx (and a control: an orbit too wide for Nyx, which Tellus's tide wrecks), and a sample brought home.
+// Nyx (and the same orbit prograde, which Tellus's tide should wreck), and a sample brought home.
 {
   const P = api.PROG, saved = JSON.stringify(P), rows = flyLadder(api), row = id => rows.find(r => r.id === id) || {};
   const fmt = r => `${r.at}, ${r.days} days, ${r.dv} m/s in all, ${r.left} m/s left${r.touch ? `, touchdown ${r.touch} m/s` : ''}; ${r.cost}M`;
@@ -14,7 +14,7 @@
     ['nyxfly', 'a Nyx flyby with camera and antenna'], ['nyxorb', 'a retrograde orbit round Nyx that lasts two Nyx orbits'], ['nyxland', 'a soft landing on Nyx']])
     check(`mission ladders: ${id} flown from the pad by procedure (${row(id).preset}): ${what}`, row(id).ok === true, fmt(row(id)));
   const pro = row('nyxorb:pro');
-  check('mission ladders: a Nyx orbit reaching 200 km does not last (Tellus\'s tide wrecks it; which way round is Q344)', pro.ok === false && pro.days < 4.3, fmt(pro));
+  check('mission ladders: the same Nyx orbit flown prograde does not last (Tellus\'s tide wrecks it: which way round matters)', pro.ok === false && pro.days < 4.3, fmt(pro));
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 

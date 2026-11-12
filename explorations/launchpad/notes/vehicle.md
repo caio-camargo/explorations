@@ -2505,7 +2505,7 @@ and parked (below).
 
 `stage` and `fall` are in `TAPE_V`'s hash: tapes recorded before replay stale.
 
-**PARKED: `detach()`'s momentum** (branch `r22-detach`, pushed; parked at: built and tested, three scripted missions fail). **Landed in § v1.337.**
+**PARKED: `detach()`'s momentum** (branch `r22-detach`, pushed; parked at: built and tested, three scripted missions fail).
 
 *The bug:* the debris branch gave the dropped stage its kick and the craft no reaction, and neither branch moved the craft's
 velocity with its centre of mass (`s.r` moved by `sh`, `s.v` stayed). The vessel branch gave the part the whole kick and the craft −kick × dm/M, which for a heavy stage under a light one is several m/s for nothing.
@@ -2606,35 +2606,3 @@ and the builder's keys acted from the title.
   are quiet from the title and X acts back on the Assembly. Core-32 (Help lists the assembly's keys) reads the new guard.
   The repro now prints *rollout: parts 9 after 9, held null*.
 - **Not checked:** in a browser (TESTING 392).
-
-## v1.337 — R22's fourth fix: `detach()` keeps momentum; the long scripted flights made robust to it (2026-11-12, launchpad session, QUEUE R22; § v1.315)
-
-**The fix** (built 2026-11-11 and parked, § v1.315): on both branches of `detach` the kick is how fast the two pieces part,
-shared by mass (the part M/(M+dm) of it, the craft the rest, backwards), and the craft's velocity is its new centre's,
-v + ω × sh. `bayRelease` passes `BAY_PUSH` as is. Orbiter's first drop: momentum error 1.0 m/s × M → 3e−14. Every staging
-now gives the craft about a metre a second it didn't get before.
-
-**What it broke, and how each was made robust** (the scripts, not `detach`):
-
-- **Crewed Lunar** (test §27, `fly_crewlunar.mjs`). The trans-Tellus search is capped at what the return stage can pay
-  (it had picked 600 m/s with 561 left). The flight then came home on a clean 4.1 g entry and touched down at 7 m/s on a
-  rainforest tree cell: lost (Q383). Where a capsule comes down is luck of the whole flight, and measuring the levers
-  showed why a late trim can't help: 3,000 km out the predicted impact is good to a degree, but along-track and
-  cross-track burns only slide it north–south through a continent (38–52 km lowest point = 0°–18° N at 155°–158° E; no
-  open sea within ±30 m/s); the longitude is the arrival time, and 10 h out 10 m/s moves that by 5 minutes. So the
-  return correction now predicts the landing with a stand-in flown on rails (the moons' tides included) to 3,000 km and
-  the craft's own drag for the fall (3.5° N 157.5° E predicted, 4.2° N 157.4° E flown); if that isn't open sea within 2°
-  all round, it raises the lowest point to 150 km instead and the craft goes round Tellus once more (Tellus turns under
-  it: the next approach lands ~60° west) and tries again, at most three laps. Flown: two laps (15.9° N 94.9° E was too
-  near land), then splashdown at 9° N 30° E, 6.5 m/s, 4.1 g, crew fine, 4.8 days (was 1.5), 42 m/s of corrections.
-- **procedures v2: the flown mission is recorded** failed only because the flight above was lost; it records again
-  (return perigee 45.2 km), and the executor flies it back to the recorded spot, at sea (12 m off).
-- **The Nyx control** (bodies-1, `fly_ladder.mjs` 'nyxorb:pro'). Swept on `main` and on the branch (`nyxsweep`, scratch):
-  80 × 30 km lasted 61 h prograde and 61 h retrograde on `main`, but 192 h prograde (alive) and 96 h retrograde with the
-  kick; 60–110 km are chaotic the same way. Which way round decides nothing reliably here (Q344's question, still open).
-  An orbit reaching 200 km is wrecked by Tellus's tide in 26–27 h on both, so the control is now *a Nyx orbit too wide to
-  last* (200 × 30 km prograde) and its check no longer claims "which way round matters". The mission (`nyxorb`, retrograde
-  70 × 30) passes on both.
-
-**Checks:** `vehicle-47` (the momentum check, vehicle-44 on the parked branch: renumbered twice by merges); §27 and
-bodies-1 pass with the change; CI's full run.
