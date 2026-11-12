@@ -18,19 +18,21 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // The smoke set is everything but the sections that take SLOW_S seconds or more. Re-measured for R5 (2026-11-12, CI's
-// ubuntu runner, `--times`, run 43163920370): 358 sections, 597 s; these 23 take 411 s of it, the other 335 sections
-// 186 s (~47 s in 4 processes). The first list (2026-10-08, 82 sections) held five flights and kept smoke under a minute;
-// the suite grew past it (191 s by the review of 2026-11-09). Each row is [selector, seconds measured]: the selector as
-// for --only (a label when only one section has it, else a phrase of its title), the seconds weigh `--jobs`' processes.
-// `--times` names the sections to add (SLOW_S or more, not listed) and drop (under a third of it). Keep areas in smoke by
-// cutting a slow section's cost, not by listing whole areas: 41 economy sections stay in.
-export const SLOW_S = 3;
+// ubuntu runner, `--times`, run 43166921161, after the tests began sharing one world map, test.mjs): 359 sections,
+// 674 s; these 22 take 549 s of it, the other 337 sections ~125 s. The runner's speed varies by a third from run to run
+// (§27: 113 s, then 150 s), so the bar is relative: 4 s on that run. The first list (2026-10-08, 82 sections) held five
+// flights; the suite grew past it (191 s by the review of 2026-11-09). Each row is [selector, seconds measured]: the
+// selector as for --only (a label when only one section has it, else a phrase of its title); the seconds weigh `--jobs`'
+// processes. `--times` names the sections to add (SLOW_S or more, not listed) and drop (under a third of it). Keep areas
+// in smoke by cutting a slow section's cost, not by listing whole areas: 40 economy sections stay in. platform-11 checks
+// the list's shape.
+export const SLOW_S = 4;
 export const SLOW_ROWS = [
-  ['crewed selene landing and return', 113.4], ['bodies-1', 97], ['bodies-3', 39.6], ['platform-1', 23.5], ['vehicle-39', 20.6],
-  ['procedures (bodies session)', 13.7], ['platform-7', 10.5], ['the program (v1.12)', 10.3], ['bodies-2', 9.4], ['flow-41', 8.7],
-  ['econ-7', 7.1], ['platform-10', 6.3], ['vehicle-30', 5.9], ['flow-49', 5.9], ['ground-6', 5.7], ['platform-6', 5.2],
-  ['econ-30', 5.2], ['space-33', 4.8], ['vehicle-25', 4.2], ['space-6', 3.5], ['vehicle-3', 3.4],
-  ['aerodynamics + structure (v1.2)', 3.4], ['re-entry heating (v1.7)', 3.3]];
+  ['crewed selene landing and return', 150.4], ['bodies-1', 131.3], ['bodies-3', 56.3], ['vehicle-39', 32.1], ['platform-1', 28.4],
+  ['procedures (bodies session)', 21.3], ['the program (v1.12)', 16.3], ['bodies-2', 14.7], ['flow-41', 14.7], ['econ-7', 10],
+  ['vehicle-30', 9.1], ['flow-49', 8.6], ['econ-30', 7.9], ['ground-6', 6.8], ['vehicle-25', 6.6], ['space-33', 6.5],
+  ['vehicle-3', 5.5], ['aerodynamics + structure (v1.2)', 4.9], ['re-entry heating (v1.7)', 4.8], ['space-6', 4.5],
+  ['flow-46', 4.2], ['econ-25', 4.1]];
 export const SLOW = SLOW_ROWS.map(r => r[0]);
 
 const HEAD = /^\/\/ ([0-9]+[a-z]?|[a-z]+-[0-9]+)\. (.*)$/, END = '// ==== END OF SECTIONS', MARK = '// ==== SECTIONS: tests/';
@@ -168,11 +170,11 @@ export async function main(argv, url) {
 }
 
 // --jobs N: the picked sections dealt into N child processes, heaviest first into the lightest process (a SLOW section
-// weighs its measured seconds, any other ~0.6 s, R5), each with what it pulls in; output is printed per process when all
+// weighs its measured seconds, any other ~0.4 s, R5), each with what it pulls in; output is printed per process when all
 // are done. Sound because every section passes alone (--isolation).
 async function parallel(P, picked, url, jobs) {
   const W = new Map(); for (const [q, t] of SLOW_ROWS) for (const s of select(P.secs, [q], false).picked) W.set(s, t);
-  const w = s => W.get(s) ?? 0.6, bins = Array.from({ length: jobs }, () => ({ w: 0, s: [] }));
+  const w = s => W.get(s) ?? 0.4, bins = Array.from({ length: jobs }, () => ({ w: 0, s: [] }));
   for (const s of [...picked].sort((a, b) => w(b) - w(a))) {
     const b = bins.reduce((m, x) => x.w < m.w ? x : m); b.s.push(s); b.w += w(s);
   }
