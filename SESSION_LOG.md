@@ -7342,3 +7342,31 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   Written up in notes/vehicle.md § "Prototype: the wing formula"; Q592's row updated.
 - **Not checked:** a touchdown on wheels and a rollout; wind; the formula against a real wing's measured polar; frame
   time in the app; the fix's test in the suite (it is a script).
+
+## 2026-11-12 — platform (Opus 5.5, worktree launchpad-saveio): Q599 (v1.316), export and import a save
+
+- **Asked:** Caio: go ahead with the export/import save menu (R9's follow-up).
+- **Done:** Esc › Settings › **Saved program**: *Export save* (any time), *Export the unloadable save* (when R10 kept
+  one), *Import save…* (two clicks; disabled in a flight or a drive; closing Settings disarms). `importSave(text)` in
+  app/state.js: a JSON object with a `day` (asked before migrating), then `migrateSave` and `progLoad`; a file that isn't
+  a program or stops the game reloads the program from its own text and writes nothing; one that loads keeps the
+  replaced program as `<key>-before-import`, writes the slot, holds the tab and reloads; what it said is told after the
+  reload (sessionStorage). Test platform-10.
+- **Checked:** the flow in the page, headless (harness.cjs, scratch script: render, export, two-click import, disarm,
+  a 30-days-on file imported, a junk file refused, 0 errors); CI green twice (43145652597, and 43147054700 after merging
+  R22's game code); `check_numbers` clean.
+- **Numbers:** claimed as Q598 (taken by review 2's roll-damping NaN; the orchestrator renumbered it Q599); v1.315 went to
+  R22 meanwhile, so v1.316; TESTING 373.
+- **Mistake, caught:** the first edits were made in the main clone; moved to the `saveio` worktree by patch before any commit.
+- **Files:** launchpad `app/state.js`, `app/settings.js`, `app/screens.js`, `index.html`, `tests/platform.mjs`,
+  `notes/platform.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`.
+- **Next:** TESTING 373 by hand. Not done: drag-and-drop, an entry in the Esc menu itself. The `PROG.x||<literal>` reads
+  retire by lane.
+
+### 2026-11-12: review 2 session (Fable), Caio's answers (docs only)
+- **W53 answered** (DECISIONS W53; removed from QUEUE): a burning solid that is dropped flies off under its own thrust;
+  the other defaults stand. With D38 all six are answered; Q550's row lists what it must match before it merges.
+- **D41**: Caio's verdict on the first hour ("enjoyed it ok... the gameplay momentum is the biggest issue right now").
+  **Orchestrator:** the loop's open slices (Q572 the unlock overlay, Q576 chapters as events, Q578, Q579) rank first;
+  whether M1 closes was not said, ROADMAP is unchanged.
+- **PARKED still:** R29b.

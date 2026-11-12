@@ -2,7 +2,7 @@
 // a classic script sharing one global scope with the others; index.html loads them in order. 'use strict';
 'use strict';
 // Opened from the Esc menu. Sound (on/off; Q35's volume slider goes in #setSound), graphics quality, the performance
-// readout, the gauges, the era look, and leaving tester mode. Each setting is kept per browser. Loaded last: a quality
+// readout, the gauges, the era look, the saved program as a file (export, import), and leaving tester mode. Each setting is kept per browser. Loaded last: a quality
 // preset sets aerofx's effect flags (gl.js) and the resolution cap adaptRes keeps to (render.js).
 const QUAL={
   high:{l:'High',rs:1,d:'everything on',fx:{CLOUD_VOL:1,BLOOM:1,PLUME_LIGHT:1,IMPACT_FX:1,VAPOR_FX:1,HAZE_FX:1}},
@@ -26,13 +26,40 @@ function renderSettings(){const el=$('settings');if(!el)return;const ck=(id,on,l
     +`<h3>Screens</h3>${ck('setGauges',GAUGES,'flight gauges (altitude, air, q, Mach, heat)')}<div>camera shake (max-q, Mach 1, staging, re-entry): ${['Off','Gentle','Full'].map((l,k)=>`<button data-shake="${k}"${k===SHAKE_LV?' class="on"':''}>${l}</button>`).join('')}</div>${ck('setModern',modernUI(),'modern look for the logbook and the map','instead of the era\'s notebook or terminal')}`
     +`<h3>Difficulty</h3><div>${Object.entries(LEVELS).map(([k,v])=>`<button data-lvl="${k}"${k===lvlKey()?' class="on"':''}${mode==='flight'?' disabled':''}>${v.name}</button>`).join('')}</div>`
     +`<div class="sub">${lvl().d}.${mode==='flight'?' Changes between flights.':' Records and autopilots keep the level they were flown on.'}</div>`
+    +saveHTML()
     +`<h3>Tester</h3>`+(TEST.on?`<button data-test-act="leave">Leave tester mode</button><div class="sub">Back to your own career (the sandbox is kept).</div>`
       :`<div class="sub">Off. Add <code>?tester</code> to the address for the tester menu and its sandbox career.</div>`);
   if(typeof sndSettings==='function')sndSettings($('setSound'))}   // the volume slider (sound, Q35)
+// Saved program (R9's follow-up): the program as a .json file (fault.js's exportSave), and a file back into this slot
+// (state.js's importSave). Import replaces the program, so it asks twice, and it waits for the end of a flight or drive: the
+// page reloads after it, and a flight in progress doesn't survive a reload. Imports go to the slot the page has open (the
+// career, a chapter start, or the tester's sandbox). What the import said is told again after the reload.
+let impArm=false;
+const impBlocked=()=>mode==='flight'||mode==='drive',slotName=()=>TEST.on?'the tester’s sandbox':PROG_SLOT?'this chapter start':'your career';
+function saveHTML(){const blk=impBlocked();if(blk)impArm=false;
+  return`<h3>Saved program</h3><div><button data-save-act="export">Export save</button>`
+    +`<button data-save-act="import"${blk?' disabled':''}${impArm?' class="arm"':''}>${impArm?'Click again: choose the file':'Import save…'}</button>`
+    +(hasBadSave()?`<button data-save-act="bad">Export the unloadable save</button>`:'')+`</div>`
+    +`<div class="sub">${impArm?`The file replaces ${slotName()}; export it first if you want to keep it. (The one it replaces is also kept in browser storage as "${PROG_PREV}", when there is room.)`
+      :blk?'A file is a .json you can keep, share or attach to a bug report. Import waits for the end of this '+(mode==='drive'?'drive':'flight')+'.'
+      :`A file is a .json you can keep, share or attach to a bug report. Import replaces ${slotName()}.`}</div>`}
+function importPick(){const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;let text='';try{text=await f.text()}catch(e){HOOK.msg(`Could not read ${f.name}`);return}
+    if(impBlocked()){HOOK.msg('Import waits for the end of the flight');return}
+    const r=importSave(text);
+    if(!r.ok){const t=`${f.name} can't be imported: ${r.why}. Your program is as it was`;HOOK.msg(t);HOOK.news(t,'bad');return}
+    const t=[`Imported ${f.name}: ${fmtDate(r.day)}`,r.newer?'it was saved by a newer version of the game, so some of it may not load right':'',
+      r.rep.length?`damaged parts reset: ${r.rep.join(', ')}`:'',r.kept?'':'there was no room to keep the program it replaced'].filter(Boolean).join('; ');
+    try{sessionStorage.setItem('launchpad-import-said',JSON.stringify([t,r.rep.length||r.newer||!r.kept?'warn':'ok']))}catch(e){}
+    location.reload()};
+  inp.click()}
+try{const m=JSON.parse(sessionStorage.getItem('launchpad-import-said')||'null');sessionStorage.removeItem('launchpad-import-said');if(m)bootSay(m[0],m[1])}catch(e){}
 // the level (Q476): PROG.lvl, saved with the career; off a flight only, since a flight flies the physics it lifted off with
 function setLevel(k){if(!LEVELS[k]||k===lvlKey()||mode==='flight')return;const was=lvlKey();if(k==='normal')delete PROG.lvl;else PROG.lvl=k;
   if(PROG.flights)HOOK.news(`Difficulty: ${LEVELS[k].name} (was ${LEVELS[was].name}). Records and autopilots keep the level they were flown on`,'ok');HOOK.save();editorChanged()}
-document.addEventListener('click',e=>{const lv=e.target.closest&&e.target.closest('#settings [data-lvl]');if(lv){setLevel(lv.dataset.lvl);renderSettings();return}
+document.addEventListener('click',e=>{const sv=e.target.dataset&&e.target.dataset.saveAct;
+  if(sv){if(sv==='export')exportSave();else if(sv==='bad')exportBadSave();else if(sv==='import'&&!impBlocked()){if(!impArm){impArm=true;renderSettings();return}impArm=false;importPick()}renderSettings();return}
+  const lv=e.target.closest&&e.target.closest('#settings [data-lvl]');if(lv){setLevel(lv.dataset.lvl);renderSettings();return}
   const sk=e.target.dataset&&e.target.dataset.shake;if(sk!=null){SHAKE_LV=+sk;SHAKE_FX=SHAKE_LV>0;setPut('launchpad-shake',sk);renderSettings();return}   // (Q402)
   const q=e.target.dataset&&e.target.dataset.qual;if(!q)return;applyQuality(q);setPut('launchpad-quality',quality);renderSettings()});
 document.addEventListener('change',e=>{const id=e.target.id,on=e.target.checked;

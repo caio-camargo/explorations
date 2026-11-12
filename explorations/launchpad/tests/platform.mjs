@@ -274,3 +274,49 @@
     staticOK && firstApp && firstApp[1] === 'app/fault.js' && shows && hid && stayed && back && badBtn,
     `static ${staticOK} (first app script ${firstApp && firstApp[1]}); shows ${shows} (${A.FAULT.n} faults); keep hides ${hid}, same error stays hidden ${stayed}, new one back ${back}; old-save button ${badBtn}`);
 }
+
+// platform-10. Export and import a save (QUEUE Q599, R9's follow-up; Settings › Saved program). The page's load/save block
+// (app/state.js, as platform-7 runs it) with a fake localStorage: a played program's file imports into another tab's
+// program, replaces the slot's save, keeps the replaced one as -before-import and stops the tab saving until the reload. A
+// file that isn't JSON, isn't a program, or stops the game, and a full storage, leave the program and the store as they
+// were. Static: Settings offers Export and Import (Import asks twice and waits for the end of a flight or drive) and the
+// page tells what the import said after its reload.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const blk = pg.slice(pg.indexOf('const SAVE_V='), pg.indexOf('// dropped stages leave the simulation'));
+  const KEY = 'launchpad-program-v1', PREV = KEY + '-before-import';
+  const tab = (raw, { full = false } = {}) => {
+    const store = new Map(raw == null ? [] : [[KEY, raw]]), q = [];
+    const localStorage = { getItem: k => store.has(k) ? store.get(k) : null,
+      setItem: (k, v) => { if (full) { const e = new Error('The quota has been exceeded.'); e.name = 'QuotaExceededError'; throw e; } store.set(k, String(v)); } };
+    const X = new Function('localStorage', 'setTimeout', 'performance', 'addEventListener', 'console',
+      src + `const PROG_KEY=${JSON.stringify(KEY)};\n` + blk + `;return {get PROG(){return PROG},HOOK,advanceDays,importSave,progJSON,get held(){return progHeld},PROG_PREV}`);
+    const T = X(localStorage, f => q.push(f), { now: () => 1e9 }, () => {}, { error() {} });
+    T.HOOK.msg = () => {}; T.HOOK.news = () => {}; return Object.assign(T, { store });
+  };
+  // the file: a program played 40 days from a new one; the tab importing it has its own, 5 days in and saved
+  const A = tab(null); A.advanceDays(40); const file = A.progJSON(), fileDay = A.PROG.day;
+  const B = tab(null); B.advanceDays(5); B.HOOK.save(); const mine = B.progJSON(), mineStored = B.store.get(KEY);
+  const r = B.importSave(file);
+  const good = r.ok && r.day === fileDay && B.PROG.day === fileDay && B.store.get(KEY) === B.progJSON() && B.store.get(PREV) === mine
+    && B.held && r.kept && !r.newer && r.rep.length === 0 && B.PROG_PREV === PREV;
+  B.HOOK.save(); const noSave = B.store.get(KEY) === B.progJSON();   // (held: the save is the import's, whatever this tab does)
+  // and the reload: the next tab opens on the imported program
+  const C = tab(B.store.get(KEY)), reopened = C.PROG.day === fileDay && C.progJSON() === B.store.get(KEY);
+  // files that must not land: the program and the store stay as they were
+  const refuse = [['{not json', /not a saved program/], ['"a string"', /not a saved program/], ['[1,2]', /not a saved program/], ['{"funds":5}', /not a saved program/],
+    ['{"ver":1,"day":3,"sats":[5]}', /stops the game/]].map(([raw, why]) => {
+      const D = tab(mineStored), before = D.progJSON(), x = D.importSave(raw);
+      return { raw, ok: !x.ok && why.test(x.why) && D.progJSON() === before && D.store.get(KEY) === mineStored && !D.store.has(PREV) && !D.held, why: x.why };
+    });
+  const F = tab(mineStored, { full: true }), fBefore = F.progJSON(), fx = F.importSave(file);
+  const fullOK = !fx.ok && /storage is full/.test(fx.why) && F.progJSON() === fBefore && F.store.get(KEY) === mineStored && !F.held;
+  // static: the Settings section, its two-click import, the flight wait, the told-after-reload
+  const st = readFileSync(new URL('./app/settings.js', import.meta.url), 'utf8'), sc = readFileSync(new URL('./app/screens.js', import.meta.url), 'utf8');
+  const staticOK = /data-save-act="export"/.test(st) && /data-save-act="import"/.test(st) && /if\(!impArm\)\{impArm=true/.test(st)
+    && /impBlocked=\(\)=>mode==='flight'\|\|mode==='drive'/.test(st) && /sessionStorage\.setItem\('launchpad-import-said'/.test(st)
+    && /sessionStorage\.getItem\('launchpad-import-said'\)/.test(st) && /saveHTML\(\)/.test(st) && /id==='settings'&&typeof impArm/.test(sc);
+  check('platform-10: a save exported from one program imports into another (the slot replaced, the old one kept, no save over it before the reload); a file that isn\'t a program or stops the game, or a full storage, changes nothing (Q599)',
+    good && noSave && reopened && refuse.every(x => x.ok) && fullOK && staticOK,
+    `import ${good} (day ${r.day} of ${fileDay}; kept ${r.kept}); held ${noSave}; reopens ${reopened}; refused: ${refuse.map(x => `${x.raw} ${x.ok ? 'ok' : `✗ (${x.why})`}`).join('; ')}; storage full ${fullOK}; static ${staticOK}`);
+}
