@@ -33,11 +33,30 @@ function rvLocked(d){const L=[];for(const[kind,k,name]of rvParts(d)){const o=rvP
 // vehicle parts (Q190, Caio 2026-10-10): a late part opens with the mission that first needs it, or with its computing era
 // (d.era: the onboard computer, the RTG). Like rover parts it is listed and designable before that, but a launch carrying
 // one is refused (partLaunchWhy). No gates before a program starts (khOn) or with the tester's tools.
-const PART_GATE={port:'beeper',rport:'beeper',claw:'beeper',hab:'beeper',wpanel:'beeper',bant:'beeper',leg:'beeper',crew:'orbiter',les:'orbiter',
-  bay:'station1',arm:'station1',lab:'stationcrew',beacon:'selland'};
+// The unlock map (economy, QUEUE Q577; the plan Q573, notes/economy.md § "Plan: the unlock map and chapters"): twelve
+// parts at the start (the Sparrow, tanks 1 and 2 t, the nose cone, the parachute, the instrument package, the decoupler,
+// the fin ring and radial fin, the mass simulator, the balance weight, the spin-up motors), the rest by mission below,
+// the onboard computers and the RTG by era. A part already flown stays open (know-how is written by a flight, or by a
+// development job on a part we make): an old save keeps what it has flown, and nothing else changes for it.
+const PART_GATE=Object.fromEntries(Object.entries({
+  weather:['bio','t4','cfins','cfin'],
+  loads:['kestrel','t8','petrel','istage','rwheel'],   // "the orbital kit"
+  range:['rdec'],
+  hop:['pod','shield'],
+  beeper:['core','core6','core3','batt','sbatt','batt6','batt3','bpanel','cam','scam','ant','whip','ssci','fair','oct','octl','octl6','padapt','padapt6','padapt3'],   // "the satellite bench"
+  orbiter:['crew','les'],
+  lift1:['condor'],
+  lift2:['albatross','T16','T32','adapt','dec25','fins25','cfins25','cone25','fair25'],   // "the 2.5 m family"
+  wxsat:['wpanel','bant','apogee','hthr','sph4','sph7','kick30','kick80','kick200','rwheel6','rwheel3'],   // "high orbits"
+  tv:['port','rport','rcs','gas','claw','hab'],   // "docking"
+  station1:['arm','bay'],
+  stationcrew:['lab'],
+  farside:['leg','wren','rvfold','rvdeck'],
+  selland:['beacon']}).flatMap(([id,ks])=>ks.map(k=>[k,id])));
+const partFlown=k=>{const H=PROG.kh||{};return!!(H[kinOf(k)]||H[k])};
 function partOpen(k){const d=PARTS[k];if(!d||!khOn()||TEST.tools)return{ok:true,why:''};
   if(d.era!=null&&compEra()<d.era)return{ok:false,why:`opens with the ${COMP_ERAS[d.era].name.toLowerCase()} era`,short:COMP_ERAS[d.era].name,era:d.era};
-  const id=PART_GATE[k];if(!id||PROG.done[id])return{ok:true,why:''};const M=MISSIONS.find(m=>m.id===id);return{ok:false,why:`opens with “${M?M.name:id}”`,short:M?M.name:id,id}}
+  const id=PART_GATE[k];if(!id||PROG.done[id]||partFlown(k))return{ok:true,why:''};const M=MISSIONS.find(m=>m.id===id);return{ok:false,why:`opens with “${M?M.name:id}”`,short:M?M.name:id,id}}
 function partLaunchWhy(parts){const L=[];for(const p of parts||[]){const o=partOpen(p.d.key);if(!o.ok&&!L.some(x=>x.k===p.d.key))L.push({k:p.d.key,name:p.d.name,why:o.why})}
   return L.length?`Not open yet: ${L.map(x=>`${x.name.toLowerCase()} (${x.why})`).join('; ')}`:''}
 function rvLaunchWhy(parts){for(const p of parts||[]){if(p.d.kind!=='rover'||!p.dn||!p.dn.rvd)continue;const L=rvLocked(p.dn.rvd);
@@ -215,8 +234,16 @@ function progProbe(home){const snap=progJSON(),H={news:HOOK.news,msg:HOOK.msg,sa
   for(const k in PROG)if(PROG_SCHEMA[k]&&PROG_SCHEMA[k][1]==='transient')tr[k]=PROG[k];
   HOOK.news=HOOK.msg=HOOK.save=HOOK.log=()=>{};
   try{advanceDays(1)}finally{Object.assign(HOOK,H);progRestore(snap);progDerive(home);Object.assign(PROG,tr)}}
-function progLoad(j,home){PROG_REPAIRED=[];
-  try{progRestore(Object.assign(structuredClone(PROG_BASE),typeof j==='string'?JSON.parse(j):j));PROG_REPAIRED=progRepair();progDerive(home);progProbe(home);return null}
+// (R1d) A save loads onto every row's default (progFresh), then PROG's starting literal (so a save from before `wseed`
+// keeps world 12345, as it always loaded), then the save: an old save gets every field, and a field read with `||d` no longer
+// needs its `||` (retire them lazily, by lane, as files are touched; platform-6 keeps the ones left equal to the table).
+// Absent and default read alike everywhere (audit 2026-11-11, notes/platform.md v1.310). Fields this game doesn't know
+// (a newer build's, or a removed one's) are kept as they are and named in the tester's log (PROG_UNKNOWN).
+let PROG_UNKNOWN=[];
+function progLoad(j,home){PROG_REPAIRED=[];PROG_UNKNOWN=[];
+  try{const p=typeof j==='string'?JSON.parse(j):j;PROG_UNKNOWN=p&&typeof p==='object'?Object.keys(p).filter(k=>!(k in PROG_SCHEMA)):[];
+    progRestore(Object.assign(progFresh(),structuredClone(PROG_BASE),p));PROG_REPAIRED=progRepair();progDerive(home);progProbe(home);
+    if(PROG_UNKNOWN.length)logEv('save',`the save has fields this game doesn't know, kept: ${PROG_UNKNOWN.join(', ')}`);return null}
   catch(e){progRestore(PROG_BASE);programNew();return e}}   // (from the base: the bad save's designs could throw in programNew too)
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
@@ -237,7 +264,7 @@ function advanceDays(d,halt){if(!(d>0))return;const t0=PROG.day,t1=t0+d;
 const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false,log:false,record:false,fuel:false},TEST_FUNDS=1e5;
 // the tester's log (QUEUE Q265, PLAYTEST #65): with TEST.log on, logEv(kind, text) keeps a line (sim time, world day) in LOG
 // and hands it to HOOK.log (app/testlog.js: the panel, the console, the download). Off, it returns at once, so the SIM
-// can call it anywhere. Kinds: stage, contact, heat, pay, msg, destroyed, news, money, contract, mission, save, tester.
+// can call it anywhere. Kinds: stage, contact, heat, pay, msg, destroyed, news, money, contract, mission, save, tester, error (app/fault.js).
 const LOG=[],LOG_MAX=5000;
 function logEv(kind,text){if(!(TEST.on&&TEST.log))return;const e={t:simT,day:PROG.day||0,kind,text};LOG.push(e);
   if(LOG.length>LOG_MAX)LOG.splice(0,LOG.length-LOG_MAX);HOOK.log(e)}
@@ -284,18 +311,19 @@ const NYX_TRACK_H=12,TV_RATE=0.4,NAV_MIN=0.95,NAV_WAIT=1800;
 // one before, so n satellites earn (1−K^n)/(1−K) of one (K=0.5: 5 earn 1.94×, never more than 2×); each gets the mean share
 const MKT_K=0.5,mktShare=n=>n>1?(1-MKT_K**n)/((1-MKT_K)*n):1;
 const STAT_R=Math.cbrt(TELLUS.mu*(DAY_S/(2*Math.PI))**2);   // stationary orbit radius (a day-long period)   // hours of tracking where Nyx's pull matters, to weigh it (bodies session)
+const LOADS_Q=20000;   // the structural test's bar (W50, Q577: 25 kPa before; the builder's design case stays 25)
 const MISSIONS=[
   {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
    win:'first data from above the clouds',ok:R=>R.recSci&&R.apex>=1e4},
   {id:'air',pay:25,ep:1,name:'Measure the air',brief:'Recover instrument packages that sampled every 10 km band up to 40 km. Each band sampled narrows the impact predictor.',
    win:'the lower atmosphere is mapped',ok:()=>[0,1,2,3].every(k=>PROG.atm[k]),prog:()=>`${[0,1,2,3].filter(k=>PROG.atm[k]).length}/4 bands`},
-  {id:'loads',pay:20,ep:1,name:'Structural test flight',brief:'Take an instrument package through max-q of 25 kPa or more (the design case the builder checks). It takes a punchy rocket.',
-   win:'the engineers finally have numbers',ok:R=>R.sciQ>=25000},
+  {id:'loads',pay:20,ep:1,name:'Structural test flight',brief:'Take an instrument package through max-q of 20 kPa or more. A Sparrow on a light rocket can, straight up at full throttle; it opens the bigger engines.',
+   win:'the engineers finally have numbers',ok:R=>R.sciQ>=LOADS_Q},
   {id:'range',pay:30,ep:1,name:'Range certification',brief:'Three flights in a row that drop stages, with every one landing clear of towns.',
    win:'the range is certified for bigger rockets',ok:()=>PROG.streak>=3,prog:()=>`${PROG.streak}/3 clean flights`},
-  {id:'beeper',pay:60,ep:2,req:['weather'],name:'The beeper',brief:`Put an instrument package into a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km). The whole world will be listening.`,
+  {id:'beeper',pay:60,ep:2,req:['weather','loads'],name:'The beeper',brief:`Put an instrument package into a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km). The whole world will be listening.`,
    win:'something of ours goes round the world',ok:R=>R.orbitSci},
-  {id:'hop',pay:50,ep:2,req:['loads'],name:'Passenger: the hop',brief:`A biocapsule to space (${(TELLUS.atm/1e3).toFixed(0)} km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
+  {id:'hop',pay:50,ep:2,req:['weather','loads'],name:'Passenger: the hop',brief:`A biocapsule to space (${(TELLUS.atm/1e3).toFixed(0)} km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
    win:'the passenger is fine, and very famous',ok:R=>R.landed&&R.bioOK&&R.bioSpace&&R.approved},
   {id:'orbiter',pay:100,ep:2,req:['hop'],name:'Passenger: one orbit',brief:`A biocapsule through one full orbit and home safe, within ${AIR_S/3600} h of air. Same flight-safety rules.`,
    win:'a passenger has gone round the world and come home',ok:R=>R.landed&&R.bioOK&&R.bioOrbits>=1&&R.approved},
@@ -305,7 +333,7 @@ const MISSIONS=[
   // are checked between flights by utilTick(), from the registry.
   {id:'wxsat',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.',
    win:'the whole planet\'s weather, every day',ok:R=>R.weather},
-  {id:'tv',pay:120,ep:3,req:['beeper'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.`,
+  {id:'tv',pay:120,ep:3,req:['wxsat'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.`,
    win:'the capital watches the launch on TV',ok:R=>R.tv},
   {id:'diswatch',pay:60,ep:3,req:['wxsat'],world:true,name:'Disaster watch',brief:'Deliver pictures of a disaster within 12 hours of the call (take the job, and have a camera satellite with an antenna up, and a ground station it can reach).',
    win:'pictures before the evening news',ok:()=>false,okW:()=>(PROG.disDone||[]).some(x=>x.t-x.posted*DAY_S<=12*3600)},
@@ -313,16 +341,17 @@ const MISSIONS=[
    win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
   // the first station (QUEUE Q163; Q9's plan slice 2, W22 default 1: firsts, not contracts; not in the race): judged
   // between flights on the registry's stations (stationOf), so it can be built over several flights
-  {id:'station1',pay:80,ep:3,req:['beeper'],world:true,name:'A station',brief:'A habitat module in a stable orbit with two free docking ports: somewhere to visit.',
+  {id:'station1',pay:80,ep:3,req:['tv'],world:true,name:'A station',brief:'A habitat module in a stable orbit with two free docking ports: somewhere to visit.',
    win:'a house in the sky',ok:()=>false,okW:()=>!!stFind(s=>s.berths>0&&s.ports>=2)},
-  {id:'stationcrew',pay:100,ep:3,req:['station1'],world:true,name:'A crew aboard',brief:'A crew docked and living aboard our station.',
+  // (Q577) a crew flies only after the max-q abort (R.crewed), so A crew aboard waits for it: it used to open with the station
+  {id:'stationcrew',pay:100,ep:3,req:['station1','maxqabort'],world:true,name:'A crew aboard',brief:'A crew docked and living aboard our station.',
    win:'the lights are on',ok:()=>false,okW:()=>!!stFind(s=>s.crew>0)},
   {id:'stationlab',pay:90,ep:3,req:['stationcrew'],world:true,name:'A lab in orbit',brief:'A laboratory module on our crewed station.',
    win:'science between the stars',ok:()=>false,okW:()=>!!stFind(s=>s.labs>0&&s.crew>0)},
   {id:'station30',pay:120,ep:3,req:['stationlab'],world:true,name:'Thirty days aboard',brief:'Thirty crewed days on our station, with supplies to live on.',
    win:'people live in space',ok:()=>false,okW:()=>!!stFind((s,q)=>(q.crewDays||0)>=30),prog:()=>{const x=stFind(s=>s.crew>0);return x?`${Math.floor(x.q.crewDays||0)} of 30 days`:''}},
   // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
-  {id:'farside',pay:240,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
+  {id:'farside',pay:240,ep:4,req:['wxsat','lift2'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
    win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
   {id:'selimp',pay:240,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
    win:'telemetry to the very end, then silence',ok:R=>R.selImpact},

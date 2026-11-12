@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.54 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
+**Version**: v2.0.57 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-11
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -135,6 +135,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
+- Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -283,7 +284,8 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.300 — a dispatched flight settles its contract on a whole flight record: a "Qualify the X" or air-sample contract on the books no longer crashes the world tick (2026-11-10, worker, QUEUE R14, P1) → [notes/economy.md](notes/economy.md)
 - v1.302 — no government top-up while a flight is open: the floor waits for the flight to settle (2026-11-11, economy, QUEUE R15) → [notes/economy.md](notes/economy.md)
 - v1.304 — a job's conditions as data: needs, conds and legs on every contract type and mission, all conds met ⇔ ok (2026-11-07, economy worker, QUEUE Q547; Q513 + Q345 plan slice 1)
-- v1.310 — the economy on intent: satellite markets saturate; a privatization once, a stake once per power (2026-11-11, economy, QUEUE R18, W47's defaults) → [notes/economy.md](notes/economy.md)
+- v1.311 — the unlock map as data: `PART_GATE` by mission (12 parts at the start), six req changes and a crew aboard after the max-q abort, a flown part stays open, the structural test at 20 kPa (2026-11-11, economy, QUEUE Q577) → [notes/economy.md](notes/economy.md)
+- v1.313 — the economy on intent: satellite markets saturate; a privatization once, a stake once per power (2026-11-11, economy, QUEUE R18, W47's defaults) → [notes/economy.md](notes/economy.md)
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 
 ## World: [`notes/world.md`](notes/world.md)
@@ -471,3 +473,5 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.296 — one serializer: `progJSON`/`progRestore` for the save, revert, simulator, flights from orbit and the recorder; the tester is told of values JSON would lose (R16 named) (2026-11-10, review fixes, QUEUE R1c)
 - v1.308 — a bad save no longer bricks the page: `progLoad` repairs kinds from `PROG_SCHEMA`, probes a muted day, falls back to a new program; the bad text kept as `-bad`; quota errors said; a second tab stops saving (2026-11-11, platform, QUEUE R10)
 - v1.309 — chapter starts: *Start at* first orbit, the first station or Selene, saves made by career.mjs's scripted player (`chapters.mjs`, `starts/`), their own slot (2026-11-11, QA, QUEUE Q571)
+- v1.310 — the loader fills a save from the schema: every field present, a save from before `wseed` keeps world 12345, unknown fields kept and logged; the `||` reads retire lazily (2026-11-11, platform, QUEUE R1d)
+- v1.312 — a frame that throws no longer ends the game: `frame()` always schedules the next one; `app/fault.js` catches errors and lost promises with a panel (Reload, Export save, the old save R10 kept, Keep playing) (2026-11-11, platform, QUEUE R9)

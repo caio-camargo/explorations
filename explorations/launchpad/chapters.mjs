@@ -16,19 +16,22 @@ const has = (...ids) => P => ids.every(id => P.done[id]);
 export const CHAPTERS = [
   { id: 'orbit', name: 'First orbit done', blurb: 'The beeper in orbit and a passenger round the world and home: satellites, a station and Selene are open.', goals: ['air'], until: has('beeper') },
   { id: 'station', name: 'First station up', blurb: 'A habitat with two free ports in orbit, and the escape tower qualified for a crew.',
-    goals: ['air', 'padabort', 'maxqabort', 'station1'], until: has('station1', 'maxqabort') },
+    goals: ['air', 'wxsat', 'tv', 'padabort', 'maxqabort', 'station1'], until: has('station1', 'maxqabort') },
   { id: 'selene', name: 'Landed on Selene', blurb: 'A probe standing on Selene, the far side photographed: crews to Selene are next.',
-    goals: ['air', 'padabort', 'maxqabort', 'station1', 'farside', 'selimp', 'selland'], until: has('station1', 'maxqabort', 'selland') },
+    goals: ['air', 'wxsat', 'tv', 'padabort', 'maxqabort', 'station1', 'lift1', 'lift2', 'farside', 'selimp', 'selland'], until: has('station1', 'maxqabort', 'selland') },
 ];
 
+// presets built for a mission that NEXT_PRESET doesn't list (sim/vessel.js: the vehicle and bodies sessions' notes on each)
+const FOR_MISSION = { selsample: 'Sample Return', crewaround: 'Crewed Lunar', nyxfind: 'Probe' };
 const DRY = process.argv.includes('--dry'), P = api.PROG, out = [];
 for (const [i, ch] of CHAPTERS.entries()) {
   const m = run(ARCH, START, SEED, { keep: i > 0, goals: ch.goals, until: ch.until, registry: true, days: YEARS * 400 });
   if (!ch.until(P)) throw new Error(`chapter ${ch.id}: the scripted player didn't get there in ${YEARS} years (day ${Math.round(P.day)}, done ${Object.keys(P.done).join(',')})`);
   const save = JSON.parse(api.progJSON()); save.ver = 1;   // SAVE_V (app/state.js)
   const sats = (P.sats || []).filter(q => !q.junk).map(q => q.name + (q.bodyName ? ` (${q.bodyName})` : '')), nx = api.nextStep();
-  // the mission NEXT puts first, and what to fly for it: its NEXT_PRESET, else the design the scripted player flies for it
-  const M0 = api.missionsInOrder(api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)))[0], pk = M0 && api.NEXT_PRESET[M0.id], pf = M0 && (FIRST_PLAN[M0.id] || MORE_PLAN[M0.id]);
+  // the next mission to fly, and what to fly for it: its NEXT_PRESET, else the design the scripted player flies for it
+  // (the first in NEXT's order that has one: a world mission such as Disaster watch is met between flights)
+  const M0 = api.missionsInOrder(api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M))).find(M => api.NEXT_PRESET[M.id] || FIRST_PLAN[M.id] || MORE_PLAN[M.id] || FOR_MISSION[M.id]), pk = M0 && (api.NEXT_PRESET[M0.id] || FOR_MISSION[M0.id]), pf = M0 && (FIRST_PLAN[M0.id] || MORE_PLAN[M0.id]);
   if (!M0 || !(pk || pf)) throw new Error(`chapter ${ch.id}: no next mission with a design to fly (${M0 ? M0.id : 'none open'})`);
   const next = { id: M0.id, name: M0.name, preset: pk || null, stack: pk ? null : planCost(pf()).st };
   const sum = `${ch.name}: day ${Math.round(P.day)} (${(P.day / 400).toFixed(1)} years), ${P.flights} flights, funds ${P.funds.toFixed(0)}M, `

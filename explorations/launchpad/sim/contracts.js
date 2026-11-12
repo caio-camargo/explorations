@@ -27,7 +27,7 @@ const CT={
   sample:{src:['sci'],gen:R=>{const k=R()*ATM_BANDS|0;return{k,pay:8+3*k,dur:60+R()*60}},
     title:p=>`Air sample, ${p.k*10}–${p.k*10+10} km`,brief:p=>`Bring home an instrument package that flew through the ${p.k*10}–${p.k*10+10} km band.`,
     ok:(R,p)=>R.recSci&&!!R.bands[p.k]},
-  test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'],k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
+  test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'].filter(k=>partOpen(k).ok);if(!ks.length)return null;const k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
     title:p=>`Qualify the ${PARTS[p.k].name}`,brief:p=>`Fly a ${PARTS[p.k].name} through max-q of ${p.q} kPa or more with an instrument package aboard.`,
     ok:(R,p)=>(R.qPart[p.k]||0)>=p.q*1000},
   landing:{src:['gov'],gen:R=>{const dk=10*(3+(R()*4|0));return{dk,pay:15+(60-dk)/2,dur:60+R()*60}},
@@ -92,7 +92,7 @@ const CT={
     ok:()=>false,done:(c,N)=>N.far-c.base.far>=c.p.n},
   // servicing a valuable satellite (Q126): one of ours that earns (TV, or imagery with good contact) and has fallen an
   // era behind. Its users pay for the visit; it earns in full again. A flight that docks with it completes it.
-  service:{src:['gov','com'],req:'beeper',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*1.6,dur:300+R()*200}},
+  service:{src:['gov','com'],req:'tv',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*1.6,dur:300+R()*200}},
     title:p=>`Service ${p.name}`,brief:p=>`Rendezvous and dock with ${p.name}, ${p.n} computing era${p.n>1?'s':''} behind, and bring its electronics up to date. Its users pay for the visit, and it earns in full again.`,
     ok:(R,p,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat),after:c=>{const q=(PROG.sats||[]).find(x=>x.id===c.p.sat);if(q){q.era=compEra();q.eraSeen=q.era;HOOK.news(`${q.name} serviced: up to date, earning in full again`,'ok')}}},
   // station work (QUEUE Q162; NOTES § "Plan: station, base, relay and rendezvous contracts", slice 1, W22's defaults):
@@ -105,7 +105,7 @@ const CT={
       return{st:x.q.id,name:x.q.name,n,pay:4*n*1.6,dur:60+3*n}},
     title:p=>`${p.n} lab-days on ${p.name}`,brief:p=>`${p.n} days of crewed lab work on ${p.name} (two people per lab at most), with supplies to keep them working.`,why:p=>`${p.name} has a lab and a crew`,
     baseOf:p=>({lab:stState(p.st,'labDays')}),ok:()=>false,done:c=>stState(c.p.st,'labDays')-c.base.lab>=c.p.n-1e-9},
-  stExpand:{src:['com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
+  stExpand:{src:['com'],req:'tv',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
       return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
     title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
     baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
@@ -203,7 +203,7 @@ const crewLost=R=>!!R.crewInit&&!!R.crewed&&!R.crewOK;
 const M_JOB={
   weather:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:10},L_HOME],conds:[jC('apex','above 10 km',R=>R.apex>=1e4,{now:R=>`apex ${jKm(R.apex)}`}),jRec()]},
   air:{needs:[N_SCI,N_CHUTE],legs:[{k:'hop',alt:40},L_HOME],conds:[0,1,2,3].map(k=>jC('band'+k,`the ${k*10}–${k*10+10} km band analysed`,()=>!!PROG.atm[k],{wait:1}))},
-  loads:{needs:[N_SCI],legs:[{k:'hop',q:25},L_HOME],conds:[jC('q','max-q 25 kPa with an instrument package',R=>R.sciQ>=25000,{now:R=>R.sciQ>0?`so far ${(R.sciQ/1e3).toFixed(1)} kPa`:''})]},
+  loads:{needs:[N_SCI],legs:[{k:'hop',q:LOADS_Q/1e3},L_HOME],conds:[jC('q',`max-q ${LOADS_Q/1e3} kPa with an instrument package`,R=>R.sciQ>=LOADS_Q,{now:R=>R.sciQ>0?`so far ${(R.sciQ/1e3).toFixed(1)} kPa`:''})]},
   range:{needs:[],legs:[{k:'hop'}],conds:[jC('streak','three clean flights in a row',()=>PROG.streak>=3,{wait:1,keep:1,now:()=>`${PROG.streak||0} of 3`})]},
   beeper:{needs:[N_SCI],legs:[L_ORBIT()],conds:[jC('orbit',`an instrument package in a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km)`,R=>!!R.orbitSci)]},
   hop:{needs:[N_BIO,N_CHUTE],legs:[{k:'hop',alt:TELLUS.atm/1e3},L_HOME],conds:[jC('safety','flight safety signs off',R=>!!R.approved,{lost:R=>!R.approved}),
