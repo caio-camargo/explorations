@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2330,7 +2330,7 @@ the beeper, first on the hop and the orbit), `212` / `L1L` in frugal and resourc
 **Tuning target:** `career.mjs`'s race column stays mostly `211`, and over 20 worlds the mean day of each rival
 first is within ±15 % of the old formula's expectation, with spread between worlds (the old schedule had none). Met: v1.130.
 
-**Questions for Caio** (numbered, with defaults; silence keeps them): (1) **the spur:** a first we win speeds rivals up
+**Answered 2026-11-12 (DECISIONS W38): (1) the spur off, (2) and (3) the defaults.** **Questions for Caio** (numbered, with defaults; silence keeps them): (1) **the spur:** a first we win speeds rivals up
 for a year (default) or no reaction; (2) **what the race panel shows:** the forecast day for an open rival, "soon" or
 nothing for a closed one (default) or exact days for all (today); (3) **the second place:** a rival that gets there
 after us makes a small news line, "Asaro also orbits" (default) or stays silent.
