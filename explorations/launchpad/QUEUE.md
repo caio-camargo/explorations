@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.241 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
+**Version**: 0.1.242 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -451,6 +451,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q308 | `check_numbers.mjs` on a branch cut **before the NOTES split** missed a version collision (economy's v1.128 vs flow's, and offered v1.129 that `notes/vehicle.md` had): read versions from `origin/main`'s `notes/*.md` whatever the branch's own layout (Q188 merge, v1.130) | — | S | ⚙ | ready |
 | Q311 | **A parallel-shard flake**: `node test.mjs --smoke --jobs 4` failed "presets" once (Passenger Orbiter: 0 m/s spare, 0.00 orbits, 2026-10-12, flow); passes alone and in a serial smoke run on the same tree. Find the shared state Maybe also Q372's two failures (node chain, later stages in the air), seen once by sky & bodies' smoke run and not reproduced | — | S | ⚙ | ready |
 | Q469 | **A guard against tests leaking program state**: `shards.mjs` compares `PROG` (structuredClone, JSON) before and after each section and names a section that leaves it changed (v1.228 found `fixes-1` by bisecting `--smoke --only` ranges; it had broken three smoke checks for days) | — | S | ⚙ | ready |
+| Q599 | **Export and import a save from Settings › Saved program** (R9's follow-up: R9's fault panel exports, nothing imports yet; SESSION_LOG 2026-11-11 platform; platform) | M2 | S | ⚙ | → platform (Opus) 2026-11-11 (claimed as Q598, renumbered: Q598 is the roll-damping NaN) |
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
