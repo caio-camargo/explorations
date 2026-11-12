@@ -7189,3 +7189,34 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   starved; headless with a fresh server it loads in ~1 s.
 - **Next:** Q572 (the unlock overlay). The starts are abstracted careers (fast, few contracts): if they feel too rich or
   too thin, tune `chapters.mjs` (goals, seed) and regenerate.
+
+- **Later again:** Caio answered **W51** (the default: contact limits the first orbit, with the tracking ship); Q582 now
+  waits only on Q581 and W48's freeze. He asked what planes like KSP's would take: sized in
+  explorations/launchpad/notes/vehicle.md § "Scope: winged flight" (three tiers; today's plates give a lift-to-drag
+  of about 4 at wing size, `review/2026-11-11/glide.mjs`). Nothing queued: he is holding scope.
+
+- **And:** Caio on winged flight: tier 1 (the winged return) is good, aeroplanes and spaceplanes are backlog: **D30**,
+  **Q592** (plan: the winged return, vehicle).
+
+- **And:** Caio asked for a backlog for stray ideas: **explorations/launchpad/BACKLOG.md** (D31; rules: never work,
+  only Caio promotes), seeded with aeroplanes and spaceplanes; pointers in ROADMAP § Documents, QUEUE § Proposed, INDEX.
+
+- **The backlog sweep** (Caio: "sweep the older notes for past ideas... keep an eye out for major design questions"):
+  six read-only agents read notes/, the catalogs, the reviews and mockups/README. **BACKLOG.md 0.1.1**: about 85 ideas
+  by area, and a table "Decided, but nothing carries it" (11 rows, for the orchestrator). **REVIEW-2026-11-11 § 8**: 20
+  design questions (8 where two records disagree), with recommendations, none answered. Q583 gained a check (the
+  logbook locks maneuver nodes until an orbit is measured). Coverage was by key word; no code run.
+
+## 2026-11-11 — economy, the unlock map slice 1 (Opus 5.5, worktree launchpad-loop): Q577 (v1.311)
+
+- **Asked:** Caio: start on Q577 if unclaimed.
+- **Done:** `PART_GATE` is the Q573 map (12 parts at the start, 69 on 14 missions, 3 by era); the six `req` changes, and
+  one more: *A crew aboard* waits for the max-q abort (a crew only flies after it; the plan's m3 read mission needs from
+  `CT_JOB` instead of `M_JOB`, so its mission check was empty and missed this); a flown part stays open (`partFlown`);
+  the qualification contract draws open parts; the structural test at 20 kPa (`LOADS_Q`). career.mjs: the structural
+  test on the Sounding, closed designs skipped, abstract weather and TV satellites; PACE 4.2 flights to orbit, 89/90.
+  Q571's chapter starts regenerated. Test `econ-39`; 13 older checks that set missions by hand follow the map. TESTING 369.
+- **Checked:** the full suite (`node test.mjs --jobs 2`): all pass after the fixes.
+- **Not checked:** played by hand (does a new player get the Sounding past 20 kPa?).
+- **Next:** Q578 (the builder: closed presets say what they wait for; the Hopper, first in the list, is closed until the
+  hop), Q579 (families, reasons, chapters), Q580 (the robot's m1 route needs the structural test; PLAYROUTE sitting 1).

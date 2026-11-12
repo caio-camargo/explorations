@@ -974,7 +974,7 @@ with (`progFresh` would draw a new world). No `SAVE_V` bump: filling defaults ch
   `wseed`) are kept. platform-7's played-save check (a played save loads as a plain restore would) still passes: a
   program from `programNew` already has every field.
 
-## v1.311 — a frame that throws no longer ends the game (2026-11-11, platform, QUEUE R9)
+## v1.312 — a frame that throws no longer ends the game (2026-11-11, platform, QUEUE R9)
 
 Before: `frame()` (app/loop.js) called `requestAnimationFrame(frame)` as its last line, so one exception anywhere in a
 frame (the sim, the HUD, the render) skipped it and the game froze for good, with nothing on screen; the page had no
