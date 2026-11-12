@@ -1094,12 +1094,16 @@
   const s = api.newShip(api.PRESETS.Satellite), kE = s.parts.find(p => p.on && p.d.kind === 'engine' && p.seg !== s.parts.find(q => q.on && q.d.kind === 'engine').seg)?.seg;
   const TS = api.TEST, nf = TS.nofail; TS.nofail = false; delete P.lvl;
   const keepK = { kh: P.kh, dev: P.dev, lines: P.lines }; P.kh = {}; P.dev = {}; P.lines = {};   // (loop slices, 2026-11-12) an engine known, developed or made by an earlier section in the shard hardly ever fails: start green
+  // (Q604) the dice: igniteOK rolls on PROG.flights, the craft's kicks and the world's seed (PROG.wseed). An earlier section in
+  // the shard can leave the program without a wseed, and then every roll is NaN and nothing ever fails ("no failure found");
+  // pinned here as §14 pins it, with the tester's full know-how (TEST.kh) off
+  const wseed0 = P.wseed, kh0 = TS.kh; P.wseed = 4242; TS.kh = false;
   let failed = null, at = null;
   if (kE != null) { s.events.push({ decouple: [], ignite: [kE], chute: true }); const ix = s.events.length - 1;
     for (let f = 1; f < 400 && !failed; f++) { P.flights = f; s.evIdx = ix; s.chute = false; s.segs[kE].ignited = false; api.stage(s);
       if (s.evIdx === ix) failed = { f, chute: s.chute }; }
     TS.nofail = true; if (failed) { api.stage(s); at = { idx: s.evIdx, chute: s.chute, lit: !!s.segs[kE].ignited }; } }
-  TS.nofail = nf; Object.assign(P, keepK);
+  TS.nofail = nf; TS.kh = kh0; P.wseed = wseed0; Object.assign(P, keepK);
   // (d) the drag the ascent estimate integrates: Easy over Normal, at the level's air once
   const asc = lv => { if (lv) P.lvl = lv; else delete P.lvl; const x = api.newShip(api.PRESETS.Orbiter); x.dragTab = null; return api.dragTable(x, 0)[4]; };
   const n0 = asc(null), e0 = asc('easy'); delete P.lvl;

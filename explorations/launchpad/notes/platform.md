@@ -320,6 +320,11 @@ with the map unshared the same shard failed the same way. Q328 and §16's launch
 every other section does. **Everyone:** `api.t = 0` goes *before* `api.newShip`, never after, unless the section then
 places the craft itself (`s.r`, `s.v`, not landed). Still open in smoke: vehicle-43 (b), QUEUE Q604.
 
+**Q604, 2026-11-12 (a NaN seed).** vehicle-43 (b) found no failed ignition in smoke because a section earlier in its process
+left `PROG` without a `wseed`: `igniteOK` rolls `sin(… + (PROG.wseed % 65536) × 0.0071 …)`, which is NaN then, and `x < f`
+is never true. The check pins `P.wseed` (and turns `TEST.kh` off) around its search and restores both. **Everyone:** a
+section that needs a dice outcome (ignition, weather, the world's rolls) pins `P.wseed` itself.
+
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 
 `index.html` was one 6,700-line, 780 KB script that every lane edited, so every merge conflicted inside it. Its script is
