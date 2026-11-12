@@ -348,7 +348,8 @@ style) would give visible variety that reflects each power's flavour.
 **Spending money: development, investments, flagships (design with Caio, 2026-10-07).** The balance pass (v1.28) showed
 strong programs ending year 3 with ~1,000M and nothing to spend it on. The fix is things worth buying, not more
 pressure.
-- **No tech tree of unlocks.** Parts can already be bought abroad, so locking them behind research would be
+- **No tech tree of unlocks.** *(Superseded for which parts exist by DECISIONS D34, 2026-11-11: a mission opens a part;
+  know-how and industry keep how well and how cheaply; a closed part can't be imported for now.)* Parts can already be bought abroad, so locking them behind research would be
   inconsistent. Instead, what a program owns is **its own designs and how well it knows them**.
 - **Engineering history per part:** every part type accumulates a record across your flights (loads survived, burn
   time at sea level and in vacuum, re-entry heating, restarts). Certification is already a first case of this.
@@ -406,7 +407,7 @@ pressure.
      **provisional**, pending simulation and then playtesting.
   4. **The world frontier is a later layer (yes),** designed with the planning session. Build order: know-how →
      production lines → the frontier.
-  - No hard locks anywhere: everything stays buyable and flyable. The frontier and know-how only change how well, and
+  - No hard locks anywhere: everything stays buyable and flyable *(superseded for which parts exist: DECISIONS D34)*. The frontier and know-how only change how well, and
     at what risk.
 
 **What interplanetary means for the architecture (for later, not now):**
@@ -3172,7 +3173,7 @@ costs **time, not money**. CREW § Skill: simulator time is what trains crew qua
    for CREW's qualifications in M3 and for a "flown in the simulator" mark on the design). A short **simulator
    debrief**: how far it got, margins (Δv left, peak load as a share of the believed rating, landing speed), what broke
    and why, and the line "these are the program's believed numbers".
-5. **Real flights can't be reverted**: the R key and the button go (the tester keeps them, `TEST`). Before liftoff
+5. ~~**Real flights can't be reverted**~~ *(Held 2026-11-11: revert stays on Easy and Normal until Caio has played the first hour; only Hard has none. DECISIONS D35.)* The R key and the button go (the tester keeps them, `TEST`). Before liftoff
    nothing is charged, so leaving the pad stays free. *End flight* and recovery are unchanged.
 
 **Time, not money (default):** a run costs one calendar day per hour of simulated flight, at least half a day per
@@ -3190,7 +3191,7 @@ true margin only shows in a real flight, and a real loss stays.
    `simH`; a joint loaded between its believed and true ratings breaks in the sim and not in a real flight; no money.
 2. **The screen** (flow, 🖥): *Simulate* beside *Launch* (and in Rollout), a SIMULATOR banner on the HUD, revert on R
    inside it, the simulator debrief, *Leave the simulator*.
-3. **Revert retired** from real flights (flow + QA): the key and button gone outside the tester; PLAYROUTE, TESTING 96
+3. ~~**Revert retired** from real flights~~ (Q451, withdrawn by DECISIONS D35) (flow + QA): the key and button gone outside the tester; PLAYROUTE, TESTING 96
    and 127, and the robot (`playtest.mjs`) paths that revert updated.
 4. **Simulate a leg** (space + flow): start in orbit beside a ghost copy of a registry object (rendezvous, docking,
    landing practice), from `R.fromOrbit`'s path.
@@ -3200,7 +3201,7 @@ true margin only shows in a real flight, and a real loss stays.
 **Questions for Caio (W42; defaults if silent):** (1) the time cost: a day per simulated hour, half a day at least per
 run (**default**), or a flat day per run; (2) each run draws its own believed world (**default**), or always the
 pessimistic edge (the certified rating, the densest air); (3) ignition failures in the sim at the believed rate
-(**default**), or a "no failures" practice switch; (4) revert gone from real flights entirely (**default**, D15.5), or
+(**default**), or a "no failures" practice switch; (4) revert gone from real flights entirely (**default**, D15.5; held by D35: it stays on Easy and Normal), or
 kept for the first N flights of a new program as a tutorial crutch; (5) the simulator the same in every era (**default**),
 or cheaper in time with compute (from the mainframes on). The error bars stay knowledge, never compute.
 

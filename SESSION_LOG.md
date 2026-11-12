@@ -7220,3 +7220,32 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Not checked:** played by hand (does a new player get the Sounding past 20 kPa?).
 - **Next:** Q578 (the builder: closed presets say what they wait for; the Hopper, first in the list, is closed until the
   hop), Q579 (families, reasons, chapters), Q580 (the robot's m1 route needs the structural test; PLAYROUTE sitting 1).
+
+## 2026-11-11 — orchestrator (Opus 5.5, main clone, PC_de_Varginha): testing off the shared machine; Caio's answers to REVIEW § 8 recorded
+
+- **Asked:** Caio: be the local orchestrator (a second one runs on the other computer); later, can testing stop blocking
+  sessions; then record his eight answers to REVIEW-2026-11-11 § 8 and make the queue match.
+- **Done, coordination:** 11 dead claim rows to `archive/active-work-cleared-2026-11.md`; QUEUE refreshes every 30 min
+  (R25–R34 ranked, R26 first; Q569/Q570/Q548 states; Q576 ready; R10's version collision flagged; R10/R16 marked quiet).
+- **Done, testing:** `.github/workflows/launchpad-tests.yml`: `check_numbers.mjs` and the full `node test.mjs` on every
+  push that touches Launchpad (free on a public repo; ~13–15 min); by hand with any options and Node. It is the merge
+  gate now (ACTIVE_WORK recipe, QUEUE *Testing* and a flag); GPU checks go to a new *🖥 checks* table the test bench
+  drains first (docs/session-roles.md). CI runs **Node 24**: space-33's EVA walk passes on 24 and fails on 22 run alone
+  (Q590, LESSONS #50). One flaky check found by CI: aerofx-54's random `d0` (Q591, P1; flag: rerun `--failed`).
+- **Done, REVIEW § 8:** DECISIONS **D32** (the late game is the target; W52 proposes M6–M9, no code), **D33** (a rover's
+  unheated night costs nothing; W44's clause withdrawn; Q459 and SW1 reworded; the cost to BACKLOG), **D34** (the unlock
+  map supersedes "no tech tree, no hard locks" for which parts exist; no imports of closed parts, W40 included),
+  **D35** (revert stays on Easy and Normal; D15.5 and W42 held; Q451 withdrawn; KSPISMS and the simulator plan marked),
+  **D36** (Selene and Nyx firsts in the race → Q593), **D37** (Q550 waits on **W53**, the six solids defaults),
+  **W48** answered (code frozen for mechanisms until R2 and R3 are built; Q582–Q585, Q594, Q596 say so). Row 8: Q583
+  still carries the logbook check. ROADMAP: M4's label, M3–M5 lines, an "After M5" line. BACKLOG's "Decided, but
+  nothing carries it" drained: Q593–Q596 filed, four rows given milestones (M3, M4, M5), the hall's bays to Caio
+  (**W54**); the cycler, sails, orbital factory and solar observatory moved to ROADMAP as decided designs.
+- **Checked:** `check_numbers.mjs` clean (next free Q597, W55); every edit asserted against its anchor; the ripple
+  search for the old revert and night-cost wording.
+- **Not checked:** REVIEW § 8 rows 2, 6 (rest), 8, 10 (rest), 11–20 are still open for Caio.
+- **Files:** `.github/workflows/launchpad-tests.yml` (new), `ACTIVE_WORK.md`, `INDEX.md`, `LESSONS_LEARNED.md`,
+  `docs/session-roles.md`, `archive/active-work-cleared-2026-11.md`; launchpad `QUEUE.md`, `DECISIONS.md`, `ROADMAP.md`,
+  `BACKLOG.md`, `PROGRESSION.md`, `REVIEW-2026-11-11.md`, `KSPISMS.md`, `notes/space.md`, `notes/economy.md`.
+- **Next:** Caio's W52 (late-game milestones), W53 (solids), W54 (the hall's bays), W49; Q591 (the flaky gate) first.
+

@@ -1,5 +1,5 @@
 # BACKLOG — ideas kept out of the queue
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: live list (DECISIONS D31)
 **Purpose**: A home for ideas that are worth keeping and are not work. It keeps the queue to what is being built, so
 a stray idea costs one line here and no scope.
@@ -36,7 +36,6 @@ under other words may already be covered.
 | Hydrolox engines | An engine family on hydrogen, with its nearly invisible blue flame | notes/look.md (~244, 1439) | 2026-11-11, sweep |
 | A rotating detonation engine | A development project on an engine: more efficiency, rough running until learned | TECH_SCOUTING § Propulsion | 2026-11-11, sweep |
 | An inflatable heat shield | A big diameter on small mass for heavy returns (Q589 weighs it for Tellus) | TECH_SCOUTING § In space | 2026-11-11, sweep |
-| A solar sail, and a laser-sail facility | Propulsion with no propellant | TECH_SCOUTING; LATE_GAME § "The technology ceiling" | 2026-11-11, sweep |
 | A side-opening cargo bay, and a 2.5 m bay | A shuttle-style bay | notes/space.md § "Phase B", Not yet (~553) | 2026-11-11, sweep |
 | A sky crane, or a bay mount, for large rovers | A way to land a big rover | notes/space.md § "R2 built" (~805) | 2026-11-11, sweep |
 | Rockets that visibly bend | The mesh flexes with the computed bending moment | notes/foundations.md § "Open threads" 5 | 2026-11-11, sweep |
@@ -58,13 +57,11 @@ under other words may already be covered.
 | Winds aloft | Upper winds load the rocket at max-q by site and day; your weather satellites forecast them | notes/economy.md § "Program design" (~19); notes/world.md § v1.45 (~644) | 2026-11-11, with **Caio** 2026-10-06 |
 | A solar cycle | The upper air swells and thins, so satellite lifetimes change | notes/space.md § v1.64, Not yet (~1555) | 2026-11-11, sweep |
 | Targeting across spheres, phasing over many orbits | Rendezvous with a moon orbiter from Tellus orbit; debris or a moon as a target | notes/space.md § "Rendezvous", Not yet (~262, 1010) | 2026-11-11, sweep |
-| A Tellus–Enyo cycler | A standing route with taxis (studied, Q108: ballistic on our scale) | notes/space.md § "Q108"; LATE_GAME (~243) | 2026-11-11, sweep |
 | Lumpy gravity on small bodies; true shape models | "Down" is right on an elongated asteroid; overhangs and contact binaries; Nyx as an irregular rock | notes/world.md § v1.75 (~1306); GROUND (~114); notes/space.md (~161) | 2026-11-11, sweep |
 | Radiation | An instrument finds the belts; the belts set a crew's dose | notes/vehicle.md § "Parts and mission types" (~18); SYSTEM (~152); CREW (~113) | 2026-11-11, brainstorm with **Caio** |
 | A gravity-mapping pair | Two satellites flown in formation | notes/vehicle.md § "Parts and mission types" (~22) | 2026-11-11, brainstorm with **Caio** |
 | A space telescope that discovers | A fragile payload (pointing, g limits) that finds the second moon, asteroids, visitors | notes/vehicle.md (~20); notes/economy.md (~241) | 2026-11-11, brainstorm with **Caio** |
 | A telescope view from Tellus; a UV camera at Hesper | Hyperion's rings in a small telescope; cloud bands as an instrument picture | mockups/README § bodies (~173, 177) | 2026-11-11, sweep |
-| A solar observatory | A payload that warns of solar storms earlier | SYSTEM (~85); LATE_GAME (~319) | 2026-11-11, sweep |
 | A balloon probe in Hesper's clouds | A part that floats at 50 km | SYSTEM (~105) | 2026-11-11, sweep |
 | A sample through Eos's plumes | A flight through the tiger stripes' plumes | notes/world.md § v1.70 (~1179) | 2026-11-11, sweep |
 | Dust storms on Enyo | Weather on another planet | notes/world.md § v1.62 (~917); SYSTEM (~130) | 2026-11-11, sweep |
@@ -79,7 +76,6 @@ under other words may already be covered.
 |---|---|---|---|
 | A station as a structural problem | Trusses assembled in orbit that reboost burns load and docking shocks; attitude control grows with mass | notes/vehicle.md § "Parts and mission types" (~30) | 2026-11-11, brainstorm with **Caio** |
 | A hotel habitat and client modules | Tourism in orbit; a commercial lab | notes/space.md § "Contract types proposed" (~599) | 2026-11-11, sweep |
-| A factory in orbit | Recurring income from making things in weightlessness | TECH_SCOUTING § In space; LATE_GAME (~101) | 2026-11-11, sweep |
 | Flying the arm by hand | Joint by joint, or the hand by keys | notes/space.md § "D built: the arm", Not yet (~656) | 2026-11-11, sweep |
 | Claw upgrades | A pivot to turn what it holds; arming | notes/space.md § "The claw", Not yet (~447) | 2026-11-11, sweep |
 | Docking lights | Lights for docking on the night side | notes/space.md (~327) | 2026-11-11, sweep |
@@ -88,6 +84,7 @@ under other words may already be covered.
 | Rover routes by imaging | How well the site was imaged from orbit limits the route you can plan | notes/space.md (~795) | 2026-11-11, sweep |
 | Righting a tipped rover | An arm or a crew sets it upright | notes/space.md § "Rovers: plan" (~701) | 2026-11-11, sweep |
 | The EVA yard as training | The test ground becomes the program's astronaut training | EVA (~127) | 2026-11-11, sweep |
+| A rover's cold night costs battery | Each night a rover spends unheated wears its battery (a third a night in W44's withdrawn default), so a heater or an RTG matters | notes/space.md § "Plan: the slow world" (SW1, struck); DECISIONS D33 | 2026-11-11, **Caio** (backlogged) |
 
 ## The program, money and the world
 
@@ -148,17 +145,7 @@ under other words may already be covered.
 
 | Decided | Where | What is missing |
 |---|---|---|
-| Selene firsts are in the race | DECISIONS W4 | The race still holds three early firsts (`RACE`, sim/contracts.js) |
-| Development makes variants (a Mk2 entry) | DECISIONS W7; notes/economy.md § v1.34 | Only in-place goals are built; no item |
-| Each docked body runs its own thrust, aero and heating; fuel crosses by an explicit transfer | notes/space.md § "Docking and related parts: plan" (Caio, 2026-10-07) | Passengers are mass and shape; no transfer; M4's depots need it |
-| RCS advances with the eras; a fine-control mode | notes/space.md § "RCS" (Caio) | Only cold gas and satellite hydrazine |
-| A film grade per era | DECISIONS D18; BEAUTY § 4 B0.4 | One grade; no item |
-| A sea-specific launch complex, later | DECISIONS W6 | No item |
-| The hall's bays, parked until Caio playtests | DECISIONS W25 | Not revisited since 2026-10-09 |
-| A cruise pays along the way; passive flybys | notes/economy.md § "Time, long missions" (decided); LATE_GAME | No item |
-| "Let it go": an ignored vessel re-enters by itself | notes/space.md § "Plan: missions in flight" | A vessel at the top of the air waits there for ever |
-| Guest astronauts and bought seats | CREW (~104, an approved hook) | No item |
-| The late game past M5 (interstellar probe, space solar power, mass driver, cyclers) | LATE_GAME § "The arc after Selene", epochs 7 to 10 | ROADMAP's milestones stop at M5 |
+| — (drained 2026-11-11 by the orchestrator: where each went is in the version history, 0.1.2) | | |
 
 ## Promoted
 
@@ -170,3 +157,11 @@ under other words may already be covered.
 - **0.1.0 (2026-11-11):** created at Caio's request; seeded with the two tiers of winged flight that D30 set aside.
 - **0.1.1 (2026-11-11):** the sweep Caio asked for: the build notes, catalogs, reviews and mock-ups index read by six
   agents; tables by area; "Decided, but nothing carries it" added.
+- **0.1.2 (2026-11-11, orchestrator, Caio's answers to REVIEW-2026-11-11 § 8):** the late game is the target (D32): the
+  cycler, solar sails and the laser-sail facility, the orbital factory and the solar observatory are LATE_GAME's approved
+  design, so they moved to ROADMAP's "After M5" line (rule 5); licensing and stealing a template stay here (Caio's "later").
+  The rover's night cost added (D33). "Decided, but nothing carries it" drained: Selene firsts in the race → **Q593**
+  (D36); development makes variants → **Q594** (📝 plan); docked bodies' own physics and fuel transfer → **M4**;
+  RCS by era and fine control → **M3**; a film grade per era → **Q595**; a sea-specific complex → **M4**; the hall's
+  bays → **W54** (Caio); a cruise pays and passive flybys → **M5**; "let it go" → **Q596**; guest astronauts and bought
+  seats → **M3**; the late game → **D32**, milestones in **W52**.

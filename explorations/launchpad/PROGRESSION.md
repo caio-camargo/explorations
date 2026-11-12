@@ -1,5 +1,5 @@
 # PROGRESSION — the loop, unlocks, contact and the tables
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (review 2 session, Fable 5.2) · **Created**: 2026-11-11 · **Updated**: 2026-11-11
 **Status**: **Direction approved by Caio 2026-11-11** (DECISIONS D28). The tables in § 2–§ 5 are a first draft: each
 has a plan or mock-up item in QUEUE that measures it and brings the open questions (§ 7) back to Caio.
 **Purpose**: How the game keeps moving forward between flights: what a finished mission gives you, what you have to
@@ -53,6 +53,9 @@ of the part"). After the flight report, one card per grant, in order of weight:
 - the same card for a building or a room ("Mission control opens"), a reach ("Contact over the eastern ocean") and a
   routine;
 - several grants queue; any key moves on; the list stays in the report's **Opened** block (Q570's `opensOf`).
+
+**What the map closes** (DECISIONS D34): which parts exist. A closed part can't be bought abroad for now; know-how,
+production lines and buying abroad keep how well and how cheaply an open part is made.
 
 **Chapters.** An epoch becomes a chapter with a question, a visible finish and a grant. The map of which part opens
 with which mission is planned and measured in [`notes/economy.md`](notes/economy.md) § "Plan: the unlock map and
@@ -171,3 +174,4 @@ open, so old saves keep what they have used (Q573, rule 1).
   launch range, plasma never refuses a command, relays need the dish to matter.
 - **0.1.3 (2026-11-11):** D29 (any flight can fulfil any mission); W50 answered (qualification missions, Q588).
 - **0.1.5 (2026-11-11):** W51 answered (the launch range).
+- **0.1.7 (2026-11-11):** D34 in § 3: the map closes which parts exist; no import of a closed part for now.
