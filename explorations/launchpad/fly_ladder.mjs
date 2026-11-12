@@ -4,7 +4,7 @@
 // staging, the predictor, rails) with only that mission's prerequisites done. A mission counts when its own check passes.
 //   node fly_ladder.mjs                 the whole ladder, a table at the end
 //   node fly_ladder.mjs selland nyxorb  just those (add -v for each flight's phase log)
-// 'nyxorb:pro' is a control, not a mission: the same Nyx orbit forced prograde, which Tellus's tide should wreck.
+// 'nyxorb:pro' is a control, not a mission: a Nyx orbit too wide to last (prograde, 200 km), which Tellus's tide wrecks.
 export const LADDER = SR => [
   // [mission, preset, phases, prerequisites done]
   ['farside', 'Probe', [{ k: 'transfer', to: 'Selene', pass: 150e3, side: 'far', sunFar: true }], ['beeper']],
@@ -18,7 +18,10 @@ export const LADDER = SR => [
   // at ~98 h whichever way round it goes, so the 0.2 m shorter camera on the Probe was enough to tip the retrograde flight
   // under the ~103 h it needs. At 70 km it lasts. The control's "which way round matters" is QUEUE Q344 (space)
   ['nyxorb', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 40e3, retro: true }, { k: 'capture', ap: 70e3, pe: 30e3 }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
-  ['nyxorb:pro', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 40e3, retro: false }, { k: 'capture', ap: 80e3, pe: 30e3 }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
+  // the control (R22, 2026-11-12): at 70–110 km which way round decides nothing reliably (a metre a second at staging turned
+  // the old 80 km prograde control from wrecked at 61 h to lasting 8 days; Q344), but an orbit reaching 200 km is wrecked by
+  // Tellus's tide within a day and a half either way, on main and with the kick alike
+  ['nyxorb:pro', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 40e3, retro: false }, { k: 'capture', ap: 200e3, pe: 30e3 }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
   ['nyxland', 'Probe', [{ k: 'transfer', to: 'Nyx', pass: 100e3 }, { k: 'capture', ap: 300e3, pe: 40e3 }, { k: 'land' }], ['beeper', 'farside', 'nyxfind', 'nyxfly']],
 ];
 // a hand-flown ascent to a low orbit (vertical to 200 m, flat by 38 km, circularised toward circular-orbit velocity); the
