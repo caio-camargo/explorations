@@ -7274,3 +7274,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `INDEX.md`.
 - **Next:** Q591 (P1, the flaky staging check: seed `sepFx`'s puffs in the test). R9 has no *Import save* yet (Export
   only, and only from the fault panel; a menu entry would help bug reports). The `PROG.x||<literal>` reads retire by lane.
+
+### 2026-11-11: review 2 session (Fable), Caio's second round of answers (docs only)
+- **Recorded:** **D38** solids neither throttle nor stop (thrust set on the design table only, a part-filled solid
+  allowed, no termination ports); W53 narrowed to what is left; Q550's row says what changes before merge. **D39** eras
+  end on milestones, not dates; **Q597** plans it (economy). **D40** the face engine is live again (D26's parking lifted;
+  the ligne-claire head stays until the trial is judged). REVIEW-2026-11-11 § 8: rows 8 and 13 struck; Caio's notes on
+  11 (he has played an hour), 12 (money: scaling operations, a lean), 15 (rivals: no answer yet), 17 (sound: parked).
+- **New:** PLAYROUTE § "What your play still has to answer": a checklist of the decisions waiting on Caio's play.
+- **PARKED still:** R29b. Caio's lean 2026-11-11: "maybe it's a difficulty setting... commitment vs reload any time
+  modes"; not decided. It would ride the levels (`lvl().revert`).
+- **Running:** two read-only checks (a glide flown end to end, for Q592; the Hard-mode logbook gate, for Q583).
+- **Checked, the two runs:** the Hard-mode logbook gate is real once contact is built (Q583's row carries the fix;
+  read from code, not flown). The glide flown end to end (`review/2026-11-11/glide_e2e.mjs`): today's plates are not
+  enough for a winged return (no Mach term, no stall, cold wings; under SAS the craft dives and the turn rate goes NaN
+  with plates a player cannot build today); numbers in notes/vehicle.md § "Scope: winged flight", Q592's row updated.
