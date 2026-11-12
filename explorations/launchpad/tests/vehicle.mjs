@@ -501,12 +501,15 @@
     const d = api.toV2(['core', 't1', 'bay', 'pod', 't2', 'kestrel']), t = fd(d.root, 't2');
     t.c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] }, { k: 'wpanel', at: { y: 1, a: 0, n: 2 }, c: [] });
     if (dep) for (const k of ['leg', 'wpanel', 'bay']) fd(d.root, k).dep = true; return d; };
+  // the clock first: newShip lands the craft at the pad's place at the current time, so a clock set to 0 afterwards puts the
+  // planet somewhere else under it (R5: after an earlier section left simT large, the first step struck the ground at 6 km/s)
+  api.t = 0;
   const d0 = mk(false), d1 = mk(true), s0 = api.newShip(d0), s1 = api.newShip(d1), of = (s, f) => s.parts.filter(p => f(p.d));
   const L = of(s1, d => d.kind === 'leg'), Wg = of(s1, d => d.wing), B = of(s1, d => d.kind === 'bay')[0];
   const wn = d => api.launchWarnings(d).filter(([k, x]) => /at launch/.test(x)).length;
   const stowed = !s0.parts.some(p => p.dep || p.open) && wn(d0) === 0;
   const out = L.length === 4 && L.every(p => p.dep) && Wg.length === 2 && Wg.every(p => p.dep) && B.open && !s1.parts.some(p => p.inBay && p.inBay.open === false);
-  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; api.t = 0; api.S = s1; api.stage(s1); s1.throttle = 1;
+  const msg0 = api.HOOK.msg; api.HOOK.msg = () => {}; api.S = s1; api.stage(s1); s1.throttle = 1;
   let qx = 0; for (let i = 0; i < 60 / api.DT && s1.alive && Wg.some(p => p.on); i++) { api.advPhys(s1); qx = Math.max(qx, s1.qdyn); }
   api.HOOK.msg = msg0;
   check('deploy in the Assembly (Q328): legs, wings and doors roll out as left, the Rollout warns, procedures kept; wings torn off on the way up',
