@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2145,6 +2145,8 @@ with the pod under 60 % and the burn above 95 km; the dry-booster Crewed Lunar's
 numbers elsewhere changed. `node test.mjs --smoke --jobs 2`: all passed.
 
 ## Plan: solid motors as a main-stage choice (Q252; 2026-11-07, vehicle worker, PLAYTEST #51, D15.1; nothing built)
+
+**Changed by D38 (Caio 2026-11-11):** D15.1 stands. The thrust setting below is a design-table setting only, fixed for the flight; a solid may also be loaded with less than full propellant (new); there are no thrust-termination ports (question 6: never). The drop of a burning solid (mechanic 5, question 3) is still open in W53.
 
 **The ask** (Caio 2026-10-10: "a good mechanic if real"; 2026-10-13, raised to M1: "the same solid/liquid fuel separation
 as ksp... either forgotten or added far down the queue"). It is real: once lit, a solid burns to the end. Its thrust curve
