@@ -204,9 +204,12 @@ function statusHTML(){
   const pk=parkedInst().length;if(pk&&!isEmpty(stackDef))return`<span class="warn">${pk} part${pk>1?'s':''} parked in the air</span>, not attached: click to pick ${pk>1?'them':'it'} up and attach, or Del · a launch leaves ${pk>1?'them':'it'} here`;
   return isEmpty(stackDef)?'pick a part to start: the first one placed is the root (a command pod, usually)':'pick a part below, or click one on the rocket to move it · right-click a part for its options'}
 
+// the builder acts only on the Assembly (R28): mode 'editor' is also the title, the Rollout, the Program, the Mission card and the
+// Debrief, where a click on the rocket had picked parts up and the keys had edited the design unseen. Headless (no screens) it's on.
+const here=()=>mode==='editor'&&(typeof screenNow!=='function'||screenNow()==='assembly');
 // ---- per-frame: hover and ghost. Recomputed on mouse move; meshes cached by a key so they rebuild only on change.
 function update(){
-  if(mode!=='editor')return;
+  if(!here())return;
   if(st.held){st.slot=findSlot();st.hover=null}
   else{st.slot=null;const h=st.mouse&&!st.press?rayHit(mouseRay()):null;st.hover=h?dnOf(h.p):null}
   tooltip()}
@@ -226,7 +229,7 @@ function hiMesh(){const key=st.hover?String(S.parts.findIndex(p=>dnOf(p)===st.ho
   if(st.hi){st.hi.h&&st.hi.h.free();st.hi.s&&st.hi.s.free()}st.hi={h:meshOf(hov,[.5,.8,1]),s:meshOf(sel,[1,.75,.3])};return st.hi}
 // called from render() after the ship is drawn, with the mesh program bound
 function draw(drawMesh,m,Mship,pw){
-  if(mode!=='editor')return;
+  if(!here())return;
   const g=st.held?ghostMeshes():null,hi=hiMesh(),pm=isEmpty(stackDef)?null:parkMeshes();
   if(pm)drawMesh(pm.s,Mship,pw);
   if(g&&g.solid){gl.uniform1f(m.uSeam,1);drawMesh(g.solid,Mship,pw);gl.uniform1f(m.uSeam,0)}
@@ -248,7 +251,7 @@ function thrustLine(o){if(isEmpty(stackDef)||!S.events.length)return;const ig=ne
   o.save();o.setLineDash([7*k,5*k]);o.lineWidth=2*k;o.strokeStyle=T.f>.6?'#ff6b6b':T.f>.2?'#ffb454':'#ff9a3c';o.beginPath();o.moveTo(a[0],a[1]);o.lineTo(b[0],b[1]);o.stroke();o.restore();
   o.font=`bold ${12*k}px ui-monospace,Consolas,monospace`;o.fillStyle=o.strokeStyle;o.textAlign='left';o.fillText(`thrust · misses CoM ${(T.miss*100).toFixed(T.miss<.1?1:0)} cm`,b[0]+6*k,b[1])}
 function overlay(o){
-  if(mode!=='editor'||typeof atHQ!=='undefined'&&atHQ||isEmpty(stackDef))return;thrustLine(o);const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)
+  if(!here()||isEmpty(stackDef))return;thrustLine(o);const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)
   o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
   if(st.loads&&!st.held){const seen=[];
     for(const p of S.parts){if(!p.on||!p.parent)continue;const f=certFrac(p);if(f==null||!isFinite(f))continue;const q=proj(p.jP);if(!q)continue;
@@ -421,7 +424,7 @@ function cardAt(b,k){if(!tipOK())return;if(!b){tipHide('card');return}tipShow('c
 
 // ---- tooltip and panels
 function tooltip(){if(!tipOK())return;
-  const n=st.hover;if(!n||mode!=='editor'||st.held||!st.mouse){tipHide('craft');return}
+  const n=st.hover;if(!n||!here()||st.held||!st.mouse){tipHide('craft');return}
   const ps=S.parts.filter(p=>p.on&&dnOf(p)===n),w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null);
   const cp=ps.filter(p=>!p.inst.rdec).length,html=`<b>${isPay(n)?`Payload: ${String(n.name||'').replace(/</g,'&lt;')}`:name(n.k)}${cp>1?` <span class="dim">×${cp}</span>`:''}</b>`+
     (partInfo(pdef(n.k))?`<div class="pcs">${partInfo(pdef(n.k))}</div>`:'')+(partPairs(pdef(n.k))?`<div class="pcp"><span class="dim">Pairs with</span> ${partPairs(pdef(n.k))}</div>`:'')+(w?`<div>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span></div>`:'')+
@@ -677,25 +680,25 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
   const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>T</b> top view · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
   el('editor').appendChild(help);
   const cvs=el('gl'),cpos=e=>[e.clientX*cvs.width/cvs.clientWidth,e.clientY*cvs.height/cvs.clientHeight];
-  addEventListener('mousedown',e=>{if(mode!=='editor'||e.target!==cvs)return;st.mouse=cpos(e);update();
+  addEventListener('mousedown',e=>{if(!here()||e.target!==cvs)return;st.mouse=cpos(e);update();
     if(e.button===1||e.button===0&&e.shiftKey&&!st.held){st.pan=[e.clientY];e.preventDefault();e.stopPropagation();return}
     st.press={x:e.clientX,y:e.clientY,b:e.button,mod:{ctrl:e.ctrlKey||e.metaKey||e.altKey,shift:e.shiftKey}};
     if(e.button===0&&(st.held||st.hover))e.stopPropagation()},true);   // left on a part or while holding: ours; elsewhere: orbit
-  addEventListener('mousemove',e=>{if(mode!=='editor')return;
+  addEventListener('mousemove',e=>{if(!here())return;
     if(st.pan){const dy=e.clientY-st.pan[0];st.pan[0]=e.clientY;cam.edY=clamp((cam.edY||0)+dy*cam.dist*.0016,-S.len,S.len);return}
     st.mouse=e.target===cvs?cpos(e):null;if(st.press&&Math.hypot(e.clientX-st.press.x,e.clientY-st.press.y)>5)st.press.drag=true;update()});
-  addEventListener('mouseup',e=>{if(mode!=='editor')return;const p=st.press;st.press=null;if(st.pan){st.pan=false;return}
+  addEventListener('mouseup',e=>{const p=st.press;if(!here()){st.press=null;st.pan=false;return}st.press=null;if(st.pan){st.pan=false;return}
     if(!p||p.drag||e.target!==cvs)return;
     if(p.b===0){if(st.held){const s=st.slot;if(s&&!s.bad)place(s,p.mod.shift);else if(s&&s.bad)note('Blocked: it would overlap a part');else if(!s)parkHeld(p.mod.shift)}
       else if(st.hover){const pp=S.parts.find(q=>q.on&&dnOf(q)===st.hover&&!q.inst.rdec)||S.parts.find(q=>dnOf(q)===st.hover)||parkedInst().find(q=>dnOf(q)===st.hover);if(pp)pickUp(pp,p.mod.ctrl)}
       else if(st.sel){st.sel=null;refresh()}}
     else if(p.b===2){if(st.held)drop();else if(st.hover){st.sel=st.hover;refresh()}else if(st.sel){st.sel=null;refresh()}}
     update()});
-  cvs.addEventListener('contextmenu',e=>{if(mode==='editor')e.preventDefault()});
-  addEventListener('wheel',e=>{if(mode!=='editor'||e.target!==cvs||!e.shiftKey)return;e.preventDefault();e.stopPropagation();
+  cvs.addEventListener('contextmenu',e=>{if(here())e.preventDefault()});
+  addEventListener('wheel',e=>{if(!here()||e.target!==cvs||!e.shiftKey)return;e.preventDefault();e.stopPropagation();
     const d=(e.deltaY||e.deltaX)*(e.deltaMode===1?33:e.deltaMode===2?400:1);   // pixels; one mouse notch ≈ 100
     cam.edY=clamp((cam.edY||0)-clamp(d,-150,150)/100*cam.dist*.015,-S.len,S.len)},{capture:true,passive:false});
-  addEventListener('keydown',e=>{if(mode!=='editor'||typeof atHQ!=='undefined'&&(atHQ||atDeb||atRoll||atMC)||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+  addEventListener('keydown',e=>{if(!here()||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
     if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?restore(st.redo,st.undo):restore(st.undo,st.redo);return}
     if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();restore(st.redo,st.undo);return}
     if(e.ctrlKey||e.metaKey||e.altKey)return;

@@ -303,7 +303,7 @@ function render(){spoolFrame();
           octx.fillStyle=era===1?'rgba(246,240,222,.85)':'rgba(8,12,18,.62)';octx.fillRect(r[0]-2*k,r[1]-1*k,r[2]-r[0]+4*k,r[3]-r[1]+2*k)}
         else if(hit(r))continue;put.push(r);if(T.o<=1)MAP_PUT.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
     if(atlasMode||mapShow('recovery'))atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
-  const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll&&!atMC;   // (flow) the builder's markers stay off behind the Program and Debrief panels
+  const building=screenNow()==='assembly';   // (flow) the builder's markers only on the Assembly: not behind the Program, Debrief or title (R28)
   if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx,true3)=>{const s=project(add(pw,qrot(S.q,true3?[0,y-S.cm[1],0]:[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;   // true3: at the real centre of mass, off the axis if it is (vehicle, Q337)
       const k=ovPx(),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();

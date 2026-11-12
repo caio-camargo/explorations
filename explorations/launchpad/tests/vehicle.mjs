@@ -1128,3 +1128,37 @@
     hop.join() === 'loads,hop' && !snd.length && sat.length > 3 && once && c1 && eraLast && kitOK && none && wired,
     `Hopper waits ${hop.join(', ')}; Sounding ${snd.length}; Satellite keys ${sat.length}; closed ${shut.length} in ${C.length} chapters (once ${once}, ch1 first ${c1}, eras last ${eraLast}, kit ${kitOK}); all open ${none}; wired ${wired}`);
 }
+
+// vehicle-45. The builder acts only on the Assembly (vehicle + flow, QUEUE R28; REVIEW-2026-11-11 § 6, R13g): a click on the
+// rocket at the Rollout (or the title, the Program, the Mission card, the Debrief) had picked a part up and edited the design,
+// and the builder's keys acted from the title. Run in review 2's headless harness (builder.js and the sim, DOM and GL stubbed).
+{
+  const { createRequire } = await import('module');
+  const run = createRequire(import.meta.url)('./review/2026-11-11/app/A_harness.cjs');
+  const r = run(`
+const cvs=document.getElementById('gl');
+function aim(){const q=S.q;HOOK.view={camW:qrot(q,[30,0,0]),Fw:qrot(q,[-1,0,0]),R:qrot(q,[0,0,1]),U:qrot(q,[0,1,0]),tanX:.6,tanY:.5,W:1000,H:800}}
+function click(){aim();const e={target:cvs,clientX:500,clientY:400,button:0,preventDefault(){},stopPropagation(){this.stopped=true}};
+  fire('mousemove',e);fire('mousedown',e);fire('mouseup',e);return e}
+const key=(k,ctrl)=>fire('keydown',{key:k,ctrlKey:!!ctrl,target:{tagName:'BODY'},preventDefault(){}});
+const fresh=()=>{atTitle=atRoll=atHQ=atDeb=atMC=false;stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter));S=newShip(stackDef);editorChanged();BLD.st.held=null;BLD.st.sel=null;BLD.st.undo.length=0};
+BLD.init();const out={};
+for(const [scr,set] of [['title',()=>atTitle=true],['rollout',()=>atRoll=true],['program',()=>atHQ=true],['debrief',()=>atDeb=true],['mission',()=>atMC=true],['assembly',()=>{}]]){
+  fresh();set();const n0=S.parts.length,e0=EDN,e=click();
+  out[scr]={screen:screenNow(),parts:[n0,S.parts.length],held:BLD.st.held?BLD.st.held.k:null,edits:EDN-e0,stopped:!!e.stopped}}
+// keys: a part held on the Assembly, then the title: Delete, Ctrl+Z and X do nothing there; back on the Assembly they act
+fresh();click();const held=BLD.st.held&&BLD.st.held.k,u0=BLD.st.undo.length,sym0=BLD.st.sym;atTitle=true;const e1=EDN;
+key('Delete');key('z',true);key('x');
+out.keys={held,title:{still:BLD.st.held&&BLD.st.held.k,undo:[u0,BLD.st.undo.length],sym:BLD.st.sym===sym0,edits:EDN-e1}};
+atTitle=false;key('x');out.keys.assemblyX=BLD.st.sym!==sym0;
+return out`);
+  const off = ['title', 'rollout', 'program', 'debrief', 'mission'], o = r[off[0]];
+  const quiet = off.every(k => { const x = r[k]; return x.screen === k && x.parts[0] === x.parts[1] && !x.held && !x.edits && !x.stopped; });
+  const A = r.assembly, asm = A.parts[1] < A.parts[0] && !!A.held && A.edits === 1 && A.stopped;
+  const K = r.keys, keys = !!K.held && K.title.still === K.held && K.title.undo[0] === K.title.undo[1] && K.title.sym && !K.title.edits && K.assemblyX;
+  const rsrc = readFileSync(new URL('./app/render.js', import.meta.url), 'utf8'), ov = /const building=screenNow\(\)==='assembly';/.test(rsrc);
+  check('vehicle-45: the builder acts only on the Assembly: a click on the rocket elsewhere picks nothing up, its keys are quiet from the title; on the Assembly both act',
+    quiet && asm && keys && ov,
+    off.map(k => `${k} ${r[k].parts.join('→')}${r[k].held ? ' held ' + r[k].held : ''}`).join(', ') + ` · assembly ${A.parts.join('→')} held ${A.held}` +
+    ` · title keys: still holding ${K.title.still}, undo ${K.title.undo.join('→')}, X ${K.title.sym ? 'quiet' : 'acted'}; on the Assembly X ${K.assemblyX ? 'acts' : 'quiet'} · markers ${ov}`);
+}

@@ -1779,7 +1779,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const listed = (...L) => new Set(L.flat().flatMap(r => r.k || []));
   const flightSrc = cut(page, "if(mode!=='flight')return;const k=e.key", "addEventListener('keyup'") + page.match(/keys\.has\('[^']+'\)/g).join(' ');
   const shared = cut(page, '// Keys every screen shares', '\n// ') || cut(page, '// Keys every screen shares', '</script>');
-  const edSrc = cut(bsrc, "addEventListener('keydown',e=>{if(mode!=='editor'", 'palette()}');
+  const edSrc = cut(bsrc, "addEventListener('keydown',e=>{if(!here()", 'palette()}');
   const fl = listed(KEYS.flight, KEYS.map, KEYS.all), ed = listed(KEYS.assembly, KEYS.all);
   const missF = [...read(flightSrc), ...read(shared)].filter(k => !fl.has(k)), missE = [...read(edSrc), ...read(shared)].filter(k => !ed.has(k));
   check('Help lists every key the flight and map handlers read', flightSrc.length > 500 && !missF.length, missF.join(' ') || `${fl.size} keys`);
