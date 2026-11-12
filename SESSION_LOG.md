@@ -7623,3 +7623,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   (`revert:false`) it is lost with a news line (the save holds no flight to carry on from). `LEVELS.hard.d` says so.
   Test space-36 (headless page: Normal's Revert twice, the table empty, a reload; Hard's reload). DECISIONS D45, TESTING
   393, PLAYROUTE step 7, QUEUE R29 ✓. **R29b is no longer parked** (decided by Caio 2026-11-12, built here).
+- **6, docs (main clone):** QUEUE Q592 approved by Caio (yes, not a priority): marked **P3**, moved below the M1 run, plan
+  kept. ACTIVE_WORK: the EVA (2026-11-06), astronauts (2026-11-07), world and flow (2026-10-31) and landing-page
+  (2026-08-11) rows cleared as "Cleared" lines that keep their notes; the faces row untouched; R28's row, which a later
+  merge had brought back, cleared again. **Q604 → main (test only, CI 43301877758):** not luck: a section earlier in the
+  process left `PROG` without a `wseed`, so `igniteOK`'s roll was NaN and nothing ever failed; vehicle-43 pins `wseed`
+  (and `TEST.kh` off). Smoke is green end to end again. notes/platform.md § Test shards.
+- **Files:** launchpad `tests/core.mjs`, `tests/vehicle.mjs`, `tests/space.mjs`, `fly_crewlunar.mjs`, `fly_ladder.mjs`,
+  `builder.js` (merged wip), `app/render.js`, `sim/vessel.js`, `sim/space.js`, `sim/program.js`, `sim/core.js`,
+  `app/program-ui.js`, `app/state.js`, `notes/platform.md`, `notes/vehicle.md`, `notes/space.md`, `NOTES.md`, `QUEUE.md`,
+  `TESTING.md`, `DECISIONS.md`, `PLAYROUTE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`. No new durable files (INDEX
+  unchanged).
+- **For Caio:** (1) the remote branch `vehicle` holds five commits from 2026-10-31 (v1.247/v1.248, Q502/Q457) that never
+  reached `main`; R28 went up as `r28` rather than force-pushing over them. (2) Q383 stands for players (a chute landing on
+  trees at 7 m/s kills the crew); the test no longer depends on it. (3) Q344: at Nyx, direction decides nothing reliably
+  in the sim; the control now tests "too wide an orbit doesn't last". (4) R29b on Hard: nothing to carry on from, since
+  the save holds no flight; if flights are ever saved, Hard should resume from it.
+- **Not checked:** anything in a browser (TESTING 392 R28, 393 R29).
+- **Next:** remove worktrees `launchpad-r29`, `launchpad-q604` (and `launchpad-r5`, `launchpad-momentum` if unused).
