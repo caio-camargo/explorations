@@ -7289,3 +7289,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   read from code, not flown). The glide flown end to end (`review/2026-11-11/glide_e2e.mjs`): today's plates are not
   enough for a winged return (no Mach term, no stall, cold wings; under SAS the craft dives and the turn rate goes NaN
   with plates a player cannot build today); numbers in notes/vehicle.md § "Scope: winged flight", Q592's row updated.
+
+## 2026-11-11 — platform (Opus 5.5, worktree launchpad-q591): Q591, the flaky staging check
+
+- **Asked:** Caio: go ahead (the next item after R9: Q591, P1, the flake that failed CI at random).
+- **Done:** aerofx-54 (`tests/look.mjs`) draws `sepFx`'s puffs from world.js's `rng(1)` (Math.random swapped around the
+  call, restored in `finally`). Measured first over 300 seeds: `d0` (the ring's offset without the fall) ran 2.62–3.93 m
+  and was ≤ 3 in 11 %; `dG` (the claim, with the fall) never passed 0.96 m against a 1.5 m bar. Now 0.36 m and 3.4 m on
+  every run. QUEUE Q591 ✓; the "known flake, rerun on red" note now says it's fixed.
+- **Checked:** the check three times locally (identical numbers); CI green on the full suite (run 43141409821).
+- **Files:** launchpad `tests/look.mjs`, `QUEUE.md`; root `ACTIVE_WORK.md`.
+- **Next:** R9's *Import save* and an *Export save* menu entry; lane-by-lane retirement of `PROG.x||<literal>` reads.
