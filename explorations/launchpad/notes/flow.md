@@ -2165,3 +2165,26 @@ loud after it.
   short rows; done in place, green, with pay; `mcOrder`), flow-54 (all the missions; in the dark cockpit), flow-40 (the Δv
   card still among `CP_CARDS`).
 - Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 378).
+
+## v1.320 — poster headlines for big moments; v1.318 flown by the robot (2026-11-12, loop slices session, QUEUE Q479; UI.md § 4.1 item 3)
+
+- **Big moments carry a poster.** `HOOK.news(t, cls, big)` takes a third argument `{kick, hl, rival?}` on four calls only:
+  our first in the world (`missionComplete`), a rival's first (`raceTick`), a chapter closed (`missionComplete` on a
+  capstone: *Chapter 2 complete: Once around. Can we stay up? Yes.*) and a new computing era (`compTick`). Routine news has
+  none. `NEWS` keeps it (app/state.js).
+- **The paper prints it as a poster.** `deskNews` lets a poster from the last `POSTER_DAYS` (30) lead the Herald on the desk
+  wall and beside the Debrief; `posterClip` (app/desk.js) sets a kicker, one Bebas headline and the story under it.
+- **The era's poster palette** (`posterEra()`: pe1 human computers, pe2 mainframes, pe3 onboard computers and after, per
+  UI.md's table): pe1 flat cream, navy and red; pe2 browns and oranges in a rounder type; pe3 a dark band and bold sans.
+  The Debrief's poster headline (a first, a loss, a chapter) takes it too. Test flow-58.
+- **v1.318 on real flights** (`node playtest.mjs cards`, a new row: m1's two flights with the cards checked after each
+  Debrief): the Sounding flight closes *Above the weather* and the structural test (25.2 kPa) and shows 14 cards under the
+  *Chapter 1 complete* poster (two missions done, the orbital kit, the four parts *Above the weather* opens, the beeper and
+  the hop, chapter 2); the beeper shows 26 under *Chapter 2 complete · first in the world*, +108M; a real Space moves on,
+  the camera turns, a real D brings it to the table in hand; the trophy case holds both chapters with their flight photos;
+  the Missions tab reads by chapter. TESTING 375–377's robot half is done.
+- **Caught on the way:** a `//` comment appended after a statement swallowed the rest of `raceTick`'s line (the third time
+  this pattern bit in two days: R4's, `unlockDesk`'s, this one): **append comments only at the true end of a line.** A
+  robot run started while the file was broken loaded the broken page; the rerun was clean.
+- **Not checked:** the pe2 and pe3 palettes on screen (only pe1 was seen: the first hour is in the human-computers era); a
+  rival's first on the desk by eye.

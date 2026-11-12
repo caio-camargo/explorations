@@ -85,7 +85,7 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
 let settling=false;const NEWS=[];let newsSeen=0;
 let landPick=null;   // a landing site picked on the map ({body, pf}; Q62): ▶ Procedure lands there
 {const raw=missionEnd;missionEnd=function(s){settling=true;try{return raw(s)}finally{settling=false}}}
-{const raw=HOOK.news;HOOK.news=(t,cls='')=>{NEWS.unshift({t,cls,day:PROG.day||0});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
+{const raw=HOOK.news;HOOK.news=(t,cls='',big=null)=>{NEWS.unshift({t,cls,day:PROG.day||0,...(big?{big}:{})});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
 function newsHTML(){if(!NEWS.length)return'';const fresh=Math.min(newsSeen,NEWS.length);
   return `<div class="ep">News</div>`+NEWS.slice(0,Math.max(6,fresh)).slice(0,12).map((n,i)=>`<div class="nw${i<fresh?' new':''}"><span class="dim">day ${Math.floor(n.day)+1}</span> ${typeof newsMark==='function'?newsMark(n.t):''}<span class="${n.cls}">${n.t}</span></div>`).join('')}
 // Two placements the flight HUD keeps (fixes session, PLAYTEST #15, #16), run on every screen change, each HUD update and

@@ -639,7 +639,9 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
   const lost=raceLost(M.id),racing=RACE.includes(M.id);if(racing&&lost==null)rivSpur(M.id);const pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
     income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null,id:M.id});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
-    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
+    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)}). ${OWN_TONE[archOf(HOME)]||''}`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok',racing&&lost==null?{kick:'First in the world',hl:M.name}:null);
+    {const C=typeof chapterOf==='function'&&chapterOf(M.id);if(C&&C.capstone===M.id)HOOK.news(`Chapter ${C.n} complete: ${C.name}. ${C.question} Yes.`,'ok',{kick:`Chapter ${C.n} complete`,hl:C.name})}   // (Q479) a new chapter, the papers' poster too
+    HOOK.done({k:'mission',id:M.id,name:M.name,win:M.win||'',pay,first:racing&&lost==null,second:racing&&lost!=null?POWERS[lost].name:'',flight:!!rec});HOOK.save()}   // (Q569) the notice, its own lane
 // ---- overflight (QUEUE Q181, W23; NOTES § "Plan: overflight politics"): **low flight only.** While the vessel is below
 // OVER_H, not yet in orbit (its periapsis inside the atmosphere: an ascent, a hop, a descent) and within OVER_D of its
 // launch point, whose land is under it is sampled about once a second (R.over). Orbit is free to pass over, whatever its
@@ -942,7 +944,7 @@ function orderStudy(s){const q=studyQuote(s);if(!q.ok||PROG.funds<q.cost)return 
 // days a launch of this design waits for its study (0 if none is pending)
 const studyWait=s=>{const j=studyJob(s);return j?Math.max(0,j.end-PROG.day):0};
 function compTick(){const Q=PROG.studyQ||[];while(Q.length&&Q[0].end<=PROG.day+1e-9){const j=Q.shift();PROG.studies=PROG.studies||{};PROG.studies[j.key]={err:j.err,day:j.end,era:j.era}}
-  const e=compEra();if(PROG.compEra==null)PROG.compEra=e;else if(e>PROG.compEra){PROG.compEra=e;const E=COMP_ERAS[e];HOOK.news(`A new computing era reaches the program: ${E.name.toLowerCase()} (${E.blurb})`,'ok');HOOK.save()}}
+  const e=compEra();if(PROG.compEra==null)PROG.compEra=e;else if(e>PROG.compEra){PROG.compEra=e;const E=COMP_ERAS[e];HOOK.news(`A new computing era reaches the program: ${E.name.toLowerCase()} (${E.blurb})`,'ok',{kick:'A new era',hl:E.name});HOOK.save()}}
 function computeHTML(){const E=COMP_ERAS[compEra()],W=COMP_ERAS[worldEra()],Q=PROG.studyQ||[],lag=compLag();
   return`<div class="ep">Compute</div><div class="sub"><b>${E.name}</b> <span class="dim">· ${E.blurb}</span><br>`+
     `<span class="dim">The world: ${W.name.toLowerCase()} · world price index ${W.cpi} · our power ${lag<0.05?'keeps up':`runs ${lag.toFixed(1)} yr behind`}${facLv('centre')?`, the centre puts us ${FAC.centre.ahead[facLv('centre')]} yr ahead of it`:''}</span><br>`+

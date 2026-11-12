@@ -1523,3 +1523,26 @@
     shortOK && kept && order && inBurn,
     `short ${shortOK} (${short.length} rows vs ${full.length} full: ${jobRows.map(plain).join(' | ')}) · done in place ${kept} (${after.map(plain).join(' | ')}) · order ${order} (${o1}, ${o2}) · cards in a burn "${burn}", quiet "${quiet}"`);
 }
+
+// flow-59. Poster headlines for big moments (flow, QUEUE Q479; UI.md § 4.1 item 3): a first, a rival's first, a new chapter
+// and a new computing era reach the news with a poster ({kick, hl}); routine news has none. The desk's paper prints a poster
+// from the last POSTER_DAYS as a poster (kicker, one big headline, the story under it); the Debrief's headline and the
+// paper's poster take the era's poster palette (pe1 human computers, pe2 mainframes, pe3 onboard computers and after).
+{
+  const A = new Function(src + 'return {PROG,HOOK,MISSIONS,programNew,chooseStart,missionComplete,raceTick,get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v},compTick,POWERS,get home(){return HOME}};')(), P = A.PROG;
+  const got = []; A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.done = () => {}; A.HOOK.news = (t, c, big) => got.push({ t, big });
+  A.programNew(); A.chooseStart('agency'); got.length = 0;
+  const M = id => A.MISSIONS.find(m => m.id === id);
+  P.done = { weather: { day: 0 } }; A.missionComplete(M('loads'), null); const chap = got.find(x => x.big && /Chapter 1 complete/.test(x.big.kick));
+  const routine = got.filter(x => !x.big).length > 0 && !got.some(x => x.big && /Structural/.test(x.big.hl));
+  got.length = 0; A.missionComplete(M('beeper'), null); const first = got.find(x => x.big && x.big.kick === 'First in the world' && x.big.hl === 'The beeper');
+  got.length = 0; const riv = A.POWERS.find(p => p.i !== A.home); A.RIVALS = { hop: { i: riv.i, day: 0 } }; P.raceLost = {}; P.day = 1; A.raceTick();
+  const rival = got.find(x => x.big && x.big.rival && x.big.kick === `${riv.name} first`);
+  got.length = 0; P.compEra = null; A.compTick(); const era0 = got.length; P.compEra = -1; A.compTick(); const era = got.find(x => x.big && x.big.kick === 'A new era');
+  const H = html.replace(/\r\n/g, '\n');
+  const app = /HOOK\.news=\(t,cls='',big=null\)=>\{NEWS\.unshift\(\{t,cls,day:PROG\.day\|\|0,\.\.\.\(big\?\{big\}:\{\}\)\}\)/.test(H) && /x\.big&&\(PROG\.day\|\|0\)-x\.day<=POSTER_DAYS/.test(H)
+    && /nw\.big\?posterClip\(nw,cls,more\)/.test(H) && /posterEra=\(\)=>'pe'\+Math\.min\(3,1\+/.test(H) && /' '\+posterEra\(\)/.test(H) && /\.poster\.pe3/.test(H);
+  check('flow-59: big moments carry a poster in the news (a new chapter, a first, a rival\'s first, a new era; routine news none); the desk\'s paper prints a recent one as a poster, and posters take the era\'s palette',
+    !!chap && routine && !!first && !!rival && era0 === 0 && !!era && app,
+    `chapter ${chap && chap.big.hl} · first ${first && first.big.hl} · rival ${rival && rival.big.kick}: ${rival && rival.big.hl} · era ${era && era.big.hl} · routine ok ${routine} · app ${app}`);
+}
