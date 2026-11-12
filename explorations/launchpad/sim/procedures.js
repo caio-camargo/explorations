@@ -11,7 +11,7 @@ const CHUTE_G=3;   // chutes are reefed: the canopy opens in stages so its own d
 // to them retires old tapes, and procedures (below) are what survive a physics change.
 const hashStr=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)};
 const TAPE_V='lp-'+hashStr([physStep,rails,coastPlan,coastStep,pertAcc,pertNear,checkSOI,groundCheck,stage,detach,abort,lesJettison,aeroPass,thermal,structLoads,
-  integrateRot,attStep,ctrlAccel,spinFire,rcsStep,contactStep,fleetPhysAll,armStep,bayTick,kepler,bodyRel,advPhys,advRails,igniteOK,procStep,speedRef,sasTarget,velFrame].map(f=>f.toString()).join('')
+  integrateRot,attStep,ctrlAccel,spinFire,rcsStep,contactStep,fleetPhysAll,armStep,bayTick,kepler,bodyRel,advPhys,advRails,igniteOK,procStep,speedRef,sasTarget,velFrame,sasNearGround].map(f=>f.toString()).join('')
   +JSON.stringify(PARTS)+JSON.stringify(BODIES.map(b=>[b.R,b.mu,b.orb||null,!!b.pert])));
 function advPhys(s){if(s.proc){procStep(s);autoLegs(s)}fleetPhysAll(DT);physStep(s,DT);powerStep(s,DT);armStep(s);FLEET.forEach(armStep);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true);procSample(s)}   // sampled after the step: it sees a landing in the step that made it
 function advRails(s,dt,warp){procSample(s);   // in orbit with the engines off a craft goes straight onto rails: that's where an ascent is recognised as done
@@ -61,8 +61,9 @@ function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<
 // procedure for the design and the mission ('Selene:land', 'Selene:orbit'), kept only if it spent less Δv in all.
 function procMission(s,P){const M=P.m||(P.m={ev:[],last:s.body,landed:false,surfStage:0}),b=s.body,t=simT;if(M.kept||!s.alive)return;
   if(b!==M.last){M.ev.push({k:b.parent===M.last?'enc':'esc',body:(b.parent===M.last?b:M.last).name,t});M.last=b;M.fresh=true}if(s.throttle>0)M.fresh=true;
-  if(s.landed&&!M.landed){M.landed=true;M.ev.push({k:'land',body:b.name,t,ev:s.evIdx,v:s.touchV||0,orb:M.orb,pass:M.pass,pf:toPF(b,s.r,simT).map(x=>+x.toFixed(1))})}
-  else if(!s.landed&&M.landed){M.landed=false;M.ev.push({k:'takeoff',body:b.name,t,staged:M.surfStage});M.surfStage=0;M.orb=null}
+  const onG=s.landed||!!(s.roused&&s.inContact);   // (Q545) moving on the ground, woken, is still down
+  if(onG&&!M.landed){M.landed=true;M.ev.push({k:'land',body:b.name,t,ev:s.evIdx,v:s.touchV||0,orb:M.orb,pass:M.pass,pf:toPF(b,s.r,simT).map(x=>+x.toFixed(1))})}
+  else if(!onG&&M.landed){M.landed=false;M.ev.push({k:'takeoff',body:b.name,t,staged:M.surfStage});M.surfStage=0;M.orb=null}
   if(!s.landed&&!(s.throttle>0)&&b!==TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e>=1||el.ap>soiAt(b,t)){if(!M.orb&&M.fresh){M.pass=el.pe-b.R;M.fresh=false}}else if(el.pe>b.R)M.orb={pe:el.pe-b.R,ap:el.ap-b.R}}   // the pass as the executor's trim sees it: osculating, right after SOI entry or a burn
   const esc=M.ev.find(e=>e.k==='esc');if(esc&&!M.flybyKept&&!M.ev.some(e=>e.k==='land')&&!M.orbBeforeEsc&&M.pass!=null){M.flybyKept=true;procFlybyKeep(s,P,M,esc.body)}

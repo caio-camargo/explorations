@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2234,8 +2234,59 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
 - **Checked:** flow-18 (updated) and flow-60; headless with `review/2026-11-11/app/q370_check.cjs` (the page in a vm, a
   founded career reloaded: it lands on the desk with its queued cards up, Esc › Title works, no errors). **Not checked in
   Chrome:** the machine was too loaded for the browser to answer (two tabs froze); nor the sounds by ear.
+## v1.325 — near the ground, retrograde hands over to stability (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
+- **Why (Caio, landing on Nyx):** "when the rocket is near land and navigation is in retrograde, it should toggle back to
+  stability mode bc or else it's very easy for it to accidentally flip." Retrograde is undefined as the speed goes to zero:
+  in the last metres of a powered landing the velocity is a few tenths of a m/s in any direction, retrograde swings with
+  it (it points down the moment the craft rises), and SAS chases it over. Under 0.5 m/s `velFrame` is null and SAS falls
+  back to a stale `s.hold`, another jump.
+- **Built (`sasNearGround`, sim/vessel.js; run by `physStep` before the control law):** a craft on SAS retrograde, not
+  landed and not under a procedure, under **`SAS_HAND_V` = 3 m/s** (`speedRef`'s frame, the surface's near the ground)
+  within **`SAS_HAND_H` = 50 m** of the ground (`groundGap`) switches to Stability. The hold: **the local vertical if it
+  leans more than `SAS_HAND_TILT` = 3°, else the attitude it has** (no needless twitch). Upright rather than the lean it
+  had, because a lander touches down on its legs and a lean held with the engine on is a sideways push; the procedures'
+  own landing (`procStep`) already flies its last 30 m on a near-upright Stability hold, not retrograde. One line, once:
+  "Near the ground: retrograde → stability"; `HOOK.sas` (new; the page: `renderSAS`) lights the buttons. It never switches
+  back; Retrograde picked again there is kept (`s.sasHand`) until the craft is clear again (over 6 m/s or 100 m), so the
+  next descent hands over again. Speed is checked first, so `groundGap` is only sampled under 6 m/s. In the tape
+  fingerprint (`TAPE_V`): old tapes retire, as with any change to the stepping.
+- **Thresholds, measured** (a scripted descent: the `sci`/`core`/`t1`/`wren` probe lander from 120 m at 6 m/s down with
+  0–2 m/s drift, a sink-rate law on the throttle like the procedures', engine off at contact): the craft passes 3 m/s at
+  ~22 m, where retrograde is still steady (its tilt is the drift's angle, ≤ 6°). Without the hand-over a straight descent
+  lands leaning up to 19° on Nyx (2 m/s drift); with a 3 m hover for 8 s first, retrograde swings 15–46° on Nyx and
+  24–31° on Selene for 0.3–2 m/s of drift (Nyx, 1 m/s: 46°, landed leaning 9°). With it: ≤ 3.8° in the last 10 m on Nyx
+  and ≤ 0.3° on Selene, resting upright (≤ 2.8°), in every case.
+- **Not done:** the drift left at the hand-over is no longer cancelled by retrograde (a pilot translates it out or tilts
+  by hand); a hold that does both is vehicle notes' "manual landing hold", still its own item. Q545's thrust on the
+  ground (unmerged when this was built) is not relied on.
+- **Checks:** test `flow-61` (own sim): the hover descent on Nyx and Selene with the hand-over off leans past 20° in the
+  last 10 m (46° / 27°); with it the hand-over comes under 3 m/s within 50 m (~22 m), one message, one redraw, no switch
+  back, ≤ 5° in the last 10 m (3.8° / 0.2°), at rest upright; the hold's choice (upright past 3°, else its own attitude),
+  Retrograde re-picked kept, the flag cleared past 6 m/s, procedures and other modes untouched; the wiring. Run with
+  control-3, control-5, vehicle-24, flow-36 and the retrograde returns (14, 37f, vehicle-3): all pass. The full smoke is
+  owed (Caio's batch). TESTING row 383.
+## v1.327 — the era maps show the night side (2026-11-07, orchestrator worker, QUEUE Q546; PLAYTEST #152)
 
-## v1.325 — the Program's copy, cut to the rule (2026-11-12, review 2 session (Fable), QUEUE Q603 slice 3; D43; PLAYTEST #167)
+- **Asked:** Caio: "the monochrome computer display on the map doesn't include a terminator/indication of which side is
+  night".
+- **Cause:** `drawEraMap`'s terminal style drew each body as a limb circle and a wireframe, with no day or night. The
+  notebook did hatch a night side, but as a half-disc cut through the centre square to the sun's screen direction, which
+  is wrong whenever the sun is in front of or behind the body (a crescent drew as a half).
+- **What changed:** `eraNight(b, cen, c, rp, camW, project)` (app/program-ui.js) finds the night region as the map sees
+  it: the visible arc of the terminator (the great circle square to `SUN`, sampled at 96 points, its ends pushed out to the
+  limb), closed round the limb the dark way (the side of the anti-sun point); none when the terminator is out of view on
+  the day side, the whole disc when it's out of view on the night side. The **terminal** dims its wireframe there
+  (the display's black at 62 %), lays scanlines in its own green at the display's 3-px pitch, and draws the terminator as
+  a glowing green line: one colour, as the era. The **notebook** keeps its pencil hatching (diagonal strokes) but clipped
+  to the same true night region, and pencils the terminator in with the hand's tremor (`wob`). Sized by `ovPx()`.
+  Bodies under 3 px across get none.
+- **Checks:** test `flow-62` (computed with a pinhole camera 10 radii out: the night share of the disc is 0, 11.5, 49.9,
+  88.4, 100 % at sun-camera angles 0°, 45°, 90°, 135°, 180°, against the phase's 0, 14.6, 50, 85.4, 100; the wiring of both
+  styles). Screenshots (RTX): `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/before_map/eval_{3,4,5,6}.png` (no night side), `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/after_map/eval_{3,4,5,6}.png`
+  (Selene and Tellus half and gibbous in shadow on the terminal; the notebook's hatching). TESTING 384.
+
+
+## v1.329 — the Program's copy, cut to the rule (2026-11-12, review 2 session (Fable), QUEUE Q603 slice 3; D43; PLAYTEST #167)
 
 Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1. 82 strings in `sim/program.js`,
 `sim/contracts.js`, `app/program-ui.js`, `app/mission.js` and the Program's part of `app/editor.js` (`renderProgram`).
@@ -2270,4 +2321,4 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
   or a long lob; a low sun shows a panorama's relief; Nyx is weighed from tracking residuals; Tellus's tide out at Nyx
   (watch which way round you go); Nyx's escape speed is 346 m/s (easy to land, easy to bounce); plan a burn on the
   flight map (click the orbit, drag the handles).
-- **Not checked:** not seen in a browser (no GPU this session): how a contract's name reads as hoverable. TESTING 383.
+- **Not checked:** not seen in a browser (no GPU this session): how a contract's name reads as hoverable. TESTING 386.
