@@ -2220,7 +2220,7 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
   `#target` line sits, and how the cards wrap. TESTING 380. The why-cards' own sentences (app/editor.js `W`) are
   slice 4.
 
-## v1.323 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
+## v1.324 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
 
 - **A line per part.** Every member of a family has its own `PART_WHY` line (55 of them: the Kestrel's *the heart of an
   orbital rocket*, the whip antenna's *the lightest way to be heard*...), so the satellite bench's 20 cards say 20 things.

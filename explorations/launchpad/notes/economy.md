@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
+**Version**: 1.0.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-11
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3894,3 +3894,18 @@ instead of flown, a design is studied before its first dispatch, and the TV and 
 **Not modelled:** the simulator, crew rotations, station resupply and lab-days (they need a crewed station: no
 `stationcrew` plan), supply runs to a Selene base; flights still succeed at fixed odds by plan. Test `econ-43` (the
 shared formulas, and no copies left in the sim, Rollout or career.mjs).
+
+## v1.323 — a routine's failed run asks the player (2026-11-12, QA, QUEUE Q580 follow-up; DECISIONS D44)
+
+- **Caio's call** on m2's last red: "a failure should alert the player, who decides what to do". Before, an automatic run
+  that failed (about 1 in 4 broke up in the climb on the routine's own dice in m2's runs) set `clean` to 0, and
+  `routeAutoWhy` then asked for three more clean runs by order before Repeat could come back, which the robot (and a
+  player who wasn't watching the Fleet tab) never did; the news line said "the routine pauses until a clean run".
+- **Now:** three clean runs certify a route once (`r.cert`, `routeCert`); an automatic run that fails holds the routine
+  (`r.paused`) and offers a decision (`kind:'routine'`, 60 days): *Keep repeating* (Repeat goes on) or *Stop repeating*
+  (Repeat off; order runs from the Fleet tab, and switch Repeat on again whenever, with no new ladder). The news reads
+  "Your call: …"; the Fleet line shows *held after a failed run*; switching Repeat off and on also clears the hold. A
+  failure of an ordered run with Repeat off is news only, as before.
+- **The robot:** m2 answers *Keep repeating* (a player keeping a network up would). Result: m2 passes (2026-11-12): three clean runs, Repeat on, 5 of 5 up at day 4,000, 1 automatic run; no automatic run failed in this one, so the decision itself was checked by econ-44, not in the page.
+- **Test `econ-44`:** a failed automatic run holds and asks; *keep* resumes; *stop* turns Repeat off; an ordered run's
+  failure doesn't ask; Repeat comes back without new clean runs.
