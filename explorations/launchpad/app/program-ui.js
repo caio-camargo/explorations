@@ -31,13 +31,13 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const risk=c=>{const r=offerRisk(c);return[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)]};
   const body=(c,act)=>`<span class="dim">${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
-    (c.why?`<div class="sub dim">Why: ${c.why}</div>`:'')+`<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b> <button data-wd="${c.id}" title="frees the slot now; like a missed deadline, the client asks again in a few months">Withdraw</button>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
+    `<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b> <button data-wd="${c.id}" title="frees the slot; the client asks again in a few months">Withdraw</button>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
     (w=>w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:'')(risk(c));
   // (Q286, UI.md § 3) an offer is one line: name, pay, days left, Take and Pass (⚠ when taking it risks sanctions); a click opens the rest
-  const row=(c,act)=>act?`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· </span>${body(c,act)}</div>`
-    :`<details class="ms of"><summary><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${Math.max(0,c.expires-PROG.day).toFixed(0)} d</span>${risk(c).length?' <span class="bad" title="taking it risks sanctions: open it">⚠</span>':''} <span class="ofb"><button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button></span></summary>${body(c,act)}</details>`;
+  const tip=c=>c.why?` title="${c.why}"`:'',row=(c,act)=>act?`<div class="ms"><b${tip(c)}>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· </span>${body(c,act)}</div>`
+    :`<details class="ms of"><summary><b${tip(c)}>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${Math.max(0,c.expires-PROG.day).toFixed(0)} d</span>${risk(c).length?' <span class="bad" title="taking it risks sanctions: open it">⚠</span>':''} <span class="ofb"><button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button></span></summary>${body(c,act)}</details>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
-    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
+    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub" title="one flight can complete several">none taken</div>')+
     `<div class="ep">Offers</div>`+(PROG.offers.length?PROG.offers.map(c=>row(c,false)).join(''):'<div class="sub">none right now</div>')+
     `<div class="sub">Standing: ${Object.keys(SRC).map(k=>`${SRC[k].name.toLowerCase()} ${standOf(k).toFixed(0)}`).join(' · ')}</div>`+
     (Object.keys(PROG.sanc||{}).filter(i=>sanctioned(+i)).map(i=>`<div class="sub bad">Sanctioned by ${POWERS[+i].name} for ${(PROG.sanc[i]-PROG.day).toFixed(0)} more days</div>`).join(''))+
@@ -97,8 +97,8 @@ document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.datase
 // station-keeping (space, Q50) and decay (Q25): how long its propellant holds its orbit, since when it drifts, or when it
 // re-enters; nothing if no tide or air pulls on it
 function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
-  if(q.adrift!=null){if(fall)return` · <span class="dim">nothing to hold it up: ${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`:''}
-  if(!(k>0))return'';if(q.tvOn&&!q.bodyName)return` · on the capital's screens ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day to hold, and a tilt trim), then its tanks are dry`;   // Q520
+  if(q.adrift!=null){if(fall)return` · <span class="dim">${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, out of propellant</span>`:''}
+  if(!(k>0))return'';if(q.tvOn&&!q.bodyName)return` · on the capital's screens ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day), then dry`;   // Q520
   return` · holds its orbit ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day)${fall?`, then ${fall}`:''}`}
 function moonSatsHTML(){const L=moonSats().filter(q=>!q.junk),T=tNow();if(!L.length)return'';
   return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
@@ -110,9 +110,9 @@ function landedHTML(){const L=landedUp();if(!L.length)return'';
 // the fragment bands (space, Q147): how many, the thickest band and what it means for a 2 m satellite there
 function fragHTML(){const F=PROG.frag;if(!F)return'';const n=F.reduce((a,x)=>a+x,0);if(n<100)return'';const b=F.indexOf(Math.max(...F)),lo=Math.round((TELLUS.atm+b*BAND_W)/1e3),
   K=PRESSURE_K[pressureOf('debris')]||0,r=4*2*2*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b))*DAY_S*YEAR_D*K,c=Object.entries(PROG.casc||{}).filter(x=>x[1]>=2).map(x=>Math.round((TELLUS.atm+x[0]*BAND_W)/1e3));
-  return`<div class="sub dim">fragments of 1 cm and more: about ${Math.round(n).toLocaleString()}, thickest at ${lo}–${lo+50} km${r>0?` (a 2 m satellite there: one hit in about ${Math.round(1/r).toLocaleString()} years)`:''}${c.length?`; feeding itself: ${c.map(x=>`${x}–${x+50} km`).join(', ')}`:''}</div>`}
+  return`<div class="sub dim">fragments of 1 cm+: about ${Math.round(n).toLocaleString()}, thickest at ${lo}–${lo+50} km${r>0?` (one hit per ${Math.round(1/r).toLocaleString()} years on a 2 m satellite)`:''}${c.length?`; cascading: ${c.map(x=>`${x}–${x+50} km`).join(', ')}`:''}</div>`}
 function satsHTML0(){const all=satsUp(),L=all.filter(q=>!q.junk),J=all.filter(q=>q.junk);const T=tNow();
-  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim">and ${J.length} piece${J.length>1?'s':''} of debris (spent stages and dead satellites, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t; G targets them in flight)</div>`:'')+fragHTML()+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
+  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim" title="spent stages and dead satellites; G targets them in flight">and ${J.length} piece${J.length>1?'s':''} of debris, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t</div>`:'')+fragHTML()+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${q.pw&&satDuty(q)<1?` · <span class="warn">batteries flat: ${satDuty(q)>0?`works ${Math.round(satDuty(q)*100)} % of the time, in sunlight`:'silent'}</span>`:''}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time${q.rate?` at ${q.rate>=1e3?(q.rate/1e3).toFixed(0)+' kbit/s':q.rate.toFixed(0)+' bit/s'}, recorder ${Math.round((q.rec||0)/REC_CAP*100)}% full`:''}`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}${routeLine(q)}</div>`}).join('')+routesBareHTML(L)}
 // a routine whose satellites have all come down keeps its line and its controls: it's for exactly this moment (flow, Q415, PLAYTEST #105)
@@ -128,7 +128,7 @@ document.addEventListener('click',e=>{const ci=e.target.dataset&&e.target.datase
 // ============================================================ program UI: the logbook (planning session)
 const logF=id=>(PROG.log||{})[id];
 function logHintHTML(){const o=logF('orbit'),l=logF('land');
-  return`Low orbit: ${o?`<b>${fmtDv(o.v)}</b> (best, ${o.by})`:'<i>unknown, nobody has made it yet</i>'} · Selene landing: ${l?`<b>${fmtDv(l.v)}</b> from the pad (best, ${l.by})`:'<i>unknown</i>'} · <a id="lbHint" style="cursor:pointer;text-decoration:underline">logbook</a>`}
+  return`Low orbit: ${o?`<b>${fmtDv(o.v)}</b> (best, ${o.by})`:'<i>unknown</i>'} · Selene landing: ${l?`<b>${fmtDv(l.v)}</b> from the pad (best, ${l.by})`:'<i>unknown</i>'} · <a id="lbHint" style="cursor:pointer;text-decoration:underline">logbook</a>`}
 const modernUI=()=>{try{return localStorage.getItem('launchpad-modern-ui')==='1'}catch(e){return false}};
 function renderLog(){const el=$('logbook'),era=modernUI()?0:eraOf(),cls=['lb-modern','lb-notebook','lb-terminal'][era];el.className=cls;
   const title=['Logbook','Program notebook','PROGRAM LOG — TERMINAL 1'][era],U=x=>era===2?x.toUpperCase():x;
@@ -146,7 +146,7 @@ document.addEventListener('click',e=>{if(e.target.id==='lbHint')toggleLog();cons
   go('assembly');BLD.load(JSON.parse(JSON.stringify(ent.stack)));
   // the record flight becomes this design's autopilot, unless the design already has one
   if(ent.tape)try{if(!localStorage.getItem(tapeKey()))localStorage.setItem(tapeKey(),JSON.stringify({v:ent.tape.v,stack:ent.stack,ops:ent.tape.ops,site:ent.tape.site}))}catch(x){}
-  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?ent.tape.v===tapeV()?' with its record flight as the autopilot':' (its record flight was flown on older physics and can\'t replay exactly; its procedure, if any, still can)':''}`)});
+  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?ent.tape.v===tapeV()?' with its record flight as the autopilot':' (its record flight is from older physics: it won\'t replay exactly)':''}`)});
 // a record set by a flight keeps that flight's tape (from the pad), so the record can be flown again
 HOOK.logged=ids=>{const T=player?tapeCut(player):recTape;if(!T||!T.ops||T.ops.length>40000)return;
   for(const id of ids){const e=(PROG.log||{})[id];if(e&&e.stack)e.tape={v:T.v,ops:JSON.parse(JSON.stringify(T.ops)),site:T.site}}HOOK.save()};
