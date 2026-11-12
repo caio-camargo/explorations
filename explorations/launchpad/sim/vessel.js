@@ -875,15 +875,11 @@ function detach(s,list,kick,spin,asVessel){
   geom(s);const c0=s.cm.slice();let dm=0,dc=[0,0,0];for(const p of list){const m=partMass(p);dm+=m;dc=madd(dc,partC(p),m)}dc=mul(dc,1/dm);
   for(const p of list)p.on=false;
   geom(s);rebuildShape(s);
-  // R22: the kick is how fast the two pieces part, shared out so momentum is kept (the part gets M/(M+dm) of it, the craft
-  // the rest, backwards) on both branches; the debris branch had given the craft no reaction. And the craft's centre of mass
-  // moves to what's left (sh): its velocity is that point's, v + ω × sh
-  const off=qrot(s.q,sub(dc,c0)),D=dm*1000,kw=qrot(s.q,kick),vd=madd(add(s.v,cross(s.w,off)),kw,s.mass/(s.mass+D)),sh=qrot(s.q,sub(s.cm,c0));
-  s.v=add(madd(s.v,kw,-D/(s.mass+D)),cross(s.w,sh));
-  if(asVessel||list.some(isCommand)){vesselFrom(s,list,add(s.r,off),vd,s.w);HOOK.sep({body:s.body,r:add(s.r,off),q:s.q.slice(),parts:list,cm:dc})}   // a command part aboard: a vessel of its own
-  else{junkNote(s,list,add(s.r,off),vd,dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:vd,q:s.q.slice(),
-    w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:D,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
-  s.r=add(s.r,sh);HOOK.cmShift(s,sh);   // the page eases its camera over this jump (Q564)
+  const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
+  if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w);HOOK.sep({body:s.body,r:add(s.r,off),q:s.q.slice(),parts:list,cm:dc})}   // a command part aboard: a vessel of its own
+  else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
+    w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
+  {const sh=qrot(s.q,sub(s.cm,c0));s.r=add(s.r,sh);HOOK.cmShift(s,sh)}   // the page eases its camera over this jump (Q564)
   if(s.landed){if(s.tipped&&!s.water)rouse(s);else s.landed=false}   // a stage dropped off a craft on its side: it moves as the ground lets it (Q545)
   HOOK.rebuild()}
 // ---- engine gimbal (control session). Each engine's nozzle swivels up to d.gim degrees, at most d.gimR °/s. p.gv is its
