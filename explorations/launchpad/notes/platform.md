@@ -1034,7 +1034,7 @@ R9 gave the fault panel an *Export save*, but only a crash could show it, and no
   leave the program and the store unchanged; the static shape of the Settings section.
 - Not done: no drag-and-drop; the Esc menu itself has no entry (Settings is one click in).
 
-## v1.325 — the lint step: swallowed code and the shared scope (2026-11-12, platform, QUEUE R3; R25)
+## v1.329 — the lint step: swallowed code and the shared scope (2026-11-12, platform, QUEUE R3; R25)
 
 Built as planned in [`REVIEW-2026-11-11.md`](../REVIEW-2026-11-11.md) § 4, (a) and (b). **`lint.mjs`** (launchpad
 folder, no dependency): `node --expose-internals lint.mjs` prints the findings and exits 1 on one; `--json` for tools.
