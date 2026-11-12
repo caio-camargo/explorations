@@ -60,13 +60,21 @@ export function repeats(read) {
 }
 
 const sortKey = k => k.match(/\d+/g).map(Number);
+// QUEUE rows archived out of QUEUE.md (archive/queue-*.md, R24 2026-11-10): counted for "next free" only, never as repeats
+function archivedQueueKeys(s) {
+  const dir = new URL('archive/', DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter(f => /^queue-.*\.md$/.test(f))
+    .flatMap(f => [...scan(readFileSync(new URL(f, dir), 'utf8'), s).keys()]);
+}
 // the next free number per series (and per letter in QUEUE), over every map given
 export function nextFree(maps) {
   const out = [];
   SERIES.forEach((s, i) => {
     const keys = maps.flatMap(m => [...m[i].keys()]);
     if (s.file === 'NOTES.md') out.push('v1.' + (Math.max(0, ...keys.map(k => sortKey(k)[1])) + 1));
-    else if (s.file === 'QUEUE.md') for (const L of 'QWD') out.push(L + (Math.max(0, ...keys.filter(k => k[0] === L).map(k => sortKey(k)[0])) + 1));
+    else if (s.file === 'QUEUE.md') { const all = [...keys, ...archivedQueueKeys(s)];   // rows moved to archive/queue-*.md (R24) still hold their numbers
+      for (const L of 'QWD') out.push(L + (Math.max(0, ...all.filter(k => k[0] === L).map(k => sortKey(k)[0])) + 1)); }
     else out.push(`${s.file.replace('.md', '')} ${s.file === 'PLAYTEST.md' ? '#' : ''}${Math.max(0, ...keys.map(Number)) + 1}`);
   });
   return out;

@@ -57,7 +57,7 @@ function renderMapFocus(){const el=$('mapFocus');if(!el)return;const k=mapFocusK
 $('mapFocus').addEventListener('mousedown',renderMapFocus);   // (the list as it is now: craft come and go)
 $('mapFocus').addEventListener('change',e=>{setMapFocus(e.target.value);e.target.blur()});
 // a double-click on the map: the body or craft under the pointer (a body by its disc, at least 14 px; a craft within 12 px)
-cv.addEventListener('dblclick',e=>{if(view!=='map'||mode!=='flight')return;const V=HOOK.view;if(!V)return;const m=toCv(e),px=cv.width/cv.clientWidth;
+cv.addEventListener('dblclick',e=>{if(view!=='map'||mode!=='flight')return;const V=HOOK.view;if(!V)return;const m=toCv(e),px=W/cv.clientWidth;
   const at=p=>{const d=sub(p,V.camW),z=dot(d,V.Fw);return z>0?[(dot(d,V.R)/z/V.tanX+1)/2*V.W,(1-dot(d,V.U)/z/V.tanY)/2*V.H,z]:null};
   let best=null;const cand=(key,p,r)=>{const s=at(p);if(!s)return;const dd=Math.hypot(s[0]-m[0],s[1]-m[1]);if(dd<r&&(!best||dd<best.d))best={key,d:dd}};
   BODIES.forEach((b,i)=>{if(!knownBody(b))return;const p=bodyPos(b,simT),s=at(p);if(s)cand(`b:${i}`,p,Math.max(14*px,b.R/s[2]/V.tanY*V.H/2))});

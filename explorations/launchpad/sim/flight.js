@@ -285,9 +285,10 @@ function stage(s){
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}
   if(ev.decouple.length)HOOK.msg(ev.radial?'Booster separation':'Stage separation');
-  for(const k of ev.ignite){if(!igniteOK(s,k)){if(!ev.decouple.length){s.evIdx--;break}continue}s.segs[k].ignited=true}   // know-how: an unfamiliar engine can fail to light (a pure ignition can be retried)
+  let retry=false;for(const k of ev.ignite){if(!igniteOK(s,k)){if(!ev.decouple.length){s.evIdx--;retry=true;break}continue}s.segs[k].ignited=true}   // know-how: an unfamiliar engine can fail to light (a pure ignition can be retried)
   if(ev.ignite.length&&!ev.decouple.length)HOOK.msg('Ignition');
   logEv('stage',`event ${s.evIdx}: ${ev.decouple.length} group(s) dropped, ${ev.ignite.filter(k=>s.segs[k].ignited).length} of ${ev.ignite.length} lit; ${(len(s.r)-s.body.R)/1000|0} km, ${len(sub(s.v,surfVel(s.body,s.r))).toFixed(0)} m/s`);
+  if(retry){HOOK.rebuild();return}   // R22: a pure ignition that failed stays the next event: its spin motors, fairing, chute and groups wait for the retry
   spinFire(s,ev);
   if(ev.fair)fairJettison(s,ev.fair);   // the payload fairing's shell (Q337)
   if(ev.chute){s.chute=true;s.chuteA=0;HOOK.msg(s.body.atm?'Chute armed — drogue below 20 km and 400 m/s, main below 3 km':'Chute deployed (no air here)')}
@@ -643,7 +644,7 @@ function ascentRun(stack){const out={qMax:0,hQ:0,MQ:0,starts:[]};if(!stack)retur
   for(let i=0;i<P.length;i++){const st=P[i],m1=st.m1||st.m0,T=st.burn,lr=Math.log(st.m0/m1),md=1000*(st.m0-m1)/T;if(!(T>0)||!(lr>0))break;
     const veV=st.dv/lr,veA=st.dvA/lr,dt=Math.max(0.2,T/600);
     for(let t=0;t<T;t+=dt){const m=1000*(st.m0+(m1-st.m0)*t/T),Fn=md*(veV+(veA-veV)*density(TELLUS,h)/TELLUS.rho0),pit=ascentPitch(TELLUS,h)*Math.PI/180,sp=Math.hypot(vx,vh),
-      rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*lvl().air*sp*sp*cda,g=mu/((R+h)*(R+h));
+      rho=density(TELLUS,h),Mc=sp/SND(h),cda=tab[Math.min(tab.length-1,Math.round(Mc*2))],D=0.5*rho*sp*sp*cda,g=mu/((R+h)*(R+h));
       vx+=(Fn*Math.cos(pit)-(sp>0?D*vx/sp:0))/m*dt;vh+=(Fn*Math.sin(pit)-(sp>0?D*vh/sp:0))/m*dt-g*dt+vx*vx/(R+h)*dt;h=Math.max(0,h+vh*dt);x+=vx*dt;
       const qq=0.5*density(TELLUS,h)*(vx*vx+vh*vh);if(qq>out.qMax){out.qMax=qq;out.hQ=h;out.MQ=Math.hypot(vx,vh)/SND(h)}
       if(cur){tq+=dt;if(tq>=1){tq-=1;if(qq<300)cur=null;else cur.qs.push(qq)}}}   // a fresh stage's q, each second until the air thins (airStore)
@@ -684,17 +685,19 @@ function airSep(stack){if(!stack)return[];const starts=ascentEst(stack).starts;
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in
 // the air it integrates drag from a CdA(Mach) table measured by the aero pass at the angle the vessel is holding to the
 // airflow right now (5° bins), plus the parachute rules. The path is kept in the planet's rotating frame.
-function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on).length+':'+A;if(s.dragTab&&s.dragTab.key===key)return s.dragTab.tab;const ar=A*Math.PI/180;
+// R21: the cache holds while the outline aeroPass reads is the same object: rebuildShape makes a new s.lines whenever it
+// changes (a fairing jettisoned, bay doors opening or done closing, a stage dropped); the part count alone missed the first two
+function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on).length+':'+A;if(s.dragTab&&s.dragTab.key===key&&s.dragTab.lines===s.lines)return s.dragTab.tab;const ar=A*Math.PI/180;
   const tab=[],ca=s.chuteA,saved=s.parts.map(p=>[p.F.slice(),p.L.slice(),p.Q]);s.chuteA=0;geom(s);
   for(let M=0;M<=12.01;M+=0.5){for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}const v=Math.max(M,0.05)*SND(5000),rho=0.5;
     const vb=[v*Math.sin(ar),v*Math.cos(ar),0];aeroPass(s,vb,[0,0,0],rho,M,false);let F=[0,0,0];for(const p of s.parts)if(p.on)F=add(F,p.F);
     tab.push(Math.max(0,-dot(F,vb)/v)/(0.5*rho*v*v))}   // the drag component only; lift from a trim angle is not modelled
-  s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
+  s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,lines:s.lines,tab};return tab}
 // generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
   const mu=b.mu,top=b.R+(b.atm||0),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0,tAir=null;   // pathT: each point's time (Q266); tAir: when it enters the air, falling (Q489)
   const el=elements(r,v,mu);if(el.pe>top)return null;
-  if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));dt0=dt;
+  if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));if(!(dt>=0))return null;dt0=dt;   // R22: outbound on an escape the crossing is behind it (cruiseStep's guard)
     for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt;tAir=t}
   else keep(r,t);   // (Q489) already in the air: the path starts at the ship
   if(!b.atm&&pertNear(b,el)){const tEnd=t+2*(dt0>0?dt0:0)+600;r=r0.slice();v=v0.slice();t=t0;path.length=0;pathT.length=0;let k=0;   // perturbed: the same stepper as rails

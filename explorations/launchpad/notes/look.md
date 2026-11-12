@@ -2408,3 +2408,143 @@ mesh keys), `sim/power.js` (`wingOp`) and `sim/flight.js` (`legOp`): one stamp e
 - **Test:** `aerofx-50`: all 18 suits posed at their own skeleton come back unmoved; in a long stride (knees and
   elbows bent, a lean) no edge grows by more than 6 cm except a hose's. The per-vertex binding fails it (29 cm).
   TESTING 336.
+
+## v1.290 — The resolution scaler uses the frame it has (2026-11-09, review session, QUEUE Q559)
+
+Caio: "a lot of pixelation when I play" (Chrome, High, GPU steady at 45–55 %). The GPU figure was the cause showing:
+`adaptRes` aimed at 7 ms of GPU time in a 16.7 ms frame (42 %), shrank the view above 7.35 ms and grew it back only
+under 3.85 ms. A shrink step cut the cost by a third, to about 4.9 ms, so after one heavy moment the view stayed small
+with half the GPU idle (BEAUTY § 1.1 measured 45–55 % on the pad, in clouds and with vapor). Without timer queries the
+load was the frame interval over 22 ms, which under 60 Hz vsync never reads below 0.76: the view could shrink and
+never grow.
+
+- **The budget is 11 ms** (`GPU_BUDGET`): 60 fps with room for the CPU's share of the frame and the compositor. On a
+  faster display it holds about 90 fps.
+- **Steps are sized by their cost** (`resNext`, pure): GPU time goes as the pixel count, so a step's load is predicted.
+  Over 1.05 of the budget the view shrinks to land at 0.9 (at most 30 % a step); it grows 12 % only when the grown frame
+  would be under 0.92. A shrink lands at 0.9 and growing from there predicts 1.13, so the two can't chase each other.
+  After a step the smoothed load is rescaled by the same prediction instead of waiting to catch up.
+- **Without timers** the scaler probes: frames over 1.3 refresh periods shrink the view; frames that have held the
+  refresh for 4 s try one step up, and a step that makes frames run long is taken back and the wait doubles (to 64 s).
+  The refresh period is the shortest frame lately. Not run on a browser without the extension: by reading and arithmetic.
+- **Not changed:** the 35 % floor, Low's 60 % cap, the 0.6 s between steps.
+- **Test:** `aerofx-51` runs `resNext` against a GPU of a fixed cost plus one per pixel: a 22 ms scene settles (57 % at
+  8.5 ms) and stays; lightened to 6 ms the view is at 100 % in 3 s; a 9 ms scene is never scaled (the old rule held it
+  at 82 %); the cap and floor hold. Weakening the grow rule to the old threshold fails it. TESTING 354.
+
+## v1.291 — A sharpening upscale (2026-11-09, review session, QUEUE Q560)
+
+When the scaler had the 3D view below the screen's pixels, the canvas itself was that small and the browser stretched
+it: bilinear, soft everywhere and blocky on edges. Now **the canvas stays at device pixels** (the 1.5× cap as before)
+and the frame is brought up by a pass of its own.
+
+- **`UPS_FS`** (app/gl.js): the graded frame goes to an 8-bit target at the view's size (`SCN.out`), then Catmull-Rom
+  through nine bilinear taps, a sharpen against the mean of the four nearest texels (`uSh` = 1.6 × the fraction of the
+  width being made up, at most 1), and a clamp to those four texels' range, so nothing rings or haloes. It works on the
+  graded frame because there a step in value is a step the eye sees. **The film grain moved into this pass** when it
+  runs: grain the size of a stretched texel read as blocks.
+- **At 100 % the pass is skipped** and the composite draws to the canvas as before: no cost at full size. `UPSCALE=false`
+  is the old way, for A/B. If the scene target fails, the canvas is the view's size, as before.
+- **`W` and `H` are still the 3D view's pixels**, and no longer the canvas's: a page position is `x*W/cv.clientWidth`.
+  `toCv` (screens.js), the map's pick radius (map-layers.js), `gaugeRect` (gl.js) and the robot's Selene marker
+  (playtest.mjs) used `cv.width` and were moved.
+- **Measured** (RTX 3050, headless, 1262×704, the view forced to 50 %): view 30 (the Orbiter off the pad) 3.6 ms and
+  view 100 (orbit) 2.9 ms with the pass on; not measured against the pass off in the same frame, nor on the iGPU.
+  Stills, machine-local: `output/launchpad/sharp/` (`pad-old.png`, `pad-new.png`, `orbit-new.png`).
+- **Seen in the stills:** the rocket's edges and paint, the horizon and the plume come up clearly sharper. The far
+  coastline's staircase (PLAYTEST #99) is sharper too: that is the shader's own aliasing, Q561's.
+- **Test:** `aerofx-52` lifts the shader's weights and checks them (they sum to 1, rebuild a ramp exactly, overshoot a
+  step by 7.4 %, which the clamp holds). The pass itself can't run headless. TESTING 355.
+
+## v1.294 — The solar wing's cells (2026-11-10, look & sound, parts & pad, QUEUE Q565)
+
+Caio: "the texture of the solar wings, which are currently very plain". Each wing panel was one flat dark-blue box
+(`CELL`, kind 0, so `MESH_FS` added nothing); the body tiles the same.
+
+- **`rboxUV`** (app/gl.js, after `rbox`): a box of cells with its own kind, `SOLAR_K` = 17, and, on its broad faces,
+  the position in metres from the face's corner in the u/v slots and the face's size in R/h; the narrow edges carry
+  R = −1. The broad face is the box's thinnest axis, so the wing panel (thin along z) and the body tile (thin along x)
+  both map. No school or hue bits: Steppe's repaint greys anything light, and would have greyed the substrate.
+- **`MESH_FS` k == 17:** a wing panel is 4 × 4 modules, 6 mm of white substrate between them; a body tile is one
+  module. Cells ~2.4 × 4.6 cm, portrait, 0.6 mm apart (dark grey-blue interconnects, not white: white read as window
+  frames at the satellite's usual distance), a silver contact bar along each cell's foot and fingers up it. Each cell
+  its own blue (the spread fades with the footprint), violet toward a grazing look (the anti-reflection coat), and its
+  own cover-glass tilt (±.035), so the sun's glint breaks up cell by cell. Every line through `lin`/`band`, so they
+  fade to their average coverage instead of shimmering. The edges are the substrate.
+- **Both faces are cells.** `sim/power.js` counts a wing's plane from either side, so the drawing matches what the sim
+  counts; a white back (as real wings have) is a one-line change if Caio wants it, with the sim made one-sided too.
+- **Stills** (builder, view 111 and close-ups; left before, right after): `output/launchpad/solar/` (`q565-whole-`,
+  `-near-`, `-body-cells-`, `-wings-before-after.png`). Not looked at in orbit, under the sun's glint, or on the iGPU.
+- **Test:** `aerofx-53` (the mapping for both boxes, the kind not colliding with `KIND`, the branch, both parts use
+  it); mutations caught (the face's width swapped, the kind left as PK's). TESTING 357.
+
+
+## v1.295 — Staging: the camera eases, a stronger separation (2026-11-10, review session, QUEUE Q564)
+
+PLAYTEST #159 (Caio: "when i activate a stage, the camera instantly recenters on the craft ... jerky and kind of ruins
+the visual effect of decoupling") and #160 ("could have more oomph, like maybe some gas dispersal").
+
+- **The camera.** It looks at the centre of mass (`shipWorld`), and `detach` (sim/vessel.js) moves `s.r` to the new one
+  in the same step: 5 m on an Orbiter, more on a small satellite leaving a big stage. `detach` now reports the jump
+  (`HOOK.cmShift(s, shift)`, a no-op in the sim) and the page keeps a lag vector (`CAML`, app/state.js) that takes the
+  jump off the camera's target and then closes as a critically damped spring (`camLagStep`, the exact step, ω = 4.5/s):
+  99.7 % of the gap is still there after the first frame, 34 % at 0.5 s, 4 % at 1.1 s. Real time, so it is the same at
+  any warp. Only the flight camera (`render`, the non-map branch); the lag is dropped when `S` changes.
+- **The separation** (`sepFx`, app/state.js; it existed since the staging beat, see **Staging** above). Three things
+  made it weak in orbit: the gas was at 11 % opacity in vacuum, its puffs travelled in straight lines while the craft
+  fell round the planet (4.4 m off the seam after 1 s, 18 m after 2 s), and a piece that left as a vessel of its own
+  (a command part aboard) got nothing, since it never passed `HOOK.debris`. Now: `fxPuff` takes an acceleration `g`
+  (`drawSmoke` adds ½·g·age²) and `sepFx` gives every puff the local gravity × (1 − pressure); `detach` calls
+  `HOOK.sep` for a piece that becomes a vessel; and the effect is a **flash** at the seam (one hot puff, 0.14 s), the
+  **gas ring** (28 puffs, was 18; opacity 0.18 in vacuum, was 0.11), a **fast thin ring** ahead of it (20 puffs at
+  16–30 m/s, under a second), the sparks as before, and above ~17 km (pressure under 15 %) up to 36 **flecks** that
+  drift off at 0.4–3.4 m/s for 3–8 s and glint when the craft is in sunlight (dim in the planet's shadow).
+- Still Tellus only (`fxPuff` positions are Tellus-centred): a separation round Selene or Nyx shows nothing, as before.
+- Test `aerofx-54`. **Seen on the GPU:** the first frames of a separation in orbit (the cloud at the seam, the target
+  holding and then easing). **Not seen:** the gas and flecks moving over the following seconds; the machine ran out
+  of memory under other sessions' work and headless Chrome stalled. TESTING row 358 is the check.
+
+## v1.297 — The cells from afar; the wing opens at once (2026-11-10, look & sound, parts & pad, QUEUE Q565)
+
+Caio on v1.294: "as I zoom out the white grid lines, the bigger ones, seem to stay the same size and it looks more white
+than blue"; and "it would be nicer if they unfolded all at once, a bit slower".
+
+- **`linc`** (MESH_FS, beside `lin`): `lin` never draws a line under ~1.5 px and only fades to its average once the
+  period is under ~2–8 px, so the 6 mm module gaps held 1–2 px from 3 m to 20 m and painted the wing white. `linc` draws
+  a line under a pixel at a pixel's width dimmed by true width ÷ drawn width (its coverage stays 2·hw/per at every
+  distance), and fades to the average once the period is under ~3 px. Used only in the cell branch; `lin`'s other
+  callers are untouched. Zoom series 3–40 m old vs new: the new stays blue, the lines fade.
+- **Unfolding:** every panel's hinge follows the same `sstep(0,1,u)`, so the accordion opens as one; `DEP_S.wing` 4 → 6 s
+  (the boom's slide still the first quarter, 1.5 s). **Vehicle (branch `vehicle`, DEP_S moved into sim/flight.js):**
+  keep 6 for the wing when you merge; with Q457 the sim counts the wing out at 6 s.
+- **Test:** aerofx-41's fractions for 6 s and its drawing check (one `sstep(0,1,u)` for all panels). TESTING 359. (Committed as "v1.295" with TESTING 358: both taken by Q564 minutes before; renumbered.)
+
+
+## v1.298 — The whole exhaust trail (2026-11-10, review session, QUEUE Q566)
+
+PLAYTEST #161, Caio's design note: "the player should be able to see the full smoke trail from the launch pad as the
+rocket leaves the atmosphere, for the aesthetics of the launch".
+
+Two things removed the trail's pad end long before that. A trail puff lived 110–170 s (an ascent leaves the air in
+3–5 min). And the list held 4000 puffs while `emitSmoke` lays them 0.35 widths apart per engine, under a metre apart
+off the pad: a three-engine rocket lays 14 000 by 33 km (the test's model), so the oldest were dropped within the
+first kilometres.
+
+- **Life:** `TRAIL_LIFE` 420 s × (1–1.3), 7–9 min. Opacity still falls linearly with age, so the pad end is at about
+  half strength when the craft leaves the air and gone a few minutes into the coast.
+- **Thinning:** a puff 1.3 m across at birth is 30 m across half a minute later, and most of its neighbours add
+  nothing. `trailThin` (twice a second) walks the trail in the order it was laid and retires a puff when its two
+  neighbours are within `TRAIL_GAP` (0.6) of a radius of each other, so no step along the trail ever exceeds that
+  (it was laid at ~0.7). A retired puff fades over 3 s (`q.kt`), no pop. First try: drop any puff too near the last
+  one kept. That left holes of 2 radii, since a kept puff can go later, after the ones dropped for it. The model:
+  14 379 puffs laid, at most 3 221 held, 914 from the pad to 33 km at 300 s; nine engines: at most 5 445.
+- **The list:** `SMOKE_MAX` 6000 for the trail (was 4000), and when full it gives up a fading puff before the oldest
+  (`smokeDrop`), which is the pad end.
+- **A least size on screen** (`drawSmoke`, every puff): one that would be under 1.5 px wide is drawn at 1.5 px and
+  thinner by the same ratio, so the far end of the trail is a steady thin line instead of puffs that flicker in and
+  out between pixels. From the top of the air the pad end is ~100 m wide at 100–200 km: about a pixel.
+- **Not changed:** the trail still ends at ~33 km (no visible exhaust above), and the pad's ground cloud still lasts
+  40–70 s. No air between the camera and a far puff: the trail is as white at 150 km as next to the camera.
+- Test `aerofx-55` (the model above; a short life or a wider gap fails it). **Not seen on the GPU:** another session
+  held the GPU and free memory was 0.6 GB. `drawSmoke`'s part (the fade, the least size) ran on a stub GL only (in the test).
+  TESTING row 360.

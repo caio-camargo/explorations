@@ -81,6 +81,10 @@ function satDuty(q){const w=q.pw;if(!w)return 1;
   if(w.avg>=w.use&&w.cap<w.need)return(1-w.ecl)+w.ecl*(w.need>0?w.cap/w.need:1);   // flat in each shadow
   if(q.Ewh>0)return 1;
   return clamp((1-w.ecl)*Math.min(1,(w.peak+w.rtg)/w.use)+w.ecl*Math.min(1,w.rtg/w.use),0,1)}   // flat: sunlight only
+// (Q212) what v1.108 will do to this design as a satellite, from a powerBudget: days on the battery (Infinity if it never
+// runs flat) and the share of the time it works after that (satDuty's own rule, so the builder and the registry agree)
+function satPowFuture(b){if(!(b.use>0))return{days:Infinity,duty:1};const pw={avg:b.avg,use:b.use,ecl:b.ecl,cap:b.battWh,need:b.needWh,peak:b.peak,rtg:b.rtg};
+  const days=b.avg>=b.use?Infinity:b.battWh/(b.use-b.avg)*3600/DAY_S;return{days,duty:satDuty({pw,Ewh:days<Infinity?0:b.battWh})}}
 function satPowTick(d){for(const q of PROG.sats||[]){const w=q.pw;if(!w||q.junk)continue;const was=satDuty(q);
   q.Ewh=clamp(q.Ewh+(w.avg-w.use)*d*DAY_S/3600,0,w.cap);const k=satDuty(q);
   if(was>=1&&k<1)HOOK.news(k>0?`${q.name}'s batteries are flat: it works only in sunlight now, ${Math.round(k*100)} % of the time`:`${q.name}'s batteries are flat and it has no cells: it has gone quiet`,'warn')}}

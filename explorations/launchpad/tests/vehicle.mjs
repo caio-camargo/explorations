@@ -392,10 +392,11 @@
   const P = api.PROG, T = api.TEST, keep = { done: P.done, flights: P.flights, day: P.day, tools: T.tools };
   const why = st => api.partLaunchWhy(api.newShip(st).parts), M = id => api.MISSIONS.find(m => m.id === id);
   P.done = {}; P.flights = 1; P.day = 0; T.tools = false;
-  const early = ['Hopper', 'Orbiter', 'Beeper', 'Passenger Orbiter', 'Sounding', 'Passenger'].filter(n => why(api.PRESETS[n]));
+  const day1 = why(api.PRESETS.Sounding), early0 = ['Hopper', 'Orbiter', 'Beeper', 'Passenger Orbiter', 'Passenger'].filter(n => !why(api.PRESETS[n]));   // the unlock map (Q577): only the Sounding on day 1
   const bay0 = api.partOpen('bay'), arm0 = api.partOpen('arm'), comp0 = api.partOpen('ocomp'), rtg0 = api.partOpen('rtg'), dock0 = why(api.PRESETS.Docking);
-  P.done = { beeper: true }; const port1 = api.partOpen('port').ok && api.partOpen('hab').ok && !api.partOpen('bay').ok, dock1 = why(api.PRESETS.Docking);
-  P.done = { beeper: true, station1: true }; const bay2 = api.partOpen('bay').ok && api.partOpen('arm').ok && !api.partOpen('lab').ok;
+  P.done = { weather: true, loads: true, hop: true, orbiter: true }; const early = ['Hopper', 'Orbiter', 'Beeper', 'Passenger Orbiter', 'Sounding', 'Passenger'].filter(n => why(api.PRESETS[n]));
+  P.done = { weather: true, loads: true, beeper: true, wxsat: true, tv: true }; const port1 = api.partOpen('port').ok && api.partOpen('hab').ok && !api.partOpen('bay').ok, dock1 = why(api.PRESETS.Docking);
+  P.done = { tv: true, station1: true }; const bay2 = api.partOpen('bay').ok && api.partOpen('arm').ok && !api.partOpen('lab').ok;
   T.tools = true; const tl = api.partOpen('lab').ok && api.partOpen('ocomp').ok && !why(api.PRESETS.Docking);
   T.tools = false; P.flights = 0; const sb = !why(api.PRESETS.Docking) || !!(P.own && P.own.chosen);
   Object.assign(P, { done: keep.done, flights: keep.flights, day: keep.day }); T.tools = keep.tools;
@@ -404,10 +405,10 @@
   const bad = Object.entries(api.PART_GATE).filter(([k, id]) => !M(id) || !api.PARTS[k]).map(([k]) => k);
   const order = [['hab', 'station1'], ['port', 'station1'], ['lab', 'stationlab'], ['crew', 'padabort'], ['les', 'padabort'], ['beacon', 'selland']]
     .filter(([k, m]) => api.PART_GATE[k] !== m && !reqs(m).includes(api.PART_GATE[k])).map(([k]) => k);
-  check('part gates: early presets fly from day 1; the cargo bay and the arm open with "A station", the docking port with "The beeper", the computer and RTG with their era; tester tools and a sandbox ignore gates',
-    !early.length && !bay0.ok && /A station/.test(bay0.why) && !arm0.ok && !comp0.ok && !rtg0.ok && /docking port/.test(dock0) && /onboard computer/.test(dock0)
+  check('part gates: the Sounding flies from day 1 and the other early presets once chapter 1 and one orbit are done (Q577); the cargo bay and the arm open with "A station", the docking port with "TV for the capital", the computer and RTG with their era; tester tools and a sandbox ignore gates',
+    !day1 && !early0.length && !early.length && !bay0.ok && /A station/.test(bay0.why) && !arm0.ok && !comp0.ok && !rtg0.ok && /docking port/.test(dock0) && /onboard computer/.test(dock0)
       && port1 && !/docking port/.test(dock1) && /onboard computer/.test(dock1) && bay2 && tl && sb && !bad.length && !order.length,
-    `early presets blocked: ${early.join(', ') || 'none'}; day 1 Docking: "${dock0}"; after the beeper: "${dock1}"; bad gates ${bad.join(',') || 'none'}; out of order ${order.join(',') || 'none'}`);
+    `day 1: Sounding ${day1 || 'open'}, others open on day 1: ${early0.join(', ') || 'none'}; after chapter 1 blocked: ${early.join(', ') || 'none'}; day 1 Docking: "${dock0}"; after the beeper: "${dock1}"; bad gates ${bad.join(',') || 'none'}; out of order ${order.join(',') || 'none'}`);
 }
 
 // vehicle-11. Every part says what it does (vehicle session, QUEUE Q248; PLAYTEST #46): the palette's card has a sentence
@@ -1008,9 +1009,9 @@
       if (s.evIdx < s.events.length && s.throttle > 0 && (api.activeEngines(s).length === 0 || staged && api.dvRemaining(s).cur <= 0.5)) api.stage(s);
       api.advPhys(s); }
     return { out: s.alive ? out : 'burned up', w, peak, burn, low, left: s.alive ? api.dvRemaining(s).tot : 0 }; };
-  // Δv left in orbit, m/s (v1.273)
+  // Δv left in orbit, m/s (v1.273; Beeper 1559 → 1468 with its second fin ring, Q202)
   const PIN = { Lunar: 4077, 'Crewed Lunar': 4653, 'Big Lunar': 4123, 'Sample Return': 4493, Probe: 4292, Orbiter: 799, Satellite: 715, 'TV Satellite': 3473,
-    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1559, Asparagus: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
+    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1468, Asparagus: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
   const R = Object.fromEntries(Object.keys(PIN).map(k => [k, fly(k)])), bad = [];
   for (const [k, r] of Object.entries(R)) { const lc = LUNAR.includes(k);
     if (r.out !== 'orbit' || r.w || Math.abs(r.left - PIN[k]) > 50 || lc && (r.peak >= 0.6 || !(r.low > 0.95 * T.atm))) bad.push(k); }
@@ -1021,4 +1022,110 @@
       + ` · the Crewed Lunar carrying its dry boosters: ${dry.out}, ${dry.w ? `${dry.w.why} at ${(dry.w.h / 1e3).toFixed(0)} km` : 'quiet'}, pod ${(dry.peak * 100).toFixed(0)} %`);
   for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
   api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
+}
+
+// vehicle-40. Every preset rolls out stable (worker session, QUEUE Q202, PLAYTEST #36): no stock design opens with Rollout's
+// "Aerodynamically unstable" line, which a newcomer can't act on. The Hopper and the Beeper were at −0.05 calibers supersonic
+// with one fin ring; a second ring puts them at +0.26 and +1.39. The margin is Rollout's own: the worse of full and supersonic.
+{
+  const cal = n => { const s = api.newShip(api.PRESETS[n]), A = api.analyze(s), c = r => (r.ycm - r.ycp) / (2 * s.radius); return Math.min(c(A.ful), c(A.sup)); };
+  const M = Object.fromEntries(Object.keys(api.PRESETS).map(n => [n, cal(n)])), neg = Object.keys(M).filter(n => !(M[n] >= 0));
+  check('vehicle-40: every preset rolls out stable in the air (Rollout\'s margin, the worse of full and supersonic, ≥ 0 calibers)',
+    !neg.length && M.Hopper > 0.15 && M.Beeper > 0.15,
+    (neg.length ? `unstable: ${neg.join(', ')} · ` : '') + Object.entries(M).map(([n, m]) => `${n} ${m.toFixed(2)}`).join(', '));
+}
+
+// vehicle-41. The drag table follows the craft's outline (vehicle, QUEUE R21; REVIEW-2026-11-09 § 2): `dragTable` was cached
+// by part count and AoA bin, so a fairing jettison (the shell gone, its count unchanged) or a bay's doors kept the old
+// table, and the impact predictor ran ~1.8× light on drag until the next staging. Now the cache also holds the outline it was
+// measured on (`s.lines`, which `rebuildShape` replaces on every change), so the doors count while open and until shut.
+{
+  const fresh = (s, a) => { s.dragTab = null; return api.dragTable(s, a); }, same = (a, b) => a.every((x, i) => Math.abs(x - b[i]) < 1e-9);
+  const s = api.newShip(api.PRESETS.Satellite), F = s.events.find(e => e.fair), i5 = [2, 4, 6, 10].map(k => k * 2);   // Mach 1, 2, 3, 5
+  const before = api.dragTable(s, 0), b5 = api.dragTable(s, 5); api.fairJettison(s, F.fair);
+  const cached = api.dragTable(s, 0), after = fresh(s, 0), again = api.dragTable(s, 0);
+  let bay = null; const bn = 'a bay ship (the stack of core § 29)';
+  { const b = api.newShip(['core', 't1', 'bay', 'pod', 't2', 'kestrel']), shut = api.dragTable(b, 0); api.bayDoors(b, true); const op = api.dragTable(b, 0), opF = fresh(b, 0);
+    const t0 = api.t; api.bayDoors(b, false); const closing = api.dragTable(b, 0); api.t += 5; api.bayTick(b); const back = api.dragTable(b, 0); api.t = t0; bay = { shut, op, opF, closing, back }; }
+  const f = t => i5.map(k => t[k].toFixed(2)).join(', ');
+  check('vehicle-41: the drag table is rebuilt when the outline changes: after a fairing jettison it equals a fresh one (and stays cached at that), and a bay\'s open roof likewise; the AoA bins still keep their own',
+    same(cached, after) && !same(before, after) && again === after && !same(before, b5) && (!bay || same(bay.op, bay.opF) && !same(bay.shut, bay.op) && same(bay.closing, bay.op) && same(bay.back, bay.shut)),
+    `Satellite CdA at Mach 1, 2, 3, 5: fairing on ${f(before)}; jettisoned ${f(cached)} (fresh ${f(after)})` + (bay ? ` · ${bn}: shut ${f(bay.shut)}, open ${f(bay.op)} (fresh ${f(bay.opF)}), still closing ${f(bay.closing)}, shut ${f(bay.back)}` : ' · no preset carries a bay'));
+}
+
+// vehicle-42. RCS doesn't fight the gimbals' feed-forward (vehicle, QUEUE R26, P1; REVIEW-2026-11-11 § 6, review/2026-11-11/r23e.mjs):
+// physStep asked `ctrlAccel` for RCS's command after the aero pass had moved `s.simTA` on, so that call lost the aero
+// feed-forward the first one had used, and RCS was told to push the cancelled aero moment back in. The Beeper with Docking's
+// RCS rings and bottles, flown up on SAS along a pitch program: it burned all 30 kg of gas on the climb; now a few grams.
+{
+  const keepS = api.S, keepT = api.t;
+  const d = api.toV2(api.PRESETS.Beeper), find = n => n.k === 't2' ? n : n.c.map(find).find(Boolean), tk = find(d.root);
+  tk.c.push({ k: 'rcs', at: { y: 0.2, a: 0, n: 4, cy: 0.1 }, c: [] }, { k: 'rcs', at: { y: 1.8, a: 0, n: 4, cy: 0.1 }, c: [] }, { k: 'gas', at: { y: 1, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] });
+  api.t = 0; const s = api.newShip(d), T = api.TELLUS, gas = () => s.parts.reduce((a, p) => a + (p.res && p.res.gas || 0), 0) * 1000;
+  api.advPhys(s); s.sas = true; s.sasMode = 'stab'; s.throttle = 1; api.stage(s); s.rcs = true;
+  const g0 = gas(), AS = T.atm / 7e4; let h = 0;
+  for (let i = 0; i < 30000 && s.alive; i++) { const fr = api.localFrame(s.r); h = api.len(s.r) - T.R; if (h > T.atm) break;
+    const r = 90 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))), 0.6)) * Math.PI / 180;
+    s.hold = api.norm(api.add(api.mul(fr.e, Math.cos(r)), api.mul(fr.up, Math.sin(r))));
+    if (api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s); s.rcs = true; api.advPhys(s); }
+  const used = g0 - gas();
+  check('vehicle-42: RCS on through a Beeper\'s climb (Docking\'s RCS added) keeps its gas: under 1 kg of 30 used to the edge of the air, alive',
+    s.alive && h > T.atm && g0 > 20 && used < 1, `gas used ${used.toFixed(2)} of ${g0.toFixed(1)} kg, reached ${(h / 1e3).toFixed(0)} km, alive ${s.alive} (was 30.0 of 30.0)`);
+  api.S = keepS; api.t = keepT;
+}
+
+// vehicle-43. Three physics fixes (vehicle, QUEUE R22; REVIEW-2026-11-09 § 2): (a) `fall()` no longer predicts an impact in the
+// past when the craft is outbound on an escape (the crossing is behind it: cruiseStep's `dt>=0` guard); (b) a pure ignition that
+// fails to light stays the next event and runs none of its other effects (chute, fairing, spin motors, groups), which had run
+// again on the retry; (d) `ascentRun` takes the level's air once (the drag table already has it: Easy's drag was 0.75² of
+// Normal's). (c), `detach()`'s momentum, is parked on branch `r22-detach` (notes/vehicle.md § v1.315).
+{
+  const T = api.TELLUS, keepS = api.S, keepT = api.t, P = api.PROG, keepP = { flights: P.flights, lvl: P.lvl };
+  // (a) 200 km up, outbound at 1.2 × escape speed, angled 60° off vertical: the periapsis is under the air, the entry behind
+  const r = [T.R + 2e5, 0, 0], ve = Math.sqrt(2 * T.mu / (T.R + 2e5)) * 1.2, v = [ve * 0.5, ve * 0.866, 0], el = api.elements(r, v, T.mu);
+  const fa = api.fall(T, r, v, 1000, () => 0);
+  // (b) the Satellite's upper-stage engine as an extra pure-ignition event that also arms the chute; rolled until it fails
+  const s = api.newShip(api.PRESETS.Satellite), kE = s.parts.find(p => p.on && p.d.kind === 'engine' && p.seg !== s.parts.find(q => q.on && q.d.kind === 'engine').seg)?.seg;
+  const TS = api.TEST, nf = TS.nofail; TS.nofail = false; delete P.lvl;
+  const keepK = { kh: P.kh, dev: P.dev, lines: P.lines }; P.kh = {}; P.dev = {}; P.lines = {};   // (loop slices, 2026-11-12) an engine known, developed or made by an earlier section in the shard hardly ever fails: start green
+  let failed = null, at = null;
+  if (kE != null) { s.events.push({ decouple: [], ignite: [kE], chute: true }); const ix = s.events.length - 1;
+    for (let f = 1; f < 400 && !failed; f++) { P.flights = f; s.evIdx = ix; s.chute = false; s.segs[kE].ignited = false; api.stage(s);
+      if (s.evIdx === ix) failed = { f, chute: s.chute }; }
+    TS.nofail = true; if (failed) { api.stage(s); at = { idx: s.evIdx, chute: s.chute, lit: !!s.segs[kE].ignited }; } }
+  TS.nofail = nf; Object.assign(P, keepK);
+  // (d) the drag the ascent estimate integrates: Easy over Normal, at the level's air once
+  const asc = lv => { if (lv) P.lvl = lv; else delete P.lvl; const x = api.newShip(api.PRESETS.Orbiter); x.dragTab = null; return api.dragTable(x, 0)[4]; };
+  const n0 = asc(null), e0 = asc('easy'); delete P.lvl;
+  const fsrc = readFileSync(new URL('./sim/flight.js', import.meta.url), 'utf8'), a0 = fsrc.indexOf('function ascentRun('), ar = fsrc.slice(a0, fsrc.indexOf('return out}', fsrc.indexOf('const tab=', a0)));
+  const arOnce = ar.length > 500 && /dragTable/.test(ar) && !/lvl\(\)\.air/.test(ar);
+  Object.assign(P, keepP); if (keepP.lvl == null) delete P.lvl; api.S = keepS; api.t = keepT;
+  check('vehicle-43: (a) no impact in the past outbound on an escape; (b) a failed pure ignition stays the next event and arms nothing until it lights; (d) the ascent estimate takes Easy\'s air once',
+    el.e > 1 && el.pe < T.R + T.atm && fa == null
+      && failed && failed.chute === false && at && at.lit && at.chute
+      && Math.abs(e0 / n0 - api.LEVELS.easy.air) < 0.02 && arOnce,
+    `(a) e ${el.e.toFixed(2)}, pe ${((el.pe - T.R) / 1e3).toFixed(0)} km: ${fa == null ? 'no impact' : `impact at t ${fa.t?.toFixed?.(0)}`}` +
+    ` · (b) ${failed ? `failed on flight ${failed.f}, chute ${failed.chute ? 'ARMED' : 'not armed'}; retried: ${at.lit ? 'lit' : 'not lit'}, chute ${at.chute ? 'armed' : 'not armed'}` : 'no failure found'}` +
+    ` · (d) CdA at Mach 2, Easy / Normal ${(e0 / n0).toFixed(3)} (air ${api.LEVELS.easy.air}); ascentRun ${arOnce ? 'without' : 'WITH'} its own air factor`);
+}
+
+// vehicle-44. The builder under the unlock map (vehicle, QUEUE Q578; plan Q573 slice 2): a preset with a part not open yet
+// says what it waits for (`stackWaits`, chapter order: the Hopper waits for the structural test and the hop; the Sounding
+// for nothing); the closed parts fold by chapter (`closedParts`), each mission's under one reason line, a family's named
+// in it; every closed part once; none when everything is open. The palette and the preset picker read them.
+{
+  const A = new Function(src + 'return {PROG,HOOK,PARTS,PRESETS,programNew,chooseStart,stackKeys,stackWaits,closedParts,partOpen,MISSIONS,PART_FAMILY};')(), P = A.PROG;
+  A.HOOK.save = () => {}; A.HOOK.msg = () => {}; A.HOOK.news = () => {}; A.programNew(); A.chooseStart('agency');
+  const hop = A.stackWaits(A.PRESETS.Hopper).map(w => w.id), snd = A.stackWaits(A.PRESETS.Sounding), sat = A.stackKeys(A.PRESETS.Satellite);
+  const C = A.closedParts(), flat = C.flatMap(c => c.groups.flatMap(g => g.keys)), shut = Object.keys(A.PARTS).filter(k => !A.partOpen(k).ok);
+  const once = flat.length === shut.length && new Set(flat).size === flat.length && shut.every(k => flat.includes(k));
+  const c1 = C[0] && /^Chapter 1/.test(C[0].name), eraLast = C[C.length - 1] && C[C.length - 1].ch === 'era';
+  const kit = C.flatMap(c => c.groups).find(g => g.id === 'loads'), kitOK = kit && /orbital kit/.test(kit.line) && kit.keys.includes('kestrel') && kit.keys.includes('petrel');
+  for (const M of A.MISSIONS) P.done[M.id] = { day: 0 }; P.compEra = 9;
+  const none = A.closedParts().filter(c => c.ch !== 'era').length === 0 && A.stackWaits(A.PRESETS.Hopper).length === 0;
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const wired = /closedParts\(/.test(bsrc) && /Not open yet \(\$\{n\}\)/.test(bsrc) && /stackWaits\(PRESETS\[k\]\)/.test(bsrc) && /st\.lockOpen/.test(bsrc);
+  check('vehicle-44: presets say what they wait for (Hopper: structural test, then the hop; Sounding: nothing; payload blocks read too); closed parts fold by chapter, each once, a family named on its line, eras last; none when everything is open; the palette and the picker read them',
+    hop.join() === 'loads,hop' && !snd.length && sat.length > 3 && once && c1 && eraLast && kitOK && none && wired,
+    `Hopper waits ${hop.join(', ')}; Sounding ${snd.length}; Satellite keys ${sat.length}; closed ${shut.length} in ${C.length} chapters (once ${once}, ch1 first ${c1}, eras last ${eraLast}, kit ${kitOK}); all open ${none}; wired ${wired}`);
 }

@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1667,7 +1667,574 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
   "on its side: no ignition" stage row), `eval_5` the map zoomed on Selene (before: name and dot off the disc; after: dot at
   the centre, the name on the limb), `eval_6` zoomed out. TESTING row 345.
 
-## v1.281 — near the ground, retrograde hands over to stability (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
+## Plan: the aim and the mission card (Q345 + Q513) (2026-11-07, flow worker, QUEUE Q513 P1, Q345; D16.1, D23, UI.md § 3.1, PLAYTEST #145; plan only)
+
+**What exists.**
+- **`flightAims()`** (sim/vessel.js 524) silently picks what the next flight is for: every accepted `sat` contract (its
+  altitude), every `image` one (alt 0), and the NEXT card's mission when it is an orbit one (`ORBIT_MISSIONS`). Its only
+  readers are Δv to orbit: `orbitNeed`/`launchWarnings` (the most demanding goal; read by the Assembly's `orbitLine` and
+  the Rollout's `rollChecks`), and the Assembly's `powerAim`/`lifeLine` (the highest altitude). It ignores inclination,
+  every suborbital contract, Selene, rendezvous; nothing on screen says what was picked.
+- **Contracts** (`CT`, sim/contracts.js): 27 types. 17 are judged on a flight by one opaque predicate `ok(R, p, s)` on the
+  flight record (`recNew`, filled live by `missionTick`, sim/program.js 278–330: `apexSci`, `bands`, `qPart`, `orb`,
+  `landed`, `recSci`, `landBiome`, `landDist`, `gMax`, `bioOK`, `aurora`, `endPf`, `rdv`, `lift`); `contractEval` runs it
+  every tick, so a contract is paid the moment it is met. 10 (`sel*`, `st*`) are judged between flights (`done(c, N)`).
+  The 29 `MISSIONS` (firsts) have the same `ok(R)` shape, some with a `prog()` count ("2/4 bands"). Nothing can ask a
+  contract *which* of its conditions is unmet, or whether one can no longer be met.
+- **The Assembly** is still one right-hand column (`BLD.panel`; app/editor.js `orbitLine`, …): Q237's three tabs (Checks /
+  Stages / Part) and the GO/NO-GO board exist only in `mockups/builder/` (`?aim=1` is the aim overlay). The Rollout's
+  checks are a flat ok/warn/bad list (`rollChecks`, app/rollout.js).
+- **The guess's parts:** `predErr(s)` (sim/program.js 662) is the compute era's bound (`COMP_ERAS[].err`: 30 %, 15 %, 5 %,
+  0), tightened by a study of *this design* (`studyOf`, keyed by its parts); it scatters the impact point and a
+  dispatch's orbit today. No Δv need is ever off by it. Flown facts live in the logbook (`PROG.log.orbit.v`, `selene`,
+  `land`, `sorbit`).
+- **Flight:** cards register in `HUD_CARDS` (app/hud.js); the dark cockpit hides all but `CP_CARDS` (app/cockpit.js) in a
+  critical phase. Q488 left the hook: `impact.verdict` / `impVerdict()` (app/program-ui.js 417–429; `landingVerdict`,
+  sim/world.js 284) says who brings the craft back ("recovered by our ships, ~6 h" / "lands in Kordia: they keep it").
+- **Procedures** are keyed by design + signature (`procKey(stack)`, then `'Selene:land'`, `'Selene:flyby'`,
+  `'Selene:orbit'`, `'Selene:free-return'`; phases `transfer / capture / land / surface / ascend / home / return`);
+  `procStart(s, proc, target)` already takes a target (`pe`, `ap`, `inc`). Dispatch reads `dispatchTarget(c)` = the
+  contract's own `alt`/`inc` (`sat`, `recon`).
+
+**The data model.**
+- **A contract's conditions as data (economy).** Each `CT` type and each `MISSIONS` entry gains, beside its `ok`:
+  - `needs(p)`: what the *design* must carry, `[{id:'sci', t:'an instrument package', has:ship=>bool}, {id:'chute',
+    t:'a parachute (to be recovered)'}, {id:'bio'}, {id:'cam+ant'}, {id:'mass', t:'2 t of mass simulators'}, {id:'dock'}]`.
+  - `conds(p)`: what the *flight* must do, each `{id, t, state:(R, s)=>'met'|'lost'|'open'|'pending', now?:(R, s)=>text}`.
+    `apex`: *apex 40–55 km* (met once `apexSci` is in range and falling; lost past `hi`; now: "now 47 km") and
+    *recovered* (pending in flight, read with the landing verdict; met at `recSci`). `sat`: *periapsis and apoapsis
+    300 ± 25 km*, *inclination 45 ± 3°*. `bioHop`: *to space*, *never over 5 g* (lost at `gMax > g`), *home safe*.
+    `ballistic`: *from Dunnzar Cape* (lost if launched elsewhere), *down at sea within 40 km of the target*. The
+    between-flight types get one cond, *judged at home* with their `done` progress ("1 of 3 readings received").
+  - `ok` stays the judge (no payout rule moves); a test proves *all conds met ⇔ ok* on fixture records.
+- **An aim** (D23) is saved with the design: `stack.aim = {jobs:[contract id, or 'm:'+mission id], legs:[… up to 3]}`.
+  A leg: `{k:'orbit', b:'Tellus', alt:300, inc:'pad'|'polar'|'stat'|deg}`, `{k:'hop', alt:55}`, `{k:'flyby', b:'Selene'}`,
+  `{k:'land', b, site:null|pf}`, `{k:'meet', id}`, `{k:'home', how:'sea'|'land'}` or `{k:'stay'}`. Every field has a
+  default. `procKey` must skip `aim` (as it skips `dep`, `ag`), or picking an aim would orphan the design's procedures.
+- **A contract maps to legs** by `CT[type].legs(p)` (economy, beside `conds`): `apex`/`sample`/`aurora`/`test` → hop (to
+  `hi`, the band's top, 100 km poleward) + home; `landing`/`field`/`ballistic` → hop + land (near the pad, on the biome,
+  at the target); `bioHop`/`touristHop` → hop to space + home; `sat`/`recon` → orbit (alt, inc); `image` → an orbit
+  tilted past the city's latitude; `lift`/`milLift` → orbit (lowest safe); `touristOrbit` → orbit + home; `rdv`/`service`
+  → meet; `retrieve` → meet + home; `sel*` → land on Selene; `st*` → meet the station (or land at its beacon).
+  `aimFromJobs(jobs)` merges the ticked jobs' legs (one ascent; when two orbits disagree the first ticked wins, see
+  question 5). A job aim is that merge, your own aim is legs set by hand; either way `stack.aim.legs` is what everything
+  downstream reads.
+- **The Δv need per leg is the program's guess (economy).** `legNeed(leg, site)` is the true need: patched conics from the
+  pad's latitude (the ascent to the orbit, with the tilt's cost against the planet's spin as in `dispatchEstimate`'s
+  `vRot·cos` term; transfer, capture, landing and return by vis-viva), plus losses by experience (the logbook's flown
+  ascent when there is one, else `DV_ORBIT_EST`'s gap) and Q475's pilot margin on the climb. `legGuess(leg)` =
+  need × (1 + e), e = b·(2u − 1), u from `rng(hash(PROG.wseed, destination, knowledge))`: destination is `body:kind`
+  ("Tellus:orbit:polar", "Selene:land"); knowledge is the era index, + 1 when this design is studied, + 2 once anyone
+  has flown the leg. b is the era's bound (the study's when studied, as `predErr`), × 1.5 where nobody has been (× 2 for
+  a landing nobody has made). A flown leg is known (b = 0, "flown: 3,640"). The same inputs give the same e, so
+  reopening never rerolls; a study or a first flight changes the knowledge and draws again inside the tighter bound (the
+  guess can move the wrong way first). The line states the bound in words (D23: "could be 30 % off").
+- **The verdict** for the aim: the true need lies in [guess/(1+b), guess/(1−b)]. *Reaches it*: carried ≥ guess/(1−b)
+  (or known, with spare); *Probably*: ≥ guess; *Unlikely*: ≥ guess/(1+b); *Short*: below.
+
+**The Assembly panel: "This flight is for".**
+- **Before Q237** it is a block at the top of today's right column; **after Q237** it is the Checks tab's first line
+  (*Aim: Weather satellite · polar, 300 km ▾*) and the overlay's "A job" section (`mockups/builder/?aim=1`). One function
+  renders the rows for both (`jobRows(stack)`), so nothing is built twice.
+- One row per accepted contract and for the NEXT card's mission: a tick, the title, the pay, its needs as chips each with
+  its check ("instrument package ✓ · parachute ✗ · apex 40–55 km"), a dim *judged at home* for the between-flight types.
+  Ticking writes `stack.aim.jobs` and re-derives `legs`; a done or expired contract drops off with one dim line. Offers
+  aren't listed (one line: "3 offers on the Program's board (P)").
+- The board (D16.1) answers for what is ticked: `orbitLine`, `launchWarnings` and the Rollout read `aimGoals(stack)`
+  instead of `flightAims()`, and a missing need is a check with its fix (UI.md rule 14: "Recovered: no parachute · Fix: a
+  parachute on the capsule"). Nothing ticked and no legs: a generic low orbit (UI.md § 5.1).
+- **Δv per leg against the stages** (vehicle, on Q237's Stages tab): each leg's guessed need, cumulative, laid against the
+  stages' Δv (vacuum; the first stage in air), and tagged on the stage that finishes it (`→ orbit`, `→ land`). The
+  *Reaches its target* row: "our guess ~3,900 m/s, it carries 4,210, could be 30 % off", with the study button.
+
+**The Mission card (flight).**
+- `HUD_CARDS` gains `{id:'mission', title:'Mission'}`: for each job in `S.rec.aim` (copied from the design at launch, as
+  `open0` is), its title and its `conds` as rows: **✓** met; **✗** lost, with why ("apex passed 55 km"); **○** open,
+  with `now` ("apex now 31 km"); **◐** pending, for *recovered* while still flying, its words from `impVerdict()`
+  ("pending: recovered by our ships, ~6 h", or amber "pending: lands in Kordia, they keep it"). A job with every row ✓
+  folds to "done · +12M" (`contractEval`'s payment). Contracts met that weren't ticked show as "also done".
+- Hidden in the dark cockpit like the other cards (not in `CP_CARDS`), but a condition changing state says one line in the
+  message strip, once ("Apex in range ✓", "Over 5 g: the biology flight is lost ✗"), so a sounding flight hears it.
+- The same rows later feed the Debrief's contract lines and Q491's Guided lessons (#125).
+
+**Rollout, Dispatch and procedures take the aim (flow).**
+- **Rollout:** its Δv check reads the aim's legs and the guess's verdict; one check per ticked job's unmet need; the
+  procedure button picks the design's procedure whose signature matches the aim (orbit → the ascent; land on Selene →
+  `'Selene:land'`, the site from the leg), and `procStart` gets the leg's target (`pe`/`ap`/`inc` from altitude and tilt).
+- **Dispatch:** `dispatchTarget(c)` reads the job's orbit leg (`CT[type].legs`) instead of `c.p.alt`; `dispatchEstimate`'s
+  "can this design do it" reads `needs`. The Assembly offers Dispatch for each ticked job that can be dispatched.
+- **What replaces `flightAims`:** `aimOf(stack)` (the saved aim, or the default one, derived and shown ticked) →
+  `aimGoals(aim)` (`[{name, alt, inc, b}]`, what `orbitNeed` reads). `flightAims` stays a one-line wrapper,
+  `aimGoals(aimOf(stackDef))`, for its four readers until the last one moves (additive first), then goes.
+
+**Tests that prove each slice.**
+- *economy*: every flight-judged `CT` type and mission has `needs`, `conds`, `legs`; on fixture records (one met, one short
+  each way) all conds met ⇔ `ok`; each cond turns `lost` when it must (apex past `hi`, `gMax` over, launched from
+  elsewhere) and never flips back.
+- *economy*: `legGuess` the same across calls and a reload; over 1,000 seeds |guess/need − 1| ≤ b; different per
+  destination and per knowledge level; a study redraws inside the tighter bound; a flown leg exact; Cheap compute exact.
+- *flow*: the Mission card over a scripted sounding record: open → "now 47 km" → ✓ → pending with the verdict's words →
+  done; past 55 km → ✗; one message per change; hidden in a critical phase; the card's wiring in the page source.
+- *flow*: ticks persist in `stack.aim` through save and load and leave `procKey` unchanged; unticking a sat contract moves
+  `launchWarnings`' goal; a missing chute is a Rollout check; nothing ticked reads low orbit.
+- *vehicle*: `legNeed` for 300 km polar from an equatorial pad exceeds the equatorial orbit by the spin's share; a Selene
+  landing's need within 10 % of the logbook's flown number on the stock lander; legs tagged on the right stage.
+- *flow*: the Rollout's procedure pick and `procStart`'s target come from the aim; `dispatchTarget` from the leg.
+
+**Slices, in build order.**
+1. **Conditions as data** (economy, S–M): `needs`, `conds`, `legs` on the 17 flight-judged types and the missions; the
+   consistency test. Nothing on screen yet.
+2. **The Mission card** (flow, S): read-only, live ✓/✗/○/◐ with Q488's verdict for *recovered*. Until slice 3 it lists
+   every accepted contract whose needs this vessel meets, plus the NEXT mission. **First hour (P1): this answers #145's
+   "a player finds out only in the Debrief".**
+3. **"This flight is for"** (flow, S): the block atop today's Assembly column; ticks into `stack.aim.jobs`; needs with
+   their checks; `aimGoals` behind `orbitLine`, `launchWarnings` and `rollChecks`. **First hour (P1): with 1 and 2 this
+   closes Q513**, before any tab or leg editor.
+4. **The guess** (economy, M): `legNeed`, `legGuess`, the knowledge levels, the verdict words; the Δv rows read it.
+5. **Q237's tabs** (vehicle, M–L; its own item): Checks / Stages / Part from `mockups/builder/`; slice 3's block becomes
+   the Checks tab's first line.
+6. **The aim overlay** (vehicle + flow, M): the job list (slice 3's rows) and your own aim in up to three legs (defaults
+   everywhere, the small globe for a site); *Reaches its target* with the guess; legs tagged on the stages (vehicle).
+7. **Rollout, procedures and Dispatch take the aim** (flow, S–M); then `flightAims` retired (S).
+
+**Questions for Caio (each with the default if silent).**
+1. **What is ticked on a design with no aim yet?** Default: the NEXT card's mission and every accepted contract whose
+   needs the design already meets, shown ticked (today's silent pick, made visible); the rest listed unticked with what
+   they miss.
+2. **Does an unticked contract still pay if the flight meets it?** Default: yes, as today ("also done" on the card and in
+   the Debrief); ticking chooses what the checks answer for, not what can pay.
+3. **"Recovered" when it lands where a power keeps it.** Today `recSci` is any intact landing on Tellus, so a package
+   Kordia keeps still completes a "recovered" contract. Default: recovered = landed intact *and* Q488's verdict brings it
+   back (ours, or sent back); "they keep it" is ✗ on the card.
+4. **A ✗ in flight:** default: the contract stays open for another flight until its deadline (today's rule); the card
+   says "lost for this flight", never "failed".
+5. **Two ticked jobs that need different orbits:** default: allowed; the first ticked sets the orbit leg, the other's row
+   says "needs a different orbit: another flight" and is NO-GO for it.
+
+## v1.284 — east on the navball at launch (2026-11-07, flow, QUEUE Q507; PLAYTEST #140, Caio's (a))
+
+Caio asked for east at the top at launch. The catch (PLAYTEST #140): whichever point is at the top, leaning to it brings
+the ground in from the top, so east up means the whole climb heads-down. He chose (a): **east stays at the bottom** (the
+belly faces east on the pad, W leans that way, the climb upright on the ball) **and says so**.
+
+- **The E at launch:** on the pad, and up the climb (`turnGuide`'s `ph === 'climb'`) while the nose is within 15° of
+  vertical (`dot(Y, up) > 0.966`), the E is 18 px and amber (`#ffb000`, the aircraft symbol's colour) instead of 13 px
+  white. Past 15° it is an ordinary letter again: by then the ◇ and the heading line carry the direction.
+- **Wrong way:** leaning west puts E just behind the ball, where points were never drawn; the launch E stays pinned to the
+  rim up to 15° behind (`sy ≥ −0.27`), so it still says which way to go.
+- **Clipped letters (found looking):** near vertical every compass point sits on the rim, and all four letters were cut
+  in half by the ball's edge (`scratchpad/q507/before_pad.png`). Letters past the rim's inner band are pulled in (8 px,
+  11 px for the big E). This applies at any attitude, not only at launch.
+- **Checked** on the GPU with `shot.mjs` (refView 18 with the HUD shown; the sim frozen, launched, climbing at 150 m/s):
+  vertical, 10° west, 10° east, 30° east (normal E), 30° west (hidden) all as above. Drawing only; no headless check.
+- **Numbering:** v1.281–v1.283 and TESTING 347–348 were already used on unmerged worker branches (Q543–Q546), so this
+  took v1.284 and TESTING 349.
+
+## Plan: Guided (Q491) (2026-11-07, flow worker, QUEUE Q491; PLAYTEST #125, D25, UI.md rules 2, 3, 9, 13; after the aim plan above; plan only)
+
+Caio (#125): "the game is getting complicated". Not a separate tutorial mode: a **Guided** switch on a career that turns the
+first missions into lessons and introduces each system once, when it first matters.
+
+**What exists for onboarding.**
+- **The charter** (v1.163, `app/title.js`): Article 1 whose program, 2 how it starts, 3 how hard (Q476, `PROG.lvl`).
+- **NEXT** (`nextStep()`, sim/next.js): one suggestion above the Program's tabs, with "try the Sounding preset"
+  (`NEXT_PRESET`: weather, loads → Sounding; beeper → Beeper; hop → Passenger; orbiter → Passenger Orbiter). Its order is
+  decisions, accepted contracts, then open missions (a preset's first, then epoch, then the smallest pay).
+- **Mission briefs** (`MISSIONS[].brief`, `win`) on the Missions tab; contract `brief`s on the board.
+- **One-off cockpit hints** (app/cockpit.js): `depHint` (folded parts), `turnHint` (the turn, two lines), `circHint` (coast,
+  burn, "in orbit"), `dryHint` (a dry stage still attached), Q483's flat-turn caution. The ◇ (`turnGuide`) on the navball.
+  Each hint stops for good per **browser** (`launchpad-hint-*` in localStorage), not per career.
+- **The glossary** (v1.175, v1.224, `app/terms.js`): `TERMS` + `term(k)`, one tooltip (`#termTip`, v1.192), part cards and
+  self-explaining warnings in the Assembly (D21, D22). Terms only: no panel says what *it* is for.
+- **The Debrief**: the outcome, the ledger (`R.paid`), firsts, and for a loss one fix line (`debHelp`, sim/debrief.js). Nothing
+  says what went *well*.
+- **Gates that already pace the game:** missions by `req` (weather → beeper; loads → hop → orbiter; beeper → lift1, wxsat, tv);
+  contract types by `CT[].req` (from the start: apex, sample, test, landing, field, aurora; after weather: ballistic; after
+  hop: bioHop, touristHop; after beeper: sat, image, recon, rdv, service; after orbiter: touristOrbit; after lift1: lift,
+  milLift; Selene and stations later); logbook tools by fact (`TOOLS`: impact prediction after the first apex, maneuver
+  planning after the first orbit, encounters after Selene's pull); the terminal look once the beeper flies (`eraOf`);
+  mission control's **C** once something is up or dispatched (`netOpen`); routines by computing era (`AUTO_LADDER`,
+  `COMP_ERAS`: mainframes at year 3); SAS modes by the autopilot part (the gyro has no Prograde). What does **not** pace:
+  the Program's tabs (Industry, Company, World, Fleet show from day one, "Nothing here yet" or full of numbers).
+- **Coming** (the aim plan above): Q547's `conds` per mission and contract, Q548's **Mission card** (✓ ✗ ○ ◐, one message per
+  change), Q549's "This flight is for". The card is the checklist that ticks as you go: Guided adds rows to it, never a
+  second card.
+
+**What Guided changes, and what it never changes.**
+- **Changes:** presentation and pacing only. The order NEXT suggests, a briefing card, extra *how* rows on the Mission card,
+  a lesson line in the Debrief, one introduction card per system, dimmed tabs until introduced, and the hints' memory (per
+  career while Guided is on).
+- **Never changes:** physics, Δv, money, payouts, deadlines, failures, mission and contract rules, what can be flown or
+  accepted. Difficulty is Q476's alone (D25): Guided Hard is a valid career. So a tape, a study and a record don't carry
+  Guided (`tapeV()`, `studyKey` untouched), and the tests prove it.
+- **State:** `PROG.guide = {on, les:{id:'done'|'flown'}, seen:{sysId:day}}`; absent = off (every save from before plays as it
+  did). Code: `sim/guide.js` (the tables and pure predicates) and `app/guide.js` (cards, rows, the help mode).
+- **Picked on the charter**, Article 3's second line: *Guided: the first flights are lessons* ☑. **On by default for a first
+  program** (this browser has never founded one: `launchpad-founded` in localStorage, set by `chooseStart`); after that the
+  last choice, as `resetProgram` keeps the level.
+
+**The lessons.** Each is a **mission** (the program's firsts, not random offers: offers are drawn by seed, and a lesson must
+exist in every career). `LESSONS` (sim/guide.js): `{id, m: mission id, preset, teaches, key, steps:[…]}`. A step has Q547's
+cond shape, `{id, t, state:(S, R)=>'met'|'open', now?, say, fix}`: a *how* row ("stage when the first stage burns out")
+beside the mission's *must* rows (its `conds`, the judge). `say` is the prompt shown when the step becomes the current one; a
+step done out of order still ticks; a missed step never fails anything. A lesson is **done when its mission is**
+(`PROG.done[m]`), whatever the steps say.
+
+| # | Lesson (mission, preset) | Teaches · the one new control | How rows (*must* rows are the mission's `conds`) |
+|---|---|---|---|
+| 1 | **Up and back** (weather, Sounding) | launch, staging, the chute, recovery (Q488's zone) · Space | lit ✓ · staged at burnout ✓ · past 10 km (must) · chute open low ✓ · down intact ✓ · recovered ◐→✓ (must, in `impVerdict`'s words) |
+| 2 | **The first orbit** (beeper, Beeper) | the turn, the coast, circularising · W and the ◇, X, Z | leaned east by 100 m/s ✓ · on the ◇ through max-q ✓ · apoapsis out of the air ✓ · engine cut (X) ✓ · burn on the ◇ at the apoapsis ✓ · periapsis out of the air (must) |
+| 3 | **Built for a number** (loads, Sounding) | the Assembly's checks (max-q, TWR, the stage table); the first edit of a design · hover terms | max-q ≥ 25 kPa (must) · the design changed from the preset (Assembly, before launch) ✓ · max-q read on the Instruments card ✓ |
+| 4 | **A passenger** (hop, Passenger) | g and cabin heat; flight safety's approval · the Rollout's checks | approved (must) · to space (must) · under the g limit (must, `now` in g) · cabin under its limit (must) · chute ✓ · home safe (must) |
+| 5 | **Coming home** (orbiter, Passenger Orbiter) | the deorbit burn, the landing point, recovery zones · retrograde, a node, the map's X | one orbit (must) · a node planned (unlocked by lesson 2's orbit) ✓ · retrograde burn ✓ · the X in a recovery zone ✓ · heat shield first ✓ · home safe within the air (must) |
+| 6 | **A satellite** (wxsat, Satellite) | the payload bench, power in shadow, a polar orbit, deploying · the bench, P | built on the bench ✓ · polar 80–100° (must) · stable (must) · deployed (P) ✓ · powered through the night (must) |
+
+- **Order:** Caio's (#125: a sounding rocket, the first orbit, coming home, a satellite); lessons 3 and 4 sit where they do
+  because `orbiter` requires `hop` requires `loads` (Guided can't skip a `req`). With Guided on, **NEXT** is the first
+  unfinished lesson whose mission is open (else `nextStep()` as today): "**Lesson 2 of 6** The first orbit · try the Beeper
+  preset". Decisions with a deadline still come first.
+- **The briefing card** (office paper, rule 13): on the **Rollout**, above its checks, when the flight's aim (Q549's ticks,
+  else `flightAims`) holds a lesson's mission: the title, *what it teaches* (one line), *the one new control* (a key cap),
+  the rows to come (dim), and, when the lesson has been flown before, last time's first missed step ("last time: the chute
+  opened at 300 m"). Launch or Enter dismisses it; the Mission card's title reopens it. Once Q450 exists, *Simulate first*
+  beside Launch on it.
+- **The cockpit checklist** is Q548's Mission card: the lesson's *how* rows interleaved with the mission's *must* rows. In a
+  critical phase (`cpPhase`) the card folds to **one line, the current step** ("▸ lean the nose east · now 90°"), kept with
+  `CP_CARDS` while Guided is on (question 2); off-phase it shows whole. A step turning ✓ says one line in the message strip,
+  as Q548's conds do. The current step's `say` replaces today's hint for it: `turnHint`'s and `circHint`'s words move into
+  lesson 2's steps, `depHint`'s into lesson 6's. Off Guided the hints stay today's one-offs per browser; a lesson done sets
+  their `launchpad-hint-*` flags, so turning Guided off later doesn't replay them.
+- **The debrief line**: `debLesson(D, R)` under the outcome, from the steps' record (`R.steps[id]` = the time met, filled
+  each tick like `R.apex`). Done: "**Lesson 1 done.** Staged at burnout, chute open at 3.1 km, recovered by our ships"; not
+  done: "4 of 6 steps. Next time: {the first missed step's `fix`}", then `debHelp` as today for a loss. One line.
+
+**The unlock pacing: one card, one highlight.** `GUIDE_SYS` (sim/guide.js): `{id, room, when:()=>bool, t, d, hi}`. `when` is a
+pure read of `PROG` (the gate that already exists, or the first time it matters), `d` two sentences, `hi` the selector lit for
+six seconds (`.hint`, as `depHint` does). `guideTick(room)` on entering a room shows **at most one** card, the first due and
+unseen; the rest wait for the next visit. Desk and Assembly: a slip of paper, dismissed by a click or Enter. Flight: never a
+card, one message line plus the highlight, and never in a critical phase.
+
+| When (the gate) | Room | Introduces · lights |
+|---|---|---|
+| founded | desk | the desk and NEXT · `#progNext` |
+| first B | Assembly | presets and "This flight is for" (Q549) · the preset list |
+| first Rollout | Rollout | the GO/NO-GO checks · `#rollChecks` |
+| first flight's end | Debrief | the ledger, know-how · the ledger |
+| lesson 1 done | desk | **the contract board**: clients pay for flights like this one; the card names one offer a Sounding can do (Q547's `needs`) · the Contracts tab |
+| first logbook fact | desk | the logbook (F): measured facts and the tools they unlock · `#bLog3` |
+| impact prediction unlocked | flight, descending | the X and the recovery zones · the map's X |
+| first ignition failure, or a design with a low-know-how engine | Debrief / Assembly | know-how and the test stand · the Industry tab |
+| beeper done | desk | the terminal (the program has a computer); **mission control (C)** · `#bMC` |
+| sat / image contracts open | desk | orbit contracts (altitude, inclination) · the board |
+| a new SAS mode | flight, off-phase | that mode · its button |
+| maneuver planning unlocked | flight, in orbit | nodes · the map |
+| the first decision | desk | decisions with a deadline · the in-tray |
+| a rival's first | desk | the race and the World tab |
+| mainframes (year 3) / a routine allowed | desk | compute and routines · Industry's Compute, Fleet's Routines |
+| Dispatch first offered | Assembly | dispatch · its button |
+| crew, Selene, stations, rovers | desk | one card each as they open, no lessons |
+
+- **Tabs not introduced yet are dimmed** but click as today (question 1): the read is quiet, nothing is withheld. Turning
+  Guided on mid-career marks seen what the career has already used (an accepted contract, a sat up, a routine, a study).
+- Economy writes the cards for its systems (contracts, know-how, industry, compute, dispatch, the race); flow the rest.
+
+**The "what's this" key (for everyone, Guided or not; with economy).** **?** (Shift+/; H stays the key list and gains a line)
+enters help mode: the cursor shows ?, hovering any element with `data-help` shows its entry in the one tooltip, a click pins
+it, Esc or ? leaves. `HELP` beside `TERMS` (app/terms.js): `{t, d, terms:[k…]}` per panel and control: what it is *for* (the
+decision it serves, rule 2) in two sentences, then its terms as links one level deep (rule 9's limit). In flight, help mode
+pauses the game, as Esc does. Economy writes the entries for its panels (funds, contracts and offers, know-how, the test
+stand, industry, compute, the guess once Q345's slice 4 lands); flow the rest (HUD cards, navball, staging, the map's layers,
+the rooms).
+
+**Switching Guided off mid-career.** Settings → *Guided*, beside Difficulty (off a flight, as `setLevel`). Off stops lesson
+rows, briefing and introduction cards, lights the dimmed tabs and gives NEXT back to `nextStep()`; the Mission card stays (it
+is Q548's). One news line. On again resumes at the first unfinished lesson whose mission is still open (done missions'
+lessons count as done). Nothing else moves: no number, no tape, no record.
+
+**What the robot (`playtest.mjs m1`) checks.** m1 founds a new career, so it now plays Guided (on by default). Add: the
+charter shows Guided ticked; NEXT reads "Lesson 1 of 6"; the briefing card on the Rollout, gone at Launch; on the Sounding
+flight the Mission card's rows tick in order (lit, staged, past 10 km, chute, down, recovered), one message each; during the
+ascent the card is one line; the Debrief has the lesson line; flight 2 on the Beeper ticks all of lesson 2's rows under the
+robot's kick and NEXT moves on; at most one introduction card per room visit (the contract board's after flight 1); no box
+over another at 1280×800 with the slip, the briefing and the one-line step (`PT.boxes`). A new row `guided`: Settings → off
+mid-career (no cards, tabs lit, NEXT as `nextStep`), on again (resumes at the right lesson); **?** over three panels shows
+their entries and Esc leaves; a career founded with Guided off sees today's flow (no card, no lesson line).
+
+**Tests that prove each slice** (test.mjs): every lesson's mission exists and the lesson order respects the `req` chain; each
+step's state over scripted records (met, open, out of order); **Guided changes no number**: a fixture flight bit-identical,
+`tapeV()`, `studyKey`, payouts and deadlines the same with `PROG.guide.on` true and false; NEXT in lesson order with it on and
+`nextStep()` with it off; `guideTick` shows at most one card, each once; every `hi` selector and every `data-help` exists in
+the page source, every `HELP` entry is used, none nested; a save from before has no `guide` and plays as off.
+
+**Slices, in build order.**
+1. **The switch** (flow, S): `PROG.guide`, the charter's line, the first-program default, Settings' toggle, saves. No
+   dependency.
+2. **Lessons as data** (flow + economy, S): `LESSONS` with steps and fixes, `R.steps` on the flight record; tests. After
+   **Q547** (the *must* rows are its `conds`).
+3. **The cockpit checklist** (flow, S–M): lesson rows on the Mission card, the one-line current step in a critical phase,
+   tick messages, the hints moved into steps. After **Q548** and slice 2.
+4. **Briefing, NEXT and the debrief line** (flow, S): NEXT in lesson order, the Rollout's briefing card, `debLesson`. After
+   slice 2; reads **Q549**'s ticks once built (`flightAims` until then).
+5. **One card per system** (flow + economy texts, M): `GUIDE_SYS`, `guideTick`, the highlights, dimmed tabs. After slice 1;
+   needs Q547 only for the contract board's card naming an offer.
+6. **"What's this"** (flow + economy texts, S–M): `HELP`, `data-help`, the ? mode. No dependency: can go first or in
+   parallel; useful with Guided off.
+7. **The robot** (QA, S): m1's Guided checks and the `guided` row; TESTING rows. After 3–5.
+
+**Questions for Caio (each with the default if silent).**
+1. **Systems not introduced yet:** default **dimmed but clickable** (the tab is there, quiet, until its card); or hidden until
+   introduced; or shown as today.
+2. **The dark cockpit in a lesson:** default the Mission card **folds to one line, the current step**, through the ascent
+   and other critical phases (Guided only); or it hides as Q548 says and the message strip alone carries the prompts.
+3. **Lessons 3 and 4** (loads, hop: on the way to coming home, as `orbiter`'s prerequisites): default **short lessons, one
+   new thing each** (the Assembly's checks; g and the Rollout); or plain missions with no lesson.
+4. **Where Guided ends:** default **lessons end with the weather satellite**, and introduction cards keep coming while
+   Guided is on (crew, Selene, stations: one card each, no lessons); or Guided switches itself off after lesson 6.
+5. **Guided and difficulty:** default **independent**: Article 3 keeps its own default (Normal); or a first program with
+   Guided suggests Easy.
+
+## v1.285 — the map's Layers panel closes when you leave the map (2026-11-07, flow, QUEUE Q443; PLAYTEST #115)
+
+The test bench found it at v1.209 (robot row `layers`, TESTING 249): open the map, open *Layers*, go back to the flight,
+and `#mapLay` stayed over the flight view. Nothing closed it: `#bLay` only toggles it. Now `go()` (app/screens.js)
+closes it whenever the new screen isn't the map, after the view is set, so every way out (M, the rooms, End flight)
+shuts it. Reopening the map leaves it closed; `bLay` opens it again. Checked: `node playtest.mjs layers` passes
+(`panel: false`; the row failed from v1.209, and no code closed `#mapLay` until now).
+
+## v1.286 — two planets close on the map share one label (2026-11-08, flow, QUEUE Q192; v1.99's open end)
+
+In a conjunction two planets sit within a few degrees on the map's ring, and the overlap rule (PLAYTEST #31) skipped
+the second one's label, so it was a dot with no name. Now `mergePlanetTexts` (app/render.js, run in `drawMap` just
+before the labels are placed) joins overlapping planet labels into one, names only: `Hesper, Hyperion`, centred between
+them; three in a row join the same way. A planet's own label (`Enyo · ~280 days there`) comes back when they separate.
+Only planet labels merge (text priority 5): a body's or a satellite's label never takes a planet's name.
+- Test `flow-52` (3 cases on the function plus its call in `drawMap`; mutations caught: the overlap test always false,
+  the call removed). Robot row `planetlabels` (day 31: Hesper and Hyperion 0.2° apart; day 42: Hesper and Enyo; one shot
+  without the merge for comparison), checked on the GPU: merged `Hesper, Hyperion` and `Hesper, Enyo`, unmerged only
+  `Hesper · …` with Hyperion's dot unnamed.
+- Conjunctions are common: some pair is within 3° in about half the months (23 of the first 50) (Hesper–Hyperion days 28–35, Hesper–Enyo 39–45,
+  Enyo–Hyperion from 51).
+
+## v1.288 — the pad calendar's window bar (2026-11-09, flow, QUEUE Q211; from Q185 v1.104)
+
+Since v1.104 a dispatch built before its window gets a second bar on the pad calendar (`kind 'window'`, `netData` in
+sim/program.js): the pad is held, nothing is being stacked. It had no style, so it looked like a second booking. Now
+`.cbar.window` (index.html) is hatched amber with a dashed border, in mission control's green palette too (`#mcCal`),
+and says *held for its window*; hovering it still gives the whole line (`Comsat 2 · Satellite: waiting for its window`).
+- **Found on the way:** a `.cbar`'s 4 px padding and its border were added to its width (content-box), so every bar ran
+  ~10 px past its day and under the next one: a booking's name ran into its window bar. `.cbar` is `border-box` now, and
+  the window bar sits 3 px after the booking. This may be part of Q310's "labels overlap when a booking and its window
+  are both short"; the overlap of two short bars' text is still Q310's.
+- The queue's "network.js's fallback still builds one bar per dispatch" was already gone: `netCalHTML` draws `N.pads`
+  as `netData` builds them.
+- Test `flow-53` (netCalHTML with a stub; the CSS rules; mutation caught: the bar's label back to the title). Checked on
+  the GPU: mission control's Pads page with a satellite ready on day 25 for a day-70 window: two separate bars.
+- **Still open:** the tick labels (`30 D`, `60 D`) are drawn over the bars.
+
+## v1.305 — what a mission opens: `opensOf`, the debrief's *Opened* block, *opens:* on the Missions tab (2026-11-11, flow, QUEUE Q570; Caio: the gameplay loop)
+
+- **Why:** the beeper opens 5 missions, 8 kinds of contract, 7 parts and the rover's high-gain antenna, and nothing on
+  screen said so. The only hint was NEXT's "opens X" for the one mission it suggests.
+- **The reader (sim/program.js, beside `missionOpen`):** `opensOf(id)` → `{missions, contracts, parts, rover}`: the
+  missions whose last missing `req` it is, `CT[k].req===id`, `PART_GATE`, `RV_GATE`. It reads today's `PROG.done` with `id`
+  counted done, so the same call answers before the mission (the Missions tab) and after it (the debrief).
+  `opensNames(ids)` merges several missions' lists with names (a mission another of `ids` did isn't "opened");
+  `opensLine(o, full)` says it in one line. Contract kinds have names now: `CT_KIND` (sim/contracts.js); `genOffer`'s type
+  filter is `offerTypes(src)`, unchanged.
+- **On screen:** the debrief's **Opened** block under the ledger (`D.opened`, built in `debBuild` from the missions paid this
+  flight; `debPaid` now keeps the mission's `id`): mission names go to the Missions tab, contract kinds to the in-tray, a
+  part shows its card on hover. Each open mission on the Missions tab has a dim *opens: …* line with the names. The
+  completion notice (v1.306) has the short line.
+- **Test** `econ-38`: for all 29 missions, in two programs (only its ancestors done; everything but it and what follows),
+  asked before and after, `opensOf` equals the before/after diff of `missionOpen`, `offerTypes` over every source (with the
+  world's own `CT.open` gates set aside: they wait on a station or a satellite) and `partOpen`/`rvPartOpen`: 116
+  comparisons. The beeper's numbers above.
+- **Seen in the browser:** the Missions tab (*Above the weather · opens: 1 mission (The beeper) · 1 kind of contract
+  (ballistic tests)*); a debrief's Opened block; its link to the Missions tab.
+
+## v1.306 — a completion notice you can't miss (2026-11-11, flow, QUEUE Q569; Q558's first slice)
+
+- **Before:** `missionComplete` and `contractEval` said it with `HOOK.msg`: one 18 px line for 3 s in the slot the staging
+  and gravity-turn hints overwrite.
+- **Now:** the sim calls `HOOK.done({k, id, name, win, pay, first, second, flight})` (a new no-op in `HOOK`, sim/core.js)
+  from `missionComplete`, `contractEval` (`flight` false for a dispatch) and `selDone` (contracts judged at home), and no
+  longer `HOOK.msg`. `app/notice.js` (new, loaded after app/debrief.js) queues it in `#done`, a card under `#msg`: kicker
+  (*Mission complete* / *Contract done* / *First in the world*), name, win line, pay, what it opened (v1.305), and where the
+  flight stands (v1.307's `mcLeft`: *Done: end the flight when you like*, *Bring it home: …*). It stays until Enter or a
+  click (Enter is taken in the capture phase, so the first Enter closes the notice and the next one ends the flight); two
+  at once queue (*1 more after this*); one that comes mid-burn waits for the engines to stop, and once up a burn doesn't
+  hide it; a flight's notices go when the flight ends (the debrief says it); a world mission's shows at the desk.
+  `doneTick` runs from the frame loop, guarded with `typeof`: the first frame comes before notice.js loads (the browser
+  check caught the loop dying on it).
+- **Test** `flow-55` (the notice's code with a stub DOM and `HOOK.msg`'s real line): shown with its parts; a hint after it
+  leaves it; queued; dismissed one by one; held through a burn; gone with its flight; a world one at the desk. It caught a
+  notice that never hid once the queue emptied.
+
+## v1.307 — the Mission card: when a flight is done (2026-11-11, flow, QUEUE Q548; § "Plan: the aim and the mission card", slice 2)
+
+- **Q547 merged** with it (its v1.285 is v1.304 now, its `econ-35` is `econ-37`): `jobConds` and `jobNeeds` are what the
+  card reads.
+- **What the flight is for, until the aim (Q549):** `cardJobs(s)` (sim/next.js): first what it has done (`rec.paid`), then
+  every accepted contract with a cond judged on a flight whose needs the vessel carried when first asked (on the pad: a
+  dropped stage doesn't take the job off), then up to three missions open at launch (`rec.open0`, W11) it could meet, in
+  NEXT's order (`missionsInOrder`, split out of `nextStep`).
+- **Where it stands:** `jobsLeft(J)`: *home* (a job wants only bringing home: its `rec`, `safe` or `home` cond left),
+  *todo* (a job under way: a cond met, one open; "pending", as the air bands waiting on the analysis, doesn't hold it),
+  *done* (something done this flight and nothing above). App-side `mcLeft()` adds *(land it first to keep the hardware)*
+  on a path down through the air.
+- **The card** (first in `HUD_CARDS`, `missionRows`, app/hud.js): a *Now* row with that; each job's title, kind and pay,
+  then its conds ✓ met, ✗ lost, ○ open with the reading now, ◐ waiting; the conds that bring it home read Q488's verdict
+  while it flies (*recovered by our ships, ~6 h*, in its colour). A job done folds to *✓ name · done, +pay*. Left-aligned
+  as a checklist. Not in `CP_CARDS`: the dark cockpit folds it.
+- **One message per change** (`missionWatch`, from `cockpit()`): a cond turning met or lost says one line in `#msg`
+  (*Apex 10–25 km ✓*, *…: apex 40–55 km ✗*); not at the first look, not for a job just paid (the notice says that), not
+  once the flight is over.
+- **End flight ▸ [Enter]** also shows when `mcLeft().k==='done'`, not only after a landing or a loss (`debEndBtn`).
+- **Test** `flow-54`: a scripted sounding record with a 40–55 km apex contract: open *now 31 km* → ✓ at 52 km falling (one
+  message) → *bring it home* with ◐ and the verdict's words → landed with the package: the contract and *Above the
+  weather* paid, *done*; past 55 km ✗ once and stays; the Hopper (no package) gets no apex job; the wiring.
+- **Seen in the browser** (a Sounding flown with `simulate` steps from the console): the card through the climb, the
+  messages, the notice for the structural test flight over a crash, and after a chute landing *Done: end the flight when
+  you like*, two notices queued, Recover vessel. **Not judged:** whether three missions plus a contract is too much card
+  early on (*Measure the air* lists its four bands, all ◐ until a landing analyses them).
+
+## v1.318 — the loop's slices: families and chapters as data, the builder under the map, the unlock cards, chapters as events (2026-11-12, loop slices session, QUEUE Q579, Q578, Q572, Q576; D41, D42; plan Q573)
+
+- **Q579 (economy, sim/program.js), data only.** `PART_FAMILY` (the orbital kit, the satellite bench, the 2.5 m family,
+  high orbits, docking, and *landers* for the far side's four, one more than the plan) names every part one mission opens;
+  `famOf`, `famParts`. `PART_WHY` and `partWhy(k)`: a "what it makes possible" line for every gated or era part (a
+  family's line for its members). `CHAPTERS` (`{id, n, name, question, missions, capstone, grants}`, the plan's final
+  draft; every mission in one; `grants` lists only what is built: no yard, globe or bases yet), `chapterOf`,
+  `chapterDone`, `chaptersNow` (4a and 4b side by side). `ROOM_GRANT` (the beeper: mission control). **D34:** a closed part
+  can't go on the stand (`startTest`; it would write know-how, and a part fired stays open), into development (`devQuote`)
+  or onto a line, own or licensed (`prodQuote`); the stand's list leaves it out. Test econ-42.
+- **Q578 (vehicle, builder.js).** `stackKeys(st)` reads any design format (old lists, v2 trees, payload blocks);
+  `stackWaits(st)` lists what a design waits for, in chapter order. The preset picker dims a waiting preset with its first
+  wait (*Hopper 🔒 Structural test flight +1*; the full list on hover). The palette lists open parts by category; the
+  closed ones fold under **▸ Not open yet (n)** (click to open), by chapter, each mission's parts under one reason line
+  (*Opens with "The beeper": the satellite bench*), eras last (`closedParts`). Test vehicle-44.
+- **Q572 (flow, app/unlock.js, sim/debrief.js; D42: one each).** `unlockCards(ids, pay)` turns what missions did and opened
+  into cards: each mission done (its win line, its pay), then **every part by name, one card each** (a family's in a row,
+  engines first, the card naming the family and its place: *Part unlocked · The satellite bench, 3 of 20*), a room, the
+  single parts, the rover parts, each mission it opened, and the next chapter when a capstone closed one. The Debrief keeps
+  them (`D.cards`) and shows them once, 0.45 s after it opens (`cardsShown` is kept with the save); missions done between
+  flights queue in `PROG.cardQ` (new `PROG_SCHEMA` row; `chapters.mjs` empties it) and show at the desk without the
+  *done* card, since the desk's centred notice still says that (Q600). Any key or a click: the next; Esc: all gone; **D**:
+  the design table with the part in hand (`BLD.grab`). Leaving the room closes them. **The model** (app/model-desk.js,
+  `pmStart`/`pmDraw`): the part built alone by `newShip([k])`, meshed by `partsMesh`, drawn with the mesh shader and
+  `deskLight` into its own target (RGBA16F where the GPU has it), read back and tone-mapped in JS (x/(1+x), gamma 2.2) into
+  a 448×350 canvas shown at 320×250, turning at ~20 frames a second (a draw and its read-back cost ~34 ms here). Only in
+  rooms, where `frame()` draws no 3D. Test flow-56.
+- **Q576 (flow).** The Missions tab is headed by chapter: *Chapter 2 · Once around*, its question, *Finish: The beeper →
+  mission control, the satellite bench*, the capstone marked ◆; a chapter with nothing open or done past the current one is
+  a count; `progTabOf` files *Chapter* headings under Missions. A flight that flies a capstone is debriefed under a blue
+  poster (*Chapter 2 complete · first in the world / ONCE AROUND*) ahead of a first (`capstoneOf`, `D.chapter`). The desk
+  wall's **trophy case**: a frame per chapter closed, the flight's photo where this browser kept one
+  (`launchpad-trophies`, beside the last photo; `trophyKeep` at the Debrief), else a plaque with the chapter's number.
+  Test flow-57.
+- **Checked in Chrome** (a fresh agency, states set by hand): the desk's cards for the structural test (the Kestrel turning
+  in the lamp's light), the Debrief's 26 cards for the beeper (done +60M, 20 parts, mission control, rover parts, Heavy
+  lift I, Weather satellite, chapter 3), **D** to the table with the camera in hand, the closed list, the picker, the
+  Missions tab, the trophy case. Caught there: a `//` comment that swallowed `unlockShow` (R4's pattern) and an
+  apostrophe in a single-quoted string.
+- **Not checked:** a real flown flight end to end (the Debrief was a record built by hand); the overlay at other window
+  sizes; a family part's line is the family's (20 identical lines for the bench); no sound yet (look & sound); the model's
+  colours against the design table's real grade.
+
+## v1.319 — the Mission card stays up in flight; a mission done turns green there (2026-11-12, flow item by the platform session, QUEUE Q600; D42; PLAYTEST #162, #164)
+
+Caio, playing v1.306–v1.307: the centred "Mission complete" box came when he cut the thrust (#162: `doneHeld` held it
+while the engines burned, Q558), and the missions he saw before launch were gone during the flight (#164: the dark
+cockpit folded the Mission card in every critical phase, and it listed three missions at most). D42: quiet in flight,
+loud after it.
+- **The card stays**: `'mission'` is first in `CP_CARDS` (app/cockpit.js). In a critical phase (`cpPhase`: the climb, a
+  burn, a landing) it is short (`mcShort`, app/hud.js): one line per job, its first open condition with the reading
+  now ("Sounding experiment, 40–55 km · apex 40–55 km, now 31 km"), or the lost one in red; the *Now* line stays. Pinned,
+  it stays full. Quiet, it is the full card as before.
+- **Every mission** open at launch the vessel could meet is listed (`MC_MISSIONS`, the cap of three, is gone from
+  `cardJobs`, sim/next.js). The card folds by height like the others when the window is short.
+- **Done in place**: the jobs keep the order the flight first listed them in (`mcOrder`, per `rec`), so a job done turns
+  green where it stood ("✓ Above the weather · done, +15.0M", the whole line green) instead of jumping to the top.
+  `debPaid` now records a contract's id (sim/contracts.js), so a paid contract matches its live row.
+- **No box in flight**: `HOOK.done` in flight (`n.flight` and mode flight) goes to `doneFlight` (app/notice.js): one line in
+  `#msg` for 6 s, "✓ Mission complete: Beeper · +30.0M" ("First in the world: …", "Contract done: …"), and a chime
+  (`sndDone`, app/sound.js: two soft rising tones, 784 and 1175 Hz). `doneHeld` is gone. The box (`#done`) stays for world
+  missions and contracts judged at home, at the desk, until Q572's overlays; the fanfare after a flight is Q572's.
+- Tests: flow-55 rewritten (in flight a line and a chime and no box; a flight's completion after it dropped; the desk's
+  box as before), flow-58 new (kept in a burn with Δv while the rest fold, via `hudCardsOn`, now its own function; the
+  short rows; done in place, green, with pay; `mcOrder`), flow-54 (all the missions; in the dark cockpit), flow-40 (the Δv
+  card still among `CP_CARDS`).
+- Not checked on a GPU: how the card reads over the climb at real size (*🖥 checks*, TESTING 378).
+
+## v1.320 — poster headlines for big moments; v1.318 flown by the robot (2026-11-12, loop slices session, QUEUE Q479; UI.md § 4.1 item 3)
+
+- **Big moments carry a poster.** `HOOK.news(t, cls, big)` takes a third argument `{kick, hl, rival?}` on four calls only:
+  our first in the world (`missionComplete`), a rival's first (`raceTick`), a chapter closed (`missionComplete` on a
+  capstone: *Chapter 2 complete: Once around. Can we stay up? Yes.*) and a new computing era (`compTick`). Routine news has
+  none. `NEWS` keeps it (app/state.js).
+- **The paper prints it as a poster.** `deskNews` lets a poster from the last `POSTER_DAYS` (30) lead the Herald on the desk
+  wall and beside the Debrief; `posterClip` (app/desk.js) sets a kicker, one Bebas headline and the story under it.
+- **The era's poster palette** (`posterEra()`: pe1 human computers, pe2 mainframes, pe3 onboard computers and after, per
+  UI.md's table): pe1 flat cream, navy and red; pe2 browns and oranges in a rounder type; pe3 a dark band and bold sans.
+  The Debrief's poster headline (a first, a loss, a chapter) takes it too. Test flow-58.
+- **v1.318 on real flights** (`node playtest.mjs cards`, a new row: m1's two flights with the cards checked after each
+  Debrief): the Sounding flight closes *Above the weather* and the structural test (25.2 kPa) and shows 14 cards under the
+  *Chapter 1 complete* poster (two missions done, the orbital kit, the four parts *Above the weather* opens, the beeper and
+  the hop, chapter 2); the beeper shows 26 under *Chapter 2 complete · first in the world*, +108M; a real Space moves on,
+  the camera turns, a real D brings it to the table in hand; the trophy case holds both chapters with their flight photos;
+  the Missions tab reads by chapter. TESTING 375–377's robot half is done.
+- **Caught on the way:** a `//` comment appended after a statement swallowed the rest of `raceTick`'s line (the third time
+  this pattern bit in two days: R4's, `unlockDesk`'s, this one): **append comments only at the true end of a line.** A
+  robot run started while the file was broken loaded the broken page; the rerun was clean.
+- **Not checked:** the pe2 and pe3 palettes on screen (only pe1 was seen: the first hour is in the human-computers era); a
+  rival's first on the desk by eye.
+
+## v1.322 — the design table's and the flight's copy, cut to the rule (2026-11-12, review 2 session (Fable), QUEUE Q603 slices 1 and 2; D43; PLAYTEST #167)
+
+Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
+
+- **Standing lines gone into tooltips.** The line under *Parts* (19 words on how to pick and place) is now the heading's
+  tooltip; with a rocket on the table `#target` is empty, with none it reads *pick a part to start*. The line under
+  *staging* (28 words) and the one under *action groups* (22) are each their heading's tooltip. The screen's subtitle
+  is *design table*.
+- **While holding:** *holding X · right-click drops it* (was a 20-word line naming every place a click can go).
+  Parked parts: *n parts not attached · left behind at launch*.
+- **Part cards** (`PART_INFO`, `PART_PAIRS`, builder.js): 48 of 67 sentences rewritten, none over 14 words now; a
+  closed part's card says *Not open yet: it opens with …* once. `DEP_HOW` keeps its "key, or button: when" shape (the
+  card splits it at the colon).
+- **Tooltips** on the toolbar, the part options, the groups and the presets: one clause each.
+- **The readout** (app/editor.js): Trim, Touchdown and the stages in the air lose their explaining tails (the glossary
+  and the why-cards carry them); the ratings paragraph under the readout is the *Aerodynamics & structure* heading's
+  tooltip; the payload bench no longer shows a note to developers ("PROBES S2").
+- **The flight (slice 2).** The first-flight hints (app/cockpit.js) say the same steps in about half the words (*To
+  reach orbit, turn: at 100 m/s tap W to lean east, then SAS Prograde. Keep the nose near the ◇.*); they stay until
+  Guided (Q491) takes the teaching. The two "too flat" cautions end at *nose up to the ◇*. The flight bar's five long
+  tooltips and twelve of Help's rows are one clause each.
+- **Counted:** 146 strings. The part cards' sentences: 1,102 words to 751, the longest from 34 to 14; their *Pairs
+  with* lines 601 to 522.
+- **Tests:** the full suite passed on slice 1 (898 checks); the smoke set on both slices passed but for vehicle-43 (b),
+  which found no failed ignition that run and passes alone, with and without this change (a flake, filed). After the
+  merge with `origin/main` the smoke set passed but for the timing check *6b: a perturbed orbit at 100,000× warp stays
+  cheap* (2,327 µs a frame while other sessions' tests ran; 97 µs alone).
+- **Not checked:** not seen in a browser (no GPU this session): whether a heading reads as hoverable, how the empty
+  `#target` line sits, and how the cards wrap. TESTING 380. The why-cards' own sentences (app/editor.js `W`) are
+  slice 4.
+
+## v1.324 — the unlock cards' follow-ups, and a career under way opens on the desk (2026-11-12, loop slices session, QUEUE Q370; Q572's follow-ups)
+
+- **A line per part.** Every member of a family has its own `PART_WHY` line (55 of them: the Kestrel's *the heart of an
+  orbital rocket*, the whip antenna's *the lightest way to be heard*...), so the satellite bench's 20 cards say 20 things.
+  The family's line stays the builder's reason (`partWhy` reads the family first); the card reads the part's.
+- **A sound per card** (`sndUnlock(k)`, app/sound.js; stand-ins for look & sound): a mission done is the notice's two
+  beeps, a part a rising three-note arpeggio, a room or a mission opened two soft notes, the next chapter a four-note
+  fanfare. `AUD.ev.unlock` counts them.
+- **Q370, on the queue's default:** the page still opens on the title, and a career under way goes on to the desk at the
+  window's `load` (after every script: the desk reads later files, the file split's rule 1). A new career and the tester stay
+  on the title; the Esc menu's *Title screen* brings it back. Cards waiting in `PROG.cardQ` show at the desk on arrival.
+- **Checked:** flow-18 (updated) and flow-60; headless with `review/2026-11-11/app/q370_check.cjs` (the page in a vm, a
+  founded career reloaded: it lands on the desk with its queued cards up, Esc › Title works, no errors). **Not checked in
+  Chrome:** the machine was too loaded for the browser to answer (two tabs froze); nor the sounds by ear.
+## v1.325 — near the ground, retrograde hands over to stability (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
 - **Why (Caio, landing on Nyx):** "when the rocket is near land and navigation is in retrograde, it should toggle back to
   stability mode bc or else it's very easy for it to accidentally flip." Retrograde is undefined as the speed goes to zero:
   in the last metres of a powered landing the velocity is a few tenths of a m/s in any direction, retrograde swings with
@@ -1692,9 +2259,9 @@ to keep it on the ◇"; the GPU probe caught the first wording asking for a mode
 - **Not done:** the drift left at the hand-over is no longer cancelled by retrograde (a pilot translates it out or tilts
   by hand); a hold that does both is vehicle notes' "manual landing hold", still its own item. Q545's thrust on the
   ground (unmerged when this was built) is not relied on.
-- **Checks:** test `flow-52` (own sim): the hover descent on Nyx and Selene with the hand-over off leans past 20° in the
+- **Checks:** test `flow-61` (own sim): the hover descent on Nyx and Selene with the hand-over off leans past 20° in the
   last 10 m (46° / 27°); with it the hand-over comes under 3 m/s within 50 m (~22 m), one message, one redraw, no switch
   back, ≤ 5° in the last 10 m (3.8° / 0.2°), at rest upright; the hold's choice (upright past 3°, else its own attitude),
   Retrograde re-picked kept, the flag cleared past 6 m/s, procedures and other modes untouched; the wiring. Run with
   control-3, control-5, vehicle-24, flow-36 and the retrograde returns (14, 37f, vehicle-3): all pass. The full smoke is
-  owed (Caio's batch). TESTING row 347.
+  owed (Caio's batch). TESTING row 383.

@@ -45,7 +45,10 @@ function warpCap(rails=null){
 // a step of the warp control (the ◀ ▶ buttons, , and .); a step into a locked level says why
 function warpStep(d){warpTo=null;const c=warpCap(),i=clamp(warpIdx+d,0,WARPS.length-1);
   if(d>0&&i>c.max){warpIdx=c.max;HOOK.msg(`Faster than ${WARPS[c.max]}× is locked: ${c.why}`)}else warpIdx=i}
-function frame(now){
+// (R9) a frame that throws doesn't end the game: frameBody's error goes to gameFault (app/fault.js), and the next frame is
+// scheduled whatever happened (before, a throw skipped requestAnimationFrame and the game froze for good)
+function frame(now){try{frameBody(now)}catch(e){gameFault(e,'frame')}requestAnimationFrame(frame)}
+function frameBody(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();if(!gamePaused())FXT+=dtR*1000;   // (Q393) the effects' clock
   testTopUp();const t0s=simT;if(!gamePaused())simulate(dtR);watchTick();emitSmoke(simT-t0s);sndTick(dtR);
   if(hDrag&&S.node){const h=hDrag.h,off=(hDrag.cur[0]-h.x)*h.ux+(hDrag.cur[1]-h.y)*h.uy,k=ovPx();
@@ -55,6 +58,6 @@ function frame(now){
   fpsN++;fpsT+=dtR;if(fpsT>0.5){fpsShow=fpsN/fpsT;fpsN=0;fpsT=0;$('perf').textContent=`${fpsShow.toFixed(0)} fps · gpu ${gpuMs==null?'?':gpuMs.toFixed(1)} ms · cpu ${frameMs.toFixed(1)} ms · res ${Math.round(RS*100)}% · ${GPU_NAME}`}
   hudT-=dtR;if(hudT<=0&&mode==='flight'){hudT=0.1;updateHUD()}
   if(msgTimer>0){msgTimer-=dtR;if(msgTimer<=0)$('msg').style.opacity=0}
-  if(mode==='flight'&&S&&!S.alive&&S.lossWhy&&msgTimer<=0){const m=$('msg'),t=S.lossWhy[0].toUpperCase()+S.lossWhy.slice(1);if(m.textContent!==t){m.textContent=t;msgLayout()}m.style.opacity=1}   // a loss's cause stays on screen (Q264)
-  requestAnimationFrame(frame)}
+  if(typeof doneTick==='function')doneTick(dtR);   // (Q569, app/notice.js loads after this file; the first frame comes before it) the completion notice: held mid-burn, gone when its flight ends
+  if(mode==='flight'&&S&&!S.alive&&S.lossWhy&&msgTimer<=0){const m=$('msg'),t=S.lossWhy[0].toUpperCase()+S.lossWhy.slice(1);if(m.textContent!==t){m.textContent=t;msgLayout()}m.style.opacity=1}}   // a loss's cause stays on screen (Q264)
 

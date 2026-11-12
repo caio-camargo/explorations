@@ -382,7 +382,8 @@ function erebusMap(){if(EREBUS_MAP)return EREBUS_MAP;const B=GROUND_STUBS.Erebus
   bakeEach(W,H,(u,k)=>{const r=warpR(u,bc,R,ER.basin.r*R,.12,6),n=sstep(1,.9,r);
     E[k]=E[k]*(1-n)+(ER.basin.floor)*n;N[k]=sstep(.93,.88,r);   // the glacier fills the basin: a flat floor (the unit), its shore
     let m=0,bk=0,rm=9;for(const t of mt){const rr=warpR(u,t.c,R,t.R,.35,40);rm=Math.min(rm,rr);if(rr<1){bk=Math.max(bk,t.H*sstep(1,.45,rr));m=Math.max(m,sstep(1,.8,rr))}}E[k]+=bk;   // a block on whatever ground it stands; overlapping blocks: the taller
-    K[k]=m;N[k]*=sstep(.95,1.25,rm);   // a block's flanks aren't glacier floorconst rb=angTo(u,bc)/ER.basin.r;Bl[k]=rb>1.05&&rb<1.9&&inArc(u,ER.blades.az)?sstep(1.05,1.25,rb)*sstep(1.9,1.6,rb):0;
+    K[k]=m;N[k]*=sstep(.95,1.25,rm);   // a block's flanks aren't glacier floor
+    const rb=angTo(u,bc)/ER.basin.r;Bl[k]=rb>1.05&&rb<1.9&&inArc(u,ER.blades.az)?sstep(1.05,1.25,rb)*sstep(1.9,1.6,rb):0;
     Y[k]=Math.max(N[k],K[k]*.8,.5*(1-T[k]))});
   for(const A of[E,N,K,Bl,T,Y])polesFix(A,W,H);
   return EREBUS_MAP={W,H,E,N,K,B:Bl,T,Y,Dt,craters:cr,mtns:mt,...mapRange(E),thin:cu=>mapBil(Y,W,H,cu)}}

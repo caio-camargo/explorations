@@ -6,7 +6,7 @@
 <title>Launchpad screen mock-ups</title>
 <!-- QUEUE Q239 / PLAYTEST #6, flow session 2026-10-10. Static mock-ups of the screens as places of their own, not panels
      over the flight view, in W14's default identity (paperwork office, instrument-panel cockpit, poster headings).
-     Never loaded by the game. ?s=title|program|debrief|mission|assembly  &still=1 (no controls, for screenshots).
+     Never loaded by the game. ?s=title|program|debrief|mission|assembly  &still=1 (no controls, for screenshots), &bare=1 (no caption).
      Fonts come from Google Fonts here (Q53 decides whether the game bundles them). The photo is a real frame. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=VT323&family=Bebas+Neue&family=Jost:wght@400;600;800&display=swap" rel="stylesheet">
@@ -17,6 +17,7 @@ html,body{margin:0;background:#111;color:#ddd;font:13px/1.4 system-ui,sans-serif
 #bar a{color:#9cf;text-decoration:none;padding:2px 6px;border-radius:3px}#bar a.on{background:#9cf;color:#111}
 #bar b{color:#888;font-weight:normal}
 body.still #bar{display:none}
+body.bare .tagline{display:none}   /* &bare=1: no caption (mockups/transitions embeds these rooms) */
 #wrap{display:flex;justify-content:center;padding:10px}body.still #wrap{padding:0}
 #stage{position:relative;width:1280px;height:800px;overflow:hidden;transform-origin:top left;background:#222}
 .scr{display:none;position:absolute;inset:0}
@@ -410,7 +411,7 @@ body.s-title .title,body.s-program .program,body.s-debrief .debrief,body.s-missi
 <script>
 const Q=new URLSearchParams(location.search),S={title:'Title: the charter (first run)',program:'Program: the director\'s desk',debrief:'Debrief: the flight report',mission:'Mission control',assembly:'Assembly: the hall'};
 const s=S[Q.get('s')]?Q.get('s'):'program';
-document.body.className=`s-${s}${Q.has('still')?' still':''}`;
+document.body.className=`s-${s}${Q.has('still')?' still':''}${Q.has('bare')?' bare':''}`;
 document.getElementById('tag').textContent=`${S[s]} · Q239 mock-up · era 1 (1950s–60s)`;
 document.getElementById('bar').innerHTML=`<b>Screen</b>`+Object.entries(S).map(([k,l])=>`<a href="?s=${k}" class="${k===s?'on':''}">${l}</a>`).join('');
 const fit=()=>{if(Q.has('still'))return;const st=document.getElementById('stage'),k=Math.min(1,(innerWidth-20)/1280);st.style.transform=`scale(${k})`;document.getElementById('wrap').style.height=800*k+20+'px'};addEventListener('resize',fit);fit();

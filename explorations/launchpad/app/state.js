@@ -19,26 +19,39 @@ function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=t
       else{const up=norm(nz),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),a=R()*6.283,rr=e.d.exit*(5+6*R())+(onPad?3:0);
         pf=add(mul(up,len(nz)-hn+1+R()*1.5),add(mul(X,Math.cos(a)*rr),mul(Z,Math.sin(a)*rr)));s0*=.7}
       smoke.push({pf,t0:simT,s0,grow:6+4*R(),a0:.5,life:40+30*R(),rise:1+1.5*R(),seed:R()*97})}}}
-function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
+// (Q566; PLAYTEST #161, Caio: "the player should be able to see the full smoke trail from the launch pad as the rocket
+// leaves the atmosphere") The trail's puffs live TRAIL_LIFE (7–9 min: an ascent leaves the air in 3–5), and the list
+// can hold the whole trail because old puffs are thinned as they widen: laid 0.9 m apart off the pad, a puff is 30 m
+// across half a minute later and most of its neighbours add nothing. trailThin walks the trail in the order it was laid
+// and retires (q.kt: a 3 s fade, drawSmoke) a puff when its two neighbours are within TRAIL_GAP of a puff's radius of
+// each other, so no step along the trail ever grows past that (dropping against the last one kept left holes of 2 radii).
+const TRAIL_LIFE=420,TRAIL_GAP=.6,SMOKE_MAX=6000;let thinAcc=0;
+function trailThin(list,t){let L=null,Ls=0,P=null,Ps=0,n=0;for(const q of list){if(!q.tr||q.kt)continue;const sz=q.s0+q.grow*Math.sqrt(Math.max(0,t-q.t0));
+    if(!L){L=q;Ls=sz;continue}if(P){const dx=q.pf[0]-L.pf[0],dy=q.pf[1]-L.pf[1],dz=q.pf[2]-L.pf[2],m=TRAIL_GAP*Math.min(sz,Ls,Ps);
+      if(dx*dx+dy*dy+dz*dz<m*m){P.kt=t;n++}else{L=P;Ls=Ps}}   // P goes only if the step it leaves (L to q) is still under the gap
+    P=q;Ps=sz}return n}
+// a full list gives up a puff that is already fading before it gives up the oldest, which is the trail's pad end
+function smokeDrop(list){const i=list.findIndex(q=>q.kt);if(i<0)list.shift();else list.splice(i,1)}
+function emitSmoke(dt){thinAcc+=dt;if(thinAcc>=.5){thinAcc=0;trailThin(smoke,simT)}if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
   emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
-  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>4000)smoke.shift();
+  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>SMOKE_MAX)smokeDrop(smoke);
     const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
-    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:110+Math.random()*60,rise:Math.random()*0.6,seed:Math.random()*97})}}}
+    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:TRAIL_LIFE*(1+.3*Math.random()),rise:Math.random()*0.6,seed:Math.random()*97,tr:1})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
 // of CPU a frame with ~1000 puffs.
 let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
 const QC=[-1,-1,1,-1,1,1,-1,-1,1,1,-1,1];
 function drawSmoke(VP,camW,R,U){
-  let w=0;for(let i=0;i<smoke.length;i++){const q=smoke[i],age=simT-q.t0;if(age<=q.life&&age>=0)smoke[w++]=q}smoke.length=w;
-  const n=w;if(!n)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th);
+  let w=0;for(let i=0;i<smoke.length;i++){const q=smoke[i],age=simT-q.t0;if(age<=q.life&&age>=0&&!(q.kt&&simT-q.kt>3))smoke[w++]=q}smoke.length=w;
+  const n=w;if(!n)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th),pxa=.82/H;   // pxa: three quarters of a pixel, in radians (fov 1.0)
   if(smokeK.length<n){smokeK=new Float64Array(n*2);smokeI=new Uint32Array(n*2);smokeP=new Float64Array(n*12);smokeV=new Float32Array(n*96)}
   for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
     let rx,ry,rz;const o=i*6;
-    if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2]}   // fxPuff: inertial, ballistic
+    if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2];if(q.g){const h=.5*age*age;rx+=q.g[0]*h;ry+=q.g[1]*h;rz+=q.g[2]*h}}   // fxPuff: inertial, ballistic
     else{if(q.ux===undefined){const L=len(q.pf),u=[q.pf[0]/L,q.pf[1]/L,q.pf[2]/L],h=L-TELLUS.R;q.ux=u[0];q.uy=u[1];q.uz=u[2];
         // (Q319, B2.6) the wind at the puff's height: it turns with height and peaks in a jet stream near 11 km, so a
         // contrail kinks and shears as it drifts (was one step at 8 km)
@@ -46,7 +59,9 @@ function drawSmoke(VP,camW,R,U){
         q.wx=m*(WIND[0]*c0+x[0]*s0+u[0]*uw*(1-c0));q.wy=m*(WIND[1]*c0+x[1]*s0+u[1]*uw*(1-c0));q.wz=m*(WIND[2]*c0+x[2]*s0+u[2]*uw*(1-c0))}
       const ra=q.rise*age,x=q.pf[0]+q.ux*ra+q.wx*age,y=q.pf[1]+q.uy*ra+q.wy*age,z=q.pf[2]+q.uz*ra+q.wz*age;
       rx=c*x+sn*z-camW[0];ry=y-camW[1];rz=-sn*x+c*z-camW[2]}
-    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
+    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;{let sz=q.s0+q.grow*Math.sqrt(age),al=q.a0*(1-age/q.life);if(q.kt)al*=Math.max(0,1-(simT-q.kt)/3);
+      // a puff under 1.5 px wide is drawn at 1.5 px and thinner by the same ratio: the far end of a trail is a steady line, not a flicker
+      const mn=Math.sqrt(rx*rx+ry*ry+rz*rz)*pxa;if(sz<mn){al*=sz/mn;sz=mn}smokeP[o+3]=sz;smokeP[o+4]=al}smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
     smokeK[i]=rx*rx+ry*ry+rz*rz;smokeI[i]=i}
   const idx=smokeI.subarray(0,n).sort((a,b)=>smokeK[b]-smokeK[a]),v=smokeV;let k=0;
   for(let m=0;m<n;m++){const i=idx[m],o=i*6,sz=smokeP[o+3],seed=smoke[i].seed;
@@ -70,7 +85,7 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
 let settling=false;const NEWS=[];let newsSeen=0;
 let landPick=null;   // a landing site picked on the map ({body, pf}; Q62): ▶ Procedure lands there
 {const raw=missionEnd;missionEnd=function(s){settling=true;try{return raw(s)}finally{settling=false}}}
-{const raw=HOOK.news;HOOK.news=(t,cls='')=>{NEWS.unshift({t,cls,day:PROG.day||0});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
+{const raw=HOOK.news;HOOK.news=(t,cls='',big=null)=>{NEWS.unshift({t,cls,day:PROG.day||0,...(big?{big}:{})});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
 function newsHTML(){if(!NEWS.length)return'';const fresh=Math.min(newsSeen,NEWS.length);
   return `<div class="ep">News</div>`+NEWS.slice(0,Math.max(6,fresh)).slice(0,12).map((n,i)=>`<div class="nw${i<fresh?' new':''}"><span class="dim">day ${Math.floor(n.day)+1}</span> ${typeof newsMark==='function'?newsMark(n.t):''}<span class="${n.cls}">${n.t}</span></div>`).join('')}
 // Two placements the flight HUD keeps (fixes session, PLAYTEST #15, #16), run on every screen change, each HUD update and
@@ -163,19 +178,38 @@ function surfFx(o,b,r,q,L0,rad,dt){if(b!==TELLUS||!dt)return;o.mkSurf=(o.mkSurf|
     fxPuff(P,surfVel(b,P),{s0:.1+.12*R()*Math.min(rad,2),grow:.5,a0:.45,life:1.5+R()})}}
 // staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
 // The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
+// (Q564; PLAYTEST #159, #160) Staging. The camera looks at the centre of mass, and dropping parts moves it in one step:
+// detach reports the jump (HOOK.cmShift), the camera keeps looking where it was and closes the gap as a critically
+// damped spring (no jerk at the start, there within about a second). camLagStep is the spring's exact step.
+const CAML={x:[0,0,0],v:[0,0,0],t:0,s:null},CAML_W=4.5;
+function camLagStep(L,dt){const e=Math.exp(-CAML_W*dt);for(let i=0;i<3;i++){const A=L.x[i],B=L.v[i]+CAML_W*A;L.x[i]=(A+B*dt)*e;L.v[i]=(B-CAML_W*(A+B*dt))*e}return L.x}
+HOOK.cmShift=(s,d)=>{if(s===S&&CAML.s===S)CAML.x=sub(CAML.x,d)};
+function camLag(){if(CAML.s!==S){CAML.s=S;CAML.x=[0,0,0];CAML.v=[0,0,0]}const n=performance.now(),dt=clamp((n-CAML.t)/1000,0,.1);CAML.t=n;return camLagStep(CAML,dt)}
+// The separation itself: a flash at the seam, gas venting from it in a ring (a slow thick one and a fast thin one),
+// sparks, and in thin air a cloud of flecks that drift off slowly and glint in the sun. Everything falls with the craft
+// (g, scaled by how thin the air is): without it the puffs slid 4 m off the seam in the first second in orbit.
 function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;
   const rad=dec.d.kind==='rdec',J=rad?[dec.pos[0],dec.y0+dec.h/2,dec.pos[2]]:[dec.pos[0],dec.y0+dec.h,dec.pos[2]],
     at=add(d.r,qrot(d.q,sub(J,d.cm))),Y=qrot(d.q,[0,1,0]),X=qrot(d.q,[1,0,0]),Z=qrot(d.q,[0,0,1]),r=rad?.4:(dec.d.r||R0),
-    pa=pressure(TELLUS,len(d.r)-TELLUS.R),R=Math.random;
-  for(let i=0;i<18;i++){const a=i/18*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=4+6*R()+8*(1-pa);   // gas vents radially from the seam
-    fxPuff(add(at,mul(u,r)),add(S.v,add(mul(u,sp),mul(Y,(R()-.5)*2))),{s0:.3+.3*R(),grow:1.5+2*R()+3*(1-pa),a0:.45*(.25+.75*pa),life:1.5+2.5*R()*(.3+pa),hot:.25})}
+    pa=clamp(pressure(TELLUS,len(d.r)-TELLUS.R),0,1),vac=1-pa,rl=len(d.r),g=mul(d.r,-TELLUS.mu/(rl*rl*rl)*vac),lit=!inShadow(TELLUS,d.r),R=Math.random;
+  fxPuff(at,S.v,{s0:r*.9,grow:3,a0:.9,life:.14,hot:3,g});   // the charge
+  for(let i=0;i<28;i++){const a=i/28*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=4+6*R()+8*vac;   // gas vents radially from the seam
+    fxPuff(add(at,mul(u,r)),add(S.v,add(mul(u,sp),mul(Y,(R()-.5)*2))),{s0:.3+.3*R(),grow:1.5+2*R()+3*vac,a0:.45*(.4+.6*pa),life:1.5+2.5*R()*(.4+.6*pa),hot:.25,g})}
+  for(let i=0;i<20;i++){const a=i/20*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=16+14*R();   // and a fast thin ring ahead of it
+    fxPuff(add(at,mul(u,r)),add(S.v,mul(u,sp)),{s0:.15,grow:4+2*R(),a0:.1+.08*vac,life:.6+.4*R(),hot:.3,g})}
   for(let i=0;i<26;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=8+18*R();   // sparks: small, hot, fast, short-lived
-    fxPuff(add(at,mul(u,r*.8)),add(S.v,mul(u,sp)),{s0:.05+.05*R(),grow:0,a0:.9,life:.25+.45*R(),hot:1.6})}}
+    fxPuff(add(at,mul(u,r*.8)),add(S.v,mul(u,sp)),{s0:.05+.05*R(),grow:0,a0:.9,life:.25+.45*R(),hot:1.6,g})}
+  for(let i=0,n=Math.round(36*clamp((vac-.85)/.15,0,1));i<n;i++){const u=norm([R()-.5,R()-.5,R()-.5]);   // flecks (frost, paint, foil): only where no wind takes them
+    fxPuff(add(at,mul(u,r*R())),add(S.v,mul(u,.4+3*R())),{s0:.015+.03*R(),grow:0,a0:.85,life:3+5*R(),hot:lit?.55+.5*R():.08,g})}}
+HOOK.sep=sepFx;
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 // tester mode (?tester in the URL) keeps its own program, so cheats never reach the career (TEST: the SIM tester block)
 TEST.on=(()=>{try{return new URLSearchParams(location.search).has('tester')}catch(e){return false}})();
 if(TEST.on)try{Object.assign(TEST,JSON.parse(localStorage.getItem('launchpad-tester-flags')||'{}'),{on:true})}catch(e){}
-const PROG_KEY=TEST.on?'launchpad-program-tester':'launchpad-program-v1';
+// a program begun from a chapter start (Q571, app/title.js) lives in a slot of its own, so the career is never read or
+// written: 'launchpad-slot' says which one the page opens ('chapter', else the career's)
+const PROG_SLOT=(()=>{try{return localStorage.getItem('launchpad-slot')==='chapter'}catch(e){return false}})();
+const CHAPTER_KEY='launchpad-program-chapter',PROG_KEY=TEST.on?'launchpad-program-tester':PROG_SLOT?CHAPTER_KEY:'launchpad-program-v1';
 // Save versions (QUEUE Q57). A save carries `ver`; a save without one is version 0. MIGRATE[n] takes a save from version n
 // to n+1, pure (the parsed JSON in, the same object out), and migrateSave runs the chain from the save's version up to
 // SAVE_V. When a change to PROG would break an old save, bump SAVE_V and add the step here, with a fixture in test.mjs
@@ -184,11 +218,46 @@ const SAVE_V=1,MIGRATE=[
   j=>{for(const q of j.sats||[])delete q.docked;j.rel=j.rel||{};j.op=j.op||{};if(!isFinite(j.funds))delete j.funds;if(!isFinite(j.day))j.day=0;return j}];   // 0 → 1: the loader's old fix-ups
 function migrateSave(j){if(!j||typeof j!=='object')return null;let v=Number.isInteger(j.ver)?j.ver:0;
   if(v>SAVE_V){j.newerSave=true;return j}for(;v<SAVE_V;v++)j=MIGRATE[v](j);j.ver=SAVE_V;return j}
-let progLoaded=false;try{const j=migrateSave(JSON.parse(localStorage.getItem(PROG_KEY)||'null'));if(j){progLoaded=true;Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked;debRestore();   // the last Debrief comes back (Q100)
-  if(j.newerSave){delete PROG.newerSave;setTimeout(()=>HOOK.msg&&HOOK.msg('This program was saved by a newer version of the game: some of it may not load right'),1500)}}}catch(e){}   // a flight in progress doesn't survive a reload
-if(!progLoaded)PROG.wseed=freshSeed();   // a new save gets a world of its own (Q529), not 12345 for every first career
-if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
-HOOK.save=()=>{try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
+// Loading (R10): progLoad (sim/program.js) repairs, derives and probes the save, and starts a new program if it can't. A
+// save that won't parse or load is first copied to PROG_BAD, so the new program's first save can't destroy it; with no
+// room for that copy, this tab never saves (progHeld). Nothing here throws: a bad save no longer bricks the page.
+// A flight in progress doesn't survive a reload.
+const PROG_BAD=PROG_KEY+'-bad',bootSay=(t,cls)=>setTimeout(()=>{HOOK.msg(t);if(cls)HOOK.news(t,cls)},1500);
+let progLoaded=false,progHeld=false,storeOK=true;
+{let raw=null,why=null;try{raw=localStorage.getItem(PROG_KEY)}catch(e){storeOK=false}
+  if(raw){let j=null;try{j=migrateSave(JSON.parse(raw))}catch(e){why='it is not readable'}
+    if(j){const e=progLoad(j),newer=PROG.newerSave;delete PROG.newerSave;
+      if(e){why=`it stops the game: ${e.message}`;console.error('launchpad: the saved program failed to load',e)}
+      else{progLoaded=true;
+        if(newer)bootSay('This program was saved by a newer version of the game: some of it may not load right');
+        if(PROG_REPAIRED.length)bootSay(`Parts of the saved program were damaged and are reset: ${PROG_REPAIRED.join(', ')}`,'warn')}}
+    else if(!why)why='it is not a program';
+    if(why){try{localStorage.setItem(PROG_BAD,raw)}catch(e){progHeld=true}
+      bootSay(progHeld?`The saved program can't be loaded (${why}), and there is no room to keep a copy: this tab won't save over it`
+        :`The saved program can't be loaded (${why}). A new program has started; the old one is kept in browser storage as "${PROG_BAD}"`,'bad')}}
+  if(!progLoaded&&!why){PROG.wseed=freshSeed();progDerive()}}   // no save: a world of its own (Q529), not 12345 for every first career
+// Saving (R10): a failed write is said (once a minute at most; quota is the likely one), not swallowed. Two tabs on one
+// program: the browser tells every other tab when one writes the save; from then on those tabs stop saving (they would
+// write their older program over it) and say so. Whichever tab saves first keeps the program.
+let saveSaidAt=-1e9;
+HOOK.save=()=>{if(progHeld)return;try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,progJSON())}
+  catch(e){const n=performance.now();if(storeOK&&n-saveSaidAt>60e3){saveSaidAt=n;
+    HOOK.msg(/quota/i.test(`${e.name} ${e.message}`)?'Could not save: browser storage is full. Free some (old autopilot tapes, other sites\' data) or progress is lost on reload':`Could not save the program (${e.message})`)}}};
+addEventListener('storage',e=>{if(e.key!==PROG_KEY||progHeld)return;progHeld=true;
+  const t='This program was saved in another tab: this tab no longer saves. Reload it to carry on here';HOOK.msg(t);HOOK.news(t,'bad')});
+// Importing a save file (R9's follow-up; Settings › Saved program, app/settings.js). The file goes through the boot's path:
+// migrated, then progLoad repairs, derives and probes it. One that isn't a program or stops the game leaves the program as
+// it was (reloaded from its own text). One that loads replaces this slot's save: the program it replaces is kept as
+// PROG_PREV when there is room, and this tab stops saving, so nothing writes the old program back before the page reloads.
+const PROG_PREV=PROG_KEY+'-before-import';
+function importSave(text){let j=null;try{j=JSON.parse(text)}catch(e){}   // (a program has a day: asked before migrating, which sets one)
+  if(!j||typeof j!=='object'||Array.isArray(j)||!('day' in j))return{ok:false,why:'the file is not a saved program'};j=migrateSave(j);
+  const keep=progJSON(),e=progLoad(j),newer=!!PROG.newerSave;delete PROG.newerSave;
+  if(e){progLoad(keep);return{ok:false,why:`it stops the game: ${e.message}`}}
+  const out=progJSON(),rep=PROG_REPAIRED.slice(),day=PROG.day;let kept=true;
+  try{localStorage.setItem(PROG_PREV,keep)}catch(_){kept=false}
+  try{localStorage.setItem(PROG_KEY,out)}catch(x){progLoad(keep);return{ok:false,why:/quota/i.test(`${x.name} ${x.message}`)?'browser storage is full':x.message}}
+  progHeld=true;return{ok:true,rep,newer,kept,day}}
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
 function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pendingDrops[i];if(simT<d.impact.t)continue;pendingDrops.splice(i,1);

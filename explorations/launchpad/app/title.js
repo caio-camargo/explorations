@@ -26,16 +26,33 @@ function charterHTML(signed){const o=own(),kinds=Object.keys(START),pick=signed?
     +`<div class="sign"><div>Signed, for the program:<br><span class="sig">${name}</span><br><span class="dim">Director · ${signed?'day 1':'today'}</span></div>`
     +(signed?`<span class="inforce">In force · ${fmtDate(PROG.day||0)}</span>`:`<button id="bFound" data-start="${pick}">Found the program ▶</button>`)+`</div>`
     +`<div class="seal">${name.replace(/ /g,'<br>')}</div>`}
+// Chapter starts (QA, QUEUE Q571; PROGRESSION.md § 6): the menu's "Start at" line opens a program in the middle of the game,
+// played there by career.mjs's scripted player (chapters.mjs writes starts/<id>.js, loaded when picked). It goes into its
+// own slot (PROG_SLOT, app/state.js), the career untouched; "Back to your career" opens that again. In tester mode it
+// replaces the tester's program instead, flags and all. The library (designs) and the level come along.
+const CHAPTER_STARTS=[{id:'orbit',name:'First orbit done'},{id:'station',name:'First station up'},{id:'selene',name:'Landed on Selene'}];
+function chapterStart(id){const c=CHAPTER_STARTS.find(x=>x.id===id);if(!c)return false;
+  const put=()=>{const C=(window.CHAPTER_SAVES||{})[id];if(!C){HOOK.msg(`The "${c.name}" start didn't load`);return}
+    const j=JSON.parse(JSON.stringify(C.save));for(const k in PROG_SCHEMA){const kp=PROG_SCHEMA[k][1];if((kp==='library'||kp==='pref')&&PROG[k]!==undefined)j[k]=progClone(PROG[k])}
+    try{localStorage.setItem(TEST.on?PROG_KEY:CHAPTER_KEY,JSON.stringify(j));if(!TEST.on)localStorage.setItem('launchpad-slot','chapter')}
+    catch(e){HOOK.msg("The browser wouldn't store the start");return}
+    HOOK.save=()=>{};location.reload()};   // (no save on the way out: it would write this program over the start)
+  if((window.CHAPTER_SAVES||{})[id])put();else{const s=document.createElement('script');s.src=`starts/${id}.js`;s.onload=put;s.onerror=()=>HOOK.msg(`The "${c.name}" start is missing`);document.head.appendChild(s)}
+  return true}
+function chapterLeave(){HOOK.save();try{localStorage.setItem('launchpad-slot','career')}catch(e){}HOOK.save=()=>{};location.reload()}
 function renderTitle(){if(!$('ttl'))return;const fresh=needCharter(),b=(a,t,on)=>`<button data-ttl="${a}"${on?' class="on"':''}>${t}</button>`;
-  $('ttlMenu').innerHTML=(fresh?'':b('continue',`Continue<small>${fmtDate(PROG.day||0)} · Enter</small>`,true))
-    +b('new',fresh?'New program':ttlArm?'Click again: forget this program':'New program',fresh||ttlArm)+b('settings','Settings')+(TEST.on?b('tester','Tester [F2]'):'');
+  const ch=PROG_SLOT&&!TEST.on,at=`<div class="ttlAt"><small>Start at</small>${CHAPTER_STARTS.map(c=>`<button data-chapter="${c.id}">${c.name}</button>`).join('')}</div>`;
+  $('ttlMenu').innerHTML=(fresh?'':b('continue',`Continue<small>${fmtDate(PROG.day||0)}${ch?' · a chapter start':''} · Enter</small>`,true))
+    +(ch?b('career','Back to your career'):b('new',fresh?'New program':ttlArm?'Click again: forget this program':'New program',fresh||ttlArm))+at+b('settings','Settings')+(TEST.on?b('tester','Tester [F2]'):'');
   $('ttlCharter').innerHTML=charterHTML(!fresh);$('ttlCharter').classList.toggle('signed',!fresh)}
 function ttlFound(k){chooseStart(k||ttlPick||Object.keys(START)[0]);ttlPick=null;renderProgram();editorChanged();go('program')}
-document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-arch],[data-cstart],[data-lvl],[data-start],[data-ttl]');if(!t||!t.closest('#ttl'))return;const ds=t.dataset;
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-arch],[data-cstart],[data-lvl],[data-start],[data-ttl],[data-chapter]');if(!t||!t.closest('#ttl'))return;const ds=t.dataset;
   if(ds.lvl){setLevel(ds.lvl);renderTitle()}
   else if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderTitle()}
   else if(ds.cstart){ttlPick=ds.cstart;renderTitle()}
   else if(ds.start){ttlFound(ds.start)}
+  else if(ds.chapter)chapterStart(ds.chapter);
+  else if(ds.ttl==='career')chapterLeave();
   else if(ds.ttl==='continue')go('program');
   else if(ds.ttl==='new'){if(needCharter())return;if(!ttlArm){ttlArm=true;renderTitle();return}ttlArm=false;resetProgram();renderTitle()}
   else if(ds.ttl==='settings')ovOpen('settings');

@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face lab 4</title>
+<!-- Launchpad face engine, fourth lab (2026-11-10; FACES.md § 9): MakeHuman decides who the person is, our cage decides
+     how they are drawn.
+       - The person: MakeHuman's head, feature sliders, sex / age / population / weight macros and expression units
+         (CC0 1.0; ../faces3/mh-head.js, baked by ../faces3/bake_mh.py).
+       - The drawing: faces2's control cage (rows are the face's lines, columns its landmarks), subdivided with creases;
+         "Planes" runs from modelled to carved.
+       - The binding, made once on the average head: the cage's rows are moved to MakeHuman's own landmark heights
+         (found on its profile), its eye opening, mouth corner and nose wing to MakeHuman's, and every cage point is
+         then dropped onto MakeHuman's surface and remembered as a place on one of its triangles. After that any
+         MakeHuman shape moves the cage.
+     Ears are MakeHuman's own; eyes are balls where MakeHuman puts them; hair is faces2's shell.
+     URL: ?mode=edit|sheet, ?dna=F4:..., ?seed=n. -->
+<style>
+  :root { --bg: #0e1116; --panel: #151a22; --line: #262d39; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  header { display: flex; gap: 18px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0; color: var(--acc); }
+  .tabs button { background: none; border: 0; color: var(--dim); font: inherit; font-size: 14px; padding: 4px 8px; cursor: pointer; }
+  .tabs button.on { color: var(--fg); border-bottom: 2px solid var(--acc); }
+  .note { color: var(--dim); font-size: 12px; }
+  button.b { background: #232a36; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; font: inherit; cursor: pointer; }
+  button.b:hover { border-color: var(--acc); }
+  .mode { display: none; padding: 12px 14px; }
+  .mode.on { display: block; }
+  canvas.t { display: block; background: #2b2b2b; }
+  #edit.on { display: flex; gap: 16px; align-items: flex-start; }
+  #side { width: 300px; flex: none; max-height: calc(100vh - 70px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  #side details { border-top: 1px solid var(--line); padding: 4px 0; }
+  #side summary { cursor: pointer; color: var(--acc); font-weight: 600; padding: 2px 0; }
+  .row { display: grid; grid-template-columns: 118px 1fr 44px; gap: 6px; align-items: center; margin: 2px 0; }
+  .row label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row span { font: 11px ui-monospace, monospace; color: var(--dim); text-align: right; }
+  .row input { width: 100%; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+  #views { display: grid; grid-template-columns: 520px 255px; gap: 10px 14px; }
+  .cap { color: var(--dim); font-size: 12px; margin-top: 3px; }
+  .thumbs { display: flex; gap: 10px; align-items: flex-end; margin-top: 8px; }
+  #vq { cursor: grab; }
+  #dna { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; background: #0b0e13; color: var(--fg); border: 1px solid var(--line); padding: 5px; }
+  #grid { display: grid; grid-template-columns: repeat(4, 250px); gap: 12px; margin-top: 10px; }
+  .cell { position: relative; cursor: pointer; }
+  .cell .th { position: absolute; right: 4px; bottom: 4px; border: 1px solid #0008; }
+  .cell .sig { position: absolute; left: 6px; top: 4px; right: 6px; font-size: 10px; color: #ddd; text-shadow: 0 0 3px #000; pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Face lab 4</h1>
+  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="sheet">Sheet</button></nav>
+  <span class="note">MakeHuman's people (public domain), drawn through our carved cage. Drag the big view to turn the head.</span>
+</header>
+<section id="edit" class="mode">
+  <div id="side">
+    <div class="btns">
+      <button class="b" id="reset">Average</button><button class="b" id="rand">Randomise</button>
+      <label class="note"><input type="checkbox" id="wire"> cage</label>
+      <label class="note"><input type="checkbox" id="bald"> no hair</label>
+    </div>
+    <div id="sliders"></div>
+  </div>
+  <div>
+    <div id="views">
+      <div><canvas class="t" id="vq" width="520" height="520"></canvas><div class="cap">¾ (drag to turn; double-click to reset)</div></div>
+      <div><canvas class="t" id="vf" width="255" height="255"></canvas><div class="cap">Front</div>
+        <canvas class="t" id="vp" width="255" height="255" style="margin-top:8px"></canvas><div class="cap">Profile</div></div>
+    </div>
+    <div class="thumbs"><canvas class="t" id="tq" width="48" height="48"></canvas><canvas class="t" id="tf" width="48" height="48"></canvas><canvas class="t" id="tp" width="48" height="48"></canvas><span class="note">48 px</span><span class="note" id="stat"></span></div>
+    <p class="note" style="margin:12px 0 4px">DNA (sliders that differ from the average face, by name):</p>
+    <input id="dna" spellcheck="false"><div class="btns"><button class="b" id="apply">Apply</button><button class="b" id="copy">Copy</button></div>
+  </div>
+</section>
+<section id="sheet" class="mode">
+  <div class="btns"><button class="b" id="fresh">New faces</button><span class="note">Twelve generated people. They take "Exaggerate" and the style sliders from the editor. Click one to edit it.</span></div>
+  <div id="grid"></div>
+</section>
+<script src="../faces3/mh-head.js"></script>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+const mix = (a, b, t) => a + (b - a) * t, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const pretty = k => k.replace(/^x-/, '').replace(/-(decr-incr|in-out|down-up|backward-forward|compress-uncompress|concave-convex|less-more|small-big|decr|incr)$/, '').replace(/-/g, ' ');
+const GENES = [   // [key, group, label, default, low, high]
+  ['sex', 'Person', 'Sex: female–male', .5, 0, 1], ['age', 'Person', 'Age: young–old', .2, 0, 1],
+  ['af', 'Person', 'Population: African', 1, 0, 1], ['as', 'Person', 'Population: Asian', 1, 0, 1], ['ca', 'Person', 'Population: European', 1, 0, 1],
+  ['wt', 'Person', 'Weight: thin–heavy', 0, -1, 1], ['ex', 'Person', 'Exaggerate', 1, .3, 3],
+  ['pl', 'Style', 'Planes: modelled–carved', .45, 0, 3], ['cr', 'Style', 'Feature edges: soft–crisp', 1, 0, 1.8],
+  ['ht', 'Hair', 'Volume on top', .5, 0, 1], ['hq', 'Hair', 'Front: flat–quiff', .35, 0, 1], ['hsd', 'Hair', 'Volume at the sides', .3, 0, 1], ['hl', 'Hair', 'Length at the back', .3, 0, 1], ['hg', 'Hair', 'Comb grooves', .5, 0, 1],
+  ['bk', 'Paint', 'Eyebrow weight', .5, 0, 1], ['st', 'Paint', 'Skin tone: light–deep', .22, 0, 1],
+  ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1], ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1], ['lt', 'Paint', 'Lip colour', .7, 0, 1],
+  ...MH.sliders.map(s => [s.key, s.group[0].toUpperCase() + s.group.slice(1), pretty(s.key), 0, s.neg.length ? -1 : 0, 1]),
+  ...MH.units.map(u => [u, 'Expression', pretty(u), 0, 0, 1]),
+];
+const OPEN = new Set(['Person', 'Style', 'Paint', 'Hair']), GK = Object.fromEntries(GENES.map(g => [g[0], g]));
+const house = () => Object.fromEntries(GENES.map(g => [g[0], g[3]]));
+const toDNA = g => 'F4:' + GENES.filter(d => Math.abs(g[d[0]] - d[3]) > 1e-4).map(d => d[0] + '=' + (+g[d[0]].toFixed(3))).join(',');
+function fromDNA(s) { const m = /^F4:(.*)$/.exec((s || '').trim()); if (!m) return null; const g = house();
+  for (const kv of m[1].split(',')) { const [k, v] = kv.split('='); if (GK[k] && isFinite(+v)) g[k] = clamp(+v, GK[k][4], GK[k][5]); } return g; }
+
+// ---- the cage (faces2): the house table gives each point's starting place before it is bound to MakeHuman
+const NR = 22, NC = 11, PHI = [0, 9, 18, 30, 42, 57, 78, 100, 125, 152, 180].map(d => d * Math.PI / 180);
+const YF = [1, .955, .87, .74];
+const YB = [0, .93, .82, .70, .60, .54, .50, .47, .44, .41, .37, .33, .30, .27, .25, .23, .21, .19, .17, .13, .08, -.25];
+// each row: y, then [x, z, dy] for columns 0..6
+const FACE = {
+  4: [.625, [0, .385], [.045, .384], [.10, .376], [.165, .352], [.225, .302], [.275, .215], [.325, .06]],             // top of the brow ridge
+  5: [.585, [0, .393], [.04, .392], [.095, .386, .004], [.16, .366, .012], [.228, .312, .006], [.274, .222, -.012], [.322, .06, -.01]],   // the brow's edge
+  6: [.555, [0, .366], [.03, .362], [.072, .33, -.005], [.14, .34, .012], [.214, .302], [.264, .226, -.006], [.32, .06]],   // nasion; the upper lid's crease
+  7: [.52, [0, .374], [.028, .368], [.07, .318, -.014], [.14, .349, .027], [.208, .30, -.008], [.264, .224], [.32, .055]],   // the upper lid's margin, corner to corner
+  8: [.488, [0, .388], [.03, .38], [.07, .318, .018], [.14, .342, -.02], [.208, .30, .024], [.266, .224], [.32, .05]],   // the lower lid's margin (its corners are row 7's)
+  9: [.445, [0, .413], [.035, .40], [.078, .345, .005], [.145, .338, -.008], [.212, .305], [.27, .236], [.322, .05]],   // under the eye
+  10: [.39, [0, .46], [.038, .445], [.085, .362], [.155, .356], [.225, .326, .01], [.283, .24, .02], [.318, .06, .03]],   // the cheekbone; mid nose
+  11: [.33, [0, .515], [.035, .5], [.082, .405, -.012], [.15, .36, .005], [.215, .325, .01], [.27, .235, .02], [.30, .06, .03]],   // the nose's tip and wings
+  12: [.30, [0, .41], [.03, .414], [.075, .385], [.145, .36, .005], [.208, .32, .01], [.262, .23, .02], [.29, .05, .03]],   // the nose's base
+  13: [.258, [0, .425, -.006], [.028, .424, .004], [.07, .404, -.008], [.105, .368, -.03], [.2, .3, .02], [.255, .215, .03], [.283, .045, .04]],   // the upper lip's border
+  14: [.228, [0, .405], [.03, .404], [.07, .39], [.105, .368], [.195, .295, .025], [.25, .205, .035], [.28, .04, .045]],   // the slit, out to the corner (column 3)
+  15: [.196, [0, .418], [.03, .416], [.068, .398, .006], [.105, .368, .032], [.19, .29, .03], [.245, .2, .04], [.277, .035, .05]],   // the lower lip's border
+  16: [.155, [0, .375], [.035, .374], [.075, .365], [.125, .345, .015], [.185, .285, .035], [.24, .195, .045], [.273, .03, .058]],   // the crease above the chin
+  17: [.075, [0, .395], [.04, .392], [.08, .375], [.125, .34, .015], [.18, .275, .04], [.23, .185, .065], [.262, .025, .105]],   // the chin
+  18: [0, [0, .33], [.04, .328], [.08, .315, .005], [.12, .285, .02], [.17, .23, .05], [.215, .145, .09], [.245, .01, .155]],   // the jaw line, chin to angle
+  19: [-.005, [0, .17], [.035, .17], [.07, .165], [.10, .15, .008], [.135, .11, .03], [.165, .05, .06], [.185, -.03, .1]],   // under the jaw
+};
+function ring(y, phi) {   // the cranium's section at a height, or the neck's where that is wider
+  const t = Math.abs((y - .60) / (y > .60 ? .40 : .47)), s = t < 1 ? Math.pow(1 - Math.pow(t, 2.3), 1 / 2.3) : 0;
+  const cs = Math.cos(phi), sn = Math.sin(phi), k = 1 / Math.pow(Math.pow(Math.abs(cs), 2.3) + Math.pow(Math.abs(sn), 2.3), 1 / 2.3);
+  const x = .335 * s * sn * k, z = (cs > 0 ? .44 : .40) * s * cs * k, nx = .2 * sn, nz = .2 * cs - .03;
+  const w = sstep(-.03, .03, Math.hypot(nx, nz) - Math.hypot(x, z)); return [mix(x, nx, w), -.07 + mix(z, nz, w)];
+}
+const HOUSE = [];
+for (let r = 0; r < NR; r++) { const row = []; HOUSE.push(row);
+  for (let c = 0; c < NC; c++) { const ph = PHI[c], bw = (1 - Math.cos(ph)) / 2;
+    if (r === 0) row.push([0, 1, -.07]);
+    else if (r <= 3) { const y = mix(YF[r], YB[r], bw), [x, z] = ring(y, ph); row.push([x, y, z]); }
+    else if (r <= 19) { const F = FACE[r];
+      if (c <= 6) row.push([F[c + 1][0], F[0] + (F[c + 1][2] || 0), F[c + 1][1]]);
+      else { const y = mix(F[0] + (F[7][2] || 0), YB[r], (c - 6) / 4), [x, z] = ring(y, ph); row.push([x, y, z]); } }
+    else if (r === 20) row.push([.2 * Math.sin(ph), mix(-.06, .06, bw), -.10 + .2 * Math.cos(ph)]);
+    else row.push([.215 * Math.sin(ph), mix(-.32, -.27, bw), -.13 + .21 * Math.cos(ph)]);
+  } }
+
+const canon = (r, c) => (r === 8 && (c === 2 || c === 4)) ? [7, c] : ((r === 13 || r === 15) && c === 3) ? [14, 3] : [r, c];
+const VID = new Map(), VSRC = [];   // VSRC: [r, c, side] or ['rim', vertex, side]
+function vid(r, c, s) { [r, c] = canon(r, c); if (r === 0) c = 0; if (c === 0 || c === 10) s = 0; const k = r + '_' + c + '_' + s;
+  if (!VID.has(k)) { VID.set(k, VSRC.length); VSRC.push([r, c, s]); } return VID.get(k); }
+const HEAD = { faces: [], fmat: [], meta: [] };
+for (const s of [1, -1]) for (let r = 0; r <= 20; r++) for (let c = 0; c <= 9; c++) {
+  if (r === 7 && (c === 2 || c === 3)) continue;   // the eye's opening
+  let f = r === 0 ? [vid(0, 0, 0), vid(1, c, s), vid(1, c + 1, s)] : [vid(r, c, s), vid(r + 1, c, s), vid(r + 1, c + 1, s), vid(r, c + 1, s)];
+  f = f.filter((v, i) => v !== f[(i + 1) % f.length]); if (f.length < 3) continue; if (s < 0) f.reverse();
+  HEAD.faces.push(f); HEAD.fmat.push((r === 13 || r === 14) && c <= 2 ? 1 : 0); HEAD.meta.push([r, c, s]); }
+const EYELOOP = new Set(); for (const s of [1, -1]) for (const [r, c] of [[7, 2], [7, 3], [7, 4], [8, 3]]) EYELOOP.add(vid(r, c, s));
+function boundaryEdges(faces, pick) {   // directed edges used by one face only
+  const cnt = new Map(), K = (a, b) => a < b ? a + '_' + b : b + '_' + a, out = [];
+  for (const f of faces) for (let i = 0; i < f.length; i++) { const k = K(f[i], f[(i + 1) % f.length]); cnt.set(k, (cnt.get(k) || 0) + 1); }
+  for (const f of faces) for (let i = 0; i < f.length; i++) { const a = f[i], b = f[(i + 1) % f.length]; if (cnt.get(K(a, b)) === 1 && pick(a, b)) out.push([a, b]); }
+  return out; }
+{ const rim = new Map(), rv = v => { if (!rim.has(v)) { rim.set(v, VSRC.length); VSRC.push(['rim', v, VSRC[v][2]]); } return rim.get(v); };   // the lids' thickness: the opening's edge carried back into the head
+  for (const [a, b] of boundaryEdges(HEAD.faces, (a, b) => EYELOOP.has(a) && EYELOOP.has(b))) { HEAD.faces.push([b, a, rv(a), rv(b)]); HEAD.fmat.push(0); HEAD.meta.push([-1, -1, 0]); } }
+HEAD.nV = VSRC.length;
+// creases: [sharpness, scaled by the "feature edges" gene?, the chain of (row, column) points]
+const CREASES = [
+  [1.2, 1, [[5, 0], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5]]],            // the brow's edge
+  [.9, 1, [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1]]],   // the nose's ridge edges
+  [1, 1, [[12, 0], [12, 1], [12, 2]]], [.8, 1, [[10, 2], [11, 2], [12, 2]]],   // the nose's base; the wing
+  [2, 0, [[7, 2], [7, 3], [7, 4]]], [2, 0, [[8, 2], [8, 3], [8, 4]]],  // the lid margins
+  [1.3, 1, [[13, 0], [13, 1], [13, 2], [13, 3]]], [1, 1, [[15, 0], [15, 1], [15, 2], [15, 3]]], [10, 0, [[14, 0], [14, 1], [14, 2], [14, 3]]],   // lip borders; the slit
+  [1, 1, [[18, 0], [18, 1], [18, 2], [18, 3], [18, 4], [18, 5], [18, 6]]],   // the jaw line
+  [.5, 1, [[10, 4], [10, 5], [10, 6]]], [.5, 1, [[12, 1], [13, 1]]],     // the cheekbone; the philtrum's ridges
+];
+const CORNERS = new Set(); for (const s of [1, -1]) { CORNERS.add(vid(7, 2, s)); CORNERS.add(vid(7, 4, s)); CORNERS.add(vid(14, 3, s)); }
+
+
+function subdiv(m) {
+  const nV = m.nV, F = m.faces, nF = F.length, N = nV + 1, ek = (a, b) => a < b ? a * N + b : b * N + a;
+  const E = new Map(), EL = [], vE = [], vF = []; for (let i = 0; i < nV; i++) { vE.push([]); vF.push([]); }
+  for (let fi = 0; fi < nF; fi++) { const f = F[fi]; for (let i = 0; i < f.length; i++) { const a = f[i], b = f[(i + 1) % f.length], k = ek(a, b); let e = E.get(k);
+    if (!e) { e = { a, b, f0: fi, f1: -1, id: EL.length, s: m.sharp.get(k) || 0 }; E.set(k, e); EL.push(e); vE[a].push(e); vE[b].push(e); } else e.f1 = fi; vF[a].push(fi); } }
+  const nE = EL.length; for (const e of EL) if (e.f1 < 0) e.s = 99;
+  const ptr = new Int32Array(nV + nF + nE + 1), idx = [], w = []; let row = 0;
+  const emit = acc => { for (const [i, x] of acc) { idx.push(i); w.push(x); } ptr[++row] = idx.length; }, A = (acc, i, x) => acc.set(i, (acc.get(i) || 0) + x);
+  for (let v = 0; v < nV; v++) { const es = vE[v], k = es.length, acc = new Map(); if (!k) { A(acc, v, 1); emit(acc); continue; }
+    const sh = es.filter(e => e.s > 0), bnd = es.some(e => e.f1 < 0); let t = 0, mode = 0;
+    if (m.corner.has(v) || sh.length >= 3) { mode = 2; t = m.corner.has(v) ? 1 : Math.min(1, sh.reduce((a, e) => a + e.s, 0) / sh.length); }
+    else if (sh.length === 2) { mode = 1; t = Math.min(1, (sh[0].s + sh[1].s) / 2); }
+    if (bnd) t = 1;
+    if (mode === 2) A(acc, v, t); else if (mode === 1) { A(acc, v, .75 * t); for (const e of sh) A(acc, e.a === v ? e.b : e.a, .125 * t); }
+    if (t < 1) { const u = 1 - t, fs = vF[v], nf = fs.length; for (const fi of fs) { const f = F[fi], x = u / (nf * k * f.length); for (const i of f) A(acc, i, x); }
+      for (const e of es) { A(acc, v, u / (k * k)); A(acc, e.a === v ? e.b : e.a, u / (k * k)); } A(acc, v, u * (k - 3) / k); }
+    emit(acc); }
+  for (const f of F) { const acc = new Map(); for (const i of f) A(acc, i, 1 / f.length); emit(acc); }
+  for (const e of EL) { const acc = new Map(), t = Math.min(1, e.s); A(acc, e.a, .5 * t); A(acc, e.b, .5 * t);
+    if (t < 1) { const u = 1 - t; A(acc, e.a, .25 * u); A(acc, e.b, .25 * u); for (const fi of [e.f0, e.f1]) { const f = F[fi]; for (const i of f) A(acc, i, .25 * u / f.length); } } emit(acc); }
+  const N2 = nV + nF + nE + 1, ek2 = (a, b) => a < b ? a * N2 + b : b * N2 + a, faces = [], fmat = [], sharp = new Map();
+  for (let fi = 0; fi < nF; fi++) { const f = F[fi], n = f.length; for (let i = 0; i < n; i++) { const v = f[i], e1 = E.get(ek(v, f[(i + 1) % n])), e0 = E.get(ek(f[(i + n - 1) % n], v));
+    faces.push([v, nV + nF + e1.id, nV + fi, nV + nF + e0.id]); fmat.push(m.fmat[fi]); } }
+  for (const e of EL) if (e.f1 >= 0 && e.s > 1) { const mid = nV + nF + e.id; sharp.set(ek2(e.a, mid), e.s - 1); sharp.set(ek2(mid, e.b), e.s - 1); }
+  return { mesh: { nV: nV + nF + nE, faces, fmat, sharp, corner: m.corner }, ptr, idx: Int32Array.from(idx), w: Float32Array.from(w) };
+}
+function levels(m, n) { const L = []; for (let i = 0; i < n; i++) { const s = subdiv(m); L.push(s); m = s.mesh; }
+  const quads = new Int32Array(m.faces.length * 4); m.faces.forEach((f, i) => quads.set(f, i * 4)); return { L, quads, fmat: Uint8Array.from(m.fmat), nV: m.nV }; }
+function refine(S, P) { for (const { ptr, idx, w } of S.L) { const n = ptr.length - 1, O = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { let x = 0, y = 0, z = 0; for (let j = ptr[i]; j < ptr[i + 1]; j++) { const k = idx[j] * 3, ww = w[j]; x += ww * P[k]; y += ww * P[k + 1]; z += ww * P[k + 2]; } O[i * 3] = x; O[i * 3 + 1] = y; O[i * 3 + 2] = z; }
+    P = O; } return P; }
+const sharpMap = (nV, list) => { const N = nV + 1, m = new Map(); for (const [a, b, s] of list) if (s > 0) { const k = a < b ? a * N + b : b * N + a; m.set(k, Math.max(m.get(k) || 0, s)); } return m; };
+const headCache = new Map();
+function headLevels(pl, cr) { const key = pl.toFixed(2) + '|' + cr.toFixed(2); let S = headCache.get(key); if (S) return S;
+  const list = []; for (const f of HEAD.faces) for (let i = 0; i < f.length; i++) list.push([f[i], f[(i + 1) % f.length], pl]);   // "planes": a floor under every edge
+  for (const s of [1, -1]) for (const [sv, sc, ch] of CREASES) for (let i = 0; i + 1 < ch.length; i++) list.push([vid(ch[i][0], ch[i][1], s), vid(ch[i + 1][0], ch[i + 1][1], s), sc ? sv * cr : sv]);
+  S = levels({ nV: HEAD.nV, faces: HEAD.faces, fmat: HEAD.fmat, sharp: sharpMap(HEAD.nV, list), corner: CORNERS }, 3);
+  if (headCache.size > 6) headCache.delete(headCache.keys().next().value); headCache.set(key, S); return S; }
+
+
+const hairFace = (r, c, lim) => r < 0 ? false : r <= 1 || (r === 2 && c >= 4) || (r === 3 && c >= 5) || (r === 4 && c >= 6) || (r >= 5 && r <= lim && c >= 7);
+const hairCache = new Map();
+function hairTopo(lim) { let H = hairCache.get(lim); if (H) return H;
+  const map = new Map(), src = [], hv = (v, inner) => { const k = v * 2 + inner; if (!map.has(k)) { map.set(k, src.length); src.push([v, inner]); } return map.get(k); };
+  const faces = []; HEAD.faces.forEach((f, i) => { const [r, c] = HEAD.meta[i]; if (hairFace(r, c, lim)) faces.push(f.map(v => hv(v, 0))); });
+  const be = boundaryEdges(faces, () => true), list = be.map(([a, b]) => [a, b, 1]);
+  for (const [a, b] of be) faces.push([b, a, hv(src[a][0], 1), hv(src[b][0], 1)]);
+  H = { src, S: levels({ nV: src.length, faces, fmat: faces.map(() => 3), sharp: sharpMap(src.length, list), corner: new Set() }, 3) }; hairCache.set(lim, H); return H; }
+function hairOffset(r, c, g, n, out) {   // how far the hair stands off the skull at a cage point, along n
+  const top = [1, 1, .85, .5, .25, .15][Math.min(r, 5)] || .1; let T = .016 + .05 * g.ht * top;
+  if (c >= 5 && r >= 2) T += .035 * g.hsd * (c >= 9 ? .6 : 1) * (r >= 9 ? .5 + g.hl : 1);
+  const q = r <= 2 && c <= 4 ? g.hq * .1 * [1, .95, .8, .5, .2][c] * [.25, .6, 1][r] : 0;
+  out[0] = n[0] * T; out[1] = n[1] * T + q * .65; out[2] = n[2] * T + q * .55; }
+
+const EYE_R = .072;
+let VB = new Float32Array(8 * 3 * 60000), VN = 0, INFO = {};
+function emitQuads(P, quads, fmat, flip) {
+  const nV = P.length / 3, Nn = new Float32Array(nV * 3), L = new Float32Array(nV * 3), cnt = new Float32Array(nV), nq = quads.length / 4;
+  for (let q = 0; q < nq; q++) { const a = quads[q * 4] * 3, b = quads[q * 4 + 1] * 3, c = quads[q * 4 + 2] * 3, d = quads[q * 4 + 3] * 3;
+    const ux = P[c] - P[a], uy = P[c + 1] - P[a + 1], uz = P[c + 2] - P[a + 2], vx = P[d] - P[b], vy = P[d + 1] - P[b + 1], vz = P[d + 2] - P[b + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    for (const i of [a, b, c, d]) { Nn[i] += nx; Nn[i + 1] += ny; Nn[i + 2] += nz; }
+    for (const [i, j] of [[a, b], [b, c], [c, d], [d, a]]) { L[i] += P[j]; L[i + 1] += P[j + 1]; L[i + 2] += P[j + 2]; cnt[i / 3]++; L[j] += P[i]; L[j + 1] += P[i + 1]; L[j + 2] += P[i + 2]; cnt[j / 3]++; } }
+  const ao = new Float32Array(nV);
+  for (let i = 0; i < nV; i++) { const k = i * 3, l = Math.hypot(Nn[k], Nn[k + 1], Nn[k + 2]) || 1, s = flip ? -1 : 1; Nn[k] *= s / l; Nn[k + 1] *= s / l; Nn[k + 2] *= s / l;
+    const c = cnt[i] || 1, dx = L[k] / c - P[k], dy = L[k + 1] / c - P[k + 1], dz = L[k + 2] / c - P[k + 2], d = Math.hypot(dx, dy, dz) || 1e-9;
+    ao[i] = clamp(1 - 1.6 * Math.max(0, (dx * Nn[k] + dy * Nn[k + 1] + dz * Nn[k + 2]) / (d + .004)), .25, 1); }   // a point lower than its neighbours sits in a groove
+  if (VB.length < (VN + nq * 6) * 8) { const B = new Float32Array((VN + nq * 6) * 16); B.set(VB.subarray(0, VN * 8)); VB = B; }
+  for (let q = 0; q < nq; q++) { const m = fmat[q], Q4 = [quads[q * 4], quads[q * 4 + 1], quads[q * 4 + 2], quads[q * 4 + 3]];
+    for (const j of flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]) { const i = Q4[j], k = i * 3, o = VN++ * 8;
+      VB[o] = P[k]; VB[o + 1] = P[k + 1]; VB[o + 2] = P[k + 2]; VB[o + 3] = Nn[k]; VB[o + 4] = Nn[k + 1]; VB[o + 5] = Nn[k + 2]; VB[o + 6] = m; VB[o + 7] = ao[i]; } }
+}
+function emitBall(cx, cy, cz, R) { const NU = 20, NV = 14, pt = (u, v) => { const a = u / NU * 2 * Math.PI, b = v / NV * Math.PI, s = Math.sin(b); return [s * Math.cos(a), Math.cos(b), s * Math.sin(a)]; };
+  if (VB.length < (VN + NU * NV * 6) * 8) { const B = new Float32Array((VN + NU * NV * 6) * 16); B.set(VB.subarray(0, VN * 8)); VB = B; }
+  for (let u = 0; u < NU; u++) for (let v = 0; v < NV; v++) for (const [du, dv] of [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]]) { const n = pt(u + du, v + dv), o = VN++ * 8;
+    VB[o] = cx + n[0] * R; VB[o + 1] = cy + n[1] * R; VB[o + 2] = cz + n[2] * R; VB[o + 3] = n[0]; VB[o + 4] = n[1]; VB[o + 5] = n[2]; VB[o + 6] = 2; VB[o + 7] = 1; } }
+
+// ---- MakeHuman's head (faces3)
+let P0, AVG, NV, TOPO, LIPF, IDX, DEL, TQ, FM, HAIRV = [];   // HAIRV: for each hair-shell point, the scalp point under it
+async function unpack(b64, T) { const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const buf = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); return new T(buf); }
+function morph(w, out) {   // out += sum of weight x target
+  for (const name in w) { const t = MH.targets[name], k = w[name] / MH.q; if (!t || !w[name]) continue;
+    for (let j = t[0], e = t[0] + t[1]; j < e; j++) { const i = IDX[j] * 3; out[i] += DEL[j * 3] * k; out[i + 1] += DEL[j * 3 + 1] * k; out[i + 2] += DEL[j * 3 + 2] * k; } } }
+function macroW(g) { const w = {}, es = (g.af + g.as + g.ca) || 1, E = { african: g.af / es, asian: g.as / es, caucasian: g.ca / es };
+  for (const [s, sw] of [['female', 1 - g.sex], ['male', g.sex]]) for (const [a, aw] of [['young', 1 - g.age], ['old', g.age]]) {
+    for (const e in E) w[e + '-' + s + '-' + a] = E[e] * sw * aw;
+    w['weight-' + s + '-' + a + '-minweight'] = sw * aw * Math.max(0, -g.wt); w['weight-' + s + '-' + a + '-maxweight'] = sw * aw * Math.max(0, g.wt); }
+  return w; }
+function shape(g) {   // the face's points: the average, plus its difference from the average times "Exaggerate", plus the expression
+  const P = P0.slice(), w = macroW(g), x = {};
+  for (const s of MH.sliders) { const v = g[s.key]; if (!v) continue; for (const n of v > 0 ? s.pos : s.neg) w[n] = (w[n] || 0) + Math.abs(v); }
+  morph(w, P); if (g.ex !== 1) for (let i = 0; i < P.length; i++) P[i] = AVG[i] + (P[i] - AVG[i]) * g.ex;
+  for (const u of MH.units) if (g[u]) x[u] = g[u]; morph(x, P); return P; }
+function frame(P) {   // chin at 0, crown at 1, the nose tip at z = .515: MakeHuman's macros also move and size the whole body
+  const y0 = P[MH.chin * 3 + 1], s = 1 / (P[MH.crown * 3 + 1] - y0), z0 = P[MH.tip * 3 + 2] * s - .515;
+  for (let i = 0; i < P.length; i += 3) { P[i] *= s; P[i + 1] = (P[i + 1] - y0) * s; P[i + 2] = P[i + 2] * s - z0; } return P; }
+
+// ---- the binding: cage points as places on MakeHuman's triangles
+let TRIV, NTRI, BIND = [], EARS = null, LMK = {};
+function cast(P, ox, oy, oz, dx, dy, dz) {   // the nearest triangle a ray meets: [distance, i, j, k, u, v]
+  let best = null, bt = 1e9; ox += 1.1e-4; oy += .7e-4; oz += .9e-4;   // off the mesh's seam: a ray down the exact midline slips between triangles
+  for (let n = 0; n < NTRI; n++) { const a = TRIV[n * 3] * 3, b = TRIV[n * 3 + 1] * 3, c = TRIV[n * 3 + 2] * 3;
+    const e1x = P[b] - P[a], e1y = P[b + 1] - P[a + 1], e1z = P[b + 2] - P[a + 2], e2x = P[c] - P[a], e2y = P[c + 1] - P[a + 1], e2z = P[c + 2] - P[a + 2];
+    const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz; if (Math.abs(det) < 1e-12) continue;
+    const inv = 1 / det, tx = ox - P[a], ty = oy - P[a + 1], tz = oz - P[a + 2], u = (tx * px + ty * py + tz * pz) * inv; if (u < 0 || u > 1) continue;
+    const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, v = (dx * qx + dy * qy + dz * qz) * inv; if (v < 0 || u + v > 1) continue;
+    const t = (e2x * qx + e2y * qy + e2z * qz) * inv; if (t > 1e-6 && t < bt) { bt = t; best = [t, TRIV[n * 3], TRIV[n * 3 + 1], TRIV[n * 3 + 2], u, v]; } }
+  return best; }
+const baryAt = (P, b, o, k) => { const w = 1 - b[4] - b[5]; for (let c = 0; c < 3; c++) o[k + c] = w * P[b[1] * 3 + c] + b[4] * P[b[2] * 3 + c] + b[5] * P[b[3] * 3 + c]; };
+function bindCage(A, skinV, earMask, lipV) {
+  const front = (x, y) => cast(A, x, y, 3, 0, 0, -1), zOf = h => h ? 3 - h[0] : -9, vtx = i => [0, i, i, i, 0, 0];
+  const near = (p, s) => { let b = -1, bd = 1e9; for (const i of skinV) { if (earMask[i]) continue; const d = (A[i * 3] - p[0] * s) ** 2 + (A[i * 3 + 1] - p[1]) ** 2 + (A[i * 3 + 2] - p[2]) ** 2; if (d < bd) { bd = d; b = i; } } return vtx(b); };
+  // the profile, top to bottom, and the landmarks on it
+  const pr = []; for (let y = 1.0; y > -.08; y -= .0025) { const h = front(0, y); pr.push([y, zOf(h), h ? (1 - h[4] - h[5]) * lipV[h[1]] + h[4] * lipV[h[2]] + h[5] * lipV[h[3]] : 0]); }
+  const ix = y => clamp(Math.round((1.0 - y) / .0025), 0, pr.length - 1), arg = (y0, y1, sgn) => { let b = ix(y1); for (let i = ix(y1); i <= ix(y0); i++) if (sgn * pr[i][1] > sgn * pr[b][1]) b = i; return b; };
+  const nextExt = (i, sgn, lim) => { for (let j = i + 1; j < Math.min(pr.length - 2, i + lim); j++) if (sgn * (pr[j][1] - pr[j - 1][1]) >= 0 && sgn * (pr[j + 1][1] - pr[j][1]) < -1e-5) return j; return i + Math.round(lim / 2); };
+  const ec = [0, 0, 0]; for (const i of MH.eye) for (let c = 0; c < 3; c++) ec[c] += A[i * 3 + c] / MH.eye.length;
+  const er = Math.max(...MH.eye.map(i => Math.hypot(A[i * 3] - ec[0], A[i * 3 + 1] - ec[1], A[i * 3 + 2] - ec[2])));
+  const iTip = arg(.2, .45, 1), iSn = nextExt(iTip, -1, 40), iLs = nextExt(iSn, 1, 30), iSt = nextExt(iLs, -1, 24), iLi = nextExt(iSt, 1, 24), iMl = nextExt(iLi, -1, 40), iPg = nextExt(iMl, 1, 50);
+  const iNa = arg(ec[1] - .03, ec[1] + .09, -1), iGl = arg(pr[iNa][0], pr[iNa][0] + .12, 1);
+  let ub = pr[iLs][0] + .008, lb = pr[iLi][0] - .012; for (let i = iSn; i <= iSt; i++) if (pr[i][2] > .5) { ub = pr[i][0]; break; } for (let i = iMl; i >= iSt; i--) if (pr[i][2] > .5) { lb = pr[i][0]; break; }
+  const L = LMK = { tip: pr[iTip][0], sn: pr[iSn][0], ub, st: pr[iSt][0], lb, ml: pr[iMl][0], pg: pr[iPg][0], nas: pr[iNa][0], glab: pr[iGl][0], eye: ec, er };
+  // the eye's opening, seen from the front: where the ball is nearer than the skin
+  let x0 = 9, x1 = -9, yT = -9, yB = 9; const cols = new Map(), R2 = er * er;
+  for (let i = 0; i < 44; i++) for (let j = 0; j < 30; j++) { const x = ec[0] + (i / 43 * 2 - 1) * 1.7 * er, y = ec[1] + (j / 29 * 2 - 1) * 1.15 * er, d2 = (x - ec[0]) ** 2 + (y - ec[1]) ** 2; if (d2 >= R2) continue;
+    const zb = ec[2] + Math.sqrt(R2 - d2), h = front(x, y); if (h && zOf(h) > zb) continue;
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); if (!cols.has(i)) cols.set(i, [x, y, y]); const cc = cols.get(i); cc[1] = Math.min(cc[1], y); cc[2] = Math.max(cc[2], y); }
+  const ck = [...cols.keys()].sort((a, b) => a - b), cI = cols.get(ck[0]), cO = cols.get(ck[ck.length - 1]), xm = (x0 + x1) / 2; let cM = cols.get(ck[ck.length >> 1]); for (const k of ck) { const c = cols.get(k); if (c[2] - c[1] > cM[2] - cM[1]) cM = c; }
+  const EYEP = { '7_2': [x0, (cI[1] + cI[2]) / 2, -.008, 0], '7_4': [x1, (cO[1] + cO[2]) / 2, .008, 0], '7_3': [xm, cM[2], 0, .008], '8_3': [xm, cM[1], 0, -.008] };
+  L.open = [x0, x1, cM[1], cM[2]];
+  // the mouth's corner and the nose's wing, as MakeHuman vertices
+  let corner = -1, ala = -1, am = 0; for (const i of skinV) if (lipV[i] > .5 && A[i * 3] > 0 && (corner < 0 || A[i * 3] > A[corner * 3])) corner = i;
+  const tf = MH.targets['nose-flaring-incr']; if (tf) for (let j = tf[0]; j < tf[0] + tf[1]; j++) { const i = IDX[j], m = Math.hypot(DEL[j * 3], DEL[j * 3 + 1], DEL[j * 3 + 2]); if (A[i * 3] > .02 && m > am) { am = m; ala = i; } }
+  // rows to MakeHuman's landmark heights
+  const Ay = [-.4, 0, .075, .155, .196, .228, .252, .30, .33, .555, .585, .87, 1], By = [-.4, 0, L.pg, L.ml, L.lb, L.st, L.ub, L.sn, L.tip, L.nas, L.glab, .87, 1];
+  for (let i = 1; i < By.length; i++) if (By[i] <= By[i - 1] + .004) By[i] = By[i - 1] + .004;
+  const remap = y => { if (y <= Ay[0]) return y; if (y >= 1) return y; let i = 0; while (y > Ay[i + 1]) i++; return mix(By[i], By[i + 1], (y - Ay[i]) / (Ay[i + 1] - Ay[i])); };
+  const place = (r, c) => { const p = HOUSE[r][c].slice(), yh = p[1]; p[1] = mix(yh, remap(yh), yh >= .505 ? 1 : sstep(-.12, .1, p[2])); return p; };
+  // the jaw's edge under each column: where the surface falls away to the neck
+  const jaw = []; for (let c = 0; c <= 6; c++) { const h = place(18, c); let yj = h[1];
+    if (c <= 4) { let prev = null; for (let y = .16; y > -.08; y -= .004) { const z = zOf(front(h[0], y)); if (prev !== null && prev - z > .03) { yj = y + .004; break; } prev = z; } }
+    else { const a = Math.atan2(h[0], h[2] + .07), sx = Math.sin(a), sz = Math.cos(a); let prev = null, bd = .012; for (let y = .26; y > .04; y -= .005) { const hh = cast(A, sx * 2, y, -.07 + sz * 2, -sx, 0, -sz), rr = hh ? 2 - hh[0] : 0; if (prev !== null && prev - rr > bd) { bd = prev - rr; yj = y + .005; } prev = rr; } }
+    jaw.push(yj); }
+  L.jaw = jaw.map(y => +y.toFixed(3));
+  const ex0 = .07, ex1 = .208, ky = (cM[2] - cM[1]) / (.547 - .468), eyc = (cM[2] + cM[1]) / 2, ymin = Math.min(...skinV.map(i => A[i * 3 + 1])) + .02;
+  BIND = VSRC.map(src => { if (src[0] === 'rim') return null; const [r, c, sd] = src, s = sd || 1, p = place(r, c), key = r + '_' + c; let h = null;
+    if (EYEP[key]) { const e = EYEP[key]; return front(s * (e[0] + e[2]), e[1] + e[3]) || near([e[0], e[1], ec[2] + er], s); }
+    if (r === 14 && c === 3 && s > 0 && corner >= 0) return vtx(corner);
+    if (r === 11 && c === 2 && s > 0 && ala >= 0) return vtx(ala);
+    if (r >= 6 && r <= 9 && c >= 2 && c <= 4) { p[0] = mix(x0, x1, (HOUSE[r][c][0] - ex0) / (ex1 - ex0)); p[1] = eyc + (HOUSE[r][c][1] - .5075) * ky; }
+    if (r >= 13 && r <= 15 && c >= 1 && c <= 3 && corner >= 0) { p[0] *= A[corner * 3] / .105; if (c === 3) { p[0] = A[corner * 3]; p[1] = A[corner * 3 + 1]; } }
+    if ((r === 11 || r === 12) && c === 2 && ala >= 0) p[0] = A[ala * 3] * (r === 11 ? 1 : .92);
+    if (r >= 16 && r <= 18 && c <= 6) { const y15 = place(15, c)[1], y18 = place(18, c)[1]; p[1] = y15 + (p[1] - y15) * (jaw[c] + .008 - y15) / (y18 - y15); }
+    if (r === 0) h = cast(A, 0, 3, p[2], 0, -1, 0);
+    else if (r === 19) { h = c <= 3 ? cast(A, s * p[0], -2, p[2], 0, 1, 0) : null; if (h && h[0] - 2 > .25) h = null; if (!h) p[1] = jaw[Math.min(c, 6)] - .03; }
+    else if (r >= 4 && r <= 18 && c <= 4) h = front(s * p[0], p[1]);
+    else { if (r >= 20) p[1] = Math.max(p[1], ymin + (r === 20 ? .1 : 0)); const l = Math.hypot(p[0], p[2] + .07) || 1, dx = s * p[0] / l, dz = (p[2] + .07) / l; h = cast(A, dx * 2, p[1], -.07 + dz * 2, -dx, 0, -dz); if (h && Math.abs(2 - h[0] - l) > .1) h = null; }
+    return h || near(p, s); });
+  // MakeHuman's own ears, as a small mesh of their own
+  return L; }
+
+// ---- a face's mesh
+let CAGE = null, EARQ = null;
+function assemble(g, bald) {
+  const M = frame(shape(g)), nC = HEAD.nV, T = new Float32Array(nC * 3), ec = [0, 0, 0];
+  for (const i of MH.eye) for (let c = 0; c < 3; c++) ec[c] += M[i * 3 + c] / MH.eye.length;
+  const er = Math.max(...MH.eye.map(i => Math.hypot(M[i * 3] - ec[0], M[i * 3 + 1] - ec[1], M[i * 3 + 2] - ec[2])));
+  BIND.forEach((b, i) => { if (b) baryAt(M, b, T, i * 3); });
+  VSRC.forEach((s, i) => { if (s[0] !== 'rim') return; const k = s[1] * 3, sx = T[k] < 0 ? -1 : 1; T[i * 3] = sx * ec[0] + (T[k] - sx * ec[0]) * 1.3; T[i * 3 + 1] = ec[1] + (T[k + 1] - ec[1]) * 1.3; T[i * 3 + 2] = T[k + 2] - .06; });
+  // the cage is control points, and the skin falls inside it: move the points until the skin passes through the targets
+  const S = headLevels(g.pl, g.cr), C = T.slice();
+  for (let it = 0; it < 4; it++) { const Lm = refine(S, C); BIND.forEach((b, i) => { if (b) for (let c = 0; c < 3; c++) C[i * 3 + c] += .8 * (T[i * 3 + c] - Lm[i * 3 + c]); }); }
+  CAGE = C; VN = 0; emitQuads(refine(S, C), S.quads, S.fmat, false);
+  if (!bald) { const H = hairTopo(g.hl < .25 ? 9 : g.hl < .7 ? 12 : 16), HP = new Float32Array(H.src.length * 3), n = [0, 0, 0], o = [0, 0, 0];
+    H.src.forEach(([v, inner], i) => { const k = v * 3, s = VSRC[v]; n[0] = C[k]; n[1] = C[k + 1] - .5; n[2] = C[k + 2] + .07; const l = Math.hypot(n[0], n[1], n[2]); n[0] /= l; n[1] /= l; n[2] /= l;
+      if (inner) { o[0] = -n[0] * .02; o[1] = -n[1] * .02; o[2] = -n[2] * .02; } else hairOffset(s[0], s[1], g, n, o);
+      HP[i * 3] = C[k] + o[0]; HP[i * 3 + 1] = C[k + 1] + o[1]; HP[i * 3 + 2] = C[k + 2] + o[2]; });
+    emitQuads(refine(H.S, HP), H.S.quads, H.S.fmat, false); }
+  if (EARS) { const EP = new Float32Array(EARS.src.length * 3); EARS.src.forEach((v, i) => { EP[i * 3] = M[v * 3]; EP[i * 3 + 1] = M[v * 3 + 1]; EP[i * 3 + 2] = M[v * 3 + 2]; }); emitQuads(refine(EARS.S, EP), EARS.S.quads, EARS.S.fmat, false); }
+  emitBall(ec[0], ec[1], ec[2], er); emitBall(-ec[0], ec[1], ec[2], er);
+  const at = (r, c) => { const k = vid(r, c, 1) * 3; return [T[k], T[k + 1], T[k + 2]]; }, b = c => { const p = at(5, c); return [p[0], p[1] + .006, p[2]]; }, b1 = b(1), b2 = b(2);
+  INFO = { eye: [ec[0], ec[1], ec[2], er], brow: [...[0, 1, 2].map(i => mix(b1[i], b2[i], .5)), ...b(3), ...b(4), ...[0, 1, 2].map(i => mix(b(4)[i], b(5)[i], .6))], cheek: at(10, 4), tip: at(11, 0), frame: 0 };
+}
+const SKIN = [[.95, .78, .66], [.92, .74, .6], [.9, .7, .56], [.84, .62, .47], [.76, .53, .38], [.65, .42, .29], [.53, .33, .22], [.43, .26, .17], [.3, .18, .12], [.2, .12, .08]];
+const HAIRC = [[.05, .04, .035], [.14, .085, .05], [.4, .2, .1], [.48, .19, .07], [.78, .58, .32], [.62, .62, .6]];
+const IRIS = [[.22, .12, .06], [.36, .2, .1], [.42, .36, .18], [.3, .44, .3], [.3, .46, .62], [.48, .52, .56]];
+const ramp = (A, x) => { const f = clamp(x, 0, 1) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(f)), k = f - i; return A[i].map((v, j) => v + (A[i + 1][j] - v) * k); };
+const pick = (A, x) => A[Math.round(clamp(x, 0, 1) * (A.length - 1))];
+const glc = document.createElement('canvas'); glc.width = glc.height = 1040;
+const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: true });
+const VS = `#version 300 es
+in vec3 aP,aN;in vec2 aM;uniform mat4 uVP,uLVP;out vec3 vP,vN;out vec2 vM;out vec4 vL;
+void main(){vP=aP;vN=aN;vM=aM;vL=uLVP*vec4(aP,1.);gl_Position=uVP*vec4(aP,1.);}`;
+const FS = `#version 300 es
+precision highp float;precision highp sampler2DShadow;
+in vec3 vP,vN;in vec2 vM;in vec4 vL;out vec4 o;
+uniform vec3 uCam,uKey,uSkin,uHair,uIris,uLip,uFlush,uCheek,uTip,uBrow[4],uFlat;uniform vec4 uEye;uniform float uBrowW,uLipT,uGroove;uniform sampler2DShadow uSh;
+float seg(vec3 p,vec3 a,vec3 b,out float h){vec3 pa=p-a,ba=b-a;h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length((pa-ba*h)*vec3(1.,1.,.3));}
+void main(){
+ if(uFlat.x>=0.){o=vec4(uFlat,1.);return;}
+ vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;vec3 rd=normalize(vP-uCam),q=vec3(abs(vP.x),vP.yz),al=uSkin;float gloss=.55,ao=vM.y;int m=int(vM.x+.5);
+ if(m==3){al=uHair;gloss=.5;   // hair: comb grooves running front to back, as a bend in the normal
+  float u=atan(vP.x,vP.y-.42),ph=u*22.+1.2*sin(vP.z*7.+u*2.);vec3 td=normalize(vec3(vP.y-.42,-vP.x,0.)+1e-4);
+  n=normalize(n+td*cos(ph)*.5*uGroove);al*=1.-.25*uGroove*(.5-.5*sin(ph));}
+ else if(m==2){   // the eye: a ball, the iris looking forward
+  vec3 c=vec3(uEye.x*sign(vP.x),uEye.yz),d=normalize(vP-c),ax=normalize(vec3(-.05*sign(vP.x),-.02,1.));float r=dot(d,ax)>0.?length(cross(d,ax)):1.;
+  al=vec3(.95,.93,.9)*(1.-.35*smoothstep(.6,1.,r));
+  al=mix(al,uIris*(.6+.9*smoothstep(.5,.18,r)),smoothstep(.52,.49,r));al*=1.-.6*smoothstep(.05,0.,abs(r-.51));
+  al=mix(al,vec3(.02),smoothstep(.22,.19,r));gloss=1.;ao=1.;}
+ else{float fl=.8*exp(-dot(q-uCheek,q-uCheek)/.006)+.45*exp(-dot(vP-uTip,vP-uTip)/.003);al=mix(uSkin,uFlush,.3*clamp(fl,0.,1.));
+  if(m==1){al=mix(al,uLip,uLipT);gloss=.75;}
+  else if(uBrowW>0.){float h,d=1.;for(int i=0;i<3;i++){float hh,dd=seg(q,uBrow[i],uBrow[i+1],hh);if(dd<d){d=dd;h=(float(i)+hh)/3.;}}
+   float th=mix(.017,.006,h)*(.45+uBrowW);al=mix(al,uHair*.75,.85*smoothstep(th,th*.55,d));}}
+ vec3 s=vL.xyz/vL.w*.5+.5;float sha=0.,bias=.0025+.004*(1.-max(dot(n,uKey),0.));
+ for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++)sha+=texture(uSh,vec3(s.xy+vec2(i,j)*1.6/1024.,s.z-bias));sha/=9.;if(m==2)sha=mix(.75,1.,sha);
+ vec3 fillD=normalize(vec3(-uKey.x,.15,uKey.z+.3)),rimD=normalize(vec3(-uKey.x*.6,.45,-.85));
+ float key=max(dot(n,uKey),0.)*mix(.22,1.,sha),fill=max(dot(n,fillD),0.)*.36,sky=.5+.5*n.y,oc=ao*mix(.75,1.,sky);
+ vec3 col=al*(key*vec3(1.,.95,.87)*1.15*mix(.7,1.,ao)+fill*vec3(.84,.9,1.)*oc+(vec3(.1,.11,.13)*sky+vec3(.07,.055,.045))*oc);
+ vec3 rf=reflect(rd,n);float sp=max(dot(rf,uKey),0.);
+ col+=vec3(1.,.95,.88)*(pow(sp,22.)*.16*gloss+pow(sp,220.)*1.3*step(.95,gloss))*key;
+ col+=vec3(.9,.93,1.)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,rimD),0.)*.45*oc;
+ col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function program(vs, fs) { const p = gl.createProgram(); for (const [t, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } gl.attachShader(p, s); }
+  gl.bindAttribLocation(p, 0, 'aP'); gl.bindAttribLocation(p, 1, 'aN'); gl.bindAttribLocation(p, 2, 'aM'); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(p)); return p; }
+const prog = program(VS, FS), progD = program(VS, `#version 300 es
+precision highp float;void main(){}`);
+const UL = {}, U = (p, n) => (UL[n + (p === prog ? '' : 'd')] ||= gl.getUniformLocation(p, n));
+const vbuf = gl.createBuffer(), lbuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+function attribs(stride) { gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, stride, 0);
+  if (stride > 12) { gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 12); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, stride, 24); }
+  else { gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); } }
+const SM = 1024, shTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, shTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, SM, SM, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+const shFB = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, shFB); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shTex, 0); gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.enable(gl.DEPTH_TEST); gl.enable(gl.SCISSOR_TEST);
+const nrm = v => { const l = Math.hypot(...v); return v.map(x => x / l); }, crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const look = (e, t) => { const z = nrm([e[0] - t[0], e[1] - t[1], e[2] - t[2]]), x = nrm(crs([0, 1, 0], z)), y = crs(z, x); return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1]; };
+const persp = (fy, n, f) => { const t = 1 / Math.tan(fy / 2); return [t, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; };
+const ortho = (h, n, f) => [1 / h, 0, 0, 0, 0, 1 / h, 0, 0, 0, 0, 2 / (n - f), 0, 0, 0, (f + n) / (n - f), 1];
+const mul = (a, b) => { const o = new Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3]; return o; };
+
+let uploaded = null, lineN = 0, showCage = false, bald = false;
+let ZOOM = null;   // a close-up for the three big views: [x, y, z, distance]
+function upload(g) { if (uploaded === g) return; assemble(g, bald); uploaded = g;
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf); gl.bufferData(gl.ARRAY_BUFFER, VB.subarray(0, VN * 8), gl.DYNAMIC_DRAW);
+  const ln = []; for (const f of HEAD.faces) for (let i = 0; i < f.length; i++) { const a = f[i], b = f[(i + 1) % f.length]; if (a < b) ln.push(CAGE[a * 3], CAGE[a * 3 + 1], CAGE[a * 3 + 2], CAGE[b * 3], CAGE[b * 3 + 1], CAGE[b * 3 + 2]); }
+  lineN = ln.length / 3; gl.bindBuffer(gl.ARRAY_BUFFER, lbuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ln), gl.DYNAMIC_DRAW); }
+const ANG = { q: [.62, .05], f: [0, .03], p: [Math.PI / 2, .03] };
+function drawTile(cv, g, view) {   // view: 'q' | 'f' | 'p' or [yaw, pitch]
+  upload(g); const [a, el] = Array.isArray(view) ? view : ANG[view], W = cv.width, s = Math.min(glc.width, W < 100 ? W * 4 : W * 2), H = glc.height;
+  const T = ZOOM && W > 100 ? ZOOM.slice(0, 3) : [0, .36 + .45 * INFO.frame, .0], d = ZOOM && W > 100 ? ZOOM[3] : 3.5 + Math.max(0, -INFO.frame) * 2, cam = [T[0] + Math.sin(a) * Math.cos(el) * d, T[1] + Math.sin(el) * d, T[2] + Math.cos(a) * Math.cos(el) * d];
+  const key = nrm([-.75 * Math.cos(a) + .3 * Math.sin(a), .7, .3 * Math.cos(a) + .75 * Math.sin(a)]);
+  const LVP = mul(ortho(.95, .1, 6), look([T[0] + key[0] * 3, T[1] + key[1] * 3, T[2] + key[2] * 3], T)), VP = mul(persp(.44, .1, 20), look(cam, T));
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf); attribs(32);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, shFB); gl.viewport(0, 0, SM, SM); gl.scissor(0, 0, SM, SM); gl.clear(gl.DEPTH_BUFFER_BIT); gl.useProgram(progD);
+  gl.uniformMatrix4fv(U(progD, 'uVP'), false, LVP); gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4); gl.drawArrays(gl.TRIANGLES, 0, VN); gl.disable(gl.POLYGON_OFFSET_FILL);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.clearColor(.168, .168, .168, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(prog); const u3 = (n, v) => gl.uniform3fv(U(prog, n), v), sk = ramp(SKIN, g.st), dp = g.st;
+  gl.uniformMatrix4fv(U(prog, 'uVP'), false, VP); gl.uniformMatrix4fv(U(prog, 'uLVP'), false, LVP); u3('uCam', cam); u3('uKey', key); u3('uFlat', [-1, 0, 0]);
+  u3('uSkin', sk); u3('uFlush', sk.map((v, j) => v * [.96, .6, .68][j] * (1 + .1 * dp))); u3('uLip', sk.map((v, j) => v * [.8 + .05 * dp, .47 + .2 * dp, .53 + .12 * dp][j] * (1 + .1 * dp)));
+  u3('uHair', pick(HAIRC, g.hc)); u3('uIris', pick(IRIS, g.ic)); u3('uCheek', INFO.cheek); u3('uTip', INFO.tip); gl.uniform3fv(U(prog, 'uBrow'), INFO.brow); gl.uniform4fv(U(prog, 'uEye'), INFO.eye);
+  gl.uniform1f(U(prog, 'uBrowW'), g.bk); gl.uniform1f(U(prog, 'uLipT'), g.lt); gl.uniform1f(U(prog, 'uGroove'), g.hg); gl.uniform1i(U(prog, 'uSh'), 0); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, shTex);
+  gl.drawArrays(gl.TRIANGLES, 0, VN);
+  if (showCage && W > 100) { gl.bindBuffer(gl.ARRAY_BUFFER, lbuf); attribs(12); gl.vertexAttrib3f(1, 0, 0, 1); gl.vertexAttrib2f(2, 0, 1); u3('uFlat', [.95, .72, .3]); gl.depthFunc(gl.ALWAYS); gl.drawArrays(gl.LINES, 0, lineN); gl.depthFunc(gl.LESS); }
+  const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
+}
+let queue = [], busy = false;
+function render(jobs) { queue = jobs; window.FRAME_DONE = 0; if (!busy) { busy = true; requestAnimationFrame(step); } }
+function step() { const t0 = performance.now(); while (queue.length && performance.now() - t0 < 12) drawTile(...queue.shift()); if (!queue.length) { busy = false; window.FRAME_DONE = 1; return; } requestAnimationFrame(step); }
+
+
+// ---- the generator
+let seed = +(Q.get('seed') || Date.now() % 1e9);
+const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(6.2832 * rnd());
+
+const SHAPE_RE = /^head-(oval|round|rectangular|square|triangular|invertedtriangular|diamond)$/, FEAT = MH.sliders.filter(s => !SHAPE_RE.test(s.key)), SHAPES = MH.sliders.filter(s => SHAPE_RE.test(s.key));
+const TAG = new WeakMap();
+function randomFace() { const g = house(); g.sex = rnd() < .5 ? .1 + .15 * rnd() : .75 + .25 * rnd(); g.age = Math.pow(rnd(), 1.6); g.wt = clamp(gauss() * .35, -1, 1);
+  const e = [rnd(), rnd(), rnd()].map(x => Math.pow(x, 3)); g.af = e[0]; g.as = e[1]; g.ca = e[2];
+  for (const s of FEAT) if (!/^head-(trans|angle)/.test(s.key)) g[s.key] = clamp(gauss() * .22, s.neg.length ? -1 : 0, 1);
+  const sh = SHAPES[Math.floor(rnd() * SHAPES.length)]; g[sh.key] = .4 + .6 * rnd();
+  const es = g.af + g.as + g.ca; g.st = clamp((g.af * .8 + g.as * .35 + g.ca * .15) / es + gauss() * .1, 0, 1); g.hc = g.age > .7 ? 1 : (g.ca / es > .5 ? rnd() * .8 : rnd() * .3); g.ic = g.ca / es > .5 ? rnd() : rnd() * .3;
+  TAG.set(g, `${g.sex > .5 ? 'man' : 'woman'}, ${g.age < .3 ? 'young' : g.age < .65 ? 'middle-aged' : 'old'}, ${pretty(sh.key).replace('head ', '')} head`); return g; }
+
+
+// ---- Edit
+const $ = id => document.getElementById(id);
+let cur = house(), orbit = ANG.q.slice(), mode = '';
+const sl = {};
+{ const box = $('sliders'); for (const r of [...new Set(GENES.map(g => g[1]))]) { const det = document.createElement('details'); det.open = OPEN.has(r); det.innerHTML = `<summary>${r}</summary>`;
+    for (const d of GENES) { if (d[1] !== r) continue; const row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = `<label title="${d[0]}. Double-click the slider to reset.">${d[2]}</label><input type="range" min="${d[4]}" max="${d[5]}" step="${(d[5] - d[4]) / 200}"><span></span>`;
+      const inp = row.querySelector('input'), sp = row.querySelector('span');
+      inp.oninput = () => { cur = { ...cur, [d[0]]: +inp.value }; sp.textContent = (+inp.value).toFixed(2); changed(); };
+      inp.ondblclick = () => { cur = { ...cur, [d[0]]: d[3] }; sync(); changed(); };
+      sl[d[0]] = [inp, sp]; det.appendChild(row); }
+    box.appendChild(det); } }
+function sync() { for (const d of GENES) { sl[d[0]][0].value = cur[d[0]]; sl[d[0]][1].textContent = cur[d[0]].toFixed(2); } }
+function changed() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
+function renderEdit() { const t0 = performance.now(); uploaded = null; upload(cur); $('stat').textContent = `mesh ${(performance.now() - t0).toFixed(0)} ms, ${(VN / 3 / 1000).toFixed(0)}k triangles`;
+  render([[$('vq'), cur, orbit], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+$('reset').onclick = () => { cur = house(); sync(); changed(); };
+$('rand').onclick = () => { const o = cur; cur = randomFace(); for (const k of ['ex', 'pl', 'cr']) cur[k] = o[k]; sync(); changed(); };
+$('bald').onchange = () => { bald = $('bald').checked; renderEdit(); };
+$('apply').onclick = () => { const g = fromDNA($('dna').value); if (g) { cur = g; sync(); changed(); } };
+$('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
+{ const cv = $('vq'); let drag = null;
+  cv.onpointerdown = e => { drag = [e.clientX, e.clientY, orbit[0], orbit[1]]; cv.setPointerCapture(e.pointerId); };
+  cv.onpointermove = e => { if (!drag) return; orbit = [drag[2] - (e.clientX - drag[0]) * .01, clamp(drag[3] + (e.clientY - drag[1]) * .01, -1.2, 1.2)]; render([[cv, cur, orbit]]); };
+  cv.onpointerup = () => { drag = null; }; cv.ondblclick = () => { orbit = ANG.q.slice(); render([[cv, cur, orbit]]); }; }
+let pop = [];
+function renderSheet() { const grid = $('grid'); grid.innerHTML = ''; const jobs = [];
+  pop.forEach(g => { const cell = document.createElement('div'); cell.className = 'cell';
+    cell.innerHTML = `<canvas class="t" width="250" height="250"></canvas><canvas class="t th" width="48" height="48"></canvas><div class="sig">${TAG.get(g) || ''}</div>`;
+    const [big, th] = cell.querySelectorAll('canvas'); cell.onclick = () => { cur = { ...g }; sync(); setMode('edit'); changed(); }; grid.appendChild(cell); jobs.push([big, g, 'q'], [th, g, 'q']); });
+  render(jobs); }
+const newPop = () => Array.from({ length: 12 }, () => { const g = randomFace(); for (const k of ['ex', 'pl', 'cr']) g[k] = cur[k]; return g; });
+$('fresh').onclick = () => { pop = newPop(); renderSheet(); };
+function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m)); document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  if (m === 'edit') renderEdit(); else { if (!pop.length) pop = newPop(); renderSheet(); } }
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+window.LAB = { set: s => { cur = typeof s === 'string' ? fromDNA(s) : { ...house(), ...s }; sync(); changed(); }, orbit: (a, e) => { orbit = [a, e]; renderEdit(); }, bald: on => { bald = on; renderEdit(); }, zoom: z => { ZOOM = z; renderEdit(); }, sheet: () => { pop = newPop(); setMode('sheet'); } };
+
+$('wire').onchange = () => { showCage = $('wire').checked; renderEdit(); };
+window.LAB.cage = on => { showCage = on; renderEdit(); };
+(async () => {
+  P0 = await unpack(MH.v, Float32Array); NV = MH.nV; IDX = await unpack(MH.idx, Uint16Array); DEL = await unpack(MH.d, Int16Array);
+  const fq = await unpack(MH.faces, Uint16Array), fm = await unpack(MH.fmat, Uint8Array), lip = await unpack(MH.lip, Uint8Array), faces = [];
+  for (let i = 0; i < fm.length; i++) faces.push([fq[i * 4], fq[i * 4 + 1], fq[i * 4 + 2], fq[i * 4 + 3]]);
+  AVG = P0.slice(); morph(macroW(house()), AVG);
+  // the ears: every point an ear slider moves much
+  const earMask = new Uint8Array(NV); for (const name in MH.targets) { if (!/^[lr]-ear-(wing|flap)-incr$/.test(name)) continue; const t = MH.targets[name]; let mx = 0;
+    for (let j = t[0]; j < t[0] + t[1]; j++) mx = Math.max(mx, Math.hypot(DEL[j * 3], DEL[j * 3 + 1], DEL[j * 3 + 2]));
+    for (let j = t[0]; j < t[0] + t[1]; j++) if (Math.hypot(DEL[j * 3], DEL[j * 3 + 1], DEL[j * 3 + 2]) > .1 * mx) earMask[IDX[j]] = 1; }
+  const tv = [], skin = new Set(), em = new Map(), esrc = [], ef = [];
+  faces.forEach((f, i) => { if (fm[i] !== 0) return; f.forEach(v => skin.add(v));
+    if (f.every(v => earMask[v])) { ef.push(f.map(v => { if (!em.has(v)) { em.set(v, esrc.length); esrc.push(v); } return em.get(v); })); return; }
+    tv.push(f[0], f[1], f[2], f[0], f[2], f[3]); });
+  TRIV = Int32Array.from(tv); NTRI = tv.length / 3;
+  if (ef.length) EARS = { src: esrc, S: levels({ nV: esrc.length, faces: ef, fmat: ef.map(() => 0), sharp: new Map(), corner: new Set() }, 1) };
+  const t0 = performance.now(), L = bindCage(frame(AVG.slice()), [...skin], earMask, Float32Array.from(lip, x => x / 255));
+  console.log('bound in', Math.round(performance.now() - t0), 'ms', JSON.stringify(L, (k, v) => typeof v === 'number' ? +v.toFixed(3) : v)); window.LMK = L;
+  cur = fromDNA(Q.get('dna')) || house(); sync(); $('dna').value = toDNA(cur); setMode(Q.get('mode') === 'sheet' ? 'sheet' : 'edit');
+})();
+</script>
+</body>
+</html>

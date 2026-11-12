@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2143,3 +2143,384 @@ then saves it. Is there a cue when side boosters run dry? **For economy:** no pr
 **Checks:** `vehicle-39` (twelve presets staged as designed: orbit, Q483 quiet, Δv left pinned ±50 m/s; the Lunar class
 with the pod under 60 % and the burn above 95 km; the dry-booster Crewed Lunar's level-off shown in the detail). No pinned
 numbers elsewhere changed. `node test.mjs --smoke --jobs 2`: all passed.
+
+## Plan: solid motors as a main-stage choice (Q252; 2026-11-07, vehicle worker, PLAYTEST #51, D15.1; nothing built)
+
+**Changed by D38 (Caio 2026-11-11):** D15.1 stands. The thrust setting below is a design-table setting only, fixed for the flight; a solid may also be loaded with less than full propellant (new); there are no thrust-termination ports (question 6: never). A burning solid that is dropped flies off under its own thrust until burnout (mechanic 5 changes: the plan had it go dead; DECISIONS W53, 2026-11-12). The other defaults stand.
+
+**The ask** (Caio 2026-10-10: "a good mechanic if real"; 2026-10-13, raised to M1: "the same solid/liquid fuel separation
+as ksp... either forgotten or added far down the queue"). It is real: once lit, a solid burns to the end. Its thrust curve
+is cast into the grain. Only some late military motors have thrust-termination ports. Pillars 2 (a design problem: a stage
+you can't stop) and 8 (solids grow with the eras). Not a new system: the parts and the rule exist, the main stage is new.
+
+**What exists today:**
+- **Kick motors** (`kick30/80/200`, v1.207): `solid:true`, with the propellant on the motor (`res0.fuel`); `flowGroups` cuts
+  every joint round a solid, so nothing feeds it and it feeds nothing. Its stage arms it, the first throttle-up lights it, and
+  then `physStep` **holds the vessel's throttle at 1** to burnout (then puts it back to 0). Infinite fuel (Q542) still burns
+  a solid out. The bench's Δv line says "a kick motor fires once, all of it".
+- **The escape tower** (`les`, 150 kN for 3 s) and **spin-up motors** (`spin`) are solids with their own kinds and rules.
+  They stay as they are.
+- The plumes and the crackle already know solids (`app/gl.js` `PFX…prop:'solid'`, `app/sound.js`).
+- **What blocks a main stage:** the throttle belongs to the whole vessel. Strap two solids on a liquid core and the solids'
+  rule pins the core at full throttle too. `dvPlan`, `burnThrust`, `ascentEst` and `trimOf` all take `engineMdot(p.d)` from
+  the part alone, so a per-motor setting has nowhere to live. Engines have no throttle range or ignition count yet (Q279
+  waits on this plan).
+- **Schools never change physics** (POWERS § schools; `sim/program.js` says so). So the parts below are the same for
+  everyone. Schools change how solids look (Coastal's big white boosters with segment rings, Mountain's terracotta stages with
+  a flex boot, black carbon nozzles) and which signature designs rivals fly. The only era clock is the computing eras
+  (`COMP_ERAS`, years 0 / 3 / 7 / 14), so solid generations ride `d.era` the way the RTG does (v1.113).
+
+**The mechanic:**
+1. **Each engine gets its own throttle** (`engThr(s,p)`). A liquid engine follows `s.throttle`. A solid gives
+   `lim × curve(burnt share)` from lighting to burnout, and 0 otherwise. Nothing forces the throttle any more. The lever moves
+   the liquids only. This replaces v1.207's pinned throttle, and a kick motor flies exactly as before.
+2. **Lighting:** as now, its stage arms it and the first moment the throttle is up lights it (at once if the throttle is
+   already up). **On the pad the liquids light first.** The solids light only once every liquid engine in that stage has lit
+   (`igniteOK`). If a liquid fails, the solids stay cold and the launch scrubs on the pad, as the Shuttle, Ariane 5 and H-II
+   did. Once a solid is lit, the pad lets go.
+3. **No shutdown, no restart:** X (cut), a node that completes and a procedure's cut all act on the liquids only. The HUD says
+   "Throttle cut: the solids burn on (14 s)".
+4. **The grain, set on the pad only** (the part's options in the Assembly; read-only in Rollout and in flight):
+   - **thrust 60–100 %** in 5 % steps. This scales thrust and mass flow together, so the burn lasts 1/k as long and gives the
+     same Δv. It is a slower-burning cast, not a limiter.
+   - **shape: *even*** (flat), or ***max-q dip***: full thrust, then down to 70 % from 25 % to 55 % of the propellant burnt,
+     then back to 95 %, the Shuttle SRB's bucket.
+   - **every solid tails off** over its last 3 % of propellant (2–4 s). The burnout cue fires when the tail-off starts.
+   The Isp is constant, so the Δv and the impulse don't depend on the grain: `dvPlan` stays exact, with the curve's knots as
+   extra step boundaries for burn times.
+5. **Separation:** spent solids drop when the player stages, cued as now ("Booster burnout", `spentCue`). Staging a solid
+   that is still burning asks for a second Space ("Boosters still burning, 9 s: Space again to drop them"). A dropped burning
+   motor is debris with its remaining propellant lost. That is a simplification: debris don't thrust.
+6. **Segmented boosters** (from the mainframes era): one part with a **segments** option (`nd.sg`, like a fairing's length;
+   not `seg`, which is the staging segment). Each segment adds height, propellant and thrust, so the burn time stays the same:
+   the burning area grows with the length. Titan's UA1205 and UA1207 are the same motor with five and seven segments.
+7. **Stacks and radial mounts:** a solid sits in a stack like any engine (its nozzle at the bottom, nothing below it), or on
+   radial decouplers. 2.5 m boosters need a **`rdec25`** (`big('rdec')`, ratings ×4): the 1.25 m `rdec`'s 800 kN would see a
+   three-segment booster's push. Crossfeed set on a solid's decoupler does nothing, and the builder says so. An interstage over
+   a solid encloses its nozzle (`d.nz`), not the whole motor. Thrust acts at 0.8 h (`thrustPt`), the forward dome, which suits
+   a solid as it is.
+
+**The parts** (all schools; game numbers before `lvl().isp`; propellant 1.75 t/m³ fits each one's volume. The propellant
+share is set a step under the real motor's on purpose, see question 4):
+
+| Key · name | Era | Size · h | Prop / dry t (share) | Thrust vac kN | Isp sl / vac s | Burn s | Steering | Price M (case + grain) | Analogue |
+|---|---|---|---|---|---|---|---|---|---|
+| `ember` Ember | 0 | 0.6 m · 2.6 m | 1.1 / 0.38 (0.74) | 90 | 225 / 250 | 30 | fixed | 0.8 + 0.55 | Sergeant / Recruit, Scout's upper solids |
+| `cinder` Cinder | 0 | 1.25 m · 4.5 m | 7.2 / 2.5 (0.74) | 330 | 230 / 255 | 55 | fixed (fins or the core steer) | 2.5 + 3.6 | Castor 1, Algol |
+| `cinder2` Cinder II | 1 | 1.25 m · 5.5 m | 9.0 / 2.5 (0.78) | 400 | 240 / 265 | 58 | fixed, may be canted | 3 + 4.5 | Castor 2 → 4 |
+| `brand` Brand, segmented | 1 | 2.5 m · 2.4 m a segment + 2.4 m ends, 2–5 segments (3) | 15 / 4.2 a segment (0.78) | 420 a segment | 238 / 265 | 93 | 4° (liquid injection, as a gimbal) | 4 + 3 a segment + 7.5 a segment | Titan UA1205 / 1207 |
+| `flare` Flare, segmented | 2 | 2.5 m · 2.8 m a segment + 2.6 m ends, 3–5 (4) | 18 / 4.0 a segment (0.82) | 520 a segment | 248 / 276 | 94 | 6° flex nozzle | 6 + 3.5 a segment + 9 a segment | Shuttle SRB, Ariane P230 |
+| `star` Star, vacuum | 2 | 1.25 m · 2.0 m | 3.0 / 0.55 (0.85) | 100 | 180 / 292 | 86 | 3° | 5 + 1.5 | Star 48, Castor 30, Zefiro 9 |
+| `gem` Graphite strap-on | 3 | 1.25 m · 6.5 m | 11 / 2.4 (0.82) | 480 | 250 / 278 | 62 | fixed | 4 + 5.5 | GEM 40/60 |
+
+- **Grain priced by the tonne:** `SOLID_PRICE` = 0.5 M/t, against `FUEL_PRICE` 0.2 for liquids. `vesselCost` already prices a
+  part's `cap.fuel`. A recovered solid refunds its **case only** (`partPrice`), never the grain, and Shuttle-style case
+  recovery falls out of chutes on a booster.
+- **Tier:** every solid is tier 1 (small engines) whatever its thrust. The segmented ones are tier 2. `tierOf` today puts
+  anything ≥ 300 kN at tier 2. Solids are why young industries flew first (Japan, India). Each key has its own know-how.
+- **Gates:** `ember` and `cinder` are open from the start. The rest open with their era (`d.era`), listed and designable
+  before that, as v1.113.
+- The kick motors stay as they are (bench parts with the real Star 13's share).
+
+**What a player gets** (on paper: the rocket equation, vacuum Isp, 3 t above the stage). Kestrel + Tank 8 t: 2,660 m/s for
+about 20.4 M. Cinder: 2,090 m/s for 6.1 M. Cinder II: 2,520 m/s for 7.5 M. **The Orbiter with two Cinders** on radial
+decouplers: 14.0 → 33.6 t, liftoff thrust-to-weight 1.51 → 2.44, Δv about 5,080 → 6,080 m/s, for +14 M on 57.5 M. The
+same lift from two liquid boosters (the Heavy's pair) costs about 39 M. So solids are **cheap lift, simple and storable,
+with low Isp, high thrust and no stopping**. The price is mass on the pad, max-q, g and an orbit you can't trim. A player
+picks them to get off the ground cheaply, to give a weak core thrust, for sounding rockets and the launch rail (Q230: a
+three-stage all-solid, Cinder → two Embers → Ember, makes about 5,500 m/s on paper with a small payload), and later for a
+precise vacuum kick.
+
+**What can go wrong, and what the Assembly says:**
+- **The Δv plan marks a solid stage:** "burns 55 s · can't be stopped". The stage's g at burnout comes from the plan's thrust
+  over its final mass.
+- **g at burnout** (new check): a stage carrying crew, a passenger or a biocapsule that passes `G_LIM` (8 g) or a contract's
+  `p.g` at burnout warns. Example: a Cinder hop with a biocapsule reaches about 9.8 g. The fix line: "a slower grain
+  (right-click: grain 75 % gives 7.4 g), or more mass above it". A liquid stage only gets an *ok* note, since the pilot can
+  throttle.
+- **Max-q:** `ascentEst` flies the grain and its curve, and `jointFix`'s "less thrust low down" becomes "a slower grain or the
+  max-q dip" when the culprit is a solid.
+- **A solid that finishes the climb** (the last stage before orbit on the plan): "it gives all 1,240 m/s at once: flown
+  well it ends on a 110 × 640 km orbit (the aim, D23)". It reads the same `orbitNeed` and pilot margin. A sloppy climb spends
+  the surplus first, so the margin is unchanged and the surplus is shown as where the orbit ends.
+- **A solid lander:** "a solid can't land: it can't throttle" when the stage that touches down is solid. A solid **retro**
+  followed by liquid verniers is fine (Surveyor) and isn't flagged.
+- **Early drop:** the staging editor notes a stage that drops solids lit in the same event as the next stage's liquids.
+
+**HUD, ◇ guidance, procedures:**
+- **HUD:** each burning solid group gets a bar of burn time left, tagged SOLID. The throttle gauge shows the liquids. Lit,
+  tail-off and burnout lines exist or extend v1.207's.
+- **The ◇ (flow):** the climb steers attitude only, so solid stages need nothing new there. For a solid **circularising
+  stage**, the coast-and-burn (v1.239) centres the burn on the apoapsis and holds horizontal, and the HUD draws the orbit the
+  motor's whole impulse leaves (a ghost line). No cut-off follows. Energy-wasting steering (Minuteman's GEM yaw) is left for
+  later.
+- **Nodes:** a node whose burn falls on a solid says "the motor gives 1,240 m/s, all of it; the node takes 980" and draws
+  the full-impulse orbit.
+- **Procedures and dispatch:** a solid's impulse is deterministic, so replays hold. Procedure cuts act on the liquids only.
+  Tapes retire on the physics change, as always (`TAPE_V`).
+- **Pilot margin:** unchanged (+150, or +350 under 0.3 g). Solid stages are seldom weak.
+
+**Tests that prove it** (tests/vehicle.mjs):
+- With two solids lit and the throttle at 0, the solids burn to burnout in the planned time ±1 % and the liquid core's tank
+  doesn't move. With the throttle up, the core drinks at its own rate.
+- X, a completed node and a procedure's cut leave a lit solid burning.
+- Grain 70 %: the burn takes 1/0.7 as long and the Δv is unchanged (±0.5 %). The max-q dip conserves impulse (±0.1 %) and
+  lowers `ascentEst`'s qMax on a test booster design.
+- Segments: 2 → 4 doubles thrust and propellant, and the burn time stays the same.
+- A forced liquid ignition failure on the pad leaves the solids cold and the vessel on the pad, with no loss.
+- A Cinder + biocapsule hop warns about g, and at grain 75 % the warning clears and the flight's `R.gMax` stays under 8.
+- The Orbiter with two Cinders reaches orbit on the scripted ascent, with the Δv left pinned ±50 m/s.
+- An all-solid three-stage reaches orbit from the pad with no input (feeds Q230).
+- A recovered booster refunds its case only. A Cinder stage costs under 35 % of a Kestrel + Tank 8 t stage.
+- `vehicle-28` (the kick motor) still passes, with its "throttle back to 0" assertion rewritten for per-engine throttle.
+- `vehicle-39`'s twelve presets are unmoved. `career.mjs`: first orbit still in 4–6 flights.
+
+**Slices, in build order:**
+1. **Per-engine throttle and the era-0 solids** (vehicle ⚙, M): `engThr` through `physStep`, `ctrlAuthority`, `gimSteer`,
+   `dvPlan`, `burnThrust`, `ascentEst`, `trimOf` and sound. Also the pad's ignition order, no-cut messages, `ember` and
+   `cinder`, `SOLID_PRICE`, case-only refunds and tier 1 for solids. The tests above for these.
+2. **The grain and the Assembly's checks** (vehicle ⚙ + 🖥, S): thrust % and shape on the part's options, read-only in
+   Rollout. The Δv plan's solid marks, g at burnout, the surplus orbit, the solid lander, the second Space on a burning drop,
+   crossfeed ignored, and `jointFix`'s grain line.
+3. **Presets and the first hour** (vehicle + economy, S): a Solid Sounding preset (Ember and fins) and Orbiter + solids (two
+   Cinders), measured. `career.mjs` re-run. Economy's note on the cheap-lift path.
+4. **Later solids** (vehicle ⚙, M): `cinder2`, `brand` and `flare` with the segments option, `star`, `rdec25`, era gates,
+   the tail-off and the max-q dip shape.
+5. **The ◇ and nodes with a solid** (flow 🖥, M): the centred burn, the full-impulse ghost orbit, the node line, and
+   procedures that leave solids alone.
+6. **The look** (parts & pad 🖥, S): segment rings, black nozzles, Mountain's flex boot and terracotta, Coastal's white
+   boosters, `PFX` entries for the new keys, and each school's signature solid design for rivals' pictures.
+7. **Late extras** (vehicle, S, M2): thrust-termination ports on `star` from era 2 (+3 % mass, +1 M: one cut, the rest
+   vented) and `gem` at era 3. Then Q279's ignitions and throttle ranges build on slice 1's `engThr`.
+
+**Questions for Caio (defaults if silent):**
+1. **Names:** fire words for solids, as the liquids are birds: Ember, Cinder, Brand, Flare, Star (**default**). Or plain
+   descriptive names ("Solid booster 1.25 m").
+2. **The grain:** thrust 60–100 % plus two shapes, *even* and *max-q dip*, set on the pad only (**default**). Or thrust %
+   only. Or a third shape, boost–sustain (a dual-thrust grain).
+3. **Dropping a burning solid:** allowed after a second Space, the motor lost (**default**). Or refused until burnout, as the
+   Shuttle couldn't drop its SRBs early.
+4. **Propellant share a step under the real motors'** (0.74–0.85 against the real 0.82–0.94), so Isp, not mass, is the
+   trade (**default**). The game's liquid stage is heavy (Kestrel + Tank 8 t is 0.76). At real shares the mid-era Cinder II
+   would out-lift the Kestrel stage for a third of the price.
+5. **The first hour:** two new presets (Solid Sounding, Orbiter + solids), the existing ones unchanged (**default**). Or the
+   Sounding preset's Sparrow swapped for an Ember (solids from flight one; career numbers move).
+6. **Thrust-termination ports** on the late vacuum solid (**default yes**, era 2 onward, one cut). Or never: a solid never
+   stops, full stop.
+
+## v1.299 — the Hopper and the Beeper roll out stable (2026-11-10, worker session, QUEUE Q202, PLAYTEST #36)
+
+**The report** (robot, TESTING row 157): Rollout opened the stock Hopper with ⚠ *Aerodynamically unstable (−0.05 calibers):
+only steering keeps it straight*; the Beeper too. A preset shouldn't open with a warning a newcomer can't act on.
+
+**Measured** (Rollout's margin: the worse of `analyze`'s full and supersonic, `(ycm − ycp) / 2r`), every preset before the fix:
+Hopper +0.02 full / **−0.047** supersonic, Beeper +0.24 / **−0.053**; every other preset positive (lowest: Asparagus +0.04
+supersonic). Both were neutral within a whisker, unstable only once supersonic, where the centre of pressure moves forward.
+
+| Candidate | Margin (worse) | Cost | Δv on the pad |
+|---|---|---|---|
+| Hopper, one fin ring (was) | −0.05 | 36.4M | 1,560 m/s |
+| Hopper, two fin rings | **+0.26** | 37.9M | 1,454 m/s |
+| Beeper, one fin ring (was) | −0.05 | 50.8M | 2,619 m/s |
+| Beeper, two fin rings | **+1.39** | 52.3M | 2,539 m/s |
+| Beeper without its nose cone | +3.29 | 49.8M | 2,660 m/s |
+
+**Chosen:** a second fin ring on both, the fix the Passenger Orbiter already carries (its cone needed one too). Not chosen:
+treating −0.05 as neutral in Rollout (it would hide a real marginal design the player built), and dropping the Beeper's cone
+(it shields what's under it on the way up; the Passenger Orbiter's cone was added for exactly that, Q201). The Beeper's
+scripted climb now leaves **1,468 m/s** in orbit (was 1,559; vehicle-39's pin). The Hopper's other tests (the topple stand,
+impact prediction, the short-for-orbit warning, afloat) pass unchanged.
+
+**Test** `vehicle-40`: every preset's Rollout margin ≥ 0, the Hopper and the Beeper above +0.15. A new preset that rolls out
+unstable fails it.
+
+## v1.301 — the drag table follows the outline (2026-11-11, vehicle session, QUEUE R21; REVIEW-2026-11-09 § 2)
+
+**The bug** (review, confirmed): `dragTable` (`sim/flight.js`), the CdA(Mach) table the impact predictor and `ascentRun`
+integrate, was cached on the attached-part count and the 5° AoA bin. Jettisoning a fairing keeps its part (the base ring
+stays on, `p.fj`), and bay doors move no part, so neither changed the key: the predictor kept the table measured on the
+old outline until the next staging.
+
+**Measured** (vehicle-41, AoA 0, CdA m² at Mach 1 / 2 / 3 / 5): the Satellite with its fairing 1.70 / 1.69 / 1.70 / 1.71;
+after jettison the stale cache kept those, the true table is **3.30 / 3.39 / 3.42 / 3.44** (≈1.9–2× the drag; the bare
+payload and the open ring are blunter than the shell). A bay stack (core § 29's): shut 2.42–2.50, open 2.52–2.61.
+
+**The fix:** the cache also stores the `s.lines` it was measured on, and holds only while that is still the vessel's
+`s.lines`. `rebuildShape` makes a new one on every outline change (a fairing off, doors starting to open, doors done
+closing in `bayTick`, a stage gone, a docking), and that object is exactly what `aeroPass` reads, so the table can't
+disagree with the shape. Rejected: keying on each part's `profOf`: closing doors switch `profOf` back the moment
+`doorF` reaches 0, while `s.lines` changes at `bayTick`, so a call between the two would cache the open outline's table
+under the shut key. Fin deflection (`p.fd`) still doesn't enter the table: it's a control state, not an outline.
+
+**Test:** `vehicle-41` (fails on the old key: the jettisoned table equalled the fairing's).
+
+## v1.303 — RCS no longer fights the gimbals (2026-11-11, vehicle session, QUEUE R26, P1; REVIEW-2026-11-11 § 6)
+
+**The bug** (review 2, confirmed with `review/2026-11-11/r23e.mjs`): `physStep` asks `ctrlAccel` twice: once at the top
+for the wheels, gimbals and fins, once later for RCS (`ctrlAccel(s,true)`), and RCS is handed the difference
+(alR − alC)·I. The Q382 feed-forward (cancel last step's aero moment as it comes) is gated on `s.simTA===simT`, and the
+aero pass between the two calls sets `s.simTA=simT+dt`. So only the first call had the feed-forward, and the difference
+told RCS to push the whole aero moment back in: RCS command · τ_aero / |τ_aero|², median **1.000** over 4,633 steps.
+Any design with RCS on while an unstable stage burns in air: the Beeper with Docking's RCS rings spent **30.0 of 30.0 kg**
+of gas on its climb, the gimbals and RCS pulling against each other.
+
+**The fix:** RCS's command is computed right after the first one, before the aero pass, with the same inputs; the RCS
+block later uses it. The calls stay in the same order (the second still sets `s.sasE` last, as before). After: median
+**0.000**, **0.06 kg** of gas on the same climb, 100 km, alive. `ctrlAccel` and `physStep` are in `TAPE_V`'s hash, so
+tapes recorded before replay stale (as with any physics change).
+
+**Test:** `vehicle-42` (the repro's flight, without the instrumentation; fails on the old code at 30.0 kg).
+
+## Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate, nothing built or queued)
+
+Caio, while holding scope: "I just want to scope what it would take to add flight simulation like KSP has". Read as
+KSP's planes: wings, a runway, aircraft and spaceplanes. This is an estimate from reading the code and one
+measurement; item counts are guesses in queue-item units (one agent session each).
+
+**What is already there.** The physics is a rigid body in three dimensions with forces per part (`aeroPass`,
+`sim/vessel.js:787`). Fins are flat plates that lift, steerable fins already join the control solve (`finCols`), and
+the navball, hold modes and ground contact exist.
+
+**Measured** (`review/2026-11-11/glide.mjs`; a capsule and a 1 t tank, the fin ring's four plates resized, nose first):
+
+| Plates | Best lift-to-drag | At |
+|---|---|---|
+| Stock fin ring, 0.9 × 0.9 m | 1.7 | 15° |
+| 3 × 2 m | 3.5 | 10° |
+| 5 × 2 m | 4.0 (4.5 with a nose cone) | 5° |
+
+That is a shuttle's glide (about 4.5 subsonic), and nowhere near an aeroplane's (10 to 17). The plate formula has no
+stall, no aspect ratio and no change with Mach, so the same 4 holds at Mach 3, where a real shuttle has about 1.
+
+**What is missing, by tier.**
+
+| Tier | What the player gets | What it needs | Size |
+|---|---|---|---|
+| 1. Winged return | A craft launched upright on a rocket that glides home and lands on a strip | Wing parts in mirrored pairs (elevons are today's steerable fins); stall, aspect ratio and Mach in the plate formula; lift in the landing predictor (`dragTable` keeps drag only, `sim/flight.js:693`); wheels on a vessel and a landing on its side that isn't a topple (Q508's rule calls it one today); a strip at each site; airspeed, sink rate and a glide cue on the HUD; a glide ratio and landing speed in the Assembly's checks (its stability maths assumes a symmetric rocket) | about 6 to 8 items |
+| 2. Aeroplanes | Take off from a runway, cruise, land | A horizontal assembly (parts can't tilt; rovers got their own designer for this reason); an air-breathing engine family (thrust by speed and air density, intakes); the takeoff roll; time warp in the air for a long cruise; the world drawn at low level and high speed for minutes (frame time not measured); trim and an autopilot; missions that want a plane; a scripted pilot for the robot | about 10 to 14 more, and a new room |
+| 3. Spaceplanes | A plane that reaches orbit | Combined engines, heating on wings, and a balance pass: orbit here is 3.4 km/s, so a single stage to orbit is far easier than on Earth and would undercut staging | about 4 to 6 more |
+
+**Recommendation.** Tier 1 only, as one of Q589's candidates (it is the lifting entry grown up): it serves "coming
+home, more than a parachute" and reuses most of what exists. Tier 2 is a second vehicle game (a new builder, a new
+engine family, new demands on the world) and does not serve the loop PROGRESSION.md is fixing; park it with the
+winged runway shuttle already deferred in notes/space.md § "Stations, modules and moonbases".
+
+**Decided (D30, Caio 2026-11-11):** tier 1 is wanted (planned as Q592); tiers 2 and 3 are backlog.
+
+**Flown end to end (2026-11-11, `review/2026-11-11/glide_e2e.mjs`; the real physics step, headless):** pod + 1 t tank + a resized fin ring, 2,090 kg, entering at 120 km, 0.99 of circular speed, −1.5°. **Today's plates are not enough.**
+- *With the attitude set every step:* a ballistic pod lands 1,813 km on at 3.1 g. Wings 3×2 m at 15° fly 7,635 km at 1.0 g (lift-to-drag 2.7 at every Mach, 2.9 subsonic); 5×2 m at 10° fly 10,043 km (3.6, 3.8). Tellus is 8,005 km round, so the best glides circle it. A 45° bank gives 870 to 925 km of cross-range. A flare ends at 31 to 33 m/s forward with 9 to 12.5 m/s of sink. Wings peak at 375 to 443 K: the plate loop adds no heat to them. About 10 µs a step.
+- *With the game's SAS and the pod's wheels:* it cannot hold 15° (mean error 12 to 13°), dives nose first to 50 to 59 kPa and 13 to 48 g, and the turn rate goes NaN (at 25 km and Mach 5 for 5×2 m, at 1.4 km for 3×2 m). With SAS off the 5×2 m craft breaks at the tank-to-pod joint in bending. Likely cause, not verified: big plates at high dynamic pressure are too stiff for the 0.02 s step. A player cannot build these plates today (fins stop at 2 m span).
+- *What the plates need, against a shuttle (about 1 hypersonic, 4.5 subsonic, 100 m/s at touchdown):* a **Mach term** (hypersonic is 3 where it should be 1); a **stall** (40° still flies, at 34 m/s); **aspect ratio** (span and chord enter only as area); **wing heating**; **elevons** and a guard or sub-steps for the rotation; **wing mass by size** (0.25 t at any size gives about 100 kg/m² against a shuttle's 500, which is why entry peaks at 1 g and touchdown is slow).
+- *Not checked:* the NaN's root cause; steerable fins as elevons; a ground contact or rollout (runs stop at 3 m, most over sea); roll stability; wind; frame time in the app; a shuttle-like wing loading.
+
+### Prototype: the wing formula (2026-11-11, review 2 session; scripts only, nothing in the game)
+
+`review/2026-11-11/wing_proto.mjs` patches the sim's source in memory (three replacements) and flies it with the real
+physics step. A plate marked `d.wing` gets the formula below; any other fin runs today's line, and a stock fin ring
+through 120 s of entry comes out **the same to the last bit**.
+
+**The formula** (normal-force coefficient of one plate; `s` = sin of its angle to the flow, AR = 2 × span / chord for a
+mirrored pair):
+- *Subsonic:* attached lift `k0·s·cos`, with `k0 = 2π·AR / (2 + √(4 + AR²))` (Helmbold); a **stall** at 14° for AR ≥ 4,
+  later for stubbier wings (+3.5° per unit of AR under 4), over a 6° band; past it a separated flat plate
+  (`1.364 · 2π·s / (4 + π·s)`, 1.2 broadside).
+- *Supersonic:* `min(k0, 4/√(M² − 1))·s·cos + cpMax(M)·s²`: the linear lift falls with Mach and the impact term takes
+  over. Blended from Mach 0.9 to 1.3.
+- *Drag:* today's 0.012 friction, plus a blunt leading edge's wave drag above Mach 1 (thickness 6 % of chord, half for sweep).
+- *Heat:* the windward face as a blunt body one chord across, plus the leading edge (radius 3 % of chord).
+- *Mass:* 40 kg per m² of plate (a shuttle's wing group with tiles is about 38).
+Six constants (`WING` in the script): thickness, leading-edge radius, sweep, stall angle, its low-AR bonus, its band.
+
+**Lift-to-drag, 3 × 2 m plates on a pod and tank** (old line → new):
+
+| Mach | 5° | 10° | 15° | 20° | 40° |
+|---|---|---|---|---|---|
+| 0.3 | 3.2 → 3.1 | 3.5 → 3.4 | 2.9 → 2.8 | 2.4 → 2.2 (stalled) | 1.1 → 1.1 |
+| 2 | 2.7 → 1.2 | 3.1 → 1.9 | 2.7 → 2.0 | 2.3 → 1.9 | 1.1 → 1.1 |
+| 15 | 2.7 → 0.3 | 3.1 → 0.7 | 2.7 → 1.1 | 2.3 → 1.2 | 1.1 → 1.0 |
+
+At 5 × 2 m (AR 5) the subsonic best is 4.4 at 5°. Lift at 20° falls from 1.25 to 0.9 (AR 3) or 0.6 (AR 5): a stall.
+
+**Flown from 120 km** (attitude set every step; 40° above Mach 5, 12° below Mach 2):
+
+| Craft | Wing loading | Track | Peak g | L/D above M 5 / subsonic | Wings peak | Touchdown |
+|---|---|---|---|---|---|---|
+| pod + 1 t tank, 2.8 t | 233 kg/m² | 3,213 km | 1.1 | 0.97 / 3.1 | 1,046 K | 77 m/s forward, 4.3 m/s sink |
+| pod + 4 t tank, 5.8 t | 483 kg/m² | 3,428 km | 1.1 | 0.99 / 3.1 | 1,134 K | 109 m/s forward, 4.3 m/s sink |
+| the same at 15° all the way | 483 kg/m² | 4,527 km | 1.0 | 1.30 / 3.1 | 1,215 K | (not flared) |
+| the same, banked 45° | 483 kg/m² | 2,817 km | 1.7 | 0.99 / 3.1 | 1,151 K | (not flared) |
+
+A ballistic pod lands 1,813 km on at 3.1 g. The touchdown needs an approach flown fast (6°, about 160 m/s at 1 km) and a
+flare from 250 m; held at 12° to the ground the same craft arrives at 93 m/s with 21 m/s of sink, with nothing left to
+flare on. So the stall makes the approach a skill, as on a real glider. Wings need a hot skin: 1,050 to 1,200 K rules out
+bare metal (the script gives them 1,900 K).
+
+**Under the game's own SAS** (wheels 10 kN·m, heat off; the centre of mass and the wing's centre measured along the stack):
+
+| Layout | Wing ahead of the centre of mass by | Result |
+|---|---|---|
+| wing ring at the tail | −1.7 m | cannot lift the nose: dives, 91 kPa, lost |
+| wing between pod and tank, steerable tail ring | +2.15 m | flips, 12 g |
+| wing between two tanks, steerable tail ring | +0.25 m | **held to the ground, mean error 0.0°**, 3,463 km, no NaN |
+| the same, no tail ring | +0.15 m | lost: the wheels alone are not enough |
+| the same with its tail, tanks dry | −0.2 m | flies 3,631 km, mean error 10°, worst 47° |
+| tanks dry, wing one tank further up | +1.1 m | mean error 7°, lift-to-drag 1.2 subsonic: wallows |
+
+So the control law is not the problem: **balance is**. The wing has to sit within about 0.3 m of the centre of mass, the
+centre of mass moves 0.45 m as the tanks empty, and the craft needs elevons (the steerable ring did the job). That is the
+Assembly's check to write: where the wing sits against the centre of mass, full and dry.
+
+**The NaN** (`review/2026-11-11/rollnan.mjs`): not the wing formula. The plates' rate damping is integrated explicitly, so
+roll overshoots once c·dt/I passes 2, with c = Σ ½ρv·A·3.5·r². Stock fins sit at 0.02 to 0.18; four 2 m fins on a 2 t
+craft at 500 m/s near sea level sit at 2.08; 3 × 2 m plates pass it at 250 m/s. The guard tried: the damping taken
+implicitly for the excess over 0.5 only, Δω = τ·dt / (I + max(0, c·dt − 0.5·I)). It holds 5 × 2 m plates steady at
+every speed tried and leaves today's flights the same to the last bit. Filed as Q598.
+
+**Cost:** 9 to 15 µs a step, as before; no sub-steps needed. (Two runs of twelve showed 240 and 360 µs a step once and
+14 µs when repeated: the machine was busy, not the craft.)
+
+**Not checked:** a touchdown on wheels and a rollout (runs stop 3 m up); wind and gusts; roll and yaw control in a bank
+under SAS (the banked run set the attitude); the formula against a measured wing polar; a delta or a body that lifts;
+frame time in the app; how the Assembly's stability maths reads a wing.
+
+**Not checked (before the flight above):** a glide flown end to end; the frame time of low, fast flight; whether wheels can share the legs'
+contact code.
+
+## v1.315 — three of R22's four physics fixes; `detach()`'s momentum parked (2026-11-11, vehicle session, QUEUE R22; REVIEW-2026-11-09 § 2)
+
+All four confirmed by the review. Three ship; `vehicle-43` checks them and fails on the old code at each. The fourth is built
+and parked (below).
+
+- **`fall()` predicted an impact in the past** outbound on an escape. With the periapsis under the air, it took the time
+  to the entry crossing from `timeToNu`, which on a hyperbola outbound is negative (the crossing is behind). Test case:
+  200 km up, 1.2 × escape speed, 60° off vertical (e 1.70, pe −96 km): "impact" at t 711 s for a craft at t 1000 s. Now
+  `dt<0` means no impact, the guard `cruiseStep` already had.
+- **A failed pure ignition re-ran its event's other effects.** `stage()` stepped `evIdx` back so the ignition could be
+  retried, but went on to the spin motors, fairing, chute and action groups, which then ran a second time on the retry.
+  Now a failed pure ignition returns before them: nothing else happens until it lights. Test: an extra ignite+chute event
+  rolled until the engine fails (flight 31): the chute was armed on the failure, now it waits for the retry.
+- **`ascentRun` took Easy's air twice**: its drag table comes from `aeroPass`, which already scales by `lvl().air`, and
+  the integrator multiplied by it again (0.75² ≈ 0.56 of Normal's drag instead of 0.75). Dropped from the integrator; the
+  table's Easy/Normal ratio is 0.762 (fins and the base at the true air).
+
+`stage` and `fall` are in `TAPE_V`'s hash: tapes recorded before replay stale.
+
+**PARKED: `detach()`'s momentum** (branch `r22-detach`, pushed; parked at: built and tested, three scripted missions fail).
+
+*The bug:* the debris branch gave the dropped stage its kick and the craft no reaction, and neither branch moved the craft's
+velocity with its centre of mass (`s.r` moved by `sh`, `s.v` stayed). The vessel branch gave the part the whole kick and the craft −kick × dm/M, which for a heavy stage under a light one is several m/s for nothing.
+*On the branch:* on both branches of `detach` the kick is how fast the two pieces part, shared by mass (the part M/(M+dm)
+of it, the craft the rest, backwards), and the craft's velocity is its new centre's, v + ω × sh. Orbiter's first drop:
+momentum error 1.0 m/s × M → 3e−14; the craft now gains 1.06 m/s from the push (it had 0).
+
+**For space, on the branch:** `bayRelease` (`sim/space.js`) shared its 0.3 m/s out by mass itself before calling `detach`; there it
+passes `BAY_PUSH` as is (the bay checks: 0.3000 m/s apart, momentum kept).
+
+**Why parked:** every staging now gives the craft about a metre a second it didn't get before, and the three long scripted
+flights of the full suite are on knife edges: *Crewed Lunar flies a crew to Selene and home*, *procedures v2: the flown
+mission is recorded*, and *mission ladders: the same Nyx orbit flown prograde does not last*. With `detach` reverted all
+three pass again. In `fly_crewlunar.mjs` the trans-Tellus search picked a 600 m/s burn with 561 m/s left and the tank ran
+dry; capping the search at what the stage can pay (on the branch) brings it home on a 4.1 g entry, but it now touches down at
+7 m/s among rainforest trees and is lost (Q383). **To land it:** make the three flights robust to a metre a second at
+staging (the burn search capped, a correction after the last staging, a splashdown aimed at sea or Q383 settled), then
+merge the branch and add its momentum check (`vehicle-44` there).

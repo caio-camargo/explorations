@@ -1044,3 +1044,23 @@
   check('in flight: a Selene transfer carried in 1-day waits enters Selene’s sphere as one long wait does (the cruise coasts with the predictor’s stepper)',
     !!tr && one.in && days.in, tr ? `arrival predicted day ${(tr.tA / D.DAY_S).toFixed(2)}; one wait: ${one.in ? 'entered' : 'missed'}; 1-day waits: ${days.in ? 'entered' : 'missed'}` : 'no aim found');
 }
+
+// space-35. The builder's power line says what v1.108 will do between flights (QUEUE Q212): satPowFuture (sim/power.js)
+// gives, from a powerBudget, the days on the battery and the share of the time it works after; checked against the
+// registry itself (satPowTick from a full battery, 0.05-day steps): a cell-less design goes flat on the day it says and
+// then goes quiet; one short on cells works in sunlight only, at satDuty's share; one whose battery can't cross a shadow
+// never runs flat but loses the rest of each shadow; the v1.105 Probe gets no line (power-positive). Own instance.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,powerBudget,satPowFuture,satDuty,satPowTick,PROG,HOOK,DAY_S};')();
+  D.HOOK.news = () => {}; const P = D.PROG;
+  const bud = (avg, use, peak, cap, need, ecl = 0.38) => ({ avg, use, peak, rtg: 0, battWh: cap, needWh: need, ecl });
+  const reg = b => { const q = { pw: { avg: b.avg, use: b.use, ecl: b.ecl, cap: b.battWh, need: b.needWh, peak: b.peak, rtg: b.rtg }, Ewh: b.battWh }; P.sats = [q];
+    let d = 0; while (D.satDuty(q) >= 1 && d < 400) { D.satPowTick(0.05); d += 0.05; } return { d, duty: D.satDuty(q) }; };
+  const cases = { noCells: bud(0, 15, 0, 500, 3), short: bud(9, 15, 14.5, 500, 3), night: bud(30, 15, 48, 2, 6) };
+  const res = Object.fromEntries(Object.entries(cases).map(([k, b]) => [k, { F: D.satPowFuture(b), R: reg(b) }]));
+  const n = res.noCells, s = res.short, t = res.night, probe = D.satPowFuture(D.powerBudget(D.newShip(D.PRESETS.Probe)));
+  check('space-35: the builder\'s satellite power forecast matches the registry: a cell-less design goes flat on the day it says then quiet; short on cells, sunlight only at satDuty\'s share; a battery too small for the shadow never runs flat but loses the rest of it; the Probe never runs down',
+    Math.abs(n.F.days - n.R.d) < 0.06 && n.F.duty === 0 && n.R.duty === 0 && Math.abs(s.F.days - s.R.d) < 0.06 && Math.abs(s.F.duty - s.R.duty) < 1e-12 && s.F.duty > 0 && s.F.duty < 1
+      && t.F.days === Infinity && t.R.d === 0 && Math.abs(t.F.duty - t.R.duty) < 1e-12 && t.F.duty < 1 && probe.days === Infinity && probe.duty === 1,
+    Object.entries(res).map(([k, v]) => `${k}: says ${v.F.days.toFixed(2)} d then ${(v.F.duty * 100).toFixed(0)} %, registry ${v.R.d.toFixed(2)} d then ${(v.R.duty * 100).toFixed(0)} %`).join('; ') + `; Probe ${probe.days} d`);
+}

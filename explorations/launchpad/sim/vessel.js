@@ -174,7 +174,9 @@ const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy'
 // A design is the core stack top→bottom; an entry is a part key, or {k, rad:{n, dec, stack}} for a part with a
 // radial group beside it: n copies of a side stack (top→bottom), bottoms level with that part's bottom.
 const PRESETS={
-  Hopper:['chute','pod','t2','fins','kestrel'],
+  // two fin rings on the Hopper and the Beeper (Q202, PLAYTEST #36): with one, both rolled out ⚠ unstable, −0.05 calibers
+  // supersonic; with two, Hopper +0.26, Beeper +1.39 (1.5M dearer, ~100 m/s less Δv), as the Passenger Orbiter's second ring
+  Hopper:['chute','pod','t2','fins','fins','kestrel'],
   // the Orbiter's upper stage carries a Tank 1 t besides its Tank 2 t (vehicle, PLAYTEST #121, 2026-10-30): flown by hand it
   // ran dry for Caio, the ◇ followed; a scripted ascent now leaves ~794 m/s in orbit, not ~425 (study_pilot.mjs), 57.5M not 55.8M
   Orbiter:['chute','pod','t2','t1','petrel','dec','t8','fins','kestrel'],
@@ -184,7 +186,7 @@ const PRESETS={
   // home. A nose cone over its chute (Q201, PLAYTEST #35): the bare capsule's shoulder took the ascent's heat (skin ~500 K,
   // so its 10-min cabin passed 330 K by T+212 s); under the cone the skin stays ~320 K and the cabin ~300 K. The cone moves the
   // centre of pressure forward (+0.94 → −0.67 calibers), so a second fin ring puts it back (+0.91; measured: 580 m/s spare in orbit)
-  Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
+  Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
   'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
   Satellite:null,   // set below, after toV2 (side parts on its frame)
   'TV Satellite':null,   // set below, after the bench's starters (a payload block)
@@ -874,10 +876,10 @@ function detach(s,list,kick,spin,asVessel){
   for(const p of list)p.on=false;
   geom(s);rebuildShape(s);
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
-  if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
+  if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w);HOOK.sep({body:s.body,r:add(s.r,off),q:s.q.slice(),parts:list,cm:dc})}   // a command part aboard: a vessel of its own
   else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
     w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
-  s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
+  {const sh=qrot(s.q,sub(s.cm,c0));s.r=add(s.r,sh);HOOK.cmShift(s,sh)}   // the page eases its camera over this jump (Q564)
   if(s.landed)s.landed=false;
   HOOK.rebuild()}
 // ---- engine gimbal (control session). Each engine's nozzle swivels up to d.gim degrees, at most d.gimR °/s. p.gv is its
@@ -930,6 +932,9 @@ function physStep(s,dt){
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
   sasNearGround(s);   // (Q544) before the control law: a hand-over flies from this step
   const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
+  // RCS's command too, here, with the same feed-forward (R26): after the aero pass s.simTA is the next step's, and a call
+  // there left the feed-forward out, so RCS was told to push the aero moment back in that the gimbals were cancelling
+  const alR=s.rcs?qrot(qi,ctrlAccel(s,true)):null;
   const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*engK(p)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*lvl().isp*G0*s.throttle):[];
   // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
   const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
@@ -976,7 +981,7 @@ function physStep(s,dt){
      s.tauA=T>0&&s.aoa<Math.PI/3&&cmp<0&&fade>0?mul(ax,fade*cmp/al):null;s.simTA=simT+dt}}
   else s.tauA=null;
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
-  if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true)),ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
+  if(s.rcs&&alR){const ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
     rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   seaForces(s,dt);   // and the sea holds it up (world session, Q274)

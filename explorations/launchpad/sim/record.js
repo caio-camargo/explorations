@@ -26,15 +26,15 @@ function jpatch(o,ops){
 
 // a vessel's state, exactly: where it is, how it moves and turns, which parts are on and what they hold
 function stateHash(s){return hashStr(JSON.stringify([simT,s.r,s.v,s.q,s.w,!!s.alive,!!s.landed,s.evIdx,s.parts.map(p=>[p.on?1:0,p.res])]))}
-const progHash=()=>hashStr(JSON.stringify(PROG));
+const progHash=()=>hashStr(progJSON());
 
 const recNow=()=>Math.round(REC.clock()-REC.t0);
 // start recording: the save as it is now, the page's other stored settings (`store`), and what made it (`game`)
-function recStart(store,game){Object.assign(REC,{on:true,t0:REC.clock(),game:{TAPE_V,...game},start:{prog:jclone(PROG),home:HOME,store:store||{}},
-  events:[],last:jclone(PROG),flight:null})}
+function recStart(store,game){Object.assign(REC,{on:true,t0:REC.clock(),game:{TAPE_V,...game},start:{prog:JSON.parse(progJSON()),home:HOME,store:store||{}},
+  events:[],last:JSON.parse(progJSON()),flight:null})}
 function recEv(k,d){if(REC.on)REC.events.push({t:recNow(),k,...d})}
 // the save since the last keyframe, as a diff (called at each save; nothing when nothing changed)
-function recProg(){if(!REC.on)return;const now=jclone(PROG),ops=jdiff(REC.last,now);if(ops.length){recEv('prog',{ops});REC.last=now}}
+function recProg(){if(!REC.on)return;const now=JSON.parse(progJSON()),ops=jdiff(REC.last,now);if(ops.length){recEv('prog',{ops});REC.last=now}}
 // a flight begins on this tape: where and when, and the vessel as it stands
 function recFlightStart(s,tape){if(!REC.on)return;if(REC.flight)recFlightEnd();REC.flight={s,tape};
   recEv('flightStart',{stack:jclone(tape.stack),site:tape.site,fromOrbit:!!tape.fromOrbit,day:PROG.day,simT,orbT0:ORB_T0,hash:stateHash(s)})}
@@ -46,10 +46,9 @@ function recFlightEnd(s,tape){if(!REC.on||!REC.flight)return;REC.events.push(rec
 function recStop(){if(REC.flight)recFlightEnd();recProg();REC.on=false}
 // load a recording's starting save into this SIM the way the page loads a save (app/state.js, after migrateSave): the
 // program, then what the SIM derives from it (HOME, the rivals' schedule, the offer board, missing tables). A replay must
-// start here, not from a bare Object.assign: a program is more than PROG (platform-5 found HOME and RIVALS).
-function recLoad(start){for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,jclone(start.prog));
-  HOME=start.home??PROG.home??0;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();
-  if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{}}
+// start here, not from a bare Object.assign: a program is more than PROG (platform-5 found HOME and RIVALS). Since R10 both
+// are progLoad (sim/program.js); a start the page couldn't load is an error here, not a quiet new program.
+function recLoad(start){const e=progLoad(start.prog,start.home);if(e)throw e}
 // the recording so far; a flight still in the air is closed in the copy (marked open), not in the recording
 const recFile=()=>({v:REC_V,game:REC.game,start:REC.start,events:REC.flight?[...REC.events,{...recFlightEv(),open:true}]:REC.events});
 // the save at time t of a recording (R3's scrub between flights): the start, then every diff up to t

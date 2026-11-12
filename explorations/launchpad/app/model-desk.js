@@ -94,3 +94,48 @@ function deskDraw(drawMesh,m,F){const D=deskMesh(F.N);drawMesh(D.desk,F.M,F.p);g
 function deskShadowM(F,camW,Mship){const gn=F.up,L=F.lamp,ln=dot(L,gn),P0=sub(madd(F.p,gn,deskFoot()+0.0015*F.N),camW),d0=dot(P0,gn)/ln;
   const Pr=[1-L[0]*gn[0]/ln,-L[1]*gn[0]/ln,-L[2]*gn[0]/ln,0, -L[0]*gn[1]/ln,1-L[1]*gn[1]/ln,-L[2]*gn[1]/ln,0, -L[0]*gn[2]/ln,-L[1]*gn[2]/ln,1-L[2]*gn[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
   return mmul(Pr,Mship)}
+// ---- (flow, QUEUE Q572) a part as a turning scale model, for the unlock cards: the part renderer (partsMesh, the mesh
+// shader with the school's paint) in the design table's light, drawn into a small target of its own and read back into a
+// 2D canvas. Only while a room covers the window (the Debrief, the Program), so the 3D frame isn't drawn meanwhile; the
+// next render() binds its own target, viewport and uniforms again. Up to six models side by side, each scaled to its slot
+// (a catalogue, not true scale: a battery beside a 32 t tank would vanish). Anything that fails leaves the canvas empty.
+const PM={rt:null,w:0,h:0,f16:false,models:[],cv:null,raf:0,t0:0,img:null,buf:null};
+function pmTarget(w,h){if(PM.rt&&PM.w===w&&PM.h===h)return PM.rt;pmFreeRT();
+  const f16=typeof HDR_RT!=='undefined'&&HDR_RT,t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,f16?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,f16?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  const rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH24_STENCIL8,w,h);
+  const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rb);
+  const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  PM.rt=ok?{t,rb,fb}:null;PM.w=w;PM.h=h;PM.f16=f16;PM.buf=f16?new Float32Array(w*h*4):new Uint8Array(w*h*4);if(!ok){gl.deleteTexture(t);gl.deleteRenderbuffer(rb);gl.deleteFramebuffer(fb)}return PM.rt}
+function pmFreeRT(){if(!PM.rt)return;gl.deleteTexture(PM.rt.t);gl.deleteRenderbuffer(PM.rt.rb);gl.deleteFramebuffer(PM.rt.fb);PM.rt=null;PM.w=PM.h=0}
+// one part as a model: its mesh and its size (the part alone, as newShip builds it: a side part stands on its own)
+function pmModel(k){try{const s=newShip([k]),ps=s.parts.filter(p=>p.on);if(!ps.length)return null;
+    let r=0,y0=Infinity,y1=-Infinity;for(const p of ps){r=Math.max(r,Math.hypot(p.pos[0],p.pos[2])+p.d.r);y0=Math.min(y0,p.y0);y1=Math.max(y1,p.y0+p.h)}
+    const m=partsMesh(ps);return{k,mesh:m,parts:ps,r:Math.max(r,.01),y0,h:Math.max(y1-y0,.01)}}catch(e){console.warn('unlock model',k,e);return null}}
+// start turning `keys` in canvas cv (its size sets the target's); stops the one before
+function pmStart(cv,keys){pmStop();if(!cv||!keys||!keys.length||typeof gl==='undefined')return false;
+  PM.models=keys.slice(0,6).map(pmModel).filter(Boolean);if(!PM.models.length)return false;PM.cv=cv;PM.t0=performance.now();
+  let last=-1e9;const loop=()=>{if(PM.cv!==cv)return;const now=performance.now();   // ~20 frames a second: a draw and its read-back cost ~30 ms at this size
+    if(now-last>=48){last=now;try{pmDraw((now-PM.t0)/1000)}catch(e){console.warn('unlock model',e);pmStop();return}}PM.raf=requestAnimationFrame(loop)};loop();return true}
+function pmStop(){if(PM.raf)cancelAnimationFrame(PM.raf);PM.raf=0;for(const x of PM.models)x.mesh.free();PM.models=[];PM.cv=null;PM.img=null}
+function pmDraw(t){const cv=PM.cv,W=cv.width,H=cv.height,T=pmTarget(W,H);if(!T)throw new Error('no target');const n=PM.models.length;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,T.fb);gl.viewport(0,0,W,H);gl.clearColor(0,0,0,0);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.depthFunc(gl.LESS);gl.disable(gl.BLEND);gl.disable(gl.STENCIL_TEST);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
+  // the camera: at the origin, looking a little down (18°) at a row of n slots, each a unit tall and 1.25 wide
+  const e=.32,Fw=[0,-Math.sin(e),-Math.cos(e)],R=[1,0,0],U=[0,Math.cos(e),-Math.sin(e)],aspect=W/H,tanY=.22,tanX=tanY*aspect;
+  const span=Math.max(1.25*n/(2*tanX),.75/tanY)*1.05,C=mul(Fw,span);   // the row's centre, far enough to fit it both ways
+  const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0];
+  gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,mmul(P,V));gl.uniform1f(m.uFc,2/Math.log2(span*4+1));
+  deskLight(m,{lamp:norm([-.55,.75,.45]),up:[0,1,0]});gl.uniform1f(m.uLit,1);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uPadM,0);
+  if(m.uPl)gl.uniform4fv(m.uPl,[0,0,0,0]);if(m.uPl2)gl.uniform4fv(m.uPl2,[0,0,0,0]);if(m.uPlC)gl.uniform3fv(m.uPlC,[0,0,0]);if(m.uPlC2)gl.uniform3fv(m.uPlC2,[0,0,0]);
+  PM.models.forEach((x,i)=>{const sc=1/Math.max(x.h,2*x.r),a=t*.6+i*.7,q=[0,Math.sin(a/2),0,Math.cos(a/2)];
+    const pos=add(C,[(i-(n-1)/2)*1.25,0,0]);   // the slot's centre; the part's own middle goes there
+    setMarks(m,x.parts);gl.uniform1f(m.uSeam,1);gl.uniformMatrix4fv(m.uM,false,modelQ(q,pos,[0,-(x.y0+x.h/2)*sc,0],[sc,sc,sc]));
+    gl.bindVertexArray(x.mesh.vao);gl.drawArrays(gl.TRIANGLES,0,x.mesh.n)});
+  gl.uniform1f(m.uSeam,0);setMarks(m,[]);
+  const B=PM.buf;gl.readPixels(0,0,W,H,gl.RGBA,PM.f16?gl.FLOAT:gl.UNSIGNED_BYTE,B);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.bindVertexArray(null);
+  // the scene's light is linear: a gentle curve and the display's gamma here (the frame's own grade isn't run)
+  const img=PM.img&&PM.img.width===W&&PM.img.height===H?PM.img:(PM.img=new ImageData(W,H)),D=img.data,k=PM.f16?1:1/255,E=1.25,tm=v=>{v*=k*E;v=v/(1+v);return 255*Math.pow(v,1/2.2)};
+  for(let y=0;y<H;y++){const src=(H-1-y)*W*4,dst=y*W*4;for(let x=0;x<W*4;x+=4){const a=B[src+x+3]*k;D[dst+x]=tm(B[src+x]);D[dst+x+1]=tm(B[src+x+1]);D[dst+x+2]=tm(B[src+x+2]);D[dst+x+3]=a>0?255:0}}
+  cv.getContext('2d').putImageData(img,0,0)}
