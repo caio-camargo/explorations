@@ -221,14 +221,14 @@ function migrateSave(j){if(!j||typeof j!=='object')return null;let v=Number.isIn
 // Loading (R10): progLoad (sim/program.js) repairs, derives and probes the save, and starts a new program if it can't. A
 // save that won't parse or load is first copied to PROG_BAD, so the new program's first save can't destroy it; with no
 // room for that copy, this tab never saves (progHeld). Nothing here throws: a bad save no longer bricks the page.
-// A flight in progress doesn't survive a reload.
+// A flight in progress doesn't survive a reload; a flight from orbit's vessel is put back or lost by the level (flyHeldLoad, R29b).
 const PROG_BAD=PROG_KEY+'-bad',bootSay=(t,cls)=>setTimeout(()=>{HOOK.msg(t);if(cls)HOOK.news(t,cls)},1500);
 let progLoaded=false,progHeld=false,storeOK=true;
 {let raw=null,why=null;try{raw=localStorage.getItem(PROG_KEY)}catch(e){storeOK=false}
   if(raw){let j=null;try{j=migrateSave(JSON.parse(raw))}catch(e){why='it is not readable'}
     if(j){const e=progLoad(j),newer=PROG.newerSave;delete PROG.newerSave;
       if(e){why=`it stops the game: ${e.message}`;console.error('launchpad: the saved program failed to load',e)}
-      else{progLoaded=true;
+      else{progLoaded=true;{const h=flyHeldLoad();if(h){bootSay(h.say,h.cls);setTimeout(()=>HOOK.save(),0)}}   // (R29b) a flight from orbit open at the save
         if(newer)bootSay('This program was saved by a newer version of the game: some of it may not load right');
         if(PROG_REPAIRED.length)bootSay(`Parts of the saved program were damaged and are reset: ${PROG_REPAIRED.join(', ')}`,'warn')}}
     else if(!why)why='it is not a program';
@@ -270,6 +270,8 @@ const revertOK=()=>!(S&&S.rec&&(S.rec.noRevert||S.rec.launched&&!S.rec.sim&&!S.r
 function revertFlight(){if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}
   if(!revertOK()){HOOK.msg('No revert on Hard: end the flight (Enter) for its debrief');return}
   if(S&&S.rec&&S.rec.tester){const sp=S.rec.tester;missionDiscard(S);testStart(sp);HOOK.msg('Reverted: the same tester start again');return}   // (Q542)
+  if(S&&S.rec&&S.rec.fromOrbit&&S.rec.flyId!=null){const id=S.rec.flyId;missionDiscard(S);flyEntry(id);HOOK.msg('Reverted to when you took control');return}   // (R29) a flight from orbit goes back to its own start, not to the pad
+  if(BLD.isEmpty(stackDef)){HOOK.msg('No revert: the design table is empty');return}   // (R29) resetShip would build nothing and leave the flight half reset
   if(S)missionDiscard(S);resetShip();HOOK.save();go('flight');HOOK.msg('Reverted to launch')}   // the flight is discarded, not settled (Q257)
 // the tape of the flight in progress: the autopilot's played part while it flies, else the pilot's (Q275, the recorder)
 const recTapeNow=()=>player?tapeCut(player):recTape;

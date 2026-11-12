@@ -200,6 +200,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.280 — a wait cut mid-transfer keeps its encounter: a cruise between events coasts with the predictor's own stepper (coastTo), not a fixed 600 s RK4 that drifted ~15,000 km a day off a low perigee (2026-11-07, space session, QUEUE Q530)
 - v1.287 — the builder's power line says what the battery will do as a satellite: "lasts 4 days, then it goes quiet" (2026-11-08, space, QUEUE Q212; from v1.108)
 - Plan: contact limits uncrewed flight (Q574): flown, every first-orbit burn is out of the pad's sight (the Beeper's by 78 s) and a stored timed burn circularises as well as a guided one; `cmdLink`, the launch range (a tracking ship 700 km downrange), armed nodes by avionics, what is refused where; slices Q581–Q587 and W51 (2026-11-11, review 2 session; plan only)
+- v1.332 — flights from orbit: Revert goes back to when control was taken, never the pad; a reload mid-flight puts the vessel back (Easy, Normal) or loses it (Hard) (2026-11-12, launchpad session, QUEUE R29 + R29b, D45)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)
 

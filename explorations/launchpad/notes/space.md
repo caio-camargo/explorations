@@ -2850,3 +2850,27 @@ is planned over the pad, an orbit ahead).
 - Frame cost of `cmdLink` with many relays; `cmdNext` under perturbed orbits (`pertNear`).
 - Whether a replay with `cmdStep` matches its tape (the test in Q583 decides `TAPE_V`).
 - Docking and EVA under the rule (an uncrewed docking is already an onboard-computer routine).
+
+## v1.332 — flights from orbit: Revert and a reload (2026-11-12, launchpad session, QUEUE R29 + R29b, DECISIONS D45; REVIEW-2026-11-11 § 6)
+
+Review 2 found two holes in Program › Fleet › *Fly* (`flyEntry`), both confirmed headless (`review/2026-11-11/app/`):
+
+- **Revert went to the pad.** `revertFlight` discarded the flight and called `resetShip`, which builds the *design table's*
+  craft on the pad; Space then launched it with none of the launch checks (`t2_flyrevert.cjs`: 57 M flown on 25 M, a
+  top-up taken), and with an empty table `newShip` threw and left the flight half reset. Now a flight from orbit (`R.flyId`)
+  reverts by discarding it (the program back to its snapshot from just before *Fly*) and flying the same entry again:
+  the same craft, in orbit, at the moment control was taken. A pad flight with the table empty says so and does nothing.
+- **A reload mid-flight deleted the satellite.** `flyEntry` splices the vessel out of `PROG.sats` and saves; a flight in
+  progress isn't in the save, so after a reload the satellite was gone (`t4_newprog_reload.cjs` B). Caio's call (D45): a
+  difficulty setting. `flyEntry` now keeps the vessel as it was when control was taken in `PROG.flyHeld` (a schema row;
+  cleared by `missionEnd` and `missionDiscard`), and the page's loader calls `flyHeldLoad()` (sim/program.js): on Easy
+  and Normal the vessel goes back into the registry as it was (the flight's ops fee stays spent); on Hard, whose level is
+  commitment (`revert:false`, the same switch as Revert), it is lost: "*X is lost: its flight was in progress when the
+  program was reloaded (Hard: no restore)*" in the news. The save holds no flight to carry on from, so "carry the flight on
+  from the last save" is never possible today; if flights are ever saved, Hard should resume from it instead.
+- `LEVELS.hard.d`: "budgets with no margin for a sloppy ascent, no revert, and a reload mid-flight loses the craft".
+
+**Checked:** `space-36` in review 2's headless page: Normal: Revert returns *Object 1* at 300 km on the flight screen,
+again with the table emptied (no throw); a reload puts it back in the registry identical to the snapshot; Hard: no
+Revert, a reload loses it with the news line. The two repros print the new behaviour. **Not checked:** in a browser
+(TESTING 388).

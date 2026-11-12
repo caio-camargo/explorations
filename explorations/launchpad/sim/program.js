@@ -237,6 +237,7 @@ const PROG_SCHEMA={
   log:[{},'career','the logbook\'s records'],
   lastDebrief:[undefined,'career','the last Debrief, kept with the save'],
   cardQ:[[],'career','missions done between flights whose unlock cards the desk has not shown yet (Q572)'],
+  flyHeld:[null,'career','(R29b, D45) the registry vessel a flight from orbit took, as it was when control was taken: a reload mid-flight puts it back (Easy, Normal) or loses it (Hard)'],
   site:[undefined,'career','the launch site picked (absent: home\'s)'],
   // Selene's ground: rovers, science
   rvOut:[[],'career','rovers left in the field'],
@@ -728,9 +729,17 @@ function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCos
 // flight whole: no registry entry, no pay, no log, the launch's cost and days given back, as KSP's revert to launch. Kept
 // here, never on the flight's record (satRegister and the cruise entries keep R). A flight with no snapshot (a save
 // loaded mid-flight) is dropped unsettled: nothing registered or paid, but nothing given back.
+// (R29b, D45) a reload during a flight from orbit. flyEntry takes the vessel out of the registry and keeps it, as it was when
+// control was taken, in PROG.flyHeld (in the save; the same moment Revert goes back to). A flight in progress isn't in the
+// save, so at load: on Easy and Normal the vessel goes back into the registry as it was then (never deleted by a reload); on
+// Hard (commitment, lvl().revert false) the flight can't be carried on and the craft is lost, said in the news. Returns
+// what the page should say, or null with no flight held.
+function flyHeldLoad(){const H=PROG.flyHeld;if(!H||!H.q)return null;PROG.flyHeld=null;const q=H.q;PROG.sats=PROG.sats||[];
+  if(lvl().revert){if(!PROG.sats.some(x=>x.id===q.id))PROG.sats.push(q);return{kind:'restored',id:q.id,say:`${q.name} is back where it was when you took control: the flight in progress didn't survive the reload`}}
+  return{kind:'lost',id:q.id,say:`${q.name} is lost: its flight was in progress when the program was reloaded (Hard: no restore)`,cls:'bad'}}
 let REVERT0=null,FLOOR_HOLD=null;   // (R15) FLOOR_HOLD: the open flight's record, from liftoff to its settlement; floorCheck waits for it
 function missionDiscard(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return false;
-  if(REVERT0&&REVERT0.R===R)progRestore(REVERT0.prog);
+  if(REVERT0&&REVERT0.R===R)progRestore(REVERT0.prog);if(R.fromOrbit)PROG.flyHeld=null;   // (R29b) the snapshot is from before control was taken
   R.ended=true;R.reverted=true;REVERT0=null;if(FLOOR_HOLD===R)FLOOR_HOLD=null;return true}
 // The simulator (Q449, Q282 slice 1; NOTES economy § "Plan: the simulator replaces revert", W42 on its defaults). A run is
 // a normal flight with R.sim set, started before liftoff: liftoff snapshots the program as for a revert (REVERT0) but
@@ -756,7 +765,7 @@ function simEnd(s){const R=s&&s.rec;if(!R||!R.sim||R.ended)return null;const run
   HOOK.save();return out}
 function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   if(R&&R.tester&&!R.ended){missionDiscard(s);HOOK.msg('Tester start over: nothing from it is kept');HOOK.save();return null}   // (Q542) a tester start: put back as before it, dummy and all
-  if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+  if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;if(R.fromOrbit)PROG.flyHeld=null;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)

@@ -116,7 +116,7 @@ let SIM=null;
 // budget (Q475) and the revert away. Read at run time only: PROG is declared later
 const LEVELS={easy:{name:'Easy',isp:1.15,air:0.75,fail:false,due:1.5,pilot:true,revert:true,d:'forgiving engines and air, no ignition failures, loose deadlines'},
   normal:{name:'Normal',isp:1,air:1,fail:true,due:1,pilot:true,revert:true,d:'the game as tuned: budgets carry a hand-flying margin'},
-  hard:{name:'Hard',isp:1,air:1,fail:true,due:1,pilot:false,revert:false,d:'budgets with no margin for a sloppy ascent, and no revert'}};
+  hard:{name:'Hard',isp:1,air:1,fail:true,due:1,pilot:false,revert:false,d:'budgets with no margin for a sloppy ascent, no revert, and a reload mid-flight loses the craft'}};
 const lvlKey=()=>LEVELS[PROG.lvl]?PROG.lvl:'normal',lvl=()=>LEVELS[lvlKey()];
 const density=(b,h)=>b.atm&&h<b.atm?b.rho0*Math.exp(-h/b.H)*(SIM&&b===TELLUS?SIM.air[Math.floor(h/1e4)]??1:1):0;
 const pressure=(b,h)=>b.atm&&h<b.atm?Math.exp(-h/b.H):0;
