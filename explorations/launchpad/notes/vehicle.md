@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2659,7 +2659,7 @@ works; the three attitudes work. What he asked to change, all taken into this pl
 | The ground, sun and travel markers should be bench models | A desk globe, a lamp and a painted arrow (slice 4) |
 | "balance weights built into the payload, so asymmetrical designs get heavier but are still feasible" | § "Balance weights, built in" (slice 5) |
 | A sphere as a frame; more than one frame | Slice 6 |
-| "what's inside the base part… computers, battery?" | § "What the frame holds": a default, and a question for Caio (slice 7) |
+| "what's inside the base part… computers, battery?" | § "What the frame holds": the frame is the bus (D49; slice 7) |
 
 The first five are fixed in the mock-up too. The sphere, several frames and the frame's inside are not in it.
 
@@ -2797,18 +2797,19 @@ There is no switch: to shed the weight, move the parts. So a lopsided design alw
 - `bwt` and `addBalance` (v1.207) retire from the palette and the Checks. Old designs keep their `bwt` nodes and fly
   as before.
 
-### What the frame holds (default; **a question for Caio**)
+### What the frame holds (D49: Caio, 2026-11-13, "the proposal of the frame as bus works for me")
 
 Caio asked what is inside the closed frame. Today nothing is: the computer and its small battery are the probe core, a
-separate drum (`core6`, `core3`), and batteries and wheels are drums too. Default proposed: **the frame is the bus.**
+separate drum (`core6`, `core3`), and batteries and wheels are drums too. Decided: **the frame is the bus.**
 - It holds the housekeeping: the computer, the wiring and a small battery, growing with its volume, as `small()`
   scales a core by its face today. A frame needs no probe core.
 - Parts that need no view (battery, reaction wheel, propellant sphere, later the tape recorder) may go **inside**, up
   to the frame's volume. The frame is drawn with one panel open while such a part is held. Parts with a view stay outside.
 - This gives a frame's size a meaning beyond face area: a bigger frame carries more inside and weighs more.
 
-It is a rule the game does not have, so it waits for Caio's yes (slice 7). Without it, slices 1 to 6 stand alone: the
-frame is structure, and the core, batteries and wheels stack on its axis as now.
+Slice 7 builds it. Until then, in slices 1 to 6, the frame is structure, and the core, batteries and wheels stack on
+its axis as now. Not settled by the yes, for slice 7 to propose: how much a frame of a given size holds, and whether
+the probe cores leave the bench's palette.
 
 ### Slices, each with its test
 
@@ -2820,7 +2821,7 @@ frame is structure, and the core, batteries and wheels stack on its axis as now.
 | 4 | **Views.** `sim/views.js`; `view` on today's parts; the cone while held, blockers tinted, every copy's cone; the attitude switch with the globe, lamp and arrow, and the orbit slider; the camera row and the power row's new figure | M | `vehicle`: a slab over half a cone reads 50 % within one ray; a strict part fails on one hit; a bottom camera ground-facing sees the ground all the way round; the sun is hidden for the expected share; 40 parts update inside 1 ms |
 | 5 | **Thrust and balance.** The thrust code reads `partAxis`; thrusters and motors on mounts and tilts; the plume and thrust-line rows, the line always drawn; balance weights built in; `bwt` retired | M | `vehicle`: an offset motor's miss in centimetres, zero when tilted through the centre; a flown case beside `vehicle-28`: a lopsided satellite with built-in weights burns straight, and with them held off in the test it turns |
 | 6 | **More frames.** A sphere; a frame stacked on a frame; a frame on a frame's face | M | `vehicle`: a part on a sphere at any latitude; two frames' mass, envelope and views (one frame blocks a camera on the other) |
-| 7 | **Inside the frame** (after Caio's yes) | M | `vehicle`: the frame alone talks and turns; the volume limit; an inside part moves the centre of mass and blocks nothing |
+| 7 | **Inside the frame** (D49) | M | `vehicle`: the frame alone talks and turns; the volume limit; an inside part moves the centre of mass and blocks nothing |
 
 Order: 1, 2, 3, 4 give the experience Caio tried. 5 follows 4. 6 and 7 are independent of 3 to 5. Flow owns the bench's
 screen layout in 2 and 4 (Q605's row: "with flow").

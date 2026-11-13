@@ -7788,3 +7788,4 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   mounted part reaches; the sphere, several frames and the frame's inside have no mock-up.
 - Files: launchpad `mockups/bench/free.html`, `mockups/README.md`, `notes/vehicle.md`, `NOTES.md`, `QUEUE.md`; root
   `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+- **After the closing entry:** Caio said yes to the frame as the bus ("works for me"). Recorded as **D49**; the plan's section and slice 7's line under *Proposed* no longer wait. PROBES § 6.1 and § 6.4 still say nothing of it: the design desk's line covers that. Files: launchpad `DECISIONS.md`, `notes/vehicle.md`, `QUEUE.md`.
