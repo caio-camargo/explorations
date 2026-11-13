@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.10 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
+**Version**: 1.9.11 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -68,6 +68,10 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | M3 | **Crew and Selene** (epoch 4) | Crew to a Selene crater the player chose and home, a walk on the surface with a flag planted, a rover driven on real Selene ground, all from contracts (D48: the walk is the last item; the planner, RCS fine control, guest astronauts and crew rotation are not in the line) | **current** (W49, 2026-11-12); code after R2 (W48) |
 | M4 | **Big projects** (after chapter 5, Nyx: the depot and industry LATE_GAME puts in epoch 6) | A depot and a datacenter built over several flights, sized by waste heat, earning | **next** (W49), 📝 plans only until M3's finish line (D46) |
 | M5 | **Sun and planets** (epoch 6) | A probe to another planet planned on a porkchop, coasting in the background while the program carries on | design only |
+| M6 | **Selene's industry** (epoch 7) | A robot career keeps a Selene outpost going 90 days with no supply flight from Tellus, a payload thrown by the mass driver reaches a depot, and a probe orbits Hyperion | design only, provisional (W52) |
+| M7 | **The edge** (epoch 8) | A crew lands on Enyo and comes home, refuelling at an Enyo depot, all from contracts | design only, provisional (W52) |
+| M8 | **The network** (epoch 9) | A cycler in service and a return trip with no Tellus propellant; one routine moves cargo between two outposts for a year with no input | design only, provisional (W52) |
+| M9 | **Open** (epoch 10 on) | A megawatt from space sold on Tellus, and the interstellar probe launched as a staged project | design only, provisional (W52) |
 
 ### M1 — the first hour (by lane)
 
@@ -178,7 +182,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 - **M5:** the star-centred system and the year (built from `SYSTEM.md`, above) · heliocentric rails · porkchops and the B-plane flyby solver · deep-space
   dish arrays · interstellar visitors · late propulsion and low-thrust propagation ([`TECH_SCOUTING.md`](TECH_SCOUTING.md)) ·
   PLAYTEST #11/#12 · a cruise pays along the way, and passive flybys (notes/economy.md § "Time, long missions").
-- **After M5 (D32; the milestones are W52's proposal, no code):** LATE_GAME § "The arc after Selene", epochs 7 to 10:
+- **After M5 (D32; milestones M6–M9 above, provisional, W52; no code):** LATE_GAME § "The arc after Selene", epochs 7 to 10:
   Selene's industry and the mass driver; the outer system; crewed Enyo; the interplanetary network (cyclers, the
   Tellus–Enyo cycler studied in Q108; tugs; propellant made off Tellus); orbital factories (LATE_GAME § "The network");
   a solar observatory (§ "Events", solar storms); solar sails and the beamed-sail array (§ "The technology ceiling");

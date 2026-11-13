@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2364,7 +2364,7 @@ is capped, not priced.
    bought keeps rising year on year (the runner prints capacity per year).
 
 **Questions for Caio** (numbered, with defaults; silence keeps them): (1) growth **×1.6 per unit** (default) or gentler
-(×1.3); (2) **new home sites** buildable (default) or leases only; (3) the hall's parallel **bays** as a capacity
+(×1.3); (2) **new home sites** buildable (default) or leases only; (3) the hall's parallel **bays** (W54, 2026-11-13: measure the hall first; Caio skeptical) as a capacity
 (default) or the hall stays one line.
 
 **Slices (⚙):** pads and ground stations counted with the growth price (`FAC` gains a `count` kind) → bays → home
