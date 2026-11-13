@@ -365,6 +365,41 @@
     out.length === 40 && asp.filter(a => a >= 1.1).length >= 10 && med(un) > .05, `${asp.filter(a => a >= 1.1).length} of ${out.length} 1.1+× long (max ${Math.max(...asp).toFixed(2)}); crest unevenness median ${(med(un) * 100).toFixed(0)} % of the depth`);
 }
 
+// ground-11. Places on Selene (review 2 session, QUEUE Q612; notes/economy.md § "Plan: places on Selene"): the big
+// craters with a name. The table in the code is the survey's result, so this recomputes it on the relief (own SIM copy
+// with the recipe on) and fails when the bake, the rule or the table moves without the others.
+{
+  const G = new Function(src + 'return {SELENE,SELENE_GROUND,selCraters,seleneMap,craterSurvey,selPlaceRule,selPlaces,selPlace,placeAt,placeNow,placeRimDist,SEL_PLACE_T,bodyRel,toPF,missionTick,newShip,syncLanded,groundR,qFromTo,PROG,HOOK,jPlace,get SEL_MAP(){return SEL_MAP},get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const B = G.SELENE, R = B.R; G.HOOK.msg = () => {}; G.HOOK.news = () => {}; G.HOOK.save = () => {};
+  const P = G.selPlaces(), lazy = G.SEL_MAP === null, cr = G.selCraters();
+  const toT = t => norm(G.toPF(B, mul(G.bodyRel(B, t)[0], -1), t)), locked = [0, 6, 40].every(d => toT(d * 86400)[0] < -0.9999);
+  check('ground-11: the places are read without baking the map; Selene keeps one face to Tellus (−x in its own frame), so a place has a side',
+    lazy && locked && P.length === G.SEL_PLACE_T.length && P.length >= 40, `${P.length} places`);
+  B.ground = G.SELENE_GROUND; const same = G.seleneMap().craters === cr;
+  const want = cr.map((c, i) => ({ i, c, g: G.selPlaceRule(c, G.craterSurvey(c)) })).filter(x => x.g).sort((a, b) => b.c.D - a.c.D);
+  const diff = want.length !== P.length ? ['count ' + want.length] : want.map((w, k) => w.i === P[k].id && w.g === P[k].grade ? null : `${P[k].name}: ${w.i} ${w.g}`).filter(Boolean);
+  const n = g => P.filter(p => p.grade === g).length, names = new Set(P.map(p => p.name));
+  check('ground-11: the table is the survey of the relief (which craters, largest first, each grade); six or more of each grade; names unique',
+    same && diff.length === 0 && n('A') >= 6 && n('B') >= 6 && n('C') >= 6 && names.size === P.length, `A ${n('A')}, B ${n('B')}, C ${n('C')}${diff.length ? '; off: ' + diff.slice(0, 4).join(', ') : ''}`);
+  B.ground = undefined;
+  // placeAt: every place's aim point and centre are inside it; a point 1 km outside the rim is not; the aim is clear of the peak
+  let bad = 0; for (const p of P) { const a = G.placeAt(B, p.aim), d = G.placeRimDist(p, p.aim) + p.D / 2;
+    if (!a || G.placeRimDist(p, p.aim) > 0 || Math.abs(d / (p.D / 2) - .25) > .01) bad++;
+    const e = norm(cross(Math.abs(p.c[1]) < .9 ? [0, 1, 0] : [1, 0, 0], p.c)), ang = (p.D / 2 + 1000) / R, out = add(mul(p.c, Math.cos(ang)), mul(e, Math.sin(ang))), o = G.placeAt(B, out);
+    if (o && o.id === p.id) bad++; }
+  const E = P[0], far = mul([1, 0, 0], R);
+  check('ground-11: a point is in a place when it is inside the rim (each aim point is, a quarter of the radius out; 1 km past the rim is not); the largest faces Tellus',
+    bad === 0 && E.name === 'Endymion' && E.grade === 'A' && E.side === 'near' && E.D > 120e3 && G.placeAt(G.TELLUS || {}, E.aim) === null && /^inside Endymion$/.test(G.placeNow(E, E.aim)) && / km from Endymion$/.test(G.placeNow(E, far)),
+    `${bad} wrong; ${G.placeNow(E, far)}`);
+  // the flight record: a craft down inside a place notes it; outside any, nothing; the cond reads it
+  const land = pf => { G.t = 0; const s = G.newShip({ v: 2, root: { k: 'pod', c: [{ k: 't1', at: 'd', c: [{ k: 'sparrow', at: 'd' }] }] } }), u = norm(pf);
+    Object.assign(s, { body: B, landed: true, alive: true, sas: false, throttle: 0, touchV: 2 }); s.pf = mul(u, G.groundR(B, mul(u, R)) - s.yBot); s.qLocal = G.qFromTo([0, 1, 0], u); G.syncLanded(s); s.rec.launched = true; G.S = s; G.missionTick(s, 0.1, true); return s; };
+  let empty = null; for (let k = 0; k < 400 && !empty; k++) { const z = 1 - (2 * k + 1) / 400, a = k * 2.39996, q = Math.sqrt(1 - z * z), u = [q * Math.cos(a), z, q * Math.sin(a)]; if (!G.placeAt(B, u)) empty = u; }
+  const s1 = land(E.aim), s0 = land(mul(empty, R)), c = G.jPlace([E.id, P[1].id]);
+  check('ground-11: a landing inside a place is in the flight record (selPlace), one outside every place is not; the cond is met by it and says how far',
+    s1.rec.selPlace === E.id && s0.rec.selPlace === undefined && s1.rec.crewPlace === undefined && c.state(s1.rec, s1) === 'met' && c.state(s0.rec, s0) === 'open' && c.now(s1.rec, s1) === 'inside Endymion' && / km from Endymion$/.test(c.now(s0.rec, s0)),
+    `${c.t}; ${c.now(s0.rec, s0)}`);
+}
 // sea-1. The sea is a fluid (world session, QUEUE Q274, PLAYTEST #74; NOTES § v1.122): a splashdown floats on its own
 // buoyancy (study_sea.mjs drops every preset). The Orbiter's returning piece, dropped upright with SAS off, settles on
 // its side, partly dry; a capsule with flotation bags floats upright; a piece too dense sinks at once. Afloat, it heaves on

@@ -7789,3 +7789,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `mockups/bench/free.html`, `mockups/README.md`, `notes/vehicle.md`, `NOTES.md`, `QUEUE.md`; root
   `ACTIVE_WORK.md`, `SESSION_LOG.md`.
 - **After the closing entry:** Caio said yes to the frame as the bus ("works for me"). Recorded as **D49**; the plan's section and slice 7's line under *Proposed* no longer wait. PROBES § 6.1 and § 6.4 still say nothing of it: the design desk's line covers that. Files: launchpad `DECISIONS.md`, `notes/vehicle.md`, `QUEUE.md`.
+
+### 2026-11-13: review 2 session (Fable), Q612 built: places on Selene as data (v1.342, sim and one test)
+- **Asked:** Caio, on the plan Q607: "collecting moon rocks and running experiments also makes sense. there isn't
+  other testing going on so go ahead and start".
+- **Plan amended:** `selRocks` and `selExp` join the place contracts (Q615).
+- **Built (v1.342):** `selCraters`, `selPlaces`, `placeAt`, `craterSurvey`, `selPlaceRule` and the table
+  `SEL_PLACE_T` in `sim/ground.js`; `R.selPlace` / `R.crewPlace` in `outThere`; the cond `jPlace`. 48 places:
+  A 7, B 11, C 30. Test ground-11 recomputes the table from the relief.
+- **Next on this thread:** Q616 (a crew down abroad; `recSci` reads the recovery verdict, measured on `career.mjs`
+  first), then Q615's judged contracts; Q613 and Q614 ship with GROUND G3 (Q91).
+- **Not checked:** nothing in a browser (nothing to see yet); the names are defaults.
+- Files: launchpad `sim/ground.js`, `sim/program.js`, `sim/contracts.js`, `tests/world.mjs`,
+  `review/2026-11-13/survey.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`; root `ACTIVE_WORK.md`,
+  `SESSION_LOG.md`.
