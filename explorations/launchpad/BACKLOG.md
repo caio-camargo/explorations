@@ -163,5 +163,5 @@ under other words may already be covered.
   The rover's night cost added (D33). "Decided, but nothing carries it" drained: Selene firsts in the race → **Q593**
   (D36); development makes variants → **Q594** (📝 plan); docked bodies' own physics and fuel transfer → **M4**;
   RCS by era and fine control → **M3**; a film grade per era → **Q595**; a sea-specific complex → **M4**; the hall's
-  bays → **W54** (Caio); a cruise pays and passive flybys → **M5**; "let it go" → **Q596**; guest astronauts and bought
-  seats → **M3**; the late game → **D32**, milestones in **W52**.
+  bays → **W54** (measure the hall first; Caio leans against); a cruise pays and passive flybys → **M5**; "let it go" → **Q596**; guest astronauts and bought
+  seats → **M3**; the late game → **D32**, milestones M6–M9 in ROADMAP (**W52**, provisional).
