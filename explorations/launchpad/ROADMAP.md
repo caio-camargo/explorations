@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.9 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
+**Version**: 1.9.10 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -65,7 +65,7 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | ✓ **done 2026-10-09** (Q29 clean; last bugs Q74, Q77, Q112 in v1.73–v1.74; #9, #11 left to M1/M5 by W13's default) |
 | M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **Caio plays the first hour as a new player would** (a fresh career, no tester flags; 2026-10-11: there's no outside player, and the game's measure is that Caio enjoys playing it), and where he got stuck or bored is written in PLAYTEST | ✓ **done 2026-11-12** (W49: on Caio's play, D41; robot run ✓ 2026-10-09; pacing ✓) |
 | M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, **kept up by a routine repeat satellite launch** (a dispatch; resupply moves to M3 with crew, DECISIONS D17.1), using "advance to next event" only | ✓ **done 2026-11-05** (the robot's `m2`; marked with W49) |
-| M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | **current** (W49, 2026-11-12); code after R2 (W48) |
+| M3 | **Crew and Selene** (epoch 4) | Crew to a Selene crater the player chose and home, a walk on the surface with a flag planted, a rover driven on real Selene ground, all from contracts (D48: the walk is the last item; the planner, RCS fine control, guest astronauts and crew rotation are not in the line) | **current** (W49, 2026-11-12); code after R2 (W48) |
 | M4 | **Big projects** (after chapter 5, Nyx: the depot and industry LATE_GAME puts in epoch 6) | A depot and a datacenter built over several flights, sized by waste heat, earning | **next** (W49), 📝 plans only until M3's finish line (D46) |
 | M5 | **Sun and planets** (epoch 6) | A probe to another planet planned on a porkchop, coasting in the background while the program carries on | design only |
 

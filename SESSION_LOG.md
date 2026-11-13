@@ -7735,3 +7735,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   not re-read.
 - Files: launchpad `REVIEW-2026-11-13-m3.md` (new), `review/2026-11-13/crew_rover.mjs` (new), `QUEUE.md`,
   `ROADMAP.md`; root `INDEX.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Fable), W56 answered: M3's finish line (docs only)
+- **Caio answered W56's five questions:** the player picks the crater from a few offered; walking on Selene is in the
+  finish line, last, with a flag planted; the planner, RCS fine control, guest astronauts and rotation are out; a crew
+  alive on Tellus is home wherever it lands (a hostile landing is a fallout to deal with, and only a goal that needs
+  something brought back fails if it is not recovered); a drive needs no crew.
+- **D48** records it; ROADMAP's M3 finish line now names the walk and the flag; W56 left the queue; Q607, Q609 and
+  Q611 are ready.
+- **Orchestrator:** M3's order is Q91 (ground live, GPU), Q607 (plan: places and missions), Q606 (P1 bug), Q608 (the
+  `m3` spec), then Q533 and Q609 (EVA).
+- Files: launchpad `DECISIONS.md`, `QUEUE.md`, `ROADMAP.md`, `REVIEW-2026-11-13-m3.md`; root `SESSION_LOG.md`.
