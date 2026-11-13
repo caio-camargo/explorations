@@ -1467,7 +1467,7 @@
   // at the desk: the box
   N.HOOK.done({ k: 'mission', id: 'beeper', name: 'Beeper', win: 'a signal from orbit', pay: 30, first: false, flight: false });
   const t1 = E.done.innerHTML, one = shown() && t1.includes('MISSION COMPLETE') && t1.includes('Beeper') && t1.includes('A signal from orbit') && t1.includes('+30.0M')
-    && t1.includes('Opens 2 missions · 6 kinds of contract · 21 parts') && !t1.includes('Done: end') && !t1.includes('more after this');
+    && t1.includes('Opens 2 missions · 6 kinds of contract · 22 parts') && !t1.includes('Done: end') && !t1.includes('more after this');
   N.HOOK.msg('Pitch over now: follow the ◇'); const hint = E.msg.textContent.startsWith('Pitch over') && shown() && E.done.innerHTML === t1;
   N.HOOK.done({ k: 'contract', id: 3, name: 'Survey data', win: 'for Avalon', pay: 55, flight: false }); const queued = shown() && E.done.innerHTML.includes('1 more after this') && E.done.innerHTML.includes('Beeper');
   N.doneDismiss(); const next = shown() && E.done.innerHTML.includes('CONTRACT DONE') && E.done.innerHTML.includes('Survey data') && !E.done.innerHTML.includes('more after');

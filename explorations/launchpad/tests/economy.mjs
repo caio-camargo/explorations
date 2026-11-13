@@ -973,7 +973,7 @@
   const era = keys.filter(k => D.PARTS[k].era != null), gated = keys.filter(k => D.PART_GATE[k]), free = keys.filter(k => D.PARTS[k].era == null && !D.PART_GATE[k]);
   const ids = new Set(D.MISSIONS.map(M => M.id)), badGate = gated.filter(k => !ids.has(D.PART_GATE[k])), badKey = Object.keys(D.PART_GATE).filter(k => !D.PARTS[k]);
   check('unlock map: twelve parts at the start, the rest on a mission or an era, every gate a real mission and a real part',
-    free.slice().sort().join() === START.slice().sort().join() && gated.length === 69 && era.length + gated.length + free.length === keys.length && !badGate.length && !badKey.length,
+    free.slice().sort().join() === START.slice().sort().join() && gated.length === 70 && era.length + gated.length + free.length === keys.length && !badGate.length && !badKey.length,
     `${keys.length} parts: ${free.length} at the start, ${gated.length} on ${new Set(gated.map(k => D.PART_GATE[k])).size} missions, ${era.length} by era${badGate.length ? '; bad gates ' + badGate : ''}${badKey.length ? '; no such part ' + badKey : ''}`);
   const M = Object.fromEntries(D.MISSIONS.map(x => [x.id, x])), clos = ids0 => { const S = new Set(); const go = id => { for (const r of M[id].req || []) if (!S.has(r)) { S.add(r); go(r); } }; ids0.forEach(go); return S; };
   const at = S => { P.done = Object.fromEntries([...S].map(id => [id, { day: 0, flight: 1 }])); P.kh = {}; return { parts: keys.filter(k => D.partOpen(k).ok).map(k => ({ d: D.PARTS[k], on: true })) }; };
