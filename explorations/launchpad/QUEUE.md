@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.267 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
+**Version**: 0.1.268 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -452,7 +452,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | R31 | **App state outside `PROG` survives New program and revert** (`NEWS`, `headlines`, the desk photo, `landPick`, `rangeWarned`, `rcsSeen`): one `flightClear()` for the five copied reset lists (R13e, R13f) and a clear in `resetProgram` (review 2, 2026-11-11, `REVIEW-2026-11-11.md § 6`) | flow, platform | S | ⚙ | ready |
 | R32 | **Smaller app items**: Esc → *Title screen* ends a flight on one click; R while driving a deployed rover reverts the flight; undo after a preset's first edit; flight sound layers on a Steppe Rollout; a watched dispatch's *Fly again*; the Rollout's ⛔ that doesn't block; and the rest of the list (review 2, 2026-11-11, `REVIEW-2026-11-11.md § 6`) | flow | S–M | ⚙ | ready |
 | R33 | **The plume's ground-impingement shader never gets its noise sampler** (`drawImpact`, `app/gl.js:2289-2303`); expect to retune (review 2, 2026-11-11, `REVIEW-2026-11-11.md § 6`) | look (effects) | S | 🖥 | ready |
-| R34 | 📝 **The app layer runs in a test**: adopt `review/2026-11-11/app/harness.cjs` (the page headless in a `vm`) as `tests/app.mjs`: the page loads with 0 errors, a check per fixed finding of R28–R32, the random walk in the full run (review 2, 2026-11-11, `REVIEW-2026-11-11.md § 6`) | platform, QA | M | 📝 | ready |
+| R34 | 📝 **The app layer runs in a test**: adopt `review/2026-11-11/app/harness.cjs` (the page headless in a `vm`) as `tests/app.mjs`: the page loads with 0 errors, a check per fixed finding of R28–R32, the random walk in the full run (review 2, 2026-11-11, `REVIEW-2026-11-11.md § 6`) | platform, QA | M | 📝 | → platform (Opus) 2026-11-13, branch `r34` |
 | Q291 | Q225 **R4**: a recording's key/click steps exported as a `playtest.mjs` row; `PT_RECORD` records the robot's runs | M2 | S | ⚙ | after Q275 |
 
 ### platform — file split, test speed, saves, perf (new)
