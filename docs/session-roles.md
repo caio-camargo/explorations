@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.4.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-21 · **Status**: live
+**Version**: 1.4.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -88,6 +88,13 @@ Pull before editing, push as you go.
 city builder, at `C:/Users/caioa/dev/urplan` (private GitHub `caio-camargo/urplan`), seeded with Launchpad's process
 and lessons. The template-and-playbook goal below still stands; Ur Plan is its first copy, so diff against it when
 building the template.
+
+**Second copy (2026-11-13):** a space game under the placeholder title **Regent**, at `C:/Users/caioa/dev/regent`
+(private GitHub `caio-camargo/regent`), started from Ur Plan's skeleton plus what REVIEW-2026-11-09 and
+REVIEW-2026-11-11 found. It differs from Ur Plan on purpose: one code session at a time with lanes dormant, CI as the
+merge gate from the first commit, the app run on a stub DOM, lint and a docs check inside smoke, a play gate. Its
+`notes/platform.md` § "What changed from Ur Plan" lists each change with the lesson behind it; its
+`LESSONS_LEARNED.md` names the guard for each lesson. The template should start from this copy, not Ur Plan.
 
 The process that builds games, not any one game. **No game code.**
 

@@ -7693,3 +7693,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Not checked:** the bench was not opened in a browser; "the bench is the rocket builder at a smaller scale" is read
   from builder.js and PROBES, not from play.
 - Files: launchpad `PROBES.md`, `DECISIONS.md`, `QUEUE.md`; root `SESSION_LOG.md`.
+
+### 2026-11-13: studio session (Fable 5.2): a second game repo seeded from Launchpad, placeholder title Regent
+- **Asked:** "start a new game development project" using Launchpad's architecture and lessons; set up the environment.
+- **Done, outside this repo:** `C:/Users/caioa/dev/regent` (private GitHub `caio-camargo/regent`): Ur Plan's v0.1
+  skeleton plus the findings of REVIEW-2026-11-09 and REVIEW-2026-11-11 as guards (one state object, the app on a stub
+  DOM, lint for swallowed code, a docs check with size budgets, CI and `merge.sh` reading the run's conclusion, a play
+  gate, solo mode with lanes dormant). Checked: suite and shuffled suite green, robot smoke green here and in CI,
+  13 of 14 deliberate mutations caught, `merge.sh` run end to end once. Ur Plan cloned to `C:/Users/caioa/dev/urplan`
+  on this machine (smoke green). First design round held with Caio; it lives in that repo.
+- **Here:** `docs/session-roles.md` § Studio names the second copy. No Launchpad file touched.
+- **Next (in `regent`):** design round 2, then its prototypes. The studio's template should start from that copy.
+- Files: root `docs/session-roles.md`, `SESSION_LOG.md`. No new durable files (INDEX unchanged).
