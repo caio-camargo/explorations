@@ -134,9 +134,9 @@ function findSlot(){const h=st.held;if(!h||!st.mouse)return null;
   const hit=rayHit(mouseRay());if(!hit||hit.p.inst.rdec||hit.p.inst.surf||hit.p.dn.payOf)return null;
   const p=hit.p,I=p.inst;let a=Math.atan2(hit.pt[2]-p.pos[2],hit.pt[0]-p.pos[0])-I.rot,y=clamp(hit.pt[1]-p.y0,0,p.h);
   if(st.snap)a=Math.round(a/SNAP_A)*SNAP_A;a=((a%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
-  const cy=PARTS[h.k].h/2;
+  const cy=nodeDef(h).h/2;
   if(st.snap){ // align the held line's bottom or top with a part boundary on the host's line, when close
-    const L=lineOf(h),lo=Math.min(...L.map(q=>q.y)),hi=Math.max(...L.map(q=>q.y+PARTS[q.nd.k].h)),yb=p.y0+y-cy;let bestD=SNAP_Y,dy=0;
+    const L=lineOf(h),lo=Math.min(...L.map(q=>q.y)),hi=Math.max(...L.map(q=>q.y+nodeDef(q.nd).h)),yb=p.y0+y-cy;let bestD=SNAP_Y,dy=0;
     for(const q of S.parts)if(q.on&&!q.inst.rdec&&q.inst.line===I.line)for(const b of[q.y0,q.y0+q.h])for(const e of[yb+lo,yb+hi])if(Math.abs(b-e)<bestD){bestD=Math.abs(b-e);dy=b-e}
     y=clamp(y+dy,0,p.h)}
   const at={y:+y.toFixed(3),a:+a.toFixed(5),n:st.sym,cy};if(st.dec&&!surf)at.dec=true;
@@ -289,6 +289,7 @@ const PART_INFO={
   scam:'The imaging camera as a side box: no stack height, but off balance.',
   oct:'An octagonal frame, 0.8 m across, to build a satellite around.',
   octl:'The octagonal frame, 1 m long.',
+  frame:'A frame you shape: its sides, width, height and taper.',
   ssci:'The instrument package as a box on the side.',
   sbatt:'A 1 kWh battery as a box on the side.',
   scomp:'The onboard computer as a box on the side.',
@@ -484,6 +485,11 @@ function panel(){
   if(PARTS[n.k].kind==='fair'){const d=PARTS[n.k],L=n.fl&&d.fls.includes(n.fl)?n.fl:d.fl0,f=ps.find(p=>p.profF),inn=f?S.parts.filter(q=>q.on&&q.inFair===f).length:0,r=row('length');
     for(const v of d.fls)btn(r,v+' m',v===L,()=>edit(()=>{if(v===d.fl0)delete n.fl;else n.fl=v}),`a ${v} m shell (${(d.fm*v).toFixed(2)} t)`);
     const i=document.createElement('span');i.className='dim';i.textContent=` encloses ${inn} part${inn===1?'':'s'}`;r.appendChild(i)}
+  if(PARTS[n.k].sized){const f=frOf(n.fr),set=(k,v)=>edit(()=>{n.fr=frOf({...f,[k]:v})});   // the frame's shape (Q617)
+    {const r=row('shape');FR_N.forEach(([N,nm])=>btn(r,nm,f.n===N,()=>set('n',N),`${N} sides`))}
+    const step=(label,k,d,txt,tip)=>{const r=row(label);btn(r,'−',false,()=>set(k,f[k]-d),tip+' less');const i=document.createElement('span');i.className='dim';i.textContent=` ${txt} `;r.appendChild(i);btn(r,'+',false,()=>set(k,f[k]+d),tip+' more')};
+    step('width','w',.1,f.w.toFixed(1)+' m','0.1 m');step('height','h',.1,f.h.toFixed(1)+' m','0.1 m');step('top','top',.05,f.top>=1?'straight':Math.round(f.top*100)+' %','5 %');
+    {const r=row('weighs'),i=document.createElement('span');i.className='dim';i.textContent=` ${Math.round(frameDef(PARTS[n.k],f).m*1000)} kg`;r.appendChild(i)}}
   if(PARTS[n.k].kind==='rfin'){const r=row('size');   // fin sizes (Q348)
     FIN_SZ.forEach((z,i)=>{const d=finDef(PARTS[n.k],i);btn(r,z.n,(n.fz||0)===i,()=>edit(()=>{if(i)n.fz=i;else delete n.fz}),`${z.n} span × ${d.chord.toFixed(2)} m chord, ${(d.m*1000).toFixed(0)} kg each`)})}
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'the stage below feeds the engines above it, and drains first')}
@@ -496,7 +502,7 @@ function panel(){
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
     if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'on a decoupler they drop as a stage; fixed, they stay on');
       if(a.dec)btn(r,a.x?'crossfeed ✓':'no crossfeed',!!a.x,()=>edit(()=>{if(a.x)delete a.x;else a.x=true}),'the radial parts feed the engines they hang on too, and run dry first')}
-    {const r=row('move');const hp=PARTS[par.k].h;
+    {const r=row('move');const hp=nodeDef(par).h;
       btn(r,'▲',false,()=>edit(()=>{a.y=+Math.min(hp,a.y+.1).toFixed(3)}),'up 0.1 m');btn(r,'▼',false,()=>edit(()=>{a.y=+Math.max(0,a.y-.1).toFixed(3)}),'down 0.1 m');
       btn(r,'⟲',false,()=>edit(()=>{a.a=+(a.a-SNAP_A).toFixed(5)}),'rotate −15°');btn(r,'⟳',false,()=>edit(()=>{a.a=+(a.a+SNAP_A).toFixed(5)}),'rotate +15°')}}
   // cant: only an engine on a radial line has an outward direction to tilt toward

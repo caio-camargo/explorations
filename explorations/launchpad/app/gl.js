@@ -1589,6 +1589,9 @@ function partBody(out,p){
     // the octagonal frame (Q396, PROBES § 7: a compact core with real materials): a bus of eight bays between dark
     // machined end rings; six bays in silver foil, two opposite in black radiator panels with louvre blades; bare aluminium
     // posts at the corners and a belt round the middle, all proud of the faces so they cast shadows
+    // the shaped frame (Q617): a plain prism, foil between two machined end rings; its look is parts & pad's (Q417)
+    case'frame':{const f=d.fr,r=d.r,rt=d.rt,e=Math.min(.03,h*.15),at=yy=>r+(rt-r)*yy/h;
+      lathe(out,[[r,0,C.D],[at(e),e,C.D],[at(e),e,C.AU],[at(h-e),h-e,C.AU],[at(h-e),h-e,C.D],[rt,h,C.D]],o,f.n)}break;
     case'oct':case'octl':{lathe(out,[[.4,0,C.D],[.4,.04,C.D],[.36,.04,C.D],[.36,h-.04,C.D],[.4,h-.04,C.D],[.4,h,C.D]],o,8);
       const ap=.4*Math.cos(Math.PI/8),hw=.4*Math.sin(Math.PI/8),fh=(h-.08)/2;
       for(let k=0;k<8;k++){const a=(k+.5)*Math.PI/4,c=Math.cos(a),sn=Math.sin(a),rad=k%4===1,F=(r,yy)=>[x+c*r,y+yy,z+sn*r];

@@ -1485,7 +1485,7 @@
 // flow-56. The unlock overlay (flow, QUEUE Q572; PROGRESSION § 3; D42: "i should see each one"): what a flight's missions
 // did and opened, one card each: each mission done (with its pay), then every part by name (a family's in a row, engines
 // first, each card naming its family and its place in it), a room, the single parts, the rover parts, each mission
-// opened, and the next chapter when a capstone closed one. The beeper: done, the satellite bench's 20 parts, mission
+// opened, and the next chapter when a capstone closed one. The beeper: done, the satellite bench's 21 parts (the shaped frame joined them, Q617), mission
 // control, the missions it opened; the structural test: the orbital kit, Kestrel first; Heavy lift I: the Condor. The
 // Debrief keeps them (D.cards) and shows them once over the report; missions done between flights wait in PROG.cardQ for
 // the desk; leaving the room closes them.
@@ -1500,13 +1500,13 @@
   const kitOK = kit[0].k === 'done' && kit[0].pay === 20 && kp.length === 5 && kp[0].id === 'kestrel' && kp.every((x, i) => x.fam && x.fam.id === 'kit' && x.fam.i === i && x.fam.n === 5)
     && kit.some(c => c.k === 'mission' && c.id === 'beeper') && kit[kit.length - 1].k === 'chapter' && kit[kit.length - 1].id === 'c2';
   const ri = bee.findIndex(c => c.k === 'room'), mi = bee.findIndex(c => c.k === 'mission');
-  const beeOK = bee[0].k === 'done' && bp.length === 20 && new Set(bp.map(x => x.id)).size === 20 && bp.every(x => x.fam && x.fam.id === 'bench' && x.name && x.why)
+  const beeOK = bee[0].k === 'done' && bp.length === 21 && new Set(bp.map(x => x.id)).size === 21 && bp.every(x => x.fam && x.fam.id === 'bench' && x.name && x.why)
     && ri > bee.indexOf(bp[19]) && bee[ri].id === 'mc' && mi > ri && bee.filter(c => c.k === 'mission').some(c => c.id === 'lift1') && bee.every(c => c.name);
   const conOK = parts(con).length === 1 && parts(con)[0].id === 'condor' && !parts(con)[0].fam && con[0].k === 'done';
   const H = html.replace(/\r\n/g, '\n'), sim = H.slice(0, H.indexOf('// ==== SIM END'));
   const wired = /D\.cards=unlockCards\(ids,/.test(sim) && /^\/\/ app\/unlock\.js — the unlock overlay/m.test(H) && /unlockDebrief\(D\)/.test(H) && /unlockDesk\(\)/.test(H)
     && /function pmStart\(cv,keys\)/.test(H) && /partsMesh\(ps\)/.test(H) && /deskLight\(m,\{lamp:/.test(H) && /UNL\.on\)unlockClose\(\)/.test(H) && /PROG\.cardQ=\[\.\.\.\(PROG\.cardQ\|\|\[\]\),M\.id\]/.test(sim);
-  check('flow-56: one unlock card each: the mission done with its pay, then each part by name (the orbital kit: five, Kestrel first, each naming its family; the beeper: twenty, then mission control, then the missions it opened); Heavy lift I the Condor; the next chapter last; the Debrief keeps and shows them once, the desk shows those done between flights, and the part turns as a model in the design table\'s light',
+  check('flow-56: one unlock card each: the mission done with its pay, then each part by name (the orbital kit: five, Kestrel first, each naming its family; the beeper: twenty-one, then mission control, then the missions it opened); Heavy lift I the Condor; the next chapter last; the Debrief keeps and shows them once, the desk shows those done between flights, and the part turns as a model in the design table\'s light',
     kitOK && beeOK && conOK && wired, `loads: ${ks(kit)} · beeper: ${bee.length} cards, ${ks(bee.filter(c => c.k !== 'part'))} · lift1: ${ks(con)} · wired ${wired}`);
 }
 
@@ -1597,7 +1597,7 @@
 }
 
 // flow-60. After the unlock cards (loop slices; Q572's follow-ups, Q370): every part of a family has its own line, so the
-// satellite bench's twenty cards say twenty things (the family's line stays the builder's reason); each card plays a sound
+// satellite bench's twenty-one cards say twenty-one things (the family's line stays the builder's reason); each card plays a sound
 // (sndUnlock: a part rises, a chapter is a fanfare, a mission done the notice's beeps); a load with a career under way opens
 // on the desk, a new career (and the tester) on the title, which the Esc menu keeps.
 {
@@ -1609,8 +1609,8 @@
   const H = html.replace(/\r\n/g, '\n');
   const snd = /function sndUnlock\(k\)\{/.test(H) && /sndUnlock\(c\.k\)/.test(H);
   const load = /addEventListener\('load',\(\)=>\{if\(!needCharter\(\)&&!TEST\.on&&screenNow\(\)==='title'\)go\('program'\)\}\)/.test(H) && /b\('title','Title screen'\)/.test(H);
-  check('flow-60: each family member has its own line (the bench\'s 20 cards say 20 things; the builder keeps the family\'s); a sound per card; a career under way opens on the desk, the title in the Esc menu',
-    !bare.length && bee.length === 20 && lines.size === 20 && builder && snd && load, `no line: ${bare.join(',') || '-'} · bench lines ${lines.size}/${bee.length} · builder ${builder} · sound ${snd} · load ${load}`);
+  check('flow-60: each family member has its own line (the bench\'s 21 cards say 21 things; the builder keeps the family\'s); a sound per card; a career under way opens on the desk, the title in the Esc menu',
+    !bare.length && bee.length === 21 && lines.size === 21 && builder && snd && load, `no line: ${bare.join(',') || '-'} · bench lines ${lines.size}/${bee.length} · builder ${builder} · sound ${snd} · load ${load}`);
 }
 // flow-62. The era maps show each body's night side (flow, era maps, QUEUE Q546, PLAYTEST #152). eraNight (app/program-ui.js)
 // turns the terminator (the great circle square to SUN) into the night region as the map sees it: its visible arc, closed

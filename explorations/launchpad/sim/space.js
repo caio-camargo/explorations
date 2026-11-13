@@ -459,7 +459,7 @@ const hitIw=(B,L)=>{const l=qrot(qconj(B.q),L);return qrot(B.q,[l[0]/B.I[0],l[1]
 // tc) to position tp in the body's frame, turned by tq. These map part-frame points and normals into the body frame and back.
 const hitV=(a,pt)=>a.tq?add(a.tp,qrot(a.tq,sub(pt,a.tc))):pt,hitVi=(a,v)=>a.tq?add(qrot(qconj(a.tq),sub(v,a.tp)),a.tc):v,hitVn=(a,n)=>a.tq?qrot(a.tq,n):n;
 // a registry entry's own parts as part records (X: the docking transform when it rides on something else)
-const ownRecs=(e,X)=>e.shape.filter(o=>PARTS[o.k]).map(o=>{const d=PARTS[o.k];return X?{o,p:o,d,g:hitGeo(o,d),owner:e,tq:X.q,tp:X.p,tc:e.cm,att:X}:{o,p:o,d,g:hitGeo(o,d),owner:e}});
+const ownRecs=(e,X)=>e.shape.filter(o=>shDef(o)).map(o=>{const d=shDef(o);return X?{o,p:o,d,g:hitGeo(o,d),owner:e,tq:X.q,tp:X.p,tc:e.cm,att:X}:{o,p:o,d,g:hitGeo(o,d),owner:e}});
 // the vessel as a contact body (shares r, v, q, w with s until written back), docked bodies included
 function shipBody(s){const parts=s.parts.filter(p=>p.on).map(p=>({p,d:p.d,g:hitGeo(p,p.d),owner:null}));for(const a of s.att||[])parts.push(...ownRecs(a.e,a));
   return{r:s.r,v:s.v,q:s.q,w:s.w,m:s.mass,I:s.I,cm:s.cm,parts,R:Math.max(...parts.map(x=>len(sub(hitV(x,x.g.c),s.cm))+x.g.R))}}
@@ -470,8 +470,8 @@ function satSpin(q,T,r,v){if(q.spin){const w=q.spin.w,wl=len(w),dq=wl>1e-12?qaxi
 function rotI(q,I){const R=[qrot(q,[1,0,0]),qrot(q,[0,1,0]),qrot(q,[0,0,1])];return[0,1,2].map(k=>R[0][k]**2*I[0]+R[1][k]**2*I[1]+R[2][k]**2*I[2])}
 const SAT_MP=new WeakMap(),SAT_C=new WeakMap();
 // one entry's own body: its inertia about its own centre of mass (part masses as shares of its registered own mass)
-function satOwnMP(e){let M=SAT_MP.get(e.shape);if(M)return M;const L=e.shape.filter(o=>PARTS[o.k]),bm=L.reduce((a,o)=>a+hitBase(PARTS[o.k]),0)||1,k=e.mass/1000/bm;
-  let I=[0,0,0];for(const o of L){const d=PARTS[o.k],pm=hitBase(d)*k*1000,dd=sub(hitGeo(o,d).c,e.cm),pr=d.r,ip=pm*(d.h*d.h/12+pr*pr/4);
+function satOwnMP(e){let M=SAT_MP.get(e.shape);if(M)return M;const L=e.shape.filter(o=>shDef(o)),bm=L.reduce((a,o)=>a+hitBase(shDef(o)),0)||1,k=e.mass/1000/bm;
+  let I=[0,0,0];for(const o of L){const d=shDef(o),pm=hitBase(d)*k*1000,dd=sub(hitGeo(o,d).c,e.cm),pr=d.r,ip=pm*(d.h*d.h/12+pr*pr/4);
     I=add(I,[pm*(dd[1]**2+dd[2]**2)+ip,pm*(dd[0]**2+dd[2]**2)+pm*pr*pr/2,pm*(dd[0]**2+dd[1]**2)+ip])}
   M={I};SAT_MP.set(e.shape,M);return M}
 // an entry with everything docked to it: total mass, combined centre of mass (entry frame), inertia, and all the parts
@@ -501,7 +501,7 @@ function hitResolve(A,B,c){const n=c.n,ia=1/A.m,ib=1/B.m,cr=Math.max(0,c.d-HIT_S
   if(vtl>1e-9){const t=mul(vt,1/vtl);J=madd(J,t,-Math.min(vtl/kk(t),HIT_MU*j))}
   A.v=madd(A.v,J,ia);A.w=add(A.w,hitIw(A,cross(ra,J)));B.v=madd(B.v,J,-ib);B.w=sub(B.w,hitIw(B,cross(rb,J)));return-vn}
 const KIT=['cam','ant','sci','ballast','bio'];
-const kitOwn=(e,k)=>e.shape.filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length;
+const kitOwn=(e,k)=>e.shape.filter(o=>shDef(o)&&shDef(o).kind===k).length;
 const kitSet=e=>{for(const k of KIT)e[k]=kitOwn(e,k)+(e.attached||[]).reduce((a,x)=>a+kitOwn(x.e,k),0)};   // an entry's kit counts everything docked to it
 // a satellite (or a body docked to it) loses parts. Delicate parts break off; anything else takes its whole body, and with
 // it whatever was docked through that body. The pieces leave as debris; what's left keeps its centre of mass where it was.
@@ -512,8 +512,8 @@ function satBreak(q,B,list,why,T){
   const cm0=B.cm,gone=new Set();
   for(const e of new Set(list.map(x=>x.owner))){const lost=list.filter(x=>x.owner===e),keep=e.shape.filter(o=>!lost.some(x=>x.o===o));
     if(!keep.length||lost.some(x=>!DELICATE.has(x.d.kind))){gone.add(e);continue}
-    const all=e.shape.reduce((a,o)=>a+(PARTS[o.k]?hitBase(PARTS[o.k]):0),0),lm=lost.reduce((a,x)=>a+hitBase(x.d),0),c0=e.cm;
-    e.mass*=Math.max(0.05,1-lm/(all||1));let c=[0,0,0],m=0;for(const o of keep){const d=PARTS[o.k];if(!d)continue;c=madd(c,[o.pos[0],o.y0+o.h*d.cm,o.pos[2]],hitBase(d));m+=hitBase(d)}
+    const all=e.shape.reduce((a,o)=>a+(shDef(o)?hitBase(shDef(o)):0),0),lm=lost.reduce((a,x)=>a+hitBase(x.d),0),c0=e.cm;
+    e.mass*=Math.max(0.05,1-lm/(all||1));let c=[0,0,0],m=0;for(const o of keep){const d=shDef(o);if(!d)continue;c=madd(c,[o.pos[0],o.y0+o.h*d.cm,o.pos[2]],hitBase(d));m+=hitBase(d)}
     e.cm=mul(c,1/m);e.shape=keep;
     if(e!==q){const a=q.attached.find(a=>a.e===e);a.p=add(a.p,qrot(a.q,sub(e.cm,c0)))}}   // a docked body's position follows its centre of mass
   const A=q.attached||[];
@@ -554,7 +554,7 @@ function contactStep(s,dt){if(!s.alive||s.landed)return;portLoads(s);if(!s.alive
 const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PORT_F=30e3,PORT_M=20e3,PORT_PUSH=0.3,PORT_COOL=5;
 function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked&&!q.landed&&!q.bodyName&&!q.cruise)}   // in Tellus orbit (landed ones: landedUp; a moon's: moonSats)
 // free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
-function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
+function portsOf(list,used){const P=list.map(o=>({o,d:o.d||shDef(o)})).filter(x=>x.d);
   return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&(x.d.radial||!P.some(y=>y!==x&&!y.d.surf&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3)))
     .map(x=>({i:x.o.i,...portGeom(x.o,x.d)}))}
 const usedPorts=(att,id)=>new Set(att.flatMap(a=>[...(a.host===id?[a.hpi]:[]),...(a.e.id===id?[a.ppi]:[])]));
@@ -748,14 +748,14 @@ const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi
   return{face:[o.pos[0],o.y0+o.h,o.pos[2]],ax:[0,1,0]}};
 // a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
 // carried a real crew (dummies don't count)
-function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.buried)o.buried=1;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
+function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.d.sized)o.fr=p.d.fr;if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.buried)o.buried=1;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
   if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day}return o})}   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
 // a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
 function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
   const ring=(r,y)=>{const m=Math.max(6,Math.ceil(6.2832*r/0.25));for(let k=0;k<m;k++){const a=k/m*6.2832;pts.push(add(B,qrot(q,[r*Math.cos(a),y,r*Math.sin(a)])))}};
   const ny=Math.max(1,Math.ceil(h/0.2));for(let i=0;i<=ny;i++)ring(d.r,h*i/ny);for(let rr=d.r-0.25;rr>0.05;rr-=0.25)ring(rr,h);pts.push(add(B,mul(n,h)));
   g={o:B,rot:q,prof:[[d.r,0],[d.r,h]],h,pts,c:madd(B,n,h/2),R:Math.hypot(d.r,h/2)};HIT_GEO.set(p,g);return g}
-function stationOf(q){if(!q.shape)return null;const A=q.attached||[],bodies=[{e:q,id:0},...A.map(a=>({e:a.e,id:a.e.id}))],P=bodies.flatMap(b=>(b.e.shape||[]).map(o=>({o,d:PARTS[o.k]})).filter(x=>x.d));
+function stationOf(q){if(!q.shape)return null;const A=q.attached||[],bodies=[{e:q,id:0},...A.map(a=>({e:a.e,id:a.e.id}))],P=bodies.flatMap(b=>(b.e.shape||[]).map(o=>({o,d:shDef(o)})).filter(x=>x.d));
   const berths=P.reduce((a,x)=>a+(x.d.berths||0),0),labs=P.filter(x=>x.d.lab).length;if(!berths&&!labs)return null;
   const seats=P.reduce((a,x)=>a+(x.o.crew||0),0),sup=P.reduce((a,x)=>a+((x.o.res||{}).sup||0),0),crew=Math.min(seats,berths);
   const ports=bodies.reduce((n,b)=>n+portsOf(b.e.shape||[],usedPorts(A,b.id)).length,0);
@@ -780,7 +780,7 @@ function stationTick(d){for(const q of[...satsUp(),...moonSats()]){const st=stat
 // design rebuilds the same way. Entries registered before this have no design and stay passive.
 const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loaded into the flight)
 const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),fj:s.parts.filter(p=>p.on&&p.fj).map(p=>p.i),E:s.E});   // fj: fairings jettisoned (vehicle, Q337)   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
-const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
+const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>shDef(o)&&(shDef(o).kind==='pod'||shDef(o).kind==='core')));
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
   for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}if(o.dmg)p.dmg=o.dmg;if(o.buried)p.buried=true}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}
@@ -845,7 +845,7 @@ function armStow(s){const arm=armOf(s),a=arm&&armHeld(s,arm);if(!a||a.goal)retur
   const b=s.parts.find(p=>p.on&&p.d.kind==='bay'&&doorF(p)===1&&!s.parts.some(c=>c.on&&c.inBay===p)&&!(s.att||[]).some(x=>x.kind==='bay'&&x.hpi===p.i));
   if(!b){HOOK.msg('No open, empty cargo bay');return false}
   if(dockGroup(s,a).length>1){HOOK.msg('Only a single body fits in the bay');return false}
-  const ps=a.e.shape.filter(o=>PARTS[o.k]),y0=Math.min(...ps.map(o=>o.y0)),y1=Math.max(...ps.map(o=>o.y0+o.h)),rr=Math.max(...ps.map(o=>Math.hypot(o.pos[0],o.pos[2])+PARTS[o.k].r));
+  const ps=a.e.shape.filter(o=>shDef(o)),y0=Math.min(...ps.map(o=>o.y0)),y1=Math.max(...ps.map(o=>o.y0+o.h)),rr=Math.max(...ps.map(o=>Math.hypot(o.pos[0],o.pos[2])+shDef(o).r));
   if(y1-y0>b.d.bayL||rr>b.d.bayIn){HOOK.msg(`${a.e.name} doesn't fit in the bay`);return false}
   const qg=[0,0,0,1],fl=b.y0+b.h,pg=[b.pos[0]+a.e.cm[0],fl-y0+a.e.cm[1],b.pos[2]+a.e.cm[2]],st=add(pg,[0,b.d.bayL+0.3,0]);
   if(!armReach(arm,a,pg,qg)||!armReach(arm,a,st,qg)){HOOK.msg('The bay is beyond the arm\'s reach');return false}
@@ -967,7 +967,7 @@ function statHold(q){if(q.adrift!=null||!statSlot(q))return;const r=len(q.r),v=l
   skSpend(q,dv);q.v=mul(q.v,v2/v)}   // at its epoch: where it was settled (SAT_C cleared by skSpend)
 // what it can burn: tank fuel through its best engine (vacuum Isp), then RCS gas through its thrusters
 const SK_GAS_ISP=PARTS.rcs.isp;
-function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV*lvl().isp);if(d.kind==='rcs')rcs=true}
+function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=shDef(o);if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV*lvl().isp);if(d.kind==='rcs')rcs=true}
   return[isp&&{k:'fuel',isp},rcs&&{k:'gas',isp:SK_GAS_ISP}].filter(Boolean)}
 // tonnes (entries keep their mass in kg; tanks hold tonnes)
 const skMass=q=>((q.mass||0)+(q.attached||[]).reduce((a,x)=>a+(x.e.mass||0),0))/1000,skAmt=(q,k)=>(q.shape||[]).reduce((a,o)=>a+(o.res&&o.res[k]||0),0);
@@ -989,7 +989,7 @@ function thinAir(h){const k=h/1e3;if(!(k>=100)||k>2000)return 0;let i=THERMO.len
 // drag per unit dynamic pressure per kg (Cd·A/m, m²/kg): tumbling, so the mean projected area of its outline, taken as one
 // cylinder around every part (a quarter of its surface, Cauchy), Cd 2.2; what's docked to it counts in both
 function dragK(q){let A=0;for(const e of[q,...(q.attached||[]).map(x=>x.e)]){let R=0,y0=Infinity,y1=-Infinity;
-    for(const o of e.shape||[]){const d=PARTS[o.k];if(!d)continue;R=Math.max(R,Math.hypot(o.pos?o.pos[0]:0,o.pos?o.pos[2]:0)+d.r);y0=Math.min(y0,o.y0);y1=Math.max(y1,o.y0+o.h)}
+    for(const o of e.shape||[]){const d=shDef(o);if(!d)continue;R=Math.max(R,Math.hypot(o.pos?o.pos[0]:0,o.pos?o.pos[2]:0)+d.r);y0=Math.min(y0,o.y0);y1=Math.max(y1,o.y0+o.h)}
     if(R>0)A+=(2*Math.PI*R*(y1-y0)+2*Math.PI*R*R)/4}
   return 2.2*A/(skMass(q)*1000)}
 // orbit-averaged drag on a Tellus orbit (a, e): {da, de} per second (Gauss, the drag along the velocity) and the mean
@@ -1057,7 +1057,7 @@ function landRegister(s,R){const on=s.parts.filter(p=>p.on),b=s.body,beacon=on.s
 // the base a landed object belongs to (a beacon on the same body within BASE_R), and a base's members and state
 function baseOfMember(q){const b=landedBody(q);return b?landedUp().find(x=>x.beacon&&x.bodyName===q.bodyName&&pfDist(b,x.pf,q.pf)<=BASE_R)||null:null}
 function baseMembers(a){const b=landedBody(a);return b?landedUp().filter(x=>x.bodyName===a.bodyName&&pfDist(b,x.pf,a.pf)<=BASE_R):[]}
-function baseOf(a){const M=baseMembers(a),E=M.flatMap(e=>[e,...(e.attached||[]).map(x=>x.e)]),P=E.flatMap(e=>(e.shape||[]).map(o=>({o,d:PARTS[o.k]}))).filter(x=>x.d);
+function baseOf(a){const M=baseMembers(a),E=M.flatMap(e=>[e,...(e.attached||[]).map(x=>x.e)]),P=E.flatMap(e=>(e.shape||[]).map(o=>({o,d:shDef(o)}))).filter(x=>x.d);
   const berths=P.reduce((s,x)=>s+(x.d.berths||0),0),labs=P.filter(x=>x.d.lab).length,seats=P.reduce((s,x)=>s+(x.o.crew||0),0),sup=P.reduce((s,x)=>s+((x.o.res||{}).sup||0),0),crew=Math.min(seats,berths);
   return{members:M,bodies:E,berths,labs,seats,crew,sup,days:crew?sup/(crew*SUP_DAY):Infinity,work:sup>0?Math.min(crew,2*labs):0}}
 // contact with landed objects on the body we're near

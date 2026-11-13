@@ -420,7 +420,7 @@ const stOf=q=>q.beacon&&q.landed?baseOf(q):stationOf(q);
 function stPick(f){const L=typeof satsUp==='function'?[...satsUp(),...landedUp().filter(q=>q.beacon)]:[];for(const q of L){if(q.junk||q.docked)continue;const s=stOf(q);if(s&&f(s))return{q,s}}return null}
 // a station's measure for a contract: supplies (t), lab-days, or the number of modules of a kind (lab, hab), docked ones included
 function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stOf(q);if(k==='sup')return s?s.sup:0;
-  const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
+  const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>shDef(o)&&shDef(o).kind===k).length,0)}
 // the contract types a source can offer today: its mission done (req) and the world ready for it (open: a station to
 // supply, a satellite to meet). Q570's test reads it against opensOf
 const offerTypes=src=>Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));

@@ -15,7 +15,7 @@ const KWH=3.6e6,SOL_BODY=0.32,SOL_WING=0.9;   // cells on a skin average ~a thir
 // count with the vessel's own. A passenger's parts are its registry shape; its wings are out unless it was left with
 // them folded (its vst.dep), and its cells see the sun through its attitude on the vessel (a.q).
 function powEach(s,f){for(const p of s.parts)if(p.on)f(p.d,p,null);
-  for(const a of s.att||[]){const e=a.e,dep=e.vst&&e.vst.dep;for(const o of e.shape||[]){const d=PARTS[o.k];if(d)f(d,{dep:!dep||dep.includes(o.oi??o.i),phi:o.phi,dmg:o.dmg},a.q)}}}
+  for(const a of s.att||[]){const e=a.e,dep=e.vst&&e.vst.dep;for(const o of e.shape||[]){const d=shDef(o);if(d)f(d,{dep:!dep||dep.includes(o.oi??o.i),phi:o.phi,dmg:o.dmg},a.q)}}}
 const powCap=s=>{let E=0;powEach(s,d=>{if(d.kWh)E+=d.kWh*KWH});return E};
 const powLoad=s=>{let W=0;powEach(s,d=>{if(d.W)W+=d.W});return W};
 const powRTG=s=>{let W=0;powEach(s,d=>{if(d.Wg)W+=d.Wg});return W};   // RTGs: the same day and night (Q131)
@@ -27,7 +27,7 @@ function powSun(s,u){let W=0;powEach(s,(d,p,aq)=>{if(d.kind!=='solar'||p.buried)
 // the best the panels can give (wings square to the sun): what the steady state assumes
 const powPeak=s=>{let W=0;powEach(s,(d,p)=>{if(d.kind==='solar'&&!p.buried)W+=d.Wp*(1-(p.dmg||0))*(d.body?SOL_BODY:SOL_WING)});return W};
 // what a passenger brings to the store when it docks, and its share when it leaves (by battery capacity)
-const battCap=e=>(e.shape||[]).reduce((a,o)=>a+((PARTS[o.k]||{}).kWh||0)*KWH,0)+(e.attached||[]).reduce((a,x)=>a+battCap(x.e),0);
+const battCap=e=>(e.shape||[]).reduce((a,o)=>a+((shDef(o)||{}).kWh||0)*KWH,0)+(e.attached||[]).reduce((a,x)=>a+battCap(x.e),0);
 function storeOf(e){const c=battCap(e);return e._v?Math.min(c,e._v.E??c):e.pw&&e.Ewh!=null?Math.min(c,e.Ewh*3600):e.vst&&e.vst.E!=null?Math.min(c,e.vst.E):c}
 // in the body's shadow: a cylinder behind it (the sun is fixed in the absolute frame, SUN_DIR, and far)
 function inShadow(b,r){const d=dot(r,SUN_DIR);return d<0&&len(sub(r,mul(SUN_DIR,d)))<b.R}

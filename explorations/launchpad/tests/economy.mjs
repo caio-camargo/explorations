@@ -928,7 +928,7 @@
 // unlocks (PART_GATE, RV_GATE). For each of the 29 missions, in two programs (only its ancestors done; everything done but
 // it and what follows from it), opensOf, asked before and after, equals the before/after diff of missionOpen, of
 // offerTypes over every source (the world's own gates, CT.open, set aside: they wait on a station or a satellite, not on
-// the mission) and of partOpen / rvPartOpen. The beeper opens 2 missions, 6 kinds of contract, 20 parts (since Q577's map; 5, 8 and 7 before) and the rover
+// the mission) and of partOpen / rvPartOpen. The beeper opens 2 missions, 6 kinds of contract, 21 parts (since Q577's map, 20; the shaped frame, Q617; 5, 8 and 7 before) and the rover
 // antenna; opensNames merges several missions' lists (one done by another isn't "opened") and opensLine says it in a line.
 {
   const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,PARTS,RV_GATE,opensOf,opensNames,opensLine,offerTypes,missionOpen,partOpen,rvPartOpen,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
@@ -952,11 +952,11 @@
   for (const k in D.CT) if (D.CT[k].open0) { D.CT[k].open = D.CT[k].open0; delete D.CT[k].open0; }
   P.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
   P.done = {}; const two = D.opensNames(['weather', 'beeper']), none = D.opensLine(D.opensNames(['nyxland']));
-  const facts = B.missions.length === 2 && B.contracts.length === 6 && B.parts.length === 20 && B.rover.join() === 'it:ant'
-    && line === '2 missions · 6 kinds of contract · 21 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
+  const facts = B.missions.length === 2 && B.contracts.length === 6 && B.parts.length === 21 && B.rover.join() === 'it:ant'
+    && line === '2 missions · 6 kinds of contract · 22 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
     && N.contracts.every(x => x.t && !/^[a-z]+[A-Z]/.test(x.t)) && none === ''
     && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 2 && two.contracts.length === 7;   // (the unlock map, Q577: the satellite bench; the hop and the beeper wait for the structural test)
-  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 2 missions, 6 kinds of contract, 20 parts (the satellite bench, Q577) and the rover antenna; opensNames merges; opensLine',
+  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 2 missions, 6 kinds of contract, 21 parts (the satellite bench, Q577) and the rover antenna; opensNames merges; opensLine',
     M.length === 29 && !bad.length && any >= 20 && facts,
     `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
 }
