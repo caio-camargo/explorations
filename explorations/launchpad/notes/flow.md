@@ -2352,7 +2352,7 @@ Text only, and one new test. 50 strings.
 - **Tests:** smoke green locally but for the timing check 6b under load (3,751 µs a warp frame); the full run is CI's.
 - **Not checked:** nothing seen in a browser (TESTING 394).
 
-## v1.342 — the flight cards' last how-to lines, cut (2026-11-13, review 2 session (Opus), QUEUE Q603 slice 2's remainder; D43)
+## v1.343 — the flight cards' last how-to lines, cut (2026-11-13, review 2 session (Opus), QUEUE Q603 slice 2's remainder; D43)
 
 Text only. The card rows built in `app/program-ui.js` and `app/hud.js` still carried four how-to parentheses; v1.341
 read `app/hud.js` and found nothing over budget, these live in the row functions it calls.
