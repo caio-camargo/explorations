@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.2.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-12
+**Version**: 0.2.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-13
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -97,6 +97,7 @@ they need to be." Every string a player reads follows these; Q603 is the pass th
 | **A part's sentence** (its card) | What it is, and the one thing to know | 14 words |
 | **A why-card** (hover on a warning) | Headline, one sentence of cause, the fixes | 20 words for the cause |
 | **A message** (`#msg`, a note) | What happened | 10 words |
+| **A glossary entry** (`TERMS`, hover on a term) | The definition, and one rule of thumb | 32 words |
 | **Teaching** | Why a thing is so, how a flight is flown | Not on the screen: the glossary (`TERMS`), or Guided (Q491) |
 
 1. **Say it once.** A fact in the tooltip is not also in the standing line, and a rule told on one card is not retold
@@ -105,7 +106,7 @@ they need to be." Every string a player reads follows these; Q603 is the pass th
 3. **No doc names on a screen.** No "PROBES S2", no queue numbers, no file names.
 4. **A warning keeps its number.** Trim words, never the figure or the part's name.
 5. **Measure:** `node review/2026-11-12/copy_words.cjs` lists every run of 8 or more words in the panels and every
-   tooltip of 15 or more.
+   tooltip of 15 or more. Test flow-63 fails on a part's sentence over 14 words or a glossary entry over 32.
 
 ## 3. Each screen's reads (the spec)
 

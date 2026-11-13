@@ -41,8 +41,8 @@ function saveHTML(){const blk=impBlocked();if(blk)impArm=false;
     +`<button data-save-act="import"${blk?' disabled':''}${impArm?' class="arm"':''}>${impArm?'Click again: choose the file':'Import save…'}</button>`
     +(hasBadSave()?`<button data-save-act="bad">Export the unloadable save</button>`:'')+`</div>`
     +`<div class="sub">${impArm?`The file replaces ${slotName()}; export it first if you want to keep it. (The one it replaces is also kept in browser storage as "${PROG_PREV}", when there is room.)`
-      :blk?'A file is a .json you can keep, share or attach to a bug report. Import waits for the end of this '+(mode==='drive'?'drive':'flight')+'.'
-      :`A file is a .json you can keep, share or attach to a bug report. Import replaces ${slotName()}.`}</div>`}
+      :blk?'A .json file to keep or share. Import waits for the end of this '+(mode==='drive'?'drive':'flight')+'.'
+      :`A .json file to keep or share. Import replaces ${slotName()}.`}</div>`}
 function importPick(){const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
   inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;let text='';try{text=await f.text()}catch(e){HOOK.msg(`Could not read ${f.name}`);return}
     if(impBlocked()){HOOK.msg('Import waits for the end of the flight');return}

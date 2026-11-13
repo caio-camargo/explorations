@@ -56,21 +56,21 @@ function resetProgram(){programNew();HOOK.save();editorChanged()}   // (also the
 // too for a design with legs (the moon's weaker pull stands it ~0.4× the drift)
 // trim (vehicle, Q337; PROBES § 4): the steering spent holding course against an off-centre thrust, the worst stage
 function trimHTML(s){const T=trimOf(s);if(!T)return'';const p=Math.round(T.f*100),cl=T.f<0.2?'ok':T.f<0.6?'warn':'bad',cm=(T.miss*100).toFixed(T.miss<0.1?1:0);
-  const W={t:`Stage ${T.k}: the thrust misses the centre of mass by ${cm} cm`,d:isFinite(T.f)?`The engine pushes off-centre, so the craft wants to turn: holding it straight takes ${p}% of its gimbal and wheels, and leaves that much less for steering.${T.f>1?' Over 100%: it can\'t hold it, and turns while it burns.':''}`:'Nothing on it can steer against the off-centre push: it turns as soon as the engine lights.',
+  const W={t:`Stage ${T.k}: the thrust misses the centre of mass by ${cm} cm`,d:isFinite(T.f)?`Holding straight against the off-centre push takes ${p}% of its gimbal and wheels.${T.f>1?' Over 100%: it turns while it burns.':''}`:'Nothing on it can steer against the off-centre push: it turns as soon as the engine lights.',
     fix:['balance it: the same part on the other side (radial mounts ×2)','a counterweight opposite the heavy side part','deploy what unfolds after the burn, not before','more steering: an engine that gimbals, or a reaction wheel']};
   return`<div style="margin-top:4px">${term('trim','Trim')} ${whyMark(cl,isFinite(T.f)?p+'%':'no steering',W)} <span class="dim">${T.miss<0.005?'thrust through the centre of mass':`stage ${T.k}: thrust ${cm} cm off the centre of mass`}</span></div>`}
 // fit (Q340, PROBES § 8): what stands on a fairing's ring, under its nose, but isn't inside the shell. Only when something pokes out
 function fitHTML(s){const out=[];for(const f of s.parts){if(!f.on||f.d.kind!=='fair'||!f.profF)continue;const top=f.y0+f.profF[f.profF.length-1][1];
     for(const q of s.parts)if(q.on&&q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&q.y0<top&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<1.6*f.d.r&&!out.includes(q))out.push(q)}
   if(!out.length)return'';const nm=[...new Set(out.map(q=>q.d.name))],dep=out.some(q=>q.dep||q.open);
-  const W={t:`${nm.join(', ')} ${out.length>1?'poke':'pokes'} out of the fairing`,d:'Whatever sticks out of the shell meets the air and the heat of the climb: a folded antenna or a solar wing can tear off, and the shell drops around it.',
+  const W={t:`${nm.join(', ')} ${out.length>1?'poke':'pokes'} out of the fairing`,d:'What sticks out of the shell meets the air and the heat of the climb, and can tear off.',
     fix:[dep?'fold it for launch (retract all)':'','a longer fairing (right-click it: length)','a narrower part, or one moved lower inside the shell'].filter(Boolean)};
   return`<div style="margin-top:4px">Fairing ${whyMark('bad',`${out.length} part${out.length>1?'s':''} outside the shell`,W)}</div>`}
 function standHTML(s){const g=b=>b.mu/b.R**2,f=v=>v>9.95?'10+':v.toFixed(1),
   to=p=>((p.phases||[]).find(x=>x.k==='transfer')||{}).to,pr=(typeof procsOf==='function'?procsOf(stackDef):[]).find(p=>procLandsOn(p,to(p))),ph=pr&&pr.phases.find(x=>x.k==='land'),B=pr&&BODIES.find(b=>b.name===to(pr))||TELLUS,
   L=landStance(s,g(B),ph?ph.ev:undefined),moon=!pr&&L.legs?landStance(s,g(SELENE)):null,on=L.legs?'its legs':L.on?`its ${L.on}`:'its base',
   what=L.n===L.of?'as built':`after its drops (${L.n} of ${L.of} parts)`,cl=L.legs&&Math.min(L.v,moon?moon.v:9)<1.5?'warn':'';   // a warning for a lander only: every tall rocket tips past ~1 m/s
-  const W={t:`Tips over drifting faster than ${f(Math.min(L.v,moon?moon.v:9))} m/s sideways`,d:'A tall lander on a narrow stance falls over if it touches down still drifting; under 1.5 m/s of sideways speed is a hard landing to fly.',
+  const W={t:`Tips over drifting faster than ${f(Math.min(L.v,moon?moon.v:9))} m/s sideways`,d:'A tall lander on a narrow stance tips if it lands drifting; under 1.5 m/s is hard to fly.',
     fix:['wider legs: legs on a wider part, or more of them','a lower stack: drop what it doesn\'t need before landing','kill the sideways drift before touchdown, and come down slower']};
   return`<div style="margin-top:4px">Touchdown ${whyMark(cl,`stands drifting up to ${f(L.v)} m/s`,W)} <span class="dim">sideways on ${B.name}${moon?`, ${f(moon.v)} on ${SELENE.name}`:''}: ${what}, on ${on}</span></div>`}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
@@ -83,7 +83,7 @@ function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
   // short of authority, a stable design just turns into the wind; an unstable one goes over
   row=(lbl,r)=>{const have=r.auth+c.rcs,ok=r.tau<=have,cl=ok?(r.tau<=0.7*have?'ok':'warn'):stable?'warn':'bad';
-    const W={t:`${lbl.replace(/^./,c=>c.toUpperCase())} at max-q: needs ${k(r.tau)} kN·m, has ${k(have)}`,d:ok?'It holds 5° off the airflow at the worst of the climb, with under 30% to spare: a gust or a sharper turn takes the rest.':stable?'It can\'t hold 5° off the airflow there, but it\'s stable, so it turns into the wind and flies on: it just won\'t go where it\'s pointed until the air thins.':'It can\'t hold 5° off the airflow there, and it\'s unstable: once it slips, the air turns it over.',
+    const W={t:`${lbl.replace(/^./,c=>c.toUpperCase())} at max-q: needs ${k(r.tau)} kN·m, has ${k(have)}`,d:ok?'It holds 5° off the airflow at max-q, with under 30% to spare.':stable?'It can\'t hold 5° off the airflow there, but it\'s stable: it flies on into the wind until the air thins.':'It can\'t hold 5° off the airflow there, and it\'s unstable: once it slips, the air turns it over.',
       fix:['fins at the tail: a stable rocket lets the air do the holding','more steering: steerable fins, an engine that gimbals, reaction wheels','a gentler turn through max-q']};
     return`<div>${lbl} ${whyMark(cl,ok?'holds':stable?'weathervanes':'flips',W)} <span class="dim">need ${k(r.tau)} kN·m · ${src(r,c.rcs)}</span></div>`};
   const A=AV[avNow()],nx=AV[avNow()+1];
@@ -106,8 +106,8 @@ function benchHTML(empty){if(empty)return'<div class="dim">an empty payload: sta
 `}
 function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.Wg||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s,powerAim()),f=x=>x.toFixed(0);
   const okA=B.avg>=B.use,okB=B.battWh>=B.needWh,c=x=>x?'ok':'bad';
-  const WA={t:`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`,d:'Averaged over a whole orbit, night side included, it makes less than it uses: the battery drains a little every orbit until it runs flat and the craft goes quiet.',fix:['more solar panels, or a solar wing','an RTG, which works day and night','fewer parts drawing power']},
-    WB={t:`The battery can't last the night: ${f(B.needWh)} Wh needed, ${f(B.battWh)} Wh aboard`,d:`Behind the planet the panels make nothing for ${f(B.tE/60)} minutes, and the battery carries the whole load till sunrise.`,fix:['a bigger battery, or a second one','an RTG, which keeps working in the dark','fewer parts drawing power']};
+  const WA={t:`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`,d:'Over a whole orbit it makes less than it uses: the battery drains until the craft goes quiet.',fix:['more solar panels, or a solar wing','an RTG, which works day and night','fewer parts drawing power']},
+    WB={t:`The battery can't last the night: ${f(B.needWh)} Wh needed, ${f(B.battWh)} Wh aboard`,d:`Behind the planet the panels make nothing for ${f(B.tE/60)} minutes: the battery carries the load.`,fix:['a bigger battery, or a second one','an RTG, which keeps working in the dark','fewer parts drawing power']};
   return`<div style="margin-top:6px">Power ${whyMark(c(okA),`+${f(B.avg)} W`,WA)} / −${f(B.use)} W <span class="dim">(${B.alt>(TELLUS.atm+10000)/1000+1?`${f(B.alt)} km orbit`:'low orbit'} average, the sun in its plane)</span> · shadow ${f(B.tE/60)} min needs ${whyMark(c(okB),`${f(B.needWh)} Wh`,WB)} <span class="dim">(battery ${f(B.battWh)} Wh)</span>${satPowLine(B)}</div>`}
 // (Q212) the same, as a satellite left here between flights (v1.108): how long the battery lasts, then what it can still do
 function satPowLine(B){const F=satPowFuture(B),pc=Math.round(F.duty*100);if(F.days===Infinity&&F.duty>=1)return'';
@@ -122,14 +122,14 @@ function lifeLine(s){if(!s.parts.some(p=>['ant','cam','sci'].includes(p.d.kind))
   else if(L.tv!=null)t=`holding it costs ${L.rate.toFixed(2)} m/s a day, and its tilt a trim; ~${Math.round(L.spare)} m/s left there keeps it on the capital's screens ${daysS(L.tv)}, then its tanks are dry`;   // Q520
   else t=`holding it costs ${L.rate.toFixed(2)} m/s a day; ~${Math.round(L.spare)} m/s left there holds it ${L.days>=20*YEAR_D?'past 20 years':daysS(L.days)}, then ${fall||'it drifts off its slot (its service pauses)'}`;
   const c=(L.tv??L.days)<YEAR_D&&L.rate>0||!(L.rate>0)&&fall&&L.fall<YEAR_D?'warn':'dim';
-  const W={t:`Short-lived at ${alt} km: under a year`,d:'Its service ends when it comes down or drifts off its slot, and a contract that wants it up for longer counts it as lost.',fix:['a higher orbit: the air thins fast with height','more propellant left once it\'s there: a bigger last stage or a lighter payload']};
+  const W={t:`Short-lived at ${alt} km: under a year`,d:'Its service ends when it comes down or drifts off its slot; a longer contract counts it lost.',fix:['a higher orbit: the air thins fast with height','more propellant left once it\'s there: a bigger last stage or a lighter payload']};
   return`<div style="margin-top:4px">Lifetime at ${alt} km ${c==='warn'?whyMark('warn',t,W,'span'):`<span class="${c}">${t}</span>`}</div>`}
 // the Δv budget to orbit (vehicle session, Q475; PLAYTEST #119): what the flight it's aimed at needs flown well and with a
 // pilot's margin (orbitNeed), against the stages' Δv in the air. Aimed nowhere it reads low orbit, and dim when it can't get
 // there (a sounding rocket isn't short of anything)
 function orbitLine(){const O=orbitNeed(stackDef),f=x=>Math.round(x).toLocaleString('en-US'),to=O.goal?O.goal.name:'low orbit',
     c=O.air>=O.hand?'ok':O.vac>=O.need?'warn':O.goal?'bad':'dim',has=`${f(O.air)} m/s in the air`;
-  const W=c==='warn'?{t:`Enough for ${to} flown well, not by hand`,d:`A perfect ascent gets there on ~${f(O.need)} m/s; a hand-flown one, a late or steep turn, a wobble, spends ~${f(O.margin)} more. ${f(O.air)} m/s leaves little room for that.`,fix:['a bigger tank on the upper stage','a lighter payload','fly the ◇ on the navball: it is the well-flown turn']}
+  const W=c==='warn'?{t:`Enough for ${to} flown well, not by hand`,d:`A perfect ascent takes ~${f(O.need)} m/s; flown by hand, ~${f(O.margin)} more.`,fix:['a bigger tank on the upper stage','a lighter payload','fly the ◇ on the navball: it is the well-flown turn']}
     :c==='bad'?{t:`Short of ${to}: ${has} against ~${f(O.need)}`,d:'Even flown perfectly it falls back before it reaches orbital speed.',fix:['more propellant, or another stage','boosters on the side','a lighter payload']}:null;
   return`<div style="margin-top:4px">To ${to} ~${f(O.need)} m/s flown well, ~${f(O.hand)} by hand · ${W?whyMark(c,has,W,'span'):`<span class="${c}">${has}</span>`}</div>`}
 function editorChanged(){
@@ -144,8 +144,8 @@ function editorChanged(){
   const{stages,mass}=stageStats(stackDef);let tot=0,html='';
   stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok',x=s.twr.toFixed(2);
     const W=i===0?(s.twr<1?{t:`Stage 1 can't lift itself: thrust ${x}× its weight`,d:'Under 1 it sits on the pad with its engines running.',fix:['a stronger engine, or boosters on the side','less propellant in this stage','a lighter upper stage or payload']}
-        :{t:`A slow climb: thrust ${x}× its weight`,d:'Every second spent climbing slowly is spent holding the rocket up against gravity: propellant burned that a quicker climb keeps.',fix:['boosters on the side','a stronger engine','one tank fewer on this stage']})
-      :{t:`Stage ${i+1} pushes ${x}× its weight`,d:s.twr<1?'An upper stage can fly under 1 if it lights high and already fast, but the lower it lights, the longer it burns and the more it sags back toward the air.':'A little slow for an upper stage that lights low: it sags a bit before it gains speed. Fine if it lights high.',fix:['a stronger engine','less propellant in this stage','light it later, higher and faster']};
+        :{t:`A slow climb: thrust ${x}× its weight`,d:'A slow climb burns propellant just holding the rocket up.',fix:['boosters on the side','a stronger engine','one tank fewer on this stage']})
+      :{t:`Stage ${i+1} pushes ${x}× its weight`,d:s.twr<1?'An upper stage can fly under 1 if it lights high and fast; lit low, it sags back toward the air.':'A little slow if it lights low: it sags before it gains speed.',fix:['a stronger engine','less propellant in this stage','light it later, higher and faster']};
     html+=`<div class="seg"><b>Stage ${i+1}</b> <span class="dim">${s.m0.toFixed(2)} t → ${s.mf.toFixed(2)} t</span><br>${term('dv','Δv')} <b>${s.dvV.toFixed(0)}</b> / ${s.dvA.toFixed(0)} m/s · ${term('twr','TWR')} ${whyMark(tw,x,W,'span')} · ${s.burn.toFixed(0)} s</div>`});
   {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`+studyLine(S);$('launch').textContent=ok?'LAUNCH [L]':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
    html+=`<div style="margin-top:6px">Cost ${ok?`<b class="acc">${fmtM(c.cost)}</b>`:whyMark('bad',fmtM(c.cost),{t:`Over budget: ${fmtM(c.cost)} with ${fmtM(PROG.funds)} in the account`,d:'The launch is refused until the program can pay for it.',fix:['cheaper parts: fewer or smaller engines and tanks','parts that come home on a chute cost less the second time','wait for money: contracts and the budget fill the account']})} <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
@@ -154,16 +154,16 @@ function editorChanged(){
     ${powerLine(S)}
     ${lifeLine(S)}
     <div class="sub">${logHintHTML()}</div>`;
-  if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?whyMark('warn','No reaction wheels: no steering on a coast.',{t:'Nothing turns it on a coast in space',d:'Engines steer only while they burn and fins only in air: between burns it can\'t point where the next burn needs it.',fix:['a reaction wheel','RCS thrusters and a gas bottle']},'div'):whyMark('warn','No steering at all.',{t:'It can\'t steer at all',d:'It flies wherever the air and the thrust send it: no turn toward orbit, no pointing for a burn.',fix:['an engine that gimbals','a reaction wheel','steerable fins for the climb','RCS thrusters and a gas bottle']},'div');
+  if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?whyMark('warn','No reaction wheels: no steering on a coast.',{t:'Nothing turns it on a coast in space',d:'Engines steer only while burning, fins only in air: on a coast it can\'t point for the next burn.',fix:['a reaction wheel','RCS thrusters and a gas bottle']},'div'):whyMark('warn','No steering at all.',{t:'It can\'t steer at all',d:'It flies wherever the air and the thrust send it: no turn toward orbit, no pointing for a burn.',fix:['an engine that gimbals','a reaction wheel','steerable fins for the climb','RCS thrusters and a gas bottle']},'div');
   BLD.frameCam();
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
   const stW=(v,when)=>({t:v<0?`Unstable ${when}: ${(-v).toFixed(2)} calibers the wrong way`:`Barely stable ${when}: ${v.toFixed(2)} calibers`,
-      d:v<0?'The air\'s push sits ahead of the balance point, like an arrow with its feathers at the front: in air it wants to fly tail-first, and only steering holds it (engines burning, steerable fins).':'It flies nose-first, but with under half a caliber a gust or a turn can tip it past what it recovers from.',
+      d:v<0?'The air pushes ahead of the balance point: it wants to fly tail-first, and only steering holds it.':'It flies nose-first, but a gust or a turn can tip it past recovery.',
       fix:['fins at the bottom, or bigger ones (right-click a fin)','heavier parts higher up the stack, light ones lower','keep an engine burning through the thick air']}),
     stM=(v,when)=>whyMark(cc(v),v.toFixed(2),stW(v,when));
   const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
   const jW=(w,when,own)=>({t:`${w.p?`The joint ${w.p.d.name} / ${w.p.parent.d.name}`:'A joint'} at ${(w.frac*100).toFixed(0)}% of its rating ${when}`,
-    d:w.frac>1?'Past its certified rating: ratings start at 70% of what the part really takes, so it may hold, but the further past, the likelier it breaks.':'Near its certified rating: a turn or a gust on the way up adds to it.',fix:jointFix(w,own)});
+    d:w.frac>1?'Past its certified rating: it may hold; the further past, the likelier it breaks.':'Near its certified rating: a turn or a gust on the way up adds to it.',fix:jointFix(w,own)});
   html+=`<h2 title="Joint loads are against certified ratings: 70% of what a part takes, until an instrument package has flown with it.">Aerodynamics &amp; structure</h2>
     <div>${term('stab','Stability')} <span class="dim">in calibers</span><br>
     full ${stM(cal(a.ful),'full on the pad')} · stage-1 dry ${stM(cal(a.emp),'with stage 1 burned out')} · M1.6 ${stM(cal(a.sup),'at M1.6, past the speed of sound')}</div>

@@ -305,7 +305,7 @@ function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0
   for(const q of satsUp()){if(!PROG.sats.includes(q))continue;const r=fragRate(q);if(!(r>0))continue;const c=resid(q);
     const cf=catFrac(q.mass||0,Math.sqrt(TELLUS.mu/(TELLUS.R+TELLUS.atm+BAND_W*c.f.indexOf(Math.max(...c.f)))));
     if(q.junk)for(let b=0;b<BAND_N;b++)if(c.f[b]){rho[b]+=c.f[b]*4*c.R*c.R*Math.sqrt(TELLUS.mu/bandR(b))/bandV(b)*cf;mJ[b]+=c.f[b]*(q.mass||0);wJ[b]+=c.f[b]}   // per fragment a second
-    if(entryCrewed(q)){if(r*K*YEAR_D>=CREW_WARN&&!q.fragWarn){q.fragWarn=T;HOOK.news(`${q.name}'s crew are warned: the fragment cloud in their orbit is thick enough to matter (about one hit in ${Math.round(1/(r*K*YEAR_D))} years); shielding and a higher orbit are the answers`,'warn')}continue}
+    if(entryCrewed(q)){if(r*K*YEAR_D>=CREW_WARN&&!q.fragWarn){q.fragWarn=T;HOOK.news(`${q.name}'s crew are warned: the fragments in their orbit mean about one hit in ${Math.round(1/(r*K*YEAR_D))} years`,'warn')}continue}
     const L1=r*K*(q.junk?cf:1);let u=null,L=0;
     if(roll){L=L1*days;u=roll();if(u>=1-Math.exp(-L))u=null}
     else for(const n of dayMarks(T0,T1)){const x=rng((n*130363+q.id*15485863)|0)();if(x<1-Math.exp(-L1)){u=x;L=L1;break}}   // a roll a day (Q526)
@@ -320,7 +320,7 @@ function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0
   // ≥ 1); it's news when the next breakup is due within CASC_YR years (a warning at R0 ≥ ½, within 4×)
   PROG.casc=PROG.casc||{};CASC_STAT.length=0;for(let b=0;b<BAND_N;b++){if(!(rho[b]>0)||F[b]<100)continue;const k=PROG.casc[b]||0,lo=Math.round((TELLUS.atm+b*BAND_W)/1e3),
     R0=fragsOf(mJ[b]/wJ[b])*rho[b]*K*fragTau(b),gen=1/(F[b]*rho[b]*K)/DAY_S/YEAR_D;CASC_STAT[b]={R0,gen};
-    if(R0>=1&&gen<=CASC_YR&&k<2){PROG.casc[b]=2;HOOK.news(`The ${lo}–${lo+50} km band now feeds itself: each breakup there now sets off more before the air can clear them. It will stay unusable for decades`,'bad')}
+    if(R0>=1&&gen<=CASC_YR&&k<2){PROG.casc[b]=2;HOOK.news(`The ${lo}–${lo+50} km band now feeds itself: each breakup there sets off more. Unusable for decades`,'bad')}
     else if(R0>=0.5&&gen<=4*CASC_YR&&k<1){PROG.casc[b]=1;HOOK.news(`Warning: the ${lo}–${lo+50} km band is filling with fragments; one more breakup there could start a cascade`,'warn')}}}
 // ---- missions in flight, slice 1 (space session, QUEUE Q49; NOTES § "Plan: missions in flight"). A lasting orbit
 // (settled: closed, clear of the air or ground, inside the body's SOI and short of any moon's) is a satellite; anything
@@ -388,7 +388,7 @@ function nodesTick(q,T1){while(q.nodes&&q.nodes.length&&q.nodes[0].T<=T1&&PROG.s
 // why mission control can't take q's next burn ('' if it can): the era (Q127), then contact (Q186: in orbit on its rails
 // the burn's place is known now, so one it won't be able to reach is refused up front)
 function handOffWhy(q){const a=autoAllowed('burn');if(!a.ok)return a.why;const n=q.nodes&&q.nodes[0];if(!n||q.cruise||autoAllowed('blind').ok)return'';
-  const L=entryLink(q,n.T);return L.ok?'':`can't reach ${q.name} at the burn (${L.why}); onboard computers could fly it out of contact: fly it yourself${orbBody(q)===TELLUS?', or build a station under it':''}`}
+  const L=entryLink(q,n.T);return L.ok?'':`can't reach ${q.name} at the burn (${L.why}): fly it yourself${orbBody(q)===TELLUS?', or build a station under it':''}`}
 function nodeHandOff(id,on=true){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q||!q.nodes||!q.nodes[0])return null;   // mission control: from mainframes (Q127)
   if(on){const why=handOffWhy(q);if(why){HOOK.msg(`Mission control ${why}`);return{refused:why}}}
   q.nodes[0].mc=!!on;return q}

@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.62 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-12
+**Version**: v2.0.63 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -296,8 +296,6 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: the unlock map and chapters (Q573): 84 parts placed on 14 missions, six `req` changes, flown parts stay open; the gate costs the scripted player no flight (4.2 to orbit); the Sounding passes the structural test at 25.2 kPa; slices and W50 (2026-11-11, review 2 session; plan only)
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
-- v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
-- v1.329 — the Program's copy, cut to the rule: mission briefs, contracts, decisions, the fleet, mission control (Q603 slice 3; UI.md § 2.1)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -400,6 +398,9 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.319 — the Mission card stays up in flight (short in the climb, burns and landings; every mission the vessel could meet); a mission done turns green in its place, one line and a chime, no centred box in flight (2026-11-12, Q600, D42)
 - v1.325 — near the ground, retrograde hands over to stability: under 3 m/s within 50 m a craft on SAS retrograde switches to Stability (upright if leaning past 3°), says so once, never switches back (2026-11-07, flow worker, QUEUE Q544, PLAYTEST #150)
 - v1.327 — the era maps show the night side: the terminal dims and scanlines it in green with the terminator as a line; the notebook hatches the true night region, not a half-disc (2026-11-07, orchestrator worker, QUEUE Q546, PLAYTEST #152)
+- v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
+- v1.329 — the Program's copy, cut to the rule: mission briefs, contracts, decisions, the fleet, mission control (Q603 slice 3; UI.md § 2.1)
+- v1.341 — the glossary, the why-cards, Rollout and the sim's warnings, cut to the rule; flow-63 checks the budgets (Q603 slices 4 to 7)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

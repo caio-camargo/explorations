@@ -25,13 +25,13 @@ const debT=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
 // false where it happened on a body without any (Selene): no parachute, nose cone or heat shield advice there (Q497,
 // PLAYTEST #133: a crash on Selene was told to open a parachute)
 function debHelp(k,why,air=true){why=why||'';
-  if(k==='structure')return"Reinforce the joint that broke (right-click the part: joint), use an interstage decoupler, or climb more gently through max-q. The Assembly shows each joint's load before you fly.";
+  if(k==='structure')return"Reinforce the joint that broke (right-click the part: joint), use an interstage decoupler, or climb more gently through max-q.";
   if(air&&(k==='heat'||/burned up/.test(why)))return'A heat shield under what comes home, a shallower way back in, or a nose cone over what faces the air.';
-  if(k==='ignite')return'An engine new to us can fail to light; the test stand and flights raise its know-how. A failed ignition alone can be tried again (stage again).';
-  if(/topple|tipped|fell over/.test(why))return"Touch down with no sideways drift, or on wider legs (the Assembly's Touchdown line says how much it stands).";
+  if(k==='ignite')return'An engine new to us can fail to light; the test stand and flights raise its know-how. Stage again to retry.';
+  if(/topple|tipped|fell over/.test(why))return"Touch down with no sideways drift, or on wider legs.";
   if(/sank/.test(why))return'Come down on land, or bring a capsule that floats.';
   if(/collided|hit .* at \d+ m\/s$/.test(why)&&!/hit (Tellus|Selene|the nose)/.test(why))return'Close in slowly: under a few m/s near another craft.';
-  if(/hit|nose/.test(why))return air?'Come down slower: a parachute opened low and slow, or a landing burn.':'Come down slower: with no air, only a landing burn does it. Start it high enough to kill the speed before the ground (the stage needs about the speed you fall at), legs down.';
+  if(/hit|nose/.test(why))return air?'Come down slower: a parachute opened low and slow, or a landing burn.':'Come down slower: with no air, only a landing burn does it. Start it high, legs down.';
   return''}
 // the paid items missionComplete, contractEval and stagePay add to the flight's record
 const debPaid=(R,k,l,pay,x)=>{if(R)(R.paid||(R.paid=[])).push({k,l,pay,...x});logEv('pay',`${k}: ${l}, ${pay.toFixed(1)} M`)};

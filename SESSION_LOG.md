@@ -7659,3 +7659,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** launchpad `test.mjs`, `shards.mjs`, `tests/vehicle.mjs`, `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R2 ✓);
   root `ACTIVE_WORK.md`, `SESSION_LOG.md`. No new durable files (INDEX unchanged).
 - **Next:** M3 code is open (W48/W49). Worktree `launchpad-r2` free to remove.
+
+### 2026-11-13: review 2 session (Fable), the copy pass, slices 4 to 7 (v1.341, text and one test)
+- **Asked:** resume after other sessions' days of work. Found Q603 at slice 3 (v1.329); R29b answered (D45), Q604
+  fixed, W48's freeze lifted (R2). Carried on with the pass.
+- **Done (v1.341):** 50 strings in `app/terms.js` (the glossary), `app/rollout.js` and `app/editor.js` (the
+  why-cards), `sim/vessel.js` (launch warnings), `sim/debrief.js`, `sim/space.js`, `app/settings.js`. **flow-63**
+  fails on a part's sentence over 14 words or a glossary entry over 32. UI.md § 2.1 gains the glossary's budget. NOTES'
+  index had v1.322 and v1.329 under Economy: moved to Flow.
+- **Everyone:** a new part's `PART_INFO` / `PART_PAIRS` line and a new `TERMS` entry must fit flow-63.
+- **Q603** is built; what is left is Caio reading it in the game. What the cuts stopped teaching is listed for
+  Guided (Q491) in notes/flow.md § v1.322, v1.329, v1.341.
+- **Not checked:** nothing seen in a browser (TESTING 380, 386, 394).
+- Files: launchpad `app/terms.js`, `app/rollout.js`, `app/editor.js`, `app/settings.js`, `sim/vessel.js`,
+  `sim/space.js`, `sim/debrief.js`, `tests/flow.mjs`, `UI.md`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`,
+  `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

@@ -1640,3 +1640,16 @@
   check('flow-62: the era maps show the night side: its share of the disc follows the phase (none with the sun behind the camera, half side-on, all with the sun behind the body); the terminal dims and scanlines it in green with the terminator as a line, the notebook hatches it in pencil',
     !!fn && rows.every(r => r.ok) && wired, rows.map(r => `${r.deg}°: ${(r.share * 100).toFixed(1)} % (want ${(r.want * 100).toFixed(1)}), arc ${r.arc}`).join(' · ') + ` · wired ${wired}`);
 }
+// flow-63. The copy budgets a script can count (QUEUE Q603 slice 7; D43; UI.md § 2.1): a part's sentence and its
+// "Pairs with" line (PART_INFO, PART_PAIRS in builder.js) at most 14 words, a glossary entry (TERMS in app/terms.js) at
+// most 32. Read from the source: a new part or term with a paragraph fails here.
+{
+  const words = s => (s.match(/[A-Za-z0-9][A-Za-z0-9.'’-]*/g) || []).length, src = f => readFileSync(new URL('./' + f, import.meta.url), 'utf8');
+  const block = (s, name) => { const a = s.indexOf('const ' + name + '={'); return a < 0 ? '' : s.slice(a, s.indexOf('};', a)); };
+  const B = src('builder.js'), T = src('app/terms.js'), over = [];
+  let n = 0;
+  for (const name of ['PART_INFO', 'PART_PAIRS']) for (const m of block(B, name).matchAll(/(\w+):'((?:[^'\\]|\\.)*)'/g)) { n++; const w = words(m[2].replace(/\\'/g, "'")); if (w > 14) over.push(`${name}.${m[1]} ${w}`); }
+  let nt = 0;
+  for (const m of block(T, 'TERMS').matchAll(/(\w+):\{t:'(?:[^'\\]|\\.)*',d:'((?:[^'\\]|\\.)*)'/g)) { nt++; const w = words(m[2].replace(/\\'/g, "'")); if (w > 32) over.push(`TERMS.${m[1]} ${w}`); }
+  check('flow-63: copy budgets: a part\'s sentence and its pairs line at most 14 words, a glossary entry at most 32', n > 100 && nt >= 15 && !over.length, `${n} part lines, ${nt} terms · over: ${over.join(', ') || 'none'}`);
+}

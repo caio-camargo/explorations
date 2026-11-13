@@ -1,5 +1,5 @@
 # Launchpad notes — Flow
-**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for screens and navigation, the rooms, the HUD and readout, the map's drawing, the Debrief, the logbook.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2322,3 +2322,32 @@ Text only: no behaviour, no layout, no number changed. The rule is UI.md § 2.1.
   (watch which way round you go); Nyx's escape speed is 346 m/s (easy to land, easy to bounce); plan a burn on the
   flight map (click the orbit, drag the handles).
 - **Not checked:** not seen in a browser (no GPU this session): how a contract's name reads as hoverable. TESTING 386.
+
+## v1.341 — the glossary, the why-cards, Rollout and the sim's warnings, cut to the rule; a check on the budgets (2026-11-13, review 2 session (Fable), QUEUE Q603 slices 4 to 7; D43; UI.md § 2.1)
+
+Text only, and one new test. 50 strings.
+
+- **The glossary** (`TERMS`, app/terms.js): 12 of 16 entries rewritten, 503 words to 297 as the script counts them; the
+  longest (the model's scale, 67 words) is 28. Each is the definition and one rule of thumb. The four SAS words were
+  already short (Q492).
+- **The why-cards** (the `W` cards in app/editor.js and app/rollout.js): the cause is one sentence of 20 words or
+  fewer. The same cause reads the same on the design table and at the Rollout (the slow climb, the unstable rocket, a
+  joint past its rating were each written twice, differently).
+- **Rollout's checks:** *Unstable in the air* keeps its *Aerodynamically unstable (n calibers)* line, shorter after
+  the colon; the weather line ends at *the launch may wait*.
+- **The sim's launch warnings** (`launchWarnings`, `airFix` in sim/vessel.js): the stage-in-the-air advice is one
+  sentence (was 44 words); legs down and bay open at launch say what to do in a parenthesis.
+- **The Debrief's advice** (`debHelp`, sim/debrief.js): four lines lose their second sentence.
+- **Fleet news** (sim/space.js): the crew's fragment warning, the cascade line and "can't reach it at the burn" shortened.
+  The rest of the news was read and left: each line reports one event with its numbers.
+- **Settings:** the save file's line.
+- **flow-63 (new):** a part's sentence and its *Pairs with* line at most 14 words, a glossary entry at most 32, read
+  from the source (120 part lines, 16 terms). A new part or term with a paragraph fails it.
+- **What was cut that teaches** (for Guided, Q491): why max-q is where it is (speed climbing, air not yet thin); a TWR
+  far above 1.6 is hard on the structure; raise a periapsis with a prograde burn at the apoapsis; how the model's scale
+  is picked; where a craft goes when it leaves a sphere of influence; that a stage separated pointing prograde needs
+  almost no steering; a landing burn needs about the speed you fall at.
+- **Left alone:** the tester menu (a developer's tool); the flight's cards (app/hud.js: read, nothing over budget);
+  `recoveryRule` (its parenthesis is already the tooltip).
+- **Tests:** smoke green locally but for the timing check 6b under load (3,751 µs a warp frame); the full run is CI's.
+- **Not checked:** nothing seen in a browser (TESTING 394).

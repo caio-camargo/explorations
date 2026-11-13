@@ -542,7 +542,7 @@ function jointFix(w,own){if(!w||!w.p)return'';const dec=[w.p.d,w.p.parent.d].fin
   return[dec?'an interstage decoupler instead (twice the bending rating, and its shell carries the load around the engine it encloses)':'',`reinforce that joint (right-click the part: joint)`,own?'less thrust low down (it flies through thick air too fast)':''].filter(Boolean).join(', or ').replace(/^./,c=>c.toUpperCase())+'.'}
 // what helps a stage that can't hold its course in the air (Q342): said the same in the builder and the Rollout
 function airWhy(a){const k=x=>(x/1000).toFixed(x<9500?1:0);return a.why==='store'?`holding 5° off the airflow takes ${k(a.tau)} kN·m, more than its gimbal${a.fin>0?' and fins':''} can carry for long: its reaction wheels fill before the air thins`:`holding 5° off the airflow takes ${k(a.tau)} kN·m and it has ${k(a.auth)}`}
-function airFix(a){return a.why==='store'?`Separate pointing prograde and keep it there (it then needs almost nothing), or more on it: another reaction wheel stores more, steerable fins or bigger fins (right-click a fin) take a steady load, or a bigger first stage so it separates in thinner air.`:`Separate pointing prograde (it then needs almost nothing), or more steering on it: a reaction wheel, steerable fins, bigger fins (right-click a fin), or a bigger first stage so it separates in thinner air.`}
+function airFix(a){return a.why==='store'?`Separate pointing prograde and keep it there, or add a reaction wheel, steerable or bigger fins, or a bigger first stage.`:`Separate pointing prograde, or add steering: a reaction wheel, steerable or bigger fins, or a bigger first stage.`}
 function launchWarnings(stack,aims=flightAims()){const out=[],{vac,air,goal,hand,best}=orbitNeed(stack,aims),
     src=best?`your best flight to orbit took ${Math.round(best).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
   if(goal){if(vac<goal.need)out.push(['warn',`Short of orbit for ${goal.name}: ${f(vac)} of Δv against ${f(goal.need)} needed (${src})`]);
@@ -552,15 +552,15 @@ function launchWarnings(stack,aims=flightAims()){const out=[],{vac,air,goal,hand
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
-  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} can go end over end when it lights in the air (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa on a standard ascent): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
-  {const T=trimOf(s);if(T&&T.f>0.6)out.push(['warn',`Stage ${T.k} can't hold its course at full thrust: the thrust misses the centre of mass by ${(T.miss*100).toFixed(0)} cm (balance the other side, a counterweight, or deploy after the burn)`])}   // trim (Q337)
+  for(const a of airSep(stack))if(!a.holds)out.push(['warn',`Stage ${a.k} can go end over end when it lights in the air (about ${(a.h/1000).toFixed(0)} km and ${(a.q/1000).toFixed(0)} kPa): ${airWhy(a)}${a.fair?', the fairing up front':''}. ${airFix(a)}`]);   // Q342
+  {const T=trimOf(s);if(T&&T.f>0.6)out.push(['warn',`Stage ${T.k} can't hold its course at full thrust: the thrust misses the centre of mass by ${(T.miss*100).toFixed(0)} cm (balance it, or add a counterweight)`])}   // trim (Q337)
   // a payload fairing (Q337): what stands above its ring but isn't inside its outline meets the air
   for(const f of s.parts.filter(p=>p.profF)){const o=s.parts.filter(q=>q!==f&&!q.inFair&&q.y0>=f.y0+f.h-1e-6&&Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])<f.d.r+.5);
     if(o.length)out.push(['warn',`${o[0].d.name}${o.length>1?` and ${o.length-1} more part${o.length>2?'s':''}`:''} stick${o.length>1?'':'s'} out of the fairing: a longer shell, or a 2.5 m fairing (the part's options)`])}
   // left deployed in the Assembly (Q328): it rolls out that way
   const wg=s.parts.filter(p=>p.on&&unfolds(p.d)&&p.dep);if(wg.length){const nm=[...new Set(wg.map(p=>p.d.wing?'solar wing':'boom antenna'))].join(' and ');out.push(['warn',`${nm[0].toUpperCase()+nm.slice(1)}${wg.length>1?'s':''} deployed at launch: thick air tears ${wg.length>1?'them':'it'} off past ${(Math.min(...wg.map(p=>p.d.qMax))/1000).toFixed(1)} kPa (retract in the Assembly; P deploys in flight)`])}
-  if(s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep))out.push(['warn','Landing legs down at launch: they ride up extended (retract in the Assembly; Y raises and lowers them in flight)']);
-  if(s.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open))out.push(['warn','Cargo bay open at launch: the payload meets the air and its heat (close it in the Assembly; B in flight)']);
+  if(s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep))out.push(['warn','Landing legs down at launch (retract in the Assembly, or Y in flight)']);
+  if(s.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open))out.push(['warn','Cargo bay open at launch (close it in the Assembly, or B in flight)']);
   return out}
 // ---- the player's designs (vehicle session, Caio 2026-10-11): PROG.designs = {saved: [{name, stack, day}], launched:
 // [{stack, day, n, name}]}. Every launch files its design in `launched` (newest first, one entry per distinct design, its

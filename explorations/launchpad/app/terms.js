@@ -6,24 +6,24 @@
 // element carries Q340's self-explaining warnings (whyMark, below). A screen that redraws every frame (the HUD)
 // keeps the tooltip: it follows the pointer, not the element.
 const TERMS={
-  dv:{t:'Δv (delta-v)',d:'How much the rocket can still change its speed with the propellant on board, in m/s. Reaching orbit, a transfer, a landing: each costs Δv. In a stage row the first number is in vacuum, the second at sea level, where the engines push less.'},
-  twr:{t:'TWR (thrust-to-weight)',d:'Thrust divided by weight. Under 1 the stage can\'t lift itself; 1.2 to 1.6 is a good first stage; much more and the climb is fast through thick air, hard on the structure at max-q. An upper stage can be under 1: it is already flying.'},
-  maxq:{t:'Max-q',d:'The moment of greatest air pressure on the way up (q is dynamic pressure, in kPa): speed is climbing and the air hasn\'t thinned yet. Fins, joints and control are rated against it; a percentage is how much of a joint\'s certified limit it uses.'},
-  ap:{t:'Apoapsis (Ap)',d:'The highest point of the orbit. A prograde burn there raises the opposite side, the periapsis: it is where you finish an orbit.'},
-  pe:{t:'Periapsis (Pe)',d:'The lowest point of the orbit. Inside the air it won\'t last: the craft slows each pass and comes down. Raise it with a prograde burn at the apoapsis.'},
-  kh:{t:'Know-how',d:'What the team has learned about a part by building and flying it, in one bar. Low know-how means engines that fail to light, slower stacking and science that pays less; flights, the test stand and development projects raise it.'},
-  trim:{t:'Trim',d:'An engine whose thrust misses the centre of mass turns the craft, so the steering spends part of what it has holding it straight. The share it spends is the trim: under 20% is fine, near 100% leaves nothing for flying.'},
-  scale:{t:'The model\'s scale',d:'The rocket on the table is a scale model, like a kit: at 1:48, 1 cm of the model is 48 cm of the real rocket. The scale is the smallest kit scale that keeps the model under 45 cm, so a bigger design sits at a smaller scale. The table, the lamp and the little figure on the base plate (a real 1.8 m person) are drawn at the same scale.'},   // (flow, Q277)
+  dv:{t:'Δv (delta-v)',d:'How much the rocket can still change its speed, in m/s. Orbit, a transfer, a landing: each costs Δv. In a stage row: in vacuum, then at sea level.'},
+  twr:{t:'TWR (thrust-to-weight)',d:'Thrust divided by weight. Under 1 a first stage can\'t lift off; 1.2 to 1.6 is good. An upper stage can be under 1: it is already flying.'},
+  maxq:{t:'Max-q',d:'The greatest air pressure of the climb, in kPa. Fins, joints and control are rated against it; a percentage is the share of a joint\'s rating used.'},
+  ap:{t:'Apoapsis (Ap)',d:'The highest point of the orbit. A prograde burn there raises the periapsis: it is where you finish an orbit.'},
+  pe:{t:'Periapsis (Pe)',d:'The lowest point of the orbit. Inside the air, the craft slows each pass and comes down.'},
+  kh:{t:'Know-how',d:'What the team has learned about a part. Low: engines fail to light, stacking is slower, science pays less. Flights, the test stand and development raise it.'},
+  trim:{t:'Trim',d:'The share of steering spent holding straight against off-centre thrust. Under 20% is fine; near 100% leaves nothing for flying.'},
+  scale:{t:'The model\'s scale',d:'The rocket on the table is a scale model: at 1:48, 1 cm is 48 cm of rocket. The figure on the base plate is a 1.8 m person.'},   // (flow, Q277)
   // (flow, Q384) the words the flight, the map and the site picker use
-  soi:{t:'Sphere of influence (SOI)',d:'The region where one body\'s gravity rules the path. Leaving it is an escape: the craft goes on around that body\'s parent instead, a moon\'s sphere into the planet\'s, the planet\'s into the sun\'s. Entering a moon\'s is an encounter.'},
+  soi:{t:'Sphere of influence (SOI)',d:'The region where one body\'s gravity rules the path. Leaving it is an escape; entering a moon\'s is an encounter.'},
   // the SAS modes' four cut to half (Q492, Caio 2026-10-30: "let's have those cut down"; the design desk's texts)
   pro:{t:'Prograde',d:'The way you\'re moving. Burn here to speed up and raise the far side of the orbit.'},
   retro:{t:'Retrograde',d:'Against the way you\'re moving. Burn here to slow down and lower the far side: coming home, landing.'},
   nrm:{t:'Normal and anti-normal',d:'Square to the orbit\'s plane. Burn here to tilt the orbit; best where it crosses the equator.'},
   rad:{t:'Radial out and in',d:'Away from the centre, or towards it. Swings the orbit round; for small corrections.'},
-  inc:{t:'Inclination',d:'How far the orbit is tilted from the equator, in degrees: 0° flies over the equator, 90° over the poles. A launch due east from a site at latitude L gives an inclination of L, the lowest it can reach without paying for a turn.'},
-  spin:{t:'The ground\'s free speed',d:'The ground already moves east with the planet\'s turning, fastest at the equator. A rocket launched east keeps that speed for free; launched west it must undo it first.'},
-  stab:{t:'Stability margin',d:'How far the centre of mass sits ahead of the centre of pressure, in body widths (calibers). Positive: it flies nose-first like an arrow (0.5 and up is comfortable); negative: it wants to fly backwards and flips.'},
+  inc:{t:'Inclination',d:'The orbit\'s tilt from the equator: 0° over the equator, 90° over the poles. A launch due east gives the site\'s latitude, the lowest it reaches for free.'},
+  spin:{t:'The ground\'s free speed',d:'The ground moves east with the planet, fastest at the equator. A launch east keeps that speed; west must undo it.'},
+  stab:{t:'Stability margin',d:'How far the centre of mass sits ahead of the centre of pressure, in body widths (calibers). 0.5 and up is comfortable; negative, it flips.'},
 };
 const term=(k,txt)=>TERMS[k]?`<span class="term" data-term="${k}">${txt||TERMS[k].t}</span>`:(txt||k);
 // ---- warnings that explain themselves (QUEUE Q340, PROBES.md § 8, D22's Checks rows): an amber or red mark in the builder
