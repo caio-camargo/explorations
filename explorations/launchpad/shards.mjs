@@ -99,22 +99,24 @@ function withDeps(secs, picked) {
   return pulled;
 }
 
-// one runnable module: prelude, the picked sections in file order (each announcing itself), epilogue. Relative paths
-// are made absolute, since the module arrives on stdin.
+// one runnable module: prelude, the picked sections in file order (each announcing itself and starting on a fresh SIM,
+// test.mjs's `freshSim()`, R2), epilogue. Relative paths are made absolute, since the module arrives on stdin.
 function build(P, picked, url) {
-  const dir = url.slice(0, url.lastIndexOf('/') + 1), mark = s => `console.log(${JSON.stringify(`#SECTION ${s.ord} ${s.label}`)} + ' ' + performance.now().toFixed(0));`;
+  if (!/^function freshSim\(/m.test(P.prelude)) throw new Error("test.mjs's prelude has no freshSim() (R2)");
+  const dir = url.slice(0, url.lastIndexOf('/') + 1), mark = s => `console.log(${JSON.stringify(`#SECTION ${s.ord} ${s.label}`)} + ' ' + performance.now().toFixed(0)); freshSim();`;
   return [P.prelude, ...picked.map(s => mark(s) + '\n' + s.body), `console.log('#SECTION end - ' + performance.now().toFixed(0));`, P.epilogue]
     .join('\n').replaceAll('import.meta.url', JSON.stringify(url)).replace(/from '\.\//g, `from '${dir}`);
 }
 
-// run a module on a child node; resolves {code, out, secs: Map(ord → {ms, pass, fail: [names]})}
+// run a module on a child node; resolves {code, out, secs: Map(ord → {ms, pass, fail: [names], lines: [each check's line]})}
 function run(src, { echo = true } = {}) {
   return new Promise(res => {
     const ch = spawn(process.execPath, ['--input-type=module'], { stdio: ['pipe', 'pipe', 'inherit'] });
     const secs = new Map(); let cur = null, t0 = 0, buf = '', out = '';
     const line = l => {
       const m = /^#SECTION (\S+) \S+ (\d+)$/.exec(l);
-      if (m) { if (cur) cur.ms = +m[2] - t0; t0 = +m[2]; cur = m[1] === 'end' ? null : { ms: 0, pass: 0, fail: [] }; if (cur) secs.set(+m[1], cur); return; }
+      if (m) { if (cur) cur.ms = +m[2] - t0; t0 = +m[2]; cur = m[1] === 'end' ? null : { ms: 0, pass: 0, fail: [], lines: [] }; if (cur) secs.set(+m[1], cur); return; }
+      if (cur && /^(PASS|FAIL)  /.test(l)) cur.lines.push(l);
       if (cur && l.startsWith('PASS  ')) cur.pass++;
       if (cur && l.startsWith('FAIL  ')) cur.fail.push(l.slice(6).split('  — ')[0]);
       out += l + '\n'; if (echo) console.log(l);
@@ -188,28 +190,41 @@ async function parallel(P, picked, url, jobs) {
   return { code, fails, secs };
 }
 
-// Each picked section alone (plus what it pulls in) against the same section in one full run. A section whose checks
-// pass in the full run but not alone leans on state an earlier section left behind; one that passes alone but not in
-// the full run is disturbed by an earlier one. Both are worth fixing: shards only mean something if sections stand alone.
+// Each picked section alone (plus what it pulls in) against the same section in one run of all the picked sections
+// together (the full run with no selector, the smoke run with --smoke). A section whose checks pass together but not
+// alone leans on state an earlier section left behind; one that passes alone but not together is disturbed by an
+// earlier one. Since R2 (REVIEW-2026-11-11 § 3) it compares what every check *prints*, not only pass/fail, with
+// durations masked (a number followed by ms, µs or s): a value that moves with the order is the same defect before it
+// flips. Expect only random seeds and timings to differ. Exit 1 only when a check passes one way and fails the other,
+// or doesn't run. Run it before a milestone review, not in smoke (each section alone costs a process).
+const mask = l => l.replace(/\d+(\.\d+)? ?(ms|µs|s)\b/g, '<t>');
 async function isolation(P, picked, url, jobs) {
-  console.log(`full run…`);
-  const full = await run(build(P, P.secs, url), { echo: false }), diff = [];
-  console.log(`full run: exit ${full.code}; now ${picked.length} sections alone, ${jobs} at a time`);
+  const all = new Set(picked); withDeps(P.secs, all);
+  console.log(`${picked.length === P.secs.length ? 'full run' : `the ${picked.length} picked sections together`}…`);
+  const full = await run(build(P, P.secs.filter(s => all.has(s)), url), { echo: false }), diff = [];
+  console.log(`together: exit ${full.code}; now ${picked.length} sections alone, ${jobs} at a time`);
   const queue = [...picked];
   const worker = async () => {
     for (let s; (s = queue.shift());) {
       const own = new Set([s]); withDeps(P.secs, own);
       const r = await run(build(P, P.secs.filter(o => own.has(o)), url), { echo: false });
-      const a = r.secs.get(s.ord) || { pass: 0, fail: ['(did not run)'] }, f = full.secs.get(s.ord) || { pass: 0, fail: [] };
-      const same = a.pass === f.pass && a.fail.join('|') === f.fail.join('|') && (r.code === 0) === !a.fail.length;
-      console.log(`${same ? 'same' : 'DIFF'}  ${s.label.padEnd(10)} alone ${a.pass} pass ${a.fail.length} fail, full ${f.pass}/${f.fail.length}${fmt(a.ms).replace(/^ */, '  ')}  ${s.title.slice(0, 60)}`);
-      if (!same) diff.push({ s, a, f, code: r.code, tail: r.out.split('\n').slice(-8).join('\n') });
+      const a = r.secs.get(s.ord) || { pass: 0, fail: ['(did not run)'], lines: [] }, f = full.secs.get(s.ord) || { pass: 0, fail: ['(did not run)'], lines: [] };
+      const flip = a.pass !== f.pass || a.fail.join('|') !== f.fail.join('|') || (r.code === 0) !== !a.fail.length;
+      const n = Math.max(a.lines.length, f.lines.length), lines = [];
+      for (let i = 0; i < n; i++) if (mask(a.lines[i] ?? '(none)') !== mask(f.lines[i] ?? '(none)')) lines.push([f.lines[i] ?? '(none)', a.lines[i] ?? '(none)']);
+      const tag = flip ? 'FLIP' : lines.length ? 'diff' : 'same';
+      console.log(`${tag}  ${s.label.padEnd(10)} alone ${a.pass} pass ${a.fail.length} fail, together ${f.pass}/${f.fail.length}${lines.length ? `, ${lines.length} print differently` : ''}${fmt(a.ms).replace(/^ */, '  ')}  ${s.title.slice(0, 60)}`);
+      if (flip || lines.length) diff.push({ s, a, f, flip, lines, code: r.code, tail: r.out.split('\n').slice(-8).join('\n') });
     }
   };
   await Promise.all(Array.from({ length: jobs }, worker));
+  diff.sort((x, y) => x.s.ord - y.s.ord);
   for (const d of diff) {
-    console.log(`\n--- ${d.s.label} (${d.s.file}:${d.s.line}) ${d.s.title.slice(0, 80)}\n  alone fails: ${d.a.fail.join(' / ') || '-'}\n  full fails:  ${d.f.fail.join(' / ') || '-'}\n  alone exit ${d.code}; last lines:\n${d.tail}`);
+    console.log(`\n--- ${d.flip ? 'FLIP' : 'diff'} ${d.s.label} (${d.s.file}:${d.s.line}) ${d.s.title.slice(0, 80)}`);
+    for (const [f, a] of d.lines) console.log(`  together: ${f.slice(0, 240)}\n  alone:    ${a.slice(0, 240)}`);
+    if (d.flip) console.log(`  alone fails: ${d.a.fail.join(' / ') || '-'}\n  together fails: ${d.f.fail.join(' / ') || '-'}\n  alone exit ${d.code}; last lines:\n${d.tail}`);
   }
-  console.log(`\n${diff.length} of ${picked.length} sections behave differently alone`);
-  return diff.length ? 1 : 0;
+  const flips = diff.filter(d => d.flip).length;
+  console.log(`\n${picked.length} sections: ${flips} pass or fail differently alone, ${diff.length - flips} more print something different (seeds and timings are expected here)`);
+  return flips ? 1 : 0;
 }

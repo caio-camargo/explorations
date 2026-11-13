@@ -260,7 +260,7 @@ hands over to `shards.mjs`, which cuts the file into sections and runs a chosen 
 | `node test.mjs --skip 27,bodies-1` | everything but these (combines with `--only`) |
 | `node test.mjs --smoke --jobs 4` | everything but the five long flights (`SLOW` in `shards.mjs`): **22 s** in 4 processes, ~55–75 s in one |
 | `node test.mjs --times [--jobs 4]` | the full suite with the seconds per section |
-| `node test.mjs --isolation --jobs 4 [--only …]` | each section alone vs the same section in a full run; lists any whose checks change |
+| `node test.mjs --isolation --jobs 4 [--only …\|--smoke]` | each section alone vs the picked sections together; lists every check that prints differently (durations masked), exit 1 on a pass/fail flip (R2, v1.340) |
 
 **What a section is.** A comment at column 0, `// 12. Title` or `// control-3. Title`, up to the next one. Everything
 before the first (the SIM, `api`, `check`) and everything after `// ==== END OF SECTIONS` (the summary, the exit code)
@@ -1067,3 +1067,40 @@ full run; 0.6 s.
   next edit there; its one hit is R33. A *Proposed* line in QUEUE.
 - **Not done:** reference view 13 not re-shot (the shot changes: the capsule now flies throttle-off on retro hold); a
   look session with the GPU.
+
+## v1.340 — test sections run isolated: a fresh SIM before every section (2026-11-12, platform, QUEUE R2)
+
+Built as planned in [`REVIEW-2026-11-11.md`](../REVIEW-2026-11-11.md) § 3, steps 1 and 2; the prototype was
+`review/2026-11-11/iso.mjs`. Before this, every section in a process shared one SIM, so a section saw what the sections
+before it left (`PROG`, `HOME`, `RIVALS`, `TEST`, the clock, `S`, the hooks), and the same check could pass alone and fail
+in the full run, or the other way round, depending on how `--smoke` or `--jobs` dealt the sections. Three did on
+2026-11-12: **flow-38** ("ignition fails of 200: Normal 0" after the economy sections), **vehicle-43 (b)** and **§25's
+reliability** (ignition failures 0 % in a local smoke run): a section earlier in the process left `PROG` without a
+`wseed`, so every ignition roll was NaN (Q604 found it and pinned vehicle-43). **Which section:** §18 *career moves*
+(core.mjs:740), whose own `fresh()` deletes every `PROG` key and doesn't put `wseed` back (a test-only gap, not the
+game's). Reproduced on `main`: `--only 18,"know-how (economy)",flow-38,vehicle-43` fails reliability (0.0 % at know-how 0)
+and flow-38; on this branch it passes, and so does each section alone.
+- **Step 2, the fresh SIM.** `test.mjs`'s prelude builds the SIM with `fresh()` (the old `new Function(src…)()`); `api`
+  and the names destructured from it are `let`; `freshSim()` makes a new SIM, re-destructures them, empties `log` and
+  re-hooks `HOOK.msg`. `shards.mjs`'s `build()` puts `freshSim();` on each section's marker line, so it runs before
+  every section in every kind of run (full, `--smoke`, `--only`, `--jobs`, `--isolation`); `build()` refuses a prelude
+  without it. The world map stays shared (R5), so a build costs ~0.1 s, not the 0.5 s the plan measured.
+  **What still carries across sections:** top-level names (functions and consts a section declares; a section that uses
+  one pulls its declarer in, as before), `globalThis`, and `Math.random`.
+- **Step 1, `--isolation` compares what each check prints.** It runs the picked sections together (the full run with no
+  selector, the smoke set with `--smoke`), then each alone, and lists every check whose line differs, with durations
+  masked (a number before `ms`, `µs` or `s`). `FLIP` = passes one way, fails the other (exit 1); `diff` = same verdict,
+  different value (listed, exit 0: random seeds and timings are expected here). Run it before a milestone review, not in
+  smoke: `node test.mjs --isolation --smoke --jobs 4`.
+- **Step 3, lazily by lane (not done here):** the save/restore blocks and `resetHome()` calls sections carry for the old
+  sharing (`resetHome` 80 times: economy 50, core 20, flow 5, qa 4, space 1) are now no-ops: delete them when you next
+  touch the section. Done here for vehicle-43 only: the loop slices' save/restore of `kh`/`dev`/`lines` and Q604's
+  `wseed`/`TEST.kh` pin are gone, and (b) still finds its failure (flight 18) after §18 and alone. Keep pins that choose a value on purpose (`P.wseed = 4242`).
+- **Checked:** `node test.mjs --isolation --smoke --jobs 4` (347 sections, 4 min 50 s on this machine): **0 flips**, and
+  3 sections print something different, all random or timing: 37e (the atlas bakes in 17 vs 19 chunks), econ-34 and
+  aerofx-3 (fresh seeds drawn by `Math.random`, by design). The review measured 19 such checks before the change, 11 of
+  them state left by an earlier section. The 22 `SLOW` sections were not run alone here (CI's full run covers them
+  together). `--only econ,flow` (162 sections with what they pull in) passes on `main` and on this branch alike.
+- **For every lane:** a section starts on a new SIM, so set up in the section what it needs; don't count on an earlier
+  section's program, flights or know-how. A section that builds its own SIM (`new Function(src…)`, 170 of them) is
+  unchanged.
