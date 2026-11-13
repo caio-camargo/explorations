@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.31 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-10 · **Status**: for Caio to pick
+**Version**: 0.1.32 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -145,6 +145,33 @@ URL: `?view=stowed|deployed|fairing`, `&tab=checks|part|designs`, `&sel=bus|<par
 `&on=` / `&off=<parts>`, `&open=<check>`, `&still=1`. Numbers are illustrative.
 
 **Pick:** _(Caio; if silent: build from this page: the bench as a screen beside the Rover yard, after the pointing slice S2)_
+
+### bench/free.html: free attachment and the views (D47 points 1 and 2 → PROBES § 6.4, QUEUE Q605; vehicle, 2026-11-13)
+
+Open `bench/free.html` **and try it** (the feel of placing a part is the question, so the stills are only a record:
+`output/launchpad/mockups/bench/free-*.png`). A second page, so the 2026-10-13 bench above stays as it was; skins,
+stowed and deployed and the fairing are not in this one.
+- **The frame** (FRAME tab, or click the frame): triangle, square, hexagon, octagon; width and height sliders; the top
+  tapered down to 30 %. Parts keep their places as it changes.
+- **Placing**: click a part in the palette, move over the frame, click to put it down. It goes anywhere on a face, and
+  snaps to an **edge** or a **corner** near one (and to a face's middle lines); Shift holds the snapping off. Click a
+  placed part to pick it up again; right-click drops it; Esc puts it back.
+- **Tilt**, in 15° steps, while held or just placed: A / D across, W / S along, Q / E about its own axis, X straight.
+- **Symmetry** is off; *2* and *all sides* make copies round the long axis, per part.
+- **The view**: a part in hand shows its cone (camera, dish, panel, radiator, sensors) or its plume (thruster, kick
+  motor). What stands in it is outlined red and the blocked slices of the cone are red; the PART tab says how much
+  and by what. The kick motor shows its thrust line and how far it misses the balance point.
+- **The attitude** (top bar): ground-facing, sun-facing, spinning. The ground, the sun and the direction of travel are
+  drawn round the craft; the *orbit* slider (or ▶) carries it round, the sun going behind the ground for about a third
+  of the way. Each view is judged over the whole orbit ("sees the ground 14 % of the time").
+- **Checks** only has rows for what is on the craft: cameras, panels, radiators, the dish, sensors, plumes, the thrust
+  line, balance. Hover a row for its parts' views; *all views* shows every one.
+Stand-ins: "home" is the ground below; twelve parts with plain shapes; a part may tilt into the frame; the numbers are
+illustrative (a cone is 43 rays). URL: `?n=3|4|6|8`, `&w=`, `&h=`, `&top=`, `&att=ground|sun|spin`, `&th=`,
+`&demo=block|empty`, `&sel=<i>`, `&all=1`, `&tab=`, `&az=`, `&el=`, `&dist=`, `&still=1`.
+
+**Pick:** _(Caio: how placing feels; the tilt keys; whether the snapping helps; whether the cones read. The plan in
+`notes/vehicle.md` waits for it)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 

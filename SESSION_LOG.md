@@ -7705,3 +7705,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Here:** `docs/session-roles.md` § Studio names the second copy. No Launchpad file touched.
 - **Next (in `regent`):** design round 2, then its prototypes. The studio's template should start from that copy.
 - Files: root `docs/session-roles.md`, `SESSION_LOG.md`. No new durable files (INDEX unchanged).
+
+### 2026-11-13: vehicle session (Fable 5.2), Q605 step 1: a mock-up of the bench as its own builder (no game code)
+- **Asked:** Q605 (D47 points 1 and 2): a mock-up to try first, then the plan after Caio's reaction.
+- **Done:** `explorations/launchpad/mockups/bench/free.html`, a second page beside the 2026-10-13 bench: a frame of 3,
+  4, 6 or 8 sides, stretched and tapered; a part on any face, edge or corner, tilted in 15° steps; symmetry off by
+  default; a view cone per part with what blocks it marked; ground-facing, sun-facing and spinning attitudes that
+  draw the ground, the sun and the direction of travel, each view judged over an orbit. mockups/README § bench.
+- **Checked:** headless Chrome (`shot.mjs`), with synthetic pointer events: picking, snapping to a face, an edge and a
+  corner, tilting, putting back, the three attitudes, a frame change with parts on it, the Checks rows; six stills
+  in `output/launchpad/mockups/bench/free-*.png` (not in git).
+- **Not checked:** a real mouse in a real window (dragging the view, the wheel, right-click), window sizes other than
+  1280 × 800, a high-density screen; nobody has judged the feel, which is the point of it.
+- **Next:** Caio tries it; then the plan in `notes/vehicle.md` and the build slices under QUEUE *Proposed*. The claim stays open.
+- Files: launchpad `mockups/bench/free.html` (new), `mockups/README.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

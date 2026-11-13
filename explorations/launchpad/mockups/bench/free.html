@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payload bench: free attachment</title>
+<!-- Launchpad mock-up (vehicle session, 2026-11-13, D47 points 1 and 2 → PROBES § 6.4, QUEUE Q605). The bench as its own
+     builder: a frame to pick and stretch, a part on any face, edge or corner at a tilt in 15° steps, symmetry off by
+     default, each part's view cone while it is held with what blocks it, and a declared attitude that shows the ground,
+     the sun and the direction of travel. Never loaded by the game; numbers are illustrative. index.html beside it is the
+     2026-10-13 bench (skins, stowed and deployed, the fairing): none of that is here.
+     ?n=3|4|6|8 &w=<m> &h=<m> &top=<0.3..1> &att=ground|sun|spin &th=<0..1> &demo=block|empty &sel=<i> &all=1 &tab=checks|part|frame
+     &az= &el= &dist= &still=1 -->
+<style>
+:root{--bg:#0b1118;--pane:#0f1822f2;--line:#26384a;--ink:#d6e2ee;--dim:#7f93a8;--acc:#7fd0ff;--ok:#6fdc8c;--warn:#ffb84a;--bad:#ff6b5b;--chip:#16273a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:13px/1.45 ui-monospace,Consolas,"Cascadia Mono",monospace}
+.app{position:fixed;inset:0;min-width:1100px;background:radial-gradient(ellipse at 50% 40%,#18222d 0,#0c1219 60%,#070a0e 100%)}
+#cv{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.top{position:absolute;left:12px;right:12px;top:10px;height:40px;background:var(--pane);border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;gap:9px;padding:0 10px;white-space:nowrap}
+.top .ttl{color:var(--acc);letter-spacing:1px;font-weight:bold}
+.top .k{color:var(--dim)}.top b{color:var(--ink);font-weight:normal}
+.seg{display:flex;flex:none;border:1px solid #2c4560;border-radius:5px;overflow:hidden}
+.seg button{background:#13202d;border:0;color:var(--dim);font:inherit;font-size:12px;padding:3px 7px;cursor:pointer}
+.seg button.on{background:#16314a;color:var(--acc)}
+.seg button:disabled{opacity:.35;cursor:default}
+.tb{background:#16273a;border:1px solid #2c4560;color:var(--ink);border-radius:5px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer;flex:none}
+.tb.on{border-color:var(--acc);color:var(--acc)}
+.pane{position:absolute;top:58px;bottom:12px;background:var(--pane);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column}
+.left{left:12px;width:200px;padding:10px;overflow:hidden}
+.right{right:12px;width:330px}
+.cat{color:var(--dim);font-size:11px;letter-spacing:1.5px;margin:8px 0 4px}
+.cat:first-child{margin-top:0}
+.pi{display:flex;justify-content:space-between;align-items:center;padding:3px 7px;border:1px solid var(--line);border-radius:4px;margin-bottom:3px;cursor:pointer;font-size:12px}
+.pi:hover{border-color:var(--acc)}
+.pi.on{background:#13283b;border-color:var(--acc);color:var(--acc)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs div{flex:1;text-align:center;padding:8px 0;cursor:pointer;color:var(--dim);letter-spacing:1px;font-size:12px}
+.tabs div.on{color:var(--acc);border-bottom:2px solid var(--acc)}
+.body{padding:10px 12px;overflow:hidden;flex:1}
+.verdict{padding:6px 8px;border-radius:5px;margin-bottom:8px;display:flex;justify-content:space-between;font-weight:bold}
+.verdict.ok{background:#12301f;color:var(--ok)}.verdict.bad{background:#341613;color:var(--bad)}.verdict.warn{background:#33270f;color:var(--warn)}
+.row{border-bottom:1px solid #1b2a39;padding:6px 0;cursor:pointer}
+.rh{display:flex;gap:8px;align-items:flex-start}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.rt{flex:1}.rt .t{font-weight:bold}.rt .v{font-size:12px;color:#c3d0dc}.fix{color:var(--acc)}
+.more{display:none;margin:4px 0 2px 17px;font-size:11.5px;color:var(--dim)}
+.row.open .more{display:block}
+.more div{display:flex;gap:6px;align-items:baseline}.more .dot{margin:0;width:7px;height:7px}
+.small{font-size:11px;color:var(--dim)}
+.opt{margin:10px 0}
+.opt .l{color:var(--dim);font-size:11px;letter-spacing:1px;margin-bottom:3px}
+.opt button{background:#16273a;border:1px solid #2c4560;color:var(--ink);border-radius:4px;padding:2px 8px;font:inherit;font-size:12px;cursor:pointer;margin:0 3px 3px 0;min-width:30px}
+.opt button.on{border-color:var(--acc);color:var(--acc);background:#13283b}
+.opt button:disabled{opacity:.35;cursor:default}
+input[type=range]{width:170px;vertical-align:middle;accent-color:#7fd0ff}
+.top input[type=range]{width:84px;flex:none}
+.hint{position:absolute;left:224px;bottom:12px;background:var(--pane);border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:12px;color:var(--ink)}
+.msg{position:absolute;left:50%;top:64px;transform:translateX(-50%);background:#341613;border:1px solid var(--bad);color:var(--bad);border-radius:6px;padding:4px 10px;font-size:12px;display:none}
+.tip{position:absolute;left:220px;width:240px;background:#0c1520f7;border:1px solid var(--acc);border-radius:6px;padding:8px;font-size:12px;display:none;z-index:5}
+.lab{position:absolute;transform:translate(-50%,-50%);font-size:11px;letter-spacing:1px;pointer-events:none;text-shadow:0 0 4px #000,0 0 2px #000;white-space:nowrap}
+#lg{color:#6fc3ea}#ls{color:#ffd35a}#lv{color:#d6e2ee}#lsp{color:#b9a7ff}#lc{color:var(--bad)}
+.stat{display:flex;gap:8px;align-items:baseline;margin:6px 0}
+.stat .dot{margin:0}
+</style></head><body>
+<div class="app" id="app">
+<canvas id="cv"></canvas>
+<div class="top">
+  <span class="ttl">PAYLOAD BENCH</span>
+  <span class="k">mass <b id="mass">—</b></span><span class="k">balance <b id="com">—</b></span>
+  <span style="margin-left:auto" class="k">attitude</span>
+  <div class="seg" id="attSeg"><button data-v="ground" title="One side always faces the ground">ground-facing</button><button data-v="sun" title="One side always faces the sun">sun-facing</button><button data-v="spin" title="Spins about its long axis">spinning</button></div>
+  <span class="k">orbit</span><input type="range" id="th" min="0" max="1" step="0.005" title="Where it is on its orbit"><button class="tb" id="play" title="Run the orbit">▶</button>
+  <span class="k">symmetry</span>
+  <div class="seg" id="symSeg"><button data-v="1">off</button><button data-v="2" title="A copy on the opposite side">2</button><button data-v="N" title="A copy on every side">all sides</button></div>
+  <button class="tb" id="all" title="Show every part's view">all views</button>
+  <button class="tb" id="clr" title="Remove every part">clear</button>
+</div>
+<div class="pane left" id="pal"></div>
+<div class="tip" id="tip"></div>
+<div class="pane right">
+  <div class="tabs" id="tabs"><div data-t="checks">CHECKS</div><div data-t="part">PART</div><div data-t="frame">FRAME</div></div>
+  <div class="body" id="body"></div>
+</div>
+<div class="hint" id="hint"></div>
+<div class="msg" id="msg"></div>
+<div class="lab" id="lg">GROUND</div><div class="lab" id="ls">SUN</div><div class="lab" id="lv">TRAVEL</div><div class="lab" id="lsp">SPIN</div><div class="lab" id="lc"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const Q=new URLSearchParams(location.search),$=s=>document.querySelector(s),D=Math.PI/180,V=(x,y,z)=>new THREE.Vector3(x||0,y||0,z||0),YUP=V(0,1,0);
+const num=(k,d)=>Q.get(k)===null?d:+Q.get(k);
+// ---------------------------------------------------------------- state: a frame, and parts that sit anywhere on it
+const ST={bus:{n:num('n',6),w:num('w',.9),h:num('h',.8),top:num('top',1)},att:Q.get('att')||'ground',sym:1,th:num('th',.08),ps:0,play:false,
+  items:[],held:null,sel:null,tab:Q.get('tab')||'checks',open:null,hl:null,all:Q.get('all')==='1',az:num('az',38),el:num('el',14),dist:num('dist',0)};
+if(!ST.dist)ST.dist=6.4+Math.max(ST.bus.w,ST.bus.h)*1.6;
+// a part: mass kg; what it must see (need) inside a cone (half-angle, degrees); ap = where it looks from, ch = where its
+// mass sits, both along its own axis; fr = the room its foot takes. Its sentence follows UI.md § 2.1 (14 words).
+const PARTS={
+ panel:{cat:'POWER',n:'Solar panel',m:6,need:'power',cone:60,ap:.07,ch:.05,fr:.3,does:'Fixed cells. Power only while they face the sun.'},
+ batt:{cat:'POWER',n:'Battery',m:14,ch:.07,fr:.12,does:'Carries the craft through the shadow.'},
+ camW:{cat:'SEE',n:'Wide camera',m:8,need:'ground',cone:30,ap:.18,ch:.08,fr:.08,does:'Clouds and coastlines. Forgiving about where it looks.'},
+ camN:{cat:'SEE',n:'Narrow camera',m:22,need:'ground',cone:6,strict:1,ap:.44,ch:.2,fr:.1,does:'Sharp pictures, a small field. Needs a clear view of the ground.'},
+ whip:{cat:'TALK',n:'Whip antenna',m:1,ch:.4,fr:.03,does:'Talks in every direction, slowly.'},
+ dish:{cat:'TALK',n:'Dish',m:9,need:'home',cone:10,strict:1,ap:.3,ch:.15,fr:.12,does:'A fast link, only while it points home.'},
+ rad:{cat:'COOL',n:'Radiator',m:5,need:'cold',cone:60,ap:.09,ch:.05,fr:.25,does:'Sheds heat to cold space. Sun or ground on it warms it.'},
+ sunS:{cat:'POINT',n:'Sun sensor',m:.5,need:'sun',cone:60,ap:.06,ch:.02,fr:.05,does:'Finds the sun.'},
+ hor:{cat:'POINT',n:'Horizon sensor',m:2,need:'ground',cone:45,ap:.09,ch:.03,fr:.06,does:'Finds the ground below.'},
+ star:{cat:'POINT',n:'Star tracker',m:3,need:'dark',cone:25,ap:.21,ch:.1,fr:.05,does:'Reads the stars. The sun or the ground blinds it.'},
+ thr:{cat:'MOVE',n:'Thruster',m:2,need:'plume',cone:20,ap:.12,ch:.04,fr:.04,does:'A small push. Its plume burns what it touches.'},
+ kick:{cat:'MOVE',n:'Kick motor',m:30,need:'thrust',cone:15,ap:.57,ch:.25,fr:.22,does:'One big push. Aim it through the balance point.'},
+};
+const WANT={power:'the sun',ground:'the ground',home:'home',cold:'cold space',sun:'the sun',dark:'dark sky',plume:'a clear plume',thrust:'the balance point'};
+let uid=1;const item=(k,at,o)=>Object.assign({id:uid++,k,at,a:0,b:0,r:0,sym:1},o||{});
+// ---------------------------------------------------------------- three
+const cvs=$('#cv'),ren=new THREE.WebGLRenderer({canvas:cvs,antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setClearColor(0x000000,0);
+ren.outputEncoding=THREE.sRGBEncoding;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=.85;
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(32,1,.05,3000);
+const sunL=new THREE.DirectionalLight('#fff4e4',2.4);scene.add(sunL);scene.add(new THREE.HemisphereLight('#5a6680','#222c3b',1.5));
+const fillL=new THREE.DirectionalLight('#9fc0ff',.5);scene.add(fillL);
+function cvTex(w,h,f,rep=[1,1],srgb=true){const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...rep);if(srgb)t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
+const crinkle=cvTex(256,256,(g,w,h)=>{const d=g.createImageData(w,h);for(let i=0;i<w*h;i++){const x=i%w,y=i/w|0,v=128+60*Math.sin(x*.21+Math.sin(y*.13)*3)*Math.sin(y*.17+Math.sin(x*.09)*2)+40*(Math.random()-.5);d.data.set([v,v,v,255],i*4)}g.putImageData(d,0,0)},[2,2],false);
+const cellT=cvTex(128,128,(g,w,h)=>{g.fillStyle='#9aa2ab';g.fillRect(0,0,w,h);for(let i=0;i<4;i++)for(let j=0;j<4;j++){g.fillStyle=`hsl(225,55%,${14+Math.random()*6}%)`;g.fillRect(i*32+2,j*32+2,28,28)}},[2,2]);
+const std=o=>new THREE.MeshStandardMaterial(o),basic=(c,o)=>new THREE.MeshBasicMaterial(Object.assign({color:c,transparent:true,depthWrite:false},o||{}));
+const M={strut:std({color:'#c9ccd0',metalness:.45,roughness:.35}),dark:std({color:'#3c3f44',metalness:.5,roughness:.5}),white:std({color:'#efeee9',roughness:.6}),
+  whiteD:std({color:'#efeee9',roughness:.6,side:THREE.DoubleSide}),lens:std({color:'#0a0f1a',metalness:.9,roughness:.05}),cells:std({map:cellT,metalness:.35,roughness:.35}),
+  gold:std({color:'#c98a1e',metalness:.75,roughness:.3,bumpMap:crinkle,bumpScale:.004}),silver:std({color:'#dfe3e7',metalness:.5,roughness:.28,bumpMap:crinkle,bumpScale:.004}),
+  alu:std({color:'#f2f2f2',metalness:.6,roughness:.18}),solid:std({color:'#2e2a26',roughness:.8}),
+  wSel:basic('#7fd0ff',{wireframe:true,opacity:.22}),wBad:basic('#ff6b5b',{wireframe:true,opacity:.8}),
+  cone:{ok:basic('#7fd0ff',{opacity:.13,side:THREE.DoubleSide}),warn:basic('#ffb84a',{opacity:.16,side:THREE.DoubleSide}),bad:basic('#ff6b5b',{opacity:.16,side:THREE.DoubleSide})},
+  slice:basic('#ff6b5b',{opacity:.38,side:THREE.DoubleSide}),
+  rim:{ok:new THREE.LineBasicMaterial({color:'#7fd0ff'}),warn:new THREE.LineBasicMaterial({color:'#ffb84a'}),bad:new THREE.LineBasicMaterial({color:'#ff6b5b'})},
+  ray:new THREE.LineBasicMaterial({color:'#ff6b5b',transparent:true,opacity:.75}),pts:new THREE.PointsMaterial({color:'#ff6b5b',size:5,sizeAttenuation:false,depthTest:false}),
+  snap:new THREE.LineBasicMaterial({color:'#7fd0ff',depthTest:false}),axis:new THREE.LineDashedMaterial({color:'#4a6480',dashSize:.06,gapSize:.06}),
+  thrust:new THREE.LineDashedMaterial({color:'#ffb84a',dashSize:.08,gapSize:.05,depthTest:false}),miss:new THREE.LineBasicMaterial({color:'#ff6b5b',depthTest:false}),
+  com:basic('#ffd21e',{depthTest:false,opacity:1}),comK:basic('#111',{depthTest:false,opacity:1}),
+  tg:new THREE.LineDashedMaterial({color:'#6fc3ea',dashSize:.05,gapSize:.04}),ts:new THREE.LineDashedMaterial({color:'#ffd35a',dashSize:.05,gapSize:.04})};
+const mk=(g,m,p,r)=>{const x=new THREE.Mesh(g,m);if(p)x.position.set(...p);if(r)x.rotation.set(...r);return x};
+const cyl=(r,h,m,p,rot,seg=24,r2=r)=>mk(new THREE.CylinderGeometry(r2,r,h,seg),m,p,rot);
+const box=(w,h,d,m,p,rot)=>mk(new THREE.BoxGeometry(w,h,d),m,p,rot);
+function rod(A,B,r,m){const d=B.clone().sub(A),x=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),8),m);x.position.copy(A).add(B).multiplyScalar(.5);x.quaternion.setFromUnitVectors(YUP,d.normalize());return x}
+function dishG(Dm,depth){const pts=[];for(let i=0;i<=16;i++){const r=Dm/2*i/16;pts.push(new THREE.Vector2(r,depth*(r/(Dm/2))**2))}return new THREE.LatheGeometry(pts,40)}
+const line=(pts,mat)=>{const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat);if(mat.isLineDashedMaterial)l.computeLineDistances();return l};
+// every part is built with +Y as the way it looks (or pushes), standing on its foot at the origin
+const BUILD={
+ panel:g=>{g.add(box(.5,.012,.7,M.cells,[0,.062,0]));g.add(box(.5,.012,.7,M.white,[0,.05,0]));g.add(cyl(.015,.05,M.strut,[0,.025,0],null,8))},
+ batt:g=>g.add(box(.22,.14,.18,M.silver,[0,.07,0])),
+ camW:g=>{g.add(cyl(.07,.16,M.dark,[0,.08,0]));g.add(cyl(.05,.012,M.lens,[0,.166,0]))},
+ camN:g=>{g.add(cyl(.09,.42,M.white,[0,.21,0]));g.add(cyl(.07,.012,M.lens,[0,.426,0]))},
+ whip:g=>g.add(rod(V(),V(0,.9,0),.008,M.alu)),
+ dish:g=>{g.add(cyl(.02,.14,M.strut,[0,.07,0],null,8));g.add(mk(dishG(.7,.12),M.whiteD,[0,.14,0]));g.add(rod(V(0,.14,0),V(0,.36,0),.008,M.strut))},
+ rad:g=>{g.add(box(.42,.014,.5,M.white,[0,.05,0]));for(let i=-2;i<=2;i++)g.add(box(.006,.03,.5,M.white,[i*.09,.07,0]));g.add(cyl(.015,.05,M.strut,[0,.025,0],null,8))},
+ sunS:g=>{g.add(box(.07,.04,.07,M.dark,[0,.02,0]));g.add(cyl(.018,.01,M.lens,[0,.045,0]))},
+ hor:g=>{g.add(box(.09,.07,.09,M.dark,[0,.035,0]));g.add(cyl(.03,.012,M.lens,[0,.076,0]))},
+ star:g=>{g.add(cyl(.035,.1,M.dark,[0,.05,0]));g.add(cyl(.035,.1,M.dark,[0,.15,0],null,24,.06))},
+ thr:g=>{g.add(box(.05,.04,.05,M.strut,[0,.02,0]));g.add(cyl(.014,.07,M.dark,[0,.075,0],null,16,.04))},
+ kick:g=>{g.add(cyl(.21,.06,M.strut,[0,.03,0]));g.add(cyl(.2,.36,M.solid,[0,.24,0]));g.add(cyl(.07,.14,M.dark,[0,.49,0],null,20,.14))},
+};
+// ---------------------------------------------------------------- the frame: a prism of N sides, straight or tapered
+let FR;
+function mkFrame(){const b=ST.bus,N=b.n,R0=b.w/2,R1=R0*b.top,H=b.h,bot=[],top=[],m=k=>((k%N)+N)%N,F={},E={},C={};
+  for(let k=0;k<N;k++){const a=(k-.5)/N*2*Math.PI;bot.push(V(Math.cos(a)*R0,-H/2,Math.sin(a)*R0));top.push(V(Math.cos(a)*R1,H/2,Math.sin(a)*R1))}
+  for(let k=0;k<N;k++){const k1=m(k+1),n=V().crossVectors(top[k].clone().sub(bot[k]),bot[k1].clone().sub(bot[k])).normalize();
+    F['s'+k]={id:'s'+k,k,n,c:['cb'+k,'cb'+k1,'ct'+k1,'ct'+k],e:['v'+k,'v'+k1,'t'+k,'b'+k]};
+    E['v'+k]={a:bot[k],b:top[k],f:['s'+m(k-1),'s'+k]};E['t'+k]={a:top[k],b:top[k1],f:['s'+k,'top']};E['b'+k]={a:bot[k],b:bot[k1],f:['s'+k,'bot']};
+    C['cb'+k]={p:bot[k],f:['s'+m(k-1),'s'+k,'bot']};C['ct'+k]={p:top[k],f:['s'+m(k-1),'s'+k,'top']}}
+  F.top={id:'top',n:V(0,1,0),c:top.map((_,k)=>'ct'+k),e:top.map((_,k)=>'t'+k)};F.bot={id:'bot',n:V(0,-1,0),c:bot.map((_,k)=>'cb'+k),e:bot.map((_,k)=>'b'+k)};
+  FR={N,R0,R1,H,bot,top,F,E,C}}
+const sumN=fs=>{const n=V();fs.forEach(f=>n.add(FR.F[f].n));return n.normalize()};
+// where a part sits: {f, s, t} on a face, {e, t} along an edge, {c} on a corner. Returns the foot, the way out, a side.
+function resolve(at){const f=FR;let p,n,u;
+  if(at.c){const c=f.C[at.c];p=c.p.clone();n=sumN(c.f);u=V().crossVectors(YUP,n)}
+  else if(at.e){const e=f.E[at.e];p=e.a.clone().lerp(e.b,at.t);n=sumN(e.f);u=e.b.clone().sub(e.a)}
+  else if(at.f==='top'||at.f==='bot'){const R=at.f==='top'?f.R1:f.R0;p=V(at.s*R,at.f==='top'?f.H/2:-f.H/2,at.t*R);n=f.F[at.f].n.clone();u=V(1,0,0)}
+  else{const F=f.F[at.f],k=F.k,k1=(k+1)%f.N,A=f.bot[k].clone().lerp(f.top[k],at.t),B=f.bot[k1].clone().lerp(f.top[k1],at.t);p=A.lerp(B,at.s);n=F.n.clone();u=f.bot[k1].clone().sub(f.bot[k])}
+  u.addScaledVector(n,-u.dot(n));if(u.lengthSq()<1e-8){u.set(1,0,0);u.addScaledVector(n,-u.dot(n))}u.normalize();return{p,n,u}}
+const qAx=(x,y,z,deg)=>new THREE.Quaternion().setFromAxisAngle(V(x,y,z),deg*D);
+function quat(pl,it){const z=V().crossVectors(pl.u,pl.n),q=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(pl.u,pl.n,z));
+  return q.multiply(qAx(0,1,0,it.r)).multiply(qAx(1,0,0,it.b)).multiply(qAx(0,0,1,it.a))}
+// a point the mouse hit on a face → where the part sits; near an edge or a corner it snaps there (Shift: no snapping)
+function toAt(P,fid,free){const f=FR,F=f.F[fid],sn=Math.min(.09,Math.max(.035,.11*Math.min(ST.bus.w*Math.min(1,ST.bus.top+.3),ST.bus.h)));
+  if(!free){let bc=null,bd=sn*1.3;for(const c of F.c){const d=f.C[c].p.distanceTo(P);if(d<bd){bd=d;bc=c}}if(bc)return{c:bc};
+    let be=null,bt=0;bd=sn;for(const e of F.e){const E=f.E[e],ab=E.b.clone().sub(E.a),t=Math.max(0,Math.min(1,P.clone().sub(E.a).dot(ab)/ab.lengthSq())),d=E.a.clone().addScaledVector(ab,t).distanceTo(P);if(d<bd){bd=d;be=e;bt=t}}
+    if(be){if(Math.abs(bt-.5)<.07)bt=.5;return{e:be,t:bt}}}
+  if(fid==='top'||fid==='bot'){const R=fid==='top'?f.R1:f.R0;let s=P.x/R,t=P.z/R;if(!free&&Math.hypot(s,t)*R<sn)s=t=0;return{f:fid,s,t}}
+  const k=F.k,k1=(k+1)%f.N,t0=Math.max(0,Math.min(1,(P.y+f.H/2)/f.H)),A=f.bot[k].clone().lerp(f.top[k],t0),B=f.bot[k1].clone().lerp(f.top[k1],t0),ab=B.clone().sub(A);
+  let s=Math.max(0,Math.min(1,P.clone().sub(A).dot(ab)/ab.lengthSq())),t=t0;
+  if(!free){if(Math.abs(s-.5)*ab.length()<sn*.6)s=.5;if(Math.abs(t-.5)*f.H<sn*.6)t=.5}return{f:fid,s,t}}
+// the frame changed: keep every part where it was, as far as the new frame has such a place
+function fixAt(it){const N=FR.N,at=it.at,re=s=>s.replace(/\d+$/,d=>+d%N);if(!at)return;
+  if(at.c)at.c=re(at.c);else if(at.e)at.e=re(at.e);else if(at.f==='top'||at.f==='bot'){const ph=Math.atan2(at.t,at.s),st=2*Math.PI/N,dl=ph-Math.round(ph/st)*st,mx=Math.cos(Math.PI/N)/Math.cos(dl)*.98,r=Math.hypot(at.s,at.t);if(r>mx){at.s*=mx/r;at.t*=mx/r}}
+  else at.f=re(at.f);
+  if(it.sym>1&&(it.sym!==2||N%2))it.sym=it.sym===2?1:N}
+const symN=v=>v==='N'?FR.N:+v;
+// ---------------------------------------------------------------- the attitude: where the ground, the sun and travel are, seen from the craft
+// th = where it is on its orbit, ps = where it is in its spin (both in turns). The sun sits 20° off the orbit's plane;
+// the ground fills 65° either side of straight down (a low orbit), and hides the sun behind it for about a third of the way round.
+const BETA=20*D,GROUND=65*D;
+function env(att,th,ps){const c=Math.cos,s=Math.sin;let g,sn,v;th*=2*Math.PI;ps*=2*Math.PI;
+  if(att==='ground'){g=V(0,-1,0);v=V(1,0,0);sn=V(c(BETA)*s(th),c(BETA)*c(th),s(BETA))}
+  else if(att==='sun'){sn=V(0,1,0);const e2=V(0,c(BETA),-s(BETA));g=V(-s(th),0,0).addScaledVector(e2,-c(th));v=V(-c(th),0,0).addScaledVector(e2,s(th))}
+  else{g=V(-c(th),0,-s(th));v=V(s(th),0,-c(th));sn=V(c(BETA),s(BETA),0);[g,v,sn].forEach(x=>x.applyAxisAngle(YUP,-ps))}
+  return{g,s:sn,v,lit:sn.dot(g)<c(GROUND)}}
+const SMP={};
+function samples(att){if(SMP[att])return SMP[att];const o=[],nt=att==='spin'?16:72,np=att==='spin'?24:1;for(let i=0;i<nt;i++)for(let j=0;j<np;j++)o.push(env(att,(i+.5)/nt,j/np));return SMP[att]=o}
+// ---------------------------------------------------------------- the craft
+let craft=null,deco=null,INST=[],SOLID=[],FACES=[],MC={m:0,c:V(),off:0},OV=[];
+const RC=new THREE.Raycaster();
+function kill(g){if(!g)return;scene.remove(g);g.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
+function instances(){const out=[],add=(it,ghost)=>{if(!it.at)return;const pl=resolve(it.at),q0=quat(pl,it),m=it.sym||1;
+    for(let j=0;j<m;j++){const qy=new THREE.Quaternion().setFromAxisAngle(YUP,j/m*2*Math.PI),p=pl.p.clone().applyQuaternion(qy),q=qy.clone().multiply(q0),bore=V(0,1,0).applyQuaternion(q);
+      out.push({it,j,p,q,bore,ap:p.clone().addScaledVector(bore,PARTS[it.k].ap||0),ghost})}};
+  ST.items.forEach(it=>add(it,false));if(ST.held)add(ST.held,true);return out}
+function rebuild(){kill(craft);craft=new THREE.Group();SOLID=[];FACES=[];OV=[];const f=FR;
+  const tri=(pts,mat,id)=>{const g=new THREE.BufferGeometry().setFromPoints(pts);g.computeVertexNormals();const m=new THREE.Mesh(g,mat);m.userData.face=id;craft.add(m);SOLID.push(m);FACES.push(m)};
+  for(let k=0;k<f.N;k++){const k1=(k+1)%f.N;tri([f.bot[k],f.top[k],f.bot[k1],f.top[k],f.top[k1],f.bot[k1]],M.gold,'s'+k);
+    craft.add(rod(f.bot[k],f.top[k],.014,M.strut));craft.add(rod(f.bot[k],f.bot[k1],.014,M.strut));craft.add(rod(f.top[k],f.top[k1],.014,M.strut))}
+  const tp=[],bp=[],ct=V(0,f.H/2,0),cb=V(0,-f.H/2,0);for(let k=0;k<f.N;k++){const k1=(k+1)%f.N;tp.push(ct,f.top[k1],f.top[k]);bp.push(cb,f.bot[k],f.bot[k1])}
+  tri(tp,M.white,'top');tri(bp,M.silver,'bot');
+  INST=instances();
+  for(const I of INST){const g=new THREE.Group();BUILD[I.it.k](g);g.add(mk(new THREE.SphereGeometry(.022,10,6),M.strut));g.position.copy(I.p);g.quaternion.copy(I.q);
+    g.traverse(o=>{if(o.isMesh){o.userData.inst=I;SOLID.push(o)}});I.g=g;craft.add(g)}
+  scene.add(craft);craft.updateMatrixWorld(true);
+  // mass and the balance point (the held part counts, so the balance moves as it is dragged)
+  const b=ST.bus,bm=Math.round(30*b.w*b.w*Math.sqrt(b.h/.6)*(.5+.5*b.top))+4;let m=bm;const c=V();
+  for(const I of INST){const P=PARTS[I.it.k];m+=P.m;c.addScaledVector(I.p.clone().addScaledVector(I.bore,P.ch||0),P.m)}c.multiplyScalar(1/m);MC={m,bm,c,off:Math.hypot(c.x,c.z)*100};
+  // the held part may not stand in another part's room
+  if(ST.held&&ST.held.at){const H=INST.filter(I=>I.ghost);ST.held.clash=H.some(a=>INST.some(o=>o!==a&&!(o.ghost&&o.j>=a.j)&&a.p.distanceTo(o.p)<(PARTS[a.it.k].fr+PARTS[o.it.k].fr)*.85))}
+  for(const I of INST)I.ev=evalInst(I);
+  decorate();topBar();renderBody()}
+// the rays of a cone: its axis and three rings
+function coneDirs(bore,half){const out=[bore.clone()],a=Math.abs(bore.y)<.9?YUP:V(1,0,0),e1=V().crossVectors(bore,a).normalize(),e2=V().crossVectors(bore,e1);
+  for(const[fr,n]of[[.34,8],[.67,14],[.97,20]]){const al=half*fr;for(let i=0;i<n;i++){const ph=i/n*2*Math.PI;out.push(bore.clone().multiplyScalar(Math.cos(al)).addScaledVector(e1,Math.sin(al)*Math.cos(ph)).addScaledVector(e2,Math.sin(al)*Math.sin(ph)))}}return out}
+const pct=x=>Math.round(x*100)+' %';
+function evalInst(I){const P=PARTS[I.it.k];if(!P.need)return null;const ev={blocked:0,by:{},hits:[],bl:new Set(),st:'ok',line:'',fix:''},plume=P.need==='plume'||P.need==='thrust';
+  const dirs=coneDirs(I.bore,P.cone*D);let nb=0;ev.rim=[];
+  for(const[i,d]of dirs.entries()){RC.set(I.ap,d);RC.near=0;RC.far=plume?1.6:9;const h=RC.intersectObjects(SOLID,false).find(h=>h.object.userData.inst!==I);
+    if(i>=23)ev.rim.push(!!h);if(h){nb++;const o=h.object.userData.inst,nm=o?PARTS[o.it.k].n:'the frame';ev.by[nm]=(ev.by[nm]||0)+1;ev.hits.push(h.point.clone());if(o)ev.bl.add(o)}}
+  const B=ev.blocked=nb/dirs.length,who=()=>Object.entries(ev.by).sort((a,b)=>b[1]-a[1])[0][0],blk=()=>`${pct(Math.max(B,.01))} blocked by ${who()}`;
+  const S=samples(ST.att),cc=Math.cos(P.cone*D);let nG=0,nS=0,nLit=0,pw=0;
+  for(const e of S){if(I.bore.dot(e.g)>=cc)nG++;if(e.lit){nLit++;const cs=I.bore.dot(e.s);if(cs>=cc)nS++;if(cs>0)pw+=cs}}
+  const g=nG/S.length,s=nS/S.length,sl=nLit?nS/nLit:0;ev.pw=pw/S.length*(1-B);const set=(st,line,fix)=>{ev.st=st;ev.line=line;ev.fix=fix||''};
+  if(P.need==='ground'||P.need==='home'){const w=WANT[P.need];
+    if(g===0)set('bad',`never sees ${w}`,`Tilt it toward ${w}, or move it.`);
+    else if(B>0)set(P.strict||B>.5?'bad':'warn',blk(),'Move one of them, or tilt it clear.');
+    else if(g<1)set('warn',`sees ${w} ${pct(g)} of the time`,'Another attitude would hold it there.');
+    else set('ok',`sees ${w}`)}
+  else if(P.need==='sun'){if(sl===0)set('bad','never sees the sun','Tilt it toward the sun, or move it.');
+    else if(B>0)set(B>.5?'bad':'warn',blk(),'Move one of them, or tilt it clear.');
+    else set(sl<.3?'warn':'ok',`sees the sun ${pct(sl)} of the daylight`,sl<.3?'Tilt it toward the sun, or add a second.':'')}
+  else if(P.need==='power'){const t=`${pct(ev.pw)} of full sun`+(B>0?`, ${pct(Math.max(B,.01))} shaded by ${who()}`:'');
+    set(ev.pw<.05?'bad':ev.pw<.15||B>0?'warn':'ok',t,ev.pw<.15?'Face it to the sun.':B>0?'Move it clear of the shade.':'')}
+  else if(P.need==='cold'||P.need==='dark'){const vb=P.need==='cold'?'warms':'blinds';
+    if(g>0)set(g>.5?'bad':'warn',g===1?`the ground ${vb} it`:`the ground ${vb} it ${pct(g)} of the time`,'Turn it away from the ground.');
+    else if(s>0)set(s>.3?'bad':'warn',`the sun ${vb} it ${pct(s)} of the time`,'Turn it away from the sun.');
+    else if(B>0)set('warn',blk(),'Move one of them, or tilt it clear.');
+    else set('ok',`sees ${WANT[P.need]}`)}
+  else if(P.need==='plume'){if(B>0)set('bad',`its plume hits ${who()}`,'Move one of them, or tilt it clear.');else set('ok','its plume is clear')}
+  else{const d=MC.c.clone().sub(I.p),miss=d.clone().addScaledVector(I.bore,-d.dot(I.bore));ev.miss=miss.length()*100;ev.foot=MC.c.clone().sub(miss);
+    if(B>0)set('bad',`its plume hits ${who()}`,'Move one of them, or tilt it clear.');
+    else if(ev.miss>=2)set(ev.miss>=6?'bad':'warn',`misses the balance point by ${ev.miss.toFixed(1)} cm`,'Move the motor, or the heavy parts.');
+    else set('ok','pushes through the balance point')}
+  return ev}
+// what is drawn on top: the views of the parts in hand, what blocks them, the balance point, the thrust line
+function active(){const a=new Set();const it=ST.held||ST.sel;if(it)INST.forEach(I=>{if(I.it===it&&I.j===0)a.add(I)});
+  if(ST.hl)INST.forEach(I=>{if(ST.hl.includes(I.it.k))a.add(I)});if(ST.all)INST.forEach(I=>a.add(I));return[...a].filter(I=>I.ev)}
+function wire(g,mat){const add=[];g.traverse(o=>{if(o.isMesh&&!o.userData.ov)add.push(o)});for(const o of add){const e=new THREE.Mesh(o.geometry,mat);e.userData.ov=1;e.position.copy(o.position);e.quaternion.copy(o.quaternion);e.scale.copy(o.scale).multiplyScalar(1.05);o.parent.add(e);OV.push(e)}}
+function decorate(){kill(deco);deco=new THREE.Group();OV.forEach(o=>o.parent&&o.parent.remove(o));OV=[];const E=env(ST.att,ST.th,ST.ps),A=active(),bl=new Set();
+  for(const I of A){const P=PARTS[I.it.k],ev=I.ev,plume=P.need==='plume'||P.need==='thrust',L=plume?1.2:1.5,h=L*Math.cos(P.cone*D),r=L*Math.sin(P.cone*D);
+    const cg=new THREE.ConeGeometry(r,h,48,1,true);cg.rotateX(Math.PI);cg.translate(0,h/2,0);const st=plume?(ev.blocked>0?'bad':'warn'):ev.st,c=new THREE.Mesh(cg,M.cone[st]);
+    const rim=[];for(let i=0;i<=48;i++){const a=i/48*2*Math.PI;rim.push(V(Math.cos(a)*r,h,Math.sin(a)*r))}const q=new THREE.Quaternion().setFromUnitVectors(YUP,I.bore),grp=new THREE.Group();
+    grp.add(c,line(rim,M.rim[st]),line([V(),V(0,h,0)],M.rim[st]));grp.position.copy(I.ap);grp.quaternion.copy(q);deco.add(grp);
+    if(ev.hits.length){const pts=[];ev.hits.forEach(p=>pts.push(I.ap,p));deco.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),M.ray));deco.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(ev.hits),M.pts))}
+    // the part of the view that is blocked, as red slices of the cone
+    {const a0=Math.abs(I.bore.y)<.9?YUP:V(1,0,0),e1=V().crossVectors(I.bore,a0).normalize(),e2=V().crossVectors(I.bore,e1),n=ev.rim.length,al=P.cone*D,pts=[];
+      const at=ph=>I.ap.clone().addScaledVector(I.bore,L*Math.cos(al)).addScaledVector(e1,L*Math.sin(al)*Math.cos(ph)).addScaledVector(e2,L*Math.sin(al)*Math.sin(ph));
+      ev.rim.forEach((b,i)=>{if(b)pts.push(I.ap,at((i-.5)/n*2*Math.PI),at((i+.5)/n*2*Math.PI))});if(pts.length)deco.add(new THREE.Mesh(new THREE.BufferGeometry().setFromPoints(pts),M.slice))}
+    ev.bl.forEach(o=>bl.add(o));
+    // a line from the part toward what it wants (or must not see), as it is now on the orbit
+    const tg=P.need==='ground'||P.need==='home'||P.need==='cold'||P.need==='dark',ts=P.need==='sun'||P.need==='power'||P.need==='cold'||P.need==='dark';
+    if(tg)deco.add(line([I.ap,I.ap.clone().addScaledVector(E.g,L)],M.tg));if(ts&&E.lit)deco.add(line([I.ap,I.ap.clone().addScaledVector(E.s,L)],M.ts));
+    if(P.need==='thrust'){deco.add(line([I.p.clone().addScaledVector(I.bore,-2.2),I.p.clone().addScaledVector(I.bore,.6)],M.thrust));if(ev.miss>=.5)deco.add(line([MC.c,ev.foot],M.miss))}}
+  bl.forEach(o=>wire(o.g,M.wBad));
+  const it=ST.held||ST.sel;if(it)INST.forEach(I=>{if(I.it===it&&!bl.has(I))wire(I.g,ST.held&&ST.held.clash?M.wBad:M.wSel)});
+  // where the held part has snapped: its edge, or its corner
+  if(ST.held&&ST.held.at){const at=ST.held.at;if(at.e){const e=FR.E[at.e];deco.add(line([e.a,e.b],M.snap))}
+    else if(at.c){const p=FR.C[at.c].p,m=mk(new THREE.SphereGeometry(.03,12,8),basic('#7fd0ff',{depthTest:false,opacity:.9}));m.position.copy(p);deco.add(m)}}
+  // the long axis, and the balance point
+  const R=reach();deco.add(line([V(0,-R,0),V(0,R,0)],M.axis));
+  if(INST.length){const cm=new THREE.Group();cm.add(mk(new THREE.SphereGeometry(.04,16,12,0,Math.PI/2),M.com),mk(new THREE.SphereGeometry(.04,16,12,Math.PI/2,Math.PI/2),M.comK),mk(new THREE.SphereGeometry(.04,16,12,Math.PI,Math.PI/2),M.com),mk(new THREE.SphereGeometry(.04,16,12,Math.PI*1.5,Math.PI/2),M.comK));
+    cm.traverse(o=>o.renderOrder=9);cm.position.copy(MC.c);deco.add(cm)}
+  scene.add(deco)}
+const reach=()=>Math.max(ST.bus.w/2,ST.bus.h/2)+.85;
+// ---------------------------------------------------------------- the world round the craft: the ground, the sun, the way it travels
+const sunT=cvTex(128,128,(g,w,h)=>{const r=g.createRadialGradient(64,64,4,64,64,64);r.addColorStop(0,'#fffbe8');r.addColorStop(.25,'#ffe27a');r.addColorStop(.5,'#ffb93060');r.addColorStop(1,'#ffb93000');g.fillStyle=r;g.fillRect(0,0,w,h)});
+const sunS=new THREE.Sprite(new THREE.SpriteMaterial({map:sunT,transparent:true,depthWrite:false}));sunS.scale.set(150,150,1);scene.add(sunS);
+const GR=40*Math.sin(GROUND)/(1-Math.sin(GROUND)),ground=mk(new THREE.SphereGeometry(GR,96,48),new THREE.MeshLambertMaterial({color:'#0f2c40',emissive:'#050d14'}));scene.add(ground);
+const arrow=c=>{const a=new THREE.ArrowHelper(V(0,1,0),V(),.45,c,.13,.07);scene.add(a);return a},aG=arrow('#6fc3ea'),aS=arrow('#ffd35a'),aV=arrow('#d6e2ee');
+const spinA=new THREE.Group();{const m=basic('#b9a7ff',{opacity:.9}),t=mk(new THREE.TorusGeometry(.28,.01,8,40,4.6),m,null,[Math.PI/2,0,0]);const h=mk(new THREE.ConeGeometry(.04,.12,12),m,[.28,0,0],[Math.PI/2,0,0]);spinA.add(t,h);scene.add(spinA)}
+function place(el,p,show){const v=p.clone().project(cam),ok=show&&v.z<1;el.style.display=ok?'block':'none';if(ok){el.style.left=((v.x+1)/2*W)+'px';el.style.top=((1-v.y)/2*H)+'px'}}
+function drawEnv(){const E=env(ST.att,ST.th,ST.ps),R=reach();
+  sunL.position.copy(E.s).multiplyScalar(10);sunL.intensity=E.lit?2.4:.12;fillL.position.copy(E.s).multiplyScalar(-6).add(V(0,3,0));
+  sunS.position.copy(E.s).multiplyScalar(900);ground.position.copy(E.g).multiplyScalar(40+GR);
+  for(const[a,d]of[[aG,E.g],[aS,E.s],[aV,E.v]]){a.position.copy(d).multiplyScalar(R);a.setDirection(d)}
+  aS.visible=E.lit;spinA.visible=ST.att==='spin';spinA.position.set(0,R*.92,0);
+  place($('#lg'),E.g.clone().multiplyScalar(R+.6),true);place($('#ls'),E.s.clone().multiplyScalar(R+.6),true);$('#ls').textContent=E.lit?'SUN':'SUN (HIDDEN)';
+  place($('#lv'),E.v.clone().multiplyScalar(R+.62),true);place($('#lsp'),V(0,R*.92+.14,0),ST.att==='spin');
+  const k=INST.find(I=>I.ev&&I.ev.miss>=.5&&(ST.held||ST.sel)===I.it);place($('#lc'),k?MC.c.clone().lerp(k.ev.foot,.5).add(V(0,.08,0)):V(),!!k);if(k)$('#lc').textContent=k.ev.miss.toFixed(1)+' cm'}
+// ---------------------------------------------------------------- panels (copy: UI.md § 2.1)
+const ROWS=[['Cameras see the ground',['camW','camN']],['Panels face the sun',['panel']],['Radiators face cold space',['rad']],['Dish points home',['dish']],['Sensors see their marks',['sunS','hor','star']],['Plumes are clear',['thr']],['Thrust through the balance point',['kick']]];
+const RK={ok:0,warn:1,bad:2};
+function rows(){const out=[];for(const[t,ks]of ROWS){const L=INST.filter(I=>!I.ghost&&ks.includes(I.it.k));if(!L.length)continue;const w=L.slice().sort((a,b)=>RK[b.ev.st]-RK[a.ev.st]),x=w[0],nf=w.filter(I=>I.ev.st!=='ok').length;
+    out.push({t,ks,s:x.ev.st,v:`${PARTS[x.it.k].n}: ${x.ev.line}.`+(nf>1?` <span class="small">+${nf-1} more</span>`:''),fix:x.ev.fix,L:w})}
+  if(INST.some(I=>!I.ghost)){const o=MC.off;out.push({t:'Balanced on its axis',ks:[],s:o<2?'ok':o<6?'warn':'bad',v:`${o.toFixed(1)} cm off the axis.`,fix:o<2?'':'Move heavy parts opposite each other.',L:[]})}return out}
+const sitsOn=at=>!at?'not placed':at.c?'a corner':at.e?'an edge':at.f==='top'?'the top face':at.f==='bot'?'the bottom face':'a side face';
+function renderPal(){const cats={};for(const[id,p]of Object.entries(PARTS))(cats[p.cat]=cats[p.cat]||[]).push([id,p]);const b=ST.bus;
+  let h='<div class="cat">FRAME</div><div class="pi" data-p="bus">'+['','','','triangle','square','','hexagon','','octagon'][b.n]+' · '+b.w.toFixed(1)+' × '+b.h.toFixed(1)+' m</div>';
+  for(const[c,list]of Object.entries(cats)){h+=`<div class="cat">${c}</div>`;for(const[id,p]of list)h+=`<div class="pi${ST.held&&ST.held.k===id?' on':''}" data-p="${id}">${p.n}</div>`}
+  $('#pal').innerHTML=h;
+  document.querySelectorAll('.pi').forEach(e=>{const id=e.dataset.p;e.onclick=()=>{if(id==='bus'){drop();ST.sel=null;ST.tab='frame';renderAll();return}
+      drop();ST.held=item(id,null,{sym:ST.sym,isNew:true});ST.sel=null;ST.tab='part';renderAll()};
+    e.onmouseenter=()=>{if(id==='bus')return;const p=PARTS[id],t=$('#tip');t.innerHTML=`<b>${p.n}</b><br>${p.does}<br><span class="small">${p.m} kg${p.need?' · wants '+WANT[p.need]:''}</span>`;t.style.top=(e.getBoundingClientRect().top)+'px';t.style.display='block'};
+    e.onmouseleave=()=>$('#tip').style.display='none'})}
+function renderBody(){document.querySelectorAll('#tabs div').forEach(d=>d.classList.toggle('on',d.dataset.t===ST.tab));const B=$('#body');
+  if(ST.tab==='checks'){const R=rows(),bad=R.filter(r=>r.s==='bad').length,warn=R.filter(r=>r.s==='warn').length;
+    B.innerHTML=(R.length?`<div class="verdict ${bad?'bad':warn?'warn':'ok'}"><span>${bad?bad+' TO FIX':warn?warn+' TO WATCH':'ALL CLEAR'}</span><span>${R.filter(r=>r.s==='ok').length} of ${R.length} ok</span></div>`:'<div class="small">No parts yet.</div>')+
+    R.map((r,i)=>`<div class="row${ST.open===r.t?' open':''}" data-i="${i}"><div class="rh"><span class="dot ${r.s}"></span><div class="rt"><div class="t">${r.t}</div><div class="v">${r.v}${r.fix?` <span class="fix">${r.fix}</span>`:''}</div></div></div>
+      <div class="more">${r.L.map(I=>`<div><span class="dot ${I.ev.st}"></span><span>${PARTS[I.it.k].n}: ${I.ev.line}</span></div>`).join('')}</div></div>`).join('');
+    B.querySelectorAll('.row').forEach(e=>{const r=R[+e.dataset.i];e.onclick=()=>{ST.open=ST.open===r.t?null:r.t;renderBody()};e.onmouseenter=()=>{ST.hl=r.ks;decorate()};e.onmouseleave=()=>{ST.hl=null;decorate()}})}
+  else if(ST.tab==='part'){const it=ST.held||ST.sel;if(!it){B.innerHTML='<div class="small">No part chosen.</div>';return}
+    const P=PARTS[it.k],I=INST.find(x=>x.it===it&&x.j===0),ev=I&&I.ev,N=FR.N,bt=(k,d,l,tip)=>`<button data-k="${k}" data-d="${d}" title="${tip}">${l}</button>`;
+    B.innerHTML=`<div style="font-weight:bold;color:var(--acc)">${P.n}</div><div class="v" style="margin:4px 0 6px">${P.does}</div>
+      <div class="small">${P.m} kg · on ${sitsOn(it.at)}</div>
+      ${ev?`<div class="stat"><span class="dot ${ev.st}"></span><span>${ev.line[0].toUpperCase()+ev.line.slice(1)}. <span class="fix">${ev.fix}</span></span></div>`:''}
+      ${ST.held&&ST.held.clash?'<div class="stat"><span class="dot bad"></span><span>No room here.</span></div>':''}
+      <div class="opt"><div class="l">TILT · ${it.a}° across, ${it.b}° along</div>${bt('a',-15,'◄ A','Tilt left · A')}${bt('a',15,'D ►','Tilt right · D')}${bt('b',-15,'▲ W','Tilt up · W')}${bt('b',15,'S ▼','Tilt down · S')}</div>
+      <div class="opt"><div class="l">TURN · ${it.r}°</div>${bt('r',-15,'⟲ Q','Turn about its own axis · Q')}${bt('r',15,'E ⟳','Turn about its own axis · E')}<button data-k="x" title="Stand it straight again · X">straight · X</button></div>
+      <div class="opt"><div class="l">COPIES</div><button data-sym="1" class="${it.sym===1?'on':''}">one</button><button data-sym="2" class="${it.sym===2?'on':''}" ${N%2?'disabled':''}>2</button><button data-sym="${N}" class="${it.sym===N?'on':''}">${N}</button></div>
+      <button class="tb" id="rm" title="Remove it · Delete">remove</button>`;
+    B.querySelectorAll('[data-k]').forEach(e=>e.onclick=()=>tilt(e.dataset.k,+e.dataset.d));
+    B.querySelectorAll('[data-sym]').forEach(e=>e.onclick=()=>{it.sym=+e.dataset.sym;rebuild()});$('#rm').onclick=()=>remove()}
+  else{const b=ST.bus;B.innerHTML=`<div style="font-weight:bold;color:var(--acc)">The frame</div><div class="small">${MC.bm} kg. Parts keep their places as it changes.</div>
+      <div class="opt"><div class="l">SHAPE</div>${[3,4,6,8].map(n=>`<button data-n="${n}" class="${b.n===n?'on':''}">${n===3?'triangle':n===4?'square':n===6?'hexagon':'octagon'}</button>`).join('')}</div>
+      <div class="opt"><div class="l">WIDTH · <span id="wv">${b.w.toFixed(1)} m</span></div><input type="range" min="0.3" max="3" step="0.1" value="${b.w}" id="wR"></div>
+      <div class="opt"><div class="l">HEIGHT · <span id="hv">${b.h.toFixed(1)} m</span></div><input type="range" min="0.2" max="3" step="0.1" value="${b.h}" id="hR"></div>
+      <div class="opt"><div class="l">TOP · <span id="tv">${b.top===1?'straight':'tapered to '+pct(b.top)}</span></div><input type="range" min="0.3" max="1" step="0.05" value="${b.top}" id="tR"> <button id="str" class="${b.top===1?'on':''}">straight</button></div>`;
+    B.querySelectorAll('[data-n]').forEach(e=>e.onclick=()=>{ST.bus.n=+e.dataset.n;reframe();renderAll()});
+    const sl=(id,k,lab,f)=>{const el=$(id);el.oninput=()=>{ST.bus[k]=+el.value;$(lab).textContent=f(ST.bus[k]);reframe();rebuildLite()};el.onchange=()=>renderAll()};
+    sl('#wR','w','#wv',v=>v.toFixed(1)+' m');sl('#hR','h','#hv',v=>v.toFixed(1)+' m');sl('#tR','top','#tv',v=>v===1?'straight':'tapered to '+pct(v));
+    $('#str').onclick=()=>{ST.bus.top=1;reframe();renderAll()}}}
+let lite=false;function rebuildLite(){lite=true;rebuild();lite=false}   // while a slider moves, leave the panel's own controls alone
+const _rb=renderBody;renderBody=function(){if(lite&&ST.tab==='frame')return;_rb()};
+function reframe(){mkFrame();ST.items.forEach(fixAt);if(ST.held)fixAt(ST.held);if(ST.sym>1&&(ST.sym!==2||FR.N%2))ST.sym=1}
+function topBar(){$('#mass').textContent=MC.m+' kg';$('#com').textContent=MC.off<2?'on axis':MC.off.toFixed(1)+' cm off';
+  document.querySelectorAll('#attSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===ST.att));
+  document.querySelectorAll('#symSeg button').forEach(b=>{const v=symN(b.dataset.v);b.classList.toggle('on',v===ST.sym&&!(b.dataset.v==='2'&&FR.N===2));if(b.dataset.v==='2')b.disabled=FR.N%2===1});
+  $('#all').classList.toggle('on',ST.all);$('#play').classList.toggle('on',ST.play);$('#play').textContent=ST.play?'❚❚':'▶';
+  $('#hint').textContent=ST.held?'Click the frame to place it.':ST.items.length?'':'Pick a part.';$('#hint').style.display=$('#hint').textContent&&!Q.get('still')?'block':'none'}
+function renderAll(){renderPal();rebuild()}
+let msgT=0;function say(t){const m=$('#msg');m.textContent=t;m.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>m.style.display='none',1600)}
+// ---------------------------------------------------------------- hands: pick up, tilt, put down
+function drop(){const h=ST.held;if(!h)return;ST.held=null;if(h.back){Object.assign(h,h.back);delete h.back;delete h.stick;delete h.clash;ST.items.push(h)}}   // put a held part back where it was (a new one just goes)
+function remove(){if(ST.held)ST.held=null;else if(ST.sel){ST.items=ST.items.filter(i=>i!==ST.sel);ST.sel=null}ST.tab='checks';renderAll()}
+function tilt(k,d){const it=ST.held||ST.sel;if(!it)return;if(k==='x'){it.a=it.b=it.r=0}else if(k==='r')it.r=((it.r+d)%360+360)%360;else it[k]=Math.max(-90,Math.min(90,it[k]+d));rebuild()}
+document.querySelectorAll('#tabs div').forEach(d=>d.onclick=()=>{ST.tab=d.dataset.t;renderBody()});
+document.querySelectorAll('#attSeg button').forEach(b=>b.onclick=()=>{ST.att=b.dataset.v;rebuild()});
+document.querySelectorAll('#symSeg button').forEach(b=>b.onclick=()=>{ST.sym=symN(b.dataset.v);if(ST.held&&ST.held.isNew)ST.held.sym=ST.sym;rebuild()});
+$('#all').onclick=()=>{ST.all=!ST.all;decorate();topBar()};$('#clr').onclick=()=>{ST.items=[];ST.held=ST.sel=null;ST.tab='checks';renderAll()};
+$('#th').value=ST.th;$('#th').oninput=()=>{ST.th=+$('#th').value;decorate()};$('#play').onclick=()=>{ST.play=!ST.play;topBar()};
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type!=='range')return;const k=e.key.toLowerCase(),T={a:['a',-15],d:['a',15],w:['b',-15],s:['b',15],q:['r',-15],e:['r',15],x:['x',0]}[k];
+  if(T){tilt(...T);e.preventDefault()}else if(k==='escape'){if(ST.held){const h=ST.held;drop();ST.sel=h.back===undefined&&ST.items.includes(h)?h:null}else ST.sel=null;if(!ST.sel)ST.tab='checks';renderAll()}
+  else if(k==='delete'||k==='backspace'){remove();e.preventDefault()}});
+const ND=new THREE.Vector2();let down=null,moved=0;
+function hit(e){const r=cvs.getBoundingClientRect();ND.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);RC.setFromCamera(ND,cam);RC.near=0;RC.far=Infinity;return RC}
+cvs.onpointerdown=e=>{down=[e.clientX,e.clientY];moved=0;try{cvs.setPointerCapture(e.pointerId)}catch(_){}};
+cvs.onpointermove=e=>{if(down){const dx=e.clientX-down[0],dy=e.clientY-down[1];moved+=Math.abs(dx)+Math.abs(dy);if(moved>4){ST.az+=dx*.4;ST.el=Math.max(-85,Math.min(85,ST.el+dy*.3));setCam()}down=[e.clientX,e.clientY];return}
+  const h=ST.held;if(!h)return;if(h.stick){if(Math.hypot(e.clientX-h.stick[0],e.clientY-h.stick[1])<7)return;h.stick=null}
+  const x=hit(e).intersectObjects(FACES,false)[0];h.at=x?toAt(x.point,x.object.userData.face,e.shiftKey):null;rebuild()};
+cvs.onpointerup=e=>{const was=down;down=null;if(!was||moved>4)return;if(e.button===2)return;const h=ST.held;
+  if(h){if(!h.at){return}if(h.clash){say('No room here.');return}delete h.back;delete h.stick;delete h.isNew;ST.items.push(h);ST.held=null;ST.sel=h;ST.tab='part';renderAll();return}
+  const x=hit(e).intersectObjects(SOLID,false)[0],I=x&&x.object.userData.inst;
+  if(I){const it=I.it;ST.items=ST.items.filter(i=>i!==it);it.back={at:Object.assign({},it.at),a:it.a,b:it.b,r:it.r,sym:it.sym};it.stick=[e.clientX,e.clientY];ST.held=it;ST.sel=null;ST.tab='part'}
+  else{ST.sel=null;ST.tab=x?'frame':'checks'}renderAll()};
+cvs.oncontextmenu=e=>{e.preventDefault();if(ST.held){ST.held=null;ST.tab='checks';renderAll();return}const x=hit(e).intersectObjects(SOLID,false)[0],I=x&&x.object.userData.inst;if(I){ST.items=ST.items.filter(i=>i!==I.it);if(ST.sel===I.it)ST.sel=null;renderAll()}};
+cvs.onwheel=e=>{e.preventDefault();ST.dist=Math.max(2.5,Math.min(16,ST.dist*(e.deltaY>0?1.1:.91)));setCam()};
+// ---------------------------------------------------------------- view
+let W=1280,H=800;
+function setCam(){const a=ST.az*D,e=ST.el*D,s=ST.dist;cam.aspect=W/H;cam.position.set(s*Math.cos(e)*Math.cos(a),s*Math.sin(e),s*Math.cos(e)*Math.sin(a));cam.lookAt(0,0,0);
+  cam.setViewOffset(W,H,(342-212)/2,0,W,H);cam.updateProjectionMatrix();cam.updateMatrixWorld(true)}   // centre the craft between the panes
+function size(){W=Math.max(1100,innerWidth);H=innerHeight;ren.setPixelRatio(Math.min(2,devicePixelRatio||1));ren.setSize(W,H,false);setCam()}
+addEventListener('resize',size);
+let last=0;function tick(t){const dt=Math.min(.1,(t-last)/1000);last=t;if(ST.play){ST.th=(ST.th+dt/24)%1;ST.ps=(ST.ps+dt/5)%1;$('#th').value=ST.th;decorate()}drawEnv();ren.render(scene,cam);requestAnimationFrame(tick)}
+// ---------------------------------------------------------------- a first craft to change (?demo=empty for none)
+mkFrame();
+const demo=Q.get('demo');
+if(demo==='block')ST.items=[item('camW',{f:'bot',s:.55,t:0}),item('kick',{f:'bot',s:0,t:0}),item('panel',{f:'top',s:0,t:0}),item('rad',{f:'s3',s:.5,t:.35}),item('panel',{e:'t3',t:.5},{b:-45}),item('thr',{e:'v0',t:.5},{b:60})];
+else if(demo!=='empty')ST.items=[item('camW',{f:'bot',s:.45,t:0}),item('batt',{f:'bot',s:-.3,t:0}),item('hor',{f:'bot',s:0,t:.5}),item('panel',{f:'top',s:0,t:0}),item('whip',{c:'ct0'})];
+ST.items.forEach(fixAt);if(Q.get('sel')!==null)ST.sel=ST.items[+Q.get('sel')]||null;if(ST.sel&&!Q.get('tab'))ST.tab='part';
+size();renderAll();requestAnimationFrame(tick);
+</script>
+</body></html>
