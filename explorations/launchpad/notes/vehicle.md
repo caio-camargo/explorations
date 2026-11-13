@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2638,3 +2638,209 @@ now gives the craft about a metre a second it didn't get before.
 
 **Checks:** `vehicle-47` (the momentum check, vehicle-44 on the parked branch: renumbered twice by merges); §27 and
 bodies-1 pass with the change; CI's full run.
+
+## Plan: the bench as its own builder, points 1 and 2 (Q605; 2026-11-13, vehicle session, D47, PROBES § 6.4; nothing built)
+
+**The ask** (D47, Caio 2026-11-13): a satellite is payload, so it need not be streamlined or symmetrical. Point 1: a part
+goes on any face, edge or corner of a frame, at a tilt, with symmetry off. Point 2: what each part must see replaces
+aerodynamics as the thing that shapes the craft. This plan covers those two. Points 3 to 5 (stowed and deployed, the
+secondary slot, the live readout) get their own plans; § "Room left" says what this one keeps open for them.
+
+**The mock-up Caio tried** (`mockups/bench/free.html`; mockups/README § bench). His reaction, 2026-11-13: "on the feel, a
+great improvement". Placing by click, move, click is right; the 15° tilt keys work; stretching the frame works; symmetry
+works; the three attitudes work. What he asked to change, all taken into this plan:
+
+| Caio | In the plan |
+|---|---|
+| A tilted part's base half sinks into the frame | A tilted part stands on a short bracket, tall enough that its base clears the surface (slice 3) |
+| A part picked up vanished; no visible way to bin it | A held part keeps its base under the pointer and waits at its last place when the pointer leaves the frame; a bin is on screen while a part is held (slice 2) |
+| The blocker's red outline and the thrust line were not seen | Blockers are tinted as well as outlined; every kick motor's thrust line is always drawn, thick and pale (slices 4, 5) |
+| Copies made by symmetry showed no cone | Every copy shows its own (slice 4) |
+| The ground, sun and travel markers should be bench models | A desk globe, a lamp and a painted arrow (slice 4) |
+| "balance weights built into the payload, so asymmetrical designs get heavier but are still feasible" | § "Balance weights, built in" (slice 5) |
+| A sphere as a frame; more than one frame | Slice 6 |
+| "what's inside the base part… computers, battery?" | § "What the frame holds": a default, and a question for Caio (slice 7) |
+
+The first five are fixed in the mock-up too. The sphere, several frames and the frame's inside are not in it.
+
+**What exists today** (§ v1.198, § v1.207, § v1.243):
+- The bench is a mode of the rocket builder. A payload is a design tree like a rocket's: a node is `{k, at, c}`; `at` is
+  `'u'` or `'d'` on the stack, or `{y, a, n}` on a host's skin (height, angle round the axis, copies).
+- `layoutDesign` turns nodes into instances `{x, z, y0, rot}`: a place and a turn about the vertical. **No instance has
+  any other orientation.** Every part is a shape of revolution about the vertical (`prof`), and the readers assume it:
+  `.y0` is read 151 times and `.pos[` 192 times across `sim/vessel.js`, `flight.js`, `space.js`, `rovers.js`,
+  `builder.js`, `app/gl.js` and `app/editor.js` (counted 2026-11-13). `partC(p)`, the centre of mass, is already a
+  function (11 calls).
+- `geom(s)` sums mass and the centre of mass through `partC`, takes the craft's length from `y0` and `h`, and builds a
+  diagonal inertia `[Ix, Iy, Iz]` from each part as an upright cylinder. `rotI(q, I)` already turns a body's inertia
+  (docked craft use it).
+- `fairFits(f, q)` tests one upright part against the fairing's profile by `y0`, `h` and its distance from the axis.
+- Frames exist as plain stack parts (`oct`, `octl`, `octl6`, kind `frame`). The adapter ring is picked by the radius of
+  what stands on it (`payAdapter(r)`).
+- No part has a direction it looks in. Q338 was going to add one.
+- `payChecks` rows: power in shadow, talks home, turns itself, balanced (under 5 cm; fails if it has an engine), its own
+  Δv, fits the fairing. `bwt` is a balance weight the player adds with a button (`addBalance`).
+
+### 1. A tilted part in the design tree and in `geom()`
+
+**In the tree.** One new attachment, valid only on a frame, so the rocket builder never makes one (D47: bench parts only):
+
+    at: {f:'s2', s:.5, t:.35}     on a face: across and up it, 0 to 1 (top and bottom faces: s, t from the centre, −1 to 1)
+    at: {e:'v3', t:.6}            along an edge
+    at: {c:'ct0'}                 on a corner
+    ti: [a, b, r]                 tilt across, tilt along, turn about its own axis: whole steps of 15°, a and b within ±6
+    n:  1 | 2 | N                 copies round the long axis; 1 unless the player asks
+
+These are the mock-up's own fields; face, edge and corner names are stable when the frame is reshaped (`fixAt` in the
+mock-up shows the rule: a place that no longer exists moves to the nearest that does). Steps are stored as whole
+numbers so a save reads back exactly. The centre of the top or bottom face is not a mount: it is the stack (`'u'`,
+`'d'`), so a kick motor or a propellant sphere on the axis stays the ordinary upright part with the joint it has today.
+
+**The frame** is a node `{k:'frame', fr:{n, w, h, top}}` (sides 3, 4, 6 or 8; width; height; the top's width as a share
+of the bottom's), sized at layout by `frameDef(d, fr)` exactly as `finDef` sizes a fin and `wtDef` a weight: a cached
+definition with its own mass, `r` (the corner radius, so the adapter, the fairing and the stack read it as any part)
+and `h`. `oct`, `octl` and `octl6` stay as they are for old designs.
+
+**In layout.** A mounted instance carries a **pose**: `q.foot` (where it meets the frame), `q.q` (a quaternion) and
+`q.lift` (the bracket's height, 0 when it stands straight). Its `x, z, y0` are filled with its upright bounding
+cylinder, so a reader that has not been taught about poses sees a part of the right size in roughly the right place
+instead of crashing. Three helpers are the only things that read the pose:
+- `partC(p)`: the centre of mass, the base plus the part's own axis times its height share (already the one door for this);
+- `partAxis(p)`: the way it points, `[0,1,0]` for every upright part. This is the **boresight** Q338 asked for;
+- `partBox(p)`: its lowest and highest point and its farthest reach from the axis, from the eight rim points of each end.
+
+**In `geom()`.** Mass and the centre of mass need no change (`partC`). Length comes from `partBox`. Inertia: a posed
+part's own tensor `[ip, ir, ip]` goes through `rotI(q, …)` before it is summed, as a docked body's does. The craft's
+inertia stays diagonal, as today: a lopsided craft's wobble is not simulated. The bench reports the lean of the spin
+axis as a Checks row instead (§ 4).
+
+**Tilt costs nothing** (PROBES § 6.4 default (a)): the bracket has no mass. The views are the cost.
+
+**Engines last.** A camera, panel, antenna or sensor on a pose changes only mass and a direction. An engine on a pose
+changes where force goes. Slices 2 to 4 allow poses for parts that push nothing; slice 5 teaches the thrust code
+`partAxis` and opens it to thrusters and motors.
+
+### 2. What the rocket builder and the fairing read
+
+- **The rocket builder** keeps reading real parts: `payExpand` already lays the payload's parts out as copies inside
+  the rocket, and mass, balance and power come from them. Nothing attaches to them, as today.
+- **The fairing** reads an **envelope** (default (d)): `payEnvelope(pd)` gives, for each height, the farthest reach of
+  any part from the stack's axis, as a stepped profile. The fit row compares that profile with the fairing's. Upright
+  parts keep `fairFits`. Until point 3 exists the envelope is of the craft as built, with wings and booms folded as now.
+- **In the open** (no fairing; a warning today), the payload meets the air as its envelope: mounted parts are `noAero`
+  one by one and the block adds one profile on its stack line. A lopsided satellite in the airstream is not modelled
+  beyond the off-axis mass it already has. Stated here so nobody expects more.
+- **The adapter ring** is hollow. A part hanging below the bottom face fits inside it if it is shorter than the ring
+  and inside its radius; otherwise the ring grows taller to clear it, and heavier in proportion.
+
+### 3. Testing cones, plumes and the thrust line while dragging
+
+The mock-up casts 43 rays per cone at three.js meshes. The game needs the same answer in `sim/`, where the tests run
+without a screen, so it is done with closed forms in a new `sim/views.js`:
+- **Solids.** A frame is a convex prism: its faces as planes (N + 2 of them). A part is its bounding cylinder on its
+  pose. A ray against either is a few multiplications. `solidsOf(craft, state)` builds the list; `state` is
+  `'deployed'` today and leaves the door open for `'stowed'`.
+- **Rays.** The axis and three rings (8, 14, 20), each ring weighted by the area of cone it stands for (the mock-up
+  counts rays equally, which over-weights the middle). The share blocked is the weighted hits, in steps of about 2 %.
+  A strict part (D20's narrow camera, a dish) fails on any hit; the others warn, and fail past half (default (b)).
+- **Cost while dragging.** With 40 parts, the held part's cone is 43 rays × 40 solids, and each other part re-tests its
+  43 rays against the held part alone: about 3,400 closed-form tests a pointer move. The results are kept per part and
+  only the held part's row and column are redone. Slice 4's test measures it; the budget is 1 ms.
+- **A plume** is the same cone, cut off at a length that goes with the engine's thrust. Anything in it fails.
+- **The thrust line** is the distance from the centre of mass to the line along `partAxis` through the engine. `geom`
+  is cheap enough to rerun on each move, so the number follows the pointer.
+- **Over an orbit.** `attEnv(att, where)` gives the ground, the sun and the direction of travel in the craft's own
+  axes: 72 points round an orbit (16 × 24 when spinning). A part's line is a count over those points. The mock-up's
+  stand-ins (sun 20° off the orbit's plane, ground filling 65° either side of straight down) become the contract's
+  orbit when the bench was opened from one, and a 300 km orbit otherwise.
+
+### 4. Checks rows
+
+A row appears only when a part it speaks for is aboard. Copy follows UI.md § 2.1; a row's title is at most six words.
+
+| Row | State | Says |
+|---|---|---|
+| Power in shadow | changes | The panels' figure now counts the declared attitude and any shade ("21 % shaded by Dish"). No separate "panels face the sun" row: say it once |
+| Talks home | changes with Q338's dish | A dish must hold home in a clear cone; a whip needs nothing |
+| **Cameras see the ground** | new | Never sees it / share blocked and by what / share of the orbit |
+| **Plumes are clear** | new (slice 5) | Which part a plume hits |
+| **Thrust through the balance point** | new (slice 5) | The miss in centimetres; replaces "fails if it has an engine" in the balance row |
+| Balanced | changes (slice 5) | "Balanced with 12 kg of weights" |
+| **Spins true** | new, only when spinning is declared | The lean of the spin axis from the long axis, in degrees |
+| Sensors see their marks, Radiators face cold space | not now | Arrive with their parts (Q338's sensors, Q423's radiators). The view table already has their kinds (`sun`, `dark`, `cold`) |
+
+A part's view is one field on its definition: `view:{need, cone, strict}`. Today's parts that get one: the side camera
+(`scam`), the solar cells and wing, the thrusters, the apogee engine, the kick motors.
+
+### 5. The declared attitude, and the handover to Q338
+
+- The payload's design carries `att: 'ground' | 'sun' | 'spin'` at its root, saved with it. The bench's switch sets it.
+- It fixes the craft's own axes: the bottom face is toward the ground when ground-facing, the top toward the sun when
+  sun-facing, and the craft spins about its long axis, held across the orbit, when spinning. The +X side leads.
+- **Before Q338 nothing changes in flight.** The bench's rows are promises about an attitude the craft is assumed to
+  hold. A released satellite records `att` when it is registered, so craft already flying have one when the law arrives.
+- **What Q338 takes from here:** `partAxis(p)` as every part's boresight; a frame's face as something a law can point
+  (the declared attitude is "this face at that target", with +X for roll); `att` as the law's default; `attEnv` as the
+  one function whose inside it replaces with the real law, so the Checks rows stay as they are. Q338's sensors then gate
+  the choice (D21: sun-facing wants a sun sensor, ground-facing a horizon sensor), through its own missing-sensor
+  warning. Spinning needs none: it is the first era's free attitude, and the spin-up motors (`spin`) exist.
+
+### Balance weights, built in (Caio 2026-11-13)
+
+The frame carries trim weights by itself. At layout, the weight that brings the centre of mass back onto the long
+axis is worked out as craft mass × offset ÷ the frame's half-width on the far side, placed inside the frame at the
+height of the centre of mass, and added to the craft's mass. The top bar and the Balanced row say how many kilograms.
+There is no switch: to shed the weight, move the parts. So a lopsided design always flies, and pays for it in mass.
+- The weights trim to the long axis only. A motor mounted off the axis still fails its own row.
+- They fix where the centre of mass is, not how the mass is spread: a spinner can be balanced and still lean (the
+  *Spins true* row).
+- `bwt` and `addBalance` (v1.207) retire from the palette and the Checks. Old designs keep their `bwt` nodes and fly
+  as before.
+
+### What the frame holds (default; **a question for Caio**)
+
+Caio asked what is inside the closed frame. Today nothing is: the computer and its small battery are the probe core, a
+separate drum (`core6`, `core3`), and batteries and wheels are drums too. Default proposed: **the frame is the bus.**
+- It holds the housekeeping: the computer, the wiring and a small battery, growing with its volume, as `small()`
+  scales a core by its face today. A frame needs no probe core.
+- Parts that need no view (battery, reaction wheel, propellant sphere, later the tape recorder) may go **inside**, up
+  to the frame's volume. The frame is drawn with one panel open while such a part is held. Parts with a view stay outside.
+- This gives a frame's size a meaning beyond face area: a bigger frame carries more inside and weighs more.
+
+It is a rule the game does not have, so it waits for Caio's yes (slice 7). Without it, slices 1 to 6 stand alone: the
+frame is structure, and the core, batteries and wheels stack on its axis as now.
+
+### Slices, each with its test
+
+| # | Slice | Size | Test |
+|---|---|---|---|
+| 1 | **The frame as a sized part.** `frame` with `fr`, `frameDef`; a prism drawn plainly; the FRAME controls on the bench; existing parts attach as they do today | S | `vehicle`: mass, `r` and `h` for each shape; the adapter picked; a save read back; every old payload and preset lays out as before |
+| 2 | **Mounts, upright.** `at:{f,s,t}`, `{e,t}`, `{c}`; the pose, `partC`, `partAxis`, `partBox`; `geom`'s inertia through `rotI`; `payEnvelope` and the taller ring; in the builder: click, move, click with snaps, Shift for none, the base kept under the pointer on pick-up, the bin; symmetry off on the bench. Parts that push nothing only. **First, a census** of the `.y0` and `.pos[` readers a mounted part can reach, listed in the notes | L | `vehicle`: centre of mass and inertia against hand numbers; a part past the fairing fails the fit; reshaping keeps places. A robot row in the browser places one part on a face, an edge and a corner by pointer and picks one up |
+| 3 | **Tilt.** `ti` in 15° steps, the bracket, the keys and buttons; booms keep D21's 90° and 45° through a per-part set of allowed steps | S | `vehicle`: the bracket's height at 15°, 45°, 90°; the clamp; the envelope of a tilted wing; a save read back |
+| 4 | **Views.** `sim/views.js`; `view` on today's parts; the cone while held, blockers tinted, every copy's cone; the attitude switch with the globe, lamp and arrow, and the orbit slider; the camera row and the power row's new figure | M | `vehicle`: a slab over half a cone reads 50 % within one ray; a strict part fails on one hit; a bottom camera ground-facing sees the ground all the way round; the sun is hidden for the expected share; 40 parts update inside 1 ms |
+| 5 | **Thrust and balance.** The thrust code reads `partAxis`; thrusters and motors on mounts and tilts; the plume and thrust-line rows, the line always drawn; balance weights built in; `bwt` retired | M | `vehicle`: an offset motor's miss in centimetres, zero when tilted through the centre; a flown case beside `vehicle-28`: a lopsided satellite with built-in weights burns straight, and with them held off in the test it turns |
+| 6 | **More frames.** A sphere; a frame stacked on a frame; a frame on a frame's face | M | `vehicle`: a part on a sphere at any latitude; two frames' mass, envelope and views (one frame blocks a camera on the other) |
+| 7 | **Inside the frame** (after Caio's yes) | M | `vehicle`: the frame alone talks and turns; the volume limit; an inside part moves the centre of mass and blocks nothing |
+
+Order: 1, 2, 3, 4 give the experience Caio tried. 5 follows 4. 6 and 7 are independent of 3 to 5. Flow owns the bench's
+screen layout in 2 and 4 (Q605's row: "with flow").
+
+### Room left
+
+- **Point 3, stowed and deployed:** `solidsOf(craft, state)` and `payEnvelope(pd, state)` take the shape to read; a
+  hinge is a mount with a second pose; the rehearsal sweeps the same solids between the two.
+- **Point 4, small craft and the secondary slot:** `frameDef` has no lower size built in; the slot reads `payEnvelope`
+  and the ring's free arc.
+- **Point 5, the live readout:** `sim/views.js` returns numbers (share seen, share of the orbit, power), not just row text.
+- **Q417, meshes and skins:** a frame is drawn from `fr`; faces keep their names (`s0…`, `top`, `bot`) for skins.
+- **Q423 and Q424, new parts:** a part joins by getting a `view`; the kinds for radiators and sensors are in the table.
+- **Booms (D21):** a mount whose part has its own allowed tilts and, later, children.
+
+### Not checked
+
+- Nothing here is built, so every size is an estimate; the 1 ms budget is arithmetic, not a measurement.
+- The census in slice 2 is not done: the counts above are of every reader, not of those a mounted part reaches.
+- How flight reads a satellite's attitude today, and whether any contract already checks where a camera points, was
+  not read. Slice 4 must, before its rows promise anything.
+- The mock-up's fixes were run in headless Chrome with synthetic pointer events only.
+- The sphere, several frames and the frame's inside have no mock-up: Caio has not tried them.

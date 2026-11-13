@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.64 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-13
+**Version**: v2.0.65 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -138,6 +138,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
 - v1.336 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
 - v1.337 — `detach()` keeps momentum (R22's fourth fix): Crewed Lunar's return predicts its landing and goes round again until it's open sea; the Nyx control is an orbit too wide to last (2026-11-12, launchpad session, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
+- Plan: the bench as its own builder, points 1 and 2: mounts on a frame's faces, edges and corners with a pose and a 15° tilt on a bracket; the fairing reads an envelope; views tested in `sim/views.js`; new Checks rows; the declared attitude and its handover to Q338; balance weights built in; seven slices (2026-11-13, vehicle session, QUEUE Q605, D47; plan only)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 

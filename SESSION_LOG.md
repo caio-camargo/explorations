@@ -7763,3 +7763,28 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   tunes it); the pays are not balanced.
 - Files: launchpad `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `review/2026-11-13/places.mjs` (new); root
   `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: vehicle session (Fable 5.2), Q605 step 2: Caio's try, the mock-up fixed, the plan (closing)
+- **Caio on the mock-up:** "on the feel, a great improvement". Placing, tilting, stretching the frame, symmetry and the
+  attitudes work. His notes: a tilted base sank into the frame; a part picked up vanished and had no visible bin; the
+  red outline and the thrust line were not seen; copies showed no cone; the ground and sun should be bench models. He
+  also asked for balance weights built in, a sphere frame, more than one frame, and what the frame holds inside.
+- **Mock-up fixed** (`explorations/launchpad/mockups/bench/free.html`): a bracket under a tilted part; a picked-up part
+  keeps its base under the pointer and stays put off the frame; a *Remove* box while a part is held; blockers tinted;
+  the thrust line always drawn; every copy's cone; a globe, a lamp and an arrow for ground, sun and travel;
+  `?demo=block` opens with the camera chosen. Cause of the vanishing: the page looked for the frame under the pointer,
+  and a part hanging off the frame's outline has none there.
+- **The plan** (`explorations/launchpad/notes/vehicle.md` § "Plan: the bench as its own builder, points 1 and 2"): a
+  mount on a frame with a pose, read through `partC`, `partAxis`, `partBox`; the fairing reads an envelope; views in a
+  new `sim/views.js` with closed-form rays; the Checks rows; the declared attitude and what Q338 takes from it; balance
+  weights built in; seven slices, each with its test.
+- **Filed** under QUEUE *Proposed*: the seven slices, a line for the design desk (PROBES § 6.4), a line for Q338's plan.
+  Q605 is done; the claim is cleared.
+- **Open for Caio:** what the frame holds. The plan's default is that the frame is the bus (computer, wiring, a small
+  battery) and parts with no view may go inside; slice 7 waits for his yes.
+- **Not checked:** the fixes ran in headless Chrome with synthetic pointer events, not a real mouse; the published
+  page was not opened after the push; how flight holds a satellite's attitude today and whether a contract checks a
+  camera's pointing were not read (slice 4 must); the counts of upright readers are of all readers, not of those a
+  mounted part reaches; the sphere, several frames and the frame's inside have no mock-up.
+- Files: launchpad `mockups/bench/free.html`, `mockups/README.md`, `notes/vehicle.md`, `NOTES.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`, `SESSION_LOG.md`.

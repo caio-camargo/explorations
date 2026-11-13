@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.32 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: for Caio to pick
+**Version**: 0.1.33 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -155,20 +155,31 @@ stowed and deployed and the fairing are not in this one.
   tapered down to 30 %. Parts keep their places as it changes.
 - **Placing**: click a part in the palette, move over the frame, click to put it down. It goes anywhere on a face, and
   snaps to an **edge** or a **corner** near one (and to a face's middle lines); Shift holds the snapping off. Click a
-  placed part to pick it up again; right-click drops it; Esc puts it back.
+  placed part to pick it up again (its base stays under the pointer; off the frame it waits at its last place);
+  right-click, Delete or the red *Remove* box in the palette bins it; Esc puts it back.
 - **Tilt**, in 15° steps, while held or just placed: A / D across, W / S along, Q / E about its own axis, X straight.
+  A tilted part stands on a bracket tall enough that its base clears the frame.
 - **Symmetry** is off; *2* and *all sides* make copies round the long axis, per part.
 - **The view**: a part in hand shows its cone (camera, dish, panel, radiator, sensors) or its plume (thruster, kick
-  motor). What stands in it is outlined red and the blocked slices of the cone are red; the PART tab says how much
-  and by what. The kick motor shows its thrust line and how far it misses the balance point.
+  motor). What stands in it is tinted and outlined red and the blocked slices of the cone are red; the PART tab says how much
+  and by what. Every copy made by symmetry shows its own. A kick motor's thrust line is always drawn, with how far it misses the
+  balance point.
 - **The attitude** (top bar): ground-facing, sun-facing, spinning. The ground, the sun and the direction of travel are
-  drawn round the craft; the *orbit* slider (or ▶) carries it round, the sun going behind the ground for about a third
+  bench models round the craft (a desk globe, a lamp, a painted arrow); the *orbit* slider (or ▶) carries it round, the sun going behind the ground for about a third
   of the way. Each view is judged over the whole orbit ("sees the ground 14 % of the time").
 - **Checks** only has rows for what is on the craft: cameras, panels, radiators, the dish, sensors, plumes, the thrust
   line, balance. Hover a row for its parts' views; *all views* shows every one.
-Stand-ins: "home" is the ground below; twelve parts with plain shapes; a part may tilt into the frame; the numbers are
+Stand-ins: "home" is the ground below; twelve parts with plain shapes; a tilted part's body can still cross the frame at steep angles; a part picked up from a face the view hides
+  jumps to a face it shows; the numbers are
 illustrative (a cone is 43 rays). URL: `?n=3|4|6|8`, `&w=`, `&h=`, `&top=`, `&att=ground|sun|spin`, `&th=`,
 `&demo=block|empty`, `&sel=<i>`, `&all=1`, `&tab=`, `&az=`, `&el=`, `&dist=`, `&still=1`.
+
+**Pick (Caio, 2026-11-13):** "on the feel, a great improvement". Placing, tilting, stretching, symmetry and the attitudes
+work for him. His notes, fixed on the page the same day: a tilted base sank into the frame; a part picked up vanished
+and had no visible bin; the red outline and the thrust line were not seen (`?demo=block` now opens with the camera
+chosen); copies showed no cone; the ground and sun should be bench models. Asked for and **not on the page**: a sphere
+as a frame, more than one frame, balance weights built in, and what the frame holds inside. The plan takes them:
+`notes/vehicle.md` § "Plan: the bench as its own builder, points 1 and 2".
 
 **Pick:** _(Caio: how placing feels; the tilt keys; whether the snapping helps; whether the cones read. The plan in
 `notes/vehicle.md` waits for it)_

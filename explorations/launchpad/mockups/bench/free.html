@@ -60,6 +60,7 @@ input[type=range]{width:170px;vertical-align:middle;accent-color:#7fd0ff}
 #lg{color:#6fc3ea}#ls{color:#ffd35a}#lv{color:#d6e2ee}#lsp{color:#b9a7ff}#lc{color:var(--bad)}
 .stat{display:flex;gap:8px;align-items:baseline;margin:6px 0}
 .stat .dot{margin:0}
+.pi.bin{border-color:var(--bad);color:var(--bad);margin-top:10px;justify-content:center}
 </style></head><body>
 <div class="app" id="app">
 <canvas id="cv"></canvas>
@@ -109,6 +110,8 @@ const PARTS={
  kick:{cat:'MOVE',n:'Kick motor',m:30,need:'thrust',cone:15,ap:.57,ch:.25,fr:.22,does:'One big push. Aim it through the balance point.'},
 };
 const WANT={power:'the sun',ground:'the ground',home:'home',cold:'cold space',sun:'the sun',dark:'dark sky',plume:'a clear plume',thrust:'the balance point'};
+// the widest low part of each one, and how high it sits: a tilted part stands on a bracket tall enough to clear the frame
+const FOOT={panel:[.35,.044],batt:[.14,0],camW:[.07,0],camN:[.09,0],whip:[.01,0],dish:[.35,.26],rad:[.3,.043],sunS:[.05,0],hor:[.064,0],star:[.035,0],thr:[.035,0],kick:[.21,0]};
 let uid=1;const item=(k,at,o)=>Object.assign({id:uid++,k,at,a:0,b:0,r:0,sym:1},o||{});
 // ---------------------------------------------------------------- three
 const cvs=$('#cv'),ren=new THREE.WebGLRenderer({canvas:cvs,antialias:true,alpha:true,preserveDrawingBuffer:true});ren.setClearColor(0x000000,0);
@@ -124,13 +127,14 @@ const M={strut:std({color:'#c9ccd0',metalness:.45,roughness:.35}),dark:std({colo
   whiteD:std({color:'#efeee9',roughness:.6,side:THREE.DoubleSide}),lens:std({color:'#0a0f1a',metalness:.9,roughness:.05}),cells:std({map:cellT,metalness:.35,roughness:.35}),
   gold:std({color:'#c98a1e',metalness:.75,roughness:.3,bumpMap:crinkle,bumpScale:.004}),silver:std({color:'#dfe3e7',metalness:.5,roughness:.28,bumpMap:crinkle,bumpScale:.004}),
   alu:std({color:'#f2f2f2',metalness:.6,roughness:.18}),solid:std({color:'#2e2a26',roughness:.8}),
+  tBad:basic('#ff6b5b',{opacity:.45}),thrustR:basic('#fff6d0',{depthTest:false,opacity:.95}),missR:basic('#ff6b5b',{depthTest:false,opacity:1}),brass:std({color:'#b08a3c',metalness:.8,roughness:.35}),
   wSel:basic('#7fd0ff',{wireframe:true,opacity:.22}),wBad:basic('#ff6b5b',{wireframe:true,opacity:.8}),
   cone:{ok:basic('#7fd0ff',{opacity:.13,side:THREE.DoubleSide}),warn:basic('#ffb84a',{opacity:.16,side:THREE.DoubleSide}),bad:basic('#ff6b5b',{opacity:.16,side:THREE.DoubleSide})},
   slice:basic('#ff6b5b',{opacity:.38,side:THREE.DoubleSide}),
   rim:{ok:new THREE.LineBasicMaterial({color:'#7fd0ff'}),warn:new THREE.LineBasicMaterial({color:'#ffb84a'}),bad:new THREE.LineBasicMaterial({color:'#ff6b5b'})},
   ray:new THREE.LineBasicMaterial({color:'#ff6b5b',transparent:true,opacity:.75}),pts:new THREE.PointsMaterial({color:'#ff6b5b',size:5,sizeAttenuation:false,depthTest:false}),
   snap:new THREE.LineBasicMaterial({color:'#7fd0ff',depthTest:false}),axis:new THREE.LineDashedMaterial({color:'#4a6480',dashSize:.06,gapSize:.06}),
-  thrust:new THREE.LineDashedMaterial({color:'#ffb84a',dashSize:.08,gapSize:.05,depthTest:false}),miss:new THREE.LineBasicMaterial({color:'#ff6b5b',depthTest:false}),
+  
   com:basic('#ffd21e',{depthTest:false,opacity:1}),comK:basic('#111',{depthTest:false,opacity:1}),
   tg:new THREE.LineDashedMaterial({color:'#6fc3ea',dashSize:.05,gapSize:.04}),ts:new THREE.LineDashedMaterial({color:'#ffd35a',dashSize:.05,gapSize:.04})};
 const mk=(g,m,p,r)=>{const x=new THREE.Mesh(g,m);if(p)x.position.set(...p);if(r)x.rotation.set(...r);return x};
@@ -205,9 +209,9 @@ function samples(att){if(SMP[att])return SMP[att];const o=[],nt=att==='spin'?16:
 let craft=null,deco=null,INST=[],SOLID=[],FACES=[],MC={m:0,c:V(),off:0},OV=[];
 const RC=new THREE.Raycaster();
 function kill(g){if(!g)return;scene.remove(g);g.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
-function instances(){const out=[],add=(it,ghost)=>{if(!it.at)return;const pl=resolve(it.at),q0=quat(pl,it),m=it.sym||1;
-    for(let j=0;j<m;j++){const qy=new THREE.Quaternion().setFromAxisAngle(YUP,j/m*2*Math.PI),p=pl.p.clone().applyQuaternion(qy),q=qy.clone().multiply(q0),bore=V(0,1,0).applyQuaternion(q);
-      out.push({it,j,p,q,bore,ap:p.clone().addScaledVector(bore,PARTS[it.k].ap||0),ghost})}};
+function instances(){const out=[],add=(it,ghost)=>{if(!it.at)return;const pl=resolve(it.at),q0=quat(pl,it),m=it.sym||1,cs=Math.max(0,Math.min(1,V(0,1,0).applyQuaternion(q0).dot(pl.n))),F=FOOT[it.k],lift=Math.max(0,F[0]*Math.sqrt(1-cs*cs)-F[1]*cs),p0=pl.p.clone().addScaledVector(pl.n,lift);
+    for(let j=0;j<m;j++){const qy=new THREE.Quaternion().setFromAxisAngle(YUP,j/m*2*Math.PI),foot=pl.p.clone().applyQuaternion(qy),p=p0.clone().applyQuaternion(qy),q=qy.clone().multiply(q0),bore=V(0,1,0).applyQuaternion(q);
+      out.push({it,j,p,foot,lift,q,bore,ap:p.clone().addScaledVector(bore,PARTS[it.k].ap||0),ghost})}};
   ST.items.forEach(it=>add(it,false));if(ST.held)add(ST.held,true);return out}
 function rebuild(){kill(craft);craft=new THREE.Group();SOLID=[];FACES=[];OV=[];const f=FR;
   const tri=(pts,mat,id)=>{const g=new THREE.BufferGeometry().setFromPoints(pts);g.computeVertexNormals();const m=new THREE.Mesh(g,mat);m.userData.face=id;craft.add(m);SOLID.push(m);FACES.push(m)};
@@ -217,7 +221,7 @@ function rebuild(){kill(craft);craft=new THREE.Group();SOLID=[];FACES=[];OV=[];c
   tri(tp,M.white,'top');tri(bp,M.silver,'bot');
   INST=instances();
   for(const I of INST){const g=new THREE.Group();BUILD[I.it.k](g);g.add(mk(new THREE.SphereGeometry(.022,10,6),M.strut));g.position.copy(I.p);g.quaternion.copy(I.q);
-    g.traverse(o=>{if(o.isMesh){o.userData.inst=I;SOLID.push(o)}});I.g=g;craft.add(g)}
+    g.traverse(o=>{if(o.isMesh){o.userData.inst=I;SOLID.push(o)}});I.g=g;craft.add(g);if(I.lift>.004)craft.add(rod(I.foot,I.p,.02,M.strut))}
   scene.add(craft);craft.updateMatrixWorld(true);
   // mass and the balance point (the held part counts, so the balance moves as it is dragged)
   const b=ST.bus,bm=Math.round(30*b.w*b.w*Math.sqrt(b.h/.6)*(.5+.5*b.top))+4;let m=bm;const c=V();
@@ -260,7 +264,7 @@ function evalInst(I){const P=PARTS[I.it.k];if(!P.need)return null;const ev={bloc
     else set('ok','pushes through the balance point')}
   return ev}
 // what is drawn on top: the views of the parts in hand, what blocks them, the balance point, the thrust line
-function active(){const a=new Set();const it=ST.held||ST.sel;if(it)INST.forEach(I=>{if(I.it===it&&I.j===0)a.add(I)});
+function active(){const a=new Set();const it=ST.held||ST.sel;if(it)INST.forEach(I=>{if(I.it===it)a.add(I)});
   if(ST.hl)INST.forEach(I=>{if(ST.hl.includes(I.it.k))a.add(I)});if(ST.all)INST.forEach(I=>a.add(I));return[...a].filter(I=>I.ev)}
 function wire(g,mat){const add=[];g.traverse(o=>{if(o.isMesh&&!o.userData.ov)add.push(o)});for(const o of add){const e=new THREE.Mesh(o.geometry,mat);e.userData.ov=1;e.position.copy(o.position);e.quaternion.copy(o.quaternion);e.scale.copy(o.scale).multiplyScalar(1.05);o.parent.add(e);OV.push(e)}}
 function decorate(){kill(deco);deco=new THREE.Group();OV.forEach(o=>o.parent&&o.parent.remove(o));OV=[];const E=env(ST.att,ST.th,ST.ps),A=active(),bl=new Set();
@@ -276,9 +280,12 @@ function decorate(){kill(deco);deco=new THREE.Group();OV.forEach(o=>o.parent&&o.
     ev.bl.forEach(o=>bl.add(o));
     // a line from the part toward what it wants (or must not see), as it is now on the orbit
     const tg=P.need==='ground'||P.need==='home'||P.need==='cold'||P.need==='dark',ts=P.need==='sun'||P.need==='power'||P.need==='cold'||P.need==='dark';
-    if(tg)deco.add(line([I.ap,I.ap.clone().addScaledVector(E.g,L)],M.tg));if(ts&&E.lit)deco.add(line([I.ap,I.ap.clone().addScaledVector(E.s,L)],M.ts));
-    if(P.need==='thrust'){deco.add(line([I.p.clone().addScaledVector(I.bore,-2.2),I.p.clone().addScaledVector(I.bore,.6)],M.thrust));if(ev.miss>=.5)deco.add(line([MC.c,ev.foot],M.miss))}}
-  bl.forEach(o=>wire(o.g,M.wBad));
+    if(tg)deco.add(line([I.ap,I.ap.clone().addScaledVector(E.g,L)],M.tg));if(ts&&E.lit)deco.add(line([I.ap,I.ap.clone().addScaledVector(E.s,L)],M.ts));}
+  // every kick motor's thrust line, always: where it pushes, and how far that passes from the balance point
+  const ro=m=>{m.renderOrder=8;return m};
+  for(const I of INST){if(!I.ev||PARTS[I.it.k].need!=='thrust')continue;for(let t=-2.2;t<.6;t+=.13)deco.add(ro(rod(I.p.clone().addScaledVector(I.bore,t),I.p.clone().addScaledVector(I.bore,t+.08),.007,M.thrustR)));
+    if(I.ev.miss>=.5)deco.add(ro(rod(MC.c,I.ev.foot,.009,M.missR)))}
+  bl.forEach(o=>{wire(o.g,M.tBad);wire(o.g,M.wBad)});
   const it=ST.held||ST.sel;if(it)INST.forEach(I=>{if(I.it===it&&!bl.has(I))wire(I.g,ST.held&&ST.held.clash?M.wBad:M.wSel)});
   // where the held part has snapped: its edge, or its corner
   if(ST.held&&ST.held.at){const at=ST.held.at;if(at.e){const e=FR.E[at.e];deco.add(line([e.a,e.b],M.snap))}
@@ -290,20 +297,22 @@ function decorate(){kill(deco);deco=new THREE.Group();OV.forEach(o=>o.parent&&o.
   scene.add(deco)}
 const reach=()=>Math.max(ST.bus.w/2,ST.bus.h/2)+.85;
 // ---------------------------------------------------------------- the world round the craft: the ground, the sun, the way it travels
-const sunT=cvTex(128,128,(g,w,h)=>{const r=g.createRadialGradient(64,64,4,64,64,64);r.addColorStop(0,'#fffbe8');r.addColorStop(.25,'#ffe27a');r.addColorStop(.5,'#ffb93060');r.addColorStop(1,'#ffb93000');g.fillStyle=r;g.fillRect(0,0,w,h)});
-const sunS=new THREE.Sprite(new THREE.SpriteMaterial({map:sunT,transparent:true,depthWrite:false}));sunS.scale.set(150,150,1);scene.add(sunS);
-const GR=40*Math.sin(GROUND)/(1-Math.sin(GROUND)),ground=mk(new THREE.SphereGeometry(GR,96,48),new THREE.MeshLambertMaterial({color:'#0f2c40',emissive:'#050d14'}));scene.add(ground);
-const arrow=c=>{const a=new THREE.ArrowHelper(V(0,1,0),V(),.45,c,.13,.07);scene.add(a);return a},aG=arrow('#6fc3ea'),aS=arrow('#ffd35a'),aV=arrow('#d6e2ee');
+// bench models stand in for them: a desk globe for the ground, a lamp for the sun, a painted arrow for the way it travels
+const globeT=cvTex(256,128,(g,w,h)=>{g.fillStyle='#2b6c98';g.fillRect(0,0,w,h);g.fillStyle='#6f9a5a';for(let i=0;i<14;i++){g.beginPath();g.ellipse(Math.random()*w,22+Math.random()*(h-44),10+Math.random()*26,6+Math.random()*13,Math.random()*3,0,7);g.fill()}
+  g.strokeStyle='#ffffff50';for(let i=0;i<=12;i++){g.beginPath();g.moveTo(i*w/12,0);g.lineTo(i*w/12,h);g.stroke()}for(let j=1;j<6;j++){g.beginPath();g.moveTo(0,j*h/6);g.lineTo(w,j*h/6);g.stroke()}});
+const globe=new THREE.Group();globe.add(mk(new THREE.SphereGeometry(.17,32,20),std({map:globeT,roughness:.7})),mk(new THREE.TorusGeometry(.2,.008,8,48),M.brass),cyl(.006,.46,M.brass,[0,0,0],null,8),cyl(.07,.02,M.brass,[0,-.24,0]));scene.add(globe);
+const bulbM=new THREE.MeshBasicMaterial({color:'#ffe9a0'}),lamp=new THREE.Group();lamp.add(mk(new THREE.CylinderGeometry(.14,.05,.15,28,1,true),std({color:'#e9e4d6',roughness:.5,side:THREE.DoubleSide})),mk(new THREE.SphereGeometry(.055,16,12),bulbM,[0,.01,0]),cyl(.012,.16,M.brass,[0,-.15,0],null,8),cyl(.05,.02,M.brass,[0,-.08,0]));scene.add(lamp);
+const vane=new THREE.Group();vane.add(cyl(.012,.34,M.white,[0,.17,0],null,10),mk(new THREE.ConeGeometry(.045,.13,16),M.white,[0,.4,0]),cyl(.03,.02,M.brass,[0,0,0]));scene.add(vane);
 const spinA=new THREE.Group();{const m=basic('#b9a7ff',{opacity:.9}),t=mk(new THREE.TorusGeometry(.28,.01,8,40,4.6),m,null,[Math.PI/2,0,0]);const h=mk(new THREE.ConeGeometry(.04,.12,12),m,[.28,0,0],[Math.PI/2,0,0]);spinA.add(t,h);scene.add(spinA)}
 function place(el,p,show){const v=p.clone().project(cam),ok=show&&v.z<1;el.style.display=ok?'block':'none';if(ok){el.style.left=((v.x+1)/2*W)+'px';el.style.top=((1-v.y)/2*H)+'px'}}
 function drawEnv(){const E=env(ST.att,ST.th,ST.ps),R=reach();
   sunL.position.copy(E.s).multiplyScalar(10);sunL.intensity=E.lit?2.4:.12;fillL.position.copy(E.s).multiplyScalar(-6).add(V(0,3,0));
-  sunS.position.copy(E.s).multiplyScalar(900);ground.position.copy(E.g).multiplyScalar(40+GR);
-  for(const[a,d]of[[aG,E.g],[aS,E.s],[aV,E.v]]){a.position.copy(d).multiplyScalar(R);a.setDirection(d)}
-  aS.visible=E.lit;spinA.visible=ST.att==='spin';spinA.position.set(0,R*.92,0);
-  place($('#lg'),E.g.clone().multiplyScalar(R+.6),true);place($('#ls'),E.s.clone().multiplyScalar(R+.6),true);$('#ls').textContent=E.lit?'SUN':'SUN (HIDDEN)';
+  globe.position.copy(E.g).multiplyScalar(R+.42);lamp.position.copy(E.s).multiplyScalar(R+.42);lamp.quaternion.setFromUnitVectors(YUP,E.s.clone().negate());bulbM.color.set(E.lit?'#ffe9a0':'#3d382c');
+  vane.position.copy(E.v).multiplyScalar(R);vane.quaternion.setFromUnitVectors(YUP,E.v);
+  spinA.visible=ST.att==='spin';spinA.position.set(0,R*.92,0);
+  place($('#lg'),E.g.clone().multiplyScalar(R+.42).add(V(0,-.3,0)),true);place($('#ls'),E.s.clone().multiplyScalar(R+.42).add(V(0,.26,0)),true);$('#ls').textContent=E.lit?'SUN':'SUN (HIDDEN)';
   place($('#lv'),E.v.clone().multiplyScalar(R+.62),true);place($('#lsp'),V(0,R*.92+.14,0),ST.att==='spin');
-  const k=INST.find(I=>I.ev&&I.ev.miss>=.5&&(ST.held||ST.sel)===I.it);place($('#lc'),k?MC.c.clone().lerp(k.ev.foot,.5).add(V(0,.08,0)):V(),!!k);if(k)$('#lc').textContent=k.ev.miss.toFixed(1)+' cm'}
+  const k=INST.find(I=>I.ev&&I.ev.miss>=.5);place($('#lc'),k?MC.c.clone().lerp(k.ev.foot,.5).add(V(0,.08,0)):V(),!!k);if(k)$('#lc').textContent=k.ev.miss.toFixed(1)+' cm'}
 // ---------------------------------------------------------------- panels (copy: UI.md § 2.1)
 const ROWS=[['Cameras see the ground',['camW','camN']],['Panels face the sun',['panel']],['Radiators face cold space',['rad']],['Dish points home',['dish']],['Sensors see their marks',['sunS','hor','star']],['Plumes are clear',['thr']],['Thrust through the balance point',['kick']]];
 const RK={ok:0,warn:1,bad:2};
@@ -314,10 +323,11 @@ const sitsOn=at=>!at?'not placed':at.c?'a corner':at.e?'an edge':at.f==='top'?'t
 function renderPal(){const cats={};for(const[id,p]of Object.entries(PARTS))(cats[p.cat]=cats[p.cat]||[]).push([id,p]);const b=ST.bus;
   let h='<div class="cat">FRAME</div><div class="pi" data-p="bus">'+['','','','triangle','square','','hexagon','','octagon'][b.n]+' · '+b.w.toFixed(1)+' × '+b.h.toFixed(1)+' m</div>';
   for(const[c,list]of Object.entries(cats)){h+=`<div class="cat">${c}</div>`;for(const[id,p]of list)h+=`<div class="pi${ST.held&&ST.held.k===id?' on':''}" data-p="${id}">${p.n}</div>`}
+  if(ST.held)h+='<div class="pi bin" data-p="bin" title="Remove the part in hand · Delete">✕ Remove</div>';
   $('#pal').innerHTML=h;
-  document.querySelectorAll('.pi').forEach(e=>{const id=e.dataset.p;e.onclick=()=>{if(id==='bus'){drop();ST.sel=null;ST.tab='frame';renderAll();return}
+  document.querySelectorAll('.pi').forEach(e=>{const id=e.dataset.p;e.onclick=()=>{if(id==='bin'){remove();return}if(id==='bus'){drop();ST.sel=null;ST.tab='frame';renderAll();return}
       drop();ST.held=item(id,null,{sym:ST.sym,isNew:true});ST.sel=null;ST.tab='part';renderAll()};
-    e.onmouseenter=()=>{if(id==='bus')return;const p=PARTS[id],t=$('#tip');t.innerHTML=`<b>${p.n}</b><br>${p.does}<br><span class="small">${p.m} kg${p.need?' · wants '+WANT[p.need]:''}</span>`;t.style.top=(e.getBoundingClientRect().top)+'px';t.style.display='block'};
+    e.onmouseenter=()=>{if(id==='bus'||id==='bin')return;const p=PARTS[id],t=$('#tip');t.innerHTML=`<b>${p.n}</b><br>${p.does}<br><span class="small">${p.m} kg${p.need?' · wants '+WANT[p.need]:''}</span>`;t.style.top=(e.getBoundingClientRect().top)+'px';t.style.display='block'};
     e.onmouseleave=()=>$('#tip').style.display='none'})}
 function renderBody(){document.querySelectorAll('#tabs div').forEach(d=>d.classList.toggle('on',d.dataset.t===ST.tab));const B=$('#body');
   if(ST.tab==='checks'){const R=rows(),bad=R.filter(r=>r.s==='bad').length,warn=R.filter(r=>r.s==='warn').length;
@@ -353,11 +363,11 @@ function topBar(){$('#mass').textContent=MC.m+' kg';$('#com').textContent=MC.off
   document.querySelectorAll('#attSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===ST.att));
   document.querySelectorAll('#symSeg button').forEach(b=>{const v=symN(b.dataset.v);b.classList.toggle('on',v===ST.sym&&!(b.dataset.v==='2'&&FR.N===2));if(b.dataset.v==='2')b.disabled=FR.N%2===1});
   $('#all').classList.toggle('on',ST.all);$('#play').classList.toggle('on',ST.play);$('#play').textContent=ST.play?'❚❚':'▶';
-  $('#hint').textContent=ST.held?'Click the frame to place it.':ST.items.length?'':'Pick a part.';$('#hint').style.display=$('#hint').textContent&&!Q.get('still')?'block':'none'}
+  $('#hint').textContent=ST.held?'Click to place. Right-click removes.':ST.items.length?'':'Pick a part.';$('#hint').style.display=$('#hint').textContent&&!Q.get('still')?'block':'none'}
 function renderAll(){renderPal();rebuild()}
 let msgT=0;function say(t){const m=$('#msg');m.textContent=t;m.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>m.style.display='none',1600)}
 // ---------------------------------------------------------------- hands: pick up, tilt, put down
-function drop(){const h=ST.held;if(!h)return;ST.held=null;if(h.back){Object.assign(h,h.back);delete h.back;delete h.stick;delete h.clash;ST.items.push(h)}}   // put a held part back where it was (a new one just goes)
+function drop(){const h=ST.held;if(!h)return;ST.held=null;if(h.back){Object.assign(h,h.back);delete h.back;delete h.stick;delete h.grab;delete h.clash;ST.items.push(h)}}   // put a held part back where it was (a new one just goes)
 function remove(){if(ST.held)ST.held=null;else if(ST.sel){ST.items=ST.items.filter(i=>i!==ST.sel);ST.sel=null}ST.tab='checks';renderAll()}
 function tilt(k,d){const it=ST.held||ST.sel;if(!it)return;if(k==='x'){it.a=it.b=it.r=0}else if(k==='r')it.r=((it.r+d)%360+360)%360;else it[k]=Math.max(-90,Math.min(90,it[k]+d));rebuild()}
 document.querySelectorAll('#tabs div').forEach(d=>d.onclick=()=>{ST.tab=d.dataset.t;renderBody()});
@@ -369,15 +379,15 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type!=='r
   if(T){tilt(...T);e.preventDefault()}else if(k==='escape'){if(ST.held){const h=ST.held;drop();ST.sel=h.back===undefined&&ST.items.includes(h)?h:null}else ST.sel=null;if(!ST.sel)ST.tab='checks';renderAll()}
   else if(k==='delete'||k==='backspace'){remove();e.preventDefault()}});
 const ND=new THREE.Vector2();let down=null,moved=0;
-function hit(e){const r=cvs.getBoundingClientRect();ND.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);RC.setFromCamera(ND,cam);RC.near=0;RC.far=Infinity;return RC}
+function hit(e,g){const r=cvs.getBoundingClientRect();ND.set((e.clientX+(g?g[0]:0)-r.left)/r.width*2-1,-(e.clientY+(g?g[1]:0)-r.top)/r.height*2+1);RC.setFromCamera(ND,cam);RC.near=0;RC.far=Infinity;return RC}
 cvs.onpointerdown=e=>{down=[e.clientX,e.clientY];moved=0;try{cvs.setPointerCapture(e.pointerId)}catch(_){}};
 cvs.onpointermove=e=>{if(down){const dx=e.clientX-down[0],dy=e.clientY-down[1];moved+=Math.abs(dx)+Math.abs(dy);if(moved>4){ST.az+=dx*.4;ST.el=Math.max(-85,Math.min(85,ST.el+dy*.3));setCam()}down=[e.clientX,e.clientY];return}
   const h=ST.held;if(!h)return;if(h.stick){if(Math.hypot(e.clientX-h.stick[0],e.clientY-h.stick[1])<7)return;h.stick=null}
-  const x=hit(e).intersectObjects(FACES,false)[0];h.at=x?toAt(x.point,x.object.userData.face,e.shiftKey):null;rebuild()};
+  const x=hit(e,h.grab).intersectObjects(FACES,false)[0];if(!x)return;h.at=toAt(x.point,x.object.userData.face,e.shiftKey);rebuild()};
 cvs.onpointerup=e=>{const was=down;down=null;if(!was||moved>4)return;if(e.button===2)return;const h=ST.held;
-  if(h){if(!h.at){return}if(h.clash){say('No room here.');return}delete h.back;delete h.stick;delete h.isNew;ST.items.push(h);ST.held=null;ST.sel=h;ST.tab='part';renderAll();return}
+  if(h){if(!h.at){return}if(h.clash){say('No room here.');return}delete h.back;delete h.stick;delete h.grab;delete h.isNew;ST.items.push(h);ST.held=null;ST.sel=h;ST.tab='part';renderAll();return}
   const x=hit(e).intersectObjects(SOLID,false)[0],I=x&&x.object.userData.inst;
-  if(I){const it=I.it;ST.items=ST.items.filter(i=>i!==it);it.back={at:Object.assign({},it.at),a:it.a,b:it.b,r:it.r,sym:it.sym};it.stick=[e.clientX,e.clientY];ST.held=it;ST.sel=null;ST.tab='part'}
+  if(I){const it=I.it;ST.items=ST.items.filter(i=>i!==it);it.back={at:Object.assign({},it.at),a:it.a,b:it.b,r:it.r,sym:it.sym};it.stick=[e.clientX,e.clientY];{const r=cvs.getBoundingClientRect(),fp=(I.j===0?I.foot:x.point).clone().project(cam);it.grab=[(fp.x+1)/2*r.width+r.left-e.clientX,(1-fp.y)/2*r.height+r.top-e.clientY]}ST.held=it;ST.sel=null;ST.tab='part'}
   else{ST.sel=null;ST.tab=x?'frame':'checks'}renderAll()};
 cvs.oncontextmenu=e=>{e.preventDefault();if(ST.held){ST.held=null;ST.tab='checks';renderAll();return}const x=hit(e).intersectObjects(SOLID,false)[0],I=x&&x.object.userData.inst;if(I){ST.items=ST.items.filter(i=>i!==I.it);if(ST.sel===I.it)ST.sel=null;renderAll()}};
 cvs.onwheel=e=>{e.preventDefault();ST.dist=Math.max(2.5,Math.min(16,ST.dist*(e.deltaY>0?1.1:.91)));setCam()};
@@ -393,7 +403,7 @@ mkFrame();
 const demo=Q.get('demo');
 if(demo==='block')ST.items=[item('camW',{f:'bot',s:.55,t:0}),item('kick',{f:'bot',s:0,t:0}),item('panel',{f:'top',s:0,t:0}),item('rad',{f:'s3',s:.5,t:.35}),item('panel',{e:'t3',t:.5},{b:-45}),item('thr',{e:'v0',t:.5},{b:60})];
 else if(demo!=='empty')ST.items=[item('camW',{f:'bot',s:.45,t:0}),item('batt',{f:'bot',s:-.3,t:0}),item('hor',{f:'bot',s:0,t:.5}),item('panel',{f:'top',s:0,t:0}),item('whip',{c:'ct0'})];
-ST.items.forEach(fixAt);if(Q.get('sel')!==null)ST.sel=ST.items[+Q.get('sel')]||null;if(ST.sel&&!Q.get('tab'))ST.tab='part';
+ST.items.forEach(fixAt);if(Q.get('sel')!==null||demo==='block')ST.sel=ST.items[+Q.get('sel')||0]||null;if(ST.sel&&!Q.get('tab'))ST.tab='part';
 size();renderAll();requestAnimationFrame(tick);
 </script>
 </body></html>
