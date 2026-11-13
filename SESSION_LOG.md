@@ -7683,3 +7683,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `app/terms.js`, `app/rollout.js`, `app/editor.js`, `app/settings.js`, `sim/vessel.js`,
   `sim/space.js`, `sim/debrief.js`, `tests/flow.mjs`, `UI.md`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`,
   `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Fable), design: the payload bench as its own builder (docs only)
+- **Caio:** satellites "do not need to be aerodynamic or even symmetrical, because they are payload. They can also be
+  very small"; he wants more possibilities and a better experience of putting them together. Agreed to five points.
+- **D47**, PROBES § 6.4: free attachment; constraints (views, plumes, the thrust line) in place of aerodynamics, with
+  a declared attitude until Q338; stowed and deployed; very small and a secondary slot; a live readout. **Q605**: the
+  plan for points 1 and 2, with a mock-up first.
+- **Not checked:** the bench was not opened in a browser; "the bench is the rocket builder at a smaller scale" is read
+  from builder.js and PROBES, not from play.
+- Files: launchpad `PROBES.md`, `DECISIONS.md`, `QUEUE.md`; root `SESSION_LOG.md`.

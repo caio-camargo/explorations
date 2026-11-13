@@ -1,5 +1,5 @@
 # PROBES — payload parts, asymmetry, pointing
-**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-10-13
+**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-11-13
 **Status**: **D20 and D21 answered 2026-10-12 (Caio):** the parts and pointing (D20); booms, the era ladder, beauty rules, tooltips (D21). Lanes build from § 3–8.
 **Purpose**: Caio (2026-10-12), building a satellite: the science parts are all cylinders in the stack; KSP's fun is
 making parts fit and asymmetric craft; the antenna sits on top, can't plausibly survive the air and should start
@@ -265,6 +265,40 @@ a satellite has only the cold-gas quads (70 s) and a 15 kg bottle. The bench get
   counts the rocket and the payload together, so a light rocket and a satellite with its own engine reach high orbits.
 - **Shapes for free**: spherical tanks, a nozzle under the bus, thruster clusters on the corners all read at a glance.
 
+### 6.4 The bench as its own builder (D47, 2026-11-13)
+
+Caio: "unless they are very large, they do not need to be aerodynamic or even symmetrical, because they are payload. They can also be very small. So I would like to enrich the possibilities and the experience of putting them together". Agreed the same day: the five points below, in this order.
+
+**The gap.** The bench (v1.198) is the rocket builder at a smaller scale: parts stack on an axis, side parts sit
+upright on a skin, symmetry is the default tool. Building a satellite feels like building a small rocket.
+
+1. **Free attachment.** On the bench any part goes on any face, edge or corner of the bus, at a tilt, with symmetry
+   off by default. The bus is a frame the player picks and stretches (§ 6.1: triangle, square, hexagon, octagon,
+   straight or tapered). Default for the tilt: steps of 15° on a face; booms keep D21's 90° and 45°. This changes § 2's
+   "parts never tilt" for bench parts only; the rocket builder stays as it is.
+2. **Constraints that replace aerodynamics.** A satellite's shape comes from what each part must see and must avoid:
+   a camera the ground, a panel the sun, a radiator cold space, an antenna home; a thruster's plume clear of the
+   panels; the kick motor's push through the centre of mass (§ 4). The bench draws a part's cone while it is held and
+   marks what blocks it; each is a row in the bench's Checks. Until the attitude law (§ 5, Q338) is built the player
+   **declares the attitude** on the bench (ground-facing, sun-facing, spinning) and the bench shows where the ground,
+   the sun and the direction of travel are; the declared attitude becomes the law's default when Q338 lands.
+3. **Two shapes: stowed and deployed.** The player builds the deployed craft and folds it to fit the fairing; the fit
+   check reads the stowed shape, the view checks the deployed one. The bench rehearses the deployment and shows what
+   would strike what (§ 6.1's hinges; nothing passes through the body).
+4. **Very small.** A ladder of sizes from a 5 kg beeper up (Q417's 0.3 and 0.6 m stacks sit on it), and a
+   **secondary slot** on any rocket: a small satellite on the adapter ring beside the main payload, released after
+   it. Q423's dispenser is the large form of the same thing.
+5. **What it can do, live.** A readout as on the rocket's Δv: swath, pictures a day, data rate, power margin,
+   lifetime, each updating as a part goes on, set against what the contract asks (D23's aim).
+
+**Open, with defaults.** (a) Does a tilted part cost anything? Default: no; the constraints are the cost. (b) Do view
+cones count partial blocking? Default: yes, as a share of the cone lost, shown as a percentage, and a strict camera
+(D20) needs all of it. (c) Is the secondary slot limited by era? Default: no, by mass and by the ring's free arc.
+(d) Does the rocket builder read a free-form payload's outline? Default: its stowed bounding shape, as today's block.
+
+**Not designed here:** the meshes and skins (Q417), the first bench parts (Q423), instruments (Q424), ends of life
+(Q425). They build on this section; the plan is QUEUE Q605.
+
 ## 7. Keeping them beautiful (D21)
 
 What makes Voyager beautiful, as rules:
@@ -302,6 +336,8 @@ Lanes: vehicle (parts, builder readout, attitude law), space (link gains, satell
 economy (contracts that want radar or the magnetometer), look & sound (parts & pad: the meshes, fold and deploy).
 
 ## 10. Decisions
+
+D47 (2026-11-13): the bench as its own builder: free attachment, constraints in place of aerodynamics, stowed and deployed, very small, a live readout (§ 6.4).
 
 D24 (2026-10-13): parts, not products; the payload bench (§ 6 rules 5–6, § 6.1).
 
