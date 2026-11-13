@@ -1243,7 +1243,7 @@
   check('flow-50: wired: the "On its side" card (tipRows), the Fleet tab\'s "on its side", no own trajectory on the map once landed; (Q545) no "Stuck" line or refusal any more, a "Righting" hint instead',
     H.includes("{id:'tipped',title:'On its side',rows:()=>tipRows()}") && H.includes('function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);')
       && H.includes("${q.bodyName}${q.tipped?' · <span class=\"warn\">on its side</span>':''}") && H.includes('if(!S.landed)drawPatches(gateLegs(predCache.p,labels)')
-      && !H.includes('TIP_NO') && !H.includes("['Stuck',") && H.includes("['Righting','<span class=\"dim\">thrust, RCS or the wheels can stand it up</span>']"));
+      && !H.includes('TIP_NO') && !H.includes("['Stuck',") && H.includes("['Righting','<span class=\"dim\">thrust, RCS or the wheels</span>']"));
 }
 
 // flow-51. A wing under a toppled lander stays folded; the map's body names sit on their bodies (flow, QUEUE Q540, Q541;
