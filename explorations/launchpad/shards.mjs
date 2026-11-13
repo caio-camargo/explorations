@@ -25,11 +25,11 @@ import { fileURLToPath } from 'node:url';
 // selector as for --only (a label when only one section has it, else a phrase of its title); the seconds weigh `--jobs`'
 // processes. `--times` names the sections to add (SLOW_S or more, not listed) and drop (under a third of it). Keep areas
 // in smoke by cutting a slow section's cost, not by listing whole areas: 40 economy sections stay in. platform-11 checks
-// the list's shape.
+// the list's shape. app-5 (R34, the random walk) was added at its local time, 10.3 s (2026-11-13).
 export const SLOW_S = 4;
 export const SLOW_ROWS = [
   ['crewed selene landing and return', 150.4], ['bodies-1', 131.3], ['bodies-3', 56.3], ['vehicle-39', 32.1], ['platform-1', 28.4],
-  ['procedures (bodies session)', 21.3], ['the program (v1.12)', 16.3], ['bodies-2', 14.7], ['flow-41', 14.7], ['econ-7', 10],
+  ['procedures (bodies session)', 21.3], ['the program (v1.12)', 16.3], ['bodies-2', 14.7], ['flow-41', 14.7], ['app-5', 10.3], ['econ-7', 10],
   ['vehicle-30', 9.1], ['flow-49', 8.6], ['econ-30', 7.9], ['ground-6', 6.8], ['vehicle-25', 6.6], ['space-33', 6.5],
   ['vehicle-3', 5.5], ['aerodynamics + structure (v1.2)', 4.9], ['re-entry heating (v1.7)', 4.8], ['space-6', 4.5],
   ['flow-46', 4.2], ['econ-25', 4.1]];
@@ -37,7 +37,7 @@ export const SLOW = SLOW_ROWS.map(r => r[0]);
 
 const HEAD = /^\/\/ ([0-9]+[a-z]?|[a-z]+-[0-9]+)\. (.*)$/, END = '// ==== END OF SECTIONS', MARK = '// ==== SECTIONS: tests/';
 // the section files, in run order (QUEUE Q68): the first suite, then the lanes in ROADMAP's order. A new file goes here.
-export const TEST_FILES = ['core', 'flow', 'economy', 'vehicle', 'space', 'world', 'look', 'qa', 'platform'];
+export const TEST_FILES = ['core', 'flow', 'economy', 'vehicle', 'space', 'world', 'look', 'qa', 'platform', 'app'];
 const lines0 = text => text.replace(/\r\n/g, '\n').split('\n');
 
 // the sections in lines[from, to) of one file, appended to secs

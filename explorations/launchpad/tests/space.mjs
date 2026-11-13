@@ -1070,10 +1070,9 @@
 // with the design table's craft (which Space then launched with none of the launch checks), and never throws, even with the
 // table empty; a reload mid-flight on Normal puts the satellite back in the registry as it was when control was taken
 // (it had been deleted from the save); on Hard (commitment) the craft is lost, with a line in the news. In review 2's
-// headless page (review/2026-11-11/app/harness.cjs; t2_flyrevert.cjs and t4_newprog_reload.cjs were the repros).
+// headless page (apphost.mjs since R34; the repros were review/2026-11-11/app/t2_flyrevert.cjs and t4_newprog_reload.cjs).
 {
-  const { createRequire } = await import('module');
-  const { boot } = createRequire(import.meta.url)('./review/2026-11-11/app/harness.cjs');
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url));   // (R34: was review 2's harness.cjs)
   const mk = H => x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
   const KEY = 'launchpad-program-tester';
   // a satellite of ours (a tester start made an ordinary flight, as the repros do), then Program › Fleet › Fly

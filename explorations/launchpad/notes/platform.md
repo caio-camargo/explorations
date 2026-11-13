@@ -1,5 +1,5 @@
 # Launchpad notes — Platform & QA
-**Version**: 1.0.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for tests and shards, the tester menu, the robot playtester, the file split, saves, numbering, the session recorder, platform direction.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1104,3 +1104,36 @@ and flow-38; on this branch it passes, and so does each section alone.
 - **For every lane:** a section starts on a new SIM, so set up in the section what it needs; don't count on an earlier
   section's program, flights or know-how. A section that builds its own SIM (`new Function(src…)`, 170 of them) is
   unchanged.
+
+## v1.343 — the app layer runs in a test: `apphost.mjs`, `tests/app.mjs` (2026-11-13, platform, QUEUE R34)
+
+Review 2's headless page (`review/2026-11-11/app/harness.cjs`) adopted, as REVIEW-2026-11-11.md § 6 asked: the page loads
+with 0 errors with and without `?tester`, a check per fixed app finding, the random walk in the full run.
+- **`apphost.mjs`** (launchpad folder): `boot({search, storage, seed, renderEvery})` gives a page, every script of
+  index.html in order in one `node:vm` context with the harness's DOM, storage, timer and GL stubs; `run(expr)`,
+  `click({data…})`, `key`/`keyup`, `frame(n)`, `timers()`, `errs` (file:line, not the joined text's), `log`, `store`,
+  `handlers`, `getEl`, `unknown` (element properties the stub lacks). **Load: 0.7 s, was 45 s to 2 minutes.** In a vm
+  context every lookup of a global (`Math`, `Float32Array`, and the page's own top-level functions) goes through the
+  context's interceptor; the SIM alone took 14 s in a context against 0.5 s with `new Function`, and 0.55 s once the
+  builtins were the wrapper's parameters. So the scripts run as one function inside the context, builtins and stubs as
+  its parameters, the page's names as its locals. What that changes, and what covers it: hoisting spans files
+  (platform-1 still loads the SIM file by file, lint.mjs checks load-time uses of later lets); a top-level `let`/`const`
+  at column 0 becomes `var`, so `typeof X` before X's file has run is `'undefined'` as in a browser (screens.js's `go()`
+  asks `typeof UNL` during the load: a TDZ error otherwise); a load-time throw stops the remaining files. `render()` on
+  the stub GL is now ~1.5 ms a frame (was ~0.85 s), so `renderEvery` can be small. `Math.random` is seeded (`seed`,
+  default 1; `null` for unseeded): a first flight's ignition dice once failed a run.
+- **`tests/app.mjs`**, a new lane file (`TEST_FILES` ends with `app`). Each section boots its own page (R2: nothing shared).
+  **app-1** loads with 0 errors on a career and with `?tester`, opens on the title, 30 frames and the timers throw nothing.
+  **app-2** a first flight through the real screens (title, Assembly with the Sounding rocket, the one design open on day 0;
+  Rollout, LAUNCH, Z and Space, 45 s past 10 km, End flight, the Debrief; the flight counted). **app-3** R28 in the page:
+  a click on the rocket picks a part up on the Assembly, nothing on the Rollout (vehicle-46 checks it on builder.js alone).
+  **app-4** the Debrief's part-link hover (R3's find, v1.330). **app-5** the random walk (`monkey.cjs`): 4 × 1,400 actions,
+  2 on a career, 2 with `?tester`, review 2's 9 invariants after each; LAUNCH puts the Sounding rocket on the table when the
+  design isn't open (a new career's isn't since the unlock map, so the walk never flew: 0 flights in 1,400 actions). ~10 s,
+  in `SLOW` (smoke runs app-1 to app-4, ~6 s). Proven to fail: a throw planted in `go('rover')` was reported with its file,
+  line and the ten actions before it.
+- **space-36** (R29) moved from harness.cjs to apphost.mjs: 44 s → 3 s locally.
+- **The walk finds nothing today** (0 exceptions, 0 invariants broken, 3 to 10 flights a seed). R30–R32 are still open:
+  their checks go here as each is fixed. The review's scripts stay in `review/2026-11-11/app/` as the record.
+- Not done: the shader-uniform check (R3 (c)) would need the GL stub to keep each program's sources (`B_glrun.cjs` does);
+  it can now run in apphost at no load cost. The QUEUE line is updated.
