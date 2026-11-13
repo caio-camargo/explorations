@@ -1105,7 +1105,7 @@ and flow-38; on this branch it passes, and so does each section alone.
   section's program, flights or know-how. A section that builds its own SIM (`new Function(src…)`, 170 of them) is
   unchanged.
 
-## v1.343 — the app layer runs in a test: `apphost.mjs`, `tests/app.mjs` (2026-11-13, platform, QUEUE R34)
+## v1.344 — the app layer runs in a test: `apphost.mjs`, `tests/app.mjs` (2026-11-13, platform, QUEUE R34)
 
 Review 2's headless page (`review/2026-11-11/app/harness.cjs`) adopted, as REVIEW-2026-11-11.md § 6 asked: the page loads
 with 0 errors with and without `?tester`, a check per fixed app finding, the random walk in the full run.

@@ -2,7 +2,7 @@
 // splices every file in tests/ (TEST_FILES) between test.mjs's prelude and its summary. Each section boots its own page
 // with apphost.mjs (every script index.html loads, in order, in a vm with DOM, storage and GL stubs, ~1 s): sections share
 // nothing, as R2 wants. Add a section at the end: "// app-<n>. Title" at column 0, then a { block }. notes/platform.md
-// § v1.343 (R34). A check for an app-layer fix goes here when it needs the real screens, clicks, keys and frame loop.
+// § v1.344 (R34). A check for an app-layer fix goes here when it needs the real screens, clicks, keys and frame loop.
 
 // app-1. The page loads headless (R34): every script, in page order, with 0 errors, on a career and with ?tester; it opens
 // on the title; 30 frames of the title (render() on the stub GL every frame) throw nothing. `unknown` lists element
