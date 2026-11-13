@@ -7641,3 +7641,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   the save holds no flight; if flights are ever saved, Hard should resume from it.
 - **Not checked:** anything in a browser (TESTING 392 R28, 393 R29).
 - **Next:** remove worktrees `launchpad-r29`, `launchpad-q604` (and `launchpad-r5`, `launchpad-momentum` if unused).
+
+## 2026-11-12 — launchpad platform (Opus 5.5): R2, test sections run isolated → main v1.340
+
+- **Built** REVIEW-2026-11-11 § 3 steps 1–2: `test.mjs`'s prelude builds the SIM with `fresh()`; `freshSim()` (a new SIM,
+  the destructured names, `log` emptied, `HOOK.msg` re-hooked) runs before every section, emitted by `shards.mjs`'s
+  `build()` (which refuses a prelude without it). `--isolation` now compares what each check prints (durations masked),
+  against the picked sections run together; exit 1 only on a pass/fail flip. Cost ~0.1 s a section (the world map stays shared).
+- **Cause of the three order-dependent checks:** core §18 *career moves* (core.mjs:740) deletes every `PROG` key in its
+  own `fresh()` and leaves no `wseed`; any section after it in the same process rolled NaN ignition dice. Reproduced on
+  `main` (`--only 18,"know-how (economy)",flow-38,vehicle-43`: reliability 0.0 %, flow-38 fail); passes on `r2`.
+  **Done criteria met:** flow-38, vehicle-43 (b) (now without Q604's pin or the kh/dev/lines save/restore) and §25
+  reliability pass after §18 and alone.
+- **Checked:** `--isolation --smoke --jobs 4`: 347 sections, 0 flips, 3 diffs (37e chunk count; econ-34 and aerofx-3
+  draw `Math.random` seeds by design); review measured 19. `--only econ,flow` green on both. CI full run green (43337523676), ff-merged.
+- **Not done:** step 3 (delete the now-dead save/restore blocks, `resetHome` ×80) is lazy, by lane; SLOW sections not run alone.
+- **Files:** launchpad `test.mjs`, `shards.mjs`, `tests/vehicle.mjs`, `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R2 ✓);
+  root `ACTIVE_WORK.md`, `SESSION_LOG.md`. No new durable files (INDEX unchanged).
+- **Next:** M3 code is open (W48/W49). Worktree `launchpad-r2` free to remove.
