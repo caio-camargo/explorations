@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2845,3 +2845,48 @@ screen layout in 2 and 4 (Q605's row: "with flow").
   not read. Slice 4 must, before its rows promise anything.
 - The mock-up's fixes were run in headless Chrome with synthetic pointer events only.
 - The sphere, several frames and the frame's inside have no mock-up: Caio has not tried them.
+
+## v1.343 — the frame as a sized part: bench slice 1 (2026-11-13, vehicle session, QUEUE Q617, D47 point 1)
+
+**Why:** the first slice of § "Plan: the bench as its own builder, points 1 and 2". Caio, after trying the mock-up: "go
+ahead with 1". The bench needs a bus the player shapes before anything can be mounted on its faces (slice 2, Q618).
+
+**What:**
+- **A new part, `frame`** (sim/vessel.js; kind `frame`, `sized`). Its design node carries `fr: {n, w, h, top}`: sides (3, 4,
+  6, 8), width across the corners (0.3 to 3 m in 0.1 steps), height (0.2 to 3 m), and the top's width as a share of the
+  bottom's (30 to 100 % in 5 % steps). `frOf(fr)` brings any values into range; a node with no `fr` is the default
+  hexagon, 0.9 × 0.8 m, straight.
+- **`frameDef(d, fr)`** sizes it at layout: one cached definition per shape, with the part's own key, as `finDef` does
+  for fins and `wtDef` for weights. So price, know-how and production follow the one part. Radius is half the width; the
+  profile runs from the bottom radius to the top's; mass is its skin (sides and both ends) at 18 kg a square metre, the
+  octagonal frames' figure; strength scales with width as `small` scales it; price with its skin (`pk`).
+  A 1 × 1 m frame: triangle 58.5 kg, square 68.9, hexagon 77.4, octagon 80.6; the default 57.8 kg.
+- **`nodeDef(nd)`** is a design node's definition: `PARTS[nd.k]`, sized when the node says how. The six places in
+  `lineOf`, `payExpand` and `layoutDesign` that read a stack node's height or radius, and three in `builder.js`, go
+  through it. Every other part gets the definition it always got.
+- **A registered craft keeps the shape:** `shapeOf` writes `fr` into the frame's entry and every reader of a shape
+  entry goes through `shDef(o)` (space.js, power.js, rovers.js, contracts.js, program-ui.js). Sized fins still lose
+  their size there, as before: not changed here.
+- **On the bench** (builder.js, the selected part's card): *shape*, *width*, *height*, *top* and what it weighs.
+  Drawn as a plain prism, foil between two dark end rings (app/gl.js `partBody`); its look is Q417's.
+- **Opens with the satellite bench** (the beeper), beside the octagonal frames, which stay for old designs. The bench
+  group is 21 parts now; flow-56, flow-60 and econ-38 counted 20.
+
+**Checks:**
+- `vehicle-48`: each shape's mass and radius, the taper, the default, values out of range, parts standing at its
+  height, the adapter picked by its radius (0.6 m ring under a 0.5 m frame, the 1.25 m ring under wider ones), a save
+  read back, a registered shape.
+- **Old designs lay out as before:** a fingerprint of all 19 presets and starters (306 parts: mass, balance, inertia,
+  every part's place and size) is the same number with and without the change.
+- Smoke passed locally apart from the three counts above, fixed. The full suite is CI's.
+- In the browser (headless Chrome on the GPU, driven by script): the bench with a frame, a 0.6 m core and a whip; the
+  card's buttons took it to a square 1.6 × 0.8 m tapered to 60 % (86 kg) and it drew so; then a 1.2 × 1.6 m triangle.
+
+**Not done, not checked:**
+- **Side parts still sit at the corner radius**, so on a frame's flat face they float a little off it, most on a
+  triangle. Slice 2 (mounts) replaces that placement.
+- Nobody has used the controls by hand; the buttons were clicked by script. The foil looks dark under the bench's light.
+- A frame as wide as 3 m was not flown, nor any frame launched: slice 1 is layout only.
+- The frame is offered in the rocket builder too, as the octagonal frames are.
+
+TESTING 395.

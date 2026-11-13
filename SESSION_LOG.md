@@ -7803,3 +7803,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/ground.js`, `sim/program.js`, `sim/contracts.js`, `tests/world.mjs`,
   `review/2026-11-13/survey.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`; root `ACTIVE_WORK.md`,
   `SESSION_LOG.md`.
+
+### 2026-11-13: vehicle session (Fable 5.2), Q617: the frame as a sized part, v1.343 (closing)
+- **Asked:** Caio: "orchestrator organized them, go ahead with 1" (bench slice 1 of Q605's plan).
+- **Built** (worktree `launchpad-builder`, branch `vehicle`): a `frame` part whose node carries its sides, width, height
+  and taper; `frameDef` sizes it at layout; `nodeDef` and `shDef` are how layout and registered craft read it; the shape
+  controls in the bench's part card; a plain prism.
+- **Checked:** test vehicle-48; all 19 presets and starters lay out to the same fingerprint with and without the
+  change; smoke; the bench in headless Chrome on the GPU, the card's buttons clicked by script.
+- **Not checked:** by hand; a frame launched or flown; side parts float off a frame's flat faces until Q618.
+- **Next:** Q618 (mounts), which starts with the census of upright readers.
+- Files: launchpad `sim/vessel.js`, `sim/space.js`, `sim/power.js`, `sim/rovers.js`, `sim/contracts.js`, `sim/program.js`,
+  `builder.js`, `app/gl.js`, `app/program-ui.js`, `test.mjs`, `tests/vehicle.mjs`, `tests/flow.mjs`, `tests/economy.mjs`,
+  `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
