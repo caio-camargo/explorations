@@ -7803,3 +7803,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/ground.js`, `sim/program.js`, `sim/contracts.js`, `tests/world.mjs`,
   `review/2026-11-13/survey.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`; root `ACTIVE_WORK.md`,
   `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Opus), Q603 slice 2's remainder: the flight cards (v1.343, text only)
+- **Asked:** pick from the task options; Caio took the recommendation (Q603 slice 2's remainder: the flight's cards, the
+  Esc menu).
+- **Done (v1.343):** four card rows in `app/program-ui.js` lose their how-to parentheses: Spin (*· SAS on the wobble*,
+  the rest a tooltip), Wheels (what unloads them is the tooltip on *n% saturated*), Righting (*thrust, RCS or the
+  wheels*), Stationary orbit (*to the middle of the burn* as the countdown's tooltip); the Mission card's *(land it to
+  keep the hardware)* in `app/hud.js`. The Esc menu needed nothing; the tester menu left (a developer's tool). One test
+  line (flow's tipped-lander check).
+- **Tests:** flow lane green; smoke green; flow + world green after merging Q612; CI full run green (43485173315), then
+  only QUEUE.md changed on `main` before the ff-merge. Renumbered at merge v1.342 → v1.343 (Q612 took v1.342); TESTING 395.
+- **Noticed:** `launchpad-copy` held uncommitted work from another session (Q612/Q616 files) when this one started, so
+  this one used a new worktree, `launchpad-copy2`.
+- **Not checked:** nothing seen in a browser (TESTING 395).
+- **Next:** Q603 is built in all its slices; what is left is Caio's read in the game (TESTING 380, 386, 394, 395).
+- Files: launchpad `app/program-ui.js`, `app/hud.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`,
+  `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
