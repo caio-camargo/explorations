@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.65 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-13
+**Version**: v2.0.66 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-13
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -298,6 +298,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.314 — Selene's core bracket survives a save: "Bound Selene's core" no longer pays on reload (2026-11-11, economy, QUEUE R16) → [notes/economy.md](notes/economy.md)
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
 - Plan: places on Selene (Q607, D48): 36 named craters from the map's own list, a landing judged inside the rim, *Crew on Selene* offers three by grade, contracts for a place and for a drive, a crew down abroad is a fallout; build Q612 to Q616 (2026-11-13, review 2) → [notes/economy.md](notes/economy.md)
+- v1.342 — places on Selene as data: 48 named craters graded A to C (`selPlaces`, `placeAt`), the landing's place in the flight record, the cond `jPlace`; ground-11 recomputes the table from the relief; nothing reads it yet (2026-11-13, review 2, QUEUE Q612) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 

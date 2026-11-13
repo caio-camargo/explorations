@@ -142,6 +142,10 @@ function jC(id,t,met,o={}){return{id,t,state:(R,s)=>met(R,s)?'met':o.lost&&o.los
 const jHome=t=>({id:'home',t:t||'judged at home',home:true,state:()=>'pending'});
 const jRec=()=>jC('rec','recovered',R=>!!R.recSci,{lost:R=>!!R.landed&&!R.recSci,wait:1});
 const jG=(g,k='gMax',end=R=>!!R.landed)=>jC('g',`never over ${g} g`,R=>R[k]<=g&&end(R),{lost:R=>R[k]>g,now:R=>R[k]>0?`so far ${R[k].toFixed(1)} g`:''});
+// (Q612) down inside one of these places on Selene (ids of selPlaces(); k: the record's field, 'selPlace' or 'crewPlace');
+// its live text is the distance to the rim of the one aimed at (pick, by default the first)
+const jPlace=(ids,pick,k='selPlace')=>jC('place',`down inside ${ids.map(i=>selPlace(i).name).join(' or ')}, under 4 m/s`,R=>ids.includes(R[k]),
+  {now:(R,s)=>s&&s.body===SELENE&&s.r?placeNow(selPlace(pick??ids[0]),s.landed&&s.pf?s.pf:toPF(SELENE,s.r,simT)):''});
 const jKm=x=>`${kmS(x)} km`;
 // needs: a part of a kind aboard (newShip's parts, or a flying vessel's)
 const jHas=(v,f)=>!!v&&(v.parts||[]).some(p=>p.on!==false&&p.d&&f(p.d));

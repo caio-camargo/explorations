@@ -530,6 +530,8 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   // Selene on one whip); carried home, they're developed on the ground
   if(R.farPhoto&&!R.farSent&&s.alive&&ant&&seesTellus(s)){if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}if(R.lk.ok)R.farGot=(R.farGot||0)+R.lk.rate*dt}
   if(R.farPhoto&&!R.farSent&&s.alive&&((R.farGot||0)>=FAR_BITS||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
+  // (Q612) the named place a craft is down in (under 4 m/s, whole), and the crew's: the last one, noted at each touchdown
+  if(b===SELENE&&s.alive&&s.landed&&(s.touchV||0)<4){if(!R.selDown){R.selDown=1;const P=placeAt(b,s.pf);if(P){R.selPlace=P.id;if(R.crewed&&R.crewOK)R.crewPlace=P.id}}}else if(R.selDown)R.selDown=0;
   if(!s.alive&&!R.hitDone&&b===SELENE){R.hitDone=true;if(sci&&ant){if(nearSide(b,s.r))R.selImpact=true;else HOOK.news('Our impactor hit the far side of Selene: nobody heard a thing','warn')}}
   if(s.landed&&s.alive&&b===SELENE&&sci){R.selSampled=true;if(!R.selLand&&ant&&(s.touchV||0)<4){if(nearSide(b,s.r))R.selLand=true;else if(!R.farLandNews){R.farLandNews=1;HOOK.news('Down on the far side of Selene, with no way to phone home','warn')}}}
   // Nyx: found by tracking; weighed on discovery (that logbook fact unlocks its orbit on the map and its encounter forecasts)

@@ -43,11 +43,16 @@ function mapCrater(E,W,H,R,c,D,Dt,fr){const ang=D/R,la0=Math.asin(c[1]),j0=Math.
 // The map: highland swell, old big craters, the maria flooded (to a gently domed plain ~1.4 km down), then the young
 // big craters on top of everything. Baked on first use (about a second), never at load.
 let SEL_MAP=null;
-function seleneMap(){if(SEL_MAP)return SEL_MAP;const W=1024,H=512,R=SELENE.R,g=SELENE.mu/(R*R),Dt=GR_DT/g,E=new Float32Array(W*H),M=new Float32Array(W*H),rnd=rng(4242);
-  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const u=mapU(W,H,i,j),k=j*W+i;M[k]=selMare(u);E[k]=1800*(tfbm(u[0]*2.5+40,u[1]*2.5+40,u[2]*2.5+40,5)-.5)}
-  const area=4*Math.PI*(R/1000)**2,n=Math.round(GR_C/400*area),cr=[];   // N(>20 km)
+// the big craters (20 to 150 km), on their own dice: the list is cheap and the same in every save, so the places below
+// (and anything else that wants a crater's centre) can read it without baking the map
+let SEL_CR=null;
+function selCraters(){if(SEL_CR)return SEL_CR;const R=SELENE.R,rnd=rng(4242),area=4*Math.PI*(R/1000)**2,n=Math.round(GR_C/400*area),cr=[];   // N(>20 km)
   for(let q=0;q<n;q++){const z=2*rnd()-1,t=2*Math.PI*rnd(),s=Math.sqrt(1-z*z),x=rnd(),D=1000/Math.sqrt(1/400-x*(1/400-1/150**2));
     cr.push({c:[s*Math.cos(t),z,s*Math.sin(t)],D,fr:rnd()**3,young:rnd()<.15})}
+  return SEL_CR=cr}
+function seleneMap(){if(SEL_MAP)return SEL_MAP;const W=1024,H=512,R=SELENE.R,g=SELENE.mu/(R*R),Dt=GR_DT/g,E=new Float32Array(W*H),M=new Float32Array(W*H);
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const u=mapU(W,H,i,j),k=j*W+i;M[k]=selMare(u);E[k]=1800*(tfbm(u[0]*2.5+40,u[1]*2.5+40,u[2]*2.5+40,5)-.5)}
+  const cr=selCraters();
   for(const c of cr)if(!c.young)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){const k=j*W+i,m=sstep(.05,.5,M[k]);if(!m)continue;const u=mapU(W,H,i,j),fl=-1400+500*(tfbm(u[0]*9+7,u[1]*9+7,u[2]*9+7,3)-.5);E[k]+=(fl-E[k])*m}
   for(const c of cr)if(c.young)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
@@ -96,7 +101,44 @@ function craterBands(u,R,Dt,thin,bands=GR_BANDS.length,c=GR_C,salt=0,frPow=3,b0=
 const selThin=m=>cu=>GR_MARE_THIN*sstep(.05,.5,mapBil(m.M,m.W,m.H,cu));   // fewer craters on the young plains (as flooded)
 function seleneH(pf,bands){const u=norm(pf),m=seleneMap();return mapSpl(m.E,m.W,m.H,u)+craterBands(u,SELENE.R,m.Dt,m.thin||(m.thin=selThin(m)),bands)}
 GROUND_GEN.selene=pf=>seleneH(pf);
-const SELENE_GROUND={gen:'selene',top:4000};   // top: an upper bound (sampled max 1.3 km), checked in test ground-2
+const SELENE_GROUND={gen:'selene',top:4000};
+// ---- places on Selene (QUEUE Q612; notes/economy.md § "Plan: places on Selene"; DECISIONS D48). A place is one of the
+// map's big craters, with a name: a landing is "in" it when it is inside the rim circle. Which craters, and their grade,
+// is a table, SEL_PLACE_T, made by review/2026-11-13/survey.mjs from craterSurvey and pinned by test ground-11:
+//   a place: its rim stands 300 m or more above its floor (not flooded or worn flat), and it is 40 km or more across, or
+//            30 km or more on the near side;
+//   grade A: near side, within 60° of the equator, 80 % or more of the floor standable;
+//         B: near side, within 60° of the equator, a rougher floor;
+//         C: the limb, the far side, or beyond 60° of latitude.
+// Selene is locked: Tellus stays at −x in its own frame, so the side is the centre's −x (near > 0.25, far < −0.25).
+// Rows: [index in selCraters(), name, grade], largest first. Names: Selene's myth and the night sky; none is a body's.
+const SEL_PLACE_T=[
+  [135,'Endymion','A'],[79,'Pandia','A'],[190,'Ersa','C'],[189,'Latmos','C'],[22,'Mene','C'],[195,'Nemea','C'],[178,'Hekate','C'],[129,'Asteria','C'],
+  [147,'Leto','C'],[14,'Koios','C'],[206,'Krios','C'],[197,'Hypnos','C'],[73,'Morpheus','B'],[0,'Aether','C'],[70,'Hemera','C'],[121,'Astraios','C'],
+  [196,'Perses','C'],[192,'Lelantos','C'],[182,'Aura','C'],[172,'Lampetia','A'],[150,'Phaethusa','C'],[26,'Aigle','C'],[199,'Arke','C'],[130,'Iris','C'],
+  [63,'Zephyros','A'],[51,'Boreas','C'],[98,'Notos','C'],[186,'Euros','C'],[21,'Pleione','C'],[20,'Maia','C'],[103,'Elektra','C'],[154,'Taygete','B'],
+  [184,'Alkyone','C'],[152,'Kelaino','C'],[105,'Sterope','C'],[81,'Merope','B'],[45,'Atlas','B'],[47,'Orion','C'],[61,'Kallisto','B'],[71,'Arkas','B'],
+  [171,'Kynosura','B'],[159,'Helike','B'],[31,'Ariadne','A'],[95,'Andromeda','B'],[143,'Kepheus','B'],[57,'Kassiopeia','A'],[40,'Perseus','B'],[91,'Pegasos','A']];
+const selSide=c=>-c[0]>.25?'near':-c[0]<-.25?'far':'limb';
+let SEL_PL=null;
+function selPlaces(){if(SEL_PL)return SEL_PL;const cr=selCraters(),R=SELENE.R;
+  return SEL_PL=SEL_PLACE_T.map(([i,name,grade])=>{const c=cr[i].c,D=cr[i].D,e=norm([c[0],0,c[2]]),t=Math.abs(c[1])<.02?norm(cross([0,1,0],c)):norm(sub(e,mul(c,dot(e,c)))),a=D/8/R;
+    return{id:i,name,grade,c,D,side:selSide(c),aim:mul(add(mul(c,Math.cos(a)),mul(t,Math.sin(a))),R)}})}   // aim: on the floor a quarter of the radius from the centre (the centre is the peak), toward the equator
+const selPlace=id=>selPlaces().find(P=>P.id===id)||null;
+// the place a point of Selene's ground is in (pf: the body's own frame), the smallest where two overlap; else null
+function placeAt(b,pf){if(b!==SELENE)return null;const u=norm(pf);let best=null;
+  for(const P of selPlaces())if(Math.acos(clamp(dot(u,P.c),-1,1))*b.R<=P.D/2&&(!best||P.D<best.D))best=P;return best}
+const placeRimDist=(P,pf)=>Math.acos(clamp(dot(norm(pf),P.c),-1,1))*SELENE.R-P.D/2;   // m to the rim; negative inside
+const placeNow=(P,pf)=>{const d=placeRimDist(P,pf);return d<=0?`inside ${P.name}`:`${d<1e4?(d/1e3).toFixed(1):(d/1e3).toFixed(0)} km from ${P.name}`};
+// what a mission wants to know of a crater, measured on the relief: the share of its floor a lander can stand on (slope
+// under 12° on a 10 m baseline, half the 24° topple angle; 64 points between 0.2 and 0.33 of the radius, clear of the
+// peak), and how far the rim stands above that floor. Slow (it bakes the map): for the test and the review script.
+function craterSurvey(c){const u=c.c,R=SELENE.R,e=norm(cross(Math.abs(u[1])<.9?[0,1,0]:[1,0,0],u)),n=cross(u,e),rad=c.D/2,h=(x,y)=>seleneH(norm([u[0]*R+e[0]*x+n[0]*y,u[1]*R+e[1]*x+n[1]*y,u[2]*R+e[2]*x+n[2]*y]));
+  let ok=0,fl=0,rim=0;const N=64,lim=Math.tan(12*Math.PI/180);
+  for(let i=0;i<N;i++){const r=rad*(.2+.13*Math.sqrt((i+.5)/N)),t=i*2.399963,x=r*Math.cos(t),y=r*Math.sin(t);fl+=h(x,y);if(Math.hypot(h(x+10,y)-h(x-10,y),h(x,y+10)-h(x,y-10))/20<lim)ok++}
+  for(let i=0;i<24;i++)rim+=h(rad*Math.cos(i*Math.PI/12),rad*Math.sin(i*Math.PI/12));
+  return{flat:ok/N,depth:rim/24-fl/N}}
+const selPlaceRule=(c,S)=>S.depth<300||!(c.D>=40e3||c.D>=30e3&&selSide(c.c)==='near')?null:selSide(c.c)!=='near'||Math.abs(c.c[1])>Math.sin(Math.PI/3)?'C':S.flat>=.8?'A':'B';   // top: an upper bound (sampled max 1.3 km), checked in test ground-2
 
 // ---- the planets (GROUND.md G7). No planet is in the body tree yet (the space lane's Q87), so each recipe has a stub with
 // SYSTEM.md's radius and surface gravity; the real body takes the recipe over (`ground: ENYO_GROUND`). Names and numbers

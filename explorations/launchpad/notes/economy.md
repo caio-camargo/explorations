@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2364,7 +2364,7 @@ is capped, not priced.
    bought keeps rising year on year (the runner prints capacity per year).
 
 **Questions for Caio** (numbered, with defaults; silence keeps them): (1) growth **×1.6 per unit** (default) or gentler
-(×1.3); (2) **new home sites** buildable (default) or leases only; (3) the hall's parallel **bays** as a capacity
+(×1.3); (2) **new home sites** buildable (default) or leases only; (3) the hall's parallel **bays** (W54, 2026-11-13: measure the hall first; Caio skeptical) as a capacity
 (default) or the hall stays one line.
 
 **Slices (⚙):** pads and ground stations counted with the growth price (`FAC` gains a `count` kind) → bays → home
@@ -3989,6 +3989,12 @@ and `procWithSite` send a landing procedure to a point; `landAt` reports its mis
   place. **A drive needs no crew; with a crew aboard the rover it pays half as much again.** *N* is set in the build
   from a measured drive so that it takes 5 to 15 minutes of play (rovers run at 2 to 4 m/s: 1 to 3 km at 1×; not
   measured here).
+- **Added 2026-11-13** (Caio: "on paying contracts, collecting moon rocks and running experiments also makes
+  sense"): two more types at a place, both in Q615. `selRocks`: "bring back rocks from *X*": a craft that was down
+  inside *X* is recovered on Tellus (*Sample return* with a place; a crew that walked there brings more and is paid
+  more, once EVA E2 has samples). `selExp`: "run an experiment in *X*": an instrument left working inside *X* (a
+  rover's reading or panorama taken there, a seismometer set down there, later a package a crew carries out), judged
+  between flights on what reached home, as the Selene science contracts are.
 - With these, M3's finish line is met "all from contracts": the crewed landing is a mission the player chose a place
   for, the drive is a contract.
 
@@ -4024,3 +4030,32 @@ a place is asked for once per contract type.
 pilot can tell the rim from the cockpit. The visibility measure is crude. The standable share is on a 10 m baseline
 with every crater band on; GROUND G5's hazard check may make rough floors easier than the share suggests. The pays are
 not balanced against chapter 4b (`career.mjs` stops at the first Selene landing).
+
+## v1.342 — places on Selene, slice 1: the places as data (2026-11-13, review 2 session (Fable), QUEUE Q612; the plan above, § 1; DECISIONS D48)
+
+No change a player can see: nothing reads a place yet. Sim only, and one new test.
+
+- **`selCraters()`** (sim/ground.js): the map's 209 big craters, split out of `seleneMap()` so the list is read
+  without the one-second bake. Same dice, same list (ground-2 and ground-11 hold it).
+- **`selPlaces()`**: 48 places from the table `SEL_PLACE_T` (`[crater index, name, grade]`), each
+  `{id, name, grade, c, D, side, aim}`. `selPlace(id)`, `placeAt(body, pf)` (inside the rim circle; the smallest where
+  two overlap), `placeRimDist`, `placeNow` ("inside Endymion", "14 km from Endymion").
+- **The rule** (`selPlaceRule`, on `craterSurvey`'s two numbers: the share of the floor under 12° and the rim's height
+  above the floor). A place: the rim 300 m or more above the floor, and 40 km or more across, or 30 km or more on the
+  near side. Grade A: near side, within 60° of the equator, 80 % or more of the floor standable; B: the same with a
+  rougher floor; C: the limb, the far side, beyond 60° of latitude. **A 7, B 11, C 30** (the plan's first rule gave
+  2, 4, 30: the pool now takes near-side craters from 30 km, and A no longer needs a mare floor).
+- **The largest is Endymion**: 125 km, 10°N, 1° from the point facing Tellus, a young crater on a mare, floor 98 %
+  standable, rim 2.5 km up. Pandia (114 km, 27°N) is the second and also an A. The full list:
+  `node review/2026-11-13/survey.mjs`.
+- **The flight record** (`outThere`, sim/program.js): `R.selPlace` is the place a craft is down in on Selene (under
+  4 m/s, whole), noted at each touchdown, the last one kept; `R.crewPlace` the same with a crew aboard and well.
+- **`jPlace(ids, pick, field)`** (sim/contracts.js): the cond "down inside X or Y, under 4 m/s"; its live text is the
+  distance to the rim of the one aimed at. Nothing uses it yet (Q614, Q615).
+- **ground-11 (new):** the table is recomputed from the relief (which craters, in order, each grade); six or more of
+  each grade; every aim point is inside its place a quarter of the radius out; a landing inside is in the record and
+  one outside is not; the cond reads it.
+- **The table is data, the test is the rule.** Whoever changes Selene's bake, the rule or a threshold runs
+  `node review/2026-11-13/survey.mjs table` and pastes the rows; ground-11 says so when they disagree.
+- **Not checked:** nothing seen in a browser (there is nothing to see); whether a pilot can land inside a rim by hand;
+  the names are a default for Caio to change.
