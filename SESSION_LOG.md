@@ -7659,3 +7659,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** launchpad `test.mjs`, `shards.mjs`, `tests/vehicle.mjs`, `notes/platform.md`, `NOTES.md`, `QUEUE.md` (R2 ✓);
   root `ACTIVE_WORK.md`, `SESSION_LOG.md`. No new durable files (INDEX unchanged).
 - **Next:** M3 code is open (W48/W49). Worktree `launchpad-r2` free to remove.
+
+### 2026-11-13: review 2 session (Fable, continued), Q603 slice 4 withdrawn: another session holds it
+- **Asked:** "go ahead" after slice 3 (v1.329); taken as the next slice, 4 (Rollout, the why-cards, the glossary).
+- **Done:** claimed slice 4 (39da910c); a minute later another review 2 session claimed slices 4 to 6 (306ecb6d) and was
+  already editing in the same worktree, `launchpad-copy` (uncommitted changes in `app/editor.js`, `app/rollout.js`,
+  `app/terms.js`, `app/settings.js`, `sim/vessel.js`, `sim/space.js`, `sim/debrief.js`). Wrote nothing there; claim
+  withdrawn, QUEUE's Q603 status names slices 4 to 6 as theirs. No code changed.
+- **Next:** none for this session. Lesson: two sessions on one worktree; a claim names its worktree, check it is clean.
+- Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md`; launchpad `QUEUE.md`.
