@@ -2351,3 +2351,19 @@ Text only, and one new test. 50 strings.
   `recoveryRule` (its parenthesis is already the tooltip).
 - **Tests:** smoke green locally but for the timing check 6b under load (3,751 µs a warp frame); the full run is CI's.
 - **Not checked:** nothing seen in a browser (TESTING 394).
+
+## v1.342 — the flight cards' last how-to lines, cut (2026-11-13, review 2 session (Opus), QUEUE Q603 slice 2's remainder; D43)
+
+Text only. The card rows built in `app/program-ui.js` and `app/hud.js` still carried four how-to parentheses; v1.341
+read `app/hud.js` and found nothing over budget, these live in the row functions it calls.
+
+- **Spin:** *(SAS damps the wobble, leaves the roll; a roll key takes it back)* is now *· SAS on the wobble*, the rest
+  its tooltip.
+- **Wheels:** *(RCS, a burn or steerable fins unload them)* is the tooltip on *n% saturated*.
+- **On its side:** *Righting* reads *thrust, RCS or the wheels* (the label says what for).
+- **Stationary orbit:** *(the burn's middle)* is the tooltip on the countdown.
+- **Mission, Now:** *(land it first to keep the hardware)* → *(land it to keep the hardware)*.
+- **Left alone:** the Esc menu (every button is a label and a key; the arm texts say what the second click does), the
+  tester menu (a developer's tool), the rover's and the docking rows (their parentheses carry numbers).
+- **Tests:** flow's tipped-lander check reads the new *Righting* text (one line).
+- **Not checked:** nothing seen in a browser (TESTING 395).

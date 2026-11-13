@@ -403,6 +403,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
 - v1.329 — the Program's copy, cut to the rule: mission briefs, contracts, decisions, the fleet, mission control (Q603 slice 3; UI.md § 2.1)
 - v1.341 — the glossary, the why-cards, Rollout and the sim's warnings, cut to the rule; flow-63 checks the budgets (Q603 slices 4 to 7)
+- v1.342 — the flight cards' last how-to lines into tooltips: spin, wheels, righting, the stationary transfer (Q603 slice 2's remainder)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 
