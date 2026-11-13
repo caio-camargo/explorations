@@ -7746,3 +7746,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Orchestrator:** M3's order is Q91 (ground live, GPU), Q607 (plan: places and missions), Q606 (P1 bug), Q608 (the
   `m3` spec), then Q533 and Q609 (EVA).
 - Files: launchpad `DECISIONS.md`, `QUEUE.md`, `ROADMAP.md`, `REVIEW-2026-11-13-m3.md`; root `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Fable), Q607: the plan for places on Selene (docs and one script)
+- **Asked:** Caio: "go ahead" on the plan M3's finish line waits on after the ground.
+- **Plan** (`explorations/launchpad/notes/economy.md` § "Plan: places on Selene"): places are the map's own big
+  craters (36 of 40 km and more that can be seen), named and graded; a landing is judged inside the rim; *Crew on
+  Selene* offers three places with pay by grade; `selPlace` and `selDrive` contracts; a crew down abroad still
+  completes and opens a fallout; cargo goals read the recovery verdict.
+- **Measured** (`review/2026-11-13/places.mjs`): Selene's near side is fixed in its own frame; a mare floor is 92 to
+  100 % standable, a highland floor 45 to 78 %; the largest crater (125 km) is at the centre of the near side.
+- **Filed:** Q612 to Q616. Q612 (places as data) and Q616 can start now; Q613 and Q614 ship with
+  GROUND G3 (Q91), because today's craters on screen are not the map's.
+- **Economy:** `R.recSci` is set at touchdown, before recovery is settled (program.js:617): a sample that sank or was
+  kept abroad pays today. Q616 changes it, after a `career.mjs` run.
+- **Not checked:** nothing flown or seen in a browser; the grade rule gives too few easy places as written (Q612
+  tunes it); the pays are not balanced.
+- Files: launchpad `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `review/2026-11-13/places.mjs` (new); root
+  `ACTIVE_WORK.md`, `SESSION_LOG.md`.

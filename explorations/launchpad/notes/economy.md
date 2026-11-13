@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3909,3 +3909,118 @@ shared formulas, and no copies left in the sim, Rollout or career.mjs).
 - **The robot:** m2 answers *Keep repeating* (a player keeping a network up would). Result: m2 passes (2026-11-12): three clean runs, Repeat on, 5 of 5 up at day 4,000, 1 automatic run; no automatic run failed in this one, so the decision itself was checked by econ-44, not in the page.
 - **Test `econ-44`:** a failed automatic run holds and asks; *keep* resumes; *stop* turns Repeat off; an ordered run's
   failure doesn't ask; Repeat comes back without new clean runs.
+
+## Plan: places on Selene, and missions that ask for them (2026-11-13, review 2 session, Fable; QUEUE Q607; DECISIONS D48; REVIEW-2026-11-13-m3; plan only)
+
+Nothing built. M3's finish line asks for a crew in "a Selene crater the player chose", "a rover driven", "all from
+contracts"; today *Crew on Selene* passes on any landing and nothing reads a drive. This plan gives Selene places with
+names, judges landings and drives against them, and says what the missions and contracts become. Build rows: Q612 to
+Q616.
+
+**What it rests on (read in the code).** `seleneMap().craters` (sim/ground.js:46) is a list of Selene's 209 big craters
+(centre, diameter, freshness) from a fixed seed, so it is the same in every save. `outThere` (sim/program.js:534)
+already notes a landing on Selene and its speed. A contract's `conds` carry a live `now` text (`jC`,
+sim/contracts.js:140), which the Mission card shows. A leg can already carry a place (`{k:'land', site, km}`, used by
+the ballistic test). The Selene science contracts are judged between flights on what reached home (`selTick`,
+contracts.js:397). A rover's registry entry keeps its position and its kilometres. `pickLandSite` (app/screens.js:231)
+and `procWithSite` send a landing procedure to a point; `landAt` reports its miss (`X.miss`).
+
+**Measured** (`review/2026-11-13/places.mjs`, with the relief switched on in the script's own copy)
+
+| Question | Result |
+|---|---|
+| Is the near side a fixed part of the map? | Yes: Tellus stays at −x in Selene's own frame (checked at 0, 6 and 40 days), so "near side" is a property of a place |
+| How many craters are big enough to name? | 47 of 40 km and more (the largest 125 km); 18 on the near side, 19 on the far side, 10 on the limb; all have a central peak (the change from bowl to flat floor is at 18 km) |
+| Can you see all of them? | No. On 11 the rim stands under 300 m above the centre: flooded by a mare or worn flat. 36 are left (a crude measure: one rim point against the centre, which has the peak) |
+| How much of a floor can a lander stand on? | Slope under 12° on a 10 m baseline (half a lander's 24° topple angle): 92 to 100 % on a floor flooded by mare, 45 to 78 % on a highland floor; the median over all 209 is 70 %. Open mare 96 %, open highland 65 % |
+| How steep are the walls? | 25 to 44° on most highland craters: not for landing, and not for most rovers |
+| Is there an obvious first site? | Yes: the largest crater, 125 km, sits at 10°N almost at the centre of the near side, young, 1.5 km deep, its floor 95 % standable |
+
+**1. Places as data** (Q612)
+- `selPlaces()`: built once from `seleneMap().craters`: the craters of 40 km and more that pass the visibility
+  measure, each `{id, name, c, D, side, unit, flat, grade}`. `id` is the crater's index in the map's list (stable:
+  the seed is fixed; a test pins the list so a change to the bake fails loudly).
+- `placeAt(body, pf)` → the place whose rim circle holds the point (the smallest, where two overlap), or null.
+- **Inside the rim is the judge.** A landing counts for a place when it is inside the rim circle. No radius number to
+  invent, and the player can see the line. The procedures' 5 m aim is not asked of a hand landing.
+- **Grades, a rule the mission can state:** A, near side and 85 % or more of the floor standable; C, the far side or the
+  limb, or under 60 % standable, or beyond 60° of latitude; B, the rest. The rule as written gives A 2, B 4, C 30 of the
+  36: too few easy ones. Q612 tunes it (or adds the open mare plains as named regions) until each grade has six or
+  more, and records the table.
+- **Names:** a fixed list in the code, by size. Default theme: Selene's own myth and the night, as SYSTEM.md names the
+  bodies (Endymion for the 125 km crater at the centre of the near side; Pandia, Ersa, Latmos, Mene, Nemea, Hekate,
+  Asteria, Leto, Koios…), none that is already a body. Caio may rename any of them.
+- **A landing point per place** for procedures: on the floor at a quarter of the radius from the centre (the centre is
+  the peak), on the side nearest the equator. GROUND G5's hazard check then picks the flattest spot within 100 m.
+- The flight record gains `selPlace` (any craft down under 4 m/s, alive) and `crewPlace` (the same with a crew
+  aboard and well). Nothing reads them in this slice; no behaviour changes; it can be built and tested headless **now**,
+  before the ground is live, because a rim circle does not depend on the relief.
+
+**2. Seeing a place and flying to it** (Q613; flow with look & sound)
+- A map layer *Places*: names and rim circles on Selene (app/map-layers.js has the list of layers).
+- A place can be the target **without a procedure**: a click on it in the map marks it (today the click is refused
+  unless the design has a landing procedure). With a procedure, ▶ Procedure flies to the place's landing point.
+- The distance, where the pilot already looks: the Impact row reads *inside Endymion* or *14 km short of Endymion*;
+  the Mission card's line for the place shows the same through the cond's `now`.
+- Until GROUND G3 (Q91) the craters on screen are the old shader's and do not sit where the map's are. The layer's
+  circles would point at ground that shows no crater. So this slice **ships with or after G3**; it can be built before.
+
+**3. *Crew on Selene* offers three places** (Q614; D48 answer 1)
+- The mission keeps its id (`crewland`: saves that have it done stay done). Its card lists three places, one of each
+  grade, each with its pay: default **Endymion (A) 500 M, a near-side highland crater (B) 650 M, a far-side or polar
+  crater (C) 850 M**; today's single pay is 600 M (the table is a first draft, D28).
+- The player picks one on the card before the flight. The pick sets the map's target and the Mission card's line
+  (one new saved field, `PROG.place`, a row in `PROG_SCHEMA`). **Pay follows where the crew actually landed**: a
+  crew aimed at C that comes down in A is paid for A; outside all three, the mission stays open.
+- Judge: `R.crewed && R.crewOK && offered.includes(R.crewPlace) && R.capHome`. Conds: a crew aboard; down inside one
+  of the three under 4 m/s (`now`: the distance to the picked one); home.
+- *Soft landing on Selene* and *Sample return* stay as they are (anywhere on the near side): the first landing should
+  not ask for precision.
+- Ships after G3, like slice 2: before the relief is live every place is the same smooth ground, and the grades mean
+  nothing.
+
+**4. Contracts that repeat it, and the judged drive** (Q615; D48 answer 5)
+- `selPlace` (science and government; needs *Soft landing on Selene*): "land an instrument package inside *X*", or
+  with a crew once *Crew on Selene* is done; *X* drawn from the places we have not landed in, pay by grade (default
+  60, 90, 140 M × `PAY_FAR`; a crew doubles it). Judged on the flight like any contract. Each place is landed in for a
+  contract once, so the 36 places are 36 small firsts, and the board never asks for the same crater twice.
+- `selDrive` (science; needs a rover delivered): "a rover drives *N* km inside *X* and is upright at the end".
+  Judged between flights by `selTick` from the rover's registry entry, which gains the kilometres driven inside each
+  place. **A drive needs no crew; with a crew aboard the rover it pays half as much again.** *N* is set in the build
+  from a measured drive so that it takes 5 to 15 minutes of play (rovers run at 2 to 4 m/s: 1 to 3 km at 1×; not
+  measured here).
+- With these, M3's finish line is met "all from contracts": the crewed landing is a mission the player chose a place
+  for, the drive is a contract.
+
+**5. Home, and what comes back** (Q616; D48 answer 4)
+- **The crew's goal already follows D48:** `R.capHome` is "alive and landed on Tellus", wherever. No change.
+- **The fallout is new.** A crewed capsule down on another power's land: a friend sends the crew home (news only); a
+  tense power sends them home after talks (days of delay, a small cost in opinion at home); a hostile power holds them,
+  and the player gets a between-flights decision (`offerDecision`, sim/contracts.js:528): pay, concede, or wait it
+  out, each with its cost in money, relations or opinion. Until they are back the crew cannot fly (matters once the
+  roster exists, Q182).
+- **Cargo goals read the recovery verdict.** Today `R.recSci` is set the moment a package lands on Tellus
+  (sim/program.js:617), before recovery is settled, so a sample that sank, drifted beyond the ships' reach or was kept
+  abroad still pays. D48: a goal that needs something brought back is met only if it is recovered. The change touches
+  every "recovered" contract from the first hour on, so **measure first**: `career.mjs` with the rule on, for whether
+  the early sounding flights (which come down near the pad) lose anything. Data sent by radio before the landing
+  still counts (Claude's reading of D48, to confirm).
+
+**Slices**
+
+| # | What | Kind | When |
+|---|---|---|---|
+| Q612 | Places as data: the list, names, grades, `placeAt`, the record's two fields, a cond with its distance; tests pin the list | ⚙ S | now |
+| Q613 | The map layer, a target without a procedure, the distance on the Impact row and the Mission card, procedures to a place | 🖥 M | built any time after Q612; ships with GROUND G3 (Q91) |
+| Q614 | *Crew on Selene* offers three places; the pick; pay by place; PROGRESSION's table | ⚙ S | after Q612; ships with G3 |
+| Q615 | `selPlace` and `selDrive`; the rover's kilometres by place; the crewed variants | ⚙ M | after Q612; the drive after G5 (rovers on relief) |
+| Q616 | The fallout of a crew down abroad; cargo goals read the recovery verdict (measured on `career.mjs` first) | ⚙ M | now; independent |
+
+**Defaults Caio may override** (none blocks the build): the names' theme; inside the rim as the judge (the alternative
+is a marked point with a radius, harder and less visible); pay follows the landing and not the pick; the three pays;
+a place is asked for once per contract type.
+
+**Not checked.** Nothing was flown: whether a hand landing inside a 40 km rim is as easy as it sounds, and whether a
+pilot can tell the rim from the cockpit. The visibility measure is crude. The standable share is on a 10 m baseline
+with every crater band on; GROUND G5's hazard check may make rough floors easier than the share suggests. The pays are
+not balanced against chapter 4b (`career.mjs` stops at the first Selene landing).
