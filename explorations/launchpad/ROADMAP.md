@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.8 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-12 · **Status**: live
+**Version**: 1.9.9 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -164,7 +164,7 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 | [`TECH_SCOUTING.md`](TECH_SCOUTING.md) | real space tech mined for ideas |
 | [`mockups/README.md`](mockups/README.md) | the mock-up pages and Caio's picks |
 | [`DECISIONS.md`](DECISIONS.md) | every decision, one line each |
-| Reviews: [`REVIEW-2026-10-11.md`](REVIEW-2026-10-11.md), [`REVIEW-2026-11-09.md`](REVIEW-2026-11-09.md), [`REVIEW-2026-11-11.md`](REVIEW-2026-11-11.md) (review 2: the fixes audited, R2/R3 plans, repros, the app layer, tasks R25–R34; scripts in [`review/2026-11-11/`](review/2026-11-11/)) | a whole-project review (one per milestone); 11-09 audits the code and tests (tasks R1–R24) |
+| Reviews: [`REVIEW-2026-10-11.md`](REVIEW-2026-10-11.md), [`REVIEW-2026-11-09.md`](REVIEW-2026-11-09.md), [`REVIEW-2026-11-13-m3.md`](REVIEW-2026-11-13-m3.md) (M3 readiness), [`REVIEW-2026-11-11.md`](REVIEW-2026-11-11.md) (review 2: the fixes audited, R2/R3 plans, repros, the app layer, tasks R25–R34; scripts in [`review/2026-11-11/`](review/2026-11-11/)) | a whole-project review (one per milestone); 11-09 audits the code and tests (tasks R1–R24) |
 
 ### M3–M5 — what each holds (M3 current since W49, code after R2; M4 next but 📝 only (D46); M5 📝 only)
 

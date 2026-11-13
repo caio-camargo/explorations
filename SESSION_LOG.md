@@ -7719,3 +7719,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   1280 × 800, a high-density screen; nobody has judged the feel, which is the point of it.
 - **Next:** Caio tries it; then the plan in `notes/vehicle.md` and the build slices under QUEUE *Proposed*. The claim stays open.
 - Files: launchpad `mockups/bench/free.html` (new), `mockups/README.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Fable), M3 readiness (docs and one script)
+- **Asked:** which large piece next; Caio: "ok, m3". A walk of M3's finish line through the design docs and the code.
+- **Found** (`explorations/launchpad/REVIEW-2026-11-13-m3.md`): a crew already flies to Selene and home (test 27) and
+  rovers work; the finish line's qualifiers are what is missing: no mission names a place, Selene's relief is switched
+  off (`SELENE.ground` unset: Q91 is the long pole), nothing judges a drive, the crewed landing is a mission and not a
+  contract, EVA E2 has no row, there is no `m3`.
+- **A bug, confirmed** (`review/2026-11-13/crew_rover.mjs`): a fresh crewed flight cannot deploy the default
+  two-seat rover (`crewOn` counts a field only the registry sets). **Q606, P1.**
+- **Filed:** Q606 to Q611; **W56**: five choices for Caio, each with a default.
+- **Orchestrator:** Q91 (the ground live) is first on M3's path and needs a GPU session; Q182, Q183, Q458 to Q461, Q467
+  and Q581 to Q587 still read "after R2" or "held by W48" and are free now.
+- **Not checked:** nothing flown by hand or seen in a browser; the two inventories (research agents) were spot-checked,
+  not re-read.
+- Files: launchpad `REVIEW-2026-11-13-m3.md` (new), `review/2026-11-13/crew_rover.mjs` (new), `QUEUE.md`,
+  `ROADMAP.md`; root `INDEX.md`, `SESSION_LOG.md`.
