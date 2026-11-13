@@ -1,5 +1,5 @@
 # DECISIONS — every design decision, one line each
-**Version**: 1.0.26 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-12
+**Version**: 1.0.27 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-12
 **Status**: live, append-only.
 **Purpose**: The one place a decision is written in full. Design docs hold the *current* design and link here for the
 why and when; QUEUE holds only open questions and live work. Rules: [`ROADMAP.md`](ROADMAP.md) § "Documents".
@@ -120,6 +120,7 @@ The full text of every question as it was asked (options, reasons) is in
 | D17.6 | 2026-10-11 | **The head is the carved puppet** (closes D11 and W31) | CREW Part 1, FACES |
 | D26 | 2026-11-06 | **The head is ligne claire after all** (Caio: the face creator "proved too thorny"; "a tintin-like design that was good enough", the face question maybe later): the head mock-up's option (a) (`output/launchpad/mockups/heads/sheet-a.png`): a slightly big round head, dot eyes, brows and a one-line mouth for the expressions, hair as a silhouette, variety from hair, skin, brows, nose and moustache. Replaces D17.6; the face engine (D12) and W33 are parked, not deleted | CREW Part 1, FACES, QUEUE Proposed "the ligne-claire head" |
 | D27 | 2026-11-06 | **EVA** (W45, Caio: "yes on defaults"): one physical body fed by clicks or keys, as rovers are; a crew member is lost only by the player's own action, free and out of reach; order E1 hatch → E2 ground → E3 hull → E4 jet pack, **after E0, a movement test ground** (Caio: gravities, stairs, zero g; "not realistic... i just need to be able to easily test astronaut movement") | EVA § 6a, § 7 |
+| W43 | 2026-11-12 | **Crew by qualification, the five defaults** (Caio: "ok on defaults"): (1) a type is the capsule, not the whole design; (2) rendezvous, docking and landing are earned by two clean simulator completions or one real; (3) a pilot not qualified on the type gives rate damping only; (4) field geology is a 30-day course from the astronaut office (0.2 M); (5) the commander is the senior flier, automatically | Q182, Q458 (crew slices 1–2, after R2), notes/economy.md § "Plan revision: crew by qualification", CREW.md § Skill, REVIEW-2026-11-11 § 8 row 14 |
 
 ## Look, screens, UI
 

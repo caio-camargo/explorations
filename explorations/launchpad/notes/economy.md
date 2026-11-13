@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
+**Version**: 1.0.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-12
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3338,7 +3338,7 @@ given a crew, so a program can train its next crew while the current one flies.
 6. **The scientist's and engineer's hooks** (Q136).
 7. **Crew rotation by dispatch** (Q137), with space's docking and deorbit procedures.
 
-### Questions for Caio (W43; defaults if silent)
+### Questions for Caio (W43; **answered 2026-11-12: all five defaults**, DECISIONS W43)
 1. A **type** is the capsule (**default**) or the whole design.
 2. A rendezvous, docking or landing qualification is **two clean completions in the simulator or one real** (**default**),
    or simulator hours alone.
