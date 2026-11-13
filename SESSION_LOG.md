@@ -7820,3 +7820,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Q603 is built in all its slices; what is left is Caio's read in the game (TESTING 380, 386, 394, 395).
 - Files: launchpad `app/program-ui.js`, `app/hud.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`,
   `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Fable), Q616 built, narrowed: a package kept abroad; a crew held abroad (v1.344)
+- **Asked:** Caio: "ok to continue" after Q612.
+- **Measured** (`explorations/launchpad/review/2026-11-13/recover.mjs`): near the pad and at field stations every
+  package is recovered; 400 km out 54 of 120 without the fleet; under the aurora 30 of 45.
+- **First build failed CI** (run 43485202915): with "beyond the ships' reach is not recovered", *Sample return* flown
+  by procedure (bodies-1) lost its sample, because the return cannot aim its splashdown. That half is out: **W57**.
+  Also caught locally by platform-12: a trailing `//` comment of mine had swallowed the rest of a line in
+  `missionTick`.
+- **Built (v1.344):** a package a hostile power keeps is not recovered; a crew down abroad still completes its
+  mission, and a hostile power holds them until the program pays 30 M, hands over the flight's data or waits (decision
+  `crewheld`). Test econ-45. TESTING 396.
+- **Next on this thread:** Q615 (contracts for a place, a drive, rocks, an experiment); Q613 and Q614 ship with GROUND
+  G3 (Q91).
+- **Not checked:** nothing in a browser.
+- Files: launchpad `sim/program.js`, `sim/contracts.js`, `sim/world.js`, `sim/debrief.js`, `tests/economy.mjs`,
+  `review/2026-11-13/recover.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root
+  `ACTIVE_WORK.md`, `SESSION_LOG.md`.

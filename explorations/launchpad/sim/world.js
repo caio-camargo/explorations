@@ -291,14 +291,14 @@ function landingVerdict(b,pf,o={}){
     return d<=reach?{...sea0,who:'our ships',recovered:true,refund:1,kind:'sea',why:`fished out of the sea ${km} km out, ${h.toFixed(0)} h after splashdown`,text:`at sea ${km} km out: recovered by our ships, ~${hs} h`}
       :{...sea0,hours:null,who:null,recovered:false,refund:0,kind:'lost',why:`came down ${km} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`,text:`at sea ${km} km out, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
   const p=powerAt(u);if(!p||p.i===HOME)return{where:p?'our land':'unclaimed land',who:'trucks',recovered:true,hours:null,refund:1,kind:'land',why:'',text:`on ${p?'our':'unclaimed'} land: trucked home`,km:null};
-  const k=recoveryRel(p.i),base={where:p.name,who:p.name,hours:null,km:null};
+  const k=recoveryRel(p.i),base={where:p.name,who:p.name,hours:null,km:null,pi:p.i,rel:k};   // pi, rel: whose land, and its welcome (Q616)
   if(k==='friend')return{...base,recovered:true,refund:1,kind:'returned',why:`landed in ${p.name}, which sends it back`,text:`lands in ${p.name}: they send it back`};
   if(k==='tense')return{...base,recovered:true,refund:0.8,kind:'returned',why:`landed in ${p.name}: returned, worn, after long talks`,text:`lands in ${p.name}: returned worn, after long talks`};
   return{...base,recovered:false,refund:0,kind:'kept',why:`landed in ${p.name}, which keeps it`,text:`lands in ${p.name}: they keep it`}}
 // a landed vessel's recovery, as the flight settles it: the verdict where it lies, with how long it actually floats
 function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a',why:''};
   const v=landingVerdict(TELLUS,s.pf,{sea:!!s.water,from:R&&R.launchPf?norm(R.launchPf):(s.site||SITES[0]).u,afloat:s.float?s.float.sinkAt-s.float.t:Infinity});
-  return{factor:v.refund,kind:v.kind,why:v.why}}
+  return{factor:v.refund,kind:v.kind,why:v.why,pi:v.pi,rel:v.rel}}
 // how long a craft still in flight would float after splashdown (s), its flotation bags out: sinkTime on its present shape
 const AFLOAT_EST=new WeakMap();   // per vessel, kept off the vessel (its state is hashed and recorded)
 function afloatEst(s){if(!s||!s.lines||!s.parts||typeof sinkTime!=='function')return Infinity;const key=Math.round(s.mass/50),c=AFLOAT_EST.get(s);

@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.114 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: running checklist
+**Version**: 0.1.115 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -205,6 +205,7 @@ NOTES § "The robot playtester".
 | 393 | Flights from orbit: Revert and a reload (R29, D45, v1.338) | A satellite of yours in orbit: Program › Fleet › Fly. (a) Esc › Revert; (b) fly it again, then reload the page; (c) on Hard, the same reload | (a) the same craft in orbit at the moment you took control, not the pad; (b) on Easy or Normal it is back in the Fleet as it was when you took control; (c) on Hard it's gone, and the news says why | test `space-36` (headless); by hand | launchpad session |
 | 394 | The glossary and the why-cards (Q603 slices 4 to 7, v1.341) | The design table with an unstable, underpowered rocket: hover Δv, TWR, Max-q, Stability, Trim; hover each amber or red mark. Then the Rollout: hover each warning | Each glossary card is two or three lines; each why-card is a headline, one sentence, the fixes; the same cause reads the same on both screens; nothing reads as cut off | review 2 (Fable) |
 | 395 | The flight cards' tooltips (Q603, v1.343) | A flight with a spin-stabilised stage and SAS on; one with reaction wheels pushed past 60 % (hold a pitch key in space, SAS off); a lander tipped over; a craft with an antenna before the TV mission | The Spin row ends *· SAS on the wobble* and explains itself on hover; *n% saturated* says what unloads the wheels on hover; *Righting* reads *thrust, RCS or the wheels*; the Transfer countdown says *to the middle of the burn* on hover | review 2 (Opus) |
+| 396 | A package kept abroad; a crew held abroad (Q616, v1.344) | The map's recovery zones show a hostile country. (a) Bring an instrument package down there with a "recovered" contract open. (b) With the escape tower qualified, land a crew capsule there | (a) The message *Instruments down in a country that keeps them*; the Mission card's "recovered" line reads lost; the contract does not pay. (b) The mission still completes; the Inbox has "<power> holds our crew" with three buttons, each doing what it says; left 40 days it resolves as the wait | review 2 (Fable) |
 
 ### Docking & stations
 
@@ -476,4 +477,4 @@ NOTES § "The robot playtester".
 | 353 | Five lines a comment had swallowed (R4, v1.289) | In flight, click a SAS mode (Prograde, say); then open the Program with an unread mission message in the Inbox | The mode's button stays lit while it holds; the Inbox tab and the HQ strip show the count of unread messages | test `ground-7` (Erebus's blades only); the two above by eye |
 
 
-Next free number: **396** (QA, 2026-10-09: the counter said 165 while rows ran to 172, and 168 was doubled: "Meet the world's powers" 168 → 173. **Take the number right before you commit, after a pull, and grep for it**: LESSONS #37) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+Next free number: **397** (QA, 2026-10-09: the counter said 165 while rows ran to 172, and 168 was doubled: "Meet the world's powers" 168 → 173. **Take the number right before you commit, after a pull, and grep for it**: LESSONS #37) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).

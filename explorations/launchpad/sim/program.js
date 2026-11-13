@@ -616,7 +616,8 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
       if(h>b.atm)R.bioSpace=true;
       if(R.gMax>G_LIM)why=`was hurt by ${R.gMax.toFixed(1)} g`;else if(R.cabin>CABIN_MAX)why=`overheated (cabin ${R.cabin.toFixed(0)} K)`;else if(simT+(R.bioAirX||0)>AIR_S&&!s.landed)why='ran out of air'}
     if(why){R.bioOK=false;R.bioWhy=why;HOOK.news(`${R.pet} ${why}. The program pauses to reflect`,'bad');HOOK.msg(`Passenger ${why}`)}}
-  if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landBiome=s.water?0:biomeAt(s.pf).id;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
+  // (Q616, D48) a package a hostile power keeps is not recovered. Beyond the ships' reach at sea it still counts (W57)
+  if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci&&recoveryOf(s,R).kind!=='kept';if(sci&&!R.recSci)HOOK.msg('Instruments down in a country that keeps them');R.landBiome=s.water?0:biomeAt(s.pf).id;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
     if(R.logSpace){if(R.vEntry>0)logNote(s,'entry',R.vEntry);logNote(s,'pad',R.landDist)}if(R.hotT>350)logNote(s,'heat',{T:R.hotT,part:R.hotPart});if(R.bio&&R.bioOK&&R.gMax>0)logNote(s,'paxg',R.gMax);
     if(sci){const ks=Object.keys(R.bands).filter(k=>!PROG.atm[k]);for(const k of ks)PROG.atm[k]=1;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
@@ -784,6 +785,7 @@ function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
   if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0),rc=recoveryOf(s,R);let back=0,full=0,worst=null;R.recovery=rc.kind;   // recovery by geography (terrain session)
     if(rc.why)HOOK.news(`Recovery: ${rc.why}`,rc.factor>=1?'ok':rc.factor>0?'warn':'bad');
+    if(R.crewed&&R.crewOK&&rc.pi!=null)crewAbroad(rc,R);   // (Q616) the crew is home safe all the same; what follows depends on whose land it is
     for(const p of ps){const w=wearOf(p,tv)*rc.factor*(1-(p.dmg||0)),q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}

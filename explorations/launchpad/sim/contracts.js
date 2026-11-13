@@ -531,11 +531,27 @@ function floorCheck(){if(PROG.funds>=FUNDS_FLOOR)return;const o=own();
 // ---- decisions: offers that wait for an answer between flights
 function offerDecision(d){if(!d)return;PROG.decisions=PROG.decisions||[];PROG.dseq=(PROG.dseq||0)+1;d.id=PROG.dseq;d.expires=PROG.day+(d.life||40);PROG.decisions.push(d);
   HOOK.news(`${d.kind==='routine'?'Your call':'Offer'}: ${d.title}`,'warn');HOOK.save()}
+// (Q616, DECISIONS D48) a crew that came down on another power's land. The mission counts: they are alive on Tellus. A
+// friend flies them home; a tense power sends them back after weeks of talks; a hostile one holds them and the program
+// has to answer: pay, hand over the flight's data, or protest and wait (which is also what silence does).
+const CREW_HELD={pay:30,life:40,relDeal:0.08,opDeal:-6,relWait:-0.1,opWait:-10,opTense:-3};
+function crewAbroad(rc,R){const p=POWERS[rc.pi],who=(R.crewN||1)>1?'crew':'pilot';
+  if(rc.rel==='friend'){HOOK.news(`${p.name} flies our ${who} home with honours`,'ok');return}
+  if(rc.rel==='tense'){opAdd(HOME,CREW_HELD.opTense);HOOK.news(`Our ${who} came down in ${p.name}: home after weeks of talks`,'warn');return}
+  offerDecision({kind:'crewheld',power:p.i,who,amt:CREW_HELD.pay,life:CREW_HELD.life,title:`${p.name} holds our ${who}`,
+    text:`They came down in ${p.name}, alive and well, and are not allowed to leave. Pay ${fmtM(CREW_HELD.pay)}, hand over the flight's data, or protest and wait.`,
+    opts:[['pay',`Pay ${fmtM(CREW_HELD.pay)}`],['deal','Hand over the data'],['wait','Protest and wait']]})}
+const relNudge=(i,d)=>{PROG.rel[pairKey(HOME,i)]=clamp(relOf(HOME,i)+d,-1,1)};
+function crewHeldAnswer(d,key){const p=POWERS[d.power],who=d.who||'crew';
+  if(key==='pay'){PROG.funds-=d.amt;ledAdd('ransom',-d.amt);HOOK.news(`${p.name} releases our ${who} for ${fmtM(d.amt)}`,'warn')}
+  else if(key==='deal'){relNudge(d.power,CREW_HELD.relDeal);opAdd(HOME,CREW_HELD.opDeal);HOOK.news(`Our ${who} is home; ${p.name} keeps a copy of the flight's data`,'warn')}
+  else{relNudge(d.power,CREW_HELD.relWait);opAdd(HOME,CREW_HELD.opWait);HOOK.news(`${p.name} lets our ${who} go after ${Math.max(1,Math.round(d.life-(d.expires-PROG.day)))} days; home is furious it took so long`,'bad')}}
 function rescueDecision(){const fr=POWERS.slice().sort((a,b)=>(opOf(b.i)+30*relOf(HOME,b.i))-(opOf(a.i)+30*relOf(HOME,a.i)))[0],need=FUNDS_FLOOR-PROG.funds;
   return{kind:'rescue',power:fr.i,life:60,title:`${fr.name} offers a rescue`,
     text:`Funds under ${fmtM(FUNDS_FLOOR)}. ${fr.name} puts in ${fmtM(need+30)} for 30% and a board seat; or investors lend ${fmtM(need)}, repaid ×1.3 from half of all income.`,
     opts:[['stake','Take the stake'],['loan','Take the loan']]}}
-function decisionTick(d,R,dd=d){const o=own();PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
+function decisionTick(d,R,dd=d){const o=own();for(const x of PROG.decisions||[])if(x.kind==='crewheld'&&x.expires<=PROG.day)crewHeldAnswer(x,'wait');   // (Q616) silence is the wait
+  PROG.decisions=(PROG.decisions||[]).filter(x=>x.expires>PROG.day);if(!R)return;
   const has=k=>PROG.decisions.some(x=>x.kind===k),firsts=Object.keys(PROG.done).length,V=valuation();
   // investors circle an established public program
   if(!has('ipo')&&!PROG.ipoSold&&stateShare()>=0.4&&firsts>=2&&R()<1-Math.exp(-dd/350)){const amt=Math.round(V*0.25);
@@ -581,7 +597,8 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
     else{o.debt=(o.debt||0)+need*1.3;PROG.funds+=need;HOOK.news(`Investors lend ${fmtM(need)}; ${fmtM(o.debt)} to repay from future income`,'warn')}}
   else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.ipoSold=true;PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
-  else if(d.kind==='routine')routeFailAnswer(d,key);   // (Q580) a failed automatic run: keep repeating or stop
+  else if(d.kind==='routine')routeFailAnswer(d,key);
+  else if(d.kind==='crewheld')crewHeldAnswer(d,key);   // (Q580) a failed automatic run: keep repeating or stop
   else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);(PROG.stakeBy=PROG.stakeBy||{})[d.power]=1;PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}

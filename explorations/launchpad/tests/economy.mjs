@@ -1101,3 +1101,43 @@
     on && !!d1 && held && /in-tray/.test(why1) && !/clean run/.test(why1) && /held after a failed run/.test(ctl) && d1.opts.map(o => o[0]).join() === 'keep,stop' && kept && !!d2 && stopped && quiet && again,
     `${d1 && d1.title}: "${d1 && d1.text}" · held: "${why1}" · ${news.filter(t => /Your call|routine/.test(t)).slice(0, 3).join(' | ')}`);
 }
+
+// econ-45. Recovered means recovered; a crew down abroad is home, with a fallout (review 2 session, QUEUE Q616; DECISIONS
+// D48: "the mission would not be complete if it requires retrieving something, including data. but if it's just getting
+// astronauts home safe, then landing in hostile territory still counts as a win"). Before, an instrument package counted
+// as recovered the moment it touched Tellus, wherever. The sea beyond the ships' reach still counts: the Selene sample
+// return's procedure does not aim its splashdown, so that half of the rule waits for Caio (QUEUE W57). Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,POWERS,CITIES,SITES,TELLUS,newShip,missionTick,missionEnd,programNew,alongAz,isLand,pairKey,relOf,opOf,fromPF,resolveDecision,advanceDays,jRec,CREW_HELD,DT,get HOME(){return HOME},get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.programNew({}); const P = D.PROG, T = D.TELLUS, R = T.R, home = D.SITES.find(t => t.power === D.HOME) || D.SITES[0];
+  P.done = { ...P.done, maxqabort: { day: 1 } }; P.funds = 500;
+  const down = (stack, u, water) => { D.t = 0; const s = D.newShip(stack); Object.assign(s, { landed: true, alive: true, water: !!water, touchV: 2, throttle: 0 }); s.pf = mul(norm(u), R); s.r = D.fromPF(T, s.pf, 0); s.v = [0, 0, 0];
+    s.rec.launched = true; s.rec.launchPf = mul(home.u, R); D.S = s; D.missionTick(s, D.DT, false); return s; };
+  // the sea: near the pad, and beyond the boats with no fleet, then with one
+  let near = null, far = null; for (let k = 1; k <= 60 && !(near && far); k++) for (let a = 0; a < 12; a++) { const q = D.alongAz(home.u, a * Math.PI / 6, k * 20e3 / R); if (D.isLand(q)) continue; const d = k * 20; if (!near && d >= 60 && d <= 180) near = q; if (!far && d >= 900) far = q; }
+  P.fac = {}; const a = down(['chute', 'sci'], near, true), b = down(['chute', 'sci'], far, true); P.fac = { fleet: { lv: 2 } }; const c = down(['chute', 'sci'], far, true); P.fac = {};
+  const rec = D.jRec();
+  check('econ-45: an instrument package in the sea counts as recovered, near the pad and (for now, W57) beyond the ships\' reach',
+    a.rec.recSci === true && b.rec.recSci === true && rec.state(a.rec, a) === 'met' && c.rec.recSci === true);
+  // another power's land, by relations; with a crew aboard
+  const city = D.CITIES.find(x => x.power && x.power.i !== D.HOME), pi = city.power.i, key = D.pairKey(D.HOME, pi), crewShip = ['chute', 'sci', 'crew'];
+  const fly = rel => { P.rel[key] = rel; P.decisions = []; news.length = 0; const op0 = D.opOf(D.HOME), s = down(crewShip, city.u, false); D.missionEnd(s); return { s, R: s.rec, dec: P.decisions.slice(), dOp: D.opOf(D.HOME) - op0, news: news.join(' | ') }; };
+  const fr = fly(0.5), te = fly(-0.1), ho = fly(-0.8), H = D.CREW_HELD;
+  check('econ-45: on a friend\'s or a tense power\'s land the package comes back; on a hostile one\'s it is kept and does not count (the cond reads lost)',
+    fr.R.recSci === true && te.R.recSci === true && ho.R.recSci === false && rec.state(ho.R, ho.s) === 'lost', `${fr.R.recovery}, ${te.R.recovery}, ${ho.R.recovery}`);
+  check('econ-45: the crew is home safe in all three (the mission counts); a friend flies them home, a tense power costs opinion, a hostile one holds them and the program must answer',
+    [fr, te, ho].every(x => x.R.crewed && x.R.crewOK && x.R.capHome) && fr.dec.length === 0 && /flies our/.test(fr.news) && te.dec.length === 0 && te.dOp <= H.opTense + 1e-9 && te.dOp < 0
+      && ho.dec.length === 1 && ho.dec[0].kind === 'crewheld' && ho.dec[0].power === pi && ho.dec[0].opts.length === 3,
+    `friend: ${fr.news.split(' | ').pop()} · hostile: ${ho.dec[0] && ho.dec[0].title}`);
+  // the three answers
+  const ans = k => { const x = fly(-0.8), f0 = P.funds, r0 = D.relOf(D.HOME, pi), o0 = D.opOf(D.HOME); if (k === 'silence') D.advanceDays(H.life + 1); else D.resolveDecision(x.dec[0].id, k);
+    return { df: P.funds - f0, dr: D.relOf(D.HOME, pi) - r0, dop: D.opOf(D.HOME) - o0, left: P.decisions.filter(d => d.kind === 'crewheld').length, led: (P.led || {}).ransom }; };
+  P.led = {}; const pay = ans('pay'), deal = ans('deal'), wait = ans('wait');
+  check('econ-45: paying costs the sum and nothing else; handing over the data warms them and angers home; protesting cools them and angers home more',
+    Math.abs(pay.df + H.pay) < 1e-9 && pay.led === -H.pay && pay.dr === 0 && pay.dop === 0 && deal.df === 0 && deal.dr > 0 && deal.dop < 0 && wait.df === 0 && wait.dr < 0 && wait.dop < deal.dop && pay.left + deal.left + wait.left === 0,
+    `pay ${pay.df}; deal rel ${deal.dr.toFixed(2)} opinion ${deal.dop.toFixed(0)}; wait rel ${wait.dr.toFixed(2)} opinion ${wait.dop.toFixed(0)}`);
+  const sil = ans('silence');
+  check('econ-45: no answer is the wait: when the offer runs out the crew is released at that price', sil.left === 0 && /lets our/.test(news.join(' ')), `opinion ${sil.dop.toFixed(0)}`);
+}
+
