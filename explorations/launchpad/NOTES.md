@@ -141,6 +141,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: the bench as its own builder, points 1 and 2: mounts on a frame's faces, edges and corners with a pose and a 15° tilt on a bracket; the fairing reads an envelope; views tested in `sim/views.js`; new Checks rows; the declared attitude and its handover to Q338; balance weights built in; seven slices (2026-11-13, vehicle session, QUEUE Q605, D47; plan only)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
+- v1.345 — the *Asparagus* preset is *Crossfeed* (D15.6); "on rails" was already out of player text (2026-11-15, worker, QUEUE Q284) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 

@@ -7838,3 +7838,14 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/program.js`, `sim/contracts.js`, `sim/world.js`, `sim/debrief.js`, `tests/economy.mjs`,
   `review/2026-11-13/recover.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root
   `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-15 — generic worker (Opus, worktree launchpad-q284): the Asparagus preset is Crossfeed (Q284, v1.345)
+
+- **Done:** D15.6 / KSPISMS § 6. `PRESETS.Asparagus` → `PRESETS.Crossfeed` (same stack); tests, the robot's rows and
+  TESTING rows 7, 108, 122 renamed. Saves are unaffected (presets are matched by stack, never loaded by name). "On rails"
+  in player text: none was left (the warp's reasons come from `railsWhy` and never say rails).
+- **Checked:** full `node test.mjs`: all passed.
+- **Not checked:** the robot's rows themselves (🖥, not run).
+- **Files:** `sim/vessel.js`, `tests/core.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `playtest.mjs`, `notes/vehicle.md`,
+  `NOTES.md`, `KSPISMS.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** another ⚙ ready item (Q296 satellite aging without the nag, Q456, Q471 on its default).

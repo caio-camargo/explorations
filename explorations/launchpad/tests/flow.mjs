@@ -1195,9 +1195,9 @@
     return R.fed && api.t - R.fed.t > 8; });
   const S0 = fly('Crewed Lunar', true);
   // physStep's old one-liner ("boosters empty — stage to drop them") now only for a crossfed group whose engines run on
-  // (the Asparagus), so a burnt-out stage gets one line, not two
+  // (the Crossfeed), so a burnt-out stage gets one line, not two
   const keepMsg = api.HOOK.msg, M = []; api.HOOK.msg = m => M.push(m);
-  const K2 = fly('Crewed Lunar', false, () => api.t > 110), kM = M.splice(0), A = fly('Asparagus', false, () => api.t > 60), aM = M.splice(0);
+  const K2 = fly('Crewed Lunar', false, () => api.t > 110), kM = M.splice(0), A = fly('Crossfeed', false, () => api.t > 60), aM = M.splice(0);
   api.HOOK.msg = keepMsg;
   const one = !kM.some(m => /stage to drop them/.test(m)) && kM.includes('Booster burnout') && K2.says === 1 && aM.some(m => /^boosters empty — stage to drop them$/.test(m)) && A.says === 0;
   const kept = K.raw && K.cue && K.cue.i === 1 && K.cue.what === 'boosters ×4' && K.cue.many && K.cue.t - K.raw.t <= 3 && K.says === 1
@@ -1210,7 +1210,7 @@
   check('flow-49: a spent stage still attached: kept, the Crewed Lunar\'s dry boosters get the cue within ~2 s of burnout (named, once), cleared when staged; staged as designed it never shows; none when the drop takes a burning engine or drops nothing; never auto-stages; wired (the lit row, the message)',
     kept && burn && designed && ui,
     `kept: boosters dry at ${K.raw ? `${K.raw.t.toFixed(1)} s, ${(K.raw.h / 1e3).toFixed(1)} km` : '—'}, cue ${K.cue ? `at ${K.cue.t.toFixed(1)} s ("${K.cue.what}", stage ${K.cue.i + 1})` : 'never'}, said ${K.says}×, staged at ${K.staged ? K.staged.t.toFixed(1) : '—'} s → cleared ${K.cleared ? !K.cleared.cue : '—'}, no-drop event ${K.noDrop === null ? 'quiet' : 'cued'}`
-      + ` · one booster fed 0.5 t: burning ${!!B.burning}, cue ${B.longest.toFixed(1)} s · staged as designed: ${S0.out}, ${S0.left.toFixed(0)} m/s left, cue at most ${S0.longest.toFixed(1)} s · auto-staged ${K.auto + B.auto + S0.auto} · messages kept: ${kM.join(" / ")}; Asparagus: ${aM.filter(m => /empty/.test(m)).join(" / ") || "none"} · wired ${ui}`);
+      + ` · one booster fed 0.5 t: burning ${!!B.burning}, cue ${B.longest.toFixed(1)} s · staged as designed: ${S0.out}, ${S0.left.toFixed(0)} m/s left, cue at most ${S0.longest.toFixed(1)} s · auto-staged ${K.auto + B.auto + S0.auto} · messages kept: ${kM.join(" / ")}; Crossfeed: ${aM.filter(m => /empty/.test(m)).join(" / ") || "none"} · wired ${ui}`);
   api.HOOK.news = keepNews; for (const k of Object.keys(P)) if (!(k in keepProg)) delete P[k]; Object.assign(P, keepProg);
   api.S = keepS; api.t = keepT; api.FLEET.length = 0; api.FLEET.push(...F0);   // put back: later shards see the state they had
 }

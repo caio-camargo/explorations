@@ -604,7 +604,7 @@
   const L = ['t2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], sat = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', ...L]), whl = api.toV2(['core', 'rwheel', 'batt', 'sci', 'cam', 'fair', ...L]),
     cf = api.toV2(['core', 'batt', 'sci', 'cam', 'fair', 't2', 'cfins', 'petrel', 'dec', 't8', 'fins', 'kestrel']);
   const A = d => api.airSep(d)[0] || {}, a = A(sat), w = A(whl), c = A(cf), warned = api.launchWarnings(sat).some(([k, x]) => /end over end/.test(x));
-  const presets = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Probe', 'Heavy', 'Asparagus', 'Lunar', 'Sample Return'].filter(n => api.airSep(api.PRESETS[n]).some(x => !x.holds));
+  const presets = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Probe', 'Heavy', 'Crossfeed', 'Lunar', 'Sample Return'].filter(n => api.airSep(api.PRESETS[n]).some(x => !x.holds));
   const heavy = api.airSep(api.PRESETS.Heavy)[0];   // its boosters drop at ~19 km off a lit core: the stage checked is the upper one, high up
   const fly = d => { const AS = api.TELLUS.atm / 7e4; api.t = 0; const s = api.newShip(d); api.S = s; s.av = 2; api.advPhys(s); s.throttle = 1; api.stage(s); s.sas = true; s.sasMode = 'stab';
     let tS = null, mx = 0; for (let k = 0; k < 60000 && s.alive; k++) { const f = api.localFrame(s.r), h = api.len(s.r) - api.TELLUS.R;
@@ -907,7 +907,7 @@
 // not by hand reads Tight; every orbital preset carries the margin to low orbit (Q474: all have ≥ 425 m/s spare).
 {
   const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], log0 = PR.log; PR.log = {};
-  const orb = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Satellite', 'TV Satellite', 'Heavy', 'Asparagus', 'Lunar', 'Big Lunar', 'Probe', 'Sample Return', 'Crewed Lunar', 'Docking'];
+  const orb = ['Orbiter', 'Beeper', 'Passenger Orbiter', 'Satellite', 'TV Satellite', 'Heavy', 'Crossfeed', 'Lunar', 'Big Lunar', 'Probe', 'Sample Return', 'Crewed Lunar', 'Docking'];
   const N = orb.map(n => [n, api.orbitNeed(P[n], [])]), weak = N.filter(([, o]) => o.margin === 350).map(([n]) => n).sort();
   const short = N.filter(([, o]) => o.air < o.hand).map(([n]) => n), lo = api.orbitNeed(P.Sounding, []);
   PR.log = { orbit: { v: 5000 } }; const tight = api.launchWarnings(P.Orbiter, B)[0], hl = api.orbitNeed(P.Orbiter, B); PR.log = {};
@@ -1017,7 +1017,7 @@
     return { out: s.alive ? out : 'burned up', w, peak, burn, low, left: s.alive ? api.dvRemaining(s).tot : 0 }; };
   // Δv left in orbit, m/s (v1.273; Beeper 1559 → 1468 with its second fin ring, Q202)
   const PIN = { Lunar: 4077, 'Crewed Lunar': 4653, 'Big Lunar': 4123, 'Sample Return': 4493, Probe: 4292, Orbiter: 799, Satellite: 715, 'TV Satellite': 3473,
-    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1468, Asparagus: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
+    Heavy: 1284, 'Passenger Orbiter': 583, Beeper: 1468, Crossfeed: 2326 }, LUNAR = ['Lunar', 'Crewed Lunar', 'Big Lunar', 'Sample Return', 'Probe'];
   const R = Object.fromEntries(Object.keys(PIN).map(k => [k, fly(k)])), bad = [];
   for (const [k, r] of Object.entries(R)) { const lc = LUNAR.includes(k);
     if (r.out !== 'orbit' || r.w || Math.abs(r.left - PIN[k]) > 50 || lc && (r.peak >= 0.6 || !(r.low > 0.95 * T.atm))) bad.push(k); }

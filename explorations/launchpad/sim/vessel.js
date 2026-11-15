@@ -192,7 +192,8 @@ const PRESETS={
   'TV Satellite':null,   // set below, after the bench's starters (a payload block)
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
-  Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
+  // Crossfeed (was Asparagus, a KSP community word: D15.6, Q284)
+  Crossfeed:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
   // resized for the bigger planet (orbit ~4,300 m/s; a Selene landing and return ~3,900 more): a 2.5 m first stage
   Lunar:['chute','pod','t1','wren','dec','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross'],
   // with a heat shield under the pod: drop the lander stage before re-entry and come home shield-first from Selene
@@ -356,7 +357,7 @@ function assemble(stack){
   for(const g of groups){g.segs=g.dec?[...new Set(g.joins.map(rd=>rd.seg))]:[];g.parts=parts.filter(p=>g.segs.includes(p.seg));for(const k of g.segs)segs[k].label=g.label}
   // the segment tree: a segment's parent holds its decoupler. The chain runs from the root's segment down through stack
   // decouplers below it (the one nearest the axis, if several); everything else hangs off a chain segment, burns with it
-  // and drops before it does — deepest first, then the highest first (so asparagus pairs go top-down).
+  // and drops before it does — deepest first, then the highest first (so crossfed pairs go top-down).
   const sPar=keys.map(k=>k&&k.parent?k.parent.seg:-1),depth=k=>{let n=0;for(let s=k;sPar[s]>=0;s=sPar[s])n++;return n};
   const below=k=>keys[k]&&keys[k].d.kind==='dec'&&keys[k].jA[1]<-0.5;
   const chain=[root?root.seg:0];

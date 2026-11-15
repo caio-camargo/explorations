@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-15
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2845,3 +2845,12 @@ screen layout in 2 and 4 (Q605's row: "with flow").
   not read. Slice 4 must, before its rows promise anything.
 - The mock-up's fixes were run in headless Chrome with synthetic pointer events only.
 - The sphere, several frames and the frame's inside have no mock-up: Caio has not tried them.
+
+## v1.345 — the Asparagus preset is Crossfeed (2026-11-15, worker session, QUEUE Q284, D15.6)
+
+KSP's names out of the game (KSPISMS § 6). `PRESETS.Asparagus` is `PRESETS.Crossfeed`, same stack; the tests and the
+robot's rows (`playtest.mjs` rows 7, 108, 122 and the presets sweep) and TESTING rows 7, 108, 122 name it so. Old saves
+are unaffected: nothing loads a preset by its name (`designName`/`designLabel` match by stack, so a launched Asparagus
+now reads *Crossfeed* in the logbook). **"On rails" in player text:** none left; the only player-facing reason the warp
+gives is `railsWhy`'s (*engines running*, *in the air*, …), which never says rails. The word stays in code and notes.
+Player-visible only in the preset button's name; no behaviour changed.
