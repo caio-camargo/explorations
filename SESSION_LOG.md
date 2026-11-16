@@ -7849,3 +7849,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** `sim/vessel.js`, `tests/core.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `playtest.mjs`, `notes/vehicle.md`,
   `NOTES.md`, `KSPISMS.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 - **Next:** another ⚙ ready item (Q296 satellite aging without the nag, Q456, Q471 on its default).
+
+## 2026-11-16 — graphics study with Caio (Fable 5.2, main clone): what more triangles on the craft cost
+
+- **Asked:** how to beautify without breaking the performance budget; the impact of more detail on the craft's models.
+- **Measured (no game change):** the craft's triangles scaled 4× / 16× / 64× and stand-in greeble boxes added, in the
+  running game on the RTX (High) and the Intel UHD (Low). The ship pass is 0.03–0.13 ms of a 7–10 ms frame on the RTX;
+  4× adds under 0.1 ms, 64× about 1.5 ms. On the iGPU 4× adds 0.3–1.3 ms against a sky of 60–70 ms. The limit is the
+  CPU rebuild of the ship mesh (3–7 ms today, 44–190 ms at 16×). Geometry without shadows reads pasted on: Q316's
+  order (shadow map and AO, then greebles) stands. Numbers: `explorations/launchpad/notes/look.md` § Study (2026-11-16).
+- **Not checked:** many ships at once; thin geometry under MSAA at distance; two RTX rows the timer dropped.
+- **Files:** launchpad `notes/look.md`; root `SESSION_LOG.md`. No claim was taken (docs appended only; the GPU lock
+  taken and released).
+- **Next:** Caio's call on starting Q316 (B1.3 shadows first).
