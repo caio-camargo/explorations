@@ -985,7 +985,7 @@
 // hit: 1-px lines of ground above the horizon, black at night (views 19, 65), grey lenses by day.
 {
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
-  const ok = /return m>1e29\?-1\.:m\*\.985-1\.;\}/.test(pg) && /float march\(vec3 d,out float hh,float tS\)\{hh=0\.;if\(tS<0\.\)return 1e30;/.test(pg);
+  const ok = /return m>1e29\?-1\.:max\(m\*\.985-1\.,0\.\);\}/.test(pg) && /float march\(vec3 d,out float hh,float tS\)\{hh=0\.;if\(tS<0\.\)return 1e30;/.test(pg);
   check('no far ground in the sky: a pixel whose coarse neighbours all missed the terrain is sky, not a march that ran out of steps', ok, `sentinel ${ok}`);
 }
 

@@ -90,7 +90,8 @@ function render(){spoolFrame();
   // (Q488) the Recovery layer's zones are baked from the atlas too
   if(view==='map'&&mode==='flight'&&(atlasMode||mapShow('recovery')))atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
-  if(!desk){for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
+  if(!desk)selNear(camW);
+  if(!desk){const selD=!!(PSELD&&selTex());SELD_RT.on=false;for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),...(selD?[PSELD]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);   // (Q322) the air's transmittance table (TRL_TEX)
@@ -105,6 +106,7 @@ function render(){spoolFrame();
    {const RT=TELLUS.R+TERR_TOP;gl.uniform2f(u.uGen,Math.cos(-WORLD.lon0),Math.sin(-WORLD.lon0));gl.uniform1f(u.uTcc,(d-RT)*(d+RT))}
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);   // (Q322) only where Selene is: the moon pass shades it
+   selUniforms(u,camW);if(u.uSelPre)gl.uniform1f(u.uSelPre,prog===PDEPTH?1:0);   // (Q91) Selene's relief, once its map is on the GPU (app/gl.js); the pre-pass only finds a start
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
    if(u.uNPl){const P=planetSky(tNow()).slice(0,6),D=new Float32Array(24),C=new Float32Array(24);P.forEach((x,i)=>{D.set([...x.u,x.br],i*4);C.set([...x.c,x.px],i*4)});   // (Q374) the planets as points
     gl.uniform1i(u.uNPl,P.length);gl.uniform4fv(u['uPlnD[0]'],D);gl.uniform4fv(u['uPlnC[0]'],C)}
@@ -121,6 +123,10 @@ function render(){spoolFrame();
     if(VK>0){profMark('cloud slab');const Sb=slabTarget(D.w,D.h);gl.useProgram(PSLAB.p);gl.bindFramebuffer(gl.FRAMEBUFFER,Sb.fb);   // (Q313) the deck, at half resolution
       gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSLAB.u.uDepth,5);gl.drawArrays(gl.TRIANGLES,0,3);
       gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE10);gl.bindTexture(gl.TEXTURE_2D,Sb.a);gl.uniform1i(PSKY.u.uSlabA,10);gl.activeTexture(gl.TEXTURE11);gl.bindTexture(gl.TEXTURE_2D,Sb.b);gl.uniform1i(PSKY.u.uSlabB,11);gl.activeTexture(gl.TEXTURE0)}
+    if(selD){profMark('selene ground');const T=seldTarget(W,H);gl.useProgram(PSELD.p);gl.bindFramebuffer(gl.FRAMEBUFFER,T.fb);gl.viewport(0,0,W,H);   // (Q91) Selene's ground, marched once at full resolution
+      gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSELD.u.uDepth,5);gl.uniform1f(PSELD.u.uUseDepth,1);gl.drawArrays(gl.TRIANGLES,0,3);SELD_RT.on=true;
+      gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,T.tex);gl.uniform1i(PSKY.u.uSelD,4);gl.activeTexture(gl.TEXTURE0)}
+    gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uSelDOn,SELD_RT.on?1:0);
     gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
     gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
   profMark('sky');gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);

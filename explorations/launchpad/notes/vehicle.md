@@ -2903,7 +2903,7 @@ TESTING 398.
 
 **Why:** slice 2 of § "Plan: the bench as its own builder, points 1 and 2". Q618 is size L, so it lands in two parts that
 each merge on their own: **2a** (this) is the sim and the drawing, with nothing a player can do yet; **2b** is the bench's
-pointer work (§ v1.352 when it lands).
+pointer work (§ v1.353).
 
 **The census first** (the plan's "Not checked" asked for it): which `.y0` / `.pos[` readers can a mounted part reach, and
 what each needs. Counted on `main` at 780e187: `.y0` 171 and `.pos[` 210 across `sim/` (vessel 46/38, space 18/30,
@@ -2969,7 +2969,7 @@ flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor
 - A wing or boom on a mount deploys along its normal's bearing (`phi`); on the top or bottom face that bearing means
   little. Slice 4's views replace it.
 
-## v1.352 — mounts on a frame, upright: the bench by pointer (bench slice 2b, 2026-11-17, vehicle session, QUEUE Q618, D47 point 1)
+## v1.353 — mounts on a frame, upright: the bench by pointer (bench slice 2b, 2026-11-17, vehicle session, QUEUE Q618, D47 point 1)
 
 **Why:** the second half of Q618 (§ v1.351 is the sim). The mock-up's way of placing (`mockups/bench/free.html`; Caio:
 "placing by click, move, click is right") in the game's bench.
@@ -3001,7 +3001,7 @@ flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor
 **Checks:**
 - `vehicle-50`: rays enter the right face (or none from inside, or a miss); snaps to a corner, an edge, its middle, a face's
   middle, the top's centre, and none with snapping off; a point past an end's edge is kept inside; the words.
-- **Robot row 401** (`node playtest.mjs 401`, Chrome on the GPU, `.game-busy` taken): on a 1 × 0.8 m square frame, by
+- **Robot row 403** (`node playtest.mjs 403`, Chrome on the GPU, `.game-busy` taken): on a 1 × 0.8 m square frame, by
   pointer events at points the builder's own projection gives, a sphere goes on *side 1, middle*, a side camera on a *side
   edge*, a small battery on a *top corner*; the sphere picked up shows the bin, waits at its place after a 3 px move, follows
   the pointer and says *no room here* when it reaches the camera; the bin takes it. Closing the bench gives ×2 back. Shots
@@ -3009,6 +3009,6 @@ flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor
 - Smoke and lint (`node --expose-internals lint.mjs`) clean.
 
 **Not done, not checked:**
-- **Nobody has placed a part by hand.** The pointer was synthetic, from a script; how it feels is Caio's (TESTING 401).
+- **Nobody has placed a part by hand.** The pointer was synthetic, from a script; how it feels is Caio's (TESTING 403).
 - A part on the far side of the frame is reached by orbiting, as anywhere in the builder.
 - Tilt (slice 3, Q619) is next; views (slice 4) give the cone while held.

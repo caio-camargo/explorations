@@ -141,7 +141,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: the bench as its own builder, points 1 and 2: mounts on a frame's faces, edges and corners with a pose and a 15° tilt on a bracket; the fairing reads an envelope; views tested in `sim/views.js`; new Checks rows; the declared attitude and its handover to Q338; balance weights built in; seven slices (2026-11-13, vehicle session, QUEUE Q605, D47; plan only)
 - v1.347 — the frame as a sized part (bench slice 1): a `frame` node carries its sides, width, height and taper; `frameDef` sizes it at layout, `nodeDef` and `shDef` read it; the shape controls on the bench; a plain prism (2026-11-13, vehicle session, QUEUE Q617, D47) → [notes/vehicle.md](notes/vehicle.md)
 - v1.351 — mounts on a frame, upright, the sim (bench slice 2a): the census of `.y0` / `.pos[` readers; `at` on a face, edge or corner; the pose; `partC`, `partAxis`, `partBox`; `geom`'s inertia through `rotI`; the taller ring; `payEnvelope` (2026-11-17, vehicle, QUEUE Q618) → [notes/vehicle.md](notes/vehicle.md)
-- v1.352 — mounts on a frame, the bench by pointer (bench slice 2b): `frameRay`, `mountSnap` with C for no snapping, the base kept under the pointer, the bin, symmetry off on the bench, collisions of posed parts, robot row 401 (2026-11-17, vehicle, QUEUE Q618) → [notes/vehicle.md](notes/vehicle.md)
+- v1.353 — mounts on a frame, the bench by pointer (bench slice 2b): `frameRay`, `mountSnap` with C for no snapping, the base kept under the pointer, the bin, symmetry off on the bench, collisions of posed parts, robot row 403 (2026-11-17, vehicle, QUEUE Q618) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 - v1.345 — the *Asparagus* preset is *Crossfeed* (D15.6); "on rails" was already out of player text (2026-11-15, worker, QUEUE Q284) → [notes/vehicle.md](notes/vehicle.md)
@@ -334,6 +334,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
 - v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
 - v1.251 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
+- v1.352 — Selene's relief, live: the march on Selene (one full-resolution march, the sky and moon passes read it), CPU/GPU agreement in mm, saves and tapes moved onto it, `landAt` watches the ground ahead (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 

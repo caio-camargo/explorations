@@ -70,8 +70,10 @@ export function siteOf(api, B, lat, lon) {
   const { norm, mul, add, cross } = api, near = norm(api.toPF(B, norm(mul(api.bodyRel(B, 0)[0], -1)), 0)), east = norm(cross([0, 1, 0], near)), la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
   return norm(add(mul(add(mul(near, Math.cos(lo)), mul(east, Math.sin(lo))), Math.cos(la)), mul([0, 1, 0], Math.sin(la))));
 }
-export function flySite(api, preset, bodyName, lat, lon) {
-  const { len, sub } = api, P = api.PROG, st = api.PRESETS[preset], key = api.procKey(st), B = api.BODIES.find(b => b.name === bodyName), site = siteOf(api, B, lat, lon);
+export function flySite(api, preset, bodyName, lat, lon) { const B = api.BODIES.find(b => b.name === bodyName); return flyTo(api, preset, B, siteOf(api, B, lat, lon)); }
+// (Q91) the same flight to any point of the body's own frame (a place's aim on Selene, say)
+export function flyTo(api, preset, B, site) {
+  const { len, sub } = api, P = api.PROG, st = api.PRESETS[preset], key = api.procKey(st);
   api.HOOK.msg = () => {}; api.HOOK.news = () => {}; api.HOOK.save = () => {};
   P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; handAscent(api, st); const asc = P.procs[key];
   P.done = Object.fromEntries(['beeper', 'farside', 'selimp', 'nyxfind', 'nyxfly'].map(k => [k, { flight: 0, day: 0 }])); P.log = P.log || {}; P.log.nyx = P.log.nyx || { v: {} };

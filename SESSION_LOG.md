@@ -7958,3 +7958,48 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Q458 (crew slice 2, qualifications) is unblocked by Q182.
 - Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/contracts.js`, `app/rollout.js`, `tests/economy.mjs`,
   `tests/flow.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-17 — launchpad world session (Opus 5.5, worktree launchpad-q91): GROUND G3, Selene's relief live (Q91 slice 1, v1.352)
+
+- **Asked:** claim Q91, build GROUND.md G3 (the march on Selene) as one slice, make `landAt` and the live ground usable
+  for Q613–Q615, Q608 and Q609; G4–G6 later.
+- **Built (v1.352):**
+  - The shaders draw `seleneH` term for term: the map's spline, then the six crater bands on the same integer hashes.
+    In Chrome (`selProbe`), the GPU is within 0.8 mm of the CPU at the median, 1.7 cm at p99 and 5 cm at most.
+  - Selene is marched once at full resolution (a new pass, PSELD), starting from the pre-pass. The sky and moon passes
+    read that hit; the moon pass shades the relief's normal.
+  - `SELENE.ground` is live.
+  - Saves: `SAVE_V` 2 re-seats landers, rovers and seismometers onto the ground.
+  - `TAPE_V` carries the recipe, so tapes flown on the sphere retire.
+  - Impact prediction (`fall`) follows the arc down to the relief.
+  - `landAt` watches the ground ahead (`gapAhead`). Ascents count height from where they stood.
+- **Measured** (whole frame, RTX, 1258×702):
+  - About 11 ms near the ground, against 3.4–4.2 ms for Tellus's pad; 4–5 ms from 2–30 km; unchanged from Tellus orbit.
+  - The first port took 60–70 ms. It came down through:
+    - no dynamic vector indexing, so the D3D compiler stopped unrolling every loop;
+    - one height call site in the march;
+    - one full-resolution march instead of two;
+    - secant steps instead of bisection;
+    - nearest-texel thinning, with the CPU changed to match;
+    - E on its own texture.
+  - iGPU: 80–87 ms, against 34 ms for the pad.
+  - Over the plan's target: a near-field height cache is proposed (QUEUE *Proposed*, G3.5).
+- **Tests:**
+  - Smoke green, and every SLOW section alone (crewed Selene, bodies-1/2/3, procedures).
+  - New: ground-12; a bodies-3 landing at Endymion's aim.
+  - Updated: ground-1/2, §27's descent, "out there", moonbase, vehicle-45's push (on the plain sphere: a toppled tank
+    rolls on any slope), and two source scans.
+  - CI full run green on the merged head (run 44134618328), then ff-merged into `main` (d9170406). Renumbered twice at
+    merge (Q183 took v1.350 and TESTING 400; Q618 took v1.351).
+- **Noticed:**
+  - `SKY_FS` takes 25 s to compile fresh on this machine, on `main` as well. `shot.mjs`'s 4 s wait races the load, so
+    give it an expression that waits for `document.readyState`.
+  - GPU timings drift ±50 % between runs here. Compare variants in one run (`review/2026-11-17/selbench.js`).
+- **Not checked:** a human landing in a crater, or driving on relief (TESTING 401, 402); Selene's look re-judged (TESTING
+  131, a look & sound line in *Proposed*).
+- **Next:** G3.5 (the cache) or G4 (shadows); Q613 can start.
+- Files: launchpad `app/gl.js`, `app/render.js`, `app/state.js`, `sim/ground.js`, `sim/flight.js`, `sim/procedures.js`,
+  `sim/rovers.js`, `terrain-probe.js`, `views.js`, `fly_crewlunar.mjs`, `fly_ladder.mjs`, `test.mjs`, `tests/core.mjs`,
+  `tests/flow.mjs`, `tests/look.mjs`, `tests/space.mjs`, `tests/vehicle.mjs`, `tests/world.mjs`,
+  `review/2026-11-17/selbench.js` (new), `GROUND.md`, `notes/world.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root
+  `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.

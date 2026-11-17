@@ -1,5 +1,5 @@
 # Launchpad notes — World
-**Version**: 1.0.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-10-31
+**Version**: 1.0.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
 **Purpose**: The build log for terrain and each body's ground, launch sites, geography, the sea, the planet's scale, frame-time studies.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -1645,3 +1645,108 @@ git): `output/launchpad/q494-craters/` before-/after-.
 **Left:** terraced walls; rays and bright ejecta on the young (an albedo term: look & sound's `main`); the rim's lean in
 the gradient. Merged with Q493 (sky & bodies) the same night: its `cratF` window, my `cratG` cell size; TESTING 328.
 
+## v1.352 — Selene's relief, live: the march on Selene (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
+
+Selene has had real ground on the CPU since v1.58 (G2): a baked map (highland swell, the big craters, the maria flooded)
+plus six procedural crater bands. It wasn't live, because nothing drew it. Now the shaders draw the same numbers, and
+`SELENE.ground = SELENE_GROUND` is set at load: contact, landing, the camera, rovers, impact prediction and procedures all
+stand on it.
+
+**How it's drawn (app/gl.js).**
+- **The height in GLSL:** `selH` is `seleneH` term for term. The map's base height is on its own R32F texture (unit 9),
+  read with `mapSpl`'s B-spline. Then `selBands` is `craterBands`, with the same cube cells, the same integer hashes
+  (salts 7001–7011), `ptanG` = the CPU's `ptan` and `gcProf`/`gcH` = `craterProf`/`craterH`. The constants come from
+  `grBands` (`SEL_GL`). A second texture (unit 15, RGBA32F) holds the mare mask M, the march's bound U (E's max within 2
+  texels) and M's max within 3 texels.
+- **Agreement, measured in Chrome on the RTX** (`selProbe()`, terrain-probe.js: the shader's `selH` against `seleneH`):
+
+  | Points | Median | p99 | Max |
+  |---|---|---|---|
+  | 4,096 over the whole globe | 0.8 mm | 1.7 cm | 5.2 cm |
+  | 2,304 in and around Endymion | 0.6 mm | 0.8 cm | 1.8 cm |
+  | 2,304 within 3 km of one spot | 0.2 mm | 1.2 cm | 2.6 cm |
+
+  That is Tellus's bar (median ≤ 2 mm, p99 ≤ 3 cm, max ≤ 15 cm). The CPU's `selThin` changed for this: it now reads the
+  mare mask at the crater centre's nearest texel (`mapNear`), not bilinear. The shader pays one fetch for it, not four, and
+  both sides read the same texel. The craters near mare edges moved a little; ground-11's places are unchanged.
+- **Three passes instead of a sphere.**
+  - **The pre-pass** (PDEPTH, half resolution) marches Tellus and Selene and keeps the nearer. For Selene it ends on one
+    secant step (`uSelPre`).
+  - **PSELD** (new, full resolution) marches Selene once from that start (`coarseStartS`, 1 % short). It writes the hit
+    distance and height to `SELD_RT` (RG32F, unit 4).
+  - **The sky pass and the moon pass read that texture** (`selHit`) instead of marching. The sky pass takes it for what's
+    in front and for the depth the ship is drawn against. The moon pass shades it: a normal from two more heights, the
+    lunar-Lambert as before with the relief's normal, fresh craters a little brighter (`sFresh`), and the earthshine on the
+    relief. Its old crater octaves now run only below the finest band (8–63 m, `SEL_FINE`), as shading.
+  - Without float render targets the relief is off and Selene is the sphere, as before.
+- **The march** (`marchS`) works like Tellus's:
+  - above the bound it skips;
+  - below it, it adds a band only when its rim could reach the ray, with the bands not yet added counted as their rims;
+  - it over-relaxes its steps, never shorter than half the pixel's footprint along the ground;
+  - it ends on two Illinois secant steps.
+  - Bands fade by footprint: all six within 2 km, easing to 3 by 20 km.
+
+**Frame cost** (`gpuTime`, whole frame, 1258×702, RTX 5050 laptop, same run). For comparison, Tellus's pad views are 3.4–4.2 ms.
+
+| View | Before (sphere) | Relief | Its passes (pre / ground / shading) |
+|---|---|---|---|
+| 186 a lander 2 m over a mare flat | 2.5–5 | 10.9–11.5 | 3.8 / 5.7 / 1.8 |
+| 188 a rover's eye in the highlands | 1.4–1.9 | 12.6 | 4.6 / 6.9 / 1.7 |
+| 189 1 km over the highlands | 1.6–2.0 | 9.8 | 2.8 / 4.9 / 1.9 |
+| 187 a crater's rim from 2 km at a 5° sun | 1.4 | ~5 | 1.4 / 2.3 / 1.0 |
+| 191 low orbit, 30 km | 1.1 | ~4 | 0.8 / 1.8 / 0.8 |
+| 192 Selene from 200 km over Tellus | 0.45 | 0.5 | — |
+
+How it got there (each step measured on 186, 188 and 189):
+- **First port: 60–70 ms.** Two things were wrong with it:
+  - Indexing a vector with a loop variable (`u[ax]`) makes the D3D compiler unroll every loop round it, and each call
+    site of `selH` is a whole copy of `selBands`. One rewrite made the shader compile at all (an empty compile log, then a
+    lost GPU process).
+  - Faces are now swizzles (`q = u`, `u.yxz`, `u.zxy`), and the march has one call site.
+- **One full-resolution march, not two** (PSELD): 39 → ~20 ms.
+- **Then** the secant (2 steps instead of 6 bisections), a tighter start, `A`/`B` computed once per face for all bands,
+  E on its own texture, the nearest-texel thinning, and no mask fetch at all for bands 2–5 where no mare is within 3
+  texels: ~11 ms.
+
+Now the pre-pass makes ~16 height calls per half-resolution pixel, and PSELD ~4.7 per pixel (8 where Selene is hit). Each
+call is 6 bands × 9 cells. **This is over the plan's target** (Tellus's pad, ~4 ms) by ~3× near the ground, and still 60
+fps on the RTX. The fallback is the next item (Proposed in QUEUE):
+- a near-field height cache: the bands baked around the camera into a small clipmap, which the march reads;
+- it is exact to the probe's bar at 0.5 m spacing;
+- it also serves G4's near shadow rays.
+
+**On the Intel iGPU** (Edge, same views at full resolution, before the scaler): Tellus's pad 34 ms; view 186 87 ms
+(15 on the sphere), 189 80 ms (10): 2.5× the pad, where the resolution scaler takes over. The cache matters most there.
+`SKY_FS`'s fresh compile is 25 s on this machine, on `main` too (measured; PSELD adds 0.6 s, the pre-pass 2 s).
+
+**Going live (G3.4).**
+- **Saves:** `SAVE_V` 2. `selReseat` (sim/ground.js) moves each registry lander, field rover and seismometer that stood on
+  the sphere onto the ground at the same height above it, along its own direction.
+- **Tapes:** `TAPE_V` now ends with a hash of the recipe's code and constants, so tapes flown on the sphere retire. It is
+  a `let`; sim/ground.js re-hashes it after procedures.js.
+- **The bound:** `MOON_PE` is unchanged; with `top` 4 km the lowest registered Selene orbit is 9 km (the 10 × 20 km landing
+  orbit stays registered). The map bakes at idle after load (`selBake`, ~0.8 s), or at once when the camera or the
+  physics needs it.
+- **Impact prediction on airless relief:** `fall` crosses the shell at R + top, then follows the exact arc down to the
+  ground, bisected. It was the sphere.
+- **`landAt` watches the ground ahead** (`gapAhead`: the least height over the ground along the next 30 s of travel,
+  never past the site). Under 40 m of it, it climbs. A crater's rim stands a kilometre or more over its floor. **Ascents**
+  (the procedure's and Crewed Lunar's) pitch over by height above where they stood, not above R. A mare site is 1.4 km
+  under R.
+- **Tests that assumed the sphere:**
+  - §27's descent now reads the ground;
+  - "out there"'s landings and the moonbase capsule are set on the ground;
+  - vehicle-45's push runs on the plain sphere: on relief its toppled tank rolls on any slope and never comes to rest,
+    which is physics, not the test's subject;
+  - ground-1 and ground-2 now expect the recipe live.
+  - New: bodies-3 lands a Probe at the first grade-A place's aim (inside Endymion, Q613's ▶ Procedure).
+  - New: ground-12 checks the profile against the GLSL, the save step, the tape hash, and a fall predicted onto relief.
+- **Views 186–192** (views.js) are the timing and look set. Views 87, 112 and 182 now take their ground in Selene's frame.
+
+**For the M3 items this frees:**
+- **Q613 / Q614 / Q615:** `landAt` to a place's `aim` works on the relief (bodies-3).
+- **Q608:** the robot's m3 row can fly a crew to a named place.
+- **Q609:** `groundAlt(SELENE, pf)` is the live ground for EVA.
+
+**Not checked:** a human's landing into a crater; rovers driven on relief (their physics already follows
+`groundR`); TESTING 131 (Selene from Tellus) re-judged.

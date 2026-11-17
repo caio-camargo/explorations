@@ -1150,7 +1150,9 @@
   const D = new Function(src + 'return {newShip,toV2,HOOK,SELENE,NYX,PRESETS,INP,fromPF,toPF,groundAlt,groundR,terrainSlope,surfaceAt,surfaceHit,surfVel,qFromBasis,qrot,qconj,physStep,DT,footPoints,tipSpeed,recNew,stage,bodyOmega,len,norm,add,sub,mul,dot,cross,clamp,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
   const msgs = []; Object.assign(D.HOOK, { msg: m => msgs.push(m), boom: () => {}, rebuild: () => {}, news: () => {}, debris: () => {} });
   const DG = Math.PI / 180, U = (la, lo) => [Math.cos(la * DG) * Math.cos(lo * DG), Math.sin(la * DG), Math.cos(la * DG) * Math.sin(lo * DG)], K = ['pitch', 'yaw', 'roll'];
-  const flat = B => { for (let la = -30; la <= 30; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const u = U(la, lo); const su = D.surfaceAt(B, u); if (D.surfaceHit(su, u, B) > 0) continue; if (D.terrainSlope(B, u) < 0.02) return u; } };
+  // (Q91) on Selene's relief, flat for 60 m round, so a slide doesn't run it onto a slope
+  const flatAt = (B, u) => { const e = D.norm(D.cross([0, 1, 0], u)), n = D.cross(u, e), k = 60 / B.R; return [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => D.terrainSlope(B, D.norm(D.add(u, D.add(D.mul(e, a * k), D.mul(n, b * k))))) < 0.02); };
+  const flat = B => { for (let la = -30; la <= 30; la += 0.5) for (let lo = -60; lo < 60; lo += 0.5) { const u = U(la, lo); const su = D.surfaceAt(B, u); if (D.surfaceHit(su, u, B) > 0) continue; if (flatAt(B, u)) return u; } };
   // set it down upright 0.2 m up, falling at 1 m/s and drifting k× the speed it tips over at (k 0: it stands), SAS off
   const drop = (B, stack, k) => { D.t = 0; const u = flat(B), s = D.newShip(stack); D.S = s; Object.assign(s, { landed: false, body: B, sas: false, throttle: 0 }); msgs.length = 0;
     for (const p of s.parts) if (p.res.fuel != null) p.res.fuel *= 0.3;
@@ -1191,7 +1193,7 @@
   const push = (B, stack) => { const s = drop(B, stack, B === D.NYX ? 2.5 : 1.5), was = !!s.tipped && s.alive, p0 = pfOf(s); s.throttle = 0.15; for (let i = 0; i < 3 / D.DT; i++) D.physStep(s, D.DT); s.throttle = 0; msgs.length = 0;
     let rest = null; for (let i = 0; i < 40 / D.DT && s.alive && rest == null; i++) { D.physStep(s, D.DT); if (s.landed) rest = D.t; }
     return { was, s, far: D.len(D.sub(pfOf(s), p0)), rest, said: msgs.some(m => /^At rest on its side on/.test(m)), buried: s.parts.filter(p => p.on && p.buried).length }; };
-  const B1 = { 'lander, Selene': blast(D.SELENE, lander()), 'Hopper, Nyx': blast(D.NYX, D.PRESETS.Hopper) }, P1 = push(D.SELENE, lander());
+  const B1 = { 'lander, Selene': blast(D.SELENE, lander()), 'Hopper, Nyx': blast(D.NYX, D.PRESETS.Hopper) }, P1 = (() => { const g = D.SELENE.ground; D.SELENE.ground = null; try { return push(D.SELENE, lander()); } finally { D.SELENE.ground = g; } })();   // (Q91) on Selene's relief its tank rolls on any slope: the push is measured on the plain sphere
   const f2 = r => `${r.was ? '' : '(did not topple) '}${r.s.alive ? 'alive' : r.s.lossWhy}; ran ${r.far.toFixed(0)} m, spun up to ${r.w.toFixed(2)} rad/s; ${r.hurt.length} parts damaged${r.why ? '' : ' (unexplained!)'}`;
   check('vehicle-45: (Q545) full throttle on its side shoves it along the ground, damage only by the sim\'s strike law (lost only with its root); pushed gently it slides and comes to rest on its side again, buried parts recomputed',
     Object.values(B1).every(r => r.was && r.far > 20 && r.why && (r.s.alive || /^destroyed: its .+ hit .+ at \d+ m\/s|^destroyed: hit /.test(r.s.lossWhy || ''))) && P1.was && P1.s.alive && P1.far > 0.3 && P1.rest != null && !!P1.s.tipped && P1.s.landed && P1.said,

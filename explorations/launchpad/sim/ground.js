@@ -4,8 +4,8 @@
 // ---- Selene's ground (GROUND.md, slice G2). A recipe in the shape of slice G1's (`gen`, `top`): a baked map for what
 // is bigger than ~20 km (highland swell, the big craters, the maria flooded into the mare mask) plus procedural crater
 // bands below that, on the integer hash, so the shader can compute the same numbers later (G3).
-// NOT LIVE YET: SELENE.ground stays unset until the sky shader draws this relief (G3), or ships would land on hills
-// nobody can see. Tests and study_ground.mjs set SELENE.ground = SELENE_GROUND in their own copies of the SIM.
+// LIVE since G3 (QUEUE Q91, v1.352): the sky shader draws this relief (app/gl.js selH, marchS), so SELENE.ground is set
+// below and every consumer of groundAlt (contact, landing, rovers, the camera) stands on it.
 const GR_C=0.055;   // crater count: N(>D) = GR_C·D⁻² per km², D in km (the Moon's highlands: ~5,200 craters ≥ 20 km)
 const GR_DT=18e3*1.62;   // simple → complex at 18 km on the Moon (g 1.62); the size goes as 1/g, so GR_DT/g
 const GR_BANDS=[20e3,8e3,3.2e3,1280,512,205];   // procedural bands: the largest crater of each (m); each band runs down to the next
@@ -98,10 +98,27 @@ function craterBands(u,R,Dt,thin,bands=GR_BANDS.length,c=GR_C,salt=0,frPow=3,b0=
         h+=craterH(r,D,Dt,ih3(key,zz,s0+5)**frPow,1+.35*x+.2*(2*x*x-1))}}}
   return h}
 // Selene's height above R at a planet-fixed point (any length)
-const selThin=m=>cu=>GR_MARE_THIN*sstep(.05,.5,mapBil(m.M,m.W,m.H,cu));   // fewer craters on the young plains (as flooded)
+// the texel a point falls in (no interpolation): the crater bands' thinning reads the mare mask at a crater's centre this
+// way, so the shader (selBands) pays one fetch for it, not four (Q91), and both sides read the same texel
+function mapNear(A,W,H,u){const x=(Math.atan2(u[2],u[0])/(2*Math.PI)+.5)*W-.5,y=(Math.asin(clamp(u[1],-1,1))/Math.PI+.5)*H-.5;return A[clamp(Math.floor(y+.5),0,H-1)*W+(Math.floor(x+.5)+W)%W]}
+const selThin=m=>cu=>GR_MARE_THIN*sstep(.05,.5,mapNear(m.M,m.W,m.H,cu));   // fewer craters on the young plains (as flooded)
 function seleneH(pf,bands){const u=norm(pf),m=seleneMap();return mapSpl(m.E,m.W,m.H,u)+craterBands(u,SELENE.R,m.Dt,m.thin||(m.thin=selThin(m)),bands)}
 GROUND_GEN.selene=pf=>seleneH(pf);
-const SELENE_GROUND={gen:'selene',top:4000};
+const SELENE_GROUND={gen:'selene',top:4000};   // top: a bound (the map's 1.6 km plus the bands' largest rims); the highest sampled is 1.3 km
+SELENE.ground=SELENE_GROUND;
+// (Q91, GROUND.md G3.4) the ground moves a craft as much as its code does: Selene's recipe joins the tapes' fingerprint
+// (TAPE_V, sim/procedures.js), so a tape flown on the smooth sphere is retired, not replayed onto relief
+TAPE_V='lp-'+hashStr(TAPE_V+[seleneMap,seleneH,craterBands,craterH,craterProf,mapSpl,mapBil,mapNear,selThin,mapCrater,selCraters,grBandsOf,patanJ,ptan].map(f=>f.toString()).join('')
+  +JSON.stringify([SELENE_GROUND,GR_C,GR_DT,GR_BANDS,GR_MARE_THIN,GR_EXP,GR_REACH]));
+// (Q91, G3.4) a save from before the relief kept what stood on Selene on the smooth sphere (R): each lander in the
+// registry, each rover left in the field, each seismometer goes up or down onto the ground along its own direction, at
+// the height it stood above the sphere. The save step SAVE_V 1 → 2 (app/state.js) calls this; it bakes the map only when
+// the save has something on Selene.
+function selReseat(j){const up=pf=>{const u=norm(pf);return mul(u,len(pf)+groundAlt(SELENE,u))},on=x=>x&&x.bodyName===SELENE.name;
+  for(const q of j.sats||[])if(q.landed&&on(q)&&q.pf)q.pf=up(q.pf);
+  for(const e of j.rvOut||[])if(on(e)&&e.p)e.p=up(e.p);
+  for(const st of(j.sel&&j.sel.seis)||[])if(on(st)&&st.pf)st.pf=up(st.pf);
+  return j}
 // ---- places on Selene (QUEUE Q612; notes/economy.md § "Plan: places on Selene"; DECISIONS D48). A place is one of the
 // map's big craters, with a name: a landing is "in" it when it is inside the rim circle. Which craters, and their grade,
 // is a table, SEL_PLACE_T, made by review/2026-11-13/survey.mjs from craterSurvey and pinned by test ground-11:
