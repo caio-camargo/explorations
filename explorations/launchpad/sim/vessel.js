@@ -210,6 +210,28 @@ function mountFix(G,at){const N=G.N,re=x=>x.replace(/\d+$/,d=>String(+d%N)),o={.
     if(r>mx){s*=mx/r;t*=mx/r}o.s=+s.toFixed(4);o.t=+t.toFixed(4)}
   else{o.f=re(o.f);o.s=clamp(+o.s||0,0,1);o.t=clamp(+o.t||0,0,1)}
   if(o.n>1&&N%o.n)o.n=1;return o}
+// a ray (frame coordinates) against the frame's prism: where it enters, on which face; null if it misses or starts inside
+function frameRay(G,o,d){let t0=-Infinity,t1=Infinity,fid=null;
+  const pl=[...Object.entries(G.F).map(([id,F])=>[id,F.n,id==='top'?[0,G.h,0]:id==='bot'?[0,0,0]:G.B[F.k]])];
+  for(const[id,n,P]of pl){const dn=dot(d,n),s=dot(n,sub(P,o));if(Math.abs(dn)<1e-12){if(s<0)return null;continue}const t=s/dn;
+    if(dn<0){if(t>t0){t0=t;fid=id}}else if(t<t1)t1=t}
+  if(!(t0<=t1)||t0<0||fid==null)return null;return{t:t0,f:fid,p:add(o,mul(d,t0))}}
+// a point on face fid (frame coordinates) → a place: near a corner or an edge it snaps there, and to the middle of a face
+// or an edge, unless snap is off (the mock-up's rule, its distances scaled by the frame's size)
+function mountSnap(G,fid,P,snap=true){const F=G.F[fid];if(!F)return null;const sn=clamp(.11*Math.min(2*G.r*Math.min(1,G.rt/G.r+.3),G.h),.035,.09);
+  if(snap){let bc=null,bd=sn*1.3;for(const c of F.c){const x=len(sub(G.C[c].p,P));if(x<bd){bd=x;bc=c}}if(bc)return{c:bc};
+    let be=null,bt=0;bd=sn;for(const e of F.e){const E=G.E[e],ab=sub(E.b,E.a),t=clamp(dot(sub(P,E.a),ab)/dot(ab,ab),0,1),x=len(sub(lerp3(E.a,E.b,t),P));if(x<bd){bd=x;be=e;bt=t}}
+    if(be){if(Math.abs(bt-.5)<.07)bt=.5;return{e:be,t:+bt.toFixed(4)}}}
+  if(fid==='top'||fid==='bot'){const R=fid==='top'?G.rt:G.r;let s=P[0]/R,t=P[2]/R;if(snap&&Math.hypot(s,t)*R<sn)s=t=0;return mountFix(G,{f:fid,s:+s.toFixed(4),t:+t.toFixed(4)})}
+  const k=F.k,k1=(k+1)%G.N,t0=clamp(P[1]/G.h,0,1),A=lerp3(G.B[k],G.T[k],t0),B=lerp3(G.B[k1],G.T[k1],t0),ab=sub(B,A);
+  let s=clamp(dot(sub(P,A),ab)/dot(ab,ab),0,1),t=t0;if(snap){if(Math.abs(s-.5)*len(ab)<sn*.6)s=.5;if(Math.abs(t-.5)*G.h<sn*.6)t=.5}
+  return{f:fid,s:+s.toFixed(4),t:+t.toFixed(4)}}
+// a place in words, for the builder's line by the pointer and the part's card
+function mountName(at){if(!mountAt(at))return'';const x=at.n>1?` ×${at.n}`:'';
+  if(at.c!=null)return(at.c[1]==='t'?'top corner':'bottom corner')+x;
+  if(at.e!=null)return(at.e[0]==='v'?'side edge':at.e[0]==='t'?'top edge':'bottom edge')+(at.t===.5?', middle':'')+x;
+  if(at.f==='top'||at.f==='bot')return(at.f==='top'?'top':'bottom')+(at.s===0&&at.t===0?', centre':'')+x;
+  return`side ${+at.f.slice(1)+1}`+(at.s===.5&&at.t===.5?', middle':'')+x}
 // the pose of copy j of m of a part mounted at `at` on frame instance P (its bottom centre at P.x, P.y0, P.z): the foot f,
 // the rotation q from the part's own drawing frame (stack part: its axis +Y; surface part: its outer side +X, its length +Y),
 // sf (a surface part), n the way out. Vessel (layout) coordinates

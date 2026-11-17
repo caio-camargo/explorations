@@ -1355,3 +1355,28 @@ return out`);
     `pose ${okPose} (foot ${ps.pose && ps.pose.f.map(v => v.toFixed(3))}, reach ${B.reach.toFixed(3)}); geom ${okGeom} (I ${s1.I.map(v => v.toFixed(2))} vs ${I.map(v => v.toFixed(2))}); copies ${okCopies}; places ${okPlaces}; ` +
     `only push-nothing parts ${okWhat}; reshape ${okFix}; fairing and ring ${okRing} (ring ${Hs.h.toFixed(2)} → ${Hl.h.toFixed(2)} m); envelope ${okEnv} (${E.length} bands); save ${okSave}`);
 }
+
+// vehicle-50. Placing on a frame by pointer (vehicle + flow, QUEUE Q618, bench slice 2b): the bench casts the pointer's ray
+// at the frame's prism (frameRay) and turns the point into a place (mountSnap): a corner or an edge when near one, the middle
+// of a face or an edge when near it, anywhere with snapping off (C); the line by the pointer names it (mountName).
+{
+  const near = (a, b, e = 1e-9) => Math.abs(a - b) < e, F = api.PARTS.frame;
+  const G = api.frameGeo(api.frameDef(F, { n: 4, w: 1, h: 1, top: 1 })), c = Math.SQRT1_2;
+  // (a) rays: from outside along −normal of s0 hits s0 at its middle; from above hits the top; from below the bottom; a miss; from inside nothing
+  const r0 = api.frameRay(G, [2 * c, 0.5, 2 * c], [-c, 0, -c]), rt = api.frameRay(G, [0.1, 3, 0], [0, -1, 0]), rb = api.frameRay(G, [0, -2, 0.1], [0, 1, 0]);
+  const okRay = r0 && r0.f === 's0' && near(r0.p[0], 0.25) && near(r0.p[1], 0.5) && near(r0.p[2], 0.25) && rt && rt.f === 'top' && near(rt.t, 2) && rb && rb.f === 'bot' &&
+    api.frameRay(G, [3, 0.5, 3], [0, 1, 0]) === null && api.frameRay(G, [0, 0.5, 0], [1, 0, 0]) === null;
+  // (b) snaps on face s0 (corners cb0 (0.5,0,0), cb1 (0,0,0.5)): near a corner, near an edge, near the middle, elsewhere; and with snapping off
+  const P = (s, t) => [0.5 * (1 - s), t, 0.5 * s], sn = api.mountSnap;
+  const a1 = sn(G, 's0', P(0.02, 0.98)), a2 = sn(G, 's0', P(0.3, 0.99)), a3 = sn(G, 's0', P(0.52, 0.48)), a4 = sn(G, 's0', P(0.3, 0.7)), a5 = sn(G, 's0', P(0.02, 0.98), false), a6 = sn(G, 's0', P(0.5, 0.97));
+  const okSnap = a1.c === 'ct0' && a2.e === 't0' && near(a2.t, 0.3, 0.02) && a3.f === 's0' && a3.s === 0.5 && a3.t === 0.5 && a4.f === 's0' && near(a4.s, 0.3, 1e-3) && near(a4.t, 0.7, 1e-3) &&
+    a5.f === 's0' && near(a5.s, 0.02, 1e-3) && a6.e === 't0' && a6.t === 0.5;
+  // the top: off the centre, at it (snapped), and a point past the edge kept inside
+  const b1 = sn(G, 'top', [0.2, 1, 0.1]), b2 = sn(G, 'top', [0.01, 1, 0.01]), b3 = sn(G, 'top', [0.2, 1, 0.1], false);
+  const okTop = b1.f === 'top' && near(b1.s, 0.4) && near(b1.t, 0.2) && b2.s === 0 && b2.t === 0 && near(b3.s, 0.4);
+  // (c) the words
+  const W = [{ f: 's0', s: 0.5, t: 0.5 }, { f: 's2', s: 0.3, t: 0.2, n: 2 }, { f: 'top', s: 0, t: 0 }, { e: 'v1', t: 0.5 }, { e: 't0', t: 0.3 }, { c: 'cb3' }].map(api.mountName);
+  const okName = W.join('|') === 'side 1, middle|side 3 ×2|top, centre|side edge, middle|top edge|bottom corner';
+  check('vehicle-50: the bench places by pointer on a frame: its prism is hit face by face; corners, edges and middles snap, snapping off places anywhere; the place is named',
+    okRay && okSnap && okTop && okName, `rays ${okRay}; snaps ${okSnap} (${[a1, a2, a3, a4, a6].map(x => JSON.stringify(x)).join(' ')}); top ${okTop}; words ${okName} (${W.join(' · ')})`);
+}

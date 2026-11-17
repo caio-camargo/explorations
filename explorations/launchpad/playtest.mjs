@@ -1111,6 +1111,26 @@ ROWS[290] = {title: 'the haze without dither (refViews)', steps: views(1, 171, 8
 ROWS['281b'] = {title: 'planets and the pad at dusk (refViews, 281)', steps: views(169, 170, 171)};
 ROWS['275b'] = {title: 'Selene in its own pass, close (refViews, 275)', steps: views(164, 165, 166, 167, 168)};
 ROWS[248] = {title: 'the space sky, High then Low (refViews)', steps: [...views(97, 99, 100), LOW, ...viewsLow(97, 100)]};
+// 401 (vehicle, Q618, bench slice 2b): on the payload bench, a 1 × 0.8 m square frame; by pointer, through the builder's own
+// projection: a propellant sphere on the middle of a side, a side camera on a side edge, a small battery on a top corner;
+// then the sphere picked up (its base stays under the pointer, it waits until moved, the bin shows), moved, and binned
+const QB401 = `window.QB = {cvs: () => document.getElementById('gl'), wait: ms => new Promise(r => setTimeout(r, ms)),
+  at(v) { const c = QB.cvs(), q = BLD.proj(v); if (!q) return null; const r = c.getBoundingClientRect(); return [r.left + q[0] * c.clientWidth / c.width, r.top + q[1] * c.clientHeight / c.height] },
+  ev(type, xy) { QB.cvs().dispatchEvent(new MouseEvent(type, {clientX: xy[0], clientY: xy[1], button: 0, bubbles: true, cancelable: true, view: window})) },
+  click(xy) { QB.ev('mousemove', xy); QB.ev('mousedown', xy); QB.ev('mouseup', xy) },
+  frame: () => S.parts.find(p => p.d.fr), G: () => frameGeo(QB.frame().d), F(p) { const f = QB.frame(); return [f.pos[0] + p[0], f.y0 + p[1], f.pos[2] + p[2]] },
+  mix: (ws, ps) => [0, 1, 2].map(i => ps.reduce((a, p, j) => a + p[i] * ws[j], 0)),
+  kids: () => (stackDef.root.c || []).filter(c => typeof c.at === 'object').map(c => c.k + ' ' + mountName(c.at)),
+  async put(k, p) { BLD.grab(k); await QB.wait(60); const xy = QB.at(QB.F(p)); QB.ev('mousemove', xy); await QB.wait(120); const a = BLD.st.slot && BLD.st.slot.at; QB.click(xy); await QB.wait(150); const ok = !BLD.st.held; BLD.drop(); return ok ? mountName(a) : 'not placed'; }}; true`;
+ROWS[401] = {title: 'the bench places by pointer on a frame (Q618)', steps: [QB401,
+  `(async () => { go('assembly'); await QB.wait(300); BLD.benchOpen(null); await QB.wait(200); BLD.load({v: 2, root: {k: 'frame', fr: {n: 4, w: 1, h: 0.8, top: 1}, c: [{k: 'core6', at: 'u', c: []}]}}); await QB.wait(800); return {bench: !!BLD.bench(), symmetry: BLD.st.sym} })()`,
+  `(async () => { const G = QB.G(); return {face: await QB.put('sph4', QB.mix([.25, .25, .25, .25], [G.B[0], G.B[1], G.T[0], G.T[1]])), edge: await QB.put('scam', QB.mix([.7, .3], [G.B[1], G.T[1]])),
+    corner: await QB.put('batt3', QB.mix([.9, .06, .04], [G.T[0], G.T[1], G.B[0]])), kids: QB.kids()} })()`, {shot: 'placed'},
+  `(async () => { const s = S.parts.find(p => p.d.key === 'sph4'), xy = QB.at(partC(s)); QB.click(xy); await QB.wait(150); const held = BLD.st.held && BLD.st.held.k, bin = document.getElementById('bldbin').style.display;
+    QB.ev('mousemove', [xy[0] + 3, xy[1] + 2]); await QB.wait(100); const waits = mountName(BLD.st.slot && BLD.st.slot.at); QB.ev('mousemove', [xy[0] - 25, xy[1]]); await QB.wait(120);
+    return {held, bin, grabbed: !!BLD.st.grab, waits, moved: mountName(BLD.st.slot && BLD.st.slot.at) || 'off the frame'} })()`, {shot: 'held'},
+  `(async () => { document.getElementById('bldbin').click(); await QB.wait(150); return {held: !!BLD.st.held, kids: QB.kids(), bin: document.getElementById('bldbin').style.display} })()`],
+  checks: {placed: `QB.kids().join(' / ')`}, expect: {placed: v => /sph4 side \d, middle/.test(v) === false && /scam side edge/.test(v) && /batt3 top corner/.test(v)}};
 // builder rows (test bench, 2026-10-13): each design built as the row describes, then the Assembly's own lines read back
 // (the Control and Aerodynamics blocks, Touchdown), and the Rollout's checks where the row asks
 const PANEL = `PT.panel = re => document.body.innerText.split(String.fromCharCode(10)).filter(l => re.test(l)).slice(0, 14); true`;

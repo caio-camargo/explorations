@@ -2968,3 +2968,47 @@ flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor
 - In the open (no fairing) mounted parts meet no air at all; the plan's one envelope profile on the stack line is not added.
 - A wing or boom on a mount deploys along its normal's bearing (`phi`); on the top or bottom face that bearing means
   little. Slice 4's views replace it.
+
+## v1.352 — mounts on a frame, upright: the bench by pointer (bench slice 2b, 2026-11-17, vehicle session, QUEUE Q618, D47 point 1)
+
+**Why:** the second half of Q618 (§ v1.351 is the sim). The mock-up's way of placing (`mockups/bench/free.html`; Caio:
+"placing by click, move, click is right") in the game's bench.
+
+**What** (builder.js unless named):
+- **Placing.** On the bench, a held part that pushes nothing (`mountOK`) and carries nothing goes where the pointer meets the
+  frame: `frameRay` (sim/vessel.js) casts the pointer's ray at the frame's prism, face by face, and `mountSnap` turns the
+  point into a place: a corner within about a tenth of the frame's size, else an edge, else the middle of a face or an edge
+  when near it (the mock-up's distances, scaled by the frame). **C**, the builder's snap key, turns snapping off. The plan
+  said Shift, as the mock-up does; in the builder Shift-click already places a copy and keeps holding, so C it is. A stack
+  node wins only at the middle of the top or the bottom, the stack's own place. A mounted part is a leaf: nothing attaches
+  to it, and the pointer passes over it to the frame.
+- **The line by the pointer** names the place (`mountName`: *side 2, middle*, *top corner*, *side edge*, *bottom, centre*,
+  *×2*) and says *no room here* over another part. The card says *on the frame: side edge* and offers copies (×1, and the
+  counts the sides divide into).
+- **Picking up** a mounted part keeps its base under the pointer (`st.grab`, the screen offset from the pointer to its foot),
+  leaves it where it was until the pointer moves 7 px (`st.stick`), and keeps it at its last place while the pointer is off
+  the frame (`st.lastM`); a click there puts it back.
+- **The note** on picking a part from the palette on the bench says *click a side, edge or corner of a frame, or a glowing node*.
+- **The bin**: *🗑 bin* above the help line while a part is held on the bench; Ctrl+Z brings a picked-up part back.
+- **Symmetry off on the bench**: opening it sets ×1; closing it gives the rocket's own back. Copies of a mount go round the
+  frame's axis, so only counts that divide the sides are offered (the plan's default (b), "symmetry off by default").
+- **Collisions**: a mounted part is a row of spheres along its axis, tested exactly against an upright part's cylinder and
+  sphere by sphere against another mounted part; the frame never blocks what stands on it.
+- **Reshaping** the frame in its card runs `mountFix` on what is mounted on it.
+- **The ghost and the hit test** read the pose: `trial`, `floatAt` and parked subtrees carry it; `hitPart` tests a posed
+  part in its own frame.
+
+**Checks:**
+- `vehicle-50`: rays enter the right face (or none from inside, or a miss); snaps to a corner, an edge, its middle, a face's
+  middle, the top's centre, and none with snapping off; a point past an end's edge is kept inside; the words.
+- **Robot row 401** (`node playtest.mjs 401`, Chrome on the GPU, `.game-busy` taken): on a 1 × 0.8 m square frame, by
+  pointer events at points the builder's own projection gives, a sphere goes on *side 1, middle*, a side camera on a *side
+  edge*, a small battery on a *top corner*; the sphere picked up shows the bin, waits at its place after a 3 px move, follows
+  the pointer and says *no room here* when it reaches the camera; the bin takes it. Closing the bench gives ×2 back. Shots
+  looked at: the parts sit on the faces, the corner battery leans out, the bin sits clear of the panels.
+- Smoke and lint (`node --expose-internals lint.mjs`) clean.
+
+**Not done, not checked:**
+- **Nobody has placed a part by hand.** The pointer was synthetic, from a script; how it feels is Caio's (TESTING 401).
+- A part on the far side of the frame is reached by orbiting, as anywhere in the builder.
+- Tilt (slice 3, Q619) is next; views (slice 4) give the cone while held.
