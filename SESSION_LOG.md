@@ -8144,3 +8144,26 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `app/gl.js`, `app/render.js`, `sim/ground.js`, `terrain-probe.js`, `views.js`, `tests/world.mjs`,
   `GROUND.md`, `notes/world.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
   Stills in `output/launchpad/g4-shadows/` (not in git).
+
+## 2026-11-17 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): the ship shades itself; occlusion at joints (Q316 slice 1, v1.360 + v1.361)
+
+- **Asked:** Caio: resume the graphics study of 2026-11-16 (its transcript is gone; its results were in
+  notes/look.md), then "yes go ahead" on Q316 slice 1, shadows first.
+- **Done (v1.360, the shadow map, High only):** one 2048² depth map fitted to the ship and what is docked to it
+  (`shadowFit`, `shipShadow`, `PSSM`), compared in `MESH_FS` on unit 16; the sun or the desk's lamp. Boosters shade
+  the core. Test aerofx-57.
+- **Done (v1.361, ambient occlusion, both settings):** `shipAO` in `partsMesh`: a ledge per pixel where a narrow
+  part meets a wide one (`uAo`), a crease baked round a part where another runs beside it. Test aerofx-58.
+- **Measured:** the shadow pass 0.04–0.20 ms on the RTX (BEAUTY's estimate was 0.3–0.6); Low on the Intel GPU
+  unchanged; the occlusion inside the noise on both GPUs, +0.5–0.8 ms on a booster ship's mesh build. Stills and logs:
+  `output/launchpad/beauty/Q316/`. Numbers: notes/look.md § v1.360, § v1.361.
+- **Went wrong on the way:** the crease was first baked into the vertex's material, which a bell interpolates along
+  its profile, so every bell lost its ambient light; found from a dump of the real mesh and moved to the kind. Three
+  renumberings (Q626 took v1.358, G4 v1.359) and three CI runs; the last, 44192854716, green on the merged commit.
+- **Not checked:** nobody has turned a ship in the sun by hand (TESTING 409, 410); a step's ledge in a still; thin
+  parts at 2.6 cm texels; a long station; the shadow pass on the Intel GPU on High.
+- **Left running:** this session's local servers (python http.server on ports 8803, 8804, 8816, 8817); stopping them
+  was not allowed from the session.
+- **Next:** Q316's surface pass (B1.4, absorbs Q259), then the greebles (B1.5). Proposed: `refset.mjs`'s start.
+- Files: launchpad `app/gl.js`, `app/render.js`, `app/settings.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `BEAUTY.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
