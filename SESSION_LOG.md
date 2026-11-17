@@ -8072,3 +8072,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/space.js`, `sim/flight.js`, `sim/debrief.js`, `app/program-ui.js`,
   `app/editor.js`, `app/debrief.js`, `app/screens.js`, `index.html`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
   `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## Session 2026-11-17 — Launchpad v1.356: the pilot's modes, crew slice 3 (Q625)
+- **Operator:** Caio, with Claude (space session, Opus 5.5).
+- **What:** QUEUE row Q625 added for slice 3 (Q134 re-planned) and built: the SAS flies the computer's modes and the
+  best pilot aboard's (on the type the analog modes; + rendezvous manoeuvre and target; + docking docking; untyped,
+  nothing). A pilot's loop (k 2.5, 0.35 → 0.45 rad/s, 0.5° → 0.3° over 20 h in type) where only the pilot has the
+  mode. SAS hover text names the pilot; "Not yet" says what a pilot would need. Matters in the gyro and analog eras
+  only (a capsule carries the guidance computer from the onboard-computer era).
+- **Merge:** CI 44172533442 and, after a docs-only merge of main, 44174076581: both green; ff-merged.
+- **Not checked:** in a browser (TESTING 405).
+- **Next:** the manual landing hold (control, M) for the landing qualification; slices 4–7 (requalification is built;
+  classes over time, the scientist's and engineer's hooks, rotation by dispatch); Q624.
+- Files: launchpad `sim/crew.js`, `sim/vessel.js`, `app/editor.js`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
