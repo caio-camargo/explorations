@@ -22,6 +22,7 @@ const NIGHT_VIL=3.0;
 // (Q91, GROUND.md G3) Selene's relief in the shaders: sim/ground.js's crater bands as constants (each band's cells per
 // face edge, largest and smallest crater, the presence threshold λ as the float32 the CPU compares with, the face-skip
 // cosine, and the highest a crater's rim can stand, which bounds the march), injected into SKY_FS's selBands.
+const SELC_N=512;   // (G3.5) the near-field cache's texels a side, per level
 const SEL_GL=(()=>{const R=SELENE.R,Dt=GR_DT/(SELENE.mu/(R*R)),B=grBands(R,GR_C),f=x=>{const s=String(x);return/[.e]/.test(s)?s:s+'.'};
   const rim=D=>(D<Dt?.036*D:.042*Dt*(D/Dt)**.399)*1.55,rims=B.map(b=>rim(b.Dhi));   // a crater's rim is at most its fresh rim × the lob's 1.55
   return{R,Dt,B,rims,all:rims.reduce((a,b)=>a+b,0)*1.3,   // all six bands' rims, with room for ejecta overlapping in a band
@@ -35,7 +36,7 @@ uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
-uniform highp sampler2D uSelM,uSelD,uSelE;uniform float uSelOn,uMtcc,uSelDOn,uSelPre;   // (Q91) Selene's map (E, M, U); its relief is drawn when on; uMtcc = |C|²−(R+top)², in float64
+uniform highp sampler2D uSelM,uSelD,uSelE;uniform float uSelOn,uMtcc,uSelDOn,uSelPre;uniform highp sampler2DArray uCache;uniform float uCacheOn;uniform vec3 uCq[3],uCc[3],uCe[3],uCn[3];uniform float uCs[3];   // (Q91) Selene's map (E, M, U); its relief is drawn when on; uMtcc = |C|²−(R+top)², in float64
 uniform sampler2D uCov,uShd;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;uniform vec4 uPlnD[6],uPlnC[6];uniform int uNPl;
@@ -220,6 +221,20 @@ float selBands(vec3 u,float nb){float h=0.,mx=sNear(u).z;sFresh=0.;   // mx: no 
  return h;}
 // Selene's height above R at a point in its own frame (any length), with nb bands
 float selH(vec3 pf,float nb){vec3 u=normalize(pf);return sSpl(u)+selBands(u,nb);}
+// (G3.5) the near-field cache: selH with all six bands baked around the camera into three levels of a clipmap (SELC: 512²
+// at 0.5, 2 and 8 m: 256 m, 1 km, 4 km across), each on its own gnomonic grid (centre direction uCc, axes uCe, uCn, all in
+// Selene's frame; uCq the camera from that centre's ground point, in float64 on the CPU). v: a point relative to the
+// camera, in Selene's frame. Read bilinear by texelFetch: x the height, y the freshness (sFresh). The finest level that
+// holds the point (a texel of margin) answers; none does: false
+bool selCache(vec3 v,out vec2 hf){hf=vec2(0.);if(uCacheOn<.5)return false;
+ for(int k=0;k<3;k++){vec3 P=uCq[k]+v;vec2 g=SR*vec2(dot(P,uCe[k]),dot(P,uCn[k]))/(SR+dot(P,uCc[k]))/uCs[k]+${SELC_N/2-.5};
+  if(g.x>1.&&g.y>1.&&g.x<${SELC_N-2}.&&g.y<${SELC_N-2}.){vec2 f=floor(g),t=g-f;ivec2 i=ivec2(f);
+   vec2 a=texelFetch(uCache,ivec3(i,k),0).xy,b=texelFetch(uCache,ivec3(i.x+1,i.y,k),0).xy,c=texelFetch(uCache,ivec3(i.x,i.y+1,k),0).xy,e=texelFetch(uCache,ivec3(i.x+1,i.y+1,k),0).xy;
+   hf=mix(mix(a,b,t.x),mix(c,e,t.x),t.y);return true;}}
+ return false;}
+bool sInC;   // set by selHc: the height came from the cache (all six bands)
+// Selene's height at a point given relative to the camera (inertial): from the cache when it holds it, else selH
+float selHc(vec3 v,float nb){vec2 hc;sInC=selCache(selF(v),hc);if(sInC){sFresh=hc.y;return hc.x;}return selH(selF(v-uMc),nb);}
 // the bands worth drawing at distance t and footprint fw (m per px): a band fades out as its largest crater shrinks from
 // 6 to 3 px; all six within 2 km of the camera (the physics' ground), easing to 3 by 20 km
 float selNb(float t,float fw){float k=0.;for(int b=0;b<6;b++)k+=clamp(SBHI[b]/(3.*max(fw,.01))-1.,0.,1.);return min(k,clamp(6.-.9*log2(max(t,1.)/2000.),3.,6.));}
@@ -235,7 +250,7 @@ float marchS(vec3 d,out float hh,float tS){hh=0.;if(uSelOn<.5)return 1e30;
  for(int i=0;i<100;i++){float tt=sec>0?hi-ghi*(hi-lo)/min(ghi-glo,-1e-6):t;vec3 p=d*tt-uMc;float rl=length(p),alt=(tt*tt-2.*tt*b+uMcc)/(rl+SR);vec3 up=p/rl,pf=selF(up);float cs=max(-dot(d,up),0.);
   float ub=1e9;if(sec==0)ub=sNear(pf).y+${SEL_GL.all.toFixed(1)};
   if(alt>ub){tp=t;gp=1e9;t+=(alt-ub)/(cs+.7)+.001*t+.5;k=0.;if(t>=t1)break;continue;}
-  float kL=selNb(tt,tt*uPix/max(cs,.08)),kF=min(kL,kc),kk=sec>0?kF:min(k,kF),h=selH(pf,kk);hl=h;
+  float kL=selNb(tt,tt*uPix/max(cs,.08)),kF=min(kL,kc),kk=sec>0?kF:min(k,kF),h=selHc(d*tt,kk);hl=h;if(sInC){kL=6.;kF=6.;kk=6.;}   // (G3.5) a cached height has every band
   if(sec>0){float g=alt-h;if(g<0.){hi=tt;ghi=g;glo*=.5;hh=h;}else{lo=tt;glo=g;ghi*=.5;}if(++sec>ns)break;continue;}
   float bnd=0.;for(int j=0;j<6;j++)bnd+=SBRIM[j]*(clamp(kL-float(j),0.,1.)-clamp(kk-float(j),0.,1.));
   float dh=alt-h-bnd;
@@ -902,7 +917,9 @@ function mkProg(vs,fs){const p=gl.createProgram();
   for(const[t,s]of[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);
     if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}
   gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
-  const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}return{p,u}}
+  const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}
+  if(u.uCache){gl.useProgram(p);gl.uniform1i(u.uCache,8)}   // (G3.5) an array sampler left on unit 0 would clash with the 2D ones there
+  return{p,u}}
 // city texture: 1024×512 equirectangular, built once on the CPU from CITIES (r = built-up density, g = night lights)
 // the baked world for the ground shader: heights etc. as exact floats (read with texelFetch), climate filtered
 const WORLD_TEX=(()=>{const n=WTW*WTH,a=new Float32Array(n*4),c=new Float32Array(n*4);
@@ -1021,6 +1038,10 @@ const DEPTH_RT={tex:null,fb:null,w:0,h:0};
 const PSELD=PDEPTH?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
   'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hs,t=marchS(d,hs,coarseStartS());o=vec4(t,hs,0.,1.);}'):null;
 const SELD_RT={tex:null,fb:null,w:0,h:0,on:false};
+// (G3.5) the near-field cache's bake: one level at a time, texel (i, j) at (i + ½ − N/2, j + ½ − N/2) × uBs metres on the
+// gnomonic grid round uBc (axes uBe, uBn, Selene's frame), as selCache reads it
+const PCACHE=PDEPTH?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+`uniform vec3 uBc,uBe,uBn;uniform float uBs;
+void main(){vec2 x=(gl_FragCoord.xy-${SELC_N/2}.)*uBs;float h=selH(uBc+(uBe*x.x+uBn*x.y)/SR,6.);o=vec4(h,sFresh,0.,1.);}`):null;
 function seldTarget(w,h){const D=SELD_RT;if(D.w===w&&D.h===h)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
   gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RG32F,w,h,0,gl.RG,gl.FLOAT,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
@@ -1431,7 +1452,7 @@ void main(){
  vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w)*uNa;   // (Q91) on Selene's relief, only craters finer than its bands (shading)
  // (Q91) the relief's own normal, from Selene's height over about a pixel and a half (as Tellus's), at the march's bands
  vec3 nr=n;float fwm=w*uNR;if(rel){float kF=selNb(tN,tN*uPix/max(mu,.08)),eps=max(fwm*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),nb)+vec3(1e-6,0,0)),t2=cross(nb,t1);   // the march's bands at this point (its footprint law), so hS is this ground
-  float h1=0.,h2=0.;for(int i=0;i<2;i++){float h=selH(nb+(i==0?t1:t2)*(eps/SR),kF);if(i==0)h1=h;else h2=h;}nr=selI(normalize(nb-(t1*(h1-hS)+t2*(h2-hS))/eps));}   // one call site (each is a copy of selBands); the point's own last, for sFresh
+  float h1=0.,h2=0.;for(int i=0;i<2;i++){float h=selHc(d*tN+selI(i==0?t1:t2)*eps,kF);if(i==0)h1=h;else h2=h;}nr=selI(normalize(nb-(t1*(h1-hS)+t2*(h2-hS))/eps));}   // one call site (each is a copy of selBands); the point's own last, for sFresh   (G3.5: through the cache near the camera)
  float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(8000.,300.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
  vec3 alb;
  if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
@@ -1482,8 +1503,29 @@ function selTex(){if(!SELENE.ground||!SEL_MAP)return null;if(SELTEX.tex)return S
 // the camera near Selene (or the ship there) can't wait for the idle bake: bake now
 function selNear(camW){if(SELENE.ground&&!SEL_MAP&&len(sub(bodyPos(SELENE,simT),camW))<SELENE.R*6)seleneMap()}
 const selBake=()=>{if(SELENE.ground&&!SEL_MAP)seleneMap();selTex()};
-// Selene's uniforms for a program built on SKY_FS (the sky, its pre-pass, the moon pass)
-function selUniforms(u,camW){const on=!!selTex();gl.uniform1f(u.uSelOn,on?1:0);if(!on)return;
+// (G3.5) Selene's near-field cache (SELC: a 512² × 3 RG32F array on unit 8; GROUND.md § G3.5). Each level is baked
+// (PCACHE, below: selH with all six bands and its freshness) round the ground under the camera, again when the camera has
+// drifted an eighth of the level from its centre; on only with the camera within 5 km of the ground. The march and the
+// moon pass's normal read it; beyond it they compute the bands as before
+const SELC={tex:null,fb:null,lv:[0.5,2,8].map(s=>({s,c:null,e:null,n:null})),on:false};
+function selCacheTick(camW){SELC.on=false;if(!PCACHE||!selTex())return;const B=SELENE,cp=toPF(B,sub(camW,bodyPos(B,simT)),simT),g=norm(cp);
+  if(len(cp)-B.R-groundAlt(B,g)>5e3)return;
+  if(!SELC.tex){SELC.tex=gl.createTexture();gl.activeTexture(gl.TEXTURE8);gl.bindTexture(gl.TEXTURE_2D_ARRAY,SELC.tex);gl.texImage3D(gl.TEXTURE_2D_ARRAY,0,gl.RG32F,SELC_N,SELC_N,3,0,gl.RG,gl.FLOAT,null);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.activeTexture(gl.TEXTURE0);SELC.fb=gl.createFramebuffer()}
+  let baked=false;const fb0=gl.getParameter(gl.FRAMEBUFFER_BINDING),vp=gl.getParameter(gl.VIEWPORT);
+  SELC.lv.forEach((L,k)=>{if(L.c&&Math.acos(clamp(dot(L.c,g),-1,1))*B.R<SELC_N*L.s/8)return;
+    const e=norm(Math.abs(g[1])<.99?cross([0,1,0],g):cross([1,0,0],g)),n=cross(g,e);Object.assign(L,{c:g,e,n});
+    if(!baked){gl.useProgram(PCACHE.p);selUniforms(PCACHE.u,camW,true);gl.bindFramebuffer(gl.FRAMEBUFFER,SELC.fb);gl.viewport(0,0,SELC_N,SELC_N);gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.bindVertexArray(quadVAO);baked=true}
+    gl.framebufferTextureLayer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,SELC.tex,0,k);
+    gl.uniform3fv(PCACHE.u.uBc,g);gl.uniform3fv(PCACHE.u.uBe,e);gl.uniform3fv(PCACHE.u.uBn,n);gl.uniform1f(PCACHE.u.uBs,L.s);gl.drawArrays(gl.TRIANGLES,0,3)});
+  if(baked){gl.bindFramebuffer(gl.FRAMEBUFFER,fb0);gl.viewport(vp[0],vp[1],vp[2],vp[3]);gl.enable(gl.DEPTH_TEST)}   // back to the scene's target
+  SELC.on=true;SELC.cp=cp}
+// the cache's uniforms: each level's frame, and the camera from its centre's ground point (float64 here, small there)
+function selCacheUniforms(u){if(!u.uCacheOn)return;gl.uniform1f(u.uCacheOn,SELC.on?1:0);if(!SELC.on)return;const R=SELENE.R,L=SELC.lv;
+  gl.uniform3fv(u['uCq[0]'],L.flatMap(l=>sub(SELC.cp,mul(l.c,R))));gl.uniform3fv(u['uCc[0]'],L.flatMap(l=>l.c));gl.uniform3fv(u['uCe[0]'],L.flatMap(l=>l.e));gl.uniform3fv(u['uCn[0]'],L.flatMap(l=>l.n));gl.uniform1fv(u['uCs[0]'],L.map(l=>l.s));
+  gl.activeTexture(gl.TEXTURE8);gl.bindTexture(gl.TEXTURE_2D_ARRAY,SELC.tex);gl.uniform1i(u.uCache,8);gl.activeTexture(gl.TEXTURE0)}
+// Selene's uniforms for a program built on SKY_FS (the sky, its pre-pass, the moon pass); noCache: the bake itself
+function selUniforms(u,camW,noCache){const on=!!selTex();gl.uniform1f(u.uSelOn,on?1:0);if(!on)return;if(noCache){if(u.uCacheOn)gl.uniform1f(u.uCacheOn,0)}else selCacheUniforms(u);
   const C=sub(bodyPos(SELENE,simT),camW),dm=len(C),th=bodyTheta(SELENE,simT),Rt=SELENE.R+SEL_MAP.hi+SEL_GL.all;
   gl.uniform3fv(u.uMc,C);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);gl.uniform1f(u.uMtcc,(dm-Rt)*(dm+Rt));gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th));
   gl.activeTexture(gl.TEXTURE15);gl.bindTexture(gl.TEXTURE_2D,SELTEX.tex);gl.uniform1i(u.uSelM,15);gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,SELTEX.e);gl.uniform1i(u.uSelE,9);gl.activeTexture(gl.TEXTURE0)}

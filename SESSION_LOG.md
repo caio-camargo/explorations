@@ -8033,3 +8033,27 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Q619 (tilt), Q622 and Q623 are ready.
 - Files: launchpad `sim/vessel.js`, `sim/space.js`, `app/gl.js`, `builder.js`, `playtest.mjs`, `test.mjs`,
   `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-17 — launchpad world session (Opus 5.5, worktree launchpad-q91): G3.5, Selene's near-field height cache (v1.354)
+
+- **Asked:** Caio, "g3.5 ok" (the follow-up v1.352 proposed: Selene's relief cost ~11 ms of frame near the ground).
+- **Built (v1.354):**
+  - The six crater bands are baked round the camera into three levels: 512² at 0.5, 2 and 8 m, on gnomonic grids in
+    Selene's frame, in an RG32F texture array on unit 8.
+  - A level is rebaked when the camera drifts an eighth of it from its centre. The cache is off above 5 km.
+  - The march (pre-pass and PSELD) and the moon pass's normal read heights through `selHc`; outside the cache they
+    compute the bands as before.
+  - `mkProg` points `uCache` at unit 8, so the array sampler never shares unit 0 with the 2D samplers.
+- **Measured:**
+  - Agreement (`selCacheProbe`): within 100 m of the camera, mm (max 4 mm). Out to 450 m, p99 3 cm. Out to 1.8 km, p99
+    27 cm in the highlands, from fresh crests interpolated linearly.
+  - Frame on the RTX: 186 11 → 4.9 ms, 188 12.6 → 5.6, 189 9.8 → 7.9. Tellus's pad was 4.1–4.9 in the same runs.
+  - Frame on the iGPU: 186 87 → 21 ms, 188 → 24, 189 80 → 53. The pad is 35.
+- **Tests:** smoke green; lint clean; CI full run green on 6f5ab7e0, ff-merged into `main`. No new headless check: the
+  cache is GPU-only, and its check is the probe in terrain-probe.js.
+- **Noticed:** a `//` comment in a GLSL template swallowed code again (the moon pass's normal line). `lint.mjs` can't see
+  inside shader strings, and the symptom was only a shader compile error at load.
+- **Not checked:** a fast low pass, where a level rebakes every frame; a human flying over the relief (TESTING 402).
+- **Next:** G4 (shadows): its near shadow rays should read the cache.
+- Files: launchpad `app/gl.js`, `app/render.js`, `terrain-probe.js`, `GROUND.md`, `notes/world.md`, `NOTES.md`,
+  `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

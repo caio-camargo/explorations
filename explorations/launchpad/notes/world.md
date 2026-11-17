@@ -1750,3 +1750,54 @@ fps on the RTX. The fallback is the next item (Proposed in QUEUE):
 
 **Not checked:** a human's landing into a crater; rovers driven on relief (their physics already follows
 `groundR`); TESTING 131 (Selene from Tellus) re-judged.
+
+## v1.354 — Selene's near-field height cache (2026-11-17, world session, GROUND.md G3.5; Caio: "g3.5 ok")
+
+v1.352 drew Selene's relief at ~11 ms of frame near the ground on the RTX (87 ms on the iGPU): every height the march and
+the shading asked for was the six crater bands, 6 × 9 cells. Near the camera they now read a cache.
+
+**The cache (app/gl.js, `SELC`, `PCACHE`, `selCache`, `selHc`).**
+- Three levels of 512² texels at 0.5, 2 and 8 m: 256 m, 1 km and 4 km across. They sit in one RG32F texture array on unit
+  8 (6 MB).
+- Each texel holds `selH` with all six bands (x) and its freshness (y).
+- Each level is a gnomonic grid round the ground under the camera, in Selene's own frame. A point's grid coordinates are
+  `R·(P·e, P·n)/(R + P·c)`, with P measured from the level's centre point. The camera's offset from that point is
+  computed in float64 on the CPU, so nothing large is subtracted in float32.
+- **Rebaking:** a level is baked again when the camera has drifted an eighth of it from its centre (32 m, 128 m, 512 m).
+  One level costs about a full-screen pass of one height, ~0.4 ms on the RTX.
+- **Off** when the camera is more than 5 km above the ground.
+- **Reading:** `selCache` reads the finest level that holds the point, bilinear by `texelFetch`.
+  - The march (`marchS`, so both the pre-pass and PSELD) and the moon pass's normal read heights through `selHc`.
+  - Outside the cache, they compute the bands as before.
+  - `mkProg` points every `uCache` at unit 8: an array sampler left on unit 0 would clash with the 2D samplers there.
+
+**Agreement** (`selCacheProbe()`, terrain-probe.js: the shader's `selHc` against `seleneH`, 1,024 points per ring round
+the camera's ground point):
+
+| Ring | 186 (mare) median / p99 / max | 188 (highlands) median / p99 / max |
+|---|---|---|
+| 0–100 m (the 0.5 m level) | 0.2 / 1 / 1 mm | 0.2 / 2 / 4 mm |
+| 100–450 m (2 m) | 0.2 / 1 / 1 mm | 0.3 / 32 / 91 mm |
+| 450–1,800 m (8 m) | 0.2 / 45 / 203 mm | 2 / 274 / 510 mm |
+
+The worst points are the sharp crests of fresh rims, interpolated linearly. Where it matters (within 100 m of the camera)
+the cache is better than the uncached shader (p99 1.7 cm). At 1 km, half a metre is a third of a pixel. No facets or seams
+show in views 186–191.
+
+**Frame** (whole frame, 1258×702, `gpuTime`):
+
+| View | RTX before | RTX now | iGPU before | iGPU now |
+|---|---|---|---|---|
+| 186 a lander on a mare flat | 10.9–11.5 | 4.9 | 87 | 21 |
+| 188 a rover's eye, highlands | 12.6 | 5.6 | — | 24 |
+| 189 1 km over the highlands | 9.8 | 7.9 | 80 | 53 |
+| 190 20 km | — | 4.8 | — | — |
+| 191 30 km | ~4 | 4.0 | — | — |
+| Tellus's pad (18), same runs | 4.1–4.9 | | 34–36 | |
+
+Near the ground Selene now costs what Tellus's pad does on the RTX, and less on the iGPU. From 1 km up, most of what the
+camera sees is outside the 4 km level, so the bands are computed there. A fourth, coarser level (32 m) would blur the
+small craters it holds. Left as is.
+
+**Not checked:** a fast low pass (a level rebaking every frame at 1.6 km/s: ~0.4 ms each, by the bake's cost); the robot
+or a human flying over it.

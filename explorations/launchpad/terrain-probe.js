@@ -82,3 +82,26 @@ void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec3 pf=texelFetch(uDirs,c,0).xyz;o=v
   const r = { global: run(64, sph), endymion: run(48, near(P0.c, P0.D / 2e3 * 1.3)), spot3km: run(48, near(norm([-.6, .3, .74]), 3)) };
   SELENE.ground = was; render(); return r;
 };
+// (G3.5) the near-field cache against the CPU: points round the ground under the camera (put the camera on Selene first,
+// e.g. refView(186)), within each level's reach; the shader's selHc (the cache where it holds the point) vs seleneH.
+// Also says how many it found in the cache. Errors in metres, by distance from the camera's ground point.
+window.selCacheProbe = () => {
+  RS = 1; render(); const camW = HOOK.view.camW, B = SELENE, cp = toPF(B, sub(camW, bodyPos(B, simT)), simT), g = norm(cp), e = norm(cross([0, 1, 0], g)), n = cross(g, e), rnd = rng(11);
+  const src = SKY_FS.slice(0, SKY_FS.indexOf('void main(){')) + `uniform highp sampler2D uDirs;
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec3 v=texelFetch(uDirs,c,0).xyz;float h=selHc(v,6.);o=vec4(h,sInC?1.:0.,0.,1.);}`;
+  const P = mkProg(QUAD_VS, src), out = {};
+  for (const [name, r0, r1] of [['0–100 m', 0, 100], ['100–450 m', 100, 450], ['450–1800 m', 450, 1800]]) {
+    const N = 32, dirs = new Float32Array(N * N * 4), cpu = [];
+    for (let i = 0; i < N * N; i++) { const a = rnd() * 6.283, d = r0 + (r1 - r0) * Math.sqrt(rnd()), u = norm(add(g, add(mul(e, d * Math.cos(a) / B.R), mul(n, d * Math.sin(a) / B.R)))), h = seleneH(u);
+      const v = sub(add(fromPF(B, mul(u, B.R + h), simT), bodyPos(B, simT)), camW); dirs.set([v[0], v[1], v[2], 0], i * 4); cpu.push(h); }
+    gl.activeTexture(gl.TEXTURE3); const td = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, td); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, N, N, 0, gl.RGBA, gl.FLOAT, dirs);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.activeTexture(gl.TEXTURE4); const rt = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, rt); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, N, N, 0, gl.RGBA, gl.FLOAT, null);
+    const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rt, 0);
+    gl.useProgram(P.p); selUniforms(P.u, camW); gl.uniform1i(P.u.uDirs, 3); gl.viewport(0, 0, N, N); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.bindVertexArray(quadVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const o = new Float32Array(N * N * 4); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, o); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); gl.deleteTexture(td); gl.deleteTexture(rt); gl.activeTexture(gl.TEXTURE0);
+    const err = cpu.map((c, i) => Math.abs(o[i * 4] - c)).sort((a, b) => a - b); let inC = 0; for (let i = 0; i < N * N; i++) inC += o[i * 4 + 1];
+    out[name] = { inCache: inC / (N * N), median_m: +err[err.length >> 1].toFixed(4), p99_m: +err[Math.floor(err.length * .99)].toFixed(3), max_m: +err[err.length - 1].toFixed(3) };
+  }
+  gl.enable(gl.DEPTH_TEST); RS = 1; render(); return out;
+};
