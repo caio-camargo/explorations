@@ -82,7 +82,7 @@ export function crewLunar(api, say = () => {}) {
   // --- 4. landing: brake at periapsis (retrograde), then a vertical descent that slows toward the ground
   const aMax = () => api.activeEngines(s).reduce((a, p) => a + p.d.thrust * 1000, 0) / s.mass;
   { const e = elements(s.r, s.v, SELENE.mu); coast(Math.max(0, api.timeToNu(e, 0) - 60), 100); let k = 0; s.throttle = 1;
-    while (!s.landed && s.alive && k++ < 400000) { const up = norm(s.r), vs = sub(s.v, api.surfVel(SELENE, s.r)), vv = dot(vs, up), vhv = sub(vs, mul(up, vv)), vh = len(vhv), hb = len(s.r) - SELENE.R + s.yBot, g = SELENE.mu / dot(s.r, s.r), A = Math.max(aMax(), 0.1);
+    while (!s.landed && s.alive && k++ < 400000) { const up = norm(s.r), vs = sub(s.v, api.surfVel(SELENE, s.r)), vv = dot(vs, up), vhv = sub(vs, mul(up, vv)), vh = len(vhv), hb = len(s.r) - SELENE.R - api.groundAlt(SELENE, api.toPF(SELENE, s.r, api.t)) + s.yBot, g = SELENE.mu / dot(s.r, s.r), A = Math.max(aMax(), 0.1);
       if (k % 1000 === 0) log('descent', (hb / 1e3).toFixed(2), 'km, vv', vv.toFixed(1), 'vh', vh.toFixed(1), 'stage dv', api.dvRemaining(s).cur.toFixed(0), 'thr', s.throttle.toFixed(2), 'A', A.toFixed(2));
       if (vh <= 15 && s.parts.some(p => p.on && p.d.key === 'petrel') && hb > 1500 && api.dvRemaining(s).cur < 1.15 * Math.sqrt(2 * g * hb + vv * vv)) { log('lander short for the descent at', (hb / 1e3).toFixed(1), 'km (', api.dvRemaining(s).cur.toFixed(0), 'm/s left): dropping it, finishing on the return stage'); api.stage(s); continue; }
       if (vh > 15) { point(mul(vs, -1)); s.throttle = 1; }   // braking: kill the orbital speed
@@ -97,8 +97,8 @@ export function crewLunar(api, say = () => {}) {
   autoStage = false;   // from here on the return stage is the last one with an engine: never stage the capsule loose
   coast(600, 1);   // ten minutes on the surface
   while (s.parts.some(p => p.on && p.d.key === 'petrel') && s.evIdx < s.events.length) { log('staging to leave the lander'); api.stage(s); }
-  { let k = 0; s.throttle = 1; const east = () => norm(cross([0, 1, 0], s.r));
-    while (s.alive && k++ < 400000) { const up = norm(s.r), h = len(s.r) - SELENE.R, e = elements(s.r, s.v, SELENE.mu), pitch = Math.max(0, 90 - 90 * Math.min(1, h / 3e3)) * Math.PI / 180;   // no air: pitch over almost at once
+  { let k = 0; s.throttle = 1; const east = () => norm(cross([0, 1, 0], s.r)), r0 = len(s.r);   // (Q91) the climb from where it stood
+    while (s.alive && k++ < 400000) { const up = norm(s.r), h = len(s.r) - r0, e = elements(s.r, s.v, SELENE.mu), pitch = Math.max(0, 90 - 90 * Math.min(1, h / 3e3)) * Math.PI / 180;   // no air: pitch over almost at once
       point(add(mul(up, Math.sin(pitch)), mul(east(), Math.cos(pitch)))); if (e.ap - SELENE.R > 20e3) break; phys(); }
     s.throttle = 0; fixPe(SELENE.mu, SELENE.R, 15e3); const e = elements(s.r, s.v, SELENE.mu); R.ascent = { pe: e.pe - SELENE.R, left: api.dvPlan(s, 0).map(x => x.dv) }; log('BACK IN SELENE ORBIT', ((e.pe - SELENE.R) / 1e3).toFixed(0), '×', ((e.ap - SELENE.R) / 1e3).toFixed(0), 'km; Δv left', api.dvPlan(s, 0).map(x => x.dv.toFixed(0)).join(' / ')); }
   // --- 6. home: pick the burn point and size for a Tellus periapsis 45 km up, burn, correct on the way, re-enter shield-first

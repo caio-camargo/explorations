@@ -51,3 +51,34 @@ window.gpuTime = async (n = 3) => {
     res.push(gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6); gl.deleteQuery(q); }
   res.sort((a, b) => a - b); return +res[n >> 1].toFixed(2);
 };
+// (Q91, GROUND.md G3) Selene's probe: selH(pf, 6 bands) in the sky shader's own source against the CPU's seleneH(pf).
+// Global, near the place Endymion, and in the highlands' small craters (directions within 3 km of one spot). Lights
+// Selene's ground for the run if it isn't live (the map is baked on first use).
+window.selProbe = () => {
+  gl.getExtension('EXT_color_buffer_float');
+  const was = SELENE.ground; SELENE.ground = SELENE_GROUND; seleneMap(); selTex();
+  const src = SKY_FS.slice(0, SKY_FS.indexOf('void main(){')) + `uniform highp sampler2D uDirs;
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec3 pf=texelFetch(uDirs,c,0).xyz;o=vec4(selH(pf,6.),0.,0.,1.);}`;
+  const P = mkProg(QUAD_VS, src), rnd = rng(7);
+  const run = (N, mk) => {
+    const dirs = new Float32Array(N * N * 4), cpu = [];
+    for (let i = 0; i < N * N; i++) { const u = mk(); dirs.set([u[0], u[1], u[2], 0], i * 4); cpu.push(seleneH(u)); }
+    const tex = (unit, data) => { gl.activeTexture(gl.TEXTURE0 + unit); const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, N, N, 0, gl.RGBA, gl.FLOAT, data); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; };
+    const td = tex(3, dirs), rt = tex(4, null), fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rt, 0);
+    gl.useProgram(P.p); gl.uniform1i(P.u.uDirs, 3); gl.activeTexture(gl.TEXTURE15); gl.bindTexture(gl.TEXTURE_2D, SELTEX.tex); gl.uniform1i(P.u.uSelM, 15); gl.activeTexture(gl.TEXTURE9); gl.bindTexture(gl.TEXTURE_2D, SELTEX.e); gl.uniform1i(P.u.uSelE, 9);
+    gl.viewport(0, 0, N, N); gl.disable(gl.DEPTH_TEST); gl.disable(gl.STENCIL_TEST); gl.disable(gl.BLEND);
+    gl.bindVertexArray(quadVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const out = new Float32Array(N * N * 4); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, out);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); gl.deleteTexture(td); gl.deleteTexture(rt); gl.activeTexture(gl.TEXTURE0);
+    const e = cpu.map((c, i) => Math.abs(out[i * 4] - c)).sort((a, b) => a - b);
+    return { n: e.length, median_m: +e[e.length >> 1].toFixed(4), p99_m: +e[Math.floor(e.length * .99)].toFixed(3), max_m: +e[e.length - 1].toFixed(3) };
+  };
+  const sph = () => { const z = rnd() * 2 - 1, ph = rnd() * 6.283, q = Math.sqrt(1 - z * z); return [q * Math.cos(ph), z, q * Math.sin(ph)]; };
+  const near = (c, km) => () => { const e = norm(cross(Math.abs(c[1]) < .9 ? [0, 1, 0] : [1, 0, 0], c)), n = cross(c, e), a = rnd() * 6.283, s = Math.sqrt(rnd()) * km * 1e3 / SELENE.R;
+    return norm(add(c, add(mul(e, s * Math.cos(a)), mul(n, s * Math.sin(a))))); };
+  const P0 = selPlaces()[0];
+  const r = { global: run(64, sph), endymion: run(48, near(P0.c, P0.D / 2e3 * 1.3)), spot3km: run(48, near(norm([-.6, .3, .74]), 3)) };
+  SELENE.ground = was; render(); return r;
+};

@@ -3,18 +3,18 @@
 // Add a section at the end of your lane's file: "// <lane>-<n>. Title" at column 0, then a { block }. NOTES § "Test shards".
 
 // ground-1. The ground of every body (world session, GROUND.md slice G1): a body's `ground` recipe replaces every
-// `b === TELLUS` ground test. Neutral today (Tellus as before, the moons smooth spheres), and live: a recipe given to
-// Selene reaches contact, landing, slope and the ground normal with no other change. Own SIM copy, so Selene's recipe
-// doesn't leak.
+// `b === TELLUS` ground test. Neutral for the bodies without one (Tellus as before, Nyx a smooth sphere; Selene's own
+// recipe is live since G3, Q91), and live: a recipe given to Selene reaches contact, landing, slope and the ground normal
+// with no other change. Own SIM copy, so the test recipe doesn't leak.
 {
-  const G = new Function(src + 'return {TELLUS,SELENE,NYX,BODIES,GROUND_GEN,bodyH,bodyTop,seaAt,groundAlt,groundR,terrainH,terrainSlope,groundNormal,TERR_TOP,newShip,physStep,fromPF,toPF,surfVel,qFromBasis,qrot,HOOK,DT,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const G = new Function(src + 'return {TELLUS,SELENE,SELENE_GROUND,NYX,BODIES,GROUND_GEN,bodyH,bodyTop,seaAt,groundAlt,groundR,terrainH,terrainSlope,groundNormal,TERR_TOP,newShip,physStep,fromPF,toPF,surfVel,qFromBasis,qrot,HOOK,DT,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
   const T = G.TELLUS, Se = G.SELENE, D = Math.PI / 180; G.HOOK.msg = () => {}; G.HOOK.boom = () => {};
   let rs = 7, bad = 0, sea = 0, wet = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < 2000; i++) { const u = norm([rnd() - .5, rnd() - .5, rnd() - .5]), h = G.terrainH(u);
     if (G.groundAlt(T, u) !== Math.max(0, h) || G.seaAt(T, u) !== (h < 0) || G.bodyH(T, u) !== h) bad++; if (h < 0) sea++; }
-  for (const b of G.BODIES) if (b !== T && (G.groundAlt(b, [b.R, 0, 0]) !== 0 || G.terrainSlope(b, [0, 1, 0]) !== 0 || G.seaAt(b, [b.R, 0, 0]) || G.bodyTop(b) !== 0)) wet++;
-  check('ground-1: neutral: Tellus ground is terrainH clamped at the sea, as before (2,000 points); every other body a smooth sphere',
-    bad === 0 && sea > 1000 && wet === 0 && G.bodyTop(T) === G.TERR_TOP && T.ground.sea === 0 && !Se.ground && !G.NYX.ground, `${bad} differ, ${sea} at sea, top ${G.bodyTop(T)} m`);
+  for (const b of G.BODIES) if (b !== T && b !== Se && (G.groundAlt(b, [b.R, 0, 0]) !== 0 || G.terrainSlope(b, [0, 1, 0]) !== 0 || G.seaAt(b, [b.R, 0, 0]) || G.bodyTop(b) !== 0)) wet++;
+  check('ground-1: neutral: Tellus ground is terrainH clamped at the sea, as before (2,000 points); every body but Tellus and Selene a smooth sphere',
+    bad === 0 && sea > 1000 && wet === 0 && G.bodyTop(T) === G.TERR_TOP && T.ground.sea === 0 && Se.ground === G.SELENE_GROUND && !G.NYX.ground, `${bad} differ, ${sea} at sea, top ${G.bodyTop(T)} m`);
   // a test recipe on Selene: a 500 m plateau rising to the north at 20° (h = 500 m + tan 20° × the arc north of 1°N)
   const S20 = Math.tan(20 * D), lat = u => Math.asin(Math.max(-1, Math.min(1, norm(u)[1])));
   G.GROUND_GEN.g1test = pf => 500 + Se.R * S20 * Math.max(0, lat(pf) - 1 * D);
@@ -31,18 +31,18 @@
     `${flat.last || 'not landed'} · rests ${flat.h.toFixed(2)} m above R · slope ${(slope / D).toFixed(2)}° · normal tilted ${tilt.toFixed(2)}°`);
   Se.ground = { gen: 'g1test', top: 4e4, sea: 600 };
   check('ground-1: a recipe\'s liquid level: below it is sea, and the ground there is the liquid\'s surface', G.seaAt(Se, [Se.R, 0, 0]) && G.groundAlt(Se, [Se.R, 0, 0]) === 600 && !G.seaAt(Se, u5));
-  delete Se.ground;
+  Se.ground = G.SELENE_GROUND;
 }
 
 // ground-2. Selene's ground (world session, GROUND.md slice G2): a baked map (highland swell, big craters, maria flooded
-// into the near-side mare mask) plus procedural crater bands on an equiangular cube. Not live in play until the shader
-// draws it (G3), so this copy switches it on. Numbers behind each parameter: study_ground.mjs.
+// into the near-side mare mask) plus procedural crater bands on an equiangular cube. Live in play since the shader draws
+// it (G3, Q91). Numbers behind each parameter: study_ground.mjs.
 {
   const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,grBands,GR_C,geoAt,terrainSlope,groundAlt,bodyTop,ih3,newShip,physStep,fromPF,toPF,surfVel,qFromBasis,qrot,HOOK,DT,get SEL_MAP(){return SEL_MAP},get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
   const B = G.SELENE, R = B.R, D = Math.PI / 180, lazy = G.SEL_MAP === null; G.HOOK.msg = () => {}; G.HOOK.boom = () => {};
-  check('ground-2: Selene\'s recipe is not live in play (no ground until the shader draws it), and its map is baked on first use, not at load',
-    !B.ground && lazy && G.groundAlt(B, [R, 0, 0]) === 0);
-  B.ground = G.SELENE_GROUND; const M = G.seleneMap(), area = 4 * Math.PI * (R / 1000) ** 2;
+  check('ground-2: Selene\'s recipe is live in play (G3: the shader draws it), and its map is baked on first use, not at load',
+    B.ground === G.SELENE_GROUND && lazy && G.groundAlt(B, [R, 0, 0]) !== 0 && G.SEL_MAP !== null);
+  const M = G.seleneMap(), area = 4 * Math.PI * (R / 1000) ** 2;
   const pts = []; for (let i = 0; i < 4000; i++) { const z = 1 - (2 * i + 1) / 4000, a = i * 2.39996, q = Math.sqrt(1 - z * z); pts.push([q * Math.cos(a), z, q * Math.sin(a)]); }
   const H = pts.map(u => G.seleneH(u)), hmax = Math.max(...H), hmin = Math.min(...H);
   // the band cells: each holds a crater with probability λ (one band enumerated in full); the baked count is GR_C's
@@ -512,4 +512,32 @@
   check('site-1: each school\'s site has its ground (Arsenal\'s hill where the mesh hill was, Mountain\'s ridge and fall, Isle\'s headland, the sea when low and coastal); every complex flat; nothing changes past 1.7 km',
     flatBad === 0 && farBad === 0 && hill < 0.8 && n(-300) && ars > 40 && mtnN > 35 && mtnS < drop + 0.5 && mtnE < drop + 0.5 && isl.every(h => h < drop + 0.5) && Math.abs(islN) < 0.01 && wet && cwet && mwet,
     `${flatBad} footprint points off flat, ${farBad} far points changed; Arsenal ±${hill.toFixed(2)} m of the mesh hill, ${ars.toFixed(0)} m at 300 m N; Mountain ${mtnN.toFixed(0)} N, ${mtnS.toFixed(0)} S, ${mtnE.toFixed(0)} E; Isle ${isl.map(h => h.toFixed(0)).join('/')} E/W/S, ${islN.toFixed(1)} N; wet: Isle ${wet}, Coastal ${cwet}, Mountain ${mwet}`);
+}
+
+// ground-12. Selene's relief, live (world session, QUEUE Q91, GROUND.md G3): the sky shader's own crater profile (gcProf,
+// gcH in app/gl.js, read here as JS) gives the CPU's craterH; the tapes' fingerprint carries the recipe; a save from the
+// sphere (SAVE_V 1) puts what stood on Selene back on its ground; an airless impact is predicted onto the relief. The GPU
+// side of the agreement (the bands, the map's spline) is terrain-probe.js's selProbe, run in Chrome (notes/world.md v1.346).
+{
+  const G = new Function(src + 'return {craterH,GR_REACH,GR_EXP,GR_MARE_THIN,SELENE,TAPE_V,hashStr,selReseat,groundAlt,groundR,toPF,fromPF,newShip,predictImpact,physStep,HOOK,DT,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  G.HOOK.msg = () => {}; G.HOOK.boom = () => {};
+  const glsl = html.slice(html.indexOf('float gcProf('), html.indexOf('float sFresh;'));
+  const js = glsl.replace(/\$\{(\w+)\}/g, (m, k) => G[k]).replace(/\bfloat\b|\bbool\b/g, 'let').replace(/(\d)\.(?!\d)/g, '$1.0')
+    .replace(/\blet (\w+)\(([^)]*)\)\{/g, (m, n, a) => `function ${n}(${a.replace(/\blet /g, '')}){`);
+  const P = new Function('pow', 'min', 'max', 'clamp', 'sst', js + ';return {gcH};')(Math.pow, Math.min, Math.max, (x, a, b) => Math.min(b, Math.max(a, x)), (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); });
+  let worst = 0; for (const D of [150, 900, 6000, 15000, 30000]) for (const fr of [0, .3, 1]) for (const lob of [.7, 1, 1.5]) for (let r = 0; r < 1.8; r += .007) worst = Math.max(worst, Math.abs(P.gcH(r, D, 18e3, fr, lob) - G.craterH(r, D, 18e3, fr, lob)));
+  check('ground-12: the shader draws the CPU\'s crater profile (gcH = craterH to the micrometre: simple, complex, fresh, old, lobed)', worst < 1e-6, `worst ${worst.toExponential(1)} m`);
+  // the save step: a lander and a rover left on the sphere (R + 2 m) go to the ground + 2 m, along their own directions
+  const u = [-.6, .3, .74].map(x => x / Math.hypot(-.6, .3, .74)), R = G.SELENE.R, at = u.map(x => x * (R + 2)), g = G.groundAlt(G.SELENE, u);
+  const j = G.selReseat({ sats: [{ landed: true, bodyName: 'Selene', pf: at.slice() }, { landed: true, bodyName: 'Nyx', pf: at.slice() }], rvOut: [{ bodyName: 'Selene', p: at.slice() }], sel: { seis: [{ bodyName: 'Selene', pf: u.map(x => x * R) }] } });
+  const hOf = p => Math.hypot(...p) - R - g;
+  check('ground-12: a save from the smooth sphere puts each lander, rover and seismometer on Selene back on its ground at the height it stood (Nyx untouched)',
+    Math.abs(hOf(j.sats[0].pf) - 2) < 1e-6 && Math.abs(hOf(j.rvOut[0].p) - 2) < 1e-6 && Math.abs(hOf(j.sel.seis[0].pf)) < 1e-6 && Math.hypot(...j.sats[1].pf) === R + 2 && Math.abs(g) > 1,
+    `ground there ${g.toFixed(0)} m; lander ${hOf(j.sats[0].pf).toFixed(3)} m up, rover ${hOf(j.rvOut[0].p).toFixed(3)}, seismometer ${hOf(j.sel.seis[0].pf).toFixed(3)}`);
+  check('ground-12: the tapes\' fingerprint carries Selene\'s recipe (a tape flown on the sphere is retired)', /^lp-[0-9a-z]+$/.test(G.TAPE_V) && /TAPE_V='lp-'\+hashStr\(TAPE_V\+\[seleneMap,seleneH,craterBands/.test(html));
+  // an unpowered fall from 3 km over a crater-rimmed spot: predicted onto the relief, where it lands
+  G.t = 0; const s = G.newShip(['pod', 't1', 'wren']); G.S = s; Object.assign(s, { landed: false, body: G.SELENE, sas: false, throttle: 0 });
+  const c = G.fromPF(G.SELENE, u, 0); s.r = c.map(x => x * (R + g + 3000)); s.v = [c[2] * 300, 0, -c[0] * 300]; const p = G.predictImpact(s);
+  let n = 0; while (!s.landed && s.alive && n++ < 1e5) G.physStep(s, G.DT); const d = p && Math.hypot(...G.toPF(G.SELENE, s.r, G.t).map((x, i) => x - p.pf[i] * Math.hypot(...G.toPF(G.SELENE, s.r, G.t)) / Math.hypot(...p.pf)));
+  check('ground-12: an unpowered fall onto Selene is predicted onto the relief, within 50 m and a second', !!p && d < 50 && Math.abs(p.t - G.t) < 1.5, p ? `${d.toFixed(1)} m off, ${(p.t - G.t).toFixed(2)} s; ground ${(G.groundR(G.SELENE, p.pf) - R).toFixed(0)} m` : 'no prediction');
 }

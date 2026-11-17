@@ -992,7 +992,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('out there: an impactor on the near side completes the mission; on the far side nobody hears it', nearHit && !farHit && news.some(m => /nobody heard/.test(m)), `near ${nearHit}, far ${farHit}`);
   // a soft landing near side (instruments + antenna), and the sample counts toward a return
   // land from rest with the craft's base h metres above the ground
-  const land = (b, u, stack, done, h) => { reset(done); const c = craft(stack, b, [0, 0, 0], [0, 0, 0], 0); c.r = mul(u, b.R - c.yBot + h); c.v = api.surfVel(b, c.r); upright(c); let n = 0; while (!c.landed && c.alive && n++ < 5000) api.advPhys(c); for (let k = 0; k < 5; k++) api.advPhys(c); return c; };
+  const land = (b, u, stack, done, h) => { reset(done); const c = craft(stack, b, [0, 0, 0], [0, 0, 0], 0); c.r = mul(u, b.R + api.groundAlt(b, api.toPF(b, u, api.t)) - c.yBot + h);   // (Q91) Selene's relief c.v = api.surfVel(b, c.r); upright(c); let n = 0; while (!c.landed && c.alive && n++ < 5000) api.advPhys(c); for (let k = 0; k < 5; k++) api.advPhys(c); return c; };
   const hard = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 10), hardV = hard.touchV, hardOK = !!P.done.selland;
   s = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 3);
   const sampleOK = api.MISSIONS.find(m => m.id === 'selsample').ok({ ...s.rec, landed: true, recSci: true });
@@ -2175,7 +2175,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('moonbase: between flights the base works like a station (supplies used, lab-days earned), orbit code unbothered', Math.abs(lab - 20) < 1e-9 && Math.abs(sup - 0.2) < 1e-9, `${lab.toFixed(0)} lab-days, ${(sup * 1000).toFixed(0)} kg of supplies left; a further day passed without error`);
   // landing on a module: a capsule coming down onto the habitat at 1 m/s bounces off it; the habitat doesn't move
   const hab = P.sats.find(x => x.landed && x.shape.some(o => o.k === 'hab') && D.baseOfMember(x)), pf0 = hab.pf.slice();
-  const c = D.newShip(['pod']); D.t = 0; const up = norm(D.fromPF(B, hab.pf, 0)), top = D.groundR(B, mul(up, B.R)) + 3.2 + 0.25 + 0.05 - c.yBot;
+  const c = D.newShip(['pod']); D.t = 0; const up = norm(D.fromPF(B, hab.pf, 0)), top = D.groundR(B, hab.pf) + 3.2 + 0.25 + 0.05 - c.yBot;
   Object.assign(c, { body: B, landed: false, alive: true, sas: false, throttle: 0, w: [0, 0, 0], q: D.qFromTo([0, 1, 0], up), r: mul(up, top), v: add(mul(up, -1), D.surfVel(B, mul(up, top))) }); c.rec.launched = true; D.S = c;
   for (let i = 0; i < 30 && dot(c.v, up) < 0; i++) { D.physStep(c, D.DT); D.contactStep(c, D.DT); }
   check('moonbase: a capsule landing on a module bounces off it; the module stays put', dot(c.v, up) > 0 && len(sub(hab.pf, pf0)) === 0 && c.alive, `rebounds at ${dot(c.v, up).toFixed(2)} m/s; module moved ${len(sub(hab.pf, pf0))} m`);

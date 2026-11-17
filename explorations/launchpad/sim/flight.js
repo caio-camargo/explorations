@@ -751,14 +751,22 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,lines:s.lines,tab};return tab}
 // generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
-  const mu=b.mu,top=b.R+(b.atm||0),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0,tAir=null;   // pathT: each point's time (Q266); tAir: when it enters the air, falling (Q489)
+  const mu=b.mu,top=b.R+(b.atm||bodyTop(b)),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0,tAir=null;   // pathT: each point's time (Q266); tAir: when it enters the air, falling (Q489)
   const el=elements(r,v,mu);if(el.pe>top)return null;
   if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));if(!(dt>=0))return null;dt0=dt;   // R22: outbound on an escape the crossing is behind it (cruiseStep's guard)
     for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt;tAir=t}
   else keep(r,t);   // (Q489) already in the air: the path starts at the ship
   if(!b.atm&&pertNear(b,el)){const tEnd=t+2*(dt0>0?dt0:0)+600;r=r0.slice();v=v0.slice();t=t0;path.length=0;pathT.length=0;let k=0;   // perturbed: the same stepper as rails
-    while(t<tEnd&&len(r)>b.R){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,mu),b.R),h=Math.min(Math.max(0.05,0.25*lim/sp),hP,tEnd-t);[r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(++k%8===0)keep(r,t)}
-    if(len(r)>b.R)return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t}}   // (Q489) no air: the map's orbit line goes to the ground itself
+    const up=(r,t)=>len(r)-b.R>(len(r)<top?groundAlt(b,toPF(b,r,t)):-Infinity);   // (Q91) above the ground, not the sphere
+    while(t<tEnd&&up(r,t)){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,mu),b.R),h=Math.min(Math.max(0.05,0.25*lim/sp),hP,tEnd-t);[r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(++k%8===0)keep(r,t)}
+    if(up(r,t))return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t}}   // (Q489) no air: the map's orbit line goes to the ground itself
+  if(!b.atm&&b.ground){   // (Q91) relief: down the exact arc from the shell to where it meets the ground (slopes up to ~50°), then bisected
+    const r1=r,v1=v,gap=tt=>{const[rr]=kepler(r1,v1,tt,mu);return len(rr)-b.R-groundAlt(b,toPF(b,rr,t+tt))},sp=len(v1);let lo=0,g=gap(0),hi=null;
+    if(g<=0)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t};
+    for(let k=0,tt=0;k<20000;k++){tt+=Math.max(0.02,g/(1.2*sp));const[rr,vv]=kepler(r1,v1,tt,mu);if(len(rr)>top+1&&dot(rr,vv)>0)return null;g=len(rr)-b.R-groundAlt(b,toPF(b,rr,t+tt));
+      if(g<=0){hi=tt;break}lo=tt;if(k%4===0)keep(rr,t+tt)}
+    if(hi==null)return null;for(let k=0;k<30;k++){const m=(lo+hi)/2;if(gap(m)>0)lo=m;else hi=m}
+    [r,v]=kepler(r1,v1,hi,mu);t+=hi;keep(r,t);return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t}}
   if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,tAir:t};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;

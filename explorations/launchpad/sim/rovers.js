@@ -298,7 +298,7 @@ function rvSci(R,k,T){const why=rvSciWhy(R,k);if(why){HOOK.msg(`${k==='spec'?'Sp
     x.b=RV_BITS.spec;R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${rvSciSent(R)}`);return true}
   if(k==='pano'){const el=Math.asin(clamp(dot(norm(R.p),rvSunPF(R.body,thAbs(R.body,T))),-1,1))*180/Math.PI;if(el<=0){HOOK.msg('Panorama: too dark (the sun is down)');return false}
     const q=panoQ(el);R.data.push({k,q,el,unit:g.unit,T,b:RV_BITS.pano});HOOK.msg(`Panorama taken, sun ${el.toFixed(0)}° up: ${q>.8?'long shadows, the relief stands out':q>.5?'fair':'flat light'} (${(q*100).toFixed(0)} %)${rvSciSent(R)}`);return true}
-  if(k==='seis'){R.seisLeft=(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))-1;const st={id:P.seis.length+1,bodyName:R.body.name,pf:mul(norm(R.p),R.body.R),T,buf:[]};st.name=`Seismometer ${st.id}`;
+  if(k==='seis'){R.seisLeft=(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))-1;const st={id:P.seis.length+1,bodyName:R.body.name,pf:mul(norm(R.p),groundR(R.body,R.p)),T,buf:[]};st.name=`Seismometer ${st.id}`;
     P.seis.push(st);HOOK.msg(`${st.name} set out (${R.seisLeft} left on board)`);return true}}
 const panoQ=el=>el<3?.4*el/3:el<=20?1:Math.max(.3,1-.7*(el-20)/70);
 // data as a volume (space, Q198; Q172's rule for rovers): a reading is bits (RV_BITS: a spectrum of ~1,000 channels; a

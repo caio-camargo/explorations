@@ -19,6 +19,15 @@ const SKY_CK=30;
 const FARM_FX=true;
 // (Q447) how bright the villages' and the site town's lamps are at night, against the city texture's (0 = dark, the old look)
 const NIGHT_VIL=3.0;
+// (Q91, GROUND.md G3) Selene's relief in the shaders: sim/ground.js's crater bands as constants (each band's cells per
+// face edge, largest and smallest crater, the presence threshold λ as the float32 the CPU compares with, the face-skip
+// cosine, and the highest a crater's rim can stand, which bounds the march), injected into SKY_FS's selBands.
+const SEL_GL=(()=>{const R=SELENE.R,Dt=GR_DT/(SELENE.mu/(R*R)),B=grBands(R,GR_C),f=x=>{const s=String(x);return/[.e]/.test(s)?s:s+'.'};
+  const rim=D=>(D<Dt?.036*D:.042*Dt*(D/Dt)**.399)*1.55,rims=B.map(b=>rim(b.Dhi));   // a crater's rim is at most its fresh rim × the lob's 1.55
+  return{R,Dt,B,rims,all:rims.reduce((a,b)=>a+b,0)*1.3,   // all six bands' rims, with room for ejecta overlapping in a band
+    glsl:`const float SR=${f(R)},SDT=${f(Dt)};const int SBN[6]=int[6](${B.map(b=>b.n).join(',')});
+const float SBHI[6]=float[6](${B.map(b=>f(b.Dhi)).join(',')}),SBLO[6]=float[6](${B.map(b=>f(b.Dlo)).join(',')}),SBLAM[6]=float[6](${B.map(b=>f(b.lam)).join(',')}),
+ SBUA[6]=float[6](${B.map(b=>f(Math.min(.5,Math.cos(.9553+b.Dhi/R)))).join(',')}),SBRIM[6]=float[6](${rims.map(f).join(',')});const float SBUA0=${f(Math.min(...B.map(b=>Math.min(.5,Math.cos(.9553+b.Dhi/R)))))};`}})();
 const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;layout(location=0) out vec4 o;
@@ -26,6 +35,7 @@ uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform highp sampler2D uSelM,uSelD,uSelE;uniform float uSelOn,uMtcc,uSelDOn,uSelPre;   // (Q91) Selene's map (E, M, U); its relief is drawn when on; uMtcc = |C|²−(R+top)², in float64
 uniform sampler2D uCov,uShd;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;uniform samplerCube uGalC;uniform float uGalE,uStT,uStK;uniform sampler2D uTrL;uniform vec4 uPlnD[6],uPlnC[6];uniform int uNPl;
@@ -96,7 +106,7 @@ float tn(vec3 x){vec3 fl=floor(x),f=x-fl;ivec3 i=ivec3(fl);f=f*f*(3.-2.*f);
 // (Q445, Q419) none of them hit: −1, and the march returns sky at once. Marching from 0 there, a ray grazing the horizon
 // ran out of steps and was called a hit: 1-px lines of far ground in the sky (black at night, grey lenses by day)
 float coarseStart(){if(uUseDepth<.5)return 0.;ivec2 c=ivec2(gl_FragCoord.xy)/2,sz=textureSize(uDepth,0);float m=1e30;
- for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)m=min(m,texelFetch(uDepth,clamp(c+ivec2(x,y),ivec2(0),sz-ivec2(1)),0).x);return m>1e29?-1.:m*.985-1.;}
+ for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)m=min(m,texelFetch(uDepth,clamp(c+ivec2(x,y),ivec2(0),sz-ivec2(1)),0).x);return m>1e29?-1.:max(m*.985-1.,0.);}   // (Q91) a hit within a metre is a start at 0, not the −1 of no hit
 // atan2 to ~1e-7 rad: the built-in is an approximation good to ~1e-5, which moves the texel lookup enough to put the GPU's
 // ground tens of centimetres (metres, on steep slopes) off the CPU's. Range-reduced to |a| ≤ tan(π/8), then the series.
 float patan(float y,float x){float ax=abs(x),ay=abs(y),a=min(ax,ay)/max(max(ax,ay),1e-30),off=0.;if(a>.41421356){a=(a-1.)/(a+1.);off=.78539816;}
@@ -167,6 +177,80 @@ float march(vec3 d,out float hh,float tS){hh=0.;if(tS<0.)return 1e30;vec2 sh=sph
  float lo=tp,hi=t;for(int i=0;i<5;i++){float tm=.5*(lo+hi);vec3 p=d*tm-uPc;float rl=length(p),alt=(tm*tm-2.*tm*b+uPcc)/(rl+uPR),h=terr(uProt*(p/rl),octT(tm,tm*uPix));
   if(alt<h){hi=tm;hh=h;}else lo=tm;}
  if(hi<ts&&hh<0.)hh=0.;return hi;}
+// ---- (Q91, GROUND.md G3) Selene's ground: sim/ground.js's seleneH term for term, on the same integer hash (change
+// both; terrain-probe.js's selProbe checks it on the GPU). The map: uSelE (E the base height, alone, so the spline's nine
+// fetches are 4 bytes each) read as mapSpl reads it, and uSelM (x M the mare mask, y U a bound: E's max over ±2 texels)
+// read at the nearest texel as mapNear; then the crater bands as craterBands: the same cube cells, the
+// same dice, the same profile (craterProf). ptanG is the CPU's ptan, so the craters sit where the physics has them.
+${SEL_GL.glsl}
+vec3 selF(vec3 v){return vec3(uMrot.x*v.x-uMrot.y*v.z,v.y,uMrot.y*v.x+uMrot.x*v.z);}   // inertial → Selene's own frame (toPF)
+vec3 selI(vec3 v){return vec3(uMrot.x*v.x+uMrot.y*v.z,v.y,-uMrot.y*v.x+uMrot.x*v.z);}   // and back (fromPF)
+vec2 sUV(vec3 u){return vec2(patan(u.z,u.x)/6.2831853+.5,patan(u.y,length(u.xz))/3.1415927+.5)*vec2(1024.,512.)-.5;}
+float sRow(int j,int ix,vec3 w){return texelFetch(uSelE,ivec2((ix+2047)%1024,j),0).x*w.x+texelFetch(uSelE,ivec2((ix+2048)%1024,j),0).x*w.y+texelFetch(uSelE,ivec2((ix+2049)%1024,j),0).x*w.z;}
+float sSpl(vec3 u){vec2 uv=sUV(u),c=floor(uv+.5),t=uv-c;int ix=int(c.x),iy=int(c.y);
+ vec3 wx=vec3(.5*(.5-t.x)*(.5-t.x),.75-t.x*t.x,.5*(.5+t.x)*(.5+t.x)),wy=vec3(.5*(.5-t.y)*(.5-t.y),.75-t.y*t.y,.5*(.5+t.y)*(.5+t.y));
+ return sRow(clamp(iy-1,0,511),ix,wx)*wy.x+sRow(clamp(iy,0,511),ix,wx)*wy.y+sRow(clamp(iy+1,0,511),ix,wx)*wy.z;}
+vec4 sNear(vec3 u){vec2 uv=sUV(u);return texelFetch(uSelM,ivec2((int(floor(uv.x+.5))+1024)%1024,clamp(int(floor(uv.y+.5)),0,511)),0);}   // (M, U, M's max near) at the texel u falls in
+float ptanG(float x){float q=x*x;return x*(135135.-17325.*q+(378.-q)*q*q)/(135135.-62370.*q+(3150.-28.*q)*q*q);}
+float gcProf(float k,float d,float rim,float p,float kf,float pk,float w){float kk=k<=kf?0.:(k-kf)/(1.-kf),a=-d+(d+rim)*(kk>0.?pow(kk,p):0.);
+ if(pk>0.&&k<.18){float q=1.-(k/.18)*(k/.18);a+=pk*q*q;}
+ float kc=max(k,.3),b=rim/(kc*kc*kc)*(1.-sst(1.3,${GR_REACH},k));if(w<=0.)return min(a,b);
+ float t=clamp(.5+.5*(b-a)/w,0.,1.);return b+(a-b)*t-w*t*(1.-t);}
+float gcH(float r,float D,float Dt,float fr,float lob){if(r>=${GR_REACH})return 0.;bool s=D<Dt;
+ float d=(s?.2*D:.138*Dt*pow(D/Dt,.301))*(.5+.5*fr),rim=(s?.036*D:.042*Dt*pow(D/Dt,.399))*(.35+.65*fr)*lob;
+ return gcProf(r,d,rim,s?${GR_EXP}:2.,s?0.:.35,D>1.4*Dt?.5*d:0.,rim*(.1+1.4*(1.-fr)));}
+float sFresh;   // set by selBands: how fresh the freshest crater under the point is, by how far inside its rim (shading)
+// nb bands, fractional: the last one counts by its fraction (level of detail; the CPU always has all six). A face is
+// worked in its own coordinates q (q.x along the face's axis, q.y and q.z its two in-plane axes, GR_FACE's order) by
+// swizzles, not by indexing a vector with a loop variable: the D3D compiler unrolls every loop that does that
+float selBands(vec3 u,float nb){float h=0.,mx=sNear(u).z;sFresh=0.;   // mx: no mare near, no thinning for bands 2 and finer
+ for(int ax=0;ax<3;ax++){vec3 q=ax==0?u:ax==1?u.yxz:u.zxy;if(abs(q.x)<SBUA0)continue;float sg=q.x>0.?1.:-1.;int f=ax*2+(q.x>0.?0:1);
+  float A=1.2732395*patan(q.y,abs(q.x)),B=1.2732395*patan(q.z,abs(q.x));   // the face's cell coordinates, once for all bands
+  for(int b=0;b<6;b++){float wb=clamp(nb-float(b),0.,1.);if(wb<=0.)break;int n=SBN[b];float fn=float(n),mg=3./fn;if(abs(q.x)<SBUA[b]||abs(A)>1.+mg||abs(B)>1.+mg)continue;
+   float Dhi=SBHI[b],Dlo=SBLO[b],iL=1./(Dlo*Dlo),iH=1./(Dhi*Dhi),lam=SBLAM[b];int ci=int(floor((A+1.)*.5*fn)),cj=int(floor((B+1.)*.5*fn));
+   for(int c=0;c<9;c++){int i=ci+c/3-1,j=cj+c%3-1;if(i<0||j<0||i>=n||j>=n)continue;
+    int key=f*65536+i,zz=j*8+b*131072;if(ih(ivec3(key,zz,7001))>=lam)continue;
+    vec3 cq=normalize(vec3(sg,ptanG(((float(i)+ih(ivec3(key,zz,7002)))/fn*2.-1.)*.78539816),ptanG(((float(j)+ih(ivec3(key,zz,7003)))/fn*2.-1.)*.78539816)));
+    vec3 dv=q-cq;float D=1./sqrt(iL-ih(ivec3(key,zz,7004))*(iL-iH)),l2=dot(dv,dv),rr=${GR_REACH*.5}*D/SR;if(l2>=rr*rr)continue;
+    float th=ih(ivec3(key,zz,7005));if(th<${GR_MARE_THIN}&&(b<2||mx>.05)&&th<${GR_MARE_THIN}*sst(.05,.5,sNear(ax==0?cq:ax==1?cq.yxz:cq.yzx).x))continue;   // fewer on the young plains (selThin)
+    float e=ih(ivec3(key,zz,7007)),ea=ih(ivec3(key,zz,7008))-.5,eb=ih(ivec3(key,zz,7009))-.5,en=length(vec2(ea,eb)),sq=(dv.y*ea+dv.z*eb)/(en>0.?en:1.),
+     r=sqrt(l2+.69*e*e*sq*sq)*SR/(D*.5),la=ih(ivec3(key,zz,7010))-.5,lb=ih(ivec3(key,zz,7011))-.5,ln=length(vec2(la,lb)),sl=sqrt(l2),
+     x=(dv.y*la+dv.z*lb)/((ln>0.?ln:1.)*(sl>0.?sl:1.)),fr=ih(ivec3(key,zz,7006));fr=fr*fr*fr;
+    h+=wb*gcH(r,D,SDT,fr,1.+.35*x+.2*(2.*x*x-1.));if(r<1.2)sFresh=max(sFresh,wb*fr*(1.-r/1.2));}}}
+ return h;}
+// Selene's height above R at a point in its own frame (any length), with nb bands
+float selH(vec3 pf,float nb){vec3 u=normalize(pf);return sSpl(u)+selBands(u,nb);}
+// the bands worth drawing at distance t and footprint fw (m per px): a band fades out as its largest crater shrinks from
+// 6 to 3 px; all six within 2 km of the camera (the physics' ground), easing to 3 by 20 km
+float selNb(float t,float fw){float k=0.;for(int b=0;b<6;b++)k+=clamp(SBHI[b]/(3.*max(fw,.01))-1.,0.,1.);return min(k,clamp(6.-.9*log2(max(t,1.)/2000.),3.,6.));}
+// march the ray through Selene's shell (to R + its top), as march() does Tellus's: above the map's bound it skips; below
+// it, it steps on the height with only the bands whose rims could reach the ray (the others' rims as a bound), then
+// secant steps (Illinois) between the last point above the ground and the first below: two, or one in the pre-pass
+// (uSelPre), whose answer only seeds this pass's start (coarseStartS). tS: that start (−1: nothing near; trusted unless
+// Selene is only a few pixels across); from it, all the bands from the first step (the ground is near)
+float marchS(vec3 d,out float hh,float tS){hh=0.;if(uSelOn<.5)return 1e30;
+ if(tS<0.){if(uMR>uPix*4.*length(uMc))return 1e30;tS=0.;}
+ vec2 sh=sph(uMc,uMtcc,d);if(sh.y<0.||sh.x>sh.y)return 1e30;
+ float b=dot(d,uMc),t=max(max(sh.x,0.),tS),t1=sh.y,tp=t,k=0.,lo=0.,hi=0.,glo=0.,ghi=0.,gp=1e9,hl=0.,kc=6.;int sec=0,ns=uSelPre>.5?1:2;if(tS>0.)k=kc;
+ for(int i=0;i<100;i++){float tt=sec>0?hi-ghi*(hi-lo)/min(ghi-glo,-1e-6):t;vec3 p=d*tt-uMc;float rl=length(p),alt=(tt*tt-2.*tt*b+uMcc)/(rl+SR);vec3 up=p/rl,pf=selF(up);float cs=max(-dot(d,up),0.);
+  float ub=1e9;if(sec==0)ub=sNear(pf).y+${SEL_GL.all.toFixed(1)};
+  if(alt>ub){tp=t;gp=1e9;t+=(alt-ub)/(cs+.7)+.001*t+.5;k=0.;if(t>=t1)break;continue;}
+  float kL=selNb(tt,tt*uPix/max(cs,.08)),kF=min(kL,kc),kk=sec>0?kF:min(k,kF),h=selH(pf,kk);hl=h;
+  if(sec>0){float g=alt-h;if(g<0.){hi=tt;ghi=g;glo*=.5;hh=h;}else{lo=tt;glo=g;ghi*=.5;}if(++sec>ns)break;continue;}
+  float bnd=0.;for(int j=0;j<6;j++)bnd+=SBRIM[j]*(clamp(kL-float(j),0.,1.)-clamp(kk-float(j),0.,1.));
+  float dh=alt-h-bnd;
+  if(dh<0.){if(kk<kF){k=kF;continue;}
+   hh=h;lo=tp;glo=min(gp,max(t-tp,.01));hi=t;ghi=dh;sec=1;continue;}
+  tp=t;gp=dh;t+=max(dh/(cs+.25),max(.006*t+.15,.5*t*uPix/max(cs,.05)));   // over-relaxed (slopes past 14° can be stepped into: the secant finds the ground between), and never under half the pixel's footprint along the ground
+  k=0.;float acc=0.;for(int j=5;j>=0;j--){acc+=SBRIM[j];if(acc>.5*dh){k=float(j+1);break;}}   // the bands whose rims could reach the ray next
+  if(t>=t1)break;}
+ if(sec>0)return clamp(hi-ghi*(hi-lo)/min(ghi-glo,-1e-6),lo,hi);
+ if(t>=t1)return 1e30;hh=hl;return t;}   // out of steps right above the ground: a hit
+// Selene's hit on this pixel's ray (x the distance, hs the height there): read from the full-resolution pass (PSELD) when
+// it ran, so the sky and the moon pass don't march it (without it, as without float targets, Selene is the sphere)
+// the pre-pass's start for Selene's full-resolution march: as coarseStart, but 1 % short (the pre-pass ends on a secant estimate)
+float coarseStartS(){float m=coarseStart();return m<0.?m:(m+1.)/.985*.99-.5;}
+float selHit(out float hs){vec2 v=texelFetch(uSelD,ivec2(gl_FragCoord.xy),0).xy;hs=v.y;return v.x;}
 // near field, filtered by the pixel footprint fw (metres): octaves finer than a pixel fade to their mean instead of
 // aliasing into streaks at grazing angles
 float detailF(vec3 l,float fw){return .4*pn(l/25.,40.)+.3*mix(.5,pn(l/5.,200.),smoothstep(10.,2.5,fw))
@@ -436,7 +520,7 @@ float cloudShadowV(vec3 p){float sh=cloudShadow(p);if(uVk*uVs<=0.)return sh;vec3
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;float hwT=fwidth(tP)<.3*tP?min(fwidth(hT),2000.):0.;   // (Q403) the height's change across the pixel, here where control flow is uniform; none at a silhouette
- vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
+ if(uSelDOn>.5){float hS;tM=selHit(hS);}else{vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;}   // (Q91) Selene's relief, else its sphere
  float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.,vis=0.;
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
@@ -927,10 +1011,20 @@ void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(v
  vec3 sn=normalize(vec3(vQ.xy,sqrt(max(0.,1.-r*r))+.3)+.35*vec3(n-.5,nz(q*1.7+5.)-.5,0.));float ls=.18+.82*smoothstep(-.3,.8,dot(sn,uSq));
  vec3 c=vec3(.84,.83,.81)*(.8+.35*n)*(uLight*ls*1.25+uAmb*.55*(.6+.4*sn.y))+vec3(1.,.5,.15)*vQ.w*.8+vPl*(.7+.5*n);
  o=vec4(c,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-// terrain depth pre-pass: the sky shader's functions with a main that only marches and writes the hit distance
+// terrain depth pre-pass: the sky shader's functions with a main that only marches and writes the hit distance (Q91: the
+// nearer of Tellus's ground and Selene's)
 const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
-  'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh;o=vec4(march(d,hh,0.),0.,0.,1.);}'):null;
+  'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh,hs;o=vec4(min(march(d,hh,0.),marchS(d,hs,0.)),0.,0.,1.);}'):null;
 const DEPTH_RT={tex:null,fb:null,w:0,h:0};
+// (Q91, GROUND.md G3) Selene's ground at full resolution, marched once from the pre-pass's start into SELD_RT (x the hit
+// distance, y the height there; unit 4), which the sky pass (what is in front, the depth) and the moon pass (the shading) read
+const PSELD=PDEPTH?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
+  'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hs,t=marchS(d,hs,coarseStartS());o=vec4(t,hs,0.,1.);}'):null;
+const SELD_RT={tex:null,fb:null,w:0,h:0,on:false};
+function seldTarget(w,h){const D=SELD_RT;if(D.w===w&&D.h===h)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
+  gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RG32F,w,h,0,gl.RG,gl.FLOAT,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);D.w=w;D.h=h;return D}
 // (Q313, BEAUTY B0.1) the cloud deck with depth at half resolution, after the depth pre-pass and before the sky: the sky's
 // functions with a main that marches only the slab (its 72 steps × 3 density lookups were most of the sky's cost under
 // clouds: views 80–81 spent 5.6–9.7 ms of 10.8–14.5 on it). Out: A = (light, transmittance), B = (mean depth, depth where
@@ -1262,7 +1356,7 @@ const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LIN
 // lunar-Lambert (a full Selene is a flat disc, not a ball), an opposition surge, a terminator where only the rims catch
 // light, and earthshine: the light of Tellus's lit face, by its phase seen from the ground.
 const MOON_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
-uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs,uNdt;uniform vec2 uNrot;uniform vec4 uNoct;
+uniform vec3 uNc,uNdet,uNalb;uniform float uNcc,uNR,uSel,uNs,uNdt,uNa;uniform vec2 uNrot;uniform vec4 uNoct;
 const float CM=-.0022;   // cratG()'s mean
 float fbmF(vec3 p,float w){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*mix(.5,vn(p),1.-smoothstep(.25,.6,w));p=p*2.03+vec3(1.7,9.2,3.1);w*=2.03;a*=.5;}return s;}
 // (Q494, PLAYTEST #129) one crater's profile, craterProf in sim/ground.js: (height, dh/dk) at k = distance / radius. The
@@ -1315,6 +1409,8 @@ vec4 cratF(vec3 n,float w){vec4 s=vec4(0.);float f=uNoct.x,a=1.;for(int i=0;i<7;
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  vec2 hn=sph(uNc,uNcc,d);float dc=length(uNc),aR=uNR/dc;bool pt=!(uNcc>0.&&hn.x>0.);
+ // (Q91, GROUND.md G3) Selene's relief: the sky pass's march again, from the same pre-pass start, so both find the same ground
+ float hS=0.;bool rel=uSel>0.&&uSelDOn>.5;if(rel){float tr=selHit(hS);pt=tr>1e29;hn.x=tr;}
  // (Q374) under 1.5 px the disc would flicker between pixel centres: a point instead, with the whole disc's light (its
  // solid angle × the mean radiance at this phase, a Lambert sphere's) spread over a pixel, so it shrinks into a dot smoothly
  float th=length(d-uNc/dc);if(pt&&(aR>uPix*1.5||th>uPix*3.))discard;
@@ -1332,13 +1428,18 @@ void main(){
  // the body's own frame (it turns: uNrot = cos, sin of its angle)
  #define MB(v) vec3(uNrot.x*(v).x-uNrot.y*(v).z,(v).y,uNrot.y*(v).x+uNrot.x*(v).z)
  vec3 V=-d,nb=MB(n);float mu=max(dot(n,V),0.),w=tN*uPix/uNR/max(mu,.005);   // (Q493) the footprint along the view: at .2 craters aliased into dashes toward the horizon
- vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w);
+ vec3 ts=normalize(uSun-n*dot(uSun,n));vec4 cg4=cratF(nb,w)*uNa;   // (Q91) on Selene's relief, only craters finer than its bands (shading)
+ // (Q91) the relief's own normal, from Selene's height over about a pixel and a half (as Tellus's), at the march's bands
+ vec3 nr=n;float fwm=w*uNR;if(rel){float kF=selNb(tN,tN*uPix/max(mu,.08)),eps=max(fwm*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),nb)+vec3(1e-6,0,0)),t2=cross(nb,t1);   // the march's bands at this point (its footprint law), so hS is this ground
+  float h1=0.,h2=0.;for(int i=0;i<2;i++){float h=selH(nb+(i==0?t1:t2)*(eps/SR),kF);if(i==0)h1=h;else h2=h;}nr=selI(normalize(nb-(t1*(h1-hS)+t2*(h2-hS))/eps));}   // one call site (each is a copy of selBands); the point's own last, for sFresh
  float cr=cg4.x,slope=clamp(dot(cg4.yzw,MB(ts))*uNs,-.9,1.2),fade=smoothstep(8000.,300.,tN),det=fade>0.?detailF(MB(d*tN)+uNdet,w*uNR):.5;   // (Q493) filtered by the footprint in metres
  vec3 alb;
  if(uSel>0.){float mare=smoothstep(.5,.65,fbmF(nb*1.6+3.,w*.6)-${MARE_NEAR}*nb.x);   // filtered loosely: the seas are what a small disc shows
-  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.16*fade*(det-.5)+.09*(fbmF(nb*300.,w*300.)-.5)+.06*(fbmF(nb*30.,w*30.)-.5))*vec3(1.,.98,.95);}   // (Q324, #143) mottled from 12 km down to the regolith's 25 cm
+  alb=vec3(.16+.09*fbmF(nb*3.,w*3.)-.07*mare+.03*cr*(1.-.4*mare)+.16*fade*(det-.5)+.09*(fbmF(nb*300.,w*300.)-.5)+.06*(fbmF(nb*30.,w*30.)-.5))*vec3(1.,.98,.95);   // (Q324, #143) mottled from 12 km down to the regolith's 25 cm
+  if(rel)alb*=1.+.35*sFresh;}   // (Q91) a fresh crater's floor and rim are brighter (sFresh from the last selH: a metre or so away)
  else alb=uNalb*(.75+.5*fbmF(n*2.5,w*2.5)-.3*smoothstep(.45,.7,fbmF(n*1.2+7.,w*1.2))+.12*cr+.25*fade*(det-.5));
  float e=dot(n,uSun),mu0=clamp(e+slope*sqrt(max(1.-e*e,0.))*.8*smoothstep(-.12,.05,e),0.,1.6);   // past the terminator only the rims catch the sun
+ if(rel){float er=dot(nr,uSun);mu0=clamp(er+slope*sqrt(max(1.-er*er,0.))*.8,0.,1.6)*smoothstep(-.15,.02,e);mu=max(dot(nr,V),0.);}   // (Q91) lit by the relief (no cast shadows yet: G4)
  float cg=dot(uSun,V),g=acos(clamp(cg,-1.,1.))*57.29578,L=clamp(1.-.019*g+2.42e-4*g*g-1.46e-6*g*g*g,0.,1.);
  float B=1.+.6/(1.+sqrt(max(1.-cg*cg,0.))/max(1.+cg,1e-3)/.05);   // the opposition surge (tan g/2 over a width of .05)
  float refl=(2.*L*mu0/max(mu0+mu,1e-3)+(1.-L)*mu0)*B;
@@ -1346,7 +1447,7 @@ void main(){
  // earthshine: Tellus's lit face (albedo .35, a Lambert sphere's phase). Real, it's ~1/4000 of the sun, far under what
  // the exposure (×4 at most) can show; ×100 so a night side under a full Tellus reads as a dim grey (3 % of the sunlit side)
  vec3 wT=uPc-d*tN;float dT=length(wT);wT/=dT;float al=acos(clamp(dot(uSun,-wT),-1.,1.)),Ph=(sin(al)+(3.14159265-al)*cos(al))/3.14159265;
- float eT=dot(n,wT),es=100.*.35*.6667*(uPR/dT)*(uPR/dT)*Ph*clamp(eT+clamp(dot(cg4.yzw,MB(normalize(wT-n*eT)))*uNs,-.9,1.2)*sqrt(max(1.-eT*eT,0.))*.8*smoothstep(-.12,.05,eT),0.,1.6);   // with the relief, as the sun's
+ float eT=dot(n,wT),es=100.*.35*.6667*(uPR/dT)*(uPR/dT)*Ph*(rel?clamp(dot(nr,wT),0.,1.6)*smoothstep(-.15,.02,eT):clamp(eT+clamp(dot(cg4.yzw,MB(normalize(wT-n*eT)))*uNs,-.9,1.2)*sqrt(max(1.-eT*eT,0.))*.8*smoothstep(-.12,.05,eT),0.,1.6));   // with the relief, as the sun's
  vec3 col=alb*(refl*2.2+es*2.2+.0003);col=col*trans+ins;
  o=uSel>0.?vec4(col,0.):vec4(col,1.);   // (Q314) linear light
  gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);
@@ -1355,13 +1456,47 @@ const PMOON=mkProg(QUAD_VS,MOON_FS);
 NYX.alb=[.085,.068,.054];   // carbonaceous: darker and browner than Selene
 // per body: crater octaves (cells per radius, finer by, deeper by, count) and the relief's slope gain
 const MOON_OCT=new Map([[SELENE,{oct:[12.6,3,.45,5],ns:.0056*1.43}],[NYX,{oct:[6.3,3.3,.6,4],ns:.0036*1.43}]]);
+// (Q91, GROUND.md G3) Selene's map on the GPU: E alone on unit 9; on unit 15 x M as baked (sim/ground.js seleneMap), y U, E's max over (selTexData)
+// ±2 rows and ±2/cos(lat) columns (a bound for the spline between texels, and for the march's skips). Made once Selene's
+// ground is live and the CPU has baked the map; until then the shaders draw the sphere. The bake (~0.8 s) happens on the
+// first need: the physics near Selene, or selBake() at idle after load (app/loop.js), so a flight never waits for it.
+const SELTEX={tex:null,e:null};
+// a map's max over ±n rows and ±n/cos(lat) columns (the whole row near the poles): a bound for what lies within n texels
+function mapMax(A,W,H,n){const Rw=new Float32Array(W*H),O=new Float32Array(W*H);
+  for(let j=0;j<H;j++){let cl=1;for(let q=Math.max(0,j-n);q<=Math.min(H-1,j+n);q++)cl=Math.min(cl,Math.cos(((q+.5)/H-.5)*Math.PI));
+    const w=Math.ceil(n/Math.max(cl,1e-4)),o=j*W;
+    if(w>64){let mx=-Infinity;for(let i=0;i<W;i++)mx=Math.max(mx,A[o+i]);Rw.fill(mx,o,o+W);continue}
+    for(let i=0;i<W;i++){let mx=-Infinity;for(let a=-w;a<=w;a++)mx=Math.max(mx,A[o+(i+a+W)%W]);Rw[o+i]=mx}}
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){let mx=-Infinity;for(let q=Math.max(0,j-n);q<=Math.min(H-1,j+n);q++)mx=Math.max(mx,Rw[q*W+i]);O[j*W+i]=mx}
+  return O}
+// x M; y U, E's max within 2 texels (the march's bound); z the mare mask's max within 3 texels: under .05 no crater of
+// band 2 or finer (reach ≤ 2.8 km, 1.3 texels) near the point is thinned, so selBands skips their mask fetches
+function selTexData(m){const{W,H,E,M}=m,U=mapMax(E,W,H,2),X=mapMax(M,W,H,3),A=new Float32Array(W*H*4);
+  for(let k=0;k<W*H;k++){A[k*4]=M[k];A[k*4+1]=U[k];A[k*4+2]=X[k]}
+  return A}
+function selTex(){if(!SELENE.ground||!SEL_MAP)return null;if(SELTEX.tex)return SELTEX.tex;const m=SEL_MAP,mk=(unit,fmt,f,data)=>{const t=gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,fmt,m.W,m.H,0,f,gl.FLOAT,data);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.activeTexture(gl.TEXTURE0);return t};
+  SELTEX.e=mk(9,gl.R32F,gl.RED,m.E);return SELTEX.tex=mk(15,gl.RGBA32F,gl.RGBA,selTexData(m))}
+// the camera near Selene (or the ship there) can't wait for the idle bake: bake now
+function selNear(camW){if(SELENE.ground&&!SEL_MAP&&len(sub(bodyPos(SELENE,simT),camW))<SELENE.R*6)seleneMap()}
+const selBake=()=>{if(SELENE.ground&&!SEL_MAP)seleneMap();selTex()};
+// Selene's uniforms for a program built on SKY_FS (the sky, its pre-pass, the moon pass)
+function selUniforms(u,camW){const on=!!selTex();gl.uniform1f(u.uSelOn,on?1:0);if(!on)return;
+  const C=sub(bodyPos(SELENE,simT),camW),dm=len(C),th=bodyTheta(SELENE,simT),Rt=SELENE.R+SEL_MAP.hi+SEL_GL.all;
+  gl.uniform3fv(u.uMc,C);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);gl.uniform1f(u.uMtcc,(dm-Rt)*(dm+Rt));gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th));
+  gl.activeTexture(gl.TEXTURE15);gl.bindTexture(gl.TEXTURE_2D,SELTEX.tex);gl.uniform1i(u.uSelM,15);gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,SELTEX.e);gl.uniform1i(u.uSelE,9);gl.activeTexture(gl.TEXTURE0)}
+addEventListener('load',()=>{if(window.requestIdleCallback)requestIdleCallback(selBake,{timeout:10000});else setTimeout(selBake,3000)});
+const SEL_FINE=[12.6*3**5,3,.45,2],SEL_FINE_A=.45**5;   // (Q91) the moon pass's crater octaves past Selene's finest band (82 m): 8–63 m, shading only
 function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
-  for(const b of BODIES){if(!b.parent)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
+  for(const b of BODIES){if(!b.parent)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C),sel=b===SELENE,rel=sel&&!!selTex();if(dc<b.R&&!rel)continue;
     if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uPix,2*tanY/H);
-      const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)}
-    const sel=b===SELENE,th=b.lock||sel?bodyTheta(b,simT):0,mo=MOON_OCT.get(b)||MOON_OCT.get(NYX);
+      const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);if(u.uTrL)gl.uniform1i(u.uTrL,13);gl.bindVertexArray(quadVAO)
+      selUniforms(u,camW);gl.uniform1i(u.uDepth,5);gl.uniform1f(u.uUseDepth,PDEPTH?1:0);gl.uniform1i(u.uSelD,4);gl.uniform1f(u.uSelDOn,SELD_RT.on?1:0)}   // (Q91) the sky's pre-pass depth (unit 5) and Selene's hits (unit 4) are still bound
+    const th=b.lock||sel?bodyTheta(b,simT):0,mo=MOON_OCT.get(b)||MOON_OCT.get(NYX);
     gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform1f(u.uNR,b.R);gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);gl.uniform1f(u.uSel,sel?1:0);
-    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,mo.oct);gl.uniform1f(u.uNs,mo.ns);gl.uniform1f(u.uNdt,GR_DT/(b.mu/(b.R*b.R)));
+    gl.uniform2f(u.uNrot,Math.cos(th),Math.sin(th));gl.uniform4fv(u.uNoct,rel?SEL_FINE:mo.oct);gl.uniform1f(u.uNa,rel?SEL_FINE_A:1);gl.uniform1f(u.uNs,mo.ns);gl.uniform1f(u.uNdt,GR_DT/(b.mu/(b.R*b.R)));
     gl.uniform3fv(u.uNdet,rotY(mul(C,-1),-th).map(x=>x-Math.round(x/1000)*1000));
     // Selene: added where the sky pass found it (its alpha), depth untouched; Nyx: opaque, depth-tested
     if(sel){gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.DST_ALPHA,gl.ONE,gl.ZERO,gl.ONE);gl.depthFunc(gl.ALWAYS);gl.depthMask(false)}

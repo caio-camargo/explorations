@@ -328,6 +328,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
 - v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
 - v1.251 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
+- v1.350 — Selene's relief, live: the march on Selene (one full-resolution march, the sky and moon passes read it), CPU/GPU agreement in mm, saves and tapes moved onto it, `landAt` watches the ground ahead (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 

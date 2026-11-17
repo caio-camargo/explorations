@@ -214,8 +214,9 @@ const CHAPTER_KEY='launchpad-program-chapter',PROG_KEY=TEST.on?'launchpad-progra
 // to n+1, pure (the parsed JSON in, the same object out), and migrateSave runs the chain from the save's version up to
 // SAVE_V. When a change to PROG would break an old save, bump SAVE_V and add the step here, with a fixture in test.mjs
 // (section platform-2). A save from a newer game than this one is loaded as it is, with a warning, not guessed at.
-const SAVE_V=1,MIGRATE=[
-  j=>{for(const q of j.sats||[])delete q.docked;j.rel=j.rel||{};j.op=j.op||{};if(!isFinite(j.funds))delete j.funds;if(!isFinite(j.day))j.day=0;return j}];   // 0 → 1: the loader's old fix-ups
+const SAVE_V=2,MIGRATE=[
+  j=>{for(const q of j.sats||[])delete q.docked;j.rel=j.rel||{};j.op=j.op||{};if(!isFinite(j.funds))delete j.funds;if(!isFinite(j.day))j.day=0;return j},   // 0 → 1: the loader's old fix-ups
+  j=>typeof selReseat==='function'?selReseat(j):j];   // 1 → 2 (Q91): what stood on Selene's sphere goes onto its relief (sim/ground.js)
 function migrateSave(j){if(!j||typeof j!=='object')return null;let v=Number.isInteger(j.ver)?j.ver:0;
   if(v>SAVE_V){j.newerSave=true;return j}for(;v<SAVE_V;v++)j=MIGRATE[v](j);j.ver=SAVE_V;return j}
 // Loading (R10): progLoad (sim/program.js) repairs, derives and probes the save, and starts a new program if it can't. A

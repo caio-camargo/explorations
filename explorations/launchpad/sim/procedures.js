@@ -10,7 +10,7 @@ const CHUTE_G=3;   // chutes are reefed: the canopy opens in stages so its own d
 // replayed against new physics and silently diverged. Now it's a fingerprint of the code and data that move a craft: any change
 // to them retires old tapes, and procedures (below) are what survive a physics change.
 const hashStr=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)};
-const TAPE_V='lp-'+hashStr([physStep,rails,coastPlan,coastStep,pertAcc,pertNear,checkSOI,groundCheck,stage,detach,abort,lesJettison,aeroPass,thermal,structLoads,
+let TAPE_V='lp-'+hashStr([physStep,rails,coastPlan,coastStep,pertAcc,pertNear,checkSOI,groundCheck,stage,detach,abort,lesJettison,aeroPass,thermal,structLoads,
   integrateRot,attStep,ctrlAccel,spinFire,rcsStep,contactStep,fleetPhysAll,armStep,bayTick,kepler,bodyRel,advPhys,advRails,igniteOK,procStep,speedRef,sasTarget,velFrame,sasNearGround].map(f=>f.toString()).join('')
   +JSON.stringify(PARTS)+JSON.stringify(BODIES.map(b=>[b.R,b.mu,b.orb||null,!!b.pert])));
 function advPhys(s){if(s.proc){procStep(s);autoLegs(s)}fleetPhysAll(DT);physStep(s,DT);powerStep(s,DT);armStep(s);FLEET.forEach(armStep);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true);procSample(s)}   // sampled after the step: it sees a landing in the step that made it
@@ -196,6 +196,10 @@ function transferNode(s,X,ph,B,b){const o=B.orb,Pv=B.P,Qv=B.Q,p=o.a*(1-o.e*o.e),
 // a stronger engine or a cross-track miss all show up as a velocity error and get steered out; the vertical keeps a fall
 // rate that shrinks with height (√ of the height, at 30 % of thrust). The last 30 m are the usual touchdown.
 function siteAt(B,site,t){const u=norm(fromPF(B,site,t));return mul(u,B.R+groundAlt(B,toPF(B,u,t)))}   // (the ground there, inertial frame)
+// (Q91, GROUND.md G3) on relief the descent watches the ground ahead, not only the ground below: the least height over
+// the ground along the next T seconds of travel at this speed (a crater's rim stands a kilometre or more over its floor
+// and the plain outside). Never past the site: the ground there is where it means to come down.
+function gapAhead(s,B,vh,T){const r=len(s.r);let m=Infinity;for(const f of[0,.1,.25,.5,.75,1]){const u=norm(madd(s.r,vh,f*T));m=Math.min(m,r-B.R-groundAlt(B,toPF(B,u,simT+f*T)))}return m+s.yBot}
 function landAt(s,X,ph,B){const A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
   // from a higher orbit, down to a low near-circular one first (~10 × 20 km): periapsis down at apoapsis, then apoapsis down at periapsis
   if(!X.sub||X.sub==='lw'){const e=elements(s.r,s.v,B.mu),lo=ph.pe??10e3;
@@ -221,7 +225,8 @@ function landAt(s,X,ph,B){const A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
     if(plan.length>1&&hb>1500&&dvRemaining(s).cur<1.15*Math.sqrt(2*g*hb+vv*vv)){stage(s);return false}   // a lander that can't finish it drops off high
     aimAt(s,sub(up,mul(sub(vh,vt),0.08)),25);const Au=A*Math.max(0.2,dot(qrot(s.q,[0,1,0]),up)),need=vv<0?vv*vv/(2*Math.max(hb-15,1))+g:0;
     s.throttle=need>0.7*Au?Math.min(1,need/Au):len(sub(vh,vt))>3?0.05:0;return false}
-  const ah=mul(sub(vt,vh),1/3),vvT=-Math.min(100,Math.sqrt(2*0.3*A*Math.max(hb-20,0))),av=Math.max(0,g+(vvT-vv)/3);
+  const hbA=Math.min(hb,gapAhead(s,B,vh,Math.min(30,dist/Math.max(len(vh),1)))),   // (Q91) the ground ahead: under 40 m of it, climb
+    ah=mul(sub(vt,vh),1/3),vvT=hbA<40?Math.min(10,0.25*(40-hbA)):-Math.min(100,Math.sqrt(2*0.3*A*Math.max(hbA-20,0))),av=Math.max(0,g+(vvT-vv)/3);
   let a=add(ah,mul(up,av));const L=len(a);if(L>A){const v2=Math.min(av,A),hs=Math.sqrt(Math.max(0,A*A-v2*v2))/Math.max(len(ah),1e-6);a=add(mul(ah,Math.min(1,hs)),mul(up,v2))}
   const ok=aimAt(s,a,30),c=dot(qrot(s.q,[0,1,0]),norm(a));s.throttle=c>0.5?Math.min(1,len(a)/A):0;return false}
 const MP={
@@ -278,8 +283,8 @@ const MP={
   ascend(s,X,ph){const B=s.body;
     if(!X.sub){for(let i=0;i<(ph.stage||0);i++)stage(s);while(dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length&&dvPlan(s,0).length>0)stage(s);
       // a stage that can't reach orbit by itself (the lander came down on it) stays behind, if there's one under it that can
-      const need=1.2*Math.sqrt(B.mu/(B.R+ph.ap));while(dvPlan(s,0).length>1&&dvRemaining(s).cur<need&&s.evIdx<s.events.length)stage(s);X.sub='up';X.noAuto=true}
-    if(X.sub==='up'){const up=norm(s.r),h=len(s.r)-B.R,pitch=Math.max(0,90-90*Math.min(1,h/(ph.pitchH||3000)))*Math.PI/180,east=norm(cross([0,1,0],s.r));
+      const need=1.2*Math.sqrt(B.mu/(B.R+ph.ap));while(dvPlan(s,0).length>1&&dvRemaining(s).cur<need&&s.evIdx<s.events.length)stage(s);X.sub='up';X.noAuto=true;X.r0=len(s.r)}
+    if(X.sub==='up'){const up=norm(s.r),h=len(s.r)-(X.r0??B.R),pitch=Math.max(0,90-90*Math.min(1,h/(ph.pitchH||3000)))*Math.PI/180,east=norm(cross([0,1,0],s.r));
       aimAt(s,add(mul(up,Math.sin(pitch)),mul(east,Math.cos(pitch))),20);s.throttle=1;
       if(elements(s.r,s.v,B.mu).ap-B.R>ph.ap){s.throttle=0;X.sub='fix';X.fw=0}return false}
     return fixPe(s,X,ph.pe)},

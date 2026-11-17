@@ -87,6 +87,10 @@
     const r = flySite(api, preset, body, lat, lon);
     check(`targeted landing: ${what}, within 100 m (a base takes in what lands within 500 m)`, r.landed && r.alive && r.miss < 100 && r.touch < 3,
       r.landed ? `${r.miss.toFixed(0)} m off at ${r.touch.toFixed(1)} m/s, ${r.left.toFixed(0)} m/s left, ${r.days.toFixed(2)} days` : `not landed: ${r.dev ? r.dev.why : r.alive ? 'still flying' : 'lost'}`); }
+  // (Q91, GROUND.md G3) on Selene's relief: into a place, the first grade-A crater (Q612), at its aim on the floor, over its rim
+  { const Pl = api.selPlaces().find(x => x.grade === 'A'), r = flyTo(api, 'Probe', api.SELENE, api.norm(Pl.aim)), at = r.landed ? api.placeAt(api.SELENE, api.toPF(api.SELENE, api.S.r, api.t)) : null;
+    check(`targeted landing on the relief: inside ${Pl.name} (${(Pl.D / 1e3).toFixed(0)} km), at its aim within 100 m, standing (Q613's ▶ Procedure to a place)`, r.landed && r.alive && r.miss < 100 && r.touch < 3 && at === Pl && !api.S.tipped,
+      r.landed ? `${r.miss.toFixed(0)} m off at ${r.touch.toFixed(1)} m/s, ${at ? 'in ' + at.name : 'in no place'}, ${r.left.toFixed(0)} m/s left` : `not landed: ${r.dev ? r.dev.why : r.alive ? 'still flying' : 'lost'}`); }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 
