@@ -198,7 +198,7 @@ if(TEST.on){$('testerBadge').classList.remove('hidden');testBadge();testTopUp()}
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
 const progTabOf=h=>/^(Offers|Coming up|News)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
   /^(Epoch|✔ Chapter|Chapter)/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field|Routines)/.test(h)?'fleet':/^The world/.test(h)?'world':
-  /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
+  /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())||h==='Astronauts'?'company':'more';   // (Q458) the astronaut office is the program's people
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
   const box={};for(const[k]of PROG_TABS)box[k]=[];let cur='more';

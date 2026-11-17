@@ -4196,7 +4196,7 @@ row of the save):
 - **Field geology** (W43 4): the Program panel's button sends one ready astronaut away for 30 days at 0.2 M
   (`crewCourse`; status `course`, not picked for flights; ledger line "Astronaut training"). `crewCourseTick` (in
   `advanceDays`) brings them back qualified.
-- **The astronaut office** (the Program panel, `crewHTML` in app/program-ui.js): a card per astronaut, the most senior
+- **The astronaut office** (the Program panel's Company tab, `crewHTML` in app/program-ui.js; `progTabOf`): a card per astronaut, the most senior
   first: class, where they are, flights and days, firsts; the qualifications as badges, lit when earned, the tooltip
   saying how far along ("1 of 2 in the simulator, or one real"); the course button; then the memorial (not the hushed).
 - What the qualifications *do* (the pilot's modes, the scientist's multiplier, the docking-qualified pilot for rotation)
