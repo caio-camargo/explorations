@@ -291,11 +291,14 @@ function rvSciWhy(R,k){if(!rvItems(R,k==='pano'?'cam':k))return`no ${k==='pano'?
   if(k==='seis'&&(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))<=0)return'all its seismometers are set out';return''}
 // the instruments: a spectrometer reading, a panorama (its quality is the sun's: low sun shows the relief in long
 // shadows, a high sun flattens it, none at night), a seismometer set out. Readings wait in R.data until contact.
+// (Q626) a crewed rover's spectrometer readings are taken in person: the scientist's weight, from the people on the flight's vessel there
+const rvSciW=R=>R.d&&rvGeom(R.d).crew&&R.crewed!==false&&typeof S!=='undefined'&&S?sciWeight(S,R.body):{w:1,by:null};
 function rvSci(R,k,T){const why=rvSciWhy(R,k);if(why){HOOK.msg(`${k==='spec'?'Spectrometer':k==='pano'?'Panorama':'Seismometer'}: ${why}`);return false}
   const P=selSci(),g=geoAt(R.body,R.p),r=rng(9001+P.seq++);R.data=R.data||[];
   if(k==='spec'){if((R.reads||[]).some(p=>len(sub(p,R.p))<SPEC_NEAR)){HOOK.msg('Spectrometer: already read here (drive on 30 m)');return false}
     (R.reads=R.reads||[]).push(R.p.slice());const x={k,unit:g.unit,T,pf:R.p.slice()};for(const c in SPEC_SD)x[c]=Math.max(0,g[c]+SPEC_SD[c]*gauss(r));
-    x.b=RV_BITS.spec;R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${rvSciSent(R)}`);return true}
+    const W=rvSciW(R);if(W.w>1)x.w=W.w;
+    x.b=RV_BITS.spec;R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${W.w>1?` (in person: ${W.by.name}, ×${W.w})`:''}${rvSciSent(R)}`);return true}
   if(k==='pano'){const el=Math.asin(clamp(dot(norm(R.p),rvSunPF(R.body,thAbs(R.body,T))),-1,1))*180/Math.PI;if(el<=0){HOOK.msg('Panorama: too dark (the sun is down)');return false}
     const q=panoQ(el);R.data.push({k,q,el,unit:g.unit,T,b:RV_BITS.pano});HOOK.msg(`Panorama taken, sun ${el.toFixed(0)}° up: ${q>.8?'long shadows, the relief stands out':q>.5?'fair':'flat light'} (${(q*100).toFixed(0)} %)${rvSciSent(R)}`);return true}
   if(k==='seis'){R.seisLeft=(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))-1;const st={id:P.seis.length+1,bodyName:R.body.name,pf:mul(norm(R.p),groundR(R.body,R.p)),T,buf:[]};st.name=`Seismometer ${st.id}`;
@@ -315,7 +318,7 @@ function rvDrain(data,c,dt,by){if(!data||!data.length||!c||!c.ok||c.via==='crew'
   if(data.length&&b>0)data[0].b-=b;return n}
 // results reaching home: into the program's science and the logbook
 function sciGot(x,by){const P=selSci();
-  if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3,far:!!(x.pf&&x.pf[0]>0)});/* far: Selene's far side, planet-fixed +X (economy's contracts) */const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
+  if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3,far:!!(x.pf&&x.pf[0]>0),...(x.w>1?{w:x.w}:{})});/* far: Selene's far side, planet-fixed +X (economy's contracts) */const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
     logNote(null,x.unit==='mare'?'semare':'sehigh',{FeO:m('FeO'),TiO2:m('TiO2'),Al2O3:m('Al2O3'),se:sd/Math.sqrt(n),n},by)}
   if(x.k==='pano'){P.panos.push({q:x.q,el:x.el,unit:x.unit});logNote(null,'sepano',{q:x.q,el:x.el,unit:x.unit},by)}}
 function rvSciSend(R,c,dt=0){const n=rvDrain(R.data,c,dt,R.name);if(n)HOOK.msg(`${n} result${n>1?'s':''} from ${R.name} received at home`);return n}

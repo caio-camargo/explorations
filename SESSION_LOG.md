@@ -8101,3 +8101,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/vessel.js`, `sim/space.js`, `builder.js`, `app/gl.js`, `app/screens.js`, `test.mjs`,
   `tests/vehicle.mjs`, `playtest.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`,
   `SESSION_LOG.md`.
+
+## Session 2026-11-17 — Launchpad v1.358: crew slices 5 and 6 (Q626); slice 7 queued (Q627)
+- **Operator:** Caio, with Claude (space session, Opus 5.5). Caio: "go ahead with the remaining crew slices".
+- **What:** classes every two program years mixed by archetype (scientists after people orbit, engineers once a station
+  is up; resource states select two); titles by spec (Steppe's words); crews picked by need; the engineer's relight of a
+  failed ignition (twice when on the type); a scientist's in-person weight on Selene spectrometer readings (×1.25 /
+  ×1.5 with field geology / ×2 with a walk there before), summed by `selN`.
+- **Not built:** slice 7, crew rotation by dispatch, which needs headless docking and deorbit procedures that don't exist:
+  queued as Q627 (L, space). The manual landing hold stays control's.
+- **Merge:** CI 44185646695 green; ff-merged.
+- **Not checked:** in a browser (TESTING 407).
+- Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/rovers.js`, `sim/contracts.js`, `app/program-ui.js`,
+  `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
