@@ -8003,3 +8003,12 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `tests/flow.mjs`, `tests/look.mjs`, `tests/space.mjs`, `tests/vehicle.mjs`, `tests/world.mjs`,
   `review/2026-11-17/selbench.js` (new), `GROUND.md`, `notes/world.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root
   `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## Session 2026-11-17 — Launchpad: who enforces requalification (design, CREW 0.4.0, Q624)
+- **Operator:** Caio, with Claude (space session, Opus 5.5). Docs only.
+- **What:** Caio's idea after Q183: the refusal after a crew loss depends on whom the program answers to. CREW.md
+  decision 5 (0.3.3 → 0.4.0, MINOR approved): company, no refusal, the market prices skipping; open state, an
+  inquiry plus election demagoguery; closed state, the leadership's whim; consortium, the strictest member. A company
+  can't hide a loss, though a closed state may hush it. No timers (decision 3 stands).
+- **Next:** Q624 (economy, with space) builds it on top of v1.350's qualification flight.
+- Files: launchpad `CREW.md`, `QUEUE.md`; root `SESSION_LOG.md`.
