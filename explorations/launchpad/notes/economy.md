@@ -210,8 +210,7 @@ The first versions of the landing checks were wrong: the craft's centre was put 
 "landed" at 0.0 m/s.
 
 **Open:** crew on Selene (needs the abort tests and crew parts of epoch 4); contracts that repeat these (economy's board); the
-`RACE` question (should the far side or a Selene landing be a race for firsts? It would shift rival schedules and the v1.28
-balance); prices are untested by `career.mjs`, which doesn't fly past epoch 2.
+`RACE` question, since decided: the Selene and Nyx firsts join the race, rival schedules from chapter 4 (D36, built as Q593); prices are untested by `career.mjs`, which doesn't fly past epoch 2.
 
 ## Mission design — epochs, archetypes, convergence (2026-10-07)
 

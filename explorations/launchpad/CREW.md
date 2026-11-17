@@ -1,8 +1,8 @@
 # CREW — astronauts
-**Version**: 0.3.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-06
+**Version**: 0.3.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-17
 **Status**: Part 2 (who crew are) approved 2026-10-08, skill by qualification 2026-10-11 (D15.4); Part 1 (the look)
 decided: the ligne-claire head (D26, 2026-11-06; replaced the carved puppet, D17.6), suits for all seven schools (D9, D13; building as Q229). Decisions: [`DECISIONS.md`](DECISIONS.md) § Crew.
-The file goes to 1.0.0 when the head is built.
+The head is built (Q532, v1.264); the move to 1.0.0 is Caio's call.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
 
 **What exists** (cite, don't redo): a crew is two seats in a capsule (`d.crew`), flying once the escape tower is
@@ -123,7 +123,8 @@ crew tell the era's history).
 
 ## Part 1 — how crew look
 
-**The face engine is parked** (D26): [`FACES.md`](FACES.md) (D12) stays as it was left, for a later return to the face question.
+**The face engine is live again** (D40, 2026-11-11, lifting D26's parking): [`FACES.md`](FACES.md) (D12) has a trial under
+way. The ligne-claire head below stays the crew's look until that trial is judged; whether the engine replaces it is not decided.
 EVA (walking, spacewalks) is scoped in [`EVA.md`](EVA.md).
 
 **The look: stylised humans with ligne-claire heads** (W19, then D26, 2026-11-06; D17.6's carved puppet came first and
@@ -256,7 +257,8 @@ vs racing decals).
 3. **A mock-up round for these five schools** in the same scene as Q219 (Q219's page grows a school picker), with
    the checks widened: a silhouette row per era (seven figures, six in the early era) and the 48 px row (default: yes).
 
-**Shared, so they read as one crew:** the carved-puppet proportions and finish (D17.6), the role stripe round the upper
+**Shared, so they read as one crew:** the ligne-claire figure's proportions and finish (D26; the carved puppet, D17.6, was
+dropped), the role stripe round the upper
 arms (D9 3).
 
 **Checks before Caio sees them:**
@@ -279,6 +281,8 @@ arms (D9 3).
 ---
 
 ## Version history
+- **0.3.3 (2026-11-17):** stale lines from REVIEW-2026-11-13-m3 § 6 (QUEUE Q610): the face engine is live again (D40); the
+  shared look is D26's, not the carved puppet's; the header no longer waits for the head, which is built.
 - **0.3.1 (2026-11-06):** D26: the head is ligne claire (sheet a), the face engine parked; the walk rule points to
   EVA.md.
 - **0.3.0 (2026-10-11):** the docs sweep: Part 1 rewritten to the carved puppet (D17.6); the first suits table archived;
