@@ -8162,8 +8162,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   renumberings (Q626 took v1.358, G4 v1.359) and three CI runs; the last, 44192854716, green on the merged commit.
 - **Not checked:** nobody has turned a ship in the sun by hand (TESTING 409, 410); a step's ledge in a still; thin
   parts at 2.6 cm texels; a long station; the shadow pass on the Intel GPU on High.
-- **Left running:** this session's local servers (python http.server on ports 8803, 8804, 8816, 8817); stopping them
-  was not allowed from the session.
+- **Left running:** this session's local servers (python http.server on ports 8816 and 8817; the two on 8803 and 8804
+  had ended by the close); stopping them was not allowed from the session.
 - **Next:** Q316's surface pass (B1.4, absorbs Q259), then the greebles (B1.5). Proposed: `refset.mjs`'s start.
 - Files: launchpad `app/gl.js`, `app/render.js`, `app/settings.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
   `BEAUTY.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
