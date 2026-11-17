@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.3.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-17
+**Version**: 0.4.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-11-17
 **Status**: Part 2 (who crew are) approved 2026-10-08, skill by qualification 2026-10-11 (D15.4); Part 1 (the look)
 decided: the ligne-claire head (D26, 2026-11-06; replaced the carved puppet, D17.6), suits for all seven schools (D9, D13; building as Q229). Decisions: [`DECISIONS.md`](DECISIONS.md) § Crew.
 The head is built (Q532, v1.264); the move to 1.0.0 is Caio's call.
@@ -97,9 +97,9 @@ KSP's pilot/scientist/engineer trio with levels that unlock autopilot modes is g
 
 | Hook | Existing system | What happens |
 |---|---|---|
-| **Requalification after a loss** | the flight record; the abort-test gates | Crewed flights stay blocked until an **uncrewed qualification flight shows the cause is fixed**: the flight record names it (g, cabin heat, a part, a failed abort), and the test is the same rocket surviving the same moment. A loss costs a flight and a design problem, not a wait (pillars 2, 5). **Not** a timed stand-down: a skippable timer costs nothing, and an unskippable one breaks pillar 5 (Caio, round 2). |
+| **Requalification after a loss** | the flight record; the abort-test gates | Crewed flights stay blocked until an **uncrewed qualification flight shows the cause is fixed**: the flight record names it (g, cabin heat, a part, a failed abort), and the test is the same rocket surviving the same moment. A loss costs a flight and a design problem, not a wait (pillars 2, 5). **Not** a timed stand-down: a skippable timer costs nothing, and an unskippable one breaks pillar 5 (Caio, round 2). **Who enforces it depends on whom the program answers to** (Caio, 2026-11-17; decision 5 below): a company may fly again, an open country's inquiry grounds crews, a closed leadership decides on a whim. |
 | **The person is gone** | specialties and qualifications | Losing the landing-qualified pilot means the next landing waits for someone to train up, or flies with a pilot who can't hold a manual landing. The loss is felt in play. |
-| **Openness** | open/closed, leaks | **Open:** astronauts are celebrities; a famous crew lifts opinion, a lost one is national grief. **Closed:** a loss is hushed (part of the hit now) and can **leak** later with the leak system; it **may skip requalification** and fly again at once, the cause unfixed and the leak risk growing, the closed program's real temptation. Heroes are announced only after success. |
+| **Openness** | open/closed, leaks | **Open:** astronauts are celebrities; a famous crew lifts opinion, a lost one is national grief. **Closed:** a loss is hushed (part of the hit now) and can **leak** later with the leak system; it **may skip requalification** and fly again at once, the cause unfixed and the leak risk growing, the closed program's real temptation; whether that is the player's choice or the leadership's order is decision 5. Heroes are announced only after success. |
 | **Archetypes** | POWERS.md | Security state: military pilots, few scientists. Frugal: scientist-heavy classes. Resource state: few classes of its own; **buys seats**. |
 | **Guest astronauts** | foreign contracts, relations | Fly another power's astronaut, as Intercosmos did: a contract that improves relations. Or buy a seat on a rival's flight for your own. |
 | **Defections and career moves** | v1.24 career moves | A famous astronaut defecting is a headline. If your program changes hands, your roster comes with it. |
@@ -277,10 +277,33 @@ arms (D9 3).
    an uncrewed flight that shows the cause fixed, and **the person**, whose qualifications and record are gone. Closed powers
    may skip requalification at a leak risk.
 4. **Crew picked automatically** unless you choose for a hand-flown flight.
+5. **The refusal is the program's masters', not a rule of nature** (Caio, 2026-11-17; QUEUE Q624). Who stops crews
+   flying after a loss follows ownership first, then the home power's openness. The qualification flight itself (as
+   far, capsule home, inside the limits, dummies aboard; v1.350) is the same everywhere; what changes is who demands
+   it and what skipping it costs. None of these is a timer (decision 3).
+   - **Private company** (private share ≥ 50%): **no refusal**; it runs itself. Requalifying is the player's choice and
+     the market prices skipping it: an insurance surcharge on every crewed flight until a clean qualification flight,
+     tourism and commercial standing down, the valuation dips. A second loss without requalifying brings the families'
+     lawsuits (a lump sum). A company **can't hide** a loss; in a closed country the state may hush it for them.
+   - **Open state** (openness ≥ 0.6): **accountability.** An inquiry grounds crews and can't be skipped; it ends with
+     the qualification flight. **Demagoguery** rides the election clock: with opinion low, the opposition runs against
+     "the death rockets" and a lost election cuts the crewed budget for a term; with nationalism high, a populist
+     government demands a crewed flight before the inquiry reports ("show the world"): obey (a big win or a
+     catastrophe) or refuse (an opinion hit).
+   - **Closed state** (openness < 0.5): **the leadership's whim**, rolled at the loss and weighted by a pending
+     spectacular and nationalism: *fly again at once* (an order; the skip forced and hushed; refusing costs the
+     leadership's favour), *find who is to blame* (grounded until the qualification flight, and a scapegoat purged: a
+     know-how loss or a facility level), or the choice built in v1.350 (requalify, or skip hushed). In a security
+     state a loss under low opinion raises the odds of regime change.
+   - **Consortium / mixed:** the **strictest member's rule** applies; one open member can force an inquiry, a reason
+     to think twice before taking a democracy's money.
 
 ---
 
 ## Version history
+- **0.4.0 (2026-11-17):** decision 5: who enforces requalification follows ownership and openness (company: no
+  refusal, the market prices it; open: an inquiry and election demagoguery; closed: the leadership's whim; consortium:
+  the strictest member). QUEUE Q624.
 - **0.3.3 (2026-11-17):** stale lines from REVIEW-2026-11-13-m3 § 6 (QUEUE Q610): the face engine is live again (D40); the
   shared look is D26's, not the carved puppet's; the header no longer waits for the head, which is built.
 - **0.3.1 (2026-11-06):** D26: the head is ligne claire (sheet a), the face engine parked; the walk rule points to
