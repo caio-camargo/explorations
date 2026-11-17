@@ -304,6 +304,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.342 — places on Selene as data: 48 named craters graded A to C (`selPlaces`, `placeAt`), the landing's place in the flight record, the cond `jPlace`; ground-11 recomputes the table from the relief; nothing reads it yet (2026-11-13, review 2, QUEUE Q612) → [notes/economy.md](notes/economy.md)
 - v1.344 — a package kept by a hostile power pays no contract; a crew down abroad is home safe, and a hostile power holds them until the program pays, hands over data or waits (2026-11-13, review 2, QUEUE Q616, D48) → [notes/economy.md](notes/economy.md)
 - v1.349 — the roster, crew slice 1: a first class named in the home school's style, crews picked by seniority onto their seats, aboard through the registry, the crewed firsts named, a loss named and in `PROG.memorial`; the Debrief names the crew (2026-11-17, space, QUEUE Q182) → [notes/economy.md](notes/economy.md)
+- v1.350 — requalification after a crew loss: crews stand down, capsules fly dummies until a real flight goes as far and brings the capsule home inside the limits; a closed power may skip it, hushed (2026-11-17, space, QUEUE Q183) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -331,7 +332,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.144 — a support town by every pad (2026-10-12, world session, QUEUE Q270; PLAYTEST #70)
 - v1.193 — each school's pad site has its own ground: Arsenal's hill, Coastal's jungle clearing, Mountain's ridge, Isle's headland (2026-10-13, world session, QUEUE Q105)
 - v1.251 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
-- v1.350 — Selene's relief, live: the march on Selene (one full-resolution march, the sky and moon passes read it), CPU/GPU agreement in mm, saves and tapes moved onto it, `landAt` watches the ground ahead (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
+- v1.351 — Selene's relief, live: the march on Selene (one full-resolution march, the sky and moon passes read it), CPU/GPU agreement in mm, saves and tapes moved onto it, `landAt` watches the ground ahead (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 

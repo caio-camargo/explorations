@@ -1645,7 +1645,7 @@ git): `output/launchpad/q494-craters/` before-/after-.
 **Left:** terraced walls; rays and bright ejecta on the young (an albedo term: look & sound's `main`); the rim's lean in
 the gradient. Merged with Q493 (sky & bodies) the same night: its `cratF` window, my `cratG` cell size; TESTING 328.
 
-## v1.350 — Selene's relief, live: the march on Selene (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
+## v1.351 — Selene's relief, live: the march on Selene (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
 
 Selene has had real ground on the CPU since v1.58 (G2): a baked map (highland swell, the big craters, the maria flooded)
 plus six procedural crater bands. It wasn't live, because nothing drew it. Now the shaders draw the same numbers, and

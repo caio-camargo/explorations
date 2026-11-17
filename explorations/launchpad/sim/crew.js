@@ -62,3 +62,33 @@ function crewEnd(s,R){if(!(PROG.crew||[]).length)return;const day=PROG.day,reg=n
   first('days60',true,back.filter(a=>a.rec.days>=60))}
 // (Q616) a crew a hostile power held is let go, whatever the answer
 function crewRelease(did){for(const a of PROG.crew||[])if(a.status==='held'&&a.held===did){a.status='ready';a.held=null}}
+// ---- requalification after a loss (QUEUE Q183; W24 4; CREW § "Requalification after a loss"; notes/economy.md § v1.350).
+// A crew lost sets PROG.requal from the flight record: what killed them and how far the flight had gone. Until a real
+// flight (not the simulator: what was wrong was the truth) takes the crew capsule as far, with dummies, and brings it
+// home inside every limit (g, cabin, air), capsules fly dummies. Not refused: the flight that carries the dummies is the
+// qualification flight, so a loss costs a flight and a design problem, not a wait (pillars 2, 5). A closed power is
+// offered the skip: fly people again now, hushed, the cause unfixed; each crewed flight until a qualification flight
+// adds to what can leak.
+const REQUAL_FAR=0.9;   // as far as the lost flight went, within this share
+function requalKind(s,R){const cap=s.parts.find(p=>p.on&&p.d.crew);return!s.alive||!cap?'lost':R.cgMax>G_LIM?'g':R.ccab>CABIN_MAX?'cabin':'air'}
+const requalHolds=()=>!!(PROG.requal&&!PROG.requal.skip);
+const requalKm=q=>Math.max(0,q.far||0)/1000;
+// what the qualification flight has to show, in a line (the Rollout, the news)
+const requalWhat=q=>`fly a crew capsule uncrewed${q.far>1000?` to ${requalKm(q).toFixed(0)} km${q.body&&q.body!=='Tellus'?` (${q.body})`:''}`:''} and bring it home inside the limits${q.kind==='g'?` (it was ${q.val.toFixed(1)} g)`:q.kind==='cabin'?` (the cabin reached ${q.val.toFixed(0)} K)`:q.kind==='air'?' (the air ran out)':''}`;
+function requalSet(s,R,as){const q={kind:requalKind(s,R),why:R.crewWhy||'were lost',val:0,far:R.far||0,body:s.body&&s.body.name,
+    day:PROG.day,flight:PROG.flights+1,design:s.stack?designName(s.stack):s.name||'',names:as.map(a=>a.name),skip:false};
+  q.val=q.kind==='cabin'?R.ccab:q.kind==='g'?R.cgMax:0;PROG.requal=q;
+  HOOK.news(`Crews stand down until the cause is fixed: ${requalWhat(q)}`,'warn');
+  if(flav(HOME).open<0.5)offerDecision({kind:'requal',life:60,title:'Requalify, or fly again now?',
+    text:`The loss is not public. Requalify (${requalWhat(q)}), or put a crew up again now, hushed, the cause unfixed: each crewed flight until a qualification flight adds to what can leak.`,
+    opts:[['requal','Requalify first'],['skip','Fly again now, hushed']]})}
+function requalAnswer(d,key){if(key!=='skip'||!PROG.requal)return;PROG.requal.skip=true;HOOK.news('Crews fly again. Officially, nothing needed fixing','warn')}
+// at the flight's first tick: a skipped requalification flies people, and each such flight is one more thing hushed
+function requalLaunch(R){if(PROG.requal&&PROG.requal.skip&&R.crewed){PROG.hush=(PROG.hush||0)+1;PROG.hushPen=(PROG.hushPen||0)-4;R.requalSkip=true}}
+// the flight's end (missionEnd): a capsule flown with dummies while crews stand down is the qualification flight
+function requalEnd(s,R){const q=PROG.requal;if(!q||!R.requalFlight)return;
+  const miss=!(s.alive&&R.capHome)?'the capsule did not come home':(R.far||0)<REQUAL_FAR*q.far?`it reached ${((R.far||0)/1000).toFixed(0)} km of the ${requalKm(q).toFixed(0)} needed`
+    :R.cgMax>G_LIM?`the dummies saw ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`the cabin reached ${R.ccab.toFixed(0)} K`:simT+(R.airX||0)>CREW_AIR?'the air would have run out':'';
+  if(miss){R.requal={ok:false,why:miss};HOOK.news(`Not requalified yet: ${miss}`,'warn');return}
+  PROG.requal=null;R.requal={ok:true};PROG.decisions=(PROG.decisions||[]).filter(d=>d.kind!=='requal');
+  HOOK.news(`Requalified: the capsule went as far as the lost flight and came home inside the limits. Crews fly again`,'ok')}

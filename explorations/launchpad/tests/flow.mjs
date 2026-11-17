@@ -114,6 +114,7 @@
     api.t = 0; const s = api.newShip(['chute', 'crew', 't2', 'petrel']); api.S = s; s.landed = false; api.missionTick(s, 0, false); end(s); return { s, D: api.debriefOf(s, s.rec, []) }; };
   const home = fly(true, s => { s.landed = true; s.alive = true; api.t = 2.5 * api.DAY_S; s.rec.crewOK = true; });
   const lost = fly(true, s => { s.alive = false; api.t = 300; api.missionTick(s, 0, false); });
+  P.requal = null;   // (Q183) after the loss crews stand down: this check is about the line, not requalification (econ-47)
   const up = fly(true, s => { api.t = 3600; });
   const dummies = fly(false, s => { s.landed = true; });
   P.done = d0; api.t = 0;
