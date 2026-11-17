@@ -1715,6 +1715,8 @@ fps on the RTX. The fallback is the next item (Proposed in QUEUE):
 - it is exact to the probe's bar at 0.5 m spacing;
 - it also serves G4's near shadow rays.
 
+**On the Intel iGPU** (Edge, same views at full resolution, before the scaler): Tellus's pad 34 ms; view 186 87 ms
+(15 on the sphere), 189 80 ms (10): 2.5× the pad, where the resolution scaler takes over. The cache matters most there.
 `SKY_FS`'s fresh compile is 25 s on this machine, on `main` too (measured; PSELD adds 0.6 s, the pre-pass 2 s).
 
 **Going live (G3.4).**
@@ -1746,5 +1748,5 @@ fps on the RTX. The fallback is the next item (Proposed in QUEUE):
 - **Q608:** the robot's m3 row can fly a crew to a named place.
 - **Q609:** `groundAlt(SELENE, pf)` is the live ground for EVA.
 
-**Not checked:** the iGPU (Low); a human's landing into a crater; rovers driven on relief (their physics already follows
+**Not checked:** a human's landing into a crater; rovers driven on relief (their physics already follows
 `groundR`); TESTING 131 (Selene from Tellus) re-judged.

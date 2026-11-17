@@ -154,7 +154,7 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('fly_crewlun
   const { pageSource } = await import('./page.mjs');
   const html = pageSource();
   const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-  const api = new Function(src + `return {predictImpact,isLand,rails,PRESETS,TELLUS,SELENE,newShip,stage,advPhys,advRails,railsOK,localFrame,qFromBasis,qrot,elements,timeToNu,kepler,predict,predictFrom,dvRemaining,dvPlan,activeEngines,bodyRel,surfVel,HOOK,PROG,DT,len,norm,add,sub,mul,dot,cross,
+  const api = new Function(src + `return {groundAlt,toPF,predictImpact,isLand,rails,PRESETS,TELLUS,SELENE,newShip,stage,advPhys,advRails,railsOK,localFrame,qFromBasis,qrot,elements,timeToNu,kepler,predict,predictFrom,dvRemaining,dvPlan,activeEngines,bodyRel,surfVel,HOOK,PROG,DT,len,norm,add,sub,mul,dot,cross,
     get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};`)();
   const R = crewLunar(api, m => console.log(m)); console.log(JSON.stringify(R, (k, v) => typeof v === 'number' ? +v.toFixed(2) : v));
 }
