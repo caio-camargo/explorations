@@ -1295,3 +1295,63 @@ return out`);
     `1 × 1 m: ${shapes.map(x => `${x.nm} ${x.kg.toFixed(1)} kg`).join(', ')}; tapered to half ${(tap.m * 1000).toFixed(1)} kg; default ${(F.m * 1000).toFixed(1)} kg; ` +
     `laid out ${okLay} (core at ${(pc.y0 - pf.y0).toFixed(2)} m, whip ${Math.hypot(pw.pos[0], pw.pos[2]).toFixed(2)} m out); adapters ${A.map(x => x.ad).join(', ')} (${okAd}); save ${okSave}; shape ${okShape}; shapes ${okShapes}, taper ${okTaper}, defs ${okDef}`);
 }
+
+// vehicle-49. Mounts on a frame, upright (vehicle, QUEUE Q618, D47 point 1; notes/vehicle.md § "Plan: the bench as its own
+// builder", slice 2): a part on a frame's face, edge or corner carries a pose (foot, rotation); partC, partAxis and partBox
+// read it; geom's inertia turns the part's own cylinder with it. Against hand numbers on a 1 × 1 m square frame (corners at
+// 0°, 90°, 180°, 270°, so face s0's normal is at 45°); reshaping keeps places; the fairing fit and the adapter ring read the
+// posed shape; a save and a registered shape keep the pose.
+{
+  const P = api.PARTS, near = (a, b, e = 1e-9) => Math.abs(a - b) < e, nearV = (a, b, e = 1e-9) => a.every((x, i) => near(x, b[i], e));
+  const c = Math.SQRT1_2, fr = { n: 4, w: 1, h: 1, top: 1 }, S = d => api.newShip(JSON.parse(JSON.stringify(d)));
+  const pay = (kids, f = fr) => ({ v: 2, root: { k: 'frame', fr: f, c: kids } });
+  // (a) a 0.4 m propellant sphere in the middle of face s0: its foot at (0.25, 0.5, 0.25) on the frame, standing along (c, 0, c)
+  const sp = P.sph4, s1 = S(pay([{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5 }, c: [] }])), pf = s1.parts.find(p => p.d.key === 'frame'), ps = s1.parts.find(p => p.d.key === 'sph4');
+  const foot = [0.25, pf.y0 + 0.5, 0.25], n0 = [c, 0, c], C0 = foot.map((v, i) => v + n0[i] * sp.h * sp.cm);
+  const reach = Math.hypot(Math.hypot(0.25, 0.25) + sp.h, sp.r);   // the far end's rim, sideways along the face
+  const B = api.partBox(ps), okPose = !!ps.pose && nearV(ps.pose.f, foot) && nearV(api.partAxis(ps), n0) && nearV(api.partC(ps), C0) &&
+    near(B.lo, foot[1] - sp.r) && near(B.hi, foot[1] + sp.r) && near(B.reach, reach) && nearV(api.partAxis(pf), [0, 1, 0]);
+  // (b) the craft: mass and centre of mass, and inertia by hand: the sphere's own cylinder (ip across, ir along its axis)
+  // turned to 45° gives (ip+ir)/2 about x and z and ip about y, plus each part's mass times its distance squared
+  const mf = pf.d.m * 1000, ms = sp.m * 1000, M = mf + ms, Cf = [0, pf.y0 + pf.h * pf.d.cm, 0], cm = Cf.map((v, i) => (v * mf + C0[i] * ms) / M);
+  const cyl = (m, r, h) => [m * (h * h / 12 + r * r / 4), m * r * r / 2], [fp_, fr_] = cyl(mf, pf.d.r, pf.h), [sp_, sr_] = cyl(ms, sp.r, sp.h);
+  const pa = (m, p) => { const d = p.map((v, i) => v - cm[i]); return [m * (d[1] ** 2 + d[2] ** 2), m * (d[0] ** 2 + d[2] ** 2), m * (d[0] ** 2 + d[1] ** 2)]; };
+  const Pf = pa(mf, Cf), Ps = pa(ms, C0), I = [Pf[0] + fp_ + Ps[0] + (sp_ + sr_) / 2, Pf[1] + fr_ + Ps[1] + sp_, Pf[2] + fp_ + Ps[2] + (sp_ + sr_) / 2];
+  const okGeom = near(s1.mass, M, 1e-9) && nearV(s1.cm, cm, 1e-12) && nearV(s1.I, I, 1e-9) && near(s1.len, 1, 1e-12);
+  // (c) two copies (s0 and s2) balance on the axis; an edge, a corner, the top and the bottom point where they should
+  const s2 = S(pay([{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5, n: 2 }, c: [] }])), two = s2.parts.filter(p => p.d.key === 'sph4');
+  const okCopies = two.length === 2 && near(Math.hypot(s2.cm[0], s2.cm[2]), 0, 1e-12) && nearV(api.partAxis(two[1]), [-c, 0, -c]);
+  const s3 = S(pay([{ k: 'batt3', at: { e: 'v0', t: 0.25 }, c: [] }, { k: 'batt3', at: { c: 'ct0' }, c: [] }, { k: 'whip', at: { f: 'top', s: 0, t: 0.5 }, c: [] }, { k: 'scam', at: { f: 'bot', s: -0.5, t: 0 }, c: [] }]));
+  const f3 = s3.parts.find(p => p.d.key === 'frame'), [eb, cb] = s3.parts.filter(p => p.d.key === 'batt3'), wh = s3.parts.find(p => p.d.key === 'whip'), sc = s3.parts.find(p => p.d.key === 'scam');
+  const ct = (() => { const v = [2 * c, 1, 0], l = Math.hypot(...v); return v.map(x => x / l); })();
+  const okPlaces = nearV(eb.pose.f, [0.5, f3.y0 + 0.25, 0]) && nearV(api.partAxis(eb), [1, 0, 0]) && nearV(cb.pose.f, [0.5, f3.y0 + 1, 0]) && nearV(api.partAxis(cb), ct) &&
+    nearV(wh.pose.f, [0, f3.y0 + 1, 0.25]) && nearV(api.partAxis(wh), [0, 1, 0]) && nearV(sc.pose.f, [-0.25, f3.y0, 0]) && nearV(api.partAxis(sc), [0, -1, 0]) &&
+    near(api.partC(sc)[1], f3.y0 - P.scam.off) && near(api.partBox(sc).lo, f3.y0 - P.scam.off - P.scam.r) && near(s3.len, P.scam.off + P.scam.r + 1 + P.whip.h, 1e-12);   // from the camera under it to the whip's tip
+  // only parts that push nothing; a mount on anything but a sized frame is ignored
+  const okWhat = api.mountOK(P.sph4) && api.mountOK(P.scam) && !api.mountOK(P.kick30) && !api.mountOK(P.rcs) && !api.mountOK(P.spin) && !api.mountOK(P.bpanel) &&
+    S(pay([{ k: 'kick30', at: { f: 's0', s: 0.5, t: 0.5 }, c: [] }])).parts.length === 1 && api.newShip({ v: 2, root: { k: 'octl', c: [{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5 }, c: [] }] } }).parts.length === 1;
+  // (d) reshaping keeps places: names wrap round the sides, a spot on an end stays inside it, copies that no longer fit become one
+  const G4 = api.frameGeo(f3.d), G6 = api.frameGeo(api.frameDef(P.frame, { n: 6, w: 1, h: 1, top: 1 }));
+  const fx = [api.mountFix(G4, { f: 's5', s: 0.3, t: 2 }), api.mountFix(G4, { c: 'ct7' }), api.mountFix(G4, { e: 'b4', t: 0.5 }), api.mountFix(G4, { f: 'top', s: 1, t: 1 }), api.mountFix(G4, { f: 's1', s: 0.5, t: 0.5, n: 3 }), api.mountFix(G6, { f: 's1', s: 0.5, t: 0.5, n: 3 })];
+  const okFix = fx[0].f === 's1' && fx[0].t === 1 && fx[1].c === 'ct3' && fx[2].e === 'b0' && near(Math.hypot(fx[3].s, fx[3].t), c, 1e-3) && fx[4].n === 1 && fx[5].n === 3 && !!api.mountPlace(G4, fx[3]);
+  // (e) on a rocket: the same sphere fits a fairing on a small frame and sticks out from a wide one; one hanging under the
+  // bottom deeper than the ring grows the ring, a short one doesn't; what stands on the ring still sits on its top
+  const rocket = (pd) => { const d = api.toV2(['fair', 't2', 'petrel']), f = d.root.k === 'fair' ? d.root : (function g(n) { return n.k === 'fair' ? n : (n.c || []).map(g).find(Boolean); })(d.root);
+    f.c.push({ k: 'pay', pid: null, name: 'test', at: 'u', pd, c: [] }); return S(d); };
+  const fitOf = w => { const r = rocket(pay([{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5 }, c: [] }], { n: 4, w, h: 0.6, top: 1 })); return !!r.parts.find(p => p.d.key === 'sph4').inFair; };
+  const hangOf = k => { const r = rocket(pay([{ k, at: { f: 'bot', s: 0, t: 0 }, c: [] }], { n: 6, w: 1, h: 0.6, top: 1 })), a = r.parts.find(p => api.isAdapter(p.d)), fp = r.parts.find(p => p.d.key === 'frame'), q = r.parts.find(p => p.d.key === k);
+    return { h: a.h, m: a.d.m, base: P[a.d.key.split(':')[0]] || P[api.payAdapter(0.5)], sits: fp.y0 - (a.y0 + a.h), clear: api.partBox(q).lo - (a.y0 + api.RING_LIP) }; };
+  const Hs = hangOf('batt3'), Hl = hangOf('sph4'), base = P[api.payAdapter(0.5)];
+  const okRing = fitOf(0.6) && !fitOf(1.2) && near(Hs.h, base.h) && near(Hl.h, P.sph4.h + api.RING_LIP, 1e-6) && near(Hl.m, base.m * Hl.h / base.h, 1e-9) && near(Hs.sits, 0, 1e-9) && near(Hl.sits, 0, 1e-9) && Hl.clear > -1e-6;
+  // the envelope: a band below the stand for the hanging sphere, as far out as its rim; the frame's own reach above
+  const E = api.payEnvelope(pay([{ k: 'sph4', at: { f: 'bot', s: 0, t: 0 }, c: [] }], { n: 6, w: 1, h: 0.6, top: 1 })), low = E.filter(b => b.y1 <= 1e-9), up = E.filter(b => b.y0 >= -1e-9);
+  const okEnv = near(E[0].y0, -P.sph4.h, 1e-6) && low.every(b => near(b.r, P.sph4.r, 1e-9)) && up.every(b => near(b.r, 0.5, 1e-9)) && near(E[E.length - 1].y1, 0.6, 1e-6);
+  // (f) a save reads back the same craft; a registered shape keeps the pose
+  const s4 = S(JSON.parse(JSON.stringify(pay([{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5 }, c: [] }]))));
+  const sh = JSON.parse(JSON.stringify(api.shapeOf(s1.parts.filter(p => p.on), false))).find(o => o.k === 'sph4');
+  const okSave = near(s4.mass, s1.mass) && nearV(s4.cm, s1.cm) && nearV(s4.I, s1.I) && !!sh.pose && nearV(sh.pose.f, ps.pose.f) && nearV(sh.pose.q, ps.pose.q);
+  check('vehicle-49: a part mounted on a frame\'s face, edge or corner stands along its normal; centre of mass, inertia and reach against hand numbers; reshaping keeps places; the fairing and the ring read the pose; saves keep it',
+    okPose && okGeom && okCopies && okPlaces && okWhat && okFix && okRing && okEnv && okSave,
+    `pose ${okPose} (foot ${ps.pose && ps.pose.f.map(v => v.toFixed(3))}, reach ${B.reach.toFixed(3)}); geom ${okGeom} (I ${s1.I.map(v => v.toFixed(2))} vs ${I.map(v => v.toFixed(2))}); copies ${okCopies}; places ${okPlaces}; ` +
+    `only push-nothing parts ${okWhat}; reshape ${okFix}; fairing and ring ${okRing} (ring ${Hs.h.toFixed(2)} → ${Hl.h.toFixed(2)} m); envelope ${okEnv} (${E.length} bands); save ${okSave}`);
+}

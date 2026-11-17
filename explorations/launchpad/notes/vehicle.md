@@ -2898,3 +2898,73 @@ ahead with 1". The bench needs a bus the player shapes before anything can be mo
 - The frame is offered in the rocket builder too, as the octagonal frames are.
 
 TESTING 398.
+
+## v1.351 — mounts on a frame, upright: the sim (bench slice 2a, 2026-11-17, vehicle session, QUEUE Q618, D47 point 1)
+
+**Why:** slice 2 of § "Plan: the bench as its own builder, points 1 and 2". Q618 is size L, so it lands in two parts that
+each merge on their own: **2a** (this) is the sim and the drawing, with nothing a player can do yet; **2b** is the bench's
+pointer work (§ v1.352 when it lands).
+
+**The census first** (the plan's "Not checked" asked for it): which `.y0` / `.pos[` readers can a mounted part reach, and
+what each needs. Counted on `main` at 780e187: `.y0` 171 and `.pos[` 210 across `sim/` (vessel 46/38, space 18/30,
+flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor 4/4; program-ui's 4 and render's 1 are screen rectangles, not parts),
+`builder.js` 28/26 and `views.js` 4/0. By what they do:
+
+| Reader | What it reads | A mounted part |
+|---|---|---|
+| `partC` (11 calls), `geom` (mass, length, inertia) | centre of mass; `y0`, `h`; an upright cylinder | **taught the pose** (below) |
+| `fairFits`, the fit row, `payExpand`'s adapter | `y0`, `h`, distance + `r` | **taught**: `partBox` |
+| drawing (`partShape`, the registry's `satMesh`) | `pos`, `y0`, `phi` | **taught**: drawn in its own frame, then turned (app/gl.js) |
+| `shapeOf` (a registered craft) | copies `pos`, `y0`, `phi` | **keeps** the pose (`o.pose`), so a released satellite draws as built |
+| `shapeLines` (aero), `seaPose` | stack lines by `pos` | **left out**: mounted parts are out of the air one by one (`p.pose`), as the plan says |
+| `footPoints`, `buryParts` (ground), `hitGeo` / debris hits, `rvFootR`, `model-desk`, `fitHTML`, `views.js` | `pos`, `y0`, `h`, `r`, `phi` | **roughly right as is**: `x, z, y0` are the part's upright bounding cylinder (centred on its own centre; a surface part on its foot as on a hull), `phi` the normal's bearing |
+| `power.js` (a wing's sun angle) | `phi` | right on a side face (the normal's bearing); the true answer is slice 4's views |
+| thrust (`thrustPt`, `tdir`, `rcsNozzles`), spin motors (`flight.js` 356), fins, ports, arms, claws, legs, chutes | `pos`, `y0`, `phi` | **not reachable**: `mountOK` keeps everything that pushes, steers, docks or lands off a mount; slice 5 opens thrust |
+| builder: `hitPart`, `collides`, `trial`, `stackSlots`, the card | `pos`, `y0`, `h`, `phi` | 2b's (v1.352) |
+
+**What:**
+- **A mount** is `at: {f:'s2', s, t}` (a side face: across 0 → 1 from corner k to k+1, up 0 → 1), `{f:'top'|'bot', s, t}`
+  (x and z from the centre, −1 → 1 of that end's corner radius), `{e:'v3'|'t3'|'b3', t}` or `{c:'cb3'|'ct3'}`, with `n`
+  copies round the long axis. The plan's fields; the mock-up's names. Corner k stands at 2πk/N, as `partBody` draws the
+  frame. Only on a sized `frame` (an `oct` frame keeps the old radial places), and only for parts that push nothing.
+- **`frameGeo(d)`** (the corners, the faces' outward normals, the named edges and corners), **`mountPlace(G, at)`** (the
+  foot, the normal, a direction along the surface), **`mountFix(G, at)`** (after a reshape: names wrap round the sides, a
+  spot on an end stays inside it, copies that no longer divide the sides become one), **`mountPose(P, at, d, j, m)`**.
+- **The pose** (`inst.pose`, `p.pose`): the foot `f`, a quaternion `q` from the part's own drawing frame, and `sf`.
+  Upright: a stack part stands on its base along the normal (`+Y` → the normal); a surface part lies on the face as on a
+  hull, its outer side along the normal and its length up the face (`+X` → the normal, `+Y` → up the face). A whip, whose
+  rod is its length, stands along the normal like a stack part (`MOUNT_UP`). On the top and the bottom a surface part's
+  length lies across the face.
+- **`partC`** reads the pose; **`partAxis(p)`** is the way a part points (a stack part's axis, a surface part's outer side;
+  `[0,1,0]` for an upright stack part, outward for an upright surface part): Q338's boresight and slice 5's thrust line.
+  **`partBox(p, ax)`** is its lowest and highest point and its farthest reach from an axis, from the 16 rim points of its
+  bounding cylinder through the pose.
+- **`geom`**: length from `partBox`; inertia with the part's own cylinder `[ip, ir, ip]` turned through `rotI(q, …)`
+  before it is summed. The craft's inertia stays diagonal, as the plan says.
+- **The adapter ring is hollow.** `payHang` measures how far the parts mounted on the bottom of what stands on the ring hang
+  below it; past the ring's depth less its 5 cm bottom flange (`RING_LIP`), the ring's node gets `ah` and `adaptDef` makes it
+  that much taller, heavier in proportion, its slope stretched. The ring is drawn from its profile now (all three sizes).
+- **`payEnvelope(pd)`**: for each 5 cm band of height (from the bottom of what stands on the ring), the farthest any part
+  reaches from the axis. Nothing reads it yet: the fit row reads each part's `partBox` against the fairing's outline at
+  both ends, which is the same test per part. It is the door the plan keeps for point 3 (stowed and deployed).
+
+**Checks:**
+- `vehicle-49`, against hand numbers on a 1 × 1 m square frame (face s0's normal at 45°): a 0.4 m propellant sphere in
+  the middle of s0 (foot, axis, centre of mass, lowest and highest point, reach); the craft's mass, centre of mass and the
+  three moments worked by hand (the sphere's own cylinder at 45° gives (ip + ir)/2 about x and z, ip about y); two copies
+  balance on the axis; an edge, a top corner (normal (2c, 1, 0)), a whip on the top standing up and a side camera under the
+  bottom looking down; the length from the camera to the whip's tip; pushing parts and `oct` hosts refused; reshapes; on a
+  rocket the sphere fits a 4 m fairing from a 0.6 m frame and sticks out from a 1.2 m one; a 0.4 m sphere under the
+  bottom grows the 0.15 m ring to 0.45 m (30 kg → 90 kg) and a short battery doesn't, the frame still
+  sitting on the ring's top; the envelope's bands; a save and a registered shape keep the pose.
+- **Old designs lay out as before:** the fingerprint of all 19 presets and starters (306 parts: mass, centre of mass,
+  inertia, length, every part's place, size and centre) is byte-identical to `main`'s.
+- Smoke: everything passed but 6b, the warp-frame timing (2.4 ms a frame on this machine, with the world session's game
+  running in Chrome), which this slice doesn't touch. The full suite is CI's.
+
+**Not done, not checked:**
+- **No player can make a mount yet**: 2b gives the bench its pointer work. Until then the drawing of a posed part is
+  checked only by the arithmetic it shares with the sim (the same quaternion); nothing was looked at in a browser.
+- In the open (no fairing) mounted parts meet no air at all; the plan's one envelope profile on the stack line is not added.
+- A wing or boom on a mount deploys along its normal's bearing (`phi`); on the top or bottom face that bearing means
+  little. Slice 4's views replace it.

@@ -1443,6 +1443,10 @@ function stationTrim(out,x,y,z,h,angs){const HR=[.85,.65,.12];for(const a of ang
 function labWindow(out,x,y,z,yy,a){const c=Math.cos(a),sn=Math.sin(a);rbox(out,[x+c*.632,y+yy,z+sn*.632],.012,.16,.16,C.D,a);rbox(out,[x+c*.642,y+yy,z+sn*.642],.008,.12,.12,C.GL,a);
   for(let k=0;k<8;k++){const t=k*Math.PI/4,dy=Math.cos(t)*.14,ds=Math.sin(t)*.14;rbox(out,[x+c*.646-sn*ds,y+yy+dy,z+sn*.646+c*ds],.008,.012,.012,[.5,.5,.52,1],a)}}
 function partShape(out,p){
+  // (Q618) a part mounted on a frame: drawn in its own frame (a stack part up +Y from its base, a surface part's outer side
+  // +X, centred on its foot), then turned and moved onto its foot
+  if(p.pose){const a=[],q=p.pose.q,f=p.pose.f;partShape(a,{...p,pose:null,pos:[0,0,0],y0:p.pose.sf?-p.h/2:0,phi:0});
+    for(let i=0;i<a.length;i+=VX){const P=qrot(q,[a[i],a[i+1],a[i+2]]),N=qrot(q,[a[i+3],a[i+4],a[i+5]]);out.push(P[0]+f[0],P[1]+f[1],P[2]+f[2],N[0],N[1],N[2]);for(let k=6;k<VX;k++)out.push(a[i+k])}return}
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
   const d=p.d,sch=partSchool(p);PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch,hq:partHue(p),up:sch>=2&&UPPER&&UPPER.has(p)?1:0};partBody(out,p);PK=PK0}
@@ -1692,8 +1696,7 @@ function partBody(out,p){
       else{tube(out,H,P(.08,h*.4),.05,C.ST,10);tube(out,P(.08,h*.4),P(.08,.1),.032,PIS,10);tube(out,P(.05,h*.12),P(.07,h*.55),.02,C.D,6);
         rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
     // the payload bench's parts (vehicle, Q416/Q422): plain shapes at their real size, from their profiles; parts & pad styles them (Q396)
-    case'padapt':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.5,.15,C.ST]],o,32);break;
-    case'padapt6':case'padapt3':{const t=d.prof[d.prof.length-1];lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[t[0],t[1],C.ST]],o,32)}break;   // narrowing to a small payload (Q505)
+    case'padapt':case'padapt6':case'padapt3':{const t=d.prof[d.prof.length-1];lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[t[0],t[1],C.ST]],o,32)}break;   // narrowing to a small payload (Q505)
     case'kick30':case'kick80':case'kick200':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.BK]),o,20);break;
     case'apogee':lathe(out,d.prof.map(([r,yy],i)=>[r,yy,i<2?C.ST:C.D]),o,16);break;
     case'hthr':lathe(out,[[.2,0,C.D],[.2,h,C.D]],o,16);for(let k=0;k<4;k++){const a2=k*Math.PI/2+Math.PI/4;lathe(out,[[.025,-.05,C.ST],[.012,0,C.ST]],[x+Math.cos(a2)*.13,y,z+Math.sin(a2)*.13],8,[false,false])}break;

@@ -173,11 +173,79 @@ function frameDef(d,fr){if(!d||!d.sized)return d;const f=frOf(fr),id=[f.n,f.w,f.
   return FR_C[id]=Object.assign(id===FR0_ID?d:{...b},{fr:f,rt,area,h:f.h,r,m:+(area*FR_KG/1000).toFixed(4),prof:[[r,0],[rt,f.h]],C:1500*k*k,T:800*k*k,S:750*k*k,B:250*k*k*k,pk:area/a0,
     name:id===FR0_ID?'Frame':`Frame, ${FR_N.find(z=>z[0]===f.n)[1]} ${f.w.toFixed(1)} × ${f.h.toFixed(1)} m${f.top<1?', tapered':''}`})}
 const FR0_ID=[FR0.n,FR0.w,FR0.h,FR0.top].join(':');frameDef(PARTS.frame,FR0);   // the part in the palette is the default shape
-const nodeDef=nd=>frameDef(PARTS[nd.k],nd.fr),shDef=o=>frameDef(PARTS[o.k],o.fr);   // shDef: a registered craft's shape entry   // the bus a 0.6 m stack hangs its wings on
+const nodeDef=nd=>adaptDef(frameDef(PARTS[nd.k],nd.fr),nd.ah),shDef=o=>adaptDef(frameDef(PARTS[o.k],o.fr),o.ah);   // shDef: a registered craft's shape entry   // the bus a 0.6 m stack hangs its wings on
+// ---- mounts on a frame (Q618, bench slice 2; D47 point 1; notes/vehicle.md § "Plan: the bench as its own builder" § 1). A
+// part on a sized frame's face, edge or corner: at {f:'s2', s, t} (side face k: across 0 → 1 from corner k to k+1, up 0 → 1),
+// {f:'top'|'bot', s, t} (x and z from the centre, −1 → 1 of that end's corner radius), {e:'v3'|'t3'|'b3', t} (a side edge
+// up, or face k's top or bottom edge from corner k to k+1), {c:'cb3'|'ct3'}; n copies round the long axis. Corner k stands
+// at 2πk/N round the axis, as the frame is drawn. Upright, the only pose before slice 3's tilt: a stack part stands on its
+// base along the outward normal; a surface part lies on it as it lies on a hull, its outer side along the normal and its
+// length up the face. A mounted part is a leaf (nothing hangs on it) and pushes nothing (mountOK; thrust is slice 5's).
+const mountAt=at=>!!at&&typeof at==='object'&&(at.f!=null||at.e!=null||at.c!=null);
+const MOUNT_NO=new Set(['engine','rcs','spin','chute','shield','frame','bwt','leg','dec','rdec','fair','pod','port','claw','arm','rover','fins','rfin']);
+const mountOK=d=>!!d&&!d.body&&!d.radialOnly&&!d.payOnly&&!MOUNT_NO.has(d.kind);
+// a whip is a surface part whose rod runs up its length: on a mount it stands along the normal, as a stack part does
+const MOUNT_UP=new Set(['whip']),FR_GEO=new Map();
+// a frame's corners, faces (outward normals), edges and corners as named places, in its own coordinates (its bottom's centre at 0)
+function frameGeo(d){let G=FR_GEO.get(d);if(G)return G;const f=d.fr,N=f.n,r=d.r,rt=d.rt,h=d.h,m=k=>((k%N)+N)%N,B=[],T=[],F={},E={},C={};
+  for(let k=0;k<N;k++){const a=2*Math.PI*k/N;B.push([r*Math.cos(a),0,r*Math.sin(a)]);T.push([rt*Math.cos(a),h,rt*Math.sin(a)])}
+  for(let k=0;k<N;k++){const k1=m(k+1);F['s'+k]={k,n:norm(cross(sub(T[k],B[k]),sub(B[k1],B[k]))),c:['cb'+k,'cb'+k1,'ct'+k1,'ct'+k],e:['v'+k,'v'+k1,'t'+k,'b'+k]}}
+  F.top={n:[0,1,0],c:T.map((_,k)=>'ct'+k),e:T.map((_,k)=>'t'+k)};F.bot={n:[0,-1,0],c:B.map((_,k)=>'cb'+k),e:B.map((_,k)=>'b'+k)};
+  for(let k=0;k<N;k++){const k1=m(k+1);E['v'+k]={a:B[k],b:T[k],f:['s'+m(k-1),'s'+k]};E['t'+k]={a:T[k],b:T[k1],f:['s'+k,'top']};E['b'+k]={a:B[k],b:B[k1],f:['s'+k,'bot']};
+    C['cb'+k]={p:B[k],f:['s'+m(k-1),'s'+k,'bot']};C['ct'+k]={p:T[k],f:['s'+m(k-1),'s'+k,'top']}}
+  G={N,r,rt,h,B,T,F,E,C};FR_GEO.set(d,G);return G}
+const lerp3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+// a place on the frame → {p, n, u}: the foot, the way out, a direction along the surface (frame coordinates). null if no such place
+function mountPlace(G,at){if(!G||!mountAt(at))return null;const sumN=fs=>norm(fs.reduce((a,x)=>add(a,G.F[x].n),[0,0,0])),t=clamp(+at.t||0,0,1);let p,n,u;
+  if(at.c!=null){const c=G.C[at.c];if(!c)return null;p=c.p.slice();n=sumN(c.f);u=cross([0,1,0],n)}
+  else if(at.e!=null){const e=G.E[at.e];if(!e)return null;p=lerp3(e.a,e.b,t);n=sumN(e.f);u=sub(e.b,e.a)}
+  else if(at.f==='top'||at.f==='bot'){const R=at.f==='top'?G.rt:G.r;p=[(+at.s||0)*R,at.f==='top'?G.h:0,(+at.t||0)*R];n=G.F[at.f].n.slice();u=[1,0,0]}
+  else{const F=G.F[at.f];if(!F)return null;const k=F.k,k1=(k+1)%G.N,s=clamp(+at.s||0,0,1);p=lerp3(lerp3(G.B[k],G.T[k],t),lerp3(G.B[k1],G.T[k1],t),s);n=F.n.slice();u=sub(G.B[k1],G.B[k])}
+  u=sub(u,mul(n,dot(u,n)));if(len(u)<1e-6){u=sub([1,0,0],mul(n,n[0]));if(len(u)<1e-6)u=[0,0,1]}return{p,n,u:norm(u)}}
+// the frame was reshaped: keep a place as far as the new frame has one (names wrap round the sides; a spot on an end stays
+// inside it). Returns a new at; copies keep n only where they land on the same kind of place (n divides the sides)
+function mountFix(G,at){const N=G.N,re=x=>x.replace(/\d+$/,d=>String(+d%N)),o={...at};
+  if(o.c!=null)o.c=re(o.c);else if(o.e!=null){o.e=re(o.e);o.t=clamp(+o.t||0,0,1)}
+  else if(o.f==='top'||o.f==='bot'){let s=+o.s||0,t=+o.t||0;const ph=Math.atan2(t,s),st=2*Math.PI/N,dl=ph-(Math.floor(ph/st)+.5)*st,mx=Math.cos(Math.PI/N)/Math.cos(dl),r=Math.hypot(s,t);
+    if(r>mx){s*=mx/r;t*=mx/r}o.s=+s.toFixed(4);o.t=+t.toFixed(4)}
+  else{o.f=re(o.f);o.s=clamp(+o.s||0,0,1);o.t=clamp(+o.t||0,0,1)}
+  if(o.n>1&&N%o.n)o.n=1;return o}
+// the pose of copy j of m of a part mounted at `at` on frame instance P (its bottom centre at P.x, P.y0, P.z): the foot f,
+// the rotation q from the part's own drawing frame (stack part: its axis +Y; surface part: its outer side +X, its length +Y),
+// sf (a surface part), n the way out. Vessel (layout) coordinates
+function mountPose(P,at,d,j=0,m=1){const pl=mountPlace(frameGeo(P.d),at);if(!pl)return null;const a=2*Math.PI*j/m,R=v=>rotY(v,-a);
+  const p=R(pl.p),n=R(pl.n),u=R(pl.u),f=[P.x+p[0],P.y0+p[1],P.z+p[2]],sf=!!d.surf&&!MOUNT_UP.has(d.key);let q;
+  if(sf){let v=sub([0,1,0],mul(n,n[1]));v=len(v)<1e-6?u:norm(v);q=qFromBasis(n,v,cross(n,v))}else q=qFromBasis(u,n,cross(u,n));
+  return{f,q,sf,n}}
+// a posed part's bounding cylinder in its own frame: the rim of each end, 8 points (a surface part's centred on its outer side)
+function poseRim(d,sf){const r=d.r||0.05,h=d.h,o=sf?(d.off||0):0,y=sf?[-h/2,h/2]:[0,h],out=[];
+  for(const yy of y)for(let k=0;k<8;k++){const a=k*Math.PI/4;out.push([o+r*Math.cos(a),yy,r*Math.sin(a)])}return out}
+// its lowest and highest point and its farthest reach from an axis (x, z): from the rim points through its pose; an upright
+// part (no pose) as before, from y0, h and its distance plus radius (and a surface part's standoff)
+function partBox(p,ax=[0,0]){if(!p.pose)return{lo:p.y0,hi:p.y0+p.h,reach:Math.hypot(p.pos[0]-ax[0],p.pos[2]-ax[1])+(p.d.off||0)+p.d.r};
+  let lo=Infinity,hi=-Infinity,reach=0;for(const v of poseRim(p.d,p.pose.sf)){const w=add(p.pose.f,qrot(p.pose.q,v));lo=Math.min(lo,w[1]);hi=Math.max(hi,w[1]);reach=Math.max(reach,Math.hypot(w[0]-ax[0],w[2]-ax[1]))}
+  return{lo,hi,reach}}
+// the way a part points (its boresight for Q338, its thrust line for slice 5): a posed part's own axis (a surface part's
+// outer side); an upright surface part's outward side; every other upright part straight up the stack
+function partAxis(p){if(p.pose)return qrot(p.pose.q,p.pose.sf?[1,0,0]:[0,1,0]);const s=p.inst?p.inst.surf:p.d&&p.d.surf;
+  return s&&p.phi!=null?[Math.cos(p.phi),0,Math.sin(p.phi)]:[0,1,0]}
+// a payload's envelope (D47, plan § 2): for each band of height, the farthest any of its parts reaches from the stack's axis,
+// heights from the bottom of what stands on the adapter (negative: hanging below it). [{y0, y1, r}] bottom to top, dy apart
+function payEnvelope(pd,dy=0.05){const L=layoutDesign(pd);if(!L.inst.length)return[];const B=L.inst.filter(q=>q.line===0).reduce((a,q)=>q.y0<a.y0?q:a);   // what stands on the adapter: the root line's lowest part
+  const bx=L.inst.map(q=>q.pose?partBox({pose:q.pose,d:q.d}):{lo:q.y0,hi:q.y0+q.d.h,reach:Math.hypot(q.x,q.z)+(q.surf?(q.d.off||0):0)+q.d.r}),
+    lo=Math.min(...bx.map(b=>b.lo)),hi=Math.max(...bx.map(b=>b.hi)),n=Math.max(1,Math.ceil((hi-lo)/dy-1e-9)),out=[];
+  for(let i=0;i<n;i++){const a=lo+i*dy,b=Math.min(hi,a+dy);let r=0;for(const x of bx)if(x.lo<b-1e-9&&x.hi>a+1e-9)r=Math.max(r,x.reach);out.push({y0:+(a-B.y0).toFixed(4),y1:+(b-B.y0).toFixed(4),r})}
+  return out}
 // the payload adapter for a small payload: the 1.25 m ring narrowing to the payload's own size (payAdapter picks it)
 PARTS.padapt6={...PARTS.padapt,key:'padapt6',name:'Payload adapter 0.6 m',h:0.2,prof:[[.625,0],[.625,.05],[.3,.2]]};
 PARTS.padapt3={...PARTS.padapt,key:'padapt3',name:'Payload adapter 0.3 m',h:0.25,prof:[[.625,0],[.625,.05],[.15,.25]]};
 const isAdapter=d=>!!(d&&d.payOnly&&d.kind==='dec');
+// (Q618) the adapter ring is hollow: a part hanging under the bottom of what stands on it fits inside if the ring is deep
+// enough (its bottom flange, RING_LIP, kept clear); otherwise the ring is made taller by ah, heavier in proportion, its slope
+// stretched (payExpand sets ah on the ring's node)
+const RING_LIP=0.05,AD_C={};
+function adaptDef(d,ah){if(!d||!(ah>0)||!isAdapter(d))return d;ah=+(+ah).toFixed(3);const id=d.key+':'+ah;if(AD_C[id])return AD_C[id];const H=d.h+ah,k=(H-RING_LIP)/(d.h-RING_LIP);
+  return AD_C[id]={...d,ah,h:H,m:d.m*H/d.h,prof:d.prof.map(([r,y])=>[r,y<=RING_LIP?y:RING_LIP+(y-RING_LIP)*k]),name:`${d.name}, ${H.toFixed(2)} m tall`}}
 // what the payload bench lists (vehicle session, Q506, PLAYTEST #139: "the payload section of the builder seems to include all
 // parts"): a satellite's parts, and chutes and heat shields for a capsule that comes home; tanks and engines only up to 0.7 m
 // (the spheres, kick motors, thrusters, the apogee engine). Not pods, the escape tower, nose cones, fairings, fins,
@@ -284,10 +352,14 @@ function payHas(n){return!!n&&(isPay(n)||(n.c||[]).some(payHas))}
 function payStandOn(root){const chain=[root];for(let n=root;;){const d=(n.c||[]).find(c=>c.at==='d');if(!d)break;chain.push(d);n=d}
   const cp=chain.map(n=>({...n,c:(n.c||[]).filter(c=>!chain.includes(c))}));
   for(let i=cp.length-1;i>0;i--){cp[i].c.push(cp[i-1]);cp[i-1].at='u'}const B=cp[cp.length-1];delete B.at;return B}
+// how far the parts mounted on the bottom of what stands on the adapter hang below it (Q618), 0 if none do
+function payHang(top,b){if(!b||!b.fr)return 0;let g=0;const P={d:b,x:0,y0:0,z:0};
+  for(const c of top.c||[]){if(!mountAt(c.at))continue;const d=nodeDef(c),m=Math.max(1,c.at.n|0);if(!mountOK(d))continue;
+    for(let j=0;j<m;j++){const ps=mountPose(P,c.at,d,j,m);if(ps)g=Math.max(g,-partBox({pose:ps,d}).lo)}}return g}
 function payExpand(des){if(!payHas(des.root))return des;
   const mark=(n,blk)=>{const c={...n,c:(n.c||[]).map(x=>mark(x,blk))};delete c.id;Object.defineProperty(c,'payOf',{value:blk});return c};
   const walk=n=>{if(isPay(n)){const pr=n.pd&&n.pd.root,ad={k:'padapt',at:n.at,c:(n.c||[]).map(walk)};if(n.j)ad.j=n.j;Object.defineProperty(ad,'payOf',{value:n});
-      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top);const b=nodeDef(top);ad.k=payAdapter(b?b.r:R0)}return ad}   // the ring narrows to what stands on it (Q505)
+      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top);const b=nodeDef(top);ad.k=payAdapter(b?b.r:R0);const g=payHang(top,b)-(PARTS[ad.k].h-RING_LIP);if(g>1e-6)ad.ah=+g.toFixed(3)}return ad}   // the ring narrows to what stands on it (Q505)
     const c={...n,c:(n.c||[]).map(walk)};Object.defineProperty(c,'src',{value:n});return c};
   return{...des,root:walk(des.root)}}
 const payDesigns=()=>{if(typeof PROG==='undefined')return[];if(!Array.isArray(PROG.payloads))PROG.payloads=[];return PROG.payloads};
@@ -311,6 +383,12 @@ function layoutDesign(des){
   const queue=[];const m0=lineOf(des.root),L0=place(m0,0,0,0,0,null,'');queue.push({mem:m0,L:L0});
   while(queue.length){const{mem,L}=queue.shift(),lineQ=[...L.byM.values()];
     for(const m of [...mem].sort((a,b)=>b.y-a.y))for(const c of m.nd.c||[]){if(!radAt(c.at))continue;
+      if(mountAt(c.at)){ // on a frame's face, edge or corner (Q618): a pose; x, z, y0 its upright bounding cylinder's for readers that know no pose
+        const P=L.byM.get(m),d=nodeDef(c),n=Math.max(1,c.at.n|0);if(!P.d.fr||!mountOK(d))continue;
+        for(let k=0;k<n;k++){const ps=mountPose(P,c.at,d,k,n);if(!ps)break;const B=partBox({pose:ps,d}),ph=Math.atan2(ps.n[2],ps.n[0]),
+            cx=ps.sf?ps.f:add(ps.f,qrot(ps.q,[0,d.h/2,0])),q={nd:c,d,x:cx[0],z:cx[2],y0:ps.sf?ps.f[1]-d.h/2:(B.lo+B.hi)/2-d.h/2,lo:B.lo,hi:B.hi,rot:ph,phi:ph,line:-1,surf:!!d.surf,mount:true,pose:ps,path:P.path+'/m'+k};
+          inst.push(q);joints.push({a:P,b:q,axis:ps.n,P:ps.f.slice(),j:c.j||0})}
+        continue}
       if(PARTS[c.k].surf){ // a surface part sits on the host's skin at that height; no line, no children
         const P=L.byM.get(m),at=c.at,d=wtDef(finDef(PARTS[c.k],c.fz),c.wk),n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;   // finDef: a sized fin (Q348)
         for(let k=0;k<n;k++){const ph=P.rot+at.a+2*Math.PI*k/n,nx=Math.cos(ph),nz=Math.sin(ph),
@@ -334,9 +412,10 @@ function layoutDesign(des){
 // segments drop and which ignite when.
 function assemble(stack){
   const des=toV2(stack),L=layoutDesign(des),parts=[];
-  let ymin=Infinity,ymax=-Infinity;for(const q of L.inst){ymin=Math.min(ymin,q.y0);ymax=Math.max(ymax,q.y0+q.d.h)}if(!L.inst.length)ymin=ymax=0;
+  let ymin=Infinity,ymax=-Infinity;for(const q of L.inst){ymin=Math.min(ymin,q.lo??q.y0);ymax=Math.max(ymax,q.hi??q.y0+q.d.h)}if(!L.inst.length)ymin=ymax=0;
   for(const q of L.inst){const p={i:parts.length,d:q.d,pos:[q.x,0,q.z],y0:q.y0-ymin,h:q.d.h,parent:null,children:[],on:true,
     res:{...(q.d.res0||{})},cap:{...(q.d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],dn:q.nd,inst:q};
+    if(q.pose)p.pose={f:[q.pose.f[0],q.pose.f[1]-ymin,q.pose.f[2]],q:q.pose.q,sf:q.pose.sf};   // mounted on a frame (Q618)
     if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;
     if(q.d.kind==='fair'&&!q.rdec){p.fl=fairLen(q.nd,q.d);p.fll=p.fl/(q.d.sc||1);p.xm=q.d.fm*p.fl;p.profF=fairProf(q.d,p.fl)}   // the shell on (Q337)
     if(q.nd.dep&&!q.rdec){if(q.d.kind==='leg'||unfolds(q.d))p.dep=true;else if(q.d.kind==='bay')p.open=true}   // deployed in the Assembly: it rolls out that way (Q328)
@@ -450,8 +529,7 @@ const WT_C={};function wtDef(d,kg){if(d.kind!=='bwt'||!(kg>0))return d;kg=Math.r
 function finDef(d,fz){if(d.kind!=='rfin'||!fz||!FIN_SZ[fz])return d;const id=d.key+':'+fz;if(FIN_C[id])return FIN_C[id];const k=FIN_SZ[fz].k,a=k*k;
   return FIN_C[id]={...d,fz,span:d.span*k,chord:d.chord*k,h:d.h*k,m:d.m*a,C:d.C*a,T:d.T*a,S:d.S*a,B:d.B*a*k,pk:a,name:`${d.name} ${FIN_SZ[fz].n}`}}
 function fairProf(d,L){const r=d.r,h=d.h;return[[d.rb||r,0],[r,h],[r,h+.6*L],[.86*r,h+.78*L],[.56*r,h+.9*L],[.2*r,h+.98*L],[0,h+L]]}
-function fairFits(f,q){if(q.dep||q.open)return false;const pr=f.profF,y0=q.y0-f.y0,y1=y0+q.h,
-    rq=Math.hypot(q.pos[0]-f.pos[0],q.pos[2]-f.pos[2])+(q.d.off||0)+q.d.r,
+function fairFits(f,q){if(q.dep||q.open)return false;const B=partBox(q,[f.pos[0],f.pos[2]]),pr=f.profF,y0=B.lo-f.y0,y1=B.hi-f.y0,rq=B.reach,   // a mounted part by its box (Q618)
     at=y=>{for(let i=0;i<pr.length-1;i++){const[r0,a]=pr[i],[r1,b]=pr[i+1];if(y<=b)return b-a<1e-9?Math.min(r0,r1):r0+(r1-r0)*(y-a)/(b-a)}return 0};
   return y0>=f.h-1e-6&&y1<=pr[pr.length-1][1]+1e-6&&rq<=Math.min(at(y0),at(y1))-.03*f.d.r+1e-6}
 // the shell drops in two halves, pushed apart; what it enclosed meets the air from now on
@@ -481,6 +559,7 @@ const fuelArr=s=>s.parts.map(p=>p.res.fuel||0),onArr=s=>s.parts.map(p=>p.on);
 function groupFuel(s,gid){let f=0;for(const p of s.parts)if(p.on&&s.grp[p.i]===gid)f+=p.res.fuel||0;return f}
 function segFuel(s,k){let f=0;for(const p of s.parts)if(p.on&&p.seg===k)f+=p.res.fuel||0;return f}
 function partC(p){if(p.profF&&!p.fj&&p.xm){const m0=p.d.m,y=(m0*(p.y0+p.h*p.d.cm)+p.xm*(p.y0+p.h+p.fl/2))/(m0+p.xm);return[p.pos[0],y,p.pos[2]]}   // a fairing with its shell on (Q337)
+  if(p.pose)return add(p.pose.f,qrot(p.pose.q,p.pose.sf?[p.d.off||0,p.h*(p.d.cm-.5),0]:[0,p.h*p.d.cm,0]));   // mounted (Q618): along its own axis from its foot
   return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
 function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on their mount
 // Canted engines (v1.22): an engine on a radial line may tilt its nozzle outward by cant degrees, in its own radial plane, so
@@ -623,20 +702,21 @@ function newShip(stack,site=curSite()){
   syncLanded(s);
   return s}
 function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;s.hmax=0;
-  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque){const k=engK(p);s.torque+=p.d.torque*k;s.hmax+=(p.d.hmax??p.d.torque*WHEEL_S)*k}}
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);if(p.pose){const B=partBox(p);yb=Math.min(yb,B.lo);yt=Math.max(yt,B.hi)}else{yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h)}if(p.d.torque){const k=engK(p);s.torque+=p.d.torque*k;s.hmax+=(p.d.hmax??p.d.torque*WHEEL_S)*k}}
   if(s.wH&&len(s.wH)>s.hmax)s.wH=s.hmax>0?mul(s.wH,s.hmax/len(s.wH)):[0,0,0];   // wheels lost with their parts
   s.mOwn=m*1000;s.cmOwn=mul(c,1/m);
   for(const a of s.att||[]){const pm=a.e.mass/1000;m+=pm;c=madd(c,a.p,pm)}   // docked bodies: their own mass at their own centre of mass
   c=mul(c,1/m);let Ix=0,Iy=0,Iz=0;
   for(const a of s.att||[]){const pm=a.e.mass,d=sub(a.p,c),Ir=rotI(a.q,satOwnMP(a.e).I);Ix+=pm*(d[1]*d[1]+d[2]*d[2])+Ir[0];Iy+=pm*(d[0]*d[0]+d[2]*d[2])+Ir[1];Iz+=pm*(d[0]*d[0]+d[1]*d[1])+Ir[2]}
-  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p)*1000,d=sub(partC(p),c),pr=p.d.r,ip=pm*(p.h*p.h/12+pr*pr/4),ir=pm*pr*pr/2;
-    Ix+=pm*(d[1]*d[1]+d[2]*d[2])+ip;Iy+=pm*(d[0]*d[0]+d[2]*d[2])+ir;Iz+=pm*(d[0]*d[0]+d[1]*d[1])+ip}
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p)*1000,d=sub(partC(p),c),pr=p.d.r,ip=pm*(p.h*p.h/12+pr*pr/4),ir=pm*pr*pr/2,
+      J=p.pose?rotI(p.pose.q,[ip,ir,ip]):[ip,ir,ip];   // a mounted part's own cylinder turned with it (Q618)
+    Ix+=pm*(d[1]*d[1]+d[2]*d[2])+J[0];Iy+=pm*(d[0]*d[0]+d[2]*d[2])+J[1];Iz+=pm*(d[0]*d[0]+d[1]*d[1])+J[2]}
   s.mass=m*1000;s.cm=c;s.com=c[1];s.yBot=yb-c[1];s.yTop=yt-c[1];s.len=yt-yb;s.I=[Ix,Iy,Iz]}
 // Shape-derived data, rebuilt whenever parts come off: one merged outer profile per stack line (core and each side
 // stack, so joints between equal radii are not surfaces), fins, the parachute, and a children-first joint order.
 // the stack lines' outer profiles for a set of parts (also a spent stage's hull at sea, Q300)
 function shapeLines(ps){const lines=new Map(),out=[];
-  for(const p of ps){if(p.d.noAero||shielded(p))continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
+  for(const p of ps){if(p.d.noAero||p.pose||shielded(p))continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
   for(const lp of lines.values()){lp.sort((a,b)=>a.y0-b.y0);const pts=[];for(const p of lp)for(const[r,y]of profOf(p))pts.push([r,p.y0+y,p]);
     // an interstage shell fills out everything it encloses to its own radius, and owns that surface
     for(const q of lp)if(q.shell){const y0=q.y0+q.h-1e-6,y1=y0+q.shell+2e-6;for(const pt of pts)if(pt[1]>=y0&&pt[1]<=y1&&pt[0]<q.d.r){pt[0]=q.d.r;pt[2]=q}}
