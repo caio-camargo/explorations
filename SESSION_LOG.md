@@ -7862,3 +7862,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** launchpad `notes/look.md`; root `SESSION_LOG.md`. No claim was taken (docs appended only; the GPU lock
   taken and released).
 - **Next:** Caio's call on starting Q316 (B1.3 shadows first).
+
+## 2026-11-17 — space session (Opus 5.5, worktree launchpad-q606): who is aboard (Q606, v1.346); stale M3 doc lines (Q610)
+
+- **Asked:** Caio's kickoff: claim Q606, fix it with a test that fails on today's code, then Q610.
+- **Done (v1.346, Q606):** a fresh crewed flight now boards its people onto the seats (`p.crewAboard`, `crewUp`) when
+  `outThere` first counts the crew (`boardCrew`, sim/space.js), as `vesselOf` does for a registry vessel, so `crewOn`
+  gives one answer. The default two-seat rover deploys on the flight that carries it. A lost crew is taken off
+  (`unboardCrew`), which also stops a lost crew being saved into the registry. Dummies (no max-q abort) are never boarded.
+  Notes: `notes/space.md` § v1.346.
+- **Done (Q610, docs):** ROADMAP § M3 (Q91 replaces the done Q18 plan; the RCS and guest-astronaut citations corrected);
+  EVA.md 0.1.2 (E0 is built); CREW.md 0.3.3 (face engine live again, D40; shared look is D26's; header); REVIEW-2026-11-11
+  1.0.6 (W43 answered); notes/economy.md (the RACE question decided, D36); nine QUEUE rows' "after R2" states (Q182,
+  Q459, Q460, Q467, Q593 now ready; Q183, Q458 after Q182; Q461, Q462 on G3). Q91 had already been updated by world.
+- **Tests:** the new check in core test 35 fails on the old code (fresh: 0 aboard) and passes; review repro prints
+  `crewOn 2, deploy ok`; smoke green; CI full run green (44107607243); main had not moved, ff-merged.
+- **Not checked:** in a browser (TESTING 397).
+- **Next:** Q182 (crew slice 1, the roster) is now ready and builds on the same seats.
+- Files: launchpad `sim/space.js`, `sim/program.js`, `tests/core.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`,
+  `QUEUE.md`, `ROADMAP.md`, `EVA.md`, `CREW.md`, `REVIEW-2026-11-11.md`, `notes/economy.md`; root `ACTIVE_WORK.md`,
+  `SESSION_LOG.md`.
