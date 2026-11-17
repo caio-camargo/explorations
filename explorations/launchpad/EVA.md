@@ -1,12 +1,13 @@
 # EVA — astronauts outside
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-06 · **Updated**: 2026-11-06
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-06 · **Updated**: 2026-11-17
 **Status**: approved 2026-11-06 (D27: W45's defaults, and a test ground first, as E0).
 **Purpose**: Scope EVA, which has not been designed or built: what crew do outside, how they move, and in what order to build it.
 Parent: [`CREW.md`](CREW.md) (who crew are, the roles, the suits). Decisions go to [`DECISIONS.md`](DECISIONS.md).
 
 **What exists** (cite, don't redo):
-- **No EVA anywhere in the code.** Crew are seats in a capsule (`d.crew`). A landing counts as a body walked on
-  (`rec.walked`), but nobody steps out.
+- **E0, the test ground, is built** (v1.263 to v1.267, `sim/eva.js`, `eva-lab.html`, `?eva-lab`): a figure walks,
+  lopes, falls and scrambles on flats, slopes and rough ground, outside any flight. In a flight crew are still seats in a
+  capsule (`d.crew`); a landing counts as a body walked on (`rec.walked`), but nobody steps out.
 - **Spacewalk suits are designed for every school but not drawn** (CREW § suits, D9, D13; Q229 left them "for EVA").
 - **Rovers are physical and driven by hand** (`sim/rovers.js`): one rigid body on the ground, wheel springs, grip from
   the ground's friction, tipping. `]` switches from the lander to a rover and `[` switches back. A rover can carry a crew
@@ -170,6 +171,7 @@ a test section and a `study_eva.mjs` table.
 3. **Order:** E1 → E2 → E3 → E4 (**default**); or surface first (E2 before E1).
 
 ## Version history
+- **0.1.2 (2026-11-17):** "What exists" says E0 is built (QUEUE Q610, from REVIEW-2026-11-13-m3 § 6).
 - **0.1.1 (2026-11-06):** approved (D27): W45's defaults; E0 the test ground (§ 6a), at Caio's request.
 - **0.1.0 (2026-11-06):** first draft (design desk, Caio: "EVA needs to be scoped; how can we approach astronaut
   movement?"). Approaches A/B/C, recommending C; physics; the figure; risk; slices E1–E4; W45.

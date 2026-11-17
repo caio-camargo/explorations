@@ -801,7 +801,11 @@ function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,
 const nearbyFlyable=s=>s&&!s.landed?orbitsAt(s.body).filter(q=>flyable(q)&&len(sub(satAt(q,progT(s))[0],s.r))<LOAD_R):[];
 function loadEntry(q,s){const i=(PROG.sats||[]).indexOf(q);if(i<0||!flyable(q))return null;const v=vesselOf(q,progT(s));PROG.sats.splice(i,1);
   Object.assign(v,{fleet:true,rec:{launched:true,day0:s.rec&&s.rec.day0,ended:false,mini:true}});if(s.target===q.id){s.target=null;s.tgtV=v}FLEET.push(v);return v}
+// who is aboard (Q606): p.crewAboard on each seat that holds people, the one answer for a fresh flight (boardCrew, when
+// its crew is counted at the first tick: people, not dummies) and a vessel loaded from the registry (vesselOf)
 const crewOn=s=>s.parts.reduce((a,p)=>a+(p.on&&p.crewAboard?p.crewAboard:0),0);
+function boardCrew(s,day){for(const p of s.parts)if(p.on&&p.d.crew&&!p.crewAboard){p.crewAboard=p.d.crew;if(p.crewUp==null)p.crewUp=day}}
+function unboardCrew(s){for(const p of s.parts)if(p.crewAboard){delete p.crewAboard;delete p.crewUp}}   // a crew lost: nobody aboard
 // ---- the arm (sats session; stations plan D). A robotic arm on the side of any structure: two 5 m booms from a shoulder
 // on its base. Grapple: a body within reach and moving slowly relative to us (a satellite, a vessel of this flight, or
 // the payload in our open bay) is held where it is, as a passenger (kind 'arm'). Berth: the arm carries it to a free

@@ -2854,7 +2854,7 @@ are unaffected: nothing loads a preset by its name (`designName`/`designLabel` m
 now reads *Crossfeed* in the logbook). **"On rails" in player text:** none left; the only player-facing reason the warp
 gives is `railsWhy`'s (*engines running*, *in the air*, …), which never says rails. The word stays in code and notes.
 Player-visible only in the preset button's name; no behaviour changed.
-## v1.346 — the frame as a sized part: bench slice 1 (2026-11-13, vehicle session, QUEUE Q617, D47 point 1)
+## v1.347 — the frame as a sized part: bench slice 1 (2026-11-13, vehicle session, QUEUE Q617, D47 point 1)
 
 **Why:** the first slice of § "Plan: the bench as its own builder, points 1 and 2". Caio, after trying the mock-up: "go
 ahead with 1". The bench needs a bus the player shapes before anything can be mounted on its faces (slice 2, Q618).
@@ -2897,4 +2897,4 @@ ahead with 1". The bench needs a bus the player shapes before anything can be mo
 - A frame as wide as 3 m was not flown, nor any frame launched: slice 1 is layout only.
 - The frame is offered in the rocket builder too, as the octagonal frames are.
 
-TESTING 397.
+TESTING 398.
