@@ -7924,3 +7924,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Note:** `origin/vehicle` is an old branch (v1.248, Q457) that is not on `main`; Q617 went out as `q617` instead. Not
   touched. Worktrees `launchpad-builder` (`vehicle`) and `launchpad-r34` (`r34`) now equal `main`.
 - Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md` (plus the two branches' own files).
+
+## 2026-11-17 — space session (Opus 5.5, worktree launchpad-q182): the roster, crew slice 1 (Q182, v1.349)
+
+- **Asked:** Caio: "go ahead" after Q606/Q610 (the next item named was Q182).
+- **Done (v1.349):** new `sim/crew.js`. The first class is selected once the abort tests open (3 + 1 per computing-centre
+  level), with names in the home school's style. A crewed flight takes the most senior ready astronauts onto its seats
+  (`p.crewIds`), and they travel through the registry (`shapeOf` `who`). At the flight's end each astronaut is aboard,
+  ready (days counted) or held abroad (Q616). The crewed firsts are named in the news and the Debrief. A loss names the
+  crew and adds them to `PROG.memorial`. The Debrief's line reads "Commander A and B home safe after …". There are five
+  new `PROG_SCHEMA` rows. Notes: `notes/economy.md` § v1.349.
+- **Tests:** econ-46 (new, 5 checks); flow-6 and core's crashed-capsule check now expect names; smoke green before and
+  after merging main (Q617 v1.347, R34 v1.348; one conflict in `shapeOf`, resolved by keeping both); CI full run green
+  (44116403396).
+- **Not checked:** in a browser (TESTING 399). Proposed for flow: a Crew view with the roster and the memorial.
+- **Next:** Q183 (requalification after a loss) and Q458 (crew slice 2) are unblocked by this.
+- Files: launchpad `sim/crew.js` (new), `sim/program.js`, `sim/space.js`, `sim/contracts.js`, `sim/debrief.js`,
+  `app/debrief.js`, `index.html`, `tests/economy.mjs`, `tests/flow.mjs`, `tests/core.mjs`, `notes/economy.md`, `NOTES.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
