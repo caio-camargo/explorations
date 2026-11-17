@@ -105,3 +105,29 @@ void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec3 v=texelFetch(uDirs,c,0).xyz;floa
   }
   gl.enable(gl.DEPTH_TEST); RS = 1; render(); return out;
 };
+// (G4) the shadow clipmap against the CPU: points on the ground round the camera's ground point (put the camera on
+// Selene first, e.g. refView(193)), in rings out to 20 km. GPU: selShadow (the clipmap, as the moon pass reads it); CPU:
+// selSunLit (a walk toward the sun with all six bands). Points whose own slope faces away from the sun are left out
+// (both dark). wrong: the share where one says lit (> .5) and the other dark; gpuDark, cpuDark: the shares in shadow.
+window.selShadowProbe = () => {
+  RS = 1; render(); const { camW } = HOOK.view, B = SELENE, cp = toPF(B, sub(camW, bodyPos(B, simT)), simT), g = norm(cp), e = norm(cross([0, 1, 0], g)), n = cross(g, e), rnd = rng(13), sunPF = toPF(B, SUN, simT);
+  const src = SKY_FS.slice(0, SKY_FS.indexOf('void main(){')) + `uniform highp sampler2D uPts;
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec4 P=texelFetch(uPts,c,0);o=vec4(selShadow(selF(P.xyz),normalize(selF(P.xyz-uMc)),P.w),0.,0.,1.);}`;
+  const P = mkProg(QUAD_VS, src), out = {};
+  for (const [name, r0, r1] of [['0–200 m', 0, 200], ['200 m–2 km', 200, 2e3], ['2–20 km', 2e3, 2e4]]) {
+    const N = 24, pts = new Float32Array(N * N * 4), cpu = [], keep = [];
+    for (let i = 0; i < N * N; i++) { const a = rnd() * 6.283, d = r0 + (r1 - r0) * Math.sqrt(rnd()), u = norm(add(g, add(mul(e, d * Math.cos(a) / B.R), mul(n, d * Math.sin(a) / B.R)))), h = seleneH(u), pf = mul(u, B.R + h);
+      const v = sub(add(fromPF(B, pf, simT), bodyPos(B, simT)), camW); pts.set([v[0], v[1], v[2], h], i * 4); cpu.push(selSunLit(pf, sunPF)); keep.push(dot(groundNormal(B, u), SUN) > 0); }
+    gl.activeTexture(gl.TEXTURE3); const td = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, td); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, N, N, 0, gl.RGBA, gl.FLOAT, pts);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.activeTexture(gl.TEXTURE4); const rt = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, rt); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, N, N, 0, gl.RGBA, gl.FLOAT, null);
+    const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rt, 0);
+    gl.useProgram(P.p); selUniforms(P.u, camW); gl.uniform1i(P.u.uPts, 3);
+    gl.viewport(0, 0, N, N); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.bindVertexArray(quadVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const o = new Float32Array(N * N * 4); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, o); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); gl.deleteTexture(td); gl.deleteTexture(rt); gl.activeTexture(gl.TEXTURE0);
+    let n0 = 0, sd = 0, dark = 0, gdark = 0, wrong = 0;
+    for (let i = 0; i < N * N; i++) { if (!keep[i]) continue; n0++; sd += Math.abs(o[i * 4] - cpu[i]); dark += cpu[i] < .5; gdark += o[i * 4] < .5; wrong += (o[i * 4] < .5) !== (cpu[i] < .5); }
+    out[name] = { n: n0, cpuDark: +(dark / n0).toFixed(3), gpuDark: +(gdark / n0).toFixed(3), wrong: +(wrong / n0).toFixed(3), meanDiff: +(sd / n0).toFixed(3) };
+  }
+  gl.enable(gl.DEPTH_TEST); RS = 1; render(); return out;
+};

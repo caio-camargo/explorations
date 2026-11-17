@@ -338,6 +338,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.251 — Selene's craters vary: one profile on the CPU and in the moon pass, steep inside and gentle outside, worn by age, floors and peaks, ellipses, uneven rims (2026-10-31, world session, QUEUE Q494, PLAYTEST #129)
 - v1.352 — Selene's relief, live: the march on Selene (one full-resolution march, the sky and moon passes read it), CPU/GPU agreement in mm, saves and tapes moved onto it, `landAt` watches the ground ahead (2026-11-17, world session, QUEUE Q91, GROUND.md G3)
 - v1.354 — Selene's near-field height cache: the bands baked round the camera in three levels the march reads; ~11 → ~5 ms near the ground on the RTX, 87 → 21 ms on the iGPU (2026-11-17, world session, GROUND.md G3.5)
+- v1.357 — Selene's cast shadows: a shadow clipmap (seven levels round the camera, a running max of z = |P × s| toward the sun) read once per pixel; a craft in a shadow is dark too; within noise on the RTX, +1.5 ms on the iGPU (2026-11-17, world session, GROUND.md G4)
 
 ## Flow: [`notes/flow.md`](notes/flow.md)
 

@@ -23,6 +23,13 @@ function profMark(name){if(!PROF.on||!TQ)return;if(PROF.cur){gl.endQuery(TQ.TIME
   if(name){PROF.cur=gl.createQuery();PROF.name=name;gl.beginQuery(TQ.TIME_ELAPSED_EXT,PROF.cur);return}
   const dis=gl.getParameter(TQ.GPU_DISJOINT_EXT);PROF.pend=PROF.pend.filter(([k,q])=>{if(!gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE))return true;
     if(!dis){PROF.ms[k]=(PROF.ms[k]||0)+gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;PROF.n[k]=(PROF.n[k]||0)+1}gl.deleteQuery(q);return false})}
+// (G4, GROUND.md) what stands on Selene is in the relief's shadow too: the sun's disc past the ground (selSunLit, its
+// walk toward the sun), remembered per half metre and per 0.003° of sun, so a craft at rest walks it once. Above the
+// shell's top nothing of the ground can stand in the sun's way (Selene itself: lit's sphere test)
+const SEL_LIT_MEMO=new Map();
+function selPartLit(p){const B=SELENE;if(B.ground!==SELENE_GROUND)return 1;const pf=toPF(B,sub(p,bodyPos(B,simT)),simT);if(len(pf)>B.R+SELENE_GROUND.top)return 1;
+  const s=toPF(B,SUN,simT),k=pf.map(x=>Math.round(x*2)).join()+'|'+s.map(x=>Math.round(x*2e4)).join();let v=SEL_LIT_MEMO.get(k);
+  if(v===undefined){if(SEL_LIT_MEMO.size>256)SEL_LIT_MEMO.clear();v=selSunLit(pf,s);SEL_LIT_MEMO.set(k,v)}return v}
 function gpuTimerBegin(){if(!TQ||PROF.on)return;if(tqPending.length<4){tqCur=gl.createQuery();gl.beginQuery(TQ.TIME_ELAPSED_EXT,tqCur)}else tqCur=null}
 function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);tqPending.push(tqCur);tqCur=null}
   while(tqPending.length&&gl.getQueryParameter(tqPending[0],gl.QUERY_RESULT_AVAILABLE)){const q=tqPending.shift();
@@ -138,7 +145,7 @@ function render(){spoolFrame();
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up);gl.uniform4fv(m.uDsk,E.dsk);gl.uniform3fv(m.uLimb,E.limb)}
   const DF=desk&&deskFrame(camW);if(DF)deskLight(m,DF);
-  const lit=DF?()=>1:p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
+  const lit=DF?()=>1:p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return selPartLit(p)};   // (G4) and Selene's relief
   marksTick();padSync();padLights(m,camW);if(DF)gl.uniform1f(m.uFlI,0);plumeLight(camW);plasmaLight(camW);boomLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform4fv(m.uPl2,PLT.p2);gl.uniform3fv(m.uPlC2,PLT.c2);gl.uniform3fv(m.uPlC,PLT.c);
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';

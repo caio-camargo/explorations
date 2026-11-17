@@ -541,3 +541,32 @@
   let n = 0; while (!s.landed && s.alive && n++ < 1e5) G.physStep(s, G.DT); const d = p && Math.hypot(...G.toPF(G.SELENE, s.r, G.t).map((x, i) => x - p.pf[i] * Math.hypot(...G.toPF(G.SELENE, s.r, G.t)) / Math.hypot(...p.pf)));
   check('ground-12: an unpowered fall onto Selene is predicted onto the relief, within 50 m and a second', !!p && d < 50 && Math.abs(p.t - G.t) < 1.5, p ? `${d.toFixed(1)} m off, ${(p.t - G.t).toFixed(2)} s; ground ${(G.groundR(G.SELENE, p.pf) - R).toFixed(0)} m` : 'no prediction');
 }
+// ground-13. Selene's cast shadows (world session, QUEUE Q91, GROUND.md G4). The CPU's selSunLit (what lights a craft on
+// the ground) puts a crater's floor under its sun-side rim in shadow at a low sun and the far wall in light, and lights
+// the floor once the sun is high. The shadow clipmap in app/gl.js (selShadow) works by another rule: a ray toward the sun
+// keeps its distance z from the line through Selene's centre along the sun, so a point is lit when no ground ahead of it
+// on its great circle stands farther from that line. Here that rule, walked on the CPU, agrees with selSunLit. The GPU's
+// own agreement is terrain-probe.js's selShadowProbe, in Chrome.
+{
+  const G = new Function(src + 'return {selSunLit,seleneH,selPlaces,SELENE};')();
+  const R = G.SELENE.R, nz = v => { const l = Math.hypot(...v); return v.map(x => x / l); }, dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const P0 = G.selPlaces().filter(p => p.D > 30e3 && p.D < 70e3)[0], c = P0.c, t0 = nz(cr(c, [0, 1, 0])), rr = P0.D / 2 / R;
+  const at = k => nz(c.map((x, i) => x * Math.cos(k * rr) + t0[i] * Math.sin(k * rr)));   // k radii from the centre toward +t0
+  const sunAt = (u, el) => { const t = nz(t0.map((x, i) => x - u[i] * dt(t0, u))), e = el / 57.2958; return nz(u.map((x, i) => x * Math.sin(e) + t[i] * Math.cos(e))); };
+  const ptOf = u => u.map(x => x * (R + G.seleneH(u) + .05));
+  // sixteen points each, spread round the line through the centre: small craters on a wall shadow some of it too
+  const n0 = nz(cr(c, t0)), spread = (k0, k1) => [...Array(16)].map((_, i) => { const u = at(k0 + (k1 - k0) * (i % 8) / 7), o = ((i >> 3) - .5) * .2 * rr; return nz(u.map((x, j) => x + n0[j] * o)); });
+  const share = (us, el) => us.filter(u => G.selSunLit(ptOf(u), sunAt(u, el)) > .5).length / us.length, floor = spread(.78, .9), wall = spread(-.95, -.85);
+  const fl6 = share(floor, 6), wl6 = share(wall, 6), fl60 = share(floor, 60);
+  check('ground-13: at a 6° sun a crater\'s floor under its sun-side rim is in shadow, the wall across from it mostly in light; at 60° the floor is lit', fl6 <= .2 && wl6 >= .6 && fl60 >= .9,
+    `${P0.name} (${(P0.D / 1e3).toFixed(0)} km, the rim ${(G.seleneH(at(1.05)) - G.seleneH(at(.85))).toFixed(0)} m over the floor): lit at 6°: floor ${fl6.toFixed(2)}, wall ${wl6.toFixed(2)}; floor at 60° ${fl60.toFixed(2)}`);
+  // the clipmap's rule: lit when z = |P × s| is larger than every z of the ground ahead on the great circle toward the sun
+  let n = 0, agree = 0, dark = 0; const rnd = (k => () => (k = (k * 16807) % 2147483647) / 2147483647)(7);
+  for (let q = 0; q < 24; q++) {
+    const u = at(-1.2 + 2.4 * rnd()), el = 2 + 10 * rnd(), sn = sunAt(u, el), P = ptOf(u), zP = Math.hypot(...cr(P, sn)), tg = nz(sn.map((x, i) => x - u[i] * dt(sn, u)));
+    let zMax = -1; for (let d = 25; d < 1.2e5; d += 25) { const a = d / R, v = nz(u.map((x, i) => x * Math.cos(a) + tg[i] * Math.sin(a))); if (dt(v, sn) <= dt(u, sn)) break; zMax = Math.max(zMax, Math.hypot(...cr(v.map(x => x * (R + G.seleneH(v))), sn))); }
+    const w = G.selSunLit(P, sn); if (Math.abs(w - .5) > .45) { n++; agree += (zP > zMax) === (w > .5); dark += w < .5; }
+  }
+  check('ground-13: the clipmap\'s rule (z past the ground ahead) agrees with the walk toward the sun, in and around the crater', n >= 18 && agree >= n - 1 && dark >= 3 && dark <= n - 3, `${agree} of ${n} agree (${dark} dark)`);
+}

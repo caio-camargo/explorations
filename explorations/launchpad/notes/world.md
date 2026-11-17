@@ -1801,3 +1801,85 @@ small craters it holds. Left as is.
 
 **Not checked:** a fast low pass (a level rebaking every frame at 1.6 km/s: ~0.4 ms each, by the bake's cost); the robot
 or a human flying over it.
+
+## v1.357 — Selene's cast shadows (2026-11-17, world session, GROUND.md G4; Caio: "ok on g4")
+
+Until now nothing on Selene cast a shadow: the relief was shaded by its normals alone, so at a low sun a crater's floor
+under its rim was as bright as the plain. Now the ground shadows itself, and a craft standing in a shadow is dark too.
+
+**The rule.** A ray toward the sun keeps its distance z from the line through Selene's centre along the sun
+(z = |P × s|: the ray runs parallel to that line). A ground point ahead of the ray, on its great circle toward the
+subsolar point, blocks it when that point stands farther from the line. So a point is lit when its own z is larger than
+every z of the ground ahead of it. No elevation angles and no curvature terms are needed, and the running maximum
+composes: the max over [1, 2n] texels ahead is the max of two maxes over [1, n].
+
+**The shadow clipmap (app/gl.js: `SELZ`, `PZINIT`, `PZSTEP`, `selShadow`).**
+- **Levels.** The near-field cache (`SELC`) grows from three levels to seven: 0.5, 2, 8, 32, 128, 512 and 2,048 m, from
+  256 m to 1,000 km across.
+  - Levels 0–2 have all six bands and are on within 5 km of the ground (as in v1.354).
+  - Levels 3–6 have the bands their texels resolve (a crater at least 1.5 texels across): 6, 5, 3 and 2 bands. They
+    are on within 1,000 km of the ground.
+  - Only the shadows read levels 3–6; `selCache` still reads 0–2.
+- **The sweep.** For each level, `PZINIT` turns each texel's height into z, relative to the level's centre point (the
+  difference is computed without subtracting large numbers, so float32 keeps centimetres). Then ten `PZSTEP` passes take
+  the running maximum toward the sun, from 1 to 512 texels ahead.
+  - On the gnomonic grid the great circles are straight lines, all through the projected subsolar point.
+  - The line stops at the subsolar point.
+  - The texels are read bilinearly.
+  - The result is in two 512² × 7 R32F arrays (ping-pong); the answer is on unit 7.
+- **When it runs.** A level is swept at once when it is baked. It is swept again when the sun has moved 0.003° in
+  Selene's frame since its last sweep (at 1×, about every 6 s). At most two levels are swept per frame, the stalest
+  first, so time warp doesn't pay for all seven every frame. Each level keeps its own sun (`uZs[k]`).
+- **Reading.** The moon pass calls `selShadow` once per pixel. Each level answers with its own ground at the point (its
+  heights, bilinear), so a coarse level's shadow isn't cast onto finer relief it doesn't have. The darkest answer wins.
+  A level fades out over the outer 15 % of its half-width, so its edge leaves no seam. The edge is soft over about half
+  a texel of z.
+- **Lighting a craft.** `selPartLit` (app/render.js) gives a craft on or near the ground the sun's visible fraction
+  (`selSunLit`, sim/ground.js). That function is a walk toward the sun on the CPU, with all six bands. It is remembered
+  per half metre and per 0.003° of sun, so a craft at rest walks it once.
+
+**Cost** (whole frame, 1258×702, `gpuTime`, shadows on/off; the sweep timed alone):
+
+| View | RTX on / off | iGPU on / off |
+|---|---|---|
+| 186 a lander on a mare flat, 30° sun | 4.5 / 4.1 | 21.7 / 20.4 |
+| 188 a rover's eye, 20° sun | 5.6 / 5.7 | — |
+| 189 1 km up, 25° sun | 7.8 / 8.2 | — |
+| 193 a rover's eye, 4° sun (new) | 5.3 / 5.2 | 25.6 / 24.3 |
+| 194 3 km up, 3° sun (new) | 8.5 / 8.8 | 64.0 / 62.2 |
+| 195 the terminator from 100 km (new) | 1.9 / 2.1 | — |
+| Tellus's pad (18) | 4.7 | 35.7 |
+
+- **Per frame:** within noise on the RTX; +1.3 to 1.8 ms on the iGPU.
+- **The sweep:** all seven levels take 0.5 ms on the RTX and 3.0 ms on the iGPU; two levels take 0.16 ms on the RTX.
+- **Rebaking:** all seven levels' heights take 2.0 ms on the RTX. Each level is rebaked only when the camera has
+  drifted an eighth of it.
+- 194 costs 62 ms on the iGPU without shadows: the march at a grazing view over rough highlands, as in v1.352.
+
+**Agreement** (`selShadowProbe()`, terrain-probe.js: `selShadow` on the GPU against `selSunLit` on the CPU, 576 points
+per ring round the camera's ground point; points on slopes facing away from the sun are left out). *Wrong* is the share
+where one says lit and the other dark:
+
+| Ring | 193 (2 m, 4° sun): dark / wrong | 194 (3 km, 3° sun): dark / wrong |
+|---|---|---|
+| 0–200 m | 0 / 0 | 55 % / 0.5–1.4 % |
+| 200 m–2 km | 33 % / 2.0 % | 24 % / 2.2 % |
+| 2–20 km | 25 % / 4.8 % | 33 % / 7.5 % |
+
+The far rings miss some shadows of the finest craters, which the far levels don't hold. The march itself drops those
+bands beyond ~4 km of the camera (`selNb`), so the ground they would fall on isn't drawn either. Test ground-13 checks
+the rule headless: z against the ground ahead agrees with the CPU's walk on 24 of 24 points in and round a 70 km crater
+(8 dark).
+
+**A negative result first.** The first build walked each pixel's ray toward the sun in the moon pass, 48 steps on the
+bands, with the bands dropped as the ray climbed past their relief. At a 3° sun (view 194) it cost 9.6 → 40 ms of frame
+on the RTX, and it still missed 15–24 % of the shadows beyond 200 m: at a low sun the ray runs close over the ground for
+kilometres and used up its steps. The clipmap pays for the shadows once per sun move, not once per pixel and step.
+
+**Not checked:**
+- The robot or a human at a low sun (TESTING 406).
+- From farther than 1,000 km (Tellus orbit): no shadows, as before.
+- Earthshine casts no shadows.
+- The craft casts none on the ground: Q316's ship shadow map is the place for that.
+
+Stills: `output/launchpad/g4-shadows/` (184 with and without, 190, 193–195).
