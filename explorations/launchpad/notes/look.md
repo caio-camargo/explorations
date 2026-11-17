@@ -2570,3 +2570,49 @@ first kilometres.
   and corner, one at half the reach). Screenshots (RTX): `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/before/eval_{2,5,10,15}.png` (Nyx 4 m low and from 110 m
   up: the square; Nyx 12 m; Selene), `C:/Users/caioa/AppData/Local/Temp/claude/fd15f779eff0e90d/a393eb7b-52a2-4542-bfdf-ce7e259d90fb/scratchpad/q543/after_dust/eval_{2,5,10,15}.png` (the same views: a round sheet, soft rim).
   TESTING 384.
+
+## Study — what more triangles on the craft cost (2026-11-16, graphics study with Caio; no game change)
+
+Caio: "what would be the impact of adding more detail to the 3D models of the craft/parts?" Measured in the running
+game (v1.345), nothing built.
+
+- **Method.** In the page, `lathe` wrapped so every surface of revolution gets K× the segments around and K× the points
+  along (K² triangles, the same shape): K = 2, 4, 8 → 4×, 16×, 64×. Separately `partShape` wrapped to add G small boxes
+  standing 8 cm proud of each part (real geometry, a stand-in for BEAUTY B1.5's greebles): G = 12, 48 per part (B1.5
+  plans "a few hundred vertices a part"; 48 boxes is 1,728). Per view: `HOOK.rebuild()` timed, GPU ms at full
+  resolution (scaler held, four samples), the `ship` pass alone from `profMark`. RTX 3050 on High, Intel UHD on Low
+  (Edge, `SHOT_IGPU`), 1262 × 704. Views 1 (Orbiter on the pad, 9 parts), 6 (Big Lunar close-up, 26 parts), 3 (orbit),
+  54 (Heavy at Mach 1).
+- **Today's size.** Orbiter 10,044 vertices (3,348 triangles), Heavy 19,692, Big Lunar 27,048. Non-indexed, 64 bytes a
+  vertex: 0.6–1.7 MB. The whole ship is one buffer and one draw (plus its pad shadow).
+- **GPU, RTX (frame 7–10 ms at full resolution):** the ship pass is **0.03 ms** (pad), **0.13** (close-up), 0.12–0.14
+  (Heavy): 1–2 % of the frame; the sky is 3.7–4.9 ms.
+
+  | | pad: verts | ship ms | close-up: verts | ship ms |
+  |---|---|---|---|---|
+  | today | 10 k | 0.03 | 27 k | 0.13 |
+  | 4× | 35 k | 0.06 | 94 k | 0.22 |
+  | 16× | 130 k | 0.15 | 355 k | 0.52 |
+  | 64× | 505 k | 0.47 | 1.38 M | 1.58 |
+  | 48 boxes a part | 26 k | 0.05 | 79 k | 0.22 |
+
+  The whole-frame time did not move outside its noise (±0.5 ms) until 64× on the close-up (+1 ms).
+- **GPU, Intel UHD on Low (full resolution: pad 77–84 ms, close-up 89, orbit 28; the sky is 60–70 of it on the
+  ground):** ship pass pad 0.41 → 0.75 (4×) → 1.45 (16×) → 3.6 (64×); close-up 1.84 → 3.1 → 6.2 → 15.5; orbit 1.1 →
+  1.7 → 3.4 → 6.6; 48 boxes a part 0.86 / 4.3 / 1.9. So 4× costs the iGPU 0.3–1.3 ms and B1.5-sized greebles well
+  under 1 ms; the iGPU's problem is the sky, by a factor of 40.
+- **CPU: the rebuild is the limit, not the GPU.** `partsMesh` rebuilds the whole ship in JS arrays on every builder
+  edit and at staging and deploying: 3–7 ms today; 4× 14–30 ms; 16× 44–190 ms; 64× 245–560 ms. Past ~4× it is a
+  visible hitch at staging. The fix if detail ever needs it: build each part's vertices once per (part, school) and
+  copy into a typed array, or draw greebles instanced; not needed for B1.5 at its planned size.
+- **What the stills show.** 4× and 64× look the same as today except rounder rims (28 segments around is already
+  enough at these sizes): tessellating what exists buys nothing. The stand-in boxes read as *pasted on*: they cast no
+  shadow and have no contact darkening. Geometry detail needs B1.3 (the ship shadow map, per-vertex AO) to pay off,
+  as BEAUTY said. That is where the cost is: a shadow map is a second pass and a lookup per ship pixel (BEAUTY's
+  estimate 0.3–0.6 ms on the RTX, High only; unmeasured).
+- **Not measured:** RTX view 3 and view 54's base row (the timer returned nothing; the 4× and 16× rows of 54 read
+  0.14 and 0.24 ms of 10 ms); many ships at once (a station with its visitors, debris: the `others` pass); MSAA on
+  thin geometry far away (handrails and antennas shimmer under a pixel: B1.5's distance drop covers it).
+- **Conclusion.** Triangles on the craft are nearly free here: the budget allows roughly 10× today's geometry on both
+  GPUs. Q316's order stands, shadows and AO first, then greebles; cap a ship near 150 k vertices unless the rebuild is
+  reworked.

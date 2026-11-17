@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -4008,8 +4008,8 @@ and `procWithSite` send a landing procedure to a point; `landAt` reports its mis
 - **Cargo goals read the recovery verdict.** Today `R.recSci` is set the moment a package lands on Tellus
   (sim/program.js:617), before recovery is settled, so a sample that sank, drifted beyond the ships' reach or was kept
   abroad still pays. D48: a goal that needs something brought back is met only if it is recovered. The change touches
-  every "recovered" contract from the first hour on, so **measure first**: `career.mjs` with the rule on, for whether
-  the early sounding flights (which come down near the pad) lose anything. Data sent by radio before the landing
+  every "recovered" contract from the first hour on, so it was measured first, and narrowed (§ v1.344 below): a package
+  kept by a hostile power is not recovered; the sea beyond the ships' reach waits for W57. Data sent by radio before the landing
   still counts (Claude's reading of D48, to confirm).
 
 **Slices**
@@ -4059,3 +4059,52 @@ No change a player can see: nothing reads a place yet. Sim only, and one new tes
   `node review/2026-11-13/survey.mjs table` and pastes the rows; ground-11 says so when they disagree.
 - **Not checked:** nothing seen in a browser (there is nothing to see); whether a pilot can land inside a rim by hand;
   the names are a default for Caio to change.
+
+## v1.344 — a package kept abroad is not recovered; a crew down abroad is home, with a fallout (2026-11-13, review 2 session (Fable), QUEUE Q616; DECISIONS D48 answer 4; the plan "places on Selene" § 5)
+
+Caio: "the mission would not be complete if it requires retrieving something, including data. but if it's just getting
+astronauts home safe, then landing in hostile territory still counts as a win" and "the fallout must be dealt with".
+
+**Measured first** (`review/2026-11-13/recover.mjs`: the game's own `landingVerdict`, each power as home, its 15 launch
+sites, a new program's relations). The plan said to measure on `career.mjs`; its flights are abstract and cannot.
+
+| Where a package comes down | No fleet | Fleet 1 | Fleet 2 |
+|---|---|---|---|
+| 10 km and 150 km from the pad (8 directions) | 120 of 120 recovered | same | same |
+| 400 km from the pad | 54 of 120 (66 at sea beyond the boats' 200 km) | 120 | 120 |
+| The nearest point of each field-station biome | 95 of 95 | same | same |
+| Under the auroral zone (3 points per site) | 30 of 45 (14 at sea, 1 kept) | 31 | 44 |
+
+**The whole rule was built, and failed CI: it is narrowed.** With "beyond the ships' reach is not recovered" the
+*Sample return* procedure (bodies-1) lost its sample: the `return` phase aims a perigee, not a splashdown, and the
+capsule came down in deep water. A sample return from Selene cannot choose its ocean today, so that half would make the
+mission luck. It is out, and is a question for Caio (QUEUE W57).
+
+**Built**
+- **`R.recSci`** (sim/program.js, the Tellus landing in `missionTick`): a package on the land of a hostile power,
+  which keeps it (`recoveryOf` kind `kept`), is not recovered. The contract's "recovered" line reads lost and the
+  flight says *Instruments down in a country that keeps them*. Every contract and mission that says "recovered"
+  follows (soundings, air samples, field stations, the aurora, *Above the weather*, *Sample return*), and the strain
+  recorder. At sea it counts wherever it is, as before.
+- **A crew down abroad** (`crewAbroad`, sim/contracts.js, called when the flight is settled): the mission counts as
+  before (`R.capHome`: alive and landed on Tellus). A friend flies them home (news). A tense power sends them back
+  after talks (opinion at home −3). A hostile power holds them: a decision in the in-tray, 40 days to answer.
+  **Pay 30 M**; **hand over the flight's data** (relations with them +0.08, opinion at home −6); **protest and wait**
+  (relations −0.10, opinion −10), which is also what no answer does when the 40 days run out.
+- `landingVerdict` and `recoveryOf` also return whose land it is and its welcome (`pi`, `rel`). The ledger has a
+  line, *A crew released from abroad*.
+- **econ-45 (new):** the sea near and far; the three kinds of foreign land; the crew home in all three; the three
+  answers and silence.
+
+**The numbers are first guesses** (`CREW_HELD`): 30 M is about a twentieth of *Crew on Selene*'s pay.
+
+**Open**
+- W57: the sea beyond the ships. Ways to make it fair before it counts: the return aims at a point; or the fleet is
+  sent ahead to a planned splashdown; or it stays as it is.
+- A crew capsule in the sea beyond the ships still counts as home safe (the same question).
+- While held, the crew is not missing from anything: there is no roster yet (Q182). When there is, they should be
+  unavailable until released.
+- A passenger flight (tourists, the biocapsule) down abroad has no fallout.
+
+**Not checked:** nothing in a browser: the decision card with three buttons, and the new message, are unseen
+(TESTING 396). The table above is the verdict at points, not flights.

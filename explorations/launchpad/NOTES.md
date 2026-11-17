@@ -139,9 +139,10 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.336 — the builder acts only on the Assembly: a click on the rocket at the Rollout, Program, Mission card, Debrief or title picks nothing up, and its keys are quiet there (2026-11-12, launchpad session, QUEUE R28) → [notes/vehicle.md](notes/vehicle.md)
 - v1.337 — `detach()` keeps momentum (R22's fourth fix): Crewed Lunar's return predicts its landing and goes round again until it's open sea; the Nyx control is an orbit too wide to last (2026-11-12, launchpad session, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)
 - Plan: the bench as its own builder, points 1 and 2: mounts on a frame's faces, edges and corners with a pose and a 15° tilt on a bracket; the fairing reads an envelope; views tested in `sim/views.js`; new Checks rows; the declared attitude and its handover to Q338; balance weights built in; seven slices (2026-11-13, vehicle session, QUEUE Q605, D47; plan only)
-- v1.343 — the frame as a sized part (bench slice 1): a `frame` node carries its sides, width, height and taper; `frameDef` sizes it at layout, `nodeDef` and `shDef` read it; the shape controls on the bench; a plain prism (2026-11-13, vehicle session, QUEUE Q617, D47) → [notes/vehicle.md](notes/vehicle.md)
+- v1.346 — the frame as a sized part (bench slice 1): a `frame` node carries its sides, width, height and taper; `frameDef` sizes it at layout, `nodeDef` and `shDef` read it; the shape controls on the bench; a plain prism (2026-11-13, vehicle session, QUEUE Q617, D47) → [notes/vehicle.md](notes/vehicle.md)
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
+- v1.345 — the *Asparagus* preset is *Crossfeed* (D15.6); "on rails" was already out of player text (2026-11-15, worker, QUEUE Q284) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)
 
@@ -300,6 +301,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.321 — one formula each (`opsOf`, `stackDays`, `ignFail`, `PAY_MIL`/`PAY_FAR`); `LATE=1 node career.mjs` plays the late game: satellites that earn, a station, Selene, dispatch, studies, routines (2026-11-12, economy, QUEUE R19) → [notes/economy.md](notes/economy.md)
 - Plan: places on Selene (Q607, D48): 36 named craters from the map's own list, a landing judged inside the rim, *Crew on Selene* offers three by grade, contracts for a place and for a drive, a crew down abroad is a fallout; build Q612 to Q616 (2026-11-13, review 2) → [notes/economy.md](notes/economy.md)
 - v1.342 — places on Selene as data: 48 named craters graded A to C (`selPlaces`, `placeAt`), the landing's place in the flight record, the cond `jPlace`; ground-11 recomputes the table from the relief; nothing reads it yet (2026-11-13, review 2, QUEUE Q612) → [notes/economy.md](notes/economy.md)
+- v1.344 — a package kept by a hostile power pays no contract; a crew down abroad is home safe, and a hostile power holds them until the program pays, hands over data or waits (2026-11-13, review 2, QUEUE Q616, D48) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 
@@ -405,6 +407,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.322 — the design table's and the flight's copy, cut to the rule (Q603 slices 1 and 2; UI.md § 2.1)
 - v1.329 — the Program's copy, cut to the rule: mission briefs, contracts, decisions, the fleet, mission control (Q603 slice 3; UI.md § 2.1)
 - v1.341 — the glossary, the why-cards, Rollout and the sim's warnings, cut to the rule; flow-63 checks the budgets (Q603 slices 4 to 7)
+- v1.343 — the flight cards' last how-to lines into tooltips: spin, wheels, righting, the stationary transfer (Q603 slice 2's remainder)
 
 ## Look & sound: [`notes/look.md`](notes/look.md)
 

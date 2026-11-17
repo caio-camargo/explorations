@@ -336,9 +336,9 @@ function tgtCA(){const T=tgtOf(S);if(!T||T.landed||S.landed||!S.alive)return nul
   return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan}}
 function spinRows(){const Y=qrot(S.q,[0,1,0]),sp=dot(S.w,Y);if(!S.spun&&Math.abs(sp)<SPIN_MIN)return[];
   const wob=len(sub(S.w,mul(Y,sp)))/Math.max(Math.abs(sp),1e-9);
-  return[['Spin',`${(Math.abs(sp)*60/2/Math.PI).toFixed(0)} rpm${wob>0.01?` · wobble ${(Math.atan(wob)*180/Math.PI).toFixed(1)}°`:''}${S.spun&&S.sas?' <span class="dim">(SAS damps the wobble, leaves the roll; a roll key takes it back)</span>':''}`]]}
+  return[['Spin',`${(Math.abs(sp)*60/2/Math.PI).toFixed(0)} rpm${wob>0.01?` · wobble ${(Math.atan(wob)*180/Math.PI).toFixed(1)}°`:''}${S.spun&&S.sas?' <span class="dim" title="SAS damps the wobble, not the spin; a roll key changes it">· SAS on the wobble</span>':''}`]]}
 function wheelRows(){if(!(S.hmax>0)||!S.wH)return[];const f=len(S.wH)/S.hmax;if(f<0.05)return[];
-  return[['Wheels',`<span class="${f>0.9?'bad':f>0.6?'warn':'ok'}">${(f*100).toFixed(0)}% saturated</span>${f>0.6?' <span class="dim">(RCS, a burn or steerable fins unload them)</span>':''}`]]}
+  return[['Wheels',`<span class="${f>0.9?'bad':f>0.6?'warn':'ok'}" title="RCS, a burn or steerable fins unload them">${(f*100).toFixed(0)}% saturated</span>`]]}
 function rcsRows(){const J=rcsJets(S);if(!J)return[];const g=rcsGas(S)*1000,dv=J.N[0].isp*G0*Math.log(S.mass/Math.max(1,S.mass-g));
   return[['RCS',`${S.rcs?'<span class="ok">on</span>':'off'} · gas ${g.toFixed(1)} kg · Δv ${dv.toFixed(1)} m/s${S.rcsFire?` · ${S.rcsFire} firing`:''}`]]}
 // the line-up: distance between the ports, angle between their axes, closing speed, and which RCS keys close the
@@ -352,7 +352,7 @@ document.addEventListener('click',e=>{const op=e.target.dataset&&e.target.datase
 // (flow, Q527) a lander on its side (Q508): what is out under the hull and why, what the fall broke or damaged, and why it stays
 function tipRows(){if(!S.alive||!S.landed||!S.tipped)return[];const T=tipState(S);
   return[...(T.under.length?[['Under it',T.under.join(' · ')]]:[]),...(T.broke.length?[['Broken',`<span class="bad">${T.broke.join(', ')}</span>`]]:[]),
-    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Righting','<span class="dim">thrust, RCS or the wheels can stand it up</span>']]}
+    ...(T.hurt.length?[['Damaged',T.hurt.join(', ')]]:[]),['Righting','<span class="dim">thrust, RCS or the wheels</span>']]}
 function bayRows(){const B=S.parts.filter(p=>p.on&&p.d.kind==='bay');if(!B.length)return[];const f=Math.min(...B.map(doorF)),op=B.some(b=>b.open),
     load=B.some(b=>b.children.some(c=>c.on&&c.inBay===b)),st=f===0?'shut':f===1?'open':`${op?'opening':'closing'} ${(f*100).toFixed(0)}%`;
   return[['Bay',`${st} <button data-bay="${op?'close':'open'}">${op?'close':'open'} [B]</button>${load&&f===1?' <button data-bay="rel">release payload</button>':load?'':' <span class="dim">empty</span>'}`]]}
@@ -391,7 +391,7 @@ let statXc={t:-9,s:null,x:null};
 function statX(){if(!S)return null;if(statXc.s!==S||Math.abs(simT-statXc.t)>=1){const M=MISSIONS.find(m=>m.id==='tv'),want=S.parts.some(p=>p.on&&p.d.kind==='ant')||!!M&&!PROG.done.tv&&missionOpen(M);
     statXc={t:simT,s:S,x:want&&!(S.throttle>0)?statXfer(S):null}}const X=statXc.x;return X&&X.dt>simT-statXc.t?{...X,dt:X.dt-(simT-statXc.t)}:null}
 function statRows(){const X=statX();if(!X)return[];
-  return[['Transfer',`prograde ${X.dv.toFixed(0)} m/s · <b>in ${fmtT(X.dt)}</b> <span class="dim">(the burn's middle)</span>`],
+  return[['Transfer',`prograde ${X.dv.toFixed(0)} m/s · <b title="to the middle of the burn">in ${fmtT(X.dt)}</b>`],
     ['Arrives',`over ${X.city.name}, ${fmtD(STAT_R-TELLUS.R)} up · <button data-statx="1">${S.node?'move the node here':'plan it'}</button>`]]}
 document.addEventListener('click',e=>{if(!(e.target.dataset&&e.target.dataset.statx)||mode!=='flight'||!S)return;const X=statX();if(!X||S.node&&S.node.burning)return;
   S.node={t:simT+X.dt,dv:[X.dv,0,0]};HOOK.msg(`Transfer planned: the far point comes round over ${X.city.name}`)});

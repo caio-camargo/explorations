@@ -45,7 +45,7 @@ const MC_MARK={met:['✓','ok'],lost:['✗','bad'],open:['○','dim'],pending:['
 // where the flight stands, for the card and the notice: jobsLeft, and on a path down through the air, that ending it now
 // writes the hardware off (the refurbishment comes with a landing)
 function mcLeft(J){if(!S||!S.alive||!S.rec||S.rec.ended)return null;const L=jobsLeft(J||cardJobs(S));if(!L||L.k!=='done')return L;
-  const B=S.body,down=!S.landed&&!!B.atm&&elements(S.r,S.v,B.mu).pe<B.R+B.atm;return down?{...L,t:L.t+' (land it first to keep the hardware)'}:L}
+  const B=S.body,down=!S.landed&&!!B.atm&&elements(S.r,S.v,B.mu).pe<B.R+B.atm;return down?{...L,t:L.t+' (land it to keep the hardware)'}:L}
 // (Q600, D42) The card is on screen the whole flight (CP_CARDS, app/cockpit.js). In a critical phase (cpPhase: the climb,
 // a burn, a landing) it is short: one line per job, its first open condition with the reading now; unpinned only (a
 // pinned card stays full). Jobs keep the order the flight first listed them in (mcOrder), so a job done turns green where

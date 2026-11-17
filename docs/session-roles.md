@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.4.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
+**Version**: 1.4.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-16 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -9,7 +9,7 @@ follow its brief after the normal AGENTS.md startup. Add a section when a new st
 | Orchestrator | "you are the orchestrator"; ask it "what are the next unblockers?" | Its row in `ACTIVE_WORK.md`, the top of `QUEUE.md`, and ROADMAP § "Keeping the queue full" (incl. *Next unblockers*) |
 | Test bench | "you are the launchpad **test bench**" (Caio's second computer) | [below](#test-bench) |
 | Design desk | "you are the design desk" | [below](#design-desk) |
-| Playtest intake | "you are the playtest feedback session" | [below](#playtest-intake) |
+| Playtest | `/playtest` (or "you are the playtest session"): plans what Caio plays and files what he says | [below](#playtest) |
 | Studio | "you are the studio session" | [below](#studio) |
 
 **Every launchpad session follows ROADMAP § "Documents"** (2026-10-11): one home per fact; a decision is one line in
@@ -45,20 +45,47 @@ Pull before each edit; commit and push TESTING / PLAYTEST / QUEUE changes in sma
 `node check_numbers.mjs`. Never merge or push code. If the queue gives it nothing for two passes, say so in its claim row
 and slow down to hourly; the orchestrator refills it.
 
-## Playtest intake
+## Playtest
 
-Launchpad, QA lane. **No game code.**
+Launchpad, QA lane. **No game code, never merges.** Caio's one interface for playing: it decides what he plays next,
+walks him through it, and files what he says. Start it with **`/playtest`** (optionally `/playtest 45` for minutes, or
+`/playtest 30 Selene` for a focus), or say "you are the playtest session". The old "playtest feedback session" is this
+role. It can stay open beside every other session: it only touches docs.
 
-Caio gives raw playtest observations in any shape: a list, a ramble, screenshots. For each one:
+**It owns** the order Caio plays in ([`PLAYROUTE.md`](../explorations/launchpad/PLAYROUTE.md): its sittings and *What your
+play still has to answer*) and the marks in TESTING's `#` cells. Sessions still write the rows; the orchestrator still ranks
+the fixes.
+
+**1. Before a sitting.** Pull. Read what waits on a human: PLAYROUTE's questions table; untried TESTING rows (the `#` cell is
+a bare number, or a robot's `~ n (robot): needs a human`); PLAYTEST items marked fixed but not yet confirmed by Caio;
+QUEUE's *Waiting on Caio* rows that say "play"; versions merged since the last sitting (`git log` on `notes/`). Skip rows
+the robot judged in full, and rows whose feature changed since (fix the row first, or ask its lane to).
+
+**2. Plan one sitting** for the time he has (default **30 min**; ask only if he gave nothing and it matters). One setup per
+sitting (one preset or one career; tester flags or none), so he never re-rolls the game midway. Order: (a) answers that
+unblock a decision; (b) fixes of his own PLAYTEST notes, newest first (he knows what was wrong); (c) features merged since
+last time; (d) older untried rows. Hand it over **in chat**, not as a file: a setup line (URL, `?tester` and flags,
+`refView(n)`), then 5–10 numbered steps, each one line, "do X — look for Y (row n)". No more steps than fit.
+
+**3. During.** He answers in any shape: "1 ok, 3 felt slow", a ramble, screenshots, things off the script. For each:
+- fine: mark the row `✓ n`. Unsure: `~ n` plus his word.
+- a problem: the intake steps below, then mark the row `✗ n → P#m`.
+- an answer to a decision question: record it where the question waits (its W row or PLAYROUTE's table, in his words, dated),
+  and a line under QUEUE *Proposed* so the orchestrator moves it to DECISIONS.
+Ask back only when a note is ambiguous. Pull before each edit; commit and push after each batch of answers (TESTING,
+PLAYTEST, QUEUE, PLAYROUTE), numbers from `node check_numbers.mjs`.
+
+**Intake** (any observation, in a sitting or not):
 1. Check PLAYTEST.md (open and done) and TESTING.md for the same thing. If it's already there, add to that item instead.
 2. Write a PLAYTEST.md item: the symptom in Caio's terms, a lead (where in the code, a likely cause, after a quick look),
    priority P1–P3 (the file's own scale), and the owner lane per ROADMAP.md § Lanes.
 3. Add a one-line follow-up under QUEUE.md's *Proposed* (`lane — what — PLAYTEST #n`). The orchestrator ranks it.
 4. If an observation is about design rather than a bug (it isn't fun, it's confusing, I wanted X), check it against
-   ROADMAP.md § Pillars and file it as a P3 design item with the pillar it touches.
+   ROADMAP.md § Pillars and file it as a P3 design item with the pillar it touches. Note good mess or bad jank (PLAYTEST's lens).
 
-Ask Caio only when a note is ambiguous. Pull before each edit, and commit and push doc changes as you go (PLAYTEST.md,
-QUEUE.md, the session log). You can stay open alongside every other session: you only touch docs.
+**4. After.** A short summary in chat: tried, filed (with numbers), what the next sitting will be. Update PLAYROUTE (steps
+done, the next sitting ready), and a session-log entry. Between sittings it keeps PLAYROUTE true: rows whose feature
+changed or went away go to their lane as a *Proposed* line.
 
 ## Design desk
 
@@ -112,7 +139,7 @@ LESSONS_LEARNED.md, SESSION_LOG.md, and in `explorations/launchpad/`: QUEUE.md, 
 - milestones with finish lines a robot can check;
 - design pillars and closing the set of systems;
 - defaults-if-silent for blocked decisions;
-- the standing roles (orchestrator, playtest intake, studio);
+- the standing roles (orchestrator, playtest, studio);
 - the robot playtester and the tester menu as standard parts of any game;
 - worktrees, claims and merging;
 - the coordination failures already hit (lost merges, version-number collisions, Drive sync corrupting git), each with

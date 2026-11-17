@@ -7804,7 +7804,67 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `review/2026-11-13/survey.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`; root `ACTIVE_WORK.md`,
   `SESSION_LOG.md`.
 
-### 2026-11-13: vehicle session (Fable 5.2), Q617: the frame as a sized part, v1.343 (closing)
+### 2026-11-13: review 2 session (Opus), Q603 slice 2's remainder: the flight cards (v1.343, text only)
+- **Asked:** pick from the task options; Caio took the recommendation (Q603 slice 2's remainder: the flight's cards, the
+  Esc menu).
+- **Done (v1.343):** four card rows in `app/program-ui.js` lose their how-to parentheses: Spin (*· SAS on the wobble*,
+  the rest a tooltip), Wheels (what unloads them is the tooltip on *n% saturated*), Righting (*thrust, RCS or the
+  wheels*), Stationary orbit (*to the middle of the burn* as the countdown's tooltip); the Mission card's *(land it to
+  keep the hardware)* in `app/hud.js`. The Esc menu needed nothing; the tester menu left (a developer's tool). One test
+  line (flow's tipped-lander check).
+- **Tests:** flow lane green; smoke green; flow + world green after merging Q612; CI full run green (43485173315), then
+  only QUEUE.md changed on `main` before the ff-merge. Renumbered at merge v1.342 → v1.343 (Q612 took v1.342); TESTING 395.
+- **Noticed:** `launchpad-copy` held uncommitted work from another session (Q612/Q616 files) when this one started, so
+  this one used a new worktree, `launchpad-copy2`.
+- **Not checked:** nothing seen in a browser (TESTING 395).
+- **Next:** Q603 is built in all its slices; what is left is Caio's read in the game (TESTING 380, 386, 394, 395).
+- Files: launchpad `app/program-ui.js`, `app/hud.js`, `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`, `QUEUE.md`,
+  `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: review 2 session (Fable), Q616 built, narrowed: a package kept abroad; a crew held abroad (v1.344)
+- **Asked:** Caio: "ok to continue" after Q612.
+- **Measured** (`explorations/launchpad/review/2026-11-13/recover.mjs`): near the pad and at field stations every
+  package is recovered; 400 km out 54 of 120 without the fleet; under the aurora 30 of 45.
+- **First build failed CI** (run 43485202915): with "beyond the ships' reach is not recovered", *Sample return* flown
+  by procedure (bodies-1) lost its sample, because the return cannot aim its splashdown. That half is out: **W57**.
+  Also caught locally by platform-12: a trailing `//` comment of mine had swallowed the rest of a line in
+  `missionTick`.
+- **Built (v1.344):** a package a hostile power keeps is not recovered; a crew down abroad still completes its
+  mission, and a hostile power holds them until the program pays 30 M, hands over the flight's data or waits (decision
+  `crewheld`). Test econ-45. TESTING 396.
+- **Next on this thread:** Q615 (contracts for a place, a drive, rocks, an experiment); Q613 and Q614 ship with GROUND
+  G3 (Q91).
+- **Not checked:** nothing in a browser.
+- Files: launchpad `sim/program.js`, `sim/contracts.js`, `sim/world.js`, `sim/debrief.js`, `tests/economy.mjs`,
+  `review/2026-11-13/recover.mjs` (new), `notes/economy.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root
+  `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-15 — generic worker (Opus, worktree launchpad-q284): the Asparagus preset is Crossfeed (Q284, v1.345)
+
+- **Done:** D15.6 / KSPISMS § 6. `PRESETS.Asparagus` → `PRESETS.Crossfeed` (same stack); tests, the robot's rows and
+  TESTING rows 7, 108, 122 renamed. Saves are unaffected (presets are matched by stack, never loaded by name). "On rails"
+  in player text: none was left (the warp's reasons come from `railsWhy` and never say rails).
+- **Checked:** full `node test.mjs`: all passed.
+- **Not checked:** the robot's rows themselves (🖥, not run).
+- **Files:** `sim/vessel.js`, `tests/core.mjs`, `tests/flow.mjs`, `tests/vehicle.mjs`, `playtest.mjs`, `notes/vehicle.md`,
+  `NOTES.md`, `KSPISMS.md`, `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+- **Next:** another ⚙ ready item (Q296 satellite aging without the nag, Q456, Q471 on its default).
+
+## 2026-11-16 — graphics study with Caio (Fable 5.2, main clone): what more triangles on the craft cost
+
+- **Asked:** how to beautify without breaking the performance budget; the impact of more detail on the craft's models.
+- **Measured (no game change):** the craft's triangles scaled 4× / 16× / 64× and stand-in greeble boxes added, in the
+  running game on the RTX (High) and the Intel UHD (Low). The ship pass is 0.03–0.13 ms of a 7–10 ms frame on the RTX;
+  4× adds under 0.1 ms, 64× about 1.5 ms. On the iGPU 4× adds 0.3–1.3 ms against a sky of 60–70 ms. The limit is the
+  CPU rebuild of the ship mesh (3–7 ms today, 44–190 ms at 16×). Geometry without shadows reads pasted on: Q316's
+  order (shadow map and AO, then greebles) stands. Numbers: `explorations/launchpad/notes/look.md` § Study (2026-11-16).
+- **Not checked:** many ships at once; thin geometry under MSAA at distance; two RTX rows the timer dropped.
+- **Files:** launchpad `notes/look.md`; root `SESSION_LOG.md`. No claim was taken (docs appended only; the GPU lock
+  taken and released).
+- **Next:** Caio's call on starting Q316 (B1.3 shadows first).
+### 2026-11-13: vehicle session (Fable 5.2), Q617: the frame as a sized part, v1.346 (closing)
+- **Landed 2026-11-17** by the launchpad merge session (Opus 5.5): the session was cut off before merging; its numbers
+  were taken on `main` meanwhile, so v1.343 → **v1.346** and TESTING 395 → **397**; merged with `origin/main`, smoke, CI.
 - **Asked:** Caio: "orchestrator organized them, go ahead with 1" (bench slice 1 of Q605's plan).
 - **Built** (worktree `launchpad-builder`, branch `vehicle`): a `frame` part whose node carries its sides, width, height
   and taper; `frameDef` sizes it at layout; `nodeDef` and `shDef` are how layout and registered craft read it; the shape

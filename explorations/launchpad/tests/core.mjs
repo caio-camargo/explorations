@@ -299,14 +299,14 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('resource mass: a full Tank 8 t weighs dry + propellant', Math.abs(api.partMass(t8) - 8) < 1e-9, `${api.partMass(t8)} t (res ${JSON.stringify(t8.res)})`);
   check('without crossfeed the flow model reproduces the old per-stage numbers', Math.round(tot(P.Orbiter)) === 5288 && Math.round(tot(P.Heavy)) === 5671 && Math.round(tot(P.Lunar)) === 8495,   // Lunar resized for the 2026-10-07 rescale; the Orbiter +Tank 1 t (PLAYTEST #121)
     `Orbiter ${tot(P.Orbiter).toFixed(0)}, Heavy ${tot(P.Heavy).toFixed(0)}, Lunar ${tot(P.Lunar).toFixed(0)} m/s`);
-  const h0 = tot(P.Heavy), h1 = tot(withX(P.Heavy)), a0 = tot(noX(P.Asparagus)), a1 = tot(P.Asparagus);
+  const h0 = tot(P.Heavy), h1 = tot(withX(P.Heavy)), a0 = tot(noX(P.Crossfeed)), a1 = tot(P.Crossfeed);
   check('crossfeed adds Δv: boosters feed the core and drop before it is touched', h1 > h0 + 200 && a1 > a0 + 500,
-    `Heavy ${h0.toFixed(0)} → ${h1.toFixed(0)} m/s, Asparagus ${a0.toFixed(0)} → ${a1.toFixed(0)} m/s`);
-  api.t = 0; const s = api.newShip(P.Asparagus); api.S = s; api.HOOK.msg = () => {}; s.throttle = 1; api.stage(s);
+    `Heavy ${h0.toFixed(0)} → ${h1.toFixed(0)} m/s, Crossfeed ${a0.toFixed(0)} → ${a1.toFixed(0)} m/s`);
+  api.t = 0; const s = api.newShip(P.Crossfeed); api.S = s; api.HOOK.msg = () => {}; s.throttle = 1; api.stage(s);
   const fill = k => { const cap = s.parts.filter(p => p.on && p.seg === k).reduce((a, p) => a + (p.cap.fuel || 0), 0); return cap ? api.segFuel(s, k) / cap : null; };
   let at = null; while (api.t < 120 && !at) { api.physStep(s, api.DT); const d = s.events[1].decouple; if (d.every(k => fill(k) <= 1e-9)) at = s.segs.map((g, k) => [g.label, fill(k)]).filter(x => x[1] !== null); }
   const pairA = at.filter(x => /A ×/.test(x[0])), rest = at.filter(x => !/A ×/.test(x[0]));
-  check('asparagus drain order: when pair A runs dry, the core and pair B are still full', pairA.every(x => x[1] === 0) && rest.every(x => x[1] > 0.999),
+  check('crossfeed drain order: when pair A runs dry, the core and pair B are still full', pairA.every(x => x[1] === 0) && rest.every(x => x[1] > 0.999),
     `T+${api.t.toFixed(1)} s: ${at.map(x => `${x[0]} ${(x[1] * 100).toFixed(0)}%`).join(', ')}`);
 }
 
@@ -2638,7 +2638,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     if (drop != null) s.parts = s.parts.filter(p => Math.hypot(p.pos[0], p.pos[2]) < 0.05 || Math.abs(Math.atan2(p.pos[2], p.pos[0]) - drop) > 0.1);
     for (const p of s.parts) { const [x, , z] = p.pos; p.pos = [x * c - z * n, p.pos[1], x * n + z * c]; } return s; };
   const cases = Object.entries(D.PRESETS).map(([k, st]) => [k, D.newShip(st)]);
-  cases.push(['Asparagus turned 45°', turn(D.newShip(D.PRESETS.Asparagus), Math.PI / 4)], ['Crewed Lunar turned 45°', turn(D.newShip(D.PRESETS['Crewed Lunar']), Math.PI / 4)],
+  cases.push(['Crossfeed turned 45°', turn(D.newShip(D.PRESETS.Crossfeed), Math.PI / 4)], ['Crewed Lunar turned 45°', turn(D.newShip(D.PRESETS['Crewed Lunar']), Math.PI / 4)],
     ['Crewed Lunar, 3 boosters', turn(D.newShip(D.PRESETS['Crewed Lunar']), Math.PI / 4, -Math.PI / 2)]);
   const bad = [], moved = [];
   for (const [k, s] of cases) {
