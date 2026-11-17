@@ -17,7 +17,7 @@ const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
 PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.padapt6=0.5;PRICE.padapt3=0.5;PRICE.core6=5;PRICE.core3=4;PRICE.rwheel6=3.5;PRICE.rwheel3=2.5;PRICE.batt6=1;PRICE.batt3=0.8;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
-PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.frame=1.2;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -43,7 +43,7 @@ const PART_GATE=Object.fromEntries(Object.entries({
   loads:['kestrel','t8','petrel','istage','rwheel'],   // "the orbital kit"
   range:['rdec'],
   hop:['pod','shield'],
-  beeper:['core','core6','core3','batt','sbatt','batt6','batt3','bpanel','cam','scam','ant','whip','ssci','fair','oct','octl','octl6','padapt','padapt6','padapt3'],   // "the satellite bench"
+  beeper:['core','core6','core3','batt','sbatt','batt6','batt3','bpanel','cam','scam','ant','whip','ssci','fair','oct','octl','octl6','frame','padapt','padapt6','padapt3'],   // "the satellite bench"
   orbiter:['crew','les'],
   lift1:['condor'],
   lift2:['albatross','T16','T32','adapt','dec25','fins25','cfins25','cone25','fair25'],   // "the 2.5 m family"
@@ -84,7 +84,7 @@ const PART_WHY={bio:'A passenger to space and back: the first one will be an ani
   batt:'A 1 kWh battery: keeps a satellite alive through the night side.',sbatt:'A battery for the side of a stage.',batt6:'A 0.6 m battery, for small satellites.',batt3:'A 0.3 m battery, for the smallest satellites.',
   bpanel:'Solar cells on the body: power from the Sun while it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
   ant:'A cone antenna: a satellite that talks to the ground.',whip:'A whip antenna: the lightest way to be heard.',ssci:'An instrument package for the side of a stage: science on any craft.',
-  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',octl:'A long octagonal frame: room for more on one bus.',
+  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',frame:'A frame to shape: the bus a satellite is built on.',octl:'A long octagonal frame: room for more on one bus.',
   octl6:'A long 0.6 m frame, for small satellites.',padapt:'A payload adapter: seats a satellite on its rocket and lets it go.',padapt6:'A 0.6 m payload adapter.',padapt3:'A 0.3 m payload adapter.',
   albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m to 1.25 m: a small upper stage on a big one.',
   dec25:'A 2.5 m decoupler.',fins25:'A 2.5 m fin ring: keeps a big rocket pointing into the wind.',cfins25:'A steerable 2.5 m fin ring.',cone25:'A 2.5 m nose cone.',fair25:'A 2.5 m payload fairing: room for big satellites.',

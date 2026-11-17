@@ -1259,3 +1259,39 @@ return out`);
   check('vehicle-47: a stage drop keeps momentum (the craft takes the reaction, its velocity follows its centre of mass)',
     orb.n > 0 && orb.dp < 1e-6, `Orbiter's drop: ${orb.n} debris, momentum change ${orb.dp.toExponential(1)} m/s × M, craft Δv ${orb.dv.toFixed(2)} m/s`);
 }
+
+// vehicle-48. The frame as a sized part (vehicle, QUEUE Q617, D47 point 1; notes/vehicle.md § "Plan: the bench as its own
+// builder", slice 1): a `frame` node carries fr {n, w, h, top} and frameDef sizes it at layout, one cached definition per
+// shape with the part's own key. Its mass goes with its skin, its radius is half its width; what stacks on it stands at its
+// height; the payload adapter is picked by its radius; a saved design reads back the same; a registered craft keeps the shape.
+{
+  const P = api.PARTS, F = P.frame, near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
+  // (a) each shape: mass from the skin's area (sides and both ends), 18 kg a square metre; radius w/2
+  const skin = (n, w, h) => { const r = w / 2; return n * 2 * r * Math.sin(Math.PI / n) * h + n * r * r * Math.sin(2 * Math.PI / n); };
+  const shapes = api.FR_N.map(([n, nm]) => { const d = api.frameDef(F, { n, w: 1, h: 1, top: 1 }); return { nm, kg: d.m * 1000, want: 18 * skin(n, 1, 1), r: d.r, key: d.key }; });
+  const okShapes = shapes.every(x => near(x.kg, x.want, 0.06) && x.r === 0.5 && x.key === 'frame') && shapes[0].kg < shapes[1].kg && shapes[2].kg < shapes[3].kg;
+  const tap = api.frameDef(F, { n: 6, w: 1, h: 1, top: 0.5 }), str = api.frameDef(F, { n: 6, w: 1, h: 1, top: 1 });
+  const okTaper = tap.m < str.m && near(tap.rt, 0.25) && tap.r === 0.5 && near(tap.prof[1][0], 0.25) && tap.pk < str.pk;
+  // the palette's part is the default shape; the same shape is the same definition; odd values are brought into range
+  const c = api.frOf({ n: 5, w: 9, h: 0.01, top: 0.1 });
+  const okDef = api.frameDef(F) === F && api.frameDef(F, { n: 6, w: 0.9, h: 0.8, top: 1 }) === F && api.frameDef(F, { n: 4, w: 2, h: 1, top: 1 }) === api.frameDef(F, { n: 4, w: 2.04, h: 1.01, top: 1 }) &&
+    c.n === 6 && c.w === 3 && c.h === 0.2 && c.top === 0.3 && Object.keys(P).every(k => k === 'frame' || api.nodeDef({ k }) === P[k]) && near(F.pk, 1);
+  // (b) laid out: what stands on it starts at its height; its own mass is in the craft's
+  const fr = { n: 4, w: 1.6, h: 1.2, top: 0.5 };
+  const pd = { v: 2, root: { k: 'frame', fr, c: [{ k: 'core6', at: 'u', c: [] }, { k: 'whip', at: { y: 0.6, a: 0, n: 1 }, c: [] }] } };
+  const s = api.newShip(JSON.parse(JSON.stringify(pd))), pf = s.parts.find(p => p.d.key === 'frame'), pc = s.parts.find(p => p.d.key === 'core6'), pw = s.parts.find(p => p.d.key === 'whip');
+  const sized = api.frameDef(F, fr), okLay = pf.d === sized && near(pf.h, 1.2) && near(pc.y0 - pf.y0, 1.2) && near(s.mass, (sized.m + P.core6.m + P.whip.m) * 1000, 0.01) &&
+    near(Math.hypot(pw.pos[0], pw.pos[2]), (0.8 + 0.4) / 2 + (P.whip.off || 0), 0.05);
+  // (c) the adapter under it on a rocket goes by its radius
+  const adOf = w => { const d = api.toV2(['fair', 't2', 'petrel']), f = d.root.k === 'fair' ? d.root : (function g(n) { return n.k === 'fair' ? n : (n.c || []).map(g).find(Boolean); })(d.root);
+    f.c.push({ k: 'pay', pid: null, name: 'test', at: 'u', pd: { v: 2, root: { k: 'frame', fr: { n: 6, w, h: 0.5, top: 1 }, c: [] } }, c: [] });
+    const r = api.newShip(d), a = r.parts.find(p => api.isAdapter(p.d)), fp = r.parts.find(p => p.d.key === 'frame'); return { ad: a && a.d.key, want: api.payAdapter(w / 2), sits: a && fp ? fp.y0 - (a.y0 + a.h) : NaN }; };
+  const A = [0.5, 1.2, 2.4].map(adOf), okAd = A.every(x => x.ad === x.want && near(x.sits, 0)) && A[0].ad !== A[1].ad;
+  // (d) a save reads back the same craft; a registered craft's shape keeps the frame's size
+  const s2 = api.newShip(JSON.parse(JSON.stringify(pd))), okSave = near(s2.mass, s.mass) && s2.parts.find(p => p.d.key === 'frame').d === sized;
+  const sh = JSON.parse(JSON.stringify(api.shapeOf(s.parts.filter(p => p.on), false))), so = sh.find(o => o.k === 'frame'), okShape = api.shDef(so) === sized && api.shDef({ k: 'core6' }) === P.core6 && api.shDef({ k: 'nope' }) === undefined;
+  check('vehicle-48: a frame is sized by its node: mass from its skin, radius from its width; parts stand at its height; the adapter goes by its radius; saves and registered shapes keep it',
+    okShapes && okTaper && okDef && okLay && okAd && okSave && okShape,
+    `1 × 1 m: ${shapes.map(x => `${x.nm} ${x.kg.toFixed(1)} kg`).join(', ')}; tapered to half ${(tap.m * 1000).toFixed(1)} kg; default ${(F.m * 1000).toFixed(1)} kg; ` +
+    `laid out ${okLay} (core at ${(pc.y0 - pf.y0).toFixed(2)} m, whip ${Math.hypot(pw.pos[0], pw.pos[2]).toFixed(2)} m out); adapters ${A.map(x => x.ad).join(', ')} (${okAd}); save ${okSave}; shape ${okShape}; shapes ${okShapes}, taper ${okTaper}, defs ${okDef}`);
+}
