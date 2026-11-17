@@ -65,7 +65,7 @@ const KEYS={
   debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Design table: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
   program:[{k:['b'],l:'B',d:'build: go to the design table',go:'assembly'},{k:['c','n'],l:'C',d:'mission control',go:'mission'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox: what needs an answer'}],
   assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['l'],l:'L',d:'roll out: the site, the checks, then launch',go:'rollout'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
-    {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
+    {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},{l:'A D · W S · Q E',d:'on the payload bench: tilt the part across · along · turn it'},
     {k:['r'],l:'R',d:'radial decoupler'},{k:['v'],l:'V',d:'hide the payload fairing'},{k:['t'],l:'T',d:'top view (T again: back)'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
     {k:['delete','backspace'],l:'Del',d:'delete'},{k:['z','y'],l:'Ctrl+Z · Ctrl+Y',d:'undo · redo (Ctrl+Shift+Z too)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}],

@@ -163,7 +163,7 @@ function trial(slot){const h=st.held,old=h.at,D=design();let L;
   if(old===undefined)delete h.at;else h.at=old;
   const set=new Set(nodes(h)),sh=isEmpty(stackDef)?0:S.parts[0].y0-S.parts[0].inst.y0;
   return L.inst.filter(q=>set.has(q.nd)||set.has(q.nd.payOf)).map(q=>({d:q.d,pos:[q.x,0,q.z],y0:q.y0+sh,h:q.d.h,phi:q.phi,rdec:(q.rdec||q.surf)&&!q.mount,inst:{surf:q.surf,mount:q.mount},
-    pose:q.pose&&{f:[q.pose.f[0],q.pose.f[1]+sh,q.pose.f[2]],q:q.pose.q,sf:q.pose.sf}}))}
+    pose:q.pose&&{f:[q.pose.f[0],q.pose.f[1]+sh,q.pose.f[2]],q:q.pose.q,sf:q.pose.sf,bk:q.pose.bk}}))}
 // (Q618) a mounted part as a row of spheres along its axis: against an upright part's cylinder exactly, against another
 // mounted part sphere by sphere; a frame never blocks what stands on it
 function balls(g){const d=g.d,r=Math.max(.02,d.r),sf=g.pose.sf,a=add(g.pose.f,qrot(g.pose.q,sf?[d.off||0,-g.h/2,0]:[0,r<g.h/2?r:g.h/2,0])),
@@ -177,6 +177,11 @@ function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.in
     return dx<1e-3?oy>1e-3:dx<a.d.r+b.d.r-0.02&&oy>0.02};
   for(let i=0;i<all.length;i++){for(const e of ex)if(hit(all[i],e))return true;for(let j=i+1;j<all.length;j++)if(hit(all[i],all[j]))return true}
   return false}
+// (Q619, bench slice 3) the part the tilt keys and buttons turn: the held part when it may go on a frame, else the selected
+// mounted part. A D left and right, W S up and down (as seen from outside a side), Q E about the way out, 15° a press (a boom: 45°); straight undoes all three
+function tiltNode(){if(!st.bench)return null;const h=st.held;if(h)return!isPay(h)&&!kids(h).length&&mountOK(nodeDef(h))?h:null;return st.sel&&mountAt(st.sel.at)?st.sel:null}
+function tilt(i,dir){const n=tiltNode();if(!n)return;const go=()=>{const t=i<0?null:mountTiltStep(n.ti,nodeDef(n),i,dir);if(t)n.ti=t;else delete n.ti};
+  if(n===st.held){go();st.ghostKey='';refresh()}else edit(go);note(`${name(n.k)}: ${mountTiltName(n.ti,nodeDef(n))}`)}
 function place(slot,keep){const h=st.held;snapshot();if(!keep)st.grab=st.stick=st.lastM=null;const D=design(),put=keep?noIds(cl(h)):h;
   if(slot.root){delete put.at;D.root=put;if(st.hang==null)st.reframe=true}else{put.at=cl(slot.at);kids(slot.p.dn).push(put)}
   ensureIds(D);if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
@@ -237,6 +242,7 @@ const here=()=>mode==='editor'&&(typeof screenNow!=='function'||screenNow()==='a
 // ---- per-frame: hover and ghost. Recomputed on mouse move; meshes cached by a key so they rebuild only on change.
 function update(){
   {const b=el('bldbin');if(b)b.style.display=st.held&&st.bench&&here()?'block':'none'}   // (Q618) the bench's bin
+  {const t=el('bldtilt');if(t)t.style.display=st.bench?'inline':'none'}   // (Q619) the tilt keys, on the bench only
   if(!here())return;
   if(st.held){st.slot=findSlot();st.hover=null}
   else{st.slot=null;const h=st.mouse&&!st.press?rayHit(mouseRay()):null;st.hover=h?dnOf(h.p):null}
@@ -294,7 +300,7 @@ function overlay(o){
       const on=s&&s.p===n.p&&s.at===n.side;o.strokeStyle=on?(s.bad?'#ff6b6b':'#7dffa8'):'rgba(127,209,255,.75)';o.lineWidth=(on?2.5:1.5)*k;
       o.beginPath();o.arc(q[0],q[1],(on?8:5)*k,0,7);o.stroke()}
     if(s&&mountAt(s.at)){const m=st.mouse;o.fillStyle=s.bad?'#ff6b6b':'#7dffa8';o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';
-      const t=`${s.bad?'no room here · ':''}${mountName(s.at)} of the ${name(s.p.d.key).toLowerCase()} · C snap ${st.snap?'on':'off'} · X copies`;
+      const ti=st.held.ti?` · ${mountTiltName(st.held.ti,nodeDef(st.held))}`:'',t=`${s.bad?'no room here · ':''}${mountName(s.at)} of the ${name(s.p.d.key).toLowerCase()}${ti} · C snap ${st.snap?'on':'off'} · WASD QE tilt`;
       o.strokeText(t,m[0]+16*k,m[1]+28*k);o.fillText(t,m[0]+16*k,m[1]+28*k)}
     else if(s&&radAt(s.at)){const m=st.mouse;o.fillStyle=s.bad?'#ff6b6b':'#7dffa8';o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';
       const t=`${s.bad?'blocked · ':''}radial mounts ×${s.at.n} [X] · ${(s.at.a*180/Math.PI).toFixed(0)}° · ${s.at.y.toFixed(2)} m up ${name(s.p.d.key)}${s.at.dec?' · decoupler':''}`;
@@ -530,7 +536,13 @@ function panel(){
     L.forEach((g,i)=>btn(r,`${i+1} ${g.name}`,(g.n||[]).includes(n.id),()=>edit(()=>{const x=design().ag[i],k=x.n||(x.n=[]),j=k.indexOf(n.id);if(j<0)k.push(n.id);else k.splice(j,1)}),'in this action group or not (its key in flight)'));
     if(L.length<AG_MAX)btn(r,'+ new group',false,()=>agNew(n),'a new action group with this part in it')}
   if(mountAt(n.at)&&par&&nodeDef(par).fr){const a=n.at,N=frameGeo(nodeDef(par)).N,r=row('copies');   // (Q618) round the frame's axis: only as many as its sides divide into
-    for(const k of SYM)if(N%k===0)btn(r,'×'+k,(a.n||1)===k,()=>edit(()=>{if(k>1)a.n=k;else delete a.n}),k>1?`${k} of it, evenly round the frame`:'just this one')}
+    for(const k of SYM)if(N%k===0)btn(r,'×'+k,(a.n||1)===k,()=>edit(()=>{if(k>1)a.n=k;else delete a.n}),k>1?`${k} of it, evenly round the frame`:'just this one')
+    {const d=nodeDef(n),t=mountTilt(n.ti,d),st15=d.tiS?'45°':'15°',r=row('tilt');   // (Q619) the tilt: buttons beside the keys
+      btn(r,'◄ A',false,()=>tilt(0,-1),`tilt it left, ${st15} · A`);btn(r,'D ►',false,()=>tilt(0,1),`tilt it right, ${st15} · D`);
+      btn(r,'▲ W',false,()=>tilt(1,1),`tilt it up, ${st15} · W`);btn(r,'S ▼',false,()=>tilt(1,-1),`tilt it down, ${st15} · S`);
+      btn(r,'⟲ Q',false,()=>tilt(2,-1),'turn it about the way out, 15° · Q');btn(r,'E ⟳',false,()=>tilt(2,1),'turn it about the way out, 15° · E');
+      btn(r,'straight',!t[0]&&!t[1]&&!t[2],()=>tilt(-1,0),'stand it straight again');
+      const i=document.createElement('div');i.className='sub';i.textContent=mountTiltName(n.ti,d)+(t[0]||t[1]?` · on a ${Math.round(len(ps[0]&&ps[0].pose&&ps[0].pose.bk||[0,0,0])*100)} cm bracket`:'');sel.appendChild(i)}}
   else if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
     if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'on a decoupler they drop as a stage; fixed, they stay on');
@@ -717,7 +729,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}
 #bldbin{position:fixed;left:50%;transform:translateX(-50%);bottom:58px;font-size:13px;padding:8px 14px;border:1px dashed var(--warn);color:var(--warn);background:var(--panel)}#bldbin:hover{background:rgba(255,107,107,.18)}`;document.head.appendChild(css);
-  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>T</b> top view · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
+  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>T</b> top view · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down<span id="bldtilt" style="display:none"> · <b>A D W S Q E</b> tilt</span>';
   el('editor').appendChild(help);
   {const b=document.createElement('button');b.id='bldbin';b.textContent='🗑 bin';b.title='throw the held part away (Ctrl+Z brings it back)';b.style.display='none';   // (Q618) on the bench while a part is held
     b.onclick=e=>{e.stopPropagation();const h=st.held;if(!h)return;drop();note(`${name(h.k)} in the bin (Ctrl+Z brings it back)`);update()};el('editor').appendChild(b)}
@@ -744,6 +756,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?restore(st.redo,st.undo):restore(st.undo,st.redo);return}
     if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();restore(st.redo,st.undo);return}
     if(e.ctrlKey||e.metaKey||e.altKey)return;
+    {const T={a:[0,-1],d:[0,1],w:[1,1],s:[1,-1],q:[2,-1],e:[2,1]}[k];if(T&&tiltNode()){e.preventDefault();tilt(T[0],T[1]);return}}   // (Q619) the bench's tilt keys
     if(k==='x'){const i=SYM.indexOf(st.sym);st.sym=SYM[(i+(e.shiftKey?SYM.length-1:1))%SYM.length];st.ghostKey='';refresh()}
     else if(k==='c'){st.snap=!st.snap;refresh()}
     else if(k==='r'){st.dec=!st.dec;refresh()}
