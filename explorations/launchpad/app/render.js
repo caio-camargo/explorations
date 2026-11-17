@@ -90,7 +90,7 @@ function render(){spoolFrame();
   // (Q488) the Recovery layer's zones are baked from the atlas too
   if(view==='map'&&mode==='flight'&&(atlasMode||mapShow('recovery')))atlasTick();
   // ---- sky / planets: one full-screen ray-cast (not in the desk room)
-  if(!desk)selNear(camW);
+  if(!desk){selNear(camW);selCacheTick(camW)}   // (G3.5) Selene's near-field cache, baked before the passes that read it
   if(!desk){const selD=!!(PSELD&&selTex());SELD_RT.on=false;for(const prog of PDEPTH?[PDEPTH,...(VK>0?[PSLAB]:[]),...(selD?[PSELD]:[]),PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
