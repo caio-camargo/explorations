@@ -4144,3 +4144,32 @@ caught it; the roster's is `crewClassTick`.
 **Checked:** econ-46 (the class, picking by seniority, home and ready with days, aboard in the registry and back, firsts,
 a loss in the memorial, held abroad and released, the save); flow-6 and core's crashed-capsule check now expect names;
 smoke. **Not checked:** in a browser (TESTING 399).
+
+## v1.350 — requalification after a crew loss (2026-11-17, space session, QUEUE Q183; W24 4, CREW § "Requalification after a loss", § "Plan revision" on the simulator)
+
+Before this a crew could be lost and the next crew flew on the same rocket the next day. Now (`sim/crew.js`, after the
+roster):
+
+- **A loss stands crews down** (`requalSet`, where `outThere` judges the loss): `PROG.requal` holds what killed them
+  (`kind`: lost (the capsule or the vessel gone), g, cabin, air, with the value), **how far the flight had gone** (`R.far`, km
+  from Tellus's surface), the design, the names. News: "Crews stand down until the cause is fixed: fly a crew capsule
+  uncrewed to 120 km and bring it home inside the limits".
+- **Capsules fly dummies, not refused.** While it holds, a flight's first tick makes the capsule's people dummies
+  (`R.crewed` false) and marks it the qualification flight (`R.requalFlight`). The plan said "crewed launches are
+  refused"; there is no crew/uncrewed switch on the pad, so refusing would leave no way to launch the capsule that has to
+  requalify. Flying dummies is the same rule with the qualification flight built in. The Rollout warns (⚠, not ⛔) with
+  what the flight has to show.
+- **What requalifies** (`requalEnd`, in `missionEnd`): a real flight (the simulator never gets here: what was wrong was
+  the truth) whose capsule comes home, having gone at least 90 % as far as the lost one, and whose dummies stayed inside
+  every limit (8 g, the cabin, the air). Short of that the news says what was missing ("it reached 50 km of the 120
+  needed", "the dummies saw 10.0 g"). "As far" stands for the plan's "the same moment": a loss on the climb is passed by
+  climbing as high; a loss at re-entry, by coming down from as high. The design need not be the same rocket.
+- **A closed power's skip** (a decision, `requal`): "Requalify, or fly again now?". Skipping (`requalAnswer`) lets people
+  fly at once; each crewed flight until a qualification flight is one more hushed item (`PROG.hush` +1, `hushPen` −4), so
+  the leak grows likelier and costlier. Silence keeps the stand-down. When the hushed losses leak, the memorial's hushed
+  entries are named (`hushed` false).
+- One `PROG_SCHEMA` row, `requal`.
+
+**Checked:** econ-47 (stand-down, dummies, two failed attempts with their reasons, the pass, people again; the closed
+power's skip and the hush); smoke. **Not checked:** in a browser (TESTING 400); a loss at re-entry from Selene (the
+distance rule is measured from Tellus, so it asks for Selene's distance: right, but untested).

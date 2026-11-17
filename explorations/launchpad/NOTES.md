@@ -304,6 +304,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.342 — places on Selene as data: 48 named craters graded A to C (`selPlaces`, `placeAt`), the landing's place in the flight record, the cond `jPlace`; ground-11 recomputes the table from the relief; nothing reads it yet (2026-11-13, review 2, QUEUE Q612) → [notes/economy.md](notes/economy.md)
 - v1.344 — a package kept by a hostile power pays no contract; a crew down abroad is home safe, and a hostile power holds them until the program pays, hands over data or waits (2026-11-13, review 2, QUEUE Q616, D48) → [notes/economy.md](notes/economy.md)
 - v1.349 — the roster, crew slice 1: a first class named in the home school's style, crews picked by seniority onto their seats, aboard through the registry, the crewed firsts named, a loss named and in `PROG.memorial`; the Debrief names the crew (2026-11-17, space, QUEUE Q182) → [notes/economy.md](notes/economy.md)
+- v1.350 — requalification after a crew loss: crews stand down, capsules fly dummies until a real flight goes as far and brings the capsule home inside the limits; a closed power may skip it, hushed (2026-11-17, space, QUEUE Q183) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 

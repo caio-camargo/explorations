@@ -1186,6 +1186,7 @@
       && news.some(t => t.startsWith(`${lost[0].name} and ${lost[1].name} were lost`)) && end3.debrief.crew.line === `${lost[0].name} and ${lost[1].name} were lost`,
     `${end3.debrief.crew.line} · memorial ${M.map(m => m.name + ', flight ' + m.flight).join('; ')}`);
   // held abroad (Q616): out of the roster until the answer
+  P.requal = null;   // (Q183) crews stand down after that loss; requalification is econ-47's
   const city = D.CITIES.find(x => x.power && x.power.i !== D.HOME), key = D.pairKey(D.HOME, city.power.i); P.rel[key] = -0.8; P.decisions = [];
   const s4 = down(['chute', 'sci', 'crew'], city.u), held = (s4.rec.crew || []).map(D.crewById); D.missionEnd(s4);
   const wasHeld = held.length === 2 && held.every(x => x.status === 'held'), dec = P.decisions.find(d => d.kind === 'crewheld'); dec && D.resolveDecision(dec.id, 'pay');
@@ -1193,4 +1194,34 @@
   check('econ-46: a crew a hostile power holds is out of the roster until the program answers; the roster and the memorial are in the save',
     wasHeld && held.every(x => x.status === 'ready') && saved.crew.length === P.crew.length && saved.memorial.length === 2 && saved.crewFirst.flight,
     `held: ${held.map(x => x.name).join(', ')} → ${held.map(x => x.status).join(', ')}; ${P.crew.length} in the roster`);
+}
+
+// econ-47. Requalification after a loss (space session, QUEUE Q183; W24 4, CREW § "Requalification after a loss"): a
+// crew lost stands crews down; the next capsule flies dummies, and that flight requalifies if it goes as far as the lost
+// one and brings the capsule home inside the limits (short, or past a limit, it doesn't). A closed power may skip it:
+// people fly again at once, each such flight one more hushed thing. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,SITES,TELLUS,newShip,missionTick,missionEnd,programNew,fromPF,resolveDecision,ARCH,G_LIM,get HOME(){return HOME},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};')();
+  const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const T = D.TELLUS;
+  const setup = arch => { D.programNew({}); const P = D.PROG; if (arch) P.homeArch = arch; P.funds = 500; P.done = { orbiter: { day: 1 }, padabort: { day: 1 }, maxqabort: { day: 2 } }; return P; };
+  const home = () => D.SITES.find(t => t.power === D.HOME) || D.SITES[0];
+  const fly = (P, { far = 0, crash = false, g = 0 } = {}) => { D.t = 0; const s = D.newShip(['chute', 'crew']), h = home(); Object.assign(s, { landed: true, alive: true, touchV: 2, throttle: 0 }); s.pf = mul(h.u, T.R); s.r = D.fromPF(T, s.pf, 0); s.v = [0, 0, 0];
+    s.rec.launched = true; s.rec.day0 = P.day; s.rec.launchPf = s.pf.slice(); D.S = s; D.missionTick(s, D.DT, false); s.rec.far = far; if (g) s.rec.cgMax = g;
+    if (crash) { s.alive = false; D.t = 300; D.missionTick(s, 0, false); } else { D.t = 3600; D.missionTick(s, 0, false); } D.missionEnd(s); return s.rec; };
+  // an open program: a crew lost at 120 km
+  let P = setup('openSuper'); const lost = fly(P, { far: 120e3, crash: true }), rq = P.requal && { ...P.requal };
+  const next = fly(P, { far: 50e3 }), short = next.requal;
+  const hurt = fly(P, { far: 130e3, g: D.G_LIM + 2 }), hot = hurt.requal;
+  const good = fly(P, { far: 125e3 }), after = fly(P);
+  check('econ-47: a crew lost stands crews down (the cause and how far in PROG.requal); the next capsule flies dummies; short of the distance or past a limit it does not requalify; as far and home inside the limits it does, and people fly again',
+    lost.crewed && !lost.crewOK && rq && rq.kind === 'lost' && Math.abs(rq.far - 120e3) < 1 && !next.crewed && next.requalFlight && short && !short.ok && /50 km of the 120/.test(short.why)
+      && !hurt.crewed && hot && !hot.ok && /dummies saw/.test(hot.why) && good.requal && good.requal.ok && P.requal === null && after.crewed && !after.requalFlight
+      && news.some(t => /^Crews stand down until the cause is fixed: fly a crew capsule uncrewed to 120 km/.test(t)) && news.some(t => /^Requalified/.test(t)),
+    `${news.filter(t => /requalif|stand down/i.test(t)).join(' | ')}`);
+  // a closed program: the skip
+  news.length = 0; P = setup('closedSuper'); fly(P, { far: 80e3, crash: true }); const dec = (P.decisions || []).find(d => d.kind === 'requal'), h0 = P.hush || 0;
+  dec && D.resolveDecision(dec.id, 'skip'); const again = fly(P, { far: 10e3 });
+  check('econ-47: a closed program is offered the skip; taken, people fly at once, the cause unfixed, and each such flight adds to what can leak',
+    dec && dec.opts.length === 2 && P.requal && P.requal.skip && again.crewed && !again.requalFlight && (P.hush || 0) === h0 + 1, `${dec && dec.title}; hush ${h0} → ${P.hush}`);
 }

@@ -598,7 +598,8 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
   else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.ipoSold=true;PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
   else if(d.kind==='routine')routeFailAnswer(d,key);
-  else if(d.kind==='crewheld')crewHeldAnswer(d,key);   // (Q580) a failed automatic run: keep repeating or stop
+  else if(d.kind==='crewheld')crewHeldAnswer(d,key);
+  else if(d.kind==='requal')requalAnswer(d,key);   // (Q183) a closed power's skip   // (Q580) a failed automatic run: keep repeating or stop
   else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);(PROG.stakeBy=PROG.stakeBy||{})[d.power]=1;PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}

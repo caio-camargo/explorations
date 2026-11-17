@@ -30,6 +30,7 @@ function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=(t,W)=>out.push
   if(S.parts.some(p=>p.on&&p.d.kind==='bio')&&!safetyReview(newShip(stackDef)).ok)warn('Flight safety won\'t approve a passenger on this design');
   if(S.parts.some(p=>p.on&&p.d.kind==='chute'))ok(recoveryRule());   // (flow, Q488; PLAYTEST #123) what comes back under a chute: where it's recovered
   for(const[k,x]of launchWarnings(stackDef))(k==='ok'?ok:warn)(x);   // Δv for the flight's aim, a parachute for whoever rides (vehicle, Q48)
+  if(requalHolds()&&PROG.done.maxqabort&&S.parts.some(p=>p.on&&p.d.crew))warn(`Crews stand down: the capsule flies dummies. To requalify, ${requalWhat(PROG.requal)}`,{t:'Requalification after a loss',d:`${(PROG.requal.names||[]).join(' and ')||'The crew'} ${PROG.requal.why} on ${PROG.requal.design}. Until a real flight shows the cause fixed, capsules carry dummies; this flight can be that one.`,fix:['fix what killed them (the Debrief of that flight says how)','fly this capsule as far, and bring it home']});   // (Q183)
   const nd=(PROG.decisions||[]).length;if(nd)warn(`${nd} decision${nd>1?'s':''} waiting in the Program's Inbox`,{t:'Decisions waiting',d:'They expire if nobody answers, and some change what this flight is worth.',fix:'answer them in the Program\'s Inbox (P) first.'});
   return out}
 function renderRollout(){const el=$('rollBody');if(!el||BLD.isEmpty(stackDef))return;
