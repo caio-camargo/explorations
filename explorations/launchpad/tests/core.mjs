@@ -1102,7 +1102,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('crew: after qualification the capsule carries people; around Selene and home safe completes "Crew around Selene"', c.rec.crewed && sawSel && c.rec.crewOK && !!P.done.crewaround, `crewed ${c.rec.crewed}, in Selene's SOI ${sawSel}, home ${c.rec.capHome}`);
   ({ c } = crewFlight(['orbiter', 'padabort', 'maxqabort']));
   c.landed = false; c.body = SELENE; c.r = [SELENE.R + 20e3, 0, 0]; c.v = [-300, 0, 0]; let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); }
-  check('crew: a crashed crewed capsule loses its crew (news, opinion)', !c.rec.crewOK && news.some(m => /The crew were lost/.test(m)), news.find(m => /crew/.test(m)) || 'no news');
+  check('crew: a crashed crewed capsule loses its crew (news, by name since Q182; opinion)', !c.rec.crewOK && news.some(m => /^[A-Z]\w* [A-Z]\w* and [A-Z]\w* [A-Z]\w* were lost\. The program stops/.test(m)), news.find(m => /were lost/.test(m)) || 'no news');
   // the landing mission's condition reads the flight record
   const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
   check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');

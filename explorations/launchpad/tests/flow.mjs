@@ -117,8 +117,8 @@
   const up = fly(true, s => { api.t = 3600; });
   const dummies = fly(false, s => { s.landed = true; });
   P.done = d0; api.t = 0;
-  check('flow-6: the Debrief has the crew: home safe after the days flown, aboard and well, or lost and why; dummies get no line',
-    home.s.rec.crewN === 2 && home.D.crew && /^Crew of 2 home safe after 2\.5 days$/.test(home.D.crew.line) && lost.D.crew && !lost.D.crew.ok && /^The crew of 2 were lost$/.test(lost.D.crew.line)
+  check('flow-6: the Debrief has the crew (by name since Q182, the commander first): home safe after the days flown, aboard and well, or lost and why; dummies get no line',
+    home.s.rec.crewN === 2 && home.D.crew && /^Commander [A-Z]\w* [A-Z]\w* and [A-Z]\w* [A-Z]\w* home safe after 2\.5 days$/.test(home.D.crew.line) && lost.D.crew && !lost.D.crew.ok && /^[A-Z]\w* [A-Z]\w* and [A-Z]\w* [A-Z]\w* were lost$/.test(lost.D.crew.line)
       && up.D.crew && /aboard, all well/.test(up.D.crew.line) && !dummies.D.crew,
     [home, lost, up].map(x => x.D.crew ? x.D.crew.line : 'none').join(' · ') + ` · dummies: ${dummies.D.crew ? dummies.D.crew.line : 'no line'}`);
 }

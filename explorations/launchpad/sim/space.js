@@ -749,7 +749,7 @@ const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi
 // a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
 // carried a real crew (dummies don't count)
 function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.buried)o.buried=1;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
-  if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day}return o})}   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
+  if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day;if(p.crewIds&&p.crewIds.length)o.who=p.crewIds.slice()}return o})}   // who: their roster ids (Q182)   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
 // a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
 function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
   const ring=(r,y)=>{const m=Math.max(6,Math.ceil(6.2832*r/0.25));for(let k=0;k<m;k++){const a=k/m*6.2832;pts.push(add(B,qrot(q,[r*Math.cos(a),y,r*Math.sin(a)])))}};
@@ -782,7 +782,7 @@ const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loa
 const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),fj:s.parts.filter(p=>p.on&&p.fj).map(p=>p.i),E:s.E});   // fj: fairings jettisoned (vehicle, Q337)   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
-  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}if(o.dmg)p.dmg=o.dmg;if(o.buried)p.buried=true}
+  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up;if(o.who)p.crewIds=o.who.slice()}if(o.rvOut){p.rvOut=true;p.xm=0}if(o.dmg)p.dmg=o.dmg;if(o.buried)p.buried=true}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}
   for(const i of st.fj||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on){p.fj=true;p.xm=0}}   // a fairing already dropped (Q337)   // legs and wings as they were left (vehicle, Q121)
   if(q.pw&&q.Ewh!=null)s.E=q.Ewh*3600;else if(st.E!=null)s.E=st.E;   // the battery as it is now (Q213: between flights' drain), or as it was left (Q131); powerStep caps it
@@ -804,8 +804,9 @@ function loadEntry(q,s){const i=(PROG.sats||[]).indexOf(q);if(i<0||!flyable(q))r
 // who is aboard (Q606): p.crewAboard on each seat that holds people, the one answer for a fresh flight (boardCrew, when
 // its crew is counted at the first tick: people, not dummies) and a vessel loaded from the registry (vesselOf)
 const crewOn=s=>s.parts.reduce((a,p)=>a+(p.on&&p.crewAboard?p.crewAboard:0),0);
-function boardCrew(s,day){for(const p of s.parts)if(p.on&&p.d.crew&&!p.crewAboard){p.crewAboard=p.d.crew;if(p.crewUp==null)p.crewUp=day}}
-function unboardCrew(s){for(const p of s.parts)if(p.crewAboard){delete p.crewAboard;delete p.crewUp}}   // a crew lost: nobody aboard
+// ids (Q182): the people picked for those seats (crewPick), carried as p.crewIds through the registry (shapeOf's `who`)
+function boardCrew(s,day,ids=[]){ids=ids.slice();for(const p of s.parts)if(p.on&&p.d.crew&&!p.crewAboard){p.crewAboard=p.d.crew;if(p.crewUp==null)p.crewUp=day;const w=ids.splice(0,p.d.crew);if(w.length)p.crewIds=w}}
+function unboardCrew(s){const ids=[];for(const p of s.parts)if(p.crewAboard||p.crewIds){if(p.crewIds)ids.push(...p.crewIds);delete p.crewAboard;delete p.crewUp;delete p.crewIds}return ids}   // a crew lost: nobody aboard; returns who was
 // ---- the arm (sats session; stations plan D). A robotic arm on the side of any structure: two 5 m booms from a shoulder
 // on its base. Grapple: a body within reach and moving slowly relative to us (a satellite, a vessel of this flight, or
 // the payload in our open bay) is held where it is, as a passenger (kind 'arm'). Berth: the arm carries it to a free

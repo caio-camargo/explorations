@@ -540,9 +540,9 @@ function crewAbroad(rc,R){const p=POWERS[rc.pi],who=(R.crewN||1)>1?'crew':'pilot
   if(rc.rel==='tense'){opAdd(HOME,CREW_HELD.opTense);HOOK.news(`Our ${who} came down in ${p.name}: home after weeks of talks`,'warn');return}
   offerDecision({kind:'crewheld',power:p.i,who,amt:CREW_HELD.pay,life:CREW_HELD.life,title:`${p.name} holds our ${who}`,
     text:`They came down in ${p.name}, alive and well, and are not allowed to leave. Pay ${fmtM(CREW_HELD.pay)}, hand over the flight's data, or protest and wait.`,
-    opts:[['pay',`Pay ${fmtM(CREW_HELD.pay)}`],['deal','Hand over the data'],['wait','Protest and wait']]})}
+    opts:[['pay',`Pay ${fmtM(CREW_HELD.pay)}`],['deal','Hand over the data'],['wait','Protest and wait']]});R.heldD=PROG.dseq}   // (Q182) the people held: crewEnd marks them
 const relNudge=(i,d)=>{PROG.rel[pairKey(HOME,i)]=clamp(relOf(HOME,i)+d,-1,1)};
-function crewHeldAnswer(d,key){const p=POWERS[d.power],who=d.who||'crew';
+function crewHeldAnswer(d,key){const p=POWERS[d.power],who=d.who||'crew';crewRelease(d.id);
   if(key==='pay'){PROG.funds-=d.amt;ledAdd('ransom',-d.amt);HOOK.news(`${p.name} releases our ${who} for ${fmtM(d.amt)}`,'warn')}
   else if(key==='deal'){relNudge(d.power,CREW_HELD.relDeal);opAdd(HOME,CREW_HELD.opDeal);HOOK.news(`Our ${who} is home; ${p.name} keeps a copy of the flight's data`,'warn')}
   else{relNudge(d.power,CREW_HELD.relWait);opAdd(HOME,CREW_HELD.opWait);HOOK.news(`${p.name} lets our ${who} go after ${Math.max(1,Math.round(d.life-(d.expires-PROG.day)))} days; home is furious it took so long`,'bad')}}
