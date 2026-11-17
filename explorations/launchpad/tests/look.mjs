@@ -1344,7 +1344,7 @@
   const left = (d, w) => .5 + .5 * d / Math.sqrt(d * d + w * w), ledge = left(0, .65) === .5 && Math.abs(left(.65, .65) - .8536) < 1e-3 && left(6.5, .65) > .99;
   const fs = pg.slice(pg.indexOf('const MESH_FS=`'), pg.indexOf('`;', pg.indexOf('const MESH_FS=`')));
   const has = {
-    decode: /sch=\(k\/32\)%8;float ao=clamp\(1\.-\(vK\.x-float\(k\)\)\/\.45,0\.,1\.\);k=k%32;/.test(fs),
+    decode: /k=k%32;float ao=clamp\(1\.-\(vK\.x-floor\(vK\.x\+\.5\)\)\/\.45,0\.,1\.\);/.test(fs),
     cut: /ao=1\.-\(1\.-ao\)\*smoothstep\(aw\.z-fl,aw\.z,v\)\*\(1\.-smoothstep\(aw\.w,aw\.w\+fl,v\)\);/.test(fs),
     ledge: /if\(side&&aw\.x>0\.\)ao\*=\.5\+\.5\*db\*inversesqrt\(db\*db\+aw\.x\*aw\.x\);if\(side&&aw\.y>0\.\)ao\*=\.5\+\.5\*dt\*inversesqrt\(dt\*dt\+aw\.y\*aw\.y\);/.test(fs),
     light: /amb=mix\(uSky,uGnd,wp\)\*ao;/.test(fs) && /\n env\*=ao;\n/.test(fs) && /vec3 sun=uSunCol\*uLit,/.test(fs),

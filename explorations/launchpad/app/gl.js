@@ -706,7 +706,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // Part detail, early-era hardware (ship, debris and the builder only). Each part carries its own surface frame: a = angle
  // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
  // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
- int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;float ao=clamp(1.-(vK.x-float(k))/.45,0.,1.);k=k%32;bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
+ int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;float ao=clamp(1.-(vK.x-floor(vK.x+.5))/.45,0.,1.);bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
  vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint

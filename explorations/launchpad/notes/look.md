@@ -2617,7 +2617,7 @@ game (v1.345), nothing built.
   GPUs. Q316's order stands, shadows and AO first, then greebles; cap a ship near 150 k vertices unless the rebuild is
   reworked.
 
-## v1.358 — the ship shades itself (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1a; BEAUTY B1.3)
+## v1.359 — the ship shades itself (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1a; BEAUTY B1.3)
 
 Caio, after the triangle study above: "yes go ahead" on Q316, shadows first. On High the ship now casts shadows on
 itself: a booster's nose on the core, a fin on the skirt, a wide stage on the narrow one under it. Low draws none.
@@ -2657,7 +2657,7 @@ itself: a booster's nose on the core, a fin on the skirt, a wide stage on the na
   (views 1, 3, 6, 54); `ship` 0.16 → 0.15, 0.12 → 0.12, 0.86 → 0.78, 0.31 → 0.30.
 - **Stills.** `close-heavy-on.png` / `close-heavy-off.png` (view 54 from 11 m): the left booster's nose on the core,
   the dark in the gaps. No acne on round parts, in orbit or on the desk (`close-*.png`).
-- **Not checked.** A person turning the ship in the sun (TESTING 407): edges crawling as the fit turns with the ship,
+- **Not checked.** A person turning the ship in the sun (TESTING 408): edges crawling as the fit turns with the ship,
   thin parts (antennas, legs) at 2.6 cm texels, a long station with visitors (the box grows with what is docked).
   The other vessels in a flight, debris and landed craft take no map (one map, the ship's). The pad's tower does
   not shade the ship, nor the ship the tower (the flat shadow on the ground is unchanged). The parachute's canopy
@@ -2668,3 +2668,45 @@ itself: a booster's nose on the core, a fin on the skirt, a wide stage on the na
   context). The cause is not found; one guess is that it calls the page as soon as `render` exists. A run whose
   first line is not `ready in …` is void. Proposed in QUEUE.
 - **Next (slice 1b):** ambient occlusion at joints and steps, on both settings.
+
+## v1.360 — ambient occlusion at joints and steps (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1b; BEAUTY B1.3)
+
+The other half of B1.3, on both settings: where parts meet, the light from the sky and the ground is dimmed. The sun
+is not touched (on High that is the shadow map's, v1.359).
+
+- **Why not per vertex, as BEAUTY said.** A tank has rings of vertices only at its two ends, so anything baked at a
+  joint would fade over the whole tank. What varies along a part is computed per pixel from the part's own frame
+  (`v`, `h`, already in `MESH_FS`); only what varies round it is baked.
+- **Steps** (a narrow part under or over a wider one in the stack). `shipAO`, run by `partsMesh`, measures each
+  part's radius at its bottom and top from its own vertices and stores how far the neighbour below and above
+  stands out past it (`AOS`, a WeakMap by part; `setMarks` sends it as `uAo[96]`). In `MESH_FS` that ledge of
+  width w leaves .5 + .5·d/√(d² + w²) of the sky at d from it: half at the corner, 85 % one width away.
+- **Creases** (a side booster against the core). Per vertex, the round parts on each other axis count as one
+  cylinder of the widest one's radius r (taking a booster's tank, nose and engine one by one hid the sky three
+  times over): it hides .7·(r/d)²·cos(normal, toward it). On a 1.25 m core with a 0.6 m booster touching it that
+  is 60 % at the line of contact, 38 % 13° round, nothing at 90°. Baked as if the neighbour ran the part's whole
+  height; the span that really has it goes to `uAo` too and the shader cuts the crease to it, with a fade of half
+  the part's radius.
+- **Where the baked value rides.** In the fraction of the vertex's kind (`aK.x`, a whole number per part; .45 =
+  black; every reader rounds it). The first try used the material (`aM`): wrong, a bell's material is interpolated
+  along its profile and already has fractions, so every bell lost its ambient light. Found from a dump of the real
+  mesh, not from the stills.
+- **What it scales.** The ambient term and the reflection of the surroundings. Fins, legs, antennas and other
+  parts that are not round give nothing; posed and tilted parts neither give nor take. `AO_FX = false` for an A/B.
+- **Measured** (stills and logs in `output/launchpad/beauty/Q316/`, `1b-*`; before = v1.359).
+  - GPU, `ship` stretch at full resolution, views 1, 3, 6, 54. RTX 5050 on High: 0.03, 0.02, 0.12, 0.05 →
+    0.03, 0.03, 0.13, 0.05 ms. Intel UHD on Low: 0.15, 0.12, 0.74, 0.29 → 0.16, 0.12, 0.79, 0.31 ms; frame 26.4,
+    9.0, 30.6, 38.6 → 26.2, 9.1, 30.6, 38.6 ms. Inside the noise on both.
+  - CPU, `partsMesh` without the upload, median of five runs of 40: Orbiter (9 parts, 10 k vertices, no
+    neighbours) 7.5 → 7.5 ms; Heavy (18 parts, 20 k) 13.1 → 13.9; Big Lunar (26 parts, 27 k) 18.5 → 19.0. The version
+    before, with `Math.hypot` in the loops, cost 2 ms on the Big Lunar. (These
+    build times are two to three times the study's 3–7 ms of the day before; other sessions were running.)
+- **Stills.** `ao-on-off-diff-biglunar.png`: on, off, the difference ×5. The strip of the core beside each booster
+  and the booster's side toward the core are darker, from the booster's nose down. In full sun the change is small,
+  as it should be: it shows in shade and on the side away from the sun.
+- **Not checked.** A step in a still: none of the reference designs has a narrow stage straight on a wide one in
+  view (the Big Lunar's is behind its conical adapter), so the ledge is checked by test aerofx-58 and by its
+  formula only. The ring face of the wider part at a step (it looks up at the narrow part's wall) takes nothing
+  yet. A person's eye on the strength (TESTING 409): .7 and the fade length are first guesses.
+- **Next for Q316:** B1.4 the surface pass (absorbs Q259), then B1.5 the greebles, which now have shadows and
+  contact darkening to sit in.
