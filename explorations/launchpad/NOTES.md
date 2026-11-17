@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.68 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-17
+**Version**: v2.0.69 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-17
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -142,6 +142,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.347 — the frame as a sized part (bench slice 1): a `frame` node carries its sides, width, height and taper; `frameDef` sizes it at layout, `nodeDef` and `shDef` read it; the shape controls on the bench; a plain prism (2026-11-13, vehicle session, QUEUE Q617, D47) → [notes/vehicle.md](notes/vehicle.md)
 - v1.351 — mounts on a frame, upright, the sim (bench slice 2a): the census of `.y0` / `.pos[` readers; `at` on a face, edge or corner; the pose; `partC`, `partAxis`, `partBox`; `geom`'s inertia through `rotI`; the taller ring; `payEnvelope` (2026-11-17, vehicle, QUEUE Q618) → [notes/vehicle.md](notes/vehicle.md)
 - v1.353 — mounts on a frame, the bench by pointer (bench slice 2b): `frameRay`, `mountSnap` with C for no snapping, the base kept under the pointer, the bin, symmetry off on the bench, collisions of posed parts, robot row 403 (2026-11-17, vehicle, QUEUE Q618) → [notes/vehicle.md](notes/vehicle.md)
+- v1.357 — tilt (bench slice 3): `ti` in 15° steps, the bracket (`poseSink`, `bk`), A D W S Q E and the card's tilt row; a boom keeps 45° steps
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
 - v1.345 — the *Asparagus* preset is *Crossfeed* (D15.6); "on rails" was already out of player text (2026-11-15, worker, QUEUE Q284) → [notes/vehicle.md](notes/vehicle.md)
@@ -308,6 +309,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.349 — the roster, crew slice 1: a first class named in the home school's style, crews picked by seniority onto their seats, aboard through the registry, the crewed firsts named, a loss named and in `PROG.memorial`; the Debrief names the crew (2026-11-17, space, QUEUE Q182) → [notes/economy.md](notes/economy.md)
 - v1.350 — requalification after a crew loss: crews stand down, capsules fly dummies until a real flight goes as far and brings the capsule home inside the limits; a closed power may skip it, hushed (2026-11-17, space, QUEUE Q183) → [notes/economy.md](notes/economy.md)
 - v1.355 — qualifications, crew slice 2: a type is the capsule, rendezvous, docking and landing by two simulator completions or one real, time in type, the field geology course, crew cards with badges in the Program (2026-11-17, space, QUEUE Q458) → [notes/economy.md](notes/economy.md)
+- v1.356 — the pilot's modes, crew slice 3: the SAS flies the computer's modes and the best pilot's (on the type, the analog modes; + rendezvous, target; + docking, docking), a pilot's loop slower than a computer (2026-11-17, space, QUEUE Q625) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 

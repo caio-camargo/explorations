@@ -8072,3 +8072,32 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/space.js`, `sim/flight.js`, `sim/debrief.js`, `app/program-ui.js`,
   `app/editor.js`, `app/debrief.js`, `app/screens.js`, `index.html`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
   `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## Session 2026-11-17 — Launchpad v1.356: the pilot's modes, crew slice 3 (Q625)
+- **Operator:** Caio, with Claude (space session, Opus 5.5).
+- **What:** QUEUE row Q625 added for slice 3 (Q134 re-planned) and built: the SAS flies the computer's modes and the
+  best pilot aboard's (on the type the analog modes; + rendezvous manoeuvre and target; + docking docking; untyped,
+  nothing). A pilot's loop (k 2.5, 0.35 → 0.45 rad/s, 0.5° → 0.3° over 20 h in type) where only the pilot has the
+  mode. SAS hover text names the pilot; "Not yet" says what a pilot would need. Matters in the gyro and analog eras
+  only (a capsule carries the guidance computer from the onboard-computer era).
+- **Merge:** CI 44172533442 and, after a docs-only merge of main, 44174076581: both green; ff-merged.
+- **Not checked:** in a browser (TESTING 405).
+- **Next:** the manual landing hold (control, M) for the landing qualification; slices 4–7 (requalification is built;
+  classes over time, the scientist's and engineer's hooks, rotation by dispatch); Q624.
+- Files: launchpad `sim/crew.js`, `sim/vessel.js`, `app/editor.js`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## Session 2026-11-17 — Launchpad v1.357: tilt, bench slice 3 (Q619)
+- **Operator:** Caio, with Claude (vehicle session, Opus 5.5).
+- **What:** a part mounted on a frame leans in 15° steps (`ti`: right/left, up/down within ±90°, a turn about the way out)
+  on a massless bracket just tall enough that its bounding cylinder clears the frame (r·sin θ for a stack part). The boom
+  antenna keeps D21's 45° steps. On the bench: A D W S Q E for the held or selected part, the card's tilt row with
+  *straight*, the tilt named by the pointer, the keys in the help line. The bracket is drawn as a rod with a foot plate.
+- **Checks:** `vehicle-51` (bracket heights, aim, clamp, boom steps, a tilted wing's envelope, saves); robot row 406 in
+  Chrome (keys, buttons, a held boom), shots looked at. Renumbered from v1.356 / TESTING 405 (Q625 took them).
+- **Merge:** CI 44177716158 green; ff-merged.
+- **Not checked:** by hand (TESTING 406): whether left/right/up/down read right on the top, bottom, edges and corners.
+- **Next:** Q620 (bench slice 4: views) is ready; Q622, Q623 also ready.
+- Files: launchpad `sim/vessel.js`, `sim/space.js`, `builder.js`, `app/gl.js`, `app/screens.js`, `test.mjs`,
+  `tests/vehicle.mjs`, `playtest.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`,
+  `SESSION_LOG.md`.

@@ -210,12 +210,14 @@ const sasLegend=()=>SASM.map(([k,n])=>`<span class="mkl">${sasIcon(k)} ${n}</spa
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   if(rcsJets(S)){const b=document.createElement('button');b.className='wide'+(S.rcs?' on':'');b.textContent='RCS '+(S.rcs?'ON':'OFF')+' [V]';b.onclick=()=>{S.rcs=!S.rcs;renderSAS()};el.appendChild(b)}
-  t.title=avOf(S).name;const no=[];
+  const P=pilotOf(S),M0=avOf(S).modes,byP=k=>!!(M0&&!M0.includes(k)&&P&&P.modes.includes(k)),crewed=S.parts.some(p=>p.on&&p.d.crew);   // (Q625) the modes the pilot flies
+  t.title=avOf(S).name+(P&&SASM.some(([k])=>byP(k))?`; ${P.a.name} flies the rest by hand`:'');const no=[];
   for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.innerHTML=sasIcon(k);b.className='mk';b.setAttribute('aria-label',n);if(SASM_TERM[k])b.dataset.term=SASM_TERM[k];else b.title=n;   // (Q436) the navball's mark; the word on hover
     if(S.sas&&S.sasMode===k)b.classList.add('on');
-    if(!sasModeOK(S,k)){const g=avNext(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()})`);continue}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
+    if(!sasModeOK(S,k)){const g=avNext(k),pn=crewed&&pilotNeeds(k);no.push(`${n.toLowerCase()} (${g.name}, ${COMP_ERAS[g.era].name.toLowerCase()}${pn?`, or ${pn}`:''})`);continue}
+    if(byP(k)){b.title=`${n}: flown by ${P.a.name}, pilot`;delete b.dataset.term}   // (Q286) a mode it can't fly isn't shown: SAS's title says when it comes
     b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}
-  if(no.length)t.title=`${avOf(S).name}. Not yet: ${no.join(', ')}`}
+  if(no.length)t.title=`${t.title}. Not yet: ${no.join(', ')}`}
 let dryKey='';   // (Q538) the event whose row is lit as spent (cockpit.js dryHint; declared here, renderStages runs first)
 function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
   const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];

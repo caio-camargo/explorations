@@ -133,7 +133,7 @@ const PARTS={
   sbatt:{kin:'batt',name:'Battery 1 kWh (side)',kind:'batt',surf:true,noAero:true,m:0.02,h:0.3,r:0.05,off:0.05,w:0.1,kWh:1,C:900,T:600,B:200},
   scomp:{kin:'ocomp',name:'Onboard computer (side)',kind:'comp',surf:true,noAero:true,m:0.03,h:0.3,r:0.06,off:0.06,w:0.1,W:50,era:2,C:900,T:600,B:200},
   whip:{kin:'ant',name:'Whip antenna',kind:'ant',surf:true,noAero:true,m:0.01,h:0.5,r:0.03,off:0.03,C:900,T:600,B:200},
-  bant:{name:'Boom antenna',kind:'ant',fold:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.07,off:0.07,gain:5,span:3,qMax:1500,C:900,T:600,S:150,B:60},
+  bant:{name:'Boom antenna',kind:'ant',fold:true,tiS:[-6,-3,0,3,6],surf:true,noAero:true,m:0.03,h:0.6,r:0.07,off:0.07,gain:5,span:3,qMax:1500,C:900,T:600,S:150,B:60},
   condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,gim:4,gimR:8,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
 };
 for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
@@ -186,6 +186,17 @@ const MOUNT_NO=new Set(['engine','rcs','spin','chute','shield','frame','bwt','le
 const mountOK=d=>!!d&&!d.body&&!d.radialOnly&&!d.payOnly&&!MOUNT_NO.has(d.kind);
 // a whip is a surface part whose rod runs up its length: on a mount it stands along the normal, as a stack part does
 const MOUNT_UP=new Set(['whip']),FR_GEO=new Map();
+// (Q619, bench slice 3) a mounted part's tilt, ti: [a, b, r] in whole 15° steps: across and along (each within ±90°), and a
+// turn about the way out (0 to 23). A part may allow only some steps across and along (tiS): a boom's are D21's 0°, 45°, 90°
+const TI_STEP=Math.PI/12,TI_MAX=6;
+function mountTilt(ti,d){if(!Array.isArray(ti))return[0,0,0];const S=d&&d.tiS,fit=x=>{x=clamp(Math.round(+x||0),-TI_MAX,TI_MAX);return S?S.reduce((b,s)=>Math.abs(s-x)<Math.abs(b-x)?s:b,S[0]):x};
+  return[fit(ti[0]),fit(ti[1]),((Math.round(+ti[2]||0)%24)+24)%24]}
+// one press of a tilt key: axis i (0 across, 1 along, 2 the turn) one allowed step in direction dir; null when untilted
+function mountTiltStep(ti,d,i,dir){const t=mountTilt(ti,d),S=d&&d.tiS;
+  if(i===2)t[2]=(t[2]+dir+24)%24;else if(S){const nx=S.filter(s=>dir>0?s>t[i]:s<t[i]).sort((x,y)=>dir>0?x-y:y-x)[0];if(nx!=null)t[i]=nx}else t[i]=clamp(t[i]+dir,-TI_MAX,TI_MAX);
+  return t[0]||t[1]||t[2]?t:null}
+// in words, for the card and the line by the pointer (right and up as seen from outside a side face)
+const mountTiltName=(ti,d)=>{const t=mountTilt(ti,d),D=x=>Math.round(x*15)+'°';return!t[0]&&!t[1]&&!t[2]?'straight':[t[0]&&`${D(Math.abs(t[0]))} ${t[0]>0?'right':'left'}`,t[1]&&`${D(Math.abs(t[1]))} ${t[1]>0?'up':'down'}`,t[2]&&`turned ${D(t[2])}`].filter(Boolean).join(', ')};
 // a frame's corners, faces (outward normals), edges and corners as named places, in its own coordinates (its bottom's centre at 0)
 function frameGeo(d){let G=FR_GEO.get(d);if(G)return G;const f=d.fr,N=f.n,r=d.r,rt=d.rt,h=d.h,m=k=>((k%N)+N)%N,B=[],T=[],F={},E={},C={};
   for(let k=0;k<N;k++){const a=2*Math.PI*k/N;B.push([r*Math.cos(a),0,r*Math.sin(a)]);T.push([rt*Math.cos(a),h,rt*Math.sin(a)])}
@@ -235,10 +246,18 @@ function mountName(at){if(!mountAt(at))return'';const x=at.n>1?` ×${at.n}`:'';
 // the pose of copy j of m of a part mounted at `at` on frame instance P (its bottom centre at P.x, P.y0, P.z): the foot f,
 // the rotation q from the part's own drawing frame (stack part: its axis +Y; surface part: its outer side +X, its length +Y),
 // sf (a surface part), n the way out. Vessel (layout) coordinates
-function mountPose(P,at,d,j=0,m=1){const pl=mountPlace(frameGeo(P.d),at);if(!pl)return null;const a=2*Math.PI*j/m,R=v=>rotY(v,-a);
+function mountPose(P,at,d,j=0,m=1,ti=null){const pl=mountPlace(frameGeo(P.d),at);if(!pl)return null;const a=2*Math.PI*j/m,R=v=>rotY(v,-a);
   const p=R(pl.p),n=R(pl.n),u=R(pl.u),f=[P.x+p[0],P.y0+p[1],P.z+p[2]],sf=!!d.surf&&!MOUNT_UP.has(d.key);let q;
   if(sf){let v=sub([0,1,0],mul(n,n[1]));v=len(v)<1e-6?u:norm(v);q=qFromBasis(n,v,cross(n,v))}else q=qFromBasis(u,n,cross(u,n));
-  return{f,q,sf,n}}
+  const t=mountTilt(ti,d);if(!t[0]&&!t[1]&&!t[2])return{f,q,sf,n};
+  // (Q619) tilted: turned about its foot in the place's own axes (u across, n out, u×n), as the mock-up turns it; it stands
+  // on a bracket along n just tall enough that its bounding cylinder clears the surface's plane (massless: tilt costs nothing)
+  const W=qFromBasis(u,n,cross(u,n)),T=qmul(qmul(qaxis([0,1,0],t[2]*TI_STEP),qaxis([1,0,0],t[1]*TI_STEP)),qaxis([0,0,1],t[0]*TI_STEP)),
+    q1=qnorm(qmul(qmul(qmul(W,T),qconj(W)),q)),lift=Math.max(0,poseSink(q1,d,sf,n)-poseSink(q,d,sf,n));
+  return{f:add(f,mul(n,lift)),q:q1,sf,n,bk:mul(n,lift)}}
+// how far a posed part's bounding cylinder dips below the plane through its foot normal to n (0 if it doesn't)
+function poseSink(q,d,sf,n){const r=d.r||0.05,A=qrot(q,[0,1,0]),c=dot(A,n),C=sf?dot(n,qrot(q,[d.off||0,0,0])):0,w=r*Math.sqrt(Math.max(0,1-c*c));
+  return Math.max(0,...(sf?[-d.h/2,d.h/2]:[0,d.h]).map(y=>w-C-y*c))}
 // a posed part's bounding cylinder in its own frame: the rim of each end, 8 points (a surface part's centred on its outer side)
 function poseRim(d,sf){const r=d.r||0.05,h=d.h,o=sf?(d.off||0):0,y=sf?[-h/2,h/2]:[0,h],out=[];
   for(const yy of y)for(let k=0;k<8;k++){const a=k*Math.PI/4;out.push([o+r*Math.cos(a),yy,r*Math.sin(a)])}return out}
@@ -377,7 +396,7 @@ function payStandOn(root){const chain=[root];for(let n=root;;){const d=(n.c||[])
 // how far the parts mounted on the bottom of what stands on the adapter hang below it (Q618), 0 if none do
 function payHang(top,b){if(!b||!b.fr)return 0;let g=0;const P={d:b,x:0,y0:0,z:0};
   for(const c of top.c||[]){if(!mountAt(c.at))continue;const d=nodeDef(c),m=Math.max(1,c.at.n|0);if(!mountOK(d))continue;
-    for(let j=0;j<m;j++){const ps=mountPose(P,c.at,d,j,m);if(ps)g=Math.max(g,-partBox({pose:ps,d}).lo)}}return g}
+    for(let j=0;j<m;j++){const ps=mountPose(P,c.at,d,j,m,c.ti);if(ps)g=Math.max(g,-partBox({pose:ps,d}).lo)}}return g}
 function payExpand(des){if(!payHas(des.root))return des;
   const mark=(n,blk)=>{const c={...n,c:(n.c||[]).map(x=>mark(x,blk))};delete c.id;Object.defineProperty(c,'payOf',{value:blk});return c};
   const walk=n=>{if(isPay(n)){const pr=n.pd&&n.pd.root,ad={k:'padapt',at:n.at,c:(n.c||[]).map(walk)};if(n.j)ad.j=n.j;Object.defineProperty(ad,'payOf',{value:n});
@@ -407,9 +426,9 @@ function layoutDesign(des){
     for(const m of [...mem].sort((a,b)=>b.y-a.y))for(const c of m.nd.c||[]){if(!radAt(c.at))continue;
       if(mountAt(c.at)){ // on a frame's face, edge or corner (Q618): a pose; x, z, y0 its upright bounding cylinder's for readers that know no pose
         const P=L.byM.get(m),d=nodeDef(c),n=Math.max(1,c.at.n|0);if(!P.d.fr||!mountOK(d))continue;
-        for(let k=0;k<n;k++){const ps=mountPose(P,c.at,d,k,n);if(!ps)break;const B=partBox({pose:ps,d}),ph=Math.atan2(ps.n[2],ps.n[0]),
+        for(let k=0;k<n;k++){const ps=mountPose(P,c.at,d,k,n,c.ti);if(!ps)break;const B=partBox({pose:ps,d}),ph=Math.atan2(ps.n[2],ps.n[0]),
             cx=ps.sf?ps.f:add(ps.f,qrot(ps.q,[0,d.h/2,0])),q={nd:c,d,x:cx[0],z:cx[2],y0:ps.sf?ps.f[1]-d.h/2:(B.lo+B.hi)/2-d.h/2,lo:B.lo,hi:B.hi,rot:ph,phi:ph,line:-1,surf:!!d.surf,mount:true,pose:ps,path:P.path+'/m'+k};
-          inst.push(q);joints.push({a:P,b:q,axis:ps.n,P:ps.f.slice(),j:c.j||0})}
+          inst.push(q);joints.push({a:P,b:q,axis:ps.n,P:ps.bk?sub(ps.f,ps.bk):ps.f.slice(),j:c.j||0})}
         continue}
       if(PARTS[c.k].surf){ // a surface part sits on the host's skin at that height; no line, no children
         const P=L.byM.get(m),at=c.at,d=wtDef(finDef(PARTS[c.k],c.fz),c.wk),n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;   // finDef: a sized fin (Q348)
@@ -437,7 +456,7 @@ function assemble(stack){
   let ymin=Infinity,ymax=-Infinity;for(const q of L.inst){ymin=Math.min(ymin,q.lo??q.y0);ymax=Math.max(ymax,q.hi??q.y0+q.d.h)}if(!L.inst.length)ymin=ymax=0;
   for(const q of L.inst){const p={i:parts.length,d:q.d,pos:[q.x,0,q.z],y0:q.y0-ymin,h:q.d.h,parent:null,children:[],on:true,
     res:{...(q.d.res0||{})},cap:{...(q.d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],dn:q.nd,inst:q};
-    if(q.pose)p.pose={f:[q.pose.f[0],q.pose.f[1]-ymin,q.pose.f[2]],q:q.pose.q,sf:q.pose.sf};   // mounted on a frame (Q618)
+    if(q.pose){p.pose={f:[q.pose.f[0],q.pose.f[1]-ymin,q.pose.f[2]],q:q.pose.q,sf:q.pose.sf};if(q.pose.bk)p.pose.bk=q.pose.bk}   // mounted on a frame (Q618)
     if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;
     if(q.d.kind==='fair'&&!q.rdec){p.fl=fairLen(q.nd,q.d);p.fll=p.fl/(q.d.sc||1);p.xm=q.d.fm*p.fl;p.profF=fairProf(q.d,p.fl)}   // the shell on (Q337)
     if(q.nd.dep&&!q.rdec){if(q.d.kind==='leg'||unfolds(q.d))p.dep=true;else if(q.d.kind==='bay')p.open=true}   // deployed in the Assembly: it rolls out that way (Q328)
@@ -786,7 +805,9 @@ const AV=[{name:'Gyro autopilot',modes:['stab','retro'],k:2,w:0.3,db:0.0087,era:
   {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
 const avNow=()=>khOn()&&!TEST.tools?Math.min(AV.length-1,compEra()):AV.length-1;   // the tester's "all tools" includes the best avionics
 const avOf=s=>AV[s.proc?AV.length-1:Math.min(s.av??AV.length-1,avCap(s))];   // avCap (sim/power.js): no computer on board, no guidance computer
-const sasModeOK=(s,m)=>{const M=avOf(s).modes;return!M||M.includes(m)};
+const sasModeOK=(s,m)=>{const M=avOf(s).modes;if(!M||M.includes(m))return true;const P=s.proc?null:pilotOf(s);return!!P&&P.modes.includes(m)};   // (Q625) the computer's modes, and the best pilot aboard's
+// (Q625) the loop that flies the SAS's mode: the computer's when it has the mode, else the pilot's (sim/crew.js pilotLoop)
+function sasLoop(s){const A=avOf(s),m=s.sasMode;if(!A.modes||A.modes.includes(m)||s.proc)return A;const P=pilotOf(s);return P&&P.modes.includes(m)?pilotLoop(P):A}
 const avNext=m=>AV.find(a=>!a.modes||a.modes.includes(m));   // the first generation that has mode m
 function sasTarget(s){
   if(s.sasMode==='stab'||!sasModeOK(s,s.sasMode))return s.hold;
@@ -855,7 +876,7 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   // while the zone is on the rate loop also integrates (time constant SAS_TI), clamped to the authority, reset when it's off.
   let lag=0;if(s.throttle>0)for(const p of E)lag=Math.max(lag,p.d.gim/p.d.gimR);
   if(fP>0.25*s.torque)for(const p of s.fins)if(p.d.ctl)lag=Math.max(lag,p.d.ctl/p.d.ctlR);   // steerable fins, once they carry real weight
-  const A=avOf(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
+  const A=sasLoop(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
   let al=mul(sub(wd,wS),A.k);
   if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,wS),A.k/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
   // the air's push away from the airflow, cancelled as it comes (vehicle, Q382): while engines burn nose-first, the part of the
