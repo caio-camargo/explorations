@@ -157,10 +157,10 @@ shadow (shading comes only from normals, plus Tellus's cloud shadow).
   time; never, until M5, on a body that doesn't turn). Each pixel then pays one texture read.
 - **Near** (within ~2 km): a short shadow ray through the procedural bands, so small craters and boulders cast their
   own shadows.
-- **As built (G4, v1.357):** neither of the two above. A *shadow clipmap* round the camera: seven levels from 0.5 m to
+- **As built (G4, v1.358):** neither of the two above. A *shadow clipmap* round the camera: seven levels from 0.5 m to
   2 km texels, each holding the running maximum, toward the sun, of the ground's distance from the line through the
   centre along the sun. A point is lit when it stands farther from that line than everything ahead of it. That covers
-  near and far alike, in one read per pixel (notes/world.md § v1.357). A per-pixel walk was tried first and dropped: 4×
+  near and far alike, in one read per pixel (notes/world.md § v1.358). A per-pixel walk was tried first and dropped: 4×
   the frame at a low sun, and it still missed shadows.
 - R4's panorama quality (which today uses the sun's height alone) can later read whether the view actually has
   shadows.
@@ -196,7 +196,7 @@ All are world lane unless stated. Load per QUEUE's legend. The first two are hea
 | G2 | ✓ **built** (v1.58, NOTES § v1.58; `geoAt` reading the bake moves to G3, with the shader) — **Selene's map and craters on the CPU.** The baked map (basins, maria flooded from the baked mare mask), the crater bands, `geoAt` on the bake (test §42 retargeted). A Node study, `study_ground.mjs`: crater counts against N(>D), slope histograms per unit, relief range, flat-site share, the polar dark area. | M | ⚙ | the numbers behind every parameter, before any pixel |
 | G3 | ✓ **built** (v1.352, notes/world.md § v1.352; port plan below) **The march on Selene.** The march generalised (body uniforms, the recipe as a compile-time define), Selene's program, its colour through the `groundCol` hook (today's albedo and maria). `terrainProbe` per body; `gpuMs` at fixed views: lander at 2 m, rover, 1 km, 20 km, low orbit. | L | 🖥 | CPU/GPU agreement in mm near the camera; a frame budget (target: Tellus's pad view or better) |
 | G3.5 | ✓ **built** (v1.354, notes/world.md § v1.354) **The near-field height cache**: the bands baked round the camera, three levels, read by the march and the shading | M | 🖥 | within 100 m of the camera mm of the CPU; the frame back to Tellus's pad |
-| G4 | ✓ **built** (v1.357, notes/world.md § v1.357) **Shadows.** As built, a shadow clipmap (seven levels round the camera, a running max toward the sun) instead of the sun-horizon map and near rays; crafts on the ground shadowed too (`selSunLit`) | M | 🖥 | shadow cost; a low-sun view and an orbit terminator view |
+| G4 | ✓ **built** (v1.358, notes/world.md § v1.358) **Shadows.** As built, a shadow clipmap (seven levels round the camera, a running max toward the sun) instead of the sun-horizon map and near rays; crafts on the ground shadowed too (`selSunLit`) | M | 🖥 | shadow cost; a low-sun view and an orbit terminator view |
 | G5 | **Consumers.** Landing hazard checks and orbit clearance (with space: `landAt` is theirs, so the change is an `ACTIVE_WORK.md` line), line-of-sight contact on bodies (`gsSees` generalised), polar dark floors as an R4 deposit mask, rover tests on relief. | M | ⚙ | the crater-landing M3 finish line is flyable |
 | G6 | **Nyx.** Its recipe (mild lump plus craters) in the same program. | S | ⚙ + 🖥 | the recipe system is real, not Selene-shaped |
 | G7+ | **Planets**, one item per body from the table above, adding generators as first needed: Enyo (G-dune, G-carve, the giant shield) → Hesper → Astraea → Theia/Eos/Tethys/Phoebe → Erebus → seeded lumps. Each body: a recipe, its bake, a `study_ground` line, a view in Q79's "go to body". | M each | ⚙ then 🖥 | after G3 and Q79 |
@@ -340,7 +340,7 @@ orbit.
 ---
 
 ## Version history
-- **0.1.15 (2026-11-17):** G4 built (v1.357): Selene's cast shadows, as a shadow clipmap.
+- **0.1.15 (2026-11-17):** G4 built (v1.358): Selene's cast shadows, as a shadow clipmap.
 - **0.1.14 (2026-11-17):** G3.5 built (v1.354): the near-field height cache.
 - **0.1.13 (2026-11-17):** G3 built and live (QUEUE Q91, v1.352): the march on Selene, CPU/GPU agreement in mm, saves and tapes moved onto the relief, `landAt` and impact prediction on it; ~11 ms near the ground, a near-field cache proposed.
 - **0.1.12 (2026-10-31):** crater shapes vary (Q494, PLAYTEST #129, v1.251): see Shapes.
