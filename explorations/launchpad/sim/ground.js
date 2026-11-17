@@ -4,7 +4,7 @@
 // ---- Selene's ground (GROUND.md, slice G2). A recipe in the shape of slice G1's (`gen`, `top`): a baked map for what
 // is bigger than ~20 km (highland swell, the big craters, the maria flooded into the mare mask) plus procedural crater
 // bands below that, on the integer hash, so the shader can compute the same numbers later (G3).
-// LIVE since G3 (QUEUE Q91, v1.351): the sky shader draws this relief (app/gl.js selH, marchS), so SELENE.ground is set
+// LIVE since G3 (QUEUE Q91, v1.352): the sky shader draws this relief (app/gl.js selH, marchS), so SELENE.ground is set
 // below and every consumer of groundAlt (contact, landing, rovers, the camera) stands on it.
 const GR_C=0.055;   // crater count: N(>D) = GR_C·D⁻² per km², D in km (the Moon's highlands: ~5,200 craters ≥ 20 km)
 const GR_DT=18e3*1.62;   // simple → complex at 18 km on the Moon (g 1.62); the size goes as 1/g, so GR_DT/g

@@ -748,7 +748,7 @@ const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi
   return{face:[o.pos[0],o.y0+o.h,o.pos[2]],ax:[0,1,0]}};
 // a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
 // carried a real crew (dummies don't count)
-function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.d.sized)o.fr=p.d.fr;if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.buried)o.buried=1;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
+function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.d.sized)o.fr=p.d.fr;if(p.d.ah)o.ah=p.d.ah;if(p.pose)o.pose={f:p.pose.f.slice(),q:p.pose.q.slice(),sf:p.pose.sf};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.dmg)o.dmg=p.dmg;if(p.buried)o.buried=1;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
   if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day;if(p.crewIds&&p.crewIds.length)o.who=p.crewIds.slice()}return o})}   // who: their roster ids (Q182)   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
 // a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
 function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
