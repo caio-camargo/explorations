@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.9.11 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: live
+**Version**: 1.9.12 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -172,10 +172,10 @@ lines in [`DECISIONS.md`](DECISIONS.md).
 
 ### M3–M5 — what each holds (M3 current since W49, code after R2; M4 next but 📝 only (D46); M5 📝 only)
 
-- **M3:** Selene terrain plan (Q18) · landing on a chosen crater (Q13) · rovers on real ground · crew rotation · the
+- **M3:** Selene's ground built, G3–G6 (Q91; the plan, Q18, is done) · landing on a chosen crater (Q13) · rovers on real ground · crew rotation · the
   pre-flight **mission planner**, first slice (Selene windows and the free return; NOTES § "Planning before the flight") ·
-  RCS by era and a fine-control mode (notes/space.md § "RCS", Caio) · guest astronauts and bought seats (CREW § "Guest
-  astronauts") · the Selene and Nyx firsts in the race (D36, Q593).
+  RCS by era and a fine-control mode (Caio; notes/space.md § "RCS" lists both under *Not yet*) · guest astronauts and bought seats (a row of
+  CREW's systems table, "Guest astronauts") · the Selene and Nyx firsts in the race (D36, Q593).
 - **M4:** steady-state vessel temperature (NOTES § "Waste heat") · depots · the datacenter · Selene ISRU · the AI compute
   era · consortia · each docked body its own thrust, aero and heating, fuel crossing by an explicit transfer (notes/space.md
   § "Docking and related parts: plan", Caio; the depots need it) · a sea-specific launch complex (W6).

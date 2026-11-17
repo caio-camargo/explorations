@@ -33,6 +33,9 @@ const PARTS={
   // sit on its faces, and what stacks on it rests on a joint of its radius
   oct:{name:'Octagonal frame',kind:'frame',m:0.04,h:0.5,r:0.4,C:1500,T:800,B:250},
   octl:{name:'Octagonal frame, long',kind:'frame',m:0.07,h:1.0,r:0.4,C:1500,T:800,B:250},
+  // the frame the player shapes (vehicle, Q617, D47 point 1: notes/vehicle.md § "Plan: the bench as its own builder"): its node
+  // carries fr {n sides, w across the corners, h, top: the top's width as a share of the bottom's}; frameDef sizes it at layout
+  frame:{name:'Frame',kind:'frame',sized:true,m:0.058,h:0.8,r:0.45,C:1500,T:800,B:250},
   // a payload's adapter (vehicle, Q416, D24): the ring a payload designed on the bench stands on inside the rocket; never in the
   // parts list, it comes with a payload block
   // the payload adapter is its separation ring too (Q422): a decoupler, so a payload's own propellant never feeds the stage
@@ -157,7 +160,20 @@ const small=(key,base,sc,o)=>{const b=PARTS[base],a=sc*sc,f=x=>x==null?x:+(x*a).
     C:b.C*a,T:b.T*a,S:b.S*a,B:b.B*a*sc,...o}};
 for(const[sz,sc]of[['0.6',0.48],['0.3',0.24]]){const s=sz==='0.6'?'6':'3';
   small('core'+s,'core',sc,{name:`Probe core ${sz} m`});small('batt'+s,'batt',sc,{name:`Battery ${+(sc*sc).toPrecision(2)} kWh (${sz} m)`});small('rwheel'+s,'rwheel',sc,{name:`Reaction wheel ${sz} m`})}
-small('octl6','octl',0.75,{name:'Octagonal frame, long, 0.6 m'});   // the bus a 0.6 m stack hangs its wings on
+small('octl6','octl',0.75,{name:'Octagonal frame, long, 0.6 m'});
+// A sized frame (Q617): one cached definition per shape, as finDef's fins and wtDef's weights (same key, so price, know-how and
+// production follow the part). Mass goes with its skin, 18 kg a square metre (the octagonal frames' figure); strength with its
+// width as `small` scales it. nodeDef(nd) is a design node's definition: PARTS[nd.k], sized when the node says how.
+const FR_N=[[3,'triangle'],[4,'square'],[6,'hexagon'],[8,'octagon']],FR0={n:6,w:0.9,h:0.8,top:1},FR_C={},FR_KG=18;
+function frOf(fr){fr=fr||FR0;const q=(x,lo,hi,st,d)=>{x=+x;if(!(x===x))x=d;return+(Math.round(clamp(x,lo,hi)/st)*st).toFixed(2)};
+  return{n:FR_N.some(z=>z[0]===fr.n)?fr.n:FR0.n,w:q(fr.w,0.3,3,0.1,FR0.w),h:q(fr.h,0.2,3,0.1,FR0.h),top:q(fr.top,0.3,1,0.05,FR0.top)}}
+function frameDef(d,fr){if(!d||!d.sized)return d;const f=frOf(fr),id=[f.n,f.w,f.h,f.top].join(':');if(FR_C[id])return FR_C[id];
+  const r=f.w/2,rt=r*f.top,sn=Math.sin(Math.PI/f.n),ap=Math.cos(Math.PI/f.n),side=f.n*(r+rt)*sn*Math.hypot(f.h,(r-rt)*ap),end=x=>f.n/2*x*x*Math.sin(2*Math.PI/f.n),
+    area=side+end(r)+end(rt),k=r/0.4,b=PARTS.frame,a0=b.area||area;
+  return FR_C[id]=Object.assign(id===FR0_ID?d:{...b},{fr:f,rt,area,h:f.h,r,m:+(area*FR_KG/1000).toFixed(4),prof:[[r,0],[rt,f.h]],C:1500*k*k,T:800*k*k,S:750*k*k,B:250*k*k*k,pk:area/a0,
+    name:id===FR0_ID?'Frame':`Frame, ${FR_N.find(z=>z[0]===f.n)[1]} ${f.w.toFixed(1)} × ${f.h.toFixed(1)} m${f.top<1?', tapered':''}`})}
+const FR0_ID=[FR0.n,FR0.w,FR0.h,FR0.top].join(':');frameDef(PARTS.frame,FR0);   // the part in the palette is the default shape
+const nodeDef=nd=>frameDef(PARTS[nd.k],nd.fr),shDef=o=>frameDef(PARTS[o.k],o.fr);   // shDef: a registered craft's shape entry   // the bus a 0.6 m stack hangs its wings on
 // the payload adapter for a small payload: the 1.25 m ring narrowing to the payload's own size (payAdapter picks it)
 PARTS.padapt6={...PARTS.padapt,key:'padapt6',name:'Payload adapter 0.6 m',h:0.2,prof:[[.625,0],[.625,.05],[.3,.2]]};
 PARTS.padapt3={...PARTS.padapt,key:'padapt3',name:'Payload adapter 0.3 m',h:0.25,prof:[[.625,0],[.625,.05],[.15,.25]]};
@@ -192,7 +208,8 @@ const PRESETS={
   'TV Satellite':null,   // set below, after the bench's starters (a payload block)
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
-  Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
+  // Crossfeed (was Asparagus, a KSP community word: D15.6, Q284)
+  Crossfeed:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
   // resized for the bigger planet (orbit ~4,300 m/s; a Selene landing and return ~3,900 more): a 2.5 m first stage
   Lunar:['chute','pod','t1','wren','dec','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross'],
   // with a heat shield under the pod: drop the lander stage before re-entry and come home shield-first from Selene
@@ -245,7 +262,7 @@ function toV2(stack){
 // A stack line through an entry node: its members (reached over u/d links) with bottoms relative to the entry's bottom.
 function lineOf(nd){const mem=[{nd,y:0,up:null}];
   const walk=m=>{for(const c of m.nd.c||[]){if(c.at!=='u'&&c.at!=='d')continue;
-    const q={nd:c,y:c.at==='u'?m.y+PARTS[m.nd.k].h:m.y-PARTS[c.k].h,up:m};mem.push(q);walk(q)}};
+    const q={nd:c,y:c.at==='u'?m.y+nodeDef(m.nd).h:m.y-nodeDef(c).h,up:m};mem.push(q);walk(q)}};
   walk(mem[0]);return mem}
 const radAt=at=>at&&typeof at==='object';
 // a part's outer radius at height y above its bottom (its profile, interpolated): where a surface part sits
@@ -270,7 +287,7 @@ function payStandOn(root){const chain=[root];for(let n=root;;){const d=(n.c||[])
 function payExpand(des){if(!payHas(des.root))return des;
   const mark=(n,blk)=>{const c={...n,c:(n.c||[]).map(x=>mark(x,blk))};delete c.id;Object.defineProperty(c,'payOf',{value:blk});return c};
   const walk=n=>{if(isPay(n)){const pr=n.pd&&n.pd.root,ad={k:'padapt',at:n.at,c:(n.c||[]).map(walk)};if(n.j)ad.j=n.j;Object.defineProperty(ad,'payOf',{value:n});
-      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top);const b=PARTS[top.k];ad.k=payAdapter(b?b.r:R0)}return ad}   // the ring narrows to what stands on it (Q505)
+      if(pr){const top=mark(payStandOn(pr),n);top.at='u';ad.c.push(top);const b=nodeDef(top);ad.k=payAdapter(b?b.r:R0)}return ad}   // the ring narrows to what stands on it (Q505)
     const c={...n,c:(n.c||[]).map(walk)};Object.defineProperty(c,'src',{value:n});return c};
   return{...des,root:walk(des.root)}}
 const payDesigns=()=>{if(typeof PROG==='undefined')return[];if(!Array.isArray(PROG.payloads))PROG.payloads=[];return PROG.payloads};
@@ -286,10 +303,10 @@ function layoutDesign(des){
   const inst=[],joints=[];des=toV2(des);if(!des||!des.root)return{inst,joints};des=payExpand(des);
   let lineN=0;
   const place=(mem,x,z,yS,rot,phi,path)=>{const id=lineN++,byM=new Map();
-    for(const m of [...mem].sort((a,b)=>a.y-b.y)){const d=PARTS[m.nd.k],q={nd:m.nd,d,x,z,y0:yS+m.y,rot,phi,line:id,path};inst.push(q);byM.set(m,q)}
+    for(const m of [...mem].sort((a,b)=>a.y-b.y)){const d=nodeDef(m.nd),q={nd:m.nd,d,x,z,y0:yS+m.y,rot,phi,line:id,path};inst.push(q);byM.set(m,q)}
     for(const m of mem)if(m.up){const c=byM.get(m),p=byM.get(m.up),u=m.nd.at==='u';
       joints.push({a:p,b:c,axis:[0,u?1:-1,0],P:[x,u?c.y0:c.y0+c.d.h,z],j:m.nd.j||0})}
-    return{byM,lo:Math.min(...mem.map(m=>yS+m.y)),hi:Math.max(...mem.map(m=>yS+m.y+PARTS[m.nd.k].h))}};
+    return{byM,lo:Math.min(...mem.map(m=>yS+m.y)),hi:Math.max(...mem.map(m=>yS+m.y+nodeDef(m.nd).h))}};
   const rMax=(qs,lo,hi)=>{let r=0;for(const q of qs)if(q.y0<hi-1e-6&&q.y0+q.d.h>lo+1e-6)r=Math.max(r,q.d.r);return r};
   const queue=[];const m0=lineOf(des.root),L0=place(m0,0,0,0,0,null,'');queue.push({mem:m0,L:L0});
   while(queue.length){const{mem,L}=queue.shift(),lineQ=[...L.byM.values()];
@@ -300,8 +317,8 @@ function layoutDesign(des){
           q={nd:c,d,x:P.x+rp*nx,z:P.z+rp*nz,y0:yc-(at.cy??d.h/2),rot:ph,phi:ph,line:-1,surf:true,path:P.path+'/'+k};inst.push(q);
           joints.push({a:P,b:q,axis:[nx,0,nz],P:[q.x,yc,q.z],j:c.j||0})}
         continue}
-      const P=L.byM.get(m),at=c.at,cm=lineOf(c),n=Math.max(1,at.n|0),cy=at.cy??PARTS[c.k].h/2,yb=P.y0+at.y-cy;
-      const lo=yb+Math.min(...cm.map(q=>q.y)),hi=yb+Math.max(...cm.map(q=>q.y+PARTS[q.nd.k].h)),rs=Math.max(...cm.map(q=>PARTS[q.nd.k].r));
+      const P=L.byM.get(m),at=c.at,cm=lineOf(c),n=Math.max(1,at.n|0),cy=at.cy??nodeDef(c).h/2,yb=P.y0+at.y-cy;
+      const lo=yb+Math.min(...cm.map(q=>q.y)),hi=yb+Math.max(...cm.map(q=>q.y+nodeDef(q.nd).h)),rs=Math.max(...cm.map(q=>nodeDef(q.nd).r));
       const D=Math.max(rMax(lineQ,lo,hi),P.d.r)+RGAP+rs,rp=P.d.r,yc=P.y0+at.y;
       for(let k=0;k<n;k++){const ph=P.rot+at.a+2*Math.PI*k/n,nx=Math.cos(ph),nz=Math.sin(ph),N=[nx,0,nz],x=P.x+D*nx,z=P.z+D*nz,path=P.path+'/'+k;
         const CL=place(cm,x,z,yb,ph,ph,path),E=CL.byM.get(cm[0]);
@@ -356,7 +373,7 @@ function assemble(stack){
   for(const g of groups){g.segs=g.dec?[...new Set(g.joins.map(rd=>rd.seg))]:[];g.parts=parts.filter(p=>g.segs.includes(p.seg));for(const k of g.segs)segs[k].label=g.label}
   // the segment tree: a segment's parent holds its decoupler. The chain runs from the root's segment down through stack
   // decouplers below it (the one nearest the axis, if several); everything else hangs off a chain segment, burns with it
-  // and drops before it does — deepest first, then the highest first (so asparagus pairs go top-down).
+  // and drops before it does — deepest first, then the highest first (so crossfed pairs go top-down).
   const sPar=keys.map(k=>k&&k.parent?k.parent.seg:-1),depth=k=>{let n=0;for(let s=k;sPar[s]>=0;s=sPar[s])n++;return n};
   const below=k=>keys[k]&&keys[k].d.kind==='dec'&&keys[k].jA[1]<-0.5;
   const chain=[root?root.seg:0];

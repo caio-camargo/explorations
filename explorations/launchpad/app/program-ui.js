@@ -48,7 +48,7 @@ document.addEventListener('click',e=>{const a=e.target.dataset&&(e.target.datase
 // ============================================================ program UI: satellites (planning session)
 // program time now: during a flight, its launch-window day plus flight time; on the pad, the next window
 const SAT_MESH=new WeakMap();   // registry entry → its mesh, built on first sight
-function satMesh(q){let me=SAT_MESH.get(q.shape);if(!me){const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]}));
+function satMesh(q){let me=SAT_MESH.get(q.shape);if(!me){const parts=q.shape.filter(o=>shDef(o)).map(o=>({...o,d:shDef(o)}));
     for(const p of parts)if(p.mk)MARKS.set(p,{soot:p.mk[0],char:p.mk[1],cd:p.mk.slice(2),frost:0,glow:0});SAT_MESH.set(q.shape,me={mesh:partsMesh(parts),parts})}return me}   // keyed by shape: a part broken off is a new shape
 const FLEET_MESH=new WeakMap();   // a fleet vessel's mesh, rebuilt when it loses parts (parts only ever come off)
 function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v)+'|'+depKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}

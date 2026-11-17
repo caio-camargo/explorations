@@ -209,7 +209,7 @@ function rvObsOf(vs){return vs.filter(v=>v&&v.alive&&v.landed&&v.pf).map(v=>{con
   for(const p of v.parts)if(p.on&&!p.inst.surf)r=Math.max(r,Math.hypot(p.pos[0],p.pos[2])+p.d.r);return{c:mul(u,rvGroundR(P,v.pf)),u,r,h:v.len}})}
 // the same for objects left landed (registry entries: their saved shape), within 300 m of pf on body b
 function rvObsQ(b,pf){return landedUp().filter(q=>q.bodyName===b.name&&q.shape&&len(sub(q.pf,pf))<300).map(q=>{const u=norm(q.pf),Ul=qrot(q.ql,[0,1,0]);let r=.5,h=1;
-  for(const o of q.shape){const d=PARTS[o.k];if(!d)continue;h=Math.max(h,o.y0+o.h);if(!d.surf)r=Math.max(r,Math.hypot(o.pos[0],o.pos[2])+d.r)}return{c:mul(u,rvGroundR(rvProbe(b,q.pf),q.pf)),u:Ul,r,h}})}
+  for(const o of q.shape){const d=shDef(o);if(!d)continue;h=Math.max(h,o.y0+o.h);if(!d.surf)r=Math.max(r,Math.hypot(o.pos[0],o.pos[2])+d.r)}return{c:mul(u,rvGroundR(rvProbe(b,q.pf),q.pf)),u:Ul,r,h}})}
 function rvFlight(dt){for(const R of FROV){if(R.wet)continue;rvPowerStep(R,dt,rvSunPF(R.body,bodyTheta(R.body,simT)));if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
 // at the flight's end, every rover still on its wheels (or not) stays where it is
 const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead,data:R.data||[],seisLeft:R.seisLeft,reads:R.reads||[]});
@@ -265,7 +265,7 @@ function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',dela
 function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;
     if(!v.landed){if(v.body!==TELLUS)out.push({body:v.body,at:()=>v.r,name:v.name||'the orbiter'});continue}if(!v.pf)continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
   for(const q of moonSats())if(q.ant&&satDuty(q)>0)out.push({body:orbBody(q),at:t=>satAt(q,ORB_T0+t)[0],on:t=>satOn(q,ORB_T0+t),name:q.name});   // on: powered then (Q173)
-  for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>PARTS[o.k]&&PARTS[o.k].kind==='ant')||!(satDuty(q)>0))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),on:t=>satOn(q,ORB_T0+t),name:q.name})}return out}   // on: powered then (Q213)
+  for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>shDef(o)&&shDef(o).kind==='ant')||!(satDuty(q)>0))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),on:t=>satOn(q,ORB_T0+t),name:q.name})}return out}   // on: powered then (Q213)
 // a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
 function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
   (R.cq=R.cq||[]).push({t:R.t+c.delay,...inp});while(R.cq.length&&R.cq[0].t<=R.t){const x=R.cq.shift();R.in={thr:x.thr,steer:x.steer,brake:x.brake}}}

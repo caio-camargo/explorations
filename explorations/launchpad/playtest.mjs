@@ -139,7 +139,7 @@ ROWS[35] = {title: 'part close-ups', steps: [...views(4, 5, 6, 7, 8, 9),
 ROWS[36] = {title: 'flight marks', steps: views(11, 12, 13, 14)};
 ROWS[37] = {title: 'launch complex and liftoff', steps: [...views(15, 16, 17),
   ...padWatch('Sounding', [14, 15.4, 16.5], [0.9, 0.1, 30]), ...padWatch('Orbiter', [15.4, 16.5, 18], [0.9, 0.1, 50]), ...padWatch('Big Lunar', [15.4, 16.5, 18.5], [0.9, 0.1, 90])]};
-ROWS[108] = {title: 'gantry roll-back from wide rockets', steps: [...padWatch('Crewed Lunar', [0, 4, 8, 11, 14], [-0.5, 0.15, 70], 99), ...padWatch('Asparagus', [0, 4, 8, 11, 14], [-0.5, 0.15, 55], 99)]};
+ROWS[108] = {title: 'gantry roll-back from wide rockets', steps: [...padWatch('Crewed Lunar', [0, 4, 8, 11, 14], [-0.5, 0.15, 70], 99), ...padWatch('Crossfeed', [0, 4, 8, 11, 14], [-0.5, 0.15, 55], 99)]};
 ROWS[38] = {title: 'plumes', steps: views(30, 31, 32, 33, 34, 35, 36)};
 ROWS[39] = {title: 'plume on the pad', steps: views(60, 61, 62, 63, 64)};
 ROWS[40] = {title: 'night launch', steps: views(65, 66, 67)};
@@ -177,8 +177,8 @@ ROWS[5] = {title: 'Heavy boosters separate', steps: [
      PT.look(1.75, 0.05, 45); return {debris: debris.length - d0, sep: out, log: PT.logSince(PT.n0).slice(-3)} })()`, {shot: 'sep08'},
   `(()=>{ const t0 = simT; while (simT - t0 < 2) { advPhys(S); emitSmoke(DT); render() } PT.look(1.75, 0.05, 60); return document.getElementById('stages').innerText + ' || ' + PT.hud().split(String.fromCharCode(10)).filter(l=>/Δv|Mass/.test(l)).join(' ') })()`, {shot: 'sep28'}],
   checks: {}};
-ROWS[7] = {title: 'Asparagus booster prompt', steps: [
-  `(()=>{ ${FLY('Asparagus')} PT.fly(() => PT.log.slice(PT.n0).some(l => /stage to drop/i.test(l)), 200, {ascent: true}); return {t: +simT.toFixed(1), alt: +(PT.alt()/1000).toFixed(1), log: PT.logSince(PT.n0), stages: document.getElementById('stages').innerText} })()`,
+ROWS[7] = {title: 'Crossfeed booster prompt', steps: [
+  `(()=>{ ${FLY('Crossfeed')} PT.fly(() => PT.log.slice(PT.n0).some(l => /stage to drop/i.test(l)), 200, {ascent: true}); return {t: +simT.toFixed(1), alt: +(PT.alt()/1000).toFixed(1), log: PT.logSince(PT.n0), stages: document.getElementById('stages').innerText} })()`,
   `PT.look(1.75, 0.05, 45); document.getElementById('msg').style.opacity = 1; renderStages(); document.getElementById('stages').innerText`, {shot: 'prompt'},
   `(()=>{ stage(S); PT.fly(() => PT.log.slice(PT.n0).filter(l => /stage to drop|burnout/i.test(l)).length >= 2, 200, {ascent: true}); return {t: +simT.toFixed(1), log: PT.logSince(PT.n0)} })()`,
   `PT.look(1.75, 0.05, 45); renderStages(); 'ok'`, {shot: 'prompt2'}]};
@@ -237,7 +237,7 @@ ROWS[105] = {title: 'steerable fins', steps: [
   `(()=>{ ${ORBIT}; S.sas = true; S.sasMode = 'stab'; S.hold = norm(S.r); const t0 = simT; let t5 = null; while (simT - t0 < 120) { advPhys(S); if (t5 == null && Math.acos(clamp(dot(qrot(S.q, [0, 1, 0]), S.hold), -1, 1)) < 0.09) t5 = simT - t0 } return {vacuum90degTurn: t5 == null ? '>120 s' : +t5.toFixed(1) + ' s'} })()`]};
 // gimbal: an ascent under SAS (kick, prograde) on each preset; the nose's wobble about the flight path after the kick
 ROWS[107] = {title: 'gimbal: no wobble under SAS', steps: [
-  ...['Orbiter', 'Heavy', 'Asparagus', 'Lunar', 'Big Lunar', 'Crewed Lunar', 'Sounding'].map(d => `(()=>{ PT.preset(${JSON.stringify(d)}); PT.launch(); S.throttle = 1; stage(S); const aoa = []; let last = 0, wmax = 0;
+  ...['Orbiter', 'Heavy', 'Crossfeed', 'Lunar', 'Big Lunar', 'Crewed Lunar', 'Sounding'].map(d => `(()=>{ PT.preset(${JSON.stringify(d)}); PT.launch(); S.throttle = 1; stage(S); const aoa = []; let last = 0, wmax = 0;
      PT.fly(() => PT.alt() > 30000 || simT > 150, 200, {ascent: true, each: () => { if (simT > 14 && S.mach > 0.3 && S.thrust > 0) { aoa.push(PT.aoaDeg()); wmax = Math.max(wmax, len(S.w)) } }});
      const m = aoa.reduce((a, b) => a + b, 0) / Math.max(1, aoa.length), sd = Math.sqrt(aoa.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, aoa.length));
      let rev = 0; for (let i = 2; i < aoa.length; i++) if ((aoa[i] - aoa[i-1]) * (aoa[i-1] - aoa[i-2]) < 0 && Math.abs(aoa[i] - aoa[i-1]) > 0.02) rev++;
@@ -284,7 +284,7 @@ ROWS[110] = {title: 'the Link row through a flight', steps: [
      return seen })()`, `PT.look(2.2, -0.3, 12)`, {shot: 'entry_end'}]};
 // PLAYTEST #17 / Q17 + Q20: hard climbs through max heating show no blackout on the Link row and draw no plasma shell
 // (plasmaHeat over render.js's 1.5e4 gate); the entry half is row 110's
-ROWS[122] = {title: 'no blackout or plasma shell on a hard climb', steps: ['Heavy', 'Asparagus'].flatMap(d => [
+ROWS[122] = {title: 'no blackout or plasma shell on a hard climb', steps: ['Heavy', 'Crossfeed'].flatMap(d => [
   `(()=>{ go('assembly'); PT.preset('${d}'); PT.launch(); S.throttle = 1; stage(S); const seen = new Set(); let qMax = 0, shell = 0, at = null;
      PT.fly(() => PT.orbit().ap > 150000 || PT.alt() > 90000, 600, {ascent: true, autostage: true, each: () => { const l = linkOf(S); seen.add(l.ok ? (l.st ? 'station' : l.why) : l.why);
        const h = plasmaHeat(S.body, S.r, S.v, S.qHeat || 0); if (S.qHeat > qMax) { qMax = S.qHeat; at = {t: +simT.toFixed(0), km: +(PT.alt()/1000).toFixed(1), mach: +S.mach.toFixed(1), v: Math.round(len(sub(S.v, surfVel(S.body, S.r))))} } shell = Math.max(shell, h) }});
