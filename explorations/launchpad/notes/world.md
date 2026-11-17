@@ -1802,7 +1802,7 @@ small craters it holds. Left as is.
 **Not checked:** a fast low pass (a level rebaking every frame at 1.6 km/s: ~0.4 ms each, by the bake's cost); the robot
 or a human flying over it.
 
-## v1.358 — Selene's cast shadows (2026-11-17, world session, GROUND.md G4; Caio: "ok on g4")
+## v1.359 — Selene's cast shadows (2026-11-17, world session, GROUND.md G4; Caio: "ok on g4")
 
 Until now nothing on Selene cast a shadow: the relief was shaded by its normals alone, so at a low sun a crater's floor
 under its rim was as bright as the plain. Now the ground shadows itself, and a craft standing in a shadow is dark too.
