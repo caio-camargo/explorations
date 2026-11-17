@@ -48,7 +48,7 @@ function renderProgram(){const el=$('program');if(!el)return;let html='';
        return `<div style="margin-top:3px">${PARTS[k].name} <span class="dim">(bought abroad)</span><br>${b('own',q.own,'Own line')} ${b('lic',q.lic,q.lic.from!=null?`License from ${POWERS[q.lic.from].root}`:'License')}${!q.own.ok?`<br><span class="dim">${q.own.why}</span>`:''}</div>`}).join('')+`</div>`}}
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}${selKnowHTML()}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
-  el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(confirm('Forget all missions and everything the program has learned?')){resetProgram();go('title')}};
+  el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML()+crewHTML());$('progReset').onclick=()=>{if(confirm('Forget all missions and everything the program has learned?')){resetProgram();go('title')}};
   if(typeof unlockDesk==='function')unlockDesk()}   // (Q572) missions done between flights: their cards, at the desk
 function resetProgram(){programNew();HOOK.save();editorChanged()}   // (also the title screen's New program, Q241 R3; one reset for the game and career.mjs, R1b)
 // how much sideways drift it stands at touchdown, legs down (Q264, PLAYTEST #64: a tall stack on its bell tips past ~1 m/s). Q325:

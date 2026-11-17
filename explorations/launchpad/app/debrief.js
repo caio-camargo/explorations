@@ -22,6 +22,7 @@ function renderDebrief(){const D=debShown,el=$('debBody');
     +`<div class="lead">${ch&&!crewLost?`<b>${ch.capstone}</b> · `:''}${cls?`<b>${o.t}</b>: `:''}${o.d}.`
     +(D.crew?` <span class="${D.crew.ok?'ok':'bad'}">${D.crew.line}.</span>`:'')   // (Q191)
     +(D.crew&&(D.crew.firsts||[]).length?` <span class="ok">The ${D.crew.firsts.join(', the ')}.</span>`:'')   // (Q182) the crewed firsts they flew
+    +(D.crew&&(D.crew.quals||[]).length?` <span class="ok">Qualified: ${D.crew.quals.join('; ')}.</span>`:'')   // (Q458) what they earned on this flight
     +(D.passenger?` ${D.passenger.ok?`${D.passenger.who} came through.`:`${D.passenger.who} ${D.passenger.why}.`}`:'')+`</div>`;
   // a loss explained (Q293): the failures on the way, in order, then the end, and what would help next time
   const cap=t=>t[0].toUpperCase()+t.slice(1),at=f=>`<span class="was">T+${fmtT(f.met)}${f.h!=null?` · ${fmtKm(f.h)}`:''}</span>`;

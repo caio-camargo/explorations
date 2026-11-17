@@ -92,3 +92,50 @@ function requalEnd(s,R){const q=PROG.requal;if(!q||!R.requalFlight)return;
   if(miss){R.requal={ok:false,why:miss};HOOK.news(`Not requalified yet: ${miss}`,'warn');return}
   PROG.requal=null;R.requal={ok:true};PROG.decisions=(PROG.decisions||[]).filter(d=>d.kind!=='requal');
   HOOK.news(`Requalified: the capsule went as far as the lost flight and came home inside the limits. Crews fly again`,'ok')}
+// ---- qualifications (QUEUE Q458, crew slice 2; notes/economy.md § "Plan revision: crew by qualification", W43).
+// Earned by doing it. A type is the crew capsule (its part key, W43 1): two simulator hours in it, or one real flight.
+// Rendezvous, docking and landing (W43 2): two clean completions in the simulator, or one real; space flags the moment
+// (crewDid) with the people on the seats then, and the flight's end credits whoever came through it (not lost). Field
+// geology is a 30-day course the astronaut office orders (W43 4). Time in type: hours per capsule, real ones count
+// double. Nothing expires. What the qualifications do (the pilot's modes, the scientist's ×) is later slices.
+const QUAL_SIM_N=2,QUAL_TYPE_H=2,QUAL_RDV_D=1000,QUAL_RDV_V=5,QUAL_LAND_V=4,GEO_DAYS=30,GEO_COST=0.2;
+const QUAL_L={rdv:'rendezvous',dock:'docking',land:'landing',geo:'field geology'};
+const capName=k=>PARTS[k]?PARTS[k].name:k;
+// the people on this vessel's seats now (not dummies: crewIds go only with people)
+const crewIdsOn=s=>s.parts.filter(p=>p.on&&p.crewAboard&&p.crewIds).flatMap(p=>p.crewIds);
+// space's flag: the vessel did k (rdv, dock, land) with these people aboard; R.simDid on a real flight too
+function crewDid(s,k){const R=s&&s.rec;if(!R||!R.launched||R.ended)return;const ids=crewIdsOn(s);if(!ids.length)return;
+  const D=R.simDid=R.simDid||{},L=D[k]=D[k]||[];for(const id of ids)if(!L.includes(id))L.push(id)}
+// rendezvous (every tick of a crewed flight): within 1 km of the target and 5 m/s of its velocity
+function crewRdvTick(s){const R=s.rec;if(R.simDid&&R.simDid.rdv||!crewIdsOn(s).length)return;const T=tgtOf(s);
+  if(T&&!T.landed&&len(T.dr)<=QUAL_RDV_D&&len(T.dv)<QUAL_RDV_V)crewDid(s,'rdv')}
+function qualGain(a,k,day,got){if(a.quals[k]!=null)return;a.quals[k]=day;got.push({a,k,l:`for ${QUAL_L[k]}`})}
+// a flight's end, real (missionEnd) or simulated (simEnd, after the program is put back): time in type for each person on
+// a seat, the type, and what they did. Returns what was earned, for the news and the Debrief
+function crewCredit(s,R,real){if(!(PROG.crew||[]).length||!R)return[];const day=PROG.day,hrs=(real?simT:(R.simS||0))/3600,lost=new Set(R.crewLost||[]),
+    seat=new Map(),cap0=(s.parts.find(p=>p.d.crew)||{d:{}}).d.key,got=[];
+  for(const p of s.parts)if(p.crewIds)for(const id of p.crewIds)seat.set(id,p.d.key);
+  const did=R.simDid||{};
+  for(const id of new Set([...(R.crew||[]),...seat.keys()])){const a=crewById(id);if(!a||a.status==='lost'||lost.has(id))continue;
+    const k=seat.get(id)||cap0;a.quals=a.quals||{};a.type=a.type||{};a.simN=a.simN||{};
+    if(k){const T=a.type[k]=a.type[k]||{h:0,flights:0};T.h+=hrs*(real?2:1);if(real)T.flights++;
+      a.quals.types=a.quals.types||{};if(a.quals.types[k]==null&&(real||T.h>=QUAL_TYPE_H)){a.quals.types[k]=day;got.push({a,k:'type',l:`on the ${capName(k)}`})}}
+    for(const q of['rdv','dock','land'])if((did[q]||[]).includes(id)){if(!real)a.simN[q]=(a.simN[q]||0)+1;if(real||a.simN[q]>=QUAL_SIM_N)qualGain(a,q,day,got)}}
+  for(const g of got)HOOK.news(`${g.a.name} qualifies ${g.l}${real?'':' (simulator)'}`,'ok');
+  return got.map(g=>`${g.a.name} ${g.l}`)}
+// the field geology course: the astronaut office sends one ready astronaut away for 30 days (off the roster for flights)
+function crewCourseQuote(id){const a=crewById(id);
+  return!a?{ok:false,why:'no such astronaut'}:a.quals&&a.quals.geo!=null?{ok:false,why:'already qualified'}:a.status==='course'?{ok:false,why:'on the course now'}
+    :a.status!=='ready'?{ok:false,why:`not available (${a.status})`}:PROG.funds<GEO_COST?{ok:false,why:'not enough money'}:{ok:true,cost:GEO_COST,days:GEO_DAYS}}
+function crewCourse(id){const q=crewCourseQuote(id);if(!q.ok)return q;const a=crewById(id);PROG.funds-=GEO_COST;ledAdd('crew',-GEO_COST);
+  a.status='course';a.course={k:'geo',until:PROG.day+GEO_DAYS};HOOK.news(`${a.name} goes to field geology school for ${GEO_DAYS} days`,'');return q}
+// (advanceDays) a course ends: back on the roster, qualified
+function crewCourseTick(){for(const a of PROG.crew||[])if(a.status==='course'&&a.course&&PROG.day>=a.course.until-1e-9){
+  a.status='ready';(a.quals=a.quals||{})[a.course.k]=a.course.until;a.course=null;HOOK.news(`${a.name} qualifies in field geology`,'ok')}}
+// the badges on a crew card: [label, earned, title]
+function crewBadges(a){const Q=a.quals||{},n=a.simN||{},out=[];
+  for(const k in Q.types||{})out.push([capName(k),true,`qualified on the ${capName(k)} (${((a.type||{})[k]||{h:0}).h.toFixed(1)} h in type)`]);
+  for(const k in a.type||{})if(!(Q.types||{})[k])out.push([capName(k),false,`${a.type[k].h.toFixed(1)} of ${QUAL_TYPE_H} h in the simulator`]);
+  if(!out.length)out.push(['capsule',false,`no type yet: ${QUAL_TYPE_H} h in a capsule in the simulator, or one real flight`]);
+  for(const k of['rdv','dock','land','geo'])out.push([QUAL_L[k],Q[k]!=null,Q[k]!=null?`qualified, day ${Math.floor(Q[k])}`:k==='geo'?`a ${GEO_DAYS}-day course`:`${n[k]||0} of ${QUAL_SIM_N} in the simulator, or one real`]);
+  return out}

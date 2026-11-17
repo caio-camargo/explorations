@@ -590,7 +590,7 @@ function entryOf(v){PROG.satN=(PROG.satN||0)+1;const on=v.parts.filter(p=>p.on);
 // latch: the target's port is pulled onto ours (turned so the faces oppose, moved so they meet), the two become one rigid
 // body, and the joined vessel takes their total momentum and angular momentum
 function dock(s,q,B,P){const Qb=qmul(qFromTo(P.Ab,mul(P.Aa,-1)),B.q);
-  join(s,q,B,Qb,sub(P.Pa,qrot(Qb,sub(P.b.fv,B.cm))),P.a.body,P.a.i,P.b.i,'port')}
+  join(s,q,B,Qb,sub(P.Pa,qrot(Qb,sub(P.b.fv,B.cm))),P.a.body,P.a.i,P.b.i,'port');crewDid(s,'dock')}   // (Q458) a docking with people aboard
 // two bodies become one: q (body B, placed at attitude Qb and position rB) rides on the vessel, held by part hpi of body
 // host; the joined vessel takes the pair's total momentum and angular momentum
 function join(s,q,B,Qb,rB,host,hpi,ppi,kind){const R=s.q,cm0=s.cm.slice(),m0=s.mass,E1=(s.E??powCap(s))+storeOf(q);   // one store from now on (Q304)

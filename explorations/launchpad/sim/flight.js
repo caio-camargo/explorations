@@ -186,6 +186,7 @@ function settle(s,tilt){const b=s.body,was=s.tipped;s.roused=null;s.landed=true;
   if(tilt>C_TOPPLE){buryParts(s);s.tipped=tipNote(s,was?was.v:0);const T=s.tipped,why=`at rest on its side on ${b.name}${T.broke.length?`; broken: the ${T.broke.join(', ').toLowerCase()}`:''}${T.hurt?`; ${T.hurt} part${T.hurt>1?'s':''} damaged`:''}`;
     logEv('contact',why);HOOK.msg(why[0].toUpperCase()+why.slice(1));return}
   for(const p of s.parts)p.buried=false;s.tipped=null;
+  if((s.touchV||0)<QUAL_LAND_V&&s.parts.some(p=>p.on&&p.d.kind==='leg'))crewDid(s,'land');   // (Q458) upright on its legs under 4 m/s: a landing, for the people aboard
   if(was){const why=`standing again on ${b.name}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`;logEv('contact',why);HOOK.msg(why[0].toUpperCase()+why.slice(1))}else HOOK.msg(landMsg(s,tilt))}
 // why it fell over (Q264): the drift or the lean it came down with, against what this stack can stand; legs if it has none
 function toppleWhy(s,pf0){const b=s.body,su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0),vt=tipSpeed(s,b.mu/(b.R*b.R)),dr=s.touchDrift||0,ti=(s.touchTilt||0)*57.3;

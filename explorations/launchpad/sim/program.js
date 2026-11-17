@@ -337,7 +337,7 @@ const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`
 // whole span, as before (their steppers and a cruise's encounter search don't give the same answer cut in pieces)
 function advanceDays(d,halt){if(!(d>0))return;const t0=PROG.day,t1=t0+d;
   while(PROG.day<t1){const a=PROG.day,n=Math.floor(a+1e-9)+1,b=t1<n?t1:n;PROG.day=b;worldTick(b-a,b>=n-1e-9?n:null);if(halt&&b<t1&&halt())break}
-  const T0=t0*DAY_S,T1=PROG.day*DAY_S;orbTick(T0,T1);rvFieldTick(T0,T1);rvFieldSci(T0,T1);seisTick(T0,T1);crewClassTick()}
+  const T0=t0*DAY_S,T1=PROG.day*DAY_S;orbTick(T0,T1);rvFieldTick(T0,T1);rvFieldSci(T0,T1);seisTick(T0,T1);crewClassTick();crewCourseTick()}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -584,6 +584,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.tester){if(s.leaks)leakTick(s,dt,phys);if(s.alive||s.fragIn)fragPass(s,dt);return}   // a tester start (Q542): the hazards, none of the pay, logbook or missions
   if(R.sim&&R.launched&&phys)R.simS=(R.simS||0)+dt;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&s.alive)rdvTick(s,R);   // economy: rendezvous contracts (Q180)
+  if(R.launched&&s.alive&&R.crewInit)crewRdvTick(s);   // (Q458) a rendezvous with people aboard, for their qualification
   if(R.launched&&s.alive&&s.body===TELLUS)overTick(s,R,dt);   // economy: overflight (Q181)
   if(R.launched&&(s.alive||s.fragIn))fragPass(s,dt);   // space Q200: fragments rolled as you pass
   if(s.leaks)leakTick(s,dt,phys);   // space Q303: a holed tank leaks
@@ -775,6 +776,7 @@ function simEnd(s){const R=s&&s.rec;if(!R||!R.sim||R.ended)return null;const run
   if(run){HOOK.news=run.news0;HOOK.save=run.save0;SIM=null}
   out.days=out.launched?Math.max(SIM_MIN_D,out.hours/SIM_DAY_H):0;advanceDays(out.days);
   if(out.launched){const k=s.stack?designKey(s.stack):'?';PROG.simH=PROG.simH||{};PROG.simH[k]=(PROG.simH[k]||0)+out.hours}
+  if(out.launched)out.quals=crewCredit(s,R,false);   // (Q458) the crew trained: time in type, and what they did, credited after the restore
   HOOK.save();return out}
 function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   if(R&&R.tester&&!R.ended){missionDiscard(s);HOOK.msg('Tester start over: nothing from it is kept');HOOK.save();return null}   // (Q542) a tester start: put back as before it, dummy and all
@@ -805,7 +807,7 @@ function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   if(FLOOR_HOLD===R)FLOOR_HOLD=null;floorCheck();
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
-  crewEnd(s,R);requalEnd(s,R);   // (Q182) who is home, who stays aboard, the crewed firsts; (Q183) a qualification flight
+  R.crewQuals=crewCredit(s,R,true);crewEnd(s,R);requalEnd(s,R);   // (Q182) who is home, who stays aboard, the crewed firsts; (Q183) a qualification flight
   missionEval(s);R.debrief=debriefOf(s,R,ups);HOOK.save();return{ups,streak:PROG.streak,debrief:R.debrief}}
 // ---- the powers: N of them (the number is a parameter), generated from a seed like the cities. Each has a home region,
 // an economy size, a tech level and an alignment on two axes. Land belongs to the nearest home region (bigger economies

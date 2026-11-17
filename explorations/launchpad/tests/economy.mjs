@@ -1225,3 +1225,62 @@
   check('econ-47: a closed program is offered the skip; taken, people fly at once, the cause unfixed, and each such flight adds to what can leak',
     dec && dec.opts.length === 2 && P.requal && P.requal.skip && again.crewed && !again.requalFlight && (P.hush || 0) === h0 + 1, `${dec && dec.title}; hush ${h0} → ${P.hush}`);
 }
+
+// econ-48. Qualifications (space session, QUEUE Q458, crew slice 2; notes/economy.md § "Plan revision: crew by
+// qualification", W43): a simulator run picks a crew too and keeps what they learned after the program is put back: time
+// in type (two hours qualify on the capsule) and each clean docking, rendezvous or landing (two qualify); a crew lost in
+// the run learns nothing. A real flight qualifies at once, with hours counted double, and the Debrief says so. Space's
+// flags: a rendezvous within 1 km and 5 m/s of the target, a landing upright on legs under 4 m/s. The field geology
+// course takes the astronaut off the roster for 30 days. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,SITES,TELLUS,FLEET,newShip,toV2,missionTick,missionEnd,simStart,simEnd,programNew,fromPF,crewById,crewDid,crewRdvTick,crewCourse,crewPick,crewBadges,advanceDays,settle,progJSON,debriefOf:typeof debriefOf==="function"?debriefOf:null,get HOME(){return HOME},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};')();
+  const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const T = D.TELLUS;
+  D.programNew({}); const P = D.PROG; P.homeArch = 'openSuper'; P.funds = 500; P.done = { orbiter: { day: 1 }, padabort: { day: 1 }, maxqabort: { day: 2 } };
+  const home = () => D.SITES.find(t => t.power === D.HOME) || D.SITES[0];
+  const ship = stack => { D.t = 0; const s = D.newShip(stack), h = home(); Object.assign(s, { landed: true, alive: true, touchV: 2, throttle: 0 }); s.pf = mul(h.u, T.R); s.r = D.fromPF(T, s.pf, 0); s.v = [0, 0, 0]; D.S = s; return s; };
+  // a simulator run: picked, launched through the real path (the program snapshotted at liftoff), then put back
+  const simRun = ({ hours = 1, did = [], crash = false } = {}) => { const s = ship(['chute', 'crew']); D.simStart(s, 7); s.landed = false; D.missionTick(s, D.DT, false);
+    const ids = (s.rec.crew || []).slice(); for (const k of did) D.crewDid(s, k);
+    if (crash) { s.alive = false; D.t = 300; D.missionTick(s, 0, false); } s.rec.simS = hours * 3600; const out = D.simEnd(s); return { ids, out }; };
+  D.advanceDays(1);   // the first class is selected
+  const r1 = simRun({ did: ['dock'] }), A = () => D.crewById(r1.ids[0]); let a = A();   // a run puts the program back: fresh objects each time
+  const after1 = a && { h: a.type.crew && a.type.crew.h, n: a.simN.dock, dock: a.quals.dock, type: a.quals.types && a.quals.types.crew, flights: a.rec.flights, status: a.status };
+  const r2 = simRun({ did: ['dock'] }), same = r2.ids[0] === r1.ids[0]; a = A();
+  const lostRun = simRun({ did: ['land'], crash: true }); a = A(); const lostN = a.simN.land || 0;
+  check('econ-48: a simulator run picks a crew and keeps their training after the program is put back: an hour in type and one docking teach but do not qualify; the second of each qualifies (news says simulator); a crew lost in the run learns nothing',
+    r1.ids.length === 2 && after1.h === 1 && after1.n === 1 && after1.dock == null && after1.type == null && after1.flights === 0 && after1.status === 'ready'
+      && same && a.type.crew.h === 2 && a.quals.types.crew != null && a.quals.dock != null && r2.out.quals.length === 4 && lostN === 0 && !(P.memorial || []).length
+      && news.some(t => /qualifies for docking \(simulator\)/.test(t)),
+    `${JSON.stringify(after1)} → h ${a.type.crew.h}, quals ${JSON.stringify(a.quals)}; run 2: ${r2.out.quals.join('; ')}; land after a lost run: ${lostN}`);
+  // a real flight: the rendezvous (space's flag, from the target's distance and speed), the landing on legs, at once
+  const s = ship(['chute', 'crew']); s.rec.launched = true; s.rec.day0 = P.day; s.rec.launchPf = s.pf.slice(); D.missionTick(s, D.DT, false);
+  const crew = (s.rec.crew || []).map(D.crewById), v2 = ship(['chute']); D.S = s; D.FLEET.length = 0; D.FLEET.push(s, v2);
+  v2.r = add(s.r, [3000, 0, 0]); v2.v = s.v.slice(); s.tgtV = v2; D.crewRdvTick(s); const far = !!(s.rec.simDid && s.rec.simDid.rdv);
+  v2.r = add(s.r, [800, 0, 0]); v2.v = add(s.v, [6, 0, 0]); D.crewRdvTick(s); const fast = !!(s.rec.simDid && s.rec.simDid.rdv);
+  v2.v = add(s.v, [2, 0, 0]); D.crewRdvTick(s); const rdv = (s.rec.simDid && s.rec.simDid.rdv || []).length;
+  D.FLEET.length = 0; D.t = 7200; D.missionTick(s, 0, false); D.missionEnd(s);
+  const c0 = crew.find(x => x.id !== a.id) || crew[0];
+  check('econ-48: on a real flight, a rendezvous within 1 km and 5 m/s qualifies the crew aboard at once (not 3 km away, not at 6 m/s); hours in type count double; the type is theirs after one real flight; the Debrief lists what they earned',
+    !far && !fast && rdv === 2 && crew.every(x => x.quals.rdv != null && x.quals.types.crew != null) && c0.type.crew.flights === 1 && c0.type.crew.h >= 4 - 1e-9
+      && s.rec.crewQuals.some(l => /for rendezvous/.test(l)),
+    `far ${far}, fast ${fast}, aboard ${rdv}; ${s.rec.crewQuals.join('; ')}; h ${c0.type.crew.h}`);
+  // the landing flag: upright, on legs, under 4 m/s
+  const legs = (() => { const d = D.toV2(['chute', 'crew', 't1']); const f = (n, k) => n.k === k ? n : (n.c || []).map(x => f(x, k)).find(Boolean); f(d.root, 't1').c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] }); return d; })();
+  const L = ship(legs); L.rec.launched = true; L.rec.day0 = P.day; L.rec.launchPf = L.pf.slice(); D.missionTick(L, D.DT, false);
+  L.touchV = 5; D.settle(L, 0); const hard = !!(L.rec.simDid && L.rec.simDid.land); L.touchV = 2; D.settle(L, 0); const soft = (L.rec.simDid && L.rec.simDid.land || []).length;
+  const noLegs = ship(['chute', 'crew']); noLegs.rec.launched = true; D.missionTick(noLegs, D.DT, false); noLegs.touchV = 1; D.settle(noLegs, 0);
+  check('econ-48: a landing counts upright on legs under 4 m/s with people aboard; not at 5 m/s, not a capsule on its chute',
+    L.parts.some(p => p.d.kind === 'leg') && !hard && soft >= 1 && !(noLegs.rec.simDid && noLegs.rec.simDid.land), `hard ${hard}, soft ${soft}`);
+  D.missionEnd(L); D.missionEnd(noLegs);
+  // field geology: off the roster for 30 days, 0.2 M, then qualified; the badges and the save
+  const g = P.crew.find(x => x.status === 'ready'), f0 = P.funds, r = D.crewCourse(g.id), again = D.crewCourse(g.id);
+  const ns = ship(['chute', 'crew']); ns.rec.launched = true; D.missionTick(ns, D.DT, false); const notPicked = !(ns.rec.crew || []).includes(g.id);
+  for (const id of ns.rec.crew || []) { const x = D.crewById(id); x.status = 'ready'; x.rec.flights--; }
+  const mid = g.status; D.advanceDays(30.5);
+  const saved = JSON.parse(D.progJSON()), sg = saved.crew.find(x => x.id === g.id), badges = D.crewBadges(A());
+  check('econ-48: the field geology course costs 0.2 M and 30 days off the roster (not picked for a flight meanwhile), then qualifies; the qualifications are in the save and on the badges',
+    r.ok && !again.ok && Math.abs(f0 - P.funds - 0.2) < 1e-9 && mid === 'course' && notPicked && g.status === 'ready' && g.quals.geo != null && sg.quals.geo != null
+      && news.some(t => /qualifies in field geology/.test(t)) && badges.length === 5 && badges.every(b => b[1]) && D.crewBadges(P.crew.find(x => !x.quals.rdv)).some(b => !b[1] && /0 of 2/.test(b[2])),
+    `${r.ok}/${again.why}; ${mid} → ${g.status}; badges ${badges.map(b => b[0] + (b[1] ? '✓' : '')).join(' ')}`);
+}

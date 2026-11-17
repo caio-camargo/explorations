@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-13
+**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -4173,3 +4173,37 @@ roster):
 **Checked:** econ-47 (stand-down, dummies, two failed attempts with their reasons, the pass, people again; the closed
 power's skip and the hush); smoke. **Not checked:** in a browser (TESTING 400); a loss at re-entry from Selene (the
 distance rule is measured from Tellus, so it asks for Selene's distance: right, but untested).
+
+## v1.354 — qualifications, crew slice 2 (2026-11-17, space session, QUEUE Q458; § "Plan revision: crew by qualification", W43)
+
+Until now every pilot counted as qualified on everything. Now (`sim/crew.js`, after requalification) qualifications are
+earned by doing it, in the simulator or for real, and kept on the astronaut (`quals`, `type`, `simN`, all in the `crew`
+row of the save):
+
+- **A type is the crew capsule** (its part key, W43 1): `quals.types[key]`. Two simulator hours in it, or one real
+  flight as crew. **Time in type** is `type[key] = {h, flights}`, simulator hours plus real ones counted double.
+- **Rendezvous, docking, landing** (W43 2): two clean simulator completions, or one real. Space flags the moment with
+  `crewDid(s, k)`, which records the people on the seats then in `R.simDid[k]` (on a real flight too, despite the name):
+  - rendezvous (`crewRdvTick`, each tick of a launched flight): within 1 km and 5 m/s of the target (`tgtOf`);
+  - docking: `dock()`, a port docking;
+  - landing: `settle()` upright, on legs, at under 4 m/s. Legs keep a capsule on its chute from counting.
+  Only people count: dummies have no `crewIds`.
+- **Credit** (`crewCredit(s, R, real)`): in `missionEnd` before `crewEnd`, and in `simEnd` after the program is put
+  back. The run's crew was picked after liftoff, so the restored roster has them ready with no flight counted, and only
+  the training is added. "Clean" means the person came through: a crew lost in the run (`R.crewLost`) learns nothing,
+  and a hurried hire inside a run is gone with the restore. News per qualification ("Vela Marisk qualifies for docking
+  (simulator)"); a real flight's go to the Debrief's crew line ("Qualified: …", `R.crewQuals`, `D.crew.quals`).
+- **Field geology** (W43 4): the Program panel's button sends one ready astronaut away for 30 days at 0.2 M
+  (`crewCourse`; status `course`, not picked for flights; ledger line "Astronaut training"). `crewCourseTick` (in
+  `advanceDays`) brings them back qualified.
+- **The astronaut office** (the Program panel, `crewHTML` in app/program-ui.js): a card per astronaut, the most senior
+  first: class, where they are, flights and days, firsts; the qualifications as badges, lit when earned, the tooltip
+  saying how far along ("1 of 2 in the simulator, or one real"); the course button; then the memorial (not the hushed).
+- What the qualifications *do* (the pilot's modes, the scientist's multiplier, the docking-qualified pilot for rotation)
+  is slices 3, 6 and 7. The simulator has no UI yet (Q449's core only), so simulator training is reached from tests and
+  the console for now.
+
+**Checked:** econ-48 (a run's training kept after the restore, one docking and one hour short, two qualify, a lost run
+learns nothing; a real rendezvous at once, not at 3 km or 6 m/s; hours double; the Debrief's list; a landing on legs
+under 4 m/s, not at 5 m/s, not a capsule on its chute; the course: money, 30 days off the roster, qualified, in the save;
+the badges); smoke. **Not checked:** in a browser (TESTING 404): the cards and the course button.
