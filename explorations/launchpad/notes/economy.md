@@ -4174,7 +4174,7 @@ roster):
 power's skip and the hush); smoke. **Not checked:** in a browser (TESTING 400); a loss at re-entry from Selene (the
 distance rule is measured from Tellus, so it asks for Selene's distance: right, but untested).
 
-## v1.354 — qualifications, crew slice 2 (2026-11-17, space session, QUEUE Q458; § "Plan revision: crew by qualification", W43)
+## v1.355 — qualifications, crew slice 2 (2026-11-17, space session, QUEUE Q458; § "Plan revision: crew by qualification", W43)
 
 Until now every pilot counted as qualified on everything. Now (`sim/crew.js`, after requalification) qualifications are
 earned by doing it, in the simulator or for real, and kept on the astronaut (`quals`, `type`, `simN`, all in the `crew`

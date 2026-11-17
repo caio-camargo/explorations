@@ -307,7 +307,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.344 — a package kept by a hostile power pays no contract; a crew down abroad is home safe, and a hostile power holds them until the program pays, hands over data or waits (2026-11-13, review 2, QUEUE Q616, D48) → [notes/economy.md](notes/economy.md)
 - v1.349 — the roster, crew slice 1: a first class named in the home school's style, crews picked by seniority onto their seats, aboard through the registry, the crewed firsts named, a loss named and in `PROG.memorial`; the Debrief names the crew (2026-11-17, space, QUEUE Q182) → [notes/economy.md](notes/economy.md)
 - v1.350 — requalification after a crew loss: crews stand down, capsules fly dummies until a real flight goes as far and brings the capsule home inside the limits; a closed power may skip it, hushed (2026-11-17, space, QUEUE Q183) → [notes/economy.md](notes/economy.md)
-- v1.354 — qualifications, crew slice 2: a type is the capsule, rendezvous, docking and landing by two simulator completions or one real, time in type, the field geology course, crew cards with badges in the Program (2026-11-17, space, QUEUE Q458) → [notes/economy.md](notes/economy.md)
+- v1.355 — qualifications, crew slice 2: a type is the capsule, rendezvous, docking and landing by two simulator completions or one real, time in type, the field geology course, crew cards with badges in the Program (2026-11-17, space, QUEUE Q458) → [notes/economy.md](notes/economy.md)
 
 ## World: [`notes/world.md`](notes/world.md)
 
