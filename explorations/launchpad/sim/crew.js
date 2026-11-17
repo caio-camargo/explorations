@@ -139,3 +139,25 @@ function crewBadges(a){const Q=a.quals||{},n=a.simN||{},out=[];
   if(!out.length)out.push(['capsule',false,`no type yet: ${QUAL_TYPE_H} h in a capsule in the simulator, or one real flight`]);
   for(const k of['rdv','dock','land','geo'])out.push([QUAL_L[k],Q[k]!=null,Q[k]!=null?`qualified, day ${Math.floor(Q[k])}`:k==='geo'?`a ${GEO_DAYS}-day course`:`${n[k]||0} of ${QUAL_SIM_N} in the simulator, or one real`]);
   return out}
+// ---- the pilot's modes (QUEUE Q625, crew slice 3; Q134 re-planned: notes/economy.md § "Plan revision: crew by
+// qualification", notes/vehicle.md § "The pilot's SAS modes"; W43 3). A crewed vessel's SAS flies the union of the
+// computer's modes and the best pilot aboard's. On the type (the capsule on their seat), a pilot gives the analog
+// autopilot's modes; rendezvous adds manoeuvre and target; docking adds docking. Not on the type: nothing the computer
+// doesn't have (they can hold it steady, not fly it). Where only the pilot has the mode, a pilot's loop flies it, slower and
+// less precise than a computer (pillar 8), tightening over the first 20 hours in type. From the onboard-computer era a
+// crew capsule carries the guidance computer (hasComputer), which has every mode: the pilot matters in eras 0 and 1.
+// The manual landing hold is control's (size M), not here.
+const PILOT_TYPE=['stab','pro','retro','normal','anti','radout','radin'],PILOT_RDV=['node','tgt','antitgt','rpro','rretro'],PILOT_DOCK=['dock'];
+const PILOT_K=2.5,PILOT_W=[0.35,0.45],PILOT_DB=[0.5*Math.PI/180,0.3*Math.PI/180],PILOT_H=20;
+function pilotModes(a,cap){const Q=a.quals||{};if(!(Q.types||{})[cap])return[];
+  return PILOT_TYPE.concat(Q.rdv!=null?PILOT_RDV:[],Q.dock!=null?PILOT_DOCK:[])}
+// the best pilot on this vessel's seats (people, not dummies): the most modes, then the most hours in type; null if none
+function pilotOf(s){let best=null;if(!s||!s.parts)return null;
+  for(const p of s.parts){if(!p.on||!p.crewAboard||!p.crewIds)continue;
+    for(const id of p.crewIds){const a=crewById(id);if(!a||a.status==='lost'||a.spec&&a.spec!=='fly')continue;const m=pilotModes(a,p.d.key);if(!m.length)continue;
+      const h=((a.type||{})[p.d.key]||{h:0}).h;if(!best||m.length>best.modes.length||m.length===best.modes.length&&h>best.h)best={a,modes:m,h,cap:p.d.key}}}
+  return best}
+// the loop for a mode only the pilot flies: k 2.5/s; 0.35 → 0.45 rad/s and a 0.5° → 0.3° deadband over the first 20 h in type
+const pilotLoop=P=>{const f=Math.min(1,P.h/PILOT_H);return{name:`${P.a.name} (pilot)`,k:PILOT_K,w:PILOT_W[0]+f*(PILOT_W[1]-PILOT_W[0]),db:PILOT_DB[0]+f*(PILOT_DB[1]-PILOT_DB[0]),pilot:P.a}};
+// what it takes for a pilot to fly mode m (the SAS's "not yet" line), or null when no pilot can
+const pilotNeeds=m=>PILOT_TYPE.includes(m)?'a pilot on the type':PILOT_RDV.includes(m)?'a pilot qualified for rendezvous':PILOT_DOCK.includes(m)?'a pilot qualified for docking':null;

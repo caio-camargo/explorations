@@ -1284,3 +1284,31 @@
       && news.some(t => /qualifies in field geology/.test(t)) && badges.length === 5 && badges.every(b => b[1]) && D.crewBadges(P.crew.find(x => !x.quals.rdv)).some(b => !b[1] && /0 of 2/.test(b[2])),
     `${r.ok}/${again.why}; ${mid} → ${g.status}; badges ${badges.map(b => b[0] + (b[1] ? '✓' : '')).join(' ')}`);
 }
+
+// econ-49. The pilot's modes (space session, QUEUE Q625, crew slice 3; Q134 re-planned, W43 3): a crewed vessel's SAS
+// flies the computer's modes and the best pilot aboard's. On the type, the analog modes; + rendezvous, manoeuvre and
+// target; + docking, docking; not on the type, nothing more than the gyro. A mode only the pilot has flies the pilot's
+// loop (slower than the guidance computer, tighter with hours in type); an uncrewed probe and dummies are unchanged; with
+// the guidance computer (the onboard-computer era) a crewed capsule flies the computer's loop. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,AV,newShip,programNew,crewHire,boardCrew,sasModeOK,sasLoop,pilotOf};')();
+  D.programNew({}); const P = D.PROG; P.flights = 3;   // a running program (khOn): avionics by era
+  const [a, b] = D.crewHire(2);
+  const cap = () => { const s = D.newShip(['chute', 'crew']); s.av = 0; D.boardCrew(s, 0, [a.id, b.id]); return s; };
+  const ok = (s, ...ms) => ms.map(m => D.sasModeOK(s, m) ? 1 : 0).join('');
+  const key = cap().parts.find(p => p.d.crew).d.key;
+  const m0 = ok(cap(), 'stab', 'retro', 'pro', 'tgt', 'dock');
+  a.quals.types = { [key]: 1 }; a.type = { [key]: { h: 0, flights: 1 } }; const m1 = ok(cap(), 'pro', 'normal', 'node', 'tgt', 'dock'), s1 = cap(); s1.sasMode = 'pro'; s1.sas = true; const L1 = D.sasLoop(s1);
+  a.quals.rdv = 2; const m2 = ok(cap(), 'node', 'tgt', 'rpro', 'dock');
+  b.quals.types = { [key]: 1 }; b.quals.rdv = 1; b.quals.dock = 3; b.type = { [key]: { h: 30, flights: 3 } }; const s3 = cap(); s3.sasMode = 'pro'; s3.sas = true; const P3 = D.pilotOf(s3), m3 = ok(s3, 'dock', 'tgt'), L3 = D.sasLoop(s3);
+  const dummies = D.newShip(['chute', 'crew']); dummies.av = 0; const md = ok(dummies, 'pro');
+  const probe = D.newShip(['core', 't1']); probe.av = 0; probe.sasMode = 'pro'; const mp = ok(probe, 'pro'), Lp = D.sasLoop(probe);
+  const gc = cap(); gc.av = 2; gc.sasMode = 'pro'; gc.sas = true; const Lg = D.sasLoop(gc), gyro = cap(); gyro.sasMode = 'stab'; const Ls = D.sasLoop(gyro);
+  check('econ-49: in the gyro era a pilot on the type adds the analog modes, rendezvous adds manoeuvre and target, docking adds docking; not on the type, nothing; the best pilot aboard (the most modes) counts',
+    m0 === '11000' && m1 === '11000' && m2 === '1110' && m3 === '11' && P3 && P3.a === b && md === '0' && mp === '0',
+    `untyped ${m0} · typed ${m1} · +rdv ${m2} · +dock (the other pilot) ${m3} · dummies ${md} · probe ${mp}`);
+  check('econ-49: a mode only the pilot has flies the pilot loop (0.35 rad/s new to the type, 0.45 after 20 h; deadband 0.5° → 0.3°), slower than the guidance computer; the gyro flies its own modes; an uncrewed probe and a capsule with the guidance computer fly the computer',
+    L1.pilot === a && Math.abs(L1.w - 0.35) < 1e-9 && Math.abs(L1.db - 0.5 * Math.PI / 180) < 1e-9 && L3.pilot === b && Math.abs(L3.w - 0.45) < 1e-9 && L3.w < D.AV[2].w
+      && Ls === D.AV[0] && Lp === D.AV[0] && Lg === D.AV[2],
+    `pilot ${L1.name} w ${L1.w}, after 30 h ${L3.w.toFixed(2)} · guidance ${D.AV[2].w} · stab ${Ls.name} · probe ${Lp.name} · era 2 ${Lg.name}`);
+}

@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
+**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -4207,3 +4207,33 @@ row of the save):
 learns nothing; a real rendezvous at once, not at 3 km or 6 m/s; hours double; the Debrief's list; a landing on legs
 under 4 m/s, not at 5 m/s, not a capsule on its chute; the course: money, 30 days off the roster, qualified, in the save;
 the badges); smoke. **Not checked:** in a browser (TESTING 404): the cards and the course button.
+
+## v1.356 — the pilot's modes, crew slice 3 (2026-11-17, space session, QUEUE Q625; § "Plan revision: crew by qualification", notes/vehicle.md § "The pilot's SAS modes", W43 3)
+
+The first thing qualifications do. A crewed vessel's SAS flies **the union of the computer's modes and the best pilot
+aboard's** (`sasModeOK`, sim/vessel.js; `pilotOf`, `pilotModes`, sim/crew.js):
+
+| The pilot (on the capsule of their seat) | adds |
+|---|---|
+| not on the type | nothing (the gyro's stability and retrograde are the computer's) |
+| on the type | the analog autopilot's modes: prograde, retrograde, normal, anti-normal, radial out/in |
+| + rendezvous | manoeuvre, target, anti-target, relative prograde/retrograde |
+| + docking | docking |
+
+- **The best pilot** is the one with the most modes, then the most hours in type. One pilot, not the crew's union: the
+  person at the controls. Dummies have no `crewIds`, so they fly nothing; procedures keep the best avionics.
+- **The loop follows the source** (`sasLoop`): the computer's when it has the mode, else the pilot's (`pilotLoop`):
+  k 2.5/s, fastest turn 0.35 rad/s and a 0.5° deadband new to the type, 0.45 rad/s and 0.3° after 20 hours in type.
+  Slower than the guidance computer (0.6 rad/s, no deadband), so a computer wins when it comes (pillar 8). The keys'
+  fly-by-wire under SAS keeps the computer's gain.
+- **When it matters:** a crew capsule counts as a computer aboard (`hasComputer`), so from the onboard-computer era it
+  flies the guidance computer, which has every mode. The pilot matters in the gyro and analog eras.
+- **The SAS panel** (`renderSAS`): a mode the pilot flies says so on hover ("Prograde: flown by Vela Marisk, pilot"),
+  the SAS button's title adds "Vela Marisk flies the rest by hand", and the "Not yet" list adds the pilot's way to a
+  mode ("target (Guidance computer, onboard computers, or a pilot qualified for rendezvous)").
+- **Not here:** the manual landing hold (the landing qualification's mode; control's work, size M).
+
+**Checked:** econ-49 (gyro era: untyped, typed, + rendezvous, + docking, the best of two pilots; dummies and a probe
+unchanged; the pilot's loop new and after 30 h, slower than the guidance computer; the gyro's own modes and the
+onboard-computer era fly the computer); the SAS panel rendered headless (apphost) with a typed pilot; smoke. **Not
+checked:** in a browser (TESTING 405): flying prograde by a pilot in the gyro era.

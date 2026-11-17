@@ -786,7 +786,9 @@ const AV=[{name:'Gyro autopilot',modes:['stab','retro'],k:2,w:0.3,db:0.0087,era:
   {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
 const avNow=()=>khOn()&&!TEST.tools?Math.min(AV.length-1,compEra()):AV.length-1;   // the tester's "all tools" includes the best avionics
 const avOf=s=>AV[s.proc?AV.length-1:Math.min(s.av??AV.length-1,avCap(s))];   // avCap (sim/power.js): no computer on board, no guidance computer
-const sasModeOK=(s,m)=>{const M=avOf(s).modes;return!M||M.includes(m)};
+const sasModeOK=(s,m)=>{const M=avOf(s).modes;if(!M||M.includes(m))return true;const P=s.proc?null:pilotOf(s);return!!P&&P.modes.includes(m)};   // (Q625) the computer's modes, and the best pilot aboard's
+// (Q625) the loop that flies the SAS's mode: the computer's when it has the mode, else the pilot's (sim/crew.js pilotLoop)
+function sasLoop(s){const A=avOf(s),m=s.sasMode;if(!A.modes||A.modes.includes(m)||s.proc)return A;const P=pilotOf(s);return P&&P.modes.includes(m)?pilotLoop(P):A}
 const avNext=m=>AV.find(a=>!a.modes||a.modes.includes(m));   // the first generation that has mode m
 function sasTarget(s){
   if(s.sasMode==='stab'||!sasModeOK(s,s.sasMode))return s.hold;
@@ -855,7 +857,7 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   // while the zone is on the rate loop also integrates (time constant SAS_TI), clamped to the authority, reset when it's off.
   let lag=0;if(s.throttle>0)for(const p of E)lag=Math.max(lag,p.d.gim/p.d.gimR);
   if(fP>0.25*s.torque)for(const p of s.fins)if(p.d.ctl)lag=Math.max(lag,p.d.ctl/p.d.ctlR);   // steerable fins, once they carry real weight
-  const A=avOf(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
+  const A=sasLoop(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
   let al=mul(sub(wd,wS),A.k);
   if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,wS),A.k/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
   // the air's push away from the airflow, cancelled as it comes (vehicle, Q382): while engines burn nose-first, the part of the
