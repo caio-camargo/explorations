@@ -7942,3 +7942,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/crew.js` (new), `sim/program.js`, `sim/space.js`, `sim/contracts.js`, `sim/debrief.js`,
   `app/debrief.js`, `index.html`, `tests/economy.mjs`, `tests/flow.mjs`, `tests/core.mjs`, `notes/economy.md`, `NOTES.md`,
   `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-17 — space session (Opus 5.5, worktree launchpad-q183): requalification after a crew loss (Q183, v1.350)
+
+- **Asked:** Caio: "q183 is fine".
+- **Done (v1.350):** a crew loss stands crews down (`PROG.requal`: the cause, how far the flight went). Capsules fly
+  dummies until a real flight goes 90 % as far and brings the capsule home inside every limit. The news says what
+  was missing on a failed attempt; the Rollout warns. A closed power gets a decision to skip: people fly at once, and each
+  such flight adds to the hushed items that can leak. A leak now also names the hushed dead in the memorial.
+- **Reading of the plan:** "crewed launches refused" became "capsules fly dummies". There is no crew/uncrewed switch
+  on the pad, so a refusal would leave no way to fly the qualification flight. Noted in `notes/economy.md` § v1.350.
+- **Tests:** econ-47 (new); flow-6 and econ-46 clear the stand-down their earlier losses now cause; smoke; CI full run
+  green (44122953366); main had only docs commits, ff-merged.
+- **Not checked:** in a browser (TESTING 400); a loss around Selene.
+- **Next:** Q458 (crew slice 2, qualifications) is unblocked by Q182.
+- Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/contracts.js`, `app/rollout.js`, `tests/economy.mjs`,
+  `tests/flow.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

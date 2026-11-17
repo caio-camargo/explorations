@@ -239,6 +239,7 @@ const PROG_SCHEMA={
   crewCls:[0,'career','classes selected'],
   crewFirst:[{},'career','the program\'s crewed firsts: the day, who flew them'],
   memorial:[[],'career','astronauts lost: who, when, the flight, the cause; hushed for a closed power'],
+  requal:[null,'career','(Q183) crews stand down after a loss until a qualification flight: the cause, how far, skipped (a closed power)'],
   // logbook, debrief, the place
   log:[{},'career','the logbook\'s records'],
   lastDebrief:[undefined,'career','the last Debrief, kept with the save'],
@@ -519,14 +520,15 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   // crew (epoch 4): people fly once the escape tower is qualified (the max-q abort); until then the capsule carries dummies,
   // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
   {const cap=s.parts.find(p=>p.on&&p.d.crew);
-    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)   // crewN: seats, for the Debrief (flow, Q191)
+    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort&&!requalHolds();R.requalFlight=!!cap&&!!PROG.done.maxqabort&&requalHolds();requalLaunch(R);   // (Q183) crews stand down after a loss: the capsule flies dummies and that flight can requalify
+      R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)   // crewN: seats, for the Debrief (flow, Q191)
       if(R.crewed)boardCrew(s,R.day0??PROG.day,crewPick(s,R))}   // (Q182) named people, the most senior ready   // (Q606) the people are aboard their seats, as a vessel loaded from the registry has them: crewOn answers for both
     if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/(cap.d.ins||600));if(cap.dmg)R.airX=(R.airX||0)+dt*AIR_LEAK*cap.dmg;   // a damaged cabin leaks: air lost beyond the clock's (Q440)
       if(s.alive&&s.landed&&b===TELLUS)R.capHome=true;
       if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
     if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT+(R.airX||0)>CREW_AIR&&!R.capHome?'ran out of air':'';
       if(why){R.crewOK=false;R.crewWhy=why;const ids=unboardCrew(s),as=crewLose(ids.length?ids:(R.crew||[]).filter(id=>(crewById(id)||{}).status==='flying'),R,s);failHit(-20,'a crew was lost');
-        HOOK.news(`${as.length?crewList(as):'The crew'} ${why}. The program stops to mourn and to ask how`,'bad')}}}   // (Q182) named, in the memorial
+        HOOK.news(`${as.length?crewList(as):'The crew'} ${why}. The program stops to mourn and to ask how`,'bad');if(!R.requalSkip)requalSet(s,R,as)}}}   // (Q183) a hushed flight's loss leaves the old cause standing   // (Q182) named, in the memorial
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
@@ -803,7 +805,7 @@ function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   if(FLOOR_HOLD===R)FLOOR_HOLD=null;floorCheck();
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
-  crewEnd(s,R);   // (Q182) who is home, who stays aboard, the crewed firsts
+  crewEnd(s,R);requalEnd(s,R);   // (Q182) who is home, who stays aboard, the crewed firsts; (Q183) a qualification flight
   missionEval(s);R.debrief=debriefOf(s,R,ups);HOOK.save();return{ups,streak:PROG.streak,debrief:R.debrief}}
 // ---- the powers: N of them (the number is a parameter), generated from a seed like the cities. Each has a home region,
 // an economy size, a tech level and an alignment on two axes. Land belongs to the nearest home region (bigger economies
@@ -1374,7 +1376,7 @@ function flavTick(d,R,dd=d){PROG.nat=PROG.nat||{};
   const F=flav(HOME);
   // leaks of hushed-up failures: likelier the more there are
   if(PROG.hush&&R&&R()<1-Math.exp(-dd*0.002*PROG.hush)){opAdd(HOME,PROG.hushPen);   // hushPen is the (negative) deferred hit
-    HOOK.news(`Leaked: the program quietly lost ${PROG.hush} flight${PROG.hush>1?'s':''} it never admitted to`,'bad');PROG.hush=0;PROG.hushPen=0}
+    HOOK.news(`Leaked: the program quietly lost ${PROG.hush} flight${PROG.hush>1?'s':''} it never admitted to`,'bad');PROG.hush=0;PROG.hushPen=0;for(const m of PROG.memorial||[])m.hushed=false}   // (Q182) the hushed dead are named
   // elections (open programs): budget mood for the next term
   if(F.open>=0.6&&(PROG.nextElection!=null||R)){if(PROG.nextElection==null)PROG.nextElection=300+R()*200;
     if(PROG.day>=PROG.nextElection-50&&!PROG.electionWarned){PROG.electionWarned=true;HOOK.news('Election in 50 days: a success now would not hurt','warn')}
