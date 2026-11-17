@@ -119,6 +119,17 @@ function selReseat(j){const up=pf=>{const u=norm(pf);return mul(u,len(pf)+ground
   for(const e of j.rvOut||[])if(on(e)&&e.p)e.p=up(e.p);
   for(const st of(j.sel&&j.sel.seis)||[])if(on(st)&&st.pf)st.pf=up(st.pf);
   return j}
+// (G4, GROUND.md) shadows on Selene: how much of the sun's disc a point sees past the relief, 0 to 1. pf: the point in
+// Selene's own frame (on the ground or above it); sun: the direction to the sun, in the same frame. The ray toward the
+// sun is stepped on its gap to the ground (9/10 of it: a wall steeper than 48° could be stepped through; fresh rims are
+// 37°), and never less than 2 % of the way so far; the sun's disc (SEL_SUN_R in radius) makes the penumbra; it ends
+// when it leaves the shell (SELENE_GROUND.top). MOON_FS's shadow loop walks the same way, dropping the bands too small to
+// reach the ray at that distance; here all six. Not in TAPE_V: it lights things, it moves nothing
+const SEL_SUN_R=.00465;
+function selSunLit(pf,sun,maxN=400){const R=SELENE.R,r0=len(pf),se=dot(pf,sun)/r0;if(se<-.02)return 0;
+  let f=1,x=.5;for(let i=0;i<maxN;i++){const q=add(pf,mul(sun,x)),rh=len(q)-R,g=rh-seleneH(q)+.03;
+    f=Math.min(f,sstep(-1,1,g/(x*SEL_SUN_R)));if(f<.005)return 0;if(rh>SELENE_GROUND.top)break;x+=Math.max(.9*g,.02*x+.2)}
+  return f}
 // ---- places on Selene (QUEUE Q612; notes/economy.md § "Plan: places on Selene"; DECISIONS D48). A place is one of the
 // map's big craters, with a name: a landing is "in" it when it is inside the rim circle. Which craters, and their grade,
 // is a table, SEL_PLACE_T, made by review/2026-11-13/survey.mjs from craterSurvey and pinned by test ground-11:

@@ -2617,7 +2617,7 @@ game (v1.345), nothing built.
   GPUs. Q316's order stands, shadows and AO first, then greebles; cap a ship near 150 k vertices unless the rebuild is
   reworked.
 
-## v1.359 — the ship shades itself (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1a; BEAUTY B1.3)
+## v1.360 — the ship shades itself (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1a; BEAUTY B1.3)
 
 Caio, after the triangle study above: "yes go ahead" on Q316, shadows first. On High the ship now casts shadows on
 itself: a booster's nose on the core, a fin on the skirt, a wide stage on the narrow one under it. Low draws none.
@@ -2657,7 +2657,7 @@ itself: a booster's nose on the core, a fin on the skirt, a wide stage on the na
   (views 1, 3, 6, 54); `ship` 0.16 → 0.15, 0.12 → 0.12, 0.86 → 0.78, 0.31 → 0.30.
 - **Stills.** `close-heavy-on.png` / `close-heavy-off.png` (view 54 from 11 m): the left booster's nose on the core,
   the dark in the gaps. No acne on round parts, in orbit or on the desk (`close-*.png`).
-- **Not checked.** A person turning the ship in the sun (TESTING 408): edges crawling as the fit turns with the ship,
+- **Not checked.** A person turning the ship in the sun (TESTING 409): edges crawling as the fit turns with the ship,
   thin parts (antennas, legs) at 2.6 cm texels, a long station with visitors (the box grows with what is docked).
   The other vessels in a flight, debris and landed craft take no map (one map, the ship's). The pad's tower does
   not shade the ship, nor the ship the tower (the flat shadow on the ground is unchanged). The parachute's canopy
@@ -2669,10 +2669,10 @@ itself: a booster's nose on the core, a fin on the skirt, a wide stage on the na
   first line is not `ready in …` is void. Proposed in QUEUE.
 - **Next (slice 1b):** ambient occlusion at joints and steps, on both settings.
 
-## v1.360 — ambient occlusion at joints and steps (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1b; BEAUTY B1.3)
+## v1.361 — ambient occlusion at joints and steps (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1b; BEAUTY B1.3)
 
 The other half of B1.3, on both settings: where parts meet, the light from the sky and the ground is dimmed. The sun
-is not touched (on High that is the shadow map's, v1.359).
+is not touched (on High that is the shadow map's, v1.360).
 
 - **Why not per vertex, as BEAUTY said.** A tank has rings of vertices only at its two ends, so anything baked at a
   joint would fade over the whole tank. What varies along a part is computed per pixel from the part's own frame
@@ -2693,7 +2693,7 @@ is not touched (on High that is the shadow map's, v1.359).
   mesh, not from the stills.
 - **What it scales.** The ambient term and the reflection of the surroundings. Fins, legs, antennas and other
   parts that are not round give nothing; posed and tilted parts neither give nor take. `AO_FX = false` for an A/B.
-- **Measured** (stills and logs in `output/launchpad/beauty/Q316/`, `1b-*`; before = v1.359).
+- **Measured** (stills and logs in `output/launchpad/beauty/Q316/`, `1b-*`; before = v1.360).
   - GPU, `ship` stretch at full resolution, views 1, 3, 6, 54. RTX 5050 on High: 0.03, 0.02, 0.12, 0.05 →
     0.03, 0.03, 0.13, 0.05 ms. Intel UHD on Low: 0.15, 0.12, 0.74, 0.29 → 0.16, 0.12, 0.79, 0.31 ms; frame 26.4,
     9.0, 30.6, 38.6 → 26.2, 9.1, 30.6, 38.6 ms. Inside the noise on both.
@@ -2707,6 +2707,6 @@ is not touched (on High that is the shadow map's, v1.359).
 - **Not checked.** A step in a still: none of the reference designs has a narrow stage straight on a wide one in
   view (the Big Lunar's is behind its conical adapter), so the ledge is checked by test aerofx-58 and by its
   formula only. The ring face of the wider part at a step (it looks up at the narrow part's wall) takes nothing
-  yet. A person's eye on the strength (TESTING 409): .7 and the fade length are first guesses.
+  yet. A person's eye on the strength (TESTING 410): .7 and the fade length are first guesses.
 - **Next for Q316:** B1.4 the surface pass (absorbs Q259), then B1.5 the greebles, which now have shadows and
   contact darkening to sit in.
