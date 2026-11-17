@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
+**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -4237,3 +4237,33 @@ aboard's** (`sasModeOK`, sim/vessel.js; `pilotOf`, `pilotModes`, sim/crew.js):
 unchanged; the pilot's loop new and after 30 h, slower than the guidance computer; the gyro's own modes and the
 onboard-computer era fly the computer); the SAS panel rendered headless (apphost) with a typed pilot; smoke. **Not
 checked:** in a browser (TESTING 405): flying prograde by a pilot in the gyro era.
+
+## v1.358 — classes over time, titles, the scientist's and engineer's hooks, crew slices 5 and 6 (2026-11-17, space session, QUEUE Q626; § "Plan revision: crew by qualification", § "Plan: the roster" Q133 and Q136)
+
+- **Classes over time** (`crewClassTick`, `crewMix`): after the first (all pilots), a class every two program years
+  (`PROG.crewNext`, a new `PROG_SCHEMA` row; an older roster gets its date two years on), 3 people + 1 per
+  computing-centre level, a resource state's 2 (it buys seats more than it trains people; buying seats isn't built).
+  At least one pilot; the rest by the archetype's mix (default pilots 0.5, scientists 0.3, engineers 0.2; security
+  0.8/0.1/0.1; frugal 0.3/0.5/0.2) by largest remainders, among what is open: **scientists once people have been to
+  orbit** (`crewFirst.orbit`), **engineers once a station or base is up** (`stPick`). News: "The second class of
+  astronauts: A, B and C (scientist)". The Astronaut cards show what each does and the next class's date.
+- **Titles** (`crewTitle`; not stored): the most senior flier of a crew of two or more commands; otherwise pilot,
+  scientist-astronaut, flight engineer, or in the Steppe school's words research cosmonaut and bortinzhener. The late
+  era's mission and payload specialists wait for the outposts.
+- **Picking by need** (`crewPick`): the pilot first, the one with the most modes on this capsule (`pilotModes`), then
+  seniority; a scientist on a lander (legs), an engineer for a target with berths (`stOf`); the rest by seniority. A
+  pilot new to the capsule in an era when it matters makes the news ("… flies the Crew capsule new to it: the
+  autopilot's modes only, until a flight in it").
+- **The engineer** (`engRelights`, in `igniteOK`): a failed ignition is rolled again, once, twice when the engineer is
+  qualified on the capsule's systems (an engineer on the type, the plan's `sys`). "Wren failed to light; X relit it".
+- **The scientist** (`sciWeight`, `rvSciW` in `rvSci`): a crewed rover's spectrometer reading is taken in person, and
+  counts ×1.25 for a scientist on the flight's vessel there, ×1.5 with field geology, ×2 with it and a walk on that body
+  on an earlier flight; a pilot with field geology ×1.25. The reading keeps `w`; `selN` sums the weights for the mare,
+  highland and far-side counts, so a geologist fills a reading contract sooner. Panoramas stay a count (`selPano`
+  reads them by index), and so do seismometers.
+- **Slice 7 (crew rotation by dispatch) is not here:** it needs space's docking and deorbit procedures flown headless,
+  which don't exist yet (the automation ladder lists `dock-crewed` but nothing flies it). It is queued on its own.
+
+**Checked:** econ-50 (classes for frugal, security and resource, the date in the save, the news; titles, Steppe's words;
+a lander's picks; the engineer's relight over 400 rolls, never worse; the scientist's weights and `selN`); econ-46–49,
+flow-6 and core 35 unchanged; smoke. **Not checked:** in a browser (TESTING 407); the relight message in flight.

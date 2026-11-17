@@ -237,6 +237,7 @@ const PROG_SCHEMA={
   crew:[[],'career','the roster: astronauts, their status, record and seniority'],
   crewN:[0,'career','the last astronaut id'],
   crewCls:[0,'career','classes selected'],
+  crewNext:[null,'career','(Q626) the day the next astronaut class is selected'],
   crewFirst:[{},'career','the program\'s crewed firsts: the day, who flew them'],
   memorial:[[],'career','astronauts lost: who, when, the flight, the cause; hushed for a closed power'],
   requal:[null,'career','(Q183) crews stand down after a loss until a qualification flight: the cause, how far, skipped (a closed power)'],
@@ -1329,7 +1330,8 @@ function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=p
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(TEST.nofail||!lvl().fail||!khOn()||!s.rec)return true;   // (Easy: engines always light, Q476)
   for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const f=ignFail(p.d.key);   // early units from a young line are rougher
-    const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719+(SIM?SIM.seed*0.0137:0)+(PROG.wseed%65536)*0.0071)*43758.5453)%1+1)%1;   // a simulator run rolls on its own seed; each career on its world's (Q580: without it every new player's second flight lost the same engine)
+    const roll=t=>((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719+(SIM?SIM.seed*0.0137:0)+(PROG.wseed%65536)*0.0071+t*53.117)*43758.5453)%1+1)%1;   // a simulator run rolls on its own seed; each career on its world's (Q580: without it every new player's second flight lost the same engine)
+    let x=roll(0);if(x<f){const E=engRelights(s);for(let t=1;t<=E.n&&x<f;t++){x=roll(t);if(x>=f)HOOK.msg(`${p.d.name} failed to light; ${E.a.name} relit it${t>1?` on the ${t===2?'second':'third'} try`:''}`)}}   // (Q626) the engineer's relight
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
       HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);debFail(s,'ignite',`the ${p.d.name} failed to light (know-how ${(khBar(p.d.key)*100).toFixed(0)}%)`);return false}}
   return true}

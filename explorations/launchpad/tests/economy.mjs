@@ -1312,3 +1312,44 @@
       && Ls === D.AV[0] && Lp === D.AV[0] && Lg === D.AV[2],
     `pilot ${L1.name} w ${L1.w}, after 30 h ${L3.w.toFixed(2)} · guidance ${D.AV[2].w} · stab ${Ls.name} · probe ${Lp.name} · era 2 ${Lg.name}`);
 }
+
+// econ-50. Crew slices 5 and 6 (space session, QUEUE Q626; Q133's rest, Q136 by qualification): a class every two program
+// years, its mix by archetype and by what is open (scientists once people have orbited, engineers once a station is up;
+// a resource state's classes are two); titles by what they do, in the home school's words; the crew picked by what the
+// flight needs (the best pilot on the capsule, a scientist on a lander); the engineer relights a failed ignition; a
+// reading taken in person by a scientist counts for more toward Selene's science. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,POWERS,SELENE,newShip,programNew,advanceDays,crewHire,crewTitle,crewPick,crewById,boardCrew,igniteOK,sciWeight,selSci,selN,progJSON,lvl,get HOME(){return HOME}};')();
+  const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = t => news.push('msg: ' + t); D.HOOK.save = () => {};
+  const setup = arch => { D.programNew({}); const P = D.PROG; P.homeArch = arch; P.funds = 500; P.flights = 3; P.done = { orbiter: { day: 1 }, padabort: { day: 1 }, maxqabort: { day: 2 } }; return P; };
+  const classes = arch => { const P = setup(arch); D.advanceDays(1); const first = P.crew.map(a => a.spec).join(''), next0 = P.crewNext; P.crewFirst = { orbit: { day: 1, ids: [] } };
+    D.advanceDays(729); const before = P.crew.length; D.advanceDays(2); return { first, next0, before, second: P.crew.slice(before).map(a => a.spec), next1: P.crewNext, cls: P.crewCls, saved: JSON.parse(D.progJSON()).crewNext }; };
+  const fr = classes('frugal'), sec = classes('security'), res = classes('resource');
+  check('econ-50: a class every two program years: the first all pilots; later ones mixed by archetype once people have orbited (frugal takes scientists, security pilots); a resource state selects two at a time; the date is in the save',
+    fr.first === 'flyflyfly' && fr.before === 3 && fr.second.length === 3 && fr.second.includes('sci') && !fr.second.includes('eng') && fr.cls === 2 && fr.next1 > fr.next0 && fr.saved === fr.next1
+      && sec.second.every(x => x === 'fly') && res.first === 'flyfly' && res.second.length === 2 && news.some(t => /^The second class of astronauts: .*\(scientist\)/.test(t)),
+    `frugal ${fr.first} → ${fr.second.join(',')} · security → ${sec.second.join(',')} · resource ${res.first} → ${res.second.join(',')} · next ${fr.next0.toFixed(0)} → ${fr.next1.toFixed(0)}`);
+  // titles and picking
+  let P = setup('openSuper'); const [p1, p2] = D.crewHire(2), [sc] = D.crewHire(1, ['sci']), [en] = D.crewHire(1, ['eng']);
+  const t1 = [D.crewTitle(p1, [p1, sc]), D.crewTitle(sc, [p1, sc]), D.crewTitle(en, [p1, en])]; const sch = D.POWERS[D.HOME].school; D.POWERS[D.HOME].school = 'steppe';
+  const t2 = [D.crewTitle(sc, [p1, sc]), D.crewTitle(en, [p1, en])]; D.POWERS[D.HOME].school = sch;
+  const lander = (() => { const s = D.newShip(['chute', 'crew', 't1', 'wren']); s.parts.push({ on: true, d: { kind: 'leg' } }); return s; })();
+  p2.quals.types = { crew: 1 };   // the newer pilot is on the type: picked before the more senior one
+  const picked = D.crewPick(lander, { day0: P.day }).map(D.crewById);
+  check('econ-50: titles by what they do (commander, scientist-astronaut, flight engineer; Steppe\'s research cosmonaut and bortinzhener); a lander takes the pilot on the capsule first, then a scientist',
+    t1.join() === 'commander,scientist-astronaut,flight engineer' && t2.join() === 'research cosmonaut,bortinzhener' && picked[0] === p2 && picked[1] === sc,
+    `${t1.join(', ')} · ${t2.join(', ')} · picked ${picked.map(a => `${a.name} (${a.spec})`).join(', ')}`);
+  // the engineer's relight: the same rolls with and without an engineer aboard
+  for (const a of P.crew) a.status = 'ready';
+  const eng = D.newShip(['chute', 'crew', 't1', 'wren']), bare = D.newShip(['chute', 'crew', 't1', 'wren']); D.boardCrew(eng, 0, [p1.id, en.id]); D.boardCrew(bare, 0, [p1.id, p2.id]);
+  const seg = eng.parts.find(p => p.d.kind === 'engine').seg; let lost = 0, saved = 0, worse = 0;
+  for (let f = 0; f < 400; f++) { P.flights = f + 1; const a = D.igniteOK(bare, seg), b = D.igniteOK(eng, seg); if (!a) lost++; if (!a && b) saved++; if (a && !b) worse++; }
+  check('econ-50: an engineer aboard relights a failed ignition (one retry; same rolls without one fail), never worse',
+    lost > 0 && saved > 0 && saved <= lost && worse === 0 && news.some(t => /relit it/.test(t)), `${lost} of 400 fail with no engineer; ${saved} relit; ${worse} worse`);
+  // the scientist's weight
+  const on = D.newShip(['chute', 'crew']); on.body = D.SELENE; D.boardCrew(on, 0, [p1.id, sc.id]); const w = () => D.sciWeight(on, D.SELENE).w;
+  const w0 = w(); sc.quals.geo = 5; const w1 = w(); sc.rec.walked = ['Selene']; const w2 = w(); const away = D.sciWeight(on, { name: 'Elsewhere' }).w;
+  const n0 = D.selN().mare; D.selSci().spec.mare.push({ FeO: 18, TiO2: 5, Al2O3: 10, far: false, w: w2 }); const n1 = D.selN().mare;   // as sciGot keeps a weighed reading
+  check('econ-50: a scientist on Selene weighs a reading ×1.25, ×1.5 with field geology, ×2 having walked there before; elsewhere nothing; Selene\'s science counts the weight',
+    w0 === 1.25 && w1 === 1.5 && w2 === 2 && away === 1 && n1 - n0 === 2, `${w0} → ${w1} → ${w2}; elsewhere ${away}; mare ${n0} → ${n1}`);
+}
