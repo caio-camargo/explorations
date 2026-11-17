@@ -8114,3 +8114,33 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Not checked:** in a browser (TESTING 407).
 - Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/rovers.js`, `sim/contracts.js`, `app/program-ui.js`,
   `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-17 — launchpad world session (Opus 5.5, worktree launchpad-q91): G4, Selene's cast shadows (v1.359)
+
+- **Asked:** Caio, "ok on g4" (GROUND.md G4: shadows on Selene).
+- **Built (v1.359):**
+  - A shadow clipmap round the camera. The near-field cache grows to seven levels: 0.5 m to 2 km texels, the far four
+    band-limited and on within 1,000 km.
+  - Each level holds the running max, toward the sun, of z = |P × s|: ten log-step passes on the gnomonic grid, where
+    the great circles are straight lines. A point is lit when its own z is larger. The moon pass reads it once per
+    pixel (`selShadow`).
+  - Sweeps run when a level is baked, and two a frame at most when the sun moves.
+  - A craft on the ground is lit by the CPU's walk toward the sun (`selSunLit`, memoised in `selPartLit`).
+  - New views 193–195 (low sun on the ground, 3 km up, the terminator from 100 km), `selShadowProbe`, test ground-13.
+- **Measured:**
+  - Frame: within noise on the RTX; +1.3–1.8 ms on the iGPU. The sweep: 0.16 ms on the RTX for two levels, 3 ms on the
+    iGPU for all seven.
+  - Against the CPU walk: 0.5–1.4 % disagree within 200 m, ~2 % to 2 km, 5–7.5 % to 20 km. The far levels lack the
+    finest bands, which the march drops there too.
+- **Negative result:** a per-pixel walk toward the sun (the plan's near rays) cost 9.6 → 40 ms at a 3° sun and missed
+  15–24 % of the shadows. Recorded in notes/world.md § v1.359. GROUND.md now records the clipmap as what was built.
+- **Tests:** smoke green before the merge. After the merge, smoke failed one check: TESTING's "Next free number" was
+  not bumped. The local rerun was stopped for low memory, so CI was the check. Lint clean. CI full run green (run 44189663205),
+  then ff-merged into `main`. Renumbered at merge:
+  Q619 took v1.357 and TESTING 406, then Q626 took v1.358 and 407.
+- **Not checked:** a human or the robot at a low sun (TESTING 408); time warp's shadow creep in a live flight.
+- **Next:** G5 (consumers: the landing hazard check, line of sight, polar dark floors; `selSunLit` serves the last),
+  G6 (Nyx). Q316 (ship shadow map) is the place for a craft's own shadow on the ground.
+- Files: launchpad `app/gl.js`, `app/render.js`, `sim/ground.js`, `terrain-probe.js`, `views.js`, `tests/world.mjs`,
+  `GROUND.md`, `notes/world.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+  Stills in `output/launchpad/g4-shadows/` (not in git).
