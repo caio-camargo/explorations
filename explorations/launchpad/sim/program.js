@@ -17,7 +17,7 @@ const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
 PRICE.kick30=1.5;PRICE.kick80=3;PRICE.kick200=5;PRICE.hthr=2;PRICE.apogee=3;PRICE.sph4=0.8;PRICE.sph7=1.5;PRICE.padapt=0.5;PRICE.padapt6=0.5;PRICE.padapt3=0.5;PRICE.core6=5;PRICE.core3=4;PRICE.rwheel6=3.5;PRICE.rwheel3=2.5;PRICE.batt6=1;PRICE.batt3=0.8;PRICE.bwt=0.2;   // the bench's propulsion (vehicle, Q422)
-PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;PRICE.rtg=15;PRICE.fair=2;PRICE.fair25=6;PRICE.whip=1;PRICE.bant=4;PRICE.scam=8;PRICE.ssci=6;PRICE.sbatt=2;PRICE.scomp=8;PRICE.frame=1.2;PRICE.oct=1;PRICE.octl=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -43,7 +43,7 @@ const PART_GATE=Object.fromEntries(Object.entries({
   loads:['kestrel','t8','petrel','istage','rwheel'],   // "the orbital kit"
   range:['rdec'],
   hop:['pod','shield'],
-  beeper:['core','core6','core3','batt','sbatt','batt6','batt3','bpanel','cam','scam','ant','whip','ssci','fair','oct','octl','octl6','padapt','padapt6','padapt3'],   // "the satellite bench"
+  beeper:['core','core6','core3','batt','sbatt','batt6','batt3','bpanel','cam','scam','ant','whip','ssci','fair','oct','octl','octl6','frame','padapt','padapt6','padapt3'],   // "the satellite bench"
   orbiter:['crew','les'],
   lift1:['condor'],
   lift2:['albatross','T16','T32','adapt','dec25','fins25','cfins25','cone25','fair25'],   // "the 2.5 m family"
@@ -84,7 +84,7 @@ const PART_WHY={bio:'A passenger to space and back: the first one will be an ani
   batt:'A 1 kWh battery: keeps a satellite alive through the night side.',sbatt:'A battery for the side of a stage.',batt6:'A 0.6 m battery, for small satellites.',batt3:'A 0.3 m battery, for the smallest satellites.',
   bpanel:'Solar cells on the body: power from the Sun while it shines.',cam:'An imaging camera: pictures of the ground, the weather, the far side of Selene.',scam:'An imaging camera for the side of a stage.',
   ant:'A cone antenna: a satellite that talks to the ground.',whip:'A whip antenna: the lightest way to be heard.',ssci:'An instrument package for the side of a stage: science on any craft.',
-  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',octl:'A long octagonal frame: room for more on one bus.',
+  fair:'A payload fairing: a satellite through the air without the air tearing at it.',oct:'An octagonal frame: a satellite bus to hang its parts on.',frame:'A frame to shape: the bus a satellite is built on.',octl:'A long octagonal frame: room for more on one bus.',
   octl6:'A long 0.6 m frame, for small satellites.',padapt:'A payload adapter: seats a satellite on its rocket and lets it go.',padapt6:'A 0.6 m payload adapter.',padapt3:'A 0.3 m payload adapter.',
   albatross:'The Albatross: a 2.5 m engine that lifts tonnes, the first step toward Selene.',T16:'A 16 t tank, 2.5 m wide.',T32:'A 32 t tank, 2.5 m wide: the core of a heavy rocket.',adapt:'An adapter from 2.5 m to 1.25 m: a small upper stage on a big one.',
   dec25:'A 2.5 m decoupler.',fins25:'A 2.5 m fin ring: keeps a big rocket pointing into the wind.',cfins25:'A steerable 2.5 m fin ring.',cone25:'A 2.5 m nose cone.',fair25:'A 2.5 m payload fairing: room for big satellites.',
@@ -233,6 +233,12 @@ const PROG_SCHEMA={
   casc:[{},'career','debris bands in a cascade, by band'],
   frag:[undefined,'career','debris fragments per band, made on first use'],
   breakups:[[],'career','breakups in orbit'],
+  // the astronauts (Q182, crew slice 1; sim/crew.js)
+  crew:[[],'career','the roster: astronauts, their status, record and seniority'],
+  crewN:[0,'career','the last astronaut id'],
+  crewCls:[0,'career','classes selected'],
+  crewFirst:[{},'career','the program\'s crewed firsts: the day, who flew them'],
+  memorial:[[],'career','astronauts lost: who, when, the flight, the cause; hushed for a closed power'],
   // logbook, debrief, the place
   log:[{},'career','the logbook\'s records'],
   lastDebrief:[undefined,'career','the last Debrief, kept with the save'],
@@ -330,7 +336,7 @@ const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`
 // whole span, as before (their steppers and a cruise's encounter search don't give the same answer cut in pieces)
 function advanceDays(d,halt){if(!(d>0))return;const t0=PROG.day,t1=t0+d;
   while(PROG.day<t1){const a=PROG.day,n=Math.floor(a+1e-9)+1,b=t1<n?t1:n;PROG.day=b;worldTick(b-a,b>=n-1e-9?n:null);if(halt&&b<t1&&halt())break}
-  const T0=t0*DAY_S,T1=PROG.day*DAY_S;orbTick(T0,T1);rvFieldTick(T0,T1);rvFieldSci(T0,T1);seisTick(T0,T1)}
+  const T0=t0*DAY_S,T1=PROG.day*DAY_S;orbTick(T0,T1);rvFieldTick(T0,T1);rvFieldSci(T0,T1);seisTick(T0,T1);crewClassTick()}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -513,12 +519,14 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   // crew (epoch 4): people fly once the escape tower is qualified (the max-q abort); until then the capsule carries dummies,
   // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
   {const cap=s.parts.find(p=>p.on&&p.d.crew);
-    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)}   // crewN: seats, for the Debrief (flow, Q191)
+    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)   // crewN: seats, for the Debrief (flow, Q191)
+      if(R.crewed)boardCrew(s,R.day0??PROG.day,crewPick(s,R))}   // (Q182) named people, the most senior ready   // (Q606) the people are aboard their seats, as a vessel loaded from the registry has them: crewOn answers for both
     if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/(cap.d.ins||600));if(cap.dmg)R.airX=(R.airX||0)+dt*AIR_LEAK*cap.dmg;   // a damaged cabin leaks: air lost beyond the clock's (Q440)
       if(s.alive&&s.landed&&b===TELLUS)R.capHome=true;
       if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
     if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT+(R.airX||0)>CREW_AIR&&!R.capHome?'ran out of air':'';
-      if(why){R.crewOK=false;R.crewWhy=why;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
+      if(why){R.crewOK=false;R.crewWhy=why;const ids=unboardCrew(s),as=crewLose(ids.length?ids:(R.crew||[]).filter(id=>(crewById(id)||{}).status==='flying'),R,s);failHit(-20,'a crew was lost');
+        HOOK.news(`${as.length?crewList(as):'The crew'} ${why}. The program stops to mourn and to ask how`,'bad')}}}   // (Q182) named, in the memorial
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
@@ -795,6 +803,7 @@ function missionEnd(s){const R=s&&s.rec;if(R&&R.sim&&!R.ended)return simEnd(s);
   if(FLOOR_HOLD===R)FLOOR_HOLD=null;floorCheck();
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
+  crewEnd(s,R);   // (Q182) who is home, who stays aboard, the crewed firsts
   missionEval(s);R.debrief=debriefOf(s,R,ups);HOOK.save();return{ups,streak:PROG.streak,debrief:R.debrief}}
 // ---- the powers: N of them (the number is a parameter), generated from a seed like the cities. Each has a home region,
 // an economy size, a tech level and an alignment on two axes. Land belongs to the nearest home region (bigger economies

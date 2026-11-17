@@ -7862,3 +7862,83 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files:** launchpad `notes/look.md`; root `SESSION_LOG.md`. No claim was taken (docs appended only; the GPU lock
   taken and released).
 - **Next:** Caio's call on starting Q316 (B1.3 shadows first).
+
+## 2026-11-17 — space session (Opus 5.5, worktree launchpad-q606): who is aboard (Q606, v1.346); stale M3 doc lines (Q610)
+
+- **Asked:** Caio's kickoff: claim Q606, fix it with a test that fails on today's code, then Q610.
+- **Done (v1.346, Q606):** a fresh crewed flight now boards its people onto the seats (`p.crewAboard`, `crewUp`) when
+  `outThere` first counts the crew (`boardCrew`, sim/space.js), as `vesselOf` does for a registry vessel, so `crewOn`
+  gives one answer. The default two-seat rover deploys on the flight that carries it. A lost crew is taken off
+  (`unboardCrew`), which also stops a lost crew being saved into the registry. Dummies (no max-q abort) are never boarded.
+  Notes: `notes/space.md` § v1.346.
+- **Done (Q610, docs):** ROADMAP § M3 (Q91 replaces the done Q18 plan; the RCS and guest-astronaut citations corrected);
+  EVA.md 0.1.2 (E0 is built); CREW.md 0.3.3 (face engine live again, D40; shared look is D26's; header); REVIEW-2026-11-11
+  1.0.6 (W43 answered); notes/economy.md (the RACE question decided, D36); nine QUEUE rows' "after R2" states (Q182,
+  Q459, Q460, Q467, Q593 now ready; Q183, Q458 after Q182; Q461, Q462 on G3). Q91 had already been updated by world.
+- **Tests:** the new check in core test 35 fails on the old code (fresh: 0 aboard) and passes; review repro prints
+  `crewOn 2, deploy ok`; smoke green; CI full run green (44107607243); main had not moved, ff-merged.
+- **Not checked:** in a browser (TESTING 397).
+- **Next:** Q182 (crew slice 1, the roster) is now ready and builds on the same seats.
+- Files: launchpad `sim/space.js`, `sim/program.js`, `tests/core.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`,
+  `QUEUE.md`, `ROADMAP.md`, `EVA.md`, `CREW.md`, `REVIEW-2026-11-11.md`, `notes/economy.md`; root `ACTIVE_WORK.md`,
+  `SESSION_LOG.md`.
+### 2026-11-13: vehicle session (Fable 5.2), Q617: the frame as a sized part, v1.347 (closing)
+- **Landed 2026-11-17** by the launchpad merge session (Opus 5.5): the session was cut off before merging; its numbers
+  were taken on `main` meanwhile, so v1.343 → **v1.347** and TESTING 395 → **398**; merged with `origin/main`, smoke, CI.
+- **Asked:** Caio: "orchestrator organized them, go ahead with 1" (bench slice 1 of Q605's plan).
+- **Built** (worktree `launchpad-builder`, branch `vehicle`): a `frame` part whose node carries its sides, width, height
+  and taper; `frameDef` sizes it at layout; `nodeDef` and `shDef` are how layout and registered craft read it; the shape
+  controls in the bench's part card; a plain prism.
+- **Checked:** test vehicle-48; all 19 presets and starters lay out to the same fingerprint with and without the
+  change; smoke; the bench in headless Chrome on the GPU, the card's buttons clicked by script.
+- **Not checked:** by hand; a frame launched or flown; side parts float off a frame's flat faces until Q618.
+- **Next:** Q618 (mounts), which starts with the census of upright readers.
+- Files: launchpad `sim/vessel.js`, `sim/space.js`, `sim/power.js`, `sim/rovers.js`, `sim/contracts.js`, `sim/program.js`,
+  `builder.js`, `app/gl.js`, `app/program-ui.js`, `test.mjs`, `tests/vehicle.mjs`, `tests/flow.mjs`, `tests/economy.mjs`,
+  `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+### 2026-11-13: platform session (Opus), R34: the app layer runs in a test, v1.348 (closing, written 2026-11-17)
+- **Landed 2026-11-17** by the launchpad merge session (Opus 5.5): the session was cut off before merging and never wrote
+  this entry; its number (v1.343, then v1.344) was taken on `main` meanwhile, so it is **v1.348**; merged with Q617 and
+  `origin/main`, smoke, CI.
+- **Built** (worktree `launchpad-r34`, branch `r34`): `apphost.mjs`, review 2's headless page adopted: every script of
+  index.html in one `node:vm` context, 0.7 s a load (was 45 s to 2 minutes); `tests/app.mjs`, a new lane file: app-1 the
+  page loads with 0 errors with and without `?tester`; app-2 a first flight through the real screens; app-3 R28 in the
+  page; app-4 the Debrief's part-link hover; app-5 the random walk (in `SLOW`). space-36 moved onto apphost (44 s → 3 s).
+- **Checked:** a throw planted in `go('rover')` is reported with file, line and the actions before it; the walk finds
+  nothing today; smoke and CI on the merged branch.
+- **Not checked:** the shader-uniform check (R3 (c)) is still to do (the QUEUE line says how); R30–R32's checks go in
+  `tests/app.mjs` as each is fixed.
+- Files: launchpad `apphost.mjs` (new), `tests/app.mjs` (new), `tests/space.mjs`, `shards.mjs`, `notes/platform.md`,
+  `NOTES.md`, `QUEUE.md`; root `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-17 — launchpad merge session (Opus 5.5, main clone): Q617 and R34 landed
+
+- **Asked:** land the two finished branches the 2026-11-13 sessions never merged, one at a time.
+- **Done:** **Q617** (branch `vehicle`, pushed as `q617`) is **v1.347**, TESTING **398** on `main` (v1.343 and 395 had
+  been taken; a first renumber to v1.346/397 was overtaken by Q606 while CI ran, so renumbered again). **R34** (branch
+  `r34`) is **v1.348** on `main`. Each: `check_numbers.mjs`, merge `origin/main`, smoke, CI green on the merged commit
+  (q617 run 44111697595, r34 run 44112305755), ff-merge. Their closing log entries and cleared claim lines (the 2026-11-13
+  entries above) were written here; QUEUE Q617 and R34 ✓. Also cleared: the design desk's row of 2026-11-12 (answers in
+  `DECISIONS.md`) and the idle look & sound effects row of 2026-10-18.
+- **Note:** `origin/vehicle` is an old branch (v1.248, Q457) that is not on `main`; Q617 went out as `q617` instead. Not
+  touched. Worktrees `launchpad-builder` (`vehicle`) and `launchpad-r34` (`r34`) now equal `main`.
+- Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md` (plus the two branches' own files).
+
+## 2026-11-17 — space session (Opus 5.5, worktree launchpad-q182): the roster, crew slice 1 (Q182, v1.349)
+
+- **Asked:** Caio: "go ahead" after Q606/Q610 (the next item named was Q182).
+- **Done (v1.349):** new `sim/crew.js`. The first class is selected once the abort tests open (3 + 1 per computing-centre
+  level), with names in the home school's style. A crewed flight takes the most senior ready astronauts onto its seats
+  (`p.crewIds`), and they travel through the registry (`shapeOf` `who`). At the flight's end each astronaut is aboard,
+  ready (days counted) or held abroad (Q616). The crewed firsts are named in the news and the Debrief. A loss names the
+  crew and adds them to `PROG.memorial`. The Debrief's line reads "Commander A and B home safe after …". There are five
+  new `PROG_SCHEMA` rows. Notes: `notes/economy.md` § v1.349.
+- **Tests:** econ-46 (new, 5 checks); flow-6 and core's crashed-capsule check now expect names; smoke green before and
+  after merging main (Q617 v1.347, R34 v1.348; one conflict in `shapeOf`, resolved by keeping both); CI full run green
+  (44116403396).
+- **Not checked:** in a browser (TESTING 399). Proposed for flow: a Crew view with the roster and the memorial.
+- **Next:** Q183 (requalification after a loss) and Q458 (crew slice 2) are unblocked by this.
+- Files: launchpad `sim/crew.js` (new), `sim/program.js`, `sim/space.js`, `sim/contracts.js`, `sim/debrief.js`,
+  `app/debrief.js`, `index.html`, `tests/economy.mjs`, `tests/flow.mjs`, `tests/core.mjs`, `notes/economy.md`, `NOTES.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

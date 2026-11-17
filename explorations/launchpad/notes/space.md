@@ -2874,3 +2874,23 @@ Review 2 found two holes in Program › Fleet › *Fly* (`flyEntry`), both confi
 again with the table emptied (no throw); a reload puts it back in the registry identical to the snapshot; Hard: no
 Revert, a reload loses it with the news line. The two repros print the new behaviour. **Not checked:** in a browser
 (TESTING 393).
+
+## v1.346 — who is aboard: one answer for a fresh flight and a loaded one (2026-11-17, space, QUEUE Q606; REVIEW-2026-11-13-m3 § 3)
+
+The M3 review found that **a crew could not deploy the default rover** (`review/2026-11-13/crew_rover.mjs`). "Who is
+aboard" had two answers: a vessel loaded from the registry had `p.crewAboard` on its seats (`vesselOf`), and `crewOn(s)`
+counted those; a fresh flight had only the flight record (`R.crewed`, set at the first tick once the max-q abort is
+qualified) and seats with nobody in them as far as `crewOn` could tell. `rvDeployCheck` asks `crewOn`, so the two-seat
+`rvDefault` was refused on the lander that flew it, crew or no crew.
+
+Now the record's verdict is written onto the seats: when `outThere` first counts the crew (`R.crewInit`) and people fly,
+`boardCrew(s, day)` (sim/space.js, beside `crewOn`) puts `crewAboard` and `crewUp` (the liftoff day, which the Debrief's
+days-in-space already assumed) on every seat that is on. A crew lost (`R.crewOK` false) is taken off with `unboardCrew`,
+so a lost crew no longer goes into the registry through `shapeOf`'s `p.crewAboard` branch either (the loaded-vessel path
+had that hole). Dummies (no max-q abort yet) are never boarded: a crewed rover still needs people. `crewOn` is the one
+question; `R.crewed` stays the flight's (contracts, missions), and a vessel the record follows to (`switchTo`) keeps its
+own seats' answer.
+
+**Checked:** core test 35's new check (a fresh two-seat lander on Selene: 2 aboard, deploys; the same lander registered
+and loaded: 2, deploys; with dummies: 0, refused) fails on the old code and passes; the review's repro prints `crewOn 2,
+deploy ok`; smoke green. **Not checked:** in a browser (TESTING 397).

@@ -210,8 +210,7 @@ The first versions of the landing checks were wrong: the craft's centre was put 
 "landed" at 0.0 m/s.
 
 **Open:** crew on Selene (needs the abort tests and crew parts of epoch 4); contracts that repeat these (economy's board); the
-`RACE` question (should the far side or a Selene landing be a race for firsts? It would shift rival schedules and the v1.28
-balance); prices are untested by `career.mjs`, which doesn't fly past epoch 2.
+`RACE` question, since decided: the Selene and Nyx firsts join the race, rival schedules from chapter 4 (D36, built as Q593); prices are untested by `career.mjs`, which doesn't fly past epoch 2.
 
 ## Mission design — epochs, archetypes, convergence (2026-10-07)
 
@@ -4108,3 +4107,40 @@ mission luck. It is out, and is a question for Caio (QUEUE W57).
 
 **Not checked:** nothing in a browser: the decision card with three buttons, and the new message, are unseen
 (TESTING 396). The table above is the verdict at points, not flights.
+
+## v1.349 — the roster, crew slice 1 (2026-11-17, space session, QUEUE Q182; § "Plan revision: crew by qualification", W24, W43)
+
+Astronauts are people now. All of it is in a new file, `sim/crew.js` (after `sim/space.js`), plus five `PROG_SCHEMA` rows
+(`crew`, `crewN`, `crewCls`, `crewFirst`, `memorial`).
+
+- **The first class** (`crewClassTick`, from `advanceDays`): once the abort tests open (the orbiter done, padabort's
+  requirement), 3 people + 1 per computing-centre level, each a given and a family name drawn from the home school's
+  syllables (`SCHOOLS`) on their own seeded draw (`crewName`: the world seed and the id), all different. News: "The
+  first class of astronauts: …". Later classes are slice 5.
+- **Picking** (`crewPick`, at the flight's first tick when people fly, before Q606's `boardCrew`): the most senior ready
+  astronauts fill the empty seats (seniority: firsts flown, then flights, then the earlier class, then the id; W43 5).
+  Their ids go on the seats as `p.crewIds`, and through the registry as `shapeOf`'s `who` and back with `vesselOf`. With
+  too few ready (the rest aboard a station, or held abroad) the office selects more at once ("… selected in a hurry to
+  fill the seats") rather than refusing the flight: the roster never blocks a flight that flew before it.
+- **The flight's end** (`crewEnd`, in `missionEnd` before the Debrief): who is in a registered vessel's shape is
+  *aboard* it (`where` = its registry id); who came down is *ready* with the days since they went up added to
+  `rec.days`; a crew a hostile power holds (Q616's `crewheld`, `R.heldD`) is *held* until the answer (`crewRelease`).
+  A landing on Selene adds it to `rec.walked`.
+- **Firsts** (`PROG.crewFirst`): the first crewed flight, the first in orbit, around Selene, on Selene, and the first
+  person to reach 60 days. Each goes into the flyers' `sen` and the news: "Moktar Tartar and Mok Tukdag: the first
+  people to fly". The Debrief shows them after the crew line.
+- **A loss** (`crewLose`, where `outThere` judges it): the people on the seats are *lost*, named in the news ("Moktar
+  Tartar and Mok Tukdag were lost. The program stops to mourn…") and written to `PROG.memorial` (`{id, name, title,
+  day, flight, vessel, cause, hushed}`; `hushed` when home is a closed power, for the leak system to reveal later).
+- **The Debrief's crew line** names them, the commander first: "Commander Moktar Tartar and Mok Tukdag home safe after
+  1.5 days". The commander is the most senior of a crew of two or more; everyone else is a pilot until titles by era
+  come. A flight with no roster ids (an old save's vessel) keeps "Crew of 2".
+- **Not in this slice:** qualifications (slice 2: until then every pilot is qualified on every type, as before), later
+  classes, requalification, roles' hooks, rotation; a Crew screen and the memorial on screen (flow, proposed in QUEUE).
+
+**Mistake on the way:** a second `crewTick` (space.js already has one for stations' supplies): lint (platform-12)
+caught it; the roster's is `crewClassTick`.
+
+**Checked:** econ-46 (the class, picking by seniority, home and ready with days, aboard in the registry and back, firsts,
+a loss in the memorial, held abroad and released, the save); flow-6 and core's crashed-capsule check now expect names;
+smoke. **Not checked:** in a browser (TESTING 399).

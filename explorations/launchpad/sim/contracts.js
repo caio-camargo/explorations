@@ -424,7 +424,7 @@ const stOf=q=>q.beacon&&q.landed?baseOf(q):stationOf(q);
 function stPick(f){const L=typeof satsUp==='function'?[...satsUp(),...landedUp().filter(q=>q.beacon)]:[];for(const q of L){if(q.junk||q.docked)continue;const s=stOf(q);if(s&&f(s))return{q,s}}return null}
 // a station's measure for a contract: supplies (t), lab-days, or the number of modules of a kind (lab, hab), docked ones included
 function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stOf(q);if(k==='sup')return s?s.sup:0;
-  const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
+  const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>shDef(o)&&shDef(o).kind===k).length,0)}
 // the contract types a source can offer today: its mission done (req) and the world ready for it (open: a station to
 // supply, a satellite to meet). Q570's test reads it against opensOf
 const offerTypes=src=>Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));
@@ -540,9 +540,9 @@ function crewAbroad(rc,R){const p=POWERS[rc.pi],who=(R.crewN||1)>1?'crew':'pilot
   if(rc.rel==='tense'){opAdd(HOME,CREW_HELD.opTense);HOOK.news(`Our ${who} came down in ${p.name}: home after weeks of talks`,'warn');return}
   offerDecision({kind:'crewheld',power:p.i,who,amt:CREW_HELD.pay,life:CREW_HELD.life,title:`${p.name} holds our ${who}`,
     text:`They came down in ${p.name}, alive and well, and are not allowed to leave. Pay ${fmtM(CREW_HELD.pay)}, hand over the flight's data, or protest and wait.`,
-    opts:[['pay',`Pay ${fmtM(CREW_HELD.pay)}`],['deal','Hand over the data'],['wait','Protest and wait']]})}
+    opts:[['pay',`Pay ${fmtM(CREW_HELD.pay)}`],['deal','Hand over the data'],['wait','Protest and wait']]});R.heldD=PROG.dseq}   // (Q182) the people held: crewEnd marks them
 const relNudge=(i,d)=>{PROG.rel[pairKey(HOME,i)]=clamp(relOf(HOME,i)+d,-1,1)};
-function crewHeldAnswer(d,key){const p=POWERS[d.power],who=d.who||'crew';
+function crewHeldAnswer(d,key){const p=POWERS[d.power],who=d.who||'crew';crewRelease(d.id);
   if(key==='pay'){PROG.funds-=d.amt;ledAdd('ransom',-d.amt);HOOK.news(`${p.name} releases our ${who} for ${fmtM(d.amt)}`,'warn')}
   else if(key==='deal'){relNudge(d.power,CREW_HELD.relDeal);opAdd(HOME,CREW_HELD.opDeal);HOOK.news(`Our ${who} is home; ${p.name} keeps a copy of the flight's data`,'warn')}
   else{relNudge(d.power,CREW_HELD.relWait);opAdd(HOME,CREW_HELD.opWait);HOOK.news(`${p.name} lets our ${who} go after ${Math.max(1,Math.round(d.life-(d.expires-PROG.day)))} days; home is furious it took so long`,'bad')}}

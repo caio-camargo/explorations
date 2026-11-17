@@ -928,7 +928,7 @@
 // unlocks (PART_GATE, RV_GATE). For each of the 29 missions, in two programs (only its ancestors done; everything done but
 // it and what follows from it), opensOf, asked before and after, equals the before/after diff of missionOpen, of
 // offerTypes over every source (the world's own gates, CT.open, set aside: they wait on a station or a satellite, not on
-// the mission) and of partOpen / rvPartOpen. The beeper opens 2 missions, 6 kinds of contract, 20 parts (since Q577's map; 5, 8 and 7 before) and the rover
+// the mission) and of partOpen / rvPartOpen. The beeper opens 2 missions, 6 kinds of contract, 21 parts (since Q577's map, 20; the shaped frame, Q617; 5, 8 and 7 before) and the rover
 // antenna; opensNames merges several missions' lists (one done by another isn't "opened") and opensLine says it in a line.
 {
   const D = new Function(src + 'return {CT,MISSIONS,PROG,HOOK,PARTS,RV_GATE,opensOf,opensNames,opensLine,offerTypes,missionOpen,partOpen,rvPartOpen,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
@@ -952,11 +952,11 @@
   for (const k in D.CT) if (D.CT[k].open0) { D.CT[k].open = D.CT[k].open0; delete D.CT[k].open0; }
   P.done = { weather: { flight: 1, day: 0 }, loads: { flight: 1, day: 0 } }; const B = D.opensOf('beeper'), N = D.opensNames(['beeper']), line = D.opensLine(N), full = D.opensLine(N, true);
   P.done = {}; const two = D.opensNames(['weather', 'beeper']), none = D.opensLine(D.opensNames(['nyxland']));
-  const facts = B.missions.length === 2 && B.contracts.length === 6 && B.parts.length === 20 && B.rover.join() === 'it:ant'
-    && line === '2 missions · 6 kinds of contract · 21 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
+  const facts = B.missions.length === 2 && B.contracts.length === 6 && B.parts.length === 21 && B.rover.join() === 'it:ant'
+    && line === '2 missions · 6 kinds of contract · 22 parts' && full.includes('Weather satellite') && full.includes('rover high-gain antenna')
     && N.contracts.every(x => x.t && !/^[a-z]+[A-Z]/.test(x.t)) && none === ''
     && !two.missions.some(x => x.id === 'beeper') && two.missions.length === 2 && two.contracts.length === 7;   // (the unlock map, Q577: the satellite bench; the hop and the beeper wait for the structural test)
-  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 2 missions, 6 kinds of contract, 20 parts (the satellite bench, Q577) and the rover antenna; opensNames merges; opensLine',
+  check('econ-38: opensOf, for all 29 missions in two programs and asked before and after, equals the before/after diff of missionOpen, offerTypes and partOpen/rvPartOpen; the beeper opens 2 missions, 6 kinds of contract, 21 parts (the satellite bench, Q577) and the rover antenna; opensNames merges; opensLine',
     M.length === 29 && !bad.length && any >= 20 && facts,
     `${runs} comparisons, ${bad.length} wrong${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}; ${any} openings non-empty · beeper: "${full}" · weather+beeper: ${two.missions.length} missions, ${two.contracts.length} kinds`);
 }
@@ -973,7 +973,7 @@
   const era = keys.filter(k => D.PARTS[k].era != null), gated = keys.filter(k => D.PART_GATE[k]), free = keys.filter(k => D.PARTS[k].era == null && !D.PART_GATE[k]);
   const ids = new Set(D.MISSIONS.map(M => M.id)), badGate = gated.filter(k => !ids.has(D.PART_GATE[k])), badKey = Object.keys(D.PART_GATE).filter(k => !D.PARTS[k]);
   check('unlock map: twelve parts at the start, the rest on a mission or an era, every gate a real mission and a real part',
-    free.slice().sort().join() === START.slice().sort().join() && gated.length === 69 && era.length + gated.length + free.length === keys.length && !badGate.length && !badKey.length,
+    free.slice().sort().join() === START.slice().sort().join() && gated.length === 70 && era.length + gated.length + free.length === keys.length && !badGate.length && !badKey.length,
     `${keys.length} parts: ${free.length} at the start, ${gated.length} on ${new Set(gated.map(k => D.PART_GATE[k])).size} missions, ${era.length} by era${badGate.length ? '; bad gates ' + badGate : ''}${badKey.length ? '; no such part ' + badKey : ''}`);
   const M = Object.fromEntries(D.MISSIONS.map(x => [x.id, x])), clos = ids0 => { const S = new Set(); const go = id => { for (const r of M[id].req || []) if (!S.has(r)) { S.add(r); go(r); } }; ids0.forEach(go); return S; };
   const at = S => { P.done = Object.fromEntries([...S].map(id => [id, { day: 0, flight: 1 }])); P.kh = {}; return { parts: keys.filter(k => D.partOpen(k).ok).map(k => ({ d: D.PARTS[k], on: true })) }; };
@@ -1141,3 +1141,56 @@
   check('econ-45: no answer is the wait: when the offer runs out the crew is released at that price', sil.left === 0 && /lets our/.test(news.join(' ')), `opinion ${sil.dop.toFixed(0)}`);
 }
 
+
+// econ-46. The roster (space session, QUEUE Q182, crew slice 1; notes/economy.md § "Plan revision: crew by
+// qualification"): the first class is selected when the abort tests open, named in the home school's style; a crewed
+// flight takes the most senior ready astronauts onto its seats; who stays up in a registered vessel is aboard it, and
+// comes home through the registry with the days counted; the program's crewed firsts name them; a loss names them and
+// puts them in the memorial; a crew a hostile power holds is out of the roster until released. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,POWERS,SITES,TELLUS,SCHOOLS,newShip,missionTick,missionEnd,programNew,fromPF,advanceDays,resolveDecision,vesselOf,progJSON,crewById,CITIES,pairKey,DT,DAY_S,get HOME(){return HOME},get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.programNew({}); const P = D.PROG, T = D.TELLUS, home = D.SITES.find(t => t.power === D.HOME) || D.SITES[0];
+  P.funds = 500; P.done = {}; D.advanceDays(1); const none = (P.crew || []).length;
+  P.fac = { centre: { lv: 1 } }; P.done = { orbiter: { day: 1 } }; news.length = 0; D.advanceDays(1);
+  const S = D.SCHOOLS[D.POWERS[D.HOME].school], syl = new RegExp(`^(${S.syl.join('|')})+$`, 'i'), names = P.crew.map(a => a.name);
+  check('econ-46: no astronauts before the abort tests open; then a first class of 3 + 1 per computing-centre level, two names each from the home school\'s syllables, all different, in the news',
+    none === 0 && P.crew.length === 4 && new Set(names).size === 4 && names.every(n => n.split(' ').length === 2 && n.split(' ').every(w => syl.test(w))) && P.crew.every(a => a.status === 'ready' && a.cls === 1)
+      && news.some(t => /first class of astronauts/.test(t) && names.every(n => t.includes(n))), `${S.name}: ${names.join(', ')}`);
+  // a crewed flight from the pad: the most senior go (a first already flown counts), and they sit in the capsule's seats
+  P.done.maxqabort = { day: 2 }; P.crew[3].sen.push({ k: 'test', day: 0 });
+  const down = (stack, u) => { D.t = 0; const s = D.newShip(stack); Object.assign(s, { landed: true, alive: true, touchV: 2, throttle: 0 }); s.pf = mul(norm(u), T.R); s.r = D.fromPF(T, s.pf, 0); s.v = [0, 0, 0];
+    s.rec.launched = true; s.rec.day0 = P.day; s.rec.launchPf = mul(home.u, T.R); D.S = s; D.missionTick(s, D.DT, false); return s; };
+  const s1 = down(['chute', 'crew'], home.u), R1 = s1.rec, seat = s1.parts.find(p => p.crewIds), picked = (R1.crew || []).map(D.crewById);
+  const flying = picked.every(a => a.status === 'flying' && a.rec.flights === 1);
+  news.length = 0; D.t = 1.5 * D.DAY_S; const end1 = D.missionEnd(s1), line1 = end1.debrief.crew && end1.debrief.crew.line;
+  check('econ-46: a crewed flight takes the two most senior ready astronauts onto its seats; home, they are ready again with the days counted, named in the Debrief with the commander first, and the first crewed flight is theirs',
+    picked.length === 2 && picked[0] === P.crew[3] && seat && seat.crewIds.join() === R1.crew.join() && flying && picked.every(a => a.status === 'ready' && Math.abs(a.rec.days - 1.5) < 1e-6 && a.sen.some(x => x.k === 'flight'))
+      && line1 === `Commander ${picked[0].name} and ${picked[1].name} home safe after 1.5 days` && P.crewFirst.flight.ids.join() === R1.crew.join() && news.some(t => t.startsWith(`${picked[0].name} and ${picked[1].name}: the first people to fly`)),
+    `${line1} · ${news.filter(t => /first people/.test(t)).join(' | ')}`);
+  // left in orbit: aboard the registered vessel; flown home later from the registry, the days since they went up
+  const a = T.R + 300e3, s2 = (() => { D.t = 0; const s = D.newShip(['chute', 'crew', 't2']); Object.assign(s, { landed: false, alive: true, throttle: 0, r: [a, 0, 0], v: [0, Math.sqrt(T.mu / a), 0] }); s.rec.launched = true; D.S = s; D.missionTick(s, D.DT, false); return s; })();
+  const up = (s2.rec.crew || []).map(D.crewById), day2 = P.day; D.t = 3600; D.missionEnd(s2);
+  const q = P.sats.find(x => x.shape && x.shape.some(o => o.who)), aboard = up.length === 2 && up.every(x => x.status === 'aboard' && q && x.where === q.id);
+  P.sats.splice(P.sats.indexOf(q), 1); P.day += 20; D.t = 0; const v = D.vesselOf(q, P.day * D.DAY_S);
+  Object.assign(v, { landed: true, alive: true, body: T, pf: mul(home.u, T.R), touchV: 2 }); Object.assign(v.rec, { launched: true, day0: P.day, crewInit: 1, crewed: true, crewOK: true, crewN: 2, cg: 0, cgMax: 0, ccab: 290, fromOrbit: true }); D.S = v;
+  D.t = 0.5 * D.DAY_S; const end2 = D.missionEnd(v);
+  check('econ-46: a crew left in orbit is aboard the registered vessel; brought home from the registry they are ready, their days counted from the day they went up',
+    aboard && up.every(x => x.status === 'ready' && x.where === null) && Math.abs(up[0].rec.days - ((P.day - day2) + (up[0] === picked[0] || up[0] === picked[1] ? 1.5 : 0))) < 1e-6
+      && end2.debrief.crew && end2.debrief.crew.names.length === 2, `${up.map(x => `${x.name} ${x.status} ${x.rec.days.toFixed(2)} d`).join(', ')} · ${end2.debrief.crew && end2.debrief.crew.line}`);
+  // a loss: named in the news, in the memorial, out of the roster; the Debrief names them
+  news.length = 0; const s3 = down(['chute', 'crew'], home.u), lost = (s3.rec.crew || []).map(D.crewById); s3.alive = false; D.t = 300; D.missionTick(s3, 0, false); const end3 = D.missionEnd(s3);
+  const M = P.memorial || [];
+  check('econ-46: a crew lost is named in the news and the Debrief, marked lost, and in the memorial with the flight and the cause',
+    lost.length === 2 && lost.every(x => x.status === 'lost') && M.length === 2 && M.every(m => lost.some(x => x.id === m.id && x.name === m.name) && m.cause === 'were lost' && m.flight === P.flights)
+      && news.some(t => t.startsWith(`${lost[0].name} and ${lost[1].name} were lost`)) && end3.debrief.crew.line === `${lost[0].name} and ${lost[1].name} were lost`,
+    `${end3.debrief.crew.line} · memorial ${M.map(m => m.name + ', flight ' + m.flight).join('; ')}`);
+  // held abroad (Q616): out of the roster until the answer
+  const city = D.CITIES.find(x => x.power && x.power.i !== D.HOME), key = D.pairKey(D.HOME, city.power.i); P.rel[key] = -0.8; P.decisions = [];
+  const s4 = down(['chute', 'sci', 'crew'], city.u), held = (s4.rec.crew || []).map(D.crewById); D.missionEnd(s4);
+  const wasHeld = held.length === 2 && held.every(x => x.status === 'held'), dec = P.decisions.find(d => d.kind === 'crewheld'); dec && D.resolveDecision(dec.id, 'pay');
+  const saved = JSON.parse(D.progJSON());
+  check('econ-46: a crew a hostile power holds is out of the roster until the program answers; the roster and the memorial are in the save',
+    wasHeld && held.every(x => x.status === 'ready') && saved.crew.length === P.crew.length && saved.memorial.length === 2 && saved.crewFirst.flight,
+    `held: ${held.map(x => x.name).join(', ')} → ${held.map(x => x.status).join(', ')}; ${P.crew.length} in the roster`);
+}

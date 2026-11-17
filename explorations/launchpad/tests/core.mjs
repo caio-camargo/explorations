@@ -1102,7 +1102,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('crew: after qualification the capsule carries people; around Selene and home safe completes "Crew around Selene"', c.rec.crewed && sawSel && c.rec.crewOK && !!P.done.crewaround, `crewed ${c.rec.crewed}, in Selene's SOI ${sawSel}, home ${c.rec.capHome}`);
   ({ c } = crewFlight(['orbiter', 'padabort', 'maxqabort']));
   c.landed = false; c.body = SELENE; c.r = [SELENE.R + 20e3, 0, 0]; c.v = [-300, 0, 0]; let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); }
-  check('crew: a crashed crewed capsule loses its crew (news, opinion)', !c.rec.crewOK && news.some(m => /The crew were lost/.test(m)), news.find(m => /crew/.test(m)) || 'no news');
+  check('crew: a crashed crewed capsule loses its crew (news, by name since Q182; opinion)', !c.rec.crewOK && news.some(m => /^[A-Z]\w* [A-Z]\w* and [A-Z]\w* [A-Z]\w* were lost\. The program stops/.test(m)), news.find(m => /were lost/.test(m)) || 'no news');
   // the landing mission's condition reads the flight record
   const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
   check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');
@@ -2279,7 +2279,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 35. Rovers packed and deployed (sats session, rovers R2): a folded rover on a lander's side, a deck with ramps; the
 // deploy check; the rover upright on Selene; bumping the lander; left in the field and picked up again. Own sim instance.
 {
-  const D = new Function(src + 'return {newShip,syncLanded,groundR,qFromTo,qaxis,qmul,SELENE,PROG,HOOK,rvDeploy,rvDeployCheck,rvFlight,rvTilt,rvEnd,rvLoadNear,rvObsOf,rvGeom,rvDefault,shipPF,satRegister,vesselOf,landedUp,get FROV(){return FROV},get RVA(){return RVA},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const D = new Function(src + 'return {newShip,syncLanded,groundR,qFromTo,qaxis,qmul,SELENE,PROG,HOOK,rvDeploy,rvDeployCheck,rvFlight,rvTilt,rvEnd,rvLoadNear,rvObsOf,rvGeom,rvDefault,shipPF,satRegister,vesselOf,landedUp,crewOn,missionTick,get FROV(){return FROV},get RVA(){return RVA},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
   const msgs = []; D.HOOK.msg = m => msgs.push(m);
   const B = D.SELENE, P = D.PROG; Object.assign(P, { sats: [], satN: 0, rvOut: [] });
   const luno = { name: 'Lunokhod', ch: 'm', wh: 'm', n: 6, spr: 'S', slots: ['cam', 'bat', 'ant', 'spec', null] };
@@ -2316,6 +2316,17 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // a lander that came to rest leaning can't deploy
   const ln = lander('fold', luno, { lean: 20 }), cL = D.rvDeployCheck(ln, rp(ln));
   check('rover R2: a lander leaning 20° won\'t deploy', !cL.ok && /leans/.test(cL.why), cL.why);
+  // (Q606) who is aboard: one answer for a fresh crewed flight and the same lander loaded from the registry. The default
+  // two-seat rover on a two-seat capsule deploys on the flight that carries it; with dummies aboard (no max-q abort yet) it doesn't
+  const crewLander = people => { const root = { k: 'crew', c: [{ k: 't1', at: 'd', c: [{ k: 'sparrow', at: 'd' }] }, { k: 'rvfold', at: { y: .3, a: 0, n: 1 }, rvd: D.rvDefault() }] };
+    D.t = 0; const c = D.newShip({ v: 2, root }), u = [1, 0, 0]; Object.assign(c, { body: B, landed: true, alive: true, sas: false, throttle: 0 });
+    c.pf = mul(u, D.groundR(B, mul(u, B.R)) - c.yBot); c.qLocal = D.qFromTo([0, 1, 0], u); D.syncLanded(c); c.rec.launched = true; D.S = c;
+    P.done = people ? { maxqabort: 1 } : {}; D.missionTick(c, 0.1, true); return c; };
+  const fresh = crewLander(true), cF = D.rvDeployCheck(fresh, rp(fresh)), dum = crewLander(false), cDm = D.rvDeployCheck(dum, rp(dum));
+  D.satRegister(fresh, fresh.rec); const qF = P.sats.find(x => x.landed && x.shape.some(o => o.crew)), vF = qF && D.vesselOf(qF, 0), cV = vF && D.rvDeployCheck(vF, rp(vF));
+  check('rover R2 (Q606): a fresh crewed flight and the same lander from the registry both have 2 aboard and deploy the default rover; dummies don\'t',
+    D.crewOn(fresh) === 2 && cF.ok && vF && D.crewOn(vF) === 2 && cV.ok && D.crewOn(dum) === 0 && !cDm.ok && /crew/.test(cDm.why),
+    `fresh: ${D.crewOn(fresh)} aboard, ${cF.ok ? 'deploys' : cF.why}; from the registry: ${vF ? D.crewOn(vF) + ' aboard, ' + (cV.ok ? 'deploys' : cV.why) : 'not registered'}; dummies: ${D.crewOn(dum)}, ${cDm.why}`);
   D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
 }
 
