@@ -194,11 +194,11 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)r
 if(TEST.on){$('testerBadge').classList.remove('hidden');testBadge();testTopUp()}   // (also each frame, and after every menu action)
 // ---- the Program screen (slice 2). renderProgram (economy/bodies) still writes one long column into the hidden #program;
 // progLayout() sorts its sections into tabs by their heading. A heading it doesn't know goes to "More", so a new section
-// is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
+// is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf. (Q458: Astronauts, the program's people, is Company's.)
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
 const progTabOf=h=>/^(Offers|Coming up|News)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
   /^(Epoch|✔ Chapter|Chapter)/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field|Routines)/.test(h)?'fleet':/^The world/.test(h)?'world':
-  /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())||h==='Astronauts'?'company':'more';   // (Q458) the astronaut office is the program's people
+  /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())||h==='Astronauts'?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
   const box={};for(const[k]of PROG_TABS)box[k]=[];let cur='more';
