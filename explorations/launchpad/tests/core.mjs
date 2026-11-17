@@ -992,7 +992,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('out there: an impactor on the near side completes the mission; on the far side nobody hears it', nearHit && !farHit && news.some(m => /nobody heard/.test(m)), `near ${nearHit}, far ${farHit}`);
   // a soft landing near side (instruments + antenna), and the sample counts toward a return
   // land from rest with the craft's base h metres above the ground
-  const land = (b, u, stack, done, h) => { reset(done); const c = craft(stack, b, [0, 0, 0], [0, 0, 0], 0); c.r = mul(u, b.R + api.groundAlt(b, api.toPF(b, u, api.t)) - c.yBot + h);   // (Q91) Selene's relief c.v = api.surfVel(b, c.r); upright(c); let n = 0; while (!c.landed && c.alive && n++ < 5000) api.advPhys(c); for (let k = 0; k < 5; k++) api.advPhys(c); return c; };
+  const land = (b, u, stack, done, h) => { reset(done); const c = craft(stack, b, [0, 0, 0], [0, 0, 0], 0); c.r = mul(u, b.R + api.groundAlt(b, api.toPF(b, u, api.t)) - c.yBot + h); c.v = api.surfVel(b, c.r); upright(c); let n = 0; while (!c.landed && c.alive && n++ < 5000) api.advPhys(c); for (let k = 0; k < 5; k++) api.advPhys(c); return c; };   // (Q91) on Selene's relief
   const hard = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 10), hardV = hard.touchV, hardOK = !!P.done.selland;
   s = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 3);
   const sampleOK = api.MISSIONS.find(m => m.id === 'selsample').ok({ ...s.rec, landed: true, recSci: true });
