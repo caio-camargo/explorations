@@ -652,6 +652,7 @@ void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
 uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl,uPl2;uniform vec3 uPlC,uPlC2;uniform vec3 uFlC;uniform float uPadM;
+uniform mat4 uShM;uniform highp sampler2DShadow uShT;uniform vec4 uShB;   // (Q316) the ship's shadow map: uShB = (strength, normal offset m, depth bias, half a texel)
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
@@ -895,6 +896,14 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
  float ds=uDsk.x,dn=-dot(n,uUp),wp=ds*ds*clamp((dn+ds)/(1.+ds),0.,1.);   // the disc's share of the light on n: sin²α·cos θ, wrapped past its rim
  vec3 sun=uSunCol*uLit,amb=mix(uSky,uGnd,wp);
+ // (Q316, BEAUTY B1.3) the ship's own shadow, High only: the point, pushed off the surface along the mesh normal (by the
+ // map's texel and by the sag of a 28-sided round part, so a smooth-shaded facet doesn't shade itself), in the light's
+ // box; four bilinear compares half a texel apart. Outside the box, and where the surface turns from the light, lit.
+ if(uShB.x>0.&&ndl>0.){vec3 ng=normalize(vN);if(dot(ng,vP)>0.)ng=-ng;
+  vec4 q=uShM*vec4(vP+ng*(uShB.y+.012*vU.z),1.);
+  if(all(lessThan(abs(q.xyz),vec3(1.)))){vec3 s=q.xyz*.5+.5;s.z-=uShB.z;float e=uShB.w;
+   float sh=.25*(texture(uShT,s+vec3(e,e,0.))+texture(uShT,s+vec3(-e,e,0.))+texture(uShT,s+vec3(e,-e,0.))+texture(uShT,s+vec3(-e,-e,0.)));
+   sun*=mix(1.,sh,uShB.x*smoothstep(0.,.1,ndl));}}
  vec3 Rr=reflect(-V,n);float dr=-dot(Rr,uUp)-uDsk.y,lb=dr/(uDsk.z+rough*rough*1.6);   // the reflected ray against the disc's rim (0 at the limb), blurred by roughness: rough metal sees the planet past its rim
  vec3 env=mix(uSky*1.3,uGnd,smoothstep(-1.25,.75,lb))+uLimb*exp(-lb*lb*4.);   // the planet in the hull, its blue limb a thin ring
  vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+(m==4?1.:.35))+emis;
@@ -918,7 +927,8 @@ function mkProg(vs,fs){const p=gl.createProgram();
     if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}
   gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
   const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}
-  if(u.uCache){gl.useProgram(p);gl.uniform1i(u.uCache,8)}   // (G3.5) an array sampler left on unit 0 would clash with the 2D ones there
+  if(u.uCache){gl.useProgram(p);gl.uniform1i(u.uCache,8)}
+  if(u.uShT){gl.useProgram(p);gl.uniform1i(u.uShT,16)}   // (Q316) the ship's shadow map keeps unit 16 to itself: a compare sampler can't share a unit with a plain one   // (G3.5) an array sampler left on unit 0 would clash with the 2D ones there
   return{p,u}}
 // city texture: 1024×512 equirectangular, built once on the CPU from CITIES (r = built-up density, g = night lights)
 // the baked world for the ground shader: heights etc. as exact floats (read with texelFetch), climate filtered
@@ -1367,6 +1377,38 @@ precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb
 void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
  o=vec4(c*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// ---- (Q316, BEAUTY B1.3) the ship's own shadows, High only (SHIP_SHADOW; Low: off). One depth map from the light,
+// fitted to the ship: boosters shade the core, fins the skirt, a wide stage the narrow one under it. The ship (and what
+// is docked to it) is drawn once more with MESH_VS's moving parts (PSSM: the same vertex shader without the log depth,
+// no colour), then MESH_FS compares against it on unit 16 (uShT, uShM, uShB). The unit always holds the map (1 px
+// until the first use), so a draw with the lookup off never meets an empty unit.
+// shadowFit: the light's box round a list of [model matrix, bounds] (bounds = [min x,y,z, max x,y,z] in the model's
+// frame): z toward the light L, x along the first model's long axis as the light sees it, so a tall thin rocket fills
+// the square map (its texels are finer across the stack, where one part shades another, than along it). Returns the
+// camera-relative world → clip matrix m, the half-sizes hx, hy and the depth dz (all m).
+let SHIP_SHADOW=true;const SSM_N=2048;
+function shadowFit(list,L){const M0=list[0][0],Y=norm([M0[4],M0[5],M0[6]]);let X=sub(Y,mul(L,dot(Y,L)));if(len(X)<.05){const X0=norm([M0[0],M0[1],M0[2]]);X=sub(X0,mul(L,dot(X0,L)))}
+  X=norm(X);const V=cross(L,X),lo=[1e30,1e30,1e30],hi=[-1e30,-1e30,-1e30];
+  for(const[M,bb]of list)for(let i=0;i<8;i++){const c=[bb[i&1?3:0],bb[i&2?4:1],bb[i&4?5:2]],w=[M[0]*c[0]+M[4]*c[1]+M[8]*c[2]+M[12],M[1]*c[0]+M[5]*c[1]+M[9]*c[2]+M[13],M[2]*c[0]+M[6]*c[1]+M[10]*c[2]+M[14]],q=[dot(w,X),dot(w,V),dot(w,L)];
+    for(let k=0;k<3;k++){if(q[k]<lo[k])lo[k]=q[k];if(q[k]>hi[k])hi[k]=q[k]}}
+  const pad=k=>(hi[k]-lo[k])*.03+.25,cx=(lo[0]+hi[0])/2,cy=(lo[1]+hi[1])/2,hx=(hi[0]-lo[0])/2+pad(0),hy=(hi[1]-lo[1])/2+pad(1),zn=hi[2]+pad(2),dz=zn-lo[2]+pad(2);   // the margin: a swung bell, a turned fin
+  return{m:[X[0]/hx,V[0]/hy,-2*L[0]/dz,0, X[1]/hx,V[1]/hy,-2*L[1]/dz,0, X[2]/hx,V[2]/hy,-2*L[2]/dz,0, -cx/hx,-cy/hy,2*zn/dz-1,1],hx,hy,dz}}
+const SSM_VS=MESH_VS.replace('gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;',''),SSM={tex:null,fb:null,n:0};
+const PSSM=SSM_VS!==MESH_VS?mkProg(SSM_VS,'#version 300 es\nprecision highp float;void main(){}'):null;
+function ssmTarget(n){const D=SSM;if(D.n===n)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
+  gl.activeTexture(gl.TEXTURE16);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,n,n,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_COMPARE_MODE,gl.COMPARE_REF_TO_TEXTURE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_COMPARE_FUNC,gl.LEQUAL);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,D.tex,0);gl.drawBuffers([gl.NONE]);gl.readBuffer(gl.NONE);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);D.n=n;return D}
+ssmTarget(1);
+// the pass: list = [[mesh, model matrix, parts], ...], the ship first; L the light's direction (the sun; the lamp on the
+// desk). Leaves the map's framebuffer and PSSM bound: the caller goes back to the scene. Returns MESH_FS's uShM and uShB
+function shipShadow(list,L,k=1){const T=ssmTarget(SSM_N),F=shadowFit(list.map(x=>[x[1],x[0].bb]),L),tx=2*Math.max(F.hx,F.hy)/T.n,off=1.5*tx;
+  gl.useProgram(PSSM.p);gl.bindFramebuffer(gl.FRAMEBUFFER,T.fb);gl.viewport(0,0,T.n,T.n);gl.clear(gl.DEPTH_BUFFER_BIT);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1.5,2);
+  gl.uniformMatrix4fv(PSSM.u.uVP,false,F.m);
+  for(const[mesh,M,parts]of list){setMoves(PSSM.u,parts);gl.uniformMatrix4fv(PSSM.u.uM,false,M);gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)}
+  gl.disable(gl.POLYGON_OFFSET_FILL);return{m:F.m,b:[k,off,.5*off/F.dz,.5/T.n],fit:F}}
 // ---- the moons (Nyx, and since Q322 slice 2 Selene): one full-screen ray-cast each, after the sky pass. The fragment
 // shader is SKY_FS's helpers (sph, trL, scatter, crat, fbm, detail) plus its own main. Selene (uSel 1) is added on top of
 // the sky pass, which drew the air in front of it and left in alpha what the clouds let through (blend DST_ALPHA, ONE);
@@ -1904,7 +1946,8 @@ function partsMesh(parts){const a=[];UPPER=upperOf(parts);for(const p of parts){
     if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36,1];
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
       else{PK={o:J,k:KIND.collar,R:.25,h:.5,i:p.i??-1};rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}PK=PK0}}
-  UPPER=null;return makeMesh(a)}
+  UPPER=null;const bb=a.length?[1e30,1e30,1e30,-1e30,-1e30,-1e30]:[0,0,0,0,0,0];for(let i=0;i<a.length;i+=VX)for(let k=0;k<3;k++){const x=a[i+k];if(x<bb[k])bb[k]=x;if(x>bb[k+3])bb[k+3]=x}   // (Q316) its bounds, for the shadow map's fit
+  const me=makeMesh(a);me.bb=bb;return me}
 // ---- flight marks: what a flight leaves on the hardware. Render-side only, never read by the sim; kept per part object,
 // so they ride along onto debris and landed stages, and a new flight (new parts) starts clean.
 //   soot  — a burning engine, and the base of the parts within 3 m above it on its stack line; worse at altitude, where

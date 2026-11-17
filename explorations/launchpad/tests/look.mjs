@@ -1277,3 +1277,40 @@
   check('the landing dust and the splash fade to nothing inside their boxes: radial and lid windows, no cut-off threshold, so no square edge (the old fall left 1.6 % at the box side)',
     Object.values(has).every(Boolean) && edge === 0 && corner === 0 && mid === 1, Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · ') + ` · window: side ${edge}, corner ${corner}, half-reach ${mid}; old fall at the side ${(old * 100).toFixed(1)} %`);
 }
+
+// aerofx-57. The ship shades itself (look & sound parts & pad, BEAUTY B1.3, QUEUE Q316 slice 1). On High the ship is
+// drawn once from the light into a depth map fitted to it (shadowFit), and MESH_FS compares against the map: boosters
+// shade the core. The fit holds every corner of the ship's bounds (and of what is docked) inside the map with a margin,
+// puts the ship's long axis along the map's x so the texels across the stack are the fine ones, orders depth toward
+// the light, and stays finite when the light looks straight down the stack. Low never draws the map.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+    len = a => Math.hypot(a[0], a[1], a[2]), norm = a => mul(a, 1 / len(a)), cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const shadowFit = new Function('dot', 'sub', 'mul', 'len', 'norm', 'cross', body('shadowFit') + ';return shadowFit')(dot, sub, mul, len, norm, cross);
+  const clip = (m, p) => [0, 1, 2].map(r => m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r]);
+  const M = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 40, -20, 300, 1], bb = [-3, 0, -3, 3, 50, 3], corners = (M, bb) => Array.from({ length: 8 }, (_, i) => [bb[i & 1 ? 3 : 0] + M[12], bb[i & 2 ? 4 : 1] + M[13], bb[i & 4 ? 5 : 2] + M[14]]);
+  const inside = (F, ps) => ps.every(p => clip(F.m, p).every(x => Math.abs(x) < .98 && Number.isFinite(x)));
+  const side = shadowFit([[M, bb]], norm([1, .3, .2])), down = shadowFit([[M, bb]], [0, 1, 0]), tilt = shadowFit([[M, bb]], norm([.2, .97, -.1]));
+  const holds = inside(side, corners(M, bb)) && inside(down, corners(M, bb)) && inside(tilt, corners(M, bb));
+  const along = side.hx > 25 && side.hx < 30 && side.hy > 3 && side.hy < 6;   // the 50 m stack along x, its 6 m across y
+  const L = norm([1, .3, .2]), c0 = [40, 5, 300], near = clip(side.m, [c0[0] + L[0] * 2, c0[1] + L[1] * 2, c0[2] + L[2] * 2])[2], far = clip(side.m, c0)[2];
+  const depth = near < far && Math.abs((far - near) - 2 * 2 / side.dz) < 1e-9;
+  const M2 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 52, -10, 300, 1], bb2 = [-2, -2, -2, 2, 2, 2], both = shadowFit([[M, bb], [M2, bb2]], L);
+  const docked = inside(both, [...corners(M, bb), ...corners(M2, bb2)]) && !inside(side, corners(M2, bb2));
+  const fs = pg.slice(pg.indexOf('const MESH_FS=`'), pg.indexOf('`;', pg.indexOf('const MESH_FS=`'))), vs = pg.slice(pg.indexOf('const MESH_VS=`'), pg.indexOf('`;', pg.indexOf('const MESH_VS=`')));
+  const Q = new Function(pg.slice(pg.indexOf('const QUAL={'), pg.indexOf('const setGet=')) + ';return QUAL')();
+  const has = {
+    lookup: /if\(uShB\.x>0\.&&ndl>0\.\)/.test(fs) && /uniform highp sampler2DShadow uShT;/.test(fs) && /sun\*=mix\(1\.,sh,uShB\.x\*smoothstep\(0\.,\.1,ndl\)\);/.test(fs),
+    unit: /if\(u\.uShT\)\{gl\.useProgram\(p\);gl\.uniform1i\(u\.uShT,16\)\}/.test(pg) && /\nssmTarget\(1\);/.test(pg),
+    depthVS: vs.includes('gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;') && /const SSM_VS=MESH_VS\.replace\('gl_Position\.z=\(log2\(max\(1e-6,1\.\+gl_Position\.w\)\)\*uFc-1\.\)\*gl_Position\.w;',''\)/.test(pg),
+    pass: /SH=shipShadow\(L,DF\?DF\.lamp:SUN\);gl\.bindFramebuffer\(gl\.FRAMEBUFFER,sceneFB\(\)\);gl\.viewport\(0,0,W,H\);gl\.useProgram\(PMESH\.p\)/.test(pg)
+      && pg.indexOf('SH=shipShadow(') < pg.indexOf('setMarks(m,S.parts);gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);') && /if\(SH\)gl\.uniform4f\(m\.uShB,0,0,0,0\);/.test(pg),
+    bounds: /const me=makeMesh\(a\);me\.bb=bb;return me\}/.test(pg),
+    quality: Q.high.fx.SHIP_SHADOW === 1 && !Q.low.fx.SHIP_SHADOW && /SHIP_SHADOW=!!f\.SHIP_SHADOW;/.test(pg)
+  };
+  check('the ship shades itself on High (Q316): the light\'s box holds the ship and what is docked with a margin, the stack lies along the map, depth runs toward the light; Low draws no map',
+    holds && along && depth && docked && Object.values(has).every(Boolean),
+    `corners inside (light from the side, straight down the stack, nearly so): ${holds} · box ${side.hx.toFixed(1)} × ${side.hy.toFixed(1)} m for a 50 × 6 m stack, a texel ${(2 * side.hx / 2048 * 100).toFixed(1)} cm along and ${(2 * side.hy / 2048 * 100).toFixed(1)} cm across · 2 m toward the light is ${((far - near) / 2 * side.dz).toFixed(2)} m of depth · docked body inside the wider box ${docked} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}

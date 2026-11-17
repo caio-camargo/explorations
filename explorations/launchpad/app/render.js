@@ -151,9 +151,15 @@ function render(){spoolFrame();
   if(!DF&&len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
-  profMark('ship');{const k=bayKey(S)+'|'+depKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
+  {const k=bayKey(S)+'|'+depKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
   {const k=mode==='editor'&&!atRoll&&S.parts.some(p=>p.on&&p.profF&&!p.fj)&&(typeof BLD!=='undefined'&&BLD.fairHidden()?'hid':'cut');   // hidden while building inside (Q512)
   if(k!==S._cutK){const was=S._cutK;S._cutK=k;if(was!==undefined)HOOK.rebuild()}}   // a payload fairing: cut away at the design table, whole on the pad (vehicle, Q337)
+  // (Q316, BEAUTY B1.3) the ship's shadow map, High only: the ship and what is docked to it, from the sun (the lamp on the desk)
+  let SH=null;profMark('ship shadow');if(SHIP_SHADOW&&PSSM&&near&&S.alive&&shipMesh&&shipMesh.bb){const p=shipWorld();if(lit(p)){
+    const L=[[shipMesh,rollTilt(camW,modelQ(S.q,sub(p,camW),mul(S.cm,-1))),S.parts]];for(const a of S.att||[]){const am=satMesh(a.e);if(am.mesh.bb)L.push([am.mesh,modelQ(qmul(S.q,a.q),sub(add(p,qrot(S.q,sub(a.p,S.cm))),camW),mul(a.e.cm,-1)),am.parts])}
+    SH=shipShadow(L,DF?DF.lamp:SUN);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);gl.useProgram(PMESH.p)}}
+  else if(!SHIP_SHADOW&&SSM.n>1)ssmTarget(1);   // Low: the map's memory back
+  profMark('ship');
   if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=groundAlt(S.body,toPF(S.body,sub(p,bc),simT)),hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=rollTilt(camW,modelQ(S.q,sub(p,camW),mul(S.cm,-1)));   /* (rollTilt: lying on the erector in a Steppe rollout, Q193) */
     if(DF){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);   // (Q242) the model's shadow on the drawing, along the lamp
       gl.uniform1f(m.uShadow,.5);gl.uniformMatrix4fv(m.uM,false,deskShadowM(DF,camW,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
@@ -164,9 +170,10 @@ function render(){spoolFrame();
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
       gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
       gl.uniform1f(m.uShadow,0);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS)}
+    if(SH){gl.uniformMatrix4fv(m.uShM,false,SH.m);gl.uniform4fv(m.uShB,SH.b)}
     setMarks(m,S.parts);gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);
     for(const a of S.att||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(S.q,a.q),sub(add(p,qrot(S.q,sub(a.p,S.cm))),camW),mul(a.e.cm,-1)),p)}   // docked bodies
-    gl.uniform1f(m.uSeam,0);
+    gl.uniform1f(m.uSeam,0);if(SH)gl.uniform4f(m.uShB,0,0,0,0);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
   profMark('others');
   // the other vessels in this flight (and whatever they have docked)
