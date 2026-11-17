@@ -2616,3 +2616,55 @@ game (v1.345), nothing built.
 - **Conclusion.** Triangles on the craft are nearly free here: the budget allows roughly 10× today's geometry on both
   GPUs. Q316's order stands, shadows and AO first, then greebles; cap a ship near 150 k vertices unless the rebuild is
   reworked.
+
+## v1.358 — the ship shades itself (2026-11-17, look & sound, parts & pad, QUEUE Q316 slice 1a; BEAUTY B1.3)
+
+Caio, after the triangle study above: "yes go ahead" on Q316, shadows first. On High the ship now casts shadows on
+itself: a booster's nose on the core, a fin on the skirt, a wide stage on the narrow one under it. Low draws none.
+
+- **The map.** One 2048² depth texture (`SSM`, 16 MB, allocated on the first High frame; 1 px before, and again on
+  Low) on texture unit 16, which it keeps to itself (`mkProg` points `uShT` there: a compare sampler can't share a
+  unit with a plain one, and a unit left empty warns on every draw).
+- **The fit** (`shadowFit`, pure, test aerofx-57). The light's box round the ship's bounds (`partsMesh` now returns
+  them as `mesh.bb`) and round what is docked to it: z toward the light, x along the stack as the light sees it, so
+  a 50 × 6 m rocket fills the square map with texels of 2.6 cm along and 0.4 cm across. Across is where one part
+  shades another. A margin of 3 % + 25 cm takes a swung bell or a turned fin. Light straight down the stack falls
+  back to the model's x axis.
+- **The pass** (`shipShadow`, render's stretch `ship shadow`). The ship and its docked bodies drawn once with
+  `PSSM`: `MESH_VS` with its log-depth line removed (so gimbals and fins move in the map as on screen) and an empty
+  fragment shader; polygon offset 1.5, 2. The light is the sun, or the lamp on the Assembly's desk.
+- **The lookup** (`MESH_FS`, only for the ship and its docked bodies: `uShB.x`). The point is pushed off the surface
+  along the mesh normal by 1.5 texels plus 1.2 % of the part's radius (a 28-sided round part's facets sag 0.6 % of
+  it, and without that a smooth-shaded facet shades itself near the terminator), then four bilinear compares half
+  a texel apart. It scales the sun's term only (diffuse and highlight), fades in over the first 0.1 of n·l, and
+  leaves anything outside the box lit.
+- **Measured** (`refset.mjs`, REF_PROF, full resolution, 1262 × 704; before = `main` at v1.355;
+  stills and logs in `output/launchpad/beauty/Q316/`).
+
+  | RTX 5050, High | `ship shadow` ms | `ship` ms before → after | frame ms before → after |
+  |---|---|---|---|
+  | 1 pad (Orbiter) | 0.04 | 0.02 → 0.04 | 3.8 → 5.7 |
+  | 3 orbit | 0.05 | 0.06 → 0.02 | 2.6 → 2.9 |
+  | 6 Big Lunar close-up | 0.12 | 0.14 → 0.10 | 4.2 → 4.8 |
+  | 54 Heavy at Mach 1 | 0.07 | 0.09 → 0.06 | 5.0 → 4.6 |
+  | 56 Heavy, from behind | 0.20 | 0.23 → 0.14 | 2.1 → 1.9 |
+  | 152 the desk | 0.06 | 0.14 → 0.03 | 2.8 → 2.9 |
+
+  The pass is 0.04–0.20 ms, under BEAUTY's estimate (0.3–0.6); the lookup does not show in the `ship` stretch (it
+  moves inside its own noise). The whole-frame numbers move ±1 ms between runs with the sky and the bloom stretch
+  (view 1's 5.7 is the bloom stretch reading 2.1 against 0.8, not the ship), so they don't resolve a 0.1 ms pass.
+  **Intel UHD, Low:** no map, and the frame is unchanged: 26.6 → 27.3, 10.1 → 10.1, 31.9 → 32.0, 39.7 → 40.3 ms
+  (views 1, 3, 6, 54); `ship` 0.16 → 0.15, 0.12 → 0.12, 0.86 → 0.78, 0.31 → 0.30.
+- **Stills.** `close-heavy-on.png` / `close-heavy-off.png` (view 54 from 11 m): the left booster's nose on the core,
+  the dark in the gaps. No acne on round parts, in orbit or on the desk (`close-*.png`).
+- **Not checked.** A person turning the ship in the sun (TESTING 407): edges crawling as the fit turns with the ship,
+  thin parts (antennas, legs) at 2.6 cm texels, a long station with visitors (the box grows with what is docked).
+  The other vessels in a flight, debris and landed craft take no map (one map, the ship's). The pad's tower does
+  not shade the ship, nor the ship the tower (the flat shadow on the ground is unchanged). The parachute's canopy
+  neither casts nor takes. The pass on the Intel GPU on High: one run that came up on High by accident read 0.2 ms.
+- **Noticed.** `refset.mjs` started badly in five of ten runs today, with other sessions busy on the machine: its
+  first line came back `{}`, then every row was null, or a row was shot at the wrong moment, or the setting asked
+  for was not applied. In three of them the page's scripts had not all run (`gl` was the canvas element, not the
+  context). The cause is not found; one guess is that it calls the page as soon as `render` exists. A run whose
+  first line is not `ready in …` is void. Proposed in QUEUE.
+- **Next (slice 1b):** ambient occlusion at joints and steps, on both settings.
