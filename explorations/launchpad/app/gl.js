@@ -652,6 +652,7 @@ void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
 uniform vec3 uSun,uSunCol,uSky,uGnd,uUp,uLimb;uniform vec4 uDsk;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96],uHt[24];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl,uPl2;uniform vec3 uPlC,uPlC2;uniform vec3 uFlC;uniform float uPadM;
+uniform vec4 uAo[96];   // (Q316) per part: how far the part below and the part above stand out past this one (m), and the span of its height that has a neighbour alongside
 uniform mat4 uShM;uniform highp sampler2DShadow uShT;uniform vec4 uShB;   // (Q316) the ship's shadow map: uShB = (strength, normal offset m, depth bias, half a texel)
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
@@ -705,7 +706,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // Part detail, early-era hardware (ship, debris and the builder only). Each part carries its own surface frame: a = angle
  // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
  // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
- int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
+ int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;float ao=clamp(1.-(vK.x-float(k))/.45,0.,1.);k=k%32;bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
  vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint
@@ -891,11 +892,20 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   else{alb*=(.9+.15*n1)*(.96+.06*n3*fd)*foot;}}
  vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
+ // (Q316, BEAUTY B1.3) ambient occlusion. Steps: where the next part in the stack is wider, it is a ledge of width w
+ // over (or under) this wall, and a point d from it has lost .5·(1 − d/√(d²+w²)) of its sky (half at the corner, 15 % one
+ // width away, 5 % at two). Exact per pixel from the part's own frame, so no rings of vertices are needed at the joint. Creases: what a
+ // side-by-side part hides is baked per vertex (shipAO) as if the neighbour ran the part's whole height (a tank has
+ // rings of vertices only at its ends), arrives in the fraction of the part's kind (vK.x), and is cut here to the neighbour's span.
+ if(uSeam>0.&&pi>=0&&pi<96&&k!=14){vec4 aw=uAo[pi];float fl=.5*R+.1,db=max(v,0.),dt=max(h-v,0.);
+  ao=1.-(1.-ao)*smoothstep(aw.z-fl,aw.z,v)*(1.-smoothstep(aw.w,aw.w+fl,v));
+  if(side&&aw.x>0.)ao*=.5+.5*db*inversesqrt(db*db+aw.x*aw.x);if(side&&aw.y>0.)ao*=.5+.5*dt*inversesqrt(dt*dt+aw.y*aw.y);}
+ else ao=1.;
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
  float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
  float ds=uDsk.x,dn=-dot(n,uUp),wp=ds*ds*clamp((dn+ds)/(1.+ds),0.,1.);   // the disc's share of the light on n: sin²α·cos θ, wrapped past its rim
- vec3 sun=uSunCol*uLit,amb=mix(uSky,uGnd,wp);
+ vec3 sun=uSunCol*uLit,amb=mix(uSky,uGnd,wp)*ao;
  // (Q316, BEAUTY B1.3) the ship's own shadow, High only: the point, pushed off the surface along the mesh normal (by the
  // map's texel and by the sag of a 28-sided round part, so a smooth-shaded facet doesn't shade itself), in the light's
  // box; four bilinear compares half a texel apart. Outside the box, and where the surface turns from the light, lit.
@@ -906,6 +916,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    sun*=mix(1.,sh,uShB.x*smoothstep(0.,.1,ndl));}}
  vec3 Rr=reflect(-V,n);float dr=-dot(Rr,uUp)-uDsk.y,lb=dr/(uDsk.z+rough*rough*1.6);   // the reflected ray against the disc's rim (0 at the limb), blurred by roughness: rough metal sees the planet past its rim
  vec3 env=mix(uSky*1.3,uGnd,smoothstep(-1.25,.75,lb))+uLimb*exp(-lb*lb*4.);   // the planet in the hull, its blue limb a thin ring
+ env*=ao;
  vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+(m==4?1.:.35))+emis;
  c+=sun*ndl*F0*metal*rough*.6;   // (Q315) rough metal spreads the sun past its highlight: in orbit, with no planet in its reflection, a bell still reads
  // floodlights: banks on 16 m poles aimed at the pad (uFlC); a soft cone and inverse-square falloff, so the pad and the
@@ -1929,7 +1940,35 @@ function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(
 // the parts on an upper stage: above a decoupler on their own stack line (Q228: Arsenal and Mountain paint stages apart)
 let UPPER=null;
 function upperOf(parts){const decs=parts.filter(q=>q.d.kind==='dec');return new Set(parts.filter(p=>decs.some(q=>q!==p&&Math.abs(q.pos[0]-p.pos[0])<1e-3&&Math.abs(q.pos[2]-p.pos[2])<1e-3&&p.y0>=q.y0+q.h-1e-3)))}
-function partsMesh(parts){const a=[];UPPER=upperOf(parts);for(const p of parts){const n0=a.length;partShape(a,p);
+// ---- (Q316, BEAUTY B1.3) ambient occlusion at joints and steps, worked out when a ship's mesh is built (both settings;
+// a few operations per pixel). a = the vertex array, rg = [[part, first float, end], ...] (a part's own shape, before
+// its collars). Per part, into AOS = [below, above, lo, hi] (MESH_FS's uAo, set by setMarks):
+//   steps   — below, above: how far the stacked neighbour under and over the part stands out past it (m). MESH_FS
+//             turns that ledge into occlusion per pixel;
+//   creases — per vertex, what the round parts on another axis (a side booster against the core) hide of the sky,
+//             taken together as one cylinder of the widest one's radius r: at distance d in the direction c =
+//             cos(normal, toward it) it hides about .7·(r/d)²·c.
+//             Baked as if the neighbour ran the whole height of the part (a tank has vertices only at its ends, so a
+//             fade along it can't be baked) into the fraction of the vertex's kind (aK.x, a whole number per part; .45 = black; the shaders'
+//             int(aK.x+.5) still reads the kind. Not the material: a bell's runs through fractions along its profile); lo, hi: the span of the part's height (m above its bottom) that
+//             really has a neighbour, which MESH_FS cuts the crease to.
+// Posed and tilted parts neither take nor give (their frame is not the stack's). AO_FX = false: none (A/B)
+let AO_FX=true;const AOS=new WeakMap(),AO_ROUND={tank:1,engine:1,pod:1,cone:1,dec:1,adapt:1,hab:1,lab:1,bay:1,shield:1,ballast:1};
+function shipAO(a,rg){const I=[];
+  for(const[p,n0,n1]of rg){if(p.pose||p.tdir||n1<=n0||!p.pos)continue;const x=p.pos[0],z=p.pos[2];let y0=1e30,y1=-1e30;for(let i=n0;i<n1;i+=VX){const y=a[i+1];if(y<y0)y0=y;if(y>y1)y1=y}
+    const e=(y1-y0)*.04+1e-4;let rB=0,rT=0;for(let i=n0;i<n1;i+=VX){const y=a[i+1];if(y>y0+e&&y<y1-e)continue;const dx=a[i]-x,dz=a[i+2]-z,r=dx*dx+dz*dz;if(y<=y0+e&&r>rB)rB=r;if(y>=y1-e&&r>rT)rT=r}
+    rB=Math.sqrt(rB);rT=Math.sqrt(rT);I.push({p,n0,n1,x,z,y0,y1,rB,rT,round:!!AO_ROUND[p.d.kind],w:null})}
+  for(const A of I){let wb=0,wt=0;for(const B of I){if(B===A||!B.round||Math.abs(B.x-A.x)>1e-3||Math.abs(B.z-A.z)>1e-3)continue;
+      if(Math.abs(B.y1-A.y0)<.03)wb=Math.max(wb,B.rT-A.rB);if(Math.abs(B.y0-A.y1)<.03)wt=Math.max(wt,B.rB-A.rT)}
+    A.w=[wb,wt,0,0];AOS.set(A.p,A.w)}
+  // the round parts by axis: a booster's tank, nose and engine are one neighbour, not three (three would hide the sky three times over)
+  const G=new Map();for(const B of I){const rM=Math.max(B.rB,B.rT);if(!B.round||rM<.05)continue;const k=Math.round(B.x*100)+','+Math.round(B.z*100);let q=G.get(k);if(!q)G.set(k,q={x:B.x,z:B.z,r:0,y0:1e30,y1:-1e30});
+    q.r=Math.max(q.r,rM);q.y0=Math.min(q.y0,B.y0);q.y1=Math.max(q.y1,B.y1)}
+  for(const A of I)for(const q of G.values()){const dA=Math.hypot(q.x-A.x,q.z-A.z);if(dA<.02||dA>Math.max(A.rB,A.rT)+3*q.r||A.y0>q.y1||A.y1<q.y0)continue;
+    const py=A.p.y0||0,lo=q.y0-py,hi=q.y1-py;if(A.w[2]===A.w[3]){A.w[2]=lo;A.w[3]=hi}else{A.w[2]=Math.min(A.w[2],lo);A.w[3]=Math.max(A.w[3],hi)}
+    for(let i=A.n0;i<A.n1;i+=VX){const dx=q.x-a[i],dz=q.z-a[i+2],nd=a[i+3]*dx+a[i+5]*dz;if(nd<=0)continue;const d=Math.sqrt(dx*dx+dz*dz);if(d<1e-4)continue;   // facing away: nothing (most vertices)
+      const c=nd/d,s=Math.min(1,q.r/d),m=a[i+14],k=Math.round(m);a[i+14]=k+.45*(1-(1-(m-k)/.45)*(1-.7*s*s*c))}}}
+function partsMesh(parts){const a=[],rg=[];UPPER=upperOf(parts);for(const p of parts){const n0=a.length;partShape(a,p);rg.push([p,n0,a.length]);
     if(p.tdir){const q=tiltQ(p.tdir),m=[p.pos[0],p.y0+p.h,p.pos[2]];for(let i=n0;i<a.length;i+=VX){
       const v=qrot(q,[a[i]-m[0],a[i+1]-m[1],a[i+2]-m[2]]),nn=qrot(q,[a[i+3],a[i+4],a[i+5]]);a[i]=v[0]+m[0];a[i+1]=v[1]+m[1];a[i+2]=v[2]+m[2];a[i+3]=nn[0];a[i+4]=nn[1];a[i+5]=nn[2]}}
     // the interstage cover (Q102 step 4): a decoupler with an engine sitting right on top of it gets a cover around that
@@ -1948,7 +1987,7 @@ function partsMesh(parts){const a=[];UPPER=upperOf(parts);for(const p of parts){
     if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36,1];
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
       else{PK={o:J,k:KIND.collar,R:.25,h:.5,i:p.i??-1};rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}PK=PK0}}
-  UPPER=null;const bb=a.length?[1e30,1e30,1e30,-1e30,-1e30,-1e30]:[0,0,0,0,0,0];for(let i=0;i<a.length;i+=VX)for(let k=0;k<3;k++){const x=a[i+k];if(x<bb[k])bb[k]=x;if(x>bb[k+3])bb[k+3]=x}   // (Q316) its bounds, for the shadow map's fit
+  UPPER=null;if(AO_FX)shipAO(a,rg);const bb=a.length?[1e30,1e30,1e30,-1e30,-1e30,-1e30]:[0,0,0,0,0,0];for(let i=0;i<a.length;i+=VX)for(let k=0;k<3;k++){const x=a[i+k];if(x<bb[k])bb[k]=x;if(x>bb[k+3])bb[k+3]=x}   // (Q316) its bounds, for the shadow map's fit
   const me=makeMesh(a);me.bb=bb;return me}
 // ---- flight marks: what a flight leaves on the hardware. Render-side only, never read by the sim; kept per part object,
 // so they ride along onto debris and landed stages, and a new flight (new parts) starts clean.
@@ -1963,7 +2002,7 @@ function partsMesh(parts){const a=[];UPPER=upperOf(parts);for(const p of parts){
 //           layer, from the plasma's heat level k (wallT), not the part's p.T: the sim's p.T is the part's bulk, a lumped
 //           thermal mass that peaks far lower (700 K on a shield, 920 K on a bare pod; scratch study 2026-10-12). Heats over
 //           ~2 s, cools over ~6 s once the air thins or slows. MESH_FS glows it as a blackbody.
-const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4),HTA=new Float32Array(96);
+const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4),HTA=new Float32Array(96),AOA=new Float32Array(96*4);
 // the skin's surface temperature for a heat level k (plasmaHeat's scale: k ≈ 1 at the peak of a low-orbit return,
 // 1.5 coming back from Selene); the ambient below the plasma
 const wallT=k=>k>0?700+1000*k:290,hotTo=(m,k,dt)=>{const tg=wallT(k);m.hot+=(tg-m.hot)*(1-Math.exp(-dt/(tg>m.hot?2:6)))};
@@ -2001,7 +2040,9 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
       if(!d.mkSplash){d.mkSplash=true;splashFx({body:d.body,r:d.r,touchV:d.mkV||10,mass:d.mass,radius:d.mkR})}surfFx(d,d.body,d.r,d.q,d.len||4,d.mkR,dt)}
     for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12);hotTo(m,kH,dt)}}}
 // the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
-function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
+function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);AOA.fill(0);for(const p of parts){const i=p.i,w=AOS.get(p);if(w&&i!=null&&i>=0&&i<96)AOA.set(w,i*4)}   // (Q316) the steps' ledges, the creases' spans
+  gl.uniform4fv(u['uAo[0]'],AOA);
+  for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
     CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4);HTA[i]=m.hot||0}
   gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA);gl.uniform4fv(u['uHt[0]'],HTA);setMoves(u,parts)}

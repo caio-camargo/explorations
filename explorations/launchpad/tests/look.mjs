@@ -1314,3 +1314,44 @@
     holds && along && depth && docked && Object.values(has).every(Boolean),
     `corners inside (light from the side, straight down the stack, nearly so): ${holds} · box ${side.hx.toFixed(1)} × ${side.hy.toFixed(1)} m for a 50 × 6 m stack, a texel ${(2 * side.hx / 2048 * 100).toFixed(1)} cm along and ${(2 * side.hy / 2048 * 100).toFixed(1)} cm across · 2 m toward the light is ${((far - near) / 2 * side.dz).toFixed(2)} m of depth · docked body inside the wider box ${docked} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
+
+// aerofx-58. Ambient occlusion at joints and steps (look & sound parts & pad, BEAUTY B1.3, QUEUE Q316 slice 1b). shipAO,
+// run when a ship's mesh is built: a side booster darkens the strip of the core that faces it (and its own side toward
+// the core), baked per vertex into the fraction of the part's kind, with the span of the part's height that has the neighbour
+// alongside; a narrower part under or over a wider one gets the ledge's width, which MESH_FS turns into occlusion per
+// pixel. Fins and posed parts neither give nor take. The ambient light and the reflection are scaled, never the sun.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const VX = 16, AOS = new WeakMap(), ROUND = new Function(pg.slice(pg.indexOf('AO_ROUND={') - 6, pg.indexOf(';', pg.indexOf('AO_ROUND={'))).replace(/^.*?AO_ROUND=/, 'return '))();
+  const shipAO = new Function('VX', 'AOS', 'AO_ROUND', body('shipAO') + ';return shipAO')(VX, AOS, ROUND);
+  // a wall: rings at y0 and y1, 28 round, material mat
+  const cyl = (a, x, z, y0, y1, r0, r1, mat = 0) => { for (const [y, r] of [[y0, r0], [y1, r1]]) for (let k = 0; k < 28; k++) { const g = k / 28 * 2 * Math.PI, c = Math.cos(g), s = Math.sin(g);
+    a.push(x + c * r, y, z + s * r, c, 0, s, 1, 1, 1, mat, k / 28, y - y0, r0, y1 - y0, 1, 0) } };
+  const part = (kind, x, z, y0, more) => ({ d: { kind }, pos: [x, 0, z], y0, ...more }), a = [], rg = [];
+  const add = (p, y1, r0, r1, mat) => { const n = a.length; cyl(a, p.pos[0], p.pos[2], p.y0, y1, r0, r1, mat); rg.push([p, n, a.length]); return n };
+  const core = part('tank', 0, 0, 0), boo = part('tank', 1.9, 0, 2), fins = part('fins', 0, 0, 0), top = part('tank', 0, 0, 10), eng = part('engine', 0, 0, -1.5), posed = part('tank', 1.9, 0, 3, { pose: {} });
+  const nC = add(core, 10, 1.25, 1.25, 2), nB = add(boo, 8, .6, .6), nF = add(fins, 1, 2.5, 2.5), nT = add(top, 14, .6, .6), nE = add(eng, 0, .5, .3), nP = add(posed, 5, .6, .6);
+  shipAO(a, rg);
+  const fr = (n0, ring, k) => { const m = a[n0 + (ring * 28 + k) * VX + 14]; return m - Math.round(m) }, mat = (n0, k) => a[n0 + k * VX + 9], kind = (n0, k) => Math.round(a[n0 + k * VX + 14]);
+  const occ = f => f / .45, wC = AOS.get(core), wB = AOS.get(boo), wT = AOS.get(top), wE = AOS.get(eng), wF = AOS.get(fins);
+  const crease = occ(fr(nC, 0, 0)) > .5 && occ(fr(nC, 0, 0)) < .7 && fr(nC, 0, 1) > 0 && fr(nC, 0, 1) < fr(nC, 0, 0) && fr(nC, 0, 7) === 0 && fr(nC, 0, 14) === 0 && fr(nC, 1, 0) === fr(nC, 0, 0)
+    && occ(fr(nB, 0, 14)) > .5 && fr(nB, 0, 0) === 0 && mat(nC, 0) === 2 && mat(nB, 14) === 0 && kind(nC, 0) === 1 && kind(nB, 14) === 1 && kind(nC, 14) === 1;   // the material untouched, the kind still reads
+  const span = wC[2] === 2 && wC[3] === 8 && wB[2] === -3.5 && wB[3] === 12 && wT[2] === 0 && wT[3] === 0;   // the booster runs from 2 to 8 m up the core; the core stack (engine to top stage) runs from 3.5 m under the booster.s foot to 12 m over it
+  const steps = Math.abs(wT[0] - .65) < 1e-9 && wT[1] === 0 && Math.abs(wE[1] - .95) < 1e-9 && wE[0] === 0 && wC[0] === 0 && wC[1] === 0 && wF.every(x => x === 0);
+  const none = !AOS.has(posed) && Array.from({ length: 56 }, (_, k) => fr(nP, 0, k)).every(x => x === 0) && Array.from({ length: 56 }, (_, k) => fr(nF, 0, k)).every(x => x === 0);
+  // the ledge, as MESH_FS computes it: the share of sky left at d from a ledge of width w
+  const left = (d, w) => .5 + .5 * d / Math.sqrt(d * d + w * w), ledge = left(0, .65) === .5 && Math.abs(left(.65, .65) - .8536) < 1e-3 && left(6.5, .65) > .99;
+  const fs = pg.slice(pg.indexOf('const MESH_FS=`'), pg.indexOf('`;', pg.indexOf('const MESH_FS=`')));
+  const has = {
+    decode: /sch=\(k\/32\)%8;float ao=clamp\(1\.-\(vK\.x-float\(k\)\)\/\.45,0\.,1\.\);k=k%32;/.test(fs),
+    cut: /ao=1\.-\(1\.-ao\)\*smoothstep\(aw\.z-fl,aw\.z,v\)\*\(1\.-smoothstep\(aw\.w,aw\.w\+fl,v\)\);/.test(fs),
+    ledge: /if\(side&&aw\.x>0\.\)ao\*=\.5\+\.5\*db\*inversesqrt\(db\*db\+aw\.x\*aw\.x\);if\(side&&aw\.y>0\.\)ao\*=\.5\+\.5\*dt\*inversesqrt\(dt\*dt\+aw\.y\*aw\.y\);/.test(fs),
+    light: /amb=mix\(uSky,uGnd,wp\)\*ao;/.test(fs) && /\n env\*=ao;\n/.test(fs) && /vec3 sun=uSunCol\*uLit,/.test(fs),
+    bake: /partShape\(a,p\);rg\.push\(\[p,n0,a\.length\]\);/.test(pg) && /if\(AO_FX\)shipAO\(a,rg\);/.test(pg),
+    uniform: /if\(w&&i!=null&&i>=0&&i<96\)AOA\.set\(w,i\*4\)/.test(pg) && /gl\.uniform4fv\(u\['uAo\[0\]'\],AOA\);/.test(pg)
+  };
+  check('ambient occlusion at joints and steps (Q316): a booster darkens the strip of the core that faces it, along its own span; a narrow stage under or over a wide one gets its ledge; fins and posed parts neither give nor take; the sun is untouched',
+    crease && span && steps && none && ledge && Object.values(has).every(Boolean),
+    `core facing the booster ${(occ(fr(nC, 0, 0)) * 100).toFixed(0)} % hidden, 13° round ${(occ(fr(nC, 0, 1)) * 100).toFixed(0)} %, at 90° ${(occ(fr(nC, 0, 7)) * 100).toFixed(0)} % · booster toward the core ${(occ(fr(nB, 0, 14)) * 100).toFixed(0)} % · span on the core ${wC[2]}–${wC[3]} m · ledges: the stage over the core ${wT[0].toFixed(2)} m, the engine under it ${wE[1].toFixed(2)} m · sky left at a ledge: ${left(0, .65)} at the corner, ${left(.65, .65).toFixed(2)} one width away · crease ${crease} span ${span} steps ${steps} none ${none} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
