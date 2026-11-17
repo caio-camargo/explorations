@@ -3012,3 +3012,51 @@ flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor
 - **Nobody has placed a part by hand.** The pointer was synthetic, from a script; how it feels is Caio's (TESTING 403).
 - A part on the far side of the frame is reached by orbiting, as anywhere in the builder.
 - Tilt (slice 3, Q619) is next; views (slice 4) give the cone while held.
+
+## v1.357 — tilt: a mounted part leans in 15° steps on a bracket (bench slice 3, 2026-11-17, vehicle session, QUEUE Q619, D47 point 1, D21)
+
+**Why:** slice 3 of the bench plan (§ "Plan: the bench as its own builder"). The mock-up's tilt keys worked for Caio; his one
+complaint there was that a tilted part's base half sank into the frame, so a tilted part stands on a bracket.
+
+**What:**
+- **In the tree** (sim/vessel.js): a mounted node may carry `ti: [a, b, r]`, whole 15° steps: `a` right (+) or left, `b` up
+  (+) or down, each within ±6 (±90°), as seen from outside a side face; `r` a turn about the way out, 0 to 23. `mountTilt`
+  reads and clamps it (non-integers round, out-of-range clamps, a turn wraps); `mountTiltStep` is one key press;
+  `mountTiltName` says it (*30° right, 45° up*). A part may allow only some steps across and along (`tiS`): the boom antenna
+  `bant` keeps D21's 0°, 45° and 90° (a press is 45°, a saved 30° reads as 45°). Only `ti` is new: no field changes for an
+  untilted part, and the 19 presets lay out as before.
+- **The pose** (`mountPose`, which now takes the node's `ti`): the upright rotation turned about the foot in the place's own
+  axes (u across, n out, u × n), the mock-up's order (turn, then up, then right). **The bracket**: the part is lifted along n
+  just far enough that its bounding cylinder clears the plane through its foot (`poseSink`, closed form: for a stack part
+  r·√(1 − cos²a·cos²b), so r·sin θ for a lean θ one way). The pose carries `bk`, the bracket as a vector from its foot on the
+  frame; the joint is at that foot. The bracket has no mass (plan § 1, "tilt costs nothing"). `partC`, `partAxis`,
+  `partBox`, `geom`, `payEnvelope` and the fairing fit read the tilted pose with no change; `assemble`, `shapeOf` and the
+  builder's ghost carry `bk`.
+- **Drawn** (app/gl.js `partShape`): a grey rod from the frame to the part's foot, with a dark foot plate, when the bracket is
+  over 4 mm.
+- **The builder** (builder.js): on the bench, **A D** tilt right and left, **W S** up and down, **Q E** turn, for the held part
+  (before it is placed: the ghost leans) or the selected mounted part. The card gets a *tilt* row: the six buttons,
+  *straight*, and *30° right, 45° up · on a 16 cm bracket*. The line by the pointer names the held part's tilt and says
+  *WASD QE tilt*; the help line under the view shows the keys on the bench only; the Assembly's key list (screens.js) has a
+  line for them. X stays symmetry, so *straight* is a button only (the mock-up had it on X).
+
+**Checks:**
+- `vehicle-51`: the bracket's height at 15°, 45° and 90° up, 45° left, 45° both ways (r·√0.75) and none for a turn alone;
+  tilted 90° up a sphere points straight up from a foot r out, its centre where the hand numbers put it, the same mass; the
+  clamp and the key steps; a boom asked for 30° gets 45°'s pose; a solar wing tilted 90° up stands out from the face and the
+  envelope reaches its tip's rim, hypot(0.354 + h, r), over exactly the three bands it spans (upright it stays inside the
+  frame's 0.5 m); a save and a registered shape keep the tilt and the bracket.
+- **Robot row 406** (`node playtest.mjs 406`, Chrome on the GPU, `.game-busy` taken): a sphere on a side, selected; W W W D D
+  gives `[2,3,0]` and a 16 cm bracket in the card; *straight* clears it; six presses of the card's ▲ W stand it straight up on
+  a 20 cm bracket; a held boom antenna takes one W as 45° and keeps it when placed (21 cm bracket). Shots looked at: the rods
+  show, the sphere and the boom lean off the face, the help line lists the keys.
+- Smoke and lint clean.
+
+**Not done, not checked:**
+- **Nobody has tilted a part by hand** (TESTING 406); whether A/D/W/S read right from every side, and on the top, bottom,
+  edges and corners (where "up" is the place's own axis, not the screen's), is Caio's to say.
+- The bracket clears the surface's plane, not neighbouring parts: a tilted part is tested for room by the same row of spheres
+  as before (slice 2), and the rod itself is not.
+- A deployed wing or boom is longer than the folded part the envelope and the bracket read (as for upright parts: point 3).
+- Wings on the top or bottom face still have a meaningless `phi` (from slice 2).
+- Views (slice 4, Q620) are next: a tilt is what a view's cone will follow.

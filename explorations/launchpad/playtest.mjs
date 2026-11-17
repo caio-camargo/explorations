@@ -1131,6 +1131,23 @@ ROWS[403] = {title: 'the bench places by pointer on a frame (Q618)', steps: [QB4
     return {held, bin, grabbed: !!BLD.st.grab, waits, moved: mountName(BLD.st.slot && BLD.st.slot.at) || 'off the frame'} })()`, {shot: 'held'},
   `(async () => { document.getElementById('bldbin').click(); await QB.wait(150); return {held: !!BLD.st.held, kids: QB.kids(), bin: document.getElementById('bldbin').style.display} })()`],
   checks: {placed: `QB.kids().join(' / ')`}, expect: {placed: v => /sph4 side \d, middle/.test(v) === false && /scam side edge/.test(v) && /batt3 top corner/.test(v)}};
+// 406 (vehicle, Q619, bench slice 3): on the payload bench, a propellant sphere on a side of a 1 × 0.8 m square frame,
+// selected, tilted by the keys (W up three times: 45°, then D right twice: 30°) and by the card's buttons (straight, then up
+// to 90°); a boom antenna held, tilted with W (one press is 45°), and put on another side by pointer
+const KEY406 = `window.QK = k => window.dispatchEvent(new KeyboardEvent('keydown', {key: k, bubbles: true})); true`;
+ROWS[406] = {title: 'the bench tilts a mounted part on a bracket (Q619)', steps: [QB403, KEY406,
+  `(async () => { go('assembly'); await QB.wait(300); BLD.benchOpen(null); await QB.wait(200); BLD.load({v: 2, root: {k: 'frame', fr: {n: 4, w: 1, h: 0.8, top: 1}, c: [{k: 'core6', at: 'u', c: []}, {k: 'sph4', at: {f: 's0', s: .5, t: .5}, c: []}]}}); await QB.wait(800);
+    BLD.st.sel = stackDef.root.c.find(c => c.k === 'sph4'); BLD.panel(); for (const k of 'wwwdd') { QK(k); await QB.wait(60) } await QB.wait(300);
+    const p = S.parts.find(q => q.d.key === 'sph4'), card = [...document.querySelectorAll('.bsel .sub')].map(e => e.innerText).join(' | ');
+    return {ti: JSON.stringify(stackDef.root.c.find(c => c.k === 'sph4').ti), bracket: p.pose.bk ? Math.round(Math.hypot(...p.pose.bk) * 100) + ' cm' : 'none', card} })()`, {shot: 'tilted'},
+  `(async () => { const b = t => [...document.querySelectorAll('.bsel button')].find(e => e.innerText.trim() === t); b('straight').click(); await QB.wait(200); const st = JSON.stringify(stackDef.root.c.find(c => c.k === 'sph4').ti || null);
+    for (let i = 0; i < 6; i++) { b('▲ W').click(); await QB.wait(80) } await QB.wait(300); const p = S.parts.find(q => q.d.key === 'sph4');
+    return {afterStraight: st, ti: JSON.stringify(stackDef.root.c.find(c => c.k === 'sph4').ti), axis: partAxis(p).map(v => +v.toFixed(3)), bracket: Math.round(Math.hypot(...p.pose.bk) * 100) + ' cm'} })()`, {shot: 'up90'},
+  `(async () => { BLD.st.sel = null; BLD.grab('bant'); await QB.wait(60); QK('w'); await QB.wait(60); const held = JSON.stringify(BLD.st.held.ti); const G = QB.G();
+    const xy = QB.at(QB.F(QB.mix([.25, .25, .25, .25], [G.B[1], G.B[2], G.T[1], G.T[2]]))); QB.ev('mousemove', xy); await QB.wait(150); const at = mountName(BLD.st.slot && BLD.st.slot.at);
+    QB.click(xy); await QB.wait(300); const n = stackDef.root.c.find(c => c.k === 'bant');
+    return {held, at, ti: JSON.stringify(n && n.ti), bracket: (p => p && p.pose.bk ? Math.round(Math.hypot(...p.pose.bk) * 100) + ' cm' : 'none')(S.parts.find(q => q.d.key === 'bant'))} })()`, {shot: 'boom'}],
+  checks: {ti: `JSON.stringify(stackDef.root.c.map(c => c.ti || null))`}, expect: {ti: v => v === '[null,[0,6,0],[0,3,0]]'}};
 // builder rows (test bench, 2026-10-13): each design built as the row describes, then the Assembly's own lines read back
 // (the Control and Aerodynamics blocks, Touchdown), and the Rollout's checks where the row asks
 const PANEL = `PT.panel = re => document.body.innerText.split(String.fromCharCode(10)).filter(l => re.test(l)).slice(0, 14); true`;

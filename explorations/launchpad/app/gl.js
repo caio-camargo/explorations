@@ -1686,7 +1686,9 @@ function partShape(out,p){
   // (Q618) a part mounted on a frame: drawn in its own frame (a stack part up +Y from its base, a surface part's outer side
   // +X, centred on its foot), then turned and moved onto its foot
   if(p.pose){const a=[],q=p.pose.q,f=p.pose.f;partShape(a,{...p,pose:null,pos:[0,0,0],y0:p.pose.sf?-p.h/2:0,phi:0});
-    for(let i=0;i<a.length;i+=VX){const P=qrot(q,[a[i],a[i+1],a[i+2]]),N=qrot(q,[a[i+3],a[i+4],a[i+5]]);out.push(P[0]+f[0],P[1]+f[1],P[2]+f[2],N[0],N[1],N[2]);for(let k=6;k<VX;k++)out.push(a[i+k])}return}
+    for(let i=0;i<a.length;i+=VX){const P=qrot(q,[a[i],a[i+1],a[i+2]]),N=qrot(q,[a[i+3],a[i+4],a[i+5]]);out.push(P[0]+f[0],P[1]+f[1],P[2]+f[2],N[0],N[1],N[2]);for(let k=6;k<VX;k++)out.push(a[i+k])}
+    const bk=p.pose.bk;if(bk&&len(bk)>.004){const r=clamp(.25*(p.d.r||.05),.012,.03);tube(out,sub(f,bk),f,r,C.G,8,true);tube(out,sub(f,mul(bk,1.02)),sub(f,mul(bk,.96)),r*2.2,C.D,10,true)}   // (Q619) the bracket a tilted part stands on, its foot plate on the frame
+    return}
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
   const d=p.d,sch=partSchool(p);PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch,hq:partHue(p),up:sch>=2&&UPPER&&UPPER.has(p)?1:0};partBody(out,p);PK=PK0}

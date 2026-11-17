@@ -1382,3 +1382,46 @@ return out`);
   check('vehicle-50: the bench places by pointer on a frame: its prism is hit face by face; corners, edges and middles snap, snapping off places anywhere; the place is named',
     okRay && okSnap && okTop && okName, `rays ${okRay}; snaps ${okSnap} (${[a1, a2, a3, a4, a6].map(x => JSON.stringify(x)).join(' ')}); top ${okTop}; words ${okName} (${W.join(' · ')})`);
 }
+
+// vehicle-51. Tilt (vehicle, QUEUE Q619, bench slice 3; D47 point 1, D21): a mounted part's ti [a, b, r] in 15° steps turns
+// it about its foot in the place's own axes; it stands on a massless bracket along the normal just tall enough that its
+// bounding cylinder clears the surface (a stack part's: r·sin of its lean); a boom keeps D21's 45° steps; the fairing's
+// envelope reads the tilted shape; a save keeps the tilt.
+{
+  const P = api.PARTS, near = (a, b, e = 1e-9) => Math.abs(a - b) < e, nearV = (a, b, e = 1e-9) => a.every((x, i) => near(x, b[i], e));
+  const c = Math.SQRT1_2, fr = { n: 4, w: 1, h: 1, top: 1 }, S = d => api.newShip(JSON.parse(JSON.stringify(d)));
+  const pay = kids => ({ v: 2, root: { k: 'frame', fr, c: kids } }), sp = P.sph4;
+  // face s0 of a 1 × 1 m square frame: foot (0.25, 0.5, 0.25), out n = (c, 0, c), across u = (−c, 0, c), up the face +y
+  const one = ti => { const s = S(pay([{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5 }, ti, c: [] }])); return { s, f: s.parts.find(p => p.d.key === 'frame'), p: s.parts.find(p => p.d.key === 'sph4') }; };
+  const n0 = [c, 0, c], lift = p => p.pose.bk ? Math.hypot(...p.pose.bk) : 0;
+  // (a) the bracket's height: r·sin θ for a lean θ across or along, r·√(1 − cos²a·cos²b) for both; none for a turn alone
+  const L = [[0, 1, 0], [0, 3, 0], [0, 6, 0], [-3, 0, 0], [3, 3, 0], [0, 0, 6]].map(t => lift(one(t).p)), sn = x => Math.sin(x * Math.PI / 180);
+  const okLift = near(L[0], sp.r * sn(15)) && near(L[1], sp.r * sn(45)) && near(L[2], sp.r) && near(L[3], sp.r * sn(45)) && near(L[4], sp.r * Math.sqrt(1 - 0.25)) && L[5] === 0;
+  // (b) where it points and stands: up 90° it points straight up from a foot r out along the normal, its centre h·cm above;
+  // right 45° it leans toward −u; the bracket's foot is the upright foot. Tilt costs nothing: the mass is unchanged
+  const u90 = one([0, 6, 0]), r45 = one([3, 0, 0]), up0 = one(null), F0 = up0.p.pose.f, F90 = F0.map((v, i) => v + n0[i] * sp.r);
+  const okAim = nearV(api.partAxis(u90.p), [0, 1, 0]) && nearV(u90.p.pose.f, F90) && nearV(api.partC(u90.p), [F90[0], F90[1] + sp.h * sp.cm, F90[2]]) &&
+    nearV(F0.map((v, i) => v + u90.p.pose.bk[i] - u90.p.pose.f[i]), [0, 0, 0]) && nearV(api.partAxis(r45.p), [c * c + 0.5, 0, c * c - 0.5].map(v => v), 1e-9) &&
+    near(u90.s.mass, up0.s.mass) && near(api.partBox(u90.p).hi - api.partBox(u90.p).lo, sp.h);
+  // (c) the clamp: whole steps, ±6 across and along, the turn round 24; a boom only at 0°, 45°, 90°; one key press each way
+  const T = api.mountTilt, St = api.mountTiltStep, B = P.bant;
+  const okClamp = T([9, -8, 25.4]).join() === '6,-6,1' && T([1.4, 0, -1]).join() === '1,0,23' && T('x').join() === '0,0,0' && T([2, 4, 0], B).join() === '3,3,0' && T([-1, 0, 0], B).join() === '0,0,0' &&
+    St([3, 0, 0], B, 0, 1).join() === '6,0,0' && St([6, 0, 0], B, 0, 1).join() === '6,0,0' && St(null, B, 1, -1).join() === '0,-3,0' && St(null, sp, 0, 1).join() === '1,0,0' &&
+    St([1, 0, 0], sp, 0, -1) === null && St([0, 0, 23], sp, 2, 1) === null && St([6, 0, 0], sp, 0, 1).join() === '6,0,0' &&
+    api.mountTiltName([3, -2, 4], sp) === '45° right, 30° down, turned 60°' && api.mountTiltName(null, sp) === 'straight';
+  const boom = ti => S(pay([{ k: 'bant', at: { f: 's0', s: 0.5, t: 0.5 }, ti, c: [] }])).parts.find(p => p.d.key === 'bant').pose, b2 = boom([0, 2, 0]), b3 = boom([0, 3, 0]);
+  const okBoom = nearV(b2.q, b3.q) && nearV(b2.f, b3.f) && near(Math.hypot(...b3.bk), api.poseSink(b3.q, B, true, n0), 1e-9);   // 30° asked is read as 45°
+  // (d) a tilted wing's envelope: upright it lies on the face within the frame's reach; tilted up 90° it stands straight out,
+  // its length along the normal from its bracket's foot (a bracket half its length), so for its 12 cm of height the envelope
+  // reaches its tip's rim, hypot(0.354 + h, r) from the axis
+  const wE = ti => api.payEnvelope(pay([{ k: 'wpanel', at: { f: 's0', s: 0.5, t: 0.5 }, ti, c: [] }])), W0 = wE(null), W1 = wE([0, 6, 0]), w = P.wpanel;
+  const tip = Math.hypot(Math.hypot(0.25, 0.25) + w.h, w.r), on = W1.filter(b => b.y0 < 0.5 + 2 * w.r - 1e-9 && b.y1 > 0.5 + 1e-9);
+  const okEnv = W0.every(b => near(b.r, 0.5, 1e-9)) && on.length === 3 && on.every(b => near(b.r, tip, 1e-6)) && W1.filter(b => !on.includes(b)).every(b => near(b.r, 0.5, 1e-9));
+  // (e) a save reads back the same tilted craft; a registered shape keeps the bracket
+  const s5 = S(JSON.parse(JSON.stringify(pay([{ k: 'sph4', at: { f: 's0', s: 0.5, t: 0.5 }, ti: [3, 3, 0], c: [] }])))), b5 = s5.parts.find(p => p.d.key === 'sph4'), t33 = one([3, 3, 0]);
+  const sh = JSON.parse(JSON.stringify(api.shapeOf(t33.s.parts.filter(p => p.on), false))).find(o => o.k === 'sph4');
+  const okSave = nearV(s5.cm, t33.s.cm) && nearV(s5.I, t33.s.I) && nearV(b5.pose.q, t33.p.pose.q) && !!sh.pose.bk && nearV(sh.pose.bk, t33.p.pose.bk);
+  check('vehicle-51: a mounted part tilts in 15° steps on a bracket r·sin θ tall; it points and stands where the hand numbers say; the clamp and a boom\'s 45° steps; a tilted wing\'s envelope; a save keeps the tilt',
+    okLift && okAim && okClamp && okBoom && okEnv && okSave,
+    `bracket ${okLift} (${L.map(x => x.toFixed(4)).join(' ')}); aim ${okAim} (axis ${api.partAxis(r45.p).map(v => v.toFixed(3))}); clamp ${okClamp}; boom ${okBoom}; envelope ${okEnv} (${on.length} bands at ${on.map(b => b.r.toFixed(3))} vs ${tip.toFixed(3)}); save ${okSave}`);
+}
