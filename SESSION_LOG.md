@@ -8057,3 +8057,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** G4 (shadows): its near shadow rays should read the cache.
 - Files: launchpad `app/gl.js`, `app/render.js`, `terrain-probe.js`, `GROUND.md`, `notes/world.md`, `NOTES.md`,
   `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## Session 2026-11-17 — Launchpad v1.355: qualifications, crew slice 2 (Q458)
+- **Operator:** Caio, with Claude (space session, Opus 5.5).
+- **What:** qualifications earned by doing: a type is the capsule (2 simulator hours or one real flight); rendezvous
+  (1 km, 5 m/s), docking and landing (upright on legs under 4 m/s) by two clean simulator completions or one real;
+  time in type (real hours double); credited in `missionEnd` and after `simEnd`'s restore; a crew lost in a run learns
+  nothing. The field geology course (30 days off the roster, 0.2 M). Crew cards with badges and the memorial in
+  Program › Company. Debrief: "Qualified: …".
+- **Merge:** renumbered v1.354 → v1.355 (G3.5 took it). CI 44153337231 green; ff-merged.
+- **Not checked:** in a browser (TESTING 404). The simulator still has no UI, so simulator training is only reachable
+  from tests and the console.
+- **Next:** slice 3 (the pilot's modes by qualification, Q134 re-planned, vehicle) uses `quals`; Q624 (who enforces requalification).
+- Files: launchpad `sim/crew.js`, `sim/program.js`, `sim/space.js`, `sim/flight.js`, `sim/debrief.js`, `app/program-ui.js`,
+  `app/editor.js`, `app/debrief.js`, `app/screens.js`, `index.html`, `tests/economy.mjs`, `notes/economy.md`, `NOTES.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
