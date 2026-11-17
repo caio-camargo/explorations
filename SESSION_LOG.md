@@ -8012,3 +8012,24 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   can't hide a loss, though a closed state may hush it. No timers (decision 3 stands).
 - **Next:** Q624 (economy, with space) builds it on top of v1.350's qualification flight.
 - Files: launchpad `CREW.md`, `QUEUE.md`; root `SESSION_LOG.md`.
+
+## 2026-11-17 — vehicle session (Opus 5.5, worktree launchpad-q618): bench slice 2, mounts on a frame (Q618, v1.351 + v1.353)
+
+- **Asked:** Caio (the kickoff named this a Fable 5.2 session; it ran on Opus 5.5): claim Q618, start with the census of
+  `.y0` / `.pos[` readers, split the L item into slices that each merge with a test, browser runs under `.game-busy`.
+- **Done, two slices, each merged on its own after CI:**
+  - **v1.351 (2a, the sim):** the census (in notes/vehicle.md § v1.351: which readers learn the pose, which stay roughly
+    right with the bounding cylinder, which `mountOK` keeps out); `at` on a face, edge or corner of a sized frame; the pose;
+    `partC`, `partAxis`, `partBox`; `geom`'s inertia through `rotI`; the taller adapter ring (`adaptDef`, `payHang`);
+    `payEnvelope`; posed parts drawn in their own frame; `shapeOf` keeps the pose. Test vehicle-49 against hand numbers.
+    The 19 presets and starters lay out byte-identically. CI 44130104666.
+  - **v1.353 (2b, the bench by pointer):** `frameRay` and `mountSnap` (corner, edge, middle; **C** turns snapping off,
+    since Shift-click already places a copy); the base kept under the pointer, waiting until moved and at its last place
+    off the frame; the 🗑 bin; symmetry ×1 on the bench; posed collisions (*no room here*); reshaping runs `mountFix`.
+    Test vehicle-50; robot row 403 in `playtest.mjs` (run in Chrome under the lock: face, edge, corner, pick up, bin).
+    TESTING 403. Renumbered twice on the way (Q91 took v1.352 and TESTING 401). CI 44139969234.
+- **Not checked:** nobody has placed a part by hand: the feel is Caio's (TESTING 403). Mounted parts meet no air in the
+  open; a wing on the top or bottom deploys along a bearing that means little there (slice 4).
+- **Next:** Q619 (tilt), Q622 and Q623 are ready.
+- Files: launchpad `sim/vessel.js`, `sim/space.js`, `app/gl.js`, `builder.js`, `playtest.mjs`, `test.mjs`,
+  `tests/vehicle.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
