@@ -7911,3 +7911,16 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `tests/app.mjs` as each is fixed.
 - Files: launchpad `apphost.mjs` (new), `tests/app.mjs` (new), `tests/space.mjs`, `shards.mjs`, `notes/platform.md`,
   `NOTES.md`, `QUEUE.md`; root `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-17 — launchpad merge session (Opus 5.5, main clone): Q617 and R34 landed
+
+- **Asked:** land the two finished branches the 2026-11-13 sessions never merged, one at a time.
+- **Done:** **Q617** (branch `vehicle`, pushed as `q617`) is **v1.347**, TESTING **398** on `main` (v1.343 and 395 had
+  been taken; a first renumber to v1.346/397 was overtaken by Q606 while CI ran, so renumbered again). **R34** (branch
+  `r34`) is **v1.348** on `main`. Each: `check_numbers.mjs`, merge `origin/main`, smoke, CI green on the merged commit
+  (q617 run 44111697595, r34 run 44112305755), ff-merge. Their closing log entries and cleared claim lines (the 2026-11-13
+  entries above) were written here; QUEUE Q617 and R34 ✓. Also cleared: the design desk's row of 2026-11-12 (answers in
+  `DECISIONS.md`) and the idle look & sound effects row of 2026-10-18.
+- **Note:** `origin/vehicle` is an old branch (v1.248, Q457) that is not on `main`; Q617 went out as `q617` instead. Not
+  touched. Worktrees `launchpad-builder` (`vehicle`) and `launchpad-r34` (`r34`) now equal `main`.
+- Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md` (plus the two branches' own files).
