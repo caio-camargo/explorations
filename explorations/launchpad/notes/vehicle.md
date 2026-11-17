@@ -3013,7 +3013,7 @@ flight 16/12, rovers 3/10), `app/` (gl 36/72, state 6/12, model-desk 5/6, editor
 - A part on the far side of the frame is reached by orbiting, as anywhere in the builder.
 - Tilt (slice 3, Q619) is next; views (slice 4) give the cone while held.
 
-## v1.356 — tilt: a mounted part leans in 15° steps on a bracket (bench slice 3, 2026-11-17, vehicle session, QUEUE Q619, D47 point 1, D21)
+## v1.357 — tilt: a mounted part leans in 15° steps on a bracket (bench slice 3, 2026-11-17, vehicle session, QUEUE Q619, D47 point 1, D21)
 
 **Why:** slice 3 of the bench plan (§ "Plan: the bench as its own builder"). The mock-up's tilt keys worked for Caio; his one
 complaint there was that a tilted part's base half sank into the frame, so a tilted part stands on a bracket.
@@ -3046,14 +3046,14 @@ complaint there was that a tilted part's base half sank into the frame, so a til
   clamp and the key steps; a boom asked for 30° gets 45°'s pose; a solar wing tilted 90° up stands out from the face and the
   envelope reaches its tip's rim, hypot(0.354 + h, r), over exactly the three bands it spans (upright it stays inside the
   frame's 0.5 m); a save and a registered shape keep the tilt and the bracket.
-- **Robot row 405** (`node playtest.mjs 405`, Chrome on the GPU, `.game-busy` taken): a sphere on a side, selected; W W W D D
+- **Robot row 406** (`node playtest.mjs 406`, Chrome on the GPU, `.game-busy` taken): a sphere on a side, selected; W W W D D
   gives `[2,3,0]` and a 16 cm bracket in the card; *straight* clears it; six presses of the card's ▲ W stand it straight up on
   a 20 cm bracket; a held boom antenna takes one W as 45° and keeps it when placed (21 cm bracket). Shots looked at: the rods
   show, the sphere and the boom lean off the face, the help line lists the keys.
 - Smoke and lint clean.
 
 **Not done, not checked:**
-- **Nobody has tilted a part by hand** (TESTING 405); whether A/D/W/S read right from every side, and on the top, bottom,
+- **Nobody has tilted a part by hand** (TESTING 406); whether A/D/W/S read right from every side, and on the top, bottom,
   edges and corners (where "up" is the place's own axis, not the screen's), is Caio's to say.
 - The bracket clears the surface's plane, not neighbouring parts: a tilted part is tested for room by the same row of spheres
   as before (slice 2), and the rod itself is not.
