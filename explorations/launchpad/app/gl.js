@@ -680,6 +680,7 @@ float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
 vec3 hsv(float h,float s,float v){vec3 c=clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);return v*mix(vec3(1.),c,s);}
 const bool ROUNDEL_ON=true;   // false: no roundels (edit here for an A/B)
+const bool SKIN_ON=true;   // false: no surface pass (Q316, B1.4; edit here for an A/B)
 // the roundel (Q102 step 5; Q228 for the other four, app/flags.js roundelBody's designs): a disc of radius 1 in u, by
 // school: Cape red and white stripes with a blue canton of small stars; Steppe one gold star on red; Arsenal a chevron
 // and a gold disc on the dark field; Coastal rings; Mountain a sun with eight rays; Isle four stars on the dark field.
@@ -741,6 +742,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    float ring=lin(v-b,1.25*sc,.006,fv)*paint,seam=lin(s-1.5708*R,6.2832*R,.004,fs)*paint,pan=hh(vec2(floor((v-b)/(1.25*sc)),3.))-.5;
    float str=vn2(vec2(s*2.2,v*.12))*vn2(vec2(s*7.,v*.5+9.)),fd=smoothstep(.05,.012,fp);
    if(sch!=0)blk=0.;   // the roll pattern is Cape's alone (Q102, Q228)
+   if(sch==1)ring=seam=0.;   // (Q259) Steppe draws its own panel seams below: Cape's weld rings came through its paint as a second, paler set 5 cm a bay off
    alb=mix(alb,pow(hsv(hue,.55,.16),vec3(2.2)),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
    float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));
    if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs,hue);rdl.a*=paint;}}   // the roundel, between the stripes
@@ -832,8 +834,11 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  }
  // Steppe (Q102): grey-green enamel panel by panel, dark seams where Cape has its roll pattern; olive-tinted bells
  if(uSeam>0.&&sch==1&&k>0){float wl=dot(alb,vec3(.3,.59,.11));
-  if(k!=2&&k!=15&&wl>.25){float pn=hh(vec2(floor(v/(1.3*sc)),floor(vU.x*8.)))-.5;alb=pow(vec3(.47,.54,.44),vec3(2.2))*(1.+.12*pn)*clamp(wl/.7,.6,1.1);
-   if(side)alb*=1.-.35*min(1.,lin(v,1.3*sc,.006,fv)+lin(s,6.2832*R/8.,.005,fs));rough=max(rough,.55);metal=0.;}
+  if(k!=2&&k!=15&&wl>.25){float vb=k==1?v-.07*sc:v,P=1.3*sc,pn=hh(vec2(floor(vb/P),floor(vU.x*8.)))-.5;alb=pow(vec3(.47,.54,.44),vec3(2.2))*(1.+.12*pn)*clamp(wl/.7,.6,1.1);
+   // (Q259) the seams: thin and dark, a row of rivets on each side of every one (dv, da: metres to the nearest seam, up and around)
+   if(side){float dv=abs(fract(vb/P+.5)-.5)*P,da=abs(fract(vU.x*8.+.5)-.5)*.7854*R;alb*=1.-.6*min(1.,lin(vb,P,.004,fv)+lin(s,.7854*R,.004,fs));
+    alb*=1.-.5*max(dots(s,dv,.03*sc,.06*sc,.006*sc,fp),dots(v,da,.03*sc,.06*sc,.006*sc,fp));}
+   rough=max(rough,.55);metal=0.;}
   else if(k==2)alb*=vec3(.74,.84,.66);}
  // Arsenal (2), Coastal (3), Mountain (4), Isle (5) (Q228; POWERS.md § "School briefs", mock-ups Q227): each repaints the
  // white base as Steppe does, and has its own bells, joints, decals and interstage cover. up: an upper-stage part
@@ -868,6 +873,22 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    else if(sch==4)alb=mix(alb,saf,hz);
    else alb=mix(alb,carb,hz);}}
  alb=mix(alb,rdl.rgb,rdl.a);
+ // (Q316, BEAUTY B1.4) the skin under the paint, on tanks, nose cones and adapters. Paint on sheet metal is told from
+ // plastic by its highlight and by what the sheet does under it: Cape's white is gloss (the sun draws a line down the
+ // tank, the sky shows at its edges), and every school's gloss varies a little from place to place; a tank's skin bows
+ // between its ring frames and between eight gores round it, and carries shallow dents, so the highlight breaks bay by
+ // bay; the ends of a tall tank are skirts stiffened by stringers (under the roll pattern, as on the real thing), and so
+ // is an adapter's cone, for the schools that build that way; grime gathers toward each joint, in streaks.
+ if(SKIN_ON&&uSeam>0.&&side&&(k==1||k==4||k==12)){float b=k==1?.07*sc:0.,bay=(sch==1?1.3:1.25)*sc,fd2=smoothstep(.3,.08,fp);vec2 q=vec2(s,v)/sc;
+  float g1=vn2(q*vec2(2.6,1.1)+11.),g2=vn2(q*vec2(1.3,2.2)+5.),g3=vn2(vec2(q.x*9.,q.y*.5)+2.);
+  if(sch==0&&m==0)rough=.3;rough=clamp(rough*(.8+.45*g1),.05,1.);
+  nO+=(T*(g1-.5)+vec3(0.,1.,0.)*(g2-.5))*.05*fd2;
+  if(k==1){float pb=band(v,b,h-b,fv);nO+=(T*(fract(vU.x*8.)-.5)*.05+vec3(0.,1.,0.)*(fract((v-b)/bay)-.5)*.05)*pb*smoothstep(bay*.4,bay*.08,fp);}
+  bool ribs=sch<=2||sch==4;float sk=k==12?band(v,.15*sc,1.35*sc,fv):h>1.5*sc?band(v,b,b+.32*sc,fv)+band(v,h-b-.32*sc,h-b,fv):0.;
+  if(ribs&&sk>0.){float N=floor(6.2832*R/(.07*sc)+.5),ph=fract(vU.x*N),e=abs(ph-.5)*2.,fN=smoothstep(.5,.15,fu*N);
+   nO+=T*smoothstep(.7,.95,e)*sign(ph-.5)*.5*fN*sk;alb*=1.-sk*mix(.07,.3*smoothstep(.8,1.,e),fN);
+   if(k==1)alb*=1.-.4*max(lin(v-b-.32*sc,9e3,.005*sc,fv),lin(v-h+b+.32*sc,9e3,.005*sc,fv));}   // the frame where each skirt ends
+  float gj=min(1.,exp(-max(v-b,0.)/(.14*sc))+exp(-max(h-b-v,0.)/(.14*sc)));alb*=1.-.3*gj*(.45+1.1*g3*g1);}
  // Flight marks, per part (see marksTick): uMk = (soot, frost, fuel level, nozzle glow), uCh = (windward direction in the
  // ship frame, char). Soot climbs streakily from the part's base; char scorches the paint yellow-brown, then blackens it, on
  // the side the air came from (all over on the shield); frost sits below the fuel line in patches that thin as it sheds;

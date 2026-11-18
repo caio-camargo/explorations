@@ -1355,3 +1355,31 @@
     crease && span && steps && none && ledge && Object.values(has).every(Boolean),
     `core facing the booster ${(occ(fr(nC, 0, 0)) * 100).toFixed(0)} % hidden, 13° round ${(occ(fr(nC, 0, 1)) * 100).toFixed(0)} %, at 90° ${(occ(fr(nC, 0, 7)) * 100).toFixed(0)} % · booster toward the core ${(occ(fr(nB, 0, 14)) * 100).toFixed(0)} % · span on the core ${wC[2]}–${wC[3]} m · ledges: the stage over the core ${wT[0].toFixed(2)} m, the engine under it ${wE[1].toFixed(2)} m · sky left at a ledge: ${left(0, .65)} at the corner, ${left(.65, .65).toFixed(2)} one width away · crease ${crease} span ${span} steps ${steps} none ${none} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
+
+// aerofx-59. The surface pass (look & sound parts & pad, BEAUTY B1.4, QUEUE Q316 slice 2; Q259). In MESH_FS: Steppe's
+// tanks carry one set of seams (Cape's weld rings no longer come through the enamel 5 cm a bay off Steppe's own), thin,
+// with rivet rows; tanks, nose cones and adapters get the skin block: Cape's gloss, the gloss varying, the skin bowing
+// between frames at the school's own pitch, stringers on the skirts of a tall tank and on an adapter's cone, grime
+// toward each joint. The geometry it relies on: a tank's skirt ends under its roundel.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = pg.slice(pg.indexOf('const MESH_FS=`'), pg.indexOf('`;', pg.indexOf('const MESH_FS=`')));
+  const has = {
+    on: /const bool SKIN_ON=true;/.test(fs),
+    steppeOneSet: /if\(sch==1\)ring=seam=0\.;/.test(fs) && /float vb=k==1\?v-\.07\*sc:v,P=1\.3\*sc,/.test(fs) && /bay=\(sch==1\?1\.3:1\.25\)\*sc/.test(fs),
+    steppeSeams: /alb\*=1\.-\.6\*min\(1\.,lin\(vb,P,\.004,fv\)\+lin\(s,\.7854\*R,\.004,fs\)\);/.test(fs) && /dots\(s,dv,\.03\*sc,\.06\*sc,\.006\*sc,fp\),dots\(v,da,\.03\*sc,\.06\*sc,\.006\*sc,fp\)/.test(fs),
+    kinds: /if\(SKIN_ON&&uSeam>0\.&&side&&\(k==1\|\|k==4\|\|k==12\)\)/.test(fs),
+    gloss: /if\(sch==0&&m==0\)rough=\.3;rough=clamp\(rough\*\(\.8\+\.45\*g1\),\.05,1\.\);/.test(fs),
+    bows: /\(fract\(vU\.x\*8\.\)-\.5\)\*\.05\+vec3\(0\.,1\.,0\.\)\*\(fract\(\(v-b\)\/bay\)-\.5\)\*\.05\)\*pb/.test(fs),
+    ribs: /bool ribs=sch<=2\|\|sch==4;/.test(fs) && /h>1\.5\*sc\?band\(v,b,b\+\.32\*sc,fv\)\+band\(v,h-b-\.32\*sc,h-b,fv\):0\.;/.test(fs),
+    grime: /alb\*=1\.-\.3\*gj\*\(\.45\+1\.1\*g3\*g1\);/.test(fs),
+    order: fs.indexOf('alb=mix(alb,rdl.rgb,rdl.a);') < fs.indexOf('if(SKIN_ON&&') && fs.indexOf('if(SKIN_ON&&') < fs.indexOf('vec4 mk=uMk[pi]')   // over the paint and the roundel, under soot, char and frost
+  };
+  // lengths in units of sc (the part's radius / 0.625 m): the flange b, the skirt, the roundel's radius and the shortest tank that has both
+  const b = .07, skirt = .32, rs = .3, hMin = 1.5, clear = hMin / 2 - rs - (b + skirt);
+  // the sun's highlight on paint (F0 .04): the peak of the shader's normalised Blinn–Phong term at a roughness
+  const peak = r => { const ex = 2 / (r ** 4 + 1e-4) - 2; return (ex + 8) / 25.13 * .25 * .04; };
+  check('aerofx-59: the surface pass (Q316, Q259): Steppe tanks carry one set of seams with rivet rows; tanks, noses and adapters get gloss that varies, bowed bays, stringer skirts and grime at joints; a skirt ends under the roundel',
+    Object.values(has).every(Boolean) && clear > 0 && peak(.3) > 3 * peak(.42),
+    `a skirt ends ${(clear * 62.5).toFixed(1)} cm under the roundel on the shortest 1.25 m tank that has both · the sun's highlight on Cape's gloss white ${(peak(.3) * 100).toFixed(1)} % of the sun at its peak (was ${(peak(.42) * 100).toFixed(1)} %) · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}

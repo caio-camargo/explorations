@@ -2710,3 +2710,49 @@ is not touched (on High that is the shadow map's, v1.360).
   yet. A person's eye on the strength (TESTING 410): .7 and the fade length are first guesses.
 - **Next for Q316:** B1.4 the surface pass (absorbs Q259), then B1.5 the greebles, which now have shadows and
   contact darkening to sit in.
+
+## v1.362 — the surface pass: skin, skirts, grime; Steppe's seams (2026-11-18, look & sound, parts & pad, QUEUE Q316 slice 2, Q259; BEAUTY B1.4)
+
+All in `MESH_FS`, on both settings. `SKIN_ON = false` there for an A/B.
+
+- **Q259, measured: why Steppe's paint read low-res** (PLAYTEST #59). Not sampling and not the mesh: the patterns are
+  computed per pixel and filtered by footprint, and at 2.5 m a pixel is 3.5 mm. Three things in the paint itself:
+  1. *Two sets of rings.* Cape's weld rings (every 1.25 m from the flange) darkened the white before Steppe repainted
+     it, and Steppe keeps the luminance under its enamel, so they came through as a paler second set beside Steppe's
+     own (every 1.3 m from the part's foot): 5 cm apart at the first, drifting a further 5 cm a bay.
+  2. *Soft, pale seams:* 12 mm wide at 35 %, where Cape's black pattern has hard edges.
+  3. *Nothing smaller than a 1.3 m panel:* a flat colour between the seams.
+  Fixed: Cape's rings and seam are off under Steppe's paint; Steppe's seams are 8 mm at 60 %, measured from the flange,
+  with a row of rivets (6 cm pitch) 3 cm to each side of every seam.
+- **The skin** (tanks, nose cones, adapters; after the school's paint and the roundel, before soot, char and frost).
+  - *Gloss.* Cape's white is gloss: roughness .42 → .3, which takes the sun's highlight from 2.8 % to 9.9 % of the
+    sun at its peak and sharpens the sky at the tank's edges. Every school's roughness then varies ×.8–1.25 from
+    place to place.
+  - *The sheet.* A tank's skin bows between its ring frames (the school's pitch: 1.25 m, Steppe 1.3 m) and between
+    eight gores round it, by a tilt of the normal of up to .025 rad up and down and round; shallow dents on top.
+    Shading only: the outline does not move.
+  - *Skirts.* The 32 cm inside each end flange of a tank taller than 1.5 m (all lengths for a 1.25 m tank; they scale with
+    the radius) are stiffened by stringers every 7 cm, with a frame line where the skirt ends, and so is an adapter's
+    cone. Cape, Steppe, Arsenal and Mountain; Coastal and Isle stay smooth (POWERS: "tidy", "flush carbon"). Cape's
+    roll pattern lies over the ribs, as on the real thing. Far away the ribs fade to a 7 % darker band.
+  - *Grime.* Up to 30 % darker toward each joint, over about 14 cm, in streaks.
+- **Already there, so not built:** soot that climbs with burn time (`marksTick`); a paint pattern per
+  school (each has its own from Q102 and Q228; the roll pattern is Cape's alone by the approved briefs, so BEAUTY's
+  "roll pattern option per school" was left as it is).
+- **Measured** (views 1, 3, 6, 54, 114, 115; before = main at v1.361 served beside it; logs `s2-t-*` in
+  `output/launchpad/beauty/Q316/`).
+  - RTX on High, `ship` stretch at full resolution: 0.03, 0.03, 0.08, 0.04, 0.04, 0.04 → 0.03, 0.05, 0.10, 0.04,
+    0.06, 0.05 ms.
+  - Intel UHD on Low (views 1, 3, 6, 54): 0.16, 0.13, 0.96, 0.35 → 0.18, 0.14, 1.00, 0.36 ms; frame 26.0, 9.7, 32.0,
+    39.5 → 27.1, 9.7, 31.6, 39.4 ms. At most +0.04 ms; BEAUTY's estimate for B1.4 was ~0.1.
+- **Stills:** `s2-before-after-*.png` (left before, right after): `steppe-tank`, `cape-tank`, `cape-shade-side`,
+  `orbit`, `big-lunar`.
+- **`refset.mjs`'s bad starts** (§ v1.360 "Noticed"): it began as soon as `render` existed, seconds before the last
+  scripts and the title screen. It now waits for the page's load and `applyQuality`. Four runs of four started well
+  (five of ten failed the day before); too few to call it proven. The non-zero exit on a bad start is not done.
+  Also seen: `refView(3)` as the first view of a page leaves the Program's desk over the picture; start with view 1.
+- **Not checked.** A person's eye on the strengths (TESTING 411): the bowing, the grime and the rib depth are first
+  values. Arsenal, Coastal, Mountain and Isle up close (Arsenal seen at 6 m only). The gloss highlight in a still:
+  no reference view puts the sun's reflection on a tank. Shimmer of the ribs while the camera moves. Other vessels
+  and debris use the same shader and get the pass, unseen.
+- **Next for Q316:** B1.5, the greebles.

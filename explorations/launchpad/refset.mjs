@@ -29,7 +29,7 @@ ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) 
 const cmd = (method, params = {}) => new Promise(r => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({id: i, method, params})) });
 const ev = async x => { const r = await cmd('Runtime.evaluate', {expression: x, awaitPromise: true, returnByValue: true}); return r.result?.result?.value ?? r.result?.exceptionDetails?.exception?.description };
 await cmd('Runtime.enable'); await cmd('Page.enable'); await cmd('Page.navigate', {url: URL0});
-const t0 = Date.now(); while (!(await ev(`typeof refView === 'function' || (typeof render === 'function' && !!document.getElementById('gl'))`)) && Date.now() - t0 < 180e3) await wait(500);
+const t0 = Date.now(); while (!(await ev(`document.readyState === 'complete' && typeof render === 'function' && typeof applyQuality === 'function' && !!document.getElementById('gl')`))   /* (Q316) the whole page, not its first scripts: render() exists seconds before settings.js and the title screen do, and a run begun then printed {} and null rows */  && Date.now() - t0 < 180e3) await wait(500);
 // a fresh career past the first-run gate, then views.js; the GPU timer's readout and the scaler are the page's own (render.js)
 console.log(await ev(`(async () => { try { localStorage.clear() } catch (e) {} document.querySelector('[data-start="agency"]')?.click();
   const s = document.createElement('script'); s.src = 'views.js?' + Date.now(); document.head.appendChild(s); await new Promise(r => s.onload = r);
