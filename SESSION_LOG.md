@@ -8211,3 +8211,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   B1.6 (frost and the ice fall).
 - Files: launchpad `app/gl.js`, `app/render.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `BEAUTY.md`,
   `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): a thinner feed line; the jagged edges measured (Q316, v1.364)
+
+- **Asked:** Caio, after trying v1.360–v1.363: a great improvement; the feed line maybe too thick; edges of things
+  still look pixelated, fixable or not?
+- **Done (v1.364):** the feed line 10 → 6 cm. The edges measured, not fixed: the 4× multisample target is resolved
+  before the tone map, so a sunlit hull against space steps 22 → 187 of 255 in one pixel. Written up in
+  notes/look.md § v1.364 and proposed in QUEUE (an edge filter on the graded frame; the effects beat's files).
+- **Tests:** smoke and lint green; CI 44359967059 green on the commit, then ff-merged.
+- **Not checked:** the thinner line by a person.
+- **Next:** Caio's call between the edge filter and Q316's engines.
+- Files: launchpad `app/gl.js`, `notes/look.md`, `NOTES.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
