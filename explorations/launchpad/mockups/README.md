@@ -1,7 +1,25 @@
 # Launchpad — mock-ups
-**Version**: 0.1.33 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-13 · **Status**: for Caio to pick
+**Version**: 0.1.34 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
+
+## kit/ — the grammar of text elements ([`ELEMENTS.md`](../ELEMENTS.md), 2026-11-18)
+
+Open `kit/index.html` (a file or served). The Assembly's two panels and a part card, with the game's real content, as
+one set of roles in four dresses over the game's own frame. Bar: *Dress* (keys 1–5), *View* (Assembly, Role sheet),
+*Checks* (Squint, Grey, Amber phosphor). Hover anything: the footer names its role. Stills (1258 × 702) in
+`output/launchpad/mockups/kit/`: `<dress>.png`, `<dress>-sheet.png`, `plain-squint.png`, `plain-grey.png`, `panel-amber.png`.
+Bahnschrift (Windows) stands in for a sans the game doesn't bundle.
+
+| Dress | What it is | Finding (ELEMENTS.md § 5) |
+|---|---|---|
+| **Today** | a still of v1.366 | one box for seven jobs, cyan for five |
+| **Plain** | no costume: one face, no hue outside the three conditions | passes every test; the control case |
+| **Form** | printed form, typed entries, dot leaders, stamps | printed/typed is label/value for free; Courier is wide |
+| **Drawing** | lettered capitals, a parts list with item numbers, ruled tables | one weight: label and value are the weakest pair |
+| **Panel** | engraved labels, ringed groups, lit keys, VT323 on glass | amber phosphor is the caution colour; glass type needs 15–17 px |
+
+**Pick:** _(Caio: the roles, a dress for the Assembly, an accent or none; ELEMENTS.md § 8)_
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 
