@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.271 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
+**Version**: 0.1.273 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -506,6 +506,15 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
+- space — a station is named "Object 1": `satKind` has no Station kind (sim/space.js:134); regenerate starts/station.js — PLAYTEST #175. (Also confirmed in play 2026-11-18: #159, #160, TESTING 358 ✓)
+- QA — **Caio's sitting 2026-11-18 (playtest session):** Revert (PLAYROUTE question 1, D35): "let's keep it while i playtest, and i'll decide the gameplay question later": D35 stays open, Revert stays. The loop: "yes, the loop is improved" (D41). Confirmed in play: PLAYTEST #161, #162, #163, #164; TESTING 360, 375, 378, 380 ✓
+- flow — the unlock cards go back and forth (← →, ◀ ▶, dots to jump); and why one flight still made 14 cards — PLAYTEST #171
+- vehicle + flow — the design table's right pane: a layout pass for legibility (headings, spacing, aligned numbers, one place for warnings), mock-up first — PLAYTEST #172
+- flow + vehicle — a NEW mark on parts, missions and contracts just opened, until seen — PLAYTEST #173
+- vehicle — the parts list folds by category (remembered; the design's and the new parts' categories open) — PLAYTEST #174
+- flow — an RCS card while RCS is on: the translate and attitude keys as a diagram, gas left; collapsible (Caio: "definitely not intuitive") — PLAYTEST #170
+- vehicle — RCS holds attitude without a deadband: constant small pulses with nothing pressed (a deadband or minimum impulse on the attitude part; gas per hour before/after) — PLAYTEST #169
+- look & sound (effects) — the RCS puff is a placeholder box: a cold-gas jet per nozzle — PLAYTEST #168
 - ~~flow + look & sound — Q572 follow-ups: a sound for the unlock card; a per-part `why` line for family members~~ ✓ v1.324 (the sounds are stand-ins: look & sound to replace) — loop slices
 - flow — Q600 with Q572: the desk's centred notice for world missions could become the overlay's *Mission complete* card (`unlockDesk` drops that card today so it isn't said twice) — loop slices v1.318
 - QA — ~~TESTING 375–377 on a really flown structural test and beeper~~ ✓ the robot's new `playtest.mjs cards` row, v1.320; by hand still — loop slices

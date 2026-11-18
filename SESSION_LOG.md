@@ -8241,3 +8241,26 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Q316's engines (B1.5), or B1.6.
 - Files: launchpad `app/gl.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
   `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): the view above the screen's pixels on High (v1.366)
+
+- **Asked:** Caio, on v1.365: "the outer edges of the rocket look a lot better, but the greebling on the craft and
+  other elements still have the same issue".
+- **Found:** the edge filter can't mend things a pixel wide (rails, lines, stripes): they need more samples. Stills
+  at 100, 150 and 200 % showed supersampling cures them.
+- **Done (v1.366):** High's resolution cap 1 → 1.5; `resNext` goes above 100 % only while the frame stays under 60 %
+  of the budget and steps back past 85 %; `UPS_FS` brings a larger frame down after the grade; the stars and planets
+  keep the screen's pixel (`uSPx`); `refset.mjs` takes `REF_SIZE`. Test aerofx-62.
+- **Measured (RTX 5050, High):** at 1258 × 702 every view reaches 134–150 % at 7–8 ms; at 1080p only orbit does (the
+  pad is 7.4 ms at 100 %, 5.0 of it the sky pass); at 1440p the pad already runs at 80–89 %. So it helps in orbit and
+  in small windows, not on the pad on a real screen. notes/look.md § v1.366.
+- **Went wrong on the way:** a comment put mid-line in the star shader swallowed the rest of the line (the sky
+  program failed to compile); caught by the first still run.
+- **Tests:** smoke and lint green; CI 44383161712 green on the commit, then ff-merged.
+- **Not checked:** in motion by a person (TESTING 414); Caio's window size and what `res` reads on his pad (asked);
+  the go-to-body view above 100 %.
+- **Proposed (QUEUE):** the sky pass leaves no room on the pad: march it at or below the screen's pixels under a finer
+  scene, or make it cheaper.
+- **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
+- Files: launchpad `app/gl.js`, `app/render.js`, `app/settings.js`, `refset.mjs`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

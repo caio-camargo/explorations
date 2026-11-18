@@ -22,10 +22,10 @@ flags**, unless the row says otherwise. Tell any session the number and your ans
 
 | # | Try this | The question it answers | Waits on it |
 |---|---|---|---|
-| 1 | Lose a rocket on a real flight, then press **Revert**. Next flight, fly the same design in the **simulator** first | Would you miss Revert on Normal if only the simulator were left? | D35 (revert stays until you say) |
+| 1 | Lose a rocket on a real flight, then press **Revert**. Next flight, fly the same design in the **simulator** first | Would you miss Revert on Normal if only the simulator were left? | D35 (revert stays until you say). **Caio 2026-11-18:** keep it while he playtests; he'll decide the gameplay question later |
 | 2 | Order a second rocket while one is being stacked | Does waiting for the hall annoy you enough to pay for a second bay, or do you like going back to the build screen between flights? | W54: economy measures the hall first; your answer still weighs |
 | 3 | Play to the first orbit and watch the news | Did a rival take a first before you? Did it feel like a race or like a loss you could not avoid? (The robot lost the first race in all 54 careers.) | REVIEW § 8 row 15, rivals |
-| 4 | Finish any mission | Do you know at once that it is done, what it opened, and what to fly next? | Q569, Q570 (built); Q571, Q572 |
+| 4 | Finish any mission | Do you know at once that it is done, what it opened, and what to fly next? | Q569, Q570 (built); Q571, Q572. **Caio 2026-11-18:** the Mission complete line and the cards are good, "a big improvement"; wants to page back through the cards (#171) and new things marked afterwards (#173) |
 | 5 | In the builder, look for a part that is closed | Does a closed part read as a goal (you know which mission opens it) or as a wall? | D34, Q577, Q578 |
 | 6 | Fly the first flight with **Guided** on, the second with it off | Is Guided help, or does it fly the rocket for you? Should it be on by default? | Q553's five questions |
 | 7 | In orbit, save, then reload the page | What did you expect to find: the craft where it was, the craft at the moment you took control, or the craft lost? | D45: Easy and Normal, the craft at the moment you took control; Hard, lost (TESTING 393) |
