@@ -8223,3 +8223,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Not checked:** the thinner line by a person.
 - **Next:** Caio's call between the edge filter and Q316's engines.
 - Files: launchpad `app/gl.js`, `notes/look.md`, `NOTES.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): the edge filter (v1.365)
+
+- **Asked:** Caio: "yes, go ahead" on the edge filter proposed in § v1.364.
+- **Done (v1.365):** `AA_FS` in app/gl.js, run by `bloomEnd` after the grade: FXAA's edge walk without its
+  sub-pixel blur, so stars and one-pixel lines pass untouched. The grade goes to `SCN.out`, the grain comes after.
+  Both settings. Test aerofx-61 (the walk ported to JS).
+- **Measured:** the hull-against-space edge that stepped 22 → 215 of 255 now ramps along each step; frame time inside
+  the noise on the RTX, about +0.65 ms on the Intel GPU at full resolution. notes/look.md § v1.365.
+- **Went wrong on the way:** a timing run hung against the baseline server on port 8818, whose 3 h limit had ended;
+  the A/B was redone in one build with the filter switched off and on.
+- **Tests:** smoke and lint green; CI 44366095567 green on the commit, then ff-merged.
+- **Not checked:** in motion by a person (TESTING 413); the stars in a still pair (they twinkle between frames; the
+  claim rests on the port); the filter below 100 % scale on the RTX; text and gauges in the 3D view.
+- **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
+- **Next:** Q316's engines (B1.5), or B1.6.
+- Files: launchpad `app/gl.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root
+  `ACTIVE_WORK.md`, `SESSION_LOG.md`.
