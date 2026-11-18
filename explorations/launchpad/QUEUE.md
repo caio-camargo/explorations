@@ -506,6 +506,7 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
+- space + flow — **rendezvous tools on the map** (Caio 2026-11-18, decided: numbers only, never a node placed for him; all open now, gating later): slice 1 the next 3 passes (separation, relative speed, time; the plan's beside them), relative AN/DN with relative inclination and Δv, green under 1 km / 10 m/s; slice 2 *meet on pass N* Δv rows; slice 3 the target-frame approach inset — PLAYTEST #176
 - space — a station is named "Object 1": `satKind` has no Station kind (sim/space.js:134); regenerate starts/station.js — PLAYTEST #175. (Also confirmed in play 2026-11-18: #159, #160, TESTING 358 ✓)
 - QA — **Caio's sitting 2026-11-18 (playtest session):** Revert (PLAYROUTE question 1, D35): "let's keep it while i playtest, and i'll decide the gameplay question later": D35 stays open, Revert stays. The loop: "yes, the loop is improved" (D41). Confirmed in play: PLAYTEST #161, #162, #163, #164; TESTING 360, 375, 378, 380 ✓
 - flow — the unlock cards go back and forth (← →, ◀ ▶, dots to jump); and why one flight still made 14 cards — PLAYTEST #171
