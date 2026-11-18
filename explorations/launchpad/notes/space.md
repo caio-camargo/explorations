@@ -2894,3 +2894,45 @@ own seats' answer.
 **Checked:** core test 35's new check (a fresh two-seat lander on Selene: 2 aboard, deploys; the same lander registered
 and loaded: 2, deploys; with dummies: 0, refused) fails on the old code and passes; the review's repro prints `crewOn 2,
 deploy ok`; smoke green. **Not checked:** in a browser (TESTING 397).
+
+## v1.368 — rendezvous tools on the map, slice 1: the next passes and the relative nodes (2026-11-18, space, QUEUE Q628, PLAYTEST #176)
+
+Caio, docking to the station in *First station up*: "the rendezvous is going to require more tools in the map. ksp shows
+both relative speed and separation on the nearest points, and shows the two next nearest points". Decided with him:
+**numbers only, never a node placed for him**, all open from the start (gating, if any, is a later call: `TOOLS`).
+
+Before: `approach` (sim/space.js) scanned two orbits for the single closest moment, and `tgtCA` drew it on the map as
+"closest …" with the node plan's beside it.
+
+- **`passes(q, r0, v0, t0, span, mu, n)`** (sim/space.js, after `approach`): where our orbit comes nearest the target's
+  orbit as a curve (our orbit sampled 120 times against the target's ellipse as 180 segments; every local minimum, so
+  two for crossing orbits), and each time we go by there over the span, the separation then: the least within ±1/12 of
+  an orbit, or the separation as we go by when it is still falling at the window's edge (a target far off in phase).
+  Up to n, in time order, as `{t, d, vrel, p, pt}`; one least right now and opening is left out (behind us, not
+  ahead). A hyperbolic orbit, or orbits with no such place, fall back to
+  `approach`. Why not every dip of the separation: two orbits 20 km apart with the target well ahead have no dip at all
+  for many orbits, only a slow fall; the place where the orbits come nearest is what KSP labels, and it is what a
+  player aims a phasing burn at.
+- **`relNodes(r0, v0, t0, rt, vt, mu)`**: where our orbit crosses the target's plane over our next orbit (AN going up
+  through it, DN going down), the angle between the planes, and the burn that matches them there, 2·v_h·sin(i/2) (the
+  speed across the radius turned through the angle). Nothing under 0.01°; the search starts a second ahead, so a craft on a node is told
+  the next one.
+- **`passMeets(x)`**: a pass under 1 km and 5 m/s, Q458's rendezvous numbers (`QUAL_RDV_D`, `QUAL_RDV_V`). PLAYTEST #176
+  says "1 km and 10 m/s (the same numbers as Q458's)"; Q458's speed is 5 m/s, and the point was the same numbers.
+- **The map** (render.js): each pass numbered, `1 · 840 m · 3.1 m/s · in 1 h 32 min`, a line from where we'll be to
+  where it will be, green when it meets; the node's plan the same in white with `▸plan`, recomputed as the node is
+  dragged (the cache keys on the node, as before); AN and DN as violet triangles with the angle, the burn and the time.
+  The marks now sit at the body's place (`bodyPos`), so they are right round Selene too (they were drawn at the origin).
+- **The Target card** (`tgtRows`): *Closest* is the nearest of the passes with its number, and the plan's; a *Planes* row
+  (the angle, the next node's time and burn, the plan's angle) when the planes differ.
+
+**Checked:** test space-38: a 300 × 399.5 km orbit 0.5° off a 400 km circle, timed to pass ~1.2 km from the target at
+the first apoapsis: three passes, one per apoapsis, each no worse than the separation there and no better than a fine
+scan's least near it, the first equal to `approach`'s; the nodes on the target's plane half an orbit apart with
+2·v_h·sin(i/2); the green threshold; and in the headless page, a tester start beside a target shows *Closest 1 · …*.
+In Chrome on the RTX (`shot.mjs`, notebook era): a tester start 30 km behind a target, tilted 1.5° and slowed
+25 m/s: passes and the AN labelled on the orbit, the Target card's *Closest* and *Planes* rows agreeing (a still in
+`output/launchpad/q628-passes-map.png`, local). Lint clean; smoke; CI. **Not checked:** by a person (TESTING 416);
+label crowding (pass 2's text and the DN's were dropped by the label placer where they fell on pass 1 and the Pe
+mark; the marks stay); the cost while dragging a node on a slow machine
+(passes is ~22 k segment distances plus ~900 Kepler steps, four times a second at most).

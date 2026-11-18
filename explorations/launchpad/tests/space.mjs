@@ -1105,3 +1105,34 @@
     `Normal: flying ${N.name} (${N.flying}, out of the save ${N.savedOut}); Revert → ${rv.name} at ${rv.km} km, landed ${rv.landed}, on ${rv.screen}; with the table empty → ${rv2.ok ? rv2.name + ' at ' + rv2.km + ' km' : rv2.ok} · ` +
     `reload: ${back ? 'back in the registry' + (JSON.stringify(back) === N.atTake ? ' as it was when control was taken' : ' CHANGED') : 'GONE'} · Hard: revert ${hardRevert}; reload: ${lost ? 'lost' : 'kept'}, news "${HR.news.find(t => /is lost/.test(t)) || '-'}"`);
 }
+
+// space-38. Rendezvous tools on the map, slice 1 (space, QUEUE Q628, PLAYTEST #176; numbers only, never a node placed).
+// `approach` gave the one closest moment over two orbits; `passes` gives the next three times we go by the place where our
+// orbit comes nearest the target's (as KSP's two closest approaches), each the least separation near there; `relNodes`
+// where our orbit crosses the target's plane, with the angle and the burn to match planes. Checked against a fine scan:
+// a 300 × 399.5 km orbit 0.5° off a target's 400 km circle, timed to pass ~2 km from it at the first apoapsis. The passes
+// fall at each apoapsis, each the scan's least separation there, the first the closest moment of all (approach's); the
+// nodes lie on the target's plane half an orbit apart, the burn 2·v_h·sin(i/2). A pass under 1 km and 5 m/s (Q458's
+// rendezvous numbers) counts as meeting. And in the page: a tester start behind a target shows "Closest 1 · …".
+{
+  const D = new Function(src + 'return {passes,relNodes,passMeets,approach,kepler,elements,TELLUS};')(), T = D.TELLUS, mu = T.mu, { len, sub, dot, cross, norm } = api;
+  const rp = T.R + 300e3, ra = T.R + 399.5e3, a = (rp + ra) / 2, vp = Math.sqrt(mu * (2 / rp - 1 / a)), per = 2 * Math.PI * Math.sqrt(a ** 3 / mu), inc = 0.5 * Math.PI / 180;
+  const r0 = [rp, 0, 0], v0 = [0, vp * Math.sin(inc), vp * Math.cos(inc)];   // periapsis on +x, moving toward +z: apoapsis on −x at per/2
+  const at = T.R + 400e3, wt = Math.sqrt(mu / at ** 3), ph = Math.PI - wt * per / 2 + 2000 / at, rt = [at * Math.cos(ph), 0, at * Math.sin(ph)], vt = [-at * wt * Math.sin(ph), 0, at * wt * Math.cos(ph)];
+  const q = { r: rt, v: vt, epoch: 0 }, P = D.passes(q, r0, v0, 0, 3 * per, mu, 3), A = D.approach(q, r0, v0, 0, 3 * per, mu);
+  const dAt = t => len(sub(D.kepler(r0, v0, t, mu)[0], D.kepler(rt, vt, t, mu)[0])), W = per / 12;
+  const scanMin = c => { let m = Infinity; for (let i = 0; i <= 2000; i++) m = Math.min(m, dAt(c - W + 2 * W * i / 2000)); return m; };
+  const passOK = P.length === 3 && P.every((x, k) => { const c = per / 2 + k * per; return Math.abs(x.t - c) < W && x.d <= dAt(c) + 1 && x.d >= scanMin(c) - 1 && (Math.abs(x.t - c) < 1 || Math.abs(x.d - scanMin(c)) < 2) && (!k || x.t > P[k - 1].t); })
+    && Math.abs(P[0].d - A.d) < 1 && P[0].d < 3000;
+  const R = D.relNodes(r0, v0, 0.5, rt, vt, mu), n2 = norm(cross(rt, vt)), vh = len(cross(r0, v0));
+  const nodeOK = Math.abs(R.ri - inc) < 1e-9 && R.an && R.dn && Math.abs(dot(R.an.p, n2)) < 1 && Math.abs(dot(R.dn.p, n2)) < 1
+    && Math.abs(Math.abs(R.an.t - R.dn.t) - per / 2) < 1 && Math.abs(R.an.dv - 2 * vh / len(R.an.p) * Math.sin(inc / 2)) < 1e-6 && dot(D.kepler(r0, v0, R.an.t - 0.5, mu)[1], n2) > 0;
+  const flat = D.relNodes(rt, vt, 0, rt, vt, mu), meets = D.passMeets({ d: 900, vrel: 4 }) && !D.passMeets({ d: 1100, vrel: 4 }) && !D.passMeets({ d: 900, vrel: 6 });
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url)), H = boot({ search: '?tester' }), r = x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+  r('ttlFound()'); r("go('assembly')"); r("testStart({body:'Tellus',where:'beside',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:3000})"); H.frame(10);
+  const rows = r('JSON.stringify(tgtRows().map(x=>[x[0],x[1].replace(/<[^>]+>/g,"")]))'), Rw = rows.startsWith('[') ? JSON.parse(rows) : [], cl = (Rw.find(x => x[0] === 'Closest') || [])[1] || '';
+  check('space-38: the target\'s next three passes (at the place our orbits come nearest, each the least separation there or the one as we go by; the first is the closest moment), the relative nodes (on its plane, half an orbit apart, 2·v_h·sin(i/2) to match), green under 1 km and 5 m/s; the Target card lists the closest pass by number',
+    passOK && nodeOK && !flat.an && !flat.dn && meets && /^\d · .* · .* m\/s · in /.test(cl) && !H.errs.length,
+    `passes ${P.map(x => `${(x.t / per).toFixed(3)} orbits ${(x.d / 1e3).toFixed(2)} km ${x.vrel.toFixed(1)} m/s`).join(', ')}; approach ${(A.d / 1e3).toFixed(2)} km; `
+    + `nodes ${(R.ri * 180 / Math.PI).toFixed(3)}°, AN ${R.an ? (R.an.t / per).toFixed(3) + ' orbits ' + R.an.dv.toFixed(2) + ' m/s' : '—'}, DN ${R.dn ? (R.dn.t / per).toFixed(3) : '—'}; card: ${rows.slice(0, 300)}; errors ${H.errs.length}`);
+}
