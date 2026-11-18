@@ -131,12 +131,20 @@ function cloudAt(u,T){const t=(T*2e-4)%500,a=4,ss=(e0,e1,v)=>{const y=clamp((v-e
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
-function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':q.ant&&q.r&&statSlot(q)?'TV':q.ant?'Navsat':'Object'}   // TV: an antenna in a stationary slot (Q522); any other antenna round Tellus counts toward navigation (navCover): "Navsat 1", routes "Navsats at …" (Q523)
+// (Q631, PLAYTEST #175) a station: a habitat or a lab on it or docked to it (2), or two or more docking ports and nothing
+// else to name it by (1); else 0. Read from the registry shape, so an old save's entry is named by what it is
+function stationy(q){const P=[q,...(q.attached||[]).map(a=>a.e)].flatMap(e=>(e.shape||[]).map(o=>shDef(o))).filter(Boolean);
+  return P.some(d=>d.berths||d.lab)?2:P.filter(d=>d.kind==='port').length>=2?1:0}
+function satKind(q){const st=q.junk?0:stationy(q);return q.junk?'Debris':st===2?'Station':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':q.ant&&q.r&&statSlot(q)?'TV':q.ant?'Navsat':st?'Station':'Object'}   // TV: an antenna in a stationary slot (Q522); any other antenna round Tellus counts toward navigation (navCover): "Navsat 1", routes "Navsats at …" (Q523)
+// (Q631, the save step 2 → 3) a station registered before the Station kind was "Object N": it becomes "Station N", numbered
+// after any station already named; other names stay. j: a parsed save, changed in place
+function stationRename(j){const S=j.sats||[];let n=S.filter(q=>/^Station \d+$/.test(q.name||'')).length;
+  for(const q of S)if(/^Object \d+$/.test(q.name||'')&&satKind(q)==='Station')q.name=`Station ${++n}`;return j}
 function satRegister(s,R){leakDry(s);if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
   const B=s.body,el=elements(s.r,s.v,B.mu);let cruise=0;
   if(!settled(B,el)){if(!(len(s.r)-B.R>(B.atm||0)))return;cruise=1}   // not a lasting orbit but above the air: in flight (Q49); in the air at flight end: dropped, as before
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
-  PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind({...q,r:s.r,v:s.v}),same=PROG.sats.filter(x=>satKind(x)===kind).length;
+  PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind({...q,r:s.r,v:s.v,shape:shapeOf(s.parts.filter(p=>p.on),false),attached:s.att}),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.T??R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.

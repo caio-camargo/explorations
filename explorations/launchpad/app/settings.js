@@ -5,7 +5,7 @@
 // readout, the gauges, the era look, the saved program as a file (export, import), and leaving tester mode. Each setting is kept per browser. Loaded last: a quality
 // preset sets aerofx's effect flags (gl.js) and the resolution cap adaptRes keeps to (render.js).
 const QUAL={
-  high:{l:'High',rs:1,d:'everything on',fx:{CLOUD_VOL:1,BLOOM:1,PLUME_LIGHT:1,IMPACT_FX:1,VAPOR_FX:1,SHIP_SHADOW:1,HAZE_FX:1}},
+  high:{l:'High',rs:1.5,d:'everything on; drawn finer than the screen (up to 150 %) when the graphics card has room',fx:{CLOUD_VOL:1,BLOOM:1,PLUME_LIGHT:1,IMPACT_FX:1,VAPOR_FX:1,SHIP_SHADOW:1,HAZE_FX:1}},
   low:{l:'Low',rs:.6,d:'for integrated graphics: flat clouds; no bloom, plume light, ground glow, vapor cones, heat haze or shadows of the ship on itself; resolution up to 60 %',fx:{CLOUD_VOL:0,BLOOM:0,PLUME_LIGHT:0,IMPACT_FX:0,VAPOR_FX:0}}};
 // Two settings (ROADMAP § "Graphics budget"; BEAUTY Q312). Medium is gone: on the Intel iGPU it missed the 30 fps floor
 // even at the 35 % resolution floor (the Heavy's vapor, view 54: 37.7 ms; Low 21.5 ms), so a saved 'medium' becomes Low

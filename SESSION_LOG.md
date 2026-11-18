@@ -8255,8 +8255,15 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   pad is 7.4 ms at 100 %, 5.0 of it the sky pass); at 1440p the pad already runs at 80–89 %. So it helps in orbit and
   in small windows, not on the pad on a real screen. notes/look.md § v1.366.
 - **Went wrong on the way:** a comment put mid-line in the star shader swallowed the rest of the line (the sky
-  program failed to compile); caught by the first still run.
-- **Tests:** smoke and lint green; CI 44383161712 green on the commit, then ff-merged.
+  program failed to compile); caught by the first still run. **And this entry and the claim's clearing were pushed
+  to main about an hour before the code:** main had moved, the fast-forward failed, and the closing step ran anyway
+  because the merge's exit status was hidden behind a pipe to `tail` (the mistake LESSONS already names for a
+  chained merge). For that hour ACTIVE_WORK said v1.366 was on main when it was not. Nobody else touched the files.
+  A forced push after a rebase was refused, so main was merged into the branch instead (twice, as main kept moving).
+- **Tests:** smoke and lint green (one smoke run under load failed one check, unnamed because only its last line was
+  kept; the rerun passed). CI 44383161712 green on the first commit, 44394468526 green on the branch with main merged
+  in (b5a529a9). Main then moved by one claim row; the commit merged (53a9a7a2) differs from the green one only in
+  root `ACTIVE_WORK.md`, which CI does not read, and was fast-forwarded without a third run.
 - **Not checked:** in motion by a person (TESTING 414); Caio's window size and what `res` reads on his pad (asked);
   the go-to-body view above 100 %.
 - **Proposed (QUEUE):** the sky pass leaves no room on the pad: march it at or below the screen's pixels under a finer

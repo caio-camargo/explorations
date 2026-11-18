@@ -1474,3 +1474,38 @@
     flat0 && mid(after) >= 3 && mid(under) >= 3 && mono(after) && mono(under) && Math.abs(after[7] - .5) < .1 && starSame && lineSame && rampSame && Object.values(has).every(Boolean),
     `one step of the stair, its row: before ${before.map(v => v.toFixed(2)).join(' ')} → after ${after.map(v => v.toFixed(2)).join(' ')} and the row under it ${under.map(v => v.toFixed(2)).join(' ')} (${mids} of 16 between) · star same ${starSame} · line same ${lineSame} · gradient same ${rampSame} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
+
+// aerofx-62. The 3D view drawn above the screen's pixels when the GPU has room (look & sound; Caio 2026-11-18, on the
+// edge filter: "the greebling on the craft and other elements still have the same issue"). Things about a pixel wide
+// need more samples, averaged after the grade. High's cap is 150 %; resNext goes above 100 % only while the grown frame
+// stays under SS_ROOM of the budget and steps back past SS_OVER; from below it stops at 100 % first; Low is as before.
+// The pass that brought the frame up brings it down (at 2× exactly the 2×2 box), and the stars keep the screen's pixel.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const RS_MIN='), j = pg.indexOf('// Without timer queries', i);
+  const { resNext, GPU_BUDGET, SS_ROOM, SS_OVER } = new Function(pg.slice(i, j) + ';return{resNext,GPU_BUDGET,SS_ROOM,SS_OVER}')();
+  const Q = new Function(pg.slice(pg.indexOf('const QUAL={'), pg.indexOf('const setGet=')) + ';return QUAL')();
+  // the game's loop, 0.6 s a step: a GPU whose frame is a fixed part plus one that goes as the pixel count
+  const run = (rs, cap, fixed, perPx, n = 60) => { let avg = null; const tr = []; for (let k = 0; k < n; k++) { const ms = fixed + perPx * rs * rs; avg = avg == null ? ms : avg * .3 + ms * .7; rs = resNext(rs, avg / GPU_BUDGET, cap); tr.push(rs); } return tr; };
+  const end = tr => tr.at(-1), still = tr => tr.slice(-20).every(r => r === tr.at(-1)), ms = (rs, f, p) => f + p * rs * rs;
+  const light = run(1, Q.high.rs, 1, 2), mid = run(1, Q.high.rs, 1, 4), busy = run(1, Q.high.rs, 2, 6);   // 3, 5 and 8 ms at 100 %
+  const met = run(Q.high.rs, Q.high.rs, 2, 6), up = run(.6, Q.high.rs, 2, 6), low = run(.6, Q.low.rs, .5, 1);   // the 8 ms scene met at 150 %; and come to from below
+  const sizes = Q.high.rs === 1.5 && Q.low.rs === .6;
+  const scaler = end(light) === 1.5 && still(light) && end(mid) > 1 && end(mid) < 1.5 && still(mid) && ms(end(mid), 1, 4) < SS_ROOM * GPU_BUDGET
+    && busy.every(r => r === 1) && still(met) && end(met) >= 1 && end(met) < 1.2 && ms(end(met), 2, 6) < SS_OVER * GPU_BUDGET && end(up) === 1 && still(up) && low.every(r => r === .6);
+  // the down filter in one dimension: four bilinear taps, a quarter of a canvas pixel either side of its centre
+  const tap = (img, x) => { const f = x - .5, x0 = Math.floor(f), a = f - x0, at = k => img[Math.min(img.length - 1, Math.max(0, k))]; return at(x0) * (1 - a) + at(x0 + 1) * a; };
+  const down = (img, k) => Array.from({ length: Math.floor(img.length / k) }, (_, d) => { const c = (d + .5) * k; return .5 * (tap(img, c - .25 * k) + tap(img, c + .25 * k)); });
+  const stripes = Array.from({ length: 32 }, (_, k) => k % 2), half = down(stripes, 2).every(v => Math.abs(v - .5) < 1e-12);   // one-texel stripes: an even grey, not a beat
+  const step = down(Array.from({ length: 32 }, (_, k) => k >= 15 ? 1 : 0), 2), box = step[6] === 0 && Math.abs(step[7] - .5) < 1e-12 && step[8] === 1;
+  const flat = down(new Array(30).fill(.37), 1.5).every(v => Math.abs(v - .37) < 1e-12);
+  const has = {
+    down: pg.includes('if(uDn>1.){vec2 q=.25*uDn*px;c=(texture(uS,uv-q).rgb+texture(uS,uv+vec2(q.x,-q.y)).rgb+texture(uS,uv+vec2(-q.x,q.y)).rgb+texture(uS,uv+q).rgb)*.25;}else{'),
+    wiring: pg.includes('gl.uniform1f(q.uSh,Math.max(0,Math.min(1,1.6*(1-w/cv.width))));gl.uniform1f(q.uDn,w/cv.width);'),
+    stars: pg.includes('float rad=min(uSPx*(.6+.45*sqrt(br)),.22/sc);') && pg.includes('exp(-r/(uSPx*5.))') && pg.includes('rad=uSPx*uPlnC[i].w;') && pg.includes('if(u.uSPx)gl.uniform1f(u.uSPx,2*tanY/H*Math.max(1,W/cv.width));'),
+    blind: pg.includes('else if(!late&&RS<Math.min(1,RS_MAX)&&RSP.t>RSP.wait){RS=Math.min(1,RS_MAX,RS*1.12);')
+  };
+  check('aerofx-62: the 3D view above the screen\'s pixels when the GPU has room: High up to 150 %, only while the frame stays under 60 % of the budget, back toward 100 % past 85 %; from below it stops at 100 %; Low as before; the down filter is the 2×2 box at 2×; the stars keep the screen\'s pixel',
+    sizes && scaler && half && box && flat && Object.values(has).every(Boolean),
+    `3 ms scene → ${(end(light) * 100).toFixed(0)} % · 5 ms → ${(end(mid) * 100).toFixed(0)} % at ${ms(end(mid), 1, 4).toFixed(1)} ms · 8 ms → ${busy.every(r => r === 1) ? '100 % throughout' : (end(busy) * 100).toFixed(0) + ' %'} · met at 150 % → ${(end(met) * 100).toFixed(0)} % at ${ms(end(met), 2, 6).toFixed(1)} ms · from 60 % → ${(end(up) * 100).toFixed(0)} % · Low ${(end(low) * 100).toFixed(0)} % · stripes ${half} · box ${box} · flat ${flat} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}

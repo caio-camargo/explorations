@@ -40,11 +40,17 @@ function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);
 // (rs squared), so a step's load is predicted: shrink to land at 0.9 of the budget (at most 30 % a step), grow 12 % only
 // when the grown frame would still be under 0.92. The two can't chase each other: a shrink lands at 0.9, and growing
 // from there predicts 1.13. resNext is pure (tests/look.mjs, res-1).
-const RS_MIN=0.35,GPU_BUDGET=11;
+// (v1.366) Above 100 % (High's cap is 1.5: the view drawn finer than the screen and brought down after the grade, which
+// is what smooths things a pixel wide) the scaler grows only while the grown frame stays under SS_ROOM of the budget:
+// the extra pixels are a nicety, not worth a GPU held at its limit; and it steps back toward 100 % once the frame passes
+// SS_OVER of it (a step back from 0.85 lands at 0.68, over SS_ROOM, so the two can't chase each other). A step from
+// below 100 % stops at 100 % first.
+const RS_MIN=0.35,GPU_BUDGET=11,SS_ROOM=.6,SS_OVER=.85;
 function resNext(rs,load,cap){
   if(rs>cap)return cap;if(load>1.05)return Math.max(RS_MIN,rs*Math.max(.7,Math.sqrt(.9/load)));
-  const up=Math.min(cap,rs*1.12);
-  return up>rs&&load*(up/rs)**2<.92?up:rs}
+  if(rs>1&&load>SS_OVER)return Math.max(1,rs/1.12);
+  const up=Math.min(cap,rs<1?Math.min(1,rs*1.12):rs*1.12);
+  return up>rs&&load*(up/rs)**2<(up>1?SS_ROOM:.92)?up:rs}
 // Without timer queries the only signal is the frame interval, and under vsync that never says how much room is left.
 // So: shrink when frames run long (over 1.3 refresh periods), and when they have held the refresh for a while, try one
 // step up; a probe that makes frames run long is taken back and the wait before the next one doubles (4 s to 64 s).
@@ -56,7 +62,7 @@ function adaptRes(dtR){
   if(dtR<0.1){RSP.dt=RSP.dt*.9+dtR*.1;RSP.per=Math.min(RSP.per*1.0005,Math.max(dtR,1/240))}   // the refresh period: the shortest frame lately
   RSP.t+=dtR;if(rsT<0.6)return;rsT=0;const late=RSP.dt>RSP.per*1.3;
   if(late&&RS>RS_MIN){RS=Math.max(RS_MIN,RS*.82);if(RSP.up)RSP.wait=Math.min(64,RSP.wait*2);RSP.up=false;RSP.t=0}
-  else if(!late&&RS<RS_MAX&&RSP.t>RSP.wait){RS=Math.min(RS_MAX,RS*1.12);RSP.up=true;RSP.t=0}
+  else if(!late&&RS<Math.min(1,RS_MAX)&&RSP.t>RSP.wait){RS=Math.min(1,RS_MAX,RS*1.12);RSP.up=true;RSP.t=0}   // never above 100 % here: without GPU times there is no telling how much room is left
   else if(!late&&RSP.up&&RSP.t>2){RSP.up=false;RSP.wait=4}}   // the probe held: the next one comes soon
 function render(){spoolFrame();
   if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
@@ -114,7 +120,7 @@ function render(){spoolFrame();
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);   // (Q322) only where Selene is: the moon pass shades it
    selUniforms(u,camW);if(u.uSelPre)gl.uniform1f(u.uSelPre,prog===PDEPTH?1:0);   // (Q91) Selene's relief, once its map is on the GPU (app/gl.js); the pre-pass only finds a start
-   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
+   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);if(u.uSPx)gl.uniform1f(u.uSPx,2*tanY/H*Math.max(1,W/cv.width));   // clouds drift ~20 m/s; uSPx: the stars' pixel is the screen's when the view is drawn above it
    if(u.uNPl){const P=planetSky(tNow()).slice(0,6),D=new Float32Array(24),C=new Float32Array(24);P.forEach((x,i)=>{D.set([...x.u,x.br],i*4);C.set([...x.c,x.px],i*4)});   // (Q374) the planets as points
     gl.uniform1i(u.uNPl,P.length);gl.uniform4fv(u['uPlnD[0]'],D);gl.uniform4fv(u['uPlnC[0]'],C)}
    galaxy();gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
