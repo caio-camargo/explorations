@@ -470,6 +470,24 @@ function relNodes(r0,v0,t0,rt,vt,mu=TELLUS.mu){const h1=cross(r0,v0),h2=cross(rt
       const t=(lo+hi)/2,[p]=kepler(r0,v0,t-t0,mu),k=fa<0?'an':'dn';if(!out[k])out[k]={t,p,dv:2*len(h1)/len(p)*Math.sin(ri/2)}}
     a=b;fa=fb}
   return out}
+// (Q629, PLAYTEST #176 slice 2: meet on pass N; information only, the player places the node) the one burn at our next
+// apoapsis, along the track, that brings us back to that place on our Nth orbit after it just as the target goes by:
+// we return to the burn's place every new period P', the target crosses near it every period of its own, so P' is
+// chosen as (the target's k-th crossing − the burn's time) / N with the k that needs the least change. [{n, dv (signed:
+// + prograde), t (the meeting), P (the new period)}] for n = 1…nMax, leaving out a burn whose orbit would dip into the
+// air or below the ground; miss: how far the target's orbit passes from the burn's place (large: the rows mean little).
+// Needs both orbits closed; null otherwise
+function meetBurns(q,r0,v0,t0,B,nMax=5){const mu=B.mu,el=elements(r0,v0,mu),E=elements(q.r,q.v,mu);if(!(el.e<1&&E.e<1))return null;
+  const ta=t0+timeToNu(el,Math.PI),[ra3,va3]=kepler(r0,v0,ta-t0,mu),ra=len(ra3),va=len(va3),at=t=>kepler(q.r,q.v,t-q.epoch,mu)[0];
+  const PT=E.period,N=180,dd=t=>len(sub(at(t),ra3));let bi=0,bd=Infinity;for(let i=0;i<N;i++){const x=dd(ta+PT*i/N);if(x<bd){bd=x;bi=i}}
+  let a=ta+PT*(bi-1)/N,b=ta+PT*(bi+1)/N;for(let k=0;k<50;k++){const m1=a+(b-a)*.381966,m2=b-(b-a)*.381966;if(dd(m1)<dd(m2))b=m2;else a=m1}
+  let tT=(a+b)/2;if(tT<ta)tT+=PT;const miss=dd(tT),floor=B.R+(B.atm||0),out=[];
+  for(let n=1;n<=nMax;n++){let best=null;
+    for(let k=Math.floor((ta+n*el.period*0.5-tT)/PT);k<=Math.ceil((ta+n*el.period*1.5-tT)/PT);k++){const P=(tT+k*PT-ta)/n;if(!(P>0))continue;
+      const a2=Math.cbrt(mu*(P/(2*Math.PI))**2),other=2*a2-ra;if(!(other>floor)||!(2/ra-1/a2>0))continue;
+      const dv=Math.sqrt(mu*(2/ra-1/a2))-va;if(!best||Math.abs(dv)<Math.abs(best.dv))best={n,dv,t:ta+n*P,P,burn:ta}}
+    if(best)out.push(best)}
+  return{rows:out,miss,burn:ta}}
 // ---- contact: the vessel against registered satellites (sats session). Each part's shape is a signed distance field
 // from its profile (radius by height, the one d.prof gives); each part's surface is a cloud of sample points on that
 // profile. A point of one body inside the other is a contact. Satellites within HIT_NEAR are stepped with the vessel in

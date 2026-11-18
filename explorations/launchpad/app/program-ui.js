@@ -347,7 +347,11 @@ function tgtCA(){const T=tgtOf(S);if(!T||T.landed||S.landed||!S.alive)return nul
   const T0=progT(S),B=S.body,Q=T.ves?{r:T.q.r,v:T.q.v,epoch:T0}:T.q,
     orbit=(r,v,t0)=>{const el=elements(r,v,B.mu);return el.e<1&&el.pe>B.R?passes(Q,r,v,t0,3*el.period,B.mu,3):null};
   let plan=null,planRi=null;if(S.node){const I=nodeInfo(S);if(I){const v=add(I.vN,I.rem);plan=orbit(I.rN,v,T0+I.t-simT);planRi=Math.acos(clamp(dot(norm(cross(I.rN,v)),norm(cross(T.r,T.v))),-1,1))}}
-  return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan,planRi,nodes:relNodes(S.r,S.v,T0,T.r,T.v,B.mu)}}
+  return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan,planRi,nodes:relNodes(S.r,S.v,T0,T.r,T.v,B.mu),meet:meetBurns(Q,S.r,S.v,T0,B,5)}}   // meet: Q629
+// (Q629, PLAYTEST #176 slice 2) the Target card's "Meet" row: the burn at the next apoapsis for each pass, signed
+// (+ prograde, − retrograde), information only; when the target's orbit passes far from that apoapsis, said first
+const meetText=(M,T0)=>`<span class="dim">burn at Ap in ${fmtT(M.burn-T0)}${M.miss>5e3?`, its orbit ${fmtD(M.miss)} off`:''}:</span> `
+  +M.rows.map(x=>`<span title="burn ${x.dv>=0?'prograde':'retrograde'} ${Math.abs(x.dv).toFixed(1)} m/s at apoapsis: you meet it ${x.n} orbit${x.n>1?'s':''} later, in ${fmtT(x.t-T0)}">pass ${x.n} ${x.dv>=0?'+':'−'}${Math.abs(x.dv)<10?Math.abs(x.dv).toFixed(1):Math.abs(x.dv).toFixed(0)}</span>`).join(' · ')+' m/s';
 // the closest of a list of passes (the HUD's "Closest" and the qualification's green), with its number
 const passBest=L=>(L||[]).reduce((b,x,i)=>!b||x.d<b.x.d?{x,i}:b,null);
 // one pass as the map and the HUD say it: "2 · 840 m · 3.1 m/s · in 1 h 32 min"
@@ -404,6 +408,7 @@ function tgtRows(){const T=tgtOf(S);if(!T)return[];const d=len(T.dr),cl=dot(T.dv
   const nx=N&&[N.an&&['AN',N.an],N.dn&&['DN',N.dn]].filter(Boolean).sort((a,b)=>a[1].t-b[1].t)[0];
   return[['Target',`${T.q.name} · ${fmtD(d)} · <span class="dim">rel</span> ${len(T.dv).toFixed(1)} m/s${Math.abs(cl)>0.05?` <span class="dim">${cl>0?'closing':'opening'}</span> ${Math.abs(cl).toFixed(1)}`:''}`],
     ['Closest',nb?`<span class="${ink(nb.x)}">${passText(nb.x,nb.i,T0)}</span>${pb?` · <span class="dim">plan</span> <span class="${ink(pb.x)}">${passText(pb.x,pb.i,T0)}</span>`:''}`:'—'],
+    ...(ca&&ca.meet&&ca.meet.rows.length?[['Meet',meetText(ca.meet,T0)]]:[]),
     ...(N&&N.ri>=1.745e-4?[['Planes',`${deg(N.ri)} apart${nx?` · <span class="dim">${nx[0]} in ${fmtT(nx[1].t-T0)}</span> ${nx[1].dv.toFixed(1)} m/s to match`:''}${ca.planRi!=null?` · <span class="dim">plan</span> ${deg(ca.planRi)}`:''}`]]:[])]}
 // (vehicle, Q454) the transfer to a stationary orbit over the capital: when to burn, how much, and a button that plans it as a
 // node (the burn's middle at statXfer's place: measured, that lands within a degree; starting there lands ~2° short). Shown

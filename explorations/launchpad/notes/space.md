@@ -2963,3 +2963,26 @@ In Chrome on the RTX (`shot.mjs`, notebook era): a tester start 30 km behind a t
 label crowding (pass 2's text and the DN's were dropped by the label placer where they fell on pass 1 and the Pe
 mark; the marks stay); the cost while dragging a node on a slow machine
 (passes is ~22 k segment distances plus ~900 Kepler steps, four times a second at most).
+
+## v1.369 — meet on pass N (2026-11-18, space, QUEUE Q629, PLAYTEST #176 slice 2)
+
+The second of the rendezvous tools Caio and the playtest session settled on: for the next few orbits, the one burn at
+the next apoapsis that brings you to the target on that pass, as numbers (*pass 2: −57 · pass 5: +8.4 m/s*).
+Information only: the player places the node.
+
+- **`meetBurns(q, r0, v0, t0, B, nMax)`** (sim/space.js, after `relNodes`): the burn is along the track at our next
+  apoapsis, so we come back to that place every new period P'. The target crosses nearest that place once each of its
+  periods (found by a scan of its orbit and a golden section). For pass n, P' = (its k-th crossing − the burn) / n,
+  with the k that changes our period least; the burn is the speed at the apoapsis for that orbit's size minus ours,
+  signed (+ prograde, − retrograde). A row whose orbit would dip into the air or the ground is left out. `miss` says
+  how far the target's orbit passes from the burn's place: the rows only mean something when that is small (a
+  Hohmann-style approach from below, the usual case).
+- **The Target card** has a *Meet* row: `burn at Ap in 12m 3s: pass 1 +518 · pass 2 −57 · … · pass 5 +8.4 m/s`, each
+  with a tooltip (prograde or retrograde, how far, when you meet); when the target's orbit passes over 5 km from that
+  apoapsis, the row says so first.
+
+**Checked:** test space-39 flies every answer: a 300 × 400 km orbit under a 400 km target, each of the five burns
+applied at the apoapsis and propagated meets the target within 10 m on its pass, none dipping into the air; a target
+orbit 60 km higher is said to be 60 km off; the headless page's Target card shows the row. **Not checked:** by a person
+(TESTING 417); whether "at the next apoapsis" is the right place when the orbits cross elsewhere (then the passes of
+slice 1 are the better guide).

@@ -1158,3 +1158,26 @@
     `passes ${P.map(x => `${(x.t / per).toFixed(3)} orbits ${(x.d / 1e3).toFixed(2)} km ${x.vrel.toFixed(1)} m/s`).join(', ')}; approach ${(A.d / 1e3).toFixed(2)} km; `
     + `nodes ${(R.ri * 180 / Math.PI).toFixed(3)}°, AN ${R.an ? (R.an.t / per).toFixed(3) + ' orbits ' + R.an.dv.toFixed(2) + ' m/s' : '—'}, DN ${R.dn ? (R.dn.t / per).toFixed(3) : '—'}; card: ${rows.slice(0, 300)}; errors ${H.errs.length}`);
 }
+
+// space-39. Meet on pass N (space, QUEUE Q629, PLAYTEST #176 slice 2; information only, the player places the node).
+// `meetBurns` gives, for each of the next five orbits, the one burn along the track at our next apoapsis that brings us
+// back there just as the target goes by. Checked by flying each answer: a 300 × 400 km orbit under a target's 400 km
+// circle, the target 1.3 rad round: every row's burn, applied at the apoapsis and propagated, meets the target within
+// 10 m on its pass; no row's orbit dips into the air; a target on a circle 60 km higher is said to pass 60 km off. And
+// in the page, the Target card has a "Meet" row.
+{
+  const D = new Function(src + 'return {meetBurns,kepler,TELLUS};')(), T = D.TELLUS, mu = T.mu, { len, sub, add, mul, norm } = api;
+  const rp = T.R + 300e3, ra = T.R + 400e3, a = (rp + ra) / 2, vp = Math.sqrt(mu * (2 / rp - 1 / a)), r0 = [rp, 0, 0], v0 = [0, 0, vp];
+  const tgt = (h, ph) => { const R = T.R + h, w = Math.sqrt(mu / R ** 3); return { r: [R * Math.cos(ph), 0, R * Math.sin(ph)], v: [-R * w * Math.sin(ph), 0, R * w * Math.cos(ph)], epoch: 0 }; };
+  const q = tgt(400e3, 1.3), M = D.meetBurns(q, r0, v0, 0, T, 5);
+  const fly = x => { const [rb, vb] = D.kepler(r0, v0, x.burn, mu), v2 = add(vb, mul(norm(vb), x.dv)), [p] = D.kepler(rb, v2, x.t - x.burn, mu);
+    const el = api.elements(rb, v2, mu); return { sep: len(sub(p, D.kepler(q.r, q.v, x.t, mu)[0])), pe: el.pe - T.R }; };
+  const F = M ? M.rows.map(fly) : [], off = D.meetBurns(tgt(460e3, 1.3), r0, v0, 0, T, 5);
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url)), H = boot({ search: '?tester' }), r = x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+  r('ttlFound()'); r("go('assembly')"); r("testStart({body:'Tellus',where:'beside',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:30000})"); H.frame(10);
+  const meet = r('(tgtRows().find(x=>x[0]==="Meet")||["",""])[1].replace(/<[^>]+>/g,"")');
+  check('space-39: meet on pass N: each of the next five orbits\' burn at apoapsis, flown, meets the target within 10 m on its pass, none dipping into the air; a target orbit 60 km off is said; the Target card has a Meet row',
+    !!M && M.rows.length === 5 && M.rows.every((x, i) => x.n === i + 1) && F.every(f => f.sep < 10 && f.pe > (T.atm || 0)) && M.miss < 1 && off && Math.abs(off.miss - 60e3) < 100
+      && /^burn at Ap in .*pass 1 [+−][0-9.]+ .*pass 5 [+−][0-9.]+ m\/s$/.test(meet) && !H.errs.length,
+    `${M ? M.rows.map((x, i) => `pass ${x.n} ${x.dv.toFixed(1)} m/s (flown: ${F[i].sep.toFixed(1)} m, pe ${(F[i].pe / 1e3).toFixed(0)} km)`).join('; ') : 'none'}; off ${off ? (off.miss / 1e3).toFixed(1) : '—'} km; card "${meet}"`);
+}
