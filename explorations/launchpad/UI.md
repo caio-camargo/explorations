@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.2.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-13
+**Version**: 0.2.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-11-18
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -78,7 +78,8 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
     (HighFleet's lesson), no stylised type that's harder to read (KSP2's).
 11. **A small kit, and every screen is built from it.** Sheet, row, stat, stamp (GO / NO-GO / DONE), lamp, tile,
     poster heading, button, tab. Four type sizes (poster, sheet title, body, footnote), two weights. Poster type only
-    for big moments (a first, a Debrief title, a loss), never for routine headings.
+    for big moments (a first, a Debrief title, a loss), never for routine headings. **The kit's roles, and what
+    tells one from another, are proposed in [`ELEMENTS.md`](ELEMENTS.md)** (draft, 2026-11-18).
 12. **What's clickable looks clickable**, one way, everywhere; stamps and labels never look like buttons.
 13. **One language per place:** the office (Program, Debrief, logbook) is paperwork; the cockpit (flight, rollout)
     is the instrument panel; the map is the pencil chart. No dark generic panels anywhere (W14's mix).
@@ -212,3 +213,4 @@ documents) · Oxygen Not Included overlays (wiki.gg) · Mini Metro (killscreen.c
 277 · HighFleet review (pcgamer.com) · KSP2 UI feedback threads (forum.kerbalspaceprogram.com) · CK3 nested tooltips
 (gamingonlinux.com; Paradox Tinto Talks #77).
 - 0.2.1 (2026-11-12): § 2.1, the copy rule (D43).
+- 0.2.3 (2026-11-18): rule 11 points to ELEMENTS.md.

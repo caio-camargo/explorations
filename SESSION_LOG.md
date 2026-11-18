@@ -8271,3 +8271,26 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
 - Files: launchpad `app/gl.js`, `app/render.js`, `app/settings.js`, `refset.mjs`, `tests/look.mjs`,
   `notes/look.md`, `NOTES.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — design desk (Fable 5.2, main clone): the grammar of text elements, research and a mock-up (ELEMENTS.md 0.1.0)
+
+- **Asked:** Caio: the text boxes "have a very claude-y look... serviceable for development but not definitively";
+  research first on "what should be similar and what different, how to establish similarity and difference and
+  hierarchy"; the parts selector and the right-hand info as examples. The identity is "only loosely fixed... subject
+  to reevaluation for function". Research and a mock-up, no game code.
+- **Found (the Assembly at v1.366):** one rounded box does seven jobs (command, toggle, choice, way out, part, staging
+  event, purchase); cyan means five things; headings have three looks and no rank; 21 font sizes and 5 radii in
+  `index.html` and `app/*.js`; one monospace voice for everything.
+- **Done:** `explorations/launchpad/ELEMENTS.md`: nine principles with sources, 24 roles with what each is alike
+  with and differs from, the code (which variable carries which distinction), six function tests for a dress.
+  `mockups/kit/index.html`: the Assembly as one set of role classes in four dresses (Plain, Form, Drawing, Panel)
+  beside today's still, a role sheet, squint and grey toggles. Stills in `output/launchpad/mockups/kit/`.
+- **Findings on the identity:** the office's dress suits the Assembly better than the cockpit's; amber phosphor
+  collides with the amber caution (matters for Q477); VT323 and drafting lettering have one weight each.
+- **Not checked:** the grey stills (captured, not inspected); any dress on the flight HUD, Program or map; windows
+  above 1258 × 702; Bahnschrift off Windows (a stand-in: the game bundles no sans); the recalled sources in § 9.
+- **Waiting on Caio:** ELEMENTS.md § 8 (the roles, a dress for the Assembly, an accent or none, part pictures, the
+  cockpit's amber). The claim stays open for his answers.
+- **Left running:** a python server on port 8830 (ends by itself within 90 minutes of 17:45).
+- Files: launchpad `ELEMENTS.md` (new), `mockups/kit/` (new: `index.html`, `today.jpg`, `bg-assembly.jpg`),
+  `mockups/README.md`, `UI.md` (0.2.3, a pointer); root `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.

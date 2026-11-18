@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launchpad mock-up: the grammar of text elements</title>
+<!-- A static mock-up (ELEMENTS.md). Never loaded by the game. One set of roles (the classes below), four dresses.
+     Faces: the game's bundled ones (../../fonts) plus Bahnschrift (Windows' DIN) as a stand-in for a sans the game
+     does not bundle yet. URL: ?dress=today|plain|form|drawing|panel &view=asm|sheet &squint=1 &grey=1 &amber=1 -->
+<style>
+@font-face{font-family:'Special Elite';src:url(../../fonts/special-elite.woff2) format('woff2')}
+@font-face{font-family:'Courier Prime';src:url(../../fonts/courier-prime.woff2) format('woff2')}
+@font-face{font-family:'Courier Prime';font-weight:700;src:url(../../fonts/courier-prime-bold.woff2) format('woff2')}
+@font-face{font-family:'VT323';src:url(../../fonts/vt323.woff2) format('woff2')}
+@font-face{font-family:'Bebas Neue';src:url(../../fonts/bebas-neue.woff2) format('woff2')}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+/* ---------- the mock-up's own chrome (not part of any dress) ---------- */
+#bar{position:fixed;inset:0 0 auto 0;height:34px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/1 system-ui,sans-serif;display:flex;gap:6px;align-items:center;padding:0 10px;white-space:nowrap;overflow:auto}
+#bar b{font-weight:600;color:#8d9299;margin:0 2px 0 10px}
+#bar button{font:inherit;color:inherit;background:#26282c;border:1px solid #3a3d42;border-radius:3px;padding:5px 9px;cursor:pointer}
+#bar button.on{background:#e8e6e0;color:#111;border-color:#e8e6e0}
+#who{position:fixed;inset:auto 0 0 0;height:24px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/24px system-ui,sans-serif;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#who b{color:#fff}
+#stage{position:fixed;inset:34px 0 24px 0;background:#000 url(bg-assembly.jpg) center/cover;overflow:hidden}
+body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.squint.grey #stage{filter:blur(4px) grayscale(1)}
+#today{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+[data-dress=today] #today{display:block}[data-dress=today] .pn,[data-dress=today] .card{display:none}
+[data-view=asm] .sheet{display:none}[data-view=sheet] .pn:not(.sheet),[data-view=sheet] .card{display:none}
+
+/* ---------- the grammar: structure shared by every dress ---------- */
+#stage{--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
+.pn{position:absolute;top:12px;bottom:12px;overflow:auto;background:var(--surf);padding:12px 14px;border-radius:var(--rad);scrollbar-width:thin}
+.pn.left{left:12px;width:284px}.pn.right{right:12px;width:346px;display:flex;flex-direction:column;overflow:hidden}
+.scroll{flex:1;overflow:auto;scrollbar-width:thin;margin-right:-8px;padding-right:8px}
+.pn.sheet{left:50%;transform:translateX(-50%);width:min(1060px,96vw)}
+.card{position:absolute;left:308px;top:300px;width:310px;background:var(--surf);padding:10px 12px;border-radius:var(--rad);z-index:3}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.ttl{font-size:var(--s2);font-weight:700;line-height:1.15;margin:0}
+.grp{margin-top:16px}.grp.first{margin-top:0}
+.h{font-size:var(--s1);font-weight:700;margin:0 0 7px;display:flex;align-items:baseline;gap:8px}
+.sh{font-size:var(--s0);letter-spacing:.09em;text-transform:uppercase;color:var(--quiet);margin:8px 0 1px;padding:0 8px}
+.sh:first-child{margin-top:3px}
+.lab{color:var(--quiet)}
+.val{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.u{font-weight:400;color:var(--quiet);margin-left:.22em;font-size:.93em}
+.nm{font-weight:600}.obj .nm{font-weight:400}.kv .lab{white-space:nowrap}
+.say{margin:4px 0 6px}
+.note{font-size:var(--s0);color:var(--quiet)}
+.pmt{margin:0 0 6px}.pmt::before{content:"\25B8  "}
+.term{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+.kbd{font-size:var(--s0);font-weight:400;border:1px solid currentColor;border-radius:3px;padding:0 4px;opacity:.75;letter-spacing:0}
+.btn{font:inherit;color:var(--ink);background:var(--plate);border:1px solid var(--plateEdge);border-radius:var(--rad);padding:3px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin:0 3px 5px 0}
+.btn:hover{background:var(--plateHi)}
+.btn[disabled]{color:var(--faint);cursor:default;background:transparent}
+.tog::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;border:1px solid var(--quiet)}
+.tog[aria-pressed=true]::before{background:var(--ink);border-color:var(--ink)}
+.seg{display:inline-flex;margin:0 0 5px 6px;vertical-align:middle}
+.seg .btn{border-radius:0;margin:0 0 0 -1px;padding:3px 7px}
+.seg .btn.on{background:var(--ink);color:var(--solid);border-color:var(--ink)}
+.pri{display:flex;width:100%;justify-content:center;gap:10px;margin:8px 0 0;padding:10px;font-size:var(--s2);font-weight:700;background:var(--ink);color:var(--solid);border-color:var(--ink)}
+.pri:hover{background:var(--ink);filter:brightness(1.12)}
+.well{background:var(--well);border:1px solid var(--wellEdge);border-radius:var(--rad);padding:3px 0}
+.obj{display:flex;align-items:baseline;padding:2px 8px;cursor:grab}
+.obj:hover,.obj.hov{background:var(--hover)}
+.obj.held{background:var(--ink);color:var(--solid)}.obj.held .u{color:inherit}
+.obj.lock{color:var(--faint)}.obj.lock .val,.obj.lock .nm{font-weight:400}.obj.lock .u{color:inherit}
+.ld{flex:1;min-width:12px}
+.srow{display:flex;gap:9px;padding:3px 8px;align-items:baseline}
+.ix{font-weight:700;min-width:1.1em;text-align:right;font-variant-numeric:tabular-nums}
+.tok{display:inline-flex;padding:0 8px 0 5px;background:var(--plate);border-left:3px solid var(--quiet);cursor:grab;margin-right:5px}
+.tb{width:100%;border-collapse:collapse}
+.tb th{font-weight:400;text-align:right;padding:2px 5px;vertical-align:bottom;white-space:nowrap}
+.tb td{text-align:right;padding:2px 5px}
+.tb th:first-child,.tb td:first-child{text-align:left}
+.tb tfoot td{border-top:1px solid var(--rule)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;align-items:baseline;margin:7px 0}
+.vd{display:inline-block;flex:none;font-size:var(--s0);font-weight:700;letter-spacing:.1em;padding:0 5px;border:1.5px solid currentColor;min-width:6.6em;text-align:center}
+.vd.go{color:var(--go)}.vd.maybe{color:var(--amber)}.vd.no{color:var(--red)}
+.chk{display:flex;gap:9px;align-items:baseline;margin:4px 0}
+.cau{display:flex;gap:7px;align-items:baseline;margin:9px 0 2px;padding-left:7px;border-left:3px solid var(--amber)}
+.cau::before{content:"\25B2";color:var(--amber);font-size:var(--s0)}
+.bdg{display:inline-block;min-width:1.6em;text-align:center;background:var(--amber);color:#1a1408;font-weight:700;border-radius:9px;padding:0 5px;font-size:var(--s0);margin-left:4px}
+.foot{flex:none;margin-top:8px;padding-top:6px;border-top:1px solid var(--rule)}
+.sheet table{width:100%;border-collapse:collapse}
+.sheet td,.sheet th{text-align:left;vertical-align:top;padding:6px 10px 6px 0;border-top:1px solid var(--rule)}
+.sheet th{border:0}
+.sheet td:nth-child(2){min-width:230px}
+
+/* ---------- dress 1 · PLAIN: the grammar with no costume. One face (DIN), no hue outside the three conditions ---------- */
+[data-dress=plain] #stage{--f-say:Bahnschrift,'Segoe UI',system-ui,sans-serif;--surf:rgba(20,21,23,.95);--solid:#141517;--ink:#ece8df;--quiet:#a39d90;--faint:#6a665d;
+  --plate:#2a2c30;--plateEdge:#4c4f55;--plateHi:#3a3d42;--well:#0b0c0d;--wellEdge:#000;--hover:rgba(255,255,255,.08);--rule:#3a3c40;--amber:#f0a92a;--red:#ff5d4d;--go:#58c98b;--rad:2px}
+[data-dress=plain] .pn,[data-dress=plain] .card{box-shadow:0 6px 24px rgba(0,0,0,.55)}
+[data-dress=plain] .card{border:1px solid #4c4f55}
+
+/* ---------- dress 2 · FORM: a printed form, filled in on a typewriter. Printed = the system; typed = the data ---------- */
+[data-dress=form] #stage{--f-say:'Courier Prime',Courier,monospace;--f-print:Bahnschrift,'Arial Narrow',sans-serif;--s1:12.5px;--surf:#f1e8d2;--solid:#f1e8d2;--ink:#2a2620;--quiet:#6b604e;--faint:#a3977f;--print:#1d3b6e;
+  --plate:#fbf6e6;--plateEdge:#2a2620;--plateHi:#fff;--well:transparent;--wellEdge:transparent;--hover:rgba(29,59,110,.12);--rule:#9c8f78;--amber:#b86e00;--red:#b0261a;--go:#1f7a3c;--rad:0}
+[data-dress=form] .pn,[data-dress=form] .card{box-shadow:3px 4px 0 rgba(0,0,0,.4);background:linear-gradient(180deg,#f5edd9,#ede3ca)}
+[data-dress=form] .card{border:1px solid #2a2620}
+[data-dress=form] .ttl{font-family:'Bebas Neue',var(--f-print);font-weight:400;font-size:26px;letter-spacing:.06em;color:var(--print);line-height:1}
+[data-dress=form] .h{font-family:var(--f-print);font-stretch:75%;font-size:12px;letter-spacing:.14em;text-transform:uppercase;background:var(--print);color:#f5edd9;padding:2px 8px}
+[data-dress=form] .h .note{color:#c9d3e6;font-family:var(--f-say);letter-spacing:0;text-transform:none}
+[data-dress=form] .sh{font-family:var(--f-print);font-stretch:75%;color:var(--print);border-bottom:1px solid var(--print);padding:0;margin:9px 0 2px;font-size:11px;letter-spacing:.12em}
+[data-dress=form] .lab{font-family:var(--f-print);font-stretch:75%;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--print)}
+[data-dress=form] .val,[data-dress=form] .nm{font-weight:700}[data-dress=form] .obj .nm{font-weight:400}
+[data-dress=form] .u{font-weight:400}
+[data-dress=form] .obj{padding:1px 2px}
+[data-dress=form] .ld{border-bottom:1px dotted var(--quiet);margin:0 5px;position:relative;top:-3px}
+[data-dress=form] .obj.held .ld{border-color:var(--solid)}
+[data-dress=form] .btn{font-family:var(--f-print);font-size:12.5px;box-shadow:1px 2px 0 rgba(42,38,32,.55)}
+[data-dress=form] .pri{background:var(--print);border-color:var(--print);color:#f5edd9;font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;font-size:17px}
+[data-dress=form] .pri:hover{background:var(--print)}
+[data-dress=form] .tog::before{border-radius:0;width:10px;height:10px;border-color:var(--ink)}
+[data-dress=form] .tog[aria-pressed=true]::before{background:linear-gradient(45deg,transparent 42%,var(--ink) 42% 58%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--ink) 42% 58%,transparent 58%)}
+[data-dress=form] .tok{background:var(--plate);border:1px dashed var(--quiet);border-left:3px solid var(--ink)}
+[data-dress=form] .vd{transform:rotate(-3deg);border-width:2px;font-family:var(--f-say);outline:1px solid currentColor;outline-offset:1px}
+[data-dress=form] .note{font-style:italic;font-size:11.5px}
+[data-dress=form] .tb thead th{border-bottom:1px solid var(--print)}
+[data-dress=form] .kbd{font-family:var(--f-print)}
+
+/* ---------- dress 3 · DRAWING: the engineering drawing. Lettered caps = the sheet; a parts list with item numbers ---------- */
+[data-dress=drawing] #stage{--f-say:Bahnschrift,'Segoe UI',sans-serif;--surf:rgba(22,49,88,.96);--solid:#163158;--ink:#eaf1f8;--quiet:#a8bfd9;--faint:#6d87a8;--line:rgba(234,241,248,.55);
+  --plate:rgba(234,241,248,.1);--plateEdge:var(--line);--plateHi:rgba(234,241,248,.2);--well:transparent;--wellEdge:var(--line);--hover:rgba(234,241,248,.12);--rule:rgba(234,241,248,.3);--amber:#ffc04a;--red:#ff7a6b;--go:#7fe0a2;--rad:0}
+[data-dress=drawing] .pn,[data-dress=drawing] .card{border:1px solid var(--line);outline:1px solid var(--line);outline-offset:-5px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+[data-dress=drawing] .ttl,[data-dress=drawing] .h,[data-dress=drawing] .sh,[data-dress=drawing] .lab,[data-dress=drawing] .btn{font-stretch:75%;text-transform:uppercase;letter-spacing:.12em}
+[data-dress=drawing] .ttl{font-weight:400;font-size:19px;letter-spacing:.2em}
+[data-dress=drawing] .h{font-weight:400;justify-content:center;align-items:center}
+[data-dress=drawing] .h::before,[data-dress=drawing] .h::after{content:"";flex:1;border-top:1px solid var(--line)}
+[data-dress=drawing] .h .note{text-transform:none;letter-spacing:0}
+[data-dress=drawing] .lab{font-size:11px}
+[data-dress=drawing] .well{padding:0;counter-reset:item}
+[data-dress=drawing] .obj{border-top:1px solid var(--rule);padding:2px 8px 2px 0}
+[data-dress=drawing] .obj::before{counter-increment:item;content:counter(item);flex:none;width:26px;text-align:center;font-size:var(--s0);color:var(--quiet);border-right:1px solid var(--rule);margin-right:8px}
+[data-dress=drawing] .obj.held::before{color:inherit}
+[data-dress=drawing] .sh{border-top:1px solid var(--line);margin:0;padding:3px 8px 2px 34px;background:rgba(234,241,248,.07)}
+[data-dress=drawing] .sh:first-child{border-top:0;margin:0}
+[data-dress=drawing] .val{font-weight:400}
+[data-dress=drawing] .srow{border-top:1px solid var(--rule)}.srow:first-child{border-top:0!important}
+[data-dress=drawing] .tb td,[data-dress=drawing] .tb th{border:1px solid var(--rule)}
+[data-dress=drawing] .btn{font-size:11.5px}
+[data-dress=drawing] .pri{font-size:15px;letter-spacing:.2em}
+[data-dress=drawing] .note{font-style:italic}
+
+/* ---------- dress 4 · PANEL: the instrument panel. Engraved = the system; lit on glass = the data ---------- */
+[data-dress=panel] #stage{--f-say:'VT323',monospace;--f-print:Bahnschrift,'Arial Narrow',sans-serif;--surf:#2b2e31;--solid:#0a0b0a;--ph:#e9f2df;--ink:#e6e1d3;--quiet:#aaa698;--faint:#77746a;
+  --plate:#3a3e43;--plateEdge:#15171a;--plateHi:#484d53;--well:#0a0b0a;--wellEdge:#000;--hover:rgba(233,242,223,.14);--rule:#55584f;--amber:#f2b01e;--red:#ff4a3a;--go:#52d08a;--rad:3px}
+body.amber[data-dress=panel] #stage{--ph:#ffb000}
+[data-dress=panel] .pn,[data-dress=panel] .card{background:linear-gradient(180deg,#303337,#26292c);border:1px solid #111;box-shadow:inset 0 1px 0 #50545a,0 8px 26px rgba(0,0,0,.6);font-family:var(--f-print)}
+[data-dress=panel] .ttl,[data-dress=panel] .h,[data-dress=panel] .lab,[data-dress=panel] .btn,[data-dress=panel] .kbd{font-family:var(--f-print);font-stretch:75%;text-transform:uppercase;letter-spacing:.13em}
+[data-dress=panel] .ttl{font-size:18px;font-weight:600}
+[data-dress=panel] .grp{border:1px solid #8b887c;border-radius:5px;padding:13px 8px 8px;position:relative;margin-top:20px}
+[data-dress=panel] .grp.first{margin-top:9px}
+[data-dress=panel] .grp>.h{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#2e3134;padding:0 8px;margin:0;font-size:12px;font-weight:600;white-space:nowrap}
+[data-dress=panel] .h .note{text-transform:none;letter-spacing:0;font-weight:400}
+[data-dress=panel] .lab{font-size:11px;color:var(--ink)}
+[data-dress=panel] .note{font-family:var(--f-print);color:var(--quiet);font-size:11.5px}
+[data-dress=panel] .well,[data-dress=panel] .tb,[data-dress=panel] .glass{background:var(--well);border:1px solid #000;border-radius:3px;box-shadow:inset 0 0 10px rgba(233,242,223,.07),0 1px 0 #4a4e54;color:var(--ph);font:17px/1.12 var(--f-say)}
+[data-dress=panel] .glass{padding:6px 9px}
+[data-dress=panel] .tb{border-collapse:separate;border-spacing:0;padding:3px 1px;font-size:15px}[data-dress=panel] .tb :is(td,th){padding:1px 4px}[data-dress=panel] .tb .val{font-size:15px}
+[data-dress=panel] .well .lab,[data-dress=panel] .tb .lab,[data-dress=panel] .glass .lab,[data-dress=panel] .well .sh{font:inherit;text-transform:none;letter-spacing:0;color:var(--ph);opacity:.6}
+[data-dress=panel] .well .sh{text-transform:uppercase;padding:0 8px;margin:6px 0 0}
+[data-dress=panel] .val,[data-dress=panel] .nm,[data-dress=panel] .say{font:17px/1.12 var(--f-say);font-weight:400;color:var(--ph);background:var(--well);padding:0 5px;border-radius:2px}
+[data-dress=panel] .say{display:block;padding:3px 6px}
+[data-dress=panel] :is(.well,.tb,.glass) :is(.val,.nm,.say){background:none;padding:0}
+[data-dress=panel] .u{color:inherit;opacity:.6;font-size:1em}
+[data-dress=panel] .ix{font-weight:400}
+[data-dress=panel] .obj{padding:0 8px}
+[data-dress=panel] .obj.held{background:var(--ph);color:#0a0b0a}.obj.held .nm,.obj.held .val{color:inherit!important;background:none!important}
+[data-dress=panel] .obj.lock{opacity:.45;color:var(--ph)}
+[data-dress=panel] .tok{background:none;border:1px solid var(--ph);border-left-width:4px;padding:0 6px 0 4px}
+[data-dress=panel] .btn{background:linear-gradient(#474b51,#303337);border-top-color:#70757c;box-shadow:0 2px 0 #101112;font-size:11px;padding:5px 9px}
+[data-dress=panel] .btn[disabled]{background:#2e3134;box-shadow:none;border-color:#222}
+[data-dress=panel] .seg .btn.on,[data-dress=panel] .pri{background:#f3ecd2;color:#15130c;border-color:#f3ecd2;box-shadow:0 0 10px rgba(243,236,210,.45)}
+[data-dress=panel] .tog::before{background:#111;border-color:#000}
+[data-dress=panel] .tog[aria-pressed=true]::before{background:#f3ecd2;box-shadow:0 0 6px #f3ecd2}
+[data-dress=panel] .pri{font-size:15px;letter-spacing:.2em}
+[data-dress=panel] .term{text-decoration-color:currentColor}
+[data-dress=panel] .cau{background:var(--amber);color:#1a1408;border:0;border-radius:2px;padding:3px 8px;font-family:var(--f-print);font-weight:600}
+[data-dress=panel] .cau::before{color:#1a1408}
+[data-dress=panel] .vd{border:0;color:#10130f;font-family:var(--f-print);border-radius:2px}
+[data-dress=panel] .vd.go{background:var(--go)}.vd.maybe{}[data-dress=panel] .vd.maybe{background:var(--amber)}[data-dress=panel] .vd.no{background:var(--red)}
+[data-dress=panel] .foot{border:0}
+[data-dress=panel] .sheet td{font-family:var(--f-print)}
+</style>
+</head>
+<body data-dress="plain" data-view="asm">
+<div id="bar">
+  <b>Dress</b><span id="dresses"></span>
+  <b>View</b><button data-view="asm">Assembly</button><button data-view="sheet">Role sheet</button>
+  <b>Checks</b><button data-cls="squint" title="UI.md check 1: blurred, what stands out should be read 1">Squint</button><button data-cls="grey" title="nothing may depend on hue alone">Grey</button><button data-cls="amber" title="Panel dress only: amber phosphor, to see it collide with the amber caution">Amber phosphor</button>
+</div>
+
+<main id="stage">
+  <img id="today" src="today.jpg" alt="The Assembly today (v1.366)">
+
+  <section class="pn left">
+    <div class="head"><h1 class="ttl">Assembly</h1><button class="btn nav">← Program <span class="kbd">P</span></button></div>
+    <div class="kv"><span class="lab">Date</span><span><span class="val">Year 1, day 1</span></span><span class="lab">Funds</span><span><span class="val">60<span class="u">M</span></span></span><span class="lab">Inbox</span><span><span class="bdg">4</span></span></div>
+    <section class="grp"><h2 class="h">Parts</h2>
+      <p class="pmt">Pick a part, then click the rocket</p>
+      <div class="well" id="parts"></div>
+      <div style="margin-top:7px"><button class="btn">New payload…</button></div>
+    </section>
+    <section class="grp"><h2 class="h">Presets</h2>
+      <button class="btn">Sounding</button><button class="btn">Orbiter</button><button class="btn">Lunar</button>
+    </section>
+  </section>
+
+  <aside class="card">
+    <div class="glass">
+      <div><span class="nm">Apogee engine</span> <span class="note">biprop, 440 N</span></div>
+      <p class="say">A small restartable engine for a satellite's own big burns.</p>
+      <div class="kv" id="cardkv"></div>
+      <div class="note">Pairs with propellant spheres, and a reaction wheel to point it</div>
+    </div>
+  </aside>
+
+  <section class="pn right"><div class="scroll">
+    <section class="grp first"><h2 class="h">Build</h2>
+      <div><span class="lab">Radial mounts</span><span class="seg"><button class="btn">1</button><button class="btn on">2</button><button class="btn">3</button><button class="btn">4</button><button class="btn">6</button><button class="btn">8</button></span></div>
+      <div><button class="btn tog" aria-pressed="true">Snap</button><button class="btn tog" aria-pressed="true">Radial decoupler</button><button class="btn tog" aria-pressed="false">Loads</button></div>
+      <div><button class="btn">Undo</button><button class="btn" disabled>Redo</button><button class="btn">Save design…</button><button class="btn">Clear</button></div>
+    </section>
+    <section class="grp"><h2 class="h">Staging <span class="note">automatic</span></h2>
+      <div class="well">
+        <div class="srow"><span class="ix">1</span><span><span class="tok">ignite Kestrel</span></span></div>
+        <div class="srow"><span class="ix">2</span><span><span class="tok">drop core 1</span><span class="tok">ignite Petrel</span></span></div>
+        <div class="srow"><span class="ix">3</span><span><span class="tok">chute</span></span></div>
+      </div>
+    </section>
+    <section class="grp"><h2 class="h">Stages</h2>
+      <table class="tb">
+        <thead><tr><th class="lab">No.</th><th class="lab">Mass, t</th><th class="lab"><span class="term">Δv</span>, m/s</th><th class="lab">at sea</th><th class="lab"><span class="term">TWR</span></th><th class="lab">Burn, s</th></tr></thead>
+        <tbody>
+          <tr><td class="ix">1</td><td class="val">14.04 → 6.94</td><td class="val">2177</td><td class="val">1969</td><td class="val">1.51</td><td class="val">95</td></tr>
+          <tr><td class="ix">2</td><td class="val">4.44 → 1.77</td><td class="val">3112</td><td class="val">812</td><td class="val">0.39</td><td class="val">139</td></tr>
+        </tbody>
+        <tfoot><tr><td class="lab">All</td><td class="val">14.04</td><td class="val">5288</td><td></td><td></td><td class="val">234</td></tr></tfoot>
+      </table>
+      <div class="chk" style="margin-top:9px"><span class="vd go">GO</span><span>Gets off the pad</span></div>
+      <div class="chk"><span class="vd maybe">PROBABLY</span><span>Reaches low orbit <span class="note">a guess, could be 30 % off</span></span></div>
+      <div style="margin-top:6px"><button class="btn">Study the trajectory</button> <span class="note">3.2 M, 26 days, then 10 %</span></div>
+    </section>
+    <section class="grp"><h2 class="h">Cost and time</h2>
+      <div class="kv"><span class="lab">Cost</span><span><span class="val">57<span class="u">M</span></span> <span class="note">of 60 M · 36 M back if it all lands intact</span></span>
+        <span class="lab">Stacking</span><span><span class="val">33.7<span class="u">days</span></span></span>
+        <span class="lab">Imports</span><span><span class="nm">Command pod</span> <span class="note">Mirtov, × 1.5</span></span></div>
+      <div class="cau"><span>Command pod is new to us: riskier ignitions, slower checkout <span class="note">know-how 22 %</span></span></div>
+    </section>
+    </div><div class="foot">
+      <div class="kv"><span class="lab">Site</span><span><span class="nm">Dunnzar Cape</span> <span class="note">0.0° N · clear</span></span></div>
+      <button class="btn pri">Build and launch <span class="kbd">L</span></button>
+    </div>
+  </section>
+
+  <section class="pn sheet">
+    <div class="head"><h1 class="ttl">Role sheet</h1><span class="note">every role, in this dress · ELEMENTS.md § 3</span></div>
+    <table id="roles"><thead><tr><th class="lab">Role</th><th class="lab">Specimen</th><th class="lab">Alike with</th><th class="lab">Differs from, and by what</th></tr></thead><tbody></tbody></table>
+  </section>
+</main>
+<div id="who">Hover an element to see its role.</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s),B=document.body;
+// ---- the parts list: real names and figures (sim/parts, v1.366); masses under 0.1 t in kg, two decimals above
+const PARTS=[['Command and payload',[['Command pod','0.84','t'],['Crew capsule','1.40','t'],['Probe core','80','kg','held'],['Instrument package','80','kg'],['Biocapsule','0.45','t'],['Imaging camera','120','kg'],['Whip antenna','10','kg']]],
+  ['Tanks',[['Tank 1 t','1.00','t'],['Tank 2 t','2.00','t'],['Tank 4 t','4.00','t'],['Propellant sphere 0.4 m','35','kg']]],
+  ['Engines',[['Kestrel booster','230','kN'],['Petrel vacuum','65','kN'],['Sparrow sounding','60','kN'],['Apogee engine','0.44','kN','hov']]],
+  ['Not open yet',[['Condor heavy','650','kN','lock'],['Tank 8 t','8.00','t','lock']]]];
+$('#parts').innerHTML=PARTS.map(([c,ps])=>`<div class="sh">${c}</div>`+ps.map(([n,v,u,k])=>`<div class="obj ${k||''}"><span class="nm">${n}</span><i class="ld"></i><span class="val">${v}<span class="u">${u}</span></span></div>`).join('')).join('');
+$('#cardkv').innerHTML=[['Mass','5','kg'],['Thrust','0.44','kN'],['<span class="term">Isp</span>','312','s','vacuum · 120 s at sea level'],['Size','0.24 × 0.35','m'],['Heat limit','1500','K'],['Price','3.0','M']]
+  .map(([l,v,u,n])=>`<span class="lab">${l}</span><span><span class="val">${v}<span class="u">${u}</span></span>${n?` <span class="note">${n}</span>`:''}</span>`).join('');
+
+// ---- the roles: selector, name, the rule (the footer and the sheet both read this). Order = most specific first.
+const R=[
+ ['.pri','Primary command','The one action the screen exists for. One per screen: the largest plate, filled with the ink.','<button class="btn pri" style="width:auto;margin:0">Build and launch <span class="kbd">L</span></button>','other commands (it is a plate)','a command: size and fill'],
+ ['.kbd','Key hint','The key that does the same. A small outlined cap, attached to its control.','<span class="kbd">L</span> <span class="kbd">P</span>','every key hint, on every screen','a count: outline, not fill'],
+ ['.seg','Choice','One of several. Plates joined edge to edge; the chosen one inverted.','<span class="seg" style="margin:0"><button class="btn">1</button><button class="btn on">2</button><button class="btn">3</button></span>','tabs (the same control)','a command: joined. A toggle: one is always on'],
+ ['.tog','Toggle','On or off, and it stays. A plate with an indicator that is always there, lit when on.','<button class="btn tog" aria-pressed="true">Snap</button><button class="btn tog" aria-pressed="false">Loads</button>','every other switch','a command: the indicator'],
+ ['.nav','Navigation','Leaves this screen. A plate with an arrow pointing where it goes.','<button class="btn nav">← Program <span class="kbd">P</span></button>','other ways out of a screen','a command: the arrow, and its place in the title row'],
+ ['.btn','Command','Does something now. A plate: the only filled, edged shape that is not an object. A verb.','<button class="btn">Undo</button><button class="btn" disabled>Redo</button>','all pressable things: one plate','static text: the plate. Unavailable: faint, no fill'],
+ ['.tok','Token','An object in a sequence (a staging event): draggable. A grip edge on the left, inside a well.','<span class="well" style="display:inline-block;padding:3px 8px"><span class="tok">ignite Kestrel</span></span>','objects (it lives in a well)','a command: the grip edge, no raised edge, the well'],
+ ['.obj','Object','A thing you pick up (a part). A row in a well: name left, its one figure right.','<div class="well" style="width:220px"><div class="obj"><span class="nm">Tank 2 t</span><i class="ld"></i><span class="val">2.00<span class="u">t</span></span></div><div class="obj held"><span class="nm">Probe core</span><i class="ld"></i><span class="val">80<span class="u">kg</span></span></div><div class="obj lock"><span class="nm">Tank 8 t</span><i class="ld"></i><span class="val">8.00<span class="u">t</span></span></div></div>','tokens, saved designs, crew: anything picked up','a command: the well, and no plate of its own. Held: inverted. Not open: faint'],
+ ['.vd','Verdict','A judgement, in a word, never a number. A fixed-width stamp in a reserved colour; never pressable.','<span class="vd go">GO</span> <span class="vd maybe">PROBABLY</span> <span class="vd no">NO-GO</span>','every verdict (Rollout, Debrief)','a command: no fill, no plate edge, it never moves on hover. A value: a word in capitals'],
+ ['.cau','Caution','Will need action. A glyph and an amber edge; the words stay in the ink. Red, with ■, only for act now.','<div class="cau" style="margin:0"><span>Command pod is new to us</span></div>','every caution; the master caution lamp','plain prose: the glyph and the edge (two signs, so it survives grey)'],
+ ['.bdg','Count','How many wait for you. A filled pill: the only round shape.','<span class="bdg">4</span>','every count of things waiting','a value: the pill. A key hint: filled'],
+ ['.term','Term','A word the glossary explains on hover. A dotted underline, nothing else.','<span class="term">Δv</span> <span class="term">TWR</span>','every glossary term','a command: no plate; it explains, it does not act'],
+ ['.u','Unit','Belongs to its value: quieter, lighter, a thin space after it. In a table it is said once, in the header.','<span class="val">0.84<span class="u">t</span></span>','every unit','its value: tone and weight'],
+ ['.val','Value','The data. The strongest tone in its row; figures all one width so columns align; fixed decimals.','<span class="val">2177</span> &nbsp; <span class="val">57<span class="u">M</span></span>','every figure, on every screen','its label: weight and tone (and in a dress, the hand that wrote it)'],
+ ['.nm','Name','What a thing is called (a part, a site, a craft). Written like a value, in sentence case, the same on every screen.','<span class="nm">Kestrel booster</span>','values (both are the data)','a heading: it never starts a block'],
+ ['.lab','Label','Names a value. The system speaking: quiet, never bold, never coloured.','<span class="lab">Thrust</span>','every label; column headers','its value: weight and tone. A heading: quiet'],
+ ['.sh','Sub-heading','A category inside a group. Footnote size, capitals, quiet.','<div class="sh" style="padding:0;margin:0">Engines</div>','every category line','a group heading: one size down, quiet'],
+ ['.h','Group heading','Names a functional group. Body size, heavy, space above. At most these two levels under the title.','<h2 class="h" style="margin:0">Staging</h2>','the same rank on every panel','the title: one size down. A name: it starts a block'],
+ ['.ttl','Place title','Where you are. One per screen, the largest text on a working screen.','<h1 class="ttl">Assembly</h1>','every screen\'s title','a group heading: one size up'],
+ ['.pmt','Prompt','The one next step, shown while it applies. One per screen (UI.md § 2.1).','<p class="pmt" style="margin:0">Pick a part, then click the rocket</p>','every prompt','a sentence: the marker, and that there is only one'],
+ ['.say','Sentence','Prose: what a thing is. Mixed case, never capitals, within the copy budget.','<span class="say">A small restartable engine for a satellite\'s own big burns.</span>','all prose','a label: length and case'],
+ ['.note','Note','A condition, a source, a status. Footnote size, quiet; never carries a number you decide on.','<span class="note">a guess, could be 30 % off</span>','every aside','a sentence: one size down, quiet'],
+ ['.ix','Index','Which one in a sequence (stage 1, 2, 3). A heavy figure in a fixed column; position says the order, not colour.','<span class="ix">1</span> <span class="ix">2</span>','every sequence number','a value: its fixed first column'],
+ ['.well','Well','Holds objects. The only sunken region; what is inside can be picked up or dragged.','<div class="well" style="width:140px;height:22px"></div>','every list of objects','a panel: sunken, not raised'],
+];
+const DRESS=[['today','Today (v1.366)'],['plain','Plain'],['form','Form'],['drawing','Drawing'],['panel','Panel']];
+$('#roles tbody').innerHTML=R.slice().reverse().map(r=>`<tr><td><span class="nm">${r[1]}</span><br><span class="note">${r[2]}</span></td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('');
+$('#dresses').innerHTML=DRESS.map(([k,n])=>`<button data-dress="${k}">${n}</button>`).join(' ');
+function sync(){for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:B.classList.contains(b.dataset.cls))}
+$('#bar').onclick=e=>{const d=e.target.dataset;if(!d)return;if(d.dress)B.dataset.dress=d.dress;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);sync()};
+$('#stage').onmouseover=e=>{for(const r of R){const t=e.target.closest(r[0]);if(t){$('#who').innerHTML=`<b>${r[1]}</b> · ${r[2]}`;return}}$('#who').textContent='Hover an element to see its role.'};
+addEventListener('keydown',e=>{const i=+e.key;if(i>=1&&i<=5){B.dataset.dress=DRESS[i-1][0];sync()}});
+const q=new URLSearchParams(location.search);if(q.get('dress'))B.dataset.dress=q.get('dress');if(q.get('view'))B.dataset.view=q.get('view');for(const c of['squint','grey','amber'])if(q.has(c))B.classList.add(c);
+sync();
+</script>
+</body>
+</html>
