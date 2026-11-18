@@ -1565,7 +1565,7 @@
   const none = () => [], some = () => [['a', 'b']];
   const K = new Function('env', 'const mode="flight",view="flight",S={alive:true,landed:false,v:[0,0,0],r:[1,0,0]},GAUGES=true,impact=null,localStorage={getItem:()=>null},performance={now:()=>0},'
     + 'dot=()=>0,toolOK=()=>true,ascentOn=()=>false,cpPhase=()=>env.ph(),missionRows=env.some,dvRows=env.some,fleetRows=env.some,payloadRows=env.some,statRows=env.none,agRows=env.none,rvRows=env.none,'
-    + 'tgtRows=env.none,dockRows=env.none,tipRows=env.none,bayRows=env.none,armRows=env.none,spinRows=env.none,wheelRows=env.none,rcsRows=env.none,aoaRow=()=>[],aeroRow=()=>[],heatRow=()=>[],structRow=()=>[],impactRow=()=>[],landRow=env.none;'
+    + 'tgtRows=env.none,dockRows=env.none,approachOn=()=>false,approachRows=env.none,tipRows=env.none,bayRows=env.none,armRows=env.none,spinRows=env.none,wheelRows=env.none,rcsRows=env.none,aoaRow=()=>[],aeroRow=()=>[],heatRow=()=>[],structRow=()=>[],impactRow=()=>[],landRow=env.none;'
     + CPc + cards + 'return {on:()=>hudCardsOn().map(x=>x.c.id).join(",")};')({ ph: () => env.phase, some, none });
   env.phase = 'burn'; const burn = K.on(); env.phase = null; const quiet = K.on();
   const inBurn = burn === 'mission,dv' && quiet === 'mission,dv,payload,fleet';

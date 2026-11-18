@@ -83,7 +83,7 @@ const HUD_CARDS=[
   {id:'descent',title:'Descent',when:()=>S.alive&&!S.landed&&(!!S.rangeWarn||dot(S.v,S.r)<0&&(!!impact||!toolOK('impact'))),rows:()=>[impactRow(),...landRow()]},
   {id:'dv',title:'<span style="text-transform:none">Δv</span>',rows:dvRows},   // (Q495) shown in the dark cockpit too: a burn is when it matters
   {id:'target',title:'Target',rows:()=>[...tgtRows(),...dockRows()]},
-  {id:'approach',title:'Approach',when:approachOn,rows:approachRows},   // (Q630) inside 20 km: the path in the target's frame; under 200 m the docking rows
+  {id:'approach',title:'Approach',when:()=>approachOn(),rows:()=>approachRows()},   // (Q630) inside 20 km: the path in the target's frame; under 200 m the docking rows
   {id:'stat',title:'Stationary orbit',rows:statRows},   // (vehicle, Q454) when to start the transfer, app/program-ui.js; on the Map too
   {id:'tipped',title:'On its side',rows:()=>tipRows()},   // (flow, Q527) a toppled lander: what's out under it and why, the damage
   {id:'payload',title:'Payload',rows:payloadRows},
