@@ -8313,3 +8313,13 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Stopped:** the server on port 8830 was ended by Claude Code (low memory); the mock-up opens as a file.
 - Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `mockups/kit/index.html`, `mockups/README.md`; root
   `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — design desk (Fable 5.2, main clone): D51, the cockpit's caution on lamps; claim cleared (ELEMENTS.md 0.1.2)
+
+- **Asked:** Caio, on the Cockpit caution view: "ok, we can go with b."
+- **Done:** D51 in DECISIONS.md (a cockpit caution is a lit tile outside the readout, so the readouts may be amber);
+  ELEMENTS.md and `mockups/README.md` updated; the claim cleared.
+- **Next:** the orchestrator files ELEMENTS.md § 7 in QUEUE (a bundled sans; the role classes with Q478 and Q480, the
+  Assembly first in the Form dress; Q477 with D51; a test on sizes, radii and colours outside the tokens) and notes
+  D50 and D51 on Q477, Q478, Q480 and Q237.
+- Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

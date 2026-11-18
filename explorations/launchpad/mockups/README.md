@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.35 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.36 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -21,7 +21,7 @@ Bahnschrift (Windows) stands in for a sans the game doesn't bundle.
 | **Panel** | engraved labels, ringed groups, lit keys, VT323 on glass | amber phosphor is the caution colour; glass type needs 15–17 px |
 
 **Pick (D50, Caio 2026-11-18):** the roles as proposed; **Form** for the Assembly; the power's colour on the launch
-button only; pictures on the parts. _Open: the cockpit's caution, A or B (the Cockpit caution view)._
+button only; pictures on the parts. **D51:** the cockpit's caution is **B**, a lit tile outside the readout (the Cockpit caution view).
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 

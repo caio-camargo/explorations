@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7. One question open in § 8.
+follows it yet; the build order is § 7. Nothing open (D51).
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -162,7 +162,7 @@ What follows from the table:
 - **The office's dress suits the Assembly better than the cockpit's.** A parts list and a stage table are a
   catalogue and a tabulation: paper's home ground. Form and Drawing pass where Panel strains. This agrees with UI.md
   § 4.1 item 4 (the Assembly as the model on a desk).
-- **The cockpit's amber needs a decision before Q477** (the flight HUD as the instrument panel, "amber VT323
+- **The cockpit's amber needed a decision before Q477, now made (D51: lamps)** (the flight HUD as the instrument panel, "amber VT323
   readouts"): either the readouts are not amber, or caution is not amber on that screen. Real panels keep the two
   apart by putting cautions on separate lamps, so a lit caution tile outside the glass may be enough; that wants its
   own mock-up, in flight.
@@ -195,7 +195,7 @@ Checked this session, from stills at 1258 × 702:
    under the Open Font License as recalled: Barlow (with Semi Condensed and Condensed), IBM Plex Sans (with Condensed),
    B612 (drawn for Airbus cockpit displays).
 3. The role classes and one dress's tokens in `index.html` (with Q478 and Q480), the Assembly first (vehicle and flow).
-4. The flight HUD on the same roles (Q477), after the amber decision.
+4. The flight HUD on the same roles (Q477), with cautions on lamps (D51).
 5. A test that fails on a font size, radius or colour outside the tokens, so the count in § 1 item 4 can't come back.
 
 ## 8. Decided, and open
@@ -204,10 +204,11 @@ Checked this session, from stills at 1258 × 702:
 power's colour on the launch button only; parts get pictures ("that sounds good, maybe we can include a quick
 mock": done, § 6). On the mock-ups: "huge improvements already".
 
-**Open: the cockpit's amber.** Caio asked what "lamps outside the glass" meant; the mock-up's *Cockpit caution*
+**D51 (Caio, 2026-11-18): B.** "ok, we can go with b." In the cockpit a caution is a lit tile outside the
+readout, never coloured text in it; the readout may be amber. The question as it stood: Caio asked what "lamps outside the glass" meant; the mock-up's *Cockpit caution*
 view now shows it. A: the caution is written on the readout in amber, which an amber readout swallows. B: the
 readout only shows figures, and a caution is a lit tile beside it (the master caution and its tiles, UI.md rule 5),
-so the phosphor can stay amber. My pick is B.
+so the phosphor can stay amber.
 
 As first asked:
 
@@ -242,4 +243,5 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.2 (2026-11-18): D51, the cockpit's caution on lamps.
 - 0.1.1 (2026-11-18): D50 recorded; pictures, the power's colour and the cockpit caution added to the mock-up.
