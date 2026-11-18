@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.271 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
+**Version**: 0.1.272 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -506,6 +506,8 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
+- vehicle — RCS holds attitude without a deadband: constant small pulses with nothing pressed (a deadband or minimum impulse on the attitude part; gas per hour before/after) — PLAYTEST #169
+- look & sound (effects) — the RCS puff is a placeholder box: a cold-gas jet per nozzle — PLAYTEST #168
 - ~~flow + look & sound — Q572 follow-ups: a sound for the unlock card; a per-part `why` line for family members~~ ✓ v1.324 (the sounds are stand-ins: look & sound to replace) — loop slices
 - flow — Q600 with Q572: the desk's centred notice for world missions could become the overlay's *Mission complete* card (`unlockDesk` drops that card today so it isn't said twice) — loop slices v1.318
 - QA — ~~TESTING 375–377 on a really flown structural test and beeper~~ ✓ the robot's new `playtest.mjs cards` row, v1.320; by hand still — loop slices
