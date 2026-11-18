@@ -488,6 +488,15 @@ function meetBurns(q,r0,v0,t0,B,nMax=5){const mu=B.mu,el=elements(r0,v0,mu),E=el
       const dv=Math.sqrt(mu*(2/ra-1/a2))-va;if(!best||Math.abs(dv)<Math.abs(best.dv))best={n,dv,t:ta+n*P,P,burn:ta}}
     if(best)out.push(best)}
   return{rows:out,miss,burn:ta}}
+// (Q630, PLAYTEST #176 slice 3: the approach inset) our path in the target's own frame, the target at the centre: ahead
+// along its track (+), above it (+, away from the body) and off its plane (+, toward its orbit normal), at N+1 times over
+// span from t0. Our Kepler state (r0, v0 at t0) and the target's (rt, vt at t0), both round the same body. [[ahead, above,
+// side, t], …]. A craft just below and behind drifts ahead along the bottom: the shape a player learns to read
+function lvlhPath(r0,v0,rt,vt,t0,span,mu=TELLUS.mu,N=120){const out=[];
+  for(let i=0;i<=N;i++){const dt=span*i/N,[p]=kepler(r0,v0,dt,mu),[pt,vtt]=kepler(rt,vt,dt,mu),R=norm(pt),Hn=norm(cross(pt,vtt)),Sx=cross(Hn,R),d=sub(p,pt);
+    out.push([dot(d,Sx),dot(d,R),dot(d,Hn),t0+dt])}
+  return out}
+const APPROACH_IN=20e3,APPROACH_OUT=200;   // the inset shows inside 20 km, and hands over to the docking rows under 200 m
 // ---- contact: the vessel against registered satellites (sats session). Each part's shape is a signed distance field
 // from its profile (radius by height, the one d.prof gives); each part's surface is a cloud of sample points on that
 // profile. A point of one body inside the other is a contact. Satellites within HIT_NEAR are stepped with the vessel in

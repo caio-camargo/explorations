@@ -388,6 +388,30 @@ function fleetRows(){const L=FLEET.filter(v=>v.alive),N=nearbyFlyable(S);return 
 function landingRow(T){const b=S.body,f=localFrame(S.r),d=T.dr,brg=(Math.atan2(dot(d,f.e),dot(d,f.n))*57.29578+360)%360,ds=pfDist(b,toPF(b,S.r,simT),T.q.pf);
   const imp=impact&&impact.b===b?pfDist(b,impact.pf,T.q.pf):null;
   return['Landing',`${T.q.name}: ${fmtD(ds)} along the surface, bearing ${brg.toFixed(0)}°${imp!=null?` · impact point <span class="${imp<BASE_R?'ok':'warn'}">${fmtD(imp)}</span> from it`:''}`]}
+// (Q630, PLAYTEST #176 slice 3) the approach inset: inside 20 km of a target in orbit, our path over the next orbit (or
+// to two closest passes, whichever is shorter) drawn in the target's frame as an inline SVG: the target at the centre,
+// ahead to the right, above up; solid on this orbit, dashed on the node's plan; our place now as a triangle. Under 200 m
+// the Target card's docking rows take over. Recomputed at most twice a second
+let apCache=null;
+function approachOn(){const T=S&&S.alive&&!S.landed&&tgtOf(S);return!!T&&!T.landed&&len(T.dr)<APPROACH_IN&&len(T.dr)>APPROACH_OUT}
+function approachRows(){const T=tgtOf(S);if(!T)return[];const now=performance.now(),key=(S.node?S.node.t+','+S.node.dv.join():'');
+  if(!apCache||now-apCache.at>500||apCache.key!==key){const B=S.body,T0=progT(S),el=elements(S.r,S.v,B.mu);if(!(el.e<1))return[];
+    const ca=tgtCA(),nx=ca&&ca.now&&ca.now[1],span=Math.min(el.period,nx?nx.t-T0+600:el.period);
+    const now0=lvlhPath(S.r,S.v,T.r,T.v,T0,span,B.mu);let plan=null;
+    if(S.node){const I=nodeInfo(S);if(I&&I.t>simT){const [rt1,vt1]=kepler(T.r,T.v,I.t-simT,B.mu),pre=lvlhPath(S.r,S.v,T.r,T.v,T0,I.t-simT,B.mu,40);
+      plan=pre.concat(lvlhPath(I.rN,add(I.vN,I.rem),rt1,vt1,T0+I.t-simT,Math.max(60,span-(I.t-simT)),B.mu,80))}}
+    apCache={at:now,key,now:now0,plan}}
+  const P=apCache.now,L=apCache.plan,all=[...P,...(L||[])],m=Math.max(50,...all.map(x=>Math.max(Math.abs(x[0]),Math.abs(x[1])))),nice=[50,100,200,500,1e3,2e3,5e3,1e4,2e4,5e4,1e5].find(x=>x>=m)||m;
+  const W=200,Hh=130,k=Math.min(W/2-8,Hh/2-8)/nice,X=x=>(W/2+x[0]*k).toFixed(1),Y=x=>(Hh/2-x[1]*k).toFixed(1),pl=Q=>Q.map(x=>X(x)+','+Y(x)).join(' ');
+  const svg=`<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" style="display:block"><rect x=".5" y=".5" width="${W-1}" height="${Hh-1}" fill="none" stroke="currentColor" stroke-opacity=".25"/>`
+    +`<line x1="${W/2}" y1="4" x2="${W/2}" y2="${Hh-4}" stroke="currentColor" stroke-opacity=".15"/><line x1="4" y1="${Hh/2}" x2="${W-4}" y2="${Hh/2}" stroke="currentColor" stroke-opacity=".15"/>`
+    +(L?`<polyline points="${pl(L)}" fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-dasharray="4 3"/>`:'')
+    +`<polyline points="${pl(P)}" fill="none" stroke="#7dffa8"/>`
+    +`<circle cx="${W/2}" cy="${Hh/2}" r="4" fill="#ffb347"/><path d="M${X(P[0])},${(+Y(P[0])-5).toFixed(1)} l4,8 l-8,0 z" fill="#7dffa8"/>`
+    +`<text x="${W-4}" y="${Hh/2-4}" font-size="9" text-anchor="end" fill="currentColor" fill-opacity=".6">ahead</text><text x="${W/2+4}" y="10" font-size="9" fill="currentColor" fill-opacity=".6">above</text>`
+    +`<text x="4" y="${Hh-4}" font-size="9" fill="currentColor" fill-opacity=".6">±${fmtD(nice)}</text></svg>`;
+  const c=P[0],side=Math.abs(c[2])>=1?` · ${fmtD(Math.abs(c[2]))} out of its plane`:'';
+  return[['',svg],['Now',`${fmtD(Math.abs(c[0]))} ${c[0]>=0?'ahead':'behind'} · ${fmtD(Math.abs(c[1]))} ${c[1]>=0?'above':'below'}${side}`]]}
 function dockRows(){const out=[],D=S.att||[];
   if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} ${a.kind==='arm'?' <span class="dim">(in the arm)</span>':`${a.kind==='bay'?' <span class="dim">(in the bay)</span>':''} <button data-undock="${a.e.id}">${a.kind==='claw'||a.kind==='bay'?'release':'undock'}</button>`}`).join(' · ')]);
   {const T=tgtOf(S);if(T&&T.landed)out.push(landingRow(T))}

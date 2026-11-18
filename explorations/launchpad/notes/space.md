@@ -2986,3 +2986,28 @@ applied at the apoapsis and propagated meets the target within 10 m on its pass,
 orbit 60 km higher is said to be 60 km off; the headless page's Target card shows the row. **Not checked:** by a person
 (TESTING 417); whether "at the next apoapsis" is the right place when the orbits cross elsewhere (then the passes of
 slice 1 are the better guide).
+
+## v1.370 — the approach inset (2026-11-18, space, QUEUE Q630, PLAYTEST #176 slice 3)
+
+The third rendezvous tool: inside ~20 km, the path drawn in the target's frame, the target at the centre, handing over
+to docking.
+
+- **`lvlhPath(r0, v0, rt, vt, t0, span, mu, N)`** (sim/space.js): our Kepler path and the target's stepped together,
+  each separation put in the target's own frame at that moment: ahead along its track, above it (away from the body),
+  off its plane. `APPROACH_IN` 20 km and `APPROACH_OUT` 200 m bound the card.
+- **The Approach card** (`approachOn`, `approachRows`, app/program-ui.js; in `HUD_CARDS` after Target, and in
+  `CP_CARDS` so a critical phase keeps it): an inline SVG 200 × 130, ahead to the right and above up, one scale for both
+  (the next round step over the path's reach, printed in the corner); our path over the next orbit or to the second pass
+  (slice 1's, + 10 min), whichever is shorter, solid; the node's plan dashed white (our path to the node, then the plan's);
+  the target an orange dot, we a green triangle. Under it, *Now*: how far ahead or behind, above or below, and out of its
+  plane. Under 200 m it goes, and the Target card's docking rows (port, line-up) are the guide. Recomputed at most twice a
+  second or when the node changes. Nothing placed for the player.
+- Flow: the card is plain HTML in the HUD column, so it folds and pins like any card. A drawn inset on the map, or a
+  bigger one in the docking phase, is yours if Caio wants it.
+
+**Checked:** test space-40: 3 km behind on the target's circle stays at (−3 km, 0) for an orbit; a circle 1 km lower
+starts 1 km below and gains the along-track distance the two periods give (9.4 km an orbit, within 5 %); in the
+headless page the card shows at 3 km with the SVG and *3000 m behind*, and not at 30 km. In Chrome on the RTX
+(`shot.mjs`): 4 km behind and 3 m/s slower, the card draws the dip under the target and the drift ahead (a still in
+`output/launchpad/q630-approach-card.png`, local). **Not checked:** by a person (TESTING 418); the plan's dashed line in
+a still; the card in the dark cockpit's narrow column.

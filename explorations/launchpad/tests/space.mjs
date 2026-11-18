@@ -1181,3 +1181,25 @@
       && /^burn at Ap in .*pass 1 [+−][0-9.]+ .*pass 5 [+−][0-9.]+ m\/s$/.test(meet) && !H.errs.length,
     `${M ? M.rows.map((x, i) => `pass ${x.n} ${x.dv.toFixed(1)} m/s (flown: ${F[i].sep.toFixed(1)} m, pe ${(F[i].pe / 1e3).toFixed(0)} km)`).join('; ') : 'none'}; off ${off ? (off.miss / 1e3).toFixed(1) : '—'} km; card "${meet}"`);
 }
+
+// space-40. The approach inset (space, QUEUE Q630, PLAYTEST #176 slice 3): inside 20 km of a target, an Approach card
+// draws our path in the target's frame (ahead, above, off its plane; the target at the centre). `lvlhPath` checked on
+// two known paths: 3 km behind on the same circle stays put at (−3 km, 0); a circle 1 km lower starts 1 km below and
+// drifts ahead (a lower orbit is faster), at the rate the two periods say. In the page: a tester start 3 km behind a
+// target shows the card with an SVG and "3000 m behind"; 30 km behind, no card.
+{
+  const D = new Function(src + 'return {lvlhPath,kepler,TELLUS};')(), T = D.TELLUS, mu = T.mu;
+  const circ = (h, ph) => { const R = T.R + h, v = Math.sqrt(mu / R); return [[R * Math.cos(ph), 0, R * Math.sin(ph)], [-v * Math.sin(ph), 0, v * Math.cos(ph)]]; };
+  const [rt, vt] = circ(400e3, 0), R = T.R + 400e3, [rb, vb] = circ(400e3, -3000 / R), per = 2 * Math.PI * Math.sqrt(R ** 3 / mu);
+  const same = D.lvlhPath(rb, vb, rt, vt, 0, per, mu, 60), sameOK = same.every(x => Math.abs(x[0] + 3000) < 5 && Math.abs(x[1]) < 5 && Math.abs(x[2]) < 1e-6);
+  const [rl, vl] = circ(399e3, 0), low = D.lvlhPath(rl, vl, rt, vt, 0, per, mu, 60), last = low.at(-1);
+  const wDiff = Math.sqrt(mu / (T.R + 399e3) ** 3) - Math.sqrt(mu / R ** 3), want = wDiff * per * R;   // the along-track gain over one target orbit (≈)
+  const lowOK = Math.abs(low[0][1] + 1000) < 1 && Math.abs(low[0][0]) < 1 && last[0] > 0 && Math.abs(last[0] / want - 1) < 0.05 && low.every(x => x[1] < -900 && x[1] > -1100);
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url)), card = behind => { const H = boot({ search: '?tester' }), r = x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+    r('ttlFound()'); r("go('assembly')"); r(`testStart({body:'Tellus',where:'beside',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:${behind}})`); H.frame(10);
+    return { on: r('approachOn()'), rows: r('approachOn()?JSON.stringify(approachRows()):"[]"'), errs: H.errs.length }; };
+  const near = card(3000), far = card(30000), nr = JSON.parse(near.rows);
+  check('space-40: the approach inset: our path in the target\'s frame (3 km behind on its circle stays put; 1 km below drifts ahead at the periods\' rate); the Approach card shows inside 20 km with the path and where we are, not at 30 km',
+    sameOK && lowOK && near.on === true && /<svg[^>]*>.*<polyline/.test(nr[0][1]) && /^3000 m behind/.test(nr[1][1]) && far.on === false && !near.errs && !far.errs,
+    `same circle: ${same[0][0].toFixed(0)} → ${same.at(-1)[0].toFixed(0)} m; 1 km low: start (${low[0][0].toFixed(0)}, ${low[0][1].toFixed(0)}), after an orbit ${(last[0] / 1e3).toFixed(1)} km ahead (periods say ${(want / 1e3).toFixed(1)}); card at 3 km ${near.on} "${nr[1] ? nr[1][1] : ''}", at 30 km ${far.on}; errors ${near.errs + far.errs}`);
+}
