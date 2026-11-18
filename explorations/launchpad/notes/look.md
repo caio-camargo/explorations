@@ -2829,3 +2829,37 @@ issue is that the edges of things still show up pixelated, not sure if that's fi
      Exact for opaque edges, but the plume, glow and smoke passes blend additively into the same target and would
      need rework. Larger and riskier.
   Proposed in QUEUE as option 1; it is the effects (pipeline) beat's file area, not parts & pad's.
+
+## v1.365 — an edge filter on the graded frame: bright edges stop stepping (2026-11-18, look & sound, parts & pad on the effects pipeline; Caio's go on § v1.364's proposal)
+
+- **What.** `AA_FS` / `PAA` (app/gl.js), run by `bloomEnd` after the grade: FXAA's edge walk (Lottes). Where a
+  pixel's contrast with its four neighbours passes a threshold (0.05, or an eighth of the brightest), it finds which
+  way the edge runs, walks along it both ways to where it ends (ten lookups a side, about 20 px), and shifts its own
+  lookup across the edge by its place in that span. A staircase becomes a ramp. On both settings. `EDGE_AA = false`
+  for an A/B.
+- **No sub-pixel blur term**, on purpose: FXAA's usual one dims every single bright pixel, and the sky is full of
+  them. Without it a star's span ends at once on both sides and the star is left exactly as it was; so is a straight
+  one-pixel line.
+- **The composite's path.** With the filter on, the grade always goes to `SCN.out` (8 bits), also at 100 % scale.
+  Then the filter draws to the canvas; below 100 % it draws to a new target `SCN.aa` and the upscale pass (v1.291)
+  reads that. The film grain is added after the filter (by it at 100 %, by the upscale below), so grain is never
+  taken for an edge.
+- **Measured.**
+  - The same edge as § v1.364 (hull against space, 100 % scale; `aa-edge-off-on.png`, off above, on below): columns
+    that stepped 19 → 189, 37 → 224, 60 → 229, 22 → 215 now read 21 → 160, 36 → 192, 90 → 228, 42 → 215: each step of
+    the stair is a ramp along its length.
+  - The port in test aerofx-61 on a stair of one pixel every eight: the step's row goes 0.90 0.90 0.90 0.90 0.85
+    0.74 0.64 0.57, the row under it 0.38 0.28 0.21 0.10 0.05…; a single bright pixel, a one-pixel line and a smooth
+    gradient come out bit for bit.
+  - GPU, filter off and on in the same build (`aa-t-*` logs). RTX on High at full resolution, views 1, 3, 6, 54:
+    frame 3.61, 3.61, 4.14, 4.22 → 3.72, 2.93, 4.44, 4.20 ms: inside the noise. Intel UHD on Low at full resolution
+    (1262 × 704), the composite stretch, two runs each: 0.52–0.70 → 1.14–1.40 ms, so about +0.65 ms; at the 50–60 %
+    scale that GPU runs at, about a third of that. Its adaptive frames: 9.6, 5.8, 9.6, 8.9 → 8.9, 5.1, 9.9, 9.6 ms
+    (noise).
+- **What it does not do.** It mends edges after the fact: a thin bright thing smaller than a pixel (a far handrail, a
+  wire) still flickers as it moves, since the filter sees one frame. The exact cure (tone-map each sample before the
+  resolve) is not in WebGL2. Shader patterns that alias inside a surface (Q561's coastlines and ground lights) are
+  only softened where they make edges.
+- **Not checked.** In motion by a person (TESTING 413). The star field in a still pair: the stars twinkle between
+  frames, so two captures differ with the filter off too; the claim that stars are untouched rests on the port.
+  Text and gauges drawn in the 3D view. The filter below 100 % scale on the RTX (only the Intel GPU ran scaled).

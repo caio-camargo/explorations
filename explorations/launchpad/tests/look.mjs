@@ -1417,3 +1417,60 @@
   check('aerofx-60: greebles (Q316): tanks and capsules carry small real geometry chosen from their data, on the skin, clear of side boosters, with the host\'s index and baked occlusion, different by school; a far ship is drawn without them',
     ok, `Orbiter ${got.Orbiter.nMain} + ${got.Orbiter.nAll - got.Orbiter.nMain} vertices, Heavy ${got.Heavy.nMain} + ${got.Heavy.nAll - got.Heavy.nMain} · per part: ${rows.map(x => `${x.key} ${x.n}`).join(', ')} · a tall tank by school (Cape, Steppe, Coastal, Isle): ${got.bySchool.join(', ')} · off the skin ${Math.min(...rows.map(x => x.rMin)).toFixed(3)} to ${Math.max(...rows.map(x => x.rMax)).toFixed(3)} m · inside a booster: ${rows.reduce((s, x) => s + x.inB, 0)} · lod ${got.lod} · off ${got.off} · errors: ${H.errs[0] || 'none'}`);
 }
+
+// aerofx-61. The edge filter on the graded frame (look & sound, QUEUE Q316's follow-up; Caio 2026-11-18: jagged edges on
+// bright things). AA_FS can't run headless, so its edge walk is ported here line for line (bilinear lookups on a small
+// grey image) and the shader is checked to hold the same lines: a staircase edge (a hull against space) becomes a ramp;
+// a single bright pixel (a star) and a straight one-pixel line come through exactly; flat areas are untouched. The
+// composite grades into SCN.out when the filter is on, and the grain is added after it.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = pg.slice(pg.indexOf('const AA_FS=`'), pg.indexOf('`;', pg.indexOf('const AA_FS=`')));
+  const filter = (img, W, Hh) => {
+    const at = (x, y) => img[Math.min(Hh - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))];
+    const tex = (x, y) => { const fx = x - .5, fy = y - .5, x0 = Math.floor(fx), y0 = Math.floor(fy), a = fx - x0, b = fy - y0;   // bilinear, texel centres at +.5
+      return (at(x0, y0) * (1 - a) + at(x0 + 1, y0) * a) * (1 - b) + (at(x0, y0 + 1) * (1 - a) + at(x0 + 1, y0 + 1) * a) * b; };
+    const out = new Float64Array(W * Hh);
+    for (let j = 0; j < Hh; j++) for (let i = 0; i < W; i++) {
+      const ux = i + .5, uy = j + .5; let c = tex(ux, uy);
+      const lM = c, lN = tex(ux, uy + 1), lS = tex(ux, uy - 1), lE = tex(ux + 1, uy), lW = tex(ux - 1, uy);
+      const mx = Math.max(lM, lN, lS, lE, lW), mn = Math.min(lM, lN, lS, lE, lW);
+      if (mx - mn >= Math.max(.05, mx * .125)) {
+        const lNE = tex(ux + 1, uy + 1), lSW = tex(ux - 1, uy - 1), lNW = tex(ux - 1, uy + 1), lSE = tex(ux + 1, uy - 1);
+        const eH = Math.abs(lNW + lSW - 2 * lW) + 2 * Math.abs(lN + lS - 2 * lM) + Math.abs(lNE + lSE - 2 * lE), eV = Math.abs(lNW + lNE - 2 * lN) + 2 * Math.abs(lW + lE - 2 * lM) + Math.abs(lSW + lSE - 2 * lS);
+        const hz = eH >= eV, l1 = hz ? lS : lW, l2 = hz ? lN : lE, g1 = Math.abs(l1 - lM), g2 = Math.abs(l2 - lM), gs = .25 * Math.max(g1, g2); let st = 1, lA;
+        if (g1 >= g2) { st = -st; lA = .5 * (l1 + lM); } else lA = .5 * (l2 + lM);
+        let px = ux, py = uy; const ox = hz ? 1 : 0, oy = hz ? 0 : 1; if (hz) py += st * .5; else px += st * .5;
+        let p1x = px - ox, p1y = py - oy, p2x = px + ox, p2y = py + oy, e1 = tex(p1x, p1y) - lA, e2 = tex(p2x, p2y) - lA, r1 = Math.abs(e1) >= gs, r2 = Math.abs(e2) >= gs;
+        for (let k = 0; k < 10; k++) { if (r1 && r2) break; const q = k < 4 ? 1 : k < 6 ? 1.5 : k < 9 ? 2 : 4;
+          if (!r1) { p1x -= ox * q; p1y -= oy * q; e1 = tex(p1x, p1y) - lA; r1 = Math.abs(e1) >= gs; } if (!r2) { p2x += ox * q; p2y += oy * q; e2 = tex(p2x, p2y) - lA; r2 = Math.abs(e2) >= gs; } }
+        const d1 = hz ? ux - p1x : uy - p1y, d2 = hz ? p2x - ux : p2y - uy, po = .5 - Math.min(d1, d2) / (d1 + d2);
+        if (((d1 < d2 ? e1 : e2) < 0) !== (lM < lA)) c = hz ? tex(ux, uy + po * st) : tex(ux + po * st, uy);
+      }
+      out[j * W + i] = c;
+    }
+    return out;
+  };
+  const W = 48, Hh = 24, mk = f => { const a = new Float64Array(W * Hh); for (let j = 0; j < Hh; j++) for (let i = 0; i < W; i++) a[j * W + i] = f(i, j); return a; };
+  // a hull's edge against space, one pixel up every eight along: bright (.9) above the line, dark (.05) below
+  const stair = mk((i, j) => j >= 8 + Math.floor(i / 8) ? .9 : .05), sOut = filter(stair, W, Hh);
+  const row = 11, before = Array.from({ length: 8 }, (_, k) => stair[row * W + 24 + k]), after = Array.from({ length: 8 }, (_, k) => sOut[row * W + 24 + k]);   // row 11 is the step's own row over columns 24–31
+  const under = Array.from({ length: 8 }, (_, k) => sOut[(row - 1) * W + 24 + k]), mid = a => a.filter(v => v > .1 && v < .88).length, mono = a => a.every((v, k) => !k || v <= a[k - 1] + 1e-9);   // the row under it: dark before, lifted toward the step
+  const mids = mid(after) + mid(under), flat0 = before.every(v => v === .9), spread = Math.max(...after) - Math.min(...under);
+  const star = mk((i, j) => i === 20 && j === 10 ? 1 : .02), stOut = filter(star, W, Hh), starSame = star.every((v, k) => Math.abs(stOut[k] - v) < 1e-9);
+  const line = mk((i, j) => j === 12 ? .8 : .03), lnOut = filter(line, W, Hh), lineSame = line.every((v, k) => Math.abs(lnOut[k] - v) < 1e-9);
+  const ramp = mk((i, j) => .2 + .01 * i), rpOut = filter(ramp, W, Hh), rampSame = ramp.every((v, k) => Math.abs(rpOut[k] - v) < 1e-9);
+  const has = {
+    gate: fs.includes('if(mx-mn>=max(.05,mx*.125)){'),
+    way: fs.includes('float eH=abs(lNW+lSW-2.*lW)+2.*abs(lN+lS-2.*lM)+abs(lNE+lSE-2.*lE),eV=abs(lNW+lNE-2.*lN)+2.*abs(lW+lE-2.*lM)+abs(lSW+lSE-2.*lS);'),
+    side: fs.includes('if(g1>=g2){st=-st;lA=.5*(l1+lM);}else lA=.5*(l2+lM);'),
+    walk: fs.includes('for(int i=0;i<10;i++){if(r1&&r2)break;float q=i<4?1.:i<6?1.5:i<9?2.:4.;'),
+    shift: fs.includes('po=.5-min(d1,d2)/(d1+d2);') && fs.includes('if(((d1<d2?e1:e2)<0.)!=(lM<lA)){vec2 f=uv;if(hz)f.y+=po*st;else f.x+=po*st;c=texture(uS,f).rgb;}}'),
+    on: pg.includes('let EDGE_AA=true;'),
+    wiring: pg.includes('const aa=EDGE_AA&&!!PAA;') && pg.includes('gl.bindFramebuffer(gl.FRAMEBUFFER,up||aa?T.out.fb:null);') && pg.includes('gl.uniform1f(c.uGr,up||aa?0:GRADE.gr);')
+      && pg.includes('gl.bindFramebuffer(gl.FRAMEBUFFER,up?T.aa.fb:null);') && pg.includes('gl.bindTexture(gl.TEXTURE_2D,aa?T.aa.t:T.out.t);') && pg.includes('aa=texRT(w,h,true),')
+  };
+  check('aerofx-61: the edge filter on the graded frame: a staircase edge becomes a ramp; a star, a straight one-pixel line and a smooth gradient come through exactly; the grade goes to a target and the grain comes after',
+    flat0 && mid(after) >= 3 && mid(under) >= 3 && mono(after) && mono(under) && Math.abs(after[7] - .5) < .1 && starSame && lineSame && rampSame && Object.values(has).every(Boolean),
+    `one step of the stair, its row: before ${before.map(v => v.toFixed(2)).join(' ')} → after ${after.map(v => v.toFixed(2)).join(' ')} and the row under it ${under.map(v => v.toFixed(2)).join(' ')} (${mids} of 16 between) · star same ${starSame} · line same ${lineSame} · gradient same ${rampSame} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}

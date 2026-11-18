@@ -2286,14 +2286,14 @@ function texRT(w,h,ldr){const t=gl.createTexture(),f16=HDR_RT&&!ldr;gl.bindTextu
   const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,fb,w,h}}
 // the scene target for this frame size (multisampled colour + depth/stencil, a resolve texture, the bloom chain)
 function sceneTarget(w,h){if(SCN.w===w&&SCN.h===h)return SCN;
-  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,SCN.out,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
+  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,SCN.out,SCN.aa,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
   const ns=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)),rc=gl.createRenderbuffer(),rd=gl.createRenderbuffer(),ms=gl.createFramebuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER,rc);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,HDR_RT?gl.RGBA16F:gl.RGBA8,w,h);
   gl.bindRenderbuffer(gl.RENDERBUFFER,rd);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.DEPTH24_STENCIL8,w,h);
   gl.bindFramebuffer(gl.FRAMEBUFFER,ms);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rc);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rd);
   const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
-  const res=texRT(w,h),out=texRT(w,h,true),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,out,chain,ok});return SCN}
+  const res=texRT(w,h),out=texRT(w,h,true),aa=texRT(w,h,true),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,out,aa,chain,ok});return SCN}
 // the framebuffer the 3D frame is being drawn into (passes that render elsewhere mid-frame come back to it)
 const sceneFB=()=>SCN.on?SCN.ms:null;
 function bloomBegin(w,h){SCN.on=false;const T=sceneTarget(w,h);if(!T.ok)return;SCN.on=true;gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms)}
@@ -2351,6 +2351,36 @@ void main(){vec2 uv=vNdc*.5+.5,sp=uv*uSz,tc=floor(sp-.5)+.5,f=sp-tc,px=1./uSz;
  c=clamp(c+uSh*(c-(a+b+d+e)*.25),lo,hi);
  vec2 g=gl_FragCoord.xy+uT;float n=fract(sin(dot(g,vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(g,vec2(39.3468,11.135)))*24634.6345)-1.;
  float Y=dot(c,vec3(.2126,.7152,.0722));o=vec4(c+n*uGr*(.35+2.6*Y*(1.-Y)),1.);}`;
+// ---- (Q316 follow-up; Caio 2026-11-18: "the edges of things still show up pixelated") an edge filter on the graded frame.
+// The scene's 4× multisampling is resolved by a blit before the tone map, in scene light: a sunlit hull is far over
+// display white there, so a pixel a quarter covered by it against space is near white once graded, and the edge steps
+// (22 → 187 of 255 in one pixel, notes/look.md § v1.364). WebGL2 can't read the samples one by one, so the edge is
+// mended where a step is what the eye sees: after the grade. FXAA's edge walk (Lottes): where a pixel's contrast with its
+// four neighbours is over a threshold, find which way the edge runs, walk along it both ways to where it ends (up to
+// ~20 px), and shift the lookup across the edge by the pixel's place in that span, so a staircase becomes a ramp. No
+// sub-pixel blur term: a star is one bright pixel, its span ends at once on both sides, and it is left exactly as it
+// was; so is a straight one-pixel line. The film grain is added after (uGr; 0 when the upscale pass adds it).
+// EDGE_AA = false: the frame as before (A/B)
+let EDGE_AA=true;
+const AA_FS=`#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS;uniform vec2 uPx;uniform float uGr,uT;
+float L(vec3 c){return dot(c,vec3(.299,.587,.114));}
+float Lt(vec2 p){return L(texture(uS,p).rgb);}
+void main(){vec2 uv=vNdc*.5+.5;vec3 c=texture(uS,uv).rgb;float lM=L(c),lN=Lt(uv+vec2(0.,uPx.y)),lS=Lt(uv-vec2(0.,uPx.y)),lE=Lt(uv+vec2(uPx.x,0.)),lW=Lt(uv-vec2(uPx.x,0.));
+ float mx=max(lM,max(max(lN,lS),max(lE,lW))),mn=min(lM,min(min(lN,lS),min(lE,lW)));
+ if(mx-mn>=max(.05,mx*.125)){float lNE=Lt(uv+uPx),lSW=Lt(uv-uPx),lNW=Lt(uv+vec2(-uPx.x,uPx.y)),lSE=Lt(uv+vec2(uPx.x,-uPx.y));
+  float eH=abs(lNW+lSW-2.*lW)+2.*abs(lN+lS-2.*lM)+abs(lNE+lSE-2.*lE),eV=abs(lNW+lNE-2.*lN)+2.*abs(lW+lE-2.*lM)+abs(lSW+lSE-2.*lS);
+  bool hz=eH>=eV;float l1=hz?lS:lW,l2=hz?lN:lE,g1=abs(l1-lM),g2=abs(l2-lM),gs=.25*max(g1,g2),st=hz?uPx.y:uPx.x,lA;
+  if(g1>=g2){st=-st;lA=.5*(l1+lM);}else lA=.5*(l2+lM);
+  vec2 p=uv,off=hz?vec2(uPx.x,0.):vec2(0.,uPx.y);if(hz)p.y+=st*.5;else p.x+=st*.5;
+  vec2 p1=p-off,p2=p+off;float e1=Lt(p1)-lA,e2=Lt(p2)-lA;bool r1=abs(e1)>=gs,r2=abs(e2)>=gs;
+  for(int i=0;i<10;i++){if(r1&&r2)break;float q=i<4?1.:i<6?1.5:i<9?2.:4.;
+   if(!r1){p1-=off*q;e1=Lt(p1)-lA;r1=abs(e1)>=gs;}if(!r2){p2+=off*q;e2=Lt(p2)-lA;r2=abs(e2)>=gs;}}
+  float d1=hz?uv.x-p1.x:uv.y-p1.y,d2=hz?p2.x-uv.x:p2.y-uv.y,po=.5-min(d1,d2)/(d1+d2);
+  if(((d1<d2?e1:e2)<0.)!=(lM<lA)){vec2 f=uv;if(hz)f.y+=po*st;else f.x+=po*st;c=texture(uS,f).rgb;}}
+ vec2 g=gl_FragCoord.xy+uT;float n=fract(sin(dot(g,vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(g,vec2(39.3468,11.135)))*24634.6345)-1.;
+ float Y=dot(c,vec3(.2126,.7152,.0722));o=vec4(c+n*uGr*(.35+2.6*Y*(1.-Y)),1.);}`;
+const PAA=mkProg(QUAD_VS,AA_FS);
 let UPSCALE=true;   // false: the old way, the canvas at the 3D view's size and the browser's stretch (A/B)
 const PUPS=mkProg(QUAD_VS,UPS_FS);
 function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
@@ -2363,14 +2393,17 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
     gl.uniform2f(u.uPx,4/w,4/h);gl.uniform1f(u.uTh,0);gl.uniform1i(u.uMx,2);gl.drawArrays(gl.TRIANGLES,0,3)}
   expoTick(T);
   const up=cv.width!==w||cv.height!==h;   // (Q560) the canvas is larger than the 3D view: grade into T.out, then the upscale pass
-  gl.bindFramebuffer(gl.FRAMEBUFFER,up?T.out.fb:null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
+  const aa=EDGE_AA&&!!PAA;   // the edge filter reads the graded frame, so the grade goes to T.out even at 100 %
+  gl.bindFramebuffer(gl.FRAMEBUFFER,up||aa?T.out.fb:null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,GRADE_LUT);
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);gl.uniform1i(c.uLut,5);
   gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,BLOOM?GRADE.K*.25:0);gl.uniform1f(c.uE,EXPO.E);gl.uniform1f(c.uT,fxNow()%997);
-  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,up?0:GRADE.gr);
+  {const r=Math.sqrt(w*w+h*h);gl.uniform2f(c.uAs,w/r,h/r)}gl.uniform1f(c.uVg,GRADE.vg);gl.uniform1f(c.uGr,up||aa?0:GRADE.gr);
   gl.uniform1i(c.uHn,HAZE.n);if(HAZE.n){gl.uniform4fv(c['uHa[0]'],HAZE.a);gl.uniform4fv(c['uHb[0]'],HAZE.b);gl.uniform1f(c.uHt,simT%1000)}gl.drawArrays(gl.TRIANGLES,0,3);
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_3D,null);gl.activeTexture(gl.TEXTURE0);
-  if(up){const q=PUPS.u;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(PUPS.p);gl.bindTexture(gl.TEXTURE_2D,T.out.t);
+  if(aa){const q=PAA.u;gl.bindFramebuffer(gl.FRAMEBUFFER,up?T.aa.fb:null);gl.useProgram(PAA.p);gl.bindTexture(gl.TEXTURE_2D,T.out.t);gl.uniform1i(q.uS,0);gl.uniform2f(q.uPx,1/w,1/h);
+    gl.uniform1f(q.uGr,up?0:GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);gl.drawArrays(gl.TRIANGLES,0,3)}
+  if(up){const q=PUPS.u;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(PUPS.p);gl.bindTexture(gl.TEXTURE_2D,aa?T.aa.t:T.out.t);
     gl.uniform1i(q.uS,0);gl.uniform2f(q.uSz,w,h);gl.uniform1f(q.uSh,Math.min(1,1.6*(1-w/cv.width)));gl.uniform1f(q.uGr,GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.viewport(0,0,w,h)}
   gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
