@@ -1126,6 +1126,8 @@
       && !!pil && D.pilotModes(pil, 'crew').includes('dock') && D.pilotModes(pil, 'crew').includes('tgt') && S.ver >= 3,
     `hab ${hab}, hab + antenna ${habAnt}, lab docked ${lab}, two ports ${ports}, two ports + antenna ${portsAnt}, one port ${plain}, junk ${junk}; renamed: ${j.sats.map(q => q.name).join(', ')}; `
     + `start: ${reg.join(', ')}, ver ${S.ver}; pilot ${pil ? pil.name + ' (' + D.pilotModes(pil, 'crew').length + ' modes)' : 'none'}`);
+}
+
 // space-38. Rendezvous tools on the map, slice 1 (space, QUEUE Q628, PLAYTEST #176; numbers only, never a node placed).
 // `approach` gave the one closest moment over two orbits; `passes` gives the next three times we go by the place where our
 // orbit comes nearest the target's (as KSP's two closest approaches), each the least separation near there; `relNodes`
