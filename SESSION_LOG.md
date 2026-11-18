@@ -8167,3 +8167,26 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Q316's surface pass (B1.4, absorbs Q259), then the greebles (B1.5). Proposed: `refset.mjs`'s start.
 - Files: launchpad `app/gl.js`, `app/render.js`, `app/settings.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
   `BEAUTY.md`, `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): the surface pass; Steppe's seams (Q316 slice 2, Q259, v1.362)
+
+- **Asked:** Caio, on slice 1's stills: "these look good, we can move on to the next slice" (BEAUTY B1.4).
+- **Measured first (Q259):** Steppe's paint read low-res because of the paint, not sampling or mesh: Cape's weld rings
+  came through the enamel as a second set beside Steppe's own, the seams were soft and pale, and nothing was smaller
+  than a panel.
+- **Done (v1.362, `MESH_FS`, both settings):** Steppe: one set of thin seams with rivet rows. Tanks, nose cones and
+  adapters: Cape's white is gloss, roughness varies, the skin bows between frames, stringer skirts on tall tanks and
+  on adapter cones (Cape, Steppe, Arsenal, Mountain), grime toward joints. Test aerofx-59.
+- **Not built, on purpose:** soot by burn time and a pattern per school were there already; the roll pattern stays
+  Cape's (the approved briefs).
+- **Measured:** the ship pass at most +0.02 ms on the RTX (High) and +0.04 ms on the Intel GPU (Low). Stills
+  `output/launchpad/beauty/Q316/s2-before-after-*.png`; numbers in notes/look.md § v1.362.
+- **Tool:** `refset.mjs` waits for the page's load (four good starts of four; five of ten failed the day before).
+- **Tests:** smoke and lint green locally; CI 44331059540 green on the commit, then ff-merged.
+- **Not checked:** by a person (TESTING 411); Arsenal, Coastal, Mountain and Isle up close; the gloss highlight in a
+  still; shimmer of the ribs in motion.
+- **Left running:** a python server on port 8818 (the main clone, started with a 3 h limit); 8816 and 8817 from the
+  day before still run.
+- **Next:** Q316's last part, the greebles (B1.5).
+- Files: launchpad `app/gl.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `BEAUTY.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
