@@ -1307,7 +1307,7 @@
     depthVS: vs.includes('gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;') && /const SSM_VS=MESH_VS\.replace\('gl_Position\.z=\(log2\(max\(1e-6,1\.\+gl_Position\.w\)\)\*uFc-1\.\)\*gl_Position\.w;',''\)/.test(pg),
     pass: /SH=shipShadow\(L,DF\?DF\.lamp:SUN\);gl\.bindFramebuffer\(gl\.FRAMEBUFFER,sceneFB\(\)\);gl\.viewport\(0,0,W,H\);gl\.useProgram\(PMESH\.p\)/.test(pg)
       && pg.indexOf('SH=shipShadow(') < pg.indexOf('setMarks(m,S.parts);gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);') && /if\(SH\)gl\.uniform4f\(m\.uShB,0,0,0,0\);/.test(pg),
-    bounds: /const me=makeMesh\(a\);me\.bb=bb;return me\}/.test(pg),
+    bounds: /const me=makeMesh\(a\);me\.bb=bb;/.test(pg),
     quality: Q.high.fx.SHIP_SHADOW === 1 && !Q.low.fx.SHIP_SHADOW && /SHIP_SHADOW=!!f\.SHIP_SHADOW;/.test(pg)
   };
   check('the ship shades itself on High (Q316): the light\'s box holds the ship and what is docked with a margin, the stack lies along the map, depth runs toward the light; Low draws no map',
