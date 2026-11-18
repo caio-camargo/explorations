@@ -1,6 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
-**Status**: **draft for Caio.** Research and a proposal; nothing in the game follows it yet. Open questions in § 8.
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
+**Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
+follows it yet; the build order is § 7. Nothing open (D51).
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -72,7 +73,7 @@ Sources in § 9, each marked as read this session or recalled.
 
 ## 3. The roles
 
-Twenty-four kinds of text and text-holder, found by going through the Assembly, the part card and the flight HUD.
+Twenty-six kinds of text and text-holder, found by going through the Assembly, the part card and the flight HUD.
 The mock-up's *Role sheet* shows each one live in every dress, and its footer names the role under the pointer.
 
 | Group | Role | What it is | Alike with | Differs from, and by what |
@@ -101,6 +102,8 @@ The mock-up's *Role sheet* shows each one live in every dress, and its footer na
 | Things | **Well** | holds objects; the only sunken region | every list of objects | a panel: sunken |
 | | **Object** | a thing you pick up (a part, a saved design) | tokens, crew, anything picked up | a command: a row in a well, no plate of its own |
 | | **Token** | an object in a sequence (a staging event) | objects | a command: a grip edge, inside a well |
+| | **Picture** (D50) | a part's side silhouette | every part, wherever it is listed | another kind: shape. Another size: scale, in three steps. One tone, never colour |
+| Judgement | **Lamp** (cockpit only) | a caution as a tile outside any readout, dark until it matters | the master caution and its tiles | a key: no raised edge. A verdict: it lights and goes dark |
 
 States, the same on every role that has them: **held or chosen** = inverted (ink and ground swapped); **not
 available** = faint, with its reason one hover away; **hover** = a tint, never a change of shape.
@@ -122,8 +125,10 @@ available** = faint, with its reason one hover away; **hover** = a tint, never a
 
 The budget this gives a screen: **4 sizes** (footnote 10.5, body 13, title 16.5, and poster type for big moments
 only: UI.md rule 11), **2 weights**, **3 tones** (ink, quiet, faint), **3 hues, all reserved**, **2 faces at most**,
-**2 enclosures** (plate, well) besides the panel itself. No accent colour: the mock-up's *Plain* dress has none and
-loses nothing. If a power's colour is wanted (UI.md rule 4), it can take the one free slot: the primary command.
+**2 enclosures** (plate, well) besides the panel itself. **One accent: the power's colour, on the primary command
+and nowhere else** (D50). That puts a limit on the powers' colours: one near red or amber makes the launch button
+read as an alarm (the mock-up's *Power* swatches: cobalt is fine, terracotta reads as red on paper, ochre as
+amber). A power whose colour is in that range needs a darker or cooler variant for the button.
 
 Changes this makes to content, not only to looks (all in the mock-up):
 - **Stages become a table**, units in the header, so each figure sits under the one it compares with.
@@ -157,7 +162,7 @@ What follows from the table:
 - **The office's dress suits the Assembly better than the cockpit's.** A parts list and a stage table are a
   catalogue and a tabulation: paper's home ground. Form and Drawing pass where Panel strains. This agrees with UI.md
   § 4.1 item 4 (the Assembly as the model on a desk).
-- **The cockpit's amber needs a decision before Q477** (the flight HUD as the instrument panel, "amber VT323
+- **The cockpit's amber needed a decision before Q477, now made (D51: lamps)** (the flight HUD as the instrument panel, "amber VT323
   readouts"): either the readouts are not amber, or caution is not amber on that screen. Real panels keep the two
   apart by putting cautions on separate lamps, so a lit caution tile outside the glass may be enough; that wants its
   own mock-up, in flight.
@@ -167,7 +172,7 @@ What follows from the table:
 ## 6. What the mock-up shows, and what was checked
 
 `mockups/kit/index.html`, served or opened as a file. Bar: **Dress** (keys 1–5: Today, Plain, Form, Drawing, Panel),
-**View** (Assembly, Role sheet), **Checks** (Squint, Grey, Amber phosphor). Hover anything: the footer names its role
+**View** (Assembly, Role sheet, Cockpit caution), **Power**, **Checks** (Squint, Grey, No pictures, Amber phosphor). Hover anything: the footer names its role
 and its rule. The content is the real Assembly's (the Orbiter preset's figures; part names and specs from the game),
 regrouped only as § 4 lists. The background is the game's own frame with the panels hidden.
 
@@ -175,21 +180,37 @@ Checked this session, from stills at 1258 × 702:
 - **Squint** (Plain): what survives the blur is the launch button, the held part and the Inbox count. The first two
   are the screen's read 1; the count is arguably too loud.
 - **Fit:** the stage table measures 296 px in the Panel dress's 314 px; the other dresses have more room.
+- **Added after D50:** a **picture** on every part row (ten hand-drawn silhouettes, scaled in three steps; filled
+  on the form, line art on the drawing; *No pictures* hides them to compare). They are placeholders: the game has
+  each part's real profile (`prof` in the part definitions), which is what a build would draw. **Power** swatches
+  for the launch button. The **Cockpit caution** view (§ 8). Opening the page as a file works (the fonts load).
 - **Not checked:** the Grey toggle's stills were captured but not inspected (each condition has a word or glyph by
   construction); any dress on the flight HUD, the Program or the map; any window larger than 1258 × 702; a
   colour-blind simulation; whether Bahnschrift exists off Windows (it is a stand-in: the game bundles no sans).
 
 ## 7. If this is adopted: the order
 
-1. Caio picks: the roles and the code (§ 3, § 4), and a dress for the Assembly (§ 8).
+1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
 2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship). Candidates to compare, all
    under the Open Font License as recalled: Barlow (with Semi Condensed and Condensed), IBM Plex Sans (with Condensed),
    B612 (drawn for Airbus cockpit displays).
 3. The role classes and one dress's tokens in `index.html` (with Q478 and Q480), the Assembly first (vehicle and flow).
-4. The flight HUD on the same roles (Q477), after the amber decision.
+4. The flight HUD on the same roles (Q477), with cautions on lamps (D51).
 5. A test that fails on a font size, radius or colour outside the tokens, so the count in § 1 item 4 can't come back.
 
-## 8. Open, for Caio
+## 8. Decided, and open
+
+**D50 (Caio, 2026-11-18):** the roles and the code as proposed ("yes on defaults"); **Form** for the Assembly; the
+power's colour on the launch button only; parts get pictures ("that sounds good, maybe we can include a quick
+mock": done, § 6). On the mock-ups: "huge improvements already".
+
+**D51 (Caio, 2026-11-18): B.** "ok, we can go with b." In the cockpit a caution is a lit tile outside the
+readout, never coloured text in it; the readout may be amber. The question as it stood: Caio asked what "lamps outside the glass" meant; the mock-up's *Cockpit caution*
+view now shows it. A: the caution is written on the readout in amber, which an amber readout swallows. B: the
+readout only shows figures, and a caution is a lit tile beside it (the master caution and its tiles, UI.md rule 5),
+so the phosphor can stay amber.
+
+As first asked:
 
 1. **Are these the right distinctions?** § 3 is the proposal's core; a role that should not exist, or two that should
    be one, changes everything after it.
@@ -222,3 +243,5 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.2 (2026-11-18): D51, the cockpit's caution on lamps.
+- 0.1.1 (2026-11-18): D50 recorded; pictures, the power's colour and the cockpit caution added to the mock-up.
