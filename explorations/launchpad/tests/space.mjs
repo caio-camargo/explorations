@@ -1105,3 +1105,25 @@
     `Normal: flying ${N.name} (${N.flying}, out of the save ${N.savedOut}); Revert → ${rv.name} at ${rv.km} km, landed ${rv.landed}, on ${rv.screen}; with the table empty → ${rv2.ok ? rv2.name + ' at ' + rv2.km + ' km' : rv2.ok} · ` +
     `reload: ${back ? 'back in the registry' + (JSON.stringify(back) === N.atTake ? ' as it was when control was taken' : ' CHANGED') : 'GONE'} · Hard: revert ${hardRevert}; reload: ${lost ? 'lost' : 'kept'}, news "${HR.news.find(t => /is lost/.test(t)) || '-'}"`);
 }
+
+// space-37. A station is called a station (space, QUEUE Q631, PLAYTEST #175). satKind had no kind for a habitat, so
+// every station fell through to "Object N". Now a habitat or a lab (aboard or docked) makes a Station ahead of the other
+// kinds, and two or more docking ports with nothing else to name it by make one at the fallback. The save step 2 → 3
+// (stationRename) renames an old save's "Object N" station to "Station N" and leaves other names. The station chapter
+// start (starts/station.js) has "Station 1" and a pilot trained to dock (the crew capsule's type, rendezvous, docking).
+{
+  const D = new Function(src + 'return {satKind,stationRename,pilotModes,PROG};')();
+  const sh = (...ks) => ks.map((k, i) => ({ k, pos: [0, 0, 0], y0: i, h: 1, i }));
+  const hab = D.satKind({ shape: sh('core', 'hab', 'port') }), habAnt = D.satKind({ ant: 1, shape: sh('core', 'hab', 'ant') }),
+    lab = D.satKind({ shape: sh('core'), attached: [{ e: { shape: sh('lab') } }] }), ports = D.satKind({ shape: sh('core', 'port', 'rport') }),
+    portsAnt = D.satKind({ ant: 1, shape: sh('core', 'port', 'rport') }), plain = D.satKind({ shape: sh('core', 'port') }), junk = D.satKind({ junk: 1, shape: sh('hab') });
+  const j = D.stationRename({ sats: [{ name: 'Station 1', shape: sh('hab') }, { name: 'Beeper 1', shape: sh('core') }, { name: 'Object 1', shape: sh('core', 'hab', 'port', 'rport') }, { name: 'Object 2', shape: sh('core') }] });
+  const w = {}; new Function('window', readFileSync(new URL('./starts/station.js', import.meta.url), 'utf8'))(w); const S = w.CHAPTER_SAVES.station.save;
+  const reg = (S.sats || []).filter(q => !q.junk).map(q => q.name), pil = (S.crew || []).find(a => a.quals && a.quals.dock != null);
+  check('space-37: a habitat, a lab or two ports make a Station (an antenna or a camera doesn\'t outrank a habitat); an old save\'s "Object N" station is renamed; the station start has Station 1 and a pilot who flies docking',
+    hab === 'Station' && habAnt === 'Station' && lab === 'Station' && ports === 'Station' && portsAnt === 'Navsat' && plain === 'Object' && junk === 'Debris'
+      && j.sats.map(q => q.name).join() === 'Station 1,Beeper 1,Station 2,Object 2' && reg.includes('Station 1') && !reg.includes('Object 1')
+      && !!pil && D.pilotModes(pil, 'crew').includes('dock') && D.pilotModes(pil, 'crew').includes('tgt') && S.ver >= 3,
+    `hab ${hab}, hab + antenna ${habAnt}, lab docked ${lab}, two ports ${ports}, two ports + antenna ${portsAnt}, one port ${plain}, junk ${junk}; renamed: ${j.sats.map(q => q.name).join(', ')}; `
+    + `start: ${reg.join(', ')}, ver ${S.ver}; pilot ${pil ? pil.name + ' (' + D.pilotModes(pil, 'crew').length + ' modes)' : 'none'}`);
+}

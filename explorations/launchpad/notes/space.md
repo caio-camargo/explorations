@@ -2894,3 +2894,31 @@ own seats' answer.
 **Checked:** core test 35's new check (a fresh two-seat lander on Selene: 2 aboard, deploys; the same lander registered
 and loaded: 2, deploys; with dummies: 0, refused) fails on the old code and passes; the review's repro prints `crewOn 2,
 deploy ok`; smoke green. **Not checked:** in a browser (TESTING 397).
+
+## v1.367 — a station is called a station (2026-11-18, space, QUEUE Q631, PLAYTEST #175)
+
+Caio started *First station up* and found its habitat in the Fleet as **Object 1**. `satKind` names a registry entry by
+what it carries (junk, camera, science, ballast, bio, antenna) and nothing looked for a habitat, a lab or a port, so
+every station fell through to the fallback.
+
+- **`stationy(q)`** (sim/space.js, beside `satKind`) reads the registry shape, its own and what is docked to it
+  (`attached`): 2 for a habitat or a lab, 1 for two or more docking ports, else 0. **`satKind`** puts *Station* right
+  after *Debris* for a 2 (a habitat with an antenna or a camera is a station first), and ahead of the *Object* fallback
+  for a 1 (two ports and an antenna stay a *Navsat*). It reads the shape, so an old entry is named by what it is; the
+  network view's `station` kind (`stationOf`) is unchanged.
+- **`satRegister`** passes the vessel's shape and docked craft to `satKind`, so a new station registers as *Station N*.
+- **Save step 2 → 3** (`SAVE_V` 3, app/state.js): `stationRename(j)` renames an *Object N* entry that is now a Station to
+  *Station N*, numbered after any station already named. Other names, routes and old news lines are left as they were.
+- **Chapter starts regenerated** (`node chapters.mjs`). They were last made at v1.311, before the roster: no
+  astronauts. Now they carry the crew, and `chapters.mjs` writes today's `SAVE_V` into them (it wrote 1, which would have
+  run Selene's relief step 1 → 2 a second time on the Selene start's lander, already on the relief). The station and
+  Selene starts give their most senior pilot the crew capsule's type, rendezvous and docking **as the simulator gives
+  them** (2 h in type, two clean runs of each), written into the save only, so the career that makes the starts plays as
+  before. That pilot flies SAS's Target and Docking modes in the analog era (`pilotModes`, Q625).
+  The run: station start day 471, registry *Beeper 1, Lookout 1, TV 1, Station 1*, 3 astronauts; Selene start day 886,
+  6 astronauts (its *Object 1* and *Object 2* are the two heavy-lift flights' pods on their upper stages, with nothing to name them by).
+
+**Checked:** test space-37: the kinds (habitat, habitat + antenna, a docked lab, two ports, two ports + antenna, one
+port, junk), the rename on a fixture, and the station start (Station 1, `ver` 3, a pilot whose modes include docking);
+smoke green; CI. **Not checked:** in a browser (TESTING 415); an old career with a station loaded in the page (the step
+is the fixture's code).
