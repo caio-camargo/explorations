@@ -18,7 +18,7 @@ const views = (args.length ? args : SET.split(' ')).flatMap(range);
 const URL0 = process.env.REF_URL || 'http://localhost:8790/launchpad/index.html', port = 9300 + Math.floor(Math.random() * 500);
 const gpu = process.env.SHOT_FLAGS ? process.env.SHOT_FLAGS.split(' ') : ['--use-angle=d3d11', '--enable-gpu', ...(process.env.SHOT_IGPU ? ['--force_low_power_gpu'] : ['--force_high_performance_gpu'])];
 const ch = spawn(process.env.REF_BROWSER || (process.env.SHOT_IGPU ? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' : 'C:/Program Files/Google/Chrome/Application/chrome.exe'), ['--headless=new', `--remote-debugging-port=${port}`, ...gpu, '--ignore-gpu-blocklist', '--hide-scrollbars',
-  '--window-size=1280,800', `--user-data-dir=${process.env.TEMP}/refset${port}`, 'about:blank'], {stdio: 'ignore'});
+  `--window-size=${process.env.REF_SIZE || '1280,800'}`   /* REF_SIZE=1920,1080: a larger window, for what the scaler does on a real screen */, `--user-data-dir=${process.env.TEMP}/refset${port}`, 'about:blank'], {stdio: 'ignore'});
 const wait = ms => new Promise(r => setTimeout(r, ms)); let tabs;
 for (let i = 0; i < 50; i++) { try { tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (tabs.find(t => t.type === 'page')) break } catch {} await wait(200) }
 const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
