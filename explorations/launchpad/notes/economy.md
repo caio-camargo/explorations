@@ -1,5 +1,5 @@
 # Launchpad notes — Economy
-**Version**: 1.0.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-17
+**Version**: 1.0.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-18
 **Purpose**: The build log for the program, contracts, money, know-how, industry, powers and rivals, dispatch, crew plans, mission design, balance runs.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -4267,3 +4267,39 @@ checked:** in a browser (TESTING 405): flying prograde by a pilot in the gyro er
 **Checked:** econ-50 (classes for frugal, security and resource, the date in the save, the news; titles, Steppe's words;
 a lander's picks; the engineer's relight over 400 rolls, never worse; the scientist's weights and `selN`); econ-46–49,
 flow-6 and core 35 unchanged; smoke. **Not checked:** in a browser (TESTING 407); the relight message in flight.
+
+## v1.368 — who enforces requalification: the program's masters (2026-11-18, economy session, QUEUE Q624; CREW decision 5)
+
+v1.350's requalification (an uncrewed flight as far as the lost one, the capsule home inside the limits) is the same
+everywhere; who demands it and what skipping it costs now follow the program's owner, then the openness of whoever
+holds the state shares (`requalRule`, sim/crew.js). `PROG.requal` carries `rule`, `by`, and per rule `whim`, `once`,
+`losses`. None of it is a timer (CREW decision 3).
+
+- **A private company** (private ≥ 50 %): nobody grounds it. Crews fly on (`skip` from the start); the Inbox asks
+  *requalify first* or *keep flying people*, and the Astronauts panel keeps a **Requalify** button (`requalChoose`)
+  while it flies people unrequalified. The market prices it: an insurance surcharge of 8M on each crewed flight
+  (`R.requalIns`, ledger `insure`), tourism standing −20 and commercial −8 at the loss, the valuation −30 (and −30 more
+  for each further loss; `requalValCut` in `valuation`). A second loss without requalifying brings the families'
+  lawsuits, 40M (ledger `suits`) and tourism −20 again. A company in a closed country is still hushed by `failHit`,
+  as before; that is the state hiding it for them.
+- **An open state** (the strictest shareholder's openness ≥ 0.6): an inquiry grounds crews until the qualification
+  flight; no skip. **Demagoguery:** an election lost (opinion under 40) within a term (400 days) of the loss
+  (`PROG.crewLoss`, a new schema row) cuts the budget multiplier by a further ×0.85 for the term
+  (`requalElection`, from `flavTick`). With nationalism over 0.6 at the loss, the government asks for one crewed
+  flight before the inquiry reports: obeyed, the next crewed flight carries people (`q.once`, `R.requalObey`), home
+  is opinion +12, lost is −25 more and a new inquiry; refused is −8.
+- **A closed state** (< 0.5): the leadership's whim, rolled at the loss (`requalWhim`: fly 0.25 + 0.4 with a
+  spectacular pending + 0.3 × nationalism; blame 0.25 + 0.2 × nationalism; choice 0.4; seeded by the world and the flight
+  number). *Fly at once*: people fly, hushed as v1.350's skip; the Inbox offers *requalify anyway*, opinion −12 (the
+  leadership's favour). *Find who is to blame*: grounded until the qualification flight, and the lost design's
+  chief designer is purged: know-how ×0.7 on every part it flew. *The choice*: v1.350's. While any of these stands, a
+  security state's regime change (opinion under 35) is three times as likely (`requalRegimeK`).
+- **Between 0.5 and 0.6** (no archetype sits there today): v1.350's plain stand-down.
+- **A consortium or a mixed program** (an agency with a foreign stake from a rescue too): the most open state with a
+  stake rules, so one open member forces an inquiry, and the news names it ("An inquiry grounds crews (X demands it)").
+
+The facility level the plan offered as a scapegoat's other price isn't taken (lowering a built facility touches every
+job queued on it); know-how is the cost. **Checked:** econ-51 (a loss under each owner: the company's insurance,
+lawsuits, valuation and its own requalification; the open inquiry, the populist flight and the election; the three
+whims and the regime odds; a consortium's open member); econ-47 updated (an open state's news says inquiry; the closed
+case forces the choice whim); smoke. **Not checked:** in a browser (TESTING 416).

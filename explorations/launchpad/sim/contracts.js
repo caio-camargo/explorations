@@ -502,7 +502,7 @@ function shiftShare(to,amt){const o=own(),get=k=>k==='pv'?o.pv:(o.st[k]||0),set=
   const others=[...Object.keys(o.st).map(Number),'pv'].filter(k=>k!==to&&get(k)>0),tot=others.reduce((a,k)=>a+get(k),0);amt=Math.min(amt,tot);
   for(const k of others)set(k,get(k)-amt*get(k)/tot);set(to,get(to)+amt)}
 function income(x,k='paid'){ledAdd(k,x);const o=own();if(o.debt>0){const r=Math.min(o.debt,x/2);o.debt-=r;x-=r;ledAdd('debt',-r)}PROG.funds+=x}   // k: the Debrief's ledger line (Q293)
-const valuation=()=>80+40*Object.keys(PROG.done).length+6*(PROG.cdone||0);   // what investors think the program is worth (M)
+const valuation=()=>Math.max(20,80+40*Object.keys(PROG.done).length+6*(PROG.cdone||0)-requalValCut());   // (Q624) less while a company flies crews unrequalified   // what investors think the program is worth (M)
 // how a power's money arrives (multiplies GRANT_100 × stake): its money axis, opinion where it matters, the cycles
 // the Assembly panel's study line: what this design's predictions are worth, and the office
 function studyLine(s){const E=COMP_ERAS[compEra()];if(!E.err[0])return'';const st=studyOf(s),j=studyJob(s),q=studyQuote(s);
@@ -600,7 +600,7 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
   else if(d.kind==='routine')routeFailAnswer(d,key);
   else if(d.kind==='crewheld')crewHeldAnswer(d,key);
-  else if(d.kind==='requal')requalAnswer(d,key);   // (Q183) a closed power's skip   // (Q580) a failed automatic run: keep repeating or stop
+  else if(d.kind==='requal')requalAnswer(d,key);   // (Q183) a closed power's skip; (Q624) by the program's owner   // (Q580) a failed automatic run: keep repeating or stop
   else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);(PROG.stakeBy=PROG.stakeBy||{})[d.power]=1;PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}
