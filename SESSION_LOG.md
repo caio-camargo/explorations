@@ -8294,3 +8294,22 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Left running:** a python server on port 8830 (ends by itself within 90 minutes of 17:45).
 - Files: launchpad `ELEMENTS.md` (new), `mockups/kit/` (new: `index.html`, `today.jpg`, `bg-assembly.jpg`),
   `mockups/README.md`, `UI.md` (0.2.3, a pointer); root `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — design desk (Fable 5.2, main clone): D50, the grammar of text elements decided; pictures, the power's colour, the cockpit caution mocked (ELEMENTS.md 0.1.1)
+
+- **Asked:** Caio, on ELEMENTS.md § 8: "1 and 2, yes on defaults. 3, yes launch button only. 4 yes, that sounds
+  good, maybe we can include a quick mock. 5, not sure what you mean by lamps outside the glass. but the mockups in
+  general are huge improvements already".
+- **Done:** D50 in DECISIONS.md (the roles and the code as proposed; Form for the Assembly; the power's colour on
+  the launch button only; parts get pictures). `mockups/kit/` now opens on Form and has: a silhouette on every part
+  row (ten placeholder shapes, three sizes), *Power* swatches for the launch button, and a *Cockpit caution* view
+  that shows question 5 as A (the caution written in the readout) against B (a lit tile beside it).
+- **Found:** a power's colour near red or amber makes the launch button read as an alarm (terracotta, ochre): such
+  a power needs a darker or cooler variant for the button. The filled silhouettes are weak at 25 × 20 px on the
+  form; the drawing's line art reads better.
+- **Not checked:** as the entry above, plus the pictures against the game's real part profiles (`prof`).
+- **Waiting on Caio:** the cockpit caution, A or B (my pick: B), before Q477. Not yet in QUEUE: the build items
+  (ELEMENTS.md § 7) and D50's notes on Q477, Q478, Q480 and Q237 are the orchestrator's to file.
+- **Stopped:** the server on port 8830 was ended by Claude Code (low memory); the mock-up opens as a file.
+- Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `mockups/kit/index.html`, `mockups/README.md`; root
+  `ACTIVE_WORK.md`, `SESSION_LOG.md`.

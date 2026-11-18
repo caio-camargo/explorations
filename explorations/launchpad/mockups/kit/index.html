@@ -29,7 +29,7 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 [data-view=asm] .sheet{display:none}[data-view=sheet] .pn:not(.sheet),[data-view=sheet] .card{display:none}
 
 /* ---------- the grammar: structure shared by every dress ---------- */
-#stage{--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
+#stage{--power:#2b5ea8;--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
 .pn{position:absolute;top:12px;bottom:12px;overflow:auto;background:var(--surf);padding:12px 14px;border-radius:var(--rad);scrollbar-width:thin}
 .pn.left{left:12px;width:284px}.pn.right{right:12px;width:346px;display:flex;flex-direction:column;overflow:hidden}
 .scroll{flex:1;overflow:auto;scrollbar-width:thin;margin-right:-8px;padding-right:8px}
@@ -58,8 +58,8 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 .seg{display:inline-flex;margin:0 0 5px 6px;vertical-align:middle}
 .seg .btn{border-radius:0;margin:0 0 0 -1px;padding:3px 7px}
 .seg .btn.on{background:var(--ink);color:var(--solid);border-color:var(--ink)}
-.pri{display:flex;width:100%;justify-content:center;gap:10px;margin:8px 0 0;padding:10px;font-size:var(--s2);font-weight:700;background:var(--ink);color:var(--solid);border-color:var(--ink)}
-.pri:hover{background:var(--ink);filter:brightness(1.12)}
+.pri{display:flex;width:100%;justify-content:center;gap:10px;margin:8px 0 0;padding:10px;font-size:var(--s2);font-weight:700}
+.pri:hover{filter:brightness(1.12)}
 .well{background:var(--well);border:1px solid var(--wellEdge);border-radius:var(--rad);padding:3px 0}
 .obj{display:flex;align-items:baseline;padding:2px 8px;cursor:grab}
 .obj:hover,.obj.hov{background:var(--hover)}
@@ -87,6 +87,17 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 .sheet th{border:0}
 .sheet td:nth-child(2){min-width:230px}
 
+.ic{flex:none;width:25px;height:20px;margin-right:6px;fill:currentColor;align-self:center;opacity:.9}
+body.nopic .ic{display:none}
+.pri{background:var(--power);border-color:var(--power);color:#fff}.pri:hover{background:var(--power)}
+[data-view=asm] .cview,[data-view=sheet] .cview{display:none}[data-view=caution] .pn:not(.cview),[data-view=caution] .card{display:none}
+.pn.cview{left:50%;transform:translateX(-50%);width:min(900px,96vw);bottom:auto}
+.ab{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:6px}
+.lamps{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+.lamp{display:inline-block;font:600 11px/1 Bahnschrift,'Arial Narrow',sans-serif;font-stretch:75%;letter-spacing:.12em;text-align:center;padding:8px 2px;border-radius:2px;background:#1b1c1a;color:#55574f;border:1px solid #000;box-shadow:inset 0 1px 0 #333}
+.lamps .lamp{display:block}
+.lamp.lit{background:#f2b01e;color:#1a1408;box-shadow:0 0 12px rgba(242,176,30,.55)}
+.lamp.master{grid-column:1/-1;padding:10px}
 /* ---------- dress 1 · PLAIN: the grammar with no costume. One face (DIN), no hue outside the three conditions ---------- */
 [data-dress=plain] #stage{--f-say:Bahnschrift,'Segoe UI',system-ui,sans-serif;--surf:rgba(20,21,23,.95);--solid:#141517;--ink:#ece8df;--quiet:#a39d90;--faint:#6a665d;
   --plate:#2a2c30;--plateEdge:#4c4f55;--plateHi:#3a3d42;--well:#0b0c0d;--wellEdge:#000;--hover:rgba(255,255,255,.08);--rule:#3a3c40;--amber:#f0a92a;--red:#ff5d4d;--go:#58c98b;--rad:2px}
@@ -109,8 +120,7 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 [data-dress=form] .ld{border-bottom:1px dotted var(--quiet);margin:0 5px;position:relative;top:-3px}
 [data-dress=form] .obj.held .ld{border-color:var(--solid)}
 [data-dress=form] .btn{font-family:var(--f-print);font-size:12.5px;box-shadow:1px 2px 0 rgba(42,38,32,.55)}
-[data-dress=form] .pri{background:var(--print);border-color:var(--print);color:#f5edd9;font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;font-size:17px}
-[data-dress=form] .pri:hover{background:var(--print)}
+[data-dress=form] .pri{font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;font-size:17px}
 [data-dress=form] .tog::before{border-radius:0;width:10px;height:10px;border-color:var(--ink)}
 [data-dress=form] .tog[aria-pressed=true]::before{background:linear-gradient(45deg,transparent 42%,var(--ink) 42% 58%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--ink) 42% 58%,transparent 58%)}
 [data-dress=form] .tok{background:var(--plate);border:1px dashed var(--quiet);border-left:3px solid var(--ink)}
@@ -141,6 +151,7 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 [data-dress=drawing] .btn{font-size:11.5px}
 [data-dress=drawing] .pri{font-size:15px;letter-spacing:.2em}
 [data-dress=drawing] .note{font-style:italic}
+[data-dress=drawing] .ic{fill:none;stroke:currentColor;stroke-width:1.1}
 
 /* ---------- dress 4 · PANEL: the instrument panel. Engraved = the system; lit on glass = the data ---------- */
 [data-dress=panel] #stage{--f-say:'VT323',monospace;--f-print:Bahnschrift,'Arial Narrow',sans-serif;--surf:#2b2e31;--solid:#0a0b0a;--ph:#e9f2df;--ink:#e6e1d3;--quiet:#aaa698;--faint:#77746a;
@@ -171,7 +182,8 @@ body.amber[data-dress=panel] #stage{--ph:#ffb000}
 [data-dress=panel] .tok{background:none;border:1px solid var(--ph);border-left-width:4px;padding:0 6px 0 4px}
 [data-dress=panel] .btn{background:linear-gradient(#474b51,#303337);border-top-color:#70757c;box-shadow:0 2px 0 #101112;font-size:11px;padding:5px 9px}
 [data-dress=panel] .btn[disabled]{background:#2e3134;box-shadow:none;border-color:#222}
-[data-dress=panel] .seg .btn.on,[data-dress=panel] .pri{background:#f3ecd2;color:#15130c;border-color:#f3ecd2;box-shadow:0 0 10px rgba(243,236,210,.45)}
+[data-dress=panel] .seg .btn.on{background:#f3ecd2;color:#15130c;border-color:#f3ecd2;box-shadow:0 0 10px rgba(243,236,210,.45)}
+[data-dress=panel] .pri{background:var(--power);border-color:var(--power);color:#fff;box-shadow:0 0 12px color-mix(in srgb,var(--power) 60%,transparent)}
 [data-dress=panel] .tog::before{background:#111;border-color:#000}
 [data-dress=panel] .tog[aria-pressed=true]::before{background:#f3ecd2;box-shadow:0 0 6px #f3ecd2}
 [data-dress=panel] .pri{font-size:15px;letter-spacing:.2em}
@@ -184,11 +196,12 @@ body.amber[data-dress=panel] #stage{--ph:#ffb000}
 [data-dress=panel] .sheet td{font-family:var(--f-print)}
 </style>
 </head>
-<body data-dress="plain" data-view="asm">
+<body data-dress="form" data-view="asm">
 <div id="bar">
   <b>Dress</b><span id="dresses"></span>
-  <b>View</b><button data-view="asm">Assembly</button><button data-view="sheet">Role sheet</button>
-  <b>Checks</b><button data-cls="squint" title="UI.md check 1: blurred, what stands out should be read 1">Squint</button><button data-cls="grey" title="nothing may depend on hue alone">Grey</button><button data-cls="amber" title="Panel dress only: amber phosphor, to see it collide with the amber caution">Amber phosphor</button>
+  <b>View</b><button data-view="asm">Assembly</button><button data-view="sheet">Role sheet</button><button data-view="caution" title="ELEMENTS.md § 5: the caution in an amber cockpit, two ways">Cockpit caution</button>
+  <b>Power</b><button data-power="#2b5ea8">cobalt</button><button data-power="#b5532f">terracotta</button><button data-power="#c9982c">ochre</button>
+  <b>Checks</b><button data-cls="squint" title="UI.md check 1: blurred, what stands out should be read 1">Squint</button><button data-cls="grey" title="nothing may depend on hue alone">Grey</button><button data-cls="nopic" title="hide the parts' pictures, to compare">No pictures</button><button data-cls="amber" title="Panel dress only: amber phosphor, to see it collide with the amber caution">Amber phosphor</button>
 </div>
 
 <main id="stage">
@@ -254,6 +267,19 @@ body.amber[data-dress=panel] #stage{--ph:#ffb000}
     </div>
   </section>
 
+  <section class="pn cview">
+    <div class="head"><h1 class="ttl">A caution in an amber cockpit</h1><span class="note">the same moment in a climb, two ways</span></div>
+    <div class="ab">
+      <div><section class="grp"><h2 class="h">A · in the glass</h2>
+        <div class="glass"><div class="kv"><span class="lab">Altitude</span><span><span class="val">41.2<span class="u">km</span></span></span><span class="lab">Speed</span><span><span class="val">1840<span class="u">m/s</span></span></span><span class="lab">Skin</span><span><span class="val" style="color:var(--amber)">1180<span class="u">K</span></span> <span style="color:var(--amber)">▲ near its limit</span></span><span class="lab">Fuel</span><span><span class="val">62<span class="u">%</span></span></span></div></div>
+        <p class="note">The caution is written on the readout in the caution colour. When the readout itself is amber, only the glyph sets it apart.</p></section></div>
+      <div><section class="grp"><h2 class="h">B · on lamps, outside the glass</h2>
+        <div class="glass"><div class="kv"><span class="lab">Altitude</span><span><span class="val">41.2<span class="u">km</span></span></span><span class="lab">Speed</span><span><span class="val">1840<span class="u">m/s</span></span></span><span class="lab">Skin</span><span><span class="val">1180<span class="u">K</span></span></span><span class="lab">Fuel</span><span><span class="val">62<span class="u">%</span></span></span></div></div>
+        <div class="lamps"><div class="lamp master lit">MASTER CAUTION</div><div class="lamp lit">HEAT</div><div class="lamp">STRUCTURE</div><div class="lamp">LINK</div><div class="lamp">POWER</div><div class="lamp">FUEL</div><div class="lamp">ATTITUDE</div></div>
+        <p class="note">The readout only ever shows figures. A caution is a separate lit tile beside it, dark when all is well (UI.md rules 3 and 5). Its place and shape say caution, so the phosphor may be any colour.</p></section></div>
+    </div>
+  </section>
+
   <section class="pn sheet">
     <div class="head"><h1 class="ttl">Role sheet</h1><span class="note">every role, in this dress · ELEMENTS.md § 3</span></div>
     <table id="roles"><thead><tr><th class="lab">Role</th><th class="lab">Specimen</th><th class="lab">Alike with</th><th class="lab">Differs from, and by what</th></tr></thead><tbody></tbody></table>
@@ -265,11 +291,15 @@ body.amber[data-dress=panel] #stage{--ph:#ffb000}
 'use strict';
 const $=s=>document.querySelector(s),B=document.body;
 // ---- the parts list: real names and figures (sim/parts, v1.366); masses under 0.1 t in kg, two decimals above
-const PARTS=[['Command and payload',[['Command pod','0.84','t'],['Crew capsule','1.40','t'],['Probe core','80','kg','held'],['Instrument package','80','kg'],['Biocapsule','0.45','t'],['Imaging camera','120','kg'],['Whip antenna','10','kg']]],
-  ['Tanks',[['Tank 1 t','1.00','t'],['Tank 2 t','2.00','t'],['Tank 4 t','4.00','t'],['Propellant sphere 0.4 m','35','kg']]],
-  ['Engines',[['Kestrel booster','230','kN'],['Petrel vacuum','65','kN'],['Sparrow sounding','60','kN'],['Apogee engine','0.44','kN','hov']]],
-  ['Not open yet',[['Condor heavy','650','kN','lock'],['Tank 8 t','8.00','t','lock']]]];
-$('#parts').innerHTML=PARTS.map(([c,ps])=>`<div class="sh">${c}</div>`+ps.map(([n,v,u,k])=>`<div class="obj ${k||''}"><span class="nm">${n}</span><i class="ld"></i><span class="val">${v}<span class="u">${u}</span></span></div>`).join('')).join('');
+// a part's picture: its side silhouette. Shape says the kind; size says the scale, in three steps (1 small, 3 large)
+const SH={pod:'<path d="M7 2h6l4 12H3z"/>',cap:'<path d="M7.5 3h5l5.5 9v2H2v-2z"/>',probe:'<path d="M6 4h8l2 3v4l-2 3H6l-2-3V7z"/>',instr:'<path d="M5 6h10v8H5zM8 3h4v3H8z"/>',bio:'<rect x="4" y="3" width="12" height="11" rx="4.5"/>',
+  cam:'<path d="M4 5h9v9H4zM13 7l4-2v9l-4-2z"/>',ant:'<path d="M9.4 2h1.2v9H9.4zM6 11h8l-1.5 3h-5z"/>',tank:'<rect x="6" y="1" width="8" height="14" rx="2"/>',sph:'<circle cx="10" cy="8" r="6"/>',eng:'<path d="M8 1h4v4l4 10H4l4-10z"/>'};
+const ic=(k,z)=>{const f=[0,.62,.8,1][z||3];return `<svg class="ic" viewBox="0 0 20 16"><g transform="translate(${10-10*f} ${15-15*f}) scale(${f})">${SH[k]}</g></svg>`};
+const PARTS=[['Command and payload',[['Command pod','0.84','t','','pod',2],['Crew capsule','1.40','t','','cap',3],['Probe core','80','kg','held','probe',2],['Instrument package','80','kg','','instr',2],['Biocapsule','0.45','t','','bio',2],['Imaging camera','120','kg','','cam',2],['Whip antenna','10','kg','','ant',2]]],
+  ['Tanks',[['Tank 1 t','1.00','t','','tank',1],['Tank 2 t','2.00','t','','tank',2],['Tank 4 t','4.00','t','','tank',3],['Propellant sphere 0.4 m','35','kg','','sph',1]]],
+  ['Engines',[['Kestrel booster','230','kN','','eng',3],['Petrel vacuum','65','kN','','eng',2],['Sparrow sounding','60','kN','','eng',2],['Apogee engine','0.44','kN','hov','eng',1]]],
+  ['Not open yet',[['Condor heavy','650','kN','lock','eng',3],['Tank 8 t','8.00','t','lock','tank',3]]]];
+$('#parts').innerHTML=PARTS.map(([c,ps])=>`<div class="sh">${c}</div>`+ps.map(([n,v,u,k,i,z])=>`<div class="obj ${k||''}">${ic(i,z)}<span class="nm">${n}</span><i class="ld"></i><span class="val">${v}<span class="u">${u}</span></span></div>`).join('')).join('');
 $('#cardkv').innerHTML=[['Mass','5','kg'],['Thrust','0.44','kN'],['<span class="term">Isp</span>','312','s','vacuum · 120 s at sea level'],['Size','0.24 × 0.35','m'],['Heat limit','1500','K'],['Price','3.0','M']]
   .map(([l,v,u,n])=>`<span class="lab">${l}</span><span><span class="val">${v}<span class="u">${u}</span></span>${n?` <span class="note">${n}</span>`:''}</span>`).join('');
 
@@ -298,16 +328,18 @@ const R=[
  ['.say','Sentence','Prose: what a thing is. Mixed case, never capitals, within the copy budget.','<span class="say">A small restartable engine for a satellite\'s own big burns.</span>','all prose','a label: length and case'],
  ['.note','Note','A condition, a source, a status. Footnote size, quiet; never carries a number you decide on.','<span class="note">a guess, could be 30 % off</span>','every aside','a sentence: one size down, quiet'],
  ['.ix','Index','Which one in a sequence (stage 1, 2, 3). A heavy figure in a fixed column; position says the order, not colour.','<span class="ix">1</span> <span class="ix">2</span>','every sequence number','a value: its fixed first column'],
+ ['.ic','Picture','A part\'s side silhouette. Shape says its kind, size its scale in three steps. One tone, never colour.',ic('eng',3)+ic('eng',1)+ic('tank',2)+ic('pod',2),'every part, wherever it is listed','another kind: shape. Another size: scale'],
+ ['.lamp','Lamp','A caution on an instrument panel: a tile outside any readout, dark until it matters.','<span class="lamp lit" style="padding:6px 10px">HEAT</span> <span class="lamp" style="padding:6px 10px">LINK</span>','the master caution and its tiles','a key: no raised edge, it is not pressed. A verdict: it lights and goes dark'],
  ['.well','Well','Holds objects. The only sunken region; what is inside can be picked up or dragged.','<div class="well" style="width:140px;height:22px"></div>','every list of objects','a panel: sunken, not raised'],
 ];
 const DRESS=[['today','Today (v1.366)'],['plain','Plain'],['form','Form'],['drawing','Drawing'],['panel','Panel']];
 $('#roles tbody').innerHTML=R.slice().reverse().map(r=>`<tr><td><span class="nm">${r[1]}</span><br><span class="note">${r[2]}</span></td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('');
 $('#dresses').innerHTML=DRESS.map(([k,n])=>`<button data-dress="${k}">${n}</button>`).join(' ');
-function sync(){for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:B.classList.contains(b.dataset.cls))}
-$('#bar').onclick=e=>{const d=e.target.dataset;if(!d)return;if(d.dress)B.dataset.dress=d.dress;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);sync()};
+function sync(){for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:b.dataset.power?(B.dataset.power||'#2b5ea8')===b.dataset.power:B.classList.contains(b.dataset.cls))}
+$('#bar').onclick=e=>{const d=e.target.dataset;if(!d)return;if(d.dress)B.dataset.dress=d.dress;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);if(d.power){$('#stage').style.setProperty('--power',d.power);B.dataset.power=d.power}if(d.view==='caution'){B.dataset.dress='panel';B.classList.add('amber')}sync()};
 $('#stage').onmouseover=e=>{for(const r of R){const t=e.target.closest(r[0]);if(t){$('#who').innerHTML=`<b>${r[1]}</b> · ${r[2]}`;return}}$('#who').textContent='Hover an element to see its role.'};
 addEventListener('keydown',e=>{const i=+e.key;if(i>=1&&i<=5){B.dataset.dress=DRESS[i-1][0];sync()}});
-const q=new URLSearchParams(location.search);if(q.get('dress'))B.dataset.dress=q.get('dress');if(q.get('view'))B.dataset.view=q.get('view');for(const c of['squint','grey','amber'])if(q.has(c))B.classList.add(c);
+const q=new URLSearchParams(location.search);if(q.get('dress'))B.dataset.dress=q.get('dress');if(q.get('view'))B.dataset.view=q.get('view');if(q.get('power')){$('#stage').style.setProperty('--power','#'+q.get('power'));B.dataset.power='#'+q.get('power')}for(const c of['squint','grey','amber','nopic'])if(q.has(c))B.classList.add(c);
 sync();
 </script>
 </body>
