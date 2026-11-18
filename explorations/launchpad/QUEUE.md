@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.272 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
+**Version**: 0.1.273 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -506,6 +506,7 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them; an idea out of scope goes to [`BACKLOG.md`](BACKLOG.md), D31)
+- flow — an RCS card while RCS is on: the translate and attitude keys as a diagram, gas left; collapsible (Caio: "definitely not intuitive") — PLAYTEST #170
 - vehicle — RCS holds attitude without a deadband: constant small pulses with nothing pressed (a deadband or minimum impulse on the attitude part; gas per hour before/after) — PLAYTEST #169
 - look & sound (effects) — the RCS puff is a placeholder box: a cold-gas jet per nozzle — PLAYTEST #168
 - ~~flow + look & sound — Q572 follow-ups: a sound for the unlock card; a per-part `why` line for family members~~ ✓ v1.324 (the sounds are stand-ins: look & sound to replace) — loop slices
