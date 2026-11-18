@@ -178,6 +178,8 @@ then removes them from the Drive folder.
 
 > Cleared 2026-11-18: look & sound, parts & pad (Fable 5.2), **v1.362 Q316 slice 2** (BEAUTY B1.4, with Q259) on `main`: the surface pass in `MESH_FS` (gloss, bowed skin, stringer skirts, grime; Steppe's seams). **Everyone:** `refset.mjs` now waits for the page's load before its first view; start a run with view 1 (`refView(3)` first leaves the Program's desk over the picture). `SKIN_ON` in `MESH_FS` switches the pass off for an A/B. Q316 stays open for B1.5 (greebles). Worktree `launchpad-q316`, branch `q316` = main.
 
+> Cleared 2026-11-18: look & sound, parts & pad (Fable 5.2), **v1.363 Q316 slice 3** (BEAUTY B1.5, first kit) on `main`: greebles on tanks and capsules. This slice ran without a claim row (the session's mistake; nobody else touched the files). **Everyone building or drawing a ship's mesh:** a mesh from `partsMesh` has `nMain` and `nAll`, and `mesh.n` is set per draw by `meshLod` (the greebles are the last vertices, dropped beyond 150 m, 60 m on Low): read `nAll` for the buffer's size, never cache `n`. Part kind 18 (`GREEBLE_K`) is taken, as 17 is the solar cells'. `greebles(out, p, parts)` adds to a part without touching `PARTS`. The mesh build is 55–65 % slower. Q316 stays open (engines, probes). Worktree `launchpad-q316`, branch `q316` = main.
+
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
 | Caio + Claude (playtest session, Opus 5.5, main clone on `main`) | 2026-11-17 | **Playtest sitting**, docs only: plans the sitting, files feedback. No game code, never merges | `explorations/launchpad/` PLAYROUTE.md, TESTING.md (`#` cells), PLAYTEST.md, QUEUE.md (*Proposed* only) |

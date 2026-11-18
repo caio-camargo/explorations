@@ -8190,3 +8190,24 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Next:** Q316's last part, the greebles (B1.5).
 - Files: launchpad `app/gl.js`, `refset.mjs`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `BEAUTY.md`,
   `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): greebles on tanks and capsules (Q316 slice 3, v1.363)
+
+- **Asked:** Caio, on slice 2's stills: "these look really good, go ahead and continue" (BEAUTY B1.5).
+- **Done (v1.363):** `greebles` in app/gl.js: on a tank 1.5 m or taller a raceway, a feed line, an umbilical plate,
+  retro and ullage motors; on a capsule thruster blocks, handrails, a connector. Chosen from the part's data and its
+  neighbours, styled by school, placed clear of side boosters, occlusion baked under each, last in the buffer and
+  dropped beyond 150 m (60 m on Low). Test aerofx-60 (the whole page headless).
+- **Measured:** GPU at most +0.02 ms on the RTX and +0.16 ms on the Intel GPU (close-up); the mesh build +55–65 %
+  (Big Lunar 5.3 → 8.7 ms). 3,000–7,000 more vertices a ship. notes/look.md § v1.363.
+- **Went wrong on the way:** (1) no claim row for this slice; (2) the first version gave the Heavy's core nothing (a
+  radial decoupler's default radius blocked the whole skin): the new test caught it; (3) one commit (3994d83f) went
+  to the branch with a failing check (aerofx-57's pattern on `partsMesh`'s last line); fixed in the next commit and
+  not merged until CI 44342643909 was green on it.
+- **Not checked:** by a person (TESTING 412); four of the six schools in a still; 2.5 m parts; the pop at the drop
+  distance; building with them on screen.
+- **Left running:** a python server on port 8818 (3 h limit from about 11:50); 8816 and 8817 from 2026-11-17.
+- **Next:** the rest of B1.5 (engines: actuators and lines that turn with the bell; probes and station parts), or
+  B1.6 (frost and the ice fall).
+- Files: launchpad `app/gl.js`, `app/render.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `BEAUTY.md`,
+  `TESTING.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
