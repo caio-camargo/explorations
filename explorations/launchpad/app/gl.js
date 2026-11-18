@@ -36,7 +36,7 @@ in vec2 vNdc;layout(location=0) out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS,uPadK;uniform highp sampler2D uDepth;uniform float uUseDepth;
-uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix,uSPx;uniform vec3 uPadL;
 uniform highp sampler2D uSelM,uSelD,uSelE;uniform float uSelOn,uMtcc,uSelDOn,uSelPre;uniform highp sampler2DArray uCache,uZmax;uniform float uCacheOn,uShOn;uniform vec3 uCq[7],uCc[7],uCe[7],uCn[7],uZA[7],uZs[7];uniform vec4 uCl[7];   // (Q91) Selene's map (E, M, U); its relief is drawn when on; uMtcc = |C|²−(R+top)², in float64
 uniform sampler2D uCov,uShd;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;uniform highp sampler2D uSlabA,uSlabB;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
@@ -496,7 +496,7 @@ vec3 starsAt(vec3 d,float band){vec3 c=vec3(0.);
   float m=h3(ci+9.),br=k==0?.25+2.2*pow(m,5.):k==1?.07+.25*pow(m,2.):.025+.05*m;
   float t=h3(ci+5.3);vec3 tc=t<.1?vec3(.62,.74,1.):t<.45?vec3(.88,.92,1.):t<.75?vec3(1.,.95,.84):t<.92?vec3(1.,.84,.62):vec3(1.,.66,.45);
   float ph=h3(ci+2.2)*6.2832,f=1.5+2.5*h3(ci+4.4),tw=max(1.+.35*(.5*sin(uStT*f+ph)+.3*sin(uStT*f*2.3+ph*1.7)+.2*sin(uStT*f*5.1+ph*.3)),0.);
-  float rad=min(uPix*(.6+.45*sqrt(br)),.22/sc);c+=tc*br*tw*exp(-r*r/(rad*rad))*.9;}
+  float rad=min(uSPx*(.6+.45*sqrt(br)),.22/sc);c+=tc*br*tw*exp(-r*r/(rad*rad))*.9;}   // uSPx: a pixel of the screen, not of a view drawn above it (v1.366), or the stars thin out as the view is supersampled
  // (PLAYTEST #96) the brightest stars' halo reaches past their cell, so it comes from the 2×2×2 cells nearest this
  // pixel (it was cut straight at the border), fading to nothing within half a cell, which those always cover; each star kept by the band at its own place, so the halo can't half-vanish
  vec3 c0=floor(d*90.-.5);for(int x=0;x<2;x++)for(int y=0;y<2;y++)for(int z=0;z<2;z++){vec3 ci=c0+vec3(x,y,z);float hs=h3(ci);if(hs<.9947)continue;
@@ -504,7 +504,7 @@ vec3 starsAt(vec3 d,float band){vec3 c=vec3(0.);
   if(hs<.9967-.002*textureLod(uGalC,sd,0.).a)continue;float r=length(d-sd),t=h3(ci+5.3);
   vec3 tc=t<.1?vec3(.62,.74,1.):t<.45?vec3(.88,.92,1.):t<.75?vec3(1.,.95,.84):t<.92?vec3(1.,.84,.62):vec3(1.,.66,.45);
   float ph=h3(ci+2.2)*6.2832,f=1.5+2.5*h3(ci+4.4),tw=max(1.+.35*(.5*sin(uStT*f+ph)+.3*sin(uStT*f*2.3+ph*1.7)+.2*sin(uStT*f*5.1+ph*.3)),0.);
-  c+=tc*br*tw*.015*exp(-r/(uPix*5.))*smoothstep(.5/90.,.15/90.,r);}   // and fades out within half a cell, inside the cells that draw it
+  c+=tc*br*tw*.015*exp(-r/(uSPx*5.))*smoothstep(.5/90.,.15/90.,r);}   // and fades out within half a cell, inside the cells that draw it
  return c*uStK;}
 // the sun (Q321): a limb-darkened disc (0.27°) that clips to white at any exposure, a tight glare and a faint veil; no
 // diffraction spikes (they were a camera's, fixed to the screen)
@@ -541,7 +541,7 @@ vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos
 // (Q374, PLAYTEST #11) the planets as points of light on the stars' scale (planetSky: br from each one's magnitude,
 // as the stars' brightest is ~−1.5), sharp and steady (no twinkle in space or air: they're discs, not points), under
 // the stars' exposure floor uStK. uPlnD = direction, br; uPlnC = colour, its point's radius in pixels
-vec3 planetsAt(vec3 d){vec3 c=vec3(0.);for(int i=0;i<6;i++){if(i>=uNPl)break;vec4 P=uPlnD[i];float r=length(d-P.xyz),rad=uPix*uPlnC[i].w;
+vec3 planetsAt(vec3 d){vec3 c=vec3(0.);for(int i=0;i<6;i++){if(i>=uNPl)break;vec4 P=uPlnD[i];float r=length(d-P.xyz),rad=uSPx*uPlnC[i].w;
  if(r<rad*4.)c+=uPlnC[i].rgb*P.w*exp(-r*r/(rad*rad))*.9;}return c*uStK;}
 // the cloud volume's own shadow on the ground (QUEUE Q65): the light through the 2–5.5 km slab toward the sun (the
 // volume's extinction 1/180 m⁻¹, floor 0.25 for skylight); blended into the shell's shadow by uVk and a fade at the bake's
@@ -2338,17 +2338,24 @@ function expoNow(){const T=SCN;if(!T.chain||!HDR_RT)return;const c=T.chain[3],a=
 // the local mean, held inside the range of the four nearest texels so no edge rings or haloes. Done on the graded
 // 8-bit frame, where a step in value is a step the eye sees. The film grain is laid here, at device pixels: grain the
 // size of an upscaled texel reads as blocks. uSh: the sharpen (more the further the frame is stretched).
+// (v1.366; Caio 2026-11-18, on v1.365: "the greebling on the craft and other elements still have the same issue") The
+// same pass brings the frame DOWN when the 3D view is drawn above the screen's pixels (High, when the GPU has room:
+// QUAL.high.rs, resNext). What the edge filter can't mend is anything about a pixel wide: a handrail, a feed line, the
+// stripes of a roundel, a rivet row. Those need more samples, and averaged after the grade, where the multisample
+// resolve averages before it. uDn = the view's pixels per canvas pixel; above 1, four bilinear taps a quarter of a
+// canvas pixel out (at 2× exactly the 2×2 box, at 1.5× a trapezoid 1.75 texels wide), no sharpen.
 const UPS_FS=`#version 300 es
-precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS;uniform vec2 uSz;uniform float uSh,uGr,uT;
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS;uniform vec2 uSz;uniform float uSh,uGr,uT,uDn;
 void main(){vec2 uv=vNdc*.5+.5,sp=uv*uSz,tc=floor(sp-.5)+.5,f=sp-tc,px=1./uSz;
  vec2 w0=f*(-.5+f*(1.-.5*f)),w1=1.+f*f*(-2.5+1.5*f),w2=f*(.5+f*(2.-1.5*f)),w3=f*f*(-.5+.5*f),w12=w1+w2;
  vec2 t0=(tc-1.)*px,t3=(tc+2.)*px,t12=(tc+w2/w12)*px;
- vec3 c=texture(uS,vec2(t0.x,t0.y)).rgb*w0.x*w0.y+texture(uS,vec2(t12.x,t0.y)).rgb*w12.x*w0.y+texture(uS,vec2(t3.x,t0.y)).rgb*w3.x*w0.y
+ vec3 c;if(uDn>1.){vec2 q=.25*uDn*px;c=(texture(uS,uv-q).rgb+texture(uS,uv+vec2(q.x,-q.y)).rgb+texture(uS,uv+vec2(-q.x,q.y)).rgb+texture(uS,uv+q).rgb)*.25;}else{
+ c=texture(uS,vec2(t0.x,t0.y)).rgb*w0.x*w0.y+texture(uS,vec2(t12.x,t0.y)).rgb*w12.x*w0.y+texture(uS,vec2(t3.x,t0.y)).rgb*w3.x*w0.y
   +texture(uS,vec2(t0.x,t12.y)).rgb*w0.x*w12.y+texture(uS,vec2(t12.x,t12.y)).rgb*w12.x*w12.y+texture(uS,vec2(t3.x,t12.y)).rgb*w3.x*w12.y
   +texture(uS,vec2(t0.x,t3.y)).rgb*w0.x*w3.y+texture(uS,vec2(t12.x,t3.y)).rgb*w12.x*w3.y+texture(uS,vec2(t3.x,t3.y)).rgb*w3.x*w3.y;
  vec3 a=texture(uS,tc*px).rgb,b=texture(uS,(tc+vec2(1.,0.))*px).rgb,d=texture(uS,(tc+vec2(0.,1.))*px).rgb,e=texture(uS,(tc+1.)*px).rgb;
  vec3 lo=min(min(a,b),min(d,e)),hi=max(max(a,b),max(d,e));
- c=clamp(c+uSh*(c-(a+b+d+e)*.25),lo,hi);
+ c=clamp(c+uSh*(c-(a+b+d+e)*.25),lo,hi);}
  vec2 g=gl_FragCoord.xy+uT;float n=fract(sin(dot(g,vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(g,vec2(39.3468,11.135)))*24634.6345)-1.;
  float Y=dot(c,vec3(.2126,.7152,.0722));o=vec4(c+n*uGr*(.35+2.6*Y*(1.-Y)),1.);}`;
 // ---- (Q316 follow-up; Caio 2026-11-18: "the edges of things still show up pixelated") an edge filter on the graded frame.
@@ -2404,7 +2411,7 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   if(aa){const q=PAA.u;gl.bindFramebuffer(gl.FRAMEBUFFER,up?T.aa.fb:null);gl.useProgram(PAA.p);gl.bindTexture(gl.TEXTURE_2D,T.out.t);gl.uniform1i(q.uS,0);gl.uniform2f(q.uPx,1/w,1/h);
     gl.uniform1f(q.uGr,up?0:GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);gl.drawArrays(gl.TRIANGLES,0,3)}
   if(up){const q=PUPS.u;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(PUPS.p);gl.bindTexture(gl.TEXTURE_2D,aa?T.aa.t:T.out.t);
-    gl.uniform1i(q.uS,0);gl.uniform2f(q.uSz,w,h);gl.uniform1f(q.uSh,Math.min(1,1.6*(1-w/cv.width)));gl.uniform1f(q.uGr,GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);
+    gl.uniform1i(q.uS,0);gl.uniform2f(q.uSz,w,h);gl.uniform1f(q.uSh,Math.max(0,Math.min(1,1.6*(1-w/cv.width))));gl.uniform1f(q.uDn,w/cv.width);gl.uniform1f(q.uGr,GRADE.gr);gl.uniform1f(q.uT,fxNow()%997);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.viewport(0,0,w,h)}
   gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
 // ---- fin-tip vapor: each fin tip's recent path, planet-fixed, with how much vapor it shed there. A fin sheds a tip

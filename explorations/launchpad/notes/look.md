@@ -2863,3 +2863,45 @@ issue is that the edges of things still show up pixelated, not sure if that's fi
 - **Not checked.** In motion by a person (TESTING 413). The star field in a still pair: the stars twinkle between
   frames, so two captures differ with the filter off too; the claim that stars are untouched rests on the port.
   Text and gauges drawn in the 3D view. The filter below 100 % scale on the RTX (only the Intel GPU ran scaled).
+
+## v1.366 — the 3D view drawn above the screen's pixels when the GPU has room; where it has none (2026-11-18, look & sound, parts & pad on the effects pipeline; Caio's look at v1.365)
+
+Caio, after v1.365: "the outer edges of the rocket look a lot better, but the greebling on the craft and other
+elements still have the same issue".
+
+- **Why the edge filter left them.** It mends a step between two areas. A handrail, a feed line, a roundel's stripes,
+  a rivet row are about a pixel wide (in view 3 a pixel is ~5 cm at the craft, a rail 3 cm): there is no edge to walk,
+  only too few samples, and the filter leaves one-pixel things alone on purpose (the stars). Stills at 100 %, 150 % and
+  200 % of the same frames showed more samples cure it (`g2/cmp-orbit.png`, `g2/cmp-pad.png`: 100, 150, 200).
+- **What.** High's resolution cap is 1.5 (`QUAL.high.rs`; Low stays 0.6). The canvas stays at the screen's pixels; the
+  scene, the grade and the edge filter run at the larger size, and the pass that brought a small frame up (`UPS_FS`)
+  brings a large one down: `uDn` = view pixels per canvas pixel, above 1 four bilinear taps a quarter of a canvas
+  pixel out (at 2× exactly the 2×2 box), no sharpen (`uSh` went negative there, a blur by accident). Averaged after
+  the grade, which is the point: the multisample resolve averages before it (§ v1.364).
+- **The scaler** (`resNext`): above 100 % it grows only while the grown frame stays under `SS_ROOM` (0.6) of the
+  11 ms budget, and steps back toward 100 % past `SS_OVER` (0.85). A step from below stops at 100 % first. Without
+  timer queries (the frame-interval fallback) never above 100 %.
+- **The stars** are sized by a pixel (`uPix`), so at 150 % they came out a quarter as bright in sum (bright pixels'
+  sum 57,826 → 24,792 → 14,537 at 100, 150, 200 %). They and the planets' points now use `uSPx`, the screen's pixel.
+  After: 58,334 → 47,486 at 150 %; pixels over 150 of 255: 50 → 53. The faintest are softer (their light is spread
+  over the pixels it truly covers, where one sample caught it or missed).
+- **More shows.** Detail that fades by pixel footprint (rivet rows, the interstage's dotted line) appears from further
+  away at 150 %. Left as is.
+- **Measured, RTX 5050 laptop, High** (`ss-t-high*` logs; frame ms at 100 % → what the scaler settled on):
+
+  | window | pad (1) | orbit (3) | Big Lunar (6) | Cape close-up (114) |
+  |---|---|---|---|---|
+  | 1258 × 702 | 4.2 → 7.3 at 150 % | 3.7 → 3.5 at 150 % | 6.1 → 7.7 at 134 % | 3.9 → 7.9 at 150 % |
+  | 1920 × 1080 | 7.4 → 105 % | 4.6 → 6.2 at 150 % | 7.8 → 100 % | 7.6 → 102 % |
+  | 2560 × 1440 | 12.1 → 88 % | 5.6 → 100 % | 13.3 → 80 % | 12.9 → 89 % |
+
+  Low on the Intel GPU: as before (cap 0.6; 8.8 ms at 52 %, 4.6 at 60 %, 10.8 at 49 %).
+- **So: it helps in orbit and in a small window, and not on the pad on a real screen.** At 1080p the pad's frame is
+  7.4 ms of 11, of which the sky pass is 5.0 (the ship 0.04): no room. At 1440p the view is already *below* the
+  screen's pixels (80–89 %, stretched up), which is itself pixelation and may be most of what Caio sees there. The
+  lever is the sky pass's cost, not the ship's: proposed in QUEUE.
+- **Tool.** `refset.mjs` takes `REF_SIZE=1920,1080` (the window; default 1280,800 as before). Its "full" column is
+  still the frame held at 100 %; "adaptive" now starts from 150 % on High.
+- **Not checked.** In motion by a person (TESTING 414). Caio's own window size and scale (asked). The go-to-body
+  view (app/bodyview.js) above 100 %. Memory at 150 % of a large screen (a 2560 × 1440 canvas makes a 3840 × 2160
+  target with four samples; it is only reached with the frame under 6.6 ms).
