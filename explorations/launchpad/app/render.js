@@ -147,7 +147,7 @@ function render(){spoolFrame();
   const DF=desk&&deskFrame(camW);if(DF)deskLight(m,DF);
   const lit=DF?()=>1:p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return selPartLit(p)};   // (G4) and Selene's relief
   marksTick();padSync();padLights(m,camW);if(DF)gl.uniform1f(m.uFlI,0);plumeLight(camW);plasmaLight(camW);boomLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform4fv(m.uPl2,PLT.p2);gl.uniform3fv(m.uPlC2,PLT.c2);gl.uniform3fv(m.uPlC,PLT.c);
-  const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
+  const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));if(mesh.nMain!=null)meshLod(mesh,Math.hypot(M[12],M[13],M[14]));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};   // (Q316) a ship far away is drawn without its greebles
   const near=view!=='map'||mode==='editor';
   profMark('pads');if(DF)deskDraw(drawMesh,m,DF);
   if(!DF){const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
@@ -162,7 +162,7 @@ function render(){spoolFrame();
   {const k=mode==='editor'&&!atRoll&&S.parts.some(p=>p.on&&p.profF&&!p.fj)&&(typeof BLD!=='undefined'&&BLD.fairHidden()?'hid':'cut');   // hidden while building inside (Q512)
   if(k!==S._cutK){const was=S._cutK;S._cutK=k;if(was!==undefined)HOOK.rebuild()}}   // a payload fairing: cut away at the design table, whole on the pad (vehicle, Q337)
   // (Q316, BEAUTY B1.3) the ship's shadow map, High only: the ship and what is docked to it, from the sun (the lamp on the desk)
-  let SH=null;profMark('ship shadow');if(SHIP_SHADOW&&PSSM&&near&&S.alive&&shipMesh&&shipMesh.bb){const p=shipWorld();if(lit(p)){
+  let SH=null;profMark('ship shadow');if(SHIP_SHADOW&&PSSM&&near&&S.alive&&shipMesh&&shipMesh.bb){const p=shipWorld();meshLod(shipMesh,len(sub(p,camW)));if(lit(p)){
     const L=[[shipMesh,rollTilt(camW,modelQ(S.q,sub(p,camW),mul(S.cm,-1))),S.parts]];for(const a of S.att||[]){const am=satMesh(a.e);if(am.mesh.bb)L.push([am.mesh,modelQ(qmul(S.q,a.q),sub(add(p,qrot(S.q,sub(a.p,S.cm))),camW),mul(a.e.cm,-1)),am.parts])}
     SH=shipShadow(L,DF?DF.lamp:SUN);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);gl.useProgram(PMESH.p)}}
   else if(!SHIP_SHADOW&&SSM.n>1)ssmTarget(1);   // Low: the map's memory back

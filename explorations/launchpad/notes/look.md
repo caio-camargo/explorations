@@ -2756,3 +2756,48 @@ All in `MESH_FS`, on both settings. `SKIN_ON = false` there for an A/B.
   no reference view puts the sun's reflection on a tank. Shimmer of the ribs while the camera moves. Other vessels
   and debris use the same shader and get the pass, unseen.
 - **Next for Q316:** B1.5, the greebles.
+
+## v1.363 — greebles on tanks and capsules (2026-11-18, look & sound, parts & pad, QUEUE Q316 slice 3; BEAUTY B1.5)
+
+Small things in real geometry, so they cast a shadow on High (v1.360) and break the outline. `greebles(out, p, parts)`
+in app/gl.js, called by `partsMesh` for each part. `GREEBLE_FX = false` for an A/B.
+
+- **What a part gets, from its own data** (sizes for a 1.25 m part; all scale with the radius).
+  - *A tank 1.5 m or taller.* A cable raceway down its side: Cape, Arsenal and Mountain a closed tunnel with clamps;
+    Steppe two bare pipes (steel, copper) on brackets; Coastal a slim half-round duct; Isle a low flush fairing.
+    A feed line with elbows into the domes: Steppe and Arsenal always, Cape on a tank over 3 m, any school when
+    another tank sits on top. An umbilical plate with three connectors. Four retro motors (nozzles up) under a
+    decoupler; two ullage motors (nozzles down) on an upper stage's tank over its engine (Cape, Steppe, Arsenal,
+    Coastal; Mountain has its spin rockets, Isle none).
+  - *A capsule.* Four thruster blocks round the base, a handrail on each side of the hatch, an umbilical connector.
+- **Where.** The four quadrant centres of the skin (45°, 135°, 225°, 315°: clear of the roll pattern's edges, the
+  roundel, the window and the hatch), less any sector that a side booster or a part on the skin takes. A tank with
+  boosters on four sides at those angles gets none.
+- **How they ride.** The host's part index (so its soot, and its stage when it falls away) and frame, kind
+  `GREEBLE_K` = 18: no surface detail of their own; a school's repaint treats a white one as the tank. Ambient
+  occlusion is baked under each, in the kind's fraction as v1.361's creases (up to half dark at the skin, none 7 cm
+  out); `MESH_FS` skips the crease's span cut for kind 18.
+- **Dropped with distance.** `partsMesh` puts them after everything else in the buffer and records `nMain` and
+  `nAll`; `meshLod` (called by render's `drawMesh` and before the shadow pass) draws `nMain` vertices beyond
+  150 m on High, 60 m on Low. At 150 m a raceway is under half a pixel wide.
+- **Found by the test, fixed before commit.** A radial decoupler carries the stack's default radius (0.625 m) in its
+  definition, so on the Heavy it blocked the whole of the core's skin and the core got nothing. Only round parts are
+  now taken at their radius; others at 22 cm.
+- **Measured** (before = main at v1.362 served beside it; logs `s3-t-*`, stills `s3-before-after-*.png` in
+  `output/launchpad/beauty/Q316/`).
+  - Vertices: Orbiter 10,044 + 2,976; Heavy 19,692 + 4,632; Big Lunar 27,048 + 7,068. Per part 468–1,704, more
+    than BEAUTY's "a few hundred": tubes of 8–10 sides.
+  - GPU, RTX on High, views 1, 3, 6, 54, 114, 115: `ship` 0.03, 0.03, 0.10, 0.04, 0.06, 0.06 → 0.03, 0.03, 0.11,
+    0.05, 0.06, 0.06 ms; `ship shadow` 0.04–0.05 → 0.04–0.06 ms.
+  - GPU, Intel UHD on Low, views 1, 3, 6, 54: `ship` 0.18, 0.14, 0.97, 0.37 → 0.20, 0.14, 1.13, 0.41 ms; frame
+    27.2, 9.7, 31.7, 39.8 → 26.2, 9.1, 31.4, 38.8 ms (noise).
+  - CPU, `partsMesh` (median of five runs of 40, off/on in the same page): Orbiter 1.8 → 2.9 ms, Heavy 3.7 → 5.7,
+    Big Lunar 5.3 → 8.7. This is the real cost: +55–65 % on every rebuild (a builder edit, staging). `rbox` builds
+    each box through temporary arrays; if a rebuild ever shows as a hitch, that is the place.
+- **Not built in this slice:** on engines, gimbal actuators and feed lines into the bell (they must turn with the
+  bell: `MESH_VS`'s mode 1 moves kind 2 only); handrails and antennas on probes and station parts (several have
+  their own already); separation springs; a distance fade (they pop at the threshold).
+- **Not checked.** By a person (TESTING 412). Arsenal, Mountain, Coastal and Isle in a still. Scaled (2.5 m) parts.
+  The pop at 150 m and 60 m in motion. Debris and other vessels, which get them through the same `partsMesh`.
+  The builder: nothing reads the mesh for picking (checked by reading, and app-3's builder test still passes), but
+  no one has built with them on screen.

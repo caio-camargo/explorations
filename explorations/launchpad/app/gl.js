@@ -939,7 +939,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // width away, 5 % at two). Exact per pixel from the part's own frame, so no rings of vertices are needed at the joint. Creases: what a
  // side-by-side part hides is baked per vertex (shipAO) as if the neighbour ran the part's whole height (a tank has
  // rings of vertices only at its ends), arrives in the fraction of the part's kind (vK.x), and is cut here to the neighbour's span.
- if(uSeam>0.&&pi>=0&&pi<96&&k!=14){vec4 aw=uAo[pi];float fl=.5*R+.1,db=max(v,0.),dt=max(h-v,0.);
+ if(k==18);   // a greeble keeps what was baked under it (the cut below is for the part's own creases)
+ else if(uSeam>0.&&pi>=0&&pi<96&&k!=14){vec4 aw=uAo[pi];float fl=.5*R+.1,db=max(v,0.),dt=max(h-v,0.);
   ao=1.-(1.-ao)*smoothstep(aw.z-fl,aw.z,v)*(1.-smoothstep(aw.w,aw.w+fl,v));
   if(side&&aw.x>0.)ao*=.5+.5*db*inversesqrt(db*db+aw.x*aw.x);if(side&&aw.y>0.)ao*=.5+.5*dt*inversesqrt(dt*dt+aw.y*aw.y);}
  else ao=1.;
@@ -2052,7 +2053,65 @@ function shipAO(a,rg){const I=[];
     const py=A.p.y0||0,lo=q.y0-py,hi=q.y1-py;if(A.w[2]===A.w[3]){A.w[2]=lo;A.w[3]=hi}else{A.w[2]=Math.min(A.w[2],lo);A.w[3]=Math.max(A.w[3],hi)}
     for(let i=A.n0;i<A.n1;i+=VX){const dx=q.x-a[i],dz=q.z-a[i+2],nd=a[i+3]*dx+a[i+5]*dz;if(nd<=0)continue;const d=Math.sqrt(dx*dx+dz*dz);if(d<1e-4)continue;   // facing away: nothing (most vertices)
       const c=nd/d,s=Math.min(1,q.r/d),m=a[i+14],k=Math.round(m);a[i+14]=k+.45*(1-(1-(m-k)/.45)*(1-.7*s*s*c))}}}
-function partsMesh(parts){const a=[],rg=[];UPPER=upperOf(parts);for(const p of parts){const n0=a.length;partShape(a,p);rg.push([p,n0,a.length]);
+// ---- (Q316, BEAUTY B1.5) greebles: the small things that stand proud of the skin, in real geometry, so they cast a
+// shadow (the ship's shadow map, High) and break the outline. Chosen from the part's own data and what it is stacked
+// with, never scattered; styled by the maker's school. Drawing only: PARTS, outlines, aero and the builder's attach rules
+// never see them. Slice 1:
+//   a tank 1.5 m or taller (for a 1.25 m tank; every size below scales with the radius):
+//     a cable raceway down its side: Cape, Arsenal, Mountain a closed tunnel with clamps; Steppe two bare pipes on
+//       brackets; Coastal a slim half-round duct; Isle a low flush fairing;
+//     a propellant feed line with elbows into the domes: Steppe and Arsenal always, Cape on a tank over 3 m, any school
+//       when another tank sits on top (its propellant has to get past);
+//     an umbilical plate with three connectors, low on the side;
+//     retro motors (nozzles up) under a decoupler, and ullage motors (nozzles down) on an upper stage's tank over its
+//       engine: Cape, Steppe, Arsenal, Coastal (Mountain has its spin rockets, Isle none);
+//   a capsule: four thruster blocks round its base, a handrail on each side of the hatch, an umbilical connector.
+// Where they go: the four quadrant centres of the skin (clear of the roll pattern's edges, the roundel, the window and
+// the hatch), less any sector a side booster or a part on the skin takes. They share the part's index (its soot, its
+// stage) and frame, with kind GREEBLE_K: no surface detail of their own, the school's paint as the part's. Ambient
+// occlusion is baked under each (darkest where it meets the skin). partsMesh puts them after everything else in the
+// buffer, so meshLod drops them by drawing fewer vertices beyond GREEBLE_FAR metres. GREEBLE_FX = false: none (A/B)
+let GREEBLE_FX=true;const GREEBLE_K=18,GREEBLE_FAR={high:150,low:60};
+function meshLod(mesh,d){if(mesh.nMain!=null)mesh.n=d>(GREEBLE_FAR[typeof quality==='string'?quality:'high']||150)?mesh.nMain:mesh.nAll}
+function greebles(out,p,parts){if(!GREEBLE_FX||p.pose||p.tdir||!p.pos||!p.d)return;
+  const d=p.d,key=d.base||d.key,R=d.r||.625,h=d.h,x=p.pos[0],y=p.y0,z=p.pos[2],k=R/.625,sch=partSchool(p),n0=out.length;
+  const tank=d.kind==='tank'&&/^t\d/.test(key)&&h>=1.5*k,pod=key==='pod'||key==='crew';if(!tank&&!pod)return;
+  const K0=PK;PK={o:[x,y,z],k:GREEBLE_K,R,h,i:p.i??-1,sch,hq:partHue(p),up:sch>=2&&UPPER&&UPPER.has(p)?1:0};
+  const P=(a,r,yy,w=0)=>[x+Math.cos(a)*r-Math.sin(a)*w,y+yy,z+Math.sin(a)*r+Math.cos(a)*w];   // angle round the axis, radius, height, sideways
+  const top=q=>q.y0+(q.h??q.d.h),onAx=q=>q!==p&&q.pos&&q.d&&!q.pose&&Math.abs(q.pos[0]-x)<1e-3&&Math.abs(q.pos[2]-z)<1e-3;
+  const below=parts.find(q=>onAx(q)&&Math.abs(top(q)-y)<.03),above=parts.find(q=>onAx(q)&&Math.abs(q.y0-(y+h))<.03);
+  const blk=[];for(const q of parts){if(q===p||!q.pos||!q.d||q.y0>y+h||top(q)<y)continue;const dx=q.pos[0]-x,dz=q.pos[2]-z,dd=Math.hypot(dx,dz);if(dd<1e-3||dd>R+3)continue;
+    blk.push([Math.atan2(dz,dx),Math.asin(Math.min(1,((q.d.w||(AO_ROUND[q.d.kind]?q.d.r:0)||.22)+.14*k)/Math.max(dd,.05)))])}   // what stands beside the part: a sector each (only a round part is as wide as its r: a radial decoupler or a fin carries the stack's default)
+  const free=a=>blk.every(([b,w])=>{let e=Math.abs(a-b)%6.2832;if(e>3.1416)e=6.2832-e;return e>w}),QUAD=[3.927,5.498,2.356,.785];
+  if(tank){const ST=C.ST,WH=C.W,[a1,a2,a3]=QUAD.filter(free);
+    if(a1!=null){const y0=.14*k,y1=h-.14*k,ym=(y0+y1)/2,hy=(y1-y0)/2;   // the raceway
+      if(sch===1){tube(out,P(a1,R+.05*k,y0,-.04*k),P(a1,R+.05*k,y1,-.04*k),.028*k,ST,8,true);tube(out,P(a1,R+.04*k,y0,.035*k),P(a1,R+.04*k,y1,.035*k),.018*k,[.5,.36,.22,1],6,true);
+        for(let yy=y0+.2*k;yy<y1;yy+=1.3*k)rbox(out,P(a1,R+.03*k,yy),.03*k,.025*k,.085*k,C.D,a1)}
+      else if(sch===3)tube(out,P(a1,R+.012*k,y0),P(a1,R+.012*k,y1),.045*k,WH,8,true);
+      else if(sch===5)rbox(out,P(a1,R+.012*k,ym),.012*k,hy,.07*k,C.BK,a1);
+      else{rbox(out,P(a1,R+.03*k,ym),.03*k,hy,.055*k,WH,a1);for(const e of[y0-.03*k,y1+.03*k])rbox(out,P(a1,R+.016*k,e),.016*k,.03*k,.045*k,WH,a1);   // a tunnel, stepped down at each end
+        for(let yy=y0+.6*k;yy<y1-.2*k;yy+=1.25*k)rbox(out,P(a1,R+.033*k,yy),.033*k,.018*k,.062*k,ST,a1)}}
+    if(a2!=null&&(sch===1||sch===2||(sch===0&&h>3*k)||(above&&above.d.kind==='tank'))){const rr=R+.075*k,y0=.3*k,y1=h-.3*k,c=sch===0||sch===3?[.8,.8,.78]:ST;   // the feed line
+      tube(out,P(a2,rr,y0),P(a2,rr,y1),.05*k,c,10);tube(out,P(a2,rr,y1),P(a2,R-.03*k,y1+.12*k),.05*k,c,10);tube(out,P(a2,rr,y0),P(a2,R-.03*k,y0-.12*k),.05*k,c,10);
+      for(const yy of[y0,(y0+y1)/2,y1])rbox(out,P(a2,R+.065*k,yy),.065*k,.03*k,.062*k,C.D,a2)}
+    if(a3!=null){rbox(out,P(a3,R+.012*k,.62*k),.012*k,.12*k,.09*k,ST,a3);   // the umbilical plate
+      for(const[dy,w,r]of[[.05,-.035,.026],[.05,.035,.026],[-.05,0,.018]])tube(out,P(a3,R+.02*k,(.62+dy)*k,w*k),P(a3,R+.05*k,(.62+dy)*k,w*k),r*k,C.D,8,true)}
+    // a small solid motor: its body from yy along s (+1 up, -1 down), a nose cone behind, the nozzle canted outward ahead
+    const mot=(a,yy,s)=>{const c=P(a,R+.055*k,yy),e=[c[0],c[1]+s*.3*k,c[2]];tube(out,c,e,.045*k,WH,8,true);
+      lathe(out,s>0?[[0,-.09*k,WH],[.045*k,0,WH]]:[[.045*k,0,WH],[0,.09*k,WH]],c,8,[false,false]);tube(out,e,P(a,R+.085*k,yy+s*.36*k),.03*k,C.K,8,false)};
+    if(sch<=3){const ms=QUAD.map(a=>a+.5).filter(free);
+      if(above&&above.d.kind==='dec')for(const a of ms)mot(a,h-.45*k,1);
+      if(below&&below.d.kind==='engine'&&parts.some(q=>onAx(q)&&q.d.kind==='dec'&&q.y0<y))for(const a of[ms[0],ms[2]])if(a!=null)mot(a,.42*k,-1)}}
+  const rs=u=>(.62-.28*clamp((u-.06)/.94,0,1))*k;   // a capsule's skin: its radius at height u (in a 1.25 m capsule's metres)
+  if(pod){const HR=[.85,.65,.12];
+    for(let j=0;j<4;j++){const a=j*1.5708;if(!free(a))continue;rbox(out,P(a,rs(.13)+.02*k,.13*k),.025*k,.03*k,.04*k,C.ST,a);   // thruster blocks, a nozzle to each side
+      for(const w of[-1,1])tube(out,P(a,rs(.13)+.02*k,.13*k,w*.04*k),P(a,rs(.13)+.03*k,.13*k,w*.075*k),.014*k,C.K,6,false)}
+    for(const a of[2.356-.36,2.356+.36]){if(!free(a))continue;const A=P(a,rs(.2)+.05*k,.2*k),B=P(a,rs(.56)+.05*k,.56*k);tube(out,A,B,.012*k,HR,6,true);   // handrails beside the hatch
+      tube(out,P(a,rs(.2),.2*k),A,.009*k,HR,4);tube(out,P(a,rs(.56),.56*k),B,.009*k,HR,4)}
+    if(free(5.498)){rbox(out,P(5.498,rs(.12)+.01*k,.12*k),.012*k,.05*k,.07*k,C.ST,5.498);tube(out,P(5.498,rs(.12)+.02*k,.12*k),P(5.498,rs(.12)+.05*k,.12*k),.024*k,C.D,8,true)}}
+  for(let i=n0;i<out.length;i+=VX){const r=Math.hypot(out[i]-x,out[i+2]-z),t=clamp((r-(pod?rs((out[i+1]-y)/k):R))/(.07*k),0,1);out[i+14]+=.45*.5*(1-t)}   // the occlusion under each
+  PK=K0}
+function partsMesh(parts){const a=[],rg=[],g=[];UPPER=upperOf(parts);for(const p of parts){const n0=a.length;partShape(a,p);rg.push([p,n0,a.length]);greebles(g,p,parts);
     if(p.tdir){const q=tiltQ(p.tdir),m=[p.pos[0],p.y0+p.h,p.pos[2]];for(let i=n0;i<a.length;i+=VX){
       const v=qrot(q,[a[i]-m[0],a[i+1]-m[1],a[i+2]-m[2]]),nn=qrot(q,[a[i+3],a[i+4],a[i+5]]);a[i]=v[0]+m[0];a[i+1]=v[1]+m[1];a[i+2]=v[2]+m[2];a[i+3]=nn[0];a[i+4]=nn[1];a[i+5]=nn[2]}}
     // the interstage cover (Q102 step 4): a decoupler with an engine sitting right on top of it gets a cover around that
@@ -2071,8 +2130,8 @@ function partsMesh(parts){const a=[],rg=[];UPPER=upperOf(parts);for(const p of p
     if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36,1];
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
       else{PK={o:J,k:KIND.collar,R:.25,h:.5,i:p.i??-1};rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}PK=PK0}}
-  UPPER=null;if(AO_FX)shipAO(a,rg);const bb=a.length?[1e30,1e30,1e30,-1e30,-1e30,-1e30]:[0,0,0,0,0,0];for(let i=0;i<a.length;i+=VX)for(let k=0;k<3;k++){const x=a[i+k];if(x<bb[k])bb[k]=x;if(x>bb[k+3])bb[k+3]=x}   // (Q316) its bounds, for the shadow map's fit
-  const me=makeMesh(a);me.bb=bb;return me}
+  UPPER=null;if(AO_FX)shipAO(a,rg);const nMain=a.length/VX;for(const v of g)a.push(v);   /* (Q316) the greebles last, so a far ship is drawn without them */ const bb=a.length?[1e30,1e30,1e30,-1e30,-1e30,-1e30]:[0,0,0,0,0,0];for(let i=0;i<a.length;i+=VX)for(let k=0;k<3;k++){const x=a[i+k];if(x<bb[k])bb[k]=x;if(x>bb[k+3])bb[k+3]=x}   // (Q316) its bounds, for the shadow map's fit
+  const me=makeMesh(a);me.bb=bb;me.nMain=nMain;me.nAll=me.n;return me}
 // ---- flight marks: what a flight leaves on the hardware. Render-side only, never read by the sim; kept per part object,
 // so they ride along onto debris and landed stages, and a new flight (new parts) starts clean.
 //   soot  — a burning engine, and the base of the parts within 3 m above it on its stack line; worse at altitude, where

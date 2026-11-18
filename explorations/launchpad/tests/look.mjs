@@ -1383,3 +1383,37 @@
     Object.values(has).every(Boolean) && clear > 0 && peak(.3) > 3 * peak(.42),
     `a skirt ends ${(clear * 62.5).toFixed(1)} cm under the roundel on the shortest 1.25 m tank that has both · the sun's highlight on Cape's gloss white ${(peak(.3) * 100).toFixed(1)} % of the sun at its peak (was ${(peak(.42) * 100).toFixed(1)} %) · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
+
+// aerofx-60. Greebles (look & sound parts & pad, BEAUTY B1.5, QUEUE Q316 slice 3). In the whole page headless: a tank
+// 1.5 m or taller and a capsule get small real geometry chosen from their data (raceway, feed line, umbilical plate,
+// retro and ullage motors; thruster blocks, handrails), after everything else in the ship's buffer, so a far ship is drawn
+// without it. Each stands on its host's skin, keeps clear of side boosters, carries the host's part index with kind
+// GREEBLE_K and baked occlusion, and differs by school.
+{
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url));
+  const H = boot({ renderEvery: 1 }), r = H.run;
+  r('ttlFound()'); H.click({ go: 'assembly' });
+  const got = JSON.parse(r(`(() => { const out = {};
+    const G = (p, ps) => { const g = []; UPPER = upperOf(ps); greebles(g, p, ps); UPPER = null; return g };
+    for (const n of ['Orbiter', 'Heavy']) { SCHOOL_FORCE = 0; stackDef = JSON.parse(JSON.stringify(PRESETS[n])); editorChanged(); HOOK.rebuild();
+      const ps = S.parts.filter(p => p.on), rows = [];
+      for (const p of ps) { const g = G(p, ps); if (!g.length) continue; const R = p.d.r || .625, k = R / .625, pod = p.d.kind === 'pod';
+        let rMin = 1e9, rMax = 0, kinds = true, idx = true, aoMax = 0, inB = 0;
+        const side = ps.filter(q => q !== p && q.d.kind === 'tank' && Math.hypot(q.pos[0] - p.pos[0], q.pos[2] - p.pos[2]) > .1 && q.y0 < p.y0 + p.d.h && q.y0 + q.d.h > p.y0);
+        for (let i = 0; i < g.length; i += 16) { const rr = Math.hypot(g[i] - p.pos[0], g[i + 2] - p.pos[2]); if (!pod) { rMin = Math.min(rMin, rr - R); rMax = Math.max(rMax, rr - R) }
+          const kk = Math.round(g[i + 14]); kinds = kinds && kk % 32 === GREEBLE_K; idx = idx && g[i + 15] === p.i; aoMax = Math.max(aoMax, g[i + 14] - kk);
+          for (const q of side) if (Math.hypot(g[i] - q.pos[0], g[i + 2] - q.pos[2]) < (q.d.r || .625) && g[i + 1] > q.y0 && g[i + 1] < q.y0 + q.d.h) inB++ }
+        rows.push({ key: p.d.key, n: g.length / 16, k, rMin: pod ? 0 : rMin / k, rMax: pod ? 0 : rMax / k, kinds, idx, aoMax, inB, side: side.length }) }
+      out[n] = { rows, nMain: shipMesh.nMain, nAll: shipMesh.nAll } }
+    const ps = S.parts.filter(p => p.on), t = ps.find(p => p.d.kind === 'tank' && p.d.h >= 3); out.bySchool = [0, 1, 3, 5].map(s => { SCHOOL_FORCE = s; return G(t, ps).length / 16 });
+    SCHOOL_FORCE = 0; const q0 = quality; quality = 'high'; meshLod(shipMesh, 149); const a = shipMesh.n; meshLod(shipMesh, 151); const b = shipMesh.n; quality = 'low'; meshLod(shipMesh, 59); const c = shipMesh.n; meshLod(shipMesh, 61); const d = shipMesh.n; quality = q0;
+    out.lod = [a === shipMesh.nAll, b === shipMesh.nMain, c === shipMesh.nAll, d === shipMesh.nMain];
+    GREEBLE_FX = false; const m = partsMesh(ps); out.off = m.nAll === m.nMain; m.free(); GREEBLE_FX = true; SCHOOL_FORCE = null; return JSON.stringify(out) })()`));
+  const rows = [...got.Orbiter.rows, ...got.Heavy.rows], fsrc = r('MESH_FS');
+  const ok = !H.errs.length && rows.length >= 5 && rows.some(x => x.key === 'pod' || x.key === 'crew') && rows.some(x => x.side > 0)
+    && rows.every(x => x.kinds && x.idx && x.inB === 0 && x.n <= 2000 && x.aoMax > .1 && x.aoMax <= .2251 && x.rMin > -.09 && x.rMax < .2)   /* a feed line's elbows run into the hull */
+    && got.Orbiter.nAll > got.Orbiter.nMain && got.Heavy.nAll > got.Heavy.nMain && new Set(got.bySchool).size === 4 && got.lod.every(Boolean) && got.off
+    && fsrc.includes('if(k==18);') && r('GREEBLE_K') === 18 && r('SOLAR_K') !== 18;
+  check('aerofx-60: greebles (Q316): tanks and capsules carry small real geometry chosen from their data, on the skin, clear of side boosters, with the host\'s index and baked occlusion, different by school; a far ship is drawn without them',
+    ok, `Orbiter ${got.Orbiter.nMain} + ${got.Orbiter.nAll - got.Orbiter.nMain} vertices, Heavy ${got.Heavy.nMain} + ${got.Heavy.nAll - got.Heavy.nMain} · per part: ${rows.map(x => `${x.key} ${x.n}`).join(', ')} · a tall tank by school (Cape, Steppe, Coastal, Isle): ${got.bySchool.join(', ')} · off the skin ${Math.min(...rows.map(x => x.rMin)).toFixed(3)} to ${Math.max(...rows.map(x => x.rMax)).toFixed(3)} m · inside a booster: ${rows.reduce((s, x) => s + x.inB, 0)} · lod ${got.lod} · off ${got.off} · errors: ${H.errs[0] || 'none'}`);
+}

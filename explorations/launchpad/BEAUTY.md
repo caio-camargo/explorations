@@ -1,5 +1,5 @@
 # BEAUTY — the beauty pass
-**Version**: 0.2.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-11-18
+**Version**: 0.2.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-12 · **Updated**: 2026-11-18
 **Status**: **D18 answered 2026-10-12 (Caio): the defaults and the order** (§ 7). Lanes build from § 4–6.
 **Purpose**: Caio (2026-10-11): "beautify the game some more", on what the player sees most and the biggest moments:
 launch to space, the planet and other bodies seen from above, the craft, the flames, the air effects, re-entry, the
@@ -171,7 +171,7 @@ plumes 4–13 · pad plume 11–23 · ignition 11–13 · vapor 9–15 (side boo
 | B1.2 planet-disc light | ~0.05 ms | same | — | parts & pad |
 | B1.3 ship shadow map | **0.04–0.20 ms measured** (v1.360; estimate was 0.3–0.6) | off | — | parts & pad |
 | B1.4, 1.6 surface pass, frost, ice | B1.4 **at most +0.04 ms measured** (v1.362); B1.6 ~0.1 ms + particles | fewer particles | — | parts & pad |
-| B1.5 greebles (geometry) | ~0.1–0.3 ms (vertices, shadow pass) | dropped sooner | — | parts & pad |
+| B1.5 greebles (geometry) | **at most +0.02 ms measured** on the RTX, +0.16 on the Intel GPU close up (v1.363, tanks and capsules); the mesh build +55–65 % | dropped sooner | — | parts & pad |
 | B2 plume scatter, palettes, diamonds | +0.1–0.3 ms | fewer steps | — | effects |
 | B2.6 contrail, heat haze | 0.2–0.4 ms | haze off | — | effects |
 | B3 vapor rings, buffet | ~0.1 ms | off (as today) | Q250 fix touches it | effects |
@@ -213,6 +213,7 @@ Each item ships with before/after stills for Caio, its GPU ms on both GPUs, and 
 - 0.2.2 (2026-11-17): § 5, B1.3's shadow map measured (v1.360, Q316 slice 1a).
 - 0.2.3 (2026-11-17): § 4 B1.3, the occlusion as built (v1.361, Q316 slice 1b): per pixel at steps, baked round a part at creases.
 - 0.2.4 (2026-11-18): § 4 B1.4 as built and § 5 its measured cost (v1.362, Q316 slice 2).
+- 0.2.5 (2026-11-18): § 5, B1.5's first kit measured (v1.363, Q316 slice 3: tanks and capsules; engines and probes open).
 
 ## Sources
 Research and audit 2026-10-12 (design desk). Photography: NASA Earth Observatory "Where are the stars?"
