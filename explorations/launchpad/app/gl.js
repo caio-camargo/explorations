@@ -2091,9 +2091,9 @@ function greebles(out,p,parts){if(!GREEBLE_FX||p.pose||p.tdir||!p.pos||!p.d)retu
       else if(sch===5)rbox(out,P(a1,R+.012*k,ym),.012*k,hy,.07*k,C.BK,a1);
       else{rbox(out,P(a1,R+.03*k,ym),.03*k,hy,.055*k,WH,a1);for(const e of[y0-.03*k,y1+.03*k])rbox(out,P(a1,R+.016*k,e),.016*k,.03*k,.045*k,WH,a1);   // a tunnel, stepped down at each end
         for(let yy=y0+.6*k;yy<y1-.2*k;yy+=1.25*k)rbox(out,P(a1,R+.033*k,yy),.033*k,.018*k,.062*k,ST,a1)}}
-    if(a2!=null&&(sch===1||sch===2||(sch===0&&h>3*k)||(above&&above.d.kind==='tank'))){const rr=R+.075*k,y0=.3*k,y1=h-.3*k,c=sch===0||sch===3?[.8,.8,.78]:ST;   // the feed line
-      tube(out,P(a2,rr,y0),P(a2,rr,y1),.05*k,c,10);tube(out,P(a2,rr,y1),P(a2,R-.03*k,y1+.12*k),.05*k,c,10);tube(out,P(a2,rr,y0),P(a2,R-.03*k,y0-.12*k),.05*k,c,10);
-      for(const yy of[y0,(y0+y1)/2,y1])rbox(out,P(a2,R+.065*k,yy),.065*k,.03*k,.062*k,C.D,a2)}
+    if(a2!=null&&(sch===1||sch===2||(sch===0&&h>3*k)||(above&&above.d.kind==='tank'))){const rr=R+.05*k,fr=.03*k,y0=.3*k,y1=h-.3*k,c=sch===0||sch===3?[.8,.8,.78]:ST;   // the feed line: 6 cm across on a 1.25 m tank (10 cm read as a drainpipe: Caio, 2026-11-18)
+      tube(out,P(a2,rr,y0),P(a2,rr,y1),fr,c,10);tube(out,P(a2,rr,y1),P(a2,R-.02*k,y1+.1*k),fr,c,10);tube(out,P(a2,rr,y0),P(a2,R-.02*k,y0-.1*k),fr,c,10);
+      for(const yy of[y0,(y0+y1)/2,y1])rbox(out,P(a2,R+.042*k,yy),.042*k,.022*k,.04*k,C.D,a2)}
     if(a3!=null){rbox(out,P(a3,R+.012*k,.62*k),.012*k,.12*k,.09*k,ST,a3);   // the umbilical plate
       for(const[dy,w,r]of[[.05,-.035,.026],[.05,.035,.026],[-.05,0,.018]])tube(out,P(a3,R+.02*k,(.62+dy)*k,w*k),P(a3,R+.05*k,(.62+dy)*k,w*k),r*k,C.D,8,true)}
     // a small solid motor: its body from yy along s (+1 up, -1 down), a nose cone behind, the nozzle canted outward ahead

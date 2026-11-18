@@ -2801,3 +2801,31 @@ in app/gl.js, called by `partsMesh` for each part. `GREEBLE_FX = false` for an A
   The pop at 150 m and 60 m in motion. Debris and other vessels, which get them through the same `partsMesh`.
   The builder: nothing reads the mesh for picking (checked by reading, and app-3's builder test still passes), but
   no one has built with them on screen.
+
+## v1.364 — a thinner feed line; why bright edges are jagged (2026-11-18, look & sound, parts & pad, QUEUE Q316; Caio's look at v1.363)
+
+Caio, after trying v1.360–v1.363: "it's a great improvement. the tube (fuel line?) is maybe too thick. one recurring
+issue is that the edges of things still show up pixelated, not sure if that's fixable or a necessary limitation".
+
+- **The feed line** (`greebles`): 10 cm across on a 1.25 m tank → 6 cm, 2.5 cm closer to the skin, smaller clamps.
+  Still: `output/launchpad/beauty/Q316/s4-feed-line-before-after.png`.
+- **The jagged edges: measured, not fixed here.** The scene is drawn with 4× multisampling into a 16-bit float
+  target (`sceneTarget`), and `bloomEnd` resolves it with a blit *before* the tone map. The blit averages the four
+  samples in scene light. A sunlit white hull is well over display white there, so a pixel one quarter covered by hull
+  against black space is already near white once tone-mapped. Read off a still at 100 % scale
+  (`s2-after/o_3.png`, crop `edge-zoom-orbit.png`): across the hull's edge against space the pixels go 22 → 187 →
+  192 (of 255) with nothing between; in the same crop the dark band's edge *inside* the white hull, two surfaces of
+  similar brightness, has its smooth steps. So the multisampling works and its result is thrown away exactly where
+  contrast is highest: hull against space, sunlit against shadow, lamps at night. Two more things add to it on a
+  slower machine: the scaler drawing below 100 % (the upscale sharpens what steps there are) and the 1.5× cap on
+  device pixels.
+- **Fixable.** WebGL2 cannot read the samples one by one (no multisample textures), so the exact fix (tone-map each
+  sample, then average) is out. What is in reach:
+  1. *An edge filter on the graded frame* (FXAA-class: the frame after the tone map, where a step is what the eye
+     sees). One more full-screen pass; the composite already has an 8-bit target for the upscale (`SCN.out`). Stars
+     are single bright pixels and must be left alone (no sub-pixel blur). My estimate, unmeasured: 0.1–0.3 ms on the
+     RTX, about 1 ms on the Intel GPU at its 60 % scale.
+  2. *Every scene shader writes light already squeezed* (c / (1 + c)) and the composite undoes it after the blit.
+     Exact for opaque edges, but the plume, glow and smoke passes blend additively into the same target and would
+     need rework. Larger and riskier.
+  Proposed in QUEUE as option 1; it is the effects (pipeline) beat's file area, not parts & pad's.
