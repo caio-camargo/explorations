@@ -1127,3 +1127,79 @@
     `hab ${hab}, hab + antenna ${habAnt}, lab docked ${lab}, two ports ${ports}, two ports + antenna ${portsAnt}, one port ${plain}, junk ${junk}; renamed: ${j.sats.map(q => q.name).join(', ')}; `
     + `start: ${reg.join(', ')}, ver ${S.ver}; pilot ${pil ? pil.name + ' (' + D.pilotModes(pil, 'crew').length + ' modes)' : 'none'}`);
 }
+
+// space-38. Rendezvous tools on the map, slice 1 (space, QUEUE Q628, PLAYTEST #176; numbers only, never a node placed).
+// `approach` gave the one closest moment over two orbits; `passes` gives the next three times we go by the place where our
+// orbit comes nearest the target's (as KSP's two closest approaches), each the least separation near there; `relNodes`
+// where our orbit crosses the target's plane, with the angle and the burn to match planes. Checked against a fine scan:
+// a 300 × 399.5 km orbit 0.5° off a target's 400 km circle, timed to pass ~2 km from it at the first apoapsis. The passes
+// fall at each apoapsis, each the scan's least separation there, the first the closest moment of all (approach's); the
+// nodes lie on the target's plane half an orbit apart, the burn 2·v_h·sin(i/2). A pass under 1 km and 5 m/s (Q458's
+// rendezvous numbers) counts as meeting. And in the page: a tester start behind a target shows "Closest 1 · …".
+{
+  const D = new Function(src + 'return {passes,relNodes,passMeets,approach,kepler,elements,TELLUS};')(), T = D.TELLUS, mu = T.mu, { len, sub, dot, cross, norm } = api;
+  const rp = T.R + 300e3, ra = T.R + 399.5e3, a = (rp + ra) / 2, vp = Math.sqrt(mu * (2 / rp - 1 / a)), per = 2 * Math.PI * Math.sqrt(a ** 3 / mu), inc = 0.5 * Math.PI / 180;
+  const r0 = [rp, 0, 0], v0 = [0, vp * Math.sin(inc), vp * Math.cos(inc)];   // periapsis on +x, moving toward +z: apoapsis on −x at per/2
+  const at = T.R + 400e3, wt = Math.sqrt(mu / at ** 3), ph = Math.PI - wt * per / 2 + 2000 / at, rt = [at * Math.cos(ph), 0, at * Math.sin(ph)], vt = [-at * wt * Math.sin(ph), 0, at * wt * Math.cos(ph)];
+  const q = { r: rt, v: vt, epoch: 0 }, P = D.passes(q, r0, v0, 0, 3 * per, mu, 3), A = D.approach(q, r0, v0, 0, 3 * per, mu);
+  const dAt = t => len(sub(D.kepler(r0, v0, t, mu)[0], D.kepler(rt, vt, t, mu)[0])), W = per / 12;
+  const scanMin = c => { let m = Infinity; for (let i = 0; i <= 2000; i++) m = Math.min(m, dAt(c - W + 2 * W * i / 2000)); return m; };
+  const passOK = P.length === 3 && P.every((x, k) => { const c = per / 2 + k * per; return Math.abs(x.t - c) < W && x.d <= dAt(c) + 1 && x.d >= scanMin(c) - 1 && (Math.abs(x.t - c) < 1 || Math.abs(x.d - scanMin(c)) < 2) && (!k || x.t > P[k - 1].t); })
+    && Math.abs(P[0].d - A.d) < 1 && P[0].d < 3000;
+  const R = D.relNodes(r0, v0, 0.5, rt, vt, mu), n2 = norm(cross(rt, vt)), vh = len(cross(r0, v0));
+  const nodeOK = Math.abs(R.ri - inc) < 1e-9 && R.an && R.dn && Math.abs(dot(R.an.p, n2)) < 1 && Math.abs(dot(R.dn.p, n2)) < 1
+    && Math.abs(Math.abs(R.an.t - R.dn.t) - per / 2) < 1 && Math.abs(R.an.dv - 2 * vh / len(R.an.p) * Math.sin(inc / 2)) < 1e-6 && dot(D.kepler(r0, v0, R.an.t - 0.5, mu)[1], n2) > 0;
+  const flat = D.relNodes(rt, vt, 0, rt, vt, mu), meets = D.passMeets({ d: 900, vrel: 4 }) && !D.passMeets({ d: 1100, vrel: 4 }) && !D.passMeets({ d: 900, vrel: 6 });
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url)), H = boot({ search: '?tester' }), r = x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+  r('ttlFound()'); r("go('assembly')"); r("testStart({body:'Tellus',where:'beside',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:3000})"); H.frame(10);
+  const rows = r('JSON.stringify(tgtRows().map(x=>[x[0],x[1].replace(/<[^>]+>/g,"")]))'), Rw = rows.startsWith('[') ? JSON.parse(rows) : [], cl = (Rw.find(x => x[0] === 'Closest') || [])[1] || '';
+  check('space-38: the target\'s next three passes (at the place our orbits come nearest, each the least separation there or the one as we go by; the first is the closest moment), the relative nodes (on its plane, half an orbit apart, 2·v_h·sin(i/2) to match), green under 1 km and 5 m/s; the Target card lists the closest pass by number',
+    passOK && nodeOK && !flat.an && !flat.dn && meets && /^\d · .* · .* m\/s · in /.test(cl) && !H.errs.length,
+    `passes ${P.map(x => `${(x.t / per).toFixed(3)} orbits ${(x.d / 1e3).toFixed(2)} km ${x.vrel.toFixed(1)} m/s`).join(', ')}; approach ${(A.d / 1e3).toFixed(2)} km; `
+    + `nodes ${(R.ri * 180 / Math.PI).toFixed(3)}°, AN ${R.an ? (R.an.t / per).toFixed(3) + ' orbits ' + R.an.dv.toFixed(2) + ' m/s' : '—'}, DN ${R.dn ? (R.dn.t / per).toFixed(3) : '—'}; card: ${rows.slice(0, 300)}; errors ${H.errs.length}`);
+}
+
+// space-39. Meet on pass N (space, QUEUE Q629, PLAYTEST #176 slice 2; information only, the player places the node).
+// `meetBurns` gives, for each of the next five orbits, the one burn along the track at our next apoapsis that brings us
+// back there just as the target goes by. Checked by flying each answer: a 300 × 400 km orbit under a target's 400 km
+// circle, the target 1.3 rad round: every row's burn, applied at the apoapsis and propagated, meets the target within
+// 10 m on its pass; no row's orbit dips into the air; a target on a circle 60 km higher is said to pass 60 km off. And
+// in the page, the Target card has a "Meet" row.
+{
+  const D = new Function(src + 'return {meetBurns,kepler,TELLUS};')(), T = D.TELLUS, mu = T.mu, { len, sub, add, mul, norm } = api;
+  const rp = T.R + 300e3, ra = T.R + 400e3, a = (rp + ra) / 2, vp = Math.sqrt(mu * (2 / rp - 1 / a)), r0 = [rp, 0, 0], v0 = [0, 0, vp];
+  const tgt = (h, ph) => { const R = T.R + h, w = Math.sqrt(mu / R ** 3); return { r: [R * Math.cos(ph), 0, R * Math.sin(ph)], v: [-R * w * Math.sin(ph), 0, R * w * Math.cos(ph)], epoch: 0 }; };
+  const q = tgt(400e3, 1.3), M = D.meetBurns(q, r0, v0, 0, T, 5);
+  const fly = x => { const [rb, vb] = D.kepler(r0, v0, x.burn, mu), v2 = add(vb, mul(norm(vb), x.dv)), [p] = D.kepler(rb, v2, x.t - x.burn, mu);
+    const el = api.elements(rb, v2, mu); return { sep: len(sub(p, D.kepler(q.r, q.v, x.t, mu)[0])), pe: el.pe - T.R }; };
+  const F = M ? M.rows.map(fly) : [], off = D.meetBurns(tgt(460e3, 1.3), r0, v0, 0, T, 5);
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url)), H = boot({ search: '?tester' }), r = x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+  r('ttlFound()'); r("go('assembly')"); r("testStart({body:'Tellus',where:'beside',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:30000})"); H.frame(10);
+  const meet = r('(tgtRows().find(x=>x[0]==="Meet")||["",""])[1].replace(/<[^>]+>/g,"")');
+  check('space-39: meet on pass N: each of the next five orbits\' burn at apoapsis, flown, meets the target within 10 m on its pass, none dipping into the air; a target orbit 60 km off is said; the Target card has a Meet row',
+    !!M && M.rows.length === 5 && M.rows.every((x, i) => x.n === i + 1) && F.every(f => f.sep < 10 && f.pe > (T.atm || 0)) && M.miss < 1 && off && Math.abs(off.miss - 60e3) < 100
+      && /^burn at Ap in .*pass 1 [+−][0-9.]+ .*pass 5 [+−][0-9.]+ m\/s$/.test(meet) && !H.errs.length,
+    `${M ? M.rows.map((x, i) => `pass ${x.n} ${x.dv.toFixed(1)} m/s (flown: ${F[i].sep.toFixed(1)} m, pe ${(F[i].pe / 1e3).toFixed(0)} km)`).join('; ') : 'none'}; off ${off ? (off.miss / 1e3).toFixed(1) : '—'} km; card "${meet}"`);
+}
+
+// space-40. The approach inset (space, QUEUE Q630, PLAYTEST #176 slice 3): inside 20 km of a target, an Approach card
+// draws our path in the target's frame (ahead, above, off its plane; the target at the centre). `lvlhPath` checked on
+// two known paths: 3 km behind on the same circle stays put at (−3 km, 0); a circle 1 km lower starts 1 km below and
+// drifts ahead (a lower orbit is faster), at the rate the two periods say. In the page: a tester start 3 km behind a
+// target shows the card with an SVG and "3000 m behind"; 30 km behind, no card.
+{
+  const D = new Function(src + 'return {lvlhPath,kepler,TELLUS};')(), T = D.TELLUS, mu = T.mu;
+  const circ = (h, ph) => { const R = T.R + h, v = Math.sqrt(mu / R); return [[R * Math.cos(ph), 0, R * Math.sin(ph)], [-v * Math.sin(ph), 0, v * Math.cos(ph)]]; };
+  const [rt, vt] = circ(400e3, 0), R = T.R + 400e3, [rb, vb] = circ(400e3, -3000 / R), per = 2 * Math.PI * Math.sqrt(R ** 3 / mu);
+  const same = D.lvlhPath(rb, vb, rt, vt, 0, per, mu, 60), sameOK = same.every(x => Math.abs(x[0] + 3000) < 5 && Math.abs(x[1]) < 5 && Math.abs(x[2]) < 1e-6);
+  const [rl, vl] = circ(399e3, 0), low = D.lvlhPath(rl, vl, rt, vt, 0, per, mu, 60), last = low.at(-1);
+  const wDiff = Math.sqrt(mu / (T.R + 399e3) ** 3) - Math.sqrt(mu / R ** 3), want = wDiff * per * R;   // the along-track gain over one target orbit (≈)
+  const lowOK = Math.abs(low[0][1] + 1000) < 1 && Math.abs(low[0][0]) < 1 && last[0] > 0 && Math.abs(last[0] / want - 1) < 0.05 && low.every(x => x[1] < -900 && x[1] > -1100);
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url)), card = behind => { const H = boot({ search: '?tester' }), r = x => { try { return H.run(x); } catch (e) { return 'THROW ' + e.message; } };
+    r('ttlFound()'); r("go('assembly')"); r(`testStart({body:'Tellus',where:'beside',alt:300e3,inc:0,lat:0,lon:180,drop:'auto',target:'dummy',behind:${behind}})`); H.frame(10);
+    return { on: r('approachOn()'), rows: r('approachOn()?JSON.stringify(approachRows()):"[]"'), errs: H.errs.length }; };
+  const near = card(3000), far = card(30000), nr = JSON.parse(near.rows);
+  check('space-40: the approach inset: our path in the target\'s frame (3 km behind on its circle stays put; 1 km below drifts ahead at the periods\' rate); the Approach card shows inside 20 km with the path and where we are, not at 30 km',
+    sameOK && lowOK && near.on === true && /<svg[^>]*>.*<polyline/.test(nr[0][1]) && /^3000 m behind/.test(nr[1][1]) && far.on === false && !near.errs && !far.errs,
+    `same circle: ${same[0][0].toFixed(0)} → ${same.at(-1)[0].toFixed(0)} m; 1 km low: start (${low[0][0].toFixed(0)}, ${low[0][1].toFixed(0)}), after an orbit ${(last[0] / 1e3).toFixed(1)} km ahead (periods say ${(want / 1e3).toFixed(1)}); card at 3 km ${near.on} "${nr[1] ? nr[1][1] : ''}", at 30 km ${far.on}; errors ${near.errs + far.errs}`);
+}

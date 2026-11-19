@@ -342,11 +342,23 @@ function setTarget(id,tv=null){S.target=id;S.tgtV=tv;caCache=null;if(id==null&&T
 function cycleTarget(){const L=[...orbitsAt(S.body).map(q=>({id:q.id})),...landedUp().filter(x=>landedBody(x)===S.body).map(q=>({id:q.id})),...FLEET.filter(v=>v.alive).map(v=>({v}))];if(!L.length){HOOK.msg('Nothing in orbit to target');return}
   const i=L.findIndex(x=>x.v?x.v===S.tgtV:S.tgtV==null&&x.id===S.target),n=L[i+1];if(n)setTarget(n.id??null,n.v||null);else setTarget(null)}   // satellites, then this flight's vessels, then none
 let caCache=null;   // recomputed at most 4× a second of real time, or at once when the target or the node changes
+// (Q628, PLAYTEST #176) the next passes by the target, up to 3 over our next three orbits (passes, sim/space.js), on this
+// orbit (now) and on the node's plan (plan); the relative nodes on this orbit (nodes) and the plan's tilt to the target's
+// plane (planRi). Numbers only: nothing here places a node (Caio, 2026-11-18)
 function tgtCA(){const T=tgtOf(S);if(!T||T.landed||S.landed||!S.alive)return null;const key=(T.ves?'v:'+T.q.name:S.target)+'|'+(S.node?S.node.t+','+S.node.dv.join():''),now=performance.now();
   if(caCache&&caCache.key===key&&now-caCache.at<250)return caCache;
-  const T0=progT(S),Q=T.ves?{r:T.q.r,v:T.q.v,epoch:T0}:T.q,orbit=(r,v,t0)=>{const B=S.body,el=elements(r,v,B.mu);return el.e<1&&el.pe>B.R?approach(Q,r,v,t0,2*el.period,B.mu):null};
-  let plan=null;if(S.node){const I=nodeInfo(S);if(I)plan=orbit(I.rN,add(I.vN,I.rem),T0+I.t-simT)}
-  return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan}}
+  const T0=progT(S),B=S.body,Q=T.ves?{r:T.q.r,v:T.q.v,epoch:T0}:T.q,
+    orbit=(r,v,t0)=>{const el=elements(r,v,B.mu);return el.e<1&&el.pe>B.R?passes(Q,r,v,t0,3*el.period,B.mu,3):null};
+  let plan=null,planRi=null;if(S.node){const I=nodeInfo(S);if(I){const v=add(I.vN,I.rem);plan=orbit(I.rN,v,T0+I.t-simT);planRi=Math.acos(clamp(dot(norm(cross(I.rN,v)),norm(cross(T.r,T.v))),-1,1))}}
+  return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan,planRi,nodes:relNodes(S.r,S.v,T0,T.r,T.v,B.mu),meet:meetBurns(Q,S.r,S.v,T0,B,5)}}   // meet: Q629
+// (Q629, PLAYTEST #176 slice 2) the Target card's "Meet" row: the burn at the next apoapsis for each pass, signed
+// (+ prograde, − retrograde), information only; when the target's orbit passes far from that apoapsis, said first
+const meetText=(M,T0)=>`<span class="dim">burn at Ap in ${fmtT(M.burn-T0)}${M.miss>5e3?`, its orbit ${fmtD(M.miss)} off`:''}:</span> `
+  +M.rows.map(x=>`<span title="burn ${x.dv>=0?'prograde':'retrograde'} ${Math.abs(x.dv).toFixed(1)} m/s at apoapsis: you meet it ${x.n} orbit${x.n>1?'s':''} later, in ${fmtT(x.t-T0)}">pass ${x.n} ${x.dv>=0?'+':'−'}${Math.abs(x.dv)<10?Math.abs(x.dv).toFixed(1):Math.abs(x.dv).toFixed(0)}</span>`).join(' · ')+' m/s';
+// the closest of a list of passes (the HUD's "Closest" and the qualification's green), with its number
+const passBest=L=>(L||[]).reduce((b,x,i)=>!b||x.d<b.x.d?{x,i}:b,null);
+// one pass as the map and the HUD say it: "2 · 840 m · 3.1 m/s · in 1 h 32 min"
+const passText=(x,i,T0)=>`${i+1} · ${fmtD(x.d)} · ${x.vrel<10?x.vrel.toFixed(1):x.vrel.toFixed(0)} m/s · in ${fmtT(x.t-T0)}`;
 function spinRows(){const Y=qrot(S.q,[0,1,0]),sp=dot(S.w,Y);if(!S.spun&&Math.abs(sp)<SPIN_MIN)return[];
   const wob=len(sub(S.w,mul(Y,sp)))/Math.max(Math.abs(sp),1e-9);
   return[['Spin',`${(Math.abs(sp)*60/2/Math.PI).toFixed(0)} rpm${wob>0.01?` · wobble ${(Math.atan(wob)*180/Math.PI).toFixed(1)}°`:''}${S.spun&&S.sas?' <span class="dim" title="SAS damps the wobble, not the spin; a roll key changes it">· SAS on the wobble</span>':''}`]]}
@@ -379,6 +391,30 @@ function fleetRows(){const L=FLEET.filter(v=>v.alive),N=nearbyFlyable(S);return 
 function landingRow(T){const b=S.body,f=localFrame(S.r),d=T.dr,brg=(Math.atan2(dot(d,f.e),dot(d,f.n))*57.29578+360)%360,ds=pfDist(b,toPF(b,S.r,simT),T.q.pf);
   const imp=impact&&impact.b===b?pfDist(b,impact.pf,T.q.pf):null;
   return['Landing',`${T.q.name}: ${fmtD(ds)} along the surface, bearing ${brg.toFixed(0)}°${imp!=null?` · impact point <span class="${imp<BASE_R?'ok':'warn'}">${fmtD(imp)}</span> from it`:''}`]}
+// (Q630, PLAYTEST #176 slice 3) the approach inset: inside 20 km of a target in orbit, our path over the next orbit (or
+// to two closest passes, whichever is shorter) drawn in the target's frame as an inline SVG: the target at the centre,
+// ahead to the right, above up; solid on this orbit, dashed on the node's plan; our place now as a triangle. Under 200 m
+// the Target card's docking rows take over. Recomputed at most twice a second
+let apCache=null;
+function approachOn(){const T=S&&S.alive&&!S.landed&&tgtOf(S);return!!T&&!T.landed&&len(T.dr)<APPROACH_IN&&len(T.dr)>APPROACH_OUT}
+function approachRows(){const T=tgtOf(S);if(!T)return[];const now=performance.now(),key=(S.node?S.node.t+','+S.node.dv.join():'');
+  if(!apCache||now-apCache.at>500||apCache.key!==key){const B=S.body,T0=progT(S),el=elements(S.r,S.v,B.mu);if(!(el.e<1))return[];
+    const ca=tgtCA(),nx=ca&&ca.now&&ca.now[1],span=Math.min(el.period,nx?nx.t-T0+600:el.period);
+    const now0=lvlhPath(S.r,S.v,T.r,T.v,T0,span,B.mu);let plan=null;
+    if(S.node){const I=nodeInfo(S);if(I&&I.t>simT){const [rt1,vt1]=kepler(T.r,T.v,I.t-simT,B.mu),pre=lvlhPath(S.r,S.v,T.r,T.v,T0,I.t-simT,B.mu,40);
+      plan=pre.concat(lvlhPath(I.rN,add(I.vN,I.rem),rt1,vt1,T0+I.t-simT,Math.max(60,span-(I.t-simT)),B.mu,80))}}
+    apCache={at:now,key,now:now0,plan}}
+  const P=apCache.now,L=apCache.plan,all=[...P,...(L||[])],m=Math.max(50,...all.map(x=>Math.max(Math.abs(x[0]),Math.abs(x[1])))),nice=[50,100,200,500,1e3,2e3,5e3,1e4,2e4,5e4,1e5].find(x=>x>=m)||m;
+  const W=200,Hh=130,k=Math.min(W/2-8,Hh/2-8)/nice,X=x=>(W/2+x[0]*k).toFixed(1),Y=x=>(Hh/2-x[1]*k).toFixed(1),pl=Q=>Q.map(x=>X(x)+','+Y(x)).join(' ');
+  const svg=`<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" style="display:block"><rect x=".5" y=".5" width="${W-1}" height="${Hh-1}" fill="none" stroke="currentColor" stroke-opacity=".25"/>`
+    +`<line x1="${W/2}" y1="4" x2="${W/2}" y2="${Hh-4}" stroke="currentColor" stroke-opacity=".15"/><line x1="4" y1="${Hh/2}" x2="${W-4}" y2="${Hh/2}" stroke="currentColor" stroke-opacity=".15"/>`
+    +(L?`<polyline points="${pl(L)}" fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-dasharray="4 3"/>`:'')
+    +`<polyline points="${pl(P)}" fill="none" stroke="#7dffa8"/>`
+    +`<circle cx="${W/2}" cy="${Hh/2}" r="4" fill="#ffb347"/><path d="M${X(P[0])},${(+Y(P[0])-5).toFixed(1)} l4,8 l-8,0 z" fill="#7dffa8"/>`
+    +`<text x="${W-4}" y="${Hh/2-4}" font-size="9" text-anchor="end" fill="currentColor" fill-opacity=".6">ahead</text><text x="${W/2+4}" y="10" font-size="9" fill="currentColor" fill-opacity=".6">above</text>`
+    +`<text x="4" y="${Hh-4}" font-size="9" fill="currentColor" fill-opacity=".6">±${fmtD(nice)}</text></svg>`;
+  const c=P[0],side=Math.abs(c[2])>=1?` · ${fmtD(Math.abs(c[2]))} out of its plane`:'';
+  return[['',svg],['Now',`${fmtD(Math.abs(c[0]))} ${c[0]>=0?'ahead':'behind'} · ${fmtD(Math.abs(c[1]))} ${c[1]>=0?'above':'below'}${side}`]]}
 function dockRows(){const out=[],D=S.att||[];
   if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} ${a.kind==='arm'?' <span class="dim">(in the arm)</span>':`${a.kind==='bay'?' <span class="dim">(in the bay)</span>':''} <button data-undock="${a.e.id}">${a.kind==='claw'||a.kind==='bay'?'release':'undock'}</button>`}`).join(' · ')]);
   {const T=tgtOf(S);if(T&&T.landed)out.push(landingRow(T))}
@@ -394,9 +430,13 @@ function dockRows(){const out=[],D=S.att||[];
       return `offset ${ax.map(i=>k(db[i],...K[i])).filter(Boolean).join(' · ')||'centred'} m · drift ${ax.map(i=>k(-vr[i],...K[i])).filter(Boolean).join(' · ')||'none'} m/s`})()]);
   return out}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.undock;if(id==null||mode!=='flight'||!S)return;tapeUndock(recTape,S,+id)});
-function tgtRows(){const T=tgtOf(S);if(!T)return[];const d=len(T.dr),cl=dot(T.dv,T.dr)/Math.max(d,1e-9),ca=tgtCA();
+function tgtRows(){const T=tgtOf(S);if(!T)return[];const d=len(T.dr),cl=dot(T.dv,T.dr)/Math.max(d,1e-9),ca=tgtCA(),T0=progT(S);
+  const nb=ca&&passBest(ca.now),pb=ca&&passBest(ca.plan),ink=x=>passMeets(x)?'ok':'',N=ca&&ca.nodes,deg=r=>(r*180/Math.PI).toFixed(r<0.1745?2:1)+'°';
+  const nx=N&&[N.an&&['AN',N.an],N.dn&&['DN',N.dn]].filter(Boolean).sort((a,b)=>a[1].t-b[1].t)[0];
   return[['Target',`${T.q.name} · ${fmtD(d)} · <span class="dim">rel</span> ${len(T.dv).toFixed(1)} m/s${Math.abs(cl)>0.05?` <span class="dim">${cl>0?'closing':'opening'}</span> ${Math.abs(cl).toFixed(1)}`:''}`],
-    ['Closest',ca&&ca.now?`${fmtD(ca.now.d)} <span class="dim">in ${fmtT(ca.now.t-progT(S))} at ${ca.now.vrel.toFixed(0)} m/s</span>${ca.plan?` · plan ${fmtD(ca.plan.d)}`:''}`:'—']]}
+    ['Closest',nb?`<span class="${ink(nb.x)}">${passText(nb.x,nb.i,T0)}</span>${pb?` · <span class="dim">plan</span> <span class="${ink(pb.x)}">${passText(pb.x,pb.i,T0)}</span>`:''}`:'—'],
+    ...(ca&&ca.meet&&ca.meet.rows.length?[['Meet',meetText(ca.meet,T0)]]:[]),
+    ...(N&&N.ri>=1.745e-4?[['Planes',`${deg(N.ri)} apart${nx?` · <span class="dim">${nx[0]} in ${fmtT(nx[1].t-T0)}</span> ${nx[1].dv.toFixed(1)} m/s to match`:''}${ca.planRi!=null?` · <span class="dim">plan</span> ${deg(ca.planRi)}`:''}`]]:[])]}
 // (vehicle, Q454) the transfer to a stationary orbit over the capital: when to burn, how much, and a button that plans it as a
 // node (the burn's middle at statXfer's place: measured, that lands within a degree; starting there lands ~2° short). Shown
 // while the craft carries an antenna or TV for the capital is open and not flown; recomputed once a second (two orbits sampled)

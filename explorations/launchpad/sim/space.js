@@ -436,6 +436,67 @@ function approach(q,r0,v0,t0,span,mu=TELLUS.mu){const N=240,at=t=>kepler(q.r,q.v
   for(let i=0;i<=N;i++){const x=d(t0+span*i/N);if(x<bd){bd=x;bi=i}}
   let a=t0+span*Math.max(0,bi-1)/N,b=t0+span*Math.min(N,bi+1)/N;for(let k=0;k<50;k++){const m1=a+(b-a)*.381966,m2=b-(b-a)*.381966;if(d(m1)<d(m2))b=m2;else a=m1}
   const t=(a+b)/2,[p,vs]=kepler(r0,v0,t-t0,mu),[pt,vt]=at(t);return{t,d:len(sub(p,pt)),vrel:len(sub(vs,vt)),p,pt}}
+// (Q628, PLAYTEST #176 slice 1: rendezvous tools on the map; numbers only, never a node placed for the player) the next
+// passes, not just the closest moment: where our orbit comes nearest the target's orbit (the curve, wherever the target
+// is on it), and each time we go by there, the separation then. A pass is the least separation within ±1/12 of an orbit
+// of that place (the separation as we go by, when it is still falling or rising at the window's edge), {t, d, vrel, p (ours), pt (its)} as approach gives; up to n, in time order. A separation dip of the
+// plain kind (two orbits that never come near, a target closing anyway) is caught too: with no closed orbits, or no
+// place to come by, approach's single answer
+function passes(q,r0,v0,t0,span,mu=TELLUS.mu,n=3){const el=elements(r0,v0,mu),E=elements(q.r,q.v,mu);
+  if(!(el.e<1&&E.e<1))return[approach(q,r0,v0,t0,span,mu)];
+  const at=t=>kepler(q.r,q.v,t-q.epoch,mu),d=t=>len(sub(kepler(r0,v0,t-t0,mu)[0],at(t)[0])),per=el.period,M=120,K=180;
+  const C=[];for(let j=0;j<K;j++){const nu=j/K*2*Math.PI,rr=E.p/(1+E.e*Math.cos(nu));C.push(add(mul(E.P,rr*Math.cos(nu)),mul(E.Q,rr*Math.sin(nu))))}
+  const toC=p=>{let m=Infinity;for(let j=0;j<K;j++){const a=C[j],b=C[(j+1)%K],ab=sub(b,a),u=clamp(dot(sub(p,a),ab)/dot(ab,ab),0,1);m=Math.min(m,len(sub(p,madd(a,ab,u))))}return m};
+  const g=[];for(let i=0;i<M;i++)g.push(toC(kepler(r0,v0,per*i/M,mu)[0]));
+  const near=[];for(let i=0;i<M;i++)if(g[i]<=g[(i+M-1)%M]&&g[i]<g[(i+1)%M])near.push(per*i/M);
+  if(!near.length)return[approach(q,r0,v0,t0,span,mu)];
+  const W=per/12,out=[];
+  for(let k=0;k*per<span+W&&out.length<4*n;k++)for(const tg of near){const tc=t0+tg+k*per;let a=Math.max(t0,tc-W),b=Math.min(t0+span,tc+W);if(b<=a)continue;
+    for(let it=0;it<50;it++){const m1=a+(b-a)*.381966,m2=b-(b-a)*.381966;if(d(m1)<d(m2))b=m2;else a=m1}
+    let t=(a+b)/2;if(Math.min(t-Math.max(t0,tc-W),Math.min(t0+span,tc+W)-t)<W*.02&&tc>=t0)t=tc;   // still falling or rising at the window's edge: the separation as we go by
+    if(t-t0<W*.02&&d(t0+W*.02)>d(t0))continue;   // least right now and opening: a pass we are leaving behind, not one ahead
+    const[p,vs]=kepler(r0,v0,t-t0,mu),[pt,vt]=at(t);out.push({t,d:len(sub(p,pt)),vrel:len(sub(vs,vt)),p,pt})}
+  out.sort((x,y)=>x.t-y.t);return out.filter((x,i)=>!i||x.t-out[i-1].t>W).slice(0,n)}
+// a pass close and slow enough to call a rendezvous: Q458's numbers (QUAL_RDV_D, QUAL_RDV_V, sim/crew.js), drawn green
+const passMeets=x=>!!x&&x.d<=QUAL_RDV_D&&x.vrel<QUAL_RDV_V;
+// (Q628) the relative nodes: where our orbit (r0, v0 at program time t0) crosses the target's plane (its state rt, vt),
+// the angle between the planes, and the burn that matches them there: the velocity across the radius turned through
+// the angle, 2·v_h·sin(i/2). an: we cross going up through its plane (toward its orbit normal), dn: going down. Over our
+// next orbit; {ri, an, dn} with an/dn {t, p, dv} or null (planes within 0.01°, or no closed orbit)
+function relNodes(r0,v0,t0,rt,vt,mu=TELLUS.mu){const h1=cross(r0,v0),h2=cross(rt,vt),n2=norm(h2),ri=Math.acos(clamp(dot(norm(h1),n2),-1,1)),out={ri,an:null,dn:null};
+  const el=elements(r0,v0,mu);if(!(el.e<1)||ri<1.745e-4)return out;const per=el.period,N=96,f=t=>dot(kepler(r0,v0,t-t0,mu)[0],n2);
+  let a=t0+1,fa=f(a);for(let i=1;i<=N;i++){const b=t0+1+per*i/N,fb=f(b);
+    if(fa<0!==fb<0){let lo=a,hi=b,flo=fa;for(let k=0;k<40;k++){const m=(lo+hi)/2,fm=f(m);if(flo<0===fm<0){lo=m;flo=fm}else hi=m}
+      const t=(lo+hi)/2,[p]=kepler(r0,v0,t-t0,mu),k=fa<0?'an':'dn';if(!out[k])out[k]={t,p,dv:2*len(h1)/len(p)*Math.sin(ri/2)}}
+    a=b;fa=fb}
+  return out}
+// (Q629, PLAYTEST #176 slice 2: meet on pass N; information only, the player places the node) the one burn at our next
+// apoapsis, along the track, that brings us back to that place on our Nth orbit after it just as the target goes by:
+// we return to the burn's place every new period P', the target crosses near it every period of its own, so P' is
+// chosen as (the target's k-th crossing − the burn's time) / N with the k that needs the least change. [{n, dv (signed:
+// + prograde), t (the meeting), P (the new period)}] for n = 1…nMax, leaving out a burn whose orbit would dip into the
+// air or below the ground; miss: how far the target's orbit passes from the burn's place (large: the rows mean little).
+// Needs both orbits closed; null otherwise
+function meetBurns(q,r0,v0,t0,B,nMax=5){const mu=B.mu,el=elements(r0,v0,mu),E=elements(q.r,q.v,mu);if(!(el.e<1&&E.e<1))return null;
+  const ta=t0+timeToNu(el,Math.PI),[ra3,va3]=kepler(r0,v0,ta-t0,mu),ra=len(ra3),va=len(va3),at=t=>kepler(q.r,q.v,t-q.epoch,mu)[0];
+  const PT=E.period,N=180,dd=t=>len(sub(at(t),ra3));let bi=0,bd=Infinity;for(let i=0;i<N;i++){const x=dd(ta+PT*i/N);if(x<bd){bd=x;bi=i}}
+  let a=ta+PT*(bi-1)/N,b=ta+PT*(bi+1)/N;for(let k=0;k<50;k++){const m1=a+(b-a)*.381966,m2=b-(b-a)*.381966;if(dd(m1)<dd(m2))b=m2;else a=m1}
+  let tT=(a+b)/2;if(tT<ta)tT+=PT;const miss=dd(tT),floor=B.R+(B.atm||0),out=[];
+  for(let n=1;n<=nMax;n++){let best=null;
+    for(let k=Math.floor((ta+n*el.period*0.5-tT)/PT);k<=Math.ceil((ta+n*el.period*1.5-tT)/PT);k++){const P=(tT+k*PT-ta)/n;if(!(P>0))continue;
+      const a2=Math.cbrt(mu*(P/(2*Math.PI))**2),other=2*a2-ra;if(!(other>floor)||!(2/ra-1/a2>0))continue;
+      const dv=Math.sqrt(mu*(2/ra-1/a2))-va;if(!best||Math.abs(dv)<Math.abs(best.dv))best={n,dv,t:ta+n*P,P,burn:ta}}
+    if(best)out.push(best)}
+  return{rows:out,miss,burn:ta}}
+// (Q630, PLAYTEST #176 slice 3: the approach inset) our path in the target's own frame, the target at the centre: ahead
+// along its track (+), above it (+, away from the body) and off its plane (+, toward its orbit normal), at N+1 times over
+// span from t0. Our Kepler state (r0, v0 at t0) and the target's (rt, vt at t0), both round the same body. [[ahead, above,
+// side, t], …]. A craft just below and behind drifts ahead along the bottom: the shape a player learns to read
+function lvlhPath(r0,v0,rt,vt,t0,span,mu=TELLUS.mu,N=120){const out=[];
+  for(let i=0;i<=N;i++){const dt=span*i/N,[p]=kepler(r0,v0,dt,mu),[pt,vtt]=kepler(rt,vt,dt,mu),R=norm(pt),Hn=norm(cross(pt,vtt)),Sx=cross(Hn,R),d=sub(p,pt);
+    out.push([dot(d,Sx),dot(d,R),dot(d,Hn),t0+dt])}
+  return out}
+const APPROACH_IN=20e3,APPROACH_OUT=200;   // the inset shows inside 20 km, and hands over to the docking rows under 200 m
 // ---- contact: the vessel against registered satellites (sats session). Each part's shape is a signed distance field
 // from its profile (radius by height, the one d.prof gives); each part's surface is a cloud of sample points on that
 // profile. A point of one body inside the other is a contact. Satellites within HIT_NEAR are stepped with the vessel in

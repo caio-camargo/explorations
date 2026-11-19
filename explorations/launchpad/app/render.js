@@ -308,6 +308,7 @@ function render(){spoolFrame();
       else if(L.mark==='city'){octx.beginPath();octx.arc(s[0],s[1],2.2*k,0,7);octx.fill()}
       else if(L.mark==='gs'){octx.strokeStyle=L.c;octx.lineWidth=1.5*k;octx.strokeRect(s[0]-3.5*k,s[1]-3.5*k,7*k,7*k)}
       else if(L.mark==='sat'){octx.beginPath();octx.moveTo(s[0],s[1]-4*k);octx.lineTo(s[0]+4*k,s[1]);octx.lineTo(s[0],s[1]+4*k);octx.lineTo(s[0]-4*k,s[1]);octx.closePath();octx.fill()}
+      else if(L.mark==='rnode'){octx.strokeStyle=L.c;octx.lineWidth=2*k;octx.beginPath();octx.moveTo(s[0],s[1]-6*k);octx.lineTo(s[0]+5*k,s[1]+4*k);octx.lineTo(s[0]-5*k,s[1]+4*k);octx.closePath();octx.stroke()}   // (Q628) a relative node: a triangle
       else if(L.mark==='ca'){octx.strokeStyle=L.c;octx.lineWidth=2*k;octx.beginPath();octx.arc(s[0],s[1],5*k,0,7);octx.stroke()}
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5*k;octx.beginPath();octx.moveTo(s[0]-6*k,s[1]-6*k);octx.lineTo(s[0]+6*k,s[1]+6*k);octx.moveTo(s[0]+6*k,s[1]-6*k);octx.lineTo(s[0]-6*k,s[1]+6*k);octx.stroke()}
       else if(L.mark==='planet'){const r=L.px*k;octx.beginPath();octx.arc(s[0],s[1],r,0,7);octx.fill();
@@ -460,9 +461,13 @@ function drawMap(VP,camW,labels){const nm=mapShow('names');   // (Q261) each pas
     if(!NP.length){labels.push({p:add(off,I.rN),mark:'node',k:0,axes:axes(nodeFrame(I.rN,I.vN)),c:'#5f9dff'})}
     NP.forEach((P,k)=>{const p=add(k===0||P.b===S.body?off:bodyPos(P.b,P.t),P.rN),t=NP.length>1?`node ${k+1} · ${(k===0?len(I.rem):len(P.n.dv)).toFixed(0)} m/s · in ${fmtT(P.t-simT)}`:'';
       labels.push(k===sel?{p,mark:'node',k,t,axes:axes(nodeFrame(P.rN,P.vN)),c:'#5f9dff'}:{p,mark:'qnode',k,t,c:'#8fb6ff'})})}
-  // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
-  {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
-    labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
+  // (Q628, PLAYTEST #176) the target's next passes, numbered 1 2 3 with separation, relative speed and time, on this orbit
+  // and on the node's plan (▸plan); green when close and slow enough to call a rendezvous (passMeets); a line from where
+  // we'll be to where it will be. And the relative nodes on this orbit: AN/DN, the planes' angle and the burn to match them
+  {const ca=tgtCA();if(ca){const T0=progT(S),off=bodyPos(S.body,simT);
+    for(const[L,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])for(const[i,x]of(L||[]).entries()){const g=passMeets(x),p=add(off,x.p),pt=add(off,x.pt);
+      seg(p,pt,g?[.35,1,.45,.95]:cl);labels.push({p,mark:'ca',t:passText(x,i,T0)+tag,c:g?'#4dff6a':c},{p:pt,mark:'ca',t:'',c:'#ffb347'})}
+    const N=ca.nodes;if(N)for(const[k,x]of[['AN',N.an],['DN',N.dn]])if(x)labels.push({p:add(off,x.p),mark:'rnode',t:`${k} · ${(N.ri*180/Math.PI).toFixed(N.ri<0.1745?2:1)}° · ${x.dv.toFixed(1)} m/s · in ${fmtT(x.t-T0)}`,c:'#c9a6ff'})}}
   // (vehicle, Q454) the transfer to a stationary orbit over the capital: the stationary ring, the capital's slot on it (turning
   // with the planet) and where the burn's middle falls on this orbit
   {const X=statX();if(X){const o=bodyPos(TELLUS,simT),c=X.city.u,u=norm([c[0],0,c[2]]);let pv=null;

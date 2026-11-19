@@ -2922,3 +2922,92 @@ every station fell through to the fallback.
 port, junk), the rename on a fixture, and the station start (Station 1, `ver` 3, a pilot whose modes include docking);
 smoke green; CI. **Not checked:** in a browser (TESTING 415); an old career with a station loaded in the page (the step
 is the fixture's code).
+## v1.368 — rendezvous tools on the map, slice 1: the next passes and the relative nodes (2026-11-18, space, QUEUE Q628, PLAYTEST #176)
+
+Caio, docking to the station in *First station up*: "the rendezvous is going to require more tools in the map. ksp shows
+both relative speed and separation on the nearest points, and shows the two next nearest points". Decided with him:
+**numbers only, never a node placed for him**, all open from the start (gating, if any, is a later call: `TOOLS`).
+
+Before: `approach` (sim/space.js) scanned two orbits for the single closest moment, and `tgtCA` drew it on the map as
+"closest …" with the node plan's beside it.
+
+- **`passes(q, r0, v0, t0, span, mu, n)`** (sim/space.js, after `approach`): where our orbit comes nearest the target's
+  orbit as a curve (our orbit sampled 120 times against the target's ellipse as 180 segments; every local minimum, so
+  two for crossing orbits), and each time we go by there over the span, the separation then: the least within ±1/12 of
+  an orbit, or the separation as we go by when it is still falling at the window's edge (a target far off in phase).
+  Up to n, in time order, as `{t, d, vrel, p, pt}`; one least right now and opening is left out (behind us, not
+  ahead). A hyperbolic orbit, or orbits with no such place, fall back to
+  `approach`. Why not every dip of the separation: two orbits 20 km apart with the target well ahead have no dip at all
+  for many orbits, only a slow fall; the place where the orbits come nearest is what KSP labels, and it is what a
+  player aims a phasing burn at.
+- **`relNodes(r0, v0, t0, rt, vt, mu)`**: where our orbit crosses the target's plane over our next orbit (AN going up
+  through it, DN going down), the angle between the planes, and the burn that matches them there, 2·v_h·sin(i/2) (the
+  speed across the radius turned through the angle). Nothing under 0.01°; the search starts a second ahead, so a craft on a node is told
+  the next one.
+- **`passMeets(x)`**: a pass under 1 km and 5 m/s, Q458's rendezvous numbers (`QUAL_RDV_D`, `QUAL_RDV_V`). PLAYTEST #176
+  says "1 km and 10 m/s (the same numbers as Q458's)"; Q458's speed is 5 m/s, and the point was the same numbers.
+- **The map** (render.js): each pass numbered, `1 · 840 m · 3.1 m/s · in 1 h 32 min`, a line from where we'll be to
+  where it will be, green when it meets; the node's plan the same in white with `▸plan`, recomputed as the node is
+  dragged (the cache keys on the node, as before); AN and DN as violet triangles with the angle, the burn and the time.
+  The marks now sit at the body's place (`bodyPos`), so they are right round Selene too (they were drawn at the origin).
+- **The Target card** (`tgtRows`): *Closest* is the nearest of the passes with its number, and the plan's; a *Planes* row
+  (the angle, the next node's time and burn, the plan's angle) when the planes differ.
+
+**Checked:** test space-38: a 300 × 399.5 km orbit 0.5° off a 400 km circle, timed to pass ~1.2 km from the target at
+the first apoapsis: three passes, one per apoapsis, each no worse than the separation there and no better than a fine
+scan's least near it, the first equal to `approach`'s; the nodes on the target's plane half an orbit apart with
+2·v_h·sin(i/2); the green threshold; and in the headless page, a tester start beside a target shows *Closest 1 · …*.
+In Chrome on the RTX (`shot.mjs`, notebook era): a tester start 30 km behind a target, tilted 1.5° and slowed
+25 m/s: passes and the AN labelled on the orbit, the Target card's *Closest* and *Planes* rows agreeing (a still in
+`output/launchpad/q628-passes-map.png`, local). Lint clean; smoke; CI. **Not checked:** by a person (TESTING 416);
+label crowding (pass 2's text and the DN's were dropped by the label placer where they fell on pass 1 and the Pe
+mark; the marks stay); the cost while dragging a node on a slow machine
+(passes is ~22 k segment distances plus ~900 Kepler steps, four times a second at most).
+
+## v1.369 — meet on pass N (2026-11-18, space, QUEUE Q629, PLAYTEST #176 slice 2)
+
+The second of the rendezvous tools Caio and the playtest session settled on: for the next few orbits, the one burn at
+the next apoapsis that brings you to the target on that pass, as numbers (*pass 2: −57 · pass 5: +8.4 m/s*).
+Information only: the player places the node.
+
+- **`meetBurns(q, r0, v0, t0, B, nMax)`** (sim/space.js, after `relNodes`): the burn is along the track at our next
+  apoapsis, so we come back to that place every new period P'. The target crosses nearest that place once each of its
+  periods (found by a scan of its orbit and a golden section). For pass n, P' = (its k-th crossing − the burn) / n,
+  with the k that changes our period least; the burn is the speed at the apoapsis for that orbit's size minus ours,
+  signed (+ prograde, − retrograde). A row whose orbit would dip into the air or the ground is left out. `miss` says
+  how far the target's orbit passes from the burn's place: the rows only mean something when that is small (a
+  Hohmann-style approach from below, the usual case).
+- **The Target card** has a *Meet* row: `burn at Ap in 12m 3s: pass 1 +518 · pass 2 −57 · … · pass 5 +8.4 m/s`, each
+  with a tooltip (prograde or retrograde, how far, when you meet); when the target's orbit passes over 5 km from that
+  apoapsis, the row says so first.
+
+**Checked:** test space-39 flies every answer: a 300 × 400 km orbit under a 400 km target, each of the five burns
+applied at the apoapsis and propagated meets the target within 10 m on its pass, none dipping into the air; a target
+orbit 60 km higher is said to be 60 km off; the headless page's Target card shows the row. **Not checked:** by a person
+(TESTING 417); whether "at the next apoapsis" is the right place when the orbits cross elsewhere (then the passes of
+slice 1 are the better guide).
+
+## v1.370 — the approach inset (2026-11-18, space, QUEUE Q630, PLAYTEST #176 slice 3)
+
+The third rendezvous tool: inside ~20 km, the path drawn in the target's frame, the target at the centre, handing over
+to docking.
+
+- **`lvlhPath(r0, v0, rt, vt, t0, span, mu, N)`** (sim/space.js): our Kepler path and the target's stepped together,
+  each separation put in the target's own frame at that moment: ahead along its track, above it (away from the body),
+  off its plane. `APPROACH_IN` 20 km and `APPROACH_OUT` 200 m bound the card.
+- **The Approach card** (`approachOn`, `approachRows`, app/program-ui.js; in `HUD_CARDS` after Target, and in
+  `CP_CARDS` so a critical phase keeps it): an inline SVG 200 × 130, ahead to the right and above up, one scale for both
+  (the next round step over the path's reach, printed in the corner); our path over the next orbit or to the second pass
+  (slice 1's, + 10 min), whichever is shorter, solid; the node's plan dashed white (our path to the node, then the plan's);
+  the target an orange dot, we a green triangle. Under it, *Now*: how far ahead or behind, above or below, and out of its
+  plane. Under 200 m it goes, and the Target card's docking rows (port, line-up) are the guide. Recomputed at most twice a
+  second or when the node changes. Nothing placed for the player.
+- Flow: the card is plain HTML in the HUD column, so it folds and pins like any card. A drawn inset on the map, or a
+  bigger one in the docking phase, is yours if Caio wants it.
+
+**Checked:** test space-40: 3 km behind on the target's circle stays at (−3 km, 0) for an orbit; a circle 1 km lower
+starts 1 km below and gains the along-track distance the two periods give (9.4 km an orbit, within 5 %); in the
+headless page the card shows at 3 km with the SVG and *3000 m behind*, and not at 30 km. In Chrome on the RTX
+(`shot.mjs`): 4 km behind and 3 m/s slower, the card draws the dip under the target and the drift ahead (a still in
+`output/launchpad/q630-approach-card.png`, local). **Not checked:** by a person (TESTING 418); the plan's dashed line in
+a still; the card in the dark cockpit's narrow column.

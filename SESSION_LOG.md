@@ -8339,3 +8339,31 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Waiting on Caio:** the sans (my pick Barlow, then IBM Plex Sans). The claim stays open for it.
 - Files: launchpad `ELEMENTS.md`, `QUEUE.md` (*Proposed*), `mockups/kit/index.html`, `mockups/kit/faces/` (new),
   `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — space (Opus 5.5, worktrees launchpad-q631/q628/q629/q630): a station's name, then the rendezvous tools (v1.367–v1.370)
+
+- **Asked:** Caio's kickoff: Q631 first (the Station kind, a save migration, starts regenerated with a docking-qualified
+  pilot), then Q628 (rendezvous tools slice 1, numbers only), then Q629 and Q630 if time; own branch, tests and TESTING
+  row per slice; CI before every merge.
+- **Done:** v1.367 Q631 (`satKind` names a habitat/lab, or two ports, a Station; `SAVE_V` 3 renames old *Object N*
+  stations; chapter starts regenerated: they predated the roster, now carry it and a pilot trained to dock, and the
+  right save version). v1.368 Q628 (`passes`: the next three passes at the place the orbits come nearest; the plan's;
+  green under Q458's 1 km / 5 m/s; `relNodes`: AN/DN, angle, burn to match; on the map and the Target card).
+  v1.369 Q629 (*Meet* row: the burn at the next apoapsis for passes 1–5, each flown in the test). v1.370 Q630 (an
+  *Approach* card inside 20 km: the path in the target's frame as an SVG; docking rows under 200 m).
+- **Tests:** space-37 to space-40; smoke green on q631 except a timing check under load (6b; CI green); CI green on each
+  merge (44398537683 for Q631; 44426367039 for the Q628–Q630 stack, after each branch's own runs).
+- **Went wrong on the way:** (1) a chained `git merge --ff-only … | tail -1 && …` hid a refused fast-forward and pushed a
+  QUEUE commit marking Q631 done (plus a v1.366 flag that was already stale); undone in the next commit. The pipe ate the
+  exit code: don't pipe a merge you chain on. (2) The merge of main into q628 dropped space-37's closing brace (my conflict
+  script); CI caught it. (3) The Chrome extension's tab froze on load twice; `shot.mjs` did the 🖥 checks instead. (4) The
+  Approach card referenced its functions at definition time and broke flow-58's stubbed HUD_CARDS (CI).
+- **Decided on my own:** the green threshold uses Q458's constants (5 m/s), not the item's "10 m/s", since the item's
+  point was "the same numbers". Q628–Q630 merged together as one stack after each branch's own CI (main kept moving with
+  docs; three re-merges).
+- **Not checked:** TESTING 415–418 by a person; label crowding on the map (Proposed); the plan's dashed line in the inset.
+- **Left running:** python servers on ports 8845 (until ~19:58) and 8846 (until ~19:07), started with `timeout`.
+- **Next:** gating of the Meet row and the Approach card (Caio, Proposed); Q627 (crew rotation, waiting on headless docking).
+- Files: launchpad `sim/space.js`, `app/state.js`, `app/program-ui.js`, `app/render.js`, `app/hud.js`, `app/cockpit.js`,
+  `chapters.mjs`, `starts/*.js`, `tests/space.mjs`, `tests/flow.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`,
+  `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
