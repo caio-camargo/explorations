@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
+**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2.
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2. **The office's look is open again** (Caio: "not like paper at all"): two directions in § 6.3.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -283,6 +283,33 @@ session with the game served); mission control, the title, the logbook, the rove
 strip UI.md § 3 asks of the Program and the Debrief; the other five tabs; a successful flight's Debrief (PAID, FIRST)
 and a poster heading for a first; the eras; a window other than 1258 x 644; any of it in play.
 
+### 6.3 The office's look: two directions (2026-11-19)
+
+Caio, on § 6.2's Program and Debrief: "the readability is better, but I don't love the design--it feels
+paper-themed, but not like paper at all... paper is fine in principle, though i'm not married to it, but this isn't
+great." **So the Form dress as mocked in `office.html` is not the office's look** (D50's point 2 is reopened for the
+office; the roles and the code stand). Why it failed, as I read it: it is a web layout in beige. Five cards with
+drop shadows, web tabs, web buttons and an accordion, all of one stock, one format and one size; nothing on a desk
+looks like that.
+
+Four ways out were put to him: A real documents; B the screen is the page; C leave paper for a planning-room board;
+D let the medium change with the era (with A or B). He asked for A and B side by side: `mockups/kit/debrief-ab.html`
+(keys 1 and 2), the same Debrief both ways. Stills `debrief-a.png`, `debrief-b.png`, both in `debrief-ab.png`.
+
+| | A · real documents | B · the screen is the page |
+|---|---|---|
+| What it is | Each thing is the document it would be: a boxed report form (caption in the corner of each box, the entry typed in), a ledger sheet clipped to it, a carbon-copy annex in purple type, a clipping, a routing slip | One printed page with no desk, cards or shadows: a grid, rules, two inks (black and the power's colour), numerals as large as they matter |
+| Label against value | printed caption against typed entry (Special Elite) | printed text against typed figures (Courier Prime), and size |
+| Commands | the routing slip's three lines, each a box to tick; the primary one in the power's colour | three ruled buttons in the page's foot; the primary one filled |
+| Reads as paper by | stock, ink and format differing by document; holes, a clip, a signature, a stamp | print conventions: folio line, rules, spot colour, crop marks; the stamp is the one physical act |
+| For it | it is a place; a document's format says what it is before it is read | the most legible; hierarchy by size; a long list or a table costs nothing |
+| Against it | tilted type is softer; Special Elite reads worse than Courier Prime; captions are 8.5 px; the commands sit apart from the report; every screen needs its documents designed, and the Program (six tabs, long lists) is much harder than this | it reads as present-day editorial more than as the 1950s; less of a place; a short flight leaves half the page empty |
+
+**Not checked:** only the Debrief, and only a failed flight; neither tried on the Program; the script face (Segoe
+Script) and the clipping's serif are the machine's own, not bundled; nothing in play.
+
+**Open, for Caio:** A, B, or B's page lying on A's desk.
+
 ## 7. If this is adopted: the order
 
 1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
@@ -380,6 +407,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.8 (2026-11-19): § 6.3, the office's look reopened; the Debrief as real documents (A) and as a printed page (B).
 - 0.1.7 (2026-11-19): § 6.2, the Rollout, the Program and the Debrief on the roles.
 - 0.1.6 (2026-11-19): D53; round 2 of the flight HUD mock-up (smaller, a low panel, a box a stage).
 - 0.1.5 (2026-11-19): § 6.1, the flight HUD mock-up (`mockups/kit/flight.html`); the gauge as a missing role.

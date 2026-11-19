@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.41 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.42 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -37,7 +37,14 @@ key shows it is on (my pick: Legend)._
 **The Rollout** is in `kit/flight.html` (*Rollout*: All go, No-go): the same panel, the launch poll as lamps. Stills
 `rollout-*.png`. **`kit/office.html`** (2026-11-19; ELEMENTS.md § 6.2): the **Program** and the **Debrief** in the
 Form dress, with the game's own content; *Checks* (Squint, Grey, Today). Stills `office-*.png`.
-**Pick:** _(Caio: the Rollout's poll; the office without green, blue and red; offers that open in place)_
+**Pick (Caio 2026-11-19), on `office.html`:** "the readability is better, but I don't love the design--it feels
+paper-themed, but not like paper at all". Not the office's look. _Open: the Rollout's poll._
+
+**`kit/debrief-ab.html`** (2026-11-19; ELEMENTS.md § 6.3): the same Debrief two ways (keys 1, 2). **A** real
+documents on the desk (a boxed report form, a ledger sheet, a carbon-copy annex, a routing slip for the commands).
+**B** the screen is the page (no desk or cards; a grid, two inks, large numerals). Stills `debrief-a.png`,
+`debrief-b.png`, side by side in `debrief-ab.png`.
+**Pick:** _(Caio: A, B, or B's page on A's desk)_
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 

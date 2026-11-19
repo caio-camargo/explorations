@@ -8440,3 +8440,22 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Waiting on Caio:** his word on the three; from before, the phosphor, the gauge, the lit keys, the gauge as a role.
 - Files: launchpad `mockups/kit/flight.html`, `office.html` (new), `bg-rollout.jpg`, `today-*.jpg` (new),
   `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): the office's look reopened; the Debrief two ways (ELEMENTS.md 0.1.8)
+
+- **Asked:** Caio, on `office.html`: "the readability is better, but I don't love the design--it feels paper-themed,
+  but not like paper at all. let's brainstorm how to improve this, whether to even keep the paper approach or move
+  in a different direction. paper is fine in principle, though i'm not married to it, but this isn't great." Four
+  directions put to him (A real documents, B the screen is the page, C a planning-room board, D the medium changes
+  with the era); then: "let's see a and b side by side".
+- **Done:** `mockups/kit/debrief-ab.html`: the same Debrief as A (a boxed report form, a ledger sheet clipped to it, a
+  carbon-copy annex, a clipping, a routing slip as the commands) and as B (one printed page: grid, rules, black and
+  the power's colour, large numerals). Six stills and `debrief-ab.png` (both side by side). ELEMENTS.md § 6.3 has
+  the comparison; the QUEUE *Proposed* line for the office is marked not ready.
+- **Checked:** both fit at 1258 x 644 with nothing cut (the page's `CHECK()`); both stills looked at.
+- **Not checked:** the Program in either direction; a successful flight; the grey and squint stills were taken but
+  not looked at; the script and serif faces are the machine's own.
+- **Waiting on Caio:** A, B, or B's page on A's desk. Still open from before: the cockpit's phosphor, gauge and lit
+  keys; the gauge as a role; the Rollout's poll.
+- Files: launchpad `mockups/kit/debrief-ab.html` (new), `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*,
+  my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
