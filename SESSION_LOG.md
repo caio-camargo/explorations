@@ -8459,3 +8459,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   keys; the gauge as a role; the Rollout's poll.
 - Files: launchpad `mockups/kit/debrief-ab.html` (new), `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*,
   my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): D54, the office is real documents; the graphical pass (ELEMENTS.md 0.1.9)
+
+- **Asked:** Caio, on A against B: "I like A, I think there's graphical work to be done so it looks more like real
+  docs but the concept is good".
+- **Done:** D54 in DECISIONS.md. Round 2 of A in `mockups/kit/debrief-ab.html`: sheets aged at the edges with folds
+  and a soft shadow; the form printed in blue-green ink, the entries typed in black with every letter a little off
+  (seeded); each document its own stock (bond, green ledger, carbon copy, torn newsprint, canary slip); holes, a
+  staple, a wire clip, a RECEIVED stamp, a pencil note; a green blotter. *Even type* switches the unevenness off.
+- **Tried and dropped:** an uneven edge on every sheet (it looked chewed; paper is cut straight).
+- **Checked:** the still looked at; nothing overflows at 1258 x 644 (`CHECK()`, with 5 px allowed for turned letters).
+- **Not checked:** the grey and squint stills were taken, not looked at; the Program as documents; the
+  script and serif faces are the machine's own.
+- **Waiting on Caio:** what else would make the documents real; then the Program. Still open from before: the
+  cockpit's phosphor, gauge and lit keys; the gauge as a role; the Rollout's poll.
+- Files: launchpad `mockups/kit/debrief-ab.html`, `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`, `QUEUE.md`
+  (*Proposed*, my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

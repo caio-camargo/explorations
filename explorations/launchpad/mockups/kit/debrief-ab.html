@@ -8,7 +8,7 @@
      paper-themed, but not like paper at all". The same Debrief (the game's own content, v1.370) two ways:
      A · real documents on the desk: a boxed report form, a ledger sheet, a carbon-copy annex, a routing slip.
      B · the screen is the page: one piece of printed matter, a grid, two inks, large numerals; no desk, no shadows.
-     URL: ?view=a|b &squint=1 &grey=1 -->
+     URL: ?view=a|b &squint=1 &grey=1 &even=1 -->
 <style>
 @font-face{font-family:'Special Elite';src:url(../../fonts/special-elite.woff2) format('woff2')}
 @font-face{font-family:'Courier Prime';src:url(../../fonts/courier-prime.woff2) format('woff2')}
@@ -33,45 +33,61 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .3 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
 
 /* ================= A · real documents ================= */
+/* Round 2 (Caio: "there's graphical work to be done so it looks more like real docs"): the sheet is its own layer with
+   an uneven edge, aged margins, folds and a soft shadow; the form is printed in one coloured ink and the entries are
+   typed in black, each letter a little off; a staple, a wire clip, a received stamp, a pencil note; a blotter under it. */
 .A{background:repeating-linear-gradient(90deg,rgba(0,0,0,.10) 0 2px,transparent 2px 11px),repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 37px),linear-gradient(#5d3b26,#432919);
-  font:13px/1.45 'Special Elite','Courier Prime',monospace;color:#2b2a33}
-.A .doc{position:absolute;box-shadow:0 1px 1px rgba(0,0,0,.35),2px 5px 9px rgba(0,0,0,.35)}
-.A .cap{font:600 8.5px/1.2 'IBM Plex Sans',sans-serif;font-stretch:85%;letter-spacing:.09em;text-transform:uppercase;color:#3b3a36;display:block;margin-bottom:1px}
-.A .ty{text-shadow:0 0 .5px rgba(43,42,51,.7)}
-/* the report: a pre-printed form, boxes with a caption in the corner, entries typed into them */
-.form{left:376px;top:14px;width:480px;height:616px;background:#efe6cd;padding:14px 20px 12px 44px}
-.form::before{content:"";position:absolute;left:14px;top:120px;width:13px;height:13px;border-radius:50%;background:#3a2417;box-shadow:inset 1px 2px 2px rgba(0,0,0,.6),0 350px 0 #3a2417}
-.fhead{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2.5px solid #23201b;padding-bottom:5px}
-.fhead h1{font:400 30px/.9 'Bebas Neue',sans-serif;letter-spacing:.07em;margin:0;color:#23201b}
-.fhead small{font:400 9px/1.3 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;text-align:right;color:#3b3a36}
-.boxes{display:grid;grid-template-columns:repeat(12,1fr);border-left:1px solid #23201b;margin-top:0}
-.bx{border-right:1px solid #23201b;border-bottom:1px solid #23201b;padding:3px 6px 4px;min-height:38px;position:relative}
-.bx .n{position:absolute;right:4px;top:2px;font:400 8px/1 'IBM Plex Sans',sans-serif;color:#77726a}
+  font:13px/1.45 'Special Elite','Courier Prime',monospace;color:#1d1c22;--pr:#1f4a5c}
+.blot{position:absolute;left:352px;right:44px;top:5px;bottom:5px;background:linear-gradient(160deg,#2a4d3e,#1b3329);border-radius:5px;box-shadow:inset 0 0 0 1px #0f1f18,inset 0 0 0 11px #213d31,inset 0 0 0 12px #b8975255,inset 0 0 60px rgba(0,0,0,.35),0 3px 10px rgba(0,0,0,.5)}
+.A .doc{position:absolute;isolation:isolate;--stock:#efe6cd}
+.A .doc::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--stock);box-shadow:inset 0 0 36px rgba(128,96,40,.22),inset 0 0 3px rgba(90,60,20,.4);filter:drop-shadow(0 1px 1px rgba(0,0,0,.5)) drop-shadow(3px 8px 8px rgba(0,0,0,.34))}
+.fold{position:absolute;left:0;right:0;height:10px;pointer-events:none;background:linear-gradient(rgba(255,255,255,0),rgba(255,255,255,.4) 42%,rgba(90,60,20,.3) 54%,rgba(90,60,20,0))}
+.A .cap{font:600 8.5px/1.2 'IBM Plex Sans',sans-serif;font-stretch:85%;letter-spacing:.09em;text-transform:uppercase;color:var(--pr);display:block;margin-bottom:1px}
+.A .ty{display:inline-block}
+.c{display:inline-block}.w{white-space:nowrap}
+body.even .c{transform:none!important;opacity:1!important;text-shadow:none!important}body.even .A .ty{transform:none!important}
+/* the report: a pre-printed form in blue-green ink, boxes with a caption in the corner, entries typed into them */
+.form{left:384px;top:14px;width:480px;height:616px;padding:14px 20px 12px 44px}
+.hole{position:absolute;left:14px;width:13px;height:13px;border-radius:50%;background:#16271f;box-shadow:inset 1px 2px 2px rgba(0,0,0,.8),0 0 0 .5px rgba(90,60,20,.5)}
+.staple{position:absolute;left:38px;top:9px;width:19px;height:3px;background:linear-gradient(#e4e7ea,#8d9399);border-radius:2px;transform:rotate(-36deg);box-shadow:0 1px 1px rgba(0,0,0,.55)}
+.fhead{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2.5px solid var(--pr);padding-bottom:5px;color:var(--pr)}
+.fhead h1{font:400 30px/.9 'Bebas Neue',sans-serif;letter-spacing:.07em;margin:0;display:flex;align-items:center;gap:9px}
+.fhead small{font:400 9px/1.3 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;text-align:right}
+.boxes{display:grid;grid-template-columns:repeat(12,1fr);border-left:1px solid var(--pr)}
+.bx{border-right:1px solid var(--pr);border-bottom:1px solid var(--pr);padding:3px 6px 4px;min-height:38px;position:relative}
+.bx .n{position:absolute;right:4px;top:2px;font:400 8px/1 'IBM Plex Sans',sans-serif;color:var(--pr);opacity:.7}
 .ln{display:flex;align-items:baseline}.ln i{flex:1;border-bottom:1px dotted #6b604e;margin:0 5px;position:relative;top:-3px}
 .big{font-size:22px;line-height:1.1}
+.dist{font:400 8px/1.3 'IBM Plex Sans',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--pr);display:flex;justify-content:space-between;margin-top:5px}
 .stampA{position:absolute;right:14px;top:8px;font:400 21px/1 'Bebas Neue',sans-serif;letter-spacing:.14em;color:var(--red);border:3px solid var(--red);padding:5px 10px 3px;transform:rotate(-7deg);opacity:.82;mix-blend-mode:multiply;filter:url(#rough)}
-.sig{font:400 22px/1 'Segoe Script','Brush Script MT',cursive;color:#1d3b8a;transform:rotate(-3deg);display:inline-block;margin-top:2px}
-.tick{display:inline-block;width:11px;height:11px;border:1px solid #23201b;margin-right:5px;position:relative;top:1px;text-align:center;font:700 12px/9px 'Special Elite'}
-/* the ledger: accounting paper, ruled in columns, clipped to the report */
-.ledger{left:846px;top:44px;width:330px;background:#dfe8d6;padding:10px 0 12px;transform:rotate(1.2deg);
-  background-image:linear-gradient(90deg,transparent 205px,#c0392b55 205px 206px,transparent 206px 267px,#2b5ea855 267px 268px,transparent 268px),repeating-linear-gradient(#0000 0 21px,#6f8f7a66 21px 22px);background-position:0 0,0 33px}
+.stampR{position:absolute;left:118px;top:24px;font:400 13px/1.2 'Bebas Neue',sans-serif;letter-spacing:.16em;color:#4a3f8f;border:2px solid #4a3f8f;padding:5px 11px 3px;text-align:center;transform:rotate(3deg);opacity:.72;mix-blend-mode:multiply;filter:url(#rough)}
+.stampR b{display:block;font-size:17px;font-weight:400;border-top:1.5px solid;border-bottom:1.5px solid;margin:2px 0;padding-top:2px}
+.pencil{position:absolute;right:26px;bottom:14px;font:400 19px/1 'Segoe Script','Brush Script MT',cursive;color:#4d4d57;opacity:.75;transform:rotate(-6deg)}
+.sig{font:400 22px/1 'Segoe Script','Brush Script MT',cursive;color:#1d3b8a;transform:rotate(-3deg);display:inline-block;margin-top:2px;mix-blend-mode:multiply}
+.tick{display:inline-block;width:11px;height:11px;border:1px solid var(--pr);margin-right:5px;position:relative;top:1px;text-align:center;font:700 12px/9px 'Special Elite'}
+/* the ledger: green accounting paper, ruled in columns, held to the report by a wire clip */
+.A .ledger{left:854px;top:46px;width:330px;padding:10px 0 12px;transform:rotate(1.2deg);--stock:#d5e4cc}
+.A .ledger::before{background-color:var(--stock);background-image:linear-gradient(90deg,transparent 203px,#b8433566 203px 204px,transparent 204px 206px,#b8433566 206px 207px,transparent 207px 267px,#2b5ea866 267px 268px,transparent 268px),repeating-linear-gradient(#0000 0 21px,#5d8a6f77 21px 22px);background-position:0 0,0 33px}
 .ledger h2{font:600 10px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 12px 6px;color:#2d4a3a;display:flex;justify-content:space-between}
-.lr{display:grid;grid-template-columns:205px 62px 63px;line-height:22px;height:22px}.lr span{padding:0 6px 0 12px;white-space:nowrap}.lr span+span{text-align:right;padding:0 7px 0 0}
+.lr{display:grid;grid-template-columns:205px 62px 63px;line-height:22px;height:22px}.lr>span{padding:0 6px 0 12px;white-space:nowrap}.lr>span+span{text-align:right;padding:0 7px 0 0}
 .lr.hd{font:600 8.5px/22px 'IBM Plex Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#2d4a3a}
-.lr.tot{font-weight:700}.lr.tot span+span{border-top:1px solid #23201b;border-bottom:3px double #23201b;line-height:19px}
-.clipm{position:absolute;left:-13px;top:26px;width:34px;height:13px;border:2px solid #9aa0a6;border-radius:7px;box-shadow:1px 1px 1px rgba(0,0,0,.4);transform:rotate(-4deg)}
-.clipm::after{content:"";position:absolute;left:5px;top:1.5px;width:21px;height:6px;border:2px solid #9aa0a6;border-radius:4px}
-/* the annex: the carbon copy, thin paper, purple type */
-.annex{left:870px;top:306px;width:336px;background:#f3ecdf;padding:12px 16px 12px;transform:rotate(-.8deg);color:#4b3d7a;font-size:12.5px;opacity:.97}
+.lr.tot{font-weight:700}.lr.tot>span+span{border-top:1px solid #23201b;border-bottom:3px double #23201b;line-height:19px}
+.clipm{position:absolute;left:-17px;top:22px;width:46px;height:18px;transform:rotate(-5deg);filter:drop-shadow(1px 1px 1px rgba(0,0,0,.5));overflow:visible}
+/* the annex: the carbon copy on thin paper; purple type, a little spread */
+.A .annex{left:872px;top:306px;width:346px;padding:12px 16px 12px;transform:rotate(-.8deg);color:#4b3d7a;font-size:12px;--stock:#f6f1e8;text-shadow:0 0 1.1px rgba(75,61,122,.85)}
 .annex h2{font:inherit;margin:0 0 6px;text-decoration:underline;letter-spacing:.05em}
 .annex .ln i{border-color:#4b3d7a88}
-/* the clipping */
-.news{left:66px;top:40px;width:268px;background:#e6e0d0;padding:9px 12px 11px;transform:rotate(-2.2deg);font:700 16px/1.18 Georgia,'Times New Roman',serif;color:#23201b;clip-path:polygon(0 2%,6% 0,100% 1%,99% 100%,3% 98%)}
+.copy{position:absolute;right:14px;bottom:4px;font:400 34px/1 'Bebas Neue',sans-serif;letter-spacing:.34em;color:#4b3d7a;opacity:.13;text-shadow:none}
+/* the clipping: newsprint, torn out by hand */
+.A .news{left:58px;top:38px;width:274px;padding:13px 16px 15px;transform:rotate(-2.2deg);font:700 16px/1.18 Georgia,'Times New Roman',serif;color:#23201b;--stock:#dbd6c6}
+.A .news::before{box-shadow:inset 0 0 30px rgba(110,100,70,.25);filter:url(#torn) drop-shadow(0 1px 1px rgba(0,0,0,.5)) drop-shadow(3px 7px 7px rgba(0,0,0,.34))}
 .news small{display:block;font:400 9px/1.5 Georgia,serif;letter-spacing:.14em;text-transform:uppercase;border-bottom:1px solid #23201b;margin-bottom:5px}
-.news p{font:400 10.5px/1.35 Georgia,serif;margin:6px 0 0;column-count:2;column-gap:10px;color:#3b3a36}
-/* the routing slip: what to do with it is a printed slip of boxes to tick. Its three lines are the screen's commands */
-.slip{left:74px;top:398px;width:262px;background:#f4dc8f;padding:10px 14px 12px;transform:rotate(1deg)}
-.slip h2{font:600 11px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:.16em;text-transform:uppercase;margin:0 0 7px;border-bottom:1.5px solid #23201b;padding-bottom:4px;color:#23201b}
+.news p{font:400 10.5px/1.35 Georgia,serif;margin:6px 0 0;column-count:2;column-gap:12px;column-rule:1px solid #23201b66;color:#3b3a36;text-align:justify;hyphens:auto}
+/* the routing slip: torn from a pad (the gummed edge on top). Its three lines are the screen's commands */
+.A .slip{left:70px;top:392px;width:266px;padding:14px 14px 12px;transform:rotate(1deg);--stock:#f1d98a}
+.gum{position:absolute;left:1px;right:1px;top:1px;height:6px;background:linear-gradient(#a8452f,#8c3622);opacity:.75}
+.slip h2{font:600 11px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:.16em;text-transform:uppercase;margin:0 0 7px;border-bottom:1.5px solid #23201b;padding-bottom:4px;color:#23201b;display:flex;justify-content:space-between}
+.slip h2 span+span{font-weight:400;letter-spacing:.06em}
 .go{display:flex;align-items:center;gap:8px;width:100%;font:13px/1.3 'IBM Plex Sans',sans-serif;color:#23201b;background:none;border:0;border-bottom:1px solid #23201b55;padding:6px 2px;cursor:pointer;text-align:left}
 .go:hover{background:rgba(0,0,0,.07)}.go .bx2{flex:none;width:15px;height:15px;border:1.5px solid #23201b;background:#fbf3d0}.go span{flex:1}
 .go.pri{font-weight:700;border-bottom:0;margin-top:5px;background:var(--power);color:#fff;padding:8px 8px}.go.pri .bx2{border-color:#fff;background:none}
@@ -104,20 +120,22 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 </style>
 </head>
 <body data-view="a">
-<svg width="0" height="0" style="position:absolute"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="8" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="2.2" result="d"/><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="2" result="g"/><feColorMatrix in="g" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.1 1.3" result="m"/><feComposite in="d" in2="m" operator="in"/></filter></svg>
+<svg width="0" height="0" style="position:absolute"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="8" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="2.2" result="d"/><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="2" result="g"/><feColorMatrix in="g" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.1 1.3" result="m"/><feComposite in="d" in2="m" operator="in"/></filter><filter id="edge" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="11"/><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter><filter id="torn" x="-5%" y="-8%" width="110%" height="116%"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="2" seed="4" result="lo"/><feDisplacementMap in="SourceGraphic" in2="lo" scale="14" result="d1"/><feTurbulence type="fractalNoise" baseFrequency=".25" numOctaves="2" seed="9" result="hi"/><feDisplacementMap in="d1" in2="hi" scale="2.5"/></filter></svg>
 <div id="bar">
   <a href="index.html">← kit</a>
   <b>Direction</b><button data-view="a">A · real documents</button><button data-view="b">B · the screen is the page</button><a href="office.html?view=debrief" title="the Form-dress mock-up Caio turned down">before: office.html</a>
-  <b>Checks</b><button data-cls="squint">Squint</button><button data-cls="grey">Grey</button>
+  <b>Checks</b><button data-cls="squint">Squint</button><button data-cls="grey">Grey</button><button data-cls="even" title="A only: the typed letters set evenly, to weigh the look against the reading">Even type</button>
 </div>
 <div id="stage">
 
   <!-- ================= A ================= -->
   <div class="scr A">
+    <div class="blot"></div>
     <div class="doc news grain"><small>The Dunnzar Herald · day 112</small>Republic to cover 114M of failed rocket attempt<p>The ministry confirmed that a new rocket is allowed one loss at the sponsor's cost. Flight control gave no cause for the early end of the flight, which reached ten kilometres.</p></div>
 
     <section class="doc form grain">
-      <div class="fhead"><h1>Flight report</h1><small>Dunnzar Space Agency<br>Form FC-7 · flight control</small></div>
+      <i class="hole" style="top:118px"></i><i class="hole" style="top:470px"></i><i class="staple"></i><i class="fold" style="top:201px"></i><i class="fold" style="top:407px"></i>
+      <div class="fhead"><h1><svg width="36" height="24" viewBox="0 0 54 36"><rect width="54" height="36" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M6 0l14 18L6 36M14 0l14 18L14 36" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="38" cy="18" r="7" fill="currentColor"/></svg>Flight report</h1><small>Dunnzar Space Agency<br>Form FC-7 · original</small></div>
       <div class="boxes">
         <div class="bx" style="grid-column:span 2"><span class="cap">Flight no.</span><span class="ty">1</span><span class="n">1</span></div>
         <div class="bx" style="grid-column:span 3"><span class="cap">Vehicle</span><span class="ty">Lunar</span><span class="n">2</span></div>
@@ -125,41 +143,42 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
         <div class="bx" style="grid-column:span 3"><span class="cap">Time flown</span><span class="ty">53 s</span><span class="n">4</span></div>
         <div class="bx" style="grid-column:span 12;min-height:96px"><span class="cap">Outcome</span><span class="ty big">ENDED IN FLIGHT</span><br><span class="ty">Left on a path that comes down.</span><span class="stampA">Written off</span><span class="n" style="top:auto;bottom:3px">5</span></div>
         <div class="bx" style="grid-column:span 12"><span class="cap">Firsts recorded</span>
-          <div class="ln ty"><span>Farthest from Tellus</span><i></i><span>10.0 km</span></div>
-          <div class="ln ty"><span>Highest dynamic pressure</span><i></i><span>35.3 kPa</span></div><span class="n">6</span></div>
-        <div class="bx" style="grid-column:span 6;min-height:74px"><span class="cap">Net for the program</span><span class="ty" style="font-size:30px;line-height:1.3;border-bottom:3px double #2b2a33">-37 M</span><span class="n">7</span></div>
+          <div class="ln"><span class="ty">Farthest from Tellus</span><i></i><span class="ty">10.0 km</span></div>
+          <div class="ln"><span class="ty">Highest dynamic pressure</span><i></i><span class="ty">35.3 kPa</span></div><span class="n">6</span></div>
+        <div class="bx" style="grid-column:span 6;min-height:74px"><span class="cap">Net for the program</span><span class="ty" style="font-size:30px;line-height:1.3;border-bottom:3px double #1d1c22">-37 M</span><span class="n">7</span></div>
         <div class="bx" style="grid-column:span 6"><span class="cap">Filed by</span><span class="sig">Flight Control</span><span class="n">8</span></div>
-        <div class="bx" style="grid-column:span 12"><span class="cap">Attached</span><span class="ty"><span class="tick">x</span>Ledger sheet &nbsp; <span class="tick">x</span>Annex A, parts &nbsp; <span class="tick">x</span>Press</span><span class="n">9</span></div>
-        <div class="bx" style="grid-column:span 12;min-height:112px"><span class="cap">Remarks</span><span class="n">10</span></div>
+        <div class="bx" style="grid-column:span 12"><span class="cap">Attached</span><span class="tick">x</span><span class="ty">Ledger sheet</span> &nbsp; <span class="tick">x</span><span class="ty">Annex A, parts</span> &nbsp; <span class="tick">x</span><span class="ty">Press</span><span class="n">9</span></div>
+        <div class="bx" style="grid-column:span 12;min-height:150px"><span class="cap">Remarks</span><span class="stampR">Received<b>Year 1 · day 113</b>Director's office</span><span class="pencil">seen — D.</span><span class="n">10</span></div>
       </div>
+      <div class="dist"><span>FC-7 · rev. 2</span><span>White: director · Green: accounts · Copy: file</span></div>
     </section>
 
-    <section class="doc ledger grain"><i class="clipm"></i>
+    <section class="doc ledger grain"><svg class="clipm" viewBox="0 0 46 18"><path d="M42 4H9a5.5 5.5 0 0 0 0 11h27a3.6 3.6 0 0 0 0-7.2H12a1.8 1.8 0 0 0 0 3.6h22" fill="none" stroke="#c3c8cd" stroke-width="1.9" stroke-linecap="round"/></svg>
       <h2><span>Ledger · flight 1</span><span>sheet 1</span></h2>
       <div class="lr hd"><span>Item</span><span>Out</span><span>In</span></div>
-      <div class="lr ty"><span>Hardware</span><span>152</span><span></span></div>
-      <div class="lr ty"><span>Launch operations</span><span>18</span><span></span></div>
-      <div class="lr ty"><span>Sponsor covers attempt</span><span></span><span>114</span></div>
-      <div class="lr ty"><span>Budget day</span><span></span><span>20</span></div>
-      <div class="lr ty tot"><span>Totals, M</span><span>170</span><span>134</span></div>
-      <div class="lr ty tot"><span>Net</span><span>37</span><span></span></div>
+      <div class="lr"><span><span class="ty">Hardware</span></span><span><span class="ty">152</span></span><span></span></div>
+      <div class="lr"><span><span class="ty">Launch operations</span></span><span><span class="ty">18</span></span><span></span></div>
+      <div class="lr"><span><span class="ty">Sponsor covers attempt</span></span><span></span><span><span class="ty">114</span></span></div>
+      <div class="lr"><span><span class="ty">Budget day</span></span><span></span><span><span class="ty">20</span></span></div>
+      <div class="lr tot"><span><span class="ty">Totals, M</span></span><span><span class="ty">170</span></span><span><span class="ty">134</span></span></div>
+      <div class="lr tot"><span><span class="ty">Net</span></span><span><span class="ty">37</span></span><span></span></div>
     </section>
 
-    <section class="doc annex grain">
-      <h2>ANNEX A - PARTS EXPERIENCE, %</h2>
-      <div class="ln"><span>Albatross (2.5 m)</span><i></i><span>10 to 23</span></div>
-      <div class="ln"><span>Command pod</span><i></i><span>10 to 19</span></div>
-      <div class="ln"><span>Fin ring 2.5 m</span><i></i><span>37 to 43</span></div>
-      <div class="ln"><span>Tank 16 t (2.5 m)</span><i></i><span>37 to 43</span></div>
-      <div class="ln"><span>Tank 32 t (2.5 m)</span><i></i><span>37 to 43</span></div>
-      <div class="ln"><span>Petrel vacuum</span><i></i><span>37 to 43</span></div>
-      <div class="ln"><span>Wren lander</span><i></i><span>37 to 43</span></div>
-      <div class="ln"><span>Adapter 2.5 to 1.25 m</span><i></i><span>67 to 70</span></div>
-      <div style="margin-top:5px">(5 more parts overleaf)</div>
+    <section class="doc annex grain"><span class="copy">Copy</span>
+      <h2><span class="ty">ANNEX A - PARTS EXPERIENCE, %</span></h2>
+      <div class="ln"><span class="ty">Albatross (2.5 m)</span><i></i><span class="ty">10 to 23</span></div>
+      <div class="ln"><span class="ty">Command pod</span><i></i><span class="ty">10 to 19</span></div>
+      <div class="ln"><span class="ty">Fin ring 2.5 m</span><i></i><span class="ty">37 to 43</span></div>
+      <div class="ln"><span class="ty">Tank 16 t (2.5 m)</span><i></i><span class="ty">37 to 43</span></div>
+      <div class="ln"><span class="ty">Tank 32 t (2.5 m)</span><i></i><span class="ty">37 to 43</span></div>
+      <div class="ln"><span class="ty">Petrel vacuum</span><i></i><span class="ty">37 to 43</span></div>
+      <div class="ln"><span class="ty">Wren lander</span><i></i><span class="ty">37 to 43</span></div>
+      <div class="ln"><span class="ty">Adapter 2.5 to 1.25 m</span><i></i><span class="ty">67 to 70</span></div>
+      <div style="margin-top:5px"><span class="ty">(5 more parts overleaf)</span></div>
     </section>
 
-    <section class="doc slip grain">
-      <h2>Routing slip</h2>
+    <section class="doc slip grain"><i class="gum"></i>
+      <h2><span>Routing slip</span><span>flight 1</span></h2>
       <button class="go"><i class="bx2"></i><span>Fly it again</span><span class="kbd" style="flex:none">A</span></button>
       <button class="go"><i class="bx2"></i><span>To the design table</span><span class="kbd" style="flex:none">B</span></button>
       <button class="go pri"><i class="bx2"></i><span>File it: to the office</span><span class="kbd" style="flex:none">P</span></button>
@@ -205,12 +224,18 @@ const SAY={a:'<b>A · real documents.</b> Each thing is the document it would be
 function sync(){$('#who').innerHTML=SAY[B.dataset.view];for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.view?B.dataset.view===b.dataset.view:B.classList.contains(b.dataset.cls))}
 $('#bar').onclick=e=>{const d=e.target.dataset;if(!d||e.target.tagName!=='BUTTON')return;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);sync()};
 addEventListener('keydown',e=>{if(e.key==='1')B.dataset.view='a';if(e.key==='2')B.dataset.view='b';sync()});
-const q=new URLSearchParams(location.search);if(q.get('view'))B.dataset.view=q.get('view');for(const c of['squint','grey'])if(q.get(c))B.classList.add(c);
+const q=new URLSearchParams(location.search);if(q.get('view'))B.dataset.view=q.get('view');for(const c of['squint','grey','even'])if(q.get(c))B.classList.add(c);
 sync();
+// typed entries: every letter sits a little off its line and takes a little more or less ink (seeded, so stills repeat)
+let seed=7;const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+for(const e of document.querySelectorAll('.A .ty')){const t=e.textContent;e.textContent='';
+  for(const word of t.split(/( +)/)){if(/^ +$/.test(word)||!word){e.append(word);continue}const w=document.createElement('span');w.className='w';
+    for(const ch of word){const c=document.createElement('span');c.className='c';c.textContent=ch;c.style.cssText=`transform:translateY(${(rnd()*1.5-.75).toFixed(2)}px) rotate(${(rnd()*1.6-.8).toFixed(2)}deg);opacity:${(.68+rnd()*.32).toFixed(2)};text-shadow:0 0 ${(rnd()*.9).toFixed(2)}px currentColor`;w.append(c)}e.append(w)}
+  e.style.transform=`translate(${(rnd()*4-1).toFixed(1)}px,${(rnd()*3-1.2).toFixed(1)}px) rotate(${(rnd()*.7-.35).toFixed(2)}deg)`}
 window.CHECK=()=>document.fonts.ready.then(()=>{const S=$('#stage').getBoundingClientRect(),out=[];
   for(const e of document.querySelectorAll('.doc,.B .grid,.B .foot,.boxes'))if(e.offsetParent){const r=e.getBoundingClientRect();if(r.right>S.right+1||r.bottom>S.bottom+1||r.left<S.left-1||r.top<S.top-1)out.push('off screen: '+e.className+' '+Math.round(r.bottom-S.bottom))}
   const g=$('.B .grid'),f=$('.B .foot');if(g.offsetParent&&g.getBoundingClientRect().bottom>f.getBoundingClientRect().top)out.push('B: the columns run into the foot');
-  for(const e of document.querySelectorAll('.lr span,.ln,.r,.bx'))if(e.offsetParent&&e.scrollWidth>e.clientWidth+1)out.push('too wide: "'+e.textContent.trim().slice(0,24)+'"');
+  for(const e of document.querySelectorAll('.lr>span,.ln,.r,.bx'))if(e.offsetParent&&e.scrollWidth>e.clientWidth+5)out.push('too wide: "'+e.textContent.trim().slice(0,24)+'"');
   return out.join(' | ')||'fits'});
 </script>
 </body>

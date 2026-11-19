@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
+**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2. **The office's look is open again** (Caio: "not like paper at all"): two directions in § 6.3.
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2. **The office is real documents (D54)**; its graphics are being worked up on the Debrief: § 6.3.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -308,7 +308,31 @@ D let the medium change with the era (with A or B). He asked for A and B side by
 **Not checked:** only the Debrief, and only a failed flight; neither tried on the Program; the script face (Segoe
 Script) and the clipping's serif are the machine's own, not bundled; nothing in play.
 
-**Open, for Caio:** A, B, or B's page lying on A's desk.
+**D54 (Caio, 2026-11-19): A.** "I like A, I think there's graphical work to be done so it looks more like real docs
+but the concept is good." The office is real documents. This replaces D50's point 2 for the office (the Form
+dress); the Assembly's dress is untouched by it and should be looked at again in this light.
+
+**The graphical pass (round 2 of A, same file; before and after in `debrief-a-rounds.png`).** What was added, each
+a thing a real sheet has and the first try lacked:
+- **The sheet is a layer of its own**: aged towards its edges, two folds across the report, a soft shadow.
+- **Printed ink against typed ink.** The form (rules, captions, title, crest) is printed in one blue-green ink;
+  the entries are typed in black. This is label against value by ink, on top of face and size.
+- **Typed letters are uneven**: each a little off its line, turned a little, inked a little more or less (seeded,
+  so it does not shimmer); each entry sits a little off its box. *Even type* in the bar turns it off to compare.
+- **Each document its own stock**: cream bond for the report, green ruled ledger paper, thin white for the carbon
+  copy (purple type, slightly spread, a faint COPY), grey newsprint torn by hand, a canary slip with its gummed
+  edge. Sheet edges are straight; only the clipping is torn (uneven edges on every sheet looked chewed).
+- **Office hardware and marks**: punch holes, a staple, a wire clip, a purple RECEIVED stamp, a pencilled
+  "seen", the distribution line and form number.
+- **A green blotter** under the papers, so the desk is a desk and cream has something dark to sit on.
+
+**The costs, measured or seen:** uneven type is the look's biggest gain and its biggest cost to reading (compare
+`debrief-a.png` and `debrief-a-even.png`); the captions are 8.5 px; the stamp, the pencil note and the distribution
+line are decoration the game would have to generate or keep fixed; the script and serif faces are the machine's
+own (Segoe Script, Georgia) and would need bundling; the sheets are CSS and one SVG filter, no images.
+
+**Open:** what else would make them real for Caio; the Program as documents (the harder screen: six tabs, long
+lists), not yet tried.
 
 ## 7. If this is adopted: the order
 
@@ -407,6 +431,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.9 (2026-11-19): D54, the office is real documents; the graphical pass on the Debrief.
 - 0.1.8 (2026-11-19): § 6.3, the office's look reopened; the Debrief as real documents (A) and as a printed page (B).
 - 0.1.7 (2026-11-19): § 6.2, the Rollout, the Program and the Debrief on the roles.
 - 0.1.6 (2026-11-19): D53; round 2 of the flight HUD mock-up (smaller, a low panel, a box a stage).

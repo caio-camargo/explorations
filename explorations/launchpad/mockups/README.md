@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.42 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.43 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -44,7 +44,10 @@ paper-themed, but not like paper at all". Not the office's look. _Open: the Roll
 documents on the desk (a boxed report form, a ledger sheet, a carbon-copy annex, a routing slip for the commands).
 **B** the screen is the page (no desk or cards; a grid, two inks, large numerals). Stills `debrief-a.png`,
 `debrief-b.png`, side by side in `debrief-ab.png`.
-**Pick:** _(Caio: A, B, or B's page on A's desk)_
+**Pick (D54, Caio 2026-11-19): A.** "I like A, I think there's graphical work to be done so it looks more like real
+docs but the concept is good." A's round 2 (aged sheets with folds, printed ink against typed ink, uneven typed
+letters, each document its own stock, a staple, a clip, a received stamp, a blotter) is in the same file; *Even type*
+compares. Stills `debrief-a.png`, `debrief-a-even.png`, `debrief-a-rounds.png` (before and after).
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 
