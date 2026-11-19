@@ -8367,3 +8367,18 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/space.js`, `app/state.js`, `app/program-ui.js`, `app/render.js`, `app/hud.js`, `app/cockpit.js`,
   `chapters.mjs`, `starts/*.js`, `tests/space.mjs`, `tests/flow.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`,
   `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — design desk (Fable 5.2, main clone): D52, the sans is IBM Plex Sans and B612; claim cleared (ELEMENTS.md 0.1.4)
+
+- **Asked:** Caio, on the five faces: "I like IBM plex and B612 for their legibility. I think they also have the
+  right feel".
+- **Done:** D52 in DECISIONS.md. Both are bundled; the split is the design desk's reading, Caio's to overrule: Plex
+  on the paper places (the Assembly's form, the drawing), B612 on the lit panels (the cockpit). The mock-up opens in
+  these; ELEMENTS.md § 7.1, `mockups/README.md` and the two QUEUE *Proposed* lines updated.
+- **Checked:** stills of Form and Drawing in Plex, Panel and the Cockpit caution view in B612, at 1258 × 702:
+  nothing overflows or wraps that did not before.
+- **Not checked:** woff2 sizes; other window sizes; IBM Plex Mono and B612 Mono as the data face beside each.
+- **Next:** the orchestrator ranks the six *Proposed* lines. The three faces not picked (Barlow, Sofia Sans,
+  Archivo, 2.0 MB) are still in `mockups/kit/faces/`; removing them needs Caio's word.
+- Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `QUEUE.md` (*Proposed*), `mockups/kit/index.html`,
+  `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

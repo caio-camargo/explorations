@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). Open: which sans to bundle (§ 7.1).
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52).
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -191,7 +191,7 @@ Checked this session, from stills at 1258 × 702:
 ## 7. If this is adopted: the order
 
 1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
-2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship): compared in § 7.1, Caio's pick.
+2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship): compared in § 7.1; **IBM Plex Sans and B612** (D52).
 3. The role classes and one dress's tokens in `index.html` (with Q478 and Q480), the Assembly first (vehicle and flow).
 4. The flight HUD on the same roles (Q477), with cautions on lamps (D51).
 5. A test that fails on a font size, radius or colour outside the tokens, so the count in § 1 item 4 can't come back.
@@ -226,7 +226,16 @@ has figures of one width through `font-variant-numeric: tabular-nums`, checked.)
 - **Sofia Sans** and **Archivo** sit between; Sofia's small x-height shows at footnote size.
 - **▲ and ▸ are in none of them**: the caution glyph and the prompt marker should be drawn (CSS or SVG), not typed.
 
-**My pick: Barlow** (regular and semibold, in the normal and condensed widths: four files), with the arrow drawn.
+**D52 (Caio, 2026-11-18): IBM Plex Sans and B612.** "I like IBM plex and B612 for their legibility. I think they
+also have the right feel." Where each goes is the design desk's reading of the measurements, for Caio to overrule:
+**Plex on the paper places** (the Assembly's form, the drawing: long lists, and it narrows to 85 % for printed
+labels), **B612 on the lit panels** (the cockpit's engraved labels, lamps and readouts: few words, large, and it is
+what the face was drawn for). One sans per place, so the budget of two faces a place holds. Checked on stills
+(`form-plex.png`, `drawing-plex.png`, `panel-b612.png`, `caution-b612.png`): nothing overflows at 1258 × 702; the
+mock-up now opens in these. Files: Plex is one variable file (537 KB as TTF), B612 two (254 KB); woff2 sizes not
+measured. Not looked at: IBM Plex Mono and B612 Mono as the data face beside each (both exist, same licence).
+
+Before D52 my pick was Barlow (regular and semibold, in the normal and condensed widths: four files), with the arrow drawn.
 Plex if the missing arrow or the thinner small labels bother Caio on the stills (`form-barlow.png`, `form-plex.png`).
 
 ## 8. Decided, and open
@@ -276,6 +285,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.4 (2026-11-18): D52, the sans is IBM Plex Sans (paper) and B612 (lit panels).
 - 0.1.3 (2026-11-18): § 7.1, five sans faces measured; the build filed under QUEUE *Proposed*.
 - 0.1.2 (2026-11-18): D51, the cockpit's caution on lamps.
 - 0.1.1 (2026-11-18): D50 recorded; pictures, the power's colour and the cockpit caution added to the mock-up.

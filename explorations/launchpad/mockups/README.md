@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.37 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.38 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -23,7 +23,8 @@ beside them) for the *Sans* buttons and the *Faces* view. Stills `faces.png`, `f
 
 **Pick (D50, Caio 2026-11-18):** the roles as proposed; **Form** for the Assembly; the power's colour on the launch
 button only; pictures on the parts. **D51:** the cockpit's caution is **B**, a lit tile outside the readout (the Cockpit caution view).
-_Open: the sans to bundle (my pick Barlow, then IBM Plex Sans)._
+**D52:** the sans is **IBM Plex Sans** on the paper dresses and **B612** on the Panel (the mock-up opens in these;
+stills `form-plex.png`, `drawing-plex.png`, `panel-b612.png`, `caution-b612.png`).
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 
