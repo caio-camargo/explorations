@@ -8382,3 +8382,24 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   Archivo, 2.0 MB) are still in `mockups/kit/faces/`; removing them needs Caio's word.
 - Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `QUEUE.md` (*Proposed*), `mockups/kit/index.html`,
   `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): a flight HUD mock-up on the roles, for Q477 (ELEMENTS.md 0.1.5)
+
+- **Asked:** Caio: "yes, go ahead with the flight HUD mock-up".
+- **Done:** `mockups/kit/flight.html`: the flight screen as the instrument panel (engraved B612, lit figures on glass,
+  cautions on lamps), over the game's own climb and orbit (`views.js` 94, 156), in four states (all quiet, caution,
+  warning, orbit burn), with switches for the phosphor, the figures' face, how a key shows it is on, and the gauge.
+  ELEMENTS.md § 6.1 has the layout and seven findings; 18 stills in `output/launchpad/mockups/kit/flight-*.png`.
+- **Found:** the gauge is a role ELEMENTS.md lacked; filled amber bars read as amber tiles when blurred (a pointer
+  gauge does not); a key lit whole outshines read 1 and is an amber tile in grey; B612's own figures are of one
+  width, so the cockpit can be one family; B612 Mono spaces the point and the colon as full cells.
+- **Checked:** every state fits at 1258 × 644 with no bezel overlapping (the page's `CHECK()`); squint and grey stills
+  looked at for the caution and warning states.
+- **Not checked:** a landing, the map, the Rollout, the rover yard, the eras; a window under 1258 px (the three
+  bottom bezels would meet); the copy and the figures are invented; nothing in play.
+- **Waiting on Caio:** the layout; figures in B612 (my pick), VT323 or B612 Mono; the phosphor; bar or pointer
+  gauges; legend or plate keys; whether the gauge joins the roles (a MINOR bump of ELEMENTS.md).
+- Added: `mockups/kit/faces/B612Mono-*.ttf` with its licence (OFL, github.com/google/fonts); `bg-climb.jpg`,
+  `bg-orbit.jpg`, `nav-*.png`, `today-flight.jpg` (the game's own renders).
+- Files: launchpad `mockups/kit/` (above), `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*, my own line);
+  root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

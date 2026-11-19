@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52).
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477, with open picks: § 6.1.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -188,6 +188,51 @@ Checked this session, from stills at 1258 × 702:
   construction); any dress on the flight HUD, the Program or the map; any window larger than 1258 × 702; a
   colour-blind simulation; whether Bahnschrift exists off Windows (it is a stand-in: the game bundles no sans).
 
+### 6.1 The flight HUD on the roles (2026-11-19, for Q477)
+
+`mockups/kit/flight.html`, opened as a file. The flight screen as the instrument panel, from the same roles: engraved
+B612 for the system (labels, headings, key legends), lit figures on glass for the data, cautions on lamps (D51). The
+backgrounds, the navball and *Today* are the game's own at v1.370 (`views.js` 94 and 156); **the figures and the
+caution sentences are invented.** Bar: **State** (Climb all quiet, Caution, Warning, Orbit burn), **Phosphor**,
+**Figures**, **Key on**, **Gauge**, **Checks** (Squint, Grey, Today). Stills `output/launchpad/mockups/kit/flight-*.png`.
+
+**The layout, against UI.md § 3's Flight row.**
+- Read 1 is one bezel at the bottom centre: speed, the navball, altitude, in the order aircraft use (speed left of the
+  ball, altitude right), with the caution column at its right edge. Speed and altitude take the largest size: the
+  cockpit has no place title, so its fourth size goes to them.
+- Read 2 is two bezels: *Stage* (the stage flying, its fuel, what Space does next) at the bottom left, and one *phase
+  card* at the bottom right (Ascent: Q and structure; Burn: Δv to go, ignition, burn time).
+- Cut from the standing screen, to live behind *Readout +*: the mission line, the link's name, total Δv and TWR, the
+  angle of attack, the altitude tape, the radar height and the air gauge. Each is a call for Caio and flow to check.
+
+**Found.**
+1. **A role was missing: the gauge** (a value drawn as a length against a limit). The Assembly has none; the cockpit
+   has five. Its code here: a strip of glass with the limit as a tick engraved on the bezel; it never changes colour.
+2. **A lit tile always has a row of the same name on the phase card**: the gauge, the figure, and the fix under it
+   in the readout's own colour (UI.md rule 14). HEAT lights, so a Heat row appears; when it goes dark the row leaves
+   (rule 3). The same word on the tile and the row is what ties them.
+3. **Amber figures and amber tiles do not collide** (D51 holds): a tile is a filled block with dark letters, in its own
+   column. **But a filled amber bar does**: blurred, the throttle and the gauges were the same blobs as the tiles
+   (`flight-caution-squint.png`). With *Gauge: Pointer* (a mark on a scale) the only filled blocks in the phosphor's
+   colour are lamps (`flight-caution-pointer-squint.png`). A white phosphor avoids it either way; a green one would
+   collide with GO on the Rollout's poll (not mocked).
+4. **A key lit whole is the brightest thing on the panel**, brighter than read 1, and in grey it is an amber tile
+   (`flight-quiet-squint-plate.png`, `flight-warning-grey-plate.png`). *Key on: Legend* lights only the legend and a
+   bar on the key. This departs from "chosen is inverted" (§ 4) for the cockpit only.
+5. **Red differs from amber without colour** by a white frame and by the master's word (CAUTION, WARNING):
+   `flight-warning-grey.png`. A flash would too; a still can't show it.
+6. **Figures.** VT323 needs 18 px for a row and 46 px for read 1. B612 Mono gives the point and the colon a full
+   cell (`13. 6`, `0: 55`). **B612 itself has figures of one width**, reads best of the three, and makes the cockpit
+   one family; VT323 would stay on mission control's CRTs. Label against value is then engraved against lit (tone,
+   glass, capitals), no longer also the face.
+7. **The navball is the strongest colour on the panel** (the game's blue). Its look is look & sound's, with Q436.
+
+**My picks:** B612 for the figures, Pointer gauges if the phosphor stays amber, Legend keys. All for Caio.
+
+**Not checked.** A landing, the map, the Rollout and the rover yard; the eras; a window narrower than 1258 px, where
+the three bottom bezels (226 + 750 + 226 px) would meet; the hold keys' symbols (placeholders, not Q436's); the
+copy; any of it in play.
+
 ## 7. If this is adopted: the order
 
 1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
@@ -277,7 +322,7 @@ Read this session (2026-11-18):
   paper is closed): opus.lib.uts.edu.au/handle/10453/4837
 - Wikipedia, "Monochrome monitor": P1 green, P3 amber, P4 white; amber "a little later" than green, no year found.
 - The font files and their licences: github.com/google/fonts, `ofl/barlow`, `barlowcondensed`, `barlowsemicondensed`,
-  `ibmplexsans`, `b612`, `sofiasans`, `sofiasanscondensed`, `archivo`.
+  `ibmplexsans`, `b612`, `b612mono`, `sofiasans`, `sofiasanscondensed`, `archivo`.
 
 Recalled, not re-read (check before quoting): Saussure, *Course in General Linguistics* (value by difference);
 Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of Everyday Things* (signifiers); Tufte,
@@ -285,6 +330,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.5 (2026-11-19): § 6.1, the flight HUD mock-up (`mockups/kit/flight.html`); the gauge as a missing role.
 - 0.1.4 (2026-11-18): D52, the sans is IBM Plex Sans (paper) and B612 (lit panels).
 - 0.1.3 (2026-11-18): § 7.1, five sans faces measured; the build filed under QUEUE *Proposed*.
 - 0.1.2 (2026-11-18): D51, the cockpit's caution on lamps.

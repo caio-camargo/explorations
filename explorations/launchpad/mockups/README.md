@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.38 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.39 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -25,6 +25,13 @@ beside them) for the *Sans* buttons and the *Faces* view. Stills `faces.png`, `f
 button only; pictures on the parts. **D51:** the cockpit's caution is **B**, a lit tile outside the readout (the Cockpit caution view).
 **D52:** the sans is **IBM Plex Sans** on the paper dresses and **B612** on the Panel (the mock-up opens in these;
 stills `form-plex.png`, `drawing-plex.png`, `panel-b612.png`, `caution-b612.png`).
+
+**`kit/flight.html`** (2026-11-19, for Q477; ELEMENTS.md § 6.1): the flight HUD as the instrument panel on the same
+roles, over the game's own climb and orbit. Bar: *State* (Climb all quiet, Caution, Warning, Orbit burn), *Phosphor*
+(amber, green, white), *Figures* (VT323, B612 Mono, B612), *Key on* (Legend, Plate), *Gauge* (Bar, Pointer), *Checks*
+(Squint, Grey, Today). Stills `flight-<state>.png` and variants.
+**Pick:** _(Caio: the layout; the figures' face; the phosphor; the gauge; how a key shows it is on. My picks: B612,
+Pointer if amber, Legend)_
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 
