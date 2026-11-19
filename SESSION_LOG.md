@@ -8411,7 +8411,7 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   staging readout needs work, i think each stage needs to be a separate box or something because it needs to carry
   more information than a single word or phrase".
 - **Done:** D53 in DECISIONS.md. `mockups/kit/flight.html` rebuilt: the main bezel 628 × 142 px (was 750 × 212) with
-  the navball rising 80 px above it; speed and altitude at 30 px (were 46); the caution tiles as a strip under the
+  the navball rising about 60 px above it; speed and altitude at 30 px (were 46); the caution tiles as a strip under the
   instruments; the phase card's rows on one line; each stage a box of glass (number, events or engine, Δv, burn
   time, thrust to weight; the fuel gauge on the one flying). 18 stills retaken.
 - **Measured:** the bezels cover 24.5 % of the 1258 × 644 view in the quiet climb (35.9 % in round 1), 28.6 % with

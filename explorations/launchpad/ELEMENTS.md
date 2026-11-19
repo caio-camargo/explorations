@@ -202,7 +202,7 @@ the staging readout needs work, i think each stage needs to be a separate box or
 carry more information than a single word or phrase". Round 2 is what the file shows now:
 - **Smaller.** The bezels cover 24.5 % of the 1258 × 644 view in the quiet climb, from 35.9 % in round 1. The
   main bezel is 628 × 142 px (was 750 × 212).
-- **The panel is lower than the ball.** The navball stands on the bezel and rises 80 px above its edge, with the
+- **The panel is lower than the ball.** The navball stands on the bezel and rises about 60 px above its edge, with the
   heading and pitch on a small tab over it.
 - **Smaller figures.** Speed and altitude are 30 px VT323 (were 46), with their labels beside them, not above.
 - **Each stage is its own box of glass**, stacked as the rocket is (the one flying at the bottom). Its number is
