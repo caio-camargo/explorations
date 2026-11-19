@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7. Nothing open (D51).
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). Open: which sans to bundle (§ 7.1).
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -191,12 +191,43 @@ Checked this session, from stills at 1258 × 702:
 ## 7. If this is adopted: the order
 
 1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
-2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship). Candidates to compare, all
-   under the Open Font License as recalled: Barlow (with Semi Condensed and Condensed), IBM Plex Sans (with Condensed),
-   B612 (drawn for Airbus cockpit displays).
+2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship): compared in § 7.1, Caio's pick.
 3. The role classes and one dress's tokens in `index.html` (with Q478 and Q480), the Assembly first (vehicle and flow).
 4. The flight HUD on the same roles (Q477), with cautions on lamps (D51).
 5. A test that fails on a font size, radius or colour outside the tokens, so the count in § 1 item 4 can't come back.
+
+### 7.1 The sans, measured (2026-11-18)
+
+Five faces under the Open Font License, downloaded from `github.com/google/fonts` into `mockups/kit/faces/` with
+their licences, beside the stand-in. Measured in headless Chrome by the mock-up's *Faces* view (still:
+`output/launchpad/mockups/kit/faces.png`); the *Sans* buttons put any of them on the Assembly.
+
+| Face | Longest part name, 13 px | A stage row, 13 px semibold | x-height | Figures of one width | Missing of Δ → × ° · − ≥ ± ▲ ▸ ✓ | Widths and weights |
+|---|---|---|---|---|---|---|
+| Bahnschrift (Windows only) | 139 px | 171 px | 0.51 | when asked | → − ≥ ▲ ▸ | width 75–100, weight 300–700 |
+| **Barlow** | 133 | 171 | 0.51 | when asked | → ▲ ▸ | three widths as separate families, nine weights |
+| **IBM Plex Sans** | 140 | 205 | 0.52 | by default | ▲ ▸ | width 85–100, weight 100–700, one file |
+| B612 | 151 | 226 | 0.56 | by default | ▲ | one width, two weights |
+| Sofia Sans | 132 | 183 | 0.49 | when asked | ▲ ▸ | four widths as families, any weight |
+| Archivo | 136 | 197 | 0.53 | when asked | ▲ ▸ | width 62–125, weight 100–900, one file |
+
+("Longest part name" is *Propellant sphere 0.4 m*; the stage row is `14.04 → 6.94 2177 1969 1.51 139`. Every face
+has figures of one width through `font-variant-numeric: tabular-nums`, checked.)
+
+- **Barlow** is the nearest to the stand-in the mock-ups were judged in (same widths to the pixel on the stage row),
+  the narrowest, and its condensed cut is a real one, which the form's printed labels lean on. Against it: no →
+  (the game writes `14.04 → 6.94`), so the arrow must be drawn or come from the data face, and six files
+  (about 630 KB as TTF; smaller once converted, not measured).
+- **IBM Plex Sans** has every glyph but the two triangles, figures of one width without asking, and is sturdier at
+  10.5 px. Against it: its rows run 20 % wider, it narrows only to 85 %, and it is the most recognisable as a
+  present-day corporate face.
+- **B612** reads best small (the largest x-height) and is the widest by a third, with no condensed cut: a face for
+  a few big readouts, not for the Assembly's lists.
+- **Sofia Sans** and **Archivo** sit between; Sofia's small x-height shows at footnote size.
+- **▲ and ▸ are in none of them**: the caution glyph and the prompt marker should be drawn (CSS or SVG), not typed.
+
+**My pick: Barlow** (regular and semibold, in the normal and condensed widths: four files), with the arrow drawn.
+Plex if the missing arrow or the thinner small labels bother Caio on the stills (`form-barlow.png`, `form-plex.png`).
 
 ## 8. Decided, and open
 
@@ -236,6 +267,8 @@ Read this session (2026-11-18):
 - van Leeuwen, "Towards a semiotics of typography", *Information Design Journal* 14(2), 2006: abstract only (the
   paper is closed): opus.lib.uts.edu.au/handle/10453/4837
 - Wikipedia, "Monochrome monitor": P1 green, P3 amber, P4 white; amber "a little later" than green, no year found.
+- The font files and their licences: github.com/google/fonts, `ofl/barlow`, `barlowcondensed`, `barlowsemicondensed`,
+  `ibmplexsans`, `b612`, `sofiasans`, `sofiasanscondensed`, `archivo`.
 
 Recalled, not re-read (check before quoting): Saussure, *Course in General Linguistics* (value by difference);
 Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of Everyday Things* (signifiers); Tufte,
@@ -243,5 +276,6 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.3 (2026-11-18): § 7.1, five sans faces measured; the build filed under QUEUE *Proposed*.
 - 0.1.2 (2026-11-18): D51, the cockpit's caution on lamps.
 - 0.1.1 (2026-11-18): D50 recorded; pictures, the power's colour and the cockpit caution added to the mock-up.

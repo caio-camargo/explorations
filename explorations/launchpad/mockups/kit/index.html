@@ -13,6 +13,20 @@
 @font-face{font-family:'Courier Prime';font-weight:700;src:url(../../fonts/courier-prime-bold.woff2) format('woff2')}
 @font-face{font-family:'VT323';src:url(../../fonts/vt323.woff2) format('woff2')}
 @font-face{font-family:'Bebas Neue';src:url(../../fonts/bebas-neue.woff2) format('woff2')}
+/* candidate sans faces (ELEMENTS.md § 7.1), all under the Open Font License: faces/OFL-*.txt. Widths are declared so that
+   font-stretch:75% (the labels) picks each family's condensed cut. */
+@font-face{font-family:'Barlow';font-weight:400;src:url(faces/Barlow-Regular.ttf)}
+@font-face{font-family:'Barlow';font-weight:600;src:url(faces/Barlow-SemiBold.ttf)}
+@font-face{font-family:'Barlow';font-weight:400;font-stretch:87.5%;src:url(faces/BarlowSemiCondensed-Regular.ttf)}
+@font-face{font-family:'Barlow';font-weight:600;font-stretch:87.5%;src:url(faces/BarlowSemiCondensed-SemiBold.ttf)}
+@font-face{font-family:'Barlow';font-weight:400;font-stretch:75%;src:url(faces/BarlowCondensed-Regular.ttf)}
+@font-face{font-family:'Barlow';font-weight:600;font-stretch:75%;src:url(faces/BarlowCondensed-SemiBold.ttf)}
+@font-face{font-family:'IBM Plex Sans';font-weight:100 700;font-stretch:85% 100%;src:url(faces/IBMPlexSans-var.ttf)}
+@font-face{font-family:'B612';font-weight:400;src:url(faces/B612-Regular.ttf)}
+@font-face{font-family:'B612';font-weight:700;src:url(faces/B612-Bold.ttf)}
+@font-face{font-family:'Sofia Sans';font-weight:1 1000;src:url(faces/SofiaSans-var.ttf)}
+@font-face{font-family:'Sofia Sans';font-weight:1 1000;font-stretch:75%;src:url(faces/SofiaSansCondensed-var.ttf)}
+@font-face{font-family:'Archivo';font-weight:100 900;font-stretch:62% 125%;src:url(faces/Archivo-var.ttf)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#000;overflow:hidden}
 /* ---------- the mock-up's own chrome (not part of any dress) ---------- */
@@ -26,10 +40,10 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
 body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.squint.grey #stage{filter:blur(4px) grayscale(1)}
 #today{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
 [data-dress=today] #today{display:block}[data-dress=today] .pn,[data-dress=today] .card{display:none}
-[data-view=asm] .sheet{display:none}[data-view=sheet] .pn:not(.sheet),[data-view=sheet] .card{display:none}
+[data-view=asm] .sheet,[data-view=caution] .sheet,[data-view=faces] .sheet{display:none}[data-view=sheet] .pn:not(.sheet),[data-view=sheet] .card{display:none}
 
 /* ---------- the grammar: structure shared by every dress ---------- */
-#stage{--power:#2b5ea8;--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
+#stage{--sans:Bahnschrift;--power:#2b5ea8;--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
 .pn{position:absolute;top:12px;bottom:12px;overflow:auto;background:var(--surf);padding:12px 14px;border-radius:var(--rad);scrollbar-width:thin}
 .pn.left{left:12px;width:284px}.pn.right{right:12px;width:346px;display:flex;flex-direction:column;overflow:hidden}
 .scroll{flex:1;overflow:auto;scrollbar-width:thin;margin-right:-8px;padding-right:8px}
@@ -90,22 +104,24 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 .ic{flex:none;width:25px;height:20px;margin-right:6px;fill:currentColor;align-self:center;opacity:.9}
 body.nopic .ic{display:none}
 .pri{background:var(--power);border-color:var(--power);color:#fff}.pri:hover{background:var(--power)}
-[data-view=asm] .cview,[data-view=sheet] .cview{display:none}[data-view=caution] .pn:not(.cview),[data-view=caution] .card{display:none}
+#stage:not([data-v=caution]) .cview,#stage:not([data-v=faces]) .fview{display:none}[data-view=caution] .pn:not(.cview),[data-view=caution] .card,[data-view=faces] .pn:not(.fview),[data-view=faces] .card{display:none}
+.pn.fview{left:50%;transform:translateX(-50%);width:min(1180px,98vw)}.fview table{width:100%;border-collapse:collapse}.fview td,.fview th{text-align:left;vertical-align:top;padding:7px 12px 7px 0;border-top:1px solid var(--rule)}.fview th{border:0}
+.fview .sp{font-size:13px;line-height:1.35}.fview .sp small{font-size:10.5px}.fview .sp .c{font-stretch:75%;text-transform:uppercase;letter-spacing:.1em;font-size:11px}.fview td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 .pn.cview{left:50%;transform:translateX(-50%);width:min(900px,96vw);bottom:auto}
 .ab{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:6px}
 .lamps{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
-.lamp{display:inline-block;font:600 11px/1 Bahnschrift,'Arial Narrow',sans-serif;font-stretch:75%;letter-spacing:.12em;text-align:center;padding:8px 2px;border-radius:2px;background:#1b1c1a;color:#55574f;border:1px solid #000;box-shadow:inset 0 1px 0 #333}
+.lamp{display:inline-block;font:600 11px/1 var(--sans),'Arial Narrow',sans-serif;font-stretch:75%;letter-spacing:.12em;text-align:center;padding:8px 2px;border-radius:2px;background:#1b1c1a;color:#55574f;border:1px solid #000;box-shadow:inset 0 1px 0 #333}
 .lamps .lamp{display:block}
 .lamp.lit{background:#f2b01e;color:#1a1408;box-shadow:0 0 12px rgba(242,176,30,.55)}
 .lamp.master{grid-column:1/-1;padding:10px}
 /* ---------- dress 1 · PLAIN: the grammar with no costume. One face (DIN), no hue outside the three conditions ---------- */
-[data-dress=plain] #stage{--f-say:Bahnschrift,'Segoe UI',system-ui,sans-serif;--surf:rgba(20,21,23,.95);--solid:#141517;--ink:#ece8df;--quiet:#a39d90;--faint:#6a665d;
+[data-dress=plain] #stage{--f-say:var(--sans),'Segoe UI',system-ui,sans-serif;--surf:rgba(20,21,23,.95);--solid:#141517;--ink:#ece8df;--quiet:#a39d90;--faint:#6a665d;
   --plate:#2a2c30;--plateEdge:#4c4f55;--plateHi:#3a3d42;--well:#0b0c0d;--wellEdge:#000;--hover:rgba(255,255,255,.08);--rule:#3a3c40;--amber:#f0a92a;--red:#ff5d4d;--go:#58c98b;--rad:2px}
 [data-dress=plain] .pn,[data-dress=plain] .card{box-shadow:0 6px 24px rgba(0,0,0,.55)}
 [data-dress=plain] .card{border:1px solid #4c4f55}
 
 /* ---------- dress 2 · FORM: a printed form, filled in on a typewriter. Printed = the system; typed = the data ---------- */
-[data-dress=form] #stage{--f-say:'Courier Prime',Courier,monospace;--f-print:Bahnschrift,'Arial Narrow',sans-serif;--s1:12.5px;--surf:#f1e8d2;--solid:#f1e8d2;--ink:#2a2620;--quiet:#6b604e;--faint:#a3977f;--print:#1d3b6e;
+[data-dress=form] #stage{--f-say:'Courier Prime',Courier,monospace;--f-print:var(--sans),'Arial Narrow',sans-serif;--s1:12.5px;--surf:#f1e8d2;--solid:#f1e8d2;--ink:#2a2620;--quiet:#6b604e;--faint:#a3977f;--print:#1d3b6e;
   --plate:#fbf6e6;--plateEdge:#2a2620;--plateHi:#fff;--well:transparent;--wellEdge:transparent;--hover:rgba(29,59,110,.12);--rule:#9c8f78;--amber:#b86e00;--red:#b0261a;--go:#1f7a3c;--rad:0}
 [data-dress=form] .pn,[data-dress=form] .card{box-shadow:3px 4px 0 rgba(0,0,0,.4);background:linear-gradient(180deg,#f5edd9,#ede3ca)}
 [data-dress=form] .card{border:1px solid #2a2620}
@@ -130,7 +146,7 @@ body.nopic .ic{display:none}
 [data-dress=form] .kbd{font-family:var(--f-print)}
 
 /* ---------- dress 3 · DRAWING: the engineering drawing. Lettered caps = the sheet; a parts list with item numbers ---------- */
-[data-dress=drawing] #stage{--f-say:Bahnschrift,'Segoe UI',sans-serif;--surf:rgba(22,49,88,.96);--solid:#163158;--ink:#eaf1f8;--quiet:#a8bfd9;--faint:#6d87a8;--line:rgba(234,241,248,.55);
+[data-dress=drawing] #stage{--f-say:var(--sans),'Segoe UI',sans-serif;--surf:rgba(22,49,88,.96);--solid:#163158;--ink:#eaf1f8;--quiet:#a8bfd9;--faint:#6d87a8;--line:rgba(234,241,248,.55);
   --plate:rgba(234,241,248,.1);--plateEdge:var(--line);--plateHi:rgba(234,241,248,.2);--well:transparent;--wellEdge:var(--line);--hover:rgba(234,241,248,.12);--rule:rgba(234,241,248,.3);--amber:#ffc04a;--red:#ff7a6b;--go:#7fe0a2;--rad:0}
 [data-dress=drawing] .pn,[data-dress=drawing] .card{border:1px solid var(--line);outline:1px solid var(--line);outline-offset:-5px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
 [data-dress=drawing] .ttl,[data-dress=drawing] .h,[data-dress=drawing] .sh,[data-dress=drawing] .lab,[data-dress=drawing] .btn{font-stretch:75%;text-transform:uppercase;letter-spacing:.12em}
@@ -154,7 +170,7 @@ body.nopic .ic{display:none}
 [data-dress=drawing] .ic{fill:none;stroke:currentColor;stroke-width:1.1}
 
 /* ---------- dress 4 · PANEL: the instrument panel. Engraved = the system; lit on glass = the data ---------- */
-[data-dress=panel] #stage{--f-say:'VT323',monospace;--f-print:Bahnschrift,'Arial Narrow',sans-serif;--surf:#2b2e31;--solid:#0a0b0a;--ph:#e9f2df;--ink:#e6e1d3;--quiet:#aaa698;--faint:#77746a;
+[data-dress=panel] #stage{--f-say:'VT323',monospace;--f-print:var(--sans),'Arial Narrow',sans-serif;--surf:#2b2e31;--solid:#0a0b0a;--ph:#e9f2df;--ink:#e6e1d3;--quiet:#aaa698;--faint:#77746a;
   --plate:#3a3e43;--plateEdge:#15171a;--plateHi:#484d53;--well:#0a0b0a;--wellEdge:#000;--hover:rgba(233,242,223,.14);--rule:#55584f;--amber:#f2b01e;--red:#ff4a3a;--go:#52d08a;--rad:3px}
 body.amber[data-dress=panel] #stage{--ph:#ffb000}
 [data-dress=panel] .pn,[data-dress=panel] .card{background:linear-gradient(180deg,#303337,#26292c);border:1px solid #111;box-shadow:inset 0 1px 0 #50545a,0 8px 26px rgba(0,0,0,.6);font-family:var(--f-print)}
@@ -199,7 +215,8 @@ body.amber[data-dress=panel] #stage{--ph:#ffb000}
 <body data-dress="form" data-view="asm">
 <div id="bar">
   <b>Dress</b><span id="dresses"></span>
-  <b>View</b><button data-view="asm">Assembly</button><button data-view="sheet">Role sheet</button><button data-view="caution" title="ELEMENTS.md § 5: the caution in an amber cockpit, two ways">Cockpit caution</button>
+  <b>View</b><button data-view="asm">Assembly</button><button data-view="sheet">Role sheet</button><button data-view="faces" title="ELEMENTS.md § 7.1: the sans faces the game could bundle, measured">Faces</button><button data-view="caution" title="ELEMENTS.md § 5: the caution in an amber cockpit, two ways">Cockpit caution</button>
+  <b>Sans</b><span id="sanses"></span>
   <b>Power</b><button data-power="#2b5ea8">cobalt</button><button data-power="#b5532f">terracotta</button><button data-power="#c9982c">ochre</button>
   <b>Checks</b><button data-cls="squint" title="UI.md check 1: blurred, what stands out should be read 1">Squint</button><button data-cls="grey" title="nothing may depend on hue alone">Grey</button><button data-cls="nopic" title="hide the parts' pictures, to compare">No pictures</button><button data-cls="amber" title="Panel dress only: amber phosphor, to see it collide with the amber caution">Amber phosphor</button>
 </div>
@@ -267,6 +284,11 @@ body.amber[data-dress=panel] #stage{--ph:#ffb000}
     </div>
   </section>
 
+  <section class="pn fview">
+    <div class="head"><h1 class="ttl">Sans faces</h1><span class="note">each face in its own cut · measured in this browser · pick one in the bar to see it on the Assembly</span></div>
+    <table id="faces"><thead><tr><th class="lab">Face</th><th class="lab">Specimen: body 13, footnote 10.5, label 11 condensed</th><th class="lab">Parts list, px</th><th class="lab">Stage row, px</th><th class="lab">x-height</th><th class="lab">Figures</th><th class="lab">Missing</th><th class="lab">Widths, weights</th></tr></thead><tbody></tbody></table>
+  </section>
+
   <section class="pn cview">
     <div class="head"><h1 class="ttl">A caution in an amber cockpit</h1><span class="note">the same moment in a climb, two ways</span></div>
     <div class="ab">
@@ -332,15 +354,32 @@ const R=[
  ['.lamp','Lamp','A caution on an instrument panel: a tile outside any readout, dark until it matters.','<span class="lamp lit" style="padding:6px 10px">HEAT</span> <span class="lamp" style="padding:6px 10px">LINK</span>','the master caution and its tiles','a key: no raised edge, it is not pressed. A verdict: it lights and goes dark'],
  ['.well','Well','Holds objects. The only sunken region; what is inside can be picked up or dragged.','<div class="well" style="width:140px;height:22px"></div>','every list of objects','a panel: sunken, not raised'],
 ];
+// ---- the sans faces: family, what it ships with (read from the files in faces/)
+const SANS=[['Bahnschrift','Windows only: the stand-in','width 75–100, weight 300–700'],['Barlow','OFL','3 widths as families, 9 weights'],['IBM Plex Sans','OFL','width 85–100, weight 100–700'],
+  ['B612','OFL · drawn for Airbus cockpit displays','1 width, 2 weights'],['Sofia Sans','OFL','4 widths as families, weight 1–1000'],['Archivo','OFL','width 62–125, weight 100–900']];
+const NAMES=['Command pod','Crew capsule','Probe core','Instrument package','Biocapsule','Imaging camera','Whip antenna','Propellant sphere 0.4 m','Kestrel booster','Sparrow sounding','Apogee engine'];
+const GLY=['Δ','→','×','°','·','−','≥','±','▲','▸','✓'];
+function measure(){const c=document.createElement('canvas').getContext('2d'),w=(t,f)=>{c.font=f;return c.measureText(t).width};
+  return SANS.map(([f])=>{const q=`'${f}'`,b=`13px ${q}`;
+    const list=Math.max(...NAMES.map(n=>w(n,b))),row=w('14.04 → 6.94 2177 1969 1.51 139',`600 13px ${q}`);
+    c.font=`100px ${q}`;const xh=c.measureText('x').actualBoundingBoxAscent/100;
+    const tab=Math.abs(w('1111111111',b)-w('0000000000',b))<.5;
+    const miss=GLY.filter(g=>Math.abs(w(g,`40px ${q},monospace`)-w(g,`40px ${q},serif`))>.01);
+    return {face:f,loaded:document.fonts.check(b),list:+list.toFixed(1),row:+row.toFixed(1),xh:+xh.toFixed(3),tabularByDefault:tab,missing:miss.join(' ')}})}
+async function faces(){await Promise.all(SANS.flatMap(([f])=>[document.fonts.load(`13px '${f}'`),document.fonts.load(`600 13px '${f}'`),document.fonts.load(`condensed 11px '${f}'`)]));const M=measure();
+  $('#faces tbody').innerHTML=SANS.map(([f,lic,cuts],i)=>{const m=M[i];return `<tr><td><span class="nm" style="font-family:'${f}'">${f}</span><br><span class="note">${lic}</span></td>
+    <td class="sp" style="font-family:'${f}'"><span class="c">Thrust</span> &nbsp;<b style="font-weight:600;font-variant-numeric:tabular-nums">0.44</b> kN &nbsp; <span class="c">Δv, m/s</span> &nbsp;<b style="font-weight:600;font-variant-numeric:tabular-nums">14.04 → 6.94 · 2177 · 1969</b><br>Command pod is new to us: riskier ignitions, slower checkout<br><small>a guess, could be 30 % off · Il1 O0 5S 8B rn m · 0.0° N</small></td>
+    <td class="n">${m.list}</td><td class="n">${m.row}</td><td class="n">${m.xh}</td><td>${m.tabularByDefault?'one width':'one width only when asked'}</td><td>${m.missing||'none'}</td><td><span class="note">${cuts}</span></td></tr>`}).join('');return M}
 const DRESS=[['today','Today (v1.366)'],['plain','Plain'],['form','Form'],['drawing','Drawing'],['panel','Panel']];
 $('#roles tbody').innerHTML=R.slice().reverse().map(r=>`<tr><td><span class="nm">${r[1]}</span><br><span class="note">${r[2]}</span></td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('');
+$('#sanses').innerHTML=SANS.map(([f])=>`<button data-sans="${f}">${f}</button>`).join(' ');
 $('#dresses').innerHTML=DRESS.map(([k,n])=>`<button data-dress="${k}">${n}</button>`).join(' ');
-function sync(){for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:b.dataset.power?(B.dataset.power||'#2b5ea8')===b.dataset.power:B.classList.contains(b.dataset.cls))}
-$('#bar').onclick=e=>{const d=e.target.dataset;if(!d)return;if(d.dress)B.dataset.dress=d.dress;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);if(d.power){$('#stage').style.setProperty('--power',d.power);B.dataset.power=d.power}if(d.view==='caution'){B.dataset.dress='panel';B.classList.add('amber')}sync()};
+function sync(){for(const b of document.querySelectorAll('#bar button')){$('#stage').dataset.v=B.dataset.view}for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:b.dataset.power?(B.dataset.power||'#2b5ea8')===b.dataset.power:b.dataset.sans?(B.dataset.sans||'Bahnschrift')===b.dataset.sans:B.classList.contains(b.dataset.cls))}
+$('#bar').onclick=e=>{const d=e.target.dataset;if(!d)return;if(d.dress)B.dataset.dress=d.dress;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);if(d.power){$('#stage').style.setProperty('--power',d.power);B.dataset.power=d.power}if(d.sans){$('#stage').style.setProperty('--sans',`'${d.sans}'`);B.dataset.sans=d.sans}if(d.view==='caution'){B.dataset.dress='panel';B.classList.add('amber')}sync()};
 $('#stage').onmouseover=e=>{for(const r of R){const t=e.target.closest(r[0]);if(t){$('#who').innerHTML=`<b>${r[1]}</b> · ${r[2]}`;return}}$('#who').textContent='Hover an element to see its role.'};
 addEventListener('keydown',e=>{const i=+e.key;if(i>=1&&i<=5){B.dataset.dress=DRESS[i-1][0];sync()}});
-const q=new URLSearchParams(location.search);if(q.get('dress'))B.dataset.dress=q.get('dress');if(q.get('view'))B.dataset.view=q.get('view');if(q.get('power')){$('#stage').style.setProperty('--power','#'+q.get('power'));B.dataset.power='#'+q.get('power')}for(const c of['squint','grey','amber','nopic'])if(q.has(c))B.classList.add(c);
-sync();
+const q=new URLSearchParams(location.search);if(q.get('dress'))B.dataset.dress=q.get('dress');if(q.get('view'))B.dataset.view=q.get('view');if(q.get('power')){$('#stage').style.setProperty('--power','#'+q.get('power'));B.dataset.power='#'+q.get('power')}if(q.get('sans')){$('#stage').style.setProperty('--sans',`'${q.get('sans')}'`);B.dataset.sans=q.get('sans')}for(const c of['squint','grey','amber','nopic'])if(q.has(c))B.classList.add(c);
+sync();window.FACES=faces();
 </script>
 </body>
 </html>
