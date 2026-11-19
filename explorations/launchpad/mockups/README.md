@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.39 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.40 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -30,8 +30,9 @@ stills `form-plex.png`, `drawing-plex.png`, `panel-b612.png`, `caution-b612.png`
 roles, over the game's own climb and orbit. Bar: *State* (Climb all quiet, Caution, Warning, Orbit burn), *Phosphor*
 (amber, green, white), *Figures* (VT323, B612 Mono, B612), *Key on* (Legend, Plate), *Gauge* (Bar, Pointer), *Checks*
 (Squint, Grey, Today). Stills `flight-<state>.png` and variants.
-**Pick:** _(Caio: the layout; the figures' face; the phosphor; the gauge; how a key shows it is on. My picks: B612,
-Pointer if amber, Legend)_
+**Pick (D53, Caio 2026-11-19):** "it's the right direction, i like vt 323"; round 2 made it smaller, with the panel
+lower than the navball and a box for each stage. _Open: the phosphor; the gauge (my pick: Pointer if amber); how a
+key shows it is on (my pick: Legend)._
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 

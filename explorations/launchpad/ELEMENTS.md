@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
+**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477, with open picks: § 6.1.
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -196,12 +196,27 @@ backgrounds, the navball and *Today* are the game's own at v1.370 (`views.js` 94
 caution sentences are invented.** Bar: **State** (Climb all quiet, Caution, Warning, Orbit burn), **Phosphor**,
 **Figures**, **Key on**, **Gauge**, **Checks** (Squint, Grey, Today). Stills `output/launchpad/mockups/kit/flight-*.png`.
 
+**D53 (Caio, 2026-11-19), on round 1:** "it's the right direction, i like vt 323, but it takes up too much space
+and some numbers are way bigger than they need to be. the panel doesn't have to come up to the top of the navball.
+the staging readout needs work, i think each stage needs to be a separate box or something because it needs to
+carry more information than a single word or phrase". Round 2 is what the file shows now:
+- **Smaller.** The bezels cover 24.5 % of the 1258 × 644 view in the quiet climb, from 35.9 % in round 1. The
+  main bezel is 628 × 142 px (was 750 × 212).
+- **The panel is lower than the ball.** The navball stands on the bezel and rises 80 px above its edge, with the
+  heading and pitch on a small tab over it.
+- **Smaller figures.** Speed and altitude are 30 px VT323 (were 46), with their labels beside them, not above.
+- **Each stage is its own box of glass**, stacked as the rocket is (the one flying at the bottom). Its number is
+  the large figure. The stage flying: its engine, thrust to weight, the fuel gauge, Δv and time left, in a lit
+  frame. A stage waiting: its events as tokens, then its Δv, burn time and thrust to weight; the next one
+  carries the Space key. Later ones are dimmer.
+- **The caution tiles are a strip** along the bottom of the main bezel, the master first. The master alone has a
+  raised edge, since it alone is pressed (to acknowledge).
+
 **The layout, against UI.md § 3's Flight row.**
 - Read 1 is one bezel at the bottom centre: speed, the navball, altitude, in the order aircraft use (speed left of the
-  ball, altitude right), with the caution column at its right edge. Speed and altitude take the largest size: the
-  cockpit has no place title, so its fourth size goes to them.
-- Read 2 is two bezels: *Stage* (the stage flying, its fuel, what Space does next) at the bottom left, and one *phase
-  card* at the bottom right (Ascent: Q and structure; Burn: Δv to go, ignition, burn time).
+  ball, altitude right), with the caution strip under them.
+- Read 2 is two bezels: *Stages* at the bottom left, and one *phase card* at the bottom right (Ascent: Q and
+  structure; Burn: Δv to go, ignition, burn time), each row on one line.
 - Cut from the standing screen, to live behind *Readout +*: the mission line, the link's name, total Δv and TWR, the
   angle of attack, the altitude tape, the radar height and the air gauge. Each is a call for Caio and flow to check.
 
@@ -221,16 +236,17 @@ caution sentences are invented.** Bar: **State** (Climb all quiet, Caution, Warn
    bar on the key. This departs from "chosen is inverted" (§ 4) for the cockpit only.
 5. **Red differs from amber without colour** by a white frame and by the master's word (CAUTION, WARNING):
    `flight-warning-grey.png`. A flash would too; a still can't show it.
-6. **Figures.** VT323 needs 18 px for a row and 46 px for read 1. B612 Mono gives the point and the colon a full
+6. **Figures: VT323 (D53).** It reads at 18 px for a row and 30 px for read 1 (46 in round 1 was more than needed). B612 Mono gives the point and the colon a full
    cell (`13. 6`, `0: 55`). **B612 itself has figures of one width**, reads best of the three, and makes the cockpit
-   one family; VT323 would stay on mission control's CRTs. Label against value is then engraved against lit (tone,
-   glass, capitals), no longer also the face.
+   one family, but Caio prefers VT323. B612 Mono also overflows a stage box (279 px in 262).
 7. **The navball is the strongest colour on the panel** (the game's blue). Its look is look & sound's, with Q436.
 
-**My picks:** B612 for the figures, Pointer gauges if the phosphor stays amber, Legend keys. All for Caio.
+**Open, for Caio:** the phosphor (amber, white); bar or pointer gauges (my pick: pointer if amber); legend or plate
+keys (my pick: legend); whether the gauge joins the roles of § 3.
 
-**Not checked.** A landing, the map, the Rollout and the rover yard; the eras; a window narrower than 1258 px, where
-the three bottom bezels (226 + 750 + 226 px) would meet; the hold keys' symbols (placeholders, not Q436's); the
+**Not checked.** A landing, the map, the Rollout and the rover yard; the eras; a window narrower than about 1215 px, where
+the three bottom bezels (284 + 628 + 262 px) would meet; a rocket of five or more stages (the stack of boxes grows
+by 55 px a stage); the hold keys' symbols (placeholders, not Q436's); the
 copy; any of it in play.
 
 ## 7. If this is adopted: the order
@@ -330,6 +346,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.6 (2026-11-19): D53; round 2 of the flight HUD mock-up (smaller, a low panel, a box a stage).
 - 0.1.5 (2026-11-19): § 6.1, the flight HUD mock-up (`mockups/kit/flight.html`); the gauge as a missing role.
 - 0.1.4 (2026-11-18): D52, the sans is IBM Plex Sans (paper) and B612 (lit panels).
 - 0.1.3 (2026-11-18): § 7.1, five sans faces measured; the build filed under QUEUE *Proposed*.

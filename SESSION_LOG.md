@@ -8403,3 +8403,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `bg-orbit.jpg`, `nav-*.png`, `today-flight.jpg` (the game's own renders).
 - Files: launchpad `mockups/kit/` (above), `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*, my own line);
   root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): D53, the flight HUD's direction; the mock-up's round 2 (ELEMENTS.md 0.1.6)
+
+- **Asked:** Caio, on round 1: "it's the right direction, i like vt 323, but it takes up too much space and some
+  numbers are way bigger than they need to be. the panel doesn't have to come up to the top of the navball. the
+  staging readout needs work, i think each stage needs to be a separate box or something because it needs to carry
+  more information than a single word or phrase".
+- **Done:** D53 in DECISIONS.md. `mockups/kit/flight.html` rebuilt: the main bezel 628 × 142 px (was 750 × 212) with
+  the navball rising 80 px above it; speed and altitude at 30 px (were 46); the caution tiles as a strip under the
+  instruments; the phase card's rows on one line; each stage a box of glass (number, events or engine, Δv, burn
+  time, thrust to weight; the fuel gauge on the one flying). 18 stills retaken.
+- **Measured:** the bezels cover 24.5 % of the 1258 × 644 view in the quiet climb (35.9 % in round 1), 28.6 % with
+  two cautions lit; every state fits with no overlap in VT323 and B612; B612 Mono overflows a stage box.
+- **Not checked:** as the entry above; also a rocket of five or more stages, and a window under about 1215 px.
+- **Waiting on Caio:** the phosphor; bar or pointer gauges; legend or plate keys; the gauge as a role.
+- Files: launchpad `mockups/kit/flight.html`, `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`, `QUEUE.md`
+  (*Proposed*, my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
