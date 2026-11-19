@@ -4268,7 +4268,7 @@ checked:** in a browser (TESTING 405): flying prograde by a pilot in the gyro er
 a lander's picks; the engineer's relight over 400 rolls, never worse; the scientist's weights and `selN`); econ-46–49,
 flow-6 and core 35 unchanged; smoke. **Not checked:** in a browser (TESTING 407); the relight message in flight.
 
-## v1.368 — who enforces requalification: the program's masters (2026-11-18, economy session, QUEUE Q624; CREW decision 5)
+## v1.371 — who enforces requalification: the program's masters (2026-11-18, economy session, QUEUE Q624; CREW decision 5)
 
 v1.350's requalification (an uncrewed flight as far as the lost one, the capsule home inside the limits) is the same
 everywhere; who demands it and what skipping it costs now follow the program's owner, then the openness of whoever
@@ -4302,4 +4302,4 @@ The facility level the plan offered as a scapegoat's other price isn't taken (lo
 job queued on it); know-how is the cost. **Checked:** econ-51 (a loss under each owner: the company's insurance,
 lawsuits, valuation and its own requalification; the open inquiry, the populist flight and the election; the three
 whims and the regime odds; a consortium's open member); econ-47 updated (an open state's news says inquiry; the closed
-case forces the choice whim); smoke. **Not checked:** in a browser (TESTING 416).
+case forces the choice whim); CI's full run (the local smoke run was cut off for memory). **Not checked:** in a browser (TESTING 419).

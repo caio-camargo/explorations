@@ -297,12 +297,12 @@ arms (D9 3).
      state a loss under low opinion raises the odds of regime change.
    - **Consortium / mixed:** the **strictest member's rule** applies; one open member can force an inquiry, a reason
      to think twice before taking a democracy's money.
-   - *Built v1.368 (Q624; notes/economy.md § v1.368). The scapegoat's price is know-how only, not a facility level.*
+   - *Built v1.371 (Q624; notes/economy.md § v1.371). The scapegoat's price is know-how only, not a facility level.*
 
 ---
 
 ## Version history
-- **0.4.1 (2026-11-18):** decision 5 built (v1.368, Q624); a pointer under it.
+- **0.4.1 (2026-11-18):** decision 5 built (v1.371, Q624); a pointer under it.
 - **0.4.0 (2026-11-17):** decision 5: who enforces requalification follows ownership and openness (company: no
   refusal, the market prices it; open: an inquiry and election demagoguery; closed: the leadership's whim; consortium:
   the strictest member). QUEUE Q624.
