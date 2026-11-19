@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launchpad mock-up: the office on the roles</title>
+<!-- A static mock-up (ELEMENTS.md § 6.2). Never loaded by the game. The Program and the Debrief in the Form dress
+     (D50): printed = the system (IBM Plex Sans, D52), typed = the data (Courier Prime). Content is the game's own at
+     v1.370 (a new program on day 1; the debrief of a flight ended at 10 km). "Today" is the game's screen.
+     URL: ?view=program|debrief &squint=1 &grey=1 &today=1 -->
+<style>
+@font-face{font-family:'Courier Prime';src:url(../../fonts/courier-prime.woff2) format('woff2')}
+@font-face{font-family:'Courier Prime';font-weight:700;src:url(../../fonts/courier-prime-bold.woff2) format('woff2')}
+@font-face{font-family:'Bebas Neue';src:url(../../fonts/bebas-neue.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-weight:100 700;font-stretch:85% 100%;src:url(faces/IBMPlexSans-var.ttf)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+#bar{position:fixed;inset:0 0 auto 0;height:34px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/1 system-ui,sans-serif;display:flex;gap:6px;align-items:center;padding:0 10px;white-space:nowrap;overflow:auto}
+#bar b{font-weight:600;color:#8d9299;margin:0 2px 0 10px}#bar a{color:#9db8e8}
+#bar button{font:inherit;color:inherit;background:#26282c;border:1px solid #3a3d42;border-radius:3px;padding:5px 9px;cursor:pointer}
+#bar button.on{background:#e8e6e0;color:#111;border-color:#e8e6e0}
+#who{position:fixed;inset:auto 0 0 0;height:24px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/24px system-ui,sans-serif;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#who b{color:#fff}
+#stage{position:fixed;inset:34px 0 24px 0;overflow:hidden;background:repeating-linear-gradient(90deg,rgba(0,0,0,.10) 0 2px,transparent 2px 11px),repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 37px),linear-gradient(#5d3b26,#432919)}
+body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.squint.grey #stage{filter:blur(4px) grayscale(1)}
+.today{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5}
+body.today[data-view=program] #tp,body.today[data-view=debrief] #td{display:block}
+[data-view=program] .deb,[data-view=debrief] .prog{display:none}
+
+/* ---------- the Form dress: tokens (as mockups/kit/index.html) ---------- */
+#stage{--power:#2b5ea8;--f-say:'Courier Prime',Courier,monospace;--f-print:'IBM Plex Sans','Arial Narrow',sans-serif;--s0:11px;--s1:12.5px;--s2:16.5px;
+  --paper:#f1e8d2;--ink:#2a2620;--quiet:#6b604e;--faint:#a3977f;--print:#1d3b6e;--plate:#fbf6e6;--rule:#9c8f78;--amber:#b86e00;--red:#b0261a;--go:#1f7a3c;
+  font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
+.pp{position:absolute;background:linear-gradient(180deg,#f5edd9,#ede3ca);box-shadow:3px 4px 0 rgba(0,0,0,.4);padding:12px 14px}
+/* printed: title, headings, labels, key legends */
+.ttl{font:400 26px/1 'Bebas Neue',var(--f-print);letter-spacing:.06em;color:var(--print);margin:0}
+.h{font:600 12px/1.38 var(--f-print);font-stretch:85%;letter-spacing:.14em;text-transform:uppercase;background:var(--print);color:#f5edd9;padding:2px 8px;margin:0 0 6px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.h .note{color:#c9d3e6}
+.sh{font:400 11px/1.38 var(--f-print);font-stretch:85%;letter-spacing:.12em;text-transform:uppercase;color:var(--print);border-bottom:1px solid var(--print);margin:10px 0 3px}
+.lab{font:400 11px/1.38 var(--f-print);font-stretch:85%;letter-spacing:.08em;text-transform:uppercase;color:var(--print);white-space:nowrap}
+.term{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+/* typed: value, unit, name, sentence, note */
+.val{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.u{font-weight:400;color:var(--quiet);margin-left:.22em}
+.nm{font-weight:700}
+.say{margin:1px 0 0}
+.note{font-style:italic;font-size:11.5px;color:var(--quiet)}
+.faint,.faint .nm{color:var(--faint);font-weight:400}
+.pmt::before{content:"\25B8  "}
+/* a ledger row: name, leader, value */
+.row{display:flex;align-items:baseline;padding:1px 2px}
+.ld{flex:1;min-width:12px;border-bottom:1px dotted var(--quiet);margin:0 5px;position:relative;top:-3px}
+.row.sum{border-top:1px solid var(--ink);margin-top:3px;padding-top:3px}.row.sum .val{border-bottom:3px double var(--ink)}
+/* keys: command, navigation, primary */
+.btn{font:400 12.5px/1.38 var(--f-print);color:var(--ink);background:var(--plate);border:1px solid var(--ink);padding:3px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:1px 2px 0 rgba(42,38,32,.55)}
+.btn:hover{background:#fff}
+.kbd{font:400 10.5px/1.3 var(--f-print);border:1px solid currentColor;border-radius:3px;padding:0 4px;opacity:.75}
+.seg{display:flex}.seg .btn{margin-left:-1px;box-shadow:none;padding:4px 12px}.seg .btn.on{background:var(--ink);color:var(--paper)}
+.pri{font:600 15px/1 var(--f-print);font-stretch:85%;letter-spacing:.16em;text-transform:uppercase;color:#fff;background:var(--power);border:1px solid var(--power);padding:11px 16px;cursor:pointer;display:flex;justify-content:center;gap:10px;align-items:center;box-shadow:1px 2px 0 rgba(0,0,0,.5)}
+/* object: a thing you open (an offer). Open = inverted */
+.obj{display:flex;align-items:baseline;padding:2px 4px;cursor:pointer}.obj:hover{background:rgba(29,59,110,.12)}
+.obj.held{background:var(--ink);color:var(--paper)}.obj.held .u{color:inherit}.obj.held .ld{border-color:var(--paper)}.obj .nm{font-weight:400}.obj.held .nm{font-weight:700}
+.open{border:1px solid var(--ink);border-top:0;padding:5px 7px 7px;margin-bottom:4px}.open .acts{display:flex;gap:6px;margin-top:6px}
+.bdg{display:inline-block;min-width:1.6em;text-align:center;background:var(--amber);color:#fff;font:700 11px/1.5 var(--f-print);border-radius:9px;padding:0 5px;margin-left:6px;letter-spacing:0}
+.cnt{color:var(--quiet);margin-left:.6em;white-space:nowrap}.obj.held .cnt{color:inherit}.obj .nm{white-space:nowrap}
+/* verdict: a stamp. Its colour is the condition; its word says it too */
+.vd{display:inline-block;font:700 15px/1.2 var(--f-say);letter-spacing:.12em;padding:2px 9px;border:3px solid currentColor;outline:1px solid currentColor;outline-offset:2px;transform:rotate(-4deg)}
+.vd.no{color:var(--red)}.vd.go{color:var(--go)}.vd.filed{color:var(--print)}
+
+/* ---------- the Program ---------- */
+.letter{left:0;right:0;top:0;height:62px;display:flex;align-items:center;gap:14px;padding:0 22px;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+.letter .sp{flex:1}.letter .kv{display:grid;grid-template-columns:auto auto;gap:0 9px;align-items:baseline}.letter .val{font-size:var(--s2)}
+.tray{left:14px;top:78px;width:362px}
+.next{left:392px;top:78px;width:586px;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fbf6e6}
+.tabs{position:absolute;left:392px;top:124px}
+.sheet{left:392px;top:152px;width:586px;bottom:14px;overflow:hidden}
+.mis{margin:0 0 7px;padding-left:9px;border-left:2px solid var(--rule)}
+.acts{position:absolute;right:14px;bottom:14px;width:258px;display:flex;flex-direction:column;gap:7px}.acts .row2{display:flex;gap:7px}.acts .row2 .btn{flex:1;justify-content:center}
+/* ---------- the Debrief ---------- */
+.report{left:50%;transform:translateX(-36%);top:16px;bottom:14px;width:700px;padding:16px 26px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:10px}
+.clip{left:130px;top:70px;width:258px;transform:rotate(-2deg);background:#e9e4d6;padding:8px 10px;font:700 15px/1.2 Georgia,'Times New Roman',serif;box-shadow:2px 3px 0 rgba(0,0,0,.4)}
+.clip small{display:block;font:400 9.5px/1.4 Georgia,serif;letter-spacing:.14em;text-transform:uppercase;border-bottom:1px solid #2a2620;margin-bottom:4px}
+.rfoot{position:absolute;left:26px;right:26px;bottom:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;border-top:1px solid var(--rule);padding-top:8px}
+</style>
+</head>
+<body data-view="program">
+<div id="bar">
+  <a href="index.html">← kit</a>
+  <b>Screen</b><button data-view="program">Program</button><button data-view="debrief">Debrief</button>
+  <b>Checks</b><button data-cls="squint">Squint</button><button data-cls="grey">Grey</button><button data-cls="today" title="the game's own screen at v1.370, same content">Today</button>
+</div>
+<div id="stage">
+  <img class="today" id="tp" src="today-program.jpg" alt=""><img class="today" id="td" src="today-debrief.jpg" alt="">
+
+  <!-- ================= the Program ================= -->
+  <header class="pp letter prog">
+    <svg width="54" height="36" viewBox="0 0 54 36"><rect width="54" height="36" fill="#1f5a4a"/><path d="M0 0l14 18L0 36z" fill="#b5532a"/><path d="M6 0l14 18L6 36h8l14-18L14 0z" fill="#f1e8d2"/><circle cx="38" cy="18" r="7" fill="#e8b93c"/></svg>
+    <div><h1 class="ttl">Dunnzar Space Agency</h1><span class="note">Office of the Director · national agency · Dunnzar Republic</span></div>
+    <span class="sp"></span>
+    <div class="kv"><span class="lab">Funds</span><span class="val">80<span class="u">M</span></span><span class="lab">Date</span><span class="val">Year 1, day 1</span></div>
+  </header>
+
+  <section class="pp tray prog">
+    <h2 class="h"><span>In tray <span class="bdg">4</span></span></h2>
+    <div class="sh" style="margin-top:0">Offers</div>
+    <div class="obj held"><span class="nm">Aurora sounding</span><span class="ld"></span><span class="val">26<span class="u">M</span></span><span class="cnt">50 d</span></div>
+    <div class="open"><p class="say">Photograph the aurora from above 100 km and bring the film home.</p><div class="acts" style="position:static;width:auto;flex-direction:row"><button class="btn">Take</button><button class="btn">Pass</button></div></div>
+    <div class="obj"><span class="nm">Air sample, 0–10 km</span><span class="ld"></span><span class="val">12<span class="u">M</span></span><span class="cnt">50 d</span></div>
+    <div class="obj"><span class="nm">Qualify the Sparrow sounding</span><span class="ld"></span><span class="val">25<span class="u">M</span></span><span class="cnt">50 d</span></div>
+    <div class="obj"><span class="nm">Recovery demonstration</span><span class="ld"></span><span class="val">25<span class="u">M</span></span><span class="cnt">50 d</span></div>
+    <div class="sh">Coming up</div>
+    <div class="row"><span>Budget day</span><span class="ld"></span><span class="val">100<span class="u">d</span></span></div>
+    <div class="row"><span>Mainframes reach us</span><span class="ld"></span><span class="val">1820<span class="u">d</span></span></div>
+    <div style="margin-top:8px"><button class="btn">Wait for the next of these</button></div>
+  </section>
+
+  <div class="pp next prog"><span class="pmt"><span class="nm">Above the weather</span> pays <span class="val">15<span class="u">M</span></span> and opens two missions</span><button class="btn">Try the Sounding preset</button></div>
+  <nav class="tabs seg prog"><button class="btn on">Missions</button><button class="btn">Contracts</button><button class="btn">Fleet</button><button class="btn">World</button><button class="btn">Industry</button><button class="btn">Company</button></nav>
+
+  <section class="pp sheet prog">
+    <h2 class="h"><span>Chapter 1 · Sounding rockets</span><span class="note">Can we reach space and bring it back?</span></h2>
+    <div class="mis"><div class="row"><span class="nm">Above the weather</span><span class="ld"></span><span class="val">15<span class="u">M</span></span></div>
+      <p class="say">An instrument package above 10 km, home under a parachute.</p><span class="note">opens ballistic tests and 4 parts</span></div>
+    <div class="mis"><div class="row"><span class="nm">Measure the air</span><span class="cnt">0 of 4 bands</span><span class="ld"></span><span class="val">25<span class="u">M</span></span></div>
+      <p class="say">Recover instrument packages from every 10 km band up to 40 km.</p></div>
+    <div class="mis"><div class="row"><span class="nm">Structural test flight</span><span class="ld"></span><span class="val">20<span class="u">M</span></span></div>
+      <p class="say">An instrument package through max-q of 20 kPa or more.</p><span class="note">opens 5 parts · finishes the chapter</span></div>
+    <div class="mis"><div class="row"><span class="nm">Range certification</span><span class="cnt">0 of 3 clean flights</span><span class="ld"></span><span class="val">30<span class="u">M</span></span></div>
+      <p class="say">Three flights in a row that drop stages, all clear of towns.</p><span class="note">opens 1 part</span></div>
+    <div class="mis faint"><div class="row"><span class="nm">Passenger: the hop</span><span class="ld"></span><span>not open</span></div>
+      <span class="note">after Above the weather and Structural test flight</span></div>
+    <div class="sh">Later</div>
+    <div class="row faint"><span>Chapter 2 · Once around</span><span class="ld"></span><span>4 missions</span></div>
+    <div class="row faint"><span>Chapter 3 · Satellites that work</span><span class="ld"></span><span>4 missions</span></div>
+  </section>
+
+  <div class="acts prog"><div class="row2"><button class="btn">Logbook <span class="kbd">F</span></button><button class="btn">Rover yard</button></div><button class="pri">Design table <span class="kbd">B</span></button></div>
+
+  <!-- ================= the Debrief ================= -->
+  <div class="pp clip deb"><small>The Dunnzar Herald · day 112</small>Dunnzar Republic cover 114M of the failed attempt: a new rocket is allowed one</div>
+  <section class="pp report deb">
+    <div class="row" style="padding:0;border-bottom:2px solid var(--ink);margin-bottom:9px"><span class="lab">Flight report · No. 1</span><span style="flex:1"></span><span class="note">Lunar · Year 1, day 112 · 53 s flown</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><h1 class="ttl" style="font-size:34px">Ended in flight</h1><span class="vd no">WRITTEN OFF</span></div>
+    <p class="say" style="margin-top:6px">Left on a path that comes down.</p>
+    <div class="cols">
+      <div>
+        <h2 class="h">Money</h2>
+        <div class="row"><span>Hardware</span><span class="ld"></span><span class="val">−152<span class="u">M</span></span></div>
+        <div class="row"><span>Launch operations</span><span class="ld"></span><span class="val">−18<span class="u">M</span></span></div>
+        <div class="row"><span>Sponsor covers the attempt</span><span class="ld"></span><span class="val">+114<span class="u">M</span></span></div>
+        <div class="row"><span>Budget day</span><span class="ld"></span><span class="val">+20<span class="u">M</span></span></div>
+        <div class="row sum"><span class="nm">Net for the program</span><span style="flex:1"></span><span class="val" style="font-size:var(--s2)">−37<span class="u">M</span></span></div>
+        <h2 class="h" style="margin-top:16px">Logbook</h2>
+        <div class="row"><span>Farthest from Tellus</span><span class="ld"></span><span class="val">10.0<span class="u">km</span></span></div>
+        <div class="row"><span>Highest dynamic pressure</span><span class="ld"></span><span class="val">35.3<span class="u">kPa</span></span></div>
+        <span class="note">both measured for the first time</span>
+      </div>
+      <div>
+        <h2 class="h"><span class="term" title="what the program has learned about a part by flying it: it lowers risk and checkout time">Know-how</span><span class="note">before → after, %</span></h2>
+        <div class="row"><span>Albatross (2.5 m)</span><span class="ld"></span><span class="val">10 → 23</span></div>
+        <div class="row"><span>Command pod</span><span class="ld"></span><span class="val">10 → 19</span></div>
+        <div class="row"><span>Fin ring 2.5 m</span><span class="ld"></span><span class="val">37 → 43</span></div>
+        <div class="row"><span>Tank 16 t (2.5 m)</span><span class="ld"></span><span class="val">37 → 43</span></div>
+        <div class="row"><span>Tank 32 t (2.5 m)</span><span class="ld"></span><span class="val">37 → 43</span></div>
+        <div class="row"><span>Petrel vacuum</span><span class="ld"></span><span class="val">37 → 43</span></div>
+        <div class="row"><span>Wren lander</span><span class="ld"></span><span class="val">37 → 43</span></div>
+        <div class="row"><span>Adapter 2.5 → 1.25 m</span><span class="ld"></span><span class="val">67 → 70</span></div>
+        <div style="margin-top:7px"><button class="btn">5 more parts</button></div>
+      </div>
+    </div>
+    <div class="rfoot"><span class="note">Filed by flight control,<br>Year 1, day 112</span><span style="display:flex;gap:7px;align-items:stretch"><button class="btn">Fly again <span class="kbd">A</span></button><button class="btn">Design table <span class="kbd">B</span></button><button class="pri" style="padding:8px 14px;font-size:13px">To the office <span class="kbd">P</span></button></span></div>
+  </section>
+</div>
+<div id="who"></div>
+<script>
+const $=s=>document.querySelector(s),B=document.body;
+const SAY={program:'<b>The Program.</b> Printed (navy Plex) is the form, typed (Courier) is the entry. An offer is one line and opens in place. No green on money, no red on NEXT or the calendar: the only colour is the count in the tray and the launch-side button.',
+  debrief:'<b>The Debrief.</b> The stamp is the verdict and the only red; a negative figure has its minus sign, not a colour. The net is the largest figure. The empty photo frame is cut until there is a photo.'};
+function sync(){$('#who').innerHTML=SAY[B.dataset.view];for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.view?B.dataset.view===b.dataset.view:B.classList.contains(b.dataset.cls))}
+$('#bar').onclick=e=>{const d=e.target.dataset;if(!d||e.target.tagName!=='BUTTON')return;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);sync()};
+const q=new URLSearchParams(location.search);if(q.get('view'))B.dataset.view=q.get('view');for(const c of['squint','grey','today'])if(q.get(c))B.classList.add(c);
+sync();
+window.CHECK=()=>document.fonts.ready.then(()=>{const S=$('#stage').getBoundingClientRect(),out=[];
+  for(const e of document.querySelectorAll('.pp'))if(e.offsetParent){const r=e.getBoundingClientRect();if(r.right>S.right+1||r.bottom>S.bottom+1||r.left<S.left-1)out.push('off screen: '+e.className);if(e.scrollHeight>e.clientHeight+1)out.push('cut off: '+e.className+' '+e.scrollHeight+'/'+e.clientHeight)}
+  for(const e of document.querySelectorAll('.row,.obj,.btn,.h'))if(e.offsetParent&&e.scrollWidth>e.clientWidth+1)out.push('too wide: "'+e.textContent.trim().slice(0,24)+'"');
+  return out.join(' | ')||'fits'});
+</script>
+</body>
+</html>

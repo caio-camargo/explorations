@@ -8420,3 +8420,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Waiting on Caio:** the phosphor; bar or pointer gauges; legend or plate keys; the gauge as a role.
 - Files: launchpad `mockups/kit/flight.html`, `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`, `QUEUE.md`
   (*Proposed*, my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): the Rollout, the Program and the Debrief on the roles (ELEMENTS.md 0.1.7)
+
+- **Asked:** Caio, on the flight HUD's round 2: "yes, much better. let's look at other screens with the same
+  approach now".
+- **Done:** the Rollout as two states of `mockups/kit/flight.html` (the launch poll as GO, HOLD and NO-GO lamps with
+  reasons on glass; LAUNCH in the power's colour); `mockups/kit/office.html` with the Program and the Debrief in the
+  Form dress (printed labels, typed entries; no green, blue or red but a failed flight's stamp; offers as one line
+  that open in place). The content is the game's own, captured from v1.370 (`today-*.jpg`); 13 stills. ELEMENTS.md
+  § 6.2; two lines under QUEUE *Proposed*.
+- **Checked:** every view fits at 1258 x 644 (each page's `CHECK()`); the stills looked at, with one squint and
+  the grey ones taken.
+- **Not done (PARKED):** the map: its lines did not render when the game is opened as a file with `refView`, and
+  its text is lettering on a drawing, so it needs a session with the game served. Also mission control, the title,
+  the logbook, the rover yard.
+- **Not checked:** the time strip UI.md § 3 asks of the Program and the Debrief; the other tabs; a successful
+  Debrief; the eras; other window sizes; nothing in play.
+- **Waiting on Caio:** his word on the three; from before, the phosphor, the gauge, the lit keys, the gauge as a role.
+- Files: launchpad `mockups/kit/flight.html`, `office.html` (new), `bg-rollout.jpg`, `today-*.jpg` (new),
+  `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

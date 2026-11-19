@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1.
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -249,6 +249,40 @@ the three bottom bezels (284 + 628 + 262 px) would meet; a rocket of five or mor
 by 55 px a stage); the hold keys' symbols (placeholders, not Q436's); the
 copy; any of it in play.
 
+### 6.2 The Rollout, the Program and the Debrief on the roles (2026-11-19)
+
+Caio, on round 2 of the flight HUD: "yes, much better. let's look at other screens with the same approach now".
+Three screens, each with the game's own content at v1.370 and a *Today* switch to the game's screen. Stills
+`output/launchpad/mockups/kit/rollout-*.png` and `office-*.png`.
+
+**The Rollout** (`mockups/kit/flight.html`, states *All go* and *No-go*): the flight's panel, since rule 13 puts both
+in the cockpit. Today it is the old cool-blue panel with a system drop-down and green and red text.
+- **The poll is a column of lamps**: GO (green), HOLD (amber), NO-GO (red with the white frame), each with its
+  station engraved beside it and its reason lit on glass; a NO-GO's reason ends with the fix (rule 14).
+- **LAUNCH is the one primary command**, in the power's colour (D50), dark while any lamp is NO-GO.
+- The panel is 400 x 538 px and fits; today's is about 365 x 625.
+- **Phosphor against the lamps:** green figures are the GO lamps' hue, amber figures the HOLD lamp's
+  (`rollout-nogo-green.png`). Told apart only by the fill, as on the flight panel. White matches neither.
+- Left for hover or a site sheet: the lowest inclination, the pad's height, the polar corridor, how stages travel,
+  what comes back if it lands intact. Each is a call for Caio.
+
+**The Program and the Debrief** (`mockups/kit/office.html`): the Form dress (D50), printed in IBM Plex Sans, typed in
+Courier Prime. Both already have the desk and the paper; what the roles change:
+- **Label against entry.** Today everything is Courier, so a heading, a label and a value differ only by place.
+  Here the form is printed (navy, capitals) and the entries are typed.
+- **Colour.** Today: green pay, blue progress, a red NEXT, a red calendar header, red negative figures, a red FILED
+  stamp. Here: none of those. The only red is a failed flight's stamp; a negative figure has its minus sign; the
+  tray's count is the one amber; the button that leads to the launch has the power's colour.
+- **An offer is one line and opens in place** (name, pay, days; UI.md § 3). Eight Take and Pass buttons become two.
+- **The Debrief's net is its largest figure**; the empty photo frame is cut until there is a photo (UI.md § 3); a
+  lock is the words "not open", not an emoji.
+- **The news clipping keeps its own serif**: a third face in the office, as a thing from outside it. Flagged.
+
+**Not done.** The map (it is lettering on a drawing, and its lines did not render from a file: it needs its own
+session with the game served); mission control, the title, the logbook, the rover yard. On these three: the time
+strip UI.md § 3 asks of the Program and the Debrief; the other five tabs; a successful flight's Debrief (PAID, FIRST)
+and a poster heading for a first; the eras; a window other than 1258 x 644; any of it in play.
+
 ## 7. If this is adopted: the order
 
 1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
@@ -346,6 +380,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.7 (2026-11-19): § 6.2, the Rollout, the Program and the Debrief on the roles.
 - 0.1.6 (2026-11-19): D53; round 2 of the flight HUD mock-up (smaller, a low panel, a box a stage).
 - 0.1.5 (2026-11-19): § 6.1, the flight HUD mock-up (`mockups/kit/flight.html`); the gauge as a missing role.
 - 0.1.4 (2026-11-18): D52, the sans is IBM Plex Sans (paper) and B612 (lit panels).

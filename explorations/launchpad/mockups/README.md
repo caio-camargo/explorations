@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.40 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.41 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -33,6 +33,11 @@ roles, over the game's own climb and orbit. Bar: *State* (Climb all quiet, Cauti
 **Pick (D53, Caio 2026-11-19):** "it's the right direction, i like vt 323"; round 2 made it smaller, with the panel
 lower than the navball and a box for each stage. _Open: the phosphor; the gauge (my pick: Pointer if amber); how a
 key shows it is on (my pick: Legend)._
+
+**The Rollout** is in `kit/flight.html` (*Rollout*: All go, No-go): the same panel, the launch poll as lamps. Stills
+`rollout-*.png`. **`kit/office.html`** (2026-11-19; ELEMENTS.md § 6.2): the **Program** and the **Debrief** in the
+Form dress, with the game's own content; *Checks* (Squint, Grey, Today). Stills `office-*.png`.
+**Pick:** _(Caio: the Rollout's poll; the office without green, blue and red; offers that open in place)_
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 

@@ -9,7 +9,8 @@
      lit tile, never coloured text in a readout (D51). The backgrounds, the navball and "Today" are the game's own
      (views.js refView 94 and 156, v1.370). The figures are invented.
      Round 2 (Caio, 2026-11-19): smaller; the panel is lower than the navball; each stage is its own box.
-     URL: ?state=quiet|caution|warning|burn &ph=amber|green|white &fig=vt|b612|sans &keys=legend|plate &gz=bar|ptr &squint=1 &grey=1 &today=1 -->
+     The Rollout (states go, nogo) is the same panel with the launch poll as lamps.
+     URL: ?state=quiet|caution|warning|burn|go|nogo &ph=amber|green|white &fig=vt|b612|sans &keys=legend|plate &gz=bar|ptr &squint=1 &grey=1 &today=1 -->
 <style>
 @font-face{font-family:'VT323';src:url(../../fonts/vt323.woff2) format('woff2')}
 @font-face{font-family:'B612';font-weight:400;src:url(faces/B612-Regular.ttf)}
@@ -26,13 +27,13 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
 #who{position:fixed;inset:auto 0 0 0;height:24px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/24px system-ui,sans-serif;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #who b{color:#fff}
 #stage{position:fixed;inset:34px 0 24px 0;background:#000 url(bg-climb.jpg) center/cover;overflow:hidden}
-body[data-state=burn] #stage{background-image:url(bg-orbit.jpg)}
+body[data-state=burn] #stage{background-image:url(bg-orbit.jpg)}body[data-state=go] #stage,body[data-state=nogo] #stage{background-image:url(bg-rollout.jpg)}
 body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.squint.grey #stage{filter:blur(4px) grayscale(1)}
 #today{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5}
 body.today #today{display:block}
 
 /* ---------- the panel: tokens ---------- */
-#stage{--ink:#e6e1d3;--quiet:#aaa698;--well:#0a0b0a;--amber:#f2b01e;--red:#ff4a3a;--lit:#f3ecd2;--ph:#ffb000;
+#stage{--power:#2b5ea8;--go:#52d08a;--ink:#e6e1d3;--quiet:#aaa698;--well:#0a0b0a;--amber:#f2b01e;--red:#ff4a3a;--lit:#f3ecd2;--ph:#ffb000;
   --f-lit:'VT323',monospace;--l1:18px;--l2:30px;font:11px/1.25 'B612','Arial Narrow',sans-serif;color:var(--ink)}
 body[data-ph=green] #stage{--ph:#5ee88a}body[data-ph=white] #stage{--ph:#e9f2df}
 body[data-fig=b612] #stage{--f-lit:'B612 Mono',monospace;--l1:13px;--l2:21px}
@@ -90,6 +91,16 @@ body[data-keys=legend] .btn.on{background:linear-gradient(#3a3d42,#26292c);color
 .stg.cur{border-color:var(--ph)}
 .stg.later{color:color-mix(in srgb,var(--ph) 62%,#000)}.stg.later .lb{opacity:.85}
 
+/* ---------- the Rollout: the same panel, the poll as lamps ---------- */
+.lamp.go{background:var(--go);color:#0c1a10;box-shadow:0 0 12px rgba(82,208,138,.5)}
+.ttl{font:700 16.5px/1.1 'B612',sans-serif;text-transform:uppercase;letter-spacing:.13em;margin:0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.roll{right:12px;top:12px;width:400px;padding:10px 11px}
+.kv4{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:5px 8px;align-items:center;margin-top:5px}.kv4 .w{grid-column:2/-1}
+.sec{margin-top:10px;border-top:1px solid #55584f;padding-top:7px}
+.poll{display:grid;grid-template-columns:58px 80px 1fr;gap:5px 8px;align-items:center}.poll .glass{white-space:normal}
+.pri{flex:1;font:700 14px/1 'B612',sans-serif;text-transform:uppercase;letter-spacing:.2em;color:#fff;background:var(--power);border:1px solid var(--power);border-radius:3px;padding:10px;cursor:pointer;display:inline-flex;justify-content:center;align-items:center;gap:10px;box-shadow:0 2px 0 #101112,0 0 12px color-mix(in srgb,var(--power) 60%,transparent)}
+.pri[disabled]{background:#2e3134;border-color:#222;color:#77746a;box-shadow:none;cursor:default}
+.foot{display:flex;gap:8px;margin-top:11px}
 /* ---------- the layout ---------- */
 .tl{left:12px;top:12px;display:flex;gap:8px;align-items:center;padding:6px 8px}
 .tr{right:12px;top:12px;display:flex;gap:8px;align-items:center;padding:6px 8px}
@@ -114,6 +125,7 @@ body[data-keys=legend] .btn.on{background:linear-gradient(#3a3d42,#26292c);color
 <div id="bar">
   <a href="index.html">← kit</a>
   <b>State</b><button data-state="quiet">Climb, all quiet</button><button data-state="caution">Caution</button><button data-state="warning">Warning</button><button data-state="burn">Orbit burn</button>
+  <b>Rollout</b><button data-state="go">All go</button><button data-state="nogo">No-go</button>
   <b>Phosphor</b><button data-ph="amber">Amber</button><button data-ph="green">Green</button><button data-ph="white">White</button>
   <b>Figures</b><button data-fig="vt">VT323</button><button data-fig="b612">B612 Mono</button><button data-fig="sans" title="the panel's own sans, whose figures are already of one width: one face for the whole cockpit">B612</button>
   <b>Key on</b><button data-keys="legend" title="a key that is on lights its legend and a bar">Legend</button><button data-keys="plate" title="a key that is on lights whole, as in the kit's Panel dress">Plate</button>
@@ -147,6 +159,19 @@ const ST={
   met:'41:07',spd:'7780',ref:'orbit',mach:null,alt:'212',altU:'km',rows:[['Ap','412','km'],['Pe','208','km']],hdg:'092',pitch:'0',thr:0,sas:'node',modes:['hold','pro','retro','node'],
   stages:[CHUTE,{n:3,name:'Wren',twr:'0.9',fuel:71,left:'2:10',dv:'1632'}],
   phase:{name:'Burn',rows:[{l:'Δv to go',v:'124',u:'m/s',g:1},{l:'Ignition in',v:'1:12',u:''},{l:'Burn time',v:'0:38',u:''}],pmt:'Burn at the marker'},lamps:{}}};
+const POLL=[['Budget','go','66 M of 80 M'],['Parts','go','all open to us'],['Site','go','open to us, the stages fit'],['Liftoff','go','TWR 1.51'],['Recovery','go','on our land, or at sea within 200 km'],['Weather','go','clear']];
+ST.go={roll:1,poll:POLL,say:'<b>Rollout, all go.</b> The same panel as the flight. The poll is a column of lamps, each with its reason on glass; LAUNCH is the one primary command, in the colour of the power. Try Phosphor: Green against the GO lamps.'};
+ST.nogo={roll:1,poll:POLL.map(r=>r[0]==='Parts'?['Parts','red','Kestrel booster is not open yet: fly the Structural test']:r[0]==='Weather'?['Weather','amber','gusts of 14 m/s until noon']:r),say:'<b>Rollout, no-go.</b> PARTS is NO-GO (red, white frame), WEATHER is HOLD (amber); each says why and what to do. LAUNCH is dark until every lamp is GO or HOLD is accepted.'};
+const WORD={go:'Go',amber:'Hold',red:'No-go'};
+function rollout(s){const no=s.poll.some(r=>r[1]==='red');
+  return `<img id="today" src="today-rollout.jpg" alt="">
+  <section class="bz roll"><h1 class="ttl">Rollout <span class="glass">Orbiter</span></h1>
+    <div class="kv" style="margin-top:9px">${lab('Site')}<span class="seg"><button class="btn" style="flex:none">${tri(-1)}</button><span class="glass" style="flex:1">Dunnzar Cape</span><button class="btn" style="flex:none">${tri(1)}</button></span></div><div class="kv4">
+      ${lab('Latitude')}<span class="glass r">0.0°<span class="u">N</span></span>${lab('Spin','what the site gives a launch heading east: the eastward speed of the ground, free to a launch heading east')}<span class="glass r">278<span class="u">m/s</span></span>${lab('Downrange')}<span class="glass r w">94<span class="u">% water</span></span></div>
+    <div class="sec"><h2 class="h">Launch poll</h2><div class="poll">${s.poll.map(([l,v,why])=>`<span class="lamp ${v}">${WORD[v]}</span>${lab(l)}<span class="glass">${why}</span>`).join('')}</div></div>
+    <div class="sec"><h2 class="h">This launch</h2><div class="kv4">${lab('Hardware')}<span class="glass r">57<span class="u">M</span></span>${lab('Operations')}<span class="glass r">8.7<span class="u">M</span></span>${lab('Funds after')}<span class="glass r">14<span class="u">M</span></span>${lab('Ready in')}<span class="glass r">44<span class="u">days</span></span>${lab('Flies for')}<span class="glass w">Above the weather <span class="lb">pays</span> 15<span class="u">M</span></span></div></div>
+    <div class="foot"><button class="btn">Design table <span class="kbd">B</span></button><button class="pri"${no?' disabled':''}>Launch <span class="kbd">L</span></button></div>
+  </section>`}
 const TILES=['Heat','Structure','Link','Power','Fuel'],TERM={Ap:'apoapsis: the highest point of the path',Pe:'periapsis: the lowest point of the path'};
 const lab=(t,x)=>`<span class="lab${x||TERM[t]?' term':''}"${x||TERM[t]?` title="${x||TERM[t]}"`:''}>${t}</span>`;
 // one stage, one box. Flying: name, thrust to weight, the fuel gauge, what is left. Waiting: its events, what it will give
@@ -154,7 +179,10 @@ function stg(x,i,a){const cur=i===a.length-1,next=i===a.length-2;
   return `<div class="glass stg${cur?' cur':next?'':' later'}"><span class="ix">${x.n}</span>`+(cur
     ?`<div class="ln"><span>${x.name}</span><span><span class="lb">TWR</span> ${x.twr}</span></div><div class="ln"><div class="gz"><i style="width:${x.fuel}%"></i></div><span>${x.fuel}<span class="u">%</span></span></div><div class="ln"><span><span class="lb">Δv</span> ${x.dv}<span class="u">m/s</span></span><span>${x.left} <span class="lb">left</span></span></div>`
     :`<div class="ln"><span>${x.ev.map(e=>`<span class="tok">${e}</span>`).join('')}</span>${next?'<span class="kbd">Space</span>':''}</div><div class="ln">${x.info?`<span class="lb">${x.info}</span>`:`<span><span class="lb">Δv</span> ${x.dv}<span class="u">m/s</span></span><span><span class="lb">burn</span> ${x.burn} <span class="lb">TWR</span> ${x.twr}</span>`}</div>`)+'</div>'}
-function render(){const s=ST[B.dataset.state],L=s.lamps,worst=Object.values(L).includes('red')?'red':Object.values(L).length?'amber':'';
+function render(){const s=ST[B.dataset.state];if(s.roll)$('#stage').innerHTML=rollout(s);else flight(s);
+  $('#who').innerHTML=s.say;
+  for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.state?B.dataset.state===b.dataset.state:b.dataset.ph?B.dataset.ph===b.dataset.ph:b.dataset.fig?B.dataset.fig===b.dataset.fig:b.dataset.keys?B.dataset.keys===b.dataset.keys:b.dataset.gz?B.dataset.gz===b.dataset.gz:B.classList.contains(b.dataset.cls))}
+function flight(s){const L=s.lamps,worst=Object.values(L).includes('red')?'red':Object.values(L).length?'amber':'';
   $('#stage').innerHTML=`<img id="today" src="today-flight.jpg" alt="">
   <section class="bz tl">${lab('Clock')}<span class="glass">T+ ${s.met}</span><button class="btn" title="pin more lines to the readout">Readout +</button></section>
   <section class="bz tr">${lab('Warp')}<span class="seg"><button class="btn">${tri(-1)}</button><span class="glass">1×</span><button class="btn">${tri(1)}</button></span><button class="btn">Map <span class="kbd">M</span></button><button class="btn">Menu <span class="kbd">Esc</span></button></section>
@@ -177,9 +205,7 @@ function render(){const s=ST[B.dataset.state],L=s.lamps,worst=Object.values(L).i
       <div class="kv">${s.rows.map(([l,v,u])=>`${lab(l)}<span class="glass r">${v}<span class="u">${u}</span></span>`).join('')}</div></div>
     </div>
     <div class="strip"><span class="lamp master ${worst}" title="click: acknowledge">Master ${worst==='red'?'warning':'caution'}</span>${TILES.map(t=>`<span class="lamp ${L[t]||''}">${t}</span>`).join('')}</div>
-  </section>`;
-  $('#who').innerHTML=s.say;
-  for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.state?B.dataset.state===b.dataset.state:b.dataset.ph?B.dataset.ph===b.dataset.ph:b.dataset.fig?B.dataset.fig===b.dataset.fig:b.dataset.keys?B.dataset.keys===b.dataset.keys:b.dataset.gz?B.dataset.gz===b.dataset.gz:B.classList.contains(b.dataset.cls))}
+  </section>`}
 $('#bar').onclick=e=>{const d=e.target.dataset;if(!d||e.target.tagName!=='BUTTON')return;for(const k of['state','ph','fig','keys','gz'])if(d[k])B.dataset[k]=d[k];if(d.cls)B.classList.toggle(d.cls);render()};
 const q=new URLSearchParams(location.search);for(const k of['state','ph','fig','keys','gz'])if(q.get(k))B.dataset[k]=q.get(k);for(const c of['squint','grey','today'])if(q.get(c))B.classList.add(c);
 render();
