@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.36 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.37 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -7,10 +7,11 @@ Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pi
 
 Open `kit/index.html` (a file or served). The Assembly's two panels and a part card, with the game's real content, as
 one set of roles in four dresses over the game's own frame. Bar: *Dress* (keys 1–5), *View* (Assembly, Role sheet,
-Cockpit caution), *Power* (the launch button's colour), *Checks* (Squint, Grey, No pictures, Amber phosphor). Hover anything: the footer names its role. Stills (1258 × 702) in
+Faces, Cockpit caution), *Sans* (the candidate faces, ELEMENTS.md § 7.1), *Power* (the launch button's colour), *Checks* (Squint, Grey, No pictures, Amber phosphor). Hover anything: the footer names its role. Stills (1258 × 702) in
 `output/launchpad/mockups/kit/`: `<dress>.png`, `<dress>-sheet.png`, `plain-squint.png`, `plain-grey.png`, `panel-amber.png`, `caution-amber.png`,
 `caution-white.png`, `form-terracotta.png`, `form-ochre.png`.
-Bahnschrift (Windows) stands in for a sans the game doesn't bundle.
+Bahnschrift (Windows) stands in for a sans the game doesn't bundle; `kit/faces/` holds five candidates (OFL, licences
+beside them) for the *Sans* buttons and the *Faces* view. Stills `faces.png`, `form-<face>.png`, `plain-<face>.png`.
 
 | Dress | What it is | Finding (ELEMENTS.md § 5) |
 |---|---|---|
@@ -22,6 +23,7 @@ Bahnschrift (Windows) stands in for a sans the game doesn't bundle.
 
 **Pick (D50, Caio 2026-11-18):** the roles as proposed; **Form** for the Assembly; the power's colour on the launch
 button only; pictures on the parts. **D51:** the cockpit's caution is **B**, a lit tile outside the readout (the Cockpit caution view).
+_Open: the sans to bundle (my pick Barlow, then IBM Plex Sans)._
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 

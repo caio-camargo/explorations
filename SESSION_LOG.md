@@ -8323,3 +8323,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   Assembly first in the Form dress; Q477 with D51; a test on sizes, radii and colours outside the tokens) and notes
   D50 and D51 on Q477, Q478, Q480 and Q237.
 - Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — design desk (Fable 5.2, main clone): ELEMENTS.md's build filed; five sans faces measured (ELEMENTS.md 0.1.3)
+
+- **Asked:** Caio, on "file those queue items or start on the typeface comparison": "go ahead and do it". Both done.
+- **Done:** six lines under QUEUE *Proposed* (the roles in the game with Q478, Q480 and Q237; bundling the sans; Q477
+  with D51; part pictures; a test on looks outside the tokens; a button variant for a power whose colour is near red
+  or amber). Five OFL faces downloaded from github.com/google/fonts into `mockups/kit/faces/` (2.8 MB with their
+  licences) and wired into the mock-up: *Sans* buttons and a *Faces* view that measures them.
+- **Measured (headless Chrome, 13 px):** a stage row is 171 px in Barlow (as Bahnschrift), 183 Sofia Sans, 197
+  Archivo, 205 IBM Plex Sans, 226 B612; x-height 0.49 (Sofia) to 0.56 (B612); all have tabular figures when asked;
+  Barlow lacks →; none has ▲ or ▸. ELEMENTS.md § 7.1.
+- **Not checked:** woff2 sizes (no converter on this machine); the faces on the Drawing and Panel dresses; hinting
+  at other zoom levels or on the other machine.
+- **Waiting on Caio:** the sans (my pick Barlow, then IBM Plex Sans). The claim stays open for it.
+- Files: launchpad `ELEMENTS.md`, `QUEUE.md` (*Proposed*), `mockups/kit/index.html`, `mockups/kit/faces/` (new),
+  `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
