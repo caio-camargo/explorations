@@ -8490,3 +8490,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   lit keys; the gauge as a role; the Rollout's poll.
 - Files: launchpad `mockups/kit/debrief-ab.html`, `ELEMENTS.md`, `mockups/README.md`; root `ACTIVE_WORK.md`,
   `SESSION_LOG.md`.
+
+## 2026-11-24 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): Caio's scale readings; no code
+
+- **Asked:** Caio's readings of the performance readout after v1.366, on a 2560 × 1600 screen, window maximized,
+  High: on the pad `res` 100 % (93 % after a crash and a return to the pad, and it stayed there); under 80 % around
+  the cloud level, 87 % at 3,600 m; 150 % on the map; in orbit 150 % on coming back from the map, then steady at
+  100 %.
+- **What they mean:** v1.366's supersampling reaches none of his flight views, only the map. The card is at its
+  budget drawing the screen's own pixels: the scaler came down from 150 % to 100 % in orbit, so the frame there is
+  over about 7.5 ms at 100 %, and in the air the view is already under the screen's pixels.
+- **Tried and dropped:** raising the room the scaler may use above 100 % (`SS_ROOM` 0.6 → 0.8, `SS_OVER` 0.85 →
+  0.95). By his own readings it would change nothing for him (to climb from 100 % the frame must be under 7 ms
+  there). Claimed, not built, claim cleared; nothing merged.
+- **Open, Caio's call:** the QUEUE proposal "the sky pass leaves no room on the pad" (notes/look.md § v1.366): draw the
+  sky and ground at their own lower scale and the craft, pad and effects finer over them. A trade (softer ground,
+  sharper craft), in the sky and effects beats' files.
+- **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
+- Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
