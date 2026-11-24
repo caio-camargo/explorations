@@ -1,5 +1,5 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
+**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
 follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2. **The office is real documents (D54)**; its graphics are being worked up on the Debrief: § 6.3.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
@@ -331,7 +331,19 @@ a thing a real sheet has and the first try lacked:
 line are decoration the game would have to generate or keep fixed; the script and serif faces are the machine's
 own (Segoe Script, Georgia) and would need bundling; the sheets are CSS and one SVG filter, no images.
 
-**Open:** what else would make them real for Caio; the Program as documents (the harder screen: six tabs, long
+**The commands (Caio, 2026-11-24):** "in general it looks really good. the routing slip I'm not so sure about, it
+seems to lack weight for options to leave the current screen". As I read it: three 13 px lines on a small slip are
+the lightest thing on the desk, and they are the only things that act. Two heavier ways are in the same file
+(*Commands* in the bar, `?cmd=slip|fold|keys`; stills `cmd-fold-0.png`, `cmd-keys-0.png`):
+- **Folders** (shown by default): one file folder per place the report can go, the place typed on its tab (LAUNCH
+  PAD, DESIGN TABLE, OFFICE), the act in 18 px, one line saying what happens. The usual one is the folder in the
+  power's colour. Still paper, so the office keeps one language (UI.md rule 13).
+- **Call box**: a dark box on the desk with three raised keys and a typed label beside each; the usual key in the
+  power's colour. The rule would be "paper tells, hardware acts". Heavier, and a second language in the office.
+Both name the place as well as the act, which the slip did not. Not checked: neither in grey or squint by eye;
+more than three commands; the Program, where commands are many and sit inside documents.
+
+**Open:** folders or call box; what else would make them real for Caio; the Program as documents (the harder screen: six tabs, long
 lists), not yet tried.
 
 ## 7. If this is adopted: the order
@@ -431,6 +443,7 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.10 (2026-11-24): the Debrief's commands: folders and a call box against the routing slip.
 - 0.1.9 (2026-11-19): D54, the office is real documents; the graphical pass on the Debrief.
 - 0.1.8 (2026-11-19): § 6.3, the office's look reopened; the Debrief as real documents (A) and as a printed page (B).
 - 0.1.7 (2026-11-19): § 6.2, the Rollout, the Program and the Debrief on the roles.

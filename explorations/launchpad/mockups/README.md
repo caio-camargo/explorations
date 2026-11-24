@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.43 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.44 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -48,6 +48,10 @@ documents on the desk (a boxed report form, a ledger sheet, a carbon-copy annex,
 docs but the concept is good." A's round 2 (aged sheets with folds, printed ink against typed ink, uneven typed
 letters, each document its own stock, a staple, a clip, a received stamp, a blotter) is in the same file; *Even type*
 compares. Stills `debrief-a.png`, `debrief-a-even.png`, `debrief-a-rounds.png` (before and after).
+**Caio 2026-11-24:** "in general it looks really good. the routing slip I'm not so sure about, it seems to lack
+weight for options to leave the current screen". The commands now three ways (*Commands* in the bar,
+`?cmd=slip|fold|keys`): the slip, three file folders (default), a desk call box. Stills `cmd-fold-0.png`,
+`cmd-keys-0.png`. **Pick:** _(Caio: folders or call box)_
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 

@@ -8476,3 +8476,17 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   cockpit's phosphor, gauge and lit keys; the gauge as a role; the Rollout's poll.
 - Files: launchpad `mockups/kit/debrief-ab.html`, `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`, `QUEUE.md`
   (*Proposed*, my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-24 — design desk (Fable 5.2, main clone): the Debrief's commands, folders and a call box (ELEMENTS.md 0.1.10)
+
+- **Asked:** Caio, on A's round 2: "in general it looks really good. the routing slip I'm not so sure about, it seems
+  to lack weight for options to leave the current screen".
+- **Done:** `mockups/kit/debrief-ab.html` shows the commands three ways (`?cmd=slip|fold|keys`, *Commands* in the bar):
+  the slip as it was, three file folders (one per place, the usual one in the power's colour; the default), a desk
+  call box with three raised keys. ELEMENTS.md § 6.3 has the comparison.
+- **Checked:** all three fit at 1258 x 644 (`CHECK()`); the folders and call box stills looked at.
+- **Not checked:** grey and squint by eye; more than three commands; the Program.
+- **Waiting on Caio:** folders or call box. Still open: the Program as documents; the cockpit's phosphor, gauge and
+  lit keys; the gauge as a role; the Rollout's poll.
+- Files: launchpad `mockups/kit/debrief-ab.html`, `ELEMENTS.md`, `mockups/README.md`; root `ACTIVE_WORK.md`,
+  `SESSION_LOG.md`.

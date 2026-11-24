@@ -8,7 +8,7 @@
      paper-themed, but not like paper at all". The same Debrief (the game's own content, v1.370) two ways:
      A · real documents on the desk: a boxed report form, a ledger sheet, a carbon-copy annex, a routing slip.
      B · the screen is the page: one piece of printed matter, a grid, two inks, large numerals; no desk, no shadows.
-     URL: ?view=a|b &squint=1 &grey=1 &even=1 -->
+     URL: ?view=a|b &cmd=slip|fold|keys &squint=1 &grey=1 &even=1 -->
 <style>
 @font-face{font-family:'Special Elite';src:url(../../fonts/special-elite.woff2) format('woff2')}
 @font-face{font-family:'Courier Prime';src:url(../../fonts/courier-prime.woff2) format('woff2')}
@@ -92,6 +92,35 @@ body.even .c{transform:none!important;opacity:1!important;text-shadow:none!impor
 .go:hover{background:rgba(0,0,0,.07)}.go .bx2{flex:none;width:15px;height:15px;border:1.5px solid #23201b;background:#fbf3d0}.go span{flex:1}
 .go.pri{font-weight:700;border-bottom:0;margin-top:5px;background:var(--power);color:#fff;padding:8px 8px}.go.pri .bx2{border-color:#fff;background:none}
 
+/* ---- the commands, three ways (Caio: the routing slip "seems to lack weight for options to leave the current screen").
+   ?cmd=slip|fold|keys. slip: as before. fold: three file folders, one per place the report can go. keys: a desk call box. */
+.cmd{display:none}body[data-cmd=slip] .c-slip,body[data-cmd=fold] .c-fold,body[data-cmd=keys] .c-keys{display:block}
+/* fold: each way out is a folder with the place on its tab; the one you would normally take is the coloured one */
+.c-fold{position:absolute;left:52px;top:360px;width:292px}
+.fo{display:block;position:relative;width:274px;height:60px;margin-top:21px;padding:9px 12px 0 14px;border:0;cursor:pointer;text-align:left;color:#2a2114;
+  background:linear-gradient(#e2c27c,#d3ae63);border-radius:0 3px 3px 3px;font:inherit;
+  box-shadow:inset 0 1px 0 #f3dca4,inset 0 -1px 0 #9c7a39,0 3px 0 -1px #c9a65c,0 5px 0 -2px #a98845,2px 9px 9px rgba(0,0,0,.42)}
+.fo:nth-child(1){transform:rotate(-1.1deg)}.fo:nth-child(2){margin-left:10px;transform:rotate(.6deg)}.fo:nth-child(3){margin-left:4px;transform:rotate(-.4deg)}
+.fo .tab{position:absolute;top:-17px;height:18px;min-width:96px;padding:3px 10px 0;background:#e2c27c;border-radius:5px 5px 0 0;box-shadow:inset 0 1px 0 #f3dca4;
+  font:400 11px/1.3 'Special Elite',monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.fo:nth-child(1) .tab{left:0}.fo:nth-child(2) .tab{left:88px}.fo:nth-child(3) .tab{left:166px;border-radius:5px 5px 0 0}
+.fo b{display:block;font:600 18px/1.15 'IBM Plex Sans',sans-serif}.fo small{display:block;font:400 11.5px/1.3 'IBM Plex Sans',sans-serif;opacity:.8;margin-top:2px}
+.fo .kbd{position:absolute;right:11px;top:10px;font-size:12px;padding:1px 6px}
+.fo:hover{filter:brightness(1.07)}.fo:active{transform:translateY(2px)}
+.fo.pri{background:linear-gradient(#3468b4,var(--power));color:#fff;box-shadow:inset 0 1px 0 #6f97d2,inset 0 -1px 0 #163a70,0 3px 0 -1px #2a5599,0 5px 0 -2px #1c4078,2px 9px 9px rgba(0,0,0,.42)}
+.fo.pri .tab{background:#3468b4;box-shadow:inset 0 1px 0 #6f97d2}
+/* keys: a call box on the desk. Paper tells, hardware does */
+.c-keys{position:absolute;left:54px;top:378px;width:286px;height:246px;border-radius:9px;padding:30px 13px 0;
+  background:linear-gradient(160deg,#3a2f2a,#1d1714 70%);box-shadow:inset 0 1px 0 #6a5a50,inset 0 0 0 1px #0d0a09,inset 0 -6px 10px rgba(0,0,0,.5),0 2px 0 #0d0a09,4px 12px 14px rgba(0,0,0,.55)}
+.c-keys .plate{position:absolute;left:13px;top:9px;font:600 8.5px/1.4 'IBM Plex Sans',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#cdb98a;opacity:.85}
+.key{display:flex;align-items:center;gap:10px;width:100%;height:58px;margin-bottom:10px;padding:0;border:0;background:none;cursor:pointer;text-align:left;font:inherit}
+.key .lab{flex:1;height:46px;padding:6px 9px 0;background:#eadfc2;color:#23201b;border-radius:2px;box-shadow:0 0 0 2px #8f7a45,0 0 0 3px #1a1310,inset 0 2px 3px rgba(60,40,10,.35)}
+.key .lab b{display:block;font:400 15px/1.15 'Special Elite',monospace}.key .lab small{display:block;font:400 10.5px/1.3 'IBM Plex Sans',sans-serif;opacity:.75}
+.key .cap2{flex:none;width:58px;height:50px;border-radius:6px;display:grid;place-items:center;font:600 19px/1 'IBM Plex Sans',sans-serif;color:#2a2114;
+  background:linear-gradient(#f4ecd8,#cfc3a4);box-shadow:inset 0 2px 0 #fffaf0,inset 0 -3px 0 #a3977a,0 5px 0 #0d0a09,0 7px 6px rgba(0,0,0,.6)}
+.key:active .cap2{transform:translateY(3px);box-shadow:inset 0 2px 0 #fffaf0,inset 0 -3px 0 #a3977a,0 2px 0 #0d0a09}
+.key.pri .cap2{background:linear-gradient(#4a7cc6,var(--power));color:#fff;box-shadow:inset 0 2px 0 #86aae0,inset 0 -3px 0 #163a70,0 5px 0 #0d0a09,0 7px 6px rgba(0,0,0,.6)}
+.key.pri .lab b{font-weight:700}
 /* ================= B · the screen is the page ================= */
 .B{background:#efe7d4;color:var(--ink);font:13px/1.45 'IBM Plex Sans',sans-serif;padding:20px 44px 0}
 .B .folio{display:flex;justify-content:space-between;font:600 10.5px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:.16em;text-transform:uppercase;padding-bottom:7px;border-bottom:7px solid var(--ink)}
@@ -119,11 +148,12 @@ body.even .c{transform:none!important;opacity:1!important;text-shadow:none!impor
 .B .crop{position:absolute;width:14px;height:14px;border:0 solid #23201b88}.B .crop.a{left:14px;top:8px;border-width:0 1px 1px 0}.B .crop.b{right:14px;top:8px;border-width:0 0 1px 1px}
 </style>
 </head>
-<body data-view="a">
+<body data-view="a" data-cmd="fold">
 <svg width="0" height="0" style="position:absolute"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="8" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="2.2" result="d"/><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="2" result="g"/><feColorMatrix in="g" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.1 1.3" result="m"/><feComposite in="d" in2="m" operator="in"/></filter><filter id="edge" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="11"/><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter><filter id="torn" x="-5%" y="-8%" width="110%" height="116%"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="2" seed="4" result="lo"/><feDisplacementMap in="SourceGraphic" in2="lo" scale="14" result="d1"/><feTurbulence type="fractalNoise" baseFrequency=".25" numOctaves="2" seed="9" result="hi"/><feDisplacementMap in="d1" in2="hi" scale="2.5"/></filter></svg>
 <div id="bar">
   <a href="index.html">← kit</a>
   <b>Direction</b><button data-view="a">A · real documents</button><button data-view="b">B · the screen is the page</button><a href="office.html?view=debrief" title="the Form-dress mock-up Caio turned down">before: office.html</a>
+  <b>Commands (A)</b><button data-cmd="slip">Slip</button><button data-cmd="fold">Folders</button><button data-cmd="keys">Call box</button>
   <b>Checks</b><button data-cls="squint">Squint</button><button data-cls="grey">Grey</button><button data-cls="even" title="A only: the typed letters set evenly, to weigh the look against the reading">Even type</button>
 </div>
 <div id="stage">
@@ -177,12 +207,22 @@ body.even .c{transform:none!important;opacity:1!important;text-shadow:none!impor
       <div style="margin-top:5px"><span class="ty">(5 more parts overleaf)</span></div>
     </section>
 
-    <section class="doc slip grain"><i class="gum"></i>
+    <section class="doc slip grain cmd c-slip"><i class="gum"></i>
       <h2><span>Routing slip</span><span>flight 1</span></h2>
       <button class="go"><i class="bx2"></i><span>Fly it again</span><span class="kbd" style="flex:none">A</span></button>
       <button class="go"><i class="bx2"></i><span>To the design table</span><span class="kbd" style="flex:none">B</span></button>
       <button class="go pri"><i class="bx2"></i><span>File it: to the office</span><span class="kbd" style="flex:none">P</span></button>
     </section>
+    <div class="cmd c-fold">
+      <button class="fo"><span class="tab">Launch pad</span><b>Fly it again</b><small>the same rocket, back on the pad</small><span class="kbd">A</span></button>
+      <button class="fo"><span class="tab">Design table</span><b>Change the design</b><small>take the rocket back to the table</small><span class="kbd">B</span></button>
+      <button class="fo pri"><span class="tab">Office</span><b>File the report</b><small>close this flight, back to the program</small><span class="kbd">P</span></button>
+    </div>
+    <div class="cmd c-keys"><span class="plate">Director · call box</span>
+      <button class="key"><span class="lab"><b>Fly it again</b><small>launch pad</small></span><span class="cap2">A</span></button>
+      <button class="key"><span class="lab"><b>Change the design</b><small>design table</small></span><span class="cap2">B</span></button>
+      <button class="key pri"><span class="lab"><b>File the report</b><small>to the office</small></span><span class="cap2">P</span></button>
+    </div>
   </div>
 
   <!-- ================= B ================= -->
@@ -218,13 +258,13 @@ body.even .c{transform:none!important;opacity:1!important;text-shadow:none!impor
 <div id="who"></div>
 <script>
 const $=s=>document.querySelector(s),B=document.body;
-const SAY={a:'<b>A · real documents.</b> Each thing is the document it would be: a boxed report form, a ledger sheet clipped to it, a carbon-copy annex, a clipping, and a routing slip whose three lines are the commands. Stock, ink and format differ by document.',
+const SAY={a:'<b>A · real documents.</b> Each thing is the document it would be: a boxed report form, a ledger sheet clipped to it, a carbon-copy annex, a clipping, and the commands, three ways (the bar above: slip, folders, call box). Stock, ink and format differ by document.',
   b:'<b>B · the screen is the page.</b> No desk, no cards, no shadows. One printed page: a grid, rules, two inks (black and the colour of the power), numerals as large as they matter. The stamp is the one physical act.',
   form:'<b>Before.</b> The Form-dress mock-up (office.html): a web layout in beige.'};
-function sync(){$('#who').innerHTML=SAY[B.dataset.view];for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.view?B.dataset.view===b.dataset.view:B.classList.contains(b.dataset.cls))}
-$('#bar').onclick=e=>{const d=e.target.dataset;if(!d||e.target.tagName!=='BUTTON')return;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);sync()};
+function sync(){$('#who').innerHTML=SAY[B.dataset.view];for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.view?B.dataset.view===b.dataset.view:b.dataset.cmd?B.dataset.cmd===b.dataset.cmd:B.classList.contains(b.dataset.cls))}
+$('#bar').onclick=e=>{const d=e.target.dataset;if(!d||e.target.tagName!=='BUTTON')return;if(d.view)B.dataset.view=d.view;if(d.cmd)B.dataset.cmd=d.cmd;if(d.cls)B.classList.toggle(d.cls);sync()};
 addEventListener('keydown',e=>{if(e.key==='1')B.dataset.view='a';if(e.key==='2')B.dataset.view='b';sync()});
-const q=new URLSearchParams(location.search);if(q.get('view'))B.dataset.view=q.get('view');for(const c of['squint','grey','even'])if(q.get(c))B.classList.add(c);
+const q=new URLSearchParams(location.search);if(q.get('view'))B.dataset.view=q.get('view');if(q.get('cmd'))B.dataset.cmd=q.get('cmd');for(const c of['squint','grey','even'])if(q.get(c))B.classList.add(c);
 sync();
 // typed entries: every letter sits a little off its line and takes a little more or less ink (seeded, so stills repeat)
 let seed=7;const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
@@ -233,9 +273,9 @@ for(const e of document.querySelectorAll('.A .ty')){const t=e.textContent;e.text
     for(const ch of word){const c=document.createElement('span');c.className='c';c.textContent=ch;c.style.cssText=`transform:translateY(${(rnd()*1.5-.75).toFixed(2)}px) rotate(${(rnd()*1.6-.8).toFixed(2)}deg);opacity:${(.68+rnd()*.32).toFixed(2)};text-shadow:0 0 ${(rnd()*.9).toFixed(2)}px currentColor`;w.append(c)}e.append(w)}
   e.style.transform=`translate(${(rnd()*4-1).toFixed(1)}px,${(rnd()*3-1.2).toFixed(1)}px) rotate(${(rnd()*.7-.35).toFixed(2)}deg)`}
 window.CHECK=()=>document.fonts.ready.then(()=>{const S=$('#stage').getBoundingClientRect(),out=[];
-  for(const e of document.querySelectorAll('.doc,.B .grid,.B .foot,.boxes'))if(e.offsetParent){const r=e.getBoundingClientRect();if(r.right>S.right+1||r.bottom>S.bottom+1||r.left<S.left-1||r.top<S.top-1)out.push('off screen: '+e.className+' '+Math.round(r.bottom-S.bottom))}
+  for(const e of document.querySelectorAll('.doc,.cmd,.fo,.key,.B .grid,.B .foot,.boxes'))if(e.offsetParent){const r=e.getBoundingClientRect();if(r.right>S.right+1||r.bottom>S.bottom+1||r.left<S.left-1||r.top<S.top-1)out.push('off screen: '+e.className+' '+Math.round(r.bottom-S.bottom))}
   const g=$('.B .grid'),f=$('.B .foot');if(g.offsetParent&&g.getBoundingClientRect().bottom>f.getBoundingClientRect().top)out.push('B: the columns run into the foot');
-  for(const e of document.querySelectorAll('.lr>span,.ln,.r,.bx'))if(e.offsetParent&&e.scrollWidth>e.clientWidth+5)out.push('too wide: "'+e.textContent.trim().slice(0,24)+'"');
+  for(const e of document.querySelectorAll('.lr>span,.ln,.r,.bx,.fo,.key .lab'))if(e.offsetParent&&e.scrollWidth>e.clientWidth+5)out.push('too wide: "'+e.textContent.trim().slice(0,24)+'"');
   return out.join(' | ')||'fits'});
 </script>
 </body>
