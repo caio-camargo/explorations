@@ -657,16 +657,18 @@ void main(){
 const MESH_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;layout(location=4) in vec4 aU;layout(location=5) in vec2 aK;
 uniform mat4 uVP,uM;uniform float uFc;uniform vec4 uMv[48];out vec3 vN,vC,vP,vO,vNo;out float vW,vM;out vec4 vU;out vec2 vK;
-// moving parts (setMoves, QUEUE Q23): up to 16 entries of three vec4s, (pivot, part index), (mode, axis x, axis z, ring
-// radius), (rotation): mode 1 an engine's bell (kind 2) turned by a quaternion about its throat; mode 2 a fin ring's
-// plates (kind 6 beyond the ring radius), plate j by angle .[j] about its radial axis FIN4[j]; mode 3 a radial fin, .x
+// moving parts (setMoves, QUEUE Q23): up to 16 entries of three vec4s, (pivot, part index), (mode, axis x, axis z, -),
+// (rotation): mode 1 an engine's bell (kind 2) turned by a quaternion about its throat; mode 2 a steerable fin ring's
+// flaps (kind 19, FLAP_K, Q635), flap j by angle .[j] about its hinge, the radial axis FIN4[j] through the pivot; mode 3
+// a radial fin's flap, .x
 vec3 rotA(vec3 v,vec3 a,float t){float c=cos(t),s=sin(t);return v*c+cross(a,v)*s+a*dot(a,v)*(1.-c);}
 vec3 qrv(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
 void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
- if((k==2||k==6)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
+ if((k==2||k==19)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
   if(B.x<1.5){if(k==2){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}
-  else if(B.x<2.5){if(length(d.xz)>B.w){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
-   vec3 ax=vec3(a.x,0.,a.y);P=A.xyz+rotA(d,ax,Q[i]);N=rotA(N,ax,Q[i]);}}
+  else if(k!=19);
+  else if(B.x<2.5){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
+   vec3 ax=vec3(a.x,0.,a.y);P=A.xyz+rotA(d,ax,Q[i]);N=rotA(N,ax,Q[i]);}
   else{vec3 ax=vec3(B.y,0.,B.z);P=A.xyz+rotA(d,ax,Q.x);N=rotA(N,ax,Q.x);}
   break;}
  vec4 w=uM*vec4(P,1.);vP=w.xyz;vO=aP;vNo=N;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*N;vC=aC;vM=aM;vU=aU;vK=aK;}`;
@@ -785,7 +787,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    float sh=band(v,.25*sc,9.,fv);if(sh>0.){float N2=floor(6.2832*R/.12+.5),p2=fract(vU.x*N2),f2=smoothstep(.5,.15,fu*N2);
     nO+=T*smoothstep(.8,.97,abs(p2-.5)*2.)*sign(p2-.5)*.4*f2*sh;alb*=1.-.6*lin(v-.25*sc,.9*sc,.004,fv)*sh;
     alb=mix(alb,vec3(.02),dots(s,v,.25*sc+.35*sc,.5*sc,.05*sc,fp)*sh);}}
-  else if(k==6){                                           // fin ring rivets; fins keep the paint, with grime
+  else if(k==6||k==19){                                    // fin ring rivets; fins and their flaps (19, Q635) keep the paint, with grime
    if(side&&R>.5)alb=mix(alb,vec3(.3),max(dots(s,v,.04*sc,.07*sc,.007*sc,fp),dots(s,v,h-.04*sc,.07*sc,.007*sc,fp)));
    alb*=1.-.12*vn2(vec2(vO.x*3.+vO.z*3.,vO.y*.8))*smoothstep(.05,.012,fp);}
   else if(k==7){                                           // instruments: crinkled gold foil between bolted equipment rings
@@ -1779,12 +1781,63 @@ function rboxUV(out,c,hx,hy,hz,col,phi){const a=[],H=[hx,hy,hz],t=H.indexOf(Math
   for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi),broad=Math.abs(a[i+3+t])>.5;
     out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,...a.slice(i+6,i+10),a[i+ua]+H[ua],a[i+va]+H[va],broad?2*H[ua]:-1,2*H[va],SOLAR_K,PK.i)}}
 // a swept, tapered fin at angle a around the part axis: root chord ch on the hull (radius r0), tip chord ×0.45 flush with
-// the trailing edge, thickness 2t; the leading edge is a bare-metal strip, the faces take the paint
-function fin(out,o,a,r0,sp,ch,t,col){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
-  const q=[[r0,0],[r0+sp,0],[r0+sp,ch*.45],[r0,ch]],tri=(A,B,Cc,n,c)=>{pv(out,A,n,c);pv(out,B,n,c);pv(out,Cc,n,c)};
-  for(const s of[-1,1]){const n=N(0,0,s),Q=q.map(([r,y])=>P(r,y,s*t));tri(Q[0],Q[1],Q[2],n,col);tri(Q[0],Q[2],Q[3],n,col)}
-  for(let e=0;e<4;e++){const[r1,y1]=q[e],[r2,y2]=q[(e+1)%4],l=Math.hypot(r2-r1,y2-y1),n=N((y2-y1)/l,-(r2-r1)/l,0),c=e===2?C.ST:col;
-    const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}}
+// the trailing edge (the fin's bottom edge, y = 0, straight out from the hull); the leading edge is a bare-metal strip,
+// the faces take the paint. (Q635) The fin has a section: a symmetric aerofoil (the NACA 00xx thickness law: a round
+// nose, thickest 30 % back, a thin trailing edge), its thickest half-thickness t at the root falling to FIN_TIP·t at the
+// tip, and flaring by opt.fl into the hull over the first few % of the span (a root fillet; opt.shoe paints that foot
+// bare metal, a radial fin's mounting shoe). opt.flap: the steerable fin, drawn as a fixed fin with a hinged
+// trailing-edge flap. The fin is cut FLAP_CH·ch above the trailing edge from FLAP_IN of the span out to the tip; the flap
+// (a round nose on the hinge line, a wedge to the trailing edge, a control horn on each face) is a kind of its own,
+// FLAP_K, which MESH_VS turns about the hinge (setMoves). The sim's plate is all-moving: the flap is how it is drawn.
+// FIN_FX=false: the flat slab from before (A/B; its steerable plates stay put).
+let FIN_FX=true;const FLAP_K=19,FLAP_CH=.24,FLAP_IN=.14,FLAP_GAP=.012,FLAP_GAIN=1.5,FIN_TIP=.4,FIN_XS=[0,.006,.025,.06,.12,.2,.3,.42,.56,.7,.85,1],FIN_US=[0,.03,.07,FLAP_IN,1];   // along the span: close together at the root's flare, then one straight run to the tip
+const finSec=x=>(.2969*Math.sqrt(x)-.126*x-.3516*x*x+.2843*x*x*x-.1036*x*x*x*x)*10+.1*x;   // half-thickness along the chord (0 nose, 1 trailing edge), 1 at its thickest
+function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
+  const tri=(A,B,Cc,n,c)=>{pv(out,A,n,c);pv(out,B,n,c);pv(out,Cc,n,c)};
+  if(!FIN_FX){const q=[[r0,0],[r0+sp,0],[r0+sp,ch*.45],[r0,ch]];
+    for(const s of[-1,1]){const n=N(0,0,s),Q=q.map(([r,y])=>P(r,y,s*t));tri(Q[0],Q[1],Q[2],n,col);tri(Q[0],Q[2],Q[3],n,col)}
+    for(let e=0;e<4;e++){const[r1,y1]=q[e],[r2,y2]=q[(e+1)%4],l=Math.hypot(r2-r1,y2-y1),n=N((y2-y1)/l,-(r2-r1)/l,0),c=e===2?C.ST:col;
+      const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}
+    return}
+  const fl=opt.fl??.6,flap=!!opt.flap,sink=opt.sink??.03,nx=FIN_XS.length,
+    yLE=u=>ch*(1-.55*u),T=u=>t*(1-(1-FIN_TIP)*u)*(1+fl*Math.exp(-u/.045)),half=(u,x)=>T(u)*finSec(x),
+    yh=FLAP_CH*ch,rho=u=>half(u,1-yh/yLE(u)),xEnd=(u,cut)=>cut?1-(yh+rho(u)+FLAP_GAP)/yLE(u):1,   // a cut section stops a gap ahead of the flap's nose
+    L=(u,x,s)=>[r0+sp*u,yLE(u)*(1-x),s*half(u,x)],W=(u,x,s)=>P(r0+sp*u-(u<=0?sink:0),yLE(u)*(1-x),s*half(u,x)),   // the root station sits inside the hull's skin
+    nrm=(u,x,s)=>{if(x<1e-6){const l=Math.hypot(.55*ch,sp);return N(.55*ch/l,sp/l,0)}   // the nose line: straight out of the plate's plane
+      const e=1e-4,A=L(u,Math.max(x-e,1e-6),s),B=L(u,Math.min(x+e,1),s),Cc=L(Math.max(u-e,0),x,s),D=L(u+e,x,s);let n=norm(cross(sub(B,A),sub(D,Cc)));if(n[2]*s<0)n=mul(n,-1);return N(n[0],n[1],n[2])},
+    quad=(A,B,Cc,D,n,c)=>{tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)};
+  for(let i=0;i<FIN_US.length-1;i++){const u0=FIN_US[i],u1=FIN_US[i+1],cut=flap&&u0>=FLAP_IN-1e-9,e0=xEnd(u0,cut),e1=xEnd(u1,cut);
+    for(const s of[-1,1])for(let j=0;j<nx-1;j++){const xa=FIN_XS[j],xb=FIN_XS[j+1],c=j<3||opt.shoe&&u1<=.07+1e-9?C.ST:col,
+        q=[[u0,xa*e0],[u1,xa*e1],[u1,xb*e1],[u0,xb*e0]];
+      for(const k of[0,1,2,0,2,3])pv(out,W(q[k][0],q[k][1],s),nrm(q[k][0],q[k][1],s),c)}
+    quad(W(u0,e0,-1),W(u1,e1,-1),W(u1,e1,1),W(u0,e0,1),N(0,-1,0),cut?C.D:col)}   // the trailing edge; on a cut section, the cove the flap's nose sits in
+  const wall=(u,xa,xb,m,c)=>{for(let k=0;k<m;k++){const x0=xa+(xb-xa)*k/m,x1=xa+(xb-xa)*(k+1)/m;quad(W(u,x0,1),W(u,x0,-1),W(u,x1,-1),W(u,x1,1),N(1,0,0),c)}};
+  if(opt.rib)for(const s of[-1,1])tube(out,W(.12,.3,s),W(.8,.3,s),.009,C.ST,6);   // a big plate's stiffener, half sunk in each face
+  wall(1,0,xEnd(1,flap),8,col);   // the tip
+  if(!flap)return;
+  wall(FLAP_IN,xEnd(FLAP_IN,true),1,4,C.D);   // the inboard end of the cut-out
+  const k0=PK.k,fc=opt.fcol||col,U=[FLAP_IN+FLAP_GAP/sp,1],
+    sec=u=>{const r=rho(u),tau=half(u,1),l=Math.hypot(r-tau,yh),S=[[0,tau,-(r-tau)/l,yh/l],[yh,r,-(r-tau)/l,yh/l]];   // [y, s, normal y, normal s]: a face, the nose round the hinge, the other face, the trailing edge
+      for(let k=0;k<=8;k++){const g=Math.PI/2-k*Math.PI/8;S.push([yh+r*Math.cos(g),r*Math.sin(g),Math.cos(g),Math.sin(g)])}
+      S.push([yh,-r,-(r-tau)/l,-yh/l],[0,-tau,-(r-tau)/l,-yh/l],[0,-tau,-1,0],[0,tau,-1,0]);return S},
+    FP=(u,q)=>P(r0+sp*u,q[0],q[1]),FN=q=>N(0,q[2],q[3]),hard=k=>k===1||k===10||k===12;   // outline points where one face ends and the next begins
+  for(const s of[-1,1]){const u=.24,y0=yh+rho(u)+FLAP_GAP,at=y=>P(r0+sp*u,y,s*half(u,1-y/yLE(u)));tube(out,at(y0+.01*ch),at(y0+.2*ch),.016*ch,C.D,6,true)}   // the actuator's fairing on the fin, ahead of each horn
+  PK.k=FLAP_K;
+  for(let i=0;i<U.length-1;i++){const A=sec(U[i]),B=sec(U[i+1]);
+    for(let k=0;k<A.length-1;k++){if(hard(k))continue;for(const[S,u,q]of[[A,U[i],k],[B,U[i+1],k],[B,U[i+1],k+1],[A,U[i],k],[B,U[i+1],k+1],[A,U[i],k+1]])pv(out,FP(u,S[q]),FN(S[q]),fc)}}
+  for(const[u,sg]of[[U[0],-1],[1,1]]){const S=sec(u),c=FP(u,[yh/2,0]),n=N(sg,0,0);for(let k=0;k<S.length-1;k++)if(!hard(k))tri(c,FP(u,S[k]),FP(u,S[k+1]),n,fc)}   // its two ends
+  for(const s of[-1,1]){const u=.24,r=rho(u),tau=half(u,1),at=y=>P(r0+sp*u,y,s*(tau+(r-tau)*y/yh));tube(out,at(yh*.92),at(yh*.3),.011*ch,C.D,6,true)}   // the control horns
+  PK.k=k0}
+// One shape per kind of fin, built once at the origin and turned into place for each plate (a ship rebuilds its whole mesh
+// at every builder edit and staging, and a ring is four of these).
+const FIN_T=new Map();
+function fin(out,o,a,r0,sp,ch,t,col,opt={}){if(!FIN_FX)return finShape(out,o,a,r0,sp,ch,t,col,opt);
+  const key=[r0,sp,ch,t,col,opt.fcol||'',opt.fl??'',opt.sink??'',+!!opt.flap,+!!opt.shoe,+!!opt.rib].join();let T=FIN_T.get(key);
+  if(!T){const pk=PK;PK={...PK0};T=[];try{finShape(T,[0,0,0],0,r0,sp,ch,t,col,opt)}finally{PK=pk}FIN_T.set(key,T)}
+  const ca=Math.cos(a),sa=Math.sin(a),k0=PK.k;
+  for(let i=0;i<T.length;i+=VX){PK.k=T[i+14]===FLAP_K?FLAP_K:k0;
+    pv(out,[o[0]+T[i]*ca-T[i+2]*sa,o[1]+T[i+1],o[2]+T[i]*sa+T[i+2]*ca],[T[i+3]*ca-T[i+5]*sa,T[i+4],T[i+3]*sa+T[i+5]*ca],[T[i+6],T[i+7],T[i+8],T[i+9]])}
+  PK.k=k0}
 // station trim: yellow handrails along the hull at the given angles, on standoffs (the crew's way along the outside)
 function stationTrim(out,x,y,z,h,angs){const HR=[.85,.65,.12];for(const a of angs){const c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r];
   tube(out,P(.7,.35),P(.7,h-.35),.018,HR,6);for(let yy=.35;yy<=h-.34;yy+=.6)tube(out,P(.625,yy),P(.7,yy),.012,HR,4)}}
@@ -1869,16 +1922,16 @@ function partBody(out,p){
   switch(d.key){
     case'cone':lathe(out,OGIVE_FX?ogive(.625,1.6,1.25,C.W,C.D):[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
     case'fins':case'cfins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
-      for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
+      for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W,{flap:!!d.ctl,fcol:i%2?C.W:C.BK})}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
     // reaction wheel (Q23): a squat machined housing between bolted flanges, a gold-foil band, four motor pods
     case'rwheel':lathe(out,[[.625,0,C.D],[.625,.035,C.D],[.6,.035,C.ST],[.6,.1,C.ST],[.6,.1,C.AU],[.6,.2,C.AU],[.6,.2,C.ST],[.6,.265,C.ST],[.625,.265,C.D],[.625,.3,C.D]],o);
       for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;rbox(out,[x+Math.cos(a)*.63,y+h/2,z+Math.sin(a)*.63],.035,.07,.06,C.D,a)}break;
     // (Q396) the root doubler grows with the fin's size (0.9 / 1.35 / 2 m, Q348), and the bigger plates carry a stiffener
     // rib along their span on both faces
-    case'rfin':case'cfin':{const k=d.span/.9,ca=Math.cos(p.phi),sa=Math.sin(p.phi),th=.035*Math.min(k,1.4);fin(out,o,p.phi,0,d.span,h,th,(p.i||0)%2?C.BK:C.W);
-      rbox(out,[x+ca*.06*k,y+h*.35,z+sa*.06*k],.06*k,h*.3,.07*Math.min(k,1.5),C.ST,p.phi);
-      if(k>1.2)for(const sd of[-1,1])rbox(out,[x+ca*d.span*.4-sa*(th+.008)*sd,y+h*.42,z+sa*d.span*.4+ca*(th+.008)*sd],d.span*.36,.012,.008,C.ST,p.phi)}break;
+    // (Q635) the doubler is the fin's own foot now, flaring into a bare-metal shoe (fin's opt.fl, opt.shoe); the stiffener a
+    // bead along the section's thickest line (opt.rib); a steerable fin carries its flap (opt.flap)
+    case'rfin':case'cfin':{const k=d.span/.9,bk=(p.i||0)%2;fin(out,o,p.phi,0,d.span,h,.035*Math.min(k,1.4),bk?C.BK:C.W,{fl:1,shoe:true,rib:k>1.2,flap:!!d.ctl,fcol:bk?C.W:C.BK})}break;
     // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
       tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
@@ -2224,8 +2277,9 @@ function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);AOA.fill(0);for(c
     CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4);HTA[i]=m.hot||0}
   gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA);gl.uniform4fv(u['uHt[0]'],HTA);setMoves(u,parts)}
 // the moving parts of these parts into the mesh shader's uMv table (QUEUE Q23): engine bells turned by their gimbal
-// (p.gv: the thrust along tdir + gv, the bell turning about its throat) and steerable fin plates by their deflection
-// (p.fd, rad, about each plate's radial axis through mid-chord, the sim's sign). Up to 16; parts at rest are left out.
+// (p.gv: the thrust along tdir + gv, the bell turning about its throat) and steerable fins' flaps by the plate's deflection
+// (p.fd, rad, the sim's sign, times FLAP_GAIN: the sim turns the whole plate, the drawing a flap a quarter of its chord,
+// so the flap swings further to read; Q635). Up to 16; parts at rest are left out.
 const MVA=new Float32Array(48*4),BELL_YT=new Map();
 function bellThroat(d){let y=BELL_YT.get(d.key);if(y!=null)return y;const a=[],b=d.sc?PARTS[d.base]:d;partShape(a,{d:b,pos:[0,0,0],y0:0,h:b.h,i:0});y=0;
   for(let i=0;i<a.length;i+=VX)if(a[i+14]%32===KIND.bell){y=a[i+13];break}y*=d.sc||1;BELL_YT.set(d.key,y);return y}
@@ -2240,9 +2294,9 @@ let INTERSTAGE_FX=true;   // false: no interstage covers (A/B, Q102 step 4)
 let MOVES_FX=true;   // false: bells and fin plates stay put (A/B)
 function setMoves(u,parts){MVA.fill(0);let n=0;if(MOVES_FX)for(const p of parts){if(n>=16)break;const i=p.i;if(i==null||i<0||i>=96||!p.on)continue;const d=p.d;
     if(d.kind==='engine'){const e=engMove(p);if(!e)continue;MVA.set([...e.pv,i,1,0,0,0,...e.q],n*12);n++}
-    else if(d.ctl&&p.fd&&p.fd.some(x=>Math.abs(x)>1e-4)){const k=d.sc||1;
-      if(d.kind==='fins')MVA.set([p.pos[0],p.y0+d.chord*k/2,p.pos[2],i,2,0,0,.625*k*1.02,p.fd[0]||0,p.fd[1]||0,p.fd[2]||0,p.fd[3]||0],n*12);
-      else MVA.set([p.pos[0],p.y0+d.h/2,p.pos[2],i,3,Math.cos(p.phi),Math.sin(p.phi),0,p.fd[0]||0,0,0,0],n*12);n++}}
+    else if(d.ctl&&p.fd&&p.fd.some(x=>Math.abs(x)>1e-4)){const g=FIN_FX?FLAP_GAIN:0,f=j=>(p.fd[j]||0)*g;   // (Q635) the pivot is the flap's hinge line, FLAP_CH of the chord above the trailing edge
+      if(d.kind==='fins')MVA.set([p.pos[0],p.y0+FLAP_CH*d.chord,p.pos[2],i,2,0,0,0,f(0),f(1),f(2),f(3)],n*12);
+      else MVA.set([p.pos[0],p.y0+FLAP_CH*d.h,p.pos[2],i,3,Math.cos(p.phi),Math.sin(p.phi),0,f(0),0,0,0],n*12);n++}}
   gl.uniform4fv(u['uMv[0]'],MVA)}
 const PLUME=(()=>{const a=[],w=[1,1,1],pr=[];for(let i=0;i<=16;i++)pr.push([1,-i/16,w]);lathe(a,pr,[0,0,0],24,[true,true]);return makeMesh(a)})();
 // propellant profiles (Waterfall's "templates"): colours of core, diamonds, afterburning mantle, gas glow, soot absorption

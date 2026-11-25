@@ -955,7 +955,7 @@
     whip: /case'whip':[\s\S]*?for\(let j=0;j<3;j\+\+\)lathe/.test(body),
     boom: /case'bant':[\s\S]*?lon=\[\[0,e\]/.test(body) && /\/\/ the hinge/.test(body),
     fairing: /function fairSeams\(out,pr,o\)/.test(page) && (body.match(/fairSeams\(out,pr,o\)/g) || []).length === 2,
-    fins: /case'rfin':case'cfin':\{const k=d\.span\/\.9/.test(body) && /if\(k>1\.2\)for\(const sd of\[-1,1\]\)rbox/.test(body)
+    fins: /case'rfin':case'cfin':\{const k=d\.span\/\.9/.test(body) && /shoe:true,rib:k>1\.2/.test(body)
   };
   check('the new parts\' look: frame bays and radiators, side boxes each readable, whip and lattice boom, fairing rails, fins by size, foil that crinkles',
     Object.values(has).every(Boolean), Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
@@ -1510,7 +1510,56 @@
     `3 ms scene → ${(end(light) * 100).toFixed(0)} % · 5 ms → ${(end(mid) * 100).toFixed(0)} % at ${ms(end(mid), 1, 4).toFixed(1)} ms · 8 ms → ${busy.every(r => r === 1) ? '100 % throughout' : (end(busy) * 100).toFixed(0) + ' %'} · met at 150 % → ${(end(met) * 100).toFixed(0)} % at ${ms(end(met), 2, 6).toFixed(1)} ms · from 60 % → ${(end(up) * 100).toFixed(0)} % · Low ${(end(low) * 100).toFixed(0)} % · stripes ${half} · box ${box} · flat ${flat} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
-// aerofx-63. The RCS jet (look & sound, effects; Q634, PLAYTEST #168: "the gas release is still a placeholder graphic").
+// aerofx-63. Fins with a section, and a flap on the ones that steer (look & sound parts & pad, QUEUE Q635; Caio
+// 2026-11-25: "the fins, which look boxy. also, if they have a control element, like flaps, i'd like that graphically
+// represented"). fin() built headless: the plate is an aerofoil (thickest 30 % back, a round nose, a thin trailing edge,
+// thinner at the tip, flaring into the hull), every normal points out of it; a steerable fin is cut for a flap of its own
+// kind (FLAP_K), which clears the cove at any swing, and nothing fixed stands in the flap's way. MESH_VS turns only that
+// kind about the hinge setMoves gives it; the sim's plate is untouched.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const src = pg.slice(pg.indexOf('const VX=16'), pg.indexOf('const KIND=')) + pg.slice(pg.indexOf('function pv('), pg.indexOf('// surface of revolution')) +
+    pg.slice(pg.indexOf('const C={W:'), pg.indexOf('function box(')) + pg.slice(pg.indexOf('let FIN_FX=true;'), pg.indexOf('// station trim')) + body('tube');
+  const K = new Function('return ' + /const KIND=(\{[^}]*\})/.exec(pg)[1])();
+  const { fin, FLAP_K, FLAP_CH, FLAP_IN, FLAP_GAP, FLAP_GAIN, FIN_TIP, C, slab } = new Function('norm', 'cross', 'sub', 'mul', 'add', 'len',
+    src + ';return{fin,FLAP_K,FLAP_CH,FLAP_IN,FLAP_GAP,FLAP_GAIN,FIN_TIP,C,slab:(...a)=>{FIN_FX=false;try{fin(...a)}finally{FIN_FX=true}}}')(norm, cross, sub, mul, add, len);
+  const R = .625, sp = .9, ch = .9, t = .035, yh = FLAP_CH * ch;
+  const mk = (f, opt) => { const o = []; f(o, [0, 0, 0], 0, R, sp, ch, t, C.W, opt); const V = [];
+    for (let i = 0; i < o.length; i += 16) V.push({ r: o[i], y: o[i + 1], z: o[i + 2], n: [o[i + 3], o[i + 4], o[i + 5]], k: o[i + 14] }); return V };
+  const fixed = mk(fin), steer = mk(fin, { flap: true }), old = mk(slab), all = [...fixed, ...steer];
+  const finite = all.every(v => [v.r, v.y, v.z, ...v.n].every(Number.isFinite)) && all.every(v => Math.abs(len(v.n) - 1) < 1e-6);
+  const tubes = v => Math.abs(v.r - (R + .24 * sp)) < .02;   // the horns and the actuators' fairings: round, so half of each faces the plate
+  const outward = all.every(v => Math.abs(v.z) < 1e-4 || v.n[2] * v.z > -1e-9 || tubes(v)) && fixed.every(v => !tubes(v));
+  // the section: half-thickness where the plate is thickest, by distance from the hull; and along the chord at mid-span
+  const thick = (V, r0, r1) => Math.max(...V.filter(v => v.r >= r0 && v.r <= r1).map(v => Math.abs(v.z)));
+  const root = thick(fixed, R - .05, R + 1e-6), mid = thick(fixed, R + FLAP_IN * sp - 1e-6, R + FLAP_IN * sp + 1e-6), tip = thick(fixed, R + sp - 1e-6, R + sp + 1e-6);
+  const at65 = fixed.filter(v => Math.abs(v.r - (R + sp)) < 1e-6 && v.z > 0), cLE = ch * .45, xOf = v => 1 - v.y / cLE,
+    best = at65.reduce((b, v) => v.z > b.z ? v : b), te = Math.max(...at65.filter(v => xOf(v) > .999).map(v => v.z)), nose = fixed.filter(v => v.n[2] === 0 && v.n[1] > .5 && v.n[0] > .3);
+  const section = root > 1.4 * t && root < 1.75 * t && mid < t && mid > .7 * t && Math.abs(tip - FIN_TIP * t) < .08 * t && Math.abs(xOf(best) - .3) < .01 && te < .15 * best.z && nose.length > 6
+    && new Set(fixed.map(v => v.n.map(x => x.toFixed(3)).join())).size > 80 && new Set(old.map(v => v.n.map(x => x.toFixed(3)).join())).size === 6;
+  const bounds = all.every(v => v.r >= R - .031 && v.r <= R + sp + 1e-9 && v.y >= -1e-9 && v.y <= ch + 1e-9) && fixed.every(v => v.k === 0);
+  // the flap: its own kind, outboard of the cut's inner wall, and nothing fixed in the space it swings through
+  const flap = steer.filter(v => v.k === FLAP_K), rest = steer.filter(v => v.k !== FLAP_K), rin = R + FLAP_IN * sp;
+  const noseAt = r => Math.max(0, ...flap.filter(v => v.y > yh && Math.abs(v.r - r) < .02).map(v => Math.hypot(v.y - yh, v.z))), reach = Math.max(...flap.filter(v => v.y > yh).map(v => Math.hypot(v.y - yh, v.z)));
+  const out = rest.filter(v => v.r > rin + 1e-6), cove = Math.min(...out.map(v => v.y - yh)), clear = out.every(v => { const n = noseAt(v.r); return v.y - yh >= (n ? n + FLAP_GAP - 1e-6 : reach) });   // station by station: the fin stops a gap ahead of the flap's round nose
+  const cut = flap.length > 250 && rest.every(v => v.k === 0) && flap.every(v => v.r >= rin + FLAP_GAP - 1e-9 && v.y <= yh + reach + 1e-9)
+    && reach > .01 && clear
+    && rest.filter(v => v.r <= rin + 1e-6).some(v => v.y < 1e-9);   // the inboard stub keeps the whole chord
+  const free = FLAP_K !== 17 && FLAP_K !== 18 && FLAP_K < 32 && !Object.values(K).includes(FLAP_K) && /SOLAR_K=17/.test(pg) && /GREEBLE_K=18/.test(pg);
+  const vs = pg.slice(pg.indexOf('const MESH_VS='), pg.indexOf('const MESH_FS=')), sm = body('setMoves'), pb = body('partBody');
+  const has = {
+    vs: vs.includes('if((k==2||k==19)&&aK.y>-.5)') && vs.includes('else if(k!=19);') && !vs.includes('k==6'),
+    fs: pg.includes('else if(k==6||k==19){'),
+    moves: sm.includes('p.y0+FLAP_CH*d.chord,p.pos[2],i,2,') && sm.includes('p.y0+FLAP_CH*d.h,p.pos[2],i,3,Math.cos(p.phi),Math.sin(p.phi)') && sm.includes('FIN_FX?FLAP_GAIN:0'),
+    parts: (pb.match(/flap:!!d\.ctl/g) || []).length === 2,
+    gain: FLAP_GAIN * 20 <= 35   // 20° of plate is at most 35° of flap
+  };
+  check('fins have a section and the steerable ones a flap (Q635): an aerofoil thickest 30 % back, thinner to the tip, flaring into the hull, normals out; the flap its own kind, clear of its cove, turned alone by MESH_VS about the hinge; the sim\'s plate untouched',
+    finite && outward && section && bounds && cut && free && Object.values(has).every(Boolean),
+    `fixed fin ${fixed.length} vertices (slab ${old.length}), steerable ${steer.length} of which flap ${flap.length} · half-thickness root ${(root * 1000).toFixed(0)} mm, ${(FLAP_IN * 100).toFixed(0)} % span ${(mid * 1000).toFixed(0)}, tip ${(tip * 1000).toFixed(0)}; thickest at ${(xOf(best) * 100).toFixed(0)} % chord, trailing edge ${(te * 1000).toFixed(1)} mm · flap nose reach ${(reach * 1000).toFixed(0)} mm, cove at ${(cove * 1000).toFixed(0)} · ` +
+    `finite ${finite} outward ${outward} section ${section} bounds ${bounds} cut ${cut} free ${free} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
+// aerofx-64. The RCS jet (look & sound, effects; Q634, PLAYTEST #168: "the gas release is still a placeholder graphic").
 // A cold-gas jet per nozzle in place of the glowing box: short, gone a tenth of a second after its pulse, mostly
 // transparent, white in the sun and next to nothing in a body's shadow. The numbers are RCS_JET's; the picture is JET_FS
 // (its column of gas across the axis is mirrored here from the same numbers).
@@ -1536,7 +1585,7 @@
     box: !pg.includes('PUFF.vao') && !pg.includes('const PUFF='),
     back: pg.includes('if(on){gl.cullFace(gl.BACK);gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}}')
   };
-  check('aerofx-63: the RCS jet: a pulse is seen and gone within ' + K.T * 1000 + ' ms, fading all the way; short; white in the sun, over 20 times fainter in shadow but not nothing; mostly transparent; the placeholder box is gone',
+  check('aerofx-64: the RCS jet: a pulse is seen and gone within ' + K.T * 1000 + ' ms, fading all the way; short; white in the sun, over 20 times fainter in shadow but not nothing; mostly transparent; the placeholder box is gone',
     seen && gone && fades && short && white && faint && thin && Object.values(has).every(Boolean),
     `seen ${seen} · gone ${gone} · fades ${fades} · ${L.toFixed(2)} m at 150 N · sun ${sun[0].toFixed(2)} · shadow ${dark[0].toFixed(3)} (1/${(sun[0] / dark[0]).toFixed(0)}) · covers ${(al(0) * 100).toFixed(0)} % at the bell, ${(al(L / 2) * 100).toFixed(1)} % halfway · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
