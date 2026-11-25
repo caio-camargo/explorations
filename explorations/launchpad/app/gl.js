@@ -664,8 +664,8 @@ uniform mat4 uVP,uM;uniform float uFc;uniform vec4 uMv[48];out vec3 vN,vC,vP,vO,
 vec3 rotA(vec3 v,vec3 a,float t){float c=cos(t),s=sin(t);return v*c+cross(a,v)*s+a*dot(a,v)*(1.-c);}
 vec3 qrv(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
 void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
- if((k==2||k==19)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
-  if(B.x<1.5){if(k==2){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}
+ if((k==2||k==19||k==20)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
+  if(B.x<1.5){if(k==2||k==20){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}   // the bell, and what is fixed to it (20, FIT_K, Q638)
   else if(k!=19);
   else if(B.x<2.5){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
    vec3 ax=vec3(a.x,0.,a.y);P=A.xyz+rotA(d,ax,Q[i]);N=rotA(N,ax,Q[i]);}
@@ -682,6 +682,7 @@ float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
 vec3 hsv(float h,float s,float v){vec3 c=clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);return v*mix(vec3(1.),c,s);}
 const bool ROUNDEL_ON=true;   // false: no roundels (edit here for an A/B)
+const bool MOUNT_ON=true;   // false: the engine mount's plain cone (Q638; edit here for an A/B)
 const bool SKIN_ON=true;   // false: no surface pass (Q316, B1.4; edit here for an A/B)
 // the roundel (Q102 step 5; Q228 for the other four, app/flags.js roundelBody's designs): a disc of radius 1 in u, by
 // school: Cape red and white stripes with a blue canton of small stars; Steppe one gold star on red; Arsenal a chevron
@@ -772,7 +773,12 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=(1.-.4*seam)*(.94+.1*pid*fd);nO+=T*(pa-.5)*.12*pv*fd;
    float bl=dots(s,v,ph,6.2832*R/NA,.008*sc,fp)*pv;alb=mix(alb,vec3(.42,.43,.45),bl);}
   else if(k==15){                                          // engine mount: bolt ring under the tank flange
-   alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));}
+   alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));
+   // (Q638) the thrust structure's cone: stiffening ribs down it, a frame where it meets the skirt (an engine's own
+   // mount only: its faces look down; boxes of this kind, thrusters and arms, are left alone)
+   if(MOUNT_ON&&vNo.y<-.3&&m==0){float N=floor(6.2832*R/(.16*sc)+.5),ph=fract(vU.x*N),e=abs(ph-.5)*2.,fN=smoothstep(.5,.15,fu*N);
+    nO+=T*smoothstep(.72,.95,e)*sign(ph-.5)*.6*fN;alb*=1.-mix(.06,.35*smoothstep(.82,1.,e),fN);
+    alb*=1.-.25*vn2(vec2(vU.x*40.,v*6.));}}
   else if(k==3&&side){                                     // capsule: dark corrugated shingles, a window, a hatch
    float body=band(v,.06*sc,1.2*sc,fv),N=floor(6.2832*R/.04+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
    alb=mix(alb,vec3(.028,.029,.032),body);metal=mix(metal,.6,body);rough=mix(rough,.48,body);
@@ -1774,7 +1780,7 @@ function rboxUV(out,c,hx,hy,hz,col,phi){const a=[],H=[hx,hy,hz],t=H.indexOf(Math
 // (a round nose on the hinge line, a wedge to the trailing edge, a control horn on each face) is a kind of its own,
 // FLAP_K, which MESH_VS turns about the hinge (setMoves). The sim's plate is all-moving: the flap is how it is drawn.
 // FIN_FX=false: the flat slab from before (A/B; its steerable plates stay put).
-let FIN_FX=true;const FLAP_K=19,FLAP_CH=.24,FLAP_IN=.14,FLAP_GAP=.012,FLAP_GAIN=1.5,FIN_TIP=.4,FIN_XS=[0,.006,.025,.06,.12,.2,.3,.42,.56,.7,.85,1],FIN_US=[0,.03,.07,FLAP_IN,1];   // along the span: close together at the root's flare, then one straight run to the tip
+let FIN_FX=true;const FLAP_K=19,FLAP_CH=.24,FLAP_IN=.14,FLAP_GAP=.012,FLAP_GAIN=1.5,FIN_TIP=.4,FIN_XS=[0,.006,.025,.06,.12,.2,.3,.42,.56,.7,.85,1],FIN_US=[0,.05,FLAP_IN,.9,.965,1],FIN_RND=.11;   // along the span: close together at the root's flare, one straight run, then the tip's rounded leading corner (Q638: the last tenth of the span, the nose line dropping FIN_RND of the chord)
 const finSec=x=>(.2969*Math.sqrt(x)-.126*x-.3516*x*x+.2843*x*x*x-.1036*x*x*x*x)*10+.1*x;   // half-thickness along the chord (0 nose, 1 trailing edge), 1 at its thickest
 function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
   const tri=(A,B,Cc,n,c)=>{pv(out,A,n,c);pv(out,B,n,c);pv(out,Cc,n,c)};
@@ -1784,14 +1790,14 @@ function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.si
       const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}
     return}
   const fl=opt.fl??.6,flap=!!opt.flap,sink=opt.sink??.03,nx=FIN_XS.length,
-    yLE=u=>ch*(1-.55*u),T=u=>t*(1-(1-FIN_TIP)*u)*(1+fl*Math.exp(-u/.045)),half=(u,x)=>T(u)*finSec(x),
+    yLE=u=>{const w=clamp((u-.9)/.1,0,1);return ch*(1-.55*u-FIN_RND*(1-Math.sqrt(1-w*w)))},T=u=>t*(1-(1-FIN_TIP)*u)*(1+fl*Math.exp(-u/.045)),half=(u,x)=>T(u)*finSec(x),
     yh=FLAP_CH*ch,rho=u=>half(u,1-yh/yLE(u)),xEnd=(u,cut)=>cut?1-(yh+rho(u)+FLAP_GAP)/yLE(u):1,   // a cut section stops a gap ahead of the flap's nose
     L=(u,x,s)=>[r0+sp*u,yLE(u)*(1-x),s*half(u,x)],W=(u,x,s)=>P(r0+sp*u-(u<=0?sink:0),yLE(u)*(1-x),s*half(u,x)),   // the root station sits inside the hull's skin
-    nrm=(u,x,s)=>{if(x<1e-6){const l=Math.hypot(.55*ch,sp);return N(.55*ch/l,sp/l,0)}   // the nose line: straight out of the plate's plane
+    nrm=(u,x,s)=>{if(x<1e-6){const ua=Math.max(u-.004,0),ub=Math.min(u+.004,.997),dy=(yLE(ua)-yLE(ub))/(ub-ua)/sp,l=Math.hypot(dy,1);return N(dy/l,1/l,0)}   // the nose line: straight out of the plate's plane
       const e=1e-4,A=L(u,Math.max(x-e,1e-6),s),B=L(u,Math.min(x+e,1),s),Cc=L(Math.max(u-e,0),x,s),D=L(u+e,x,s);let n=norm(cross(sub(B,A),sub(D,Cc)));if(n[2]*s<0)n=mul(n,-1);return N(n[0],n[1],n[2])},
     quad=(A,B,Cc,D,n,c)=>{tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)};
   for(let i=0;i<FIN_US.length-1;i++){const u0=FIN_US[i],u1=FIN_US[i+1],cut=flap&&u0>=FLAP_IN-1e-9,e0=xEnd(u0,cut),e1=xEnd(u1,cut);
-    for(const s of[-1,1])for(let j=0;j<nx-1;j++){const xa=FIN_XS[j],xb=FIN_XS[j+1],c=j<3||opt.shoe&&u1<=.07+1e-9?C.ST:col,
+    for(const s of[-1,1])for(let j=0;j<nx-1;j++){const xa=FIN_XS[j],xb=FIN_XS[j+1],c=j<3||opt.shoe&&u1<=.05+1e-9?C.ST:col,
         q=[[u0,xa*e0],[u1,xa*e1],[u1,xb*e1],[u0,xb*e0]];
       for(const k of[0,1,2,0,2,3])pv(out,W(q[k][0],q[k][1],s),nrm(q[k][0],q[k][1],s),c)}
     quad(W(u0,e0,-1),W(u1,e1,-1),W(u1,e1,1),W(u0,e0,1),N(0,-1,0),cut?C.D:col)}   // the trailing edge; on a cut section, the cove the flap's nose sits in
@@ -1800,7 +1806,7 @@ function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.si
   wall(1,0,xEnd(1,flap),8,col);   // the tip
   if(!flap)return;
   wall(FLAP_IN,xEnd(FLAP_IN,true),1,4,C.D);   // the inboard end of the cut-out
-  const k0=PK.k,fc=opt.fcol||col,U=[FLAP_IN+FLAP_GAP/sp,1],
+  const k0=PK.k,fc=opt.fcol||col,U=[FLAP_IN+FLAP_GAP/sp,1],   // (the flap's hinge and trailing edge are straight: one run)
     sec=u=>{const r=rho(u),tau=half(u,1),l=Math.hypot(r-tau,yh),S=[[0,tau,-(r-tau)/l,yh/l],[yh,r,-(r-tau)/l,yh/l]];   // [y, s, normal y, normal s]: a face, the nose round the hinge, the other face, the trailing edge
       for(let k=0;k<=8;k++){const g=Math.PI/2-k*Math.PI/8;S.push([yh+r*Math.cos(g),r*Math.sin(g),Math.cos(g),Math.sin(g)])}
       S.push([yh,-r,-(r-tau)/l,-yh/l],[0,-tau,-(r-tau)/l,-yh/l],[0,-tau,-1,0],[0,tau,-1,0]);return S},
@@ -1861,10 +1867,32 @@ let BELL_FX=true;const BELL_RAO={wren:[.55,12],sparrow:[.6,10],petrel:[.72,8],ke
 function raoBell(re,rt,yt,f,te,c0,c1,n=7){const yc=f*yt,rc=re-Math.tan(te*Math.PI/180)*yc,P=[];
   for(let i=0;i<=n;i++){const t=i/n,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t;   // the colour (and material) blends lip → throat, as the two-point bell's did
     P.push([a*re+b*rc+c*rt,b*yc+c*yt,[0,1,2,3].map(k=>(c0[k]||0)*(1-t)+(c1[k]||0)*t)])}return P}
+// (Q638, the rest of BEAUTY B1.5) an engine's plumbing, from its own outline. On the bell, turning with it (kind
+// FIT_K, which MESH_VS's mode 1 moves as it moves the bell): a fuel manifold ring a third of the way up from the lip and
+// two downcomers feeding it from the chamber. On the mount, fixed: two gimbal actuators a quarter turn apart, from the
+// thrust structure's cone down to brackets on the bell (the brackets turn; a full swing moves them a few cm against the
+// rods). Sizes follow the throat. PLUMB_FX = false: none (A/B).
+let PLUMB_FX=true;const FIT_K=20;
+function enginePlumbing(out,p,prof,ti,o,K){const[rt,yt]=prof[ti],re=prof[0][0],RB=BELL_RAO[p.d.base||p.d.key];if(yt<.2||prof.length<ti+2)return;
+  const bell=BELL_FX&&RB&&ti===1?raoBell(re,rt,yt,RB[0],RB[1],[0,0,0],[0,0,0]):prof.slice(0,ti+1),   // exit → throat
+    rAt=y=>{for(let i=0;i<bell.length-1;i++){const[r0,y0]=bell[i],[r1,y1]=bell[i+1];if(y<=y1+1e-9)return r0+(r1-r0)*(y-y0)/Math.max(y1-y0,1e-9)}return rt},
+    cone=prof.slice(ti),cAt=y=>{for(let i=0;i<cone.length-1;i++){const[r0,y0]=cone[i],[r1,y1]=cone[i+1];if(y<=y1+1e-9)return r0+(r1-r0)*(y-y0)/Math.max(y1-y0,1e-9)}return cone[cone.length-1][0]},
+    k=clamp(rt/.22,.45,1.4),P=(a,r,y)=>[o[0]+Math.cos(a)*r,o[1]+y,o[2]+Math.sin(a)*r],ST=C.ST,DK=C.D;
+  PK={...K,k:FIT_K,R:re,h:yt};
+  const ym=yt*.36,rm=rAt(ym)+.034*k,NT=14;   // the manifold: a ring of short tubes
+  for(let j=0;j<NT;j++)tube(out,P(j/NT*6.2832,rm,ym),P((j+1)/NT*6.2832,rm,ym),.03*k,ST,5);
+  for(const a of[.785,3.927]){const y1=yt*.97,y2=(ym+yt)/2;   // the downcomers, hugging the bell
+    tube(out,P(a,rAt(y1)+.05*k,y1),P(a,rAt(y2)+.045*k,y2),.022*k,ST,5);tube(out,P(a,rAt(y2)+.045*k,y2),P(a,rm,ym+.01),.022*k,ST,5)}
+  const yb=yt*.7,rb=rAt(yb)+.02*k,yc=yt+(cone[cone.length-1][1]-yt)*.5,rc=cAt(yc)-.01;
+  for(const a of[1.5708,3.1416])tube(out,P(a,rb,yb+.03*k),P(a,rb,yb-.03*k),.035*k,DK,6,true);   // the actuators' brackets
+  PK={...K,k:KIND.mount};
+  for(const a of[1.5708,3.1416]){const A=P(a,rc,yc),B=P(a,rb+.035*k,yb),M=add(A,mul(sub(B,A),.6));   // the actuators: a body, then its rod
+    tube(out,A,M,.034*k,DK,6,true);tube(out,M,B,.016*k,ST,5)}}
 function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][0]<prof[ti][0])ti=i;const K=PK,[rt,yt]=prof[ti];
   PK={...K,k:KIND.bell,R:prof[0][0],h:yt};const RB=BELL_RAO[p.d.base||p.d.key];
   lathe(out,BELL_FX&&RB&&ti===1?raoBell(prof[0][0],rt,yt,RB[0],RB[1],prof[0][2],prof[1][2]):prof.slice(0,ti+1),o,32,[false,false]);
   PK={...K,k:KIND.mount};lathe(out,prof.slice(ti),o,28,[false,true]);
+  if(PLUMB_FX)enginePlumbing(out,p,prof,ti,o,K);
   if(p.d.thrust>=200){const px=o[0]+rt+.15,pz=o[2],G=C.ST;
     lathe(out,[[0,yt-.08,G],[.07,yt-.06,G],[.09,yt,G],[.09,yt+.22,G],[.06,yt+.26,G],[0,yt+.27,G]],[px,o[1],pz],12,[false,false]);
     lathe(out,[[.035,yt*.55,C.K],[.035,yt-.05,C.K]],[px,o[1],pz],8,[false,false]);

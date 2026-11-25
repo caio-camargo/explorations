@@ -1522,8 +1522,8 @@
   const src = pg.slice(pg.indexOf('const VX=16'), pg.indexOf('const KIND=')) + pg.slice(pg.indexOf('function pv('), pg.indexOf('// surface of revolution')) +
     pg.slice(pg.indexOf('const C={W:'), pg.indexOf('function box(')) + pg.slice(pg.indexOf('let FIN_FX=true;'), pg.indexOf('// station trim')) + body('tube');
   const K = new Function('return ' + /const KIND=(\{[^}]*\})/.exec(pg)[1])();
-  const { fin, FLAP_K, FLAP_CH, FLAP_IN, FLAP_GAP, FLAP_GAIN, FIN_TIP, C, slab } = new Function('norm', 'cross', 'sub', 'mul', 'add', 'len',
-    src + ';return{fin,FLAP_K,FLAP_CH,FLAP_IN,FLAP_GAP,FLAP_GAIN,FIN_TIP,C,slab:(...a)=>{FIN_FX=false;try{fin(...a)}finally{FIN_FX=true}}}')(norm, cross, sub, mul, add, len);
+  const { fin, FLAP_K, FLAP_CH, FLAP_IN, FLAP_GAP, FLAP_GAIN, FIN_TIP, FIN_RND, C, slab } = new Function('norm', 'cross', 'sub', 'mul', 'add', 'len', 'clamp',
+    src + ';return{fin,FLAP_K,FLAP_CH,FLAP_IN,FLAP_GAP,FLAP_GAIN,FIN_TIP,FIN_RND,C,slab:(...a)=>{FIN_FX=false;try{fin(...a)}finally{FIN_FX=true}}}')(norm, cross, sub, mul, add, len, (x, a, b) => Math.min(b, Math.max(a, x)));
   const R = .625, sp = .9, ch = .9, t = .035, yh = FLAP_CH * ch;
   const mk = (f, opt) => { const o = []; f(o, [0, 0, 0], 0, R, sp, ch, t, C.W, opt); const V = [];
     for (let i = 0; i < o.length; i += 16) V.push({ r: o[i], y: o[i + 1], z: o[i + 2], n: [o[i + 3], o[i + 4], o[i + 5]], k: o[i + 14] }); return V };
@@ -1534,7 +1534,7 @@
   // the section: half-thickness where the plate is thickest, by distance from the hull; and along the chord at mid-span
   const thick = (V, r0, r1) => Math.max(...V.filter(v => v.r >= r0 && v.r <= r1).map(v => Math.abs(v.z)));
   const root = thick(fixed, R - .05, R + 1e-6), mid = thick(fixed, R + FLAP_IN * sp - 1e-6, R + FLAP_IN * sp + 1e-6), tip = thick(fixed, R + sp - 1e-6, R + sp + 1e-6);
-  const at65 = fixed.filter(v => Math.abs(v.r - (R + sp)) < 1e-6 && v.z > 0), cLE = ch * .45, xOf = v => 1 - v.y / cLE,
+  const at65 = fixed.filter(v => Math.abs(v.r - (R + sp)) < 1e-6 && v.z > 0), cLE = ch * (.45 - FIN_RND), xOf = v => 1 - v.y / cLE,
     best = at65.reduce((b, v) => v.z > b.z ? v : b), te = Math.max(...at65.filter(v => xOf(v) > .999).map(v => v.z)), nose = fixed.filter(v => v.n[2] === 0 && v.n[1] > .5 && v.n[0] > .3);
   const section = root > 1.4 * t && root < 1.75 * t && mid < t && mid > .7 * t && Math.abs(tip - FIN_TIP * t) < .08 * t && Math.abs(xOf(best) - .3) < .01 && te < .15 * best.z && nose.length > 6
     && new Set(fixed.map(v => v.n.map(x => x.toFixed(3)).join())).size > 80 && new Set(old.map(v => v.n.map(x => x.toFixed(3)).join())).size === 6;
@@ -1549,7 +1549,7 @@
   const free = FLAP_K !== 17 && FLAP_K !== 18 && FLAP_K < 32 && !Object.values(K).includes(FLAP_K) && /SOLAR_K=17/.test(pg) && /GREEBLE_K=18/.test(pg);
   const vs = pg.slice(pg.indexOf('const MESH_VS='), pg.indexOf('const MESH_FS=')), sm = body('setMoves'), pb = body('partBody');
   const has = {
-    vs: vs.includes('if((k==2||k==19)&&aK.y>-.5)') && vs.includes('else if(k!=19);') && !vs.includes('k==6'),
+    vs: vs.includes('if((k==2||k==19||k==20)&&aK.y>-.5)') && vs.includes('else if(k!=19);') && !vs.includes('k==6'),
     fs: pg.includes('else if(k==6||k==19){'),
     moves: sm.includes('p.y0+FLAP_CH*d.chord,p.pos[2],i,2,') && sm.includes('p.y0+FLAP_CH*d.h,p.pos[2],i,3,Math.cos(p.phi),Math.sin(p.phi)') && sm.includes('FIN_FX?FLAP_GAIN:0'),
     parts: (pb.match(/flap:!!d\.ctl/g) || []).length === 2,
@@ -1591,4 +1591,41 @@
   check('the craft\'s surface (Q637): the home power\'s name down a tall tank (FONT57 read back bit for bit as the shader reads it; accents, case, 12 letters at most), laid on after the school\'s paint; a turned grain on bare metal; the cabin\'s light in the window, faint in sunlight',
     back && fits && words && Object.values(has).every(Boolean),
     `${abc.length} letters read back ${back} · halves fit ${fits} · words ${words} (Dünnzar → ${w.n} letters, 26 letters → ${long.n}) · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
+}
+
+// aerofx-65. Engine plumbing and the thrust structure (look & sound parts & pad, QUEUE Q638; the rest of BEAUTY B1.5).
+// enginePlumbing built headless for each engine: a manifold ring and two downcomers of a kind of their own (FIT_K), which
+// MESH_VS's mode 1 turns with the bell, all of it on the bell's wall (the brackets seated in it) and below the throat; two actuators of the
+// mount's kind (fixed) from the cone to brackets on the bell. The mount's cone has ribs in MESH_FS. Fins: the tip's
+// leading corner is rounded (the nose line drops FIN_RND of the chord over the last tenth of the span).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const K = new Function('return ' + /const KIND=(\{[^}]*\})/.exec(pg)[1])();
+  const src = pg.slice(pg.indexOf('const VX=16'), pg.indexOf('const KIND=')) + pg.slice(pg.indexOf('function pv('), pg.indexOf('// surface of revolution')) +
+    pg.slice(pg.indexOf('const C={W:'), pg.indexOf('function box(')) + pg.slice(pg.indexOf('let BELL_FX=true;'), pg.indexOf('function engine(')) + body('tube');
+  const clampJ = (x, a, b) => Math.min(b, Math.max(a, x));
+  const { enginePlumbing, FIT_K, raoBell, BELL_RAO } = new Function('norm', 'cross', 'sub', 'mul', 'add', 'len', 'clamp', 'KIND', src + ';return{enginePlumbing,FIT_K,raoBell,BELL_RAO}')(norm, cross, sub, mul, add, len, clampJ, K);
+  const rows = [], bad = [];
+  for (const key of ['wren', 'sparrow', 'petrel', 'kestrel', 'condor']) { const d = api.PARTS[key], prof = d.prof.map(([r, y]) => [r, y, [.5, .5, .5]]); let ti = 0; for (let i = 1; i < prof.length; i++) if (prof[i][0] < prof[ti][0]) ti = i;
+    const [rt, yt] = prof[ti], RB = BELL_RAO[key], bell = RB && ti === 1 ? raoBell(prof[0][0], rt, yt, RB[0], RB[1], [0, 0, 0], [0, 0, 0]) : prof.slice(0, ti + 1);
+    const rAt = y => { for (let i = 0; i < bell.length - 1; i++) { const [r0, y0] = bell[i], [r1, y1] = bell[i + 1]; if (y <= y1 + 1e-9) return r0 + (r1 - r0) * (y - y0) / Math.max(y1 - y0, 1e-9) } return rt };
+    const o = []; enginePlumbing(o, { d: { key } }, prof, ti, [0, 0, 0], { o: [0, 0, 0], k: K.mount, R: d.r || .625, h: d.h, i: 3 });
+    const V = []; for (let i = 0; i < o.length; i += 16) V.push({ r: Math.hypot(o[i], o[i + 2]), y: o[i + 1], k: o[i + 14], pi: o[i + 15], ok: [o[i], o[i + 1], o[i + 2], o[i + 3], o[i + 4], o[i + 5]].every(Number.isFinite) });
+    const fit = V.filter(v => v.k === FIT_K), fix = V.filter(v => v.k === K.mount), clear = Math.min(...fit.map(v => v.r - rAt(Math.max(v.y, 0))));
+    if (!V.every(v => v.ok && v.pi === 3)) bad.push(key + ': a bad vertex');
+    if (fit.length < 300 || fix.length < 100 || fit.length + fix.length !== V.length) bad.push(`${key}: ${fit.length} fitting + ${fix.length} fixed of ${V.length}`);
+    if (clear < -.04) bad.push(`${key}: a fitting ${(-clear * 1000).toFixed(0)} mm inside the bell`);
+    if (!fit.every(v => v.y > 0 && v.y < yt + .02) || !fix.every(v => v.y > yt * .6 && v.y < d.h)) bad.push(key + ': out of its span');
+    rows.push(`${key} ${V.length} (clear ${(clear * 1000).toFixed(0)} mm)`) }
+  const vs = pg.slice(pg.indexOf('const MESH_VS='), pg.indexOf('const MESH_FS=')), fsh = pg.slice(pg.indexOf('const MESH_FS='), pg.indexOf('function mkProg('));
+  const has = {
+    free: FIT_K === 20 && !Object.values(K).includes(FIT_K) && /SOLAR_K=17/.test(pg) && /GREEBLE_K=18/.test(pg) && /FLAP_K=19/.test(pg),
+    moves: vs.includes('if((k==2||k==19||k==20)&&aK.y>-.5)') && vs.includes('if(B.x<1.5){if(k==2||k==20){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}'),
+    called: body('engine').includes('if(PLUMB_FX)enginePlumbing(out,p,prof,ti,o,K);') && pg.indexOf('if(PLUMB_FX)enginePlumbing(') > pg.indexOf('PK={...K,k:KIND.mount};lathe(out,prof.slice(ti),o,28,[false,true]);'),   // after the bell, so bellThroat still finds the bell first
+    ribs: fsh.includes('if(MOUNT_ON&&vNo.y<-.3&&m==0){') && fsh.includes('const bool MOUNT_ON=true;'),
+    tip: pg.includes('FIN_US=[0,.05,FLAP_IN,.9,.965,1],FIN_RND=.11;') && pg.includes('const w=clamp((u-.9)/.1,0,1);return ch*(1-.55*u-FIN_RND*(1-Math.sqrt(1-w*w)))')
+  };
+  check('engine plumbing and the thrust structure (Q638): a manifold and downcomers that turn with the bell (their own kind, on its wall: the brackets seated up to 4 cm in), actuators fixed to the mount, ribs on the cone; the fins\' tips rounded',
+    !bad.length && Object.values(has).every(Boolean), (bad.length ? bad.join('; ') + ' · ' : '') + rows.join(' · ') + ' · ' + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
 }
