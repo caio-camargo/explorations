@@ -8573,3 +8573,28 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `app/hud.js`, `app/program-ui.js`, `index.html` (CSS), `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`,
   `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
 
+## 2026-11-25 — look & sound, effects (Fable 5.2, worktree launchpad-q634): v1.374 Q634, the RCS jet
+
+- **Asked:** Q634 (PLAYTEST #168, Caio: "the gas release is still a placeholder graphic"): a cold-gas jet per nozzle in
+  place of the glowing box; short, fast-fading, mostly transparent, white in sunlight and faint in shadow, lit through
+  `lit(p)`; checked with screenshots in sun and shadow. The kickoff said Opus; the session ran on Fable 5.2.
+- **Done:** `JET_FS` / `PJET` (app/gl.js): a lit gas volume per firing nozzle, summed along the eye's ray; `RCS_JET`,
+  `rcsJet`, `rcsJetCol`; the draw in `render()` (app/render.js); the `PUFF` mesh removed. Test aerofx-64, TESTING 422,
+  notes/look.md § v1.374.
+- **Checked:** stills in headless Chrome on the RTX (Docking preset's upper stage at 250 km, twelve jets firing): in
+  the sun from 7 m and close, over Tellus, 30 ms after a pulse, and behind Tellus from 7 m and close; looked at.
+  GPU: 0.52 ms with twelve firing in a close-up at 150 % (0.83 before two cuts). Smoke green, CI green on the merged
+  head `0f7f6e28`, merged to `main`.
+- **Tried and dropped:** a wider, denser cone (headlight blobs); a plain cut-off at low cover (the screen's gamma
+  showed it as a balloon with an edge). Both in notes/look.md § v1.374.
+- **Not checked:** no "before" still; in motion by a person (TESTING 422); Low and the Intel GPU; jets in air (drawn
+  as in vacuum); against Selene's lit ground; a docking with the target's hull behind the jets.
+- **How the merge went:** three renumberings (v1.371 → v1.374, TESTING 419 → 422, aerofx-63 → 64): Q624, Q635 and
+  Q633 each landed while CI ran on this branch. The second merge of `main` moved the closing brace between two test
+  sections in tests/look.mjs (both appended at the file's end; git kept the shared last line outside the conflict), and
+  I pushed that head before reading the smoke result, which was red; fixed in the next commit, never on `main`.
+- **Stills** (not in git): `C:/Users/caioa/dev/explorations/output/launchpad/effects/Q634/`: `sun-7m.png`,
+  `sun-close.png`, `sun-over-tellus.png`, `pulse-30ms-after.png`, `shadow-7m.png`, `shadow-close.png`.
+- **Left running:** nothing (the server on port 8834 ended on its time limit).
+- Files: launchpad `app/gl.js`, `app/render.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`,
+  `PLAYTEST.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
