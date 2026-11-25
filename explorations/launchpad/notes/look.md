@@ -3062,3 +3062,34 @@ with a pump can beside the throat on the two big engines.
   separation springs. The escape tower's and solid motors' nozzles are not `engine()` and get nothing.
 - **Not checked.** A canted engine (radial, `tdir`) and a posed one in a still. Firing, with the nozzle's glow
   behind the ring. The other schools' bells (the ring is bare steel on all). Low on the Intel GPU.
+
+## v1.377 — ice off the tanks at liftoff, vapor from them on the pad (2026-11-25, look & sound, parts & pad, QUEUE Q639; BEAUTY B1.6)
+
+The optional piece of Caio's brainstorm ("effects that are easy to turn off can come in as optional"). The tanks
+have carried frost since the flight marks; it sat still.
+
+- **On the pad** each propellant tank breathes: a thin white wisp from near its top about 1.6 times a second (four
+  tanks' worth at most), sinking a little and drifting east. Faint (opacity 0.3, 20–30 cm, growing, 3–5 s).
+- **At liftoff the frost breaks away.** For 8 s (`ICE.T`) each frosted tank sheds white flakes a few centimetres across from its
+  skin below the fuel line, 40 a second per tank at first, falling off with a 2.2 s time constant, 200 a second at
+  most for the ship. A flake leaves with the rocket's own speed and a small push outward, then falls at 7 m/s²
+  (less than gravity: the air holds a flake up), so the rocket climbs out of them. They live 1.6–3.4 s.
+- **How.** `iceTick` in `app/gl.js`, called from `marksTick` (which already owns the frost). The particles are
+  `fxPuff`'s, drawn by the smoke pass: no new program, no new pass. Tellus only, where the air's pressure is over
+  0.3 atm; half the rates on Low; a step is capped at 0.1 s, so time warp does not burst.
+- **Off switch:** Settings › Screens › "ice and vapor off the tanks at launch" (`ICE_FX`, saved as
+  `launchpad-ice`).
+- **The lettering under the frost.** On the pad the rime greyed v1.375's letters to near nothing. The frost is now
+  a quarter as thick over them (`MESH_FS`'s frost line, × (1 − 0.75·ltr)).
+- **Cost.** On the pad about 6 live wisps a tank; at liftoff up to about 250 flakes alive at once on a three-tank
+  rocket, into a smoke list that holds 4,000. GPU time not measured: they are a few hundred more small quads in the
+  smoke pass, at the moment that pass is already drawing the pad cloud.
+- **What it is not.** Flakes are the smoke's round soft dots, not sheets that tumble; a real launch's slabs of
+  ice would need their own mesh and a lit, spinning quad. Good enough at the chase camera's distance; a candidate if
+  it reads as snow.
+- **Stills** (local, `output/launchpad/beauty/Q639/`): `pad-wisps`, `pad-no-wisps`, `liftoff-ice`.
+- **Check:** test `aerofx-67` (wisps only on the pad, flakes only after liftoff and for 8 s, from frosted skin below
+  the fuel line, falling; none without frost, off Tellus, in thin air or switched off; half on Low; no burst in a
+  long step; the setting's wiring). TESTING 425.
+- **Not checked.** In motion by a person: this is an effect of motion and the stills say little. At night under the
+  floodlights. A liftoff with side boosters. Low on the Intel GPU.
