@@ -266,10 +266,18 @@ function render(){spoolFrame();
   if(PLASMA_FX&&near){const qS=S.alive?plasmaHeat(S.body,S.r,S.v,S.qHeat):0;if(qS>1.5e4)drawPlasma(VP,camW,S,shipWorld(),qS,false);
     for(const d of debris){const g=DEBH.get(d),qd=g?plasmaHeat(d.body,d.r,d.v,g.q):0;if(qd>1.5e4){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<2e4)drawPlasma(VP,camW,g.geo,p,qd,true)}}}
   if(near&&mode==='flight')fragDraw(VP,camW,lit);   // (Q302) an incoming fragment's glint, and its strike
-  // RCS: a puff at each nozzle that fired in the last 80 ms (so a single 20 ms pulse is still seen)
-  if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
-    for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));
-      gl.uniformMatrix4fv(m.uM,false,modelQ(q,sub(add(p,qrot(S.q,sub(z.at,S.cm))),camW),0,[.14,.4,.14]));gl.uniform1f(m.uGlow,.6*(1-age/.08));gl.bindVertexArray(PUFF.vao);gl.drawArrays(gl.TRIANGLES,0,PUFF.n)}}
+  // (Q634) RCS: a cold-gas jet at each nozzle that fired in the last RCS_JET.T seconds (so a single 20 ms pulse is seen),
+  // lit by the sun where the craft is (lit(p): nothing in a body's shadow but the fill)
+  if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld(),u=PJET.u;let on=false;for(const j of S.rcsShots||[])rcsSeen[j]=simT;
+    for(const j in rcsSeen){const z=J.N[j],jt=z&&rcsJet(z.F,simT-rcsSeen[j]);if(!jt)continue;
+      if(!on){on=true;gl.useProgram(PJET.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform3fv(u.uCol,rcsJetCol(lightEnv(p),lit(p)));
+        gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(VBOX.vao)}
+      const Y=qrot(S.q,mul(z.d,-1)),X=norm(cross(Y,Math.abs(Y[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,Y),O=madd(sub(add(p,qrot(S.q,sub(z.at,S.cm))),camW),Y,RCS_JET.off),
+        Rm=3*(RCS_JET.r0+.75*jt.L*RCS_JET.tan),lo=[-Rm,0,-Rm],hi=[Rm,jt.L,Rm],cl=[-dot(O,X),-dot(O,Y),-dot(O,Z)],
+        inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2];
+      gl.uniformMatrix4fv(u.uM,false,mat4(X,Y,Z,O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform3f(u.uSunL,dot(SUN,X),dot(SUN,Y),dot(SUN,Z));
+      gl.uniform4f(u.uJ,jt.L,jt.a,jt.gone,RCS_JET.op);gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,VBOX.n)}
+    if(on){gl.cullFace(gl.BACK);gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}}
   const nowMs=fxNow();   // the effects clock (Q393: stops with the pause); reference views pin it (HOOK.fxT, Q312)
   profMark('booms');if(booms.length){const u=PBOOM.u,E=lightEnv(camW);gl.useProgram(PBOOM.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,nowMs/1000%1000);
     gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));

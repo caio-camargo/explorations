@@ -1443,6 +1443,16 @@ void main(){vec2 uv=vNdc*.5+.5;
  o=vec4(d,1.);}`;
 // fin-tip vapor (aerofx): ribbons of condensed vortex core trailing from loaded fin tips. Vertices: camera-relative
 // position, the side across the ribbon (−1..1), opacity. Lit like the smoke (sun and sky), white, soft-edged.
+// (Q634) the RCS jet's numbers. T: seconds a pulse stays on screen after its last tick (one 20 ms pulse must be seen);
+// L: metres at 150 N (it goes with √thrust); r0: the bell's exit radius; tan: the width gained per metre (cold gas into
+// vacuum spreads wide); k: the core's optical depth; op: the most a jet may cover of what is behind it; drift: m/s the
+// tail is drawn leaving the bell after the cutoff (the real gas is gone in 2 ms; this is for the eye); off: the bell's
+// exit from the nozzle point (the quad's bells, partsMesh 'rcs'); dark: the light it keeps in full shadow (the craft's own lamps)
+const RCS_JET={T:.1,L:1.3,r0:.02,tan:.15,k:1.2,op:.35,drift:9,off:.075,dark:.04};
+// one nozzle's jet, `age` seconds after its last pulse: its length, its fade and the gap behind the departing gas; null when gone
+function rcsJet(F,age){if(!(age>=0)||age>=RCS_JET.T)return null;const k=1-age/RCS_JET.T;return{L:RCS_JET.L*clamp(Math.sqrt(F/150),.6,2.5),a:k*k,gone:RCS_JET.drift*age}}
+// its colour: the gas scatters the sun (E = lightEnv, lt = lit(p): 0 in a body's shadow) and the sky's and ground's fill
+function rcsJetCol(E,lt){return E.sun.map((x,i)=>.95*(x*.4*lt+(E.sky[i]+E.gnd[i])*.6)+RCS_JET.dark)}
 const VTR_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec2 aS;uniform mat4 uVP;uniform float uFc;out vec2 vS;out float vW;
 void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vS=aS;}`;
@@ -1450,6 +1460,30 @@ const VTR_FS=`#version 300 es
 precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb;uniform float uFc;
 void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
  o=vec4(c*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// ---- (Q634) an RCS jet: cold gas leaving a nozzle into vacuum. No flame: the gas (and what condenses in it) only
+// scatters the light that falls on it, so it is white in the sun and next to nothing in shadow. Drawn in a box along the
+// exhaust axis (IMP_VS; local +Y is downstream, the origin the bell's exit). The density is a Gaussian across the axis
+// whose width grows with distance (R0 + y·TN) and whose core thins as 1/width², as a free jet's does; the fragment sums
+// it along the eye's ray over the stretch within 3 widths of the axis (12 taps: the core near the bell is 2 cm wide,
+// so the box's whole depth would miss it). uJ: length, fade, how far the gas has left the bell since the cutoff, the
+// opacity's cap. The depth is the ray's nearest point to the axis, so the hull hides a jet on its far side.
+const JET_FS=`#version 300 es
+precision highp float;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uLo,uHi,uCam,uCol,uSunL;uniform vec4 uJ;uniform float uFc;
+const float R0=${RCS_JET.r0.toFixed(3)},TN=${RCS_JET.tan.toFixed(3)},KD=${RCS_JET.k.toFixed(3)};
+float dens(vec3 p){if(p.y<=0.||p.y>=uJ.x)return 0.;float s=R0+p.y*TN,e=1.-p.y/uJ.x;
+ return R0*R0/(s*s)*exp(-dot(p.xz,p.xz)/(s*s))*e*e*e*smoothstep(.6*uJ.z,uJ.z+1e-4,p.y);}
+void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*iv,tn3=min(ta,tb),tf3=max(ta,tb);
+ float tN=max(max(tn3.x,tn3.y),max(tn3.z,0.)),tF=min(min(tf3.x,tf3.y),tf3.z);
+ float sn2=max(dot(rd.xz,rd.xz),1e-6),ts=-dot(uCam.xz,rd.xz)/sn2,s=R0+max(uCam.y+ts*rd.y,0.)*TN,dn=sqrt(sn2)-3.*TN*abs(rd.y);
+ float hw=dn>.02?3.*s/dn:1e3,a=max(tN,ts-hw),b=min(tF,ts+hw);if(b<=a)discard;
+ vec2 dx=uCam.xz+ts*rd.xz;float sm=3.*(s+TN*abs(rd.y)*min(hw,tF-tN));if(dn>.02&&dot(dx,dx)>sm*sm)discard;   // the ray passes clear of the cone: most of the box
+ const int N=12;float ds=(b-a)/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),c=0.;
+ for(int i=0;i<N;i++)c+=dens(uCam+rd*(a+(float(i)+j)*ds));
+ float al=uJ.w*uJ.y*(1.-exp(-KD*c*ds/R0))-.003;if(al<=0.)discard;   // (less the little the screen's gamma would lift into a halo with an edge)
+ float ph=1.+.5*pow(max(dot(rd,uSunL),0.),6.);   // a little brighter looking up-sun through it (droplets scatter forward)
+ o=vec4(uCol*ph*al,al);gl_FragDepth=log2(1.+vW*clamp(ts,a,b)/length(vL-uCam))*uFc*.5;}`;
+const PJET=mkProg(IMP_VS,JET_FS);
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- (Q316, BEAUTY B1.3) the ship's own shadows, High only (SHIP_SHADOW; Low: off). One depth map from the light,
 // fitted to the ship: boosters shade the core, fins the skirt, a wide stage the narrow one under it. The ship (and what
@@ -2870,8 +2904,6 @@ function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9,ao=sp?simT-sp.off:
 function plumeShape(d,thr,pa){const f=pfxOf(d),re=d.exit,n=f.pe/Math.max(pa,1e-5),tn=.03+.52*sstep(0,2.5,Math.log10(Math.max(n,1))),
     L=re*(10+12*thr)*(1+1.4*(1-pa)),rb=re*Math.sqrt(clamp(n,.3,1))+L*(tn+.035*pa);return[n,tn,L,rb*1.12+re*.3]}
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
-// a cold-gas puff: a faint white cone, tip at the nozzle, pointing down −Y (drawn additively, so it reads as glow)
-const PUFF=(()=>{const a=[];lathe(a,[[0,0,[.9,.92,.95]],[.5,-.45,[.55,.58,.62]],[0,-1,[.2,.21,.23]]],[0,0,0],12,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
 // a straight tube from A to B (struts, pipes, masts, legs): seg sides, optional flat end caps
 function tube(out,A,B,r,col,seg=6,caps=false){const d=sub(B,A),L=len(d),Y=mul(d,1/L),X=norm(cross(Math.abs(Y[1])<.9?[0,1,0]:[1,0,0],Y)),Z=cross(X,Y);

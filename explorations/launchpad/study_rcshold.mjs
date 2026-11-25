@@ -1,7 +1,7 @@
 // RCS hold study (vehicle session, QUEUE Q632, PLAYTEST #169): gas per hour of SAS holding with RCS on and nothing pressed.
 // The Docking craft beside the tester's dummy at 300 km, turned onto each SAS mode's target on the tester's endless gas
 // (120 s), then held; with its wheels, and with them taken out (ONLY=w or ONLY=nw for one half).
-// usage: node study_rcshold.mjs [minutes, default 60]   (notes/vehicle.md § v1.374)
+// usage: node study_rcshold.mjs [minutes, default 60]   (notes/vehicle.md § v1.375)
 import { pageSource } from './page.mjs';
 const MIN = +(process.argv[2] || 60);
 const html = pageSource();

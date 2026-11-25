@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-25
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2953,3 +2953,36 @@ a steerable fin looked the same as a fixed one until it turned.
   other schools' paint on the flap (it takes the fin's school and hue like the rest). Low on the Intel GPU.
 - **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
   and get the section too; not looked at closely.
+
+## v1.374 — the RCS jet: cold gas in place of the placeholder box (2026-11-25, look & sound, effects; Q634, PLAYTEST #168)
+
+Caio, docking, 2026-11-18: "the gas release is still a placeholder graphic". It was the `PUFF` mesh stretched to a
+0.14 × 0.4 × 0.14 m box and drawn as glow for 80 ms, the same in the sun and in shadow.
+
+- **What it is now.** Cold gas has no flame; it only scatters the light that falls on it. Each nozzle that fired in the
+  last 100 ms gets a small volume (`JET_FS` on `IMP_VS`, a box along the exhaust axis from the bell's exit): a Gaussian
+  across the axis, 2 cm wide at the bell and widening 0.15 m a metre, its core thinning as 1/width² as a free jet's
+  does, faded out by 1.3 m (at 150 N; the length goes with √thrust). The fragment sums it along the eye's ray, 12 taps
+  over the stretch within three widths of the axis. Numbers in `RCS_JET` (app/gl.js); `rcsJet(F, age)` gives one
+  jet's length, fade and tail; `rcsJetCol(E, lit)` its colour.
+- **Light.** The sun where the craft is (`lightEnv(p).sun` × `lit(p)`) plus the sky's and ground's fill, plus 0.04 so a
+  jet in full shadow is still there for the pilot. In orbit: 1.94 a channel in the sun, 0.04 behind Tellus (1/48).
+  A little brighter looking up-sun through it.
+- **Mostly transparent.** It covers at most 35 % of what is behind it: 31 % at the bell, 1.2 % halfway along.
+- **After the pulse.** The fade is quadratic over 100 ms, and the tail is drawn leaving the bell at 9 m/s, so a single
+  20 ms pulse reads as a puff that lets go. (The real gas is gone in about 2 ms; this is for the eye.)
+- **Depth.** Each pixel takes the depth of its ray's nearest point to the axis, so the hull hides a jet on its far
+  side. The edge where the hull cuts a jet is hard.
+- **Tried and dropped.** (1) Width gain 0.3 and then 0.22 a metre, 50 % cover: headlight blobs as bright as the lit
+  hull. (2) A plain cut-off at 0.2 % cover: the screen's gamma lifts so little light into a visible balloon round each
+  jet with a sharp edge at the cut. Now 0.3 % is subtracted, so the edge fades to nothing. (3) The length fade squared:
+  the far half read as a lobe; cubed now.
+- **Cost, RTX 5050 laptop, High, 1887 × 1053 drawn (150 %), twelve jets firing, camera 0.9–2.5 m off:** 0.83 ms before
+  rays that pass clear of the cone were skipped and the box shortened; 0.52 ms after (0.34 ms at 112 %). With no jet
+  firing: under 0.05 ms. Twelve at once in a close-up is the worst case; attitude hold fires one to four in pulses.
+- **Stills** (the Docking preset's upper stage, 250 km up, translating on two axes; `output/launchpad/effects/Q634/`,
+  not in git): `sun-7m`, `sun-close`, `sun-over-tellus`, `pulse-30ms-after`, `shadow-7m`, `shadow-close`.
+- **Check:** test aerofx-64. To try: TESTING 422.
+- **Not checked.** No "before" still was taken. In motion by a person. Low and the Intel GPU. Jets in air (on the pad
+  or in a descent they are drawn the same as in vacuum). Against Selene's lit ground. The docking close-up with the
+  target's hull behind the jets.

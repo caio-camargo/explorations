@@ -3061,7 +3061,7 @@ complaint there was that a tilted part's base half sank into the frame, so a til
 - Wings on the top or bottom face still have a meaningless `phi` (from slice 2).
 - Views (slice 4, Q620) are next: a tilt is what a view's cone will follow.
 
-## v1.374 — RCS holds without chattering: a deadband and a minimum impulse (2026-11-25, vehicle session, QUEUE Q632, PLAYTEST #169)
+## v1.375 — RCS holds without chattering: a deadband and a minimum impulse (2026-11-25, vehicle session, QUEUE Q632, PLAYTEST #169)
 
 **Why:** Caio, docking on *First station up*: with RCS on and nothing pressed the jets kept "making what are apparently
 small and unnecessary adjustments". `physStep` handed `rcsStep` the attitude law's leftover torque every step,
@@ -3118,5 +3118,5 @@ before), and the docking attitude without wheels on 0.033 kg, 0.21° off (all 30
 Core 24 (RCS) said a wheel-less probe holding prograde spends gas in whole 20 ms pulses: no longer true of the hold, so it now checks the probe holds within 1° (0.008 rad after 60 s). vehicle-42, core 25, 28, 41 (docking), control-3, control-5, vehicle-6 and vehicle-24 pass. `rcsErrSet` and
 `rcsHold` are in `TAPE_V`'s fingerprint, so old tapes retire.
 
-**For a person** (TESTING 422): dock with RCS on and hands off the keys. With wheels there should be no puffs at all;
+**For a person** (TESTING 423): dock with RCS on and hands off the keys. With wheels there should be no puffs at all;
 without, a small one every few seconds at most.
