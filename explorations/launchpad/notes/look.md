@@ -1,5 +1,5 @@
 # Launchpad notes — Look & sound
-**Version**: 1.0.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-07
+**Version**: 1.0.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-25
 **Purpose**: The build log for hardware looks, schools in the game, plumes, re-entry and air effects, lighting, the sky, sound, the crew's look.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -2954,7 +2954,40 @@ a steerable fin looked the same as a fixed one until it turned.
 - **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
   and get the section too; not looked at closely.
 
-## v1.374 — the craft's surface: lettering down the hull, a grain on bare metal, the cabin's light (2026-11-25, look & sound, parts & pad, QUEUE Q637; Caio's brainstorm)
+## v1.374 — the RCS jet: cold gas in place of the placeholder box (2026-11-25, look & sound, effects; Q634, PLAYTEST #168)
+
+Caio, docking, 2026-11-18: "the gas release is still a placeholder graphic". It was the `PUFF` mesh stretched to a
+0.14 × 0.4 × 0.14 m box and drawn as glow for 80 ms, the same in the sun and in shadow.
+
+- **What it is now.** Cold gas has no flame; it only scatters the light that falls on it. Each nozzle that fired in the
+  last 100 ms gets a small volume (`JET_FS` on `IMP_VS`, a box along the exhaust axis from the bell's exit): a Gaussian
+  across the axis, 2 cm wide at the bell and widening 0.15 m a metre, its core thinning as 1/width² as a free jet's
+  does, faded out by 1.3 m (at 150 N; the length goes with √thrust). The fragment sums it along the eye's ray, 12 taps
+  over the stretch within three widths of the axis. Numbers in `RCS_JET` (app/gl.js); `rcsJet(F, age)` gives one
+  jet's length, fade and tail; `rcsJetCol(E, lit)` its colour.
+- **Light.** The sun where the craft is (`lightEnv(p).sun` × `lit(p)`) plus the sky's and ground's fill, plus 0.04 so a
+  jet in full shadow is still there for the pilot. In orbit: 1.94 a channel in the sun, 0.04 behind Tellus (1/48).
+  A little brighter looking up-sun through it.
+- **Mostly transparent.** It covers at most 35 % of what is behind it: 31 % at the bell, 1.2 % halfway along.
+- **After the pulse.** The fade is quadratic over 100 ms, and the tail is drawn leaving the bell at 9 m/s, so a single
+  20 ms pulse reads as a puff that lets go. (The real gas is gone in about 2 ms; this is for the eye.)
+- **Depth.** Each pixel takes the depth of its ray's nearest point to the axis, so the hull hides a jet on its far
+  side. The edge where the hull cuts a jet is hard.
+- **Tried and dropped.** (1) Width gain 0.3 and then 0.22 a metre, 50 % cover: headlight blobs as bright as the lit
+  hull. (2) A plain cut-off at 0.2 % cover: the screen's gamma lifts so little light into a visible balloon round each
+  jet with a sharp edge at the cut. Now 0.3 % is subtracted, so the edge fades to nothing. (3) The length fade squared:
+  the far half read as a lobe; cubed now.
+- **Cost, RTX 5050 laptop, High, 1887 × 1053 drawn (150 %), twelve jets firing, camera 0.9–2.5 m off:** 0.83 ms before
+  rays that pass clear of the cone were skipped and the box shortened; 0.52 ms after (0.34 ms at 112 %). With no jet
+  firing: under 0.05 ms. Twelve at once in a close-up is the worst case; attitude hold fires one to four in pulses.
+- **Stills** (the Docking preset's upper stage, 250 km up, translating on two axes; `output/launchpad/effects/Q634/`,
+  not in git): `sun-7m`, `sun-close`, `sun-over-tellus`, `pulse-30ms-after`, `shadow-7m`, `shadow-close`.
+- **Check:** test aerofx-64. To try: TESTING 422.
+- **Not checked.** No "before" still was taken. In motion by a person. Low and the Intel GPU. Jets in air (on the pad
+  or in a descent they are drawn the same as in vacuum). Against Selene's lit ground. The docking close-up with the
+  target's hull behind the jets.
+
+## v1.375 — the craft's surface: lettering down the hull, a grain on bare metal, the cabin's light (2026-11-25, look & sound, parts & pad, QUEUE Q637; Caio's brainstorm)
 
 Caio, after the fins: "what other greebling or other visual elements might make it look better? maybe shine or some
 other surface effect? let's remain effect-budget-conscious". Of the list he approved, this is the shader-only part.
@@ -2988,8 +3021,44 @@ No geometry, so nothing added to the rebuild.
   Low on the Intel GPU not measured.
 - **Stills** (local, `output/launchpad/beauty/Q637/`): `whole-rocket`, `lettering-before`/`-after`,
   `metal-grain-before`/`-after`, `window-day`, `window-night-before`/`-after`.
-- **Check:** test `aerofx-64` (every letter read back bit for bit as the shader reads it; accents, case and length;
-  the three pieces and their switches in the shader). TESTING 422.
+- **Check:** test `aerofx-65` (every letter read back bit for bit as the shader reads it; accents, case and length;
+  the three pieces and their switches in the shader). TESTING 423.
 - **Not checked.** The other five schools' paint under the letters (white on Isle's carbon and Arsenal's olive by
   the luminance rule, not seen in a still). A 2.5 m tank. A word of 10 to 12 letters. In orbit on the night side.
 - **Seen on the way.** A row of the capsule's rivets runs across its window (there before this change).
+
+## v1.376 — engine plumbing, ribs on the thrust structure, rounded fin tips (2026-11-25, look & sound, parts & pad, QUEUE Q638; the rest of BEAUTY B1.5)
+
+From Caio's brainstorm, the geometry the launch camera looks up at. Before: a ribbed bell under a plain grey cone,
+with a pump can beside the throat on the two big engines.
+
+- **On the bell, turning with it** (`enginePlumbing` in `app/gl.js`, called by `engine` for every engine): a fuel
+  manifold ring 36 % of the way up from the lip (fourteen short tubes) and two downcomers from the chamber to it,
+  hugging the bell's contour (the Rao curve where the engine has one). They are a vertex kind of their own, `FIT_K`
+  (20), which `MESH_VS`'s mode 1 turns about the throat as it turns the bell (kind 2), so they gimbal and their shadow
+  with them. § v1.363 left this out because kind 2 alone moved.
+- **On the mount, fixed:** two gimbal actuators a quarter turn apart, a dark body and a steel rod from half-way up the
+  thrust structure's cone down to brackets on the bell. The brackets turn with the bell and the rods do not: at the
+  Kestrel's 5° the bracket moves about 2 cm against its rod. Not animated; it does not show at flight distances.
+- **The cone has ribs** (`MESH_FS`, kind 15, faces that look down, `MOUNT_ON`): stiffeners every 16 cm round it, a
+  little mottling. Shader only.
+- **Sizes follow the throat** (`k = rt / 0.22`, 0.45 to 1.4), so the Wren's are small and the Condor's heavy. A
+  2.5 m engine is the base engine's mesh scaled, plumbing and all.
+- **Fins: the tip's leading corner is rounded** (§ v1.372 left the square tip): over the last tenth of the span the
+  nose line drops `FIN_RND` (11 %) of the root chord along a quarter ellipse. Two more span stations at the tip, one
+  fewer at the root: a fixed fin 600 → 738 vertices, a steerable one 1,044 → 1,182.
+- **Cost.** 888 vertices an engine (of which 684 turn with the bell). The Crewed Lunar's seven engines: about 6,200.
+  Rebuild time with `PLUMB_FX` off and on, 30 rebuilds each, two runs, on a machine that was busy (Caio was
+  playing; the same rebuilds took 2.5 times longer than earlier in the day): the Orbiter 10.3–10.4 → 10.1–10.9 ms, the
+  Crewed Lunar 46.0–46.4 → 46.4–56.6. So: inside the noise, not measured well. To redo on a quiet machine. GPU time
+  not measured (§ "Study — what more triangles on the craft cost": triangles on the craft are nearly free).
+- **A/B.** `PLUMB_FX = false` (the geometry); `MOUNT_ON` in the shader source (the ribs).
+- **Stills** (local, `output/launchpad/beauty/Q638/`): `kestrel-before`, `kestrel-after`, `kestrel-gimballed`,
+  `condor-before`, `condor-after`, `petrel-after`, `fin-tip`.
+- **Check:** test `aerofx-66` (each of the five engines: the fittings are their own kind, seated on the bell's wall
+  and below the throat, the actuators the mount's kind; the shader moves kind 20 with kind 2; the fin's tip).
+  `aerofx-63` follows the fin's new stations. TESTING 424.
+- **Not built** (Q638's line named them): a base heat shield as its own piece; a turbopump on the small engines;
+  separation springs. The escape tower's and solid motors' nozzles are not `engine()` and get nothing.
+- **Not checked.** A canted engine (radial, `tdir`) and a posed one in a still. Firing, with the nozzle's glow
+  behind the ring. The other schools' bells (the ring is bare steel on all). Low on the Intel GPU.
