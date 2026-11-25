@@ -1560,3 +1560,35 @@
     `fixed fin ${fixed.length} vertices (slab ${old.length}), steerable ${steer.length} of which flap ${flap.length} · half-thickness root ${(root * 1000).toFixed(0)} mm, ${(FLAP_IN * 100).toFixed(0)} % span ${(mid * 1000).toFixed(0)}, tip ${(tip * 1000).toFixed(0)}; thickest at ${(xOf(best) * 100).toFixed(0)} % chord, trailing edge ${(te * 1000).toFixed(1)} mm · flap nose reach ${(reach * 1000).toFixed(0)} mm, cove at ${(cove * 1000).toFixed(0)} · ` +
     `finite ${finite} outward ${outward} section ${section} bounds ${bounds} cut ${cut} free ${free} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
 }
+
+// aerofx-64. The craft's surface (look & sound parts & pad, QUEUE Q637; Caio 2026-11-25): the home power's name
+// stencilled down a tall tank, bare metal with a turned grain, the cabin's light in the capsule's window. All in
+// MESH_FS, no geometry. hullBits packs a word as FONT57's 35 bits a letter in two ints, the way the shader's gbit reads
+// them back (checked here by reading every letter back, pixel by pixel); accents, case, length and letters the font
+// lacks are handled; the shader has the three pieces and their A/B switches.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const FONT57 = new Function('return ' + /const FONT57=(\{[^}]*\})/.exec(pg)[1])();
+  const hullBits = new Function('FONT57', body('hullBits') + ';return hullBits')(FONT57);
+  // the shader's gbit, in JS: row r from the top, column c from the left
+  const gbit = (hi, lo, r, c) => r < 0 || r > 6 || c < 0 || c > 4 ? 0 : r < 4 ? (hi >> (19 - r * 5 - c)) & 1 : (lo >> (14 - (r - 4) * 5 - c)) & 1;
+  const fontBit = (ch, r, c) => Math.floor(parseInt(FONT57[ch], 36) / 2 ** (34 - r * 5 - c)) & 1;   // as padText reads it
+  const abc = Object.keys(FONT57).filter(k => k !== '-'), all = hullBits(abc.slice(0, 12).join('')), rest = hullBits(abc.slice(12, 24).join('')), last = hullBits(abc.slice(24).join(''));
+  let back = true; [[all, abc.slice(0, 12)], [rest, abc.slice(12, 24)], [last, abc.slice(24)]].forEach(([b, L]) => L.forEach((ch, i) => { for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) if (gbit(b.a[i * 2], b.a[i * 2 + 1], r, c) !== fontBit(ch, r, c)) back = false }));
+  const fits = [all, rest, last].every(b => b.a.every(v => v >= 0 && v < 2 ** 20));   // both halves fit an int with room
+  const w = hullBits('Dünnzar'), same = hullBits('DUNNZAR'), long = hullBits('abcdefghijklmnopqrstuvwxyz'), odd = hullBits('a1b'), none = hullBits('');
+  const words = w.n === 7 && w.a.join() === same.a.join() && long.n === 12 && odd.n === 2 && none.n === 0 && none.a.every(v => v === 0) && abc.length === 26;
+  const fs = pg.slice(pg.indexOf('const MESH_FS='), pg.indexOf('function mkProg('));
+  const has = {
+    read: fs.includes('float gbit(ivec2 g,int r,int c){if(r<0||r>6||c<0||c>4)return 0.;return float(r<4?(g.x>>(19-r*5-c))&1:(g.y>>(14-(r-4)*5-c))&1);}'),
+    letters: fs.includes('if(uTxN>0&&h>3.*sc){') && fs.includes('ltr=glyph(uTx[li],vec2(2.5-x/px,fract(tl)*9.-1.)') && fs.includes('if(ltr>0.)alb=mix(alb,dot(alb,vec3(.3,.59,.11))>.1?vec3(.012,.012,.014):vec3(.75),ltr);'),
+    afterPaint: fs.indexOf('if(ltr>0.)alb=mix(') > fs.indexOf('alb=mix(alb,rdl.rgb,rdl.a);') && fs.indexOf('if(ltr>0.)alb=mix(') < fs.indexOf('// (Q316, BEAUTY B1.4) the skin under the paint'),
+    grain: fs.includes('if(uSf.x>0.&&uSeam>0.&&metal>.5&&m!=5&&k!=2&&k!=3&&k!=17&&side){') && fs.includes('if(bsp>0.){vec3 ax=normalize(mat3(uM)*vec3(0.,1.,0.))*bsp;'),
+    cabin: fs.includes('*win*uSf.y*(1.-.95*clamp(dot(uSunCol,vec3(.33))*uLit,0.,1.));'),
+    wired: pg.includes('function setMarks(u,parts){setHull(u);') && body('setHull').includes('gl.uniform2iv(u[\'uTx[0]\'],HULL.a)') && body('setHull').includes('GRAIN_FX?1:0,CABIN_FX?1:0') && pg.includes('let HULL_FX=true,GRAIN_FX=true,CABIN_FX=true;')
+  };
+  check('the craft\'s surface (Q637): the home power\'s name down a tall tank (FONT57 read back bit for bit as the shader reads it; accents, case, 12 letters at most), laid on after the school\'s paint; a turned grain on bare metal; the cabin\'s light in the window, faint in sunlight',
+    back && fits && words && Object.values(has).every(Boolean),
+    `${abc.length} letters read back ${back} · halves fit ${fits} · words ${words} (Dünnzar → ${w.n} letters, 26 letters → ${long.n}) · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
+}

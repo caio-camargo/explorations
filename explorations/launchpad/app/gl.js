@@ -703,6 +703,13 @@ vec4 roundel(vec2 u,int sch,float px,float hue){float r=length(u),cov=1.-smooths
 const int DG[10]=int[10](31599,11415,29671,29391,23497,31183,31215,29330,31727,31695);
 float serial(vec2 q,int pi){if(q.x<0.||q.x>=15.||q.y<0.||q.y>=5.)return 0.;int i=int(q.x)/4,cx=int(q.x)-i*4;if(cx>2)return 0.;
  int n=(max(pi,0)*37+1013)%9000+1000,d=(n/(i==0?1000:i==1?100:i==2?10:1))%10;return float((DG[d]>>(int(q.y)*3+(2-cx)))&1);}
+// (Q637) lettering down the hull: uTx = the word, a 5×7 capital a letter (FONT57's 35 bits, rows top to bottom: .x the
+// top four rows, .y the bottom three), uTxN its length. A letter is read with bilinear taps and cut at half, so the
+// stencil's corners round off and it stays smooth at any size; q in font pixels from the letter's top left.
+uniform ivec2 uTx[12];uniform int uTxN;uniform vec2 uSf;   // uSf: (the brushed grain on bare metal, the cabin's light in the windows), 0 or 1 (A/B)
+float gbit(ivec2 g,int r,int c){if(r<0||r>6||c<0||c>4)return 0.;return float(r<4?(g.x>>(19-r*5-c))&1:(g.y>>(14-(r-4)*5-c))&1);}
+float glyph(ivec2 g,vec2 q,float fw){q-=.5;vec2 t=fract(q);ivec2 i=ivec2(floor(q));
+ float a=mix(mix(gbit(g,i.y,i.x),gbit(g,i.y,i.x+1),t.x),mix(gbit(g,i.y+1,i.x),gbit(g,i.y+1,i.x+1),t.x),t.y);return smoothstep(.42-fw,.42+fw,a);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
 // lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
@@ -733,7 +740,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;float ao=clamp(1.-(vK.x-floor(vK.x+.5))/.45,0.,1.);bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
- vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint
+ vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.,ltr=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint; ltr: the lettering, likewise
  if(uSeam>0.&&k>0){
   if(k==1&&side){                                         // propellant tank
    float b=.07*sc,paint=band(v,b,h-b,fv);
@@ -747,6 +754,9 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    if(sch==1)ring=seam=0.;   // (Q259) Steppe draws its own panel seams below: Cape's weld rings came through its paint as a second, paler set 5 cm a bay off
    alb=mix(alb,pow(hsv(hue,.55,.16),vec3(2.2)),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
    float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));
+   if(uTxN>0&&h>3.*sc){float bh=min(1.4*sc,h*.2),pit=min(.5*sc,(h-2.*(b+bh)-.3*sc)/float(uTxN)),px=pit/9.;   // (Q637) the program's name, a letter under a letter (7 rows and 2 of space each)
+    float x=(fract(vU.x*2.+.5)-.5)*3.1416*R,tl=(h*.5+pit*float(uTxN)*.5-v)/pit;int li=int(floor(tl));
+    if(li>=0&&li<uTxN&&abs(x)<3.5*px)ltr=glyph(uTx[li],vec2(2.5-x/px,fract(tl)*9.-1.),clamp(fp/px*.7,.02,.5))*smoothstep(1.4,.6,fp/px);}
    if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs,hue);rdl.a*=paint;}}   // the roundel, between the stripes
   else if(k==2){                                           // bell: regen tubes, heat tint toward the throat, a stiffener at the lip
    float t=clamp(v/max(h,.01),0.,1.),N=floor(6.2832*R/.035+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
@@ -771,7 +781,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=(1.-.55*row*body)*(1.+.25*rn*body);alb=mix(alb,vec3(.1),dots(s,mod(vr,.22*sc),.018*sc,.05*sc,.005*sc,fp)*body);
    float du=abs(fract(vU.x-.125+.5)-.5),win=band(du,-1.,.032,fu)*band(v,.44*sc,.72*sc,fv),frm=band(du,-1.,.042,fu)*band(v,.40*sc,.76*sc,fv);
    alb=mix(alb,vec3(.16,.16,.17),frm);metal=mix(metal,1.,frm);
-   if(win>.01){alb=mix(alb,vec3(.01,.012,.015),win);metal*=1.-win;rough=mix(rough,.05,win);m=win>.5?4:m;}
+   if(win>.01){alb=mix(alb,vec3(.01,.012,.015),win);metal*=1.-win;rough=mix(rough,.05,win);m=win>.5?4:m;
+    emis+=vec3(1.,.74,.44)*.1*win*uSf.y*(1.-.95*clamp(dot(uSunCol,vec3(.33))*uLit,0.,1.));}   // (Q637) the cabin's light: a warm pane on the night side and in eclipse; in sunlight the glass stays dark (the light is there, twenty times fainter than the sky it mirrors)
    float dh=abs(fract(vU.x-.375+.5)-.5),hat=band(dh,-1.,.035,fu)*band(v,.16*sc,.58*sc,fv),hin=band(dh,-1.,.030,fu)*band(v,.18*sc,.56*sc,fv);
    alb*=1.-.7*(hat-hin);alb=mix(alb,vec3(.2),dots(dh*6.2832*R,v,.36*sc,1.,.014*sc,fp));}
   else if(k==4&&side){                                     // nose cone: fairing split lines with rivets, a ring, a scorched tip
@@ -875,6 +886,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    else if(sch==4)alb=mix(alb,saf,hz);
    else alb=mix(alb,carb,hz);}}
  alb=mix(alb,rdl.rgb,rdl.a);
+ if(ltr>0.)alb=mix(alb,dot(alb,vec3(.3,.59,.11))>.1?vec3(.012,.012,.014):vec3(.75),ltr);   // (Q637) black on a light paint, white on a dark one
  // (Q316, BEAUTY B1.4) the skin under the paint, on tanks, nose cones and adapters. Paint on sheet metal is told from
  // plastic by its highlight and by what the sheet does under it: Cape's white is gloss (the sun draws a line down the
  // tank, the sky shows at its edges), and every school's gloss varies a little from place to place; a tank's skin bows
@@ -934,6 +946,11 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=(1.-.35*ring*fd)*(.95+.08*n1);alb=mix(alb,alb*vec3(.78,.62,.45),.45*wk*fd);alb*=foot;}
   else if(m==1){alb*=.8+.35*n2;alb=mix(alb,vec3(.23,.12,.06),smoothstep(.72,.86,n3*.6+n1*.4)*.55*fd);alb*=foot;}
   else{alb*=(.9+.15*n1)*(.96+.06*n3*fd)*foot;}}
+ // (Q637) bare metal is turned or rolled: fine lines round the hull. Up close they are in the normal; from further
+ // off, where they are under a pixel, what they do to the light stays: the sun's highlight spread along the axis (bsp)
+ float bsp=0.;
+ if(uSf.x>0.&&uSeam>0.&&metal>.5&&m!=5&&k!=2&&k!=3&&k!=17&&side){float gn=smoothstep(.012,.003,fv);
+  nO.y+=((vn2(vec2(s*3.,v*110.))-.5)*.16+(vn2(vec2(s*5.+7.,v*420.))-.5)*.1)*gn;bsp=.11;rough=clamp(rough*(.85+.3*vn2(vec2(s*2.,v*30.))),.05,1.);}
  vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
  // (Q316, BEAUTY B1.3) ambient occlusion. Steps: where the next part in the stack is wider, it is a ledge of width w
@@ -948,6 +965,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  else ao=1.;
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
  float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
+ if(bsp>0.){vec3 ax=normalize(mat3(uM)*vec3(0.,1.,0.))*bsp;spec=(spec+(ex+8.)/25.13*(pow(max(dot(normalize(n+ax),H),0.),ex)+pow(max(dot(normalize(n-ax),H),0.),ex)+pow(max(dot(normalize(n+2.*ax),H),0.),ex)+pow(max(dot(normalize(n-2.*ax),H),0.),ex)))*.2;}
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
  float ds=uDsk.x,dn=-dot(n,uUp),wp=ds*ds*clamp((dn+ds)/(1.+ds),0.,1.);   // the disc's share of the light on n: sin²α·cos θ, wrapped past its rim
  vec3 sun=uSunCol*uLit,amb=mix(uSky,uGnd,wp)*ao;
@@ -2236,7 +2254,15 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
       if(!d.mkSplash){d.mkSplash=true;splashFx({body:d.body,r:d.r,touchV:d.mkV||10,mass:d.mass,radius:d.mkR})}surfFx(d,d.body,d.r,d.q,d.len||4,d.mkR,dt)}
     for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12);hotTo(m,kH,dt)}}}
 // the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
-function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);AOA.fill(0);for(const p of parts){const i=p.i,w=AOS.get(p);if(w&&i!=null&&i>=0&&i<96)AOA.set(w,i*4)}   // (Q316) the steps' ledges, the creases' spans
+// (Q637) the word down the hull: the home power's short name (POWERS[HOME].root), capitals, at most 12 letters, as
+// FONT57's bits split for the shader. Every ship drawn carries it (a rival's craft too: no ship knows its owner here).
+let HULL_FX=true,GRAIN_FX=true,CABIN_FX=true;const HULL={s:null,a:new Int32Array(24),n:0};
+function hullWord(){return typeof POWERS!=='undefined'&&typeof HOME!=='undefined'&&POWERS[HOME]?String(POWERS[HOME].root||''):''}
+function hullBits(w){w=String(w).normalize('NFD').replace(/[^A-Za-z -]/g,'').toUpperCase().trim().slice(0,12);const a=new Int32Array(24);
+  for(let i=0;i<w.length;i++){const g=FONT57[w[i]],b=g?parseInt(g,36):0;a[i*2]=Math.floor(b/32768);a[i*2+1]=b%32768}return{a,n:w.length}}
+function setHull(u){if(!u.uTxN)return;const w=HULL_FX?hullWord():'';if(w!==HULL.s){const b=hullBits(w);HULL.s=w;HULL.a=b.a;HULL.n=b.n}
+  gl.uniform1i(u.uTxN,HULL.n);if(u['uTx[0]'])gl.uniform2iv(u['uTx[0]'],HULL.a);if(u.uSf)gl.uniform2f(u.uSf,GRAIN_FX?1:0,CABIN_FX?1:0)}
+function setMarks(u,parts){setHull(u);MKA.fill(0);CHA.fill(0);HTA.fill(0);AOA.fill(0);for(const p of parts){const i=p.i,w=AOS.get(p);if(w&&i!=null&&i>=0&&i<96)AOA.set(w,i*4)}   // (Q316) the steps' ledges, the creases' spans
   gl.uniform4fv(u['uAo[0]'],AOA);
   for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
