@@ -97,22 +97,87 @@ function crewRelease(did){for(const a of PROG.crew||[])if(a.status==='held'&&a.h
 // adds to what can leak.
 const REQUAL_FAR=0.9;   // as far as the lost flight went, within this share
 function requalKind(s,R){const cap=s.parts.find(p=>p.on&&p.d.crew);return!s.alive||!cap?'lost':R.cgMax>G_LIM?'g':R.ccab>CABIN_MAX?'cabin':'air'}
-const requalHolds=()=>!!(PROG.requal&&!PROG.requal.skip);
 const requalKm=q=>Math.max(0,q.far||0)/1000;
 // what the qualification flight has to show, in a line (the Rollout, the news)
 const requalWhat=q=>`fly a crew capsule uncrewed${q.far>1000?` to ${requalKm(q).toFixed(0)} km${q.body&&q.body!=='Tellus'?` (${q.body})`:''}`:''} and bring it home inside the limits${q.kind==='g'?` (it was ${q.val.toFixed(1)} g)`:q.kind==='cabin'?` (the cabin reached ${q.val.toFixed(0)} K)`:q.kind==='air'?' (the air ran out)':''}`;
-function requalSet(s,R,as){const q={kind:requalKind(s,R),why:R.crewWhy||'were lost',val:0,far:R.far||0,body:s.body&&s.body.name,
-    day:PROG.day,flight:PROG.flights+1,design:s.stack?designName(s.stack):s.name||'',names:as.map(a=>a.name),skip:false};
-  q.val=q.kind==='cabin'?R.ccab:q.kind==='g'?R.cgMax:0;PROG.requal=q;
-  HOOK.news(`Crews stand down until the cause is fixed: ${requalWhat(q)}`,'warn');
-  if(flav(HOME).open<0.5)offerDecision({kind:'requal',life:60,title:'Requalify, or fly again now?',
-    text:`The loss is not public. Requalify (${requalWhat(q)}), or put a crew up again now, hushed, the cause unfixed: each crewed flight until a qualification flight adds to what can leak.`,
-    opts:[['requal','Requalify first'],['skip','Fly again now, hushed']]})}
-function requalAnswer(d,key){if(key!=='skip'||!PROG.requal)return;PROG.requal.skip=true;HOOK.news('Crews fly again. Officially, nothing needed fixing','warn')}
-// at the flight's first tick: a skipped requalification flies people, and each such flight is one more thing hushed
-function requalLaunch(R){if(PROG.requal&&PROG.requal.skip&&R.crewed){PROG.hush=(PROG.hush||0)+1;PROG.hushPen=(PROG.hushPen||0)-4;R.requalSkip=true}}
+// (Q624, CREW decision 5) who stops crews after a loss is the program's masters', not a rule of nature: ownership first,
+// then openness. The qualification flight is the same everywhere (above); what changes is who demands it and what skipping
+// it costs. None of it is a timer (decision 3).
+//  · a private company (≥ 50 % private): no refusal, it runs itself. People fly on unless the player requalifies, and the
+//    market prices it: an insurance surcharge on each crewed flight until a qualification flight, tourism and commercial
+//    standing, the valuation; a second loss unrequalified brings the families' lawsuits
+//  · an open state (openness ≥ 0.6): an inquiry grounds crews until the qualification flight, not skippable. Demagoguery
+//    on the election clock: a lost election within a term of the loss cuts the budget further; with nationalism high, a
+//    populist government demands one crewed flight before the inquiry reports (obey: a big win or a catastrophe)
+//  · a closed state (< 0.5): the leadership's whim, rolled at the loss: fly at once (ordered and hushed; refusing costs
+//    its favour), find who is to blame (grounded, and a scapegoat purged: know-how on the lost design's parts), or
+//    v1.350's choice. A security state's regime change gets likelier while it stands
+//  · between the two: v1.350's plain stand-down
+//  · a consortium or a mixed program answers to its strictest member: the most open state with a stake
+const REQ={ins:8,suit:40,val:30,tour:-20,com:-8,popNat:0.6,popWin:12,popLose:-25,popNo:-8,demaOp:40,demaCut:0.85,term:400,orderNo:-12,blameKh:0.7,regimeK:3};
+function requalRule(){const o=own();if(o.pv>=0.5)return{rule:'company',by:HOME};
+  const ks=Object.keys(o.st).map(Number).filter(i=>o.st[i]>0),by=ks.reduce((a,i)=>flav(i).open>flav(a).open?i:a,ks.includes(HOME)||!ks.length?HOME:ks[0]),op=flav(by).open;
+  return{rule:op>=0.6?'open':op<0.5?'closed':'plain',by}}
+// the leadership's whim, weighted by a spectacular it is waiting for and by nationalism (TEST.whim forces one: tests)
+function requalWhim(){if(TEST.whim)return TEST.whim;const n=natOf(HOME),w=[0.25+(PROG.demand?0.4:0)+0.3*n,0.25+0.2*n,0.4],
+  r=rng(((PROG.wseed||1)*31+(PROG.flights||0)*7919)|0)()*(w[0]+w[1]+w[2]);return r<w[0]?'fly':r<w[0]+w[1]?'blame':'choice'}
+const requalHolds=()=>{const q=PROG.requal;return!!(q&&!q.skip&&!q.once)};
+const requalValCut=()=>{const q=PROG.requal;return q&&q.rule==='company'&&q.skip?REQ.val*(1+(q.losses||0)):0};   // the valuation, while a company flies people unrequalified
+const requalChoiceD=q=>({kind:'requal',life:60,title:'Requalify, or fly again now?',
+  text:`The loss is not public. Requalify (${requalWhat(q)}), or put a crew up again now, hushed, the cause unfixed: each crewed flight until a qualification flight adds to what can leak.`,
+  opts:[['requal','Requalify first'],['skip','Fly again now, hushed']]});
+function requalSet(s,R,as){const{rule,by}=requalRule(),q={kind:requalKind(s,R),why:R.crewWhy||'were lost',val:0,far:R.far||0,body:s.body&&s.body.name,
+    day:PROG.day,flight:PROG.flights+1,design:s.stack?designName(s.stack):s.name||'',names:as.map(a=>a.name),skip:false,rule,by};
+  q.val=q.kind==='cabin'?R.ccab:q.kind==='g'?R.cgMax:0;PROG.requal=q;PROG.crewLoss=PROG.day;
+  PROG.decisions=(PROG.decisions||[]).filter(d=>d.kind!=='requal');
+  if(R.requalObey){opAdd(HOME,REQ.popLose);HOOK.news('The crew the government sent up before the inquiry reported is lost: a national catastrophe','bad')}
+  if(rule==='company'){q.skip=true;standAdd('tour',REQ.tour);standAdd('com',REQ.com);
+    HOOK.news(`Nobody grounds a company: crews fly on, and insurers add ${fmtM(REQ.ins)} to each crewed flight until a qualification flight. Tourists and customers hesitate`,'warn');
+    offerDecision({kind:'requal',life:60,title:'Requalify, or keep flying people?',
+      text:`Requalify (${requalWhat(q)}): the next crew capsule flies dummies. Or keep flying people: ${fmtM(REQ.ins)} insurance on every crewed flight until a qualification flight, a lower valuation, and a second loss brings the families' lawsuits.`,
+      opts:[['requal','Requalify first'],['fly','Keep flying people']]});return}
+  if(rule==='closed'){const w=q.whim=requalWhim();
+    if(w==='fly'){q.skip=true;HOOK.news('The leadership orders crews up again at once. Officially, nothing needed fixing','warn');
+      offerDecision({kind:'requal',life:60,title:'The leadership orders a crew up at once',
+        text:`Fly people again now, hushed, the cause unfixed (each such flight adds to what can leak), or requalify anyway (${requalWhat(q)}) and lose the leadership's favour.`,
+        opts:[['obey','Fly as ordered'],['refuse','Requalify anyway']]});return}
+    if(w==='blame'){const kh=PROG.kh||{};for(const k of new Set(s.parts.map(p=>kinOf(p.d.key))))if(kh[k])kh[k].use*=REQ.blameKh;
+      HOOK.news(`The leadership finds who is to blame: ${q.design||'the design'}'s chief designer is purged, and much of what the bureau knew of its parts goes too. Crews stand down until the cause is fixed: ${requalWhat(q)}`,'bad');return}
+    HOOK.news(`Crews stand down until the cause is fixed: ${requalWhat(q)}`,'warn');offerDecision(requalChoiceD(q));return}
+  HOOK.news(rule==='open'?`An inquiry grounds crews${by!==HOME?` (${POWERS[by].name} demands it)`:''} until the cause is fixed: ${requalWhat(q)}`:`Crews stand down until the cause is fixed: ${requalWhat(q)}`,'warn');
+  if(rule==='open'&&natOf(HOME)>REQ.popNat)offerDecision({kind:'requal',life:60,title:'The government wants a crew up before the inquiry reports',
+    text:`"Show the world": one crewed flight now, the cause unfixed. If it comes home it is a triumph; if not, a catastrophe. Refusing costs opinion.`,
+    opts:[['obey','Fly a crew now'],['refuse','Wait for the inquiry']]})}
+function requalAnswer(d,key){const q=PROG.requal;if(!q)return;
+  if(key==='skip'){q.skip=true;HOOK.news('Crews fly again. Officially, nothing needed fixing','warn')}
+  else if(key==='requal'&&q.rule==='company')requalChoose();
+  else if(key==='obey'&&q.rule==='open'){q.once=true;HOOK.news('The government gets its flight: a crew goes up before the inquiry reports','warn')}
+  else if(key==='refuse'&&q.rule==='closed'){q.skip=false;opAdd(HOME,REQ.orderNo);HOOK.news("The program requalifies against the leadership's order; the leadership will remember",'bad')}
+  else if(key==='refuse'){opAdd(HOME,REQ.popNo);HOOK.news('The program waits for the inquiry; the government calls it cowardice','warn')}}
+// a company's own call, any time while it flies people unrequalified (the decision, or the Astronauts panel)
+function requalChoose(){const q=PROG.requal;if(!q||q.rule!=='company'||!q.skip)return false;q.skip=false;PROG.decisions=(PROG.decisions||[]).filter(d=>d.kind!=='requal');
+  HOOK.news('The company requalifies first: the next crew capsule flies dummies','ok');HOOK.save();return true}
+// at the flight's first tick: a crewed flight under a skip pays for it (a company's insurance; a closed state's hush), and
+// the one flight an open state's government ordered goes up
+function requalLaunch(R){const q=PROG.requal;if(!q||!R.crewed)return;
+  if(q.once){q.once=false;R.requalObey=true;return}
+  if(!q.skip)return;R.requalSkip=true;
+  if(q.rule==='company'){PROG.funds-=REQ.ins;ledAdd('insure',-REQ.ins);R.requalIns=REQ.ins;return}
+  PROG.hush=(PROG.hush||0)+1;PROG.hushPen=(PROG.hushPen||0)-4}
+// a crew lost: a flight under a skip leaves the old cause standing (a company's second loss brings lawsuits); any other
+// loss sets the requalification
+function requalLoss(s,R,as){const q=PROG.requal;
+  if(R.requalSkip&&q){if(q.rule==='company'){q.losses=(q.losses||0)+1;PROG.funds-=REQ.suit;ledAdd('suits',-REQ.suit);standAdd('tour',REQ.tour);
+    HOOK.news(`Another crew lost without requalifying: the families sue, and settle for ${fmtM(REQ.suit)}`,'bad')}return}
+  requalSet(s,R,as)}
+// the election (flavTick): an open program that lost a crew within a term, and loses the election, loses more of its budget
+function requalElection(o){if(PROG.crewLoss==null||PROG.day-PROG.crewLoss>REQ.term||o>=REQ.demaOp||requalRule().rule!=='open')return;
+  PROG.bmult*=REQ.demaCut;HOOK.news('The opposition ran against "the death rockets", and won: the space budget is cut further for a term','bad')}
+const requalRegimeK=()=>PROG.requal&&PROG.requal.rule==='closed'?REQ.regimeK:1;
 // the flight's end (missionEnd): a capsule flown with dummies while crews stand down is the qualification flight
-function requalEnd(s,R){const q=PROG.requal;if(!q||!R.requalFlight)return;
+function requalEnd(s,R){const q=PROG.requal;
+  if(R.requalObey&&s.alive&&R.crewOK&&R.capHome){opAdd(HOME,REQ.popWin);HOOK.news('The crew the government sent up comes home: the world is shown. The inquiry goes on','ok')}   // (Q624)
+  if(!q||!R.requalFlight)return;
   const miss=!(s.alive&&R.capHome)?'the capsule did not come home':(R.far||0)<REQUAL_FAR*q.far?`it reached ${((R.far||0)/1000).toFixed(0)} km of the ${requalKm(q).toFixed(0)} needed`
     :R.cgMax>G_LIM?`the dummies saw ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`the cabin reached ${R.ccab.toFixed(0)} K`:simT+(R.airX||0)>CREW_AIR?'the air would have run out':'';
   if(miss){R.requal={ok:false,why:miss};HOOK.news(`Not requalified yet: ${miss}`,'warn');return}

@@ -1201,7 +1201,7 @@
 // one and brings the capsule home inside the limits (short, or past a limit, it doesn't). A closed power may skip it:
 // people fly again at once, each such flight one more hushed thing. Own SIM copy.
 {
-  const D = new Function(src + 'return {PROG,HOOK,SITES,TELLUS,newShip,missionTick,missionEnd,programNew,fromPF,resolveDecision,ARCH,G_LIM,get HOME(){return HOME},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};')();
+  const D = new Function(src + 'return {PROG,HOOK,SITES,TELLUS,newShip,missionTick,missionEnd,programNew,fromPF,resolveDecision,ARCH,G_LIM,TEST,get HOME(){return HOME},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};')();
   const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   const T = D.TELLUS;
   const setup = arch => { D.programNew({}); const P = D.PROG; if (arch) P.homeArch = arch; P.funds = 500; P.done = { orbiter: { day: 1 }, padabort: { day: 1 }, maxqabort: { day: 2 } }; return P; };
@@ -1217,10 +1217,11 @@
   check('econ-47: a crew lost stands crews down (the cause and how far in PROG.requal); the next capsule flies dummies; short of the distance or past a limit it does not requalify; as far and home inside the limits it does, and people fly again',
     lost.crewed && !lost.crewOK && rq && rq.kind === 'lost' && Math.abs(rq.far - 120e3) < 1 && !next.crewed && next.requalFlight && short && !short.ok && /50 km of the 120/.test(short.why)
       && !hurt.crewed && hot && !hot.ok && /dummies saw/.test(hot.why) && good.requal && good.requal.ok && P.requal === null && after.crewed && !after.requalFlight
-      && news.some(t => /^Crews stand down until the cause is fixed: fly a crew capsule uncrewed to 120 km/.test(t)) && news.some(t => /^Requalified/.test(t)),
+      && news.some(t => /^An inquiry grounds crews until the cause is fixed: fly a crew capsule uncrewed to 120 km/.test(t)) && news.some(t => /^Requalified/.test(t)),
     `${news.filter(t => /requalif|stand down/i.test(t)).join(' | ')}`);
   // a closed program: the skip
-  news.length = 0; P = setup('closedSuper'); fly(P, { far: 80e3, crash: true }); const dec = (P.decisions || []).find(d => d.kind === 'requal'), h0 = P.hush || 0;
+  news.length = 0; P = setup('closedSuper'); D.TEST.whim = 'choice'; fly(P, { far: 80e3, crash: true }); D.TEST.whim = undefined;   // (Q624) the leadership's whim: v1.350's choice
+   const dec = (P.decisions || []).find(d => d.kind === 'requal'), h0 = P.hush || 0;
   dec && D.resolveDecision(dec.id, 'skip'); const again = fly(P, { far: 10e3 });
   check('econ-47: a closed program is offered the skip; taken, people fly at once, the cause unfixed, and each such flight adds to what can leak',
     dec && dec.opts.length === 2 && P.requal && P.requal.skip && again.crewed && !again.requalFlight && (P.hush || 0) === h0 + 1, `${dec && dec.title}; hush ${h0} → ${P.hush}`);
@@ -1352,4 +1353,53 @@
   const n0 = D.selN().mare; D.selSci().spec.mare.push({ FeO: 18, TiO2: 5, Al2O3: 10, far: false, w: w2 }); const n1 = D.selN().mare;   // as sciGot keeps a weighed reading
   check('econ-50: a scientist on Selene weighs a reading ×1.25, ×1.5 with field geology, ×2 having walked there before; elsewhere nothing; Selene\'s science counts the weight',
     w0 === 1.25 && w1 === 1.5 && w2 === 2 && away === 1 && n1 - n0 === 2, `${w0} → ${w1} → ${w2}; elsewhere ${away}; mare ${n0} → ${n1}`);
+}
+
+// econ-51. Who enforces requalification (economy, QUEUE Q624; CREW decision 5): one crew loss under each kind of owner.
+// A private company flies on (insurance on each crewed flight, standing and valuation down; a second loss brings
+// lawsuits) until it chooses to requalify; an open state's inquiry grounds crews, a populist government may order one
+// flight first, and a lost election within a term cuts deeper; a closed state rolls the leadership's whim (an order to
+// fly, a scapegoat, or v1.350's choice); a consortium answers to its most open member. Own SIM copy.
+{
+  const D = new Function(src + 'return {PROG,HOOK,SITES,TELLUS,POWERS,newShip,missionTick,missionEnd,programNew,fromPF,resolveDecision,TEST,opOf,standOf,valuation,flav,requalRule,requalHolds,requalChoose,requalElection,requalRegimeK,get HOME(){return HOME},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};')();
+  const news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const T = D.TELLUS, H = () => D.HOME;
+  const setup = (arch, own) => { D.programNew({}); const P = D.PROG; if (arch) P.homeArch = arch; P.funds = 500; P.done = { orbiter: { day: 1 }, padabort: { day: 1 }, maxqabort: { day: 2 } }; if (own) P.own = own; news.length = 0; return P; };
+  const home = () => D.SITES.find(t => t.power === D.HOME) || D.SITES[0];
+  const fly = (P, { far = 0, crash = false } = {}) => { D.t = 0; const s = D.newShip(['chute', 'crew']), h = home(); Object.assign(s, { landed: true, alive: true, touchV: 2, throttle: 0 }); s.pf = mul(h.u, T.R); s.r = D.fromPF(T, s.pf, 0); s.v = [0, 0, 0];
+    s.rec.launched = true; s.rec.day0 = P.day; s.rec.launchPf = s.pf.slice(); D.S = s; D.missionTick(s, D.DT, false); s.rec.far = far;
+    if (crash) { s.alive = false; D.t = 300; D.missionTick(s, 0, false); } else { D.t = 3600; D.missionTick(s, 0, false); } D.missionEnd(s); return s.rec; };
+  const dec = P => (P.decisions || []).find(d => d.kind === 'requal');
+  // a private company in an open country
+  let P = setup('openSuper', { kind: 'company', st: {}, pv: 1, chosen: true, debt: 0 }); const v0 = D.valuation(), t0 = D.standOf('tour');
+  fly(P, { far: 100e3, crash: true }); const cq = P.requal && { ...P.requal }, cd = dec(P), v1 = D.valuation(), t1 = D.standOf('tour');
+  const c2 = fly(P, { far: 20e3 }), c3 = fly(P, { far: 20e3, crash: true }), losses = P.requal && P.requal.losses, sued = news.some(t => /families sue/.test(t)), v2 = D.valuation();
+  const chose = D.requalChoose(), c4 = fly(P, { far: 110e3 });
+  check('econ-51: a company is not grounded: people fly on, each crewed flight pays the insurers, tourism and the valuation drop, a second loss brings lawsuits; requalifying is its own choice, and works as anywhere',
+    cq && cq.rule === 'company' && cq.skip && cd && cd.opts.map(o => o[0]).join() === 'requal,fly' && v1 === v0 - 30 && t1 < t0 && c2.crewed && c2.requalIns === 8 && !c2.requalFlight
+      && c3.crewed && losses === 1 && sued && v2 === v0 - 60 && chose && !c4.crewed && c4.requalFlight && c4.requal && c4.requal.ok && P.requal === null,
+    `rule ${cq && cq.rule}; valuation ${v0} → ${v1} → ${v2}; tourism ${t0} → ${t1}; insurance ${c2.requalIns}; losses ${losses}; requalified ${c4.requal && c4.requal.ok}`);
+  // an open state, nationalism high: the inquiry, the populist flight, the election
+  P = setup('openSuper'); P.nat = { [H()]: 0.9 }; fly(P, { far: 100e3, crash: true }); const od = dec(P), oq = P.requal && { ...P.requal }, held = D.requalHolds();
+  od && D.resolveDecision(od.id, 'obey'); const op0 = D.opOf(H()), o2 = fly(P, { far: 20e3 }), op1 = D.opOf(H()), o3 = fly(P, { far: 20e3 });
+  P.bmult = 1; P.crewLoss = P.day; D.requalElection(60); const b60 = P.bmult; D.requalElection(30); const b30 = P.bmult;
+  check('econ-51: an open state\'s inquiry grounds crews (no skip); a populist government may order one crewed flight first (home: opinion up), then the inquiry goes on; a lost election within a term of the loss cuts the budget further',
+    oq && oq.rule === 'open' && held && news.some(t => /^An inquiry grounds crews/.test(t)) && od && /before the inquiry reports/.test(od.title) && o2.crewed && o2.requalObey && op1 > op0 + 5
+      && !o3.crewed && o3.requalFlight && b60 === 1 && Math.abs(b30 - 0.85) < 1e-9,
+    `rule ${oq && oq.rule}; ${od && od.title}; opinion ${op0.toFixed(0)} → ${op1.toFixed(0)}; after it crewed ${o3.crewed}; budget ×${b60} → ×${b30}`);
+  // a closed state: the three whims
+  const whim = (w, f) => { P = setup('closedSuper'); P.kh = { crew: { use: 0.6, reg: {} } }; D.TEST.whim = w; fly(P, { far: 80e3, crash: true }); D.TEST.whim = undefined; return f(P); };
+  const wf = whim('fly', P => { const d = dec(P), q = { ...P.requal }, op0 = D.opOf(H()); d && D.resolveDecision(d.id, 'refuse'); return { d, q, k: D.requalRegimeK(), dop: D.opOf(H()) - op0, holds: D.requalHolds() }; });
+  const wb = whim('blame', P => ({ d: dec(P), use: P.kh.crew.use, holds: D.requalHolds(), n: news.some(t => /purged/.test(t)) }));
+  const wc = whim('choice', P => ({ d: dec(P), holds: D.requalHolds() }));
+  check('econ-51: a closed state rolls the leadership\'s whim: an order to fly at once (refused: requalify, and lose favour), a scapegoat purged (grounded, know-how lost), or the v1.350 choice; a regime change gets likelier meanwhile',
+    wf.q.rule === 'closed' && wf.q.skip && wf.d && wf.d.opts.map(o => o[0]).join() === 'obey,refuse' && wf.holds && wf.dop < -5 && wf.k === 3
+      && !wb.d && wb.holds && Math.abs(wb.use - 0.42) < 1e-9 && wb.n && wc.d && wc.d.opts.map(o => o[0]).join() === 'requal,skip' && wc.holds,
+    `fly: ${wf.d && wf.d.title}, refused: opinion ${wf.dop.toFixed(0)}, holds ${wf.holds}; blame: know-how ${wb.use}; choice: ${wc.d && wc.d.title}`);
+  // a consortium of a closed home and an open member
+  const j = D.POWERS.find(p => p.i !== H() && D.flav(p.i).open >= 0.6), k = D.POWERS.find(p => p.i !== H() && p !== j);
+  P = setup('closedSuper', j && { kind: 'consortium', st: { [H()]: 0.4, [j.i]: 0.3, [k.i]: 0.3 }, pv: 0, chosen: true, debt: 0 }); const rr = D.requalRule(); fly(P, { far: 80e3, crash: true });
+  check('econ-51: a consortium answers to its strictest member: one open member forces an inquiry, and the news names it',
+    j && rr.rule === 'open' && rr.by === j.i && P.requal && P.requal.rule === 'open' && !dec(P) && news.some(t => t.includes(`(${j.name} demands it)`)),
+    `${j ? j.name : 'no open power in the world'}: rule ${rr.rule}`);
 }
