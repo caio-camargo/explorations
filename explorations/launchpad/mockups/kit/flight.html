@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launchpad mock-up: the flight HUD on the roles</title>
+<!-- A static mock-up (ELEMENTS.md § 6.1, for QUEUE Q477). Never loaded by the game. The flight HUD as the instrument
+     panel, built from ELEMENTS.md's roles: engraved = the system (B612, D52), lit on glass = the data. A caution is a
+     lit tile, never coloured text in a readout (D51). The backgrounds, the navball and "Today" are the game's own
+     (views.js refView 94 and 156, v1.370). The figures are invented.
+     Round 2 (Caio, 2026-11-19): smaller; the panel is lower than the navball; each stage is its own box.
+     The Rollout (states go, nogo) is the same panel with the launch poll as lamps.
+     URL: ?state=quiet|caution|warning|burn|go|nogo &ph=amber|green|white &fig=vt|b612|sans &keys=legend|plate &gz=bar|ptr &squint=1 &grey=1 &today=1 -->
+<style>
+@font-face{font-family:'VT323';src:url(../../fonts/vt323.woff2) format('woff2')}
+@font-face{font-family:'B612';font-weight:400;src:url(faces/B612-Regular.ttf)}
+@font-face{font-family:'B612';font-weight:700;src:url(faces/B612-Bold.ttf)}
+@font-face{font-family:'B612 Mono';font-weight:400;src:url(faces/B612Mono-Regular.ttf)}
+@font-face{font-family:'B612 Mono';font-weight:700;src:url(faces/B612Mono-Bold.ttf)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+/* ---------- the mock-up's own chrome ---------- */
+#bar{position:fixed;inset:0 0 auto 0;height:34px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/1 system-ui,sans-serif;display:flex;gap:6px;align-items:center;padding:0 10px;white-space:nowrap;overflow:auto}
+#bar b{font-weight:600;color:#8d9299;margin:0 2px 0 10px}#bar a{color:#9db8e8}
+#bar button{font:inherit;color:inherit;background:#26282c;border:1px solid #3a3d42;border-radius:3px;padding:5px 9px;cursor:pointer}
+#bar button.on{background:#e8e6e0;color:#111;border-color:#e8e6e0}
+#who{position:fixed;inset:auto 0 0 0;height:24px;z-index:10;background:#16171a;color:#cfd2d6;font:12px/24px system-ui,sans-serif;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#who b{color:#fff}
+#stage{position:fixed;inset:34px 0 24px 0;background:#000 url(bg-climb.jpg) center/cover;overflow:hidden}
+body[data-state=burn] #stage{background-image:url(bg-orbit.jpg)}body[data-state=go] #stage,body[data-state=nogo] #stage{background-image:url(bg-rollout.jpg)}
+body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.squint.grey #stage{filter:blur(4px) grayscale(1)}
+#today{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5}
+body.today #today{display:block}
+
+/* ---------- the panel: tokens ---------- */
+#stage{--power:#2b5ea8;--go:#52d08a;--ink:#e6e1d3;--quiet:#aaa698;--well:#0a0b0a;--amber:#f2b01e;--red:#ff4a3a;--lit:#f3ecd2;--ph:#ffb000;
+  --f-lit:'VT323',monospace;--l1:18px;--l2:30px;font:11px/1.25 'B612','Arial Narrow',sans-serif;color:var(--ink)}
+body[data-ph=green] #stage{--ph:#5ee88a}body[data-ph=white] #stage{--ph:#e9f2df}
+body[data-fig=b612] #stage{--f-lit:'B612 Mono',monospace;--l1:13px;--l2:21px}
+body[data-fig=sans] #stage{--f-lit:'B612',sans-serif;--l1:13px;--l2:21px}
+/* a bezel: the only enclosure for a group */
+.bz{position:absolute;background:linear-gradient(180deg,#303337,#26292c);border:1px solid #111;border-radius:4px;box-shadow:inset 0 1px 0 #50545a,0 8px 26px rgba(0,0,0,.6);padding:8px 9px}
+/* engraved: label, heading, key legend */
+.lab,.h,.btn,.kbd,.lamp{font-family:'B612','Arial Narrow',sans-serif;text-transform:uppercase;letter-spacing:.12em}
+.lab{font-size:11px;color:var(--ink);white-space:nowrap}
+.h{font-size:11px;font-weight:700;margin:0 0 5px;display:flex;justify-content:space-between;align-items:baseline}
+.term{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+/* lit on glass: value, unit, name, sentence */
+.glass{display:block;background:var(--well);border:1px solid #000;border-radius:3px;box-shadow:inset 0 0 10px color-mix(in srgb,var(--ph) 9%,transparent),0 1px 0 #4a4e54;color:var(--ph);font:var(--l1)/1.15 var(--f-lit);padding:1px 7px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.glass.r{text-align:right}
+.big{font-size:var(--l2);line-height:1}
+.u{opacity:.62;margin-left:.3em;font-size:var(--l1)}
+.dim,.lb{opacity:.62}
+/* a row: engraved label, then its glass */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center}
+/* gauge: a value as a length, against a tick engraved on the bezel. It never changes colour (D51) */
+.gz{position:relative;height:12px;background:var(--well);border:1px solid #000;border-radius:2px;box-shadow:0 1px 0 #4a4e54}
+.gz i{position:absolute;inset:2px auto 2px 2px;background:var(--ph);max-width:calc(100% - 4px)}
+.gz b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);margin-left:-1px}
+/* the other gauge: a pointer on a scale, so the only filled blocks of the phosphor's colour are lamps */
+body[data-gz=ptr] .gz i{background:linear-gradient(90deg,transparent calc(100% - 4px),var(--ph) 0)}
+body[data-gz=ptr] .thr .gz i{background:linear-gradient(0deg,transparent calc(100% - 4px),var(--ph) 0)}
+body[data-gz=ptr] .gz{background:var(--well) repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),#3a3d40 0 10%)}
+body[data-gz=ptr] .thr .gz{background:var(--well) repeating-linear-gradient(0deg,transparent 0 calc(10% - 1px),#3a3d40 0 10%)}
+/* a phase row: label, gauge, figure on one line; the fix under it */
+.grow{display:grid;grid-template-columns:86px 1fr auto;gap:4px 8px;align-items:center;margin-top:5px}
+.grow .glass{min-width:4.4em;text-align:right}
+.grow .fix{grid-column:1/-1;white-space:normal;text-align:left}
+/* keys: command, toggle, choice. Raised plate; lit when on */
+.btn{font-size:11px;color:var(--ink);background:linear-gradient(#474b51,#303337);border:1px solid #15171a;border-top-color:#70757c;border-radius:3px;box-shadow:0 2px 0 #101112;padding:4px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:#484d53}
+.btn.on{background:var(--lit);color:#15130c;border-color:var(--lit);box-shadow:0 0 10px rgba(243,236,210,.45)}
+/* the other way to show a key is on: only its legend and a bar light, so it stays darker than a lamp and than read 1 */
+body[data-keys=legend] .btn.on{background:linear-gradient(#3a3d42,#26292c);color:var(--lit);border-color:#15171a;border-top-color:#70757c;box-shadow:0 2px 0 #101112,inset 0 3px 0 var(--lit);text-shadow:0 0 6px rgba(243,236,210,.7)}
+.btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5}
+.kbd{font-size:10px;border:1px solid currentColor;border-radius:3px;padding:0 4px;opacity:.75;letter-spacing:0;text-transform:none}
+/* lamp: a caution as a tile, dark until it matters. No raised edge, so it is not a key */
+.lamp{display:block;font-size:10.5px;font-weight:700;text-align:center;padding:4px 2px;border-radius:2px;background:#1b1c1a;color:#55574f;border:1px solid #000;box-shadow:inset 0 1px 0 #333;white-space:nowrap}
+.lamp.amber{background:var(--amber);color:#1a1408;box-shadow:0 0 12px rgba(242,176,30,.55)}
+.lamp.red{background:var(--red);color:#fff;box-shadow:inset 0 0 0 2px #fff,0 0 14px rgba(255,74,58,.7)}
+/* the master is the one lamp that is also a key (click: acknowledge), so it alone has the raised edge */
+.lamp.master{cursor:pointer;border-color:#15171a;border-top-color:#70757c;box-shadow:0 2px 0 #101112}
+.lamp.master.amber{box-shadow:0 2px 0 #101112,0 0 12px rgba(242,176,30,.55)}.lamp.master.red{box-shadow:0 2px 0 #101112,inset 0 0 0 2px #fff,0 0 14px rgba(255,74,58,.7)}
+/* token: an event in the staging sequence, on glass */
+.tok{display:inline-block;border:1px solid var(--ph);border-left-width:4px;padding:0 6px 0 4px;margin-right:4px;line-height:1.05}
+/* a stage: one box of glass each. The big figure is its number; the one flying has the lit frame and the only gauge */
+.stg{display:grid;grid-template-columns:22px 1fr;gap:0 8px;padding:3px 7px 3px 5px;margin-top:5px;white-space:nowrap}
+.stg .ix{grid-row:1/9;font-size:var(--l2);line-height:1;text-align:center;align-self:center}
+.stg .ln{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:21px}
+.stg .gz{flex:1;height:10px;border-color:color-mix(in srgb,var(--ph) 45%,#000);box-shadow:none}
+.stg.cur{border-color:var(--ph)}
+.stg.later{color:color-mix(in srgb,var(--ph) 62%,#000)}.stg.later .lb{opacity:.85}
+
+/* ---------- the Rollout: the same panel, the poll as lamps ---------- */
+.lamp.go{background:var(--go);color:#0c1a10;box-shadow:0 0 12px rgba(82,208,138,.5)}
+.ttl{font:700 16.5px/1.1 'B612',sans-serif;text-transform:uppercase;letter-spacing:.13em;margin:0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.roll{right:12px;top:12px;width:400px;padding:10px 11px}
+.kv4{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:5px 8px;align-items:center;margin-top:5px}.kv4 .w{grid-column:2/-1}
+.sec{margin-top:10px;border-top:1px solid #55584f;padding-top:7px}
+.poll{display:grid;grid-template-columns:58px 80px 1fr;gap:5px 8px;align-items:center}.poll .glass{white-space:normal}
+.pri{flex:1;font:700 14px/1 'B612',sans-serif;text-transform:uppercase;letter-spacing:.2em;color:#fff;background:var(--power);border:1px solid var(--power);border-radius:3px;padding:10px;cursor:pointer;display:inline-flex;justify-content:center;align-items:center;gap:10px;box-shadow:0 2px 0 #101112,0 0 12px color-mix(in srgb,var(--power) 60%,transparent)}
+.pri[disabled]{background:#2e3134;border-color:#222;color:#77746a;box-shadow:none;cursor:default}
+.foot{display:flex;gap:8px;margin-top:11px}
+/* ---------- the layout ---------- */
+.tl{left:12px;top:12px;display:flex;gap:8px;align-items:center;padding:6px 8px}
+.tr{right:12px;top:12px;display:flex;gap:8px;align-items:center;padding:6px 8px}
+.seg{display:inline-flex;align-items:stretch}.seg .btn{border-radius:3px 0 0 3px;flex:1}.seg .btn:last-child{border-radius:0 3px 3px 0}.seg .glass{border-radius:0;min-width:3.4em;text-align:center}
+.bl{left:12px;bottom:12px;width:284px}
+.br{right:12px;bottom:12px;width:262px}
+/* read 1: one low bezel; the navball stands on it and rises above its edge */
+.main{left:50%;transform:translateX(-50%);bottom:12px}
+.inst{display:flex;gap:10px;align-items:stretch;height:94px}
+.col{display:flex;flex-direction:column;gap:5px;justify-content:space-between}
+.col.sas{width:88px}.col.read{width:150px}
+.keys{display:grid;grid-template-columns:1fr 1fr;gap:5px}.keys .btn{padding:3px 0}
+.bigrow{display:flex;gap:8px;align-items:center}.bigrow .glass{flex:1;padding:2px 7px}
+.thr{width:16px}.thr .gz{width:14px;height:100%}.thr .gz i{inset:auto 2px 2px 2px;max-width:none}
+.ballw{width:164px;position:relative}
+.ball{position:absolute;left:0;bottom:0;width:164px;height:164px;border-radius:50%;border:5px solid #17191b;box-shadow:0 0 0 1px #5a5e64,0 0 0 4px #2b2e31,0 0 0 5px #111,inset 0 0 12px #000;background:#0a0b0a;display:block}
+.hdg{position:absolute;left:50%;bottom:170px;transform:translateX(-50%);box-shadow:0 0 0 3px #2b2e31,0 0 0 4px #111;padding:0 8px}
+.strip{display:grid;grid-template-columns:1.5fr repeat(5,1fr);gap:5px;margin-top:7px}
+</style>
+</head>
+<body data-state="quiet" data-ph="amber" data-fig="vt" data-keys="legend" data-gz="bar">
+<div id="bar">
+  <a href="index.html">← kit</a>
+  <b>State</b><button data-state="quiet">Climb, all quiet</button><button data-state="caution">Caution</button><button data-state="warning">Warning</button><button data-state="burn">Orbit burn</button>
+  <b>Rollout</b><button data-state="go">All go</button><button data-state="nogo">No-go</button>
+  <b>Phosphor</b><button data-ph="amber">Amber</button><button data-ph="green">Green</button><button data-ph="white">White</button>
+  <b>Figures</b><button data-fig="vt">VT323</button><button data-fig="b612">B612 Mono</button><button data-fig="sans" title="the panel's own sans, whose figures are already of one width: one face for the whole cockpit">B612</button>
+  <b>Key on</b><button data-keys="legend" title="a key that is on lights its legend and a bar">Legend</button><button data-keys="plate" title="a key that is on lights whole, as in the kit's Panel dress">Plate</button>
+  <b>Gauge</b><button data-gz="bar">Bar</button><button data-gz="ptr" title="a pointer on a scale: no filled block in the readout's colour">Pointer</button>
+  <b>Checks</b><button data-cls="squint">Squint</button><button data-cls="grey">Grey</button><button data-cls="today" title="the game's flight HUD at v1.370, the same moment as the climb">Today</button>
+</div>
+<div id="stage"></div>
+<div id="who"></div>
+<script>
+const $=s=>document.querySelector(s),B=document.body;
+// symbols for the hold keys: drawn, since no face has them (ELEMENTS.md § 7.1). Placeholders, not Q436's
+const SYM={hold:'<path d="M2 9h4l3 3 3-3h4"/>',pro:'<circle cx="9" cy="9" r="4"/><path d="M9 5V2M5 9H1M13 9h4"/>',
+  retro:'<circle cx="9" cy="9" r="4"/><path d="M9 5V2M5 9H1M13 9h4M6.2 6.2l5.6 5.6M11.8 6.2l-5.6 5.6"/>',node:'<path d="M9 2l6 7-6 7-6-7z"/>'};
+const tri=d=>`<svg viewBox="0 0 18 18" style="width:9px;height:9px"><path fill="currentColor" stroke="none" d="${d<0?'M14 2v14L3 9z':'M4 2v14l11-7z'}"/></svg>`;
+// ---- the states. Figures are invented; the climb's are near the game's own still. Stages are listed top first, as stacked
+const Q={l:'Q',term:'dynamic pressure: how hard the air pushes on the rocket'},CHUTE={n:4,ev:['chute'],info:'safe below 250 m/s'},WREN={n:3,ev:['decouple','ignite Wren'],dv:'3723',burn:'2:40',twr:'0.9'};
+const ST={
+ quiet:{say:'<b>All quiet.</b> No tile is lit and no figure is coloured. The panel is lower than the ball; speed and altitude are 30 px, not 46. Each stage is a box: its number, what it does, what it is worth.',
+  met:'00:52',spd:'441',ref:'surface',mach:'1.47',alt:'10.0',altU:'km',rows:[['Climb','+422','m/s'],['Ap','19.4','km']],hdg:'090',pitch:'77',thr:100,sas:'hold',modes:['hold','pro'],
+  stages:[CHUTE,WREN,{n:2,name:'Petrel',twr:'2.4',fuel:64,left:'1:04',dv:'2056'}],
+  phase:{name:'Ascent',rows:[{...Q,v:'31.3',u:'kPa',g:.78},{l:'Structure',v:'19',u:'%',g:.19,t:.8}]},lamps:{}},
+ caution:{say:'<b>Caution (will need action).</b> The STRUCTURE tile and the master light amber. The row of the same name is past its engraved tick, and the fix is written under it in the readout\'s own colour.',
+  met:'00:58',spd:'512',ref:'surface',mach:'1.85',alt:'12.3',altU:'km',rows:[['Climb','+471','m/s'],['Ap','24.8','km']],hdg:'090',pitch:'71',thr:100,sas:'hold',modes:['hold','pro'],
+  stages:[CHUTE,WREN,{n:2,name:'Petrel',twr:'2.6',fuel:58,left:'0:58',dv:'1890'}],
+  phase:{name:'Ascent',rows:[{...Q,v:'35.5',u:'kPa',g:.89},{l:'Structure',v:'82',u:'%',g:.82,t:.8,fix:'At the adapter: throttle down'}]},lamps:{Structure:'amber'}},
+ warning:{say:'<b>Warning (act now).</b> STRUCTURE is red, with a white frame so it differs from amber without colour (try Grey); the master reads WARNING. HEAT lit amber, so its row appeared on the phase card.',
+  met:'01:01',spd:'548',ref:'surface',mach:'1.98',alt:'13.6',altU:'km',rows:[['Climb','+489','m/s'],['Ap','27.9','km']],hdg:'090',pitch:'64',thr:100,sas:'hold',modes:['hold','pro'],
+  stages:[CHUTE,WREN,{n:2,name:'Petrel',twr:'2.7',fuel:55,left:'0:55',dv:'1805'}],
+  phase:{name:'Ascent',rows:[{...Q,v:'36.1',u:'kPa',g:.9},{l:'Structure',v:'96',u:'%',g:.96,t:.8,fix:'At the adapter: throttle down now'},{l:'Heat',v:'870',u:'K',g:.87,t:.8,fix:'Parachute is hottest: nose into the wind'}]},lamps:{Structure:'red',Heat:'amber'}},
+ burn:{say:'<b>Orbit burn.</b> The phase card changed to what a burn needs; the altitude column shows Ap and Pe. The one prompt of the screen is a lit sentence on the card. The panel sits over the bright limb: the worst background it meets.',
+  met:'41:07',spd:'7780',ref:'orbit',mach:null,alt:'212',altU:'km',rows:[['Ap','412','km'],['Pe','208','km']],hdg:'092',pitch:'0',thr:0,sas:'node',modes:['hold','pro','retro','node'],
+  stages:[CHUTE,{n:3,name:'Wren',twr:'0.9',fuel:71,left:'2:10',dv:'1632'}],
+  phase:{name:'Burn',rows:[{l:'Δv to go',v:'124',u:'m/s',g:1},{l:'Ignition in',v:'1:12',u:''},{l:'Burn time',v:'0:38',u:''}],pmt:'Burn at the marker'},lamps:{}}};
+const POLL=[['Budget','go','66 M of 80 M'],['Parts','go','all open to us'],['Site','go','open to us, the stages fit'],['Liftoff','go','TWR 1.51'],['Recovery','go','on our land, or at sea within 200 km'],['Weather','go','clear']];
+ST.go={roll:1,poll:POLL,say:'<b>Rollout, all go.</b> The same panel as the flight. The poll is a column of lamps, each with its reason on glass; LAUNCH is the one primary command, in the colour of the power. Try Phosphor: Green against the GO lamps.'};
+ST.nogo={roll:1,poll:POLL.map(r=>r[0]==='Parts'?['Parts','red','Kestrel booster is not open yet: fly the Structural test']:r[0]==='Weather'?['Weather','amber','gusts of 14 m/s until noon']:r),say:'<b>Rollout, no-go.</b> PARTS is NO-GO (red, white frame), WEATHER is HOLD (amber); each says why and what to do. LAUNCH is dark until every lamp is GO or HOLD is accepted.'};
+const WORD={go:'Go',amber:'Hold',red:'No-go'};
+function rollout(s){const no=s.poll.some(r=>r[1]==='red');
+  return `<img id="today" src="today-rollout.jpg" alt="">
+  <section class="bz roll"><h1 class="ttl">Rollout <span class="glass">Orbiter</span></h1>
+    <div class="kv" style="margin-top:9px">${lab('Site')}<span class="seg"><button class="btn" style="flex:none">${tri(-1)}</button><span class="glass" style="flex:1">Dunnzar Cape</span><button class="btn" style="flex:none">${tri(1)}</button></span></div><div class="kv4">
+      ${lab('Latitude')}<span class="glass r">0.0°<span class="u">N</span></span>${lab('Spin','what the site gives a launch heading east: the eastward speed of the ground, free to a launch heading east')}<span class="glass r">278<span class="u">m/s</span></span>${lab('Downrange')}<span class="glass r w">94<span class="u">% water</span></span></div>
+    <div class="sec"><h2 class="h">Launch poll</h2><div class="poll">${s.poll.map(([l,v,why])=>`<span class="lamp ${v}">${WORD[v]}</span>${lab(l)}<span class="glass">${why}</span>`).join('')}</div></div>
+    <div class="sec"><h2 class="h">This launch</h2><div class="kv4">${lab('Hardware')}<span class="glass r">57<span class="u">M</span></span>${lab('Operations')}<span class="glass r">8.7<span class="u">M</span></span>${lab('Funds after')}<span class="glass r">14<span class="u">M</span></span>${lab('Ready in')}<span class="glass r">44<span class="u">days</span></span>${lab('Flies for')}<span class="glass w">Above the weather <span class="lb">pays</span> 15<span class="u">M</span></span></div></div>
+    <div class="foot"><button class="btn">Design table <span class="kbd">B</span></button><button class="pri"${no?' disabled':''}>Launch <span class="kbd">L</span></button></div>
+  </section>`}
+const TILES=['Heat','Structure','Link','Power','Fuel'],TERM={Ap:'apoapsis: the highest point of the path',Pe:'periapsis: the lowest point of the path'};
+const lab=(t,x)=>`<span class="lab${x||TERM[t]?' term':''}"${x||TERM[t]?` title="${x||TERM[t]}"`:''}>${t}</span>`;
+// one stage, one box. Flying: name, thrust to weight, the fuel gauge, what is left. Waiting: its events, what it will give
+function stg(x,i,a){const cur=i===a.length-1,next=i===a.length-2;
+  return `<div class="glass stg${cur?' cur':next?'':' later'}"><span class="ix">${x.n}</span>`+(cur
+    ?`<div class="ln"><span>${x.name}</span><span><span class="lb">TWR</span> ${x.twr}</span></div><div class="ln"><div class="gz"><i style="width:${x.fuel}%"></i></div><span>${x.fuel}<span class="u">%</span></span></div><div class="ln"><span><span class="lb">Δv</span> ${x.dv}<span class="u">m/s</span></span><span>${x.left} <span class="lb">left</span></span></div>`
+    :`<div class="ln"><span>${x.ev.map(e=>`<span class="tok">${e}</span>`).join('')}</span>${next?'<span class="kbd">Space</span>':''}</div><div class="ln">${x.info?`<span class="lb">${x.info}</span>`:`<span><span class="lb">Δv</span> ${x.dv}<span class="u">m/s</span></span><span><span class="lb">burn</span> ${x.burn} <span class="lb">TWR</span> ${x.twr}</span>`}</div>`)+'</div>'}
+function render(){const s=ST[B.dataset.state];if(s.roll)$('#stage').innerHTML=rollout(s);else flight(s);
+  $('#who').innerHTML=s.say;
+  for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.state?B.dataset.state===b.dataset.state:b.dataset.ph?B.dataset.ph===b.dataset.ph:b.dataset.fig?B.dataset.fig===b.dataset.fig:b.dataset.keys?B.dataset.keys===b.dataset.keys:b.dataset.gz?B.dataset.gz===b.dataset.gz:B.classList.contains(b.dataset.cls))}
+function flight(s){const L=s.lamps,worst=Object.values(L).includes('red')?'red':Object.values(L).length?'amber':'';
+  $('#stage').innerHTML=`<img id="today" src="today-flight.jpg" alt="">
+  <section class="bz tl">${lab('Clock')}<span class="glass">T+ ${s.met}</span><button class="btn" title="pin more lines to the readout">Readout +</button></section>
+  <section class="bz tr">${lab('Warp')}<span class="seg"><button class="btn">${tri(-1)}</button><span class="glass">1×</span><button class="btn">${tri(1)}</button></span><button class="btn">Map <span class="kbd">M</span></button><button class="btn">Menu <span class="kbd">Esc</span></button></section>
+
+  <section class="bz bl"><h2 class="h">Stages</h2>${s.stages.map(stg).join('')}</section>
+
+  <section class="bz br"><h2 class="h">${s.phase.name}</h2>
+    ${s.phase.rows.map(r=>`<div class="grow">${lab(r.l,r.term)}${r.g!=null?`<div class="gz"><i style="width:${r.g*100}%"></i>${r.t?`<b style="left:${r.t*100}%"></b>`:''}</div>`:'<span></span>'}<span class="glass">${r.v}${r.u?`<span class="u">${r.u}</span>`:''}</span>${r.fix?`<span class="glass fix">${r.fix}</span>`:''}</div>`).join('')}
+    ${s.phase.pmt?`<span class="glass" style="margin-top:5px;white-space:normal">&gt; ${s.phase.pmt}</span>`:''}</section>
+
+  <section class="bz main"><div class="inst">
+    <div class="col sas" style="justify-content:flex-start"><button class="btn on" aria-pressed="true">SAS <span class="kbd">T</span></button>
+      <div class="keys">${s.modes.map(m=>`<button class="btn${m===s.sas?' on':''}" title="${m}"><svg viewBox="0 0 18 18">${SYM[m]}</svg></button>`).join('')}</div></div>
+    <div class="col read"><div class="bigrow">${lab('Speed')}<span class="glass r"><span class="big">${s.spd}</span><span class="u">m/s</span></span></div>
+      <span class="seg"><button class="btn${s.ref==='surface'?' on':''}">Surface</button><button class="btn${s.ref==='orbit'?' on':''}">Orbit</button></span>
+      <div class="kv">${s.mach?`${lab('Mach')}<span class="glass r">${s.mach}</span>`:`${lab('Throttle')}<span class="glass r">${s.thr}<span class="u">%</span></span>`}</div></div>
+    <div class="thr" title="throttle ${s.thr} %"><div class="gz"><i style="height:${s.thr}%"></i></div></div>
+    <div class="ballw"><span class="glass hdg">${s.hdg}°<span class="u">hdg</span> &nbsp;${s.pitch}°<span class="u">pitch</span></span><img class="ball" src="nav-${B.dataset.state==='burn'?'orbit':'climb'}.png" alt="the navball"></div>
+    <div class="col read"><div class="bigrow">${lab('Alt')}<span class="glass r"><span class="big">${s.alt}</span><span class="u">${s.altU}</span></span></div>
+      <div class="kv">${s.rows.map(([l,v,u])=>`${lab(l)}<span class="glass r">${v}<span class="u">${u}</span></span>`).join('')}</div></div>
+    </div>
+    <div class="strip"><span class="lamp master ${worst}" title="click: acknowledge">Master ${worst==='red'?'warning':'caution'}</span>${TILES.map(t=>`<span class="lamp ${L[t]||''}">${t}</span>`).join('')}</div>
+  </section>`}
+$('#bar').onclick=e=>{const d=e.target.dataset;if(!d||e.target.tagName!=='BUTTON')return;for(const k of['state','ph','fig','keys','gz'])if(d[k])B.dataset[k]=d[k];if(d.cls)B.classList.toggle(d.cls);render()};
+const q=new URLSearchParams(location.search);for(const k of['state','ph','fig','keys','gz'])if(q.get(k))B.dataset[k]=q.get(k);for(const c of['squint','grey','today'])if(q.get(c))B.classList.add(c);
+render();
+// what a still can't show: bezels that overlap or leave the screen, and text that doesn't fit its box
+window.CHECK=()=>document.fonts.ready.then(()=>{const S=$('#stage').getBoundingClientRect(),bz=[...document.querySelectorAll('.bz')].map(e=>[e.className,e.getBoundingClientRect()]),out=[];
+  for(const[n,r]of bz)if(r.left<S.left||r.right>S.right||r.top<S.top||r.bottom>S.bottom)out.push('off screen: '+n);
+  for(let i=0;i<bz.length;i++)for(let j=i+1;j<bz.length;j++){const a=bz[i][1],b=bz[j][1];if(a.left<b.right&&b.left<a.right&&a.top<b.bottom&&b.top<a.bottom)out.push('overlap: '+bz[i][0]+' / '+bz[j][0])}
+  for(const e of document.querySelectorAll('.glass,.lab,.lamp,.btn,.col,.ln'))if(e.scrollWidth>e.clientWidth+1)out.push('too wide: '+e.className+' "'+e.textContent.trim().slice(0,24)+'" '+e.scrollWidth+'/'+e.clientWidth);
+  const area=bz.reduce((t,[,r])=>t+r.width*r.height,0);
+  return (out.join(' | ')||'fits')+' · '+bz.map(([n,r])=>n.replace('bz ','')+' '+Math.round(r.width)+'×'+Math.round(r.height)).join(', ')+' · bezels cover '+(100*area/(S.width*S.height)).toFixed(1)+' % of '+Math.round(S.width)+'×'+Math.round(S.height)});
+</script>
+</body>
+</html>

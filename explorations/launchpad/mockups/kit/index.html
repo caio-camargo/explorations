@@ -43,7 +43,8 @@ body.squint #stage{filter:blur(4px)}body.grey #stage{filter:grayscale(1)}body.sq
 [data-view=asm] .sheet,[data-view=caution] .sheet,[data-view=faces] .sheet{display:none}[data-view=sheet] .pn:not(.sheet),[data-view=sheet] .card{display:none}
 
 /* ---------- the grammar: structure shared by every dress ---------- */
-#stage{--sans:Bahnschrift;--power:#2b5ea8;--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
+body[data-dress=panel] #stage{--sans:'B612'}
+#stage{--sans:'IBM Plex Sans';--power:#2b5ea8;--s0:10.5px;--s1:13px;--s2:16.5px;font:var(--s1)/1.38 var(--f-say);color:var(--ink)}
 .pn{position:absolute;top:12px;bottom:12px;overflow:auto;background:var(--surf);padding:12px 14px;border-radius:var(--rad);scrollbar-width:thin}
 .pn.left{left:12px;width:284px}.pn.right{right:12px;width:346px;display:flex;flex-direction:column;overflow:hidden}
 .scroll{flex:1;overflow:auto;scrollbar-width:thin;margin-right:-8px;padding-right:8px}
@@ -374,7 +375,7 @@ const DRESS=[['today','Today (v1.366)'],['plain','Plain'],['form','Form'],['draw
 $('#roles tbody').innerHTML=R.slice().reverse().map(r=>`<tr><td><span class="nm">${r[1]}</span><br><span class="note">${r[2]}</span></td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('');
 $('#sanses').innerHTML=SANS.map(([f])=>`<button data-sans="${f}">${f}</button>`).join(' ');
 $('#dresses').innerHTML=DRESS.map(([k,n])=>`<button data-dress="${k}">${n}</button>`).join(' ');
-function sync(){for(const b of document.querySelectorAll('#bar button')){$('#stage').dataset.v=B.dataset.view}for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:b.dataset.power?(B.dataset.power||'#2b5ea8')===b.dataset.power:b.dataset.sans?(B.dataset.sans||'Bahnschrift')===b.dataset.sans:B.classList.contains(b.dataset.cls))}
+function sync(){for(const b of document.querySelectorAll('#bar button')){$('#stage').dataset.v=B.dataset.view}for(const b of document.querySelectorAll('#bar button'))b.classList.toggle('on',b.dataset.dress?B.dataset.dress===b.dataset.dress:b.dataset.view?B.dataset.view===b.dataset.view:b.dataset.power?(B.dataset.power||'#2b5ea8')===b.dataset.power:b.dataset.sans?(B.dataset.sans||(B.dataset.dress==='panel'?'B612':'IBM Plex Sans'))===b.dataset.sans:B.classList.contains(b.dataset.cls))}
 $('#bar').onclick=e=>{const d=e.target.dataset;if(!d)return;if(d.dress)B.dataset.dress=d.dress;if(d.view)B.dataset.view=d.view;if(d.cls)B.classList.toggle(d.cls);if(d.power){$('#stage').style.setProperty('--power',d.power);B.dataset.power=d.power}if(d.sans){$('#stage').style.setProperty('--sans',`'${d.sans}'`);B.dataset.sans=d.sans}if(d.view==='caution'){B.dataset.dress='panel';B.classList.add('amber')}sync()};
 $('#stage').onmouseover=e=>{for(const r of R){const t=e.target.closest(r[0]);if(t){$('#who').innerHTML=`<b>${r[1]}</b> · ${r[2]}`;return}}$('#who').textContent='Hover an element to see its role.'};
 addEventListener('keydown',e=>{const i=+e.key;if(i>=1&&i<=5){B.dataset.dress=DRESS[i-1][0];sync()}});

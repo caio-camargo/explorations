@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-18
+**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). Open: which sans to bundle (§ 7.1).
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2. **The office is real documents (D54)**; its graphics are being worked up on the Debrief: § 6.3.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -188,10 +188,168 @@ Checked this session, from stills at 1258 × 702:
   construction); any dress on the flight HUD, the Program or the map; any window larger than 1258 × 702; a
   colour-blind simulation; whether Bahnschrift exists off Windows (it is a stand-in: the game bundles no sans).
 
+### 6.1 The flight HUD on the roles (2026-11-19, for Q477)
+
+`mockups/kit/flight.html`, opened as a file. The flight screen as the instrument panel, from the same roles: engraved
+B612 for the system (labels, headings, key legends), lit figures on glass for the data, cautions on lamps (D51). The
+backgrounds, the navball and *Today* are the game's own at v1.370 (`views.js` 94 and 156); **the figures and the
+caution sentences are invented.** Bar: **State** (Climb all quiet, Caution, Warning, Orbit burn), **Phosphor**,
+**Figures**, **Key on**, **Gauge**, **Checks** (Squint, Grey, Today). Stills `output/launchpad/mockups/kit/flight-*.png`.
+
+**D53 (Caio, 2026-11-19), on round 1:** "it's the right direction, i like vt 323, but it takes up too much space
+and some numbers are way bigger than they need to be. the panel doesn't have to come up to the top of the navball.
+the staging readout needs work, i think each stage needs to be a separate box or something because it needs to
+carry more information than a single word or phrase". Round 2 is what the file shows now:
+- **Smaller.** The bezels cover 24.5 % of the 1258 × 644 view in the quiet climb, from 35.9 % in round 1. The
+  main bezel is 628 × 142 px (was 750 × 212).
+- **The panel is lower than the ball.** The navball stands on the bezel and rises about 60 px above its edge, with the
+  heading and pitch on a small tab over it.
+- **Smaller figures.** Speed and altitude are 30 px VT323 (were 46), with their labels beside them, not above.
+- **Each stage is its own box of glass**, stacked as the rocket is (the one flying at the bottom). Its number is
+  the large figure. The stage flying: its engine, thrust to weight, the fuel gauge, Δv and time left, in a lit
+  frame. A stage waiting: its events as tokens, then its Δv, burn time and thrust to weight; the next one
+  carries the Space key. Later ones are dimmer.
+- **The caution tiles are a strip** along the bottom of the main bezel, the master first. The master alone has a
+  raised edge, since it alone is pressed (to acknowledge).
+
+**The layout, against UI.md § 3's Flight row.**
+- Read 1 is one bezel at the bottom centre: speed, the navball, altitude, in the order aircraft use (speed left of the
+  ball, altitude right), with the caution strip under them.
+- Read 2 is two bezels: *Stages* at the bottom left, and one *phase card* at the bottom right (Ascent: Q and
+  structure; Burn: Δv to go, ignition, burn time), each row on one line.
+- Cut from the standing screen, to live behind *Readout +*: the mission line, the link's name, total Δv and TWR, the
+  angle of attack, the altitude tape, the radar height and the air gauge. Each is a call for Caio and flow to check.
+
+**Found.**
+1. **A role was missing: the gauge** (a value drawn as a length against a limit). The Assembly has none; the cockpit
+   has five. Its code here: a strip of glass with the limit as a tick engraved on the bezel; it never changes colour.
+2. **A lit tile always has a row of the same name on the phase card**: the gauge, the figure, and the fix under it
+   in the readout's own colour (UI.md rule 14). HEAT lights, so a Heat row appears; when it goes dark the row leaves
+   (rule 3). The same word on the tile and the row is what ties them.
+3. **Amber figures and amber tiles do not collide** (D51 holds): a tile is a filled block with dark letters, in its own
+   column. **But a filled amber bar does**: blurred, the throttle and the gauges were the same blobs as the tiles
+   (`flight-caution-squint.png`). With *Gauge: Pointer* (a mark on a scale) the only filled blocks in the phosphor's
+   colour are lamps (`flight-caution-pointer-squint.png`). A white phosphor avoids it either way; a green one would
+   collide with GO on the Rollout's poll (not mocked).
+4. **A key lit whole is the brightest thing on the panel**, brighter than read 1, and in grey it is an amber tile
+   (`flight-quiet-squint-plate.png`, `flight-warning-grey-plate.png`). *Key on: Legend* lights only the legend and a
+   bar on the key. This departs from "chosen is inverted" (§ 4) for the cockpit only.
+5. **Red differs from amber without colour** by a white frame and by the master's word (CAUTION, WARNING):
+   `flight-warning-grey.png`. A flash would too; a still can't show it.
+6. **Figures: VT323 (D53).** It reads at 18 px for a row and 30 px for read 1 (46 in round 1 was more than needed). B612 Mono gives the point and the colon a full
+   cell (`13. 6`, `0: 55`). **B612 itself has figures of one width**, reads best of the three, and makes the cockpit
+   one family, but Caio prefers VT323. B612 Mono also overflows a stage box (279 px in 262).
+7. **The navball is the strongest colour on the panel** (the game's blue). Its look is look & sound's, with Q436.
+
+**Open, for Caio:** the phosphor (amber, white); bar or pointer gauges (my pick: pointer if amber); legend or plate
+keys (my pick: legend); whether the gauge joins the roles of § 3.
+
+**Not checked.** A landing, the map, the Rollout and the rover yard; the eras; a window narrower than about 1215 px, where
+the three bottom bezels (284 + 628 + 262 px) would meet; a rocket of five or more stages (the stack of boxes grows
+by 55 px a stage); the hold keys' symbols (placeholders, not Q436's); the
+copy; any of it in play.
+
+### 6.2 The Rollout, the Program and the Debrief on the roles (2026-11-19)
+
+Caio, on round 2 of the flight HUD: "yes, much better. let's look at other screens with the same approach now".
+Three screens, each with the game's own content at v1.370 and a *Today* switch to the game's screen. Stills
+`output/launchpad/mockups/kit/rollout-*.png` and `office-*.png`.
+
+**The Rollout** (`mockups/kit/flight.html`, states *All go* and *No-go*): the flight's panel, since rule 13 puts both
+in the cockpit. Today it is the old cool-blue panel with a system drop-down and green and red text.
+- **The poll is a column of lamps**: GO (green), HOLD (amber), NO-GO (red with the white frame), each with its
+  station engraved beside it and its reason lit on glass; a NO-GO's reason ends with the fix (rule 14).
+- **LAUNCH is the one primary command**, in the power's colour (D50), dark while any lamp is NO-GO.
+- The panel is 400 x 538 px and fits; today's is about 365 x 625.
+- **Phosphor against the lamps:** green figures are the GO lamps' hue, amber figures the HOLD lamp's
+  (`rollout-nogo-green.png`). Told apart only by the fill, as on the flight panel. White matches neither.
+- Left for hover or a site sheet: the lowest inclination, the pad's height, the polar corridor, how stages travel,
+  what comes back if it lands intact. Each is a call for Caio.
+
+**The Program and the Debrief** (`mockups/kit/office.html`): the Form dress (D50), printed in IBM Plex Sans, typed in
+Courier Prime. Both already have the desk and the paper; what the roles change:
+- **Label against entry.** Today everything is Courier, so a heading, a label and a value differ only by place.
+  Here the form is printed (navy, capitals) and the entries are typed.
+- **Colour.** Today: green pay, blue progress, a red NEXT, a red calendar header, red negative figures, a red FILED
+  stamp. Here: none of those. The only red is a failed flight's stamp; a negative figure has its minus sign; the
+  tray's count is the one amber; the button that leads to the launch has the power's colour.
+- **An offer is one line and opens in place** (name, pay, days; UI.md § 3). Eight Take and Pass buttons become two.
+- **The Debrief's net is its largest figure**; the empty photo frame is cut until there is a photo (UI.md § 3); a
+  lock is the words "not open", not an emoji.
+- **The news clipping keeps its own serif**: a third face in the office, as a thing from outside it. Flagged.
+
+**Not done.** The map (it is lettering on a drawing, and its lines did not render from a file: it needs its own
+session with the game served); mission control, the title, the logbook, the rover yard. On these three: the time
+strip UI.md § 3 asks of the Program and the Debrief; the other five tabs; a successful flight's Debrief (PAID, FIRST)
+and a poster heading for a first; the eras; a window other than 1258 x 644; any of it in play.
+
+### 6.3 The office's look: two directions (2026-11-19)
+
+Caio, on § 6.2's Program and Debrief: "the readability is better, but I don't love the design--it feels
+paper-themed, but not like paper at all... paper is fine in principle, though i'm not married to it, but this isn't
+great." **So the Form dress as mocked in `office.html` is not the office's look** (D50's point 2 is reopened for the
+office; the roles and the code stand). Why it failed, as I read it: it is a web layout in beige. Five cards with
+drop shadows, web tabs, web buttons and an accordion, all of one stock, one format and one size; nothing on a desk
+looks like that.
+
+Four ways out were put to him: A real documents; B the screen is the page; C leave paper for a planning-room board;
+D let the medium change with the era (with A or B). He asked for A and B side by side: `mockups/kit/debrief-ab.html`
+(keys 1 and 2), the same Debrief both ways. Stills `debrief-a.png`, `debrief-b.png`, both in `debrief-ab.png`.
+
+| | A · real documents | B · the screen is the page |
+|---|---|---|
+| What it is | Each thing is the document it would be: a boxed report form (caption in the corner of each box, the entry typed in), a ledger sheet clipped to it, a carbon-copy annex in purple type, a clipping, a routing slip | One printed page with no desk, cards or shadows: a grid, rules, two inks (black and the power's colour), numerals as large as they matter |
+| Label against value | printed caption against typed entry (Special Elite) | printed text against typed figures (Courier Prime), and size |
+| Commands | the routing slip's three lines, each a box to tick; the primary one in the power's colour | three ruled buttons in the page's foot; the primary one filled |
+| Reads as paper by | stock, ink and format differing by document; holes, a clip, a signature, a stamp | print conventions: folio line, rules, spot colour, crop marks; the stamp is the one physical act |
+| For it | it is a place; a document's format says what it is before it is read | the most legible; hierarchy by size; a long list or a table costs nothing |
+| Against it | tilted type is softer; Special Elite reads worse than Courier Prime; captions are 8.5 px; the commands sit apart from the report; every screen needs its documents designed, and the Program (six tabs, long lists) is much harder than this | it reads as present-day editorial more than as the 1950s; less of a place; a short flight leaves half the page empty |
+
+**Not checked:** only the Debrief, and only a failed flight; neither tried on the Program; the script face (Segoe
+Script) and the clipping's serif are the machine's own, not bundled; nothing in play.
+
+**D54 (Caio, 2026-11-19): A.** "I like A, I think there's graphical work to be done so it looks more like real docs
+but the concept is good." The office is real documents. This replaces D50's point 2 for the office (the Form
+dress); the Assembly's dress is untouched by it and should be looked at again in this light.
+
+**The graphical pass (round 2 of A, same file; before and after in `debrief-a-rounds.png`).** What was added, each
+a thing a real sheet has and the first try lacked:
+- **The sheet is a layer of its own**: aged towards its edges, two folds across the report, a soft shadow.
+- **Printed ink against typed ink.** The form (rules, captions, title, crest) is printed in one blue-green ink;
+  the entries are typed in black. This is label against value by ink, on top of face and size.
+- **Typed letters are uneven**: each a little off its line, turned a little, inked a little more or less (seeded,
+  so it does not shimmer); each entry sits a little off its box. *Even type* in the bar turns it off to compare.
+- **Each document its own stock**: cream bond for the report, green ruled ledger paper, thin white for the carbon
+  copy (purple type, slightly spread, a faint COPY), grey newsprint torn by hand, a canary slip with its gummed
+  edge. Sheet edges are straight; only the clipping is torn (uneven edges on every sheet looked chewed).
+- **Office hardware and marks**: punch holes, a staple, a wire clip, a purple RECEIVED stamp, a pencilled
+  "seen", the distribution line and form number.
+- **A green blotter** under the papers, so the desk is a desk and cream has something dark to sit on.
+
+**The costs, measured or seen:** uneven type is the look's biggest gain and its biggest cost to reading (compare
+`debrief-a.png` and `debrief-a-even.png`); the captions are 8.5 px; the stamp, the pencil note and the distribution
+line are decoration the game would have to generate or keep fixed; the script and serif faces are the machine's
+own (Segoe Script, Georgia) and would need bundling; the sheets are CSS and one SVG filter, no images.
+
+**The commands (Caio, 2026-11-24):** "in general it looks really good. the routing slip I'm not so sure about, it
+seems to lack weight for options to leave the current screen". As I read it: three 13 px lines on a small slip are
+the lightest thing on the desk, and they are the only things that act. Two heavier ways are in the same file
+(*Commands* in the bar, `?cmd=slip|fold|keys`; stills `cmd-fold-0.png`, `cmd-keys-0.png`):
+- **Folders** (shown by default): one file folder per place the report can go, the place typed on its tab (LAUNCH
+  PAD, DESIGN TABLE, OFFICE), the act in 18 px, one line saying what happens. The usual one is the folder in the
+  power's colour. Still paper, so the office keeps one language (UI.md rule 13).
+- **Call box**: a dark box on the desk with three raised keys and a typed label beside each; the usual key in the
+  power's colour. The rule would be "paper tells, hardware acts". Heavier, and a second language in the office.
+Both name the place as well as the act, which the slip did not. Not checked: neither in grey or squint by eye;
+more than three commands; the Program, where commands are many and sit inside documents.
+
+**Open:** folders or call box; what else would make them real for Caio; the Program as documents (the harder screen: six tabs, long
+lists), not yet tried.
+
 ## 7. If this is adopted: the order
 
 1. ~~Caio picks~~ decided (D50): the roles, the code, Form for the Assembly.
-2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship): compared in § 7.1, Caio's pick.
+2. A bundled sans with a condensed width and tabular figures (Bahnschrift can't ship): compared in § 7.1; **IBM Plex Sans and B612** (D52).
 3. The role classes and one dress's tokens in `index.html` (with Q478 and Q480), the Assembly first (vehicle and flow).
 4. The flight HUD on the same roles (Q477), with cautions on lamps (D51).
 5. A test that fails on a font size, radius or colour outside the tokens, so the count in § 1 item 4 can't come back.
@@ -226,7 +384,16 @@ has figures of one width through `font-variant-numeric: tabular-nums`, checked.)
 - **Sofia Sans** and **Archivo** sit between; Sofia's small x-height shows at footnote size.
 - **▲ and ▸ are in none of them**: the caution glyph and the prompt marker should be drawn (CSS or SVG), not typed.
 
-**My pick: Barlow** (regular and semibold, in the normal and condensed widths: four files), with the arrow drawn.
+**D52 (Caio, 2026-11-18): IBM Plex Sans and B612.** "I like IBM plex and B612 for their legibility. I think they
+also have the right feel." Where each goes is the design desk's reading of the measurements, for Caio to overrule:
+**Plex on the paper places** (the Assembly's form, the drawing: long lists, and it narrows to 85 % for printed
+labels), **B612 on the lit panels** (the cockpit's engraved labels, lamps and readouts: few words, large, and it is
+what the face was drawn for). One sans per place, so the budget of two faces a place holds. Checked on stills
+(`form-plex.png`, `drawing-plex.png`, `panel-b612.png`, `caution-b612.png`): nothing overflows at 1258 × 702; the
+mock-up now opens in these. Files: Plex is one variable file (537 KB as TTF), B612 two (254 KB); woff2 sizes not
+measured. Not looked at: IBM Plex Mono and B612 Mono as the data face beside each (both exist, same licence).
+
+Before D52 my pick was Barlow (regular and semibold, in the normal and condensed widths: four files), with the arrow drawn.
 Plex if the missing arrow or the thinner small labels bother Caio on the stills (`form-barlow.png`, `form-plex.png`).
 
 ## 8. Decided, and open
@@ -268,7 +435,7 @@ Read this session (2026-11-18):
   paper is closed): opus.lib.uts.edu.au/handle/10453/4837
 - Wikipedia, "Monochrome monitor": P1 green, P3 amber, P4 white; amber "a little later" than green, no year found.
 - The font files and their licences: github.com/google/fonts, `ofl/barlow`, `barlowcondensed`, `barlowsemicondensed`,
-  `ibmplexsans`, `b612`, `sofiasans`, `sofiasanscondensed`, `archivo`.
+  `ibmplexsans`, `b612`, `b612mono`, `sofiasans`, `sofiasanscondensed`, `archivo`.
 
 Recalled, not re-read (check before quoting): Saussure, *Course in General Linguistics* (value by difference);
 Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of Everyday Things* (signifiers); Tufte,
@@ -276,6 +443,13 @@ Jakobson on markedness; Bertin, *Semiology of Graphics*; Norman, *The Design of 
 applied to type). Looked for and not found: Apollo's own panel-lettering rules (NASA TN D-7919 returned a 404).
 
 - 0.1.0 (2026-11-18): first draft, with `mockups/kit/`.
+- 0.1.10 (2026-11-24): the Debrief's commands: folders and a call box against the routing slip.
+- 0.1.9 (2026-11-19): D54, the office is real documents; the graphical pass on the Debrief.
+- 0.1.8 (2026-11-19): § 6.3, the office's look reopened; the Debrief as real documents (A) and as a printed page (B).
+- 0.1.7 (2026-11-19): § 6.2, the Rollout, the Program and the Debrief on the roles.
+- 0.1.6 (2026-11-19): D53; round 2 of the flight HUD mock-up (smaller, a low panel, a box a stage).
+- 0.1.5 (2026-11-19): § 6.1, the flight HUD mock-up (`mockups/kit/flight.html`); the gauge as a missing role.
+- 0.1.4 (2026-11-18): D52, the sans is IBM Plex Sans (paper) and B612 (lit panels).
 - 0.1.3 (2026-11-18): § 7.1, five sans faces measured; the build filed under QUEUE *Proposed*.
 - 0.1.2 (2026-11-18): D51, the cockpit's caution on lamps.
 - 0.1.1 (2026-11-18): D50 recorded; pictures, the power's colour and the cockpit caution added to the mock-up.

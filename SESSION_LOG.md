@@ -8367,3 +8367,144 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/space.js`, `app/state.js`, `app/program-ui.js`, `app/render.js`, `app/hud.js`, `app/cockpit.js`,
   `chapters.mjs`, `starts/*.js`, `tests/space.mjs`, `tests/flow.mjs`, `notes/space.md`, `NOTES.md`, `TESTING.md`,
   `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-18 — design desk (Fable 5.2, main clone): D52, the sans is IBM Plex Sans and B612; claim cleared (ELEMENTS.md 0.1.4)
+
+- **Asked:** Caio, on the five faces: "I like IBM plex and B612 for their legibility. I think they also have the
+  right feel".
+- **Done:** D52 in DECISIONS.md. Both are bundled; the split is the design desk's reading, Caio's to overrule: Plex
+  on the paper places (the Assembly's form, the drawing), B612 on the lit panels (the cockpit). The mock-up opens in
+  these; ELEMENTS.md § 7.1, `mockups/README.md` and the two QUEUE *Proposed* lines updated.
+- **Checked:** stills of Form and Drawing in Plex, Panel and the Cockpit caution view in B612, at 1258 × 702:
+  nothing overflows or wraps that did not before.
+- **Not checked:** woff2 sizes; other window sizes; IBM Plex Mono and B612 Mono as the data face beside each.
+- **Next:** the orchestrator ranks the six *Proposed* lines. The three faces not picked (Barlow, Sofia Sans,
+  Archivo, 2.0 MB) are still in `mockups/kit/faces/`; removing them needs Caio's word.
+- Files: launchpad `ELEMENTS.md`, `DECISIONS.md`, `QUEUE.md` (*Proposed*), `mockups/kit/index.html`,
+  `mockups/README.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): a flight HUD mock-up on the roles, for Q477 (ELEMENTS.md 0.1.5)
+
+- **Asked:** Caio: "yes, go ahead with the flight HUD mock-up".
+- **Done:** `mockups/kit/flight.html`: the flight screen as the instrument panel (engraved B612, lit figures on glass,
+  cautions on lamps), over the game's own climb and orbit (`views.js` 94, 156), in four states (all quiet, caution,
+  warning, orbit burn), with switches for the phosphor, the figures' face, how a key shows it is on, and the gauge.
+  ELEMENTS.md § 6.1 has the layout and seven findings; 18 stills in `output/launchpad/mockups/kit/flight-*.png`.
+- **Found:** the gauge is a role ELEMENTS.md lacked; filled amber bars read as amber tiles when blurred (a pointer
+  gauge does not); a key lit whole outshines read 1 and is an amber tile in grey; B612's own figures are of one
+  width, so the cockpit can be one family; B612 Mono spaces the point and the colon as full cells.
+- **Checked:** every state fits at 1258 × 644 with no bezel overlapping (the page's `CHECK()`); squint and grey stills
+  looked at for the caution and warning states.
+- **Not checked:** a landing, the map, the Rollout, the rover yard, the eras; a window under 1258 px (the three
+  bottom bezels would meet); the copy and the figures are invented; nothing in play.
+- **Waiting on Caio:** the layout; figures in B612 (my pick), VT323 or B612 Mono; the phosphor; bar or pointer
+  gauges; legend or plate keys; whether the gauge joins the roles (a MINOR bump of ELEMENTS.md).
+- Added: `mockups/kit/faces/B612Mono-*.ttf` with its licence (OFL, github.com/google/fonts); `bg-climb.jpg`,
+  `bg-orbit.jpg`, `nav-*.png`, `today-flight.jpg` (the game's own renders).
+- Files: launchpad `mockups/kit/` (above), `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*, my own line);
+  root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): D53, the flight HUD's direction; the mock-up's round 2 (ELEMENTS.md 0.1.6)
+
+- **Asked:** Caio, on round 1: "it's the right direction, i like vt 323, but it takes up too much space and some
+  numbers are way bigger than they need to be. the panel doesn't have to come up to the top of the navball. the
+  staging readout needs work, i think each stage needs to be a separate box or something because it needs to carry
+  more information than a single word or phrase".
+- **Done:** D53 in DECISIONS.md. `mockups/kit/flight.html` rebuilt: the main bezel 628 × 142 px (was 750 × 212) with
+  the navball rising about 60 px above it; speed and altitude at 30 px (were 46); the caution tiles as a strip under the
+  instruments; the phase card's rows on one line; each stage a box of glass (number, events or engine, Δv, burn
+  time, thrust to weight; the fuel gauge on the one flying). 18 stills retaken.
+- **Measured:** the bezels cover 24.5 % of the 1258 × 644 view in the quiet climb (35.9 % in round 1), 28.6 % with
+  two cautions lit; every state fits with no overlap in VT323 and B612; B612 Mono overflows a stage box.
+- **Not checked:** as the entry above; also a rocket of five or more stages, and a window under about 1215 px.
+- **Waiting on Caio:** the phosphor; bar or pointer gauges; legend or plate keys; the gauge as a role.
+- Files: launchpad `mockups/kit/flight.html`, `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`, `QUEUE.md`
+  (*Proposed*, my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): the Rollout, the Program and the Debrief on the roles (ELEMENTS.md 0.1.7)
+
+- **Asked:** Caio, on the flight HUD's round 2: "yes, much better. let's look at other screens with the same
+  approach now".
+- **Done:** the Rollout as two states of `mockups/kit/flight.html` (the launch poll as GO, HOLD and NO-GO lamps with
+  reasons on glass; LAUNCH in the power's colour); `mockups/kit/office.html` with the Program and the Debrief in the
+  Form dress (printed labels, typed entries; no green, blue or red but a failed flight's stamp; offers as one line
+  that open in place). The content is the game's own, captured from v1.370 (`today-*.jpg`); 13 stills. ELEMENTS.md
+  § 6.2; two lines under QUEUE *Proposed*.
+- **Checked:** every view fits at 1258 x 644 (each page's `CHECK()`); the stills looked at, with one squint and
+  the grey ones taken.
+- **Not done (PARKED):** the map: its lines did not render when the game is opened as a file with `refView`, and
+  its text is lettering on a drawing, so it needs a session with the game served. Also mission control, the title,
+  the logbook, the rover yard.
+- **Not checked:** the time strip UI.md § 3 asks of the Program and the Debrief; the other tabs; a successful
+  Debrief; the eras; other window sizes; nothing in play.
+- **Waiting on Caio:** his word on the three; from before, the phosphor, the gauge, the lit keys, the gauge as a role.
+- Files: launchpad `mockups/kit/flight.html`, `office.html` (new), `bg-rollout.jpg`, `today-*.jpg` (new),
+  `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): the office's look reopened; the Debrief two ways (ELEMENTS.md 0.1.8)
+
+- **Asked:** Caio, on `office.html`: "the readability is better, but I don't love the design--it feels paper-themed,
+  but not like paper at all. let's brainstorm how to improve this, whether to even keep the paper approach or move
+  in a different direction. paper is fine in principle, though i'm not married to it, but this isn't great." Four
+  directions put to him (A real documents, B the screen is the page, C a planning-room board, D the medium changes
+  with the era); then: "let's see a and b side by side".
+- **Done:** `mockups/kit/debrief-ab.html`: the same Debrief as A (a boxed report form, a ledger sheet clipped to it, a
+  carbon-copy annex, a clipping, a routing slip as the commands) and as B (one printed page: grid, rules, black and
+  the power's colour, large numerals). Six stills and `debrief-ab.png` (both side by side). ELEMENTS.md § 6.3 has
+  the comparison; the QUEUE *Proposed* line for the office is marked not ready.
+- **Checked:** both fit at 1258 x 644 with nothing cut (the page's `CHECK()`); both stills looked at.
+- **Not checked:** the Program in either direction; a successful flight; the grey and squint stills were taken but
+  not looked at; the script and serif faces are the machine's own.
+- **Waiting on Caio:** A, B, or B's page on A's desk. Still open from before: the cockpit's phosphor, gauge and lit
+  keys; the gauge as a role; the Rollout's poll.
+- Files: launchpad `mockups/kit/debrief-ab.html` (new), `ELEMENTS.md`, `mockups/README.md`, `QUEUE.md` (*Proposed*,
+  my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-19 — design desk (Fable 5.2, main clone): D54, the office is real documents; the graphical pass (ELEMENTS.md 0.1.9)
+
+- **Asked:** Caio, on A against B: "I like A, I think there's graphical work to be done so it looks more like real
+  docs but the concept is good".
+- **Done:** D54 in DECISIONS.md. Round 2 of A in `mockups/kit/debrief-ab.html`: sheets aged at the edges with folds
+  and a soft shadow; the form printed in blue-green ink, the entries typed in black with every letter a little off
+  (seeded); each document its own stock (bond, green ledger, carbon copy, torn newsprint, canary slip); holes, a
+  staple, a wire clip, a RECEIVED stamp, a pencil note; a green blotter. *Even type* switches the unevenness off.
+- **Tried and dropped:** an uneven edge on every sheet (it looked chewed; paper is cut straight).
+- **Checked:** the still looked at; nothing overflows at 1258 x 644 (`CHECK()`, with 5 px allowed for turned letters).
+- **Not checked:** the grey and squint stills were taken, not looked at; the Program as documents; the
+  script and serif faces are the machine's own.
+- **Waiting on Caio:** what else would make the documents real; then the Program. Still open from before: the
+  cockpit's phosphor, gauge and lit keys; the gauge as a role; the Rollout's poll.
+- Files: launchpad `mockups/kit/debrief-ab.html`, `ELEMENTS.md`, `DECISIONS.md`, `mockups/README.md`, `QUEUE.md`
+  (*Proposed*, my own line); root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-24 — design desk (Fable 5.2, main clone): the Debrief's commands, folders and a call box (ELEMENTS.md 0.1.10)
+
+- **Asked:** Caio, on A's round 2: "in general it looks really good. the routing slip I'm not so sure about, it seems
+  to lack weight for options to leave the current screen".
+- **Done:** `mockups/kit/debrief-ab.html` shows the commands three ways (`?cmd=slip|fold|keys`, *Commands* in the bar):
+  the slip as it was, three file folders (one per place, the usual one in the power's colour; the default), a desk
+  call box with three raised keys. ELEMENTS.md § 6.3 has the comparison.
+- **Checked:** all three fit at 1258 x 644 (`CHECK()`); the folders and call box stills looked at.
+- **Not checked:** grey and squint by eye; more than three commands; the Program.
+- **Waiting on Caio:** folders or call box. Still open: the Program as documents; the cockpit's phosphor, gauge and
+  lit keys; the gauge as a role; the Rollout's poll.
+- Files: launchpad `mockups/kit/debrief-ab.html`, `ELEMENTS.md`, `mockups/README.md`; root `ACTIVE_WORK.md`,
+  `SESSION_LOG.md`.
+
+## 2026-11-24 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q316): Caio's scale readings; no code
+
+- **Asked:** Caio's readings of the performance readout after v1.366, on a 2560 × 1600 screen, window maximized,
+  High: on the pad `res` 100 % (93 % after a crash and a return to the pad, and it stayed there); under 80 % around
+  the cloud level, 87 % at 3,600 m; 150 % on the map; in orbit 150 % on coming back from the map, then steady at
+  100 %.
+- **What they mean:** v1.366's supersampling reaches none of his flight views, only the map. The card is at its
+  budget drawing the screen's own pixels: the scaler came down from 150 % to 100 % in orbit, so the frame there is
+  over about 7.5 ms at 100 %, and in the air the view is already under the screen's pixels.
+- **Tried and dropped:** raising the room the scaler may use above 100 % (`SS_ROOM` 0.6 → 0.8, `SS_OVER` 0.85 →
+  0.95). By his own readings it would change nothing for him (to climb from 100 % the frame must be under 7 ms
+  there). Claimed, not built, claim cleared; nothing merged.
+- **Open, Caio's call:** the QUEUE proposal "the sky pass leaves no room on the pad" (notes/look.md § v1.366): draw the
+  sky and ground at their own lower scale and the craft, pad and effects finer over them. A trade (softer ground,
+  sharper craft), in the sky and effects beats' files.
+- **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
+- Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md`.

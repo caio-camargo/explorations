@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.37 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
+**Version**: 0.1.44 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -23,7 +23,35 @@ beside them) for the *Sans* buttons and the *Faces* view. Stills `faces.png`, `f
 
 **Pick (D50, Caio 2026-11-18):** the roles as proposed; **Form** for the Assembly; the power's colour on the launch
 button only; pictures on the parts. **D51:** the cockpit's caution is **B**, a lit tile outside the readout (the Cockpit caution view).
-_Open: the sans to bundle (my pick Barlow, then IBM Plex Sans)._
+**D52:** the sans is **IBM Plex Sans** on the paper dresses and **B612** on the Panel (the mock-up opens in these;
+stills `form-plex.png`, `drawing-plex.png`, `panel-b612.png`, `caution-b612.png`).
+
+**`kit/flight.html`** (2026-11-19, for Q477; ELEMENTS.md § 6.1): the flight HUD as the instrument panel on the same
+roles, over the game's own climb and orbit. Bar: *State* (Climb all quiet, Caution, Warning, Orbit burn), *Phosphor*
+(amber, green, white), *Figures* (VT323, B612 Mono, B612), *Key on* (Legend, Plate), *Gauge* (Bar, Pointer), *Checks*
+(Squint, Grey, Today). Stills `flight-<state>.png` and variants.
+**Pick (D53, Caio 2026-11-19):** "it's the right direction, i like vt 323"; round 2 made it smaller, with the panel
+lower than the navball and a box for each stage. _Open: the phosphor; the gauge (my pick: Pointer if amber); how a
+key shows it is on (my pick: Legend)._
+
+**The Rollout** is in `kit/flight.html` (*Rollout*: All go, No-go): the same panel, the launch poll as lamps. Stills
+`rollout-*.png`. **`kit/office.html`** (2026-11-19; ELEMENTS.md § 6.2): the **Program** and the **Debrief** in the
+Form dress, with the game's own content; *Checks* (Squint, Grey, Today). Stills `office-*.png`.
+**Pick (Caio 2026-11-19), on `office.html`:** "the readability is better, but I don't love the design--it feels
+paper-themed, but not like paper at all". Not the office's look. _Open: the Rollout's poll._
+
+**`kit/debrief-ab.html`** (2026-11-19; ELEMENTS.md § 6.3): the same Debrief two ways (keys 1, 2). **A** real
+documents on the desk (a boxed report form, a ledger sheet, a carbon-copy annex, a routing slip for the commands).
+**B** the screen is the page (no desk or cards; a grid, two inks, large numerals). Stills `debrief-a.png`,
+`debrief-b.png`, side by side in `debrief-ab.png`.
+**Pick (D54, Caio 2026-11-19): A.** "I like A, I think there's graphical work to be done so it looks more like real
+docs but the concept is good." A's round 2 (aged sheets with folds, printed ink against typed ink, uneven typed
+letters, each document its own stock, a staple, a clip, a received stamp, a blotter) is in the same file; *Even type*
+compares. Stills `debrief-a.png`, `debrief-a-even.png`, `debrief-a-rounds.png` (before and after).
+**Caio 2026-11-24:** "in general it looks really good. the routing slip I'm not so sure about, it seems to lack
+weight for options to leave the current screen". The commands now three ways (*Commands* in the bar,
+`?cmd=slip|fold|keys`): the slip, three file folders (default), a desk call box. Stills `cmd-fold-0.png`,
+`cmd-keys-0.png`. **Pick:** _(Caio: folders or call box)_
 
 ## transitions/ — moving between screens, and the founding (QUEUE Q555, PLAYTEST #153)
 
