@@ -14,6 +14,7 @@
 // satellite with a camera passes within 30° of overhead, sim/space.js satTick), and a registered satellite keeps the turn
 // it had relative to its orbit (satSpin). The bench's rows are promises about the declared attitude; Q338's law replaces
 // attEnv's inside and keeps the rows.
+'use strict';
 const VIEW_PARTS={cam:{need:'ground',cone:30},scam:{need:'ground',cone:30},bpanel:{need:'power',cone:60},wpanel:{need:'power',cone:60},
   hthr:{need:'plume',cone:20,back:true},apogee:{need:'thrust',cone:15,back:true},kick30:{need:'thrust',cone:15,back:true},kick80:{need:'thrust',cone:15,back:true},kick200:{need:'thrust',cone:15,back:true}};
 for(const k in VIEW_PARTS)if(PARTS[k])PARTS[k].view=VIEW_PARTS[k];
