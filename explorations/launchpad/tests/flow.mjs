@@ -1654,3 +1654,39 @@
   for (const m of block(T, 'TERMS').matchAll(/(\w+):\{t:'(?:[^'\\]|\\.)*',d:'((?:[^'\\]|\\.)*)'/g)) { nt++; const w = words(m[2].replace(/\\'/g, "'")); if (w > 32) over.push(`TERMS.${m[1]} ${w}`); }
   check('flow-63: copy budgets: a part\'s sentence and its pairs line at most 14 words, a glossary entry at most 32', n > 100 && nt >= 15 && !over.length, `${n} part lines, ${nt} terms · over: ${over.join(', ') || 'none'}`);
 }
+
+// flow-64. The RCS card (flow, QUEUE Q633; PLAYTEST #170; D43): while RCS is on, a card draws the keys on the craft as the
+// camera sees it (rcsPic, app/hud.js). Seen from the side (the camera down body −Z), L is right of the craft and J left,
+// I above the nose and K under the tail, U and O are marks (U ⊙ towards the camera); W's arc ends right of the nose and
+// S's left; Q and E run both ways round the ring's side facing the camera (Q left). Seen nose-on, I and K become the marks. A key held lights its arrow and nothing else. The card is in the
+// list with the gas left, and in the dark cockpit it stays only within RCS_NEAR of the target.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const code = page.slice(page.indexOf('const RCS_NEAR='), page.indexOf('function rcsCardRows('));
+  const P = new Function('qrot', 'dot', 'sub', code + 'return {rcsPic,RCS_NEAR};')(api.qrot, api.dot, api.sub);
+  const I0 = { tx: 0, ty: 0, tz: 0, pitch: 0, yaw: 0, roll: 0 };
+  // the label of each key: x, y, lit, and whether it is a mark (a <circle class="m"> just before it)
+  const keys = svg => { const o = {}; for (const m of svg.matchAll(/(<circle class="m[^"]*"[^>]*>(?:<circle[^>]*>|<path[^>]*>))?<text class="k( on)?" x="([-\d.]+)" y="([-\d.]+)">(\w)<\/text>/g))
+    o[m[5]] = { x: +m[3], y: +m[4], on: !!m[2], mark: !!m[1], dotm: !!m[1] && m[1].includes('r="1.6"') }; return o; };
+  const side = { R: [1, 0, 0], U: [0, 1, 0], Fw: [0, 0, -1] };   // camera on +Z looking down −Z: body X right, Y up
+  const s1 = P.rcsPic([0, 0, 0, 1], side, I0), K = keys(s1), cx = 72, cy = 64;
+  const sideOK = K.L && K.J && K.I && K.K && K.L.x > cx + 20 && K.J.x < cx - 20 && Math.abs(K.L.y - cy) < 3 && K.I.y < cy - 40 && K.K.y > cy + 20
+    && K.U.mark && K.U.dotm && K.O.mark && !K.O.dotm && !K.L.mark && !K.I.mark
+    && K.W.x > 217 && K.S.x < 217 && K.W.y < cy && K.S.y < cy && K.Q.x < 217 - 12 && K.E.x > 217 + 12 && Object.values(K).every(k => !k.on) && Object.keys(K).length === 12;
+  // nose-on: the camera looks down −Y (body Y towards it); R = X, U = −Z
+  const nose = { R: [1, 0, 0], U: [0, 0, -1], Fw: [0, -1, 0] }, K2 = keys(P.rcsPic([0, 0, 0, 1], nose, I0));
+  const noseOK = K2.I.mark && K2.I.dotm && K2.K.mark && !K2.K.dotm && !K2.L.mark && !K2.U.mark && K2.U.y > cy + 10 && K2.O.y < cy - 10;
+  // a key held lights its arrow, only it
+  const K3 = keys(P.rcsPic([0, 0, 0, 1], side, { ...I0, tx: -1, roll: 1 })), lit = Object.keys(K3).filter(k => K3[k].on).sort().join('');
+  // the card: in the list, its rows (the picture, the gas), kept in a burn only near a target
+  const cards = page.slice(page.indexOf('const HUD_CARDS=['), page.indexOf('function renderCards('));
+  const env = { T: null }, K4 = new Function('env', 'const mode="flight",view="flight",S={alive:true,landed:false,rcs:true,v:[0,0,0],r:[1,0,0]},GAUGES=true,impact=null,localStorage={getItem:()=>null},performance={now:()=>0},CP_CARDS=["mission"],'
+    + 'dot=()=>0,len=v=>Math.hypot(...v),toolOK=()=>true,ascentOn=()=>false,cpPhase=()=>env.ph,rcsJets=()=>({}),rcsCardRows=()=>[["pic"],["Gas","1 kg"]],tgtOf=()=>env.T,RCS_NEAR=' + P.RCS_NEAR + ','
+    + 'missionRows=()=>[["a","b"]],dvRows=()=>[],fleetRows=()=>[],payloadRows=()=>[],statRows=()=>[],agRows=()=>[],rvRows=()=>[],tgtRows=()=>[],dockRows=()=>[],approachOn=()=>false,approachRows=()=>[],tipRows=()=>[],bayRows=()=>[],armRows=()=>[],spinRows=()=>[],wheelRows=()=>[],rcsRows=()=>[],aoaRow=()=>[],aeroRow=()=>[],heatRow=()=>[],structRow=()=>[],impactRow=()=>[],landRow=()=>[];'
+    + 'const rcsNear=()=>{const T=tgtOf(S);return!!T&&len(T.dr)<RCS_NEAR};' + cards + 'return {on:()=>hudCardsOn().map(x=>x.c.id).join(",")};')(env);
+  env.ph = null; const quiet = K4.on(); env.ph = 'burn'; const far = K4.on(); env.T = { dr: [400, 0, 0] }; const near = K4.on(); env.T = { dr: [5000, 0, 0] }; const tooFar = K4.on();
+  const cardOK = quiet === 'mission,rcs' && far === 'mission' && near === 'mission,rcs' && tooFar === 'mission' && /class="pic"/.test(page.slice(page.indexOf('function renderCards(')));
+  check('flow-64: the RCS card draws the keys on the craft as the camera sees it (translate on the axes, attitude on arcs, an axis at the camera a ⊙/⊗ mark), lights the key held, and stays in a burn only near a target (Q633)',
+    sideOK && noseOK && lit === 'JQ' && cardOK,
+    `side ${sideOK} (${Object.entries(K).map(([k, v]) => `${k} ${v.x},${v.y}${v.mark ? (v.dotm ? '⊙' : '⊗') : ''}`).join(' ')}) · nose-on ${noseOK} (${Object.entries(K2).map(([k, v]) => `${k} ${v.x},${v.y}${v.mark ? (v.dotm ? "⊙" : "⊗") : ""}`).join(" ")}) · lit "${lit}" · cards quiet "${quiet}", burn "${far}", near "${near}", 5 km "${tooFar}"`);
+}

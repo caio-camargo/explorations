@@ -2954,7 +2954,7 @@ a steerable fin looked the same as a fixed one until it turned.
 - **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
   and get the section too; not looked at closely.
 
-## v1.373 — the RCS jet: cold gas in place of the placeholder box (2026-11-25, look & sound, effects; Q634, PLAYTEST #168)
+## v1.374 — the RCS jet: cold gas in place of the placeholder box (2026-11-25, look & sound, effects; Q634, PLAYTEST #168)
 
 Caio, docking, 2026-11-18: "the gas release is still a placeholder graphic". It was the `PUFF` mesh stretched to a
 0.14 × 0.4 × 0.14 m box and drawn as glow for 80 ms, the same in the sun and in shadow.
@@ -2982,7 +2982,7 @@ Caio, docking, 2026-11-18: "the gas release is still a placeholder graphic". It 
   firing: under 0.05 ms. Twelve at once in a close-up is the worst case; attitude hold fires one to four in pulses.
 - **Stills** (the Docking preset's upper stage, 250 km up, translating on two axes; `output/launchpad/effects/Q634/`,
   not in git): `sun-7m`, `sun-close`, `sun-over-tellus`, `pulse-30ms-after`, `shadow-7m`, `shadow-close`.
-- **Check:** test aerofx-64. To try: TESTING 421.
+- **Check:** test aerofx-64. To try: TESTING 422.
 - **Not checked.** No "before" still was taken. In motion by a person. Low and the Intel GPU. Jets in air (on the pad
   or in a descent they are drawn the same as in vacuum). Against Selene's lit ground. The docking close-up with the
   target's hull behind the jets.
