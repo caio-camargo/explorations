@@ -328,6 +328,22 @@ window.refView = async (n) => {
     set(p); cam.edY = p.y0 + p.h / 2 - S.cm[1]; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return key + (p.gv ? ' gv ' + p.gv.map(x => x.toFixed(3)) : '') + (p.fd ? ' fd ' + p.fd : '');
   }
+  // 196–199 (Q635): the fins' section and the steerable ones' flaps, in the builder's close-up. 196 a fixed fin ring,
+  // 197 a steerable ring, its flaps at the full ±20° of plate; 198 radial fins on a tank's side (0.9 m, and 2 m with the
+  // stiffener), 199 the steerable ones, flaps over. Set FIN_FX = false first for the slab from before.
+  const fv = { 196: ['fins', 0, 0.45, 0.12, 4.2], 197: ['cfins', 0.35, 0.45, 0.12, 4.2], 198: ['rfin', 0, 0.5, 0.1, 5.5], 199: ['cfin', 0.35, 0.5, 0.1, 5.5] };
+  if (fv[n]) {
+    const [key, fd, yaw, pitch, dist] = fv[n], ring = key === 'fins' || key === 'cfins', des = toV2(ring ? ['pod', 't2', key, 'petrel'] : ['pod', 't4', 'petrel']);
+    if (!ring) { const t = des.root.k === 't4' ? des.root : (function f(nd) { return nd.k === 't4' ? nd : (nd.c || []).map(f).find(Boolean) })(des.root);
+      t.c.push({ k: key, at: { y: 0.1, a: 0, n: 2, cy: 0.45 }, c: [] }, { k: key, fz: 2, at: { y: 0.1, a: Math.PI / 2, n: 2, cy: 1 }, c: [] }) }
+    toBuilder();
+    stackDef = des; editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
+    const ps = S.parts.filter(q => q.d.key === key); if (!ps.length) throw new Error(`refView(${n}): no ${key}`);
+    for (const p of ps) if (p.d.ctl) p.fd = ring ? [fd, -fd, fd, -fd] : [fd];
+    HOOK.rebuild(); const p = ps[0];
+    cam.edY = (ring ? p.y0 + p.h / 2 : Math.min(...ps.map(q => q.y0)) + 1) - S.cm[1]; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return key + ' × ' + ps.length + (fd ? ' fd ' + fd : '') + ' FIN_FX ' + FIN_FX;
+  }
   // 108–111 (Q97): legs and power parts in the builder. 108 a lander's four legs stowed, 109 deployed (foot at legFoot);
   // 110 a satellite (computer, battery, body cells, two wings) stowed, 111 its wings out: [design, show, yaw, pitch, dist, dep]
   const pw = { 108: ['lander', 't1', 0.5, 0.1, 6, false], 109: ['lander', 't1', 0.5, 0.1, 7, true],
