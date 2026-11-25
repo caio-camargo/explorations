@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.276 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
+**Version**: 0.1.277 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-25 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -571,3 +571,10 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - flow — **the Program and the Debrief on the roles** (D50's Form dress; ELEMENTS.md § 6.2; `mockups/kit/office.html`): the form printed in IBM Plex Sans, the entries typed; no green pay, blue progress or red NEXT, calendar and negative figures (red only on a failed flight's stamp); an offer as one line that opens in place. With Q478 and Q480. **Not ready:** Caio turned the look down ("paper-themed, but not like paper at all"); the roles and the colour rules stand; **D54: the office is real documents** (ELEMENTS.md § 6.3, `mockups/kit/debrief-ab.html` A), still being worked up, the Program not yet tried — design desk 2026-11-19
 - ✓ ranked (orchestrator 2026-11-25: into Q477, D55): flow — **the Rollout's poll as lamps** (ELEMENTS.md § 6.2; `mockups/kit/flight.html`, *Rollout*): GO, HOLD and NO-GO tiles with the reason on glass, LAUNCH in the power's colour and dark on a NO-GO. Part of Q477 ("the rollout too"): add to its row — design desk 2026-11-19
 - platform — **CI's full run: skip it on docs-only pushes, and run it with `--jobs 4`** (Caio 2026-11-25: the full runs "take up a lot of time"; waiting on his go): of the last 58 runs, 35 (406 of 631 min) were for head commits touching only `.md`, mock-ups or archive files; a run is ~10.6 min in one process, and a by-hand `--times --jobs 4` run of the same commit took 4 min 10 s, all passed (run 45668423377). For docs-only pushes keep `check_numbers.mjs` and the doc checks. One run for several branches (a merge queue) weighed and left for after these — SESSION_LOG 2026-11-25
+- vehicle + look & sound (parts & pad) — the Passenger Orbiter's nose cone balances on the chute's narrow top: a cone over chute and capsule, an adapter or a small fairing; Q201's heat and stability numbers hold — PLAYTEST #178
+- flow — a key and button that hides all UI and leaves the 3D scene (screenshots, stills) — PLAYTEST #179
+- flow — three cuts (D43): `impact` off the impact marker, the planet ring's legend and *~N days there*, *Home: back to the ship* — PLAYTEST #180
+- look & sound (effects) — the plume is faint and too conical; with #122, still cut off at its base seen from behind in space (Caio 2026-11-25) — PLAYTEST #181, #122
+- flow — the navball's normal and anti-normal marks flash under Prograde hold (on the rim, flipping front/back): hysteresis or clamp to the rim — PLAYTEST #182
+- flow + space — the rendezvous labels on the map are long; a compact mark with the numbers on hover or in the Target card, mock-up first — PLAYTEST #183
+- look & sound (sky & bodies, world) — Caio again 2026-11-25: cities are squat boxes on raw terrain (wants towers and height variety), and land looks poor from the air beside the water — PLAYTEST #91, #95 (Q448, the land-use map)
