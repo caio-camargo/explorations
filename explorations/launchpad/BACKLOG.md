@@ -47,6 +47,7 @@ under other words may already be covered.
 | A look at stage diameters | 1.25 and 2.5 m are KSP's numbers | KSPISMS (~54) | 2026-11-11, sweep |
 | A kinetic launcher | A spin launcher for small payloads that survive the g | TECH_SCOUTING § Getting to orbit | 2026-11-11, sweep |
 | A skyhook | A rotating tether that catches a rocket and throws it to orbit, reboosted after each catch | TECH_SCOUTING § Getting to orbit | 2026-11-11, sweep |
+| Engine plumbing that gets cleaner with development | An engine's visible plumbing (pumps, lines, wiring) starts dense and exposed and is drawn more streamlined as the part is researched and optimized, as SpaceX's engines went from one version to the next; the look shows the know-how | not written up; Q638 draws the plumbing it would vary (notes/look.md) | 2026-11-25, **Caio** |
 
 ## Flying and space
 
