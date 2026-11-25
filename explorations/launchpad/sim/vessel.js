@@ -1245,11 +1245,17 @@ PRESETS['TV Satellite']=(()=>{const d=toV2(['fair','t2','petrel','dec','t8','fin
 // fairing it rides in (when the bench was opened from a rocket carrying it: rocket, the rocket's design, and pid, the block's
 // payload). Pointing and temperatures come with S2 (Q338). [{k, cl: 'ok'|'warn'|'bad', t, fix}], plus mass (t) and cost (M)
 function payChecks(d,rocket=null,pid=null){if(!d||!d.root)return{rows:[],mass:0,cost:0};const s=newShip(d),out=[],f=x=>x.toFixed(0);
-  {const B=powerBudget(s);if(!(B.use>0))out.push({k:'power',cl:'ok',t:'Draws no power'});
+  // (Q620) what the parts see for the attitude the design declares (sim/views.js): the panels' share of the sun and their
+  // shade, in place of powerBudget's fixed shares; the cameras' row. A promise about that attitude: nothing in flight holds it yet
+  const V=viewsOf(s,viewAtt(d)),VP=viewPower(V),AT={ground:'facing the ground',sun:'facing the sun',spin:'spinning'}[V.att];
+  {const B=powerBudget(s);if(VP){B.avg=VP.W+B.rtg;B.ok=B.avg>=B.use&&B.battWh>=B.needWh}
+    const sh=VP&&VP.shade>0?`; ${Math.round(Math.max(VP.shade,.01)*100)} % of a panel's daylight shaded by ${VP.by}`:'';
+    if(!(B.use>0))out.push({k:'power',cl:'ok',t:'Draws no power'});
     else if(!(B.peak+B.rtg>0))out.push({k:'power',cl:B.battWh>0?'warn':'bad',t:B.battWh>0?`Runs on its battery alone: ${f(B.battWh)} Wh at ${f(B.use)} W lasts about ${B.battWh/B.use/24<2?f(B.battWh/B.use)+' hours':f(B.battWh/B.use/24)+' days'}`:`No power at all for its ${f(B.use)} W`,fix:'solar cells or a wing keep it going; an RTG day and night'});
-    else{const okA=B.avg>=B.use,okB=B.battWh>=B.needWh;out.push({k:'power',cl:okA&&okB?'ok':'bad',t:okA&&okB?`Power in shadow: +${f(B.avg)} W against −${f(B.use)} W, ${f(B.needWh)} Wh for each shadow of ${f(B.battWh)}`:
-      !okA?`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`:`The battery can't last the night: ${f(B.needWh)} Wh needed, ${f(B.battWh)} Wh aboard`,
-      fix:okA&&okB?'':!okA?'more solar panels or a solar wing, or an RTG':'a bigger battery, or an RTG'})}}
+    else{const okA=B.avg>=B.use,okB=B.battWh>=B.needWh;out.push({k:'power',cl:okA&&okB?(sh?'warn':'ok'):'bad',t:(okA&&okB?`Power in shadow: +${f(B.avg)} W against −${f(B.use)} W, ${f(B.needWh)} Wh for each shadow of ${f(B.battWh)}`:
+      !okA?`The panels can't keep up: +${f(B.avg)} W against −${f(B.use)} W`:`The battery can't last the night: ${f(B.needWh)} Wh needed, ${f(B.battWh)} Wh aboard`)+(VP?` (${AT})`:'')+sh,
+      fix:okA&&okB?(sh?'move the panel clear of the shade':''):!okA?'more solar panels or a solar wing, or an RTG'+(VP?', or face them to the sun':''):'a bigger battery, or an RTG'})}}
+  out.push(...viewRows(V));
   {const A=s.parts.filter(p=>p.on&&p.d.kind==='ant');out.push(A.length?{k:'link',cl:'ok',t:`Talks home: ${A.map(p=>p.d.name.toLowerCase()).filter((x,i,a)=>a.indexOf(x)===i).join(', ')}`}
     :{k:'link',cl:'warn',t:"No antenna: it can't send anything home",fix:'a whip or a boom antenna'})}
   out.push(s.torque>0?{k:'turn',cl:'ok',t:`Turns itself: ${(s.torque/1000).toFixed(s.torque<9500?1:0)} kN·m of wheels`}:{k:'turn',cl:'warn',t:'Nothing turns it once it is on its own',fix:'a probe core or a reaction wheel'});

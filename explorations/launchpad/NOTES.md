@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.72 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-18
+**Version**: v2.0.73 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-25
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -133,6 +133,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.273 — every preset's standard climb, staged as designed, makes orbit unrescued; the Crewed Lunar "levelling off" was the test flier carrying its dry boosters; the Lunar class's upper stages are 0.39–0.75 g in vacuum (no preset changed) (2026-11-07, vehicle worker, QUEUE Q537)
 - Plan: solid motors as a main-stage choice: per-engine throttle, a grain set on the pad, solids per era, the Assembly's checks for a stage that can't stop (2026-11-07, vehicle worker, QUEUE Q252, PLAYTEST #51; plan only)
 - v1.299 — the Hopper and the Beeper roll out stable: a second fin ring each (−0.05 → +0.26 / +1.39 calibers); every preset stable at roll out (2026-11-10, worker, QUEUE Q202, PLAYTEST #36) → [notes/vehicle.md](notes/vehicle.md)
+- v1.378 — views, bench slice 4: `sim/views.js` (a part's cone against the craft's solids, weighted rays; what it sees round an orbit for the declared attitude); `view` on the cameras, panels, thrusters and motors; the design's `att` and the bench's *holds* switch and orbit slider; the cone in hand and every copy's, blocked rays and blockers in red; a globe, a lamp, an arrow; the cameras row and the power row by attitude. Read first: no contract checks where a camera points, and flight holds no face to the ground (vehicle, Q620, D47) → [notes/vehicle.md](notes/vehicle.md)
 - v1.301 — the drag table follows the outline: a fairing jettison or bay doors rebuild the impact predictor's CdA table (Satellite after jettison 1.70 → 3.30 m² at Mach 1) (2026-11-11, vehicle, QUEUE R21) → [notes/vehicle.md](notes/vehicle.md)
 - v1.303 — RCS no longer fights the gimbals: its command keeps the aero feed-forward (a Beeper with RCS: 30 kg of gas on the climb → 0.06 kg) (2026-11-11, vehicle, QUEUE R26, P1) → [notes/vehicle.md](notes/vehicle.md)
 - v1.315 — three of R22's physics fixes: `fall()` predicts no impact in the past outbound on an escape; a failed pure ignition runs nothing else until it lights; `ascentRun` takes Easy's air once. `detach()`'s momentum parked on branch `r22-detach` (2026-11-11, vehicle, QUEUE R22) → [notes/vehicle.md](notes/vehicle.md)

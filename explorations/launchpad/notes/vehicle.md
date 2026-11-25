@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-15
+**Version**: 1.0.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-25
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3060,3 +3060,68 @@ complaint there was that a tilted part's base half sank into the frame, so a til
 - A deployed wing or boom is longer than the folded part the envelope and the bracket read (as for upright parts: point 3).
 - Wings on the top or bottom face still have a meaningless `phi` (from slice 2).
 - Views (slice 4, Q620) are next: a tilt is what a view's cone will follow.
+
+## v1.378 — views: what a satellite's parts see (bench slice 4, 2026-11-25, vehicle session, QUEUE Q620, D47 point 2)
+
+**Why:** slice 4 of § "Plan: the bench as its own builder". D47's point 2: what each part must see takes the place of
+aerodynamics as the thing that shapes a satellite.
+
+**Read first, as the plan asked** (it had not been read when the plan was written):
+- **How flight holds a satellite's attitude today.** In flight, SAS holds what its mode says: stability, prograde and
+  retrograde, normal, radial (the analog autopilot, era 1), the target modes and docking (later eras). No mode points a
+  face at the ground or the sun. *Radial out* (the nose away from the planet) is the nearest to ground-facing, since the
+  bottom then looks down. Between flights a registered satellite keeps the turn it had relative to its orbit when it was
+  left (`satSpin`: `orbQ(r, v)·qo`), or its spin; nothing steers it. So a craft left holding radial out stays facing the
+  ground on the rails, and one left on stability hold turns once an orbit relative to the ground.
+- **Whether a contract checks where a camera points: none does.** Imaging contracts and imagery sales (`satTick`) ask for
+  a camera aboard and a pass within 30° of overhead (`SAT_FOV`), sharp enough, in sunlight, under clear sky; the weather
+  satellite asks for a polar orbit and a camera; the far side asks for a camera near Selene's sunlit far side. A camera
+  pointing at the sky passes all of them. Power for a registered satellite (`powerBudget`) uses fixed shares (body cells
+  0.32 of full sun, wings 0.9, squared to the sun); in flight, `powSun` turns a deployed wing about its arm to the sun
+  and leaves body cells at their average.
+- So the bench's rows are **promises about the declared attitude**, as the plan said. Nothing in flight or in a contract
+  reads them until Q338's attitude law; `attEnv` is the function it replaces.
+
+**What** (new `sim/views.js`, in the SIM block after `sim/power.js`):
+- **A part's view** is a field on its definition, `view: {need, cone, strict, back}`: the imaging cameras (stack and
+  side) need the ground in a 30° cone (the flight imaging's 30°); solar cells and the wing need the sun, 60° (the cone
+  only shows on the bench, the power is per sample); the hydrazine thrusters' plume (20°) and the apogee engine's and
+  kick motors' thrust (15°) go out the back. No part is strict yet (Q338's narrow camera will be).
+- **Solids:** a sized frame is its prism (`frameRay`); every other part is its bounding cylinder on its pose
+  (`viewCyl`: a posed part from its foot and rotation, an upright stack or hull part from `y0`, `pos`, `phi`, `off`).
+  Not solids: a deployed wing's paddles, a boom's rod, fairings and adapters.
+- **The cone:** the axis and three rings of 8, 14 and 20 rays, each ray weighted by the share of the cone's solid angle
+  its ring stands for, the two outer rings turned half a step so that only the axis lies on a line across the cone. A
+  disc whose edge runs through the axis reads 48.5 %; 2 cm over, 54.5 %; 2 cm short, 45.5 % (the heaviest ray is 3 %).
+  A ray starts a centimetre out from the face the part looks out of (a stack part's end, a surface part's outer side, a
+  wing's panels 0.6 m plus half its span out on the boom, where gl.js draws them).
+- **Round an orbit** (`attEnv`, `attSamples`): ground-facing (bottom down, +X leading), sun-facing (top to the sun) or
+  spinning (about the long axis, held across the orbit); the sun 20° off the orbit's plane; the ground fills asin(R/r)
+  about straight down and hides the sun behind it. 72 samples (16 × 24 spinning) of a 300 km Tellus orbit. The lit
+  share, 0.722, against the power budget's 1 − eclFrac = 0.715: within one sample.
+- **Judged** (`viewOf`): a camera never seeing the ground fails; blocked, it warns, and fails past half or if strict;
+  seeing it for part of the orbit warns. A panel: its share of full sun round the orbit, a body-cell patch by the cosine on
+  its face, a wing turned about its arm (flight's rule), with a ray to the sun at each sample for shade (and by what).
+- **Checks** (`payChecks`): the design's `att` (ground-facing unless it says `sun` or `spin`) is saved at its root. The
+  power row's figure is now the panels' for that attitude with shade counted, and says which attitude; a shaded panel
+  makes it a warning. A new row, *The camera sees the ground all the way round* (or the worst camera's trouble).
+- **The bench** (builder.js): under *done*, **holds: facing the ground / facing the sun / spinning** and a slider **round
+  the orbit**. The part in hand, held over a frame or selected, shows its cone and every copy's, tinted by how it fares
+  (blue, amber, red), its blocked rays in red to where they stop, and a line by the first cone; what blocks them glows red
+  on the craft. Round the craft, a desk globe for the ground, a lamp (dark in the planet's shadow) and an arrow for the
+  way it travels, where the slider puts them. All drawn flat on the overlay (the mock-up's were 3D models).
+- **Dragging:** `viewsAgain` redoes only the changed part's view and the views whose rays met it or might meet it now:
+  0.12 ms for one part moved among 41; all of a 33-part craft's views at once take about 2 ms.
+
+**Checks:** `vehicle-53`: half a cone blocked within one ray; a bottom camera ground-facing sees the ground all round,
+sun-facing 14 % of the orbit (a warning), on a side face never (fails); a 0.7 m sphere beside it blocks it by name; a
+whip at the cone's edge blocks 3 % (a warning, and a strict view fails); the lit share against eclFrac; the cameras row;
+a wing standing on the top face gives 152 W of 300 ground-facing and 0 sun-facing (the sun along its arm); 41 parts,
+0.12 ms a move. In the page (headless Chrome, the real GPU): the bench with a side camera beside a sphere (48 % blocked,
+amber, the rays red to the sphere), the wing selected (52 % of full sun), a held camera over a side face ×4 (four red cones,
+*never sees the ground*). Stills looked at, not kept.
+
+**Not done, for the next slices:** the plume and thrust-line rows and engines on mounts (slice 5); a released satellite
+recording its `att` (the plan § 5; with Q338); the contract's orbit for `attEnv` (a 300 km orbit always); the deployed
+wing's paddles as something that blocks; *Spins true*. **Flow:** the bench card's attitude row and slider are plain
+buttons in the existing card, and the overlay's models are flat; the look is yours to redo.

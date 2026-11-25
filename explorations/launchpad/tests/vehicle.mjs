@@ -1425,3 +1425,45 @@ return out`);
     okLift && okAim && okClamp && okBoom && okEnv && okSave,
     `bracket ${okLift} (${L.map(x => x.toFixed(4)).join(' ')}); aim ${okAim} (axis ${api.partAxis(r45.p).map(v => v.toFixed(3))}); clamp ${okClamp}; boom ${okBoom}; envelope ${okEnv} (${on.length} bands at ${on.map(b => b.r.toFixed(3))} vs ${tip.toFixed(3)}); save ${okSave}`);
 }
+
+// vehicle-53. Views (vehicle, QUEUE Q620, bench slice 4; D47 point 2; notes/vehicle.md § "Plan: the bench as its own builder" § 3–5):
+// sim/views.js tests a part's cone against the craft's solids (a frame's prism, every other part's bounding cylinder on its pose)
+// with weighted rays, and what it sees round an orbit for the design's declared attitude. (a) a slab over half a cone reads
+// 50 % within one ray, and a little over or short of half reads a little more or less; (b) a camera under a ground-facing
+// square frame sees the ground all the way round and is clear, sun-facing it sees it for a slice of the orbit, on a side face
+// never; (c) a part in front of it blocks it, by name, and a strict view fails where a forgiving one only warns; (d) the lit
+// share round the orbit is the one the power budget uses (eclFrac); (e) the Checks get a cameras row and the power row counts
+// the attitude (a wing standing on the top face turns about its arm: sun-facing, the sun is along the arm); (f) moving one part of 40 redoes the views inside 1 ms (the bench's budget while dragging).
+{
+  const D = new Function(src + 'return {newShip,viewsOf,viewsAgain,viewRows,viewPower,viewAtt,coneRays,rayCyl,attSamples,eclFrac,payChecks,PARTS,TELLUS,VIEW_ALT,VIEW_BETA};')();
+  const pay = (kids, att, fr = { n: 4, w: 1, h: 1, top: 1 }) => ({ v: 2, att, root: { k: 'frame', fr, c: kids } }), ship = d => D.newShip(JSON.parse(JSON.stringify(d)));
+  const cam = (at, k = 'scam') => ({ k, at, c: [] }), one = (d, k = 'scam') => D.viewsOf(ship(d), D.viewAtt(d)).list.find(e => e.p.d.key === k);
+  // (a) a disc 1 m out whose edge runs through the cone's axis, then 2 cm either way
+  const half = dx => { let w = 0; for (const r of D.coneRays([0, -1, 0], 30 * Math.PI / 180)) if (D.rayCyl([0, 0, 0], r.d, { B: [50 + dx, -1.05, 0], A: [0, 1, 0], r: 50, h: 0.1 }) < Infinity) w += r.w; return w; };
+  const maxW = Math.max(...D.coneRays([0, -1, 0], 30 * Math.PI / 180).map(r => r.w)), h0 = half(0), hIn = half(-0.02), hOut = half(0.02);
+  const okHalf = Math.abs(h0 - 0.5) <= maxW && hIn > h0 && hOut < h0 && Math.abs(D.coneRays([0, 1, 0], 0.5).reduce((a, r) => a + r.w, 0) - 1) < 1e-12;
+  // (b) where it looks from and when
+  const bot = one(pay([cam({ f: 'bot', s: 0, t: 0 })])), sun = one(pay([cam({ f: 'bot', s: 0, t: 0 })], 'sun')), side = one(pay([cam({ f: 's0', s: 0.5, t: 0.5 })]));
+  const okSee = bot.g === 1 && bot.blocked === 0 && bot.st === 'ok' && sun.g > 0 && sun.g < 0.5 && sun.st === 'warn' && side.g === 0 && side.st === 'bad';
+  // (c) a 0.7 m propellant sphere beside it on the bottom face blocks it; a strict view (D20's narrow camera) fails on a sliver
+  const blk = one(pay([cam({ f: 'bot', s: 0, t: 0 }), { k: 'sph7', at: { f: 'bot', s: 0.6, t: 0 }, c: [] }]));
+  const sliver = pay([cam({ f: 'bot', s: -0.2, t: 0 }), { k: 'whip', at: { f: 'bot', s: 0.15, t: 0 }, c: [] }]), soft = one(sliver);
+  D.PARTS.scam.view = { ...D.PARTS.scam.view, strict: true }; const hard = one(sliver); D.PARTS.scam.view = { ...D.PARTS.scam.view, strict: undefined };
+  const okBlock = blk.blocked > 0.5 && blk.st === 'bad' && /Propellant sphere/.test(blk.line) && soft.blocked > 0 && soft.blocked <= 0.5 && soft.st === 'warn' && hard.st === 'bad';
+  // (d) the lit share of a ground-facing orbit against the eclipse the power budget counts (72 samples: within one)
+  const S = D.attSamples('ground'), lit = S.filter(x => x.lit).length / S.length, ecl = D.eclFrac(D.TELLUS.R, D.TELLUS.R + D.VIEW_ALT, D.VIEW_BETA);
+  const okLit = Math.abs(lit - (1 - ecl)) <= 1 / 72 + 1e-9;
+  // (e) the Checks: the cameras' row; a wing standing on the top face: ground-facing it turns to the sun, sun-facing the sun is along its arm
+  const C1 = D.payChecks(pay([cam({ f: 'bot', s: 0, t: 0 }), { k: 'batt3', at: { f: 'top', s: 0, t: 0 }, c: [] }])), C2 = D.payChecks(pay([cam({ f: 's0', s: 0.5, t: 0.5 })]));
+  const wing = a => D.viewPower(D.viewsOf(ship(pay([{ k: 'wpanel', at: { f: 'top', s: 0, t: 0 }, c: [] }], a)), a));
+  const wg = wing('ground'), ws = wing('sun'), rowOf = (C, k) => C.rows.find(r => r.k === k);
+  const okRows = rowOf(C1, 'cams').cl === 'ok' && rowOf(C2, 'cams').cl === 'bad' && /never sees the ground/.test(rowOf(C2, 'cams').t) && wg.W > 2 * ws.W && ws.W < 0.1 * ws.peak;
+  // (f) 40 parts on a 1.5 m square frame; one sphere moved
+  const many = []; for (let i = 0; i < 4; i++) many.push(cam({ f: 's' + i, s: 0.3, t: 0.3 }), { k: 'wpanel', at: { f: 's' + i, s: 0.7, t: 0.7 }, c: [] }, { k: 'sbatt', at: { f: 's' + i, s: 0.5, t: 0.15 }, c: [] }, { k: 'whip', at: { c: 'ct' + i }, c: [] }, { k: 'batt3', at: { c: 'cb' + i }, c: [] },
+    cam({ e: 'v' + i, t: 0.5 }), { k: 'sph4', at: { e: 't' + i, t: 0.5 }, c: [] }, { k: 'scomp', at: { e: 'b' + i, t: 0.5 }, c: [] }, { k: 'ssci', at: { f: 's' + i, s: 0.15, t: 0.85 }, c: [] }, cam({ f: 's' + i, s: 0.85, t: 0.2 }));
+  const big = ship(pay(many, 'ground', { n: 4, w: 1.5, h: 1.5, top: 1 })), n40 = big.parts.filter(p => p.on).length, V40 = D.viewsOf(big, 'ground'), mv = big.parts.find(p => p.d.key === 'sph4');
+  let t0 = performance.now(); for (let i = 0; i < 40; i++) D.viewsAgain(V40, big, mv); const ms = (performance.now() - t0) / 40;
+  check('vehicle-53: views: half a cone blocked reads 50 % within one ray; a bottom camera ground-facing sees the ground all round, sun-facing a slice, on a side never; a part in its cone blocks it by name, a strict view fails on a sliver; the lit share is the power budget\'s; the Checks\' cameras row and the wing\'s attitude; 40 parts redone inside 1 ms',
+    okHalf && okSee && okBlock && okLit && okRows && n40 >= 40 && ms < 1,
+    `half ${h0.toFixed(3)} (a ray ≤ ${maxW.toFixed(3)}; 2 cm over ${hIn.toFixed(3)}, short ${hOut.toFixed(3)}); bottom g ${bot.g} ${bot.st}, sun-facing ${sun.g.toFixed(2)} ${sun.st}, side ${side.g} ${side.st}; sphere ${blk.blocked.toFixed(2)} "${blk.line}", a whip in its edge ${soft.blocked.toFixed(3)} ${soft.st} / strict ${hard.st}; lit ${lit.toFixed(3)} vs ${(1 - ecl).toFixed(3)}; rows ${rowOf(C1, 'cams').cl}/${rowOf(C2, 'cams').cl}, wing ${wg.W.toFixed(0)} W ground-facing vs ${ws.W.toFixed(0)} W sun-facing of ${ws.peak}; ${n40} parts, ${ms.toFixed(3)} ms a move`);
+}

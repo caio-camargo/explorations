@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.124 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: running checklist
+**Version**: 0.1.125 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-25 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -97,6 +97,7 @@ NOTES § "The robot playtester".
 | 23 | Read the cost line: imports, grey market, "New to us", trajectory study | Career as a resource state; Orbiter in the builder | One glance tells why the rocket costs what it does; line isn't a wall of text | v1.26 / v1.30 / v1.38 | economy |
 | 24 | Put a payload in the cargo bay in the editor | Builder: Cargo bay + a 1.25 m module stacked on its floor | It's clear the payload is inside; check whether not knowing if it fits is a real problem | Phase B | sats |
 | 392 | The builder only on the Assembly (R28, v1.336) | Put a design on the table, go to the Rollout; click the rocket, press X, Delete, Ctrl+Z. Then the title (Esc › Title screen), the Program and a Debrief: click the rocket where it shows | Nothing is picked up and the design is unchanged off the Assembly; the markers (centre of mass, thrust) only on the Assembly; back on the Assembly a click picks a part up as before | test `vehicle-45` (headless harness); by hand | launchpad session |
+| 426 | What a satellite's parts see (Q620, v1.378) | Assembly › **+ New payload**. Pick **Frame**, then an **Imaging camera (side)**: hold it over the bottom, a side and the top before you place it; place one on the bottom with a **Propellant sphere 0.7 m** beside it. Switch **holds** between *facing the ground*, *facing the sun* and *spinning*; drag **round the orbit**. Add a **Solar wing** and select it | The held camera shows a cone for each copy, blue on the bottom (ground-facing), red on a side; the sphere's rays show red and the sphere glows; the Checks say what the camera sees and what blocks it, and the power figure changes with the attitude. The globe, the lamp and the arrow move round the craft with the slider, the lamp dark in the shadow | Q605 | vehicle |
 
 ### Launch sites & terrain
 
@@ -502,4 +503,4 @@ NOTES § "The robot playtester".
 | 353 | Five lines a comment had swallowed (R4, v1.289) | In flight, click a SAS mode (Prograde, say); then open the Program with an unread mission message in the Inbox | The mode's button stays lit while it holds; the Inbox tab and the HQ strip show the count of unread messages | test `ground-7` (Erebus's blades only); the two above by eye |
 
 
-Next free number: **422** (QA, 2026-10-09: the counter said 165 while rows ran to 172, and 168 was doubled: "Meet the world's powers" 168 → 173. **Take the number right before you commit, after a pull, and grep for it**: LESSONS #37) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+Next free number: **427** (QA, 2026-10-09: the counter said 165 while rows ran to 172, and 168 was doubled: "Meet the world's powers" 168 → 173. **Take the number right before you commit, after a pull, and grep for it**: LESSONS #37) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
