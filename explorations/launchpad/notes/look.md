@@ -2906,7 +2906,7 @@ elements still have the same issue".
   view (app/bodyview.js) above 100 %. Memory at 150 % of a large screen (a 2560 × 1440 canvas makes a 3840 × 2160
   target with four samples; it is only reached with the frame under 6.6 ms).
 
-## v1.371 — fins with a section; a flap on the ones that steer (2026-11-25, look & sound, parts & pad, QUEUE Q635; Caio's ask)
+## v1.372 — fins with a section; a flap on the ones that steer (2026-11-25, look & sound, parts & pad, QUEUE Q635; Caio's ask)
 
 Caio: "one thing i'd like to work on is the fins, which look boxy. also, if they have a control element, like flaps,
 i'd like that graphically represented". A fin was a flat slab 7 cm thick with square edges (`fin()`, 12 triangles), and
@@ -2948,7 +2948,7 @@ a steerable fin looked the same as a fixed one until it turned.
   `radial-before`, `radial-after`, `radial-steerable-flaps`.
 - **Check:** test `aerofx-63` (the section's thicknesses and thickest line, normals outward, the flap its own kind and
   clear of its cove station by station, the shader and `setMoves` wiring); `aerofx-40`'s fin line follows.
-  TESTING 419.
+  TESTING 420.
 - **Not checked.** In flight by a person (the flaps working through max-q, the look from the chase camera). The
   other schools' paint on the flap (it takes the fin's school and hue like the rest). Low on the Intel GPU.
 - **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
