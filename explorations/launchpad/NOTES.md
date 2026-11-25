@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.70 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-17
+**Version**: v2.0.71 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-25
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -504,6 +504,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.292 — the `PROG` schema: `PROG_SCHEMA` (87 fields: default, what New program does, what it is) and `progFresh`; nothing calls it yet; a new field needs a row (test platform-6) (2026-11-10, review fixes, QUEUE R1a)
 - v1.293 — one reset: `programNew` for New program and career.mjs; nothing from the old career survives (R17); career.mjs rows independent of the rows before (new baseline: mean final 654 M) (2026-11-10, review fixes, QUEUE R1b)
 - v1.294 — the solar wing's cells: each wing panel 4 × 4 modules of small cells (grey interconnects, white substrate between modules, a contact bar and fingers), each cell its own blue and its own cover-glass tilt, violet at a grazing look; the body cells the same (2026-11-10, look & sound parts & pad, QUEUE Q565; notes/look.md § v1.294)
+- v1.371 — RCS holds without chattering: holding on SAS, a deadband and a minimum impulse on the attitude part (a phase plane per axis within 5° of the target, on the turn relative to the target's; a hold's jets fire for part of a step, 5 ms at least); the Docking craft holding prograde 13.3 kg/h → 0, and without wheels it no longer empties its 30 kg in 1.3 min (0 to 0.18 kg/h) (vehicle, Q632, PLAYTEST #169) → [notes/vehicle.md](notes/vehicle.md)
 - v1.370 — the approach inset: inside 20 km of a target an Approach card draws our path in the target's frame (ahead, above; the target at the centre), the node's plan dashed, how far ahead/above/out of plane now; under 200 m the docking rows take over (space, Q630, PLAYTEST #176) → [notes/space.md](notes/space.md)
 - v1.369 — meet on pass N: the Target card's *Meet* row, the burn at the next apoapsis for each of the next five orbits that brings you to the target on that pass, signed, information only (space, Q629, PLAYTEST #176) → [notes/space.md](notes/space.md)
 - v1.368 — rendezvous tools on the map, slice 1: the next three passes by the target (where the orbits come nearest, each time we go by) with separation, relative speed and time, the plan's beside them, green under 1 km and 5 m/s; the relative nodes with the planes' angle and the burn to match; numbers only (space, Q628, PLAYTEST #176) → [notes/space.md](notes/space.md)

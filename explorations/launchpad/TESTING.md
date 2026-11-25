@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.122 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-18 · **Status**: running checklist
+**Version**: 0.1.123 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-11-25 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -241,6 +241,7 @@ NOTES § "The robot playtester".
 | 416 | The next passes and the relative nodes on the map (Q628, v1.368) | A craft in orbit with a target (G), a little lower and a degree or two off its plane (the tester's start *beside* a target, then a short burn); open the map, then add a node and drag it | Up to three numbered passes with separation, relative speed and time, a line to where the target will be; the plan's in white as you drag; AN and DN triangles with the angle and the burn to match; a pass under 1 km and 5 m/s turns green; the Target card's *Closest* and *Planes* rows agree with the map. Nothing places a node for you | PLAYTEST #176 | space |
 | 417 | Meet on pass N (Q629, v1.369) | A craft in a lower orbit whose apoapsis touches the target's orbit (G to target it) | The Target card's *Meet* row gives a signed burn for passes 1 to 5; place a node at the apoapsis with one of them by hand and the map's passes (row 416) show a close pass on that orbit, turning green near the end | PLAYTEST #176 | space |
 | 418 | The approach inset (Q630, v1.370) | Close in on a target in orbit (the tester's start *beside* a target, a few km behind; a small retrograde or radial burn); add a node and drag it | Inside 20 km an Approach card shows the target at the centre and your path around it (ahead to the right, above up), your place as a triangle, the plan dashed; the *Now* line matches what you see; the card goes under 200 m and the docking rows guide you in | PLAYTEST #176 | space |
+| 419 | RCS holds without chattering (Q632, v1.371) | Tester start *beside* a target with the Docking preset; RCS on (V), SAS on the docking mode, hands off the keys for a minute. Then the same on a craft with no reaction wheels, if you have one | With wheels: no puffs at all while it holds. Without: a small puff every few seconds at most, the nose steady within half a degree; the HUD's gas hardly moves. Translation keys feel as before (row 58) | P#169 | vehicle |
 
 ### Moons & crew
 
