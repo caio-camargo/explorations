@@ -1,7 +1,7 @@
 # Elements — the grammar of text on a screen
-**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-19
+**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-11-18 · **Updated**: 2026-11-25
 **Status**: **the roles, the code and the Assembly's dress are decided (D50, 2026-11-18).** Nothing in the game
-follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53), three picks open: § 6.1. The Rollout, the Program and the Debrief mocked: § 6.2. **The office is real documents (D54)**; its graphics are being worked up on the Debrief: § 6.3.
+follows it yet; the build order is § 7 (filed under QUEUE *Proposed*). The sans: IBM Plex Sans and B612 (D52). A flight HUD mock-up for Q477: the direction and VT323 figures decided (D53); amber, pointer gauges, legend keys (D55): § 6.1; queued as Q477. The Rollout, the Program and the Debrief mocked: § 6.2. **The office is real documents (D54)**; its graphics are being worked up on the Debrief: § 6.3.
 **Purpose**: Caio (2026-11-18): "text boxes and such... have a very claude-y look, which is serviceable for development
 but not definitively... first doing some research on design principles and semiotics of text elements, like what
 should be similar and what different, how to establish similarity and difference and hierarchy." This is the layer
@@ -73,7 +73,7 @@ Sources in § 9, each marked as read this session or recalled.
 
 ## 3. The roles
 
-Twenty-six kinds of text and text-holder, found by going through the Assembly, the part card and the flight HUD.
+Twenty-seven kinds of text and text-holder, found by going through the Assembly, the part card and the flight HUD.
 The mock-up's *Role sheet* shows each one live in every dress, and its footer names the role under the pointer.
 
 | Group | Role | What it is | Alike with | Differs from, and by what |
@@ -104,6 +104,7 @@ The mock-up's *Role sheet* shows each one live in every dress, and its footer na
 | | **Token** | an object in a sequence (a staging event) | objects | a command: a grip edge, inside a well |
 | | **Picture** (D50) | a part's side silhouette | every part, wherever it is listed | another kind: shape. Another size: scale, in three steps. One tone, never colour |
 | Judgement | **Lamp** (cockpit only) | a caution as a tile outside any readout, dark until it matters | the master caution and its tiles | a key: no raised edge. A verdict: it lights and goes dark |
+| Data | **Gauge** (D55, cockpit) | a value drawn as a pointer on a scale against a limit | every gauge (fuel, heat, load, throttle) | a value: a length, not a figure. A lamp: never a filled block in the phosphor's colour |
 
 States, the same on every role that has them: **held or chosen** = inverted (ink and ground swapped); **not
 available** = faint, with its reason one hover away; **hover** = a tint, never a change of shape.
@@ -241,8 +242,8 @@ carry more information than a single word or phrase". Round 2 is what the file s
    one family, but Caio prefers VT323. B612 Mono also overflows a stage box (279 px in 262).
 7. **The navball is the strongest colour on the panel** (the game's blue). Its look is look & sound's, with Q436.
 
-**Open, for Caio:** the phosphor (amber, white); bar or pointer gauges (my pick: pointer if amber); legend or plate
-keys (my pick: legend); whether the gauge joins the roles of § 3.
+**Decided (D55, Caio 2026-11-25: "let's go with the recommendations"):** amber phosphor; pointer gauges; legend
+keys; the gauge joins the roles of § 3. ~~Open: the phosphor (amber, white); bar or pointer gauges; legend or plate keys; the gauge as a role.~~
 
 **Not checked.** A landing, the map, the Rollout and the rover yard; the eras; a window narrower than about 1215 px, where
 the three bottom bezels (284 + 628 + 262 px) would meet; a rocket of five or more stages (the stack of boxes grows
@@ -397,6 +398,9 @@ Before D52 my pick was Barlow (regular and semibold, in the normal and condensed
 Plex if the missing arrow or the thinner small labels bother Caio on the stills (`form-barlow.png`, `form-plex.png`).
 
 ## 8. Decided, and open
+
+**D55 (Caio, 2026-11-25):** on the flight HUD's round 2, the recommendations: amber phosphor, pointer gauges, legend
+keys, and the gauge as a role (§ 3). Q477 builds it.
 
 **D50 (Caio, 2026-11-18):** the roles and the code as proposed ("yes on defaults"); **Form** for the Assembly; the
 power's colour on the launch button only; parts get pictures ("that sounds good, maybe we can include a quick
