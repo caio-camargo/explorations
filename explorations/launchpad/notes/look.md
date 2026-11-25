@@ -2953,6 +2953,7 @@ a steerable fin looked the same as a fixed one until it turned.
   other schools' paint on the flap (it takes the fin's school and hue like the rest). Low on the Intel GPU.
 - **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
   and get the section too; not looked at closely.
+
 ## v1.373 — the RCS jet: cold gas in place of the placeholder box (2026-11-25, look & sound, effects; Q634, PLAYTEST #168)
 
 Caio, docking, 2026-11-18: "the gas release is still a placeholder graphic". It was the `PUFF` mesh stretched to a
