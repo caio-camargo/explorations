@@ -8508,3 +8508,20 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   sharper craft), in the sky and effects beats' files.
 - **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
 - Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-25 — merge session (Fable 5.2, worktree launchpad-q624): v1.371 Q624 on `main`
+
+- **Asked:** Q624 (who enforces requalification, CREW decision 5) was built by the economy session on 2026-11-18,
+  green in CI at `3d5c7a81`, and never merged; its claim was still open. Merge it by ACTIVE_WORK's procedure and close it.
+- **Done:** `check_numbers` clean (v1.371 and TESTING 419 were still free on `main`: no renumbering); `origin/main`
+  merged into `q624` twice (the design desk's docs and mock-ups, then four claims that landed during CI's run);
+  smoke passed locally (the build session's own local smoke had been cut off for memory); CI's full run green; ff-merged.
+- **What landed** (built 2026-11-18, notes/economy.md § v1.371): who grounds crews after a loss follows the program's
+  owner. A company flies on and pays (insurance, standing, valuation, lawsuits at a second loss); an open state's
+  inquiry, the populist flight and the election; a closed state's whim (fly at once, a scapegoat, or the choice) and
+  the regime odds; a consortium's most open member rules. Test econ-51; econ-47 updated.
+- **Not checked:** in a browser. TESTING 419 waits for Caio (three careers, one loss each, then a consortium).
+- **Next:** nothing owed on Q624. The playtest session can put row 419 in a sitting.
+- Files: root `ACTIVE_WORK.md` (claim cleared), `SESSION_LOG.md`; in `explorations/launchpad/`: `sim/crew.js`,
+  `sim/program.js`, `sim/contracts.js`, `sim/debrief.js`, `app/program-ui.js`, `app/rollout.js`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `CREW.md`, `QUEUE.md` (Q624 ✓), `TESTING.md` (row 419).
