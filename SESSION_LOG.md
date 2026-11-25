@@ -8508,3 +8508,68 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   sharper craft), in the sky and effects beats' files.
 - **Left running:** python servers on ports 8816 and 8817 (from 2026-11-17).
 - Files: root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-25 — merge session (Fable 5.2, worktree launchpad-q624): v1.371 Q624 on `main`
+
+- **Asked:** Q624 (who enforces requalification, CREW decision 5) was built by the economy session on 2026-11-18,
+  green in CI at `3d5c7a81`, and never merged; its claim was still open. Merge it by ACTIVE_WORK's procedure and close it.
+- **Done:** `check_numbers` clean (v1.371 and TESTING 419 were still free on `main`: no renumbering); `origin/main`
+  merged into `q624` three times, since `main` moved during each of CI's runs (the design desk's docs and mock-ups;
+  four claims; then the orchestrator's Q636 and an AGENTS.md rule). CI's full run was green at `b9e4f8fd` and at
+  `d3d1d9fb`. The third fold-in (3 lines in QUEUE.md and PLAYTEST.md, 3 in AGENTS.md; no code) was merged at
+  `f42220a1` on a local `check_numbers` and smoke, without waiting for a third branch run; `main`'s own run on that
+  commit is the check. Smoke passed locally (the build session's own had been cut off for memory).
+- **What landed** (built 2026-11-18, notes/economy.md § v1.371): who grounds crews after a loss follows the program's
+  owner. A company flies on and pays (insurance, standing, valuation, lawsuits at a second loss); an open state's
+  inquiry, the populist flight and the election; a closed state's whim (fly at once, a scapegoat, or the choice) and
+  the regime odds; a consortium's most open member rules. Test econ-51; econ-47 updated.
+- **Not checked:** in a browser. TESTING 419 waits for Caio (three careers, one loss each, then a consortium).
+- **Next:** nothing owed on Q624. The playtest session can put row 419 in a sitting.
+- Files: root `ACTIVE_WORK.md` (claim cleared), `SESSION_LOG.md`; in `explorations/launchpad/`: `sim/crew.js`,
+  `sim/program.js`, `sim/contracts.js`, `sim/debrief.js`, `app/program-ui.js`, `app/rollout.js`, `tests/economy.mjs`,
+  `notes/economy.md`, `NOTES.md`, `CREW.md`, `QUEUE.md` (Q624 ✓), `TESTING.md` (row 419).
+
+## 2026-11-25 — look & sound, parts & pad (Fable 5.2, worktree launchpad-q635): v1.372 Q635, fins with a section and flaps; a look at CI's full runs
+
+- **Asked:** Caio: "the fins, which look boxy. also, if they have a control element, like flaps, i'd like that
+  graphically represented". Asked which way to draw the control (the sim's steerable fin is an all-moving plate), he
+  picked a trailing-edge flap over an all-moving plate on a visible pivot.
+- **Done:** `fin()` in `app/gl.js` draws an aerofoil (thinner to the tip, flaring into the hull) in place of the slab;
+  a radial fin's doubler is its own bare-metal foot, the big ones keep a stiffener bead. Steerable fins (`cfin`,
+  `cfins`, `cfins25`) are a fixed fin with a hinged flap in the other paint, a vertex kind of its own (`FLAP_K`, 19)
+  that `MESH_VS` turns about the hinge by 1.5 × the plate's deflection. Look only; the sim is unchanged. Views 196–199;
+  notes/look.md § v1.372.
+- **Checked:** test `aerofx-63`; smoke; CI's full run green on `576ecea9`; stills of all four views looked at
+  (`output/launchpad/beauty/Q635/`, local). Rebuild time: the Orbiter 3.3–4.0 → 4.1–4.3 ms, the Crewed Lunar within
+  noise to +4 ms.
+- **Not checked:** in flight by a person (TESTING 420); other schools' paint on the flap; Low on the Intel GPU.
+- **The merge took two full runs:** Q624 landed during the first and took v1.371 and TESTING 419; renumbered to
+  v1.372 and 420, merged main, ran again.
+- **Also, a project standard** (Caio, mid-session): things for him to look at are named by full absolute path, as a
+  `file:///C:/…` link. In `AGENTS.md` § Intake / Output Routing.
+- **PARKED: CI's full runs** (Caio asked whether they need to run as they do, or one session could run for several
+  workstreams). Parked at: measured, nothing changed. Of the last 58 runs (18–25 Nov, 631 min), 35 (406 min) were for
+  docs-only head commits; a run is ~10.6 min in one process; a by-hand `--times --jobs 4` run of the same commit took
+  4 min 10 s, all passed (run 45668423377). Proposed in QUEUE for platform: skip the flights on docs-only pushes, run
+  with `--jobs 4`. Batching branches into one run was weighed and left for later. Waiting on Caio's go.
+- **Left running:** a python server on port 8835 (ends by itself about 16:05 local).
+- Files: root `AGENTS.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`; in `explorations/launchpad/`: `app/gl.js`, `builder.js`,
+  `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (row 420), `QUEUE.md` (Q635 ✓, a Proposed line).
+
+## 2026-11-25 — flow (Opus 5.5, worktree launchpad-q633): v1.373 Q633, the RCS card
+
+- **Asked:** Q633 (PLAYTEST #170): a card while RCS is on, the translate keys drawn on a craft outline beside the
+  attitude keys, and the gas left; a picture, not sentences (D43); maybe kept in the dark cockpit near a docking target.
+- **Done:** `app/hud.js`: the RCS card (`rcsPic`, pure): the craft drawn as the camera sees it, so each arrow points
+  where its key moves the craft on screen; I/K J/L U/O on the axes, W/S A/D Q/E on arcs, an axis at the camera a ⊙/⊗
+  mark; the held key lit; the gas and Δv under it (`rcsLeft()`, app/program-ui.js). A card's `cp()` keeps it in the dark
+  cockpit (the RCS card within 1 km of a target). The Vehicle card no longer shows for RCS alone. Test flow-64.
+- **Checked:** stills in headless Chrome (Docking preset in orbit; from above, side, nose-on; L and Q held); the
+  picture's axes match the page's own projection. Smoke green; CI green on the merged head; merged to `main`.
+- **Not checked:** a docking flown with it (TESTING 421); the paper theme.
+- **Found:** `python -m http.server` dropped scripts on 2 of 4 page loads here (globals undefined); a Node static server
+  loaded every time (notes/flow.md § v1.373).
+- **Next:** Q613 (places on Selene, slice 2; slice 1 is Q612, done v1.342), on Caio's go.
+- Files: launchpad `app/hud.js`, `app/program-ui.js`, `index.html` (CSS), `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`,
+  `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+

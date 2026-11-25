@@ -2367,3 +2367,30 @@ read `app/hud.js` and found nothing over budget, these live in the row functions
   tester menu (a developer's tool), the rover's and the docking rows (their parentheses carry numbers).
 - **Tests:** flow's tipped-lander check reads the new *Righting* text (one line).
 - **Not checked:** nothing seen in a browser (TESTING 395).
+
+## v1.373 — the RCS card (2026-11-25, flow (Opus 5.5), QUEUE Q633; PLAYTEST #170; D43)
+
+Caio, docking (2026-11-18): RCS is "definitely not intuitive"; he didn't find the translate keys, which only Help listed.
+
+- **The card** (`app/hud.js`, id `rcs`, after Approach): shown while `S.rcs` is on and the craft has quads. Collapsible
+  and pinnable like the others. Its first row is a picture, the card's width (a one-cell row: `renderCards` gives it
+  `colspan=2`); under it *Gas*, kg and Δv (`rcsLeft()`, app/program-ui.js, which `rcsRows` now uses too).
+- **The picture** (`rcsPic(q, view, INP)`, pure): the craft drawn **as the camera sees it** (body axes through
+  `HOOK.view`'s R, U), so an arrow points where that key moves the craft on screen. *Move*: I/K at the nose and tail,
+  J/L and U/O at the sides. *Turn*: W/S and A/D on arcs from the nose (ctrlAccel: W tips the nose to +X, D to +Z), Q/E
+  from the side of a ring facing the camera, both ways round. An axis within ~20° of the line of sight, or an arc seen
+  edge-on, becomes a mark at the bottom: ⊙ comes at the camera, ⊗ goes away. The key held lights (`--acc`).
+- **Why the camera's view and not a fixed diagram:** which way L pushes on screen depends on the camera and the roll;
+  a fixed diagram would be right only from one side. Checked against the page's own projection (the nose's screen
+  position from `HOOK.view` matches `rcsPic`'s).
+- **The dark cockpit:** a card may carry `cp: () => bool` and stay in a critical phase while it says so (`hudCardsOn`).
+  The RCS card's is `rcsNear()`: the target within `RCS_NEAR` = 1 km (a burn on a docking approach).
+- **Vehicle card:** it no longer shows for RCS alone; its RCS line only while RCS is off (said once, D43 rule 1).
+- **Tests:** flow-64 (new): the picture from the side and nose-on (where each key lands, ⊙/⊗), the held key lit and
+  nothing else, the card in the list and in a burn only near a target. flow-5 and flow-58 unchanged and green.
+- **Seen:** stills in headless Chrome, the Docking preset in orbit, from above, from the side and nose-on with L and Q
+  held. The card reads; labels can sit close to the outline when an arc is short (the roll ring seen nearly edge-on).
+- **Not checked:** a real docking flown with it; the paper theme; how the labels read on a 4K screen (TESTING 421).
+- **A note for the machine:** `python -m http.server` dropped scripts here on two of four loads (the page came up with
+  `RS_MAX`/`$` undefined); a small Node static server loaded it every time.
+
