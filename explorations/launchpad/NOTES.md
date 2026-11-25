@@ -1,5 +1,5 @@
 # Launchpad notes — index
-**Version**: v2.0.70 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-17
+**Version**: v2.0.72 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Updated**: 2026-11-18
 **Status**: index. The build log lives in [`notes/`](notes/), one file per area (split 2026-10-11, W37; the whole
 file as it was: `git show cea6093:explorations/launchpad/NOTES.md`).
 **Purpose**: Where every build-log section lives. A reference like `NOTES § "Test shards"` or `NOTES v1.64` still
@@ -311,6 +311,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.355 — qualifications, crew slice 2: a type is the capsule, rendezvous, docking and landing by two simulator completions or one real, time in type, the field geology course, crew cards with badges in the Program (2026-11-17, space, QUEUE Q458) → [notes/economy.md](notes/economy.md)
 - v1.356 — the pilot's modes, crew slice 3: the SAS flies the computer's modes and the best pilot's (on the type, the analog modes; + rendezvous, target; + docking, docking), a pilot's loop slower than a computer (2026-11-17, space, QUEUE Q625) → [notes/economy.md](notes/economy.md)
 - v1.358 — crew slices 5 and 6: a class every two years mixed by archetype (scientists after orbit, engineers once a station is up), titles, picking by need, the engineer's relight, the scientist's weight on Selene readings (2026-11-17, space, QUEUE Q626) → [notes/economy.md](notes/economy.md)
+- v1.371 — who enforces requalification (Q624, CREW decision 5): a company flies on and pays for it, an open state's inquiry and demagoguery, a closed state's whim, a consortium's strictest member (2026-11-18, economy session)
 
 ## World: [`notes/world.md`](notes/world.md)
 

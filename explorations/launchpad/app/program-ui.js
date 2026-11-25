@@ -26,6 +26,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.dry){const r=orderDryRun(stackDef);HOOK.msg(r.ok?`Dry run: ${r.proc.from}'s procedure flies it, ${fmtDv(r.margin)} to spare (provisional)`:`Trajectory office: ${r.why}`);renderProgram();editorChanged()}
   else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
+  else if(ds.requal){requalChoose();renderProgram()}   // (Q624) a company requalifies when it chooses
   else if(ds.geo){const r=crewCourse(+ds.geo);if(!r.ok)HOOK.msg(`Field geology: ${r.why}`);renderProgram()}   // (Q458)
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
   else if(ds.test){const[k,m]=ds.test.split(':');if(!startTest(k,m))HOOK.msg('The stand is busy, or there is not enough money');renderProgram();editorChanged()}});
@@ -37,7 +38,9 @@ function crewHTML(){const L=(PROG.crew||[]).filter(a=>a.status!=='lost').sort(cr
     return`<div class="crewCard"><b>${a.name}</b> <span class="dim">· ${CREW_SPEC[a.spec]||'pilot'}, class ${a.cls} · ${st} · ${a.rec.flights} flight${a.rec.flights===1?'':'s'}${a.rec.days>=1?`, ${a.rec.days.toFixed(0)} days in space`:''}${a.sen.length?` · ${a.sen.length} first${a.sen.length>1?'s':''}`:''}</span><br>`+
       crewBadges(a).map(([l,on,t])=>`<span class="badge${on?' on':''}" title="${t}">${l}</span>`).join(' ')+
       (a.quals&&a.quals.geo!=null||a.status==='course'?'':` <button data-geo="${a.id}" ${q.ok?'':'disabled'} title="${q.ok?`${GEO_DAYS} days off the roster`:q.why}">Field geology ${fmtM(GEO_COST)}, ${GEO_DAYS} d</button>`)+`</div>`};
-  return`<div class="ep">Astronauts</div><div class="sub">`+L.map(card).join('')+(PROG.crewNext!=null?`<div class="dim">The next class: ${fmtDate(PROG.crewNext)}</div>`:'')+(M.length?`<div class="dim" style="margin-top:4px">In memory: ${M.map(m=>`${m.name} (day ${Math.floor(m.day)}, ${m.vessel||'flight '+m.flight})`).join(' · ')}</div>`:'')+`</div>`}
+  const q=PROG.requal,rq=q?`<div class="${q.skip?'warn':'bad'}">${q.skip?(q.rule==='company'?`Flying unrequalified since ${(q.names||[]).join(' and ')||'the crew'} ${q.why}: ${fmtM(REQ.ins)} insurance a crewed flight <button data-requal="1">Requalify</button>`:'Flying again, hushed: the cause was never fixed')
+    :`${q.rule==='open'?'An inquiry grounds crews':'Crews stand down'}: ${requalWhat(q)}`}</div>`:'';   // (Q183, Q624)
+  return`<div class="ep">Astronauts</div><div class="sub">`+rq+L.map(card).join('')+(PROG.crewNext!=null?`<div class="dim">The next class: ${fmtDate(PROG.crewNext)}</div>`:'')+(M.length?`<div class="dim" style="margin-top:4px">In memory: ${M.map(m=>`${m.name} (day ${Math.floor(m.day)}, ${m.vessel||'flight '+m.flight})`).join(' · ')}</div>`:'')+`</div>`}
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const risk=c=>{const r=offerRisk(c);return[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)]};
   const body=(c,act)=>`<span class="dim">${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+

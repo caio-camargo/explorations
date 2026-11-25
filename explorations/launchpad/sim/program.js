@@ -240,7 +240,8 @@ const PROG_SCHEMA={
   crewNext:[null,'career','(Q626) the day the next astronaut class is selected'],
   crewFirst:[{},'career','the program\'s crewed firsts: the day, who flew them'],
   memorial:[[],'career','astronauts lost: who, when, the flight, the cause; hushed for a closed power'],
-  requal:[null,'career','(Q183) crews stand down after a loss until a qualification flight: the cause, how far, skipped (a closed power)'],
+  requal:[null,'career','(Q183) crews stand down after a loss until a qualification flight: the cause, how far, skipped (a closed power); (Q624) whose rule, the whim, a company\'s losses'],
+  crewLoss:[null,'career','(Q624) the day of the last crew loss: an open program\'s election within a term runs against it'],
   // logbook, debrief, the place
   log:[{},'career','the logbook\'s records'],
   lastDebrief:[undefined,'career','the last Debrief, kept with the save'],
@@ -529,7 +530,7 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
       if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
     if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT+(R.airX||0)>CREW_AIR&&!R.capHome?'ran out of air':'';
       if(why){R.crewOK=false;R.crewWhy=why;const ids=unboardCrew(s),as=crewLose(ids.length?ids:(R.crew||[]).filter(id=>(crewById(id)||{}).status==='flying'),R,s);failHit(-20,'a crew was lost');
-        HOOK.news(`${as.length?crewList(as):'The crew'} ${why}. The program stops to mourn and to ask how`,'bad');if(!R.requalSkip)requalSet(s,R,as)}}}   // (Q183) a hushed flight's loss leaves the old cause standing   // (Q182) named, in the memorial
+        HOOK.news(`${as.length?crewList(as):'The crew'} ${why}. The program stops to mourn and to ask how`,'bad');requalLoss(s,R,as)}}}   // (Q183) a hushed flight's loss leaves the old cause standing   // (Q182) named, in the memorial
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
@@ -1384,13 +1385,13 @@ function flavTick(d,R,dd=d){PROG.nat=PROG.nat||{};
   // elections (open programs): budget mood for the next term
   if(F.open>=0.6&&(PROG.nextElection!=null||R)){if(PROG.nextElection==null)PROG.nextElection=300+R()*200;
     if(PROG.day>=PROG.nextElection-50&&!PROG.electionWarned){PROG.electionWarned=true;HOOK.news('Election in 50 days: a success now would not hurt','warn')}
-    if(PROG.day>=PROG.nextElection){const o=opOf(HOME);PROG.bmult=o>55?1.25:o<40?0.7:1;PROG.nextElection+=400;PROG.electionWarned=false;
+    if(PROG.day>=PROG.nextElection){const o=opOf(HOME);PROG.bmult=o>55?1.25:o<40?0.7:1;PROG.nextElection+=400;PROG.electionWarned=false;requalElection(o);
       HOOK.news(o>55?'Re-elected: the government doubles down on space':o<40?'New government trims the space budget':'Election: the space budget survives, unchanged',o>55?'ok':o<40?'bad':'')}}
   // the leadership's demand for a spectacular (closed programs)
   if(F.open<0.5){if(PROG.demand&&PROG.day>PROG.demand.by){opAdd(HOME,-10);HOOK.news('The leadership is displeased: no spectacular by the anniversary','bad');PROG.demand=null}
     if(!PROG.demand&&stateShare()>=0.5&&R&&R()<1-Math.exp(-dd/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular in 60 days: a first, or a 40M+ contract','warn')}}
   // regime change can cancel a security state's program
-  if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R&&R()<1-Math.exp(-dd/600))cancelProgram(R)}
+  if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R&&R()<1-Math.exp(-dd/600*requalRegimeK()))cancelProgram(R)}   // (Q624) likelier while a crew loss stands
 function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import'||(x[1].how==='giant'&&x[1].from!==HOME));
   if(grey.length)HOOK.news(`Bought through intermediaries at triple the price: ${grey.map(x=>PARTS[x[0]].name).join(', ')}`,'warn');
   if(imp.length||grey.length)opAdd(HOME,-0.4*natK()*(imp.length+grey.length)/Math.max(1,ks.length))}
