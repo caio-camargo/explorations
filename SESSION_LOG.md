@@ -8514,8 +8514,11 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Asked:** Q624 (who enforces requalification, CREW decision 5) was built by the economy session on 2026-11-18,
   green in CI at `3d5c7a81`, and never merged; its claim was still open. Merge it by ACTIVE_WORK's procedure and close it.
 - **Done:** `check_numbers` clean (v1.371 and TESTING 419 were still free on `main`: no renumbering); `origin/main`
-  merged into `q624` twice (the design desk's docs and mock-ups, then four claims that landed during CI's run);
-  smoke passed locally (the build session's own local smoke had been cut off for memory); CI's full run green; ff-merged.
+  merged into `q624` three times, since `main` moved during each of CI's runs (the design desk's docs and mock-ups;
+  four claims; then the orchestrator's Q636 and an AGENTS.md rule). CI's full run was green at `b9e4f8fd` and at
+  `d3d1d9fb`. The third fold-in (3 lines in QUEUE.md and PLAYTEST.md, 3 in AGENTS.md; no code) was merged at
+  `f42220a1` on a local `check_numbers` and smoke, without waiting for a third branch run; `main`'s own run on that
+  commit is the check. Smoke passed locally (the build session's own had been cut off for memory).
 - **What landed** (built 2026-11-18, notes/economy.md § v1.371): who grounds crews after a loss follows the program's
   owner. A company flies on and pays (insurance, standing, valuation, lawsuits at a second loss); an open state's
   inquiry, the populist flight and the election; a closed state's whim (fly at once, a scapegoat, or the choice) and
