@@ -8555,3 +8555,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Left running:** a python server on port 8835 (ends by itself about 16:05 local).
 - Files: root `AGENTS.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`; in `explorations/launchpad/`: `app/gl.js`, `builder.js`,
   `views.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (row 420), `QUEUE.md` (Q635 ✓, a Proposed line).
+
+## 2026-11-25 — flow (Opus 5.5, worktree launchpad-q633): v1.373 Q633, the RCS card
+
+- **Asked:** Q633 (PLAYTEST #170): a card while RCS is on, the translate keys drawn on a craft outline beside the
+  attitude keys, and the gas left; a picture, not sentences (D43); maybe kept in the dark cockpit near a docking target.
+- **Done:** `app/hud.js`: the RCS card (`rcsPic`, pure): the craft drawn as the camera sees it, so each arrow points
+  where its key moves the craft on screen; I/K J/L U/O on the axes, W/S A/D Q/E on arcs, an axis at the camera a ⊙/⊗
+  mark; the held key lit; the gas and Δv under it (`rcsLeft()`, app/program-ui.js). A card's `cp()` keeps it in the dark
+  cockpit (the RCS card within 1 km of a target). The Vehicle card no longer shows for RCS alone. Test flow-64.
+- **Checked:** stills in headless Chrome (Docking preset in orbit; from above, side, nose-on; L and Q held); the
+  picture's axes match the page's own projection. Smoke green; CI green on the merged head; merged to `main`.
+- **Not checked:** a docking flown with it (TESTING 421); the paper theme.
+- **Found:** `python -m http.server` dropped scripts on 2 of 4 page loads here (globals undefined); a Node static server
+  loaded every time (notes/flow.md § v1.373).
+- **Next:** Q613 (places on Selene, slice 2; slice 1 is Q612, done v1.342), on Caio's go.
+- Files: launchpad `app/hud.js`, `app/program-ui.js`, `index.html` (CSS), `tests/flow.mjs`, `notes/flow.md`, `NOTES.md`,
+  `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
