@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.274 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
+**Version**: 0.1.275 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-11-17 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -126,6 +126,7 @@ A lane with nothing ready: take the top line of its **evergreen** list in ROADMA
 Worktree `launchpad-ui` (branch `ui`, port 8795).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
+| Q636 | PLAYTEST **#177**: **old builder screens flash while the game loads** (Caio 2026-11-25): the static `#editor` / `.ui` markup in index.html paints before the scripts hide it. Hide the UI until boot is done, and show a very simple loading screen (the name, a thin bar or one line) inline in the page's first bytes, gone when the first real screen shows. Check with a slow load (throttled) and that `?eva-lab` and the robots' start still work | M2 | S | 🖥 | ready (Caio's ask) |
 | Q633 | PLAYTEST **#170**: **an RCS card while RCS is on** (Caio 2026-11-18: "definitely not intuitive"): a card in app/hud.js's list (`when: ()=>S.rcs`, collapsible and pinnable): the translate keys I/K J/L U/O drawn on a craft outline beside the attitude keys, and the gas left (from `rcsRows()`); a picture, not sentences (D43); maybe in `CP_CARDS` during a docking approach | M2 | S | 🖥 | ready (Caio's ask) |
 | Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b ✓ `c19a965`** (v1.106: the gauges as the instrument panel, PLAYTEST #9 closed); **4c ✓ `e211647`** (v1.110: on the map the navball is a heading line). ✓ |
 | ~~Q192~~ | The map's planet labels: two planets close on the ring lose one label to the overlap rule; merge them (`Hesper, Astraea`) (NOTES § v1.99) | M2 | S | 🖥 | ✓ v1.286 (flow, 2026-11-08): overlapping planet labels merge into one, names only (`Hesper, Hyperion`); test flow-52, robot row `planetlabels`, TESTING 350 |

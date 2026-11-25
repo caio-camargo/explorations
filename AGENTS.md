@@ -94,6 +94,9 @@ should very rarely need to grep to find something.
   root, never in `intake/`.
 - **Session-authored deliverables** (reports, drafts, specs) → the owning project folder or
   `output/<domain>/`. Tell the user what you placed where and what source it derives from.
+- **Anything for the user to look at gets a link he can copy** (Caio, 2026-11-25: "opening folders to see mockups is
+  a pain"): a mock-up, still, figure or report is named in the reply by its **full absolute path**, one per line, as a
+  `file:///C:/…` link (a local link is fine). Never a bare filename, a repo-relative path, or "in the output folder".
 - **Intermediates and scratch** → the platform's session scratchpad, NOT the workspace. If
   it's worth keeping, it's a deliverable; otherwise it dies with the session.
 - Every accumulating folder needs a *drain* (see `docs/architecture-principles.md` §2) —
