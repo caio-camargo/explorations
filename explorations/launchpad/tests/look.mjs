@@ -1509,3 +1509,34 @@
     sizes && scaler && half && box && flat && Object.values(has).every(Boolean),
     `3 ms scene → ${(end(light) * 100).toFixed(0)} % · 5 ms → ${(end(mid) * 100).toFixed(0)} % at ${ms(end(mid), 1, 4).toFixed(1)} ms · 8 ms → ${busy.every(r => r === 1) ? '100 % throughout' : (end(busy) * 100).toFixed(0) + ' %'} · met at 150 % → ${(end(met) * 100).toFixed(0)} % at ${ms(end(met), 2, 6).toFixed(1)} ms · from 60 % → ${(end(up) * 100).toFixed(0)} % · Low ${(end(low) * 100).toFixed(0)} % · stripes ${half} · box ${box} · flat ${flat} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
+
+// aerofx-63. The RCS jet (look & sound, effects; Q634, PLAYTEST #168: "the gas release is still a placeholder graphic").
+// A cold-gas jet per nozzle in place of the glowing box: short, gone a tenth of a second after its pulse, mostly
+// transparent, white in the sun and next to nothing in a body's shadow. The numbers are RCS_JET's; the picture is JET_FS
+// (its column of gas across the axis is mirrored here from the same numbers).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const i = pg.indexOf('const RCS_JET='), j = pg.indexOf('const VTR_VS=', i);
+  const { RCS_JET: K, rcsJet, rcsJetCol } = new Function('clamp', pg.slice(i, j) + ';return{RCS_JET,rcsJet,rcsJetCol}')((x, a, b) => x < a ? a : x > b ? b : x);
+  // one 20 ms pulse is seen, and it is gone soon after; never brighter later than earlier
+  const ages = Array.from({ length: 40 }, (_, k) => k * K.T / 40), js = ages.map(a => rcsJet(150, a));
+  const seen = !!rcsJet(150, .02) && rcsJet(150, 0).a === 1 && rcsJet(150, 0).gone === 0, gone = rcsJet(150, K.T) === null && rcsJet(150, -1) === null && K.T <= .15;
+  const fades = js.every((q, k) => q && (!k || (q.a < js[k - 1].a && q.gone > js[k - 1].gone)));
+  // short, and it goes with the thrust within bounds
+  const L = rcsJet(150, 0).L, short = L > .6 && L < 2 && rcsJet(600, 0).L > L && rcsJet(1e6, 0).L <= 2.5 * K.L && rcsJet(1, 0).L >= .6 * K.L;
+  // the light: the sun as it is in orbit (lightEnv's 5 a channel), no fill; then the same place in a body's shadow
+  const E = { sun: [5, 5, 5], sky: [0, 0, 0], gnd: [0, 0, 0] }, sun = rcsJetCol(E, 1), dark = rcsJetCol(E, 0);
+  const white = Math.max(...sun) / Math.min(...sun) < 1.05 && sun[0] > 1, faint = dark[0] > 0 && dark[0] < .1 && sun[0] / dark[0] > 20;
+  // what a ray across the axis meets, y metres from the bell (JET_FS's sum, done exactly: a Gaussian's integral)
+  const al = y => { const s = K.r0 + y * K.tan, e = 1 - y / L; return Math.max(0, K.op * (1 - Math.exp(-K.k * Math.sqrt(Math.PI) * K.r0 / s * e * e * e)) - .003); };
+  const thin = K.op <= .5 && al(0) > .2 && al(L / 2) < .1 && al(.95 * L) === 0;
+  const has = {
+    drawn: pg.includes('gl.uniform3fv(u.uCol,rcsJetCol(lightEnv(p),lit(p)));') && pg.includes('gl.uniform4f(u.uJ,jt.L,jt.a,jt.gone,RCS_JET.op);'),
+    shader: pg.includes('float al=uJ.w*uJ.y*(1.-exp(-KD*c*ds/R0))-.003;') && pg.includes('R0*R0/(s*s)*exp(-dot(p.xz,p.xz)/(s*s))*e*e*e*smoothstep(.6*uJ.z,uJ.z+1e-4,p.y)'),
+    box: !pg.includes('PUFF.vao') && !pg.includes('const PUFF='),
+    back: pg.includes('if(on){gl.cullFace(gl.BACK);gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}}')
+  };
+  check('aerofx-63: the RCS jet: a pulse is seen and gone within ' + K.T * 1000 + ' ms, fading all the way; short; white in the sun, over 20 times fainter in shadow but not nothing; mostly transparent; the placeholder box is gone',
+    seen && gone && fades && short && white && faint && thin && Object.values(has).every(Boolean),
+    `seen ${seen} · gone ${gone} · fades ${fades} · ${L.toFixed(2)} m at 150 N · sun ${sun[0].toFixed(2)} · shadow ${dark[0].toFixed(3)} (1/${(sun[0] / dark[0]).toFixed(0)}) · covers ${(al(0) * 100).toFixed(0)} % at the bell, ${(al(L / 2) * 100).toFixed(1)} % halfway · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
