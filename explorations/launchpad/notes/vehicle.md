@@ -3115,7 +3115,7 @@ turning 0.6 °/s 30 s later) and 2.8 kg without (was 14.6 kg); both now come to 
 
 **Checks:** `vehicle-52` (new): the Docking craft holds prograde on its wheels for 10 minutes with no firing (2.2 kg
 before), and the docking attitude without wheels on 0.033 kg, 0.21° off (all 30 kg before); it fails on the old code.
-Core 24 (RCS) said a wheel-less probe holding prograde spends gas in whole 20 ms pulses: no longer true of the hold, so it now checks the probe holds within 1° (0.008 rad after 60 s, as before). vehicle-42, core 25, 28, 41 (docking), control-3, control-5, vehicle-6 and vehicle-24 pass. `rcsErrSet` and
+Core 24 (RCS) said a wheel-less probe holding prograde spends gas in whole 20 ms pulses: no longer true of the hold, so it now checks the probe holds within 1° (0.008 rad after 60 s). vehicle-42, core 25, 28, 41 (docking), control-3, control-5, vehicle-6 and vehicle-24 pass. `rcsErrSet` and
 `rcsHold` are in `TAPE_V`'s fingerprint, so old tapes retire.
 
 **For a person** (TESTING 422): dock with RCS on and hands off the keys. With wheels there should be no puffs at all;
