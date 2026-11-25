@@ -926,7 +926,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   // blotches (PLAYTEST #3: those read as worn paint)
   if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fine=vn2(q2*vec2(46.,23.)+7.)*.55+vn2(q2*vec2(120.,60.)+2.)*.45,
     edge=1.-smoothstep(lv-(.1+.12*nz)*sc,lv,v),run=.75+.25*vn2(vec2(s*30.,v*1.2)),
-    fr=mk.y*edge*run*(.12+.16*fine+.1*(1.-clamp(v/max(lv,.01),0.,1.)));
+    fr=mk.y*edge*run*(.12+.16*fine+.1*(1.-clamp(v/max(lv,.01),0.,1.)))*(1.-.75*ltr);   // (Q639) thin over the lettering: black paint in the sun sheds its rime, and the name stays readable on the pad
    alb=mix(alb,vec3(.86,.9,.95),fr);rough=mix(rough,.8,fr);metal*=1.-fr;nO+=T*(fine-.5)*.15*fr;}
   if(k==2&&mk.w>0.){float g=mk.w*(1.-smoothstep(.35,.75,clamp(v/max(h,.01),0.,1.)));emis+=mix(vec3(.6,.05,0.),vec3(1.,.55,.15),g)*g*g*4.;}
   // (Q318, BEAUTY B4.1) the hull glows: uHt = the windward skin's surface temperature (K, four parts per vec4). Hottest
@@ -2291,6 +2291,27 @@ HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.
   shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
 let markT=null;const SPK={n:0,k:0};
+// (Q639, BEAUTY B1.6) The frost, in motion. On the pad a propellant tank breathes: a thin white wisp from near its top
+// about twice a second, sinking and drifting off downwind. At liftoff the frost breaks away: for ICE.T seconds each
+// frosted tank sheds small white flakes from its skin below the fuel line, most of them in the first two seconds, left
+// behind and falling as the rocket climbs (ballistic, with the rocket's own speed when they let go; ICE.g, less than
+// gravity, for the air holding a flake up). Tellus only, in thick air. They are fxPuff's particles, drawn by the smoke
+// pass: at most ICE.max flakes a second for the whole ship, half of everything on Low. ICE_FX = false (Settings ›
+// Screens): none.
+let ICE_FX=true;const ICE={T:8,tau:2.2,rate:40,max:200,g:7,wisps:1.6,acc:0,wisp:0};
+function iceTick(dt,pad,pr){if(!ICE_FX||!S||!S.alive||S.body!==TELLUS||pr<.3||!(dt>0))return;
+  const tanks=S.parts.filter(p=>p.on&&p.cap&&p.cap.fuel&&p.d.kind==='tank'&&p.pos&&!p.pose);if(!tanks.length)return;dt=Math.min(dt,.1);
+  const R=Math.random,low=typeof quality==='string'&&quality==='low'?.5:1,f=localFrame(S.r),
+    W=(p,a,y,r)=>add(S.r,qrot(S.q,sub([p.pos[0]+Math.cos(a)*r,p.y0+y,p.pos[2]+Math.sin(a)*r],S.cm))),out=a=>qrot(S.q,[Math.cos(a),0,Math.sin(a)]);
+  if(pad){ICE.acc=0;ICE.wisp+=dt*ICE.wisps*low*Math.min(tanks.length,4);
+    for(;ICE.wisp>1;ICE.wisp--){const p=tanks[R()*tanks.length|0],a=R()*6.2832,P=W(p,a,p.h*(.84+.12*R()),(p.d.r||.625)+.05);
+      fxPuff(P,add(surfVel(S.body,P),add(mul(out(a),.25+.3*R()),add(mul(f.up,-.15-.2*R()),mul(f.e,.5+.4*R())))),{s0:.18+.12*R(),grow:.5+.4*R(),a0:.3,life:3+2*R()})}
+    return}
+  const age=S.mkLiftT!=null?simT-S.mkLiftT:1e9;if(age>ICE.T)return;
+  ICE.acc+=dt*Math.min(ICE.max,ICE.rate*tanks.length)*low*Math.exp(-age/ICE.tau);
+  for(;ICE.acc>1;ICE.acc--){const p=tanks[R()*tanks.length|0];if(!(markOf(p).frost>.05))continue;
+    const a=R()*6.2832,lv=clamp(p.res.fuel/p.cap.fuel,0,1),P=W(p,a,p.h*lv*R(),(p.d.r||.625)+.02);
+    fxPuff(P,add(S.v,mul(out(a),.4+1.2*R())),{s0:.035+.05*R(),grow:0,a0:.95,life:1.6+1.8*R(),g:mul(f.up,-ICE.g)})}}
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
   const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed&&!S.mkLift){S.mkLift=true;S.mkLiftT=simT}
   const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle,
@@ -2305,6 +2326,7 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
   if(kH>0&&b===TELLUS&&sp>1){const abl=S.parts.some(p=>p.on&&p.cap.ablator&&p.res.ablator>0),va=sub(S.v,surfVel(b,S.r));SPK.n+=dt*kH*(abl?45:12);
     for(;SPK.n>1&&SPK.k<40;SPK.n--,SPK.k++){const R=Math.random,u=norm([R()-.5,R()-.5,R()-.5]);
       fxPuff(madd(S.r,u,S.radius*.8),add(madd(S.v,va,-(.02+.05*R())),mul(u,6*R())),{s0:.025+.035*R(),grow:0,a0:.9,life:.3+.7*R(),hot:abl?2.2:1.4})}SPK.n=Math.min(SPK.n,1);SPK.k=0}
+  iceTick(dt,pad,pr);   // (Q639) ice off the tanks at liftoff, vapor from them on the pad
   ventTick(dt);   // (Q294) broken tanks venting
   if(S.wet&&!S.mkSplash){S.mkSplash=true;splashFx(S)}   // (Q267) the moment it hits the sea
   if(S.landed&&S.water)surfFx(S,b,S.r,S.q,S.yTop-S.yBot,S.radius||1,dt);   // (Q335) afloat: the waterline laps

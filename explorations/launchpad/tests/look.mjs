@@ -1660,3 +1660,36 @@
   check('engine plumbing and the thrust structure (Q638): a manifold and downcomers that turn with the bell (their own kind, on its wall: the brackets seated up to 4 cm in), actuators fixed to the mount, ribs on the cone; the fins\' tips rounded',
     !bad.length && Object.values(has).every(Boolean), (bad.length ? bad.join('; ') + ' · ' : '') + rows.join(' · ') + ' · ' + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
 }
+
+// aerofx-67. Ice off the tanks at liftoff, vapor from them on the pad (look & sound parts & pad, QUEUE Q639; BEAUTY
+// B1.6). iceTick run headless on a two-tank ship: on the pad only wisps, about ICE.wisps a second per tank, slow and
+// faint; after liftoff flakes for ICE.T seconds, most of them early, from the skin of frosted tanks below the fuel
+// line, leaving with the rocket's speed and falling; none from a tank with no frost, off Tellus, in thin air, with the
+// setting off; half on Low; a long step (time warp) does not burst.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const decl = /let ICE_FX=true;const ICE=\{[^}]*\};/.exec(pg)[0];
+  const mk = () => new Function('add', 'sub', 'mul', 'norm', 'len', 'qrot', 'clamp', 'surfVel', 'localFrame', 'TELLUS', 'env',
+    `${decl}let S=null,simT=0,quality='high';const fxPuff=(r,v,o)=>env.puffs.push({r,v,o}),markOf=p=>p.mark;${body('iceTick')}
+     return{ICE,tick:(dt,pad,pr)=>iceTick(dt,pad,pr),set:(s,t,q)=>{S=s;simT=t;if(q)quality=q},off:()=>{ICE_FX=false}}`);
+  const up = [1, 0, 0], frame = () => ({ up, n: [0, 1, 0], e: [0, 0, 1] }), R0 = [6e5, 0, 0], V0 = [12, 0, 180];
+  const ship = (frost = 1) => ({ alive: true, body: TELLUS, r: R0, v: V0, q: [0, 0, 0, 1], cm: [0, 5, 0], mkLiftT: 0, parts: [
+    { on: true, d: { kind: 'tank', r: .625 }, pos: [0, 0, 0], y0: 0, h: 7, cap: { fuel: 8 }, res: { fuel: 6 }, mark: { frost } },
+    { on: true, d: { kind: 'tank', r: .625 }, pos: [0, 0, 0], y0: 8, h: 2, cap: { fuel: 2 }, res: { fuel: 2 }, mark: { frost } },
+    { on: true, d: { kind: 'engine', r: .625 }, pos: [0, 0, 0], y0: -1.3, h: 1.3, cap: {}, res: {}, mark: { frost: 0 } }] });
+  const run = (o = {}) => { const env = { puffs: [] }, M = mk()(add, sub, mul, norm, len, (q, v) => v, (x, a, b) => Math.min(b, Math.max(a, x)), () => [0, 0, 180], frame, o.body || TELLUS, env);
+    const s = ship(o.frost ?? 1); if (o.body2) s.body = o.body2; if (o.off) M.off(); const real = Math.random; let seed = 7; Math.random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    try { const dt = o.dt || 1 / 60; for (let t = 0; t < (o.T || 12); t += dt) { M.set(s, t, o.q); M.tick(dt, !!o.pad, o.pr ?? 1) } } finally { Math.random = real } return { p: env.puffs, ICE: M.ICE } };
+  const padRun = run({ pad: true, T: 20 }), fly = run(), ICE = fly.ICE, flakes = fly.p, expect = ICE.rate * 2 * ICE.tau * (1 - Math.exp(-ICE.T / ICE.tau));
+  const hy = p => p.r[1] + 5, rad = p => Math.hypot(p.r[0] - R0[0], p.r[2]);   // the ship's frame is the world's here (q = identity): height above the first tank's foot, distance from the axis
+  const wisps = padRun.p.length > 20 * 2 * ICE.wisps * .8 && padRun.p.length < 20 * 2 * ICE.wisps * 1.2 && padRun.p.every(p => !p.o.g && p.o.a0 < .4 && p.o.grow > 0 && len(sub(p.v, [0, 0, 180])) < 1.6 && rad(p) > .62);
+  const count = Math.abs(flakes.length - expect) < .15 * expect;
+  const shape = flakes.every(p => p.o.g && Math.abs(p.o.g[0] + ICE.g) < 1e-9 && p.o.grow === 0 && p.o.s0 < .1 && p.o.life < 3.5 && len(sub(p.v, V0)) < 1.7 && Math.abs(rad(p) - .645) < 1e-6 && ((hy(p) >= 0 && hy(p) <= 7 * .75 + 1e-9) || (hy(p) >= 8 && hy(p) <= 10 + 1e-9)));
+  const none = [run({ frost: 0 }), run({ pr: .2 }), run({ off: true }), run({ body2: {} })].every(x => x.p.length === 0);
+  const low = run({ q: 'low' }).p.length, warp = run({ dt: 4 }).p.length, lowOk = Math.abs(low - expect / 2) < .2 * expect / 2, warpOk = warp <= 2 * ICE.max * .1 * 3 + 2;
+  const has = { call: pg.includes('iceTick(dt,pad,pr);   // (Q639)'), setting: H.includes("ICE_FX=setGet('launchpad-ice','1')!=='0';") && H.includes("else if(id==='setIce'){ICE_FX=on;setPut('launchpad-ice',on?'1':'0')}") && H.includes("ck('setIce',ICE_FX,") };
+  check('ice and vapor off the tanks (Q639): wisps on the pad, slow and faint; flakes for a few seconds after liftoff, from frosted skin below the fuel line, falling; none without frost, off Tellus, in thin air or switched off; half on Low; no burst in a long step',
+    wisps && count && shape && none && lowOk && warpOk && Object.values(has).every(Boolean),
+    `pad 20 s: ${padRun.p.length} wisps · liftoff: ${flakes.length} flakes (expected ${expect.toFixed(0)}), Low ${low}, a 4 s step ${warp} · wisps ${wisps} count ${count} shape ${shape} none ${none} low ${lowOk} warp ${warpOk} · call ${has.call} setting ${has.setting}`);
+}

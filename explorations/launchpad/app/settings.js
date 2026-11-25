@@ -16,14 +16,15 @@ function applyQuality(q){const Q=QUAL[q]||QUAL.high,f=Q.fx;quality=QUAL[q]?q:'hi
   CLOUD_VOL=!!f.CLOUD_VOL;BLOOM=!!f.BLOOM;PLUME_LIGHT=!!f.PLUME_LIGHT;IMPACT_FX=!!f.IMPACT_FX;VAPOR_FX=!!f.VAPOR_FX;HAZE_FX=!!f.HAZE_FX;SHIP_SHADOW=!!f.SHIP_SHADOW;   // (the re-entry plasma stays: it tells you something)
   RS_MAX=Q.rs;RS=Math.min(RS,RS_MAX)}
 applyQuality(quality);
-GAUGES=setGet('launchpad-gauges','1')!=='0';SHAKE_LV=Math.min(2,Math.max(0,+setGet('launchpad-shake','1')||0));SHAKE_FX=SHAKE_LV>0;   // (Q360, Q402) the camera shake: 0 off, 1 gentle, 2 full
+GAUGES=setGet('launchpad-gauges','1')!=='0';ICE_FX=setGet('launchpad-ice','1')!=='0';   // (Q639) ice and vapor off the tanks
+SHAKE_LV=Math.min(2,Math.max(0,+setGet('launchpad-shake','1')||0));SHAKE_FX=SHAKE_LV>0;   // (Q360, Q402) the camera shake: 0 off, 1 gentle, 2 full
 function renderSettings(){const el=$('settings');if(!el)return;const ck=(id,on,l,t='')=>`<label title="${t}"><input type="checkbox" id="${id}"${on?' checked':''}> ${l}</label>`;
   el.innerHTML=`<span class="x" data-ov="settings">✕</span><h2>Settings</h2>`
     +`<h3>Sound</h3>${ck('setSnd',AUD.on,'sound  [F4]')}<div id="setSound"></div>`
     +`<h3>Graphics</h3><div>${Object.entries(QUAL).map(([k,v])=>`<button data-qual="${k}"${k===quality?' class="on"':''}>${v.l}</button>`).join('')}</div>`
     +`<div class="sub">${QUAL[quality].d}. The resolution also drops by itself while frames are slow.</div>`
     +ck('setPerf',perfOn,'performance readout')
-    +`<h3>Screens</h3>${ck('setGauges',GAUGES,'flight gauges (altitude, air, q, Mach, heat)')}<div>camera shake (max-q, Mach 1, staging, re-entry): ${['Off','Gentle','Full'].map((l,k)=>`<button data-shake="${k}"${k===SHAKE_LV?' class="on"':''}>${l}</button>`).join('')}</div>${ck('setModern',modernUI(),'modern look for the logbook and the map','instead of the era\'s notebook or terminal')}`
+    +`<h3>Screens</h3>${ck('setGauges',GAUGES,'flight gauges (altitude, air, q, Mach, heat)')}<div>camera shake (max-q, Mach 1, staging, re-entry): ${['Off','Gentle','Full'].map((l,k)=>`<button data-shake="${k}"${k===SHAKE_LV?' class="on"':''}>${l}</button>`).join('')}</div>${ck('setModern',modernUI(),'modern look for the logbook and the map','instead of the era\'s notebook or terminal')}${ck('setIce',ICE_FX,'ice and vapor off the tanks at launch','flakes of frost falling at liftoff, a wisp from the tanks on the pad')}`
     +`<h3>Difficulty</h3><div>${Object.entries(LEVELS).map(([k,v])=>`<button data-lvl="${k}"${k===lvlKey()?' class="on"':''}${mode==='flight'?' disabled':''}>${v.name}</button>`).join('')}</div>`
     +`<div class="sub">${lvl().d}.${mode==='flight'?' Changes between flights.':' Records and autopilots keep the level they were flown on.'}</div>`
     +saveHTML()
@@ -66,4 +67,5 @@ document.addEventListener('change',e=>{const id=e.target.id,on=e.target.checked;
   if(id==='setSnd'){AUD.on=on;setPut('launchpad-sound',on?'1':'0');if(on)sndWake()}
   else if(id==='setPerf'){perfOn=on;document.body.classList.toggle('noperf',!perfOn);setPut('launchpad-perf',on?'1':'0')}
   else if(id==='setGauges'){GAUGES=on;setPut('launchpad-gauges',on?'1':'0')}
+  else if(id==='setIce'){ICE_FX=on;setPut('launchpad-ice',on?'1':'0')}
   else if(id==='setModern'){setPut('launchpad-modern-ui',on?'1':'0');if(!$('logbook').classList.contains('hidden'))renderLog()}});
