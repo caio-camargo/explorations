@@ -2953,3 +2953,43 @@ a steerable fin looked the same as a fixed one until it turned.
   other schools' paint on the flap (it takes the fin's school and hue like the rest). Low on the Intel GPU.
 - **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
   and get the section too; not looked at closely.
+
+## v1.374 — the craft's surface: lettering down the hull, a grain on bare metal, the cabin's light (2026-11-25, look & sound, parts & pad, QUEUE Q637; Caio's brainstorm)
+
+Caio, after the fins: "what other greebling or other visual elements might make it look better? maybe shine or some
+other surface effect? let's remain effect-budget-conscious". Of the list he approved, this is the shader-only part.
+No geometry, so nothing added to the rebuild.
+
+- **Lettering.** A tank taller than 3 m on a 1.25 m stack (`h > 3·sc`, the size that has Cape's roll bands) carries the home power's short
+  name (`POWERS[HOME].root`, capitals, 12 letters at most) stencilled down two opposite sides, a letter under a letter,
+  between the roll bands: black on a light paint, white on a dark one, laid on after the school's repaint like the
+  roundel. The font is the pads' `FONT57`; `hullBits` splits each letter's 35 bits into two ints (`uTx`), and
+  `glyph` in `MESH_FS` reads them with four taps and cuts at 0.42, so the corners round off and the stroke is a
+  little bolder than the bitmap. A letter is at most 39 cm tall on a 1.25 m tank and shrinks to fit the word; it fades
+  out as a font pixel nears a screen pixel. `HULL_FX = false` for an A/B.
+- **Every ship drawn carries the home power's name**, a rival's too: `setMarks` knows the parts, not the owner. A
+  rival's craft with a tall tank is rare today (their satellites have none). To fix when rivals fly rockets on screen.
+- **A grain on bare metal.** Where the surface is metal (not foil, a bell or the capsule's shingles), fine lines
+  round the hull go into the normal up close; further off, where they are under a pixel, the sun's highlight is
+  spread along the axis instead (five taps of the same lobe), which is what the lines do to the light. The gloss
+  varies a little along the height. Seen on the reaction wheel's bands, steel collars, the fins' leading edges and
+  shoes, Arsenal's bare upper stage. `GRAIN_FX = false` for an A/B.
+- **The cabin's light.** The capsule's window emits a warm light at 0.1 (sunlit white paint is about 4), cut to a
+  twentieth in sunlight: a lit pane on the night side and on the pad at night, dark glass by day. First try, always
+  on at 0.2: the window read tan in daylight; dropped. `CABIN_FX = false` for an A/B.
+- **Tried and dropped: portholes on the station modules.** The habitat and the lab have windows in geometry already;
+  a painted one beside them read as a sticker.
+- **From the brainstorm, found already there** (so not built): the solar cells' glint (each cover glass has its own
+  tilt, § v1.294); gloss that varies and a line highlight on Cape's paint (§ v1.362); a hot nozzle's glow and the
+  hull's heat glow. **Not built:** a polished-steel finish for a school (which school is POWERS' call, not this
+  lane's); small service marks; a beacon's blink (the mesh shader has no clock).
+- **Measured,** RTX 5050 laptop, High, `refset.mjs` with `REF_PROF=1`, views 1, 3, 6, 114, one run each, the three
+  off then on in the same build: `ship` 0.04, 0.03, 0.18, 0.10 → 0.06, 0.03, 0.12, 0.09 ms. Inside the noise.
+  Low on the Intel GPU not measured.
+- **Stills** (local, `output/launchpad/beauty/Q637/`): `whole-rocket`, `lettering-before`/`-after`,
+  `metal-grain-before`/`-after`, `window-day`, `window-night-before`/`-after`.
+- **Check:** test `aerofx-64` (every letter read back bit for bit as the shader reads it; accents, case and length;
+  the three pieces and their switches in the shader). TESTING 422.
+- **Not checked.** The other five schools' paint under the letters (white on Isle's carbon and Arsenal's olive by
+  the luminance rule, not seen in a still). A 2.5 m tank. A word of 10 to 12 letters. In orbit on the night side.
+- **Seen on the way.** A row of the capsule's rivets runs across its window (there before this change).
