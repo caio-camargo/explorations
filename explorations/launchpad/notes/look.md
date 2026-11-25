@@ -2905,3 +2905,51 @@ elements still have the same issue".
 - **Not checked.** In motion by a person (TESTING 414). Caio's own window size and scale (asked). The go-to-body
   view (app/bodyview.js) above 100 %. Memory at 150 % of a large screen (a 2560 × 1440 canvas makes a 3840 × 2160
   target with four samples; it is only reached with the frame under 6.6 ms).
+
+## v1.371 — fins with a section; a flap on the ones that steer (2026-11-25, look & sound, parts & pad, QUEUE Q635; Caio's ask)
+
+Caio: "one thing i'd like to work on is the fins, which look boxy. also, if they have a control element, like flaps,
+i'd like that graphically represented". A fin was a flat slab 7 cm thick with square edges (`fin()`, 12 triangles), and
+a steerable fin looked the same as a fixed one until it turned.
+
+- **The section** (`finShape` in `app/gl.js`). A symmetric aerofoil, the NACA 00xx thickness law (`finSec`): a round
+  nose, thickest 30 % back, a thin trailing edge. The half-thickness at the thickest line is the old 35 mm at the root
+  and `FIN_TIP` (0.4) of it at the tip (14 mm), and it flares into the hull over the first few % of the span (58 mm at
+  the root of a ring's fin): a fillet, not a plate butted on a cylinder. Normals come from the surface itself, so the
+  nose is round in the light and the sun draws a line along the span where the section turns to it. The planform is
+  unchanged (root chord on the hull, tip chord × 0.45, a straight trailing edge), so the sim's plate, the fin-tip
+  vapor and the outline the pad's rig reads still fit.
+- **Radial fins.** The root doubler was a box; it is now the fin's own foot, flaring twice as far and bare metal
+  (`opt.shoe`). The 1.35 m and 2 m plates keep a stiffener: a bead along the thickest line on each face (`opt.rib`).
+- **The flap** (Caio's pick, asked at the start: a trailing-edge flap, over an all-moving plate on a visible pivot).
+  `cfin`, `cfins` and `cfins25` are drawn as a fixed fin cut `FLAP_CH` (24 %) of the root chord above the trailing
+  edge, from `FLAP_IN` (14 %) of the span out to the tip, with a flap in the cut: a round nose on the hinge line in a
+  dark cove, a wedge to the trailing edge, a control horn and an actuator fairing on each face. The flap takes the
+  other paint of the pair (white on a black fin, black on a white one), so a steerable fin reads at rest and from far.
+- **How it moves.** The flap's vertices are a kind of their own, `FLAP_K` (19; 17 is the solar cells, 18 the
+  greebles). `MESH_VS` turns only that kind, about the radial axis through the pivot `setMoves` gives it, now the
+  hinge line. The fixed fin stays put, and the ring's radius test is gone. The shadow map's program is the same vertex
+  shader, so the flap's shadow moves with it.
+- **The sim is unchanged, and the drawing says less than it does.** The sim turns the whole plate up to 20°
+  (`d.ctl`). The flap swings `FLAP_GAIN` (1.5) times the plate's angle, 30° at full deflection, the same way round (a
+  flap down and a plate nose-up push the same way). A real flap a quarter of the chord at 30° gives well under what a
+  whole plate at 20° gives. It is a picture of "this fin steers, and which way", not of the force. If the steering
+  ever feels stronger than it looks, this is why. The builder's one-line descriptions say "a fin with a flap".
+- **Cost.** A fixed fin 36 → 600 vertices, a steerable one 1,044 (276 the flap): a ring 2,400 or 4,176. The Crewed
+  Lunar's 20 fins add about 12,000 vertices, well under the 150 k a ship of § "Study — what more triangles on the craft
+  cost", where 4× and 16× a ship's triangles read 0.14 and 0.24 ms on the RTX. The CPU rebuild is what a ship pays: each kind of fin is shaped
+  once (`FIN_T`) and turned into place per plate. Measured in the Assembly, RTX 5050 laptop, 30 rebuilds each, two
+  runs: the Orbiter 3.3–4.0 ms → 4.1–4.3; the Crewed Lunar 18.6–18.7 → 17.9–22.9 (noisy; +4 ms at worst). GPU time not
+  measured again.
+- **A/B.** `FIN_FX = false` draws the slab (its steerable plates then stay put; the doubler and the stiffener boxes are
+  gone either way). Views 196–199 in `views.js`: a fixed ring, a steerable ring with its flaps over, radial fins fixed
+  and steerable.
+- **Stills** (local, `output/launchpad/beauty/Q635/`): `ring-before`, `ring-after`, `ring-steerable-flaps`,
+  `radial-before`, `radial-after`, `radial-steerable-flaps`.
+- **Check:** test `aerofx-63` (the section's thicknesses and thickest line, normals outward, the flap its own kind and
+  clear of its cove station by station, the shader and `setMoves` wiring); `aerofx-40`'s fin line follows.
+  TESTING 419.
+- **Not checked.** In flight by a person (the flaps working through max-q, the look from the chase camera). The
+  other schools' paint on the flap (it takes the fin's school and hue like the rest). Low on the Intel GPU.
+- **Left as it was.** The planform's square tip. The docking port's guide vanes and the RTG's cooling fins call `fin()`
+  and get the section too; not looked at closely.
