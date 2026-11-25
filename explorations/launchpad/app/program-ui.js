@@ -361,8 +361,10 @@ function spinRows(){const Y=qrot(S.q,[0,1,0]),sp=dot(S.w,Y);if(!S.spun&&Math.abs
   return[['Spin',`${(Math.abs(sp)*60/2/Math.PI).toFixed(0)} rpm${wob>0.01?` · wobble ${(Math.atan(wob)*180/Math.PI).toFixed(1)}°`:''}${S.spun&&S.sas?' <span class="dim" title="SAS damps the wobble, not the spin; a roll key changes it">· SAS on the wobble</span>':''}`]]}
 function wheelRows(){if(!(S.hmax>0)||!S.wH)return[];const f=len(S.wH)/S.hmax;if(f<0.05)return[];
   return[['Wheels',`<span class="${f>0.9?'bad':f>0.6?'warn':'ok'}" title="RCS, a burn or steerable fins unload them">${(f*100).toFixed(0)}% saturated</span>`]]}
-function rcsRows(){const J=rcsJets(S);if(!J)return[];const g=rcsGas(S)*1000,dv=J.N[0].isp*G0*Math.log(S.mass/Math.max(1,S.mass-g));
-  return[['RCS',`${S.rcs?'<span class="ok">on</span>':'off'} · gas ${g.toFixed(1)} kg · Δv ${dv.toFixed(1)} m/s${S.rcsFire?` · ${S.rcsFire} firing`:''}`]]}
+// the RCS gas left (kg) and the Δv it gives (m/s): the Vehicle card's line and the RCS card's (Q633)
+function rcsLeft(){const J=rcsJets(S);if(!J)return null;const g=rcsGas(S)*1000;return{g,dv:J.N[0].isp*G0*Math.log(S.mass/Math.max(1,S.mass-g))}}
+function rcsRows(){const L=rcsLeft();if(!L)return[];
+  return[['RCS',`${S.rcs?'<span class="ok">on</span>':'off'} · gas ${L.g.toFixed(1)} kg · Δv ${L.dv.toFixed(1)} m/s${S.rcsFire?` · ${S.rcsFire} firing`:''}`]]}
 // the line-up: distance between the ports, angle between their axes, closing speed, and which RCS keys close the
 // offset (the target port's position from ours in our body axes: L/J move us +X/−X, U/O +Z/−Z)
 function armRows(){if(!S.parts.some(p=>p.on&&p.d.kind==='arm'))return[];const arm=armOf(S),a=arm&&armHeld(S,arm),bt=(op,l)=>` <button data-arm="${op}">${l}</button>`;

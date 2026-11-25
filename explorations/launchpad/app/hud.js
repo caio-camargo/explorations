@@ -75,6 +75,50 @@ function missionWatch(){if(mode!=='flight'||!S||!S.rec||!S.rec.launched||!S.aliv
     if(mcSeen.first||was===undefined||was===c.state)continue;
     if(c.state==='met')said.push(`${c.t[0].toUpperCase()+c.t.slice(1)} ✓`);else if(c.state==='lost')said.push(`${j.title}: ${c.t} ✗`)}}
   mcSeen.first=false;if(said.length)HOOK.msg(said.join(' · '))}
+// (flow, Q633; PLAYTEST #170) The RCS card, while RCS is on: the keys as a picture of the craft as the camera sees it (D43).
+// Left, *move*: the translate keys at the ends of the axes they push along (I/K the nose, J/L and U/O sideways); an axis
+// pointing at the camera is a mark at the bottom, ⊙ towards the camera, ⊗ away. Right, *turn*: the attitude keys on arcs
+// (W/S and A/D tip the nose, Q/E roll it), an arc seen edge-on likewise a mark. A key held lights its arrow. Under it, the
+// gas left. In the dark cockpit it stays within RCS_NEAR of the target (a burn on a docking approach).
+// rcsPic is pure: the craft's quaternion, the camera's R, U, Fw (HOOK.view), the inputs (INP). Test flow-64.
+const RCS_NEAR=1000;
+const RCS_T=[[[1,0,0],'L','J','tx',.5],[[0,1,0],'I','K','ty',1.1],[[0,0,1],'U','O','tz',.5]];   // body axis, + key, − key (app/loop.js), where its arrows start
+// sim/vessel.js ctrlAccel: W tips the nose to +X, D to +Z, Q rolls +X to +Z. [key, input, sign, the arc (body axes; ph:
+// the side of the craft facing the camera, so Q and E run from it both ways round), t from, t to]
+const rcsRing=a=>[Math.cos(a)*.8,-.3,Math.sin(a)*.8];
+const RCS_A=[
+  ['W','pitch',1,t=>[Math.sin(t),Math.cos(t),0],.2,.75],['S','pitch',-1,t=>[-Math.sin(t),Math.cos(t),0],.2,.75],
+  ['D','yaw',1,t=>[0,Math.cos(t),Math.sin(t)],.2,.75],['A','yaw',-1,t=>[0,Math.cos(t),-Math.sin(t)],.2,.75],
+  ['Q','roll',1,(t,ph)=>rcsRing(ph+t),.12,.95],['E','roll',-1,(t,ph)=>rcsRing(ph-t),.12,.95]];
+function hull2(P){const Q=P.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]),cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),L=[],U=[];
+  for(const p of Q){while(L.length>1&&cr(L[L.length-2],L[L.length-1],p)<=0)L.pop();L.push(p)}
+  for(const p of Q.reverse()){while(U.length>1&&cr(U[U.length-2],U[U.length-1],p)<=0)U.pop();U.push(p)}
+  return L.slice(0,-1).concat(U.slice(0,-1))}
+function rcsPic(q,V,I){const k=26,H=128,cy=H/2,out=[],f=n=>n.toFixed(1),pl=P=>P.map(p=>f(p[0])+','+f(p[1])).join(' ');
+  const at=(x0,v)=>{const w=qrot(q,v);return[x0+dot(w,V.R)*k,cy-dot(w,V.U)*k]},cls=(c,on)=>`class="${c}${on?' on':''}"`;
+  const head=(P,on,key)=>{let a=P[P.length-2];const b=P[P.length-1];if(Math.hypot(b[0]-a[0],b[1]-a[1])<.5)a=P[0];
+    const l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,u=[(b[0]-a[0])/l,(b[1]-a[1])/l],n=[-u[1],u[0]];
+    out.push(`<polyline ${cls('a',on)} points="${pl(P)}"/><polygon ${cls('h',on)} points="${pl([[b[0]+u[0]*4,b[1]+u[1]*4],[b[0]-u[0]*3+n[0]*4,b[1]-u[1]*3+n[1]*4],[b[0]-u[0]*3-n[0]*4,b[1]-u[1]*3-n[1]*4]])}"/>`
+      +`<text ${cls('k',on)} x="${f(b[0]+u[0]*10)}" y="${f(b[1]+u[1]*10)}">${key}</text>`)};
+  const marks=[0,0],mark=(pan,toward,on,key)=>{const x=pan*145+10+marks[pan]++*28,y=H-8;   // ⊙ comes at the camera, ⊗ goes away
+    out.push(`<circle ${cls('m',on)} cx="${x}" cy="${y}" r="5"/>`+(toward?`<circle ${cls('h',on)} cx="${x}" cy="${y}" r="1.6"/>`:`<path ${cls('a',on)} d="M${x-3} ${y-3}L${x+3} ${y+3}M${x+3} ${y-3}L${x-3} ${y+3}"/>`)
+      +`<text ${cls('k',on)} x="${x+12}" y="${y}">${key}</text>`)};
+  const craft=x0=>{const R=[];for(let i=0;i<16;i++){const a=i*Math.PI/8,c=Math.cos(a)*.38,s=Math.sin(a)*.38;R.push([c,-.9,s],[c,.4,s])}R.push([0,1,0]);
+    const sh=R.filter(v=>v[1]===.4).map(v=>at(x0,v));out.push(`<polygon class="c" points="${pl(hull2(R.map(v=>at(x0,v))))}"/><polyline class="r" points="${pl([...sh,sh[0]])}"/>`)};
+  out.push('<text class="t" x="2" y="8">move</text><text class="t" x="147" y="8">turn</text>');
+  craft(72);
+  for(const[ax,kp,km,inp,e0]of RCS_T){const w=qrot(q,ax),px=dot(w,V.R),py=-dot(w,V.U),l=Math.hypot(px,py);
+    for(const sg of[1,-1]){const on=I[inp]===sg,key=sg>0?kp:km;
+      if(l<.35){mark(0,(dot(w,V.Fw)<0)===(sg>0),on,key);continue}
+      const s=at(72,ax.map(x=>x*e0*sg)),u=[px/l*sg,py/l*sg];head([s,[s[0]+u[0]*12,s[1]+u[1]*12]],on,key)}}
+  craft(217);const ph=Math.atan2(-dot(qrot(q,[0,0,1]),V.Fw),-dot(qrot(q,[1,0,0]),V.Fw));   // the ring's side nearest the camera
+  for(const[key,inp,sg,fn,t0,t1]of RCS_A){const r=inp==='roll'?1:1.3,on=I[inp]===sg,P=[];for(let i=0;i<=8;i++)P.push(at(217,fn(t0+(t1-t0)*i/8,ph).map(x=>x*r)));
+    if(Math.hypot(P[8][0]-P[0][0],P[8][1]-P[0][1])>=10){head(P,on,key);continue}
+    const tg=qrot(q,sub(fn(t1,ph),fn(t1-.05,ph)));mark(1,dot(tg,V.Fw)<0,on,key)}
+  return`<svg class="rcsp" viewBox="0 0 290 ${H}" width="290" height="${H}"><title>RCS keys as the camera sees the craft</title>${out.join('')}</svg>`}
+function rcsCardRows(){const L=rcsLeft();if(!L)return[];const V=HOOK.view&&HOOK.view.R?HOOK.view:{R:[1,0,0],U:[0,1,0],Fw:[0,0,-1]};
+  return[[rcsPic(S.q,V,INP)],['Gas',`${L.g.toFixed(1)} kg · Δv ${L.dv.toFixed(1)} m/s`]]}
+const rcsNear=()=>{const T=tgtOf(S);return!!T&&len(T.dr)<RCS_NEAR};
 const HUD_CARDS=[
   {id:'mission',title:'Mission',rows:missionRows},   // (Q548) first: what the flight is for. (Q600) In CP_CARDS: on screen the whole flight, short in a critical phase
   // Ascent: shown with the gauges (ascentOn)
@@ -88,8 +132,9 @@ const HUD_CARDS=[
   {id:'tipped',title:'On its side',rows:()=>tipRows()},   // (flow, Q527) a toppled lander: what's out under it and why, the damage
   {id:'payload',title:'Payload',rows:payloadRows},
   {id:'fleet',title:'Fleet',rows:fleetRows},
-  {id:'vehicle',title:'Vehicle',when:()=>spinRows().length+wheelRows().length>0||!!S.rcs,
-    rows:()=>[['Mass',`${(S.mass/1000).toFixed(2)} t · ${S.gload.toFixed(1)} g`],...spinRows(),...wheelRows(),...rcsRows()]},
+  {id:'rcs',title:'RCS',when:()=>!!S.rcs&&!!rcsJets(S),cp:()=>rcsNear(),rows:()=>rcsCardRows()},   // (Q633) the keys as a picture, the gas left; in the dark cockpit near a target
+  {id:'vehicle',title:'Vehicle',when:()=>spinRows().length+wheelRows().length>0,   // (Q633) RCS on has its own card: the RCS line here only while it's off
+    rows:()=>[['Mass',`${(S.mass/1000).toFixed(2)} t · ${S.gload.toFixed(1)} g`],...spinRows(),...wheelRows(),...(S.rcs?[]:rcsRows())]},
   {id:'hardware',title:'Hardware',rows:()=>[...bayRows(),...armRows()]},
   {id:'groups',title:'Action groups',when:()=>S.alive&&(S.ag||[]).some(g=>!g.stock),rows:agRows},   // (vehicle, Q329) one button each, its key on it
   {id:'rover',title:'Rover',rows:rvRows}];
@@ -100,7 +145,7 @@ function cardFolds(cards,avail){const fold=new Set();let tot=cards.reduce((a,c)=
   return fold}
 const hudPins=new Set((()=>{try{return JSON.parse(localStorage.getItem('launchpad-hud-pins')||'[]')}catch(e){return[]}})()),hudShut=new Set(),hudSince=new Map();
 // the cards on screen now, each with its rows (Q600: its own function, so a test can ask it in a burn)
-function hudCardsOn(){return mode==='flight'&&!!S?HUD_CARDS.filter(c=>view!=='map'||c.id==='target'||c.id==='stat').map(c=>{const pin=hudPins.has(c.id);if(!pin&&c.when&&!c.when())return null;if(!pin&&typeof cpPhase==='function'&&cpPhase()&&!CP_CARDS.includes(c.id))return null;   // (Q286) the dark cockpit
+function hudCardsOn(){return mode==='flight'&&!!S?HUD_CARDS.filter(c=>view!=='map'||c.id==='target'||c.id==='stat').map(c=>{const pin=hudPins.has(c.id);if(!pin&&c.when&&!c.when())return null;if(!pin&&typeof cpPhase==='function'&&cpPhase()&&!CP_CARDS.includes(c.id)&&!(c.cp&&c.cp()))return null;   // c.cp: kept while it says so (Q633)   // (Q286) the dark cockpit
      const rows=c.rows();return rows.length?{c,rows,pin}:null}).filter(Boolean):[]}
 function renderCards(){const el=$('cards');if(!el)return;const now=performance.now();
   const on=hudCardsOn();
@@ -108,7 +153,7 @@ function renderCards(){const el=$('cards');if(!el)return;const now=performance.n
   for(const x of on)if(!hudSince.has(x.c.id))hudSince.set(x.c.id,now);
   el.classList.toggle('hidden',!on.length);if(!on.length){el.innerHTML='';return}
   el.innerHTML=on.map(({c,rows,pin})=>`<div class="card${hudShut.has(c.id)?' fold':''}" data-card="${c.id}"><div class="ct"><span data-cfold="${c.id}">${c.title}</span><button class="pin${pin?' on':''}" data-cpin="${c.id}" title="${pin?'unpin':'keep this card open'}">📌</button></div>`
-    +`<table>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table></div>`).join('');
+    +`<table>${rows.map(r=>r.length===1?`<tr><td colspan="2" class="pic">${r[0]}</td></tr>`:`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table></div>`).join('');   // a one-cell row is a picture, the card's width (Q633)
   // too tall for the window: fold the oldest unpinned cards to their title bars
   const top=el.getBoundingClientRect().top,avail=innerHeight-top-12,C=[...el.children].map(d=>({d,id:d.dataset.card,h:d.offsetHeight,ht:d.firstChild.offsetHeight+2,pinned:hudPins.has(d.dataset.card),since:hudSince.get(d.dataset.card)}));
   const F=cardFolds(C,avail);for(const x of C)if(F.has(x.id))x.d.classList.add('fold')}
