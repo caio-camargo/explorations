@@ -1559,6 +1559,8 @@
     finite && outward && section && bounds && cut && free && Object.values(has).every(Boolean),
     `fixed fin ${fixed.length} vertices (slab ${old.length}), steerable ${steer.length} of which flap ${flap.length} · half-thickness root ${(root * 1000).toFixed(0)} mm, ${(FLAP_IN * 100).toFixed(0)} % span ${(mid * 1000).toFixed(0)}, tip ${(tip * 1000).toFixed(0)}; thickest at ${(xOf(best) * 100).toFixed(0)} % chord, trailing edge ${(te * 1000).toFixed(1)} mm · flap nose reach ${(reach * 1000).toFixed(0)} mm, cove at ${(cove * 1000).toFixed(0)} · ` +
     `finite ${finite} outward ${outward} section ${section} bounds ${bounds} cut ${cut} free ${free} · ` + Object.entries(has).map(([k, v]) => `${k} ${v}`).join(' '));
+}
+
 // aerofx-64. The RCS jet (look & sound, effects; Q634, PLAYTEST #168: "the gas release is still a placeholder graphic").
 // A cold-gas jet per nozzle in place of the glowing box: short, gone a tenth of a second after its pulse, mostly
 // transparent, white in the sun and next to nothing in a body's shadow. The numbers are RCS_JET's; the picture is JET_FS
