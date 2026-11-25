@@ -1186,15 +1186,35 @@ const rcsGas=s=>s.parts.reduce((a,p)=>a+(p.on&&p.res.gas>0?p.res.gas:0),0);   //
 const rcsBusy=s=>{const I=inpOf(s);return!!(s.rcs&&rcsJets(s)&&(s.sas||I.tx||I.ty||I.tz||I.pitch||I.yaw||I.roll))};
 // one step: translation from the keys, plus the torque (body frame, N·m) the wheels couldn't give. Returns nothing; the
 // forces land on the quads via addF, and the gas comes out of the bottles.
-function rcsStep(s,dt,tauB){const J=s.rcs&&rcsJets(s);s.rcsFire=0;s.rcsShots=[];if(!J)return;const n=J.N.length,duty=new Array(n).fill(0),
-    cmd=(I=>[I.tx||0,I.ty||0,I.tz||0])(inpOf(s));
+// (Q632, PLAYTEST #169) holding, RCS has a deadband and a minimum impulse, as real reaction control does. Without them
+// every small error of a holding SAS became a full 20 ms pulse: a Docking craft holding prograde spent 13 kg of gas an
+// hour with its wheels doing the work, and without wheels emptied its 30 kg in under two minutes. Within RCS_SLEW of the
+// target the jets leave the law alone and work a phase plane about each body axis, on the angle off along it and the
+// turn relative to the target's own (rcsErrSet): inside RCS_DB they let it drift; past it, a drift outward (or none) is
+// turned into a slow one back, half a minimum impulse, so the craft crosses the deadband and back on two of them; a
+// drift outward inside it is stopped only past the band, RCS_DW or one minimum impulse. A hold's jets fire for part of
+// the step, RCS_MIB of it at least (rcsStep); a bigger turn flies on the law in whole pulses, and so does the law's
+// torque while gimbals or fins steer (a burn: they hold the attitude, RCS tops up as before, R26) or the wheels unload
+// (law). A rotation key and the translation keys go straight through.
+let RCS_DB=0.5*Math.PI/180,RCS_DW=0.05*Math.PI/180,RCS_SLEW=5*Math.PI/180,RCS_MIB=0.25;
+function rcsHold(s,J,dt,tauB,law){const E=s.rcsErr;if(law||!E||E[0]>RCS_SLEW)return tauB;const[ang,ax,wb]=E,out=[0,0,0];let any=false;
+  for(let a=0;a<3;a++){let p=0;for(const b of[J.basis[6+2*a],J.basis[7+2*a]])if(b)p=Math.max(p,b.cap*J.Lr*dt/s.I[a]);if(!p)continue;   // one whole pulse's rate change about this axis
+    const th=ang*ax[a],sg=th<0?-1:1,w=wb[a]*sg,m=RCS_MIB*p,v=Math.max(RCS_DW,m/2);   // w: the drift back along this axis
+    let d=0;if(Math.abs(th)>RCS_DB){if(w<=0)d=Math.max(v-w,m)}else if(w<-Math.max(RCS_DW,m))d=-w;
+    if(d){out[a]=sg*d*s.I[a]/dt;any=true}}
+  if(!any)return null;out.fine=true;return out}
+function rcsStep(s,dt,tauB,law){const J=s.rcs&&rcsJets(s);s.rcsFire=0;s.rcsShots=[];if(!J)return;if(tauB)tauB=rcsHold(s,J,dt,tauB,law);
+  const n=J.N.length,duty=new Array(n).fill(0),
+    cmd=(I=>[I.tx||0,I.ty||0,I.tz||0])(inpOf(s)),fine=!!(tauB&&tauB.fine)&&!cmd.some(x=>x);   // a hold's pulses, no translation key: each as long as it needs (Q632)
   const addAxis=(k,frac)=>{const B=J.basis[k];if(!B||frac<=0)return;for(let j=0;j<n;j++)duty[j]+=Math.min(1,frac)*B.u[j]};
   for(let a=0;a<3;a++)if(cmd[a])addAxis(2*a+(cmd[a]<0?1:0),Math.abs(cmd[a]));
   if(tauB)for(let a=0;a<3;a++){const v=tauB[a]/J.Lr,k=6+2*a+(v<0?1:0),B=J.basis[k];if(B)addAxis(k,Math.abs(v)/B.cap)}
   let gas=rcsGas(s),used=0;
-  for(let j=0;j<n;j++){const z=J.N[j];J.acc[j]+=Math.min(1,duty[j]);if(J.acc[j]<1){if(duty[j]===0)J.acc[j]=0.5;continue}J.acc[j]-=1;
-    const dm=z.F*dt/(z.isp*G0)/1000;if(gas-used<dm)continue;used+=dm;s.rcsFire++;s.rcsShots.push(j);
-    addF(z.p,z.d[0]*z.F,z.d[1]*z.F,z.d[2]*z.F,z.at[0],z.at[1],z.at[2])}
+  for(let j=0;j<n;j++){const z=J.N[j];let f=1;
+    if(fine){J.acc[j]=0.5;f=Math.min(1,duty[j]);if(f<RCS_MIB-1e-9)continue}   // a hold fires for part of the step, at least the minimum impulse
+    else{J.acc[j]+=Math.min(1,duty[j]);if(J.acc[j]<1){if(duty[j]===0)J.acc[j]=0.5;continue}J.acc[j]-=1}
+    const dm=f*z.F*dt/(z.isp*G0)/1000,F=f*z.F;if(gas-used<dm)continue;used+=dm;s.rcsFire++;s.rcsShots.push(j);
+    addF(z.p,z.d[0]*F,z.d[1]*F,z.d[2]*F,z.at[0],z.at[1],z.at[2])}
   // gas out of the fullest bottles first (none with the tester's infinite fuel, Q542)
   if(!(TEST.on&&TEST.fuel))for(const p of s.parts.filter(p=>p.on&&p.res.gas>0).sort((a,b)=>b.res.gas-a.res.gas)){if(used<=0)break;const x=Math.min(used,p.res.gas);p.res.gas-=x;used-=x}}
 // paying out an imaging contract (the same terms a flight-completed contract gets)

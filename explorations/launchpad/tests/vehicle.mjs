@@ -1426,6 +1426,27 @@ return out`);
     `bracket ${okLift} (${L.map(x => x.toFixed(4)).join(' ')}); aim ${okAim} (axis ${api.partAxis(r45.p).map(v => v.toFixed(3))}); clamp ${okClamp}; boom ${okBoom}; envelope ${okEnv} (${on.length} bands at ${on.map(b => b.r.toFixed(3))} vs ${tip.toFixed(3)}); save ${okSave}`);
 }
 
+// vehicle-52. RCS holds without chattering (vehicle, QUEUE Q632, PLAYTEST #169: "constantly making what are apparently small
+// and unnecessary adjustments"): holding on SAS, RCS has a deadband and a minimum impulse (rcsHold, sim/space.js). The Docking
+// craft beside its dummy, turned onto the target on the tester's endless gas, then 10 minutes held with nothing pressed:
+// with its wheels the jets stay quiet (they spent 2.2 kg in those 10 minutes holding prograde), and with the wheels taken
+// out it holds the docking attitude, roll included, on a few tens of grams (it emptied all 30 kg in 1.3 minutes).
+{
+  const D = new Function(src + 'return {newShip,placeCraft,physStep,geom,PRESETS,DT,get TEST(){return TEST},HOOK,set t(v){simT=v}};')();
+  D.HOOK.msg = () => {}; D.HOOK.news = () => {};
+  const hold = (mode, wheels) => { D.t = 0; const s = D.newShip(D.PRESETS.Docking); D.placeCraft(s, { body: 'Tellus', where: 'beside', alt: 300e3, inc: 0, target: 'dummy', T: 0 });
+    s.throttle = 0; s.sas = true; s.sasMode = mode; s.rcs = true;
+    if (!wheels) { for (const p of s.parts) if (p.d.torque) p.d = Object.assign({}, p.d, { torque: 0 }); D.geom(s); }
+    const gas = () => s.parts.reduce((a, p) => a + (p.on && p.res && p.res.gas || 0), 0) * 1000;
+    D.TEST.on = D.TEST.fuel = true; for (let i = 0; i < 120 / D.DT; i++) D.physStep(s, D.DT); D.TEST.on = D.TEST.fuel = false;
+    const g0 = gas(); let fires = 0; for (let i = 0; i < 600 / D.DT; i++) { D.physStep(s, D.DT); fires += s.rcsFire; }
+    return { s, used: g0 - gas(), fires, err: s.rcsErr ? s.rcsErr[0] * 180 / Math.PI : NaN }; };
+  const pro = hold('pro', true), dock = hold('dock', false);
+  check('vehicle-52: holding with RCS on and nothing pressed, the jets don\'t chatter: the Docking craft keeps prograde on its wheels with no pulse in 10 min, and docking attitude without wheels on under 0.1 kg, within 0.6°',
+    pro.fires === 0 && pro.used === 0 && pro.s.torque > 0 && dock.s.torque === 0 && dock.used < 0.1 && dock.err < 0.6,
+    `wheels, prograde: ${pro.fires} nozzle firings, ${pro.used.toFixed(3)} kg (was 2.2 kg); no wheels, docking: ${dock.fires} firings, ${dock.used.toFixed(3)} kg, ${dock.err.toFixed(2)}° off (was all 30 kg in 1.3 min)`);
+}
+
 // vehicle-53. Views (vehicle, QUEUE Q620, bench slice 4; D47 point 2; notes/vehicle.md § "Plan: the bench as its own builder" § 3–5):
 // sim/views.js tests a part's cone against the craft's solids (a frame's prism, every other part's bounding cylinder on its pose)
 // with weighted rays, and what it sees round an orbit for the design's declared attitude. (a) a slab over half a cone reads

@@ -847,6 +847,13 @@ let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
 function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)if(gimOK(p))tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
 // ... and about roll: a gimbal only rolls the vessel from off its axis (side boosters, clusters), so one central engine adds nothing
 function ctrlAuthRoll(s,engs,thr){let tau=s.torque;for(const p of engs){if(!gimOK(p))continue;const r=sub(thrustPt(p),s.cm);tau+=p.d.thrust*1000*engK(p)*thr*Math.sin(p.d.gim*Math.PI/180)*Math.hypot(r[0],r[2])}return tau}
+// what RCS's deadband reads (rcsHold, sim/space.js; Q632), in the body frame: the angle off, the axis to turn about, and
+// the turn relative to the target's own (a prograde hold turns once an orbit, a pitch program faster; the target's step
+// to step change, none for a new target or none at all)
+function rcsErrSet(s,tgr,ang,ax,wS){const P=s.rcsTg,dt=P?simT-P.t:0;let wt=[0,0,0];
+  if(tgr&&P&&P.v&&dt>0&&dt<1&&!!tgr.q===!!P.v.q){let d;if(tgr.q){const e=qmul(tgr.q,qconj(P.v.q)),sg=e[3]<0?-2:2;d=[e[0]*sg,e[1]*sg,e[2]*sg]}else d=cross(P.v,tgr);
+    if(len(d)<0.05)wt=mul(d,1/dt)}
+  s.rcsTg={t:simT,v:tgr};const qi=qconj(s.q);s.rcsErr=[ang,qrot(qi,ax),qrot(qi,sub(wS,wt))]}
 // Control: reaction wheels in the pod plus engine gimbal (plus RCS when asked). Returns the commanded angular acceleration
 // (world frame); physStep gives the wheels' share as a torque and turns the nozzles for the rest (gimSteer).
 function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel you fly
@@ -857,12 +864,12 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   // wobble instead of eating the spin. A roll key under SAS hands the roll back (SAS then spins it down)
   if(s.spun&&(Math.abs(dot(s.w,Y))<SPIN_MIN/2&&!s.parts.some(p=>p.on&&p.spinT>0)||s.sas&&I.roll))s.spun=false;
   const wS=s.spun?sub(s.w,mul(Y,dot(s.w,Y))):s.w;
-  if(I.pitch||I.yaw||I.roll){s.hold=null;s.sasE=s.sasI=null;
+  if(I.pitch||I.yaw||I.roll){s.hold=null;s.sasE=s.sasI=null;if(rcs)s.rcsErr=null;   // a key held: RCS answers it at once (no deadband, Q632)
     if(s.sas){ // fly-by-wire: keys command a rotation rate, SAS spends the torque to get there
       const wb=[dot(s.w,X),dot(s.w,Y),dot(s.w,Z)],wd=[I.yaw*.3,s.spun?wb[1]:-I.roll*.8,-I.pitch*.3],K=avOf(s).k;
       return add(add(mul(X,clamp((wd[0]-wb[0])*K,-aP,aP)),mul(Y,clamp((wd[1]-wb[1])*K,-aR,aR))),mul(Z,clamp((wd[2]-wb[2])*K,-aP,aP)))}
     return add(add(mul(X,I.yaw*aP),mul(Y,-I.roll*aR)),mul(Z,-I.pitch*aP))}
-  if(!s.sas){s.sasE=s.sasI=null;return[0,0,0]}
+  if(!s.sas){s.sasE=s.sasI=null;if(rcs)s.rcsErr=null;return[0,0,0]}
   if(!s.hold&&len(wS)<0.02)s.hold=Y;
   const tgr=sasTarget(s);let ax,ang,aE=aP;
   if(tgr&&tgr.q){const e=qmul(tgr.q,qconj(s.q)),sg=e[3]<0?-1:1,v=[e[0]*sg,e[1]*sg,e[2]*sg],sv=len(v);   // a whole attitude, roll included (a side port)
@@ -877,7 +884,7 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   let lag=0;if(s.throttle>0)for(const p of E)lag=Math.max(lag,p.d.gim/p.d.gimR);
   if(fP>0.25*s.torque)for(const p of s.fins)if(p.d.ctl)lag=Math.max(lag,p.d.ctl/p.d.ctlR);   // steerable fins, once they carry real weight
   const A=sasLoop(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
-  let al=mul(sub(wd,wS),A.k);
+  let al=mul(sub(wd,wS),A.k);if(rcs)rcsErrSet(s,tgr,ang,ax,wS);
   if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,wS),A.k/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
   // the air's push away from the airflow, cancelled as it comes (vehicle, Q382): while engines burn nose-first, the part of the
   // last step's aero moment that turns the nose away from the airflow (an unstable airframe's), the steering fins' own share
@@ -1127,7 +1134,7 @@ function physStep(s,dt){
   else s.tauA=null;
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
   if(s.rcs&&alR){const ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
-    rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}
+    rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]],steer>0||s.wDump)}   // (Q632) the law straight through while gimbals or fins steer, or the wheels unloadelse{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   seaForces(s,dt);   // and the sea holds it up (world session, Q274)
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}

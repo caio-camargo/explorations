@@ -3061,6 +3061,66 @@ complaint there was that a tilted part's base half sank into the frame, so a til
 - Wings on the top or bottom face still have a meaningless `phi` (from slice 2).
 - Views (slice 4, Q620) are next: a tilt is what a view's cone will follow.
 
+## v1.377 — RCS holds without chattering: a deadband and a minimum impulse (2026-11-25, vehicle session, QUEUE Q632, PLAYTEST #169)
+
+**Why:** Caio, docking on *First station up*: with RCS on and nothing pressed the jets kept "making what are apparently
+small and unnecessary adjustments". `physStep` handed `rcsStep` the attitude law's leftover torque every step,
+`(alR − alC)·I` plus what the wheels didn't give, and `rcsStep`'s duty accumulator turns any duty above zero into a whole
+20 ms pulse sooner or later. The leftover is never zero while the craft is off its target by any amount: the RCS call
+of `ctrlAccel` counts RCS's authority in its braking-limited rate √(α·θ), so it always asks to turn a little faster than
+the wheels' call. Each such pulse on the Docking craft is 0.4 °/s in pitch (1.6 °/s in roll); the wheels then took it
+back out, and the wheels' stored momentum climbed as the two fought.
+
+**Measured first** (`study_rcshold.mjs`: the Docking craft beside the tester's dummy at 300 km, turned onto the mode's
+target on the tester's endless gas for 120 s, then held an hour with nothing pressed; 30 kg of gas):
+
+| SAS mode | wheels, before | wheels, after | no wheels, before | no wheels, after |
+|---|---|---|---|---|
+| hold (stab) | 0 | 0 | 0 | 0 |
+| prograde | 13.3 kg/h (3,050 nozzle firings) | **0** | all 30 kg in 1.3 min | **0** |
+| target | 12.1 kg/h | **0** | all 30 kg in 1.3 min | **0.017 kg/h** |
+| docking (attitude and roll) | 10.4 kg/h | **0** | all 30 kg in 1.3 min | **0.18 kg/h** |
+
+A plain hold asks nothing of the jets with nothing to disturb it, before or after. Every mode whose target moves
+(prograde turns once an orbit, 0.116 °/s here) chattered. Without wheels the craft was worse than useless: its RCS
+emptied itself in a limit cycle. (Not measured: a disturbance torque. The sim has none in orbit, no gravity gradient
+or sloshing, so a hold's only work is following its target.)
+
+**What** (sim/space.js `rcsHold`, `rcsStep`; sim/vessel.js `rcsErrSet`, `ctrlAccel`, `physStep`):
+- The RCS call of `ctrlAccel` leaves what the deadband reads in `s.rcsErr`: the angle off, the axis to turn about, and
+  the craft's turn **relative to its target's own** (`rcsErrSet` differences the target from step to step: a prograde
+  hold or a pitch program turns, and following it is not an error). Under a rotation key, or with SAS off, it is null.
+- **Within 5° of the target (`RCS_SLEW`) the jets leave the law alone and work a phase plane about each body axis**:
+  inside the deadband (`RCS_DB`, 0.5°) they let the craft drift; past it, a drift outward (or none) becomes a slow drift
+  back of half a minimum impulse, so the craft crosses and comes back on two small pulses; a drift outward inside the
+  deadband is stopped only when it is faster than its band (`RCS_DW` 0.05 °/s, or one minimum impulse).
+- **A minimum impulse:** a hold's jets fire for part of the step, a quarter of it at least (`RCS_MIB`, 5 ms), at a force
+  scaled to match, instead of a whole 20 ms pulse. The first version had whole pulses only, and the craft without wheels
+  still spent 21 to 42 kg an hour: its rate could only take values a whole pulse apart, and a 0.4 °/s roll left from the
+  turn could never be taken out (it sat between two of them).
+- **Unchanged:** a bigger turn flies on the law in whole pulses; so does the
+  law's torque **while gimbals or fins steer** (a burn: they hold the attitude, RCS tops up as R26 left it) and while the
+  wheels unload; a rotation key goes straight through (17 °/s after 2 s of pitch, as before); **the translation keys are
+  untouched** (TESTING 58), and while one is held a hold's pulses go back to whole ones.
+
+**Tried and dropped, in order:** (1) a hysteresis gate on the law's own torque (fire past 0.5° or 0.2 °/s off, until back
+inside a third of both): the wheeled craft went quiet, but without wheels each correction became a 64-firing slew on the
+√(α·θ) law, worse than before (the rate it read, the law's wanted rate less the turn, is large at any angle because
+RCS's α is large). (2) A phase plane on the inertial rate: it fought vehicle-42's pitch program (0.43 °/s of turn the
+wheels were following) and spent 15.6 kg on the climb. (3) A phase plane along the error axis only, in whole pulses:
+the 21 to 42 kg/h above. The per-axis plane with the minimum impulse is what's left.
+
+**Also better:** let go of a pitch key held 2 s under SAS: the stop costs 0.73 kg with wheels (was 4.5 kg, and still
+turning 0.6 °/s 30 s later) and 2.8 kg without (was 14.6 kg); both now come to rest. vehicle-42's climb: 0.09 kg (was 0.07).
+
+**Checks:** `vehicle-52` (new): the Docking craft holds prograde on its wheels for 10 minutes with no firing (2.2 kg
+before), and the docking attitude without wheels on 0.033 kg, 0.21° off (all 30 kg before); it fails on the old code.
+Core 24 (RCS) said a wheel-less probe holding prograde spends gas in whole 20 ms pulses: no longer true of the hold, so it now checks the probe holds within 1° (0.008 rad after 60 s). vehicle-42, core 25, 28, 41 (docking), control-3, control-5, vehicle-6 and vehicle-24 pass. `rcsErrSet` and
+`rcsHold` are in `TAPE_V`'s fingerprint, so old tapes retire.
+
+**For a person** (TESTING 425): dock with RCS on and hands off the keys. With wheels there should be no puffs at all;
+without, a small one every few seconds at most.
+
 ## v1.378 — views: what a satellite's parts see (bench slice 4, 2026-11-25, vehicle session, QUEUE Q620, D47 point 2)
 
 **Why:** slice 4 of § "Plan: the bench as its own builder". D47's point 2: what each part must see takes the place of

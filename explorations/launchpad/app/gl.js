@@ -664,8 +664,8 @@ uniform mat4 uVP,uM;uniform float uFc;uniform vec4 uMv[48];out vec3 vN,vC,vP,vO,
 vec3 rotA(vec3 v,vec3 a,float t){float c=cos(t),s=sin(t);return v*c+cross(a,v)*s+a*dot(a,v)*(1.-c);}
 vec3 qrv(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
 void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
- if((k==2||k==19)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
-  if(B.x<1.5){if(k==2){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}
+ if((k==2||k==19||k==20)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
+  if(B.x<1.5){if(k==2||k==20){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}   // the bell, and what is fixed to it (20, FIT_K, Q638)
   else if(k!=19);
   else if(B.x<2.5){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
    vec3 ax=vec3(a.x,0.,a.y);P=A.xyz+rotA(d,ax,Q[i]);N=rotA(N,ax,Q[i]);}
@@ -682,6 +682,7 @@ float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
 vec3 hsv(float h,float s,float v){vec3 c=clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);return v*mix(vec3(1.),c,s);}
 const bool ROUNDEL_ON=true;   // false: no roundels (edit here for an A/B)
+const bool MOUNT_ON=true;   // false: the engine mount's plain cone (Q638; edit here for an A/B)
 const bool SKIN_ON=true;   // false: no surface pass (Q316, B1.4; edit here for an A/B)
 // the roundel (Q102 step 5; Q228 for the other four, app/flags.js roundelBody's designs): a disc of radius 1 in u, by
 // school: Cape red and white stripes with a blue canton of small stars; Steppe one gold star on red; Arsenal a chevron
@@ -703,6 +704,13 @@ vec4 roundel(vec2 u,int sch,float px,float hue){float r=length(u),cov=1.-smooths
 const int DG[10]=int[10](31599,11415,29671,29391,23497,31183,31215,29330,31727,31695);
 float serial(vec2 q,int pi){if(q.x<0.||q.x>=15.||q.y<0.||q.y>=5.)return 0.;int i=int(q.x)/4,cx=int(q.x)-i*4;if(cx>2)return 0.;
  int n=(max(pi,0)*37+1013)%9000+1000,d=(n/(i==0?1000:i==1?100:i==2?10:1))%10;return float((DG[d]>>(int(q.y)*3+(2-cx)))&1);}
+// (Q637) lettering down the hull: uTx = the word, a 5×7 capital a letter (FONT57's 35 bits, rows top to bottom: .x the
+// top four rows, .y the bottom three), uTxN its length. A letter is read with bilinear taps and cut at half, so the
+// stencil's corners round off and it stays smooth at any size; q in font pixels from the letter's top left.
+uniform ivec2 uTx[12];uniform int uTxN;uniform vec2 uSf;   // uSf: (the brushed grain on bare metal, the cabin's light in the windows), 0 or 1 (A/B)
+float gbit(ivec2 g,int r,int c){if(r<0||r>6||c<0||c>4)return 0.;return float(r<4?(g.x>>(19-r*5-c))&1:(g.y>>(14-(r-4)*5-c))&1);}
+float glyph(ivec2 g,vec2 q,float fw){q-=.5;vec2 t=fract(q);ivec2 i=ivec2(floor(q));
+ float a=mix(mix(gbit(g,i.y,i.x),gbit(g,i.y,i.x+1),t.x),mix(gbit(g,i.y+1,i.x),gbit(g,i.y+1,i.x+1),t.x),t.y);return smoothstep(.42-fw,.42+fw,a);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
 // lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
@@ -733,7 +741,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;float ao=clamp(1.-(vK.x-floor(vK.x+.5))/.45,0.,1.);bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
- vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint
+ vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.,ltr=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint; ltr: the lettering, likewise
  if(uSeam>0.&&k>0){
   if(k==1&&side){                                         // propellant tank
    float b=.07*sc,paint=band(v,b,h-b,fv);
@@ -747,6 +755,9 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    if(sch==1)ring=seam=0.;   // (Q259) Steppe draws its own panel seams below: Cape's weld rings came through its paint as a second, paler set 5 cm a bay off
    alb=mix(alb,pow(hsv(hue,.55,.16),vec3(2.2)),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
    float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));
+   if(uTxN>0&&h>3.*sc){float bh=min(1.4*sc,h*.2),pit=min(.5*sc,(h-2.*(b+bh)-.3*sc)/float(uTxN)),px=pit/9.;   // (Q637) the program's name, a letter under a letter (7 rows and 2 of space each)
+    float x=(fract(vU.x*2.+.5)-.5)*3.1416*R,tl=(h*.5+pit*float(uTxN)*.5-v)/pit;int li=int(floor(tl));
+    if(li>=0&&li<uTxN&&abs(x)<3.5*px)ltr=glyph(uTx[li],vec2(2.5-x/px,fract(tl)*9.-1.),clamp(fp/px*.7,.02,.5))*smoothstep(1.4,.6,fp/px);}
    if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs,hue);rdl.a*=paint;}}   // the roundel, between the stripes
   else if(k==2){                                           // bell: regen tubes, heat tint toward the throat, a stiffener at the lip
    float t=clamp(v/max(h,.01),0.,1.),N=floor(6.2832*R/.035+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
@@ -762,7 +773,12 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=(1.-.4*seam)*(.94+.1*pid*fd);nO+=T*(pa-.5)*.12*pv*fd;
    float bl=dots(s,v,ph,6.2832*R/NA,.008*sc,fp)*pv;alb=mix(alb,vec3(.42,.43,.45),bl);}
   else if(k==15){                                          // engine mount: bolt ring under the tank flange
-   alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));}
+   alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));
+   // (Q638) the thrust structure's cone: stiffening ribs down it, a frame where it meets the skirt (an engine's own
+   // mount only: its faces look down; boxes of this kind, thrusters and arms, are left alone)
+   if(MOUNT_ON&&vNo.y<-.3&&m==0){float N=floor(6.2832*R/(.16*sc)+.5),ph=fract(vU.x*N),e=abs(ph-.5)*2.,fN=smoothstep(.5,.15,fu*N);
+    nO+=T*smoothstep(.72,.95,e)*sign(ph-.5)*.6*fN;alb*=1.-mix(.06,.35*smoothstep(.82,1.,e),fN);
+    alb*=1.-.25*vn2(vec2(vU.x*40.,v*6.));}}
   else if(k==3&&side){                                     // capsule: dark corrugated shingles, a window, a hatch
    float body=band(v,.06*sc,1.2*sc,fv),N=floor(6.2832*R/.04+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
    alb=mix(alb,vec3(.028,.029,.032),body);metal=mix(metal,.6,body);rough=mix(rough,.48,body);
@@ -771,7 +787,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=(1.-.55*row*body)*(1.+.25*rn*body);alb=mix(alb,vec3(.1),dots(s,mod(vr,.22*sc),.018*sc,.05*sc,.005*sc,fp)*body);
    float du=abs(fract(vU.x-.125+.5)-.5),win=band(du,-1.,.032,fu)*band(v,.44*sc,.72*sc,fv),frm=band(du,-1.,.042,fu)*band(v,.40*sc,.76*sc,fv);
    alb=mix(alb,vec3(.16,.16,.17),frm);metal=mix(metal,1.,frm);
-   if(win>.01){alb=mix(alb,vec3(.01,.012,.015),win);metal*=1.-win;rough=mix(rough,.05,win);m=win>.5?4:m;}
+   if(win>.01){alb=mix(alb,vec3(.01,.012,.015),win);metal*=1.-win;rough=mix(rough,.05,win);m=win>.5?4:m;
+    emis+=vec3(1.,.74,.44)*.1*win*uSf.y*(1.-.95*clamp(dot(uSunCol,vec3(.33))*uLit,0.,1.));}   // (Q637) the cabin's light: a warm pane on the night side and in eclipse; in sunlight the glass stays dark (the light is there, twenty times fainter than the sky it mirrors)
    float dh=abs(fract(vU.x-.375+.5)-.5),hat=band(dh,-1.,.035,fu)*band(v,.16*sc,.58*sc,fv),hin=band(dh,-1.,.030,fu)*band(v,.18*sc,.56*sc,fv);
    alb*=1.-.7*(hat-hin);alb=mix(alb,vec3(.2),dots(dh*6.2832*R,v,.36*sc,1.,.014*sc,fp));}
   else if(k==4&&side){                                     // nose cone: fairing split lines with rivets, a ring, a scorched tip
@@ -875,6 +892,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    else if(sch==4)alb=mix(alb,saf,hz);
    else alb=mix(alb,carb,hz);}}
  alb=mix(alb,rdl.rgb,rdl.a);
+ if(ltr>0.)alb=mix(alb,dot(alb,vec3(.3,.59,.11))>.1?vec3(.012,.012,.014):vec3(.75),ltr);   // (Q637) black on a light paint, white on a dark one
  // (Q316, BEAUTY B1.4) the skin under the paint, on tanks, nose cones and adapters. Paint on sheet metal is told from
  // plastic by its highlight and by what the sheet does under it: Cape's white is gloss (the sun draws a line down the
  // tank, the sky shows at its edges), and every school's gloss varies a little from place to place; a tank's skin bows
@@ -934,6 +952,11 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=(1.-.35*ring*fd)*(.95+.08*n1);alb=mix(alb,alb*vec3(.78,.62,.45),.45*wk*fd);alb*=foot;}
   else if(m==1){alb*=.8+.35*n2;alb=mix(alb,vec3(.23,.12,.06),smoothstep(.72,.86,n3*.6+n1*.4)*.55*fd);alb*=foot;}
   else{alb*=(.9+.15*n1)*(.96+.06*n3*fd)*foot;}}
+ // (Q637) bare metal is turned or rolled: fine lines round the hull. Up close they are in the normal; from further
+ // off, where they are under a pixel, what they do to the light stays: the sun's highlight spread along the axis (bsp)
+ float bsp=0.;
+ if(uSf.x>0.&&uSeam>0.&&metal>.5&&m!=5&&k!=2&&k!=3&&k!=17&&side){float gn=smoothstep(.012,.003,fv);
+  nO.y+=((vn2(vec2(s*3.,v*110.))-.5)*.16+(vn2(vec2(s*5.+7.,v*420.))-.5)*.1)*gn;bsp=.11;rough=clamp(rough*(.85+.3*vn2(vec2(s*2.,v*30.))),.05,1.);}
  vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
  // (Q316, BEAUTY B1.3) ambient occlusion. Steps: where the next part in the stack is wider, it is a ledge of width w
@@ -948,6 +971,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  else ao=1.;
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
  float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
+ if(bsp>0.){vec3 ax=normalize(mat3(uM)*vec3(0.,1.,0.))*bsp;spec=(spec+(ex+8.)/25.13*(pow(max(dot(normalize(n+ax),H),0.),ex)+pow(max(dot(normalize(n-ax),H),0.),ex)+pow(max(dot(normalize(n+2.*ax),H),0.),ex)+pow(max(dot(normalize(n-2.*ax),H),0.),ex)))*.2;}
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
  float ds=uDsk.x,dn=-dot(n,uUp),wp=ds*ds*clamp((dn+ds)/(1.+ds),0.,1.);   // the disc's share of the light on n: sin²α·cos θ, wrapped past its rim
  vec3 sun=uSunCol*uLit,amb=mix(uSky,uGnd,wp)*ao;
@@ -1443,6 +1467,16 @@ void main(){vec2 uv=vNdc*.5+.5;
  o=vec4(d,1.);}`;
 // fin-tip vapor (aerofx): ribbons of condensed vortex core trailing from loaded fin tips. Vertices: camera-relative
 // position, the side across the ribbon (−1..1), opacity. Lit like the smoke (sun and sky), white, soft-edged.
+// (Q634) the RCS jet's numbers. T: seconds a pulse stays on screen after its last tick (one 20 ms pulse must be seen);
+// L: metres at 150 N (it goes with √thrust); r0: the bell's exit radius; tan: the width gained per metre (cold gas into
+// vacuum spreads wide); k: the core's optical depth; op: the most a jet may cover of what is behind it; drift: m/s the
+// tail is drawn leaving the bell after the cutoff (the real gas is gone in 2 ms; this is for the eye); off: the bell's
+// exit from the nozzle point (the quad's bells, partsMesh 'rcs'); dark: the light it keeps in full shadow (the craft's own lamps)
+const RCS_JET={T:.1,L:1.3,r0:.02,tan:.15,k:1.2,op:.35,drift:9,off:.075,dark:.04};
+// one nozzle's jet, `age` seconds after its last pulse: its length, its fade and the gap behind the departing gas; null when gone
+function rcsJet(F,age){if(!(age>=0)||age>=RCS_JET.T)return null;const k=1-age/RCS_JET.T;return{L:RCS_JET.L*clamp(Math.sqrt(F/150),.6,2.5),a:k*k,gone:RCS_JET.drift*age}}
+// its colour: the gas scatters the sun (E = lightEnv, lt = lit(p): 0 in a body's shadow) and the sky's and ground's fill
+function rcsJetCol(E,lt){return E.sun.map((x,i)=>.95*(x*.4*lt+(E.sky[i]+E.gnd[i])*.6)+RCS_JET.dark)}
 const VTR_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec2 aS;uniform mat4 uVP;uniform float uFc;out vec2 vS;out float vW;
 void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vS=aS;}`;
@@ -1450,6 +1484,30 @@ const VTR_FS=`#version 300 es
 precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb;uniform float uFc;
 void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
  o=vec4(c*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// ---- (Q634) an RCS jet: cold gas leaving a nozzle into vacuum. No flame: the gas (and what condenses in it) only
+// scatters the light that falls on it, so it is white in the sun and next to nothing in shadow. Drawn in a box along the
+// exhaust axis (IMP_VS; local +Y is downstream, the origin the bell's exit). The density is a Gaussian across the axis
+// whose width grows with distance (R0 + y·TN) and whose core thins as 1/width², as a free jet's does; the fragment sums
+// it along the eye's ray over the stretch within 3 widths of the axis (12 taps: the core near the bell is 2 cm wide,
+// so the box's whole depth would miss it). uJ: length, fade, how far the gas has left the bell since the cutoff, the
+// opacity's cap. The depth is the ray's nearest point to the axis, so the hull hides a jet on its far side.
+const JET_FS=`#version 300 es
+precision highp float;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uLo,uHi,uCam,uCol,uSunL;uniform vec4 uJ;uniform float uFc;
+const float R0=${RCS_JET.r0.toFixed(3)},TN=${RCS_JET.tan.toFixed(3)},KD=${RCS_JET.k.toFixed(3)};
+float dens(vec3 p){if(p.y<=0.||p.y>=uJ.x)return 0.;float s=R0+p.y*TN,e=1.-p.y/uJ.x;
+ return R0*R0/(s*s)*exp(-dot(p.xz,p.xz)/(s*s))*e*e*e*smoothstep(.6*uJ.z,uJ.z+1e-4,p.y);}
+void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*iv,tn3=min(ta,tb),tf3=max(ta,tb);
+ float tN=max(max(tn3.x,tn3.y),max(tn3.z,0.)),tF=min(min(tf3.x,tf3.y),tf3.z);
+ float sn2=max(dot(rd.xz,rd.xz),1e-6),ts=-dot(uCam.xz,rd.xz)/sn2,s=R0+max(uCam.y+ts*rd.y,0.)*TN,dn=sqrt(sn2)-3.*TN*abs(rd.y);
+ float hw=dn>.02?3.*s/dn:1e3,a=max(tN,ts-hw),b=min(tF,ts+hw);if(b<=a)discard;
+ vec2 dx=uCam.xz+ts*rd.xz;float sm=3.*(s+TN*abs(rd.y)*min(hw,tF-tN));if(dn>.02&&dot(dx,dx)>sm*sm)discard;   // the ray passes clear of the cone: most of the box
+ const int N=12;float ds=(b-a)/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),c=0.;
+ for(int i=0;i<N;i++)c+=dens(uCam+rd*(a+(float(i)+j)*ds));
+ float al=uJ.w*uJ.y*(1.-exp(-KD*c*ds/R0))-.003;if(al<=0.)discard;   // (less the little the screen's gamma would lift into a halo with an edge)
+ float ph=1.+.5*pow(max(dot(rd,uSunL),0.),6.);   // a little brighter looking up-sun through it (droplets scatter forward)
+ o=vec4(uCol*ph*al,al);gl_FragDepth=log2(1.+vW*clamp(ts,a,b)/length(vL-uCam))*uFc*.5;}`;
+const PJET=mkProg(IMP_VS,JET_FS);
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- (Q316, BEAUTY B1.3) the ship's own shadows, High only (SHIP_SHADOW; Low: off). One depth map from the light,
 // fitted to the ship: boosters shade the core, fins the skirt, a wide stage the narrow one under it. The ship (and what
@@ -1756,7 +1814,7 @@ function rboxUV(out,c,hx,hy,hz,col,phi){const a=[],H=[hx,hy,hz],t=H.indexOf(Math
 // (a round nose on the hinge line, a wedge to the trailing edge, a control horn on each face) is a kind of its own,
 // FLAP_K, which MESH_VS turns about the hinge (setMoves). The sim's plate is all-moving: the flap is how it is drawn.
 // FIN_FX=false: the flat slab from before (A/B; its steerable plates stay put).
-let FIN_FX=true;const FLAP_K=19,FLAP_CH=.24,FLAP_IN=.14,FLAP_GAP=.012,FLAP_GAIN=1.5,FIN_TIP=.4,FIN_XS=[0,.006,.025,.06,.12,.2,.3,.42,.56,.7,.85,1],FIN_US=[0,.03,.07,FLAP_IN,1];   // along the span: close together at the root's flare, then one straight run to the tip
+let FIN_FX=true;const FLAP_K=19,FLAP_CH=.24,FLAP_IN=.14,FLAP_GAP=.012,FLAP_GAIN=1.5,FIN_TIP=.4,FIN_XS=[0,.006,.025,.06,.12,.2,.3,.42,.56,.7,.85,1],FIN_US=[0,.05,FLAP_IN,.9,.965,1],FIN_RND=.11;   // along the span: close together at the root's flare, one straight run, then the tip's rounded leading corner (Q638: the last tenth of the span, the nose line dropping FIN_RND of the chord)
 const finSec=x=>(.2969*Math.sqrt(x)-.126*x-.3516*x*x+.2843*x*x*x-.1036*x*x*x*x)*10+.1*x;   // half-thickness along the chord (0 nose, 1 trailing edge), 1 at its thickest
 function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
   const tri=(A,B,Cc,n,c)=>{pv(out,A,n,c);pv(out,B,n,c);pv(out,Cc,n,c)};
@@ -1766,14 +1824,14 @@ function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.si
       const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}
     return}
   const fl=opt.fl??.6,flap=!!opt.flap,sink=opt.sink??.03,nx=FIN_XS.length,
-    yLE=u=>ch*(1-.55*u),T=u=>t*(1-(1-FIN_TIP)*u)*(1+fl*Math.exp(-u/.045)),half=(u,x)=>T(u)*finSec(x),
+    yLE=u=>{const w=clamp((u-.9)/.1,0,1);return ch*(1-.55*u-FIN_RND*(1-Math.sqrt(1-w*w)))},T=u=>t*(1-(1-FIN_TIP)*u)*(1+fl*Math.exp(-u/.045)),half=(u,x)=>T(u)*finSec(x),
     yh=FLAP_CH*ch,rho=u=>half(u,1-yh/yLE(u)),xEnd=(u,cut)=>cut?1-(yh+rho(u)+FLAP_GAP)/yLE(u):1,   // a cut section stops a gap ahead of the flap's nose
     L=(u,x,s)=>[r0+sp*u,yLE(u)*(1-x),s*half(u,x)],W=(u,x,s)=>P(r0+sp*u-(u<=0?sink:0),yLE(u)*(1-x),s*half(u,x)),   // the root station sits inside the hull's skin
-    nrm=(u,x,s)=>{if(x<1e-6){const l=Math.hypot(.55*ch,sp);return N(.55*ch/l,sp/l,0)}   // the nose line: straight out of the plate's plane
+    nrm=(u,x,s)=>{if(x<1e-6){const ua=Math.max(u-.004,0),ub=Math.min(u+.004,.997),dy=(yLE(ua)-yLE(ub))/(ub-ua)/sp,l=Math.hypot(dy,1);return N(dy/l,1/l,0)}   // the nose line: straight out of the plate's plane
       const e=1e-4,A=L(u,Math.max(x-e,1e-6),s),B=L(u,Math.min(x+e,1),s),Cc=L(Math.max(u-e,0),x,s),D=L(u+e,x,s);let n=norm(cross(sub(B,A),sub(D,Cc)));if(n[2]*s<0)n=mul(n,-1);return N(n[0],n[1],n[2])},
     quad=(A,B,Cc,D,n,c)=>{tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)};
   for(let i=0;i<FIN_US.length-1;i++){const u0=FIN_US[i],u1=FIN_US[i+1],cut=flap&&u0>=FLAP_IN-1e-9,e0=xEnd(u0,cut),e1=xEnd(u1,cut);
-    for(const s of[-1,1])for(let j=0;j<nx-1;j++){const xa=FIN_XS[j],xb=FIN_XS[j+1],c=j<3||opt.shoe&&u1<=.07+1e-9?C.ST:col,
+    for(const s of[-1,1])for(let j=0;j<nx-1;j++){const xa=FIN_XS[j],xb=FIN_XS[j+1],c=j<3||opt.shoe&&u1<=.05+1e-9?C.ST:col,
         q=[[u0,xa*e0],[u1,xa*e1],[u1,xb*e1],[u0,xb*e0]];
       for(const k of[0,1,2,0,2,3])pv(out,W(q[k][0],q[k][1],s),nrm(q[k][0],q[k][1],s),c)}
     quad(W(u0,e0,-1),W(u1,e1,-1),W(u1,e1,1),W(u0,e0,1),N(0,-1,0),cut?C.D:col)}   // the trailing edge; on a cut section, the cove the flap's nose sits in
@@ -1782,7 +1840,7 @@ function finShape(out,o,a,r0,sp,ch,t,col,opt={}){const ca=Math.cos(a),sa=Math.si
   wall(1,0,xEnd(1,flap),8,col);   // the tip
   if(!flap)return;
   wall(FLAP_IN,xEnd(FLAP_IN,true),1,4,C.D);   // the inboard end of the cut-out
-  const k0=PK.k,fc=opt.fcol||col,U=[FLAP_IN+FLAP_GAP/sp,1],
+  const k0=PK.k,fc=opt.fcol||col,U=[FLAP_IN+FLAP_GAP/sp,1],   // (the flap's hinge and trailing edge are straight: one run)
     sec=u=>{const r=rho(u),tau=half(u,1),l=Math.hypot(r-tau,yh),S=[[0,tau,-(r-tau)/l,yh/l],[yh,r,-(r-tau)/l,yh/l]];   // [y, s, normal y, normal s]: a face, the nose round the hinge, the other face, the trailing edge
       for(let k=0;k<=8;k++){const g=Math.PI/2-k*Math.PI/8;S.push([yh+r*Math.cos(g),r*Math.sin(g),Math.cos(g),Math.sin(g)])}
       S.push([yh,-r,-(r-tau)/l,-yh/l],[0,-tau,-(r-tau)/l,-yh/l],[0,-tau,-1,0],[0,tau,-1,0]);return S},
@@ -1843,10 +1901,32 @@ let BELL_FX=true;const BELL_RAO={wren:[.55,12],sparrow:[.6,10],petrel:[.72,8],ke
 function raoBell(re,rt,yt,f,te,c0,c1,n=7){const yc=f*yt,rc=re-Math.tan(te*Math.PI/180)*yc,P=[];
   for(let i=0;i<=n;i++){const t=i/n,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t;   // the colour (and material) blends lip → throat, as the two-point bell's did
     P.push([a*re+b*rc+c*rt,b*yc+c*yt,[0,1,2,3].map(k=>(c0[k]||0)*(1-t)+(c1[k]||0)*t)])}return P}
+// (Q638, the rest of BEAUTY B1.5) an engine's plumbing, from its own outline. On the bell, turning with it (kind
+// FIT_K, which MESH_VS's mode 1 moves as it moves the bell): a fuel manifold ring a third of the way up from the lip and
+// two downcomers feeding it from the chamber. On the mount, fixed: two gimbal actuators a quarter turn apart, from the
+// thrust structure's cone down to brackets on the bell (the brackets turn; a full swing moves them a few cm against the
+// rods). Sizes follow the throat. PLUMB_FX = false: none (A/B).
+let PLUMB_FX=true;const FIT_K=20;
+function enginePlumbing(out,p,prof,ti,o,K){const[rt,yt]=prof[ti],re=prof[0][0],RB=BELL_RAO[p.d.base||p.d.key];if(yt<.2||prof.length<ti+2)return;
+  const bell=BELL_FX&&RB&&ti===1?raoBell(re,rt,yt,RB[0],RB[1],[0,0,0],[0,0,0]):prof.slice(0,ti+1),   // exit → throat
+    rAt=y=>{for(let i=0;i<bell.length-1;i++){const[r0,y0]=bell[i],[r1,y1]=bell[i+1];if(y<=y1+1e-9)return r0+(r1-r0)*(y-y0)/Math.max(y1-y0,1e-9)}return rt},
+    cone=prof.slice(ti),cAt=y=>{for(let i=0;i<cone.length-1;i++){const[r0,y0]=cone[i],[r1,y1]=cone[i+1];if(y<=y1+1e-9)return r0+(r1-r0)*(y-y0)/Math.max(y1-y0,1e-9)}return cone[cone.length-1][0]},
+    k=clamp(rt/.22,.45,1.4),P=(a,r,y)=>[o[0]+Math.cos(a)*r,o[1]+y,o[2]+Math.sin(a)*r],ST=C.ST,DK=C.D;
+  PK={...K,k:FIT_K,R:re,h:yt};
+  const ym=yt*.36,rm=rAt(ym)+.034*k,NT=14;   // the manifold: a ring of short tubes
+  for(let j=0;j<NT;j++)tube(out,P(j/NT*6.2832,rm,ym),P((j+1)/NT*6.2832,rm,ym),.03*k,ST,5);
+  for(const a of[.785,3.927]){const y1=yt*.97,y2=(ym+yt)/2;   // the downcomers, hugging the bell
+    tube(out,P(a,rAt(y1)+.05*k,y1),P(a,rAt(y2)+.045*k,y2),.022*k,ST,5);tube(out,P(a,rAt(y2)+.045*k,y2),P(a,rm,ym+.01),.022*k,ST,5)}
+  const yb=yt*.7,rb=rAt(yb)+.02*k,yc=yt+(cone[cone.length-1][1]-yt)*.5,rc=cAt(yc)-.01;
+  for(const a of[1.5708,3.1416])tube(out,P(a,rb,yb+.03*k),P(a,rb,yb-.03*k),.035*k,DK,6,true);   // the actuators' brackets
+  PK={...K,k:KIND.mount};
+  for(const a of[1.5708,3.1416]){const A=P(a,rc,yc),B=P(a,rb+.035*k,yb),M=add(A,mul(sub(B,A),.6));   // the actuators: a body, then its rod
+    tube(out,A,M,.034*k,DK,6,true);tube(out,M,B,.016*k,ST,5)}}
 function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][0]<prof[ti][0])ti=i;const K=PK,[rt,yt]=prof[ti];
   PK={...K,k:KIND.bell,R:prof[0][0],h:yt};const RB=BELL_RAO[p.d.base||p.d.key];
   lathe(out,BELL_FX&&RB&&ti===1?raoBell(prof[0][0],rt,yt,RB[0],RB[1],prof[0][2],prof[1][2]):prof.slice(0,ti+1),o,32,[false,false]);
   PK={...K,k:KIND.mount};lathe(out,prof.slice(ti),o,28,[false,true]);
+  if(PLUMB_FX)enginePlumbing(out,p,prof,ti,o,K);
   if(p.d.thrust>=200){const px=o[0]+rt+.15,pz=o[2],G=C.ST;
     lathe(out,[[0,yt-.08,G],[.07,yt-.06,G],[.09,yt,G],[.09,yt+.22,G],[.06,yt+.26,G],[0,yt+.27,G]],[px,o[1],pz],12,[false,false]);
     lathe(out,[[.035,yt*.55,C.K],[.035,yt-.05,C.K]],[px,o[1],pz],8,[false,false]);
@@ -2236,7 +2316,15 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
       if(!d.mkSplash){d.mkSplash=true;splashFx({body:d.body,r:d.r,touchV:d.mkV||10,mass:d.mass,radius:d.mkR})}surfFx(d,d.body,d.r,d.q,d.len||4,d.mkR,dt)}
     for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12);hotTo(m,kH,dt)}}}
 // the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
-function setMarks(u,parts){MKA.fill(0);CHA.fill(0);HTA.fill(0);AOA.fill(0);for(const p of parts){const i=p.i,w=AOS.get(p);if(w&&i!=null&&i>=0&&i<96)AOA.set(w,i*4)}   // (Q316) the steps' ledges, the creases' spans
+// (Q637) the word down the hull: the home power's short name (POWERS[HOME].root), capitals, at most 12 letters, as
+// FONT57's bits split for the shader. Every ship drawn carries it (a rival's craft too: no ship knows its owner here).
+let HULL_FX=true,GRAIN_FX=true,CABIN_FX=true;const HULL={s:null,a:new Int32Array(24),n:0};
+function hullWord(){return typeof POWERS!=='undefined'&&typeof HOME!=='undefined'&&POWERS[HOME]?String(POWERS[HOME].root||''):''}
+function hullBits(w){w=String(w).normalize('NFD').replace(/[^A-Za-z -]/g,'').toUpperCase().trim().slice(0,12);const a=new Int32Array(24);
+  for(let i=0;i<w.length;i++){const g=FONT57[w[i]],b=g?parseInt(g,36):0;a[i*2]=Math.floor(b/32768);a[i*2+1]=b%32768}return{a,n:w.length}}
+function setHull(u){if(!u.uTxN)return;const w=HULL_FX?hullWord():'';if(w!==HULL.s){const b=hullBits(w);HULL.s=w;HULL.a=b.a;HULL.n=b.n}
+  gl.uniform1i(u.uTxN,HULL.n);if(u['uTx[0]'])gl.uniform2iv(u['uTx[0]'],HULL.a);if(u.uSf)gl.uniform2f(u.uSf,GRAIN_FX?1:0,CABIN_FX?1:0)}
+function setMarks(u,parts){setHull(u);MKA.fill(0);CHA.fill(0);HTA.fill(0);AOA.fill(0);for(const p of parts){const i=p.i,w=AOS.get(p);if(w&&i!=null&&i>=0&&i<96)AOA.set(w,i*4)}   // (Q316) the steps' ledges, the creases' spans
   gl.uniform4fv(u['uAo[0]'],AOA);
   for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
@@ -2870,8 +2958,6 @@ function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9,ao=sp?simT-sp.off:
 function plumeShape(d,thr,pa){const f=pfxOf(d),re=d.exit,n=f.pe/Math.max(pa,1e-5),tn=.03+.52*sstep(0,2.5,Math.log10(Math.max(n,1))),
     L=re*(10+12*thr)*(1+1.4*(1-pa)),rb=re*Math.sqrt(clamp(n,.3,1))+L*(tn+.035*pa);return[n,tn,L,rb*1.12+re*.3]}
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
-// a cold-gas puff: a faint white cone, tip at the nozzle, pointing down −Y (drawn additively, so it reads as glow)
-const PUFF=(()=>{const a=[];lathe(a,[[0,0,[.9,.92,.95]],[.5,-.45,[.55,.58,.62]],[0,-1,[.2,.21,.23]]],[0,0,0],12,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
 // a straight tube from A to B (struts, pipes, masts, legs): seg sides, optional flat end caps
 function tube(out,A,B,r,col,seg=6,caps=false){const d=sub(B,A),L=len(d),Y=mul(d,1/L),X=norm(cross(Math.abs(Y[1])<.9?[0,1,0]:[1,0,0],Y)),Z=cross(X,Y);
