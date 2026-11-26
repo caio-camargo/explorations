@@ -8626,3 +8626,42 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - Files: launchpad `sim/space.js`, `sim/vessel.js`, `sim/procedures.js`, new `sim/views.js`, `builder.js`, `index.html`,
   `tests/vehicle.mjs`, `tests/core.mjs`, new `study_rcshold.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`,
   `PLAYTEST.md`, `QUEUE.md`; root `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-26 — look & sound, parts & pad (Fable 5.2, worktrees launchpad-q637, launchpad-q639): v1.375 Q637, v1.376 Q638, v1.379 Q639, the craft's surface, engine plumbing, ice off the tanks
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio, 2026-11-25, after the fins): "let's keep working on the craft's look. what other greebling or other
+  visual elements might make it look better? maybe shine or some other surface effect? let's remain
+  effect-budget-conscious, though effects that are easy to turn off can come in as optional. let's brainstorm first".
+  After the brainstorm: "yes, i think these are right", plus one idea for the backlog (engine plumbing that gets
+  cleaner as a part is developed: a BACKLOG row).
+- **Done.** Three items, each in `notes/look.md` under its version:
+  - **v1.375 Q637**, shader only: the home power's name stencilled down tall tanks, a brushed grain on bare metal, a
+    warm light in the cabin windows at night.
+  - **v1.376 Q638**: a manifold ring and two downcomers on every engine bell that turn with it (vertex kind 20), two
+    gimbal actuators on the mount, ribs on the thrust structure's cone; the fins' leading tip corner rounded.
+  - **v1.379 Q639**, optional (Settings › Screens): flakes of ice off frosted tanks for 8 s after liftoff, a wisp of
+    vapor from them on the pad; the frost thins over the lettering.
+- **Checked.** Tests `aerofx-65`, `aerofx-66`, `aerofx-67`; the full CI run green on each merged head (the last:
+  run 45842027748 on `b1be88f4`). Stills before and after for each (local, `output/launchpad/beauty/Q637/`,
+  `Q638/`, `Q639/`). Caio had confirmed the fins ("yes, they look good"); he has not yet said anything about these
+  three.
+- **Not checked.** By a person in play: TESTING rows 423, 424, 427 are open. The ice in motion (the stills say
+  little); at night under the floodlights; with side boosters. A gimballing engine close up while firing. Low on the
+  Intel GPU for all three. Q638's rebuild timings were taken on a busy machine and are inside the noise: to redo.
+- **Not built** (named in the brainstorm): a school's polished-steel finish (a design call), service marks, a
+  beacon's blink, a base heat shield, pumps on the small engines, separation springs. Already in the game and left
+  alone: the solar cells' glint, gloss variation, the nozzle's and hull's glow.
+- **How the merge went.** Q637 and Q638 went in as one branch and one CI run after two renumberings. Q639's first
+  run was green on a head `main` had moved past (Q632 and Q620 took v1.377, v1.378, TESTING 425, 426): merged,
+  renumbered v1.377 → v1.379 and TESTING 425 → 427, ran again. That is three full runs for one small effect's worth of
+  number collisions; it bears on the parked CI question below.
+- **Files.** `app/gl.js`, `app/settings.js`, `builder.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `TESTING.md` (rows 423, 424, 427), `QUEUE.md` (Q637–Q639 ✓), `BACKLOG.md` (one row), `ACTIVE_WORK.md`.
+- **Left behind.** Working captures beside the named stills in the three `beauty/Q63x/` folders (a shell guard
+  refused the clean-up; media, safe to delete by hand). Preview servers on ports 8836–8838 end by themselves.
+- PARKED (still): the CI's cost. Parked at: findings reported to Caio on 2026-11-25 (35 of 58 runs in a week were for
+  docs-only commits; the suite takes 4 min 10 s with `--jobs 4` against 10.6 min), a Proposed line in QUEUE.md,
+  no workflow change made; waiting for his go.
+- **Next.** Caio's look at rows 423, 424, 427. If the flakes read as snow, the note names the next step (a lit,
+  tumbling quad). The BACKLOG row on plumbing that cleans up with development.
