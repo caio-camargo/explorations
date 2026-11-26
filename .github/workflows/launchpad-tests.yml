@@ -70,7 +70,7 @@ jobs:
             else
               code=$(git diff --name-only "$base" HEAD -- explorations/launchpad .github/workflows/launchpad-tests.yml \
                 | grep -v -E '^explorations/launchpad/(.*\.md|mockups/.*|archive/.*)$' || true)
-              if [ -n "$code" ]; then why="changed since ${base:0:8}: $(echo "$code" | head -5 | tr '\n' ' ')$( [ "$(echo "$code" | wc -l)" -gt 5 ] && echo '…')"
+              if [ -n "$code" ]; then why="changed since ${base:0:8}: $(echo "$code" | head -5 | tr '\n' ' ')($(echo "$code" | wc -l) files)"
               else scope=docs; why="only documents changed since ${base:0:8}"; fi
             fi
           fi
