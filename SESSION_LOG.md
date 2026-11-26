@@ -8665,3 +8665,19 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   no workflow change made; waiting for his go.
 - **Next.** Caio's look at rows 423, 424, 427. If the flakes read as snow, the note names the next step (a lit,
   tumbling quad). The BACKLOG row on plumbing that cleans up with development.
+
+## 2026-11-26 — CI: four processes, no flights for a docs-only push (Fable 5.2, same session as the entry above)
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio): "yes, go ahead with the CI changes". This closes the PARKED line of 2026-11-25 and of the entry above.
+- **Done.** `.github/workflows/launchpad-tests.yml`: a push runs `node test.mjs --jobs 4`; a push that changes only
+  documents runs `check_numbers.mjs` and three sections. How "only documents" is judged, and why a branch is judged
+  against `main` and not by its last push: `explorations/launchpad/notes/platform.md` § "CI: four processes, and no
+  flights for a docs-only push".
+- **Checked.** Full path green in CI (runs 45852474442, 45853650441): the suite step 5 min 46 s to 6 min 46 s, was
+  10.6 min. That is slower than the 4 min 10 s of the trial run I quoted to Caio: the longest section sets the floor
+  and runs slower when four processes share the runner. The docs path: the push that carries this entry.
+- **Not done** (listed in the note): skipping main's re-run of a branch that already passed; a job matrix; refreshing
+  `SLOW_ROWS` (19 sections to add); a merge queue.
+- **Files.** `.github/workflows/launchpad-tests.yml`, `explorations/launchpad/notes/platform.md`, `NOTES.md`,
+  `QUEUE.md` (the Testing paragraph, the Read-first line, the Proposed line marked done), `SESSION_LOG.md`.

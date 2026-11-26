@@ -1137,3 +1137,42 @@ with 0 errors with and without `?tester`, a check per fixed app finding, the ran
   their checks go here as each is fixed. The review's scripts stay in `review/2026-11-11/app/` as the record.
 - Not done: the shader-uniform check (R3 (c)) would need the GL stub to keep each program's sources (`B_glrun.cjs` does);
   it can now run in apphost at no load cost. The QUEUE line is updated.
+
+
+## CI: four processes, and no flights for a docs-only push (2026-11-26, look & sound session at Caio's ask; no game version)
+
+Caio, 2026-11-25: the full runs "take up a lot of time", and could one run serve several workstreams. Measured then
+(SESSION_LOG 2026-11-25): of 58 runs in a week (631 min), 35 (406 min) were for head commits that touched only
+documents; a run was about 10.6 min in one process. Caio, 2026-11-26: "yes, go ahead with the CI changes". Both are
+in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs` changed.
+
+- **Four processes.** A push runs `node test.mjs --jobs 4`. Same sections, same checks, dealt into processes by
+  `shards.mjs` (sound since v1.340: every section starts from a fresh SIM). By hand the default is the same;
+  `-f args=""` gives the old one-process run, the thing to compare with when a check fails only in CI.
+- **A docs-only push** runs `check_numbers.mjs` and `node test.mjs --only qa-2,qa-3,platform-3` (the three sections
+  that read `SYSTEM.md`, `TESTING.md` and the numbered documents; 1.2 s locally). "Only documents": every changed file
+  under `explorations/launchpad` is a `.md` or sits in `mockups/` or `archive/`. A new test that reads a document
+  must be added to that `--only` list.
+- **What "changed" is measured against** (the step named *scope*; its verdict and reason are in the run's summary):
+  - on `main`: the push itself (before..after). Main's runs all finish, so each code push is tested;
+  - on a branch: everything the branch adds to `main` (merge-base..head), not the last push. A branch's newer push
+    cancels its older run, so judging the last push alone would let "code, then a docs fix" reach the merge untested;
+  - a new branch on `main`'s own history, a forced push, a by-hand run: the full suite.
+- **Measured.** The suite step: 6 min 46 s (run 45852474442, the branch) and 5 min 46 s (45853650441, `--times`, by
+  hand on `main`), against 10.6 min. **Not the 4 min 10 s of the trial run** (45668423377): the floor is the longest
+  section, and with four processes sharing the runner's four cores it ran slower than alone: §27 (the crewed Selene
+  landing) took 232 s where `SLOW_ROWS` says 150, bodies-1 199 s for 131, bodies-3 107 s for 56. The runner's speed
+  also varies by a third between runs (shards.mjs).
+- **Checked.** The scope logic against past pushes on this clone: a playtest docs push → docs; Q639's merge → full;
+  a zero "before" → full; a "before" outside the history → full; by hand → full. In CI: the full path on the
+  workflow's own branch (green on the second try: the first failed in the scope step, a test inside an assignment
+  under `bash -e`); the docs path on the push that carries this note.
+- **Not done, in order of what they would save:**
+  - *The tested branch runs again on `main`.* A fast-forward of a green branch re-runs the same tree. Skipping it
+    needs "this tree already passed" looked up from the branch's run; about one full run saved per merge.
+  - *Sections across runners, not processes* (a job matrix): each section at full speed, so the floor falls to §27's
+    ~150 s plus set-up. More runner-minutes for less waiting.
+  - *`SLOW_ROWS` is stale*: the `--times` run says it should gain 19 sections (space-36 8.8 s, vehicle-32 7.7 s,
+    vehicle-45 7.6 s, …). That lengthens nothing in CI; it makes `--smoke` shorter and the dealing more even.
+  - *One run for several branches* (a merge queue): what Caio first asked about. It would also end the renumbering
+    re-runs (Q639 took two full runs because Q632 and Q620 took its numbers meanwhile). The larger change; left.
