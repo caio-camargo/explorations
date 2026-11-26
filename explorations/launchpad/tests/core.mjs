@@ -1435,8 +1435,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     zero(); for (let i = 0; i < 60 / D.DT; i++) { D.t = i * D.DT; D.physStep(s, D.DT); }
     const Y = D.qrot(s.q, [0, 1, 0]); return { err: Math.acos(Math.max(-1, Math.min(1, dot(Y, norm(s.v))))), pulses: (g0 - D.rcsGas(s)) / (F * D.DT / (isp * D.G0) / 1000), torque: s.torque }; };
   const on = turn(true), off = turn(false);
-  check('RCS: a vessel with no reaction wheels holds prograde on RCS alone; gas goes in whole 20 ms pulses', on.torque === 0 && on.err < 0.03 && off.err > 0.3 && Math.abs(on.pulses - Math.round(on.pulses)) < 1e-6,
-    `error after 60 s: ${on.err.toFixed(3)} rad with RCS, ${off.err.toFixed(2)} without; ${Math.round(on.pulses)} pulses of ${(F * D.DT).toFixed(0)} N·s`);
+  // (Q632) the turn goes in whole 20 ms pulses; the hold after it, inside 5° of prograde, in shorter ones down to 5 ms (rcsHold;
+  // vehicle-52), so the gas is no longer a whole number of pulses
+  check('RCS: a vessel with no reaction wheels holds prograde on RCS alone, within 1° (its deadband is 0.5°)', on.torque === 0 && on.err < 0.0175 && off.err > 0.3,
+    `error after 60 s: ${on.err.toFixed(3)} rad with RCS, ${off.err.toFixed(2)} without; gas worth ${on.pulses.toFixed(1)} pulses of ${(F * D.DT).toFixed(0)} N·s`);
   const r = fly(des, s => { s.rcs = true; s.sas = true; });
   check('RCS: while it\'s on (SAS on), the flight stays in physics steps', !D.railsOK(r) && D.railsOK(fly(des)), `rails with RCS on: ${D.railsOK(r)}`);
   zero();

@@ -8598,3 +8598,31 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Left running:** nothing (the server on port 8834 ended on its time limit).
 - Files: launchpad `app/gl.js`, `app/render.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md`,
   `PLAYTEST.md`, `QUEUE.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-25 — vehicle (Opus 5.5, worktrees launchpad-q632, launchpad-q620): v1.377 Q632, RCS holds without chattering; v1.378 Q620, views (bench slice 4)
+
+- **Asked:** Caio: Q632 (PLAYTEST #169), a deadband on RCS's attitude part with the translation keys left alone, gas per
+  hour of holding before and after, TESTING 58 and vehicle-42 kept green; then Q620 as QUEUE describes it, after reading
+  how flight holds a satellite's attitude today.
+- **Q632, v1.377:** holding on SAS, within 5° of the target RCS works a phase plane per body axis on the turn relative
+  to the target's own, and a hold's jets fire for part of a step (5 ms at least). The Docking craft holding an hour,
+  before → after: with wheels, prograde 13.3 kg/h → 0, target 12.1 → 0, docking 10.4 → 0; without wheels it emptied
+  its 30 kg in 1.3 minutes in every moving mode, now 0, 0.017 and 0.18 kg/h. vehicle-42's climb 0.07 → 0.09 kg; rotation
+  keys as before; translation untouched. Three tries dropped on the way (in notes/vehicle.md). Core 24's "whole 20 ms
+  pulses" check now reads the hold's deadband (the hold's pulses are shorter). Test vehicle-52, TESTING 425,
+  `study_rcshold.mjs`. Renumbered three times while CI ran (v1.371 → 374 → 375 → 377).
+- **Q620, v1.378:** read first: no contract checks where a camera points, flight holds no face to the ground (radial
+  out is nearest) and a registered satellite keeps its turn relative to its orbit; so the bench's rows are promises about
+  the declared attitude until Q338. New `sim/views.js` (cones against the craft's solids, weighted rays; what each part
+  sees round an orbit, ground- or sun-facing or spinning); `view` on the cameras, panels, thrusters and motors; the
+  design's `att`; payChecks' cameras row and the power row by attitude, with shade. The bench: *holds* switch, a slider
+  round the orbit, the cone in hand and every copy's, blocked rays and blockers in red, a globe, a lamp and an arrow
+  (flat, on the overlay). Test vehicle-53 (half a cone 48.5 %, strict fails on a sliver, 41 parts 0.12 ms a move);
+  TESTING 426; looked at in headless Chrome on the bench (stills not kept).
+- **Not done:** Q620's plume and thrust rows (slice 5, Q621); a released satellite recording `att`; the contract's orbit
+  for the bench's attitude; wing paddles as blockers. **Flow:** the bench's attitude row and the overlay models are plain;
+  redo the look as you like.
+- **Left running:** a python server on port 8772 (q620's tree), ends by itself within the hour.
+- Files: launchpad `sim/space.js`, `sim/vessel.js`, `sim/procedures.js`, new `sim/views.js`, `builder.js`, `index.html`,
+  `tests/vehicle.mjs`, `tests/core.mjs`, new `study_rcshold.mjs`, `notes/vehicle.md`, `NOTES.md`, `TESTING.md`,
+  `PLAYTEST.md`, `QUEUE.md`; root `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.

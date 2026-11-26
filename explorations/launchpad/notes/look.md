@@ -3063,7 +3063,7 @@ with a pump can beside the throat on the two big engines.
 - **Not checked.** A canted engine (radial, `tdir`) and a posed one in a still. Firing, with the nozzle's glow
   behind the ring. The other schools' bells (the ring is bare steel on all). Low on the Intel GPU.
 
-## v1.377 — ice off the tanks at liftoff, vapor from them on the pad (2026-11-25, look & sound, parts & pad, QUEUE Q639; BEAUTY B1.6)
+## v1.379 — ice off the tanks at liftoff, vapor from them on the pad (2026-11-25, look & sound, parts & pad, QUEUE Q639; BEAUTY B1.6)
 
 The optional piece of Caio's brainstorm ("effects that are easy to turn off can come in as optional"). The tanks
 have carried frost since the flight marks; it sat still.
@@ -3090,6 +3090,6 @@ have carried frost since the flight marks; it sat still.
 - **Stills** (local, `output/launchpad/beauty/Q639/`): `pad-wisps`, `pad-no-wisps`, `liftoff-ice`.
 - **Check:** test `aerofx-67` (wisps only on the pad, flakes only after liftoff and for 8 s, from frosted skin below
   the fuel line, falling; none without frost, off Tellus, in thin air or switched off; half on Low; no burst in a
-  long step; the setting's wiring). TESTING 425.
+  long step; the setting's wiring). TESTING 427.
 - **Not checked.** In motion by a person: this is an effect of motion and the stills say little. At night under the
   floodlights. A liftoff with side boosters. Low on the Intel GPU.

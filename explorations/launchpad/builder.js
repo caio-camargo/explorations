@@ -177,6 +177,45 @@ function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.in
     return dx<1e-3?oy>1e-3:dx<a.d.r+b.d.r-0.02&&oy>0.02};
   for(let i=0;i<all.length;i++){for(const e of ex)if(hit(all[i],e))return true;for(let j=i+1;j<all.length;j++)if(hit(all[i],all[j]))return true}
   return false}
+// ---- (Q620, bench slice 4) views on the bench: the cone of the part in hand (held, or selected) and of every copy of it,
+// tinted by how it fares, its blocked rays in red to where they stop, what blocks it tinted on the craft; the desk globe,
+// the lamp and the painted arrow for the ground, the sun and the way of travel round the declared attitude (sim/views.js)
+const VW_COL={ok:'127,208,255',warn:'255,184,74',bad:'255,107,91'};
+// the views with the held part where it would go (a craft with it attached), else the design's own; dy lifts them onto S
+function benchViews(){if(!st.bench||isEmpty(stackDef))return null;const D=dView(),att=viewAtt(D),h=st.held,sl=st.slot,on=h&&sl&&sl.p&&mountAt(sl.at)&&!sl.bad;
+  const key=JSON.stringify([D,att,on?[sl.p.i,sl.at,h.k,h.ti]:null]);if(key===st.vwKey&&st.vwSel===st.sel)return st.vw;st.vwKey=key;st.vwSel=st.sel;
+  let s=S,node=h&&on?h:st.sel;
+  if(on){const old=h.at,host=sl.p.dn;h.at=sl.at;kids(host).push(h);try{s=newShip(JSON.parse(JSON.stringify(D)))}finally{host.c.pop();if(old===undefined)delete h.at;else h.at=old}
+    node=null}   // the copy is a new tree: the held part's parts are the ones the original design doesn't have
+  const V=viewsOf(s,att),dy=s===S?0:S.parts[0].y0-s.parts[0].y0;
+  const mine=on?V.list.filter(e=>!S.parts.some(q=>q.on&&q.dn&&q.dn.id!=null&&q.dn.id===e.p.dn.id)):V.list.filter(e=>node&&dnOf(e.p)===node);
+  st.vw={V,s,dy,act:mine,blk:[...new Set(mine.flatMap(e=>e.by.map(b=>b[2])))]};if(st.vwM){st.vwM.free();st.vwM=null}return st.vw}
+// what blocks the cones in hand, as a red glow over those parts (draw)
+function viewBlockMesh(){const W=benchViews();if(!W||!W.blk.length)return null;if(!st.vwM)st.vwM=meshOf(W.blk,[1,.32,.22]);return st.vwM}
+function viewCones(o){const W=benchViews();if(!W)return;const k=DPR(),lift=v=>[v[0],v[1]+W.dy,v[2]];
+  for(const ev of W.act){const c=VW_COL[ev.st]||VW_COL.ok,L=isFinite(ev.far)?ev.far:Math.max(0.5,S.len*0.6),E=proj(lift(ev.eye));if(!E)continue;
+    const rim=ev.rays.filter(r=>r.ring===3),P=rim.map(r=>proj(lift(add(ev.eye,mul(r.d,L))))).filter(Boolean);
+    if(P.length>2){o.fillStyle=`rgba(${c},.13)`;o.beginPath();o.moveTo(P[0][0],P[0][1]);for(const q of P)o.lineTo(q[0],q[1]);o.closePath();o.fill();
+      o.strokeStyle=`rgba(${c},.55)`;o.lineWidth=1.2*k;o.stroke();o.beginPath();for(let i=0;i<P.length;i+=5){o.moveTo(E[0],E[1]);o.lineTo(P[i][0],P[i][1])}o.stroke()}
+    o.strokeStyle='rgba(255,107,91,.9)';o.fillStyle='rgba(255,107,91,.95)';o.lineWidth=1.5*k;
+    for(const r of ev.rays){if(!r.hit)continue;const H=proj(lift(r.hit));if(!H)continue;o.beginPath();o.moveTo(E[0],E[1]);o.lineTo(H[0],H[1]);o.stroke();o.beginPath();o.arc(H[0],H[1],2*k,0,7);o.fill()}
+    if(ev===W.act[0]){const t=`${ev.p.d.name.replace(/ \(.*\)$/,'')}: ${ev.line}`;o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';
+      o.fillStyle=`rgb(${c})`;o.strokeText(t,E[0]+10*k,E[1]-10*k);o.fillText(t,E[0]+10*k,E[1]-10*k)}}}
+// the bench models: where the ground, the sun and travel are from the craft at st.vth of the way round its orbit (spinning,
+// st.vth's turns of the spin too). A globe, a lamp (dark in the planet's shadow) and an arrow, set round the craft
+function viewModels(o){if(!st.bench||isEmpty(stackDef))return;const att=viewAtt(dView()),th=st.vth||0,E=attEnv(att,th,att==='spin'?th*7:0),k=DPR();
+  let R=0.5;for(const p of S.parts)if(p.on){const b=partBox(p);R=Math.max(R,b.reach,(b.hi-S.cm[1]),(S.cm[1]-b.lo))}R+=0.45;
+  const C=[0,S.cm[1],0],at=u=>proj(add(C,mul(u,R)));o.save();o.lineWidth=1.5*k;o.font=`${10*k}px ui-monospace,Consolas,monospace`;o.textAlign='center';
+  const lab=(q,t)=>{o.fillStyle='rgba(220,226,235,.85)';o.fillText(t,q[0],q[1]+22*k)};
+  {const q=at(E.g);if(q){const r=11*k;o.fillStyle='#2b6c98';o.beginPath();o.arc(q[0],q[1],r,0,7);o.fill();o.fillStyle='#6f9a5a';
+    for(const[a,b,s]of[[-.4,-.3,.35],[.3,.1,.4],[-.1,.45,.3]]){o.beginPath();o.ellipse(q[0]+a*r,q[1]+b*r,s*r,s*r*.6,0,0,7);o.fill()}
+    o.strokeStyle='#b8933c';o.beginPath();o.arc(q[0],q[1],r+3*k,0,7);o.stroke();lab(q,'ground')}}
+  {const q=at(E.s);if(q){const r=7*k;o.fillStyle=E.lit?'#ffe9a0':'#4a4536';o.strokeStyle=E.lit?'rgba(255,233,160,.7)':'rgba(120,110,90,.6)';o.beginPath();o.arc(q[0],q[1],r,0,7);o.fill();
+    if(E.lit)for(let i=0;i<8;i++){const a=i*Math.PI/4;o.beginPath();o.moveTo(q[0]+Math.cos(a)*(r+3*k),q[1]+Math.sin(a)*(r+3*k));o.lineTo(q[0]+Math.cos(a)*(r+8*k),q[1]+Math.sin(a)*(r+8*k));o.stroke()}
+    lab(q,E.lit?'sun':'sun (in shadow)')}}
+  {const a=at(mul(E.v,0.75)),b=at(E.v);if(a&&b){const d=norm([b[0]-a[0],b[1]-a[1],0]),n=[-d[1],d[0]];o.strokeStyle='#e9e4d6';o.fillStyle='#e9e4d6';o.lineWidth=3*k;
+    o.beginPath();o.moveTo(a[0],a[1]);o.lineTo(b[0],b[1]);o.stroke();o.beginPath();o.moveTo(b[0]+d[0]*8*k,b[1]+d[1]*8*k);o.lineTo(b[0]+n[0]*6*k,b[1]+n[1]*6*k);o.lineTo(b[0]-n[0]*6*k,b[1]-n[1]*6*k);o.fill();lab(b,'travel')}}
+  o.restore()}
 // (Q619, bench slice 3) the part the tilt keys and buttons turn: the held part when it may go on a frame, else the selected
 // mounted part. A D left and right, W S up and down (as seen from outside a side), Q E about the way out, 15° a press (a boom: 45°); straight undoes all three
 function tiltNode(){if(!st.bench)return null;const h=st.held;if(h)return!isPay(h)&&!kids(h).length&&mountOK(nodeDef(h))?h:null;return st.sel&&mountAt(st.sel.at)?st.sel:null}
@@ -272,6 +311,7 @@ function draw(drawMesh,m,Mship,pw){
   if(pm){gl.uniform1f(m.uGlow,.1);drawMesh(pm.g,Mship,pw)}
   if(hi.h){gl.uniform1f(m.uGlow,.22);drawMesh(hi.h,Mship,pw)}
   if(hi.s){gl.uniform1f(m.uGlow,.16+.1*pulse);drawMesh(hi.s,Mship,pw)}
+  {const vm=st.bench?viewBlockMesh():null;if(vm){gl.uniform1f(m.uGlow,.3+.12*pulse);drawMesh(vm,st.vw.dy?mmul(Mship,mat4([1,0,0],[0,1,0],[0,0,1],[0,st.vw.dy,0])):Mship,pw)}}   // (Q620) what blocks the cones in hand
   if(g&&g.glow){let M=Mship;
     if(g.float){const r=mouseRay();if(r){const w=V(),dist=len(sub(w.camW,shipWorld())),T=add(r.o,mul(r.d,dist));M=mmul(Mship,mat4([1,0,0],[0,1,0],[0,0,1],[T[0],T[1]-g.c,T[2]]))}}
     gl.uniform1f(m.uGlow,g.float?.35:g.bad?.55:.18+.12*pulse);drawMesh(g.glow,M,pw)}
@@ -285,7 +325,7 @@ function thrustLine(o){if(isEmpty(stackDef)||!S.events.length)return;const ig=ne
   o.save();o.setLineDash([7*k,5*k]);o.lineWidth=2*k;o.strokeStyle=T.f>.6?'#ff6b6b':T.f>.2?'#ffb454':'#ff9a3c';o.beginPath();o.moveTo(a[0],a[1]);o.lineTo(b[0],b[1]);o.stroke();o.restore();
   o.font=`bold ${12*k}px ui-monospace,Consolas,monospace`;o.fillStyle=o.strokeStyle;o.textAlign='left';o.fillText(`thrust · misses CoM ${(T.miss*100).toFixed(T.miss<.1?1:0)} cm`,b[0]+6*k,b[1])}
 function overlay(o){
-  if(!here()||isEmpty(stackDef))return;thrustLine(o);const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)
+  if(!here()||isEmpty(stackDef))return;thrustLine(o);if(st.bench){viewModels(o);viewCones(o)}const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)
   o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
   if(st.loads&&!st.held){const seen=[];
     for(const p of S.parts){if(!p.on||!p.parent)continue;const f=certFrac(p);if(f==null||!isFinite(f))continue;const q=proj(p.jP);if(!q)continue;
@@ -481,7 +521,14 @@ function panel(){
     const inp=bn.querySelector('#pbName');inp.onkeydown=ev=>ev.stopPropagation();inp.oninput=()=>{if(e){e.name=inp.value.trim()||e.name;HOOK.save&&HOOK.save()}};
     const g=document.createElement('div');g.className='bgrp';bn.appendChild(g);
     btn(g,'✓ done',false,()=>benchClose(false),'save it and go back to the rocket');
-    btn(g,'✓ done, and pick it up',false,()=>benchClose(true),'save it and hold it, ready to place on the rocket').disabled=isEmpty(stackDef)}
+    btn(g,'✓ done, and pick it up',false,()=>benchClose(true),'save it and hold it, ready to place on the rocket').disabled=isEmpty(stackDef);
+    // (Q620) the attitude it will hold (the Checks and the cones read it; nothing in flight holds it yet: Q338), and a slider
+    // round its orbit for the globe, the lamp and the arrow
+    const ag=document.createElement('div');ag.className='bgrp';ag.innerHTML='<span class="dim">holds</span>';bn.appendChild(ag);const att=viewAtt(dView());
+    for(const[v,t,tip]of[['ground','facing the ground','its bottom toward the ground, +X leading'],['sun','facing the sun','its top toward the sun'],['spin','spinning','turning about its long axis, held across its orbit']])
+      btn(ag,t,att===v,()=>edit(()=>{const D=design();if(v==='ground')delete D.att;else D.att=v}),tip+'. The Checks and the views are for this attitude (a promise: the autopilot that holds it comes later)');
+    const sl=document.createElement('input');sl.type='range';sl.min=0;sl.max=1;sl.step=.01;sl.value=st.vth||0;sl.title='round its orbit: where the ground, the sun and travel are';sl.style.width='120px';
+    sl.oninput=()=>{st.vth=+sl.value};sl.onkeydown=ev=>ev.stopPropagation();const sw=document.createElement('div');sw.className='bgrp';sw.innerHTML='<span class="dim">round the orbit</span>';sw.appendChild(sl);bn.appendChild(sw)}
   const bar=document.createElement('div');bar.className='bbar';box.appendChild(bar);
   const sy=document.createElement('div');sy.className='bgrp';sy.innerHTML='<span class="dim">radial mounts</span>';for(const n of SYM)btn(sy,'×'+n,st.sym===n,()=>{st.sym=n;st.ghostKey='';refresh()},'copies of a side part, evenly around [X]');bar.appendChild(sy);
   const t2=document.createElement('div');t2.className='bgrp';bar.appendChild(t2);

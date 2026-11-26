@@ -1,5 +1,5 @@
 # Launchpad notes — Vehicle
-**Version**: 1.0.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-15
+**Version**: 1.0.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-11 (split from NOTES.md v1.21.52, W37) · **Updated**: 2026-11-25
 **Purpose**: The build log for parts, the construction screen, staging, attitude control and avionics, aero, nodes, legs, power, the pilot's modes.
 **Status**: live log, oldest first; new sections go at the bottom. Index of every section: [`../NOTES.md`](../NOTES.md).
 
@@ -3060,3 +3060,128 @@ complaint there was that a tilted part's base half sank into the frame, so a til
 - A deployed wing or boom is longer than the folded part the envelope and the bracket read (as for upright parts: point 3).
 - Wings on the top or bottom face still have a meaningless `phi` (from slice 2).
 - Views (slice 4, Q620) are next: a tilt is what a view's cone will follow.
+
+## v1.377 — RCS holds without chattering: a deadband and a minimum impulse (2026-11-25, vehicle session, QUEUE Q632, PLAYTEST #169)
+
+**Why:** Caio, docking on *First station up*: with RCS on and nothing pressed the jets kept "making what are apparently
+small and unnecessary adjustments". `physStep` handed `rcsStep` the attitude law's leftover torque every step,
+`(alR − alC)·I` plus what the wheels didn't give, and `rcsStep`'s duty accumulator turns any duty above zero into a whole
+20 ms pulse sooner or later. The leftover is never zero while the craft is off its target by any amount: the RCS call
+of `ctrlAccel` counts RCS's authority in its braking-limited rate √(α·θ), so it always asks to turn a little faster than
+the wheels' call. Each such pulse on the Docking craft is 0.4 °/s in pitch (1.6 °/s in roll); the wheels then took it
+back out, and the wheels' stored momentum climbed as the two fought.
+
+**Measured first** (`study_rcshold.mjs`: the Docking craft beside the tester's dummy at 300 km, turned onto the mode's
+target on the tester's endless gas for 120 s, then held an hour with nothing pressed; 30 kg of gas):
+
+| SAS mode | wheels, before | wheels, after | no wheels, before | no wheels, after |
+|---|---|---|---|---|
+| hold (stab) | 0 | 0 | 0 | 0 |
+| prograde | 13.3 kg/h (3,050 nozzle firings) | **0** | all 30 kg in 1.3 min | **0** |
+| target | 12.1 kg/h | **0** | all 30 kg in 1.3 min | **0.017 kg/h** |
+| docking (attitude and roll) | 10.4 kg/h | **0** | all 30 kg in 1.3 min | **0.18 kg/h** |
+
+A plain hold asks nothing of the jets with nothing to disturb it, before or after. Every mode whose target moves
+(prograde turns once an orbit, 0.116 °/s here) chattered. Without wheels the craft was worse than useless: its RCS
+emptied itself in a limit cycle. (Not measured: a disturbance torque. The sim has none in orbit, no gravity gradient
+or sloshing, so a hold's only work is following its target.)
+
+**What** (sim/space.js `rcsHold`, `rcsStep`; sim/vessel.js `rcsErrSet`, `ctrlAccel`, `physStep`):
+- The RCS call of `ctrlAccel` leaves what the deadband reads in `s.rcsErr`: the angle off, the axis to turn about, and
+  the craft's turn **relative to its target's own** (`rcsErrSet` differences the target from step to step: a prograde
+  hold or a pitch program turns, and following it is not an error). Under a rotation key, or with SAS off, it is null.
+- **Within 5° of the target (`RCS_SLEW`) the jets leave the law alone and work a phase plane about each body axis**:
+  inside the deadband (`RCS_DB`, 0.5°) they let the craft drift; past it, a drift outward (or none) becomes a slow drift
+  back of half a minimum impulse, so the craft crosses and comes back on two small pulses; a drift outward inside the
+  deadband is stopped only when it is faster than its band (`RCS_DW` 0.05 °/s, or one minimum impulse).
+- **A minimum impulse:** a hold's jets fire for part of the step, a quarter of it at least (`RCS_MIB`, 5 ms), at a force
+  scaled to match, instead of a whole 20 ms pulse. The first version had whole pulses only, and the craft without wheels
+  still spent 21 to 42 kg an hour: its rate could only take values a whole pulse apart, and a 0.4 °/s roll left from the
+  turn could never be taken out (it sat between two of them).
+- **Unchanged:** a bigger turn flies on the law in whole pulses; so does the
+  law's torque **while gimbals or fins steer** (a burn: they hold the attitude, RCS tops up as R26 left it) and while the
+  wheels unload; a rotation key goes straight through (17 °/s after 2 s of pitch, as before); **the translation keys are
+  untouched** (TESTING 58), and while one is held a hold's pulses go back to whole ones.
+
+**Tried and dropped, in order:** (1) a hysteresis gate on the law's own torque (fire past 0.5° or 0.2 °/s off, until back
+inside a third of both): the wheeled craft went quiet, but without wheels each correction became a 64-firing slew on the
+√(α·θ) law, worse than before (the rate it read, the law's wanted rate less the turn, is large at any angle because
+RCS's α is large). (2) A phase plane on the inertial rate: it fought vehicle-42's pitch program (0.43 °/s of turn the
+wheels were following) and spent 15.6 kg on the climb. (3) A phase plane along the error axis only, in whole pulses:
+the 21 to 42 kg/h above. The per-axis plane with the minimum impulse is what's left.
+
+**Also better:** let go of a pitch key held 2 s under SAS: the stop costs 0.73 kg with wheels (was 4.5 kg, and still
+turning 0.6 °/s 30 s later) and 2.8 kg without (was 14.6 kg); both now come to rest. vehicle-42's climb: 0.09 kg (was 0.07).
+
+**Checks:** `vehicle-52` (new): the Docking craft holds prograde on its wheels for 10 minutes with no firing (2.2 kg
+before), and the docking attitude without wheels on 0.033 kg, 0.21° off (all 30 kg before); it fails on the old code.
+Core 24 (RCS) said a wheel-less probe holding prograde spends gas in whole 20 ms pulses: no longer true of the hold, so it now checks the probe holds within 1° (0.008 rad after 60 s). vehicle-42, core 25, 28, 41 (docking), control-3, control-5, vehicle-6 and vehicle-24 pass. `rcsErrSet` and
+`rcsHold` are in `TAPE_V`'s fingerprint, so old tapes retire.
+
+**For a person** (TESTING 425): dock with RCS on and hands off the keys. With wheels there should be no puffs at all;
+without, a small one every few seconds at most.
+
+## v1.378 — views: what a satellite's parts see (bench slice 4, 2026-11-25, vehicle session, QUEUE Q620, D47 point 2)
+
+**Why:** slice 4 of § "Plan: the bench as its own builder". D47's point 2: what each part must see takes the place of
+aerodynamics as the thing that shapes a satellite.
+
+**Read first, as the plan asked** (it had not been read when the plan was written):
+- **How flight holds a satellite's attitude today.** In flight, SAS holds what its mode says: stability, prograde and
+  retrograde, normal, radial (the analog autopilot, era 1), the target modes and docking (later eras). No mode points a
+  face at the ground or the sun. *Radial out* (the nose away from the planet) is the nearest to ground-facing, since the
+  bottom then looks down. Between flights a registered satellite keeps the turn it had relative to its orbit when it was
+  left (`satSpin`: `orbQ(r, v)·qo`), or its spin; nothing steers it. So a craft left holding radial out stays facing the
+  ground on the rails, and one left on stability hold turns once an orbit relative to the ground.
+- **Whether a contract checks where a camera points: none does.** Imaging contracts and imagery sales (`satTick`) ask for
+  a camera aboard and a pass within 30° of overhead (`SAT_FOV`), sharp enough, in sunlight, under clear sky; the weather
+  satellite asks for a polar orbit and a camera; the far side asks for a camera near Selene's sunlit far side. A camera
+  pointing at the sky passes all of them. Power for a registered satellite (`powerBudget`) uses fixed shares (body cells
+  0.32 of full sun, wings 0.9, squared to the sun); in flight, `powSun` turns a deployed wing about its arm to the sun
+  and leaves body cells at their average.
+- So the bench's rows are **promises about the declared attitude**, as the plan said. Nothing in flight or in a contract
+  reads them until Q338's attitude law; `attEnv` is the function it replaces.
+
+**What** (new `sim/views.js`, in the SIM block after `sim/power.js`):
+- **A part's view** is a field on its definition, `view: {need, cone, strict, back}`: the imaging cameras (stack and
+  side) need the ground in a 30° cone (the flight imaging's 30°); solar cells and the wing need the sun, 60° (the cone
+  only shows on the bench, the power is per sample); the hydrazine thrusters' plume (20°) and the apogee engine's and
+  kick motors' thrust (15°) go out the back. No part is strict yet (Q338's narrow camera will be).
+- **Solids:** a sized frame is its prism (`frameRay`); every other part is its bounding cylinder on its pose
+  (`viewCyl`: a posed part from its foot and rotation, an upright stack or hull part from `y0`, `pos`, `phi`, `off`).
+  Not solids: a deployed wing's paddles, a boom's rod, fairings and adapters.
+- **The cone:** the axis and three rings of 8, 14 and 20 rays, each ray weighted by the share of the cone's solid angle
+  its ring stands for, the two outer rings turned half a step so that only the axis lies on a line across the cone. A
+  disc whose edge runs through the axis reads 48.5 %; 2 cm over, 54.5 %; 2 cm short, 45.5 % (the heaviest ray is 3 %).
+  A ray starts a centimetre out from the face the part looks out of (a stack part's end, a surface part's outer side, a
+  wing's panels 0.6 m plus half its span out on the boom, where gl.js draws them).
+- **Round an orbit** (`attEnv`, `attSamples`): ground-facing (bottom down, +X leading), sun-facing (top to the sun) or
+  spinning (about the long axis, held across the orbit); the sun 20° off the orbit's plane; the ground fills asin(R/r)
+  about straight down and hides the sun behind it. 72 samples (16 × 24 spinning) of a 300 km Tellus orbit. The lit
+  share, 0.722, against the power budget's 1 − eclFrac = 0.715: within one sample.
+- **Judged** (`viewOf`): a camera never seeing the ground fails; blocked, it warns, and fails past half or if strict;
+  seeing it for part of the orbit warns. A panel: its share of full sun round the orbit, a body-cell patch by the cosine on
+  its face, a wing turned about its arm (flight's rule), with a ray to the sun at each sample for shade (and by what).
+- **Checks** (`payChecks`): the design's `att` (ground-facing unless it says `sun` or `spin`) is saved at its root. The
+  power row's figure is now the panels' for that attitude with shade counted, and says which attitude; a shaded panel
+  makes it a warning. A new row, *The camera sees the ground all the way round* (or the worst camera's trouble).
+- **The bench** (builder.js): under *done*, **holds: facing the ground / facing the sun / spinning** and a slider **round
+  the orbit**. The part in hand, held over a frame or selected, shows its cone and every copy's, tinted by how it fares
+  (blue, amber, red), its blocked rays in red to where they stop, and a line by the first cone; what blocks them glows red
+  on the craft. Round the craft, a desk globe for the ground, a lamp (dark in the planet's shadow) and an arrow for the
+  way it travels, where the slider puts them. All drawn flat on the overlay (the mock-up's were 3D models).
+- **Dragging:** `viewsAgain` redoes only the changed part's view and the views whose rays met it or might meet it now:
+  0.12 ms for one part moved among 41; all of a 33-part craft's views at once take about 2 ms.
+
+**Checks:** `vehicle-53`: half a cone blocked within one ray; a bottom camera ground-facing sees the ground all round,
+sun-facing 14 % of the orbit (a warning), on a side face never (fails); a 0.7 m sphere beside it blocks it by name; a
+whip at the cone's edge blocks 3 % (a warning, and a strict view fails); the lit share against eclFrac; the cameras row;
+a wing standing on the top face gives 152 W of 300 ground-facing and 0 sun-facing (the sun along its arm); 41 parts,
+0.12 ms a move. In the page (headless Chrome, the real GPU): the bench with a side camera beside a sphere (48 % blocked,
+amber, the rays red to the sphere), the wing selected (52 % of full sun), a held camera over a side face ×4 (four red cones,
+*never sees the ground*). Stills looked at, not kept.
+
+**Not done, for the next slices:** the plume and thrust-line rows and engines on mounts (slice 5); a released satellite
+recording its `att` (the plan § 5; with Q338); the contract's orbit for `attEnv` (a 300 km orbit always); the deployed
+wing's paddles as something that blocks; *Spins true*. **Flow:** the bench card's attitude row and slider are plain
+buttons in the existing card, and the overlay's models are flat; the look is yours to redo.
