@@ -1,7 +1,20 @@
 # Launchpad's full test suite on every push that touches the game (orchestrator 2026-11-11, Caio's call).
 # The merge gate: a session pushes its branch, waits with `gh run watch`, merges when this passes.
 # Locally sessions keep `--smoke` and `--only <lane>`; the full run happens here, off the shared machine.
-# Same command as the local gate (`node test.mjs`, one process), so a result here means the same thing.
+#
+# Two savings (Caio 2026-11-26; QUEUE's platform line of 2026-11-25, SESSION_LOG 2026-11-25 and 2026-11-26):
+#  1. The suite runs in 4 processes (`--jobs 4`): about 4 min where one process took 10.6 (run 45668423377). The same
+#     sections and checks, dealt into processes by shards.mjs; a section must pass alone for that to be sound (R2,
+#     `--isolation`). A check that fails here and passes in one process is a section leaning on its neighbours: a bug to
+#     file, and `-f args=""` by hand gives the one-process run to compare.
+#  2. A push that changes only documents runs the numbers and the three sections that read documents, not the flights.
+#     "Only documents" = every changed file under explorations/launchpad is a `.md`, or sits in `mockups/` or
+#     `archive/`. What "changed" is measured against:
+#       - on main: the push itself (before..after). Main's runs all finish, so no code push goes untested.
+#       - on a branch: everything the branch adds to main (merge-base..head), NOT the last push. A branch's newer push
+#         cancels its older run, so judging by the last push alone would let "code, then a docs fix" merge untested.
+#     Anything unclear (a new branch on main's history, a forced push, a by-hand run) gets the full suite.
+#
 # By hand, any branch, any test.mjs options, any Node:
 #   gh workflow run launchpad-tests.yml --ref <branch> -f args="--only space-33" -f node=22
 name: launchpad tests
@@ -14,8 +27,8 @@ on:
   workflow_dispatch:
     inputs:
       args:
-        description: 'test.mjs options (empty = the full suite)'
-        default: ''
+        description: 'test.mjs options (empty = the full suite in one process)'
+        default: '--jobs 4'
       node:
         description: 'Node version'
         default: '24'
@@ -36,13 +49,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # check_numbers.mjs compares the branch with origin/main
+          fetch-depth: 0   # check_numbers.mjs compares the branch with origin/main; so does the scope step
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node || '24' }}
+      - name: scope (the full suite, or documents only)
+        id: scope
+        working-directory: .
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          scope=full; why=''
+          if [ "$EVENT" != push ]; then why='run by hand'
+          else
+            if [ "$REF" = refs/heads/main ]; then base="$BEFORE"; else base=$(git merge-base origin/main HEAD 2>/dev/null || true); fi
+            if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then why="no base commit to compare with (${base:-none})"
+            elif ! git merge-base --is-ancestor "$base" HEAD; then why="the base $base is not in this history (a forced push)"
+            else
+              code=$(git diff --name-only "$base" HEAD -- explorations/launchpad .github/workflows/launchpad-tests.yml \
+                | grep -v -E '^explorations/launchpad/(.*\.md|mockups/.*|archive/.*)$' || true)
+              if [ -n "$code" ]; then why="changed since ${base:0:8}: $(echo "$code" | head -5 | tr '\n' ' ')$( [ "$(echo "$code" | wc -l)" -gt 5 ] && echo '…')"
+              else scope=docs; why="only documents changed since ${base:0:8}"; fi
+            fi
+          fi
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          echo "scope: $scope ($why)"
+          echo "**$scope**: $why" >> "$GITHUB_STEP_SUMMARY"
       - name: numbers (check_numbers.mjs)
         run: node check_numbers.mjs
       - name: test suite (node test.mjs)
+        if: steps.scope.outputs.scope == 'full'
         env:
-          ARGS: ${{ inputs.args }}
+          ARGS: ${{ github.event_name == 'push' && '--jobs 4' || inputs.args }}
         run: node test.mjs $ARGS
+      - name: the sections that read documents (docs-only push; the flights are skipped)
+        if: steps.scope.outputs.scope == 'docs'
+        run: node test.mjs --only qa-2,qa-3,platform-3
