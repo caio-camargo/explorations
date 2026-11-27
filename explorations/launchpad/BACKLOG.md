@@ -34,6 +34,7 @@ under other words may already be covered.
 | Parametric tanks | Set a tank's length, diameter and wall yourself | notes/foundations.md, same section (~382) | 2026-11-11, sweep |
 | Parts that tilt or flip | A port facing down a stack, tilted bodies | notes/foundations.md § "Open threads" 4; notes/space.md (~303, 590) | 2026-11-11, sweep |
 | Hydrolox engines | An engine family on hydrogen, with its nearly invisible blue flame | notes/look.md (~244, 1439) | 2026-11-11, sweep |
+| Other kinds of engine in space | Beyond solid and liquid (Q642): what each looks and sounds like in vacuum, and whether it is a part: ion and Hall thrusters (a faint blue beam), nuclear thermal (a clear hydrogen jet, a glowing core), cold gas, hypergolic and hydrogen engines told apart from kerosene | Caio 2026-11-27: "there may be more than one kind in space… keep other space-only kinds in the backlog" | 2026-11-27, Caio |
 | A rotating detonation engine | A development project on an engine: more efficiency, rough running until learned | TECH_SCOUTING § Propulsion | 2026-11-11, sweep |
 | An inflatable heat shield | A big diameter on small mass for heavy returns (Q589 weighs it for Tellus) | TECH_SCOUTING § In space | 2026-11-11, sweep |
 | A side-opening cargo bay, and a 2.5 m bay | A shuttle-style bay | notes/space.md § "Phase B", Not yet (~553) | 2026-11-11, sweep |
