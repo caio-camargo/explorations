@@ -7,6 +7,7 @@
 //   node test.mjs --times               the full suite with the seconds each section takes, and what SLOW should gain or lose
 //   … --jobs 4                          with --only/--skip/--smoke/--times/--isolation: N processes at once
 //   node test.mjs --isolation [--jobs 4] [--only …]  each section run alone vs the full run: which checks change
+//   node test.mjs --isolation file [--jobs 4]       each test file alone vs the full run (Q288); --only file:vehicle picks a file
 // A section is a top-level comment at column 0 like "// 12. Title" or "// control-3. Title", up to the next one.
 // Since Q68 the sections live in tests/<lane>.mjs (TEST_FILES, in that order), not in test.mjs: each lane appends to its
 // own file. parse() puts them back between test.mjs's prelude and its summary, so every run is one module, as before.
@@ -70,12 +71,16 @@ export function parse(text, url) {
 }
 
 // a selector is a label ("12", "control-3": every section with it), "#53" (the position --list shows; it moves when
-// sections are added above), or else a word or phrase in the header comment
+// sections are added above), a whole file ("file:vehicle", "vehicle.mjs" or "tests/vehicle.mjs": every section in
+// tests/vehicle.mjs, Q288; "file:test" is test.mjs's own), or else a word or phrase in the header comment
+export const fileOf = q => { const m = /^(?:file:|tests\/)?([\w-]+)\.mjs$/.exec(q) || /^file:([\w-]+)$/.exec(q);
+  return m ? (m[1] === 'test' ? 'test.mjs' : `tests/${m[1]}.mjs`) : null; };
 export function select(secs, sels, deps = true) {
   const picked = new Set(), unknown = [];
   for (const raw of sels) {
     const q = raw.trim().toLowerCase(); if (!q) continue;
-    const hit = q[0] === '#' ? secs.filter(s => s.ord === +q.slice(1))
+    const f = fileOf(q);
+    const hit = f ? secs.filter(s => s.file === f) : q[0] === '#' ? secs.filter(s => s.ord === +q.slice(1))
       : secs.some(s => s.label === q) ? secs.filter(s => s.label === q) : secs.filter(s => s.text.includes(q));
     if (!hit.length) unknown.push(raw);
     hit.forEach(s => picked.add(s));
@@ -139,8 +144,13 @@ export async function main(argv, url) {
 
   if (opt('--list') !== null) {
     const dup = l => P.secs.filter(s => s.label === l).length > 1 ? '*' : ' ';
-    for (const s of P.secs) console.log(`${String(s.ord).padStart(3)}  ${(s.label + dup(s.label)).padEnd(11)} ${(s.file.replace('tests/', '') + ':' + s.line).padEnd(17)} ${s.title.slice(0, 90)}`);
-    console.log(`\n${P.secs.length} sections; * = a label more than one section carries (--only picks them all; a title word picks one)`);
+    let f0 = null;   // grouped by file (Q288): a heading per file, with its count and the selector that picks it
+    for (const s of P.secs) {
+      if (s.file !== f0) { f0 = s.file; const n = P.secs.filter(o => o.file === f0).length;
+        console.log(`${f0 === P.secs[0].file ? '' : '\n'}== ${f0}: ${n} section${n > 1 ? 's' : ''} (--only file:${f0.replace(/^tests\//, '').replace(/\.mjs$/, '')})`); }
+      console.log(`${String(s.ord).padStart(3)}  ${(s.label + dup(s.label)).padEnd(11)} ${(s.file.replace('tests/', '') + ':' + s.line).padEnd(17)} ${s.title.slice(0, 90)}`);
+    }
+    console.log(`\n${P.secs.length} sections in ${new Set(P.secs.map(s => s.file)).size} files; * = a label more than one section carries (--only picks them all; a title word picks one)`);
     return 0;
   }
   const only = opt('--only'), skip = [...(opt('--skip') ?? '').split(','), ...(opt('--smoke') !== null ? SLOW : [])].filter(Boolean);
@@ -150,7 +160,11 @@ export async function main(argv, url) {
   const pulled = withDeps(P.secs, keep), picked = P.secs.filter(s => keep.has(s));
   if (unknown.length) { console.log(`no section matches: ${unknown.join(', ')} (see --list)`); return 2; }
 
-  if (opt('--isolation') !== null) return isolation(P, picked, url, Math.max(1, +(opt('--jobs') || 1)));
+  const iso = opt('--isolation');
+  if (iso !== null) {
+    if (iso && iso !== 'file') { console.log(`--isolation takes nothing (each section alone) or "file" (each file alone), not "${iso}"`); return 2; }
+    return isolation(P, picked, url, Math.max(1, +(opt('--jobs') || 1)), iso === 'file');
+  }
 
   if (sels) console.log(`shard: ${picked.length} of ${P.secs.length} sections: ${picked.map(s => s.label + (pulled.has(s) ? ` (for ${pulled.get(s)})` : '')).join(', ')}\n`);
   const t = performance.now(), jobs = Math.max(1, +(opt('--jobs') || 1));
@@ -197,24 +211,31 @@ async function parallel(P, picked, url, jobs) {
 // durations masked (a number followed by ms, µs or s): a value that moves with the order is the same defect before it
 // flips. Expect only random seeds and timings to differ. Exit 1 only when a check passes one way and fails the other,
 // or doesn't run. Run it before a milestone review, not in smoke (each section alone costs a process).
+// `--isolation file` (Q288) runs each file's picked sections alone together instead (a lane's file as a unit: one
+// process per file), against the same full run: what a lane's sections lean on from other lanes' files.
 const mask = l => l.replace(/\d+(\.\d+)? ?(ms|µs|s)\b/g, '<t>');
-async function isolation(P, picked, url, jobs) {
+async function isolation(P, picked, url, jobs, byFile = false) {
   const all = new Set(picked); withDeps(P.secs, all);
   console.log(`${picked.length === P.secs.length ? 'full run' : `the ${picked.length} picked sections together`}…`);
   const full = await run(build(P, P.secs.filter(s => all.has(s)), url), { echo: false }), diff = [];
-  console.log(`together: exit ${full.code}; now ${picked.length} sections alone, ${jobs} at a time`);
-  const queue = [...picked];
+  const units = byFile ? [...new Set(picked.map(s => s.file))].map(f => picked.filter(s => s.file === f)) : picked.map(s => [s]);
+  console.log(`together: exit ${full.code}; now ${byFile ? `${units.length} files, each alone` : `${picked.length} sections alone`}, ${jobs} at a time`);
+  const queue = [...units], none = { pass: 0, fail: ['(did not run)'], lines: [] };
   const worker = async () => {
-    for (let s; (s = queue.shift());) {
-      const own = new Set([s]); withDeps(P.secs, own);
+    for (let u; (u = queue.shift());) {
+      const own = new Set(u); withDeps(P.secs, own);
       const r = await run(build(P, P.secs.filter(o => own.has(o)), url), { echo: false });
-      const a = r.secs.get(s.ord) || { pass: 0, fail: ['(did not run)'], lines: [] }, f = full.secs.get(s.ord) || { pass: 0, fail: ['(did not run)'], lines: [] };
-      const flip = a.pass !== f.pass || a.fail.join('|') !== f.fail.join('|') || (r.code === 0) !== !a.fail.length;
-      const n = Math.max(a.lines.length, f.lines.length), lines = [];
-      for (let i = 0; i < n; i++) if (mask(a.lines[i] ?? '(none)') !== mask(f.lines[i] ?? '(none)')) lines.push([f.lines[i] ?? '(none)', a.lines[i] ?? '(none)']);
-      const tag = flip ? 'FLIP' : lines.length ? 'diff' : 'same';
-      console.log(`${tag}  ${s.label.padEnd(10)} alone ${a.pass} pass ${a.fail.length} fail, together ${f.pass}/${f.fail.length}${lines.length ? `, ${lines.length} print differently` : ''}${fmt(a.ms).replace(/^ */, '  ')}  ${s.title.slice(0, 60)}`);
-      if (flip || lines.length) diff.push({ s, a, f, flip, lines, code: r.code, tail: r.out.split('\n').slice(-8).join('\n') });
+      const anyFail = u.some(s => (r.secs.get(s.ord) || none).fail.length) || [...r.secs.values()].some(v => v.fail.length);
+      if (byFile) console.log(`== ${u[0].file}: ${u.length} sections alone, exit ${r.code}`);
+      for (const s of u) {
+        const a = r.secs.get(s.ord) || none, f = full.secs.get(s.ord) || none;
+        const flip = a.pass !== f.pass || a.fail.join('|') !== f.fail.join('|') || (r.code === 0) !== !anyFail;
+        const n = Math.max(a.lines.length, f.lines.length), lines = [];
+        for (let i = 0; i < n; i++) if (mask(a.lines[i] ?? '(none)') !== mask(f.lines[i] ?? '(none)')) lines.push([f.lines[i] ?? '(none)', a.lines[i] ?? '(none)']);
+        const tag = flip ? 'FLIP' : lines.length ? 'diff' : 'same';
+        if (!byFile || tag !== 'same') console.log(`${tag}  ${s.label.padEnd(10)} alone ${a.pass} pass ${a.fail.length} fail, together ${f.pass}/${f.fail.length}${lines.length ? `, ${lines.length} print differently` : ''}${fmt(a.ms).replace(/^ */, '  ')}  ${s.title.slice(0, 60)}`);
+        if (flip || lines.length) diff.push({ s, a, f, flip, lines, code: r.code, tail: r.out.split('\n').slice(-8).join('\n') });
+      }
     }
   };
   await Promise.all(Array.from({ length: jobs }, worker));
@@ -225,6 +246,6 @@ async function isolation(P, picked, url, jobs) {
     if (d.flip) console.log(`  alone fails: ${d.a.fail.join(' / ') || '-'}\n  together fails: ${d.f.fail.join(' / ') || '-'}\n  alone exit ${d.code}; last lines:\n${d.tail}`);
   }
   const flips = diff.filter(d => d.flip).length;
-  console.log(`\n${picked.length} sections: ${flips} pass or fail differently alone, ${diff.length - flips} more print something different (seeds and timings are expected here)`);
+  console.log(`\n${picked.length} sections${byFile ? ` in ${units.length} files` : ''}: ${flips} pass or fail differently alone, ${diff.length - flips} more print something different (seeds and timings are expected here)`);
   return flips ? 1 : 0;
 }

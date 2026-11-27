@@ -411,3 +411,22 @@
       && st.map(s => s.id).join() === 'Q7,Q9' && !gate.length,
     `live: ${n('header')} header, ${n('index')} index, ${n('link')} link${gate.length ? ' (' + gate.slice(0, 3).map(x => `${x.file}:${x.line} ${x.text}`).join('; ') + ')' : ''}; ${n('after')} stale "after" (not failed: ${live.filter(x => x.kind === 'after').map(x => x.text.split(' ')[0]).join(', ') || 'none'})`);
 }
+
+// platform-16. Test files as units (QUEUE Q288): `--only file:vehicle` (or `vehicle.mjs`, `tests/vehicle.mjs`) picks every
+// section of one file; `--list` groups by file with a heading and that selector; `--isolation file` runs each file's
+// picked sections alone together against the full run (here one small section, so it costs two short processes).
+{
+  const SH = await import(new URL('./shards.mjs', import.meta.url)), { spawnSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
+  const P = SH.parse(readFileSync(new URL('./test.mjs', import.meta.url), 'utf8'), new URL('./test.mjs', import.meta.url).href);
+  const files = [...new Set(P.secs.map(s => s.file))], vf = P.secs.filter(s => s.file === 'tests/vehicle.mjs');
+  const same = ['file:vehicle', 'vehicle.mjs', 'tests/vehicle.mjs'].map(q => SH.select(P.secs, [q], false).picked);
+  const nope = SH.select(P.secs, ['file:nosuch'], false), word = SH.select(P.secs, ['vehicle'], false).picked;
+  const node = (...a) => spawnSync(process.execPath, [fileURLToPath(new URL('./test.mjs', import.meta.url)), ...a], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  const list = node('--list'), heads = list.stdout.split('\n').filter(l => l.startsWith('== '));
+  const iso = node('--isolation', 'file', '--only', 'platform-3'), bad = node('--isolation', 'bogus');
+  check('platform-16: --only file:<lane> picks a whole test file; --list groups by file; --isolation file runs each file alone (Q288)',
+    vf.length > 10 && same.every(p => p.length === vf.length && p.every(s => s.file === 'tests/vehicle.mjs')) && nope.unknown.length === 1
+      && word.length !== vf.length && heads.length === files.length && heads.every((h, i) => h.startsWith(`== ${files[i]}: `) && h.includes('(--only file:'))
+      && iso.status === 0 && /1 sections in 1 files: 0 pass or fail differently alone/.test(iso.stdout) && bad.status === 2,
+    `${files.length} files, vehicle ${vf.length} sections (a title word "vehicle" picks ${word.length}); --list headings ${heads.length}; --isolation file: exit ${iso.status}, ${(iso.stdout.trim().split('\n').pop() || '').slice(0, 70)}; bogus mode exit ${bad.status}`);
+}

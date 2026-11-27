@@ -255,12 +255,14 @@ hands over to `shards.mjs`, which cuts the file into sections and runs a chosen 
 
 | Command | What it runs |
 |---|---|
-| `node test.mjs --list` | every section: position, label, line, title |
+| `node test.mjs --list` | every section: position, label, line, title (grouped by file since v1.385) |
+| `node test.mjs --only file:vehicle` | every section of one test file (also `vehicle.mjs`, `tests/vehicle.mjs`; v1.385, Q288) |
 | `node test.mjs --only 12,#53,docking` | by label (every section carrying it), by `#position` from `--list`, or by a word in the header comment |
 | `node test.mjs --skip 27,bodies-1` | everything but these (combines with `--only`) |
 | `node test.mjs --smoke --jobs 4` | everything but the five long flights (`SLOW` in `shards.mjs`): **22 s** in 4 processes, ~55–75 s in one |
 | `node test.mjs --times [--jobs 4]` | the full suite with the seconds per section |
 | `node test.mjs --isolation --jobs 4 [--only …\|--smoke]` | each section alone vs the picked sections together; lists every check that prints differently (durations masked), exit 1 on a pass/fail flip (R2, v1.340) |
+| `node test.mjs --isolation file --jobs 4 [--only …]` | each test file's picked sections alone together vs the full run (v1.385, Q288) |
 
 **What a section is.** A comment at column 0, `// 12. Title` or `// control-3. Title`, up to the next one. Everything
 before the first (the SIM, `api`, `check`) and everything after `// ==== END OF SECTIONS` (the summary, the exit code)
@@ -1223,3 +1225,20 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
   path (`--only qa-2,qa-3,platform-3,platform-15`), since a docs-only push is exactly what breaks links.
 - **Not built** (rule 7 names them too): QUEUE rows naming answered W/D questions, and the size budgets (QUEUE ~300
   lines, a design doc ~400). Both would fail today, so they need a call on what is enforced before they gate anything.
+
+## v1.385 — test files as units: `--only file:<lane>`, `--list` by file, `--isolation file` (2026-11-27, quick wins, QUEUE Q288)
+
+- **`--only file:vehicle`** (or `vehicle.mjs`, `tests/vehicle.mjs`; `file:test` for sections still inline in
+  `test.mjs`) picks every section of one test file, with what they pull in as for any selector. Before, the word
+  `vehicle` matched titles: 59 sections across files, not the file's 58.
+- **`--list`** prints a heading per file (`== tests/vehicle.mjs: 58 sections (--only file:vehicle)`) and counts the
+  files at the end.
+- **`--isolation file`** takes each file's picked sections as one unit and runs it alone (one process per file, `--jobs`
+  at a time) against the same full run as before, listing only the sections that differ. It answers "does a lane's file
+  lean on another lane's?", which per-section isolation answers too but with ~400 processes. Measured: `--isolation file
+  --only file:qa,file:world --jobs 2` (27 sections, with vehicle-46 pulled in), 0 flips, 0 diffs. Any other word after
+  `--isolation` is refused (exit 2).
+- Test platform-16 (the selectors, the headings, one `--isolation file` run on platform-3).
+- **Q469 closed with it, not built:** a guard comparing `PROG` before and after each section was asked for when sections
+  shared one SIM. Since R2 (v1.340) `build()` puts `freshSim()` before every section, so no section can leave `PROG` to the
+  next; what still carries across (top-level names, `globalThis`, `Math.random`) is what `--isolation` reports.
