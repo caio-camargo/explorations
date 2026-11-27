@@ -1726,8 +1726,10 @@
   const blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END')), { sndMix, sndVoices } = new Function(blk + ';return {sndMix,sndVoices}')();
   const pad = sndMix({ T: 4e6, pr: 1, M: 0, q: 0, agl: 0 }), up = sndMix({ T: 4e6, pr: 1, M: 0, q: 0, agl: 2000 }), liq = sndMix({ T: 4e6, pr: 1 }), sol = sndMix({ T: 4e6, pr: 1, solid: 1 });
   const snd = { lp: pad.airLp < 900 && pad.airLp > 500, refl: pad.air / up.air > 1.5, crk: liq.crk < .3 * sol.crk, kestrel: Math.abs(sndVoices([{ key: 'k', T: 1, exit: .55 }], 1)[0].f - 68.2) < 1,
-    voices: H.includes("AUD.V=[0,1,2,3].map(()=>layer('brown','lowpass',150,0.9));") && H.includes('set(v.f.frequency,SND_VLP*x.f,0.2)'), noSines: !H.includes('for(const f of[37,52])'),
-    sub: H.includes("fl.type='lowpass';fl.frequency.value=75;") && H.includes('og.connect(swell.gain)'), bass: H.includes('c.createWaveShaper()') && H.includes('set(L.bass.gain,SND_G.bass*m.sub)') };
+    voices: H.includes("AUD.V=[0,1,2,3].map(()=>layer('brown','lowpass',150,0.9,rum));") && H.includes('set(v.f.frequency,SND_VLP*x.f,0.2)'), noSines: !H.includes('for(const f of[37,52])'),
+    sub: H.includes("fl.type='lowpass';fl.frequency.value=75;") && H.includes('og.connect(swell.gain)'), bass: H.includes('c.createWaveShaper()') && H.includes('set(L.bass.gain,SND_G.bass*m.sub)'),
+    // (Q641) the rumble's roughness: the airborne engine layers go through one gain shaken by noise held under 11 and 4 Hz
+    rum: H.includes('g.connect(rum.gain)') && H.includes('for(const[rate,lp,d]of[[0.61,11,SND_G.rum],[0.37,4,SND_G.rum*0.6]])') && H.includes('sub.connect(rum)') && H.includes('bass.connect(rum)') && H.includes("air:layer('brown','lowpass',2000,0.5,rum)") && /const SND_G=\{[^}]*rum:\d/.test(H) };
   check('the engine\'s sound (Q514): the roar under 900 Hz on the pad and thrown back by the ground, a Kestrel\'s voice near 70 Hz as lowpassed brown noise, the sub as noise that swells, a clipped upper-bass layer; liquids crackle little',
     Object.values(snd).every(Boolean), `roar lowpass ${pad.airLp.toFixed(0)} Hz on the pad, ${(pad.air / up.air).toFixed(2)} × the level at 2 km; ${Object.entries(snd).map(([k, v]) => k + ' ' + v).join(' ')}`);
 }
