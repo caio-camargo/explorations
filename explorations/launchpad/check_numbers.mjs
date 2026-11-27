@@ -8,6 +8,7 @@
 // runs the in-tree half. The merge recipe: ACTIVE_WORK.md § Launchpad worktrees, NOTES § "Numbering".
 // NOTES is split by area since 2026-10-11 (W37): versions are read from every notes/*.md, or from NOTES.md at a ref older
 // than the split, as one series.
+// It also fails while sim/core.js's GAME_V (QUEUE Q285) is not the newest of those versions.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -59,6 +60,17 @@ export function repeats(read) {
   return bad;
 }
 
+// the build's version (QUEUE Q285): sim/core.js's GAME_V against the newest `## v1.N` in notes/*.md. {have, newest, ok}
+const verKey = v => v.slice(1).split('.').map(Number), verCmp = (a, b) => { const x = verKey(a), y = verKey(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+export function gameVersion(coreText, notesKeys) {
+  coreText ??= readFileSync(new URL('sim/core.js', DIR), 'utf8');
+  notesKeys ??= [...scanAll(localParts(SERIES[0]), SERIES[0]).keys()];
+  const m = coreText.match(/^const GAME_V = '(v1\.\d+(?:\.\d+)?)'/m), have = m ? m[1] : null;
+  const newest = notesKeys.reduce((a, k) => (!a || verCmp(k, a) > 0 ? k : a), null);
+  return { have, newest, ok: !!have && have === newest };
+}
+
 const sortKey = k => k.match(/\d+/g).map(Number);
 // QUEUE rows archived out of QUEUE.md (archive/queue-*.md, R24 2026-11-10): counted for "next free" only, never as repeats
 function archivedQueueKeys(s) {
@@ -94,6 +106,8 @@ export function main(argv) {
   const here = SERIES.map(s => scanAll(localParts(s), s)), maps = [here];
   let fails = 0;
   for (const r of repeats()) { fails++; console.log(`REPEAT  ${r.file}: ${r.key} on lines ${r.lines.join(', ')}`); }
+  const gv = gameVersion(null, [...here[0].keys()]);
+  if (!gv.ok) { fails++; console.log(`GAME_V  sim/core.js says ${gv.have || 'nothing'}; the newest version in notes/ is ${gv.newest}: set GAME_V = '${gv.newest}'`); }
   let against = 'no ref';
   if (ref && ref !== 'none') {
     let base = '';

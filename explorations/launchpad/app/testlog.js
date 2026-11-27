@@ -37,7 +37,7 @@ const testLogLine=e=>`[day ${e.day.toFixed(2)} · t ${e.t.toFixed(1)} s] ${e.kin
     if (a === 'clear') { LOG.length = 0; pre.textContent = ''; draw(); }
     else if (a === 'off') { TEST.log = false; testSaveFlags(); renderTester(); }
     else if (a === 'dl') {
-      const head = [`Launchpad tester log, saved ${new Date().toISOString()}`, `page ${location.href}`,
+      const head = [`Launchpad ${GAME_V} tester log, saved ${new Date().toISOString()}`, `page ${location.href}`,
         `world seed ${PROG.wseed} · terrain seed ${WSEED} · world day ${(PROG.day || 0).toFixed(2)} · flights ${PROG.flights || 0}`,
         `${navigator.userAgent}`, ''];
       const url = URL.createObjectURL(new Blob([head.concat(LOG.map(testLogLine)).join('\n') + '\n'], { type: 'text/plain' }));

@@ -3176,7 +3176,7 @@ plume: "this is looking much, much better"; the cut from behind in space: "confi
 - **Check:** test `aerofx-68`'s sound half (the wiring of `rum`, the lower lowpass). TESTING 429.
 - **Not checked.** By ear. Whether the compressor on the master pumps with the shake. The map view (35 % volume).
 
-## v1.382 — the plume in space, by kind of engine: solid and liquid (2026-11-27, look & sound, effects, QUEUE Q642)
+## v1.383 — the plume in space, by kind of engine: solid and liquid (2026-11-27, look & sound, effects, QUEUE Q642)
 
 Caio: "i'm not quite sure what a plume is supposed to look like in space, i'm having a hard time finding images".
 The answer given him: up close there is usually almost nothing to see. With no air to hold it, the exhaust fans out at
