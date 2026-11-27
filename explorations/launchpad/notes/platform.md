@@ -255,14 +255,14 @@ hands over to `shards.mjs`, which cuts the file into sections and runs a chosen 
 
 | Command | What it runs |
 |---|---|
-| `node test.mjs --list` | every section: position, label, line, title (grouped by file since v1.385) |
-| `node test.mjs --only file:vehicle` | every section of one test file (also `vehicle.mjs`, `tests/vehicle.mjs`; v1.385, Q288) |
+| `node test.mjs --list` | every section: position, label, line, title (grouped by file since v1.386) |
+| `node test.mjs --only file:vehicle` | every section of one test file (also `vehicle.mjs`, `tests/vehicle.mjs`; v1.386, Q288) |
 | `node test.mjs --only 12,#53,docking` | by label (every section carrying it), by `#position` from `--list`, or by a word in the header comment |
 | `node test.mjs --skip 27,bodies-1` | everything but these (combines with `--only`) |
 | `node test.mjs --smoke --jobs 4` | everything but the five long flights (`SLOW` in `shards.mjs`): **22 s** in 4 processes, ~55–75 s in one |
 | `node test.mjs --times [--jobs 4]` | the full suite with the seconds per section |
 | `node test.mjs --isolation --jobs 4 [--only …\|--smoke]` | each section alone vs the picked sections together; lists every check that prints differently (durations masked), exit 1 on a pass/fail flip (R2, v1.340) |
-| `node test.mjs --isolation file --jobs 4 [--only …]` | each test file's picked sections alone together vs the full run (v1.385, Q288) |
+| `node test.mjs --isolation file --jobs 4 [--only …]` | each test file's picked sections alone together vs the full run (v1.386, Q288) |
 
 **What a section is.** A comment at column 0, `// 12. Title` or `// control-3. Title`, up to the next one. Everything
 before the first (the SIM, `api`, `check`) and everything after `// ==== END OF SECTIONS` (the summary, the exit code)
@@ -1226,7 +1226,7 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
 - **Not built** (rule 7 names them too): QUEUE rows naming answered W/D questions, and the size budgets (QUEUE ~300
   lines, a design doc ~400). Both would fail today, so they need a call on what is enforced before they gate anything.
 
-## v1.385 — test files as units: `--only file:<lane>`, `--list` by file, `--isolation file` (2026-11-27, quick wins, QUEUE Q288)
+## v1.386 — test files as units: `--only file:<lane>`, `--list` by file, `--isolation file` (2026-11-27, quick wins, QUEUE Q288)
 
 - **`--only file:vehicle`** (or `vehicle.mjs`, `tests/vehicle.mjs`; `file:test` for sections still inline in
   `test.mjs`) picks every section of one test file, with what they pull in as for any selector. Before, the word
