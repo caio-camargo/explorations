@@ -3152,3 +3152,26 @@ currently… let's table it for now"): Settings › Screens, as before; the code
   now overlap more. Hydrolox, hypergolic and solid flames in a still (no reference view uses them at sea level; view
   36 names a preset that is gone, and hung). Throttled down. The plume's light on the pad was left at its old
   strength, the flame being ten times brighter. The exposure's reaction at night. Low on the Intel GPU.
+
+## v1.381 — the engine's sound, second pass: the rumble shudders (2026-11-27, look & sound, sound, QUEUE Q641)
+
+Caio, having heard v1.380: "the sound is deeper and more powerful, better, but still not quite a rumble". (Of the
+plume: "this is looking much, much better"; the cut from behind in space: "confirmed gone".)
+
+- **The reading.** v1.380 put the energy low and left it steady: lowpassed noise at a constant level is a deep whoosh.
+  What reads as a rumble is low noise whose loudness shudders, irregularly, a few times a second (the jet's large
+  eddies). Measured on v1.380: loudness over 46 ms windows varied 14–16 % of its mean, which is about what steady
+  noise at 70 Hz gives by itself.
+- **The change** (`app/sound.js`, `sndInit`): the engine's airborne layers (roar, voices, sub, upper bass) pass
+  through one gain, `rum`, shaken by noise held under 11 Hz and, weaker, under 4 Hz (`SND_G.rum` = 7). The structure's
+  layer, the wind and the crackle do not pass through it.
+- **Lower still:** the roar's lowpass tops out at 520 Hz on the pad (was 820); a voice's lowpass is 1.7 × its peak (was
+  2.2: a Kestrel's at 116 Hz). Gains up a little (voice 0.7 → 0.9, sub 1.2 → 1.4, upper bass 0.3 → 0.4); the crackle
+  layer 0.5 → 0.8, since against the louder low end it had all but gone.
+- **Measured** (the Orbiter one second after ignition): loudness over 46 ms windows varies 16 % → 44 %; overall
+  −18.8 → −16.2 dBFS; power at 400–1000 Hz 3.6 % → 2.2 %; the shares below that about as they were. The Sounding
+  rocket and the Lunar the same (46 %, 43 %). The crackle's change is after that measurement.
+- **Risk.** Too much shake reads as a tremolo or a helicopter; 7 is a guess from a number, not from listening.
+  `SND_G.rum` is the one dial: 0 is v1.380's steadiness.
+- **Check:** test `aerofx-68`'s sound half (the wiring of `rum`, the lower lowpass). TESTING 429.
+- **Not checked.** By ear. Whether the compressor on the master pumps with the shake. The map view (35 % volume).

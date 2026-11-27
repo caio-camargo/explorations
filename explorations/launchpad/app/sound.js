@@ -17,7 +17,7 @@ function sndMix(st){const T=Math.max(0,st.T||0),pr=Math.max(0,st.pr||0),M=st.M||
     air=loud*airC*sup*refl,qn=q/4e4;   // wind full at 40 kPa, past any sane max-q
   // (Q514, PLAYTEST #146: "a deep rumble", not "air escaping") the roar's lowpass tops out near 800 Hz (was 3.6 kHz): a
   // rocket's noise peaks at tens of hertz and what the crew hears is that, with the crackle on top as texture
-  return{air,airLp:120+700*airC*(0.4+0.6*sup),str:T>0?0.18+0.3*loud:0,strLp:110,sub:loud*(0.4+0.6*airC*refl)*0.7,
+  return{air,airLp:100+420*airC*(0.4+0.6*sup),str:T>0?0.18+0.3*loud:0,strLp:110,sub:loud*(0.4+0.6*airC*refl)*0.7,
     crk:air*(0.25+0.75*(st.solid||0)),   // solids crackle (burning aluminium); liquids much less
     wind:Math.min(1,Math.pow(qn,0.6)),windF:Math.min(2400,180+0.5*(st.v||0)),buf:Math.exp(-(((M-1)/0.12)**2))*Math.min(1,qn*2),   // transonic buffet
     hiss:sndS(0.35,0.9,st.hot||0)*Math.min(1,Math.pow(qn,0.3)),rcs:st.rcs?0.3:0}}
@@ -32,7 +32,7 @@ function sndBoom(d,air,sz,own){const k=Math.min(1,0.45+0.25*Math.sqrt(sz));
 // 0.2: a lander's Wren peaks near 150 Hz, a Kestrel near 70, a 2.2 m Albatross near 35. The voice is brown noise
 // through a lowpass at SND_VLP × f (sndInit), not a narrow band of white noise, which was a hiss. eng: [{key, T, exit}]; air: the airborne level (sndMix's air).
 // Up to four voices, the biggest thrust shares first; each one's gain ~ sqrt(its share), so two equal kinds sum to 1.
-const SND_ST=0.03,SND_VLP=2.2;
+const SND_ST=0.03,SND_VLP=1.7;   // (Q641) the voice's lowpass 2.2 → 1.7 × its peak
 function sndVoices(eng,air){const by=new Map();let tot=0;
   for(const e of eng||[]){if(!(e.T>0))continue;tot+=e.T;const v=by.get(e.key)||{T:0,exit:e.exit};v.T+=e.T;by.set(e.key,v)}
   if(!(tot>0))return[];
@@ -83,21 +83,28 @@ function sndInit(){if(AUD.ctx)return;const AC=window.AudioContext||window.webkit
   // (Q514) the low end. sub: brown noise under 75 Hz that swells slowly (turbulence; was two steady sines at 37 and 52 Hz).
   // bass: the same rumble an octave up (a band round 125 Hz), driven into a soft clip so it grows harmonics to 380 Hz:
   // what a laptop's speakers, which play nothing under ~150 Hz, have to say "rumble" with
-  const sub=c.createGain();sub.gain.value=0;sub.connect(AUD.master);const swell=c.createGain();swell.gain.value=1;swell.connect(sub);
+  // (Q641, Caio having heard v1.380: "deeper and more powerful… but still not quite a rumble") steady low noise is a deep
+  // whoosh; a rumble is low noise whose loudness shudders, irregularly, a few times a second (the jet's big eddies). `rum`
+  // carries the engine's airborne layers (roar, voices, sub, upper bass) and its gain is shaken by noise held under 11 Hz
+  // and under 4 Hz (brown noise played slow, so the 3 s buffer repeats every 5 and 8 s, out of step)
+  const rum=c.createGain();rum.gain.value=1;rum.connect(AUD.master);
+  for(const[rate,lp,d]of[[0.61,11,SND_G.rum],[0.37,4,SND_G.rum*0.6]]){const s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();s.buffer=AUD.B.brown;s.loop=true;s.playbackRate.value=rate;
+    fl.type='lowpass';fl.frequency.value=lp;fl.Q.value=0.6;g.gain.value=d;s.connect(fl);fl.connect(g);g.connect(rum.gain);s.start(0,Math.random()*2)}
+  const sub=c.createGain();sub.gain.value=0;sub.connect(rum);const swell=c.createGain();swell.gain.value=1;swell.connect(sub);
   for(const[f,d]of[[0.23,0.22],[0.61,0.15],[1.7,0.08]]){const o=c.createOscillator(),og=c.createGain();o.frequency.value=f;og.gain.value=d;o.connect(og);og.connect(swell.gain);o.start()}
   {const s=c.createBufferSource(),fl=c.createBiquadFilter();s.buffer=AUD.B.brown;s.loop=true;fl.type='lowpass';fl.frequency.value=75;fl.Q.value=0.9;s.connect(fl);fl.connect(swell);s.start(0,Math.random()*2)}
-  const bass=c.createGain();bass.gain.value=0;bass.connect(AUD.master);
+  const bass=c.createGain();bass.gain.value=0;bass.connect(rum);
   {const s=c.createBufferSource(),bp=c.createBiquadFilter(),dr=c.createGain(),ws=c.createWaveShaper(),lp=c.createBiquadFilter(),cv=new Float32Array(257);
     for(let i=0;i<257;i++)cv[i]=Math.tanh((i/128-1)*2.5);s.buffer=AUD.B.brown;s.loop=true;bp.type='bandpass';bp.frequency.value=125;bp.Q.value=0.8;dr.gain.value=9;ws.curve=cv;
     lp.type='lowpass';lp.frequency.value=380;lp.Q.value=0.5;s.connect(bp);bp.connect(dr);dr.connect(ws);ws.connect(lp);lp.connect(bass);s.start(0,Math.random()*2)}
-  AUD.V=[0,1,2,3].map(()=>layer('brown','lowpass',150,0.9));   // the engine voices (Q66; Q514: brown noise under a lowpass)
+  AUD.V=[0,1,2,3].map(()=>layer('brown','lowpass',150,0.9,rum));   // the engine voices (Q66; Q514: brown noise under a lowpass)
   AUD.PR=layer('brown','lowpass',260,0.7);AUD.PC=layer('pop','bandpass',1400,0.8);   // re-entry plasma: a rumble and the crackle (Q67)
   AUD.pan=c.createStereoPanner?c.createStereoPanner():null;if(AUD.pan)AUD.pan.connect(AUD.master);AUD.O=layer('brown','lowpass',500,0.7,AUD.pan||AUD.master);   // sounds from elsewhere
   AUD.VH=layer('white','highpass',2600,0.5);   // a venting tank's hiss (Q363)
   // the rollout (Q222): the car's rumble, and the hydraulic pump: a sawtooth through a bandpass with a little hiss
   AUD.RR=layer('brown','lowpass',90,0.7);{const o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=120;
     f.type='bandpass';f.frequency.value=700;f.Q.value=0.9;g.gain.value=0;o.connect(f);f.connect(g);g.connect(AUD.master);o.start();AUD.RH={o,g,h:layer('white','bandpass',1800,1.2)}}
-  AUD.L={air:layer('brown','lowpass',2000,0.5),str:layer('brown','lowpass',110,0.7),crk:layer('pop','bandpass',1200,0.6),wind:layer('white','bandpass',400,1.2,bufG),
+  AUD.L={air:layer('brown','lowpass',2000,0.5,rum),str:layer('brown','lowpass',110,0.7),crk:layer('pop','bandpass',1200,0.6),wind:layer('white','bandpass',400,1.2,bufG),
     hiss:layer('white','highpass',3000,0.5),rcs:layer('white','bandpass',3500,1.5),sub,bass,lfoA}}
 function sndWake(){if(!AUD.on)return;sndInit();if(AUD.ctx&&AUD.ctx.state==='suspended')AUD.ctx.resume()}   // browsers start audio only after a gesture
 addEventListener('pointerdown',sndWake,true);addEventListener('keydown',e=>{
@@ -173,7 +180,7 @@ function sndRollEvents(r,t){const R=AUD.roll,fire=(k,o,dl=0)=>{AUD.ev[k]=(AUD.ev
   if(!R||t<R.t){AUD.roll={t,joint:r.joint,done:r.done.slice()};return}
   for(let j=R.joint;j<r.joint;j++){fire('clack',SHOT.clack(0.5+r.rumble));fire('clack',SHOT.clack(0.4+r.rumble),0.09)}   // a bogie's two axles
   r.done.forEach((d,i)=>{if(d&&!R.done[i])fire('clunk',SHOT.clunk(i===1?1.2:1))});AUD.roll={t,joint:r.joint,done:r.done.slice()}}
-const SND_G={voice:0.7,sub:1.2,bass:0.3};   // (Q514) the engine's layer gains: the voices, the sub, the clipped upper bass
+const SND_G={voice:0.9,sub:1.4,bass:0.4,rum:7};   // (Q514) the engine's layer gains: the voices, the sub, the clipped upper bass; (Q641) rum: how hard the rumble's loudness is shaken
 function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   const sc=screenNow(),live=(sc==='flight'||sc==='map')&&S&&!gamePaused(),st=live?sndState():null;
   const RP=sc==='rollout'&&typeof rollPhase==='function'?rollPhase():null,ro=RP?sndRoll(RP.t,ROLL_S,typeof RIG!=="undefined"&&RIG&&RIG.bP?ROLL_DOOR+RIG.bP[2]:ROLL_DOOR):null;AUD.lastR=ro;
@@ -189,6 +196,6 @@ function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   AUD.V.forEach((v,i)=>{const x=vo[i];set(v.g.gain,x?SND_G.voice*x.g:0,0.12);if(x)set(v.f.frequency,SND_VLP*x.f,0.2)});
   set(L.air.g.gain,0.55*m.air*(vo.length?0.8:1));
   const pl=AUD.Q67?sndPlasma(st.qh,st.va,st.pv):0,ot=AUD.Q67?sndOthers(st.others):{g:0,pan:0,lp:500};AUD.lastP=pl;AUD.lastO=ot;
-  set(AUD.PR.g.gain,0.35*pl,0.3);set(AUD.PC.g.gain,0.45*pl*pl,0.2);set(AUD.O.g.gain,0.4*ot.g,0.15);set(AUD.O.f.frequency,ot.lp,0.3);if(AUD.pan)set(AUD.pan.pan,ot.pan,0.15);set(L.air.f.frequency,m.airLp);set(L.str.g.gain,0.35*m.str);set(L.sub.gain,SND_G.sub*m.sub);set(L.bass.gain,SND_G.bass*m.sub);set(L.crk.g.gain,0.5*m.crk);
+  set(AUD.PR.g.gain,0.35*pl,0.3);set(AUD.PC.g.gain,0.45*pl*pl,0.2);set(AUD.O.g.gain,0.4*ot.g,0.15);set(AUD.O.f.frequency,ot.lp,0.3);if(AUD.pan)set(AUD.pan.pan,ot.pan,0.15);set(L.air.f.frequency,m.airLp);set(L.str.g.gain,0.35*m.str);set(L.sub.gain,SND_G.sub*m.sub);set(L.bass.gain,SND_G.bass*m.sub);set(L.crk.g.gain,0.8*m.crk);
   set(L.wind.g.gain,0.4*m.wind,0.2);set(L.wind.f.frequency,m.windF,0.3);set(L.lfoA.gain,0.8*m.buf,0.2);set(L.hiss.g.gain,0.25*m.hiss,0.3);if(AUD.VH)set(AUD.VH.g.gain,0.3*sndVent(st.vents),0.15);set(L.rcs.g.gain,m.rcs,0.02)}
 
