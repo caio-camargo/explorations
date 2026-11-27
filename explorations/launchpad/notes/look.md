@@ -3206,3 +3206,42 @@ solid and liquid… let's stick to solid and liquid, and keep other space-only k
 - **Not checked.** A real kick motor firing (only the console's stand-in). The twilight view, where the scatter is
   the whole picture: kerolox now scatters 0.4 of what it did, so the jellyfish is fainter. GPU time of the wider
   proxy. Low on the Intel GPU.
+
+## v1.388 — the engine's sound deeper and smoother; the plume from the air to space, and with the throttle (2026-11-27, look & sound, QUEUE Q643, Q644)
+
+Caio, having tried v1.381 and v1.385: "the rumble is in the right direction, but i would say significantly deeper. it
+also sounds like it stutters, smoothing that out a bit would be an improvement." And: "the plume looks very visible in
+space btw. the transition from atmosphere to space looks weird. also, at the lowest level of burn, the plume seems
+very bright, it seems like there should be some ramp-up."
+
+**The sound** (Q643, `app/sound.js`).
+- **The stutter was dropouts.** v1.381's shake had an rms near 0.44 of the gain it rode on, at up to 11 Hz: the gain
+  crossed zero several times a second. Now a third as deep and half as fast (noise under 5 Hz and 1.5 Hz,
+  `SND_G.rum` 7 → 4): rms about 0.18, so zero is five deviations away.
+- **Deeper.** The voices' peak at Strouhal 0.02 (was 0.03: a Kestrel at 45 Hz, was 68); the roar's lowpass tops out at
+  320 Hz on the pad (was 520); the sub under 55 Hz (75); the upper bass a band round 85 Hz clipped up to 260 Hz
+  (125, 380); and everything airborne then passes one more lowpass at 220 Hz, so the roll-off is twice as steep.
+  Gains up to hold the level (voice 0.9 → 1.3, sub 1.4 → 2, bass 0.4 → 0.6).
+- **Measured** (the Orbiter one second after ignition): the spectrum's centroid 124 → 98 Hz; power above 400 Hz
+  2.5 % → under 0.1 %; at 150–400 Hz 26 % → 18 %; loudness over 46 ms windows varies 44 % → 21 % of its mean;
+  overall −15.8 → −14.3 dBFS.
+- **The cost of deeper.** Less of it is above 150 Hz, which is all a laptop's speakers play: there it will be
+  quieter than v1.381. Not heard by me.
+
+**The plume** (Q644, `app/gl.js`, `app/render.js`). A sequence of stills of one kerolox stage at 2, 8, 14, 20, 30,
+45, 60 and 90 km showed what was weird: above 20 km the white column turned into a large orange-brown bulb and stayed
+one into space.
+- **Why.** v1.380 gave the gas's own glow the flame's whole gain at every height; and the afterburning terms fall
+  only as fast as the pressure while the bulb's path length grows, so they held their brightness to 45 km.
+- **The glow's gain falls with the air** (full at 0.08 atm, about 18 km; `PL_VG` = 0.08 of it in vacuum; a solid
+  keeps 0.6) and its colour pales to a warm grey.
+- **What burns in the air goes faster than the air** (`burn`: the pressure × a ramp to 0.05 atm).
+- **In space** a kerolox engine scatters half the sunlight it did (`sc` 0.4 → 0.2): the bulb is a faint grey.
+- **Throttle.** The flame's brightness was 0.45 + 0.55 × throttle: half of full at the lowest setting. Now
+  `plumeGain`: 0.08 + 0.92 × throttle^1.4 (10 % → 0.12, 50 % → 0.43).
+- **Stills** (local, `output/launchpad/beauty/Q644/`): `before_sheet`, `after_sheet` (the eight altitudes, then
+  2 km at 10 % and 40 % throttle and 90 km at 10 %), and each frame as `before_<h>km`, `after_<h>km`.
+- **Check:** test `aerofx-70`; the older sound and flame checks follow the new numbers. TESTING 431.
+- **Not checked.** Any of it in motion or by ear. The sequence moves one ship from height to height (stray smoke
+  from the moves is in some frames). A solid, hydrolox or hypergolic stage through the same heights. The plume's
+  light on the craft and pad still follows its own throttle law.
