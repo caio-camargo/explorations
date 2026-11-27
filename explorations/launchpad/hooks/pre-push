@@ -1,0 +1,23 @@
+#!/bin/sh
+# Launchpad's pre-push hook (QUEUE Q278; Q160's numbers): runs check_numbers.mjs before a push leaves, so a repeated or
+# colliding version, TESTING/PLAYTEST row or Q/W/D item (or a stale GAME_V) is caught here and not in CI minutes later.
+# Optional, once per clone (every worktree of the clone shares it):
+#   git config core.hooksPath explorations/launchpad/hooks
+# Off again: git config --unset core.hooksPath. Skip it for one push: git push --no-verify.
+# It checks the tree you are standing in (HEAD) against your origin/main: `git fetch` first for an up-to-date answer.
+# A push that only deletes refs is let through. No node, or no launchpad in this tree: let through with a note.
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+dir="$top/explorations/launchpad"
+[ -f "$dir/check_numbers.mjs" ] || exit 0
+sends=0
+while read -r lref lsha rref rsha; do
+  case "$lsha" in *[!0]*) sends=1 ;; esac
+done
+[ "$sends" = 1 ] || exit 0
+if ! command -v node >/dev/null 2>&1; then echo "pre-push: node not found; numbers not checked" >&2; exit 0; fi
+cd "$dir" || exit 0
+if ! node check_numbers.mjs; then
+  echo "pre-push: check_numbers.mjs failed (above): renumber yours, or push anyway with --no-verify" >&2
+  exit 1
+fi
+exit 0

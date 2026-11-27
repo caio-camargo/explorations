@@ -1189,3 +1189,17 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
   that each took a version both change that line, so a merge of `main` conflicts there: take the higher number, and
   `check_numbers.mjs` says whether it is right. That conflict is the price of a hand-kept constant; the alternative
   (the page reading the notes at load) would need the notes served next to the game and fail offline.
+
+## v1.383 — an optional pre-push hook for the numbers (2026-11-27, quick wins, QUEUE Q278)
+
+- **What.** `hooks/pre-push` runs `check_numbers.mjs` before a push leaves and refuses it when the check fails (a
+  repeated or colliding number, a stale `GAME_V`), the same verdict CI's first step would give minutes later. A push that
+  only deletes refs goes through; no node, or a tree without the launchpad, goes through with a note.
+- **Optional, once per clone** (the setting lives in the clone's config, so every worktree shares it):
+  `git config core.hooksPath explorations/launchpad/hooks`. Off: `git config --unset core.hooksPath`. One push without
+  it: `git push --no-verify`. Not switched on here: it would change every concurrent session's pushes at once, so it is
+  Caio's to turn on. With it on, `.git/hooks` is no longer read (this clone has no hooks there today).
+- **What it checks** is the tree you stand in (HEAD) against your `origin/main` as last fetched: fetch first for a
+  current answer. ~0.6 s a push.
+- `.gitattributes` keeps `hooks/*` in LF (an extensionless script would otherwise check out CRLF on Windows and break
+  under Linux's sh). Test platform-14 runs the hook with `sh` as git does, with the real node and with a failing one.

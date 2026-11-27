@@ -368,3 +368,26 @@
       && /Launchpad \$\{GAME_V\} tester log/.test(rd('app/testlog.js')) && /GAME_V/.test(rd('app/fault.js')),
     `GAME_V ${gv.have}, newest ${gv.newest}`);
 }
+
+// platform-14. The optional pre-push hook (QUEUE Q278): `hooks/pre-push` (install: `git config core.hooksPath
+// explorations/launchpad/hooks`) runs check_numbers.mjs and refuses the push when it fails; a push that only deletes refs
+// goes through unchecked. Run with `sh` as git would, once with the real node and twice with a `node` that fails.
+{
+  const { spawnSync } = await import('node:child_process'), { mkdtempSync, writeFileSync, chmodSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os'), { join, delimiter } = await import('node:path'), { fileURLToPath } = await import('node:url');
+  const here = fileURLToPath(new URL('./', import.meta.url)), hook = join(here, 'hooks', 'pre-push');
+  const sh = spawnSync('sh', ['-c', 'exit 0']);
+  if (sh.error) check('platform-14: the pre-push hook (Q278) — no sh here, not run', true, 'skipped: no sh on PATH');
+  else {
+    const Z = '0'.repeat(40), send = `refs/heads/x ${'1'.repeat(40)} refs/heads/x ${Z}\n`, del = `(delete) ${Z} refs/heads/x ${'2'.repeat(40)}\n`;
+    const bin = mkdtempSync(join(tmpdir(), 'q278-')); writeFileSync(join(bin, 'node'), '#!/bin/sh\necho "fake node: fails"\nexit 1\n'); chmodSync(join(bin, 'node'), 0o755);
+    const run = (input, env) => spawnSync('sh', [hook, 'origin', 'url'], { cwd: here, input, encoding: 'utf8', env: { ...process.env, ...env } });
+    const own = spawnSync(process.execPath, ['check_numbers.mjs'], { cwd: here, encoding: 'utf8' }).status;
+    const real = run(send, { PATH: process.execPath.replace(/[\/][^\/]+$/, '') + delimiter + process.env.PATH });
+    const bad = run(send, { PATH: bin + delimiter + process.env.PATH }), gone = run(del, { PATH: bin + delimiter + process.env.PATH });
+    rmSync(bin, { recursive: true, force: true });
+    check('platform-14: the pre-push hook runs check_numbers.mjs and exits as it does; a failing check refuses the push; a delete-only push passes (Q278)',
+      real.status === own && /next free/.test(real.stdout) && bad.status === 1 && /renumber yours/.test(bad.stderr) && gone.status === 0 && !/fake node/.test(gone.stdout),
+      `check_numbers ${own}, hook ${real.status}; failing node → ${bad.status}; delete-only → ${gone.status}`);
+  }
+}
