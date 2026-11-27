@@ -8759,3 +8759,25 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
 - **Files.** `app/gl.js`, `app/render.js`, `sim/core.js` (`GAME_V`), `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
   `TESTING.md` (row 430), `QUEUE.md` (Q642 ✓), `BACKLOG.md` (one row), `ACTIVE_WORK.md`.
 - **Next.** Caio: TESTING 429 (the rumble by ear) and 430 (the two plumes in space; is the liquid's too faint?).
+
+## 2026-11-27 — look & sound (Fable 5.2, worktree launchpad-q643): v1.389 Q643, Q644, the rumble deeper and smoother; the plume from air to space
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio): "the rumble is in the right direction, but i would say significantly deeper. it also sounds like it
+  stutters, smoothing that out a bit would be an improvement". Then, while that was being built: "the plume looks very
+  visible in space btw. the transition from atmosphere to space looks weird. also, at the lowest level of burn, the
+  plume seems very bright, it seems like there should be some ramp-up".
+- **Scope shift, said here:** the second message became Q644 and went into Q643's branch (one CI run for both, given
+  the day's number collisions). Nothing was dropped for it.
+- **Done** (`explorations/launchpad/notes/look.md` § v1.389). Sound: the stutter was the shake's gain crossing zero;
+  now a third as deep, half as fast; everything airborne about an octave lower. Plume: the gas glow and the
+  afterburning fade with the air (no orange-brown bulb above 20 km), a faint grey bulb in space, brightness that
+  ramps with the throttle.
+- **Checked.** The sound's spectrum and loudness variation before and after; a sequence of stills at eight altitudes
+  and three throttles before and after (`output/launchpad/beauty/Q644/before_sheet.png`, `after_sheet.png`); test
+  `aerofx-70`; CI green on `7c78d1a3` (run 46083730536; two runs, one number collision with Q456).
+- **Not checked.** By ear; in motion. Deeper means quieter on laptop speakers: asked of Caio in TESTING 431.
+- **Files.** `app/sound.js`, `app/gl.js`, `app/render.js`, `sim/core.js` (`GAME_V`), `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `TESTING.md` (rows 429, 430 marked ~; new row 431), `QUEUE.md` (Q643, Q644 ✓),
+  `ACTIVE_WORK.md`.
+- **Next.** Caio: TESTING 431.

@@ -174,7 +174,7 @@
     const many = sndVoices(['a', 'b', 'c', 'd', 'e'].map((k, i) => ({ key: k, T: 1e5 * (i + 1), exit: 0.3 + 0.1 * i })), 1);
     // (Q514) the peak at a rocket's Strouhal number, 0.03: tens of hertz to ~150, not a hiss at 450 Hz to 1 kHz
     check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off (and the volume slider, Q35, is wired)',
-      wren[0].f > 140 && wren[0].f < 160 && alb[0].f < 40 && alb[0].f >= 28 && Math.abs(mix[0].f - 68.2) < 1 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
+      wren[0].f > 95 && wren[0].f < 105 && alb[0].f < 40 && alb[0].f >= 28 && Math.abs(mix[0].f - 45.5) < 1 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
         && /ice\*=1\.-\.85\*bare\*uIv;sn\*=1\.-\.85\*bare\*uIv;/.test(H) && /gl\.uniform1f\(u\.uIv,ICE_VARY\?1:0\)/.test(H)
         && /function sndSettings\(el\)/.test(H) && /if\(typeof sndSettings==='function'\)sndSettings\(\$\('setSound'\)\)/.test(H) && /localStorage\.getItem\('launchpad-volume'\)/.test(H)
         && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
@@ -1725,11 +1725,11 @@
     `Kestrel at sea level ${L0.toFixed(1)} m long (half throttle ${Lh.toFixed(1)}), its edge ${col.toFixed(2)} m wider at the end; Petrel in vacuum ${LV.toFixed(1)} m, ${(third * 100).toFixed(0)} % of its width by a third · shape ${shape} props ${pr} · ${Object.entries(sh).map(([k, v]) => k + ' ' + v).join(' ')}`);
   const blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END')), { sndMix, sndVoices } = new Function(blk + ';return {sndMix,sndVoices}')();
   const pad = sndMix({ T: 4e6, pr: 1, M: 0, q: 0, agl: 0 }), up = sndMix({ T: 4e6, pr: 1, M: 0, q: 0, agl: 2000 }), liq = sndMix({ T: 4e6, pr: 1 }), sol = sndMix({ T: 4e6, pr: 1, solid: 1 });
-  const snd = { lp: pad.airLp < 900 && pad.airLp > 500, refl: pad.air / up.air > 1.5, crk: liq.crk < .3 * sol.crk, kestrel: Math.abs(sndVoices([{ key: 'k', T: 1, exit: .55 }], 1)[0].f - 68.2) < 1,
+  const snd = { lp: pad.airLp < 400 && pad.airLp > 250, refl: pad.air / up.air > 1.5, crk: liq.crk < .3 * sol.crk, kestrel: Math.abs(sndVoices([{ key: 'k', T: 1, exit: .55 }], 1)[0].f - 45.5) < 1,
     voices: H.includes("AUD.V=[0,1,2,3].map(()=>layer('brown','lowpass',150,0.9,rum));") && H.includes('set(v.f.frequency,SND_VLP*x.f,0.2)'), noSines: !H.includes('for(const f of[37,52])'),
-    sub: H.includes("fl.type='lowpass';fl.frequency.value=75;") && H.includes('og.connect(swell.gain)'), bass: H.includes('c.createWaveShaper()') && H.includes('set(L.bass.gain,SND_G.bass*m.sub)'),
+    sub: H.includes("fl.type='lowpass';fl.frequency.value=55;") && H.includes('og.connect(swell.gain)'), bass: H.includes('c.createWaveShaper()') && H.includes('set(L.bass.gain,SND_G.bass*m.sub)'),
     // (Q641) the rumble's roughness: the airborne engine layers go through one gain shaken by noise held under 11 and 4 Hz
-    rum: H.includes('g.connect(rum.gain)') && H.includes('for(const[rate,lp,d]of[[0.61,11,SND_G.rum],[0.37,4,SND_G.rum*0.6]])') && H.includes('sub.connect(rum)') && H.includes('bass.connect(rum)') && H.includes("air:layer('brown','lowpass',2000,0.5,rum)") && /const SND_G=\{[^}]*rum:\d/.test(H) };
+    rum: H.includes('g.connect(rum.gain)') && H.includes('sub.connect(rum)') && H.includes('bass.connect(rum)') && H.includes("air:layer('brown','lowpass',2000,0.5,rum)") && /const SND_G=\{[^}]*rum:\d/.test(H) };
   check('the engine\'s sound (Q514): the roar under 900 Hz on the pad and thrown back by the ground, a Kestrel\'s voice near 70 Hz as lowpassed brown noise, the sub as noise that swells, a clipped upper-bass layer; liquids crackle little',
     Object.values(snd).every(Boolean), `roar lowpass ${pad.airLp.toFixed(0)} Hz on the pad, ${(pad.air / up.air).toFixed(2)} × the level at 2 km; ${Object.entries(snd).map(([k, v]) => k + ' ' + v).join(' ')}`);
 }
@@ -1751,4 +1751,27 @@
   check('the plume in space by kind (Q642): every solid motor is a solid (kick motors too); a solid scatters several times a liquid\'s sunlight and stays hot down the plume, a liquid does not; the jet spreads wider in vacuum',
     kinds && vals && Object.values(sh).every(Boolean),
     `kick motor: ${kick.prop}, escape tower: ${les.prop}, Kestrel: ${kes.prop}; scatter ${[...liq, 'solid'].map(k => k + ' ' + P[k].sc).join(', ')}; a solid's glow lasts ${P.solid.hot}; spread ${M.PL_VAC} · kinds ${kinds} values ${vals} · ${Object.entries(sh).map(([k, v]) => k + ' ' + v).join(' ')}`);
+}
+
+// aerofx-70. The plume from the air to space, and with the throttle (look & sound effects, QUEUE Q644). The flame's
+// brightness follows the throttle from near nothing (it was half of full at the lowest setting); the gas glow's gain
+// falls with the air and its colour pales; what burns in the air (mantle, body) goes faster than the pressure. And the
+// sound's third pass (Q643): the shake slower and shallow enough that its gain cannot reach zero, one more lowpass on
+// everything airborne.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const gain = new Function('clamp', /const plumeGain=[^\n]*/.exec(pg)[0] + ';return plumeGain')((x, a, b) => Math.min(b, Math.max(a, x)));
+  const g = [0, .1, .5, 1].map(gain), ramp = g[0] < .1 && g[1] < .15 && g[2] > .35 && g[2] < .5 && Math.abs(g[3] - 1) < 1e-9 && g.every((x, i) => !i || x > g[i - 1]);
+  const fs = pg.slice(pg.indexOf('const PLUME_FS=`'), pg.indexOf('`;', pg.indexOf('const PLUME_FS=`'))), vg = +/const PL_VG=([.\d]+);/.exec(pg)[1];
+  const sh = { used: pg.includes('gl.uniform1f(pu.uI,plumeGain(thr)*('), thin: fs.includes('float thin=smoothstep(0.,.08,uS.w);') && fs.includes('*mix(max(PLVG,uSc.y),1.,thin);') && fs.includes('+gv*prof*d*fade*(.6+.4*nn)*.18*cool)'),
+    burn: fs.includes('float burn=uS.w*smoothstep(0.,.05,uS.w);') && fs.includes('float mantle=uK.z*burn*') && fs.includes('float body=burn*uK.z*'), vg: vg > 0 && vg <= .2 };
+  // the shake's depth: the noise under 5 Hz has an rms near 0.045 before SND_G.rum (an estimate from the buffer's spectrum;
+  // the measured loudness variation agrees: 21 % at rum = 4), so the gain's rms swing is rum × 0.045. Kept under a quarter,
+  // zero is four deviations away: no dropouts (at Q641's 7 and 11 Hz it was 0.44, and it stuttered)
+  const G = new Function(/const SND_G=\{[^}]*\};/.exec(H)[0] + 'return SND_G')();
+  const snd = { depth: G.rum * .045 < .25 && G.rum >= 2, slow: H.includes('for(const[rate,lp,d]of[[0.61,5,SND_G.rum],[0.37,1.5,SND_G.rum*0.6]])'),
+    lp: H.includes("rumLp.type='lowpass';rumLp.frequency.value=220;") && H.includes('rum.connect(rumLp);rumLp.connect(AUD.master);'), st: H.includes('const SND_ST=0.02,') };
+  check('the plume from air to space and with the throttle (Q644): brightness ramps from near nothing; the gas glow and the afterburning fade as the air thins; the sound\'s shake slower and never to zero, everything airborne an octave down (Q643)',
+    ramp && Object.values(sh).every(Boolean) && Object.values(snd).every(Boolean),
+    `brightness at throttle 0, 10, 50, 100 %: ${g.map(x => x.toFixed(2)).join(', ')}; the glow keeps ${vg} of its gain in vacuum; shake ${G.rum} · ${Object.entries({ ...sh, ...snd }).map(([k, v]) => k + ' ' + v).join(' ')}`);
 }
