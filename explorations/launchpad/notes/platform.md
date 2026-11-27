@@ -1203,3 +1203,23 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
   current answer. ~0.6 s a push.
 - `.gitattributes` keeps `hooks/*` in LF (an extensionless script would otherwise check out CRLF on Windows and break
   under Linux's sh). Test platform-14 runs the hook with `sh` as git does, with the real node and with a failing one.
+
+## v1.384 — the document check: `check_docs.mjs` (2026-11-27, quick wins, QUEUE Q298; ROADMAP § Documents, rule 7)
+
+- **What it finds**, one line each (`node check_docs.mjs`, `--json`, `--only header,link`; exit 1 on any):
+  - `header`: a doc's header **Version** is not the newest version in its own `## Version history` (12 docs have one;
+    all agree today). A doc with no history is not judged.
+  - `index`: a top-level launchpad doc linked from neither the root `INDEX.md` nor `ROADMAP.md` (none today).
+  - `link`: a relative link to a file that isn't there, in the top-level docs, `notes/*.md` and `mockups/README.md`
+    (`archive/` is left alone: old pointers may name moved files on purpose). **Ten found and fixed here**, all from the
+    NOTES split of 2026-10-11: sections moved into `notes/` kept links written from the launchpad's folder
+    (`](MIDGAME.md)` in `notes/space.md`, now `](../MIDGAME.md)`; also in flow, vehicle, world).
+  - `after`: a QUEUE row whose state is still `after Qn` when every item it names is ✓ in QUEUE or `archive/queue-*.md`
+    (only the part before a `;` or `(` counts). **Nine today** (Q621, Q148, Q317, Q613, Q614, Q615, Q291, Q69, Q289):
+    left for the orchestrator, who owns those states.
+- **In the suite**: test platform-15 checks the rules on fixtures and fails on any `header`, `index` or `link` finding
+  in the tree; stale `after` states are printed in its line, never failed on (they appear whenever an item lands, and
+  clearing them is the orchestrator's refresh, not the landing session's). It runs in `--smoke` and on CI's docs-only
+  path (`--only qa-2,qa-3,platform-3,platform-15`), since a docs-only push is exactly what breaks links.
+- **Not built** (rule 7 names them too): QUEUE rows naming answered W/D questions, and the size budgets (QUEUE ~300
+  lines, a design doc ~400). Both would fail today, so they need a call on what is enforced before they gate anything.

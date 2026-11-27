@@ -7,7 +7,7 @@
 #     sections and checks, dealt into processes by shards.mjs; a section must pass alone for that to be sound (R2,
 #     `--isolation`). A check that fails here and passes in one process is a section leaning on its neighbours: a bug to
 #     file, and `-f args=""` by hand gives the one-process run to compare.
-#  2. A push that changes only documents runs the numbers and the three sections that read documents, not the flights.
+#  2. A push that changes only documents runs the numbers and the four sections that read documents, not the flights.
 #     "Only documents" = every changed file under explorations/launchpad is a `.md`, or sits in `mockups/` or
 #     `archive/`. What "changed" is measured against:
 #       - on main: the push itself (before..after). Main's runs all finish, so no code push goes untested.
@@ -86,4 +86,4 @@ jobs:
         run: node test.mjs $ARGS
       - name: the sections that read documents (docs-only push; the flights are skipped)
         if: steps.scope.outputs.scope == 'docs'
-        run: node test.mjs --only qa-2,qa-3,platform-3
+        run: node test.mjs --only qa-2,qa-3,platform-3,platform-15

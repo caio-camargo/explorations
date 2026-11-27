@@ -1292,7 +1292,7 @@ here with Selene's), once heliocentric rails exist; a tug's real transfer time o
 
 ## Plan: the automation ladder (2026-10-09, space session with economy's parts, QUEUE Q127; plan only)
 
-From [`MIDGAME.md`](MIDGAME.md) (approved: decision 2, automation arrives with compute; decision 3, every routine has a
+From [`MIDGAME.md`](../MIDGAME.md) (approved: decision 2, automation arrives with compute; decision 3, every routine has a
 window) and CREW.md (pilots come first). **What exists:** dispatch (an ascent flown by its recorded procedure, any era);
 the economy's supply runs, refused before onboard computers (`baseRunQuote`, `BASE_ERA`, D7); mission control flying a
 vessel's planned burns (v1.93, any era today). Three places, three rules, none of them named.
@@ -1362,7 +1362,7 @@ of gravity there. So:
 
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
-From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
+From [`SYSTEM.md`](../SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
 at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
 on the map from the start).
 
@@ -1560,7 +1560,7 @@ decay rate, Cd·A/m in the wrong units). Full suite 475 pass. TESTING row 140.
 
 ## v1.71 — station-keeping re-tuned: a good satellite outlasts its era (2026-10-09, space session, MIDGAME § Satellites)
 
-[`MIDGAME.md`](MIDGAME.md) § Satellites (Caio, 2026-10-09): lifetime is a design choice made once, a well-built satellite
+[`MIDGAME.md`](../MIDGAME.md) § Satellites (Caio, 2026-10-09): lifetime is a design choice made once, a well-built satellite
 outlasts its era, replacement is for upgrades, and maintenance as a chore is out. v1.60's numbers made a TV satellite with
 100 m/s of tanks last ~270 days, i.e. careless by default. Re-tuned, still on the real physics:
 
@@ -1810,7 +1810,7 @@ not carried). Full suite 600 pass.
 
 ## v1.94 — the star system on paper (2026-10-09, space session, QUEUE Q87 slice 1, sim half)
 
-New `sim/system.js` (after `sim/space.js`): the planets of [`SYSTEM.md`](SYSTEM.md) where they really are, for the map
+New `sim/system.js` (after `sim/space.js`): the planets of [`SYSTEM.md`](../SYSTEM.md) where they really are, for the map
 from epoch 1 (PLAYTEST #11). Positions only: no physics, no heliocentric legs (that's slice 2, at M5).
 - `SYSTEM_BODIES`: one table (name, a in TU, e, i, node, perihelion, phase, radius, gravity, a map colour), so a rename
   is one edit (SYSTEM.md: names are placeholders). Nodes, perihelia and phases aren't in the catalog: fixed defaults;

@@ -94,7 +94,7 @@ up*.
 ## v1.17 — the construction screen: free placement, radial on anything (2026-10-07)
 
 Built in a session running in parallel with the economy work (v1.13–v1.16), so the UI lives in its own file,
-[`builder.js`](builder.js). That kept the two sessions' hunks apart in `index.html`. It can be folded back into
+[`builder.js`](../builder.js). That kept the two sessions' hunks apart in `index.html`. It can be folded back into
 the single file once nobody else is editing it.
 
 **What you do.** Pick a part from the palette (now grouped: command, tanks, engines, structure, aero) and it follows

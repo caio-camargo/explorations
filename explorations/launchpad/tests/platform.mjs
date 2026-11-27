@@ -391,3 +391,23 @@
       `check_numbers ${own}, hook ${real.status}; failing node → ${bad.status}; delete-only → ${gone.status}`);
   }
 }
+
+// platform-15. The document check (QUEUE Q298; ROADMAP § Documents, rule 7): `check_docs.mjs` finds a header version
+// that is not its history's newest, a top-level doc linked from neither INDEX.md nor ROADMAP.md, a relative link to a
+// missing file, and a QUEUE row still "after Qn" when Qn is ✓. Fixtures first; then the live tree, which must have no
+// header, index or link finding. Stale "after" states are the orchestrator's to clear: printed here, never failed on.
+{
+  const D = await import('./check_docs.mjs');
+  const hOk = D.headerCheck('# X\n**Version**: 0.1.10 · **Updated**: today\n\n## Version history\n- **0.1.9 (d):** a\n- **0.1.10 (d):** b\n');
+  const hBad = D.headerCheck('# X\n**Version**: 0.1.9\n\n## Version history\n- **0.1.9:** a\n- 0.1.10 (d): b\n\n## Next\n- 0.9.0 not history\n');
+  const hNone = D.headerCheck('# X\n**Version**: 0.1.9\n');
+  const L = D.relLinks('see [a](a.md), [b](../b.md#x "t"), [web](https://x.org/a.md), [top](#here), `](code.md)`, [`e`](e.md)\n```\n[c](c.md)\n```\n[d](mockups/d%20e.html)');
+  const done = D.doneSet(['| Q1 | x | — | S | ⚙ | ✓ v1.2 |', '| ~~Q2~~ | x | — | S | ⚙ | gone |', '| Q3 | x | — | S | ⚙ | ready |']);
+  const st = D.staleAfter(['| Q7 | x | — | S | ⚙ | after Q1 and Q2 |', '| Q8 | x | — | S | ⚙ | after Q1, Q3 |', '| Q9 | x | — | S | ⚙ | after Q1; ships with Q3 |', '| Q10 | x | — | S | ⚙ | ready |'].join('\n'), id => done.has(id));
+  const live = D.findings(), n = k => live.filter(x => x.kind === k).length, gate = live.filter(x => x.kind !== 'after');
+  check('platform-15: check_docs finds a stale header, a broken link and a stale "after"; the live docs have no header, index or link finding (Q298)',
+    hOk && hOk.have === hOk.newest && hBad && hBad.have === '0.1.9' && hBad.newest === '0.1.10' && hNone === null
+      && L.map(l => l.target).join(' ') === 'a.md ../b.md#x e.md mockups/d%20e.html' && [...done].sort().join() === 'Q1,Q2'
+      && st.map(s => s.id).join() === 'Q7,Q9' && !gate.length,
+    `live: ${n('header')} header, ${n('index')} index, ${n('link')} link${gate.length ? ' (' + gate.slice(0, 3).map(x => `${x.file}:${x.line} ${x.text}`).join('; ') + ')' : ''}; ${n('after')} stale "after" (not failed: ${live.filter(x => x.kind === 'after').map(x => x.text.split(' ')[0]).join(', ') || 'none'})`);
+}

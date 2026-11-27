@@ -265,8 +265,8 @@ the arrows, and every key in the handlers present in its Help table.
   both flights, Esc pause 0 s, no box covering another at 1280×800 on any screen.
 - **Visual identity mock-ups** (Q73 → Q53, PLAYTEST #13): three directions, paperwork, instrument panel and
   mid-century poster, on the Program screen and the flight HUD with the real layout over real game frames, plus a later
-  era for each: [`mockups/identity/`](mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
-  options and trade-offs in [`mockups/README.md`](mockups/README.md). For Caio to pick (or mix: office screens in one,
+  era for each: [`mockups/identity/`](../mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
+  options and trade-offs in [`mockups/README.md`](../mockups/README.md). For Caio to pick (or mix: office screens in one,
   cockpit in another); Q53 builds the pick.
 - **First run explained** (Q41): the gate's two questions each open with one line on what the choice decides (the power:
   how the money arrives, what the public wants, what a failure costs; the start: who owns the program and who you
@@ -482,7 +482,7 @@ Test `econ-14` (3 checks; the bottleneck mutation-tested).
 UI over the flight view. The Program matters most: it should give the program weight. **Today** `go(screen)` (slice 1)
 switches between screens, but Program, Debrief, Network and Rollout are all a panel (`#prog`, `#deb`, `#net`, `#roll`)
 over the 3D pad, and `mode` stays `'editor'` behind them (`app/screens.js` 6–31). Mock-ups:
-[`mockups/screens/`](mockups/screens/index.html), stills in `output/launchpad/mockups/screens/` (`<screen>.png`, 1280×800).
+[`mockups/screens/`](../mockups/screens/index.html), stills in `output/launchpad/mockups/screens/` (`<screen>.png`, 1280×800).
 
 **The rule: a screen is a place.** If the ship is the subject (Assembly, Rollout, Flight, Map), the 3D view stays and
 the screen gets its own setting. Every other screen is a room that fills the window, and the 3D view isn't drawn behind

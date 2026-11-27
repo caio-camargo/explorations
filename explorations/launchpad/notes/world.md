@@ -732,7 +732,7 @@ readout (click to choose a station site, § v1.48 next item 2).
 
 ## v1.54 — the ground of every body, slice G1: the layer, no new relief (2026-10-08, world session)
 
-The first slice of [`GROUND.md`](GROUND.md) (QUEUE Q86 + Q18's plan). Every "is this Tellus?" test of the ground is now a
+The first slice of [`GROUND.md`](../GROUND.md) (QUEUE Q86 + Q18's plan). Every "is this Tellus?" test of the ground is now a
 lookup of the body's **`ground` recipe**, so Selene, Nyx and the SYSTEM.md bodies can get relief with no further edits to
 the physics. Nothing changes in play: Tellus is as before, and every other body is still a smooth sphere.
 
@@ -769,7 +769,7 @@ Full suite: 436 pass, 0 fail.
 
 ## v1.58 — Selene's ground on the CPU, and the maria on the near side (2026-10-08, world session, GROUND.md G2)
 
-Slice G2 of [`GROUND.md`](GROUND.md): Selene's height function, built and measured headless. It is **not live in
+Slice G2 of [`GROUND.md`](../GROUND.md): Selene's height function, built and measured headless. It is **not live in
 play**: `SELENE.ground` stays unset until the sky shader draws the same relief (G3); until then a ship would land on hills
 nobody can see. Tests and `study_ground.mjs` switch it on in their own SIM copies. What did change in play: **the maria
 moved to the near side.**
