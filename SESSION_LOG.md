@@ -8735,3 +8735,27 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   the bell, wide and faint, bright only when sunlit) or stay readable as it is. No queue line until he says.
 - **Files.** `app/sound.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (rows 428, 429), `QUEUE.md`
   (Q641 ✓), `ACTIVE_WORK.md`.
+
+## 2026-11-27 — look & sound, effects (Fable 5.2, worktree launchpad-q642): v1.385 Q642, the plume in space, solid and liquid
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio): "i don't think the two kinds of engines are implemented yet, but maybe now it's time". Asked which
+  two: "i mean the solid and liquid, but there may be more than one kind in space. but not to expand on what is already
+  a large scope, let's stick to solid and liquid, and keep other space-only kinds in the backlog".
+- **My reading, not confirmed by him:** look and sound only, for the engines the game has; no new parts (there are no
+  solid boosters for the pad). I did not ask a second time.
+- **Done** (`explorations/launchpad/notes/look.md` § v1.385): a liquid engine's plume in vacuum is a glow at the bell
+  and a faint wide bulb; a solid motor's is a bright cloud; the three kick motors, which drew a kerosene flame, are
+  drawn and heard as solids; the jet spreads wider in vacuum. A BACKLOG row for the other kinds.
+- **Checked.** Stills before and after (`output/launchpad/beauty/Q642/`); test `aerofx-69`; CI green on
+  `82986a08` (run 46079272228).
+- **Not checked.** A real kick motor firing (the solid still is the Orbiter's upper stage drawn as a solid from the
+  console). The twilight "jellyfish", fainter now for kerosene. GPU time of the wider vacuum proxy.
+- **How the merge went.** Four full CI runs for one small change: the quick-wins session landed a version about
+  every ten minutes (v1.382, v1.383, v1.384) and each took the number this branch held while its run was going. Also
+  one push with a failing check (an older test on the two shader lines I changed): my smoke command's exit status was
+  hidden by a pipe; fixed before the merge. A number reserved at claim time, or one run for several branches, would
+  have saved three of the four: the merge-queue item in notes/platform.md § "CI".
+- **Files.** `app/gl.js`, `app/render.js`, `sim/core.js` (`GAME_V`), `tests/look.mjs`, `notes/look.md`, `NOTES.md`,
+  `TESTING.md` (row 430), `QUEUE.md` (Q642 ✓), `BACKLOG.md` (one row), `ACTIVE_WORK.md`.
+- **Next.** Caio: TESTING 429 (the rumble by ear) and 430 (the two plumes in space; is the liquid's too faint?).
