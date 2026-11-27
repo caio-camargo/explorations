@@ -3175,3 +3175,34 @@ plume: "this is looking much, much better"; the cut from behind in space: "confi
   `SND_G.rum` is the one dial: 0 is v1.380's steadiness.
 - **Check:** test `aerofx-68`'s sound half (the wiring of `rum`, the lower lowpass). TESTING 429.
 - **Not checked.** By ear. Whether the compressor on the master pumps with the shake. The map view (35 % volume).
+
+## v1.382 — the plume in space, by kind of engine: solid and liquid (2026-11-27, look & sound, effects, QUEUE Q642)
+
+Caio: "i'm not quite sure what a plume is supposed to look like in space, i'm having a hard time finding images".
+The answer given him: up close there is usually almost nothing to see. With no air to hold it, the exhaust fans out at
+the lip and is too thin and cool to glow within a few nozzle widths; cameras show a glow in the bell, a hot nozzle, a
+faint haze. A solid motor is the exception: its alumina particles stay incandescent and scatter sunlight. Lit by the
+sun from behind, any plume is a wide pale bell (the "space jellyfish" after twilight launches). Then: "i mean the
+solid and liquid… let's stick to solid and liquid, and keep other space-only kinds in the backlog".
+
+- **Two numbers per propellant** (`PROPS`, `app/gl.js`; one uniform, `uSc`): `sc`, how much sunlight the exhaust
+  scatters (kerolox 0.4, alcohol 0.15, hypergolic 0.12, hydrolox 0.06, solid 1.6; all were 1), and `hot`, how far its
+  own glow lasts down the plume in vacuum (solid 0.6, liquids 0: the gas cools as it spreads, as before).
+- **A liquid engine in vacuum:** the bright glow at the bell (v1.380's core), then a wide bulb two to three times
+  fainter than it was, seen mostly by the sunlight it scatters, so brightest with the sun behind it.
+- **A solid motor in vacuum:** a bright white cloud, its glow carrying well down the plume.
+- **Every solid motor is a solid.** `pfxOf` gave any engine without an entry a kerosene flame: the three kick
+  motors (`solid: true` in the parts list) drew one. They are solids now, to the eye and to the sound (the crackle
+  follows the same function).
+- **Wider in vacuum:** the tangent of the jet's spread tops out at 0.78 (`PL_VAC` 0.75 over 0.03; was 0.55). Real
+  ones turn further out still; past this the proxy's fill cost climbs for something too faint to see.
+- **Stills** (local, `output/launchpad/beauty/Q642/`): `liquid-before`, `liquid-after` (the Orbiter's Petrel at
+  200 km); `solid-before`, `solid-after` (the same stage with the Petrel drawn as a solid from the console: no preset
+  flies a solid motor to a reference view).
+- **Check:** test `aerofx-69` (the kinds, the two numbers' order, the shader's use of them, the spread). `aerofx-68`
+  reads the new constant. TESTING 430.
+- **Not built** (BACKLOG, "Other kinds of engine in space"): ion and Hall thrusters, nuclear thermal, cold gas,
+  hydrogen and hypergolic engines as kinds of their own. No new parts: solid boosters for the pad are not in the game.
+- **Not checked.** A real kick motor firing (only the console's stand-in). The twilight view, where the scatter is
+  the whole picture: kerolox now scatters 0.4 of what it did, so the jellyfish is fainter. GPU time of the wider
+  proxy. Low on the Intel GPU.

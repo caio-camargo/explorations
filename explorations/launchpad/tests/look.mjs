@@ -1707,7 +1707,7 @@
   const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
   const consts = /const PL_B=\[[^\]]*\],PL_AIR=[^;]*;/.exec(pg)[0], props = pg.slice(pg.indexOf('const PROPS={'), pg.indexOf('const pfxOf=')), pfx = /const pfxOf=[^\n]*/.exec(pg)[0];
   const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) };
-  const M = new Function('sstep', 'clamp', consts + props + pfx + body('plumeShape') + ';return{plumeShape,PROPS,PL_B,PL_AIR,PL_TAIL,PLK,PL_HALO}')(ss, (x, a, b) => Math.min(b, Math.max(a, x)));
+  const M = new Function('sstep', 'clamp', /const PL_VAC=[^;]*;/.exec(pg)[0] + consts + props + pfx + body('plumeShape') + ';return{plumeShape,PROPS,PL_B,PL_AIR,PL_TAIL,PLK,PL_HALO}')(ss, (x, a, b) => Math.min(b, Math.max(a, x)));
   const K = { key: 'kestrel', exit: .55, ispA: 285, ispV: 315 }, P = { key: 'petrel', exit: .6, ispA: 90, ispV: 345 };
   const [, tn0, L0, R0] = M.plumeShape(K, 1, 1), [, tnV, LV, RV] = M.plumeShape(P, 1, 0), Lh = M.plumeShape(K, .5, 1)[2];
   // rb as the shader has it (no igniter), from the same constants
@@ -1732,4 +1732,23 @@
     rum: H.includes('g.connect(rum.gain)') && H.includes('for(const[rate,lp,d]of[[0.61,11,SND_G.rum],[0.37,4,SND_G.rum*0.6]])') && H.includes('sub.connect(rum)') && H.includes('bass.connect(rum)') && H.includes("air:layer('brown','lowpass',2000,0.5,rum)") && /const SND_G=\{[^}]*rum:\d/.test(H) };
   check('the engine\'s sound (Q514): the roar under 900 Hz on the pad and thrown back by the ground, a Kestrel\'s voice near 70 Hz as lowpassed brown noise, the sub as noise that swells, a clipped upper-bass layer; liquids crackle little',
     Object.values(snd).every(Boolean), `roar lowpass ${pad.airLp.toFixed(0)} Hz on the pad, ${(pad.air / up.air).toFixed(2)} × the level at 2 km; ${Object.entries(snd).map(([k, v]) => k + ' ' + v).join(' ')}`);
+}
+
+// aerofx-69. The plume in space by kind of engine: solid and liquid (look & sound effects, QUEUE Q642). Every solid
+// motor is drawn as a solid (the kick motors, which have no PFX entry, drew a kerosene flame) and counts as one for the
+// sound's crackle; a solid scatters several times the sunlight of any liquid and keeps its own glow down the plume in
+// vacuum, a liquid does not; the shader uses both; the jet spreads wider in vacuum than it did.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const props = pg.slice(pg.indexOf('const PROPS={'), pg.indexOf('const pfxOf=')), pfx = /const pfxOf=[^\n]*/.exec(pg)[0], vac = /const PL_VAC=[^;]*;/.exec(pg)[0];
+  const M = new Function(vac + props + pfx + ';return{PROPS,PFX,pfxOf,PL_VAC}')(), P = M.PROPS, liq = ['kerolox', 'alcohol', 'hypergolic', 'hydrolox'];
+  const kick = M.pfxOf({ key: 'kick80', solid: true, ispA: 255, ispV: 285 }), les = M.pfxOf({ key: 'les', solid: true }), kes = M.pfxOf({ key: 'kestrel' }), other = M.pfxOf({ key: 'x', ispA: 90, ispV: 345 });
+  const kinds = kick.prop === 'solid' && les.prop === 'solid' && kes.prop === 'kerolox' && other.prop === 'kerolox' && other.pe < .1;
+  const vals = liq.every(k => P[k].sc > 0 && P[k].sc <= .5 && P[k].hot === 0) && P.solid.sc >= 3 * Math.max(...liq.map(k => P[k].sc)) && P.solid.hot > .3 && P.hydrolox.sc < P.kerolox.sc && M.PL_VAC > .52 && M.PL_VAC <= 1;
+  const fs = pg.slice(pg.indexOf('const PLUME_FS=`'), pg.indexOf('`;', pg.indexOf('const PLUME_FS=`')));
+  const sh = { scatter: fs.includes('+sunS*uSc.x*uI*prof*d*fade'), hot: fs.includes('float cool=mix(pow(min(1.,re/b),1.6),1.,max(uS.w,uSc.y));'), set: pg.includes('gl.uniform2f(pu.uSc,P.sc??1,P.hot||0);'),
+    spread: pg.includes('tn=.03+PL_VAC*sstep(0,2.5,Math.log10(Math.max(n,1)))'), sound: H.includes("if(pfxOf(e.d).prop==='solid')Ts+=t") };
+  check('the plume in space by kind (Q642): every solid motor is a solid (kick motors too); a solid scatters several times a liquid\'s sunlight and stays hot down the plume, a liquid does not; the jet spreads wider in vacuum',
+    kinds && vals && Object.values(sh).every(Boolean),
+    `kick motor: ${kick.prop}, escape tower: ${les.prop}, Kestrel: ${kes.prop}; scatter ${[...liq, 'solid'].map(k => k + ' ' + P[k].sc).join(', ')}; a solid's glow lasts ${P.solid.hot}; spread ${M.PL_VAC} · kinds ${kinds} values ${vals} · ${Object.entries(sh).map(([k, v]) => k + ' ' + v).join(' ')}`);
 }
