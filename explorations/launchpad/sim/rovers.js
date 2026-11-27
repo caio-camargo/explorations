@@ -224,7 +224,7 @@ function rvLoadNear(s){const L=PROG.rvOut||[];if(!s||!s.alive||!L.length)return 
 // the horizon) and an RTG (steady, and it keeps the rover warm). The draw: 30 W of electronics awake, 10 W asleep, and
 // on an airless body at night a 25 W heater unless an RTG keeps it warm. A battery that runs flat in the night with no
 // RTG puts it to sleep (D5, D33; Q189, Q459): `dormant`, it does nothing until its panels see the sun again, and the
-// lost night is the only price (before v1.389 it froze for good, `dead`; a save's `dead` rover now sleeps instead).
+// lost night is the only price (before v1.390 it froze for good, `dead`; a save's `dead` rover now sleeps instead).
 // Selene's night lasts half an orbit (about 52 h); between flights the battery is worked out over program time, half an
 // hour at a time (rvFieldTick).
 // Contact: a rover is driven by radio. On Tellus, always. Elsewhere, directly with a high-gain antenna while Tellus is

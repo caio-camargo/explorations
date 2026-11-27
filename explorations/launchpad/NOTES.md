@@ -212,7 +212,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - Plan: contact limits uncrewed flight (Q574): flown, every first-orbit burn is out of the pad's sight (the Beeper's by 78 s) and a stored timed burn circularises as well as a guided one; `cmdLink`, the launch range (a tracking ship 700 km downrange), armed nodes by avionics, what is refused where; slices Q581–Q587 and W51 (2026-11-11, review 2 session; plan only)
 - v1.338 — flights from orbit: Revert goes back to when control was taken, never the pad; a reload mid-flight puts the vessel back (Easy, Normal) or loses it (Hard) (2026-11-12, launchpad session, QUEUE R29 + R29b, D45)
 - v1.388 — a docked passenger's onboard computer or crew capsule counts for the composite's avionics (`hasComputer` walks the passengers, as the power store does); the crew headcount left as it is (2026-11-27, quick wins, QUEUE Q456) → [notes/space.md](notes/space.md)
-- v1.389 — a rover flat in the night sleeps and wakes in the sun (`dormant`, never `dead`; a save's frozen rover sleeps); the fleet line "asleep, wakes in 21 h" (2026-11-27, quick wins, QUEUE Q189 = Q459; D5, D33) → [notes/space.md](notes/space.md)
+- v1.390 — a rover flat in the night sleeps and wakes in the sun (`dormant`, never `dead`; a save's frozen rover sleeps); the fleet line "asleep, wakes in 21 h" (2026-11-27, quick wins, QUEUE Q189 = Q459; D5, D33) → [notes/space.md](notes/space.md)
 - v1.346 — who is aboard: a fresh crewed flight has its people in their seats, as a vessel from the registry does; the default two-seat rover deploys on the flight that carries it (2026-11-17, space, QUEUE Q606)
 
 ## Economy: [`notes/economy.md`](notes/economy.md)

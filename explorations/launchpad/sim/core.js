@@ -1,7 +1,7 @@
 'use strict';
 // ==== SIM BEGIN — pure simulation, no DOM/GL. Extracted by test.mjs for headless checks.
 const G0 = 9.80665, DT = 0.02;
-const GAME_V = 'v1.389';   // the build, for the tester log and the fault panel (QUEUE Q285): the newest `## v1.N` in notes/*.md. Set it with every version; check_numbers.mjs (and test platform-13) fail while it differs. In a merge conflict take the higher
+const GAME_V = 'v1.390';   // the build, for the tester log and the fault panel (QUEUE Q285): the newest `## v1.N` in notes/*.md. Set it with every version; check_numbers.mjs (and test platform-13) fail while it differs. In a merge conflict take the higher
 const HOOK = { msg(){}, boom(){}, crack(){}, rebuild(){}, debris(){}, news(){}, save(){}, logged(){}, log(){}, cmShift(){}, sep(){}, sas(){}, done(){} };   // done: a mission or contract completed (Q569, app/notice.js); sas: the sim changed the SAS mode itself (Q544): redraw the buttons
 const INP = { pitch:0, yaw:0, roll:0, tx:0, ty:0, tz:0 };   // tx/ty/tz: RCS translation, body axes
 

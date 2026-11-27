@@ -3026,7 +3026,7 @@ a still; the card in the dark cockpit's narrow column.
   for the space lane with Caio (QUEUE Q456's row says so).
 - Test space-41 (a bare probe: alone, with a computer passenger, flat, with a capsule passenger flat, undocked).
 
-## v1.389 — a rover flat in the night sleeps, never dies (2026-11-27, quick wins, QUEUE Q189 = Q459, SW1; D5, D33)
+## v1.390 — a rover flat in the night sleeps, never dies (2026-11-27, quick wins, QUEUE Q189 = Q459, SW1; D5, D33)
 
 - **Before:** a rover whose battery ran flat in an airless night with no RTG `froze`: `dead` for good, in flight and
   between flights. D5 (2026-10-09) and D33 (2026-11-11, Caio: "no cost to unheated rover at night") say it goes dormant
