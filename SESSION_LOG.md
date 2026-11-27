@@ -8681,3 +8681,8 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `SLOW_ROWS` (19 sections to add); a merge queue.
 - **Files.** `.github/workflows/launchpad-tests.yml`, `explorations/launchpad/notes/platform.md`, `NOTES.md`,
   `QUEUE.md` (the Testing paragraph, the Read-first line, the Proposed line marked done), `SESSION_LOG.md`.
+
+- PARKED (2026-11-27, look & sound, Fable 5.2): **Q639's ice and vapor.** Caio: "the ice looks thin, i wouldn't keep it
+  as it looks currently. it would need to have a lot more pieces to look good. let's table it for now and look at the
+  plume, which i think is more important." Parked at: built and on `main` (v1.379), to be switched off by default in
+  Q640's merge; not removed. The next step if it comes back is in QUEUE's Q639 row.
