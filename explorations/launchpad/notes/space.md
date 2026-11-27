@@ -3011,3 +3011,17 @@ headless page the card shows at 3 km with the SVG and *3000 m behind*, and not a
 (`shot.mjs`): 4 km behind and 3 m/s slower, the card draws the dip under the target and the drift ahead (a still in
 `output/launchpad/q630-approach-card.png`, local). **Not checked:** by a person (TESTING 418); the plan's dashed line in
 a still; the card in the dark cockpit's narrow column.
+
+## v1.388 — a docked passenger's computer counts for the composite (2026-11-27, quick wins, QUEUE Q456; v1.217's "not yet")
+
+- **Before:** docked, the composite shared one power store (Q304, v1.217) but `hasComputer` read the host's parts only,
+  so a bare probe docked to a satellite carrying the onboard computer still flew one avionics generation short.
+- **Now** (`sim/power.js`): `hasCompOf(s)` walks the host and every passenger's registry shape with `powEach`, as the
+  power store does; `hasComputer` is true for a crew capsule anywhere in the composite, or an onboard computer anywhere
+  while the shared store has charge. So `avCap`/`avOf` give the composite the guidance computer when any part of it has
+  one. `powFlat`'s "the onboard computer is off" message reads the same walk. With no passengers nothing changes.
+- **Not changed: the crew headcount.** `crewOn(s)` still counts the host's seats only. Counting a passenger's people
+  there would make a flight docked to a crewed station a crewed flight (`R.crewed` in `switchTo`, the fragment warning,
+  a crewed rover's "nobody aboard"), which is a call about who is at risk on whose flight, not a bookkeeping fix: left
+  for the space lane with Caio (QUEUE Q456's row says so).
+- Test space-41 (a bare probe: alone, with a computer passenger, flat, with a capsule passenger flat, undocked).

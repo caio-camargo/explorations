@@ -35,11 +35,14 @@ function inShadow(b,r){const d=dot(r,SUN_DIR);return d<0&&len(sub(r,mul(SUN_DIR,
 // enough over the plane, else the arc whose distance from the shadow's axis is under R
 function eclFrac(R,r,beta=0){if(r<=R)return 0.5;const sb=Math.abs(Math.sin(beta));if(R/r<=sb)return 0;
   return Math.acos(Math.min(1,Math.sqrt(r*r-R*R)/(r*Math.cos(beta))))/Math.PI}
-const hasComputer=s=>s.parts.some(p=>p.on&&p.d.crew)||!s.pwrOut&&s.parts.some(p=>p.on&&p.d.kind==='comp');
+// a computer on board: a crew capsule (its own), or an onboard computer while the store has charge. Docked, a passenger's
+// capsule or computer counts for the composite (Q456), as its batteries do (Q304): powEach walks both
+const hasCompOf=s=>{let crew=false,comp=false;powEach(s,d=>{if(d.crew)crew=true;else if(d.kind==='comp')comp=true});return{crew,comp}};
+const hasComputer=s=>{const h=hasCompOf(s);return h.crew||!s.pwrOut&&h.comp};
 // the avionics a vessel can use (avOf takes the lower of this and what it launched with): with no program running, with the
 // tester's tools, or with a computer on board, everything; otherwise one generation short of the guidance computer
 const avCap=s=>!khOn()||TEST.tools||!s.parts||hasComputer(s)?AV.length-1:AV.length-2;
-function powFlat(s,out){if(out===!!s.pwrOut)return;s.pwrOut=out;const comp=s.parts.some(p=>p.on&&p.d.kind==='comp');
+function powFlat(s,out){if(out===!!s.pwrOut)return;s.pwrOut=out;const comp=hasCompOf(s).comp;
   HOOK.msg(out?`Power flat${comp?': the onboard computer is off, analog autopilot only, until the panels catch up':''}`:'Power back')}
 // one physics step: the store, from the sun right now; a deployed wing in thick air tears off
 function powerStep(s,dt){if(!s.alive)return;

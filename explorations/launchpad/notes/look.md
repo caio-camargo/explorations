@@ -3207,7 +3207,7 @@ solid and liquid… let's stick to solid and liquid, and keep other space-only k
   the whole picture: kerolox now scatters 0.4 of what it did, so the jellyfish is fainter. GPU time of the wider
   proxy. Low on the Intel GPU.
 
-## v1.388 — the engine's sound deeper and smoother; the plume from the air to space, and with the throttle (2026-11-27, look & sound, QUEUE Q643, Q644)
+## v1.389 — the engine's sound deeper and smoother; the plume from the air to space, and with the throttle (2026-11-27, look & sound, QUEUE Q643, Q644)
 
 Caio, having tried v1.381 and v1.385: "the rumble is in the right direction, but i would say significantly deeper. it
 also sounds like it stutters, smoothing that out a bit would be an improvement." And: "the plume looks very visible in
