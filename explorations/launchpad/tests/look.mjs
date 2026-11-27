@@ -172,8 +172,9 @@
     const wren = sndVoices([{ key: 'wren', T: 18e3, exit: 0.25 }], 1), alb = sndVoices([{ key: 'albatross', T: 1.1e6, exit: 1.1 }], 1);
     const mix = sndVoices([{ key: 'kestrel', T: 230e3, exit: 0.55 }, { key: 'kestrel', T: 230e3, exit: 0.55 }, { key: 'condor', T: 460e3, exit: 0.62 }], 0.8);
     const many = sndVoices(['a', 'b', 'c', 'd', 'e'].map((k, i) => ({ key: k, T: 1e5 * (i + 1), exit: 0.3 + 0.1 * i })), 1);
+    // (Q514) the peak at a rocket's Strouhal number, 0.03: tens of hertz to ~150, not a hiss at 450 Hz to 1 kHz
     check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off (and the volume slider, Q35, is wired)',
-      wren[0].f > 900 && alb[0].f < 260 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
+      wren[0].f > 140 && wren[0].f < 160 && alb[0].f < 40 && alb[0].f >= 28 && Math.abs(mix[0].f - 68.2) < 1 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
         && /ice\*=1\.-\.85\*bare\*uIv;sn\*=1\.-\.85\*bare\*uIv;/.test(H) && /gl\.uniform1f\(u\.uIv,ICE_VARY\?1:0\)/.test(H)
         && /function sndSettings\(el\)/.test(H) && /if\(typeof sndSettings==='function'\)sndSettings\(\$\('setSound'\)\)/.test(H) && /localStorage\.getItem\('launchpad-volume'\)/.test(H)
         && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
@@ -1688,8 +1689,45 @@
   const shape = flakes.every(p => p.o.g && Math.abs(p.o.g[0] + ICE.g) < 1e-9 && p.o.grow === 0 && p.o.s0 < .1 && p.o.life < 3.5 && len(sub(p.v, V0)) < 1.7 && Math.abs(rad(p) - .645) < 1e-6 && ((hy(p) >= 0 && hy(p) <= 7 * .75 + 1e-9) || (hy(p) >= 8 && hy(p) <= 10 + 1e-9)));
   const none = [run({ frost: 0 }), run({ pr: .2 }), run({ off: true }), run({ body2: {} })].every(x => x.p.length === 0);
   const low = run({ q: 'low' }).p.length, warp = run({ dt: 4 }).p.length, lowOk = Math.abs(low - expect / 2) < .2 * expect / 2, warpOk = warp <= 2 * ICE.max * .1 * 3 + 2;
-  const has = { call: pg.includes('iceTick(dt,pad,pr);   // (Q639)'), setting: H.includes("ICE_FX=setGet('launchpad-ice','1')!=='0';") && H.includes("else if(id==='setIce'){ICE_FX=on;setPut('launchpad-ice',on?'1':'0')}") && H.includes("ck('setIce',ICE_FX,") };
+  const has = { call: pg.includes('iceTick(dt,pad,pr);   // (Q639)'), setting: H.includes("ICE_FX=setGet('launchpad-ice','0')==='1';") && H.includes("else if(id==='setIce'){ICE_FX=on;setPut('launchpad-ice',on?'1':'0')}") && H.includes("ck('setIce',ICE_FX,") };
   check('ice and vapor off the tanks (Q639): wisps on the pad, slow and faint; flakes for a few seconds after liftoff, from frosted skin below the fuel line, falling; none without frost, off Tellus, in thin air or switched off; half on Low; no burst in a long step',
     wisps && count && shape && none && lowOk && warpOk && Object.values(has).every(Boolean),
     `pad 20 s: ${padRun.p.length} wisps · liftoff: ${flakes.length} flakes (expected ${expect.toFixed(0)}), Low ${low}, a 4 s step ${warp} · wisps ${wisps} count ${count} shape ${shape} none ${none} low ${lowOk} warp ${warpOk} · call ${has.call} setting ${has.setting}`);
+}
+
+// aerofx-68. The plume, brighter and with weight (look & sound effects, QUEUE Q640; PLAYTEST #181, #122). plumeShape:
+// a kerolox flame at sea level is twice the old length and nearly a column (its edge spreads under a tenth of its
+// length), hydrogen's is the old length, all are 2.4 × in vacuum as before; the vacuum plume is a bulb (it has done most
+// of its widening by a third of its length); the proxy's radius covers the jet's edge at its end. The shader: the
+// radiance gain and each propellant's own, the body of the flame, the halo, the fades before the proxy's cap and side.
+// The proxy mesh: its far cap is wound like its wall (the hole seen from behind). And the engine's sound (Q514,
+// PLAYTEST #146): the roar's lowpass under 900 Hz on the pad, the low end as noise with a clipped upper-bass layer.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const consts = /const PL_B=\[[^\]]*\],PL_AIR=[^;]*;/.exec(pg)[0], props = pg.slice(pg.indexOf('const PROPS={'), pg.indexOf('const pfxOf=')), pfx = /const pfxOf=[^\n]*/.exec(pg)[0];
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) };
+  const M = new Function('sstep', 'clamp', consts + props + pfx + body('plumeShape') + ';return{plumeShape,PROPS,PL_B,PL_AIR,PL_TAIL,PLK,PL_HALO}')(ss, (x, a, b) => Math.min(b, Math.max(a, x)));
+  const K = { key: 'kestrel', exit: .55, ispA: 285, ispV: 315 }, P = { key: 'petrel', exit: .6, ispA: 90, ispV: 345 };
+  const [, tn0, L0, R0] = M.plumeShape(K, 1, 1), [, tnV, LV, RV] = M.plumeShape(P, 1, 0), Lh = M.plumeShape(K, .5, 1)[2];
+  // rb as the shader has it (no igniter), from the same constants
+  const rb = (s, re, n, tn, pa, L) => re * (1 + (Math.sqrt(Math.min(1, Math.max(.3, n))) - 1) * ss(0, 1.5 * re, s)) + tn * (M.PL_B[0] * re * (1 - Math.exp(-s / (M.PL_B[1] * re))) + M.PL_B[2] * s) + pa * s * (M.PL_AIR + M.PL_TAIL * ss(.35 * L, L, s));
+  const col = rb(L0, .55, .75, tn0, 1, L0) - rb(0, .55, .75, tn0, 1, L0), third = rb(LV / 3, .6, 1e3, tnV, 0, LV) / rb(LV, .6, 1e3, tnV, 0, LV);
+  const shape = Math.abs(L0 - .55 * 22 * 2) < 1e-9 && Math.abs(LV - .6 * 22 * 2.4) < 1e-9 && Lh < L0 && col < .1 * L0 && third > .5 && R0 >= rb(L0, .55, .75, tn0, 1, L0) && RV >= rb(LV, .6, 1e3, tnV, 0, LV);
+  const pr = Object.values(M.PROPS).every(p => p.len >= 1 && p.len <= 2.4 && p.lum > 0) && M.PROPS.kerolox.len === 2 && M.PROPS.hydrolox.len === 1 && M.PROPS.solid.lum > M.PROPS.kerolox.lum && M.PROPS.hydrolox.lum < .3 && M.PLK >= 6;
+  const fs = pg.slice(pg.indexOf('const PLUME_FS=`'), pg.indexOf('`;', pg.indexOf('const PLUME_FS=`'))), mesh = /const PLUME=\(\(\)=>\{[^\n]*\n[^\n]*/.exec(pg)[0];
+  const sh = { gain: fs.includes('vec3 e=uI*PLK*uLm*('), body: fs.includes('bc*body*.3') && fs.includes('+body*.12))*st)'), halo: fs.includes('if(u>1.4){C+=Tr*uI*PLK*uLm*HALO*uS.w'),
+    fades: fs.includes('*smoothstep(R,.82*R,r)') && fs.includes('*smoothstep(L,.86*L,s)'), core: fs.includes('Lp=re*(3.5+2.5*uS.w)*mix(1.,uLn,uS.w)'),
+    set: pg.includes('gl.uniform1f(pu.uLn,P.len||1);gl.uniform1f(pu.uLm,P.lum||1);'), rbS: /const PLUME_RB=`[^`]*PL_B\[0\][^`]*PL_TAIL[^`]*`;/.test(pg),
+    cap: mesh.includes('lathe(a,pr,[0,0,0],n,[true,false])') && mesh.includes('pv(a,[0,-1,0],[0,-1,0],w);pv(a,[Math.cos(a1),-1,Math.sin(a1)],[0,-1,0],w);pv(a,[Math.cos(a0),-1,Math.sin(a0)],[0,-1,0],w)') };
+  check('the plume (Q640): a kerolox flame twice as long and nearly a column at sea level, a bulb in vacuum; each propellant its length and brightness; the gain, the body, the halo and the fades in the shader; the proxy\'s far cap wound like its wall',
+    shape && pr && Object.values(sh).every(Boolean),
+    `Kestrel at sea level ${L0.toFixed(1)} m long (half throttle ${Lh.toFixed(1)}), its edge ${col.toFixed(2)} m wider at the end; Petrel in vacuum ${LV.toFixed(1)} m, ${(third * 100).toFixed(0)} % of its width by a third · shape ${shape} props ${pr} · ${Object.entries(sh).map(([k, v]) => k + ' ' + v).join(' ')}`);
+  const blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END')), { sndMix, sndVoices } = new Function(blk + ';return {sndMix,sndVoices}')();
+  const pad = sndMix({ T: 4e6, pr: 1, M: 0, q: 0, agl: 0 }), up = sndMix({ T: 4e6, pr: 1, M: 0, q: 0, agl: 2000 }), liq = sndMix({ T: 4e6, pr: 1 }), sol = sndMix({ T: 4e6, pr: 1, solid: 1 });
+  const snd = { lp: pad.airLp < 900 && pad.airLp > 500, refl: pad.air / up.air > 1.5, crk: liq.crk < .3 * sol.crk, kestrel: Math.abs(sndVoices([{ key: 'k', T: 1, exit: .55 }], 1)[0].f - 68.2) < 1,
+    voices: H.includes("AUD.V=[0,1,2,3].map(()=>layer('brown','lowpass',150,0.9));") && H.includes('set(v.f.frequency,SND_VLP*x.f,0.2)'), noSines: !H.includes('for(const f of[37,52])'),
+    sub: H.includes("fl.type='lowpass';fl.frequency.value=75;") && H.includes('og.connect(swell.gain)'), bass: H.includes('c.createWaveShaper()') && H.includes('set(L.bass.gain,SND_G.bass*m.sub)') };
+  check('the engine\'s sound (Q514): the roar under 900 Hz on the pad and thrown back by the ground, a Kestrel\'s voice near 70 Hz as lowpassed brown noise, the sub as noise that swells, a clipped upper-bass layer; liquids crackle little',
+    Object.values(snd).every(Boolean), `roar lowpass ${pad.airLp.toFixed(0)} Hz on the pad, ${(pad.air / up.air).toFixed(2)} × the level at 2 km; ${Object.entries(snd).map(([k, v]) => k + ' ' + v).join(' ')}`);
 }

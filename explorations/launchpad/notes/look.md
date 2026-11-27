@@ -3093,3 +3093,62 @@ have carried frost since the flight marks; it sat still.
   long step; the setting's wiring). TESTING 427.
 - **Not checked.** In motion by a person: this is an effect of motion and the stills say little. At night under the
   floodlights. A liftoff with side boosters. Low on the Intel GPU.
+
+## v1.380 — the plume, brighter and with weight; the engine's sound a rumble; the ice off by default (2026-11-27, look & sound, effects, QUEUE Q640, Q514, Q484; PLAYTEST #181, #146, #122)
+
+Caio, 2026-11-27: "right now it looks on the insubstantial side. a real rocket plume is bright and looks extremely
+powerful", and of the sound: "it needs to be that deep rumble, where right now it sounds like air escaping". Earlier
+(#181): "faded", "too conical"; (#122) cut off at its base seen from behind in space; (#146) "medium-high pitched
+static".
+
+**What was wrong, measured.** Stills of views 30–33, 61, 62 at v1.379: a Kestrel's flame at liftoff was 12 m long
+under a 25 m rocket, a dull orange, dimmer than the sunlit paint beside it, and doubled its width over those 12 m (a
+cone). The sound, through an analyser on the page's own master gain: 70 % of the power under 60 Hz (two sine tones,
+37 and 52 Hz, which small speakers do not play), the rest spread evenly from 60 Hz to 4 kHz, with a voice centred on
+455 Hz for the Kestrel: on a laptop, hiss.
+
+**The plume** (`app/gl.js`: `PLUME_RB`, `PLUME_FS`, `plumeShape`, `PROPS`; `app/render.js` sets two uniforms).
+- **Brightness.** The flame's radiance × `PLK` = 10, and × each propellant's `lum` (kerolox 1, solid 1.3, alcohol
+  0.3, hypergolic 0.3, hydrolox 0.15). A kerolox core is now tens of times sunlit paint: white-hot in the tone map, yellow
+  at its edge, and it blooms.
+- **A body.** In air the whole column burns (`body`: the mantle's gain over the jet's profile, core-coloured near the
+  bell, the mantle's colour by its end), and absorbs a little, so the flame is not see-through.
+- **Length.** `PROPS.len` × the old 22 exit radii at full throttle in air: kerolox 2 (a Kestrel: 24 m), solid 2.2,
+  alcohol 1.3, hypergolic 1.2, hydrolox 1. In vacuum 2.4 for all, as before. The bright core's length scales with it.
+- **Shape.** In air the edge spreads 0.022 per metre (was 0.035) and billows wider over the last two thirds
+  (`PL_TAIL`): a column with a flared end. In vacuum the gas turns out round the lip and then runs nearly straight
+  (`PL_B`): a bulb, 57 % of its final width by a third of its length, not a straight cone.
+- **A halo** (`PL_HALO`): in air, a soft skirt of light past the jet's edge.
+- **#122, the cut and the view from behind: two causes.** (1) The proxy's far cap was wound the other way from its
+  wall (`lathe()` winds both caps for a profile that climbs; the plume's descends), so from behind it was culled with
+  the wrong half and the plume had a hole the cap's shape with a straight edge: the still `behind-before`. The cap is
+  now built by hand. (2) Noise carried a little density to the proxy's cap and side: it now fades to zero before both.
+- **Cost.** The *plumes* pass, GPU time by timer query (RTX, the reference views, 1.5 s each): liftoff (view 61)
+  0.040 → 0.044 ms, 35 m up (62) 0.033 → 0.089 ms; at 20 km (31) and in vacuum (33) 0.14 and 0.33 ms after (the
+  before figures for those two were not taken). The march is the same 32 steps; the proxy is longer.
+
+**The sound** (`app/sound.js`; QUEUE Q514's plan, as written there).
+- Each engine's voice: brown noise under a lowpass at 2.2 × its peak, the peak at Strouhal 0.03 (was a narrow band of
+  white noise at Strouhal 0.2): Kestrel 68 Hz (was 455), Sparrow 125 (833), Albatross 34 (227), Wren 150.
+- The roar's lowpass tops out at 820 Hz on the pad (was 3.6 kHz); the ground throws back 60 % more (was 40 %).
+- The sub: brown noise under 75 Hz with slow swells, in place of the two sines. A new upper-bass layer: a band round
+  125 Hz driven into a soft clip, so it has harmonics up to 380 Hz for speakers that play nothing lower.
+- The crackle sits at 1.2 kHz (was 2.2); liquids get a quarter of a solid's (was a fifth).
+- **Measured** (the Orbiter one second after ignition, same method): overall −24.0 → −19 dBFS; the share of power at
+  60–400 Hz 20 % → 73 %; above 1 kHz 3.4 % → 0.2 %; under 60 Hz 70 % → 23 %. The Lunar and the Sounding rocket the
+  same pattern.
+- **Not heard by anyone yet.** I cannot listen; the numbers say where the energy is, not whether it sounds like a
+  rocket. The gains (`SND_G`) are first guesses.
+
+**The ice (v1.379) is off unless switched on** (Caio: "the ice looks thin, i wouldn't keep it as it looks
+currently… let's table it for now"): Settings › Screens, as before; the code stays.
+
+- **Stills** (local, `output/launchpad/beauty/Q640/`): `liftoff-before`/`-after`, `climb-before`/`-after`,
+  `night-before`/`-after`, `altitude-before`/`-after`, `vacuum-before`/`-after`, `behind-before`/`-after`.
+- **Check:** test `aerofx-68` (the shape's numbers, each propellant's length and brightness, the shader's pieces,
+  the cap; the sound mix and its layers). `aerofx-67` follows the ice's default; the voices' test follows the new
+  peaks. TESTING 428.
+- **Not checked.** In motion (the turbulence scrolls; the stills are frozen). Clusters and side boosters, whose flames
+  now overlap more. Hydrolox, hypergolic and solid flames in a still (no reference view uses them at sea level; view
+  36 names a preset that is gone, and hung). Throttled down. The plume's light on the pad was left at its old
+  strength, the flame being ten times brighter. The exposure's reaction at night. Low on the Intel GPU.

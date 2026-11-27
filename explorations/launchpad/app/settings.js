@@ -16,7 +16,7 @@ function applyQuality(q){const Q=QUAL[q]||QUAL.high,f=Q.fx;quality=QUAL[q]?q:'hi
   CLOUD_VOL=!!f.CLOUD_VOL;BLOOM=!!f.BLOOM;PLUME_LIGHT=!!f.PLUME_LIGHT;IMPACT_FX=!!f.IMPACT_FX;VAPOR_FX=!!f.VAPOR_FX;HAZE_FX=!!f.HAZE_FX;SHIP_SHADOW=!!f.SHIP_SHADOW;   // (the re-entry plasma stays: it tells you something)
   RS_MAX=Q.rs;RS=Math.min(RS,RS_MAX)}
 applyQuality(quality);
-GAUGES=setGet('launchpad-gauges','1')!=='0';ICE_FX=setGet('launchpad-ice','1')!=='0';   // (Q639) ice and vapor off the tanks
+GAUGES=setGet('launchpad-gauges','1')!=='0';ICE_FX=setGet('launchpad-ice','0')==='1';   // (Q639) ice and vapor off the tanks; off unless switched on (Q640: tabled, Caio 2026-11-27)
 SHAKE_LV=Math.min(2,Math.max(0,+setGet('launchpad-shake','1')||0));SHAKE_FX=SHAKE_LV>0;   // (Q360, Q402) the camera shake: 0 off, 1 gentle, 2 full
 function renderSettings(){const el=$('settings');if(!el)return;const ck=(id,on,l,t='')=>`<label title="${t}"><input type="checkbox" id="${id}"${on?' checked':''}> ${l}</label>`;
   el.innerHTML=`<span class="x" data-ov="settings">✕</span><h2>Settings</h2>`
