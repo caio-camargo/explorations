@@ -146,6 +146,7 @@ changed. Versions stay one series across all files: `node check_numbers.mjs` rea
 - v1.357 — tilt (bench slice 3): `ti` in 15° steps, the bracket (`poseSink`, `bk`), A D W S Q E and the card's tilt row; a boom keeps 45° steps
 - Scope: winged flight, what planes would take (2026-11-11, with Caio; a size estimate in three tiers, one measurement, nothing built or queued) → [notes/vehicle.md](notes/vehicle.md)
 - v1.328 — thrust on the ground moves the craft: woken by thrust or the keys, a landed craft is a free body on its feet and whole outline (friction, pivoting), so a toppled lander can right itself with wheels or RCS, or wreck itself; damage only from the sim (hull strikes, slides through boulders, joint loads); v1.260's liftoff/drop refusals gone (2026-11-07, vehicle worker, QUEUE Q545, PLAYTEST #151)
+- v1.387 — big plates on a light craft keep a finite roll: the plates' rate damping past c·dt/I = ½ taken implicitly (`plateDamp`), stable flights bit-identical (2026-11-27, quick wins, QUEUE Q598) → [notes/vehicle.md](notes/vehicle.md)
 - v1.345 — the *Asparagus* preset is *Crossfeed* (D15.6); "on rails" was already out of player text (2026-11-15, worker, QUEUE Q284) → [notes/vehicle.md](notes/vehicle.md)
 
 ## Space: [`notes/space.md`](notes/space.md)

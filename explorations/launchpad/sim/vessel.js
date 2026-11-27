@@ -947,6 +947,14 @@ const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
 // Sutton–Graves stagnation heating q = k·√(ρ/r_nose)·v³ (W/m², k = 1.83e-4 for air); each surface element gets q·|cos|
 const SG=1.83e-4;let HEAT_GAIN=1;   // plain Sutton–Graves since the rescale (3.4 km/s orbits heat ~3.3× more than the old 2.3); it was ×3 when this small planet's 2.3 km/s orbits would otherwise re-enter like a gentle breeze (see NOTES)
 const FIN4=[[1,0],[0,1],[-1,0],[0,-1]];
+// (Q598) the plates' rate damping per body axis, c_i = Σ ½ρv·A·3.5·m_i² over the plates (m = r × n: how far a turn about
+// axis i moves the plate along its normal; ½ρv·A·3.5 is the normal force's slope in the normal speed, aeroForces' N)
+function plateDamp(s,rho,sp){const c=[0,0,0],cm=s.cm;
+  for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,one=d.kind==='rfin',rr=one?d.span/2:d.r+d.span/2,k=0.5*rho*sp*A*3.5;
+    for(const[ax,az]of one?[[Math.cos(p.phi),Math.sin(p.phi)]]:FIN4){const rx=p.pos[0]+ax*rr-cm[0],ry=py-cm[1],rz=p.pos[2]+az*rr-cm[2];
+      const m0=ry*ax,m1=-rz*az-rx*ax,m2=ry*az;   // r × n with n = (−az, 0, ax)
+      c[0]+=k*m0*m0;c[1]+=k*m1*m1;c[2]+=k*m2*m2}}
+  return c}
 const NA=8,CA=[],SA=[];for(let k=0;k<NA;k++){CA.push(Math.cos((k+.5)/NA*6.283185307));SA.push(Math.sin((k+.5)/NA*6.283185307))}
 function addF(p,fx,fy,fz,px,py,pz){const F=p.F,L=p.L;F[0]+=fx;F[1]+=fy;F[2]+=fz;L[0]+=py*fz-pz*fy;L[1]+=pz*fx-px*fz;L[2]+=px*fy-py*fx}
 function aeroPass(s,vb,wb,rho0,M,thrusting){
@@ -1140,7 +1148,11 @@ function physStep(s,dt){
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
   if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
-  const alB=[(tau[0]+tauW[0])/s.I[0],(tau[1]+tauW[1])/s.I[1],(tau[2]+tauW[2])/s.I[2]];   // the gimbals' torque is already in tau (turned thrust)
+  // (Q598) the plates' rate damping is in tau explicitly, which overshoots once c·dt/I passes 2 (big plates, light craft,
+  // fast thick air: the turn rate goes NaN). The excess over c·dt/I = ½ is taken implicitly instead; below that the
+  // divisor is I exactly, so every flight that was stable is unchanged to the last bit
+  const cD=s.fins.length&&rho>0&&sp>1?plateDamp(s,rho,sp):null,Ie=i=>cD?s.I[i]+Math.max(0,cD[i]*dt-0.5*s.I[i]):s.I[i];
+  const alB=[(tau[0]+tauW[0])/Ie(0),(tau[1]+tauW[1])/Ie(1),(tau[2]+tauW[2])/Ie(2)];   // the gimbals' torque is already in tau (turned thrust)
   const worst=structLoads(s,aNg,alB,wb,tauW);s.aB=add(aNg,worst.aSide);s.alB=alB;s.wB=wb;   // for the ports' loads
   s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;if(len(aNg)>1e-9)s.kickN=(s.kickN||0)+1;   // non-gravitational: cached node states go stale
   let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT,true);if(pa)grav=add(grav,pa)}

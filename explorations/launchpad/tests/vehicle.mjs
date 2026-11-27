@@ -1488,3 +1488,38 @@ return out`);
     okHalf && okSee && okBlock && okLit && okRows && n40 >= 40 && ms < 1,
     `half ${h0.toFixed(3)} (a ray ≤ ${maxW.toFixed(3)}; 2 cm over ${hIn.toFixed(3)}, short ${hOut.toFixed(3)}); bottom g ${bot.g} ${bot.st}, sun-facing ${sun.g.toFixed(2)} ${sun.st}, side ${side.g} ${side.st}; sphere ${blk.blocked.toFixed(2)} "${blk.line}", a whip in its edge ${soft.blocked.toFixed(3)} ${soft.st} / strict ${hard.st}; lit ${lit.toFixed(3)} vs ${(1 - ecl).toFixed(3)}; rows ${rowOf(C1, 'cams').cl}/${rowOf(C2, 'cams').cl}, wing ${wg.W.toFixed(0)} W ground-facing vs ${ws.W.toFixed(0)} W sun-facing of ${ws.peak}; ${n40} parts, ${ms.toFixed(3)} ms a move`);
 }
+
+// vehicle-54. Big plates on a light craft no longer blow up the rotation (vehicle, QUEUE Q598; review 2026-11-11,
+// review/2026-11-11/rollnan.mjs): the plates' rate damping was integrated explicitly, so past c·dt/I = 2 the roll overshot
+// each step and went NaN within a second (3 × 2 m plates at 250 m/s near sea level). The excess over c·dt/I = ½ is now
+// taken implicitly. (a) The script's grid, 4 fin sizes × 6 flight points, flown 4 s level with a 0.1 rad/s roll: every
+// turn rate finite and the roll damped. (b) Below the threshold nothing changed: a finned Sounding rocket's first 40 s
+// and the stock fin ring at 500 m/s match the old divisor to the last bit.
+{
+  const simNames = 'HOOK,newShip,geom,TELLUS,density,physStep,DT,len,add,mul,cross,surfVel,qrot,qFromBasis,stage,PRESETS,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}';
+  const mkSim = code => { const X = new Function(code + `return {${simNames}};`)(); X.HOOK.news = () => {}; X.HOOK.msg = () => {}; X.HOOK.save = () => {}; return X; };
+  const A = mkSim(src), srcOld = src.replace('/Ie(0),', '/s.I[0],').replace('/Ie(1),', '/s.I[1],').replace('/Ie(2)]', '/s.I[2]]'), O = mkSim(srcOld);
+  const plateRun = (X, span, chord, h, v) => {
+    const s = X.newShip(['pod', 't1', 'fins']); X.geom(s);
+    for (const p of s.fins) p.d = { ...p.d, span, chord };
+    for (const p of s.parts) p.d = { ...p.d, Tmax: 1e9, T: 1e9, C: 1e9, B: 1e9, S: 1e9 };
+    X.geom(s); X.S = s; s.landed = false; s.r = [X.TELLUS.R + h, 0, 0];
+    const nose = [0, 0, 1]; s.v = X.add(X.surfVel(X.TELLUS, s.r), X.mul(nose, v)); s.q = X.qFromBasis([0, 1, 0], nose, X.cross([0, 1, 0], nose));
+    s.w = X.mul(nose, 0.1); s.sas = false; s.throttle = 0;
+    let t = 0; while (t < 4) { X.physStep(s, X.DT); t += X.DT; if (!isFinite(s.w[0] + s.w[1] + s.w[2])) return { s, nan: t }; }
+    return { s, roll: Math.abs(X.qrot([-s.q[0], -s.q[1], -s.q[2], s.q[3]], s.w)[1]) };
+  };
+  const plateGrid = [], badPts = [];
+  for (const [span, chord] of [[0.9, 0.9], [2, 2], [3, 2], [5, 2]]) for (const [h, v] of [[500, 100], [500, 250], [500, 500], [5000, 500], [10000, 800], [25000, 1500]]) {
+    const r = plateRun(A, span, chord, h, v); plateGrid.push(r);
+    if (r.nan || !(r.roll < 0.1)) badPts.push(`${span}×${chord} m at ${h / 1e3} km, ${v} m/s: ${r.nan ? 'NaN at ' + r.nan.toFixed(2) + ' s' : 'roll ' + r.roll.toExponential(1)}`);
+  }
+  const oldNaN = [[3, 2, 500, 250], [5, 2, 500, 500]].filter(([a, b, h, v]) => plateRun(O, a, b, h, v).nan).length;
+  const bitSame = (x, y) => ['r', 'v', 'w', 'q'].every(k => x[k].every((e, i) => Object.is(e, y[k][i])));
+  const ringSame = bitSame(plateRun(A, 0.9, 0.9, 500, 500).s, plateRun(O, 0.9, 0.9, 500, 500).s);
+  const sndRun = X => { X.t = 0; const s = X.newShip(X.PRESETS.Sounding); X.S = s; s.throttle = 1; X.stage(s); for (let i = 0; i < 40 / X.DT; i++) X.physStep(s, X.DT); return s; };
+  const a = sndRun(A), b = sndRun(O), finned = a.fins.length > 0;
+  check('vehicle-54: big plates on a light craft keep a finite, damped roll in fast thick air (24 grid points); stable flights unchanged to the bit (Q598)',
+    !badPts.length && oldNaN === 2 && ringSame && finned && bitSame(a, b),
+    `${plateGrid.length - badPts.length}/${plateGrid.length} damped${badPts.length ? ' (' + badPts.slice(0, 3).join('; ') + ')' : ''}; the old divisor NaNs on ${oldNaN} of 2; stock ring at 500 m/s bit-equal ${ringSame}; Sounding (${a.fins.length} fin parts) 40 s bit-equal ${bitSame(a, b)}, alt ${(len(a.r) - A.TELLUS.R).toFixed(0)} m`);
+}

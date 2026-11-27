@@ -3185,3 +3185,23 @@ amber, the rays red to the sphere), the wing selected (52 % of full sun), a held
 recording its `att` (the plan § 5; with Q338); the contract's orbit for `attEnv` (a 300 km orbit always); the deployed
 wing's paddles as something that blocks; *Spins true*. **Flow:** the bench card's attitude row and slider are plain
 buttons in the existing card, and the overlay's models are flat; the look is yours to redo.
+
+## v1.387 — big plates on a light craft keep a finite roll (2026-11-27, quick wins, QUEUE Q598; review 2026-11-11)
+
+- **The fault** (the review's `review/2026-11-11/rollnan.mjs`, still reproducing on `main` before this): the plates' rate
+  damping (a fin's normal force grows with the speed the turn gives it along its normal) is in `tau` explicitly, so a
+  step's change in turn rate is −c·ω·dt/I. Past c·dt/I = 2 it overshoots by more than it removes and the roll grows
+  without bound: NaN within a second. c = Σ ½ρv·A·3.5·m² over the plates (m = r × n, the plate's lever for that axis).
+  Stock fins sit at 0.02 to 0.18; four 2 m fins on a 2 t craft at 500 m/s near sea level at 2.08 (the edge); 3 × 2 m
+  plates NaN from 250 m/s low down, 5 × 2 m everywhere below 25 km.
+- **The fix, as the review proposed it**: `plateDamp(s, rho, sp)` (sim/vessel.js, beside `FIN4`) sums c per body axis
+  from the same plates `aeroForces` flies; `physStep` divides each axis's torque by I + max(0, c·dt − ½I) instead of I.
+  That is the excess damping over c·dt/I = ½ taken implicitly: the step then never removes more than the turn rate
+  holds. Below ½ the divisor is I itself (adding an exact 0), so every flight that was stable is the same to the last
+  bit. A guard, not a mechanism: no tape version changes.
+- **Measured** (test vehicle-54, the script's grid as a check): 24 of 24 points (fin rings 0.9 × 0.9 and 2 × 2, plates
+  3 × 2 and 5 × 2; 0.5 to 25 km; 100 to 1500 m/s) keep a finite roll that dies out over 4 s; with the old divisor the
+  3 × 2 m and 5 × 2 m points NaN. A finned Sounding rocket's first 40 s and the stock ring at 500 m/s are bit-equal to
+  the old divisor. Pitch and yaw use the same divisor (each axis its own c).
+- **Not covered:** the diagonal of the damping only (a plate's cross terms between axes are left explicit; they were
+  never the instability), and drag-surface damping on the hull (`aeroForces`' ring elements), which is far smaller.
