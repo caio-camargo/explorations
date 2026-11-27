@@ -1203,3 +1203,21 @@
     sameOK && lowOK && near.on === true && /<svg[^>]*>.*<polyline/.test(nr[0][1]) && /^3000 m behind/.test(nr[1][1]) && far.on === false && !near.errs && !far.errs,
     `same circle: ${same[0][0].toFixed(0)} → ${same.at(-1)[0].toFixed(0)} m; 1 km low: start (${low[0][0].toFixed(0)}, ${low[0][1].toFixed(0)}), after an orbit ${(last[0] / 1e3).toFixed(1)} km ahead (periods say ${(want / 1e3).toFixed(1)}); card at 3 km ${near.on} "${nr[1] ? nr[1][1] : ''}", at 30 km ${far.on}; errors ${near.errs + far.errs}`);
 }
+
+// space-41. A docked passenger's computer and crew capsule count for the composite (space, QUEUE Q456; Q304, v1.217
+// left `hasComputer` the host's): a bare probe in the onboard-computer era flies one generation of avionics short; docked
+// to a passenger carrying an onboard computer it has the guidance computer, and loses it again when the shared store is
+// flat; docked to a crew capsule it keeps it flat or not. Undocked, back to its own.
+{
+  const P = api.PROG, top = api.AV.length - 1; P.flights = 1; api.TEST.tools = false;
+  const host = api.newShip(['core', 'batt', 't1', 'petrel']); host.av = top;
+  const passenger = keys => { const k = api.newShip(keys); return { e: { shape: api.shapeOf(k.parts.filter(p => p.on)), vst: {} }, q: [0, 0, 0, 1] }; };
+  const own = api.avOf(host), ownComp = api.hasComputer(host);
+  host.att = [passenger(['core', 'ocomp', 'batt'])]; const comp = api.avOf(host), compHas = api.hasComputer(host);
+  host.pwrOut = true; const compFlat = api.avOf(host);
+  host.att = [passenger(['crew', 't1'])]; const crewFlat = api.avOf(host); host.pwrOut = false;
+  host.att = []; const back = api.avOf(host);
+  check('space-41: docked, a passenger\'s onboard computer gives the composite the guidance computer (not while the store is flat); a passenger\'s crew capsule gives it flat or not; undocked, the host\'s own (Q456)',
+    own === api.AV[top - 1] && !ownComp && comp === api.AV[top] && compHas && compFlat === api.AV[top - 1] && crewFlat === api.AV[top] && back === api.AV[top - 1],
+    `host alone ${own.name || own}; with a computer passenger ${comp.name || comp}, flat ${compFlat.name || compFlat}; with a capsule passenger, flat ${crewFlat.name || crewFlat}; undocked ${back.name || back}`);
+}
