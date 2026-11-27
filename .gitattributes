@@ -5,3 +5,5 @@
 *.js   text eol=lf
 *.mjs  text eol=lf
 *.html text eol=lf
+# git hooks are shell scripts with no extension: LF, or sh on Linux reads `exit 0\r` (QUEUE Q278)
+explorations/launchpad/hooks/* text eol=lf
