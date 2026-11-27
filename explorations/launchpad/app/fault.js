@@ -8,7 +8,7 @@
 const FAULT={n:0,first:null,seen:new Set(),el:null,off:false};
 function faultWhere(e){const l=String(e&&e.stack||'').split('\n').find(x=>/\.js:\d+/.test(x)),m=l&&/((?:sim|app)\/[\w-]+\.js|[\w-]+\.js):(\d+)/.exec(l);return m?`${m[1]}:${m[2]}`:''}
 function gameFault(e,src){FAULT.n++;const msg=String(e&&e.message||e||'unknown error'),where=faultWhere(e),key=`${msg}@${where}`;
-  if(!FAULT.seen.has(key)){FAULT.seen.add(key);console.error(`launchpad (${src}):`,e);if(!FAULT.first)FAULT.first={msg,where,src};FAULT.off=false;FAULT.last={msg,where,src}}
+  if(!FAULT.seen.has(key)){FAULT.seen.add(key);console.error(`launchpad ${typeof GAME_V==='string'?GAME_V+' ':''}(${src}):`,e);if(!FAULT.first)FAULT.first={msg,where,src};FAULT.off=false;FAULT.last={msg,where,src}}
   try{if(typeof logEv==='function')logEv('error',`${src}: ${msg}${where?` (${where})`:''}`)}catch(_){}
   try{faultShow()}catch(_){}}
 function faultShow(){if(FAULT.off||typeof document==='undefined'||!document.body)return;
@@ -20,7 +20,7 @@ function faultShow(){if(FAULT.off||typeof document==='undefined'||!document.body
     document.body.appendChild(el)}
   const L=FAULT.last||FAULT.first,bad=hasBadSave();
   el.innerHTML=`<b>Something went wrong.</b> The game is still running but may misbehave; export your save before you reload.`
-    +`<div style="opacity:.8;margin:4px 0 8px;font-family:monospace;font-size:12px;word-break:break-word">${faultEsc(L.msg)}${L.where?` · ${faultEsc(L.where)}`:''}${FAULT.n>1?` · ${FAULT.n}×`:''}</div>`
+    +`<div style="opacity:.8;margin:4px 0 8px;font-family:monospace;font-size:12px;word-break:break-word">${faultEsc(L.msg)}${L.where?` · ${faultEsc(L.where)}`:''}${FAULT.n>1?` · ${FAULT.n}×`:''}${typeof GAME_V==='string'?` · ${GAME_V}`:''}</div>`
     +`<button data-fault="reload">Reload</button> <button data-fault="save">Export save</button>${bad?' <button data-fault="bad">Export the old save</button>':''} <button data-fault="keep">Keep playing</button>`;
   el.style.display=''}
 const faultEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

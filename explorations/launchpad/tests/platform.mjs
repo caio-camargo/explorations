@@ -354,3 +354,17 @@
     !!r && run.status === 0 && !L.length,
     r ? `${r.scope.files} scripts, ${r.scope.globals} top-level names; optional ${r.scope.optional.join(', ') || 'none'}; ${L.slice(0, 6).join('; ') || 'clean'}` : `lint.mjs gave no report (exit ${run.status}): ${(run.stderr || '').trim().split('\n').slice(0, 3).join(' | ')}`);
 }
+
+// platform-13. The build's version (QUEUE Q285): `GAME_V` in sim/core.js is the newest `## v1.N` in notes/*.md, the tester
+// log's download and the fault panel print it, and check_numbers.mjs's comparison picks the highest version (v1.99 <
+// v1.100 < v1.100.1) and fails on a stale or missing constant.
+{
+  const { gameVersion } = await import('./check_numbers.mjs'), gv = gameVersion();
+  const rd = f => readFileSync(new URL(f, import.meta.url), 'utf8');
+  const fx = gameVersion("const GAME_V = 'v1.100.1';", ['v1.99', 'v1.100.1', 'v1.100', 'v1.7']), stale = gameVersion("const GAME_V = 'v1.99';", ['v1.99', 'v1.100']);
+  const none = gameVersion('const X = 1;', ['v1.2']);
+  check('platform-13: GAME_V is the newest version in notes/; the tester log and the fault panel print it; a stale or missing one fails (Q285)',
+    gv.ok && fx.ok && fx.newest === 'v1.100.1' && !stale.ok && stale.newest === 'v1.100' && !none.ok
+      && /Launchpad \$\{GAME_V\} tester log/.test(rd('app/testlog.js')) && /GAME_V/.test(rd('app/fault.js')),
+    `GAME_V ${gv.have}, newest ${gv.newest}`);
+}

@@ -1176,3 +1176,16 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
     vehicle-45 7.6 s, …). That lengthens nothing in CI; it makes `--smoke` shorter and the dealing more even.
   - *One run for several branches* (a merge queue): what Caio first asked about. It would also end the renumbering
     re-runs (Q639 took two full runs because Q632 and Q620 took its numbers meanwhile). The larger change; left.
+
+## v1.381 — the build's version: `GAME_V` (2026-11-27, quick wins, QUEUE Q285)
+
+- **What.** `GAME_V` (`sim/core.js`, third line) names the build: the newest `## v1.N` in `notes/*.md`. The tester
+  log's download opens with it (`Launchpad v1.381 tester log, saved …`), the fault panel ends its message line with it,
+  and the console's error line carries it. A log or a still from a bug report now says which build it came from.
+- **Kept honest.** `check_numbers.mjs` fails (`GAME_V  sim/core.js says …: set GAME_V = 'v1.N'`) while the constant is
+  not the newest version in the tree, so CI's numbers step catches a version shipped without it. `gameVersion()`
+  compares numerically (v1.99 < v1.100 < v1.100.1). Test platform-13.
+- **For every session.** Set `GAME_V` in the same commit as your `## v1.N`, and again when you renumber. Two branches
+  that each took a version both change that line, so a merge of `main` conflicts there: take the higher number, and
+  `check_numbers.mjs` says whether it is right. That conflict is the price of a hand-kept constant; the alternative
+  (the page reading the notes at load) would need the notes served next to the game and fail offline.
