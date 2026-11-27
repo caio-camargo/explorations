@@ -3043,4 +3043,4 @@ a still; the card in the dark cockpit's narrow column.
   "asleep until the sun" in place of "frozen".
 - **Measured** (test space-42; core §39 updated): a near-side rover with panels and 2 % charge at dusk sleeps 50 h and
   wakes at dawn, then fills (4.00 kWh); two Selene days between flights, the same, one news line; a save's frozen rover
-  wakes too. TESTING 431.
+  wakes too. TESTING 432.
