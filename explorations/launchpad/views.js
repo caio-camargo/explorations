@@ -9,8 +9,10 @@ window.refView = async (n) => {
   if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = 0;
   // (Q313) the drawn weather is pinned to one moment (program time REF_WX) at capture: the sky pass is most of the frame
   // and its cost follows the cloud cover, which otherwise moved with each view's sim time and each run's day (the same
-  // view measured 6 and 17 ms). 80–83 pick their own moment (wx below) and keep it
-  let pinWx = true; const REF_WX = 3 * 86400 + 36000;
+  // view measured 6 and 17 ms). 80–83 pick their own moment (wx below) and keep it. (Q421) The pin is a program time,
+  // `wxAt`, turned into CLOUD_DT at capture (bare): tNow() jumps to the launch day at the first step after launch, so an
+  // offset picked before flying (a liftoff view, 180) would point at other weather by the time the picture is taken
+  const REF_WX = 3 * 86400 + 36000; let wxAt = REF_WX;
   HOOK.noRig = false;   // (close-ups hide the pad's moving parts; every other view shows them)
   // (Q312) reference views stand on the pad, as they were tuned: the Assembly's model desk (v1.115) only in view 152;
   // the effects clock runs (90–93 pin it), and the overlay (labels such as "impact · 9 m") shows again until bare()
@@ -29,7 +31,7 @@ window.refView = async (n) => {
   // that cover the window and stop the 3D draw (Q239; Q312: views 1, 4–9 used to shoot the Program's desk)
   const toBuilder = () => { if (mode !== 'editor') document.getElementById('bEditor').click(); if (typeof screenNow === 'function' && screenNow() !== 'assembly') go('assembly') };
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb,#ov').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null;
-    if (pinWx && typeof CLOUD_DT !== 'undefined') CLOUD_DT = REF_WX - tNow(); render();
+    if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = wxAt - tNow(); render();
     if (typeof expoNow === 'function') { expoNow(); render() } };   // (Q314) the exposure settled on this frame, not eased toward it
   if (n === 1) { // the Orbiter on the pad, morning light
     toBuilder();
@@ -212,15 +214,19 @@ window.refView = async (n) => {
   // 80–83: clouds with depth. The Orbiter's ascent (pitch kick at 8 s, prograde) to alt m, seen from yaw/pitch/dist; the
   // sim is frozen for the capture. 80 is on the pad looking up past the rocket. [alt, yaw, pitch, dist]
   // 178–179 (Q420): 2.4 km in the deck, the camera level, looking along the horizon two ways
-  const cl = { 80: [0, 0.9, -0.45, 30], 81: [3000, 1.75, 0.05, 40], 82: [8000, 1.75, 0.45, 60], 83: [25000, 1.75, 0.5, 60], 178: [2400, 1.75, 0.0, 40], 179: [2400, 0.2, 0.0, 40] };
+  // 180 (Q421): liftoff under ~60 % cover, the weather picked on the pad before the first step, then 6 s of flight
+  const cl = { 80: [0, 0.9, -0.45, 30], 81: [3000, 1.75, 0.05, 40], 82: [8000, 1.75, 0.45, 60], 83: [25000, 1.75, 0.5, 60], 178: [2400, 1.75, 0.0, 40], 179: [2400, 0.2, 0.0, 40], 180: [0, 0.9, 0.05, 45, 6] };
   if (cl[n]) {
-    const [alt, yaw, pitch, dist] = cl[n];
+    const [alt, yaw, pitch, dist, after] = cl[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
     // weather on demand: the first time offset (5-minute steps) at which the sky under the rocket is about 60 % covered
-    const wx = u => { pinWx = false; CLOUD_DT = 0; for (let k = 1; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300);   // from k = 1: at k = 0 nothing has moved since setup and the near deck shows a stale coverage bake (Q323)
-      if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; break } } };
-    if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 600) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0 }
-    wx(norm(toPF(TELLUS, S.r, simT)));   // weather on demand: ~60 % cover under the rocket
+    const wx = u => { CLOUD_DT = 0; wxAt = tNow(); for (let k = 1; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300);   // from k = 1: at k = 0 nothing has moved since setup and the near deck shows a stale coverage bake (Q323)
+      if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; wxAt = tNow() + CLOUD_DT; break } } };
+    if (after) { wx(norm(toPF(TELLUS, S.r, simT))); S.throttle = 1; stage(S); while (S.alive && simT < after) advPhys(S) }   // (Q421) picked before flying
+    else {
+      if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 600) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0 }
+      wx(norm(toPF(TELLUS, S.r, simT)));   // weather on demand: ~60 % cover under the rocket
+    }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); window.simulate = () => {};
     await settle(); bare(); const u = norm(toPF(TELLUS, S.r, simT));
     return 'clouds h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km, cover here ' + cloudAt(u, tNow() + CLOUD_DT).toFixed(2) + ' (CLOUD_DT ' + CLOUD_DT + ')';
@@ -393,7 +399,7 @@ window.refView = async (n) => {
     const m = norm(moonPos(simT)), b = norm(cross(m, [0, 1, 0])), u = norm(add(mul(m, Math.cos(0.95)), mul(b, Math.sin(0.95))));
     const P = mul(u, TELLUS.R + Math.max(0, terrainH(toPF(TELLUS, u, simT))) + 1500), mD = norm(sub(moonPos(simT), P)), el = Math.asin(clamp(dot(mD, u), -1, 1));
     const c = madd(P, mD, 2000 / Math.max(Math.sin(el), 0.05)), cu = toPF(TELLUS, norm(c), simT);
-    pinWx = false; CLOUD_DT = 0; for (let k = 1; k < 6000; k++) { const cv = cloudAt(cu, tNow() + k * 300); if (cv > 0.5 && cv < 0.85) { CLOUD_DT = k * 300; break } }
+    CLOUD_DT = 0; wxAt = tNow(); for (let k = 1; k < 6000; k++) { const cv = cloudAt(cu, tNow() + k * 300); if (cv > 0.5 && cv < 0.85) { CLOUD_DT = k * 300; wxAt = tNow() + CLOUD_DT; break } }
     S.r = P; S.v = [0, 0, 0]; const up = norm(P), side = norm(cross(mD, up)), D = norm(add(mD, mul(side, 0.08)));
     const f = localFrame(S.r); cam.pitch = Math.asin(clamp(-dot(D, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(D, f.e), dot(D, f.n)); cam.dist = 250;
     render(); await settle(); bare();
@@ -569,8 +575,8 @@ window.refView = async (n) => {
     const hz = norm(sub(tw, mul(f.up, dot(tw, f.up)))), a = n === 176 ? 0.6 : n === 177 ? 0.36 : 0.44, L = norm(sub(mul(hz, Math.cos(a)), mul(f.up, Math.sin(a))));
     cam.pitch = Math.asin(clamp(-dot(L, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(L, f.e), dot(L, f.n)); cam.dist = 40;
     // clear weather over the target and halfway to it (the first 5-minute weather offset with both under 5 % cover)
-    const mid = norm(add(tgtPF, rotY(u, -th2))); pinWx = false; CLOUD_DT = 0;
-    for (let k = 1; k < 6000; k++) { const T = tNow() + k * 300; if (cloudAt(tgtPF, T) < 0.05 && cloudAt(mid, T) < 0.05) { CLOUD_DT = k * 300; break } }
+    const mid = norm(add(tgtPF, rotY(u, -th2))); CLOUD_DT = 0; wxAt = tNow();
+    for (let k = 1; k < 6000; k++) { const T = tNow() + k * 300; if (cloudAt(tgtPF, T) < 0.05 && cloudAt(mid, T) < 0.05) { CLOUD_DT = k * 300; wxAt = T; break } }
     render(); await settle(); bare();
     return `${name} from ${(alt / 1e3).toFixed(0)} km up, ${(off / 1e3).toFixed(0)} km out`;
   }

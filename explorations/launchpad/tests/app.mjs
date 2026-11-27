@@ -140,3 +140,26 @@
     !bad.length,
     `${(performance.now() - t0) / 1e3 | 0} s; ${runs.map(w => `seed ${w.seed}${w.search}: ${w.flights} flights, day ${w.day.toFixed(0)}, screens ${Object.entries(w.screens).map(([k, v]) => k + ' ' + v).join(' ')}`).join(' · ')}${bad.length ? ' — ' + bad.slice(0, 4).join(' — ') : ''}`);
 }
+
+// app-6. A reference view that picks the weather before flying keeps it (QUEUE Q421; Q313's pin, Q250): tNow() jumps to the
+// launch day at the first step after launch, so an offset picked on the pad pointed at other weather by capture time.
+// views.js now pins a program time (`wxAt`) and turns it into CLOUD_DT at capture. View 180 (liftoff: picked on the pad,
+// then 6 s of flight) and view 81 (picked after the climb, as before) both draw ~60 % cover under the rocket, in the page
+// with views.js loaded, on a program day that is not a whole day (so the jump is real). The drawn moment must lie in the
+// pick's search window (5 min to 4000 × 5 min after the pick): the band alone can pass by chance (the old pin drew 0.590
+// at the wrong moment against 0.592 at the right one).
+{
+  const { boot } = await import(new URL('./apphost.mjs', import.meta.url));
+  const views = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  const shoot = async n => {
+    const H = boot({ search: '?tester' }); H.run('PROG.day = 2.4'); const base = H.run('tNow()');
+    H.run(views); H.run(`window.__r = null; window.refView(${n}).then(r => { window.__r = r }, e => { window.__r = 'ERR ' + e.message })`);
+    for (let i = 0; i < 30 && !H.run('window.__r'); i++) { H.timers(); await new Promise(r => setImmediate(r)); }
+    const r = H.run('window.__r') || '', m = /cover here ([\d.]+)/.exec(r);
+    return { r, cover: m ? +m[1] : NaN, jump: H.run('tNow() - simT') - base, after: H.run('tNow() + CLOUD_DT') - base, t: H.run('simT'), errs: H.errs.length };
+  };
+  const lift = await shoot(180), climb = await shoot(81), band = c => c > 0.55 && c < 0.75;
+  check('app-6: a reference view picking the weather on the pad keeps it through the launch day\'s jump (view 180); one picking it after the climb too (81) (Q421)',
+    band(lift.cover) && band(climb.cover) && Math.abs(lift.jump) > 3600 && lift.t >= 6 && lift.after > 0 && lift.after <= 4000 * 300 + 60 && !lift.errs && !climb.errs,
+    `180: "${lift.r.slice(0, 60)}", tNow jumped ${(lift.jump / 3600).toFixed(0)} h, drawn ${(lift.after / 3600).toFixed(1)} h after the pad's time, ${lift.t.toFixed(1)} s flown; 81: "${climb.r.slice(0, 60)}"`);
+}

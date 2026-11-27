@@ -1242,3 +1242,18 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
 - **Q469 closed with it, not built:** a guard comparing `PROG` before and after each section was asked for when sections
   shared one SIM. Since R2 (v1.340) `build()` puts `freshSim()` before every section, so no section can leave `PROG` to the
   next; what still carries across (top-level names, `globalThis`, `Math.random`) is what `--isolation` reports.
+
+## v1.391 — reference views keep the weather they picked before flying (2026-11-27, quick wins, QUEUE Q421; Q313, Q250)
+
+- **The trap.** `tNow()` (app/program-ui.js) is the program day's start before launch and the launch day's (`S.rec.day0`)
+  after the first step; launching from the tester moved it 352 h in the case measured. A view that chose its weather
+  offset (`CLOUD_DT`) on the pad and then flew drew the weather of a moment two weeks off. Views 80–83 and 178–179 pick
+  after flying and were fine; a liftoff view would not have been.
+- **The fix** (`views.js`): the pin is a program time, `wxAt` (REF_WX unless a view picks its own), and `bare()` turns it
+  into `CLOUD_DT = wxAt − tNow()` at capture. Every pick site (the cloud views' `wx`, the Selene-behind-clouds view, the
+  clear-line view) sets `wxAt` with its offset; a view that picks and captures without a step in between draws exactly
+  what it drew before. New view **180**: liftoff under ~60 % cover, the weather picked on the pad, then 6 s of flight.
+- **Checked headless** (test app-6, the page in `apphost.mjs` with `views.js` loaded, program day 2.4): view 180 draws
+  0.59 cover at a moment 10 h after the pad's time; view 81 0.68. With the old pin, view 180 drew 0.590 at a moment 362 h
+  after: inside the band by chance, so the check also requires the drawn moment to lie in the pick's search window. No
+  browser or GPU run: 180's still has not been looked at.
