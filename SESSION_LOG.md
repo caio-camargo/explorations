@@ -8686,3 +8686,34 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   as it looks currently. it would need to have a lot more pieces to look good. let's table it for now and look at the
   plume, which i think is more important." Parked at: built and on `main` (v1.379), to be switched off by default in
   Q640's merge; not removed. The next step if it comes back is in QUEUE's Q639 row.
+
+## 2026-11-27 — look & sound, effects (Fable 5.2, worktree launchpad-q640): v1.380, the plume, the engine's sound; the ice tabled
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio): "the ice looks thin, i wouldn't keep it as it looks currently… let's table it for now and look at
+  the plume, which i think is more important. right now it looks on the insubstantial side. a real rocket plume is
+  bright and looks extremely powerful." Then, mid-work: "same with the sound… it needs to be that deep rumble, where
+  right now it sounds like air escaping."
+- **Done** (all in `explorations/launchpad/notes/look.md` § v1.380):
+  - **The plume** (Q640, PLAYTEST #181): radiance × 10 with a factor per propellant, a burning body, kerolox twice as
+    long, a column in air and a bulb in vacuum, a halo.
+  - **The hole seen from behind** (Q484, PLAYTEST #122): the proxy's far cap was wound backwards; found by a still
+    from behind and far (`behind-before`). Also a fade before the proxy's cap and side.
+  - **The sound** (Q514, PLAYTEST #146, open since 2026-10-31): voices at a rocket's Strouhal number as lowpassed
+    brown noise, the roar under 820 Hz, a noise sub, a clipped upper-bass layer.
+  - **The ice** (Q639) is off unless switched on in Settings. See the PARKED line above this entry.
+- **Checked.** Before and after stills of six views; the plume pass's GPU time (under 0.35 ms in every view); the
+  sound's spectrum before and after through an analyser on the page's master gain (60–400 Hz: 20 % → 73 % of the
+  power; above 1 kHz: 3.4 % → 0.2 %); tests `aerofx-68` and the updated voices and ice tests; CI green on
+  `e95e3465` (run 46069931067).
+- **Not checked.** The sound by ear, by anyone. The plume in motion, with clusters and boosters, throttled, for
+  solids, hydrolox and hypergolics at sea level, on Low on the Intel GPU. PLAYTEST rows #181, #122, #146 are not
+  struck (the playtest session holds that file): TESTING 428 is the check.
+- **Found on the way.** `refView(36)` names a preset that no longer exists and never returns; a stopped capture
+  leaves its headless Chrome running. Two such are still alive from this session (started 17:50 and 18:17, debugging
+  ports 9751 and 9760): stopping them was refused to me, so they need closing by hand (Task Manager, the two
+  `chrome.exe` with `--headless=new`). Captures after that took four times longer. Three Proposed lines in QUEUE.
+- **Files.** `app/gl.js`, `app/render.js`, `app/sound.js`, `app/settings.js`, `tests/look.mjs`, `notes/look.md`,
+  `NOTES.md`, `TESTING.md` (row 428), `QUEUE.md` (Q640, Q484, Q514 ✓; Q639 tabled; three Proposed lines),
+  `ACTIVE_WORK.md`. Stills in `output/launchpad/beauty/Q640/` (local), with working captures beside them.
+- **Next.** Caio's look and listen (TESTING 428); then the Proposed lines by what he says.

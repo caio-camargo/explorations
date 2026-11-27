@@ -577,6 +577,9 @@ Every answered question and default is one line in [`DECISIONS.md`](DECISIONS.md
 - vehicle + look & sound (parts & pad) — the Passenger Orbiter's nose cone balances on the chute's narrow top: a cone over chute and capsule, an adapter or a small fairing; Q201's heat and stability numbers hold — PLAYTEST #178
 - flow — a key and button that hides all UI and leaves the 3D scene (screenshots, stills) — PLAYTEST #179
 - flow — three cuts (D43): `impact` off the impact marker, the planet ring's legend and *~N days there*, *Home: back to the ship* — PLAYTEST #180
+- look & sound (effects) — **reference view 36 names a preset that is gone** (`views.js`: `'Hopper'`): `refView(36)` never returns and the headless Chrome behind `shot.mjs` hangs (found 2026-11-27, Q640); point it at a current preset or drop it, and give `shot.mjs` a time limit per expression — SESSION_LOG 2026-11-27
+- look & sound (effects) — **the plume, next steps if v1.380 is not enough** (Q640's note): the plume's light on the pad at the flame's new brightness, a wider halo (the bloom's first step compresses very bright pixels), the pad's smoke hiding the flame in daylight at liftoff, clusters' flames merging, the flame's texture in motion — notes/look.md § v1.380
+- look & sound (sound) — **the engine's rumble by ear** (Q514, v1.380): the layer gains (`SND_G`) were set from a spectrum, not by listening; Caio to say louder/softer, more or less crackle — TESTING 428
 - ✓ ranked (Caio 2026-11-27: Q640, claimed) look & sound (effects) — the plume is faint and too conical; with #122, still cut off at its base seen from behind in space (Caio 2026-11-25) — PLAYTEST #181, #122
 - flow — the navball's normal and anti-normal marks flash under Prograde hold (on the rim, flipping front/back): hysteresis or clamp to the rim — PLAYTEST #182
 - flow + space — the rendezvous labels on the map are long; a compact mark with the numbers on hover or in the Target card, mock-up first — PLAYTEST #183
