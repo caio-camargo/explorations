@@ -8717,3 +8717,21 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `NOTES.md`, `TESTING.md` (row 428), `QUEUE.md` (Q640, Q484, Q514 ✓; Q639 tabled; three Proposed lines),
   `ACTIVE_WORK.md`. Stills in `output/launchpad/beauty/Q640/` (local), with working captures beside them.
 - **Next.** Caio's look and listen (TESTING 428); then the Proposed lines by what he says.
+
+## 2026-11-27 — look & sound, sound (Fable 5.2, worktree launchpad-q641): v1.381 Q641, the rumble shudders; what a plume looks like in space
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio, having tried v1.380): "the sound is deeper and more powerful, better, but still not quite a rumble.
+  plume from behind in space: confirmed gone. on the plume itself, i'm not quite sure what a plume is supposed to look
+  like in space, i'm having a hard time finding images". Before that: "yes, this is looking much, much better".
+- **Done.** TESTING 428 marked: plume ✓, sound ~. **v1.381 Q641**: the engine's airborne layers pass through a gain
+  shaken by noise under 11 Hz; the roar under 520 Hz; voices at 1.7 × their peak; a little more crackle
+  (`explorations/launchpad/notes/look.md` § v1.381). The space-plume question answered in the reply, with sources;
+  no change made to the vacuum plume.
+- **Checked.** Loudness over 46 ms windows varies 16 % → 44 % of its mean (the Orbiter at ignition); the spectrum's
+  shares held; test `aerofx-68`; CI green on `64f669df` (run 46074934462).
+- **Not checked.** By ear: TESTING 429. `SND_G.rum` = 7 is a guess; too much is a tremolo.
+- **Open with Caio.** Whether the vacuum plume should move toward the real thing (nearly invisible but for a glow at
+  the bell, wide and faint, bright only when sunlit) or stay readable as it is. No queue line until he says.
+- **Files.** `app/sound.js`, `tests/look.mjs`, `notes/look.md`, `NOTES.md`, `TESTING.md` (rows 428, 429), `QUEUE.md`
+  (Q641 ✓), `ACTIVE_WORK.md`.
