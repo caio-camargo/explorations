@@ -511,7 +511,7 @@
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const fs = page.slice(page.indexOf('const PLUME_FS=`'), page.indexOf('`;', page.indexOf('const PLUME_FS=`')));
-  const shader = /float cool=mix\(pow\(min\(1\.,re\/b\),1\.6\),1\.,uS\.w\);/.test(fs) && /\*\.18\*cool\)/.test(fs) && /\+sunS\*uI\*prof\*d\*fade/.test(fs)
+  const shader = /float cool=mix\(pow\(min\(1\.,re\/b\),1\.6\),1\.,max\(uS\.w,uSc\.y\)\);/.test(fs) && /\*\.18\*cool\)/.test(fs) && /\+sunS\*uSc\.x\*uI\*prof\*d\*fade/.test(fs)   // (Q642) × the propellant's scatter; a solid stays hot
     && /ph=\.5\*\(\.51\/pow\(1\.49-1\.4\*cs,1\.5\)\+1\.\)\/12\.566/.test(fs) && /if\(k==1\.\)dm\+=od\*2\.\*exp/.test(fs) && /\(uK\.w\+uPf\)\*rich/.test(fs) && /\(\.65\+\.7\*ne\)/.test(fs);
   const wired = /gl\.uniform3fv\(pu\.uSunL,qrot\(qconj\(Q\),SUN\)\);gl\.uniform3fv\(pu\.uSunC,PSUN\)/.test(page) && /PSUN=lightEnv\(p\)\.sun\.map\(x=>x\*lit\(p\)\)/.test(page)
     && /gl\.uniform1f\(pu\.uPf,P\.pf\|\|0\)/.test(page) && /const K=PLUME_LK\*/.test(page);
