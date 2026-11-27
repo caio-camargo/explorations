@@ -1221,3 +1221,30 @@
     own === api.AV[top - 1] && !ownComp && comp === api.AV[top] && compHas && compFlat === api.AV[top - 1] && crewFlat === api.AV[top] && back === api.AV[top - 1],
     `host alone ${own.name || own}; with a computer passenger ${comp.name || comp}, flat ${compFlat.name || compFlat}; with a capsule passenger, flat ${crewFlat.name || crewFlat}; undocked ${back.name || back}`);
 }
+
+// space-42. A rover frozen in the night goes dormant, never dies (space, QUEUE Q189 = Q459 SW1; D5, D33): a flat battery in
+// Selene's night with no heat puts it to sleep (`dormant`: no driving, no instruments, no radio between flights); it
+// wakes when its panels see the sun and charges again; the lost night is the only price. Between flights the same, with
+// one news line the first time; a save's frozen (`dead`) rover sleeps instead; the fleet line's wake time (`rvWakeIn`).
+{
+  const D = new Function(src + 'return {advanceDays,rvNew,rvPowerStep,rvSunPF,bodyTheta,rvFieldTick,rvEntry,rvWakeIn,rvSciWhy,SELENE,PROG,HOOK,DAY_S};')();
+  const news = [], msgs = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = m => msgs.push(m);
+  const B = D.SELENE, P = D.PROG, orbit = 2 * Math.PI / B.n, el = t => dot([-1, 0, 0], D.rvSunPF(B, D.bodyTheta(B, t)));
+  const mk = (slots, E) => { const R = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots }, B, [-B.R, 0, 0], [0, 1, 0], {}); R.name = 'Dusk'; R.sleep = true; R.E = R.Emax * E; return R; };
+  let dusk = 0; while (!(el(dusk) > 0 && el(dusk + 600) <= 0) && dusk < 2 * orbit) dusk += 600;
+  // in flight: a little charge at dusk, panels on the deck
+  const R = mk(['cam', 'bat', 'ant', 'sol', null], 0.02); let slept = null, woke = null, t = dusk;
+  for (; t < dusk + orbit; t += 600) { D.rvPowerStep(R, 600, D.rvSunPF(B, D.bodyTheta(B, t))); if (R.dormant && slept == null) slept = t; if (slept != null && !R.dormant && woke == null) woke = t; }
+  const nightH = slept != null && woke != null ? (woke - slept) / 3600 : NaN, charged = R.E > 0.5 * R.Emax, why = (() => { R.dormant = true; const w = D.rvSciWhy(R, 'cam'); R.dormant = false; return w; })();
+  // between flights: two Selene days from dusk; and a save from before (dead) on the same spot
+  P.rvOut = [{ ...D.rvEntry(mk(['cam', 'bat', 'ant', 'sol', null], 0.02)), name: 'Field' }, { ...D.rvEntry(mk(['cam', 'bat', 'ant', 'sol', null], 0)), name: 'Old', dead: true, dormant: undefined }];
+  P.day = dusk / D.DAY_S; let wakeIn = null; D.advanceDays(0.3 * orbit / D.DAY_S);
+  const mid = P.rvOut.map(e => !!e.dormant); wakeIn = D.rvWakeIn(P.rvOut[0], P.day * D.DAY_S);
+  D.advanceDays(2.45 * orbit / D.DAY_S); const [f, o] = P.rvOut;
+  const noPanels = D.rvWakeIn({ ...P.rvOut[0], d: { ...P.rvOut[0].d, slots: ['cam', 'bat', 'ant', null, null] } }, 0);
+  check('space-42: a rover flat in the night sleeps, wakes when its panels see the sun and charges; between flights the same with one news line; a save\'s frozen rover sleeps instead (Q189, Q459)',
+    slept != null && woke != null && el(woke) > 0 && charged && /asleep/.test(why) && msgs.some(m => /Dusk is asleep/.test(m)) && msgs.some(m => /Dusk woke/.test(m))
+      && mid[0] && mid[1] && wakeIn > 0 && wakeIn < orbit && !f.dormant && !o.dormant && !('dead' in o) && f.E > 0 && o.E > 0
+      && news.filter(m => /Field is asleep/.test(m)).length === 1 && noPanels === null,
+    `in flight asleep ${nightH.toFixed(0)} h, then ${(R.E / 3.6e6).toFixed(2)} kWh; asleep's reason "${why}"; between flights mid-night asleep ${mid}, wakes in ${(wakeIn / 3600).toFixed(0)} h; after two days Field ${(f.E / 3.6e6).toFixed(2)} kWh, Old ${(o.E / 3.6e6).toFixed(2)} kWh; news "${news.find(m => /asleep/.test(m)) || '-'}"; no panels: wake ${noPanels}`);
+}

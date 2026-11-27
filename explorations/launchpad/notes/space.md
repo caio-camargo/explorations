@@ -3025,3 +3025,22 @@ a still; the card in the dark cockpit's narrow column.
   a crewed rover's "nobody aboard"), which is a call about who is at risk on whose flight, not a bookkeeping fix: left
   for the space lane with Caio (QUEUE Q456's row says so).
 - Test space-41 (a bare probe: alone, with a computer passenger, flat, with a capsule passenger flat, undocked).
+
+## v1.389 — a rover flat in the night sleeps, never dies (2026-11-27, quick wins, QUEUE Q189 = Q459, SW1; D5, D33)
+
+- **Before:** a rover whose battery ran flat in an airless night with no RTG `froze`: `dead` for good, in flight and
+  between flights. D5 (2026-10-09) and D33 (2026-11-11, Caio: "no cost to unheated rover at night") say it goes dormant
+  and wakes in the sun, the lost night the only price. Q189 and Q459 were the same build; built once, both closed.
+- **Now** (`sim/rovers.js`): the same moment sets `dormant`. Asleep, a rover draws nothing, cannot drive (it brakes),
+  its instruments say "asleep until its panels see the sun", and between flights it sends no results. It wakes when its
+  panels give something (`rvSunWakes`: the sun up and on them), in flight (`rvPowerStep`, a message) and between
+  flights (`rvFieldTick`, half an hour at a time), then charges as before. Between flights the news says so once per
+  rover, the first night (`e.slept`), not every night after.
+- **Saves:** `dead` was only ever set by this, so a saved rover with `dead` is read as asleep (`rvFromEntry`, and
+  `rvFieldTick` converts the entry). A rover with no panels sleeps for good in effect, and the fleet line says why.
+- **The fleet line** (Program › rovers in the field, `app/rover-yard.js`): "asleep, wakes in 21 h" (`rvWakeIn(e, T)`:
+  the next half hour its panels see the sun, up to 60 days; "no panels to wake it" without). The rover panel in flight:
+  "asleep until the sun" in place of "frozen".
+- **Measured** (test space-42; core §39 updated): a near-side rover with panels and 2 % charge at dusk sleeps 50 h and
+  wakes at dawn, then fills (4.00 kWh); two Selene days between flights, the same, one news line; a save's frozen rover
+  wakes too. TESTING 431.

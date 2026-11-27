@@ -2402,19 +2402,19 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `near side off Tellus by ${(Math.acos(Math.min(1, worst)) * 180 / Math.PI).toExponential(1)}°; a day of ${(orbit / 3600).toFixed(0)} h; the equator moves at ${ve.toFixed(2)} m/s`);
   const p0 = D.bodyRel(B, 5000)[0]; D.orb = 12345; const p1 = D.bodyRel(B, 5000 - 12345)[0]; D.orb = 0;
   check('the moons run on program time: a flight that starts later finds them further along', len(sub(p0, p1)) < 1e-6, `${len(sub(p0, p1)).toExponential(1)} m`);
-  // power at a near-side spot: panels charge it by day; without panels or an RTG it freezes in the night; an RTG keeps it going
+  // power at a near-side spot: panels charge it by day; without panels or an RTG it goes to sleep in the night (D5, Q189); an RTG keeps it going
   const mk = (slots, E = 1, pf = [-B.R, 0, 0]) => { const R = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots }, B, pf, [0, 1, 0], {}); R.name = 'x'; R.sleep = true; R.E = R.Emax * E; return R; };
   const run = (R, t0, t1) => { for (let t = t0; t < t1; t += 600) D.rvPowerStep(R, 600, D.rvSunPF(B, D.bodyTheta(B, t))); };
   let noon = 0; while (noon < orbit && dot([-1, 0, 0], D.rvSunPF(B, D.bodyTheta(B, noon))) < 0.99) noon += 600;
   const a = mk(['cam', 'bat', 'ant', 'sol', null], 0.5), e0 = a.E; run(a, noon - 6 * 3600, noon + 6 * 3600);
   const b = mk(['cam', 'bat', 'ant', null, null], 0.2), c = mk(['cam', 'bat', 'ant', 'rtg', null], 0.2); run(b, noon, noon + orbit); run(c, noon, noon + orbit);
-  check('rover power: panels charge it by day; with no panels and no RTG it freezes in the night; an RTG keeps it going', a.E > e0 && b.dead && !c.dead && c.E > 0,
-    `+${((a.E - e0) / 3.6e6).toFixed(2)} kWh around noon; froze: ${b.dead}; with the RTG ${(c.E / 3.6e6).toFixed(2)} kWh after an orbit`);
-  // between flights: one with panels lives through Selene's nights; one without freezes, and the news says so
+  check('rover power: panels charge it by day; with no panels and no RTG it goes to sleep in the night; an RTG keeps it going', a.E > e0 && b.dormant && !c.dormant && c.E > 0,
+    `+${((a.E - e0) / 3.6e6).toFixed(2)} kWh around noon; asleep: ${b.dormant}; with the RTG ${(c.E / 3.6e6).toFixed(2)} kWh after an orbit`);
+  // between flights: one with panels lives through Selene's nights; one without goes to sleep, and the news says so
   P.rvOut = [{ ...D.rvEntry(mk(['cam', 'bat', 'ant', 'sol', null])), name: 'Panels' }, { ...D.rvEntry(mk(['cam', 'bat', 'ant', null, null])), name: 'NoPanels' }];
   P.day = 0; D.advanceDays(40);
-  check('between flights a rover with panels lives through Selene\'s nights; one without freezes, and the news says so', !P.rvOut[0].dead && P.rvOut[1].dead && news.some(m => /NoPanels froze/.test(m)),
-    `40 days: Panels ${(P.rvOut[0].E / 3.6e6).toFixed(2)} kWh; NoPanels froze`);
+  check('between flights a rover with panels lives through Selene\'s nights; one without goes to sleep, and the news says so', !P.rvOut[0].dormant && P.rvOut[1].dormant && news.some(m => /NoPanels is asleep/.test(m)),
+    `40 days: Panels ${(P.rvOut[0].E / 3.6e6).toFixed(2)} kWh; NoPanels asleep`);
   // contact: the near side talks home directly (a light-time round trip late); the far side can't; without a high-gain
   // antenna it needs a relay in sight (a lander 1 km away, but not 6 km: over the horizon)
   const near = mk(['cam', 'bat', 'ant', 'sol', null]), far = mk(['cam', 'bat', 'ant', 'sol', null], 1, [B.R, 0, 0]), lg = mk(['cam', 'bat', null, 'sol', null]);
