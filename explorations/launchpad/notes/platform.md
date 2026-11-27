@@ -1177,10 +1177,10 @@ in `.github/workflows/launchpad-tests.yml`; nothing in `test.mjs` or `shards.mjs
   - *One run for several branches* (a merge queue): what Caio first asked about. It would also end the renumbering
     re-runs (Q639 took two full runs because Q632 and Q620 took its numbers meanwhile). The larger change; left.
 
-## v1.381 — the build's version: `GAME_V` (2026-11-27, quick wins, QUEUE Q285)
+## v1.382 — the build's version: `GAME_V` (2026-11-27, quick wins, QUEUE Q285)
 
 - **What.** `GAME_V` (`sim/core.js`, third line) names the build: the newest `## v1.N` in `notes/*.md`. The tester
-  log's download opens with it (`Launchpad v1.381 tester log, saved …`), the fault panel ends its message line with it,
+  log's download opens with it (`Launchpad v1.382 tester log, saved …`), the fault panel ends its message line with it,
   and the console's error line carries it. A log or a still from a bug report now says which build it came from.
 - **Kept honest.** `check_numbers.mjs` fails (`GAME_V  sim/core.js says …: set GAME_V = 'v1.N'`) while the constant is
   not the newest version in the tree, so CI's numbers step catches a version shipped without it. `gameVersion()`
