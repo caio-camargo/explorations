@@ -8781,3 +8781,43 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `notes/look.md`, `NOTES.md`, `TESTING.md` (rows 429, 430 marked ~; new row 431), `QUEUE.md` (Q643, Q644 ✓),
   `ACTIVE_WORK.md`.
 - **Next.** Caio: TESTING 431.
+
+## 2026-11-27 — quick wins (Opus 5.5, worktree launchpad-quick): Q285, Q278, Q298, Q288, Q598, Q456, Q189 = Q459, Q421 built; Q308, Q469 closed
+**User**: Caio Camargo · **Source**: Claude Code · **Status**: Complete
+
+- **Asked** (Caio): ten small ⚙ QUEUE items provable by tests, in order, each its own version and test, each landing on
+  its own (check_numbers, merge main, smoke, push, CI green, ff-merge, QUEUE ✓) before the next; no GPU or browser; park
+  anything needing a design call or a look; leave `app/hud.js` and `index.html` alone (Q477).
+- **Done**, each CI green on its own head and fast-forwarded:
+  - **v1.382 Q285** `GAME_V` in `sim/core.js`: the tester log's download and the fault panel print it;
+    `check_numbers.mjs` fails while it isn't the newest version (test platform-13). Every session now sets it.
+  - **v1.383 Q278** `hooks/pre-push` runs `check_numbers.mjs` (test platform-14). **Not switched on**: one
+    `git config core.hooksPath explorations/launchpad/hooks` per clone, Caio's call (it changes every session's pushes).
+  - **v1.384 Q298** `check_docs.mjs` (headers vs histories, INDEX/ROADMAP coverage, broken links, stale "after Qn");
+    ten links broken by the NOTES split fixed; test platform-15 gates the first three, also on CI's docs-only path.
+  - **v1.386 Q288** `--only file:<lane>`, `--list` by file, `--isolation file` (test platform-16).
+  - **v1.387 Q598** the plates' rate damping past c·dt/I = ½ taken implicitly: 24/24 grid points finite, stable flights
+    bit-identical (test vehicle-54).
+  - **v1.388 Q456** a docked passenger's onboard computer or crew capsule counts for the composite's avionics (space-41).
+  - **v1.390 Q189 = Q459** a rover flat in the night is `dormant` and wakes when its panels see the sun; old saves'
+    frozen rovers sleep; the fleet line "asleep, wakes in N h" (space-42, core §39 updated, TESTING 432).
+  - **v1.391 Q421** reference views pin a program time (`wxAt`) and re-pin `CLOUD_DT` at capture; view 180 (liftoff
+    under cloud); test app-6 runs the views headless in `apphost.mjs` and fails on the old pin.
+  - **Closed, not built:** Q308 (the NOTES split already made `check_numbers.mjs` read `notes/*.md` at any ref; replayed
+    on the economy branch of 2026-10-11), Q469 (R2's `freshSim()` per section already prevents it).
+- **Not done / for Caio:**
+  - Q456's **crew headcount**: counting a passenger's people in `crewOn` makes a flight docked to a crewed station
+    "crewed" (R.crewed, the fragment warning): a design call, written in Q456's row and notes/space.md.
+  - `check_docs.mjs`' rule-7 checks for answered W/D questions in QUEUE and the size budgets: both would fail today.
+  - Nine stale "after" states for the orchestrator: Q621, Q148, Q317, Q613, Q614, Q615, Q291, Q69, Q289
+    (`node check_docs.mjs --only after`).
+  - View 180 has not been looked at in a browser. TESTING 432 (the rover's night) is open.
+- **Seen once:** vehicle-53's "40 parts inside 1 ms" failed in a 4-process smoke run at 1.19 ms and passed alone: a
+  timing check under load, not this work.
+- **Merge cost:** `main` moved during most CI runs (three sessions shipping); five re-runs for docs-only moves and
+  three renumberings here, and my versions made Q642's session renumber three times.
+- Files: launchpad `sim/core.js`, `sim/vessel.js`, `sim/power.js`, `sim/rovers.js`, `app/fault.js`, `app/testlog.js`,
+  `app/rover-yard.js`, `check_numbers.mjs`, new `check_docs.mjs`, new `hooks/pre-push`, `shards.mjs`, `views.js`,
+  `tests/platform.mjs`, `tests/vehicle.mjs`, `tests/space.mjs`, `tests/core.mjs`, `tests/app.mjs`, `notes/platform.md`,
+  `notes/vehicle.md`, `notes/space.md` (+ link fixes in `notes/flow.md`, `notes/world.md`), `NOTES.md`, `QUEUE.md`,
+  `TESTING.md`; root `.gitattributes`, `.github/workflows/launchpad-tests.yml`, `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
