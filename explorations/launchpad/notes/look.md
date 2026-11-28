@@ -3245,3 +3245,53 @@ one into space.
 - **Not checked.** Any of it in motion or by ear. The sequence moves one ship from height to height (stray smoke
   from the moves is in some frames). A solid, hydrolox or hypergolic stage through the same heights. The plume's
   light on the craft and pad still follows its own throttle law.
+
+## v1.392 — the plume's end in air, the cloud at the air's edge, starting and stopping in space; a mid band in the sound (2026-11-27, look & sound, QUEUE Q645, Q646)
+
+Caio, having tried v1.389: "rumble is good. i think we can maybe layer in some of the more medium pitch sounds, like a
+mix of this with what we had before. on the plume, the moment of transition from atmosphere to space is still a bit
+weird, there is this wide cloud at the bottom of the plume. also, i'd like some attention to the end of the plume, it
+currently kind of fades out, but in images and videos there are flames, or maybe it tapers in, i'm not sure. also, when
+i start the engine in space, there is a flash bigger than the plume at maximum (in space) and a big cloud of smoke when
+i turn it off, is this on purpose?"
+
+**Starting and stopping in space: not on purpose** (Q645, `app/gl.js`, `app/render.js`). Stills of a kerolox stage at
+150 km, cut and relit, showed an orange bell wider and far brighter than the running plume, cut straight where the
+proxy ends, for half a second after ignition; and at cutoff the same orange under a white ball of smoke.
+- **Why.** The fuel-rich start and tail-off (`rich`) were written for the pad: they glow orange, widen the jet up to
+  2.7 × and hold the flame at 60 % length. None of it asked whether there was air; in vacuum the jet is already a wide
+  bulb, so the glow, summed over a path tens of exit radii long, lit all of it. It also skipped the end fade. The
+  cutoff puff grew three times faster in vacuum at full opacity.
+- **Now.** `rich` × `thin` (nothing without air) and under the end fade; the widening and the held length 15 % and
+  25 % in vacuum; the igniter's flash (TEA-TEB green) stays at the bell. The cutoff puff in vacuum at 3 % of its
+  opacity, no glow, gone in a second. A real engine relit in vacuum shows a brief puff and then its plume.
+
+**The wide cloud at the air's edge** (Q645, `app/gl.js`, `app/state.js`). Stills at 20, 25, 30, 36 and 45 km found two.
+- **The contrail's last kilometres.** It ran at a floor of 12 % strength right up to its cutoff at 33 km, where the
+  ship is fast and each puff is born tens of metres wide: a wide pale cloud under the plume, then nothing. It now
+  fades out from about 24 km (`sstep(.006,.03,rho)`).
+- **An orange-brown dome with a dark rim, 25 to 45 km.** v1.389 had faded the body and mantle; the rim was the halo
+  (linear in pressure while the bulb's path grew) and the dark shell the tail soot. All four now ride one `burn`
+  (pressure × a ramp from 0.008 to 0.07 atm): full at 20 km, a third at 25 km, nothing by 34 km.
+
+**The flame's end in air** (Q645). It widened (`PL_TAIL`) and faded over its last half.
+- **Now it tapers and ends in tongues.** The flame narrows by `PL_TAPER` = 0.5 over its last 60 %; its length is set
+  per streak of a slow noise that scrolls down the jet (between half and all of L), with a short edge, so the end is
+  uneven and flickers. `PL_TAIL` = 0. In vacuum the soft end stays (the gas only thins).
+- **Seen in stills:** a column that narrows to a point inside the contrail's smoke at 2 and 8 km; ragged at 14 to
+  25 km. Whether the tongues read as flames in motion is not checked: the trail's smoke is born at 70 % of the
+  flame's length and covers the tip low down.
+
+**The sound** (Q646, `app/sound.js`). A mid band beside the rumble, not through its 220 Hz lowpass: brown noise in a
+band round the roar's cutoff (320 Hz on the pad, falling with the air), under the same slow shake, `SND_G.mid` = 1.
+- **Measured** (the Orbiter one second after ignition; v1.381 → v1.389 → now): centroid 124 → 98 → 115 Hz; power at
+  150–400 Hz 26 → 18 → 21 %; above 400 Hz 2.5 → under 0.1 → 1.8 %; loudness variation 44 → 21 → 22 %; level −15.8 →
+  −14.3 → −13.8 dBFS.
+
+- **Stills** (local, `output/launchpad/beauty/Q645/`): `before_climb_sheet`, `after_climb_sheet` (2, 8, 14, 20, 25,
+  30, 36, 45 km) and `before_space_sheet`, `after_space_sheet` (running at 150 km; 0.1, 0.5, 1.5 s after cutoff; five
+  frames through a restart); each frame also on its own.
+- **Check:** test `aerofx-71`; the older flame checks follow. TESTING 433.
+- **Not checked.** Any of it in motion or by ear. The times of the start and cutoff frames are approximate (the game
+  ran on between captures). Other propellants. The Moon and other airless bodies take the same vacuum path but were
+  not shot. The plume's light on the craft at ignition still flashes as before.

@@ -92,8 +92,12 @@ function sndInit(){if(AUD.ctx)return;const AC=window.AudioContext||window.webkit
   // 1.5 Hz), so the gain stays near 0.6 to 1.4. Deeper: everything airborne then passes one more lowpass at 220 Hz
   // (two filters in a row: twice as steep), on top of the lower roar, voices, sub and bass
   const rum=c.createGain(),rumLp=c.createBiquadFilter();rum.gain.value=1;rumLp.type='lowpass';rumLp.frequency.value=220;rumLp.Q.value=0.5;rum.connect(rumLp);rumLp.connect(AUD.master);
+  // (Q646, Caio: "rumble is good… layer in some of the more medium pitch sounds, like a mix of this with what we had before")
+  // a mid band beside the rumble, not through its lowpass: brown noise in a band round the roar's cutoff (320 Hz on the pad),
+  // under the same slow shake
+  const midG=c.createGain();midG.gain.value=1;midG.connect(AUD.master);
   for(const[rate,lp,d]of[[0.61,5,SND_G.rum],[0.37,1.5,SND_G.rum*0.6]]){const s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();s.buffer=AUD.B.brown;s.loop=true;s.playbackRate.value=rate;
-    fl.type='lowpass';fl.frequency.value=lp;fl.Q.value=0.6;g.gain.value=d;s.connect(fl);fl.connect(g);g.connect(rum.gain);s.start(0,Math.random()*2)}
+    fl.type='lowpass';fl.frequency.value=lp;fl.Q.value=0.6;g.gain.value=d;s.connect(fl);fl.connect(g);g.connect(rum.gain);g.connect(midG.gain);s.start(0,Math.random()*2)}
   const sub=c.createGain();sub.gain.value=0;sub.connect(rum);const swell=c.createGain();swell.gain.value=1;swell.connect(sub);
   for(const[f,d]of[[0.23,0.22],[0.61,0.15],[1.7,0.08]]){const o=c.createOscillator(),og=c.createGain();o.frequency.value=f;og.gain.value=d;o.connect(og);og.connect(swell.gain);o.start()}
   {const s=c.createBufferSource(),fl=c.createBiquadFilter();s.buffer=AUD.B.brown;s.loop=true;fl.type='lowpass';fl.frequency.value=55;fl.Q.value=0.9;s.connect(fl);fl.connect(swell);s.start(0,Math.random()*2)}
@@ -109,7 +113,7 @@ function sndInit(){if(AUD.ctx)return;const AC=window.AudioContext||window.webkit
   AUD.RR=layer('brown','lowpass',90,0.7);{const o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=120;
     f.type='bandpass';f.frequency.value=700;f.Q.value=0.9;g.gain.value=0;o.connect(f);f.connect(g);g.connect(AUD.master);o.start();AUD.RH={o,g,h:layer('white','bandpass',1800,1.2)}}
   AUD.L={air:layer('brown','lowpass',2000,0.5,rum),str:layer('brown','lowpass',110,0.7),crk:layer('pop','bandpass',1200,0.6),wind:layer('white','bandpass',400,1.2,bufG),
-    hiss:layer('white','highpass',3000,0.5),rcs:layer('white','bandpass',3500,1.5),sub,bass,lfoA}}
+    hiss:layer('white','highpass',3000,0.5),mid:layer('brown','bandpass',320,0.7,midG),rcs:layer('white','bandpass',3500,1.5),sub,bass,lfoA}}
 function sndWake(){if(!AUD.on)return;sndInit();if(AUD.ctx&&AUD.ctx.state==='suspended')AUD.ctx.resume()}   // browsers start audio only after a gesture
 addEventListener('pointerdown',sndWake,true);addEventListener('keydown',e=>{
   if(e.key==='F4'&&!e.repeat){e.preventDefault();AUD.on=!AUD.on;try{localStorage.setItem('launchpad-sound',AUD.on?'1':'0')}catch(_){}HOOK.msg(AUD.on?'Sound on':'Sound off')}sndWake()},true);
@@ -184,7 +188,7 @@ function sndRollEvents(r,t){const R=AUD.roll,fire=(k,o,dl=0)=>{AUD.ev[k]=(AUD.ev
   if(!R||t<R.t){AUD.roll={t,joint:r.joint,done:r.done.slice()};return}
   for(let j=R.joint;j<r.joint;j++){fire('clack',SHOT.clack(0.5+r.rumble));fire('clack',SHOT.clack(0.4+r.rumble),0.09)}   // a bogie's two axles
   r.done.forEach((d,i)=>{if(d&&!R.done[i])fire('clunk',SHOT.clunk(i===1?1.2:1))});AUD.roll={t,joint:r.joint,done:r.done.slice()}}
-const SND_G={voice:1.3,sub:2,bass:0.6,rum:4};   // (Q514) the engine's layer gains: the voices, the sub, the clipped upper bass; (Q641) rum: how hard the rumble's loudness is shaken
+const SND_G={voice:1.3,sub:2,bass:0.6,rum:4,mid:1};   // (Q514) the engine's layer gains: the voices, the sub, the clipped upper bass; (Q641) rum: how hard the rumble's loudness is shaken
 function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   const sc=screenNow(),live=(sc==='flight'||sc==='map')&&S&&!gamePaused(),st=live?sndState():null;
   const RP=sc==='rollout'&&typeof rollPhase==='function'?rollPhase():null,ro=RP?sndRoll(RP.t,ROLL_S,typeof RIG!=="undefined"&&RIG&&RIG.bP?ROLL_DOOR+RIG.bP[2]:ROLL_DOOR):null;AUD.lastR=ro;
@@ -200,6 +204,6 @@ function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
   AUD.V.forEach((v,i)=>{const x=vo[i];set(v.g.gain,x?SND_G.voice*x.g:0,0.12);if(x)set(v.f.frequency,SND_VLP*x.f,0.2)});
   set(L.air.g.gain,0.55*m.air*(vo.length?0.8:1));
   const pl=AUD.Q67?sndPlasma(st.qh,st.va,st.pv):0,ot=AUD.Q67?sndOthers(st.others):{g:0,pan:0,lp:500};AUD.lastP=pl;AUD.lastO=ot;
-  set(AUD.PR.g.gain,0.35*pl,0.3);set(AUD.PC.g.gain,0.45*pl*pl,0.2);set(AUD.O.g.gain,0.4*ot.g,0.15);set(AUD.O.f.frequency,ot.lp,0.3);if(AUD.pan)set(AUD.pan.pan,ot.pan,0.15);set(L.air.f.frequency,m.airLp);set(L.str.g.gain,0.35*m.str);set(L.sub.gain,SND_G.sub*m.sub);set(L.bass.gain,SND_G.bass*m.sub);set(L.crk.g.gain,0.8*m.crk);
+  set(AUD.PR.g.gain,0.35*pl,0.3);set(AUD.PC.g.gain,0.45*pl*pl,0.2);set(AUD.O.g.gain,0.4*ot.g,0.15);set(AUD.O.f.frequency,ot.lp,0.3);if(AUD.pan)set(AUD.pan.pan,ot.pan,0.15);set(L.air.f.frequency,m.airLp);set(L.mid.g.gain,SND_G.mid*m.air);set(L.mid.f.frequency,m.airLp);set(L.str.g.gain,0.35*m.str);set(L.sub.gain,SND_G.sub*m.sub);set(L.bass.gain,SND_G.bass*m.sub);set(L.crk.g.gain,0.8*m.crk);
   set(L.wind.g.gain,0.4*m.wind,0.2);set(L.wind.f.frequency,m.windF,0.3);set(L.lfoA.gain,0.8*m.buf,0.2);set(L.hiss.g.gain,0.25*m.hiss,0.3);if(AUD.VH)set(AUD.VH.g.gain,0.3*sndVent(st.vents),0.15);set(L.rcs.g.gain,m.rcs,0.02)}
 

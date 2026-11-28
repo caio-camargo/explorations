@@ -1716,7 +1716,7 @@
   const shape = Math.abs(L0 - .55 * 22 * 2) < 1e-9 && Math.abs(LV - .6 * 22 * 2.4) < 1e-9 && Lh < L0 && col < .1 * L0 && third > .5 && R0 >= rb(L0, .55, .75, tn0, 1, L0) && RV >= rb(LV, .6, 1e3, tnV, 0, LV);
   const pr = Object.values(M.PROPS).every(p => p.len >= 1 && p.len <= 2.4 && p.lum > 0) && M.PROPS.kerolox.len === 2 && M.PROPS.hydrolox.len === 1 && M.PROPS.solid.lum > M.PROPS.kerolox.lum && M.PROPS.hydrolox.lum < .3 && M.PLK >= 6;
   const fs = pg.slice(pg.indexOf('const PLUME_FS=`'), pg.indexOf('`;', pg.indexOf('const PLUME_FS=`'))), mesh = /const PLUME=\(\(\)=>\{[^\n]*\n[^\n]*/.exec(pg)[0];
-  const sh = { gain: fs.includes('vec3 e=uI*PLK*uLm*('), body: fs.includes('bc*body*.3') && fs.includes('+body*.12))*st)'), halo: fs.includes('if(u>1.4){C+=Tr*uI*PLK*uLm*HALO*uS.w'),
+  const sh = { gain: fs.includes('vec3 e=uI*PLK*uLm*('), body: fs.includes('bc*body*.3') && fs.includes('+body*.12))*st)'), halo: fs.includes('if(u>1.4){C+=Tr*uI*PLK*uLm*HALO*burn'),
     fades: fs.includes('*smoothstep(R,.82*R,r)') && fs.includes('*smoothstep(L,.86*L,s)'), core: fs.includes('Lp=re*(3.5+2.5*uS.w)*mix(1.,uLn,uS.w)'),
     set: pg.includes('gl.uniform1f(pu.uLn,P.len||1);gl.uniform1f(pu.uLm,P.lum||1);'), rbS: /const PLUME_RB=`[^`]*PL_B\[0\][^`]*PL_TAIL[^`]*`;/.test(pg),
     cap: mesh.includes('lathe(a,pr,[0,0,0],n,[true,false])') && mesh.includes('pv(a,[0,-1,0],[0,-1,0],w);pv(a,[Math.cos(a1),-1,Math.sin(a1)],[0,-1,0],w);pv(a,[Math.cos(a0),-1,Math.sin(a0)],[0,-1,0],w)') };
@@ -1764,7 +1764,7 @@
   const g = [0, .1, .5, 1].map(gain), ramp = g[0] < .1 && g[1] < .15 && g[2] > .35 && g[2] < .5 && Math.abs(g[3] - 1) < 1e-9 && g.every((x, i) => !i || x > g[i - 1]);
   const fs = pg.slice(pg.indexOf('const PLUME_FS=`'), pg.indexOf('`;', pg.indexOf('const PLUME_FS=`'))), vg = +/const PL_VG=([.\d]+);/.exec(pg)[1];
   const sh = { used: pg.includes('gl.uniform1f(pu.uI,plumeGain(thr)*('), thin: fs.includes('float thin=smoothstep(0.,.08,uS.w);') && fs.includes('*mix(max(PLVG,uSc.y),1.,thin);') && fs.includes('+gv*prof*d*fade*(.6+.4*nn)*.18*cool)'),
-    burn: fs.includes('float burn=uS.w*smoothstep(0.,.05,uS.w);') && fs.includes('float mantle=uK.z*burn*') && fs.includes('float body=burn*uK.z*'), vg: vg > 0 && vg <= .2 };
+    burn: fs.includes('float burn=uS.w*smoothstep(.008,.07,uS.w);') && fs.includes('float mantle=uK.z*burn*') && fs.includes('float body=burn*uK.z*'), vg: vg > 0 && vg <= .2 };
   // the shake's depth: the noise under 5 Hz has an rms near 0.045 before SND_G.rum (an estimate from the buffer's spectrum;
   // the measured loudness variation agrees: 21 % at rum = 4), so the gain's rms swing is rum × 0.045. Kept under a quarter,
   // zero is four deviations away: no dropouts (at Q641's 7 and 11 Hz it was 0.44, and it stuttered)
@@ -1774,4 +1774,31 @@
   check('the plume from air to space and with the throttle (Q644): brightness ramps from near nothing; the gas glow and the afterburning fade as the air thins; the sound\'s shake slower and never to zero, everything airborne an octave down (Q643)',
     ramp && Object.values(sh).every(Boolean) && Object.values(snd).every(Boolean),
     `brightness at throttle 0, 10, 50, 100 %: ${g.map(x => x.toFixed(2)).join(', ')}; the glow keeps ${vg} of its gain in vacuum; shake ${G.rum} · ${Object.entries({ ...sh, ...snd }).map(([k, v]) => k + ' ' + v).join(' ')}`);
+}
+
+// aerofx-71. The plume's end, the wide cloud at the air's edge, and starting and stopping in vacuum (look & sound effects,
+// QUEUE Q645); the sound's mid band (Q646). In air the flame tapers and ends in tongues (it widened and faded); what needs
+// air to burn or glow (mantle, body, soot, halo) is gone by 34 km and the contrail fades out from 24 km; in vacuum the
+// fuel-rich start and tail-off do not glow or widen the jet and the cutoff puff is a wisp.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fs = pg.slice(pg.indexOf('const PLUME_FS=`'), pg.indexOf('`;', pg.indexOf('const PLUME_FS=`'))), rb = /const PLUME_RB=`[^`]*`;/.exec(pg)[0];
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) };
+  const taper = +/PL_TAPER=([.\d]+)/.exec(pg)[1], tail = +/PL_TAIL=([.\d]+)/.exec(pg)[1];
+  const bm = /float burn=uS\.w\*smoothstep\(([.\d]+),([.\d]+),uS\.w\);/.exec(fs), burn = p => p * ss(+bm[1], +bm[2], p);
+  const end = { taper: taper >= .3 && taper <= .7 && tail === 0 && fs.includes('float tp=1.-TAPER*thin*smoothstep(.4*L,L,s);') && fs.includes('float u=r/(b*tp*('),
+    tongues: fs.includes('Le=L*(.5+.5*tg);') && fs.includes('smoothstep(Le,.72*Le,s+(nn-.5)*L*.12),thin)*smoothstep(L,.86*L,s);') };
+  // pressures: 0.063 atm at 20 km, 0.0167 at 30 km, 0.0063 at 36 km
+  const air = { burn: burn(1) === 1 && burn(.063) > .05 && burn(.0167) < .002 && burn(.0063) === 0, halo: fs.includes('HALO*burn*uK.x*'), soot: fs.includes('float soot=uK.w*burn*('),
+    trail: pg.includes('a0:.45*clamp(rho*1.1,.12,1)*sstep(.006,.03,rho),') };
+  const pm = /a0:\(\.35\+\.3\*\(P\.tail\|\|\.3\)\)\*\(([.\d]+)\+([.\d]+)\*sstep\(0,\.08,pa\)\)/.exec(pg);
+  const vac = { rich: fs.includes('float rich=uIg.w*thin*(.5+nn);') && fs.includes('+rich*prof*fade*.6)'), wide: rb.includes('uIg.w*mix(.15,1.,smoothstep(0.,.08,uS.w))*'),
+    len: pg.includes('.6*ig[3]*(.25+.75*sstep(0,.08,pa))'), puff: !!pm && +pm[1] <= .05 && Math.abs(+pm[1] + +pm[2] - 1) < 1e-9 && pg.includes('hot:.4*sstep(0,.08,pa)})') };
+  const G = new Function(/const SND_G=\{[^}]*\};/.exec(H)[0] + 'return SND_G')();
+  const snd = { gain: G.mid >= .3 && G.mid <= 2, layer: H.includes("mid:layer('brown','bandpass',320,0.7,midG),") && H.includes('midG.connect(AUD.master);'),
+    shake: H.includes('g.connect(rum.gain);g.connect(midG.gain);'), tick: H.includes('set(L.mid.g.gain,SND_G.mid*m.air);set(L.mid.f.frequency,m.airLp);') };
+  const all = { ...end, ...air, ...vac, ...snd };
+  check('the plume\'s end tapers into tongues in air; nothing that needs air glows past 34 km and the contrail fades out; in vacuum no fuel-rich flash at the start and a wisp at cutoff (Q645); a mid band beside the rumble (Q646)',
+    Object.values(all).every(Boolean),
+    `taper ${taper}; burn at 20, 30, 36 km: ${[.063, .0167, .0063].map(p => burn(p).toFixed(4)).join(', ')}; cutoff puff in vacuum ${pm ? pm[1] : '?'} of its opacity; mid gain ${G.mid} · ${Object.entries(all).map(([k, v]) => k + ' ' + v).join(' ')}`);
 }

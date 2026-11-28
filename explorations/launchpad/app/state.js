@@ -32,7 +32,7 @@ function trailThin(list,t){let L=null,Ls=0,P=null,Ps=0,n=0;for(const q of list){
     P=q;Ps=sz}return n}
 // a full list gives up a puff that is already fading before it gives up the oldest, which is the trail's pad end
 function smokeDrop(list){const i=list.findIndex(q=>q.kt);if(i<0)list.shift();else list.splice(i,1)}
-function emitSmoke(dt){thinAcc+=dt;if(thinAcc>=.5){thinAcc=0;trailThin(smoke,simT)}if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km)
+function emitSmoke(dt){thinAcc+=dt;if(thinAcc>=.5){thinAcc=0;trailThin(smoke,simT)}if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.006)return;   // (Q319, B2.6) a longer contrail: to ~33 km (was 0.02, ~26 km); (Q645) fading out from ~24 km: at full strength to the last, the fast ship's huge puffs were a wide pale cloud under the plume just before space
   emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
@@ -40,7 +40,7 @@ function emitSmoke(dt){thinAcc+=dt;if(thinAcc>=.5){thinAcc=0;trailThin(smoke,sim
     const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
-    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:TRAIL_LIFE*(1+.3*Math.random()),rise:Math.random()*0.6,seed:Math.random()*97,tr:1})}}}
+    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1)*sstep(.006,.03,rho),life:TRAIL_LIFE*(1+.3*Math.random()),rise:Math.random()*0.6,seed:Math.random()*97,tr:1})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
 // of CPU a frame with ~1000 puffs.
 let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
