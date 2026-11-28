@@ -8821,3 +8821,23 @@ commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; r
   `tests/platform.mjs`, `tests/vehicle.mjs`, `tests/space.mjs`, `tests/core.mjs`, `tests/app.mjs`, `notes/platform.md`,
   `notes/vehicle.md`, `notes/space.md` (+ link fixes in `notes/flow.md`, `notes/world.md`), `NOTES.md`, `QUEUE.md`,
   `TESTING.md`; root `.gitattributes`, `.github/workflows/launchpad-tests.yml`, `INDEX.md`, `ACTIVE_WORK.md`, `SESSION_LOG.md`.
+
+## 2026-11-27 — look & sound (Fable 5.2, worktree launchpad-q645): v1.392 Q645, Q646, the plume's end, the air's edge, start and stop in space; a mid band in the sound
+
+- **Asked** (Caio, after v1.389): "rumble is good", some mid pitch back; the transition to space "still a bit weird,
+  there is this wide cloud at the bottom of the plume"; the plume's end "kind of fades out"; in space a start flash
+  "bigger than the plume at maximum" and "a big cloud of smoke" at cutoff: on purpose?
+- **Found and done** (notes/look.md § v1.392):
+  - Start and stop in space were not on purpose: the pad's fuel-rich start and tail-off never asked for air and lit
+    the whole vacuum bulb orange; the cutoff puff was at full strength. Both now need air.
+  - The wide cloud: the contrail's last kilometres (now fades from ~24 km) and the halo and soot round the bulb
+    (now under the same `burn` ramp as the afterburning; nothing by 34 km).
+  - The flame's end in air tapers and ends in tongues of unequal length (it widened and faded).
+  - Sound: a brown-noise band round 320 Hz beside the rumble's lowpass. Centroid 98 → 115 Hz (v1.381: 124).
+- **Checked:** test `aerofx-71`; smoke suite locally; CI green on the branch head. Stills in
+  `output/launchpad/beauty/Q645/` (climb and space sheets, before and after).
+- **Not checked:** in motion, by ear, other propellants, airless bodies. TESTING 433 is open.
+- **Next:** Caio's read of TESTING 433. If the flame's tip still reads as a fade low down, move the trail's birth
+  point further back (it is born at 70 % of the flame and covers the tip).
+- Files: launchpad `app/gl.js`, `app/render.js`, `app/state.js`, `app/sound.js`, `sim/core.js`, `tests/look.mjs`,
+  `notes/look.md`, `NOTES.md`, `QUEUE.md`, `TESTING.md`; root `ACTIVE_WORK.md`, `SESSION_LOG.md`.
